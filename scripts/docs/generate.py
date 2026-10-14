@@ -9,13 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import argparse
 import ast
 import builtins
+import inspect
 import pathlib
 import re
 import shlex
-import sys
 import tomllib
 
 import esolangs
+from docs.proof_status import splice, update_docs
 from esolangs.languages.generators import BOOLEAN
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 
@@ -78,27 +79,6 @@ _README_HEADINGS = [
         "Languages that don't fit into the above categories.",
     ),
 ]
-
-_README_START = "<!-- IMPLEMENTED:START -->"
-_README_END = "<!-- IMPLEMENTED:END -->"
-_EXAMPLES_START = "<!-- EXAMPLES:START -->"
-_EXAMPLES_END = "<!-- EXAMPLES:END -->"
-_BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
-_BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
-_PACKAGE_COUNT_START = "<!-- PACKAGE-COUNT:START -->"
-_PACKAGE_COUNT_END = "<!-- PACKAGE-COUNT:END -->"
-_SHAPES_START = "<!-- INPUT-SHAPES:START -->"
-_SHAPES_END = "<!-- INPUT-SHAPES:END -->"
-_API_START = "<!-- PUBLIC-API:START -->"
-_API_END = "<!-- PUBLIC-API:END -->"
-_XOR_START = "<!-- XOR-EXAMPLE:START -->"
-_XOR_END = "<!-- XOR-EXAMPLE:END -->"
-_RASTER_START = "<!-- RASTER-SOURCES:START -->"
-_RASTER_END = "<!-- RASTER-SOURCES:END -->"
-_SIZE_START = "<!-- COLLECTION-SIZE:START -->"
-_SIZE_END = "<!-- COLLECTION-SIZE:END -->"
-_CENSUS_START = "<!-- CURATION-CENSUS:START -->"
-_CENSUS_END = "<!-- CURATION-CENSUS:END -->"
 
 # language-owners: ["Fargo", "Taglate"]
 #: The bit vector the stdin table is rendered for.  Three bits, because an
@@ -293,9 +273,6 @@ def render_api_section() -> str:
     single README sentence is what produced a thirteen-name run-on; this
     list carries the same guarantee and no sentence.
     """
-    import inspect
-    import re
-
     lines = []
     for name in esolangs.__all__:
         member = getattr(esolangs, name)
@@ -397,18 +374,12 @@ def render_curation_census_section() -> str:
     )
 
 
-def _splice(text: str, start: str, end: str, body: str) -> str:
-    """Replace the marked block in ``text``, keeping the markers themselves."""
-    block = start + "\n\n" + body + "\n\n" + end
-    return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
-
-
 def update_usage(root: pathlib.Path = ROOT) -> None:
     """Rewrite the generated tables in docs/usage.md between their markers."""
     path = root / "docs" / "usage.md"
     text = path.read_text()
-    text = _splice(text, _SHAPES_START, _SHAPES_END, render_input_shapes_section())
-    text = _splice(text, _API_START, _API_END, render_api_section())
+    text = splice(text, "INPUT-SHAPES", render_input_shapes_section())
+    text = splice(text, "PUBLIC-API", render_api_section())
     path.write_text(text)
 
 
@@ -416,12 +387,12 @@ def update_limitations(root: pathlib.Path = ROOT) -> None:
     """Rewrite the generated paragraphs of docs/limitations.md."""
     path = root / "docs" / "limitations.md"
     text = path.read_text()
-    for start, end, render in (
-        (_RASTER_START, _RASTER_END, render_raster_section),
-        (_SIZE_START, _SIZE_END, render_collection_size_section),
-        (_CENSUS_START, _CENSUS_END, render_curation_census_section),
+    for name, render in (
+        ("RASTER-SOURCES", render_raster_section),
+        ("COLLECTION-SIZE", render_collection_size_section),
+        ("CURATION-CENSUS", render_curation_census_section),
     ):
-        text = _splice(text, start, end, render())
+        text = splice(text, name, render())
     path.write_text(text)
 
 
@@ -449,32 +420,22 @@ def update_readme(root: pathlib.Path = ROOT) -> None:
     """Rewrite the generated sections of README.md between their markers."""
     path = root / "README.md"
     text = path.read_text()
-    for start, end, render in (
-        (
-            _PACKAGE_COUNT_START,
-            _PACKAGE_COUNT_END,
-            render_package_count_section,
-        ),
-        (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
-        (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
-        (_XOR_START, _XOR_END, render_xor_section),
+    for name, render in (
+        ("PACKAGE-COUNT", render_package_count_section),
+        ("EXAMPLES", render_examples_section),
+        ("BOOLEAN-COUNT", render_boolean_count_section),
+        ("XOR-EXAMPLE", render_xor_section),
     ):
-        text = _splice(text, start, end, render())
+        text = splice(text, name, render())
     path.write_text(text)
     catalog = root / "docs" / "languages.md"
     catalog.write_text(
-        _splice(
-            catalog.read_text(), _README_START, _README_END, render_languages_section()
-        )
+        splice(catalog.read_text(), "IMPLEMENTED", render_languages_section())
     )
 
 
 def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     """Write every generated documentation section."""
-    # Imported here so the module also loads from a test, where this directory
-    # is not on ``sys.path`` until now.
-    from docs.proof_status import update_docs
-
     update_exports(output_root)
     print("updated the generated exports of esolangs.languages")
     update_docs(output_root)

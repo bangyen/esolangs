@@ -242,7 +242,7 @@ class _Machine:
         return (
             self.ptr,
             self.stk,
-            tuple(self.frames),
+            self.frames,
             self.io.progress(),
         )
 

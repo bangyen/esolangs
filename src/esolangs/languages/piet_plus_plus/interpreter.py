@@ -64,7 +64,13 @@ from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._source import raster_source as load_source
-from esolangs.runtime.codels import BLACK, DIRECTIONS, WHITE, find_block, leave, slide
+from esolangs.runtime.codels import (
+    BLACK,
+    WHITE,
+    exit_step,
+    find_block,
+    slide,
+)
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 
@@ -75,7 +81,7 @@ supports_scale = True
 Pixel = tuple[int, int, int]
 Point = tuple[int, int]
 #: An integer or a nested stack, held as an immutable tuple (bottom first).
-#: ``Any`` spares the casts around the recursive stack tree, as before.
+#: ``Any`` spares the casts around the recursive stack tree.
 type Element = Any
 type _Stack = tuple[Element, ...]
 type _Rows = tuple[tuple[Pixel, ...], ...]
@@ -87,7 +93,9 @@ type _Core = tuple[
 #: ``("out", values, number)``: print each value as a number or a character.
 type _Effect = tuple[str, tuple[int, ...], bool] | None
 
-_LEVELS = {0: 0, 85: 1, 170: 2, 255: 3}
+#: Channel bytes per colour level: 00/55/AA/FF are levels 0-3.
+_STEP = 0x55
+_LEVELS = {_STEP * level: level for level in range(4)}
 _INTEGER = re.compile(r"[+-]?[0-9]+")
 
 # (red delta mod 4, green delta mod 2, blue delta mod 4) -> command.
@@ -127,24 +135,20 @@ _BINARY: dict[str, Callable[[int, int], int | None]] = {
 class _NeedInputError(Exception):
     """The transition reached an ``in`` command and needs its value.
 
-    ``effects`` is the output the transition already produced (there is at
-    most one command per step, so it is normally ``None``); the shell
-    flushes it before reading.
+    One command per step, so nothing was output before the read.
     """
 
-    def __init__(self, *, number: bool, effects: _Effect = None) -> None:
+    def __init__(self, *, number: bool) -> None:
         super().__init__(number)
         self.number = number
-        self.effects = effects
 
 
 class _FaultError(Exception):
-    """A transition fault carrying the output produced before it."""
+    """A transition fault; one command per step, so it follows no output."""
 
-    def __init__(self, cause: BaseException, effects: _Effect) -> None:
+    def __init__(self, cause: BaseException) -> None:
         super().__init__(cause)
         self.cause = cause
-        self.effects = effects
 
 
 def _colour(pixel: Pixel) -> Pixel:
@@ -220,7 +224,7 @@ def _written_rows(rows: _Rows, x: int, y: int, pixel: Pixel) -> _Rows:
     return (*rows[:y], row, *rows[y + 1 :])
 
 
-def _command(
+def _command(  # noqa: C901
     core: _Core,
     name: str,
     size: int,
@@ -361,7 +365,7 @@ def _advance(
     except _NeedInputError:
         raise
     except Exception as error:
-        raise _FaultError(error, None) from error
+        raise _FaultError(error) from error
 
 
 def _advance_core(
@@ -380,31 +384,21 @@ def _advance_core(
     if colour == WHITE:
         return _slide(core, current), None
     block = find_block(rows, current, _colour)
-    for attempt in range(8):
-        x, y = leave(block, dp, cc)
-        dx, dy = DIRECTIONS[dp]
-        target = x + dx, y + dy
-        tx, ty = target
-        if 0 <= tx < len(rows[0]) and 0 <= ty < len(rows):
-            seen = _colour(rows[ty][tx])
-            if seen == WHITE:
-                return _slide(core, target), None
-            if seen != BLACK:
-                (r, g, b), (r0, g0, b0) = seen, colour
-                change = (
-                    (r // 85 - r0 // 85) % 4,
-                    (g // 85 - g0 // 85) % 2,
-                    (b // 85 - b0 // 85) % 4,
-                )
-                moved = (target, dp, cc, root, path, halted, rows, writes)
-                return _command(
-                    moved, _COMMANDS[change], len(block), value, ready=ready
-                )
-        if attempt % 2 == 0:
-            cc *= -1
-        else:
-            dp = (dp + 1) % 4
-    return (current, dp, cc, root, path, True, rows, writes), None
+    exit_ = exit_step(rows, block, dp, cc, _colour)
+    if exit_ is None:
+        return (current, dp, cc, root, path, True, rows, writes), None
+    target, dp, cc, seen = exit_
+    if seen == WHITE:
+        # Slides with the dp and cc the exit search settled on, as in Piet.
+        return _slide((current, dp, cc, root, path, halted, rows, writes), target), None
+    (r, g, b), (r0, g0, b0) = seen, colour
+    change = (
+        (r // _STEP - r0 // _STEP) % 4,
+        (g // _STEP - g0 // _STEP) % 2,
+        (b // _STEP - b0 // _STEP) % 4,
+    )
+    moved = (target, dp, cc, root, path, halted, rows, writes)
+    return _command(moved, _COMMANDS[change], len(block), value, ready=ready)
 
 
 class _Machine:
@@ -475,32 +469,26 @@ class _Machine:
     def step(self) -> None:
         """Execute one step, reading input and writing output as the shell.
 
-        An input request carries no output prefix (one command per step),
-        so nothing is deferred; a fault is re-raised after flushing any
-        prefix it carried.
+        One command per step, so neither an input request nor a fault
+        follows any output: the read happens, or the cause is re-raised.
         """
         if self.halted:
             return
         value: str | int | None = None
         ready = False
-        number = False
         while True:
             try:
                 core, effect = _advance(self.state, value, ready=ready)
             except _NeedInputError as need:
-                self._write_effect(need.effects)
-                number = need.number
-                read_ok = True
                 try:
-                    value = self.io.input_token() if number else self.io.input_char()
+                    value = (
+                        self.io.input_token() if need.number else self.io.input_char()
+                    )
+                    self._input_reads += 1
                 except EOFError:
                     value = None
-                    read_ok = False
                 ready = True
-                if read_ok:
-                    self._input_reads += 1
             except _FaultError as fault:
-                self._write_effect(fault.effects)
                 raise fault.cause from None
             else:
                 self.state = core

@@ -3,7 +3,11 @@
 # A reader's count comes from one adjacent digit.
 _DIG_SPAN = 9
 _DIG_PRINT = "{}:@"
-_DIG_OPAQUE = "^>'<#$@"
+# The turn glyph that sends a mole along each heading, indexed by heading
+# (up, right, down, left), and the same glyphs rotated a quarter turn clockwise.
+_DIG_TURNS = "^>'<"
+_DIG_TURNS_CW = _DIG_TURNS[1:] + _DIG_TURNS[0]
+_DIG_OPAQUE = _DIG_TURNS + "#$@"
 _DIG_DIGITS = "0123456789;"
 
 #: Local headings rotate with the stamp. Each operator has one adjacent
@@ -25,6 +29,11 @@ type _Stamp = tuple[
     tuple[int, int],
     tuple[int, int, int, int],
 ]
+
+
+def _hold_column(chars: dict[tuple[int, int], str]) -> int:
+    """Return the right-most ``$`` on row 1, where the hold count is stored."""
+    return max(c for (r, c), char in chars.items() if r == 1 and char == "$")
 
 
 def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
@@ -175,7 +184,7 @@ def _dig_flat_leaf(
         # Capture eight rows per class before reading the final six inputs.
         # The extra return command adds that stored offset to the row count.
         first = painter[3][1]
-        hold = max(c for (r, c), char in painter[0].items() if r == 1 and char == "$")
+        hold = _hold_column(painter[0])
         chars[top, 3 + hold] = str(hold - first)
         chars[top + 1, 3 + first] = "+"
         reads.append(((top + 1, 3 + first), (top + 2, 3 + first), frozenset()))

@@ -47,7 +47,7 @@ dev = [
     "urllib3>=2.7.0",
     "ruff==0.16.9",
     "mypy==2.3.1",
-    # Required by verify.py's duplicate-code check.
+    # Required by verify/gate.py's duplicate-code check.
     "pylint>=3.0.0",
     "pre-commit>=3.0.0",
     "types-requests",
@@ -102,12 +102,17 @@ select = [
     "ARG", # unused arguments
     "SLF", # private member access
     "T10", # flake8-debugger
+    "C90", # mccabe
 ]
 ignore = [
-    "C901",  # too complex
     "D203",  # conflicts with D211 (blank line before class)
     "D213",  # conflicts with D212 (multi-line summary placement)
 ]
+
+[tool.ruff.lint.mccabe]
+# Ratchet: the functions above it carry `noqa: C901`, mostly opcode
+# dispatch; a refactor removes its noqa.  Measured 2026-10-13: 193 over 10, 58 over 15, 17 over 20.
+max-complexity = 20
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
@@ -205,7 +210,7 @@ addopts = [
     "worksteal",
     # A hang never reaches the duration policy, so every test also carries a
     # hard stop: `conftest.py` sets it per band from
-    # `tests/duration_policy.HARD_CEILINGS`.  The thread method, not the
+    # `tests.support.duration_policy.HARD_CEILINGS`.  The thread method, not the
     # signal one: `esolangs.run` owns SIGALRM and ITIMER_REAL and a test
     # asserts the timer is disarmed after it.  A stuck test therefore takes
     # its xdist worker down, and the report names it, rather than the job's

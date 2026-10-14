@@ -1,6 +1,7 @@
 """Shared fixtures for the esolangs test suite."""
 
 import contextlib
+import os
 import time
 from collections.abc import Generator
 from pathlib import Path
@@ -35,6 +36,27 @@ def _reject_stale_install() -> None:
 
 
 _reject_stale_install()
+
+
+def _drop_hook_git_env() -> None:
+    """Unset the repository variables git exports to hooks.
+
+    Under a pre-push hook ``GIT_DIR`` names the pushing repository, so a
+    test that runs ``git commit`` in a scratch directory would commit to
+    the real branch instead.
+    """
+    for name in (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_COMMON_DIR",
+    ):
+        os.environ.pop(name, None)
+
+
+_drop_hook_git_env()
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

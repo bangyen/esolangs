@@ -14,7 +14,7 @@ cross-check exits 3) and rejects anything but an integer or fraction;
 :class:`ValueError`.
 
 :func:`_advance` is a pure, total transition over an immutable
-``_State``; :func:`_needs` and :func:`_forward` let the shell reject
+``_State``; ``_NEEDS`` and :func:`_forward` let the shell reject
 underflow and unmatched brackets first, and the shell checks the zero
 divisor.  :class:`_Machine` rebinds one state per ``step()``.
 
@@ -59,11 +59,6 @@ type _State = tuple[
 #: two-item commands take two, and the rest of the popping commands take
 #: one.  A command absent from this mapping needs none.
 _NEEDS = {"x": 3, "v": 2, "#": 2, "!": 1, "^": 1, "(": 1, ")": 1}
-
-
-def _needs(char: str) -> int:
-    """Return how many stack items ``char`` requires to run."""
-    return _NEEDS.get(char, 0)
 
 
 def _forward(code: str, ind: int) -> int | None:
@@ -171,7 +166,7 @@ class _Machine:
             return
         ind, stack, jumps, variables = self.state
         char = self.code[ind]
-        if len(stack) < _needs(char):
+        if len(stack) < _NEEDS.get(char, 0):
             raise HaltError(
                 "empty stack",
                 hint="push a value before reading or removing the stack top",
@@ -206,15 +201,9 @@ class _Machine:
                 target = match
         elif char == "?":
             line = self.io.input_token().strip()
-            if not _RATIONAL.fullmatch(line):
-                raise syntax_error(
-                    "input must be an integer or a fraction",
-                    (
-                        "supply a decimal integer or a fraction with nonzero "
-                        "denominator, for example 3/2"
-                    ),
-                )
-            if "/" in line and int(line.rsplit("/", 1)[1]) == 0:
+            if not _RATIONAL.fullmatch(line) or (
+                "/" in line and int(line.rsplit("/", 1)[1]) == 0
+            ):
                 raise syntax_error(
                     "input must be an integer or a fraction",
                     (

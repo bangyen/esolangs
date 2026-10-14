@@ -169,7 +169,12 @@ requirements:
   aimed at a table class (ignored inputs, constants) is judged on that class;
   2D grids are judged by area, rows times the longest row. The n=3 total is
   context only: greedy order searches saved 8-15% there but at most 2.2% at
-  n >= 7, and were retired. Cite the measurement beside the code.
+  n >= 7, and were retired. A saving still growing at n=8 is measured on
+  past it, to its peak. Named functions (parity, majority, and/or,
+  thresholds) are reported apart; 10% on one keeps a rule for that family,
+  not the whole race. Smallfuck's residual forms saved 2.2% on random tables
+  at n=8, 0% at n >= 9 and at most 1.0% on a named function, and were
+  retired. Cite the measurement beside the code.
 - **No table grows**: checked exhaustively through three inputs, so keep the
   old build as a candidate when the new one is not uniformly shorter.
 - **Every table executes**: exhaustively through three inputs and sampled at
@@ -185,6 +190,28 @@ requirements:
 Execution-time optimizations require 5% fewer commands summed over every row
 of the three-input tables, with no table slower or larger. Choose candidates
 by size, breaking ties by steps. Bound the per-piece upside before choosing.
+
+## Code shape
+
+Judge a module by what the language does not demand.
+
+- A named rule beats a frozen table, and both beat a search. A searched
+  table stays only when no rule reproduces it, and its comment names the
+  search (Malbolge's `_INITS`).
+- One path per semantics. A fast path beside the plain one needs a reader
+  the fast path cannot serve (Thue keeps `_advance` for
+  `branching_successors`); otherwise delete one.
+- A race, candidate or n-specific branch cites its saving at the largest n
+  where it runs, measured jointly with its siblings: Line's five extra folds
+  each saved 0% alone, yet streaming alone lost 25% on lifted cores until
+  projected streaming stayed beside it. Under 10% it goes: Circuit Diagram's
+  cofactor bank won 0.00% at n=8..11, Back's bend 0-2.7%.
+- An index, cache or batch carries timings at three sizes; a replacement
+  must grow the same way.
+- State past three fields is a NamedTuple, not a positional tuple
+  re-unpacked in every branch.
+- Validators and debugger views sit beside the step, not inside it
+  (Streetcode's `interpreter/validation.py`).
 
 ## Checklist
 
@@ -215,7 +242,7 @@ by size, breaking ties by steps. Bound the per-piece upside before choosing.
    written bits per arity, with the table reaching each: a cell's "worst"
    must equal them exactly, else it says "at most".
 4. `just finish-language "Name"` regenerates examples, docs and the size
-   baseline, then runs the full `verify.py`. That is the gate: `just
+   baseline, then runs the full `verify/gate.py`. That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.
    Added lines need 90% statement and branch coverage per file; the
    report separates them from older gaps. It takes minutes, so run it in

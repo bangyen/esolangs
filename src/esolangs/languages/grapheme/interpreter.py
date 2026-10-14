@@ -38,8 +38,8 @@ against a rebuilt tuple.  The invariant that makes reporting sound:
 ``stack[-1 - pops]``.  Finishing a frame (flush the mode buffer, pop, or
 rewind for ``Z``) is part of the transition, reading the *virtual* depth.
 
-The old ``steps``/``limit`` budget is gone: unbounded pushes are what
-``esolangs.run``'s ``timeout`` catches, and ancestor replay is decided by
+Unbounded pushes are what ``esolangs.run``'s ``timeout`` catches, and
+ancestor replay is decided by
 :func:`esolangs.vm.run_until_halt_or_ancestor`.
 
 The page's truth machine ``HFAFYHWJUZFZFY`` works for input 0 only: on 1,
@@ -53,8 +53,10 @@ excluding its newline.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import takewhile
+from operator import add, mul, sub
 from types import MappingProxyType
 from typing import Final, Literal
 
@@ -100,12 +102,17 @@ _Function = tuple[Literal["func"], str]
 _Value = int | str | _Function
 
 
-def _int_from(buf: list[str], dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
-    """Parse an intmode buffer under the selected multiplication rule."""
+def _letter_number(chars: Iterable[str]) -> int:
+    """Fold letters into a number, one decimal place each: A..Y add 1..25, Z 0."""
     res = 0
-    for c in buf:
+    for c in chars:
         res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
-    return dialect.finish_integer(res)
+    return res
+
+
+def _int_from(buf: Iterable[str], dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
+    """Parse an intmode buffer under the selected multiplication rule."""
+    return dialect.finish_integer(_letter_number(buf))
 
 
 def _to_int(value: _Value, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
@@ -114,12 +121,8 @@ def _to_int(value: _Value, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
         return value
     if isinstance(value, tuple):  # function -> number of commands
         return len(value[1])
-    res = 0
-    for c in value:
-        if c == "F":
-            break
-        res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
-    return dialect.finish_integer(res)
+    letters = takewhile(lambda c: c != "F", value)
+    return dialect.finish_integer(_letter_number(letters))
 
 
 def _to_str(value: _Value) -> str:
@@ -195,17 +198,46 @@ def _frame(code: str, *, repeat: bool = False) -> _Frame:
     return (code, 0, "", (), -1, repeat)
 
 
-def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
-    """Read the next value down the stack, and the pop count that consumes it.
+@dataclass
+class _Step:
+    """Everything one command may read or change, held in one place.
 
-    Sound only because every command pops before it pushes.
+    A handler takes this and records its effects on it explicitly.  It
+    never escapes :func:`_advance`, so the transition
+    stays pure over the immutable :type:`_State`.
     """
-    if pops >= len(view):
-        raise HaltError(
-            "popped an empty stack",
-            hint="push a value before reading or removing the stack top",
-        )
-    return pops + 1, view[-1 - pops]
+
+    variables: _Vars
+    pc: int
+    mode: str
+    buf: tuple[str, ...]
+    pending_at: int
+    line_in: str | None
+    pops: int = 0
+    pushes: tuple[_Value, ...] = ()
+    reverse: bool = False
+    body: str | None = None
+    call_repeat: bool = False
+    output: _Value | None = None
+
+    def pop(self, view: _StackView) -> _Value:
+        """Read the next value down the stack, and count the pop.
+
+        Sound only because every command pops before it pushes.
+        """
+        if self.pops >= len(view):
+            raise HaltError(
+                "popped an empty stack",
+                hint="push a value before reading or removing the stack top",
+            )
+        value = view[-1 - self.pops]
+        self.pops += 1
+        return value
+
+
+#: A command handler: takes the step scratch, the read-only stack view, and
+#: the dialect, and records its effects on the scratch.
+type _Handler = Callable[[_Step, _StackView, GraphemeDialect], None]
 
 
 def _flush_of(
@@ -216,7 +248,7 @@ def _flush_of(
     if mode == "string":
         return ("".join(buf),)
     if mode == "int":
-        return (_int_from(list(buf), dialect),)
+        return (_int_from(buf, dialect),)
     if mode == "func":
         return ((_FUNC, "".join(buf)),)
     return ()
@@ -240,9 +272,214 @@ def _finished(
 
     code, _, _, _, _, repeat = frame
     if repeat and len(view) - pops + len(pushes) > 0:
-        rewound = (code, 0, "", (), -1, repeat)
+        rewound = _frame(code, repeat=repeat)
         return (variables, (*frames[:-1], rewound)), fx
     return (variables, frames[:-1]), fx
+
+
+def _arith(op: Callable[[int, int], int]) -> _Handler:
+    """Build a handler for a binary arithmetic command (``A``, ``B``, ``S``)."""
+
+    def run(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+        """Apply the operation to the top two numbers."""
+        a = step.pop(view)
+        b = step.pop(view)
+        step.pushes = (op(_as_num(a), _as_num(b)),)
+
+    return run
+
+
+def _open_mode(mode: str) -> _Handler:
+    """Build a handler that opens the given literal mode (``E``/``F``/``H``)."""
+
+    def run(step: _Step, _view: _StackView, _dialect: GraphemeDialect) -> None:
+        """Open the mode, discarding any characters accumulated so far."""
+        step.mode = mode
+        step.buf = ()
+
+    return run
+
+
+def _cmd_divide(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Divide the top two numbers, halting on a zero divisor."""
+    a = step.pop(view)
+    b = step.pop(view)
+    divisor = _as_num(b)
+    if divisor == 0:
+        raise HaltError(
+            "division by zero", hint="ensure the divisor is nonzero before dividing"
+        )
+    step.pushes = (_as_num(a) // divisor,)
+
+
+def _cmd_store(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Bind a name to a value in the variable map."""
+    name = step.pop(view)
+    value = step.pop(view)
+    # The map takes "integers/strings/functions to" the same, so a
+    # function names a variable too (by its body, a hashable pair).
+    step.variables = MappingProxyType({**step.variables, name: value})
+
+
+def _cmd_load(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Push a variable's value, or its name if it was never set."""
+    name = step.pop(view)
+    # An unset name reads as itself: the wiki's "Using variables"
+    # example prints ``VARIABL`` by reading a name it never set.
+    step.pushes = (step.variables.get(name, name),)
+
+
+def _cmd_call(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Call the body of a string or function value."""
+    value = step.pop(view)
+    raw = value[1] if isinstance(value, tuple) else value
+    if not isinstance(raw, str):
+        raise HaltError(
+            "G needs a string or a function",
+            hint="pass G a string or a function value",
+        )
+    step.body = raw
+
+
+def _cmd_exec(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Call a function value, or push a non-function back unchanged."""
+    value = step.pop(view)
+    if isinstance(value, tuple):
+        step.body = value[1]
+    else:
+        step.pushes = (value,)
+
+
+def _cmd_to_int(step: _Step, view: _StackView, dialect: GraphemeDialect) -> None:
+    """Convert the top value to an integer (``J``'s rule)."""
+    step.pushes = (_to_int(step.pop(view), dialect),)
+
+
+def _cmd_dup(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Duplicate the top of the stack."""
+    value = step.pop(view)
+    step.pushes = (value, value)
+
+
+def _cmd_swap(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Swap the top two stack values."""
+    a = step.pop(view)
+    b = step.pop(view)
+    step.pushes = (a, b)
+
+
+def _cmd_drop(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Discard the top of the stack."""
+    step.pop(view)
+
+
+def _cmd_to_str(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Convert the top value to a string (``N``'s rule)."""
+    step.pushes = (_to_str(step.pop(view)),)
+
+
+def _cmd_length(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Push a string's length; other values pass through."""
+    value = step.pop(view)
+    step.pushes = (len(value) if isinstance(value, str) else value,)
+
+
+def _cmd_reverse(step: _Step, _view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Reverse the stack below this command's effects."""
+    step.reverse = True
+
+
+def _cmd_cond_call(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Call a function value when the value beneath it is truthy."""
+    a = step.pop(view)
+    b = step.pop(view)
+    if isinstance(a, tuple) and _truthy(b):
+        step.body = a[1]
+
+
+def _cmd_not(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Push 1 for a falsy value, 0 for a truthy one."""
+    step.pushes = (int(not _truthy(step.pop(view))),)
+
+
+def _cmd_skip_if_falsy(
+    step: _Step, view: _StackView, _dialect: GraphemeDialect
+) -> None:
+    """Skip the next letter when the top value is falsy."""
+    if not _truthy(step.pop(view)):
+        step.pc += 1
+
+
+def _cmd_skip_many(step: _Step, view: _StackView, dialect: GraphemeDialect) -> None:
+    """Skip the next B letters when A is falsy; a negative B skips none."""
+    a = step.pop(view)
+    b = step.pop(view)
+    if not _truthy(a):
+        # "skip the next B commands": a negative B skips none.
+        step.pc += max(0, _to_int(b, dialect))
+
+
+def _cmd_read_line(step: _Step, _view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Push the input line, or the empty string when there is none."""
+    step.pushes = (step.line_in if step.line_in is not None else "",)
+
+
+def _cmd_exec_next(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Run the next letter when truthy (then skip one), else skip it."""
+    if _truthy(step.pop(view)):
+        # execute the next command, then skip the one after it
+        step.pending_at = step.pc
+    else:
+        # skip the next command entirely
+        step.pc += 1
+
+
+def _cmd_output(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Report the top value as output; functions cannot be output."""
+    value = step.pop(view)
+    if isinstance(value, tuple):
+        raise HaltError(
+            "Y cannot output a function",
+            hint="use a whole-number character code between 0 and 1114111",
+        )
+    step.output = value
+
+
+def _cmd_repeat(step: _Step, view: _StackView, _dialect: GraphemeDialect) -> None:
+    """Repeat a function while the stack is non-empty, keeping its body."""
+    value = step.pop(view)
+    if isinstance(value, tuple) and len(view) - step.pops + len(step.pushes) > 0:
+        step.body = value[1]
+        step.call_repeat = True
+
+
+#: Every command letter and the handler that runs it.
+_COMMANDS: Final[dict[str, _Handler]] = {
+    "A": _arith(add),
+    "B": _arith(sub),
+    "C": _cmd_store,
+    "D": _cmd_load,
+    **{char: _open_mode(mode) for char, mode in _OPENS.items()},
+    "G": _cmd_call,
+    "I": _cmd_exec,
+    "J": _cmd_to_int,
+    "K": _cmd_dup,
+    "L": _cmd_swap,
+    "M": _cmd_drop,
+    "N": _cmd_to_str,
+    "O": _cmd_length,
+    "P": _cmd_reverse,
+    "Q": _cmd_cond_call,
+    "R": _cmd_divide,
+    "S": _arith(mul),
+    "T": _cmd_not,
+    "U": _cmd_skip_if_falsy,
+    "V": _cmd_skip_many,
+    "W": _cmd_read_line,
+    "X": _cmd_exec_next,
+    "Y": _cmd_output,
+    "Z": _cmd_repeat,
+}
 
 
 def _advance(
@@ -260,10 +497,6 @@ def _advance(
     frame = frames[-1]
     code, pc, mode, buf, pending_at, repeat = frame
 
-    pops = 0
-    pushes: tuple[_Value, ...] = ()
-    reverse = False
-
     # A frame whose code has run out never reaches here: the shell flushes
     # and pops it without spending a step, so ``pc`` indexes a command.
     c = code[pc]
@@ -271,163 +504,59 @@ def _advance(
     # In a mode, every character but the closing one is data.
     if mode in _CLOSES:
         grown: _Frame
+        pushes: tuple[_Value, ...] = ()
         if c == _CLOSES[mode]:
             pushes = _flush_of(frame, dialect)
             grown = (code, pc + 1, "", (), pending_at, repeat)
         else:
             grown = (code, pc + 1, mode, (*buf, c), pending_at, repeat)
-        return (variables, (*frames[:-1], grown)), (pops, pushes, reverse), None
+        return (variables, (*frames[:-1], grown)), (0, pushes, False), None
 
-    body: str | None = None
-    call_repeat = False
-    output: _Value | None = None
-    if c == "A":
-        pops, b = _pop(view, pops)
-        pops, a = _pop(view, pops)
-        pushes = (_as_num(a) + _as_num(b),)
-    elif c == "B":
-        pops, a = _pop(view, pops)
-        pops, b = _pop(view, pops)
-        pushes = (_as_num(a) - _as_num(b),)
-    elif c == "R":
-        pops, a = _pop(view, pops)
-        pops, b = _pop(view, pops)
-        if _as_num(b) == 0:
-            raise HaltError(
-                "division by zero", hint="ensure the divisor is nonzero before dividing"
-            )
-        pushes = (_as_num(a) // _as_num(b),)
-    elif c == "S":
-        pops, b = _pop(view, pops)
-        pops, a = _pop(view, pops)
-        pushes = (_as_num(a) * _as_num(b),)
-    elif c == "C":
-        pops, name = _pop(view, pops)
-        pops, value = _pop(view, pops)
-        # The map takes "integers/strings/functions to" the same, so a
-        # function names a variable too (by its body, a hashable pair).
-        variables = MappingProxyType({**variables, name: value})
-    elif c == "D":
-        pops, name = _pop(view, pops)
-        # An unset name reads as itself: the wiki's "Using variables"
-        # example prints ``VARIABL`` by reading a name it never set.
-        pushes = (variables.get(name, name),)
-    elif c in _OPENS:
-        mode, buf = _OPENS[c], ()
-    elif c == "G":
-        pops, value = _pop(view, pops)
-        raw = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
-        if not isinstance(raw, str):
-            raise HaltError(
-                "G needs a string or a function",
-                hint="pass G a string or a function value",
-            )
-        body = raw
-    elif c == "I":
-        pops, value = _pop(view, pops)
-        if isinstance(value, tuple) and value[0] == _FUNC:
-            body = value[1]
-        else:
-            pushes = (value,)
-    elif c == "J":
-        pops, value = _pop(view, pops)
-        pushes = (_to_int(value, dialect),)
-    elif c == "K":
-        pops, value = _pop(view, pops)
-        pushes = (value, value)
-    elif c == "L":
-        pops, a = _pop(view, pops)
-        pops, b = _pop(view, pops)
-        pushes = (a, b)
-    elif c == "M":
-        pops, _ = _pop(view, pops)
-    elif c == "N":
-        pops, value = _pop(view, pops)
-        pushes = (_to_str(value),)
-    elif c == "O":
-        pops, value = _pop(view, pops)
-        pushes = (len(value) if isinstance(value, str) else value,)
-    elif c == "P":
-        reverse = True
-    elif c == "Q":
-        pops, a = _pop(view, pops)
-        pops, b = _pop(view, pops)
-        if isinstance(a, tuple) and a[0] == _FUNC and _truthy(b):
-            body = a[1]
-    elif c == "T":
-        pops, value = _pop(view, pops)
-        pushes = (1 if not _truthy(value) else 0,)
-    elif c == "U":
-        pops, value = _pop(view, pops)
-        if not _truthy(value):
-            pc += 1
-    elif c == "V":
-        pops, a = _pop(view, pops)
-        pops, b = _pop(view, pops)
-        if not _truthy(a):
-            # "skip the next B commands": a negative B skips none.
-            pc += max(0, _to_int(b, dialect))
-    elif c == "W":
-        pushes = (line_in if line_in is not None else "",)
-    elif c == "X":
-        pops, value = _pop(view, pops)
-        if _truthy(value):
-            # execute the next command, then skip the one after it
-            pending_at = pc
-        else:
-            # skip the next command entirely
-            pc += 1
-    elif c == "Y":
-        pops, value = _pop(view, pops)
-        if isinstance(value, tuple):
-            raise HaltError(
-                "Y cannot output a function",
-                hint="use a whole-number character code between 0 and 1114111",
-            )
-        output = value
-    elif c == "Z":
-        pops, value = _pop(view, pops)
-        if (
-            isinstance(value, tuple)
-            and value[0] == _FUNC
-            and len(view) - pops + len(pushes) > 0
-        ):
-            body = value[1]
-            call_repeat = True
-    else:
+    step = _Step(
+        variables=variables,
+        pc=pc,
+        mode=mode,
+        buf=buf,
+        pending_at=pending_at,
+        line_in=line_in,
+    )
+    handler = _COMMANDS.get(c)
+    if handler is None:
         # a string read from input and executed via G/I may carry any
         # character; reject it like the top-level program validation would
         raise syntax_error(
             f"unhandled command {c!r}",
             "use uppercase Latin command letters A through Z",
         )
+    handler(step, view, dialect)
 
-    pc += 1
+    pc = step.pc + 1
+    pending_at = step.pending_at
     if pending_at >= 0 and pc == pending_at + 2:
         pc += 1
         pending_at = -1
 
-    frames = (*frames[:-1], (code, pc, mode, buf, pending_at, repeat))
+    frames = (*frames[:-1], (code, pc, step.mode, step.buf, pending_at, repeat))
 
-    if body is not None:
-        frames = (*frames, _frame(body, repeat=call_repeat))
+    if step.body is not None:
+        frames = (*frames, _frame(step.body, repeat=step.call_repeat))
 
     # a command that left the current frame finished (the program ended or
     # a call returned) is completed now, so a caller sees ``halted`` as
     # soon as the last command runs instead of one step later.
-    state = (variables, frames)
-    fx = (pops, pushes, reverse)
+    state = (step.variables, frames)
+    fx = (step.pops, step.pushes, step.reverse)
     while frames and frames[-1][1] >= len(frames[-1][0]):
         state, fx = _finished(state, view, fx, dialect)
         frames = state[1]
         if frames and frames[-1][5] and not frames[-1][0]:
             break  # an empty Z body repeats as one observable step
 
-    return state, fx, output
+    return state, fx, step.output
 
 
 class _Machine:
-    """Shared stack, variables, step counter, and call stack for a run."""
+    """Shared stack, variables, and call stack for a run."""
 
     def __init__(
         self,

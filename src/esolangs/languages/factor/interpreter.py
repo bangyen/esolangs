@@ -2,17 +2,9 @@
 
 Brainfuck re-encoded as the prime factorization of one integer (decimal
 digits; other characters are comments).  Primes ascending, residue mod 11
-selects the command::
-
-    residue   1   2   3   4   5   6   7   8
-    command  >   <   +   -   .   ,   [   ]
-
-The exponent is the repeat count; other residues are ignored.  Decoding is
-delegated to the brainfuck interpreter (8-bit wrap, a tape growing both ways, matched
-loops; unbalanced raises :class:`ValueError`).  No digits, 0 and 1 halt
-with no output; ``,`` reads the next character and raises
-:class:`EOFError` when input runs out.  :class:`_Machine` wraps the
-decoded brainfuck machine.
+selects the command (``> < + - . , [ ]`` for residues 1-8); the exponent
+is the repeat count, other residues are ignored.  Decoding delegates to
+the brainfuck interpreter.  No digits, 0 and 1 halt with no output.
 """
 
 import math
@@ -26,9 +18,9 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
+#: A prime's residue mod ``_MODULUS`` selects the instruction it stands for.
+_MODULUS = 11
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
-
-#: Factor has no execution state beyond the Brainfuck machine it decodes to.
 
 
 #: Sieve batch size for :func:`_factorint`; not a ceiling.
@@ -55,15 +47,10 @@ def _parse(digits: str) -> int:
 def _factorint(number: int) -> dict[int, int]:
     """Factorize ``number`` by widening segmented trial division.
 
-    The number is a product of many smallish primes (435 digits for the
-    committed example), so walk primes in order and shrink as each divides.
-    Never stop at a fixed prime: the residue handed to ``factorint`` is then
-    a large composite that sends it to Pollard rho for minutes (a 10000
-    ceiling left 170 primes inside a 708-digit composite of the n=4 parity
-    number, whose 525 primes reach 17209).
-    Chunks widen until the residue is prime or gone. Below 2**64, exact
-    ``isprime`` is asked only after a *barren* chunk and once per residue;
-    above it BPSW cannot certify a language decode, so the sieve continues.
+    The number is a product of many smallish primes, so walk primes in
+    order and shrink as each divides.  Never stop at a fixed prime: the
+    residue is then a large composite that sends the tail to Pollard rho
+    for minutes.  Chunks widen until the residue is prime or gone.
     """
     factors: dict[int, int] = {}
     checked = 0
@@ -72,10 +59,8 @@ def _factorint(number: int) -> dict[int, int]:
         _start, _stop, primes = next(segments)
         divided = False
         # A gcd filters the chunk: ``number % prime`` costs the width of
-        # ``number``, and a worst-case generated integer has
-        # Theta(T log T) digits and Theta(T) primes.  A prime
-        # divides ``number`` iff it divides ``gcd(number, chunk product)``,
-        # which is small.  Sound mid-chunk: only other primes are divided out.
+        # ``number``, but a prime divides ``number`` iff it divides
+        # ``gcd(number, chunk product)``, which is small.
         batched = bool(primes) and number.bit_length() >= _BATCH_BITS
         if batched:
             common = math.gcd(number, math.prod(primes))
@@ -135,7 +120,9 @@ def _factorint(number: int) -> dict[int, int]:
 def decode(number: int) -> str:
     """Decode a Factor integer into its brainfuck instruction string."""
     factors = sorted(_factorint(number).items())
-    return "".join(_RESIDUE[p % 11] * exp for p, exp in factors if p % 11 in _RESIDUE)
+    return "".join(
+        _RESIDUE[p % _MODULUS] * exp for p, exp in factors if p % _MODULUS in _RESIDUE
+    )
 
 
 class _Machine(_BFMachine):

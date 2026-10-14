@@ -107,7 +107,7 @@ def boolean_manifest_text() -> str:
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
-            f"| `{canonical_id(stem.replace('-', ' '))}/{example.filename}` | "
+            f"| `{example.language}/{example.filename}` | "
             f"{_display_name(stem)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )
@@ -160,27 +160,25 @@ def _same_program(existing: bytes | None, encoded: bytes, generated: Program) ->
     return existing == encoded
 
 
+def _serialize(generated: Program) -> tuple[str, bytes]:
+    """Return the file suffix and bytes ``generated`` is committed as.
+
+    Text files retain a final POSIX newline; PNGs retain their bytes.
+    """
+    if isinstance(generated, Raster):
+        return ".png", generated.to_png()
+    if isinstance(generated, CompressedText):
+        return ".txt.gz", generated.to_gzip()
+    return ".txt", (generated.rstrip("\n") + "\n").encode("utf-8")
+
+
 def write_set(name: str) -> None:
     """Write one example directory from its generators, reporting each file."""
     for stem, generated in SETS[name]():
         directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " "))
         directory.mkdir(parents=True, exist_ok=True)
-        suffix = (
-            ".png"
-            if isinstance(generated, Raster)
-            else ".txt.gz"
-            if isinstance(generated, CompressedText)
-            else ".txt"
-        )
+        suffix, program = _serialize(generated)
         path = directory / f"{stem}{suffix}"
-        # Text files retain a final POSIX newline; PNGs retain their bytes.
-        program = (
-            generated.to_png()
-            if isinstance(generated, Raster)
-            else generated.to_gzip()
-            if isinstance(generated, CompressedText)
-            else (generated.rstrip("\n") + "\n").encode("utf-8")
-        )
         existing = path.read_bytes() if path.exists() else None
         if not _same_program(existing, program, generated):
             path.write_bytes(program)

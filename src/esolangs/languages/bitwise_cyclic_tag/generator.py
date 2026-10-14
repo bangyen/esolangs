@@ -12,15 +12,13 @@ Emission is ``program,data``; the count and why a cell needs four bits:
 
 from __future__ import annotations
 
-from esolangs.generation.constant_projection import balanced_projection
+from esolangs.generation.constant_projection import balance_legacy_walk
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
-    mark_runs,
-    unmark,
 )
-from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
@@ -57,14 +55,12 @@ def _program(truth_table: str, *, keep_constant_walk: bool = False) -> str:
 
 def balance_bitwise_cyclic_tag(table: str, default: str) -> str:
     """Retain the old constant walk if its wrapped shape balances better."""
-    n = _validate_truth_table(table)
-    pairs = (PAIR,) * n
-    marked = mark_runs(default, TEMPLATE_CHAR, pairs)
-    if len(set(table)) > 1:
-        return unmark(balance_program(marked, "bitwise_cyclic_tag"), TEMPLATE_CHAR, n)
-    legacy = mark_runs(_program(table, keep_constant_walk=True), TEMPLATE_CHAR, pairs)
-    return unmark(
-        balanced_projection(marked, legacy, "bitwise_cyclic_tag"), TEMPLATE_CHAR, n
+    return balance_legacy_walk(
+        table,
+        default,
+        "bitwise_cyclic_tag",
+        PAIR,
+        lambda t: _program(t, keep_constant_walk=True),
     )
 
 

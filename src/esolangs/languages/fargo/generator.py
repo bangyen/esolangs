@@ -24,11 +24,13 @@ Repeated expression nodes use shared definitions when shorter; the inline
 form stays a candidate on every fitting path.
 """
 
+from collections.abc import Callable
 from string import ascii_lowercase
 
 from esolangs.generation.helpers import (
     _validate_shape,
     _validate_truth_table,
+    grid_width,
     short_name,
 )
 from esolangs.generation.wrap import balance_score
@@ -38,9 +40,163 @@ from esolangs.registry._language import Language
 __all__ = ["fargo"]
 
 
+class _Grain[T]:
+    """One granularity of the Davio-choice recursion: scalar ints or word lists.
+
+    The shared recursion (``davio`` inside :func:`_arm_expression`) runs
+    unchanged on either grain; each grain supplies the scalar-int or
+    packed-word-list version of every operation that touches the table or
+    the ANF coefficients.
+    """
+
+    def __init__(
+        self,
+        *,
+        initial_half: Callable[[T, int], int],
+        split: Callable[[T, int], tuple[T, T]],
+        is_zero: Callable[[T], bool],
+        weight: Callable[[T], int],
+        is_one: Callable[[T, int], bool],
+        needs_weight: bool,
+        xor: Callable[[T, T], T],
+        child: Callable[[T, T, int], None],
+        downgrade: Callable[[T, T, int], bool],
+    ) -> None:
+        self.initial_half = initial_half
+        self.split = split
+        self.is_zero = is_zero
+        self.weight = weight
+        self.is_one = is_one
+        self.needs_weight = needs_weight
+        self.xor = xor
+        self.child = child
+        self.downgrade = downgrade
+
+
+def _arm[T](
+    choice: int, f0: T, f1: T, low: T, one: T, high: T, d: T
+) -> tuple[T, T, str, T, T]:
+    """Return the kept arm, operator, and operand arm for a Davio choice.
+
+    Choice 0 keeps the 0-arm and xors out the Davio difference; choice 1
+    keeps the 1-arm when that difference vanishes; choice 2 keeps the 0-arm
+    with a monotone OR when the 1-arm is the constant one.
+    """
+    if choice == 0:
+        return f0, low, "^", d, high
+    if choice == 1:
+        return f1, one, "^", d, high
+    return f0, low, "|", f1, one
+
+
 def _word_width(n: int) -> int:
     """Return a power-of-two packing width, at least two and Theta(n)."""
     return max(2, 1 << (n.bit_length() - 1))
+
+
+def _popcount_table(w: int) -> list[int]:
+    """Return popcounts of all ``w // 2``-bit values."""
+    counts = [0]
+    for _ in range(w // 2):
+        counts += [count + 1 for count in counts]
+    return counts
+
+
+class _ArmBuilder:
+    """Emit the arm expression into ``pieces`` via the shared Davio recursion."""
+
+    def __init__(self, w: int, at: tuple[int, ...]) -> None:
+        self.halfword = w // 2
+        self.countmask = (1 << self.halfword) - 1
+        self.counts = _popcount_table(w)
+        self.at = at
+        self.pieces: list[str] = []
+        self.scalar_grain = _Grain[int](
+            initial_half=lambda _table, bit: 1 << bit,
+            split=lambda value, half: (value & ((1 << half) - 1), value >> half),
+            is_zero=lambda value: not value,
+            weight=self.count,
+            is_one=lambda value, _w: value == 1,
+            needs_weight=False,
+            xor=lambda a, b: a ^ b,
+            child=self.scalar_leaf,
+            downgrade=lambda _table, _anf, _bit: False,
+        )
+        self.word_grain = _Grain[list[int]](
+            initial_half=lambda table, _bit: len(table) // 2,
+            split=lambda value, half: (value[:half], value[half:]),
+            is_zero=lambda value: not any(value),
+            weight=self.weight,
+            is_one=lambda value, w: w == 1 and (value[0] & 1) == 1,
+            needs_weight=True,
+            xor=lambda a, b: [x ^ y for x, y in zip(a, b, strict=True)],
+            child=self.leaf,
+            downgrade=self.word_downgrade,
+        )
+
+    def count(self, value: int) -> int:
+        return self.counts[value & self.countmask] + self.counts[value >> self.halfword]
+
+    def weight(self, words: list[int]) -> int:
+        return sum(self.count(value) for value in words)
+
+    def scalar_leaf(self, table: int, anf: int, bit: int) -> None:
+        if anf == 1:
+            self.pieces.append("1")
+        else:
+            self.davio(table, anf, bit, self.scalar_grain)
+
+    def leaf(self, table: list[int], anf: list[int], bit: int) -> None:
+        if len(anf) == 1:
+            self.scalar_leaf(table[0], anf[0], bit)
+        elif anf[0] == 1 and self.weight(anf) == 1:
+            self.pieces.append("1")
+        else:
+            self.davio(table, anf, bit, self.word_grain)
+
+    def word_downgrade(self, table: list[int], anf: list[int], bit: int) -> bool:
+        # A single remaining word drops to the scalar recursion.
+        if len(anf) == 1:
+            self.scalar_leaf(table[0], anf[0], bit)
+            return True
+        return False
+
+    def davio[T](self, table: T, anf: T, bit: int, grain: _Grain[T]) -> None:
+        """Shared Davio-choice recursion; ``grain`` fixes int vs word granularity."""
+        pieces = self.pieces
+        half = grain.initial_half(table, bit)
+        low, high = grain.split(anf, half)
+        while grain.is_zero(high):
+            table, anf, bit = grain.split(table, half)[0], low, bit - 1
+            if grain.downgrade(table, anf, bit):
+                return
+            half //= 2
+            low, high = grain.split(anf, half)
+        f0, f1 = grain.split(table, half)
+        one = grain.xor(low, high)
+        w0, w1 = grain.weight(low), grain.weight(one)
+        if not w1:
+            choice = 1
+        elif grain.is_one(one, w1) and w0:
+            choice = 2
+        else:
+            choice = 0
+        d = grain.xor(f0, f1)
+        kept, kept_anf, op, operand, operand_anf = _arm(
+            choice, f0, f1, low, one, high, d
+        )
+        literal = f"^ 1 @ {self.at[bit]:b}" if choice % 2 else f"@ {self.at[bit]:b}"
+        if not grain.is_zero(kept_anf):
+            pieces.append(f"{op} ")
+            grain.child(kept, kept_anf, bit - 1)
+            pieces.append(" ")
+        # The scalar grain's is_one ignores the weight, so skip computing it.
+        operand_weight = grain.weight(operand_anf) if grain.needs_weight else 0
+        if grain.is_one(operand_anf, operand_weight):
+            pieces.append(literal)
+        else:
+            pieces.append(f"& {literal} ")
+            grain.child(operand, operand_anf, bit - 1)
 
 
 def _arm_expression(
@@ -55,105 +211,6 @@ def _arm_expression(
     uses constant-size word arithmetic and a derived population-count table.
     """
     w = _word_width(n)
-    halfword = w // 2
-    countmask = (1 << halfword) - 1
-    counts = [0]
-    for _ in range(halfword):
-        counts += [count + 1 for count in counts]
-
-    def count(value: int) -> int:
-        return counts[value & countmask] + counts[value >> halfword]
-
-    pieces: list[str] = []
-
-    def scalar_leaf(table: int, anf: int, bit: int) -> None:
-        if anf == 1:
-            pieces.append("1")
-        else:
-            scalar(table, anf, bit)
-
-    def scalar(table: int, anf: int, bit: int) -> None:
-        half = 1 << bit
-        mask = (1 << half) - 1
-        low, high = anf & mask, anf >> half
-        while not high:
-            table, anf, bit = table & mask, low, bit - 1
-            half //= 2
-            mask = (1 << half) - 1
-            low, high = anf & mask, anf >> half
-        f0, f1 = table & mask, table >> half
-        one = low ^ high
-        w0, w1 = count(low), count(one)
-        if not w1:
-            choice = 1
-        elif one == 1 and w0:
-            choice = 2
-        else:
-            choice = 0
-        d = f0 ^ f1
-        kept, kept_anf, op, operand, operand_anf = (
-            (f0, low, "^", d, high),
-            (f1, one, "^", d, high),
-            (f0, low, "|", f1, one),
-        )[choice]
-        literal = f"^ 1 @ {at[bit]:b}" if choice % 2 else f"@ {at[bit]:b}"
-        if kept_anf:
-            pieces.append(f"{op} ")
-            scalar_leaf(kept, kept_anf, bit - 1)
-            pieces.append(" ")
-        if operand_anf == 1:
-            pieces.append(literal)
-        else:
-            pieces.append(f"& {literal} ")
-            scalar_leaf(operand, operand_anf, bit - 1)
-
-    def weight(words: list[int]) -> int:
-        return sum(count(value) for value in words)
-
-    def leaf(table: list[int], anf: list[int], bit: int) -> None:
-        if len(anf) == 1:
-            scalar_leaf(table[0], anf[0], bit)
-        elif anf[0] == 1 and weight(anf) == 1:
-            pieces.append("1")
-        else:
-            build(table, anf, bit)
-
-    def build(table: list[int], anf: list[int], bit: int) -> None:
-        half = len(table) // 2
-        low, high = anf[:half], anf[half:]
-        while not any(high):
-            table, anf, bit = table[:half], low, bit - 1
-            if len(anf) == 1:
-                scalar_leaf(table[0], anf[0], bit)
-                return
-            half //= 2
-            low, high = anf[:half], anf[half:]
-        f0, f1 = table[:half], table[half:]
-        one = [a ^ b for a, b in zip(low, high, strict=True)]
-        w0, w1 = weight(low), weight(one)
-        if not w1:
-            choice = 1
-        elif w1 == 1 and one[0] & 1 and w0:
-            choice = 2
-        else:
-            choice = 0
-        d = [a ^ b for a, b in zip(f0, f1, strict=True)]
-        kept, kept_anf, op, operand, operand_anf = (
-            (f0, low, "^", d, high),
-            (f1, one, "^", d, high),
-            (f0, low, "|", f1, one),
-        )[choice]
-        literal = f"^ 1 @ {at[bit]:b}" if choice % 2 else f"@ {at[bit]:b}"
-        if any(kept_anf):
-            pieces.append(f"{op} ")
-            leaf(kept, kept_anf, bit - 1)
-            pieces.append(" ")
-        if weight(operand_anf) == 1 and operand_anf[0] & 1:
-            pieces.append(literal)
-        else:
-            pieces.append(f"& {literal} ")
-            leaf(operand, operand_anf, bit - 1)
-
     anf = [
         sum(value << bit for bit, value in enumerate(coeffs[start : start + w]))
         for start in range(0, len(table), w)
@@ -163,8 +220,9 @@ def _arm_expression(
     ]
     if not any(anf):
         return "0"
-    leaf(values, anf, n - 1)
-    return "".join(pieces)
+    builder = _ArmBuilder(w, at)
+    builder.leaf(values, anf, n - 1)
+    return "".join(builder.pieces)
 
 
 def _expression(truth_table: str, n: int) -> str:
@@ -262,21 +320,16 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     shared = _definition_program(expression, n)
     if width is None:
         return min(compact, shared, key=len)
-    if max(map(len, compact.splitlines())) <= width:
+    if grid_width(compact) <= width:
         return min(
-            (
-                program
-                for program in (compact, shared)
-                if max(map(len, program.splitlines())) <= width
-            ),
+            (program for program in (compact, shared) if grid_width(program) <= width),
             key=len,
         )
     return shared
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare both order sets and the single definition/factored fallback."""
-    # Width requests add orders; their shortest expression cannot grow.
+    """Compare the default, the default-width fit and the width-one fit."""
     wide = fargo(table, len(default))
     return min(default, wide, fargo(table, 1), key=balance_score)
 
@@ -289,7 +342,7 @@ def anf_coefficients(truth_table: str) -> list[int]:
     n = _validate_shape(truth_table)
     if n == 0:
         return [int(truth_table)]
-    width = max(2, 1 << (n.bit_length() - 1))
+    width = _word_width(n)
     words = [
         int(truth_table[start : start + width][::-1], 2)
         for start in range(0, len(truth_table), width)

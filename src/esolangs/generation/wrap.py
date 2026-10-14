@@ -19,10 +19,13 @@ import inspect
 import re
 from collections.abc import Callable
 from math import isqrt
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
 from esolangs.generation.token_balance import balanced_token_width
+
+if TYPE_CHECKING:
+    from esolangs.registry import Language
 
 # 80: the conventional review/diff width, close to the repo's 88 for Python.
 DEFAULT_WIDTH = 80
@@ -116,6 +119,13 @@ def _span(length: int, cell: int) -> int:
 #: One input's mark run (:func:`~esolangs.generation.helpers.mark`), one token:
 #: a break inside would land inside the setter.  Adjacent runs are two tokens.
 _RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
+
+
+def _tokens(program: str, pattern: str) -> list[str]:
+    """Split ``program`` into tokens, trying a template run ahead of ``pattern``."""
+    return re.findall(f"{_RUN}|{pattern}", program)
+
+
 _MARK_PATTERN = re.compile(f"[{chr(MARK)}-{chr(MARK + MOST_INPUTS - 1)}]")
 
 
@@ -125,7 +135,7 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
     ``pattern`` must tile the program exactly; one that does not is returned
     unwrapped.  A :data:`_RUN` is tried ahead of ``pattern``.
     """
-    tokens = re.findall(f"{_RUN}|{pattern}", program)
+    tokens = _tokens(program, pattern)
     if "".join(tokens) != program:
         return program
     return _join_tokens(tokens, width, separator="")
@@ -138,7 +148,7 @@ def wrap_chars(program: str, width: int) -> str:
     """
     if not _MARK_PATTERN.search(program):
         return "\n".join(program[i : i + width] for i in range(0, len(program), width))
-    return _join_tokens(re.findall(f"{_RUN}|[\\s\\S]", program), width, separator="")
+    return _join_tokens(_tokens(program, r"[\s\S]"), width, separator="")
 
 
 def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
@@ -228,7 +238,7 @@ def _minifuck(program: str, width: int) -> str:
     ``[`` skips two *characters*, a newline included; a run chains, so in
     ``[[x`` a break before ``x`` is unsafe.
     """
-    tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", program)
+    tokens = _tokens(program, _MINIFUCK_COMMAND)
     floor = max(map(len, tokens), default=0)
     if "\n" in program and max(map(len, program.split("\n"))) <= max(width, floor):
         return program
@@ -286,13 +296,11 @@ def __getattr__(name: str) -> Any:
     return globals()[name]
 
 
-def _wrapper(language_id: str) -> Callable[[str, int], str] | None:
-    """Return the wrapper the language with ``language_id`` declares."""
+def _language(language_id: str) -> "Language | None":
+    """Return the registered language with ``language_id``, if any."""
     from esolangs.registry import LANGUAGES
 
-    return next(
-        (lang.wrap for lang in LANGUAGES.values() if lang.id == language_id), None
-    )
+    return next((lang for lang in LANGUAGES.values() if lang.id == language_id), None)
 
 
 def takes_width(fn: Callable[..., object]) -> bool:
@@ -316,18 +324,12 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
     """
     if width is None or width <= 0:
         return program
-    wrapper = _wrapper(language_id)
-    if "\n" in program:
-        from esolangs.registry import LANGUAGES
-
-        if not any(
-            lang.id == language_id and lang.wrap_multiline
-            for lang in LANGUAGES.values()
-        ):
-            return program
-    if wrapper is None:
+    lang = _language(language_id)
+    if lang is None or lang.wrap is None:
         return program
-    return wrapper(program, width)
+    if "\n" in program and not lang.wrap_multiline:
+        return program
+    return lang.wrap(program, width)
 
 
 def balance_width(program: str) -> int:
@@ -351,31 +353,38 @@ def _token_patterns() -> dict[Callable[[str, int], str], str]:
     }
 
 
+def _token_fit(program: str, tokens: list[str], separator: str = "") -> str:
+    """Return ``program`` or its tokens at their balanced width, the squarer."""
+    width = balanced_token_width(tokens, separator)
+    return min(program, _join_tokens(tokens, width, separator), key=balance_score)
+
+
 def balance_program(program: str, language_id: str) -> str:
     """Balance whole-token fits and term folds; otherwise estimate source area."""
-    from esolangs.registry import LANGUAGES
+    if "\n" not in program:
+        balanced = _balance_line(program, language_id)
+        if balanced is not None:
+            return balanced
+    candidate = wrap_program(program, language_id, balance_width(program))
+    return min((program, candidate), key=balance_score)
 
-    source_balance = next(
-        (lang.wrap_balance for lang in LANGUAGES.values() if lang.id == language_id),
-        None,
-    )
-    if "\n" not in program and source_balance is not None:
-        return source_balance(program)
-    wrapper = _wrapper(language_id)
-    if "\n" not in program and wrapper is wrap_space_delimited:
-        tokens = program.split()
-        width = balanced_token_width(tokens, " ")
-        return min(program, _join_tokens(tokens, width, " "), key=balance_score)
+
+def _balance_line(program: str, language_id: str) -> str | None:
+    """Balance a one-line program by its wrapper's tokens, or None to estimate."""
+    lang = _language(language_id)
+    if lang is None:
+        return None
+    if lang.wrap_balance is not None:
+        return lang.wrap_balance(program)
+    wrapper = lang.wrap
+    if wrapper is wrap_space_delimited:
+        return _token_fit(program, program.split(), " ")
     pattern = _TOKEN_PATTERNS.get(wrapper) if wrapper is not None else None
-    if "\n" not in program and pattern is not None:
-        tokens = re.findall(f"{_RUN}|{pattern}", program)
-        width = balanced_token_width(tokens)
-        return min(program, _join_tokens(tokens, width, ""), key=balance_score)
-    if wrapper is wrap_chars and _MARK_PATTERN.search(program) and "\n" not in program:
-        tokens = re.findall(f"{_RUN}|[\\s\\S]", program)
-        width = balanced_token_width(tokens)
-        return min(program, _join_tokens(tokens, width, ""), key=balance_score)
-    if "\n" not in program and wrapper is wrap_grid:
+    if pattern is not None:
+        return _token_fit(program, _tokens(program, pattern))
+    if wrapper is wrap_chars and _MARK_PATTERN.search(program):
+        return _token_fit(program, _tokens(program, r"[\s\S]"))
+    if wrapper is wrap_grid:
         tokens = program.split()
         if not tokens:
             return program
@@ -387,8 +396,7 @@ def balance_program(program: str, language_id: str) -> str:
         return min(
             program, wrap_program(program, language_id, width), key=balance_score
         )
-    candidate = wrap_program(program, language_id, balance_width(program))
-    return min((program, candidate), key=balance_score)
+    return None
 
 
 def balance_score(program: str) -> tuple[int, int, int]:

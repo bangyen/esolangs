@@ -35,7 +35,7 @@ from esolangs.runtime.source_hints import syntax_error
 #: ``dumped`` is state because the dump is a once-per-run effect that
 #: happens *after* the cursor has run off the end, so the position alone
 #: cannot tell "about to dump" from "already dumped".  It stays out of
-#: ``snapshot``, which reports the three fields it always reported.
+#: ``snapshot``.
 #:
 #: The program and its jump table are deliberately not in here.  Neither
 #: changes during a run, so carrying them would put constant data in every
@@ -88,11 +88,10 @@ def _parse(code: str) -> tuple[str, list[int]]:
                 prog += "~"
                 nums.append(int(match[2]) if match[2] else 1)
     else:
-        prog = (s := code.split("\n"))[0]
-        prog = re.sub("[^+~*]", "", prog)
-        if len(s) > 1:
-            nums = re.findall(r"\d+", s[1])
-            nums = [int(k) for k in nums]
+        first, *rest = code.split("\n")
+        prog = re.sub("[^+~*]", "", first)
+        if rest:
+            nums = [int(k) for k in re.findall(r"\d+", rest[0])]
 
     return prog, nums
 
@@ -171,11 +170,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The three fields this returned before ``dumped`` joined the state.
         # ``dumped`` stays out: the detector compares states of a running
         # machine, and a stopped run is not something it is asked about.
-        ind, ptr, reg, _dumped = self.state
-        return (ind, ptr, reg)
+        return self.state[:3]
 
     def step(self) -> None:
         """Execute one command, dumping the registers once the cursor ends.

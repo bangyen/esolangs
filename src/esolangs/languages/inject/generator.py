@@ -31,8 +31,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     best_input_order,
     essential_inputs,
+    grid_width,
     input_weights,
     read_at,
+    short_name,
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
@@ -44,17 +46,6 @@ __all__ = ["inject"]
 
 _ALPHABET = string.ascii_letters
 _CONSTANTS = {"o", "t", "z"}
-
-
-def _word(index: int) -> str:
-    """Return the ``index``th shortest alphabetic identifier."""
-    base = len(_ALPHABET)
-    chars = []
-    index += 1
-    while index:
-        index, digit = divmod(index - 1, base)
-        chars.append(_ALPHABET[digit])
-    return "".join(reversed(chars))
 
 
 class _Names:
@@ -70,7 +61,7 @@ class _Names:
 
     def fresh(self) -> str:
         """Return the next label not reserved for an answer constant."""
-        while (name := _word(self.next)) in _CONSTANTS:
+        while (name := short_name(self.next, _ALPHABET)) in _CONSTANTS:
             self.next += 1
         self.next += 1
         return name
@@ -146,10 +137,6 @@ def _tree(
     return walk(depth, 0)
 
 
-def _widest(program: str) -> int:
-    return max(map(len, program.splitlines()))
-
-
 def _preamble(names: _Names, table_line: str) -> list[str]:
     """Empty input blocks, the table ``t``, constants ``z``/``o``, then the reads."""
     lines = [f"{name};\n{name};" for name in names.inputs]
@@ -190,11 +177,11 @@ def inject(truth_table: str, width: int | None = None) -> str:
         program = best_input_order(truth_table, _inject_ordered)
     else:
         program = _inject_halving(truth_table)
-    widest = _widest(program)
+    widest = grid_width(program)
     if width is None or width <= 0 or widest <= width:
         return program
     banded = _inject_banded(truth_table)
-    return banded if _widest(banded) < widest else program
+    return banded if grid_width(banded) < widest else program
 
 
 def _inject_banded(truth_table: str) -> str:

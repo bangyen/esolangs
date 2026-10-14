@@ -1,5 +1,7 @@
 """Boolean-function generator for BrainIf."""
 
+from itertools import pairwise
+
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -54,7 +56,7 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     if width is not None:
         plain = _brainif_tree(truth_table, width)
         n = _validate_truth_table(truth_table)
-        if n <= 2 and max(map(len, plain.splitlines())) > width:
+        if n <= 2 and grid_width(plain) > width:
             # Two-digit output jumps overflow a narrow width; zero jumps are shorter.
             return _brainif_zero_jumps(truth_table)
         return plain
@@ -75,20 +77,27 @@ def _brainif_zero_jumps(table: str) -> str:
     # rather than O(T log T) jump text.
     lines.extend(["if 0 right", "if 0 goto @init"])
     mark("zero")
-    lines.extend(["if 0 left", "if 48 output", "if 48 left", "if 0 goto @done"])
+    lines.extend(
+        [
+            "if 0 left",
+            f"if {_ASCII_ZERO} output",
+            f"if {_ASCII_ZERO} left",
+            "if 0 goto @done",
+        ]
+    )
     mark("one")
     lines.extend(
         [
             "if 0 left",
-            "if 48 inc",
-            "if 49 output",
-            "if 49 left",
+            f"if {_ASCII_ZERO} inc",
+            f"if {_ASCII_ONE} output",
+            f"if {_ASCII_ONE} left",
             "if 0 goto @done",
         ]
     )
     mark("init")
-    lines.extend(f"if {value} inc" for value in range(48))
-    lines.append("if 48 right")
+    lines.extend(f"if {value} inc" for value in range(_ASCII_ZERO))
+    lines.append(f"if {_ASCII_ZERO} right")
     lines.extend("if 0 right" for _ in range(n))
 
     def tree(start: int, end: int, depth: int) -> None:
@@ -98,7 +107,14 @@ def _brainif_zero_jumps(table: str) -> str:
         # A one moves onto the unread zero cell below it before jumping;
         # a zero stays on its input until the ordinary left step.
         label = f"branch_{start}_{end}"
-        lines.extend(["if 0 input", "if 49 left", f"if 0 goto @{label}", "if 48 left"])
+        lines.extend(
+            [
+                "if 0 input",
+                f"if {_ASCII_ONE} left",
+                f"if 0 goto @{label}",
+                f"if {_ASCII_ZERO} left",
+            ]
+        )
         middle = (start + end) // 2
         tree(start, middle, depth + 1)
         mark(label)
@@ -141,31 +157,28 @@ def _brainif_dag(table: str) -> str:
     layers = _residual_layers(read_at(table, kept, n))
     # Layer ``depth`` reads kept input ``kept[-1 - depth]``, after the
     # dropped ones between it and the kept input before it.
-    skips = [b - a - 1 for a, b in zip([-1, *kept], kept, strict=False)][::-1]
+    skips = [b - a - 1 for a, b in pairwise([-1, *kept])][::-1]
     lines: list[str] = []
     for depth in reversed(range(len(layers))):
-        first = (
-            ["if 0 input"]
-            if depth == len(layers) - 1
-            else ["if 48 increment", "if 49 input"]
-        )
-        reads = first + ["if 48 increment", "if 49 input"] * skips[depth]
+        pair = [f"if {_ASCII_ZERO} increment", f"if {_ASCII_ONE} input"]
+        first = ["if 0 input"] if depth == len(layers) - 1 else pair
+        reads = first + pair * skips[depth]
         for node, children in enumerate(layers[depth]):
             lines.append(f"@node_{depth}_{node}")
             lines.extend(reads)
-            for char, child in zip((48, 49), children, strict=True):
+            for char, child in zip((_ASCII_ZERO, _ASCII_ONE), children, strict=True):
                 target = f"node_{depth - 1}_{child}" if depth else f"out_{child}"
                 lines.append(f"if {char} goto @{target}")
-    lines.extend(["@out_0", "if 49 move right"])
-    lines.extend(f"if {i} increment" for i in range(48))
+    lines.extend(["@out_0", f"if {_ASCII_ONE} move right"])
+    lines.extend(f"if {i} increment" for i in range(_ASCII_ZERO))
     lines.extend(
         [
-            "if 48 output",
-            "if 48 goto @done",
+            f"if {_ASCII_ZERO} output",
+            f"if {_ASCII_ZERO} goto @done",
             "@out_1",
-            "if 48 increment",
-            "if 49 output",
-            "if 49 goto @done",
+            f"if {_ASCII_ZERO} increment",
+            f"if {_ASCII_ONE} output",
+            f"if {_ASCII_ONE} goto @done",
             "@done",
         ]
     )
@@ -424,7 +437,7 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     # bit; the last cell needs no ``right``, since the walk starts there.
     for index in range(size):
         value = strip.at(index)
-        lines += [f"if {passed} inc" for passed in range(value)]
+        lines.extend(f"if {passed} inc" for passed in range(value))
         if index + 1 < size:
             lines.append(f"if {value} right")
 

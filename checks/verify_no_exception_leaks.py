@@ -3,8 +3,8 @@
 ``esolangs/exceptions.py`` states the contract: an interpreter halts with
 :class:`HaltError` "instead of leaking an incidental Python error", and a
 structurally malformed program is rejected with :class:`ValueError`.
-Exhausted input raises :class:`EOFError` (the repo-wide convention), and
-An exit-based halt makes :class:`SystemExit` a documented end.
+Exhausted input raises :class:`EOFError` (the repo-wide convention), and an
+exit-based halt makes :class:`SystemExit` a documented end.
 Anything else reaching the caller -- IndexError, TypeError, OverflowError,
 KeyError -- is a bug in the interpreter, not in the program it was given.
 
@@ -55,7 +55,11 @@ _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+# The scoping rule (which files changed, and what forces a full sweep) is
+# shared with scripts/verify/gate.py, so both agree on when a narrowed run is safe.
 from verify.process import write_text
+from verify.scope import SHARED_INTERPRETER as _SHARED
+from verify.scope import changed_files as _changed_files
 
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
@@ -209,13 +213,6 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
     return out
 
 
-# The scoping rule (which files changed, and what forces a full sweep) is
-# shared with scripts/verify/gate.py, so both agree on when a narrowed run is safe.
-sys.path.insert(0, str(_ROOT / "scripts"))
-from verify.scope import SHARED_INTERPRETER as _SHARED
-from verify.scope import changed_files as _changed_files
-
-
 def _select(
     langs: list[str],
     runners: dict[str, tuple[str, bool]],
@@ -252,6 +249,15 @@ def _select(
     if not picked:
         return [], "no interpreter changed"
     return picked, f"{len(picked)} interpreter(s) changed"
+
+
+def _runners() -> dict[str, tuple[str, bool]]:
+    """Map each interpreter to its full module name, as :func:`_select` takes it.
+
+    Stripped of ``esolangs.``, ``_sources`` would file a ``languages.`` module
+    under ``runtime.`` and raise for every registry interpreter.
+    """
+    return {name: (module, False) for name, module in INTERPRETERS.items()}
 
 
 def _drive(lang: str, program: Program, stdin: str, cap: int) -> bool:
@@ -596,10 +602,7 @@ def main() -> None:
     else:
         langs, why = _select(
             langs,
-            {
-                name: (module.removeprefix("esolangs."), False)
-                for name, module in INTERPRETERS.items()
-            },
+            _runners(),
             imports,
         )
     print(f"sweeping {len(langs)} language(s): {why}", flush=True)

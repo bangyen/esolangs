@@ -40,6 +40,11 @@ _NODE = 7
 _PREFIX = "()!"
 
 
+def _token_pattern(slots: int) -> str:
+    """Return the wrap pattern: ``slots`` slot run, inert prefix, literal, char."""
+    return rf"\${{{slots}}}|\(\)!|\([01]\)|."
+
+
 def _shared(truth_table: str, *, short: bool = False) -> str:
     """Return the tree over the reduced diagram, carrying repeated subtrees.
 
@@ -125,15 +130,15 @@ def underload(truth_table: str, width: int | None = None) -> str:
     if width is None or width <= 0:
         return program
     # Only bit literals reach S; every other pushed string is executable code.
-    if short:
-        # The inert prefix distinguishes the four-character uniform setters.
-        program = _PREFIX + program
-    if short and width < 4:
+    if not short:
+        return wrap_tokens(program, width, _token_pattern(len(PAIR[0])))
+    # The inert prefix distinguishes the four-character uniform setters.
+    program = _PREFIX + program
+    if width < 4:
         n = _validate_truth_table(truth_table)
         # Build both selector strings, then keep one with a single swap bit.
         program = _PREFIX + "(!)(~)(!)*$!" * n + program[len(_PREFIX) + 4 * n :]
-    slots = 1 if short and width < 4 else (4 if short else len(PAIR[0]))
-    return wrap_tokens(program, width, rf"\${{{slots}}}|\(\)!|\([01]\)|.")
+    return wrap_tokens(program, width, _token_pattern(1 if width < 4 else 4))
 
 
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
@@ -155,10 +160,10 @@ def _underload_layout_tokens(template: str) -> list[str]:
 
 def _balance(table: str, default: str) -> str:
     """Balance default selectors, the width-four form and swap bits."""
-    normal = re.findall(rf"\${{{len(PAIR[0])}}}|\(\)!|\([01]\)|.", default)
+    normal = re.findall(_token_pattern(len(PAIR[0])), default)
     width = balanced_token_width(normal, minimum=5)
     short = underload(table, 3).replace("\n", "")
-    tokens = re.findall(r"\$|\(\)!|\([01]\)|.", short)
+    tokens = re.findall(_token_pattern(1), short)
     short_width = balanced_token_width(tokens, maximum=3)
     return min(
         default,
@@ -182,7 +187,6 @@ LANGUAGE = Language(
     "Underload",
     "underload",
     category="stack_based",
-    weekly_mutation=("generator",),
     boolean=underload,
     same_layout=_same_layout,
     contract=BooleanContract(),

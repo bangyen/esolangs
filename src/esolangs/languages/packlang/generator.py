@@ -28,9 +28,12 @@ from itertools import pairwise, product
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    grid_width,
     input_weights,
+    same_ignoring_whitespace,
     subtree_ids,
 )
+from esolangs.generation.token_balance import run_widths
 from esolangs.generation.wrap import (
     _join_tokens,
     balance_score,
@@ -43,7 +46,6 @@ from esolangs.languages.packlang.interpreter._literals import (
 from esolangs.languages.packlang.wrapping import (
     _PACKLANG_LEXEME,
     _packlang,
-    same_layout,
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -130,11 +132,8 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
         longest = max(map(len, tokens), default=0)
         records.append((line, tokens, indent, longest))
         events.update((len(line), longest, indent + longest))
-        for start in range(len(tokens)):
-            span = -1
-            for token in tokens[start:]:
-                span += len(token) + 1
-                events.update((span, indent + span))
+        for span in run_widths(list(map(len, tokens))):
+            events.update((span, indent + span))
     boundaries = sorted(point for point in events if minimum <= point <= maximum + 1)
     candidates = []
     for start, stop in pairwise(boundaries):
@@ -161,7 +160,7 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
 def balance_packlang(_table: str, default: str) -> str:
     """Compare token-fit layouts with the two package-name spellings."""
     short = _short_name(default)
-    maximum = max(map(len, default.split("\n"))) - 1
+    maximum = grid_width(default) - 1
     return min(
         default,
         _balance_form(default, _NAME_LEN, maximum),
@@ -170,9 +169,7 @@ def balance_packlang(_table: str, default: str) -> str:
     )
 
 
-def _painted(
-    painted: str, weights: list[int], *, runs: bool, block: int = _BLOCK
-) -> str:
+def _painted(painted: str, weights: list[int], *, runs: bool, block: int) -> str:
     """Return a program painting ``painted``'s ones into an array.
 
     ``painted`` indexes the inputs of nonzero weight; the rest are read and
@@ -340,7 +337,7 @@ LANGUAGE = Language(
     # Packlang punctuation separates tokens even without a space.
     wrap=_packlang,
     wrap_multiline=True,
-    same_layout=same_layout,
+    same_layout=same_ignoring_whitespace,
     balance=balance_packlang,
     eof="an exhausted charGet is newline byte 10",
     empty_program="empty program",

@@ -8,6 +8,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.raster_lookup import (
     _INITIAL,
     _MULTIPLY,
+    _POINTER,
     _POP,
     Change,
     Pixel,
@@ -17,12 +18,10 @@ from esolangs.generation.raster_lookup import (
     _Operation,
     _push,
 )
-from esolangs.generation.raster_lookup.packing import pack
+from esolangs.generation.raster_lookup.packing import _raster_score, _shape_score, pack
 from esolangs.raster import Raster
 from esolangs.runtime._validate import check_width
 from esolangs.runtime.codels import BLACK
-
-_POINTER = (3, 1)
 
 _MIN_COLUMNS = 13  # narrowest width that routes a turn
 _MIN_DENSE_COLUMNS = 14  # the left lane must fit the three-codel halt charge
@@ -45,7 +44,12 @@ class _Plan(NamedTuple):
     dense: bool = False
 
     def score(self) -> tuple[int, int, int]:
-        return abs(self.width - self.height), self.width * self.height, self.width
+        return _shape_score(self.width, self.height)
+
+
+def _improves(candidate: tuple[int, int, int], ceiling: tuple[int, int, int]) -> bool:
+    """Return whether ``candidate`` is squarer without growing the area."""
+    return candidate[1] <= ceiling[1] and candidate < ceiling
 
 
 def _bounded_operations(table: str) -> list[_Operation]:
@@ -198,7 +202,7 @@ def _tight_plan(operations: list[_Operation], columns: int, stop: int) -> _Plan:
         return compact
     dense = _plan(operations, columns, stop, compact=True, dense=True)
     selected = compact
-    if dense.score()[1] <= compact.score()[1] and dense.score() < compact.score():
+    if _improves(dense.score(), compact.score()):
         selected = dense
     return selected._replace(next_fit=min(compact.next_fit, dense.next_fit))
 
@@ -215,17 +219,13 @@ def _balanced_plan(
         if dense
         else _plan(operations, target, target + 1, compact=compact)
     )
-    width, height = len(default.rows[0]), len(default.rows)
-    default_score = abs(width - height), width * height, width
-    gap = min(selected.score(), default_score)[0]
+    gap = min(selected.score(), _raster_score(default))[0]
     # Full rows hold W-10..W cells; width is W-1..W. The old height is
     # 4*rows-1; compact height lies in 2*rows+1..3*rows+1. These quadratic
     # bounds exclude widths that cannot improve the current aspect gap.
-    lower = max(_MIN_COLUMNS, (isqrt((gap + 1) ** 2 + 16 * cells) - gap - 1) // 2)
-    upper = max(target, (gap + 15 + isqrt((gap - 5) ** 2 + 16 * cells)) // 2 + 2)
-    if compact:
-        lower = max(_MIN_COLUMNS, (isqrt((gap + 1) ** 2 + 8 * cells) - gap - 1) // 2)
-        upper = max(target, (gap + 15 + isqrt((gap - 5) ** 2 + 12 * cells)) // 2 + 2)
+    low, high = (8, 12) if compact else (16, 16)
+    lower = max(_MIN_COLUMNS, (isqrt((gap + 1) ** 2 + low * cells) - gap - 1) // 2)
+    upper = max(target, (gap + 15 + isqrt((gap - 5) ** 2 + high * cells)) // 2 + 2)
     while lower <= upper:
         plan = (
             _tight_plan(operations, lower, upper + 1)
@@ -247,18 +247,14 @@ def balance(table: str, default: Raster) -> Raster:
     operations = _bounded_operations(table)
     old = _balanced_plan(operations, default, compact=False)
     compact = _balanced_plan(operations, default, compact=True)
-    default_score = (
-        abs(len(default.rows[0]) - len(default.rows)),
-        len(default.rows[0]) * len(default.rows),
-        len(default.rows[0]),
-    )
+    default_score = _raster_score(default)
     old_score = min(old.score(), default_score)
     selected = old
-    if compact.score()[1] <= old_score[1] and compact.score() < old_score:
+    if _improves(compact.score(), old_score):
         selected = compact
     dense = _balanced_plan(operations, default, compact=True, dense=True)
     ceiling = min(selected.score(), default_score)
-    if dense.score()[1] <= ceiling[1] and dense.score() < ceiling:
+    if _improves(dense.score(), ceiling):
         selected = dense
     if default_score <= selected.score():
         return pack(operations, default)

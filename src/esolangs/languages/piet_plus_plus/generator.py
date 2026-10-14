@@ -19,6 +19,7 @@ from esolangs.generation.raster_lookup import (
     _MULTIPLY,
     _NOT,
     _OUT_NUMBER,
+    _POINTER,
     _POP,
     _PUSH,
     _ROLL,
@@ -30,11 +31,11 @@ from esolangs.generation.raster_lookup import (
 )
 from esolangs.generation.raster_lookup.balance import (
     _MIN_COLUMNS,
-    _POINTER,
     _bounded_operations,
     _emit,
     _plan,
 )
+from esolangs.languages.piet_plus_plus.interpreter import _STEP
 from esolangs.raster import Raster
 from esolangs.registry._language import Language, SourceKind
 
@@ -55,9 +56,13 @@ _DELTAS = {
 
 def _next_colour(colour: Pixel, change: Change) -> Pixel:
     """Apply a delta, keeping green at level 1 or 2: never black or white."""
-    red, green, blue = (level // 85 for level in colour)
+    red, green, blue = (level // _STEP for level in colour)
     dr, dg, db = _DELTAS[change]
-    return (red + dr) % 4 * 85, (2 - (green + dg) % 2) * 85, (blue + db) % 4 * 85
+    return (
+        (red + dr) % 4 * _STEP,
+        (2 - (green + dg) % 2) * _STEP,
+        (blue + db) % 4 * _STEP,
+    )
 
 
 @cache

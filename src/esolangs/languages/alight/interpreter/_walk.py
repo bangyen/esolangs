@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from esolangs.languages.alight.interpreter._hints import Hint
-from esolangs.languages.alight.interpreter._parse import _RESERVED, _Parser
+from esolangs.languages.alight.interpreter._parse import _Parser, _valid_name
 
 
 def _grid(code: list[str]) -> list[str]:
@@ -127,7 +127,7 @@ def _find_func(
                 if _read_word(grid, row, col, heading)[:4] != "func":
                     continue
                 drow, dcol = heading
-                text, prow, pcol = _scan(grid, row, col, heading)
+                text, srow, scol = _scan(grid, row, col, heading)
                 p = _Parser(text)
                 if p.word() != "func" or p.word() != name or p.peek() != "{":
                     continue
@@ -135,10 +135,8 @@ def _find_func(
                 params = _func_params(p)
                 if params is None:
                     continue
-                del prow, pcol
                 # The body begins one cell past the ``func`` command's
                 # semicolon, exactly as a ``turn``'s next command does.
-                _, srow, scol = _scan(grid, row, col, heading)
                 return srow + drow, scol + dcol, heading, params
     return None
 
@@ -151,7 +149,7 @@ def _func_params(p: _Parser) -> list[str] | None:
         return params if p.at_end() else None
     while True:
         name = p.word()
-        if not name or not name.isalnum() or name in _RESERVED:
+        if not _valid_name(name):
             return None
         params.append(name)
         c = p.peek()

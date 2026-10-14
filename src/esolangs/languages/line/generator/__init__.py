@@ -38,7 +38,23 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
-from esolangs.languages.line.generator.render import Canvas, Node, _check_unit, chain
+from esolangs.languages.line.generator.forward import (
+    projected_streaming_canvas,
+    streaming_canvas,
+)
+from esolangs.languages.line.generator.render import (
+    _UNIT,
+    Canvas,
+    Node,
+    _check_unit,
+    _has_goto,
+    _moved,
+    chain,
+    chain_onto,
+    correction,
+    loader_reads,
+)
+from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
@@ -57,21 +73,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     levels, children, _ = _residual_ids(truth_table, n)
 
     # Read n inputs into cells 0..n-1, one `i` per cell, `>` between them.
-    head = Node("i")
-    tail = head
-    for _ in range(n - 1):
-        move = Node(">")
-        tail.next = move
-        read = Node("i")
-        move.next = read
-        tail = read
-
-    def moved(pointer: int, cell: int, rest: Node) -> Node:
-        """Prefix ``rest`` with the moves from ``pointer`` to ``cell``."""
-        step = ">" if cell > pointer else "<"
-        for _ in range(abs(cell - pointer)):
-            rest = Node(step, next=rest)
-        return rest
+    head = chain(*("i" + ">i" * (n - 1)))
 
     def fork(state: int, depth: int, pointer: int, known: int | None) -> Node:
         while depth < n and children[state][0] == children[state][1]:
@@ -80,17 +82,16 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
         if depth == n:
             value = state
             if known is None:
-                return moved(pointer, n, chain(*(["+"] * value), "o"))
-            step = {1: ["+"], 0: [], -1: ["-"]}[value - known]
-            return chain(*step, "o")
+                return _moved(pointer, n, chain(*(["+"] * value), "o"))
+            return chain(*correction(value, known), "o")
         node = Node("?")
         cell = order[depth]
         zero, one = children[state]
         node.zero = fork(zero, depth + 1, cell, 0)
         node.nonzero = fork(one, depth + 1, cell, 1)
-        return moved(pointer, cell, node)
+        return _moved(pointer, cell, node)
 
-    tail.next = fork(levels[0][0], 0, n - 1, None)
+    chain_onto(head, fork(levels[0][0], 0, n - 1, None))
     return head
 
 
@@ -111,27 +112,19 @@ def _project_loader(n: int, kept: list[int], node: Node) -> Node:
         if node.next is None:
             raise ValueError("projected Line tree has no decision body")
         node = node.next
-    # Trailing ignored inputs use a spare cell; return to the compact loader's
-    # final kept cell before entering the unchanged reduced decision body.
-    reads = "".join("i" + (">" if i in kept and i < n - 1 else "") for i in range(n))
-    if kept[-1] < n - 1:
-        reads += "<"
-    head = chain(*reads)
-    tail = head
-    while tail.next is not None:
-        tail = tail.next
-    tail.next = node
+    # Enter the unchanged reduced decision body from the final kept cell.
+    head = chain(*loader_reads(n, kept))
+    chain_onto(head, node)
     return head
 
 
 _SMALL_MAX = 5  # tight tree layout through n=5 (see small_tree)
-_BOOLEAN_UNIT = 20
+_BOOLEAN_UNIT = _UNIT
 _GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
 
 def _render_node(
     node: Node,
-    heading: tuple[int, int] = (-1, 0),
     *,
     compact: bool = True,
     tight: bool = True,
@@ -144,7 +137,6 @@ def _render_node(
     return _grey_rows(
         render(
             node,
-            start_heading=heading,
             acyclic=True,
             compact=compact,
             tight=tight,
@@ -172,20 +164,31 @@ def _grey_rows(canvas: Canvas) -> Rows:
     return tuple(rows)
 
 
+def _shared_candidates(truth_table: str, n: int) -> list[Node]:
+    """Ancestor-return graphs: full tables, then projected ones within budget."""
+    nodes = []
+    for multiple in (False, True):
+        shared = shared_tree(truth_table, multiple=multiple)
+        if shared is not None:
+            nodes.append(shared[0])
+    kept = essential_inputs(truth_table, n)
+    if 0 < len(kept) < n:
+        # Replace 2k-1 loader operations by n+k-1, plus two operations for
+        # trailing ignored inputs. Budget the complete original-n program.
+        extra_reads = n - len(kept) + 2 * (kept[-1] < n - 1)
+        reduced = read_at(truth_table, kept, n)
+        for multiple in (False, True):
+            compact_shared = shared_tree(
+                reduced, command_budget=5 * n - extra_reads, multiple=multiple
+            )
+            if compact_shared is not None:
+                nodes.append(_project_loader(n, kept, compact_shared[0]))
+    return nodes
+
+
 @lru_cache(maxsize=8)
 def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster computing ``truth_table``."""
-    from .forward import (
-        centered_streaming_canvas,
-        destination_canvas,
-        forward_canvas,
-        median_streaming_canvas,
-        packed_streaming_canvas,
-        projected_streaming_canvas,
-        streaming_canvas,
-    )
-    from .shared import shared_canvas, shared_tree
-
     _check_unit(unit)
     node = line_boolean(truth_table)
     n = _validate_truth_table(truth_table)
@@ -204,23 +207,7 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         projected_area = area(projected, drawn)
         if projected_area < smallest:
             node, canvas, smallest = projected, drawn, projected_area
-    shared_nodes = []
-    for multiple in (False, True):
-        shared = shared_tree(truth_table, multiple=multiple)
-        if shared is not None:
-            shared_nodes.append(shared[0])
-    kept = essential_inputs(truth_table, n)
-    if 0 < len(kept) < n:
-        # Replace 2k-1 loader operations by n+k-1, plus two operations for
-        # trailing ignored inputs. Budget the complete original-n program.
-        extra_reads = n - len(kept) + 2 * (kept[-1] < n - 1)
-        reduced = read_at(truth_table, kept, n)
-        for multiple in (False, True):
-            compact_shared = shared_tree(
-                reduced, command_budget=5 * n - extra_reads, multiple=multiple
-            )
-            if compact_shared is not None:
-                shared_nodes.append(_project_loader(n, kept, compact_shared[0]))
+    shared_nodes = _shared_candidates(truth_table, n)
     selected_draw = None
     for graph in shared_nodes:
         draw = shared_canvas(graph, smallest, unit=unit)
@@ -229,27 +216,17 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
             selected_draw = draw
             node = graph
     complete_selected = False
-    for build in (
-        forward_canvas,
-        destination_canvas,
-        streaming_canvas,
-        centered_streaming_canvas,
-        median_streaming_canvas,
-        packed_streaming_canvas,
-        projected_streaming_canvas,
-    ):
-        # A complete fold wins a fallback tie; later folds retain the first tie.
-        forward = build(truth_table, smallest + int(not complete_selected), unit=unit)
-        if forward is not None:
-            node, selected_draw = forward
+    for build in (streaming_canvas, projected_streaming_canvas):
+        # A complete fold wins a fallback tie; a later fold retains the first tie.
+        fold = build(truth_table, smallest + int(not complete_selected), unit=unit)
+        if fold is not None:
+            node, selected_draw = fold
             smallest = selected_draw.area
             complete_selected = True
     if selected_draw is not None:
         return lazy_raster(lambda: _grey_rows(selected_draw()), node)
     if canvas is not None:
         return lazy_raster(lambda: _grey_rows(canvas), node)
-    if n <= _SMALL_MAX:
-        return lazy_raster(lambda: _grey_rows(small_tree_canvas(node, unit=unit)), node)
     return lazy_raster(lambda: _render_node(node, unit=unit), node)
 
 
@@ -258,49 +235,47 @@ def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Rast
     return _generate(truth_table, unit).upscaled(scale)
 
 
-def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
-    """Choose the most balanced compact or previous forward/reverse tree."""
-    _check_unit(unit)
+type _Choice = tuple[tuple[int, int, int], Node, Canvas | None, bool, bool]
 
-    from .render import _has_goto
 
-    small = _validate_truth_table(truth_table) <= _SMALL_MAX
+def _best_choice(
+    options: list[Node], *, compact: bool, tight: bool = True, small: bool, unit: int
+) -> _Choice:
+    """Return ``(score, node, canvas, compact, tight)`` of the most balanced option."""
+    choices = []
+    for node in options:
+        canvas = (
+            small_tree_canvas(node, compact=compact, tight=tight, unit=unit)
+            if small
+            else None
+        )
+        if canvas is not None:
+            width, height = canvas.width, canvas.height
+        else:
+            y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
+            width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
+        score = abs(width - height), width * height, 0 if small else width
+        choices.append((score, node, canvas, compact, tight))
+    return min(choices, key=lambda choice: choice[0])
+
+
+def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
+    """Most balanced compact tree that never grows past the previous layout."""
     previous = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
     nodes = previous + [
         projected
         for reverse in (False, True)
         if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
     ]
-    type Choice = tuple[tuple[int, int, int], Node, Canvas | None, bool, bool]
+    old = _best_choice(previous, compact=False, small=small, unit=unit)
 
-    def best(options: list[Node], *, compact: bool, tight: bool = True) -> Choice:
-        choices = []
-        for node in options:
-            canvas = (
-                small_tree_canvas(node, compact=compact, tight=tight, unit=unit)
-                if small
-                else None
-            )
-            if canvas is not None:
-                width, height = canvas.width, canvas.height
-            else:
-                y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[
-                    id(node)
-                ]
-                width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
-            score = abs(width - height), width * height, 0 if small else width
-            choices.append((score, node, canvas, compact, tight))
-        return min(choices, key=lambda choice: choice[0])
-
-    old = best(previous, compact=False)
-
-    def within_old(choice: Choice) -> bool:
+    def within_old(choice: _Choice) -> bool:
         return choice[0] <= old[0] and (not small or choice[0][1] <= old[0][1])
 
-    preceding = best(nodes, compact=True, tight=False)
+    preceding = _best_choice(nodes, compact=True, tight=False, small=small, unit=unit)
     if not within_old(preceding):
         preceding = old
-    chosen = best(nodes, compact=True)
+    chosen = _best_choice(nodes, compact=True, small=small, unit=unit)
     # Shorter stems can select a wider orientation: 00010101 grows
     # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
     if not within_old(chosen):
@@ -308,7 +283,16 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
     if chosen[0][1] > preceding[0][1]:
         chosen = preceding
-    score, selected, canvas, compact, tight = chosen
+    return chosen
+
+
+def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
+    """Choose the most balanced compact or previous forward/reverse tree."""
+    _check_unit(unit)
+    small = _validate_truth_table(truth_table) <= _SMALL_MAX
+    score, selected, canvas, compact, tight = _balanced_choice(
+        truth_table, small=small, unit=unit
+    )
     width = canvas.width if canvas is not None else score[2]
     if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
         height, shared_width = len(default.rows), len(default.rows[0])
@@ -333,7 +317,6 @@ LANGUAGE = Language(
     "Line",
     "line",
     category="tape_based",
-    weekly_mutation=("interpreter", "generator"),
     # A 2^12-row raster renders in about 24s.
     slow_scaling=True,
     source_kind=SourceKind.RASTER,

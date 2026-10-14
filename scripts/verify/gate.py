@@ -44,6 +44,7 @@ from verify.scope import (  # noqa: E402
     _scope_plan,
     _scoped_cmd,
     local_tooling_deselections,
+    verify_full,
 )
 
 # language-owners: ["Line"]
@@ -60,7 +61,7 @@ if hasattr(sys.stdout, "reconfigure"):
 def python_cmd() -> list[str]:
     """Return the project's Python command.
 
-    ``verify.py`` may be run with the system interpreter (e.g. plain
+    ``verify/gate.py`` may be run with the system interpreter (e.g. plain
     ``python scripts/verify/gate.py``), which does not have the project's dev
     dependencies.  Prefer the local venv, then ``uv run python`` (the uv
     workflow the justfile uses), and only fall back to the running
@@ -183,8 +184,7 @@ def _rerun_hint(name: str) -> list[str]:
     """Return the commands that rerun, and any that fix, failed step *name*."""
     if name == "verification inputs":
         return ["  rerun: uv run python scripts/verify/gate.py"]
-    step = name
-    rerun = f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(step)}"
+    rerun = f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(name)}"
     return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
 
@@ -336,7 +336,7 @@ def _report(name: str, elapsed: float, returncode: int, output: str | None) -> b
     return ok
 
 
-def _run_steps(
+def _run_steps(  # noqa: C901
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
     stream: bool,
@@ -367,9 +367,6 @@ def _run_steps(
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
-        # Only the captured branch has output to replay; the streaming one
-        # already wrote it straight to the terminal.
-        captured: str | None = None
         key = None
         if clean_cache is not None and name in CACHED_STEPS:
             key = cache_keys.get(name)
@@ -467,7 +464,7 @@ def _run_steps(
         for name, cmd, step_env in shadow:
             run_serial(name, cmd, step_env)
 
-    # Phase 4: the parallel steps, now that they can have the machine.
+    # Phase 3: the parallel steps, now that they can have the machine.
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
 
@@ -479,7 +476,57 @@ def _run_steps(
     return len(failed), timings, time.monotonic() - wall_start
 
 
-def main() -> int:
+def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
+    """Return the default run's pytest command: its marks, timings and deferrals."""
+    # A default run leaves the slow band to CI; --full takes it but
+    # not the `weekly` probes, which only weekly.yml runs.
+    #
+    # The `slow` marker covers the generator derivations and fuzz loops
+    # whose cost is seconds each.  Deselecting them locally trades no
+    # coverage, because the sharded `slow` job runs every marked test
+    # on every push.  This is keyed on --full rather than on scoping
+    # because a run that widens back to everything -- a tooling change,
+    # an unreadable diff -- should still not pay for them.
+    #
+    # language-owners: ["Line"]
+    # The tests/interpreters suites carry the same marker on their two 5.2s tests
+    # (the eight-level nesting round trip and the n=5 parity table), which
+    # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite
+    # unfiltered on every push, so deselecting them here trades no
+    # coverage either.
+    #
+    # Appended to argv rather than set in `addopts`, because pytest
+    # *prepends* addopts: a default there would sit before the
+    # caller's own `-m` and lose to it. `just test-quick` supplies its
+    # own expression excluding all three deferred bands.
+    cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
+    if full:
+        directory = ROOT / "notes/verification"
+        directory.mkdir(parents=True, exist_ok=True)
+        timing_directory = Path(
+            tempfile.mkdtemp(prefix="pytest-timings-", dir=directory)
+        )
+        output = timing_directory / "durations.json"
+        print(f"[timings] {output}.progress.jsonl")
+        cmd.extend(
+            [
+                "-p",
+                "scripts.ci.shard",
+                "--duration-output",
+                str(output),
+                "--duration-input",
+                str(ROOT / "tests/support/fixtures/slow_durations.json"),
+            ]
+        )
+    if not full and not verify_full():
+        deferred = local_tooling_deselections(changed)
+        cmd.extend(deferred)
+        if deferred:
+            print("[defer] unrelated tooling integrations: covered by CI")
+    return cmd
+
+
+def main() -> int:  # noqa: C901
     """Run the verification stack: lint, types, tests, and scoping."""
     only, skip, full, quiet, verbose, allow_incomplete = _parse_only_skip()
 
@@ -489,20 +536,16 @@ def main() -> int:
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.
     unaffected, why = (None, "--only given") if only else _scope_plan(full=full)
-    changed = (
-        []
-        if only or full or os.environ.get("VERIFY_FULL", "0") not in ("", "0")
-        else list(_scope_changed_files())
-    )
+    changed = [] if only or full or verify_full() else list(_scope_changed_files())
     if unaffected is None:
         print(f"scope: full run ({why})")
     else:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    if only is not None or full or os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
+    if only is not None or full or verify_full():
         env["VERIFY_CLEAN_CACHE"] = "0"
-    # Probe PY rather than the running interpreter: verify.py may be launched
+    # Probe PY rather than the running interpreter: verify/gate.py may be launched
     # by a different python than the one it runs the steps with (e.g.
     # `uv run --with pylint python scripts/verify/gate.py`, which leaves PY pointing
     # at .venv), and it is PY that has to import pylint.
@@ -542,22 +585,8 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
-        # The `slow` marker covers the generator derivations and fuzz loops
-        # whose cost is seconds each.  Deselecting them locally trades no
-        # coverage, because the sharded `slow` job runs every marked test
-        # on every push.  This is keyed on
-        # --full rather than on scoping because a run that widens back to
-        # everything -- a tooling change, an unreadable diff -- should still
-        # not pay for them.
-        #
-        # language-owners: ["Line"]
-        # The tests/interpreters suites carry the same marker on their two 5.2s tests
-        # (the eight-level nesting round trip and the n=5 parity table), which
-        # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite
-        # unfiltered on every push, so deselecting them here trades no
-        # coverage either.
         step_env = env
-        if name == "pre-commit":
+        if name == MUTATES_TREE:
             # Skip the config's mypy hook: the very next step runs mypy over
             # src/ *and* scripts/ from the project env, against the same
             # pyproject config, so the hook re-proves a strict subset -- and
@@ -565,38 +594,8 @@ def main() -> int:
             # skips it; CI runs `pre-commit run --all-files` with no SKIP
             # (ci.yml:28), so the hook still guards the config itself.
             step_env = dict(step_env, SKIP="mypy")
-        if only is None and name == "pytest":
-            # A default run leaves the slow band to CI; --full takes it but
-            # not the `weekly` probes, which only weekly.yml runs.
-            #
-            # Appended to argv rather than set in `addopts`, because pytest
-            # *prepends* addopts: a default there would sit before the
-            # caller's own `-m` and lose to it. `just test-quick` supplies its
-            # own expression excluding all three deferred bands.
-            cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
-            if full:
-                directory = ROOT / "notes/verification"
-                directory.mkdir(parents=True, exist_ok=True)
-                timing_directory = Path(
-                    tempfile.mkdtemp(prefix="pytest-timings-", dir=directory)
-                )
-                output = timing_directory / "durations.json"
-                print(f"[timings] {output}.progress.jsonl")
-                cmd.extend(
-                    [
-                        "-p",
-                        "scripts.ci.shard",
-                        "--duration-output",
-                        str(output),
-                        "--duration-input",
-                        str(ROOT / "tests/support/fixtures/slow_durations.json"),
-                    ]
-                )
-            if not full and os.environ.get("VERIFY_FULL", "0") in ("", "0"):
-                deferred = local_tooling_deselections(changed)
-                cmd.extend(deferred)
-                if deferred:
-                    print("[defer] unrelated tooling integrations: covered by CI")
+        if only is None and name == LONG_STEP:
+            cmd = _pytest_cmd(cmd, full=full, changed=changed)
         if not have_pylint and "(pylint)" in name:
             unavailable.append(f"{name}: pylint not installed (pip install pylint)")
             continue

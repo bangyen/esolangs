@@ -180,7 +180,7 @@ class TestDebugReportsALoadFailure:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run` has refused this for rounds; `debug` shares the check."""
-        example = esolangs.describe(REFERENCE)["examples"][0]  # type: ignore[index]
+        example = esolangs.describe(REFERENCE)["examples"][0]
         path = tmp_path / "p.txt"
         path.write_text(str(example))
         with pytest.raises(SystemExit) as exc:

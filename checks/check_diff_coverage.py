@@ -133,7 +133,7 @@ def _diff_base() -> str | None:
     symptom is a gate that blames files the branch never opened.
 
     ``HEAD~1`` is the last resort for a shallow clone or a detached HEAD,
-    matching :func:`_scope.changed_files`.
+    matching :func:`verify.scope.changed_files`.
     """
     bases = [
         base
@@ -146,7 +146,7 @@ def _diff_base() -> str | None:
         # tighter base.  Equal bases make either answer the same.
         best = bases[0]
         for other in bases[1:]:
-            if _rev("rev-parse", best) != _rev("rev-parse", other) and (
+            if best != other and (
                 subprocess.run(
                     ["git", "merge-base", "--is-ancestor", best, other],
                     cwd=ROOT,
@@ -204,7 +204,7 @@ def _coverage_json(
         return None
 
 
-def main() -> int:
+def main() -> int:  # noqa: C901
     """Check every file this branch touched against the recorded coverage."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

@@ -2,20 +2,10 @@
 
 A binary tape: ``[`` flips the current bit and skips the next instruction
 when it became 0, ``.`` prints cells 0-7 as a byte or *reads* one when
-they are zero, ``<`` moves left but stays at cell 0 (the tape is
-right-infinite, and the wiki cat ``<[<.[<.`` opens with that ``<``).  Not
-implicitly looped (the talk page leaves it open), and printing leaves the
-window as it is (the page says only "output letter stored in first 8
-bits"); a looping reading must also clear it, or the cat repeats its first
-letter.  The page names no comments, so any other character is a no-op
-instruction that a collapsed ``[`` ("skip next instruction") skips; the
-generator's ``[x`` walks rely on that.  Exhausted input raises
-:class:`EOFError`.  :func:`_advance` is a pure function from :class:`_State`
-to the next state plus an :class:`_Effect` naming what the shell owes;
-:func:`_load` is the pure half of a read.
-
-Input framing is unspecified; this interpreter reads consecutive Unicode
-character codes, narrowing to its byte cells.
+they are zero, ``<`` moves left but stays at cell 0.  Not implicitly
+looped; printing leaves the window as it is, so a looping read must also
+clear it.  Any other character is a no-op.  Exhausted input raises
+:class:`EOFError`.
 """
 
 from esolangs.runtime._drive import drive
@@ -53,10 +43,7 @@ def _pool(tape: int) -> int:
     The one place the tape's and the byte's orders meet.
     """
     window = tape & _WINDOW
-    return sum(
-        ((window >> i) & 1) << (_WIDTH - 1 - i)  #
-        for i in range(_WIDTH)
-    )
+    return sum(((window >> i) & 1) << (_WIDTH - 1 - i) for i in range(_WIDTH))
 
 
 def _load(state: _State, byte: int) -> _State:

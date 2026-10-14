@@ -8,8 +8,10 @@ from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+    grid_width,
     read_at,
 )
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._language import Language
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
@@ -27,11 +29,6 @@ _CM_ALIAS = "abcefghijlmnpqr"
 
 #: The shortest line that does nothing -- ``z`` is the zero register.
 _CM_PAD = "z=zx+z,NOT PRINT."
-
-
-def _span(text: str) -> int:
-    """Return the longest line's length."""
-    return max(map(len, text.splitlines()), default=0)
 
 
 #: Renamable registers in a laid-out program.
@@ -84,7 +81,7 @@ def _cm_codes(counts: Counter[int]) -> dict[int, int]:
 
 def _cm_narrow_constants(needed: set[int]) -> list[str]:
     """Capture constants at their numbered lines; intervening pads are inert."""
-    needed |= {1, 2, 3, 4}  # k1..k4: the cursor and address code reads them
+    needed = needed | {1, 2, 3, 4}  # k1..k4: the cursor and address code reads them
     return [
         f"k{value}=zx+lineNumber,NOT PRINT." if value in needed else _CM_PAD
         for value in range(1, max(needed) + 1)
@@ -192,20 +189,20 @@ def _cm_build(
 
 def _cm_layout(program: str, width: int) -> str:
     """Narrow complete assignments; an even prefix preserves address parity."""
-    if _span(program) <= width:
+    if grid_width(program) <= width:
         return program
     compact = program.replace(" ", "").replace("NOTPRINT", "NOT PRINT")
     compact = compact.replace("DOPRINT", "DO PRINT")
-    if _span(compact) <= width:
+    if grid_width(compact) <= width:
         return compact
     # Generated names exclude '_'.  Captured lineNumber addresses shift
     # together; two prefix lines keep the odd capture used by weighted sums.
     if "negativeOne" in compact:
         aliased = "_=zx+negativeOne,NOT PRINT.\n" + "z=zx+z,NOT PRINT.\n"
         aliased += compact.replace("negativeOne", "_")
-        if _span(aliased) < _span(compact):
+        if grid_width(aliased) < grid_width(compact):
             compact = aliased
-    if _span(compact) <= width:
+    if grid_width(compact) <= width:
         return compact
     # A bijective rename changes no lines, so captured addresses and parity stay.
     # Uppercase names other than A/D are absent from the generated cell decoder.
@@ -247,7 +244,7 @@ def _cm_narrow_choice(fitted: str, layouts: list[str]) -> str:
     """Choose the narrowest fallback, retaining the existing length tie-break."""
     return min(
         [fitted, *layouts],
-        key=lambda code: (_span(code), len(code)),
+        key=lambda code: (grid_width(code), len(code)),
     )
 
 
@@ -294,7 +291,7 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
     if width is None or width <= 0:
         return program
     fitted = _cm_layout(program, width)
-    if _span(fitted) <= width:
+    if grid_width(fitted) <= width:
         return fitted
     layouts = [
         _cm_layout(c, width)
@@ -305,20 +302,18 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
 
 def _cm_layout_versions(program: str) -> tuple[str, ...]:
     """Return reachable original, compact, aliased and renamed spellings."""
-    compact = _cm_layout(program, max(1, _span(program) - 1))
-    aliased = _cm_layout(program, max(1, _span(compact) - 1))
+    compact = _cm_layout(program, max(1, grid_width(program) - 1))
+    aliased = _cm_layout(program, max(1, grid_width(compact) - 1))
     return program, compact, aliased, _cm_layout(program, 1)
 
 
 def balance_collatz_multiverse(truth_table: str, default: str) -> str:
     """Balance the finite statement-spelling regimes at their fit thresholds."""
-    from esolangs.generation.wrap import balance_score
-
     n = _validate_truth_table(truth_table)
     wide = collatz_multiverse(truth_table, len(default))
     narrow = _cm_candidates(truth_table, n, narrow=True, expanded=True)
     versions = [
-        [(_span(source), source) for source in _cm_layout_versions(program)]
+        [(grid_width(source), source) for source in _cm_layout_versions(program)]
         for program in [wide, *narrow]
     ]
     thresholds = {1}
@@ -334,7 +329,7 @@ def balance_collatz_multiverse(truth_table: str, default: str) -> str:
     candidates = [default]
     for width in sorted(thresholds):
         program = fitted(versions[0], width)
-        if _span(program) > width:
+        if grid_width(program) > width:
             program = _cm_narrow_choice(
                 program, [fitted(item, width) for item in versions[1:]]
             )

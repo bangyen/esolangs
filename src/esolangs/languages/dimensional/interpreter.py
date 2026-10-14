@@ -40,7 +40,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import cast
+from typing import cast, overload
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -186,6 +186,10 @@ def _matches(code: str) -> dict[int, int]:
     return res
 
 
+@overload
+def _number(code: str, ind: int, default: int) -> tuple[int, int]: ...
+@overload
+def _number(code: str, ind: int, default: None) -> tuple[int | None, int]: ...
 def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
     """Parse an optional ``~``-prefixed number at ``ind``; ``None`` if absent."""
     if ind >= len(code):
@@ -258,7 +262,7 @@ class _Clear:
 type _Effect = _Move | _SetValue | _AddValue | _FromCoord | _Clear
 
 
-def _advance(
+def _advance(  # noqa: C901
     state: _State,
     code: str,
     match: Mapping[int, int],
@@ -323,7 +327,7 @@ def _advance(
         return ((ind + 2, comment, axis), _SetValue(literal))
     if c == "$":
         wanted, ind = _number(code, ind, 2)
-        return ((ind, comment, max(2, wanted if wanted is not None else 2)), None)
+        return ((ind, comment, max(2, wanted)), None)
     if c == "[":
         if value() == 0:
             return ((match[ind - 1] + 1, comment, axis), None)
@@ -333,17 +337,17 @@ def _advance(
     if c == "{":
         open_i = ind - 1
         dim, ind = _number(code, ind, 0)
-        if coord(dim if dim is not None else 0) == 0:
+        if coord(dim) == 0:
             return ((match[open_i] + 1, comment, axis), None)
         return ((ind, comment, axis), None)
     if c == "}":
         return ((match[ind - 1], comment, axis), None)
     if c == "?":
         dim, ind = _number(code, ind, 0)
-        return ((ind, comment, axis), _FromCoord(dim if dim is not None else 0))
+        return ((ind, comment, axis), _FromCoord(dim))
     if c == "!":
         dim, ind = _number(code, ind, 0)
-        return ((ind, comment, axis), _Clear(dim if dim is not None else 0))
+        return ((ind, comment, axis), _Clear(dim))
     # any other character is not a command and is ignored
     return ((ind, comment, axis), None)
 

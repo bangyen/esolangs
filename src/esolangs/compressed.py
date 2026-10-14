@@ -53,6 +53,10 @@ class TextLimits:
             )
 
 
+#: Characters per gzip read and per repeated-source chunk.
+_BLOCK = 65536
+
+
 @dataclass(frozen=True)
 class CompressedText:
     """Validated UTF-8 gzip source; len counts expanded characters."""
@@ -78,7 +82,7 @@ class CompressedText:
         try:
             decoder = codecs.getincrementaldecoder("utf-8")()
             with gzip.GzipFile(fileobj=io.BytesIO(self.data)) as stream:
-                while block := stream.read(65536):
+                while block := stream.read(_BLOCK):
                     yield decoder.decode(block)
                 yield decoder.decode(b"", final=True)
         except (OSError, EOFError, UnicodeError, zlib.error) as error:
@@ -112,9 +116,9 @@ class CompressedText:
             )
         if limits is not None:
             limits.check_work(count)
-        block = character * 65536
+        block = character * _BLOCK
         return cls.from_chunks(
-            (block[: min(65536, count - start)] for start in range(0, count, 65536)),
+            (block[: min(_BLOCK, count - start)] for start in range(0, count, _BLOCK)),
             limits=limits,
         )
 
@@ -158,19 +162,18 @@ class CompressedText:
 
         def chunks() -> Iterator[str]:
             column = 0
+            # Each decoded chunk is at most one block, so it is wrapped whole.
             for chunk in self.chunks():
                 parts = []
-                for start in range(0, len(chunk), 65536):
-                    text = chunk[start : start + 65536]
-                    offset = 0
-                    while offset < len(text):
-                        take = min(width - column, len(text) - offset)
-                        parts.append(text[offset : offset + take])
-                        offset += take
-                        column += take
-                        if column == width:
-                            parts.append("\n")
-                            column = 0
+                offset = 0
+                while offset < len(chunk):
+                    take = min(width - column, len(chunk) - offset)
+                    parts.append(chunk[offset : offset + take])
+                    offset += take
+                    column += take
+                    if column == width:
+                        parts.append("\n")
+                        column = 0
                 yield "".join(parts)
 
         return self.from_chunks(chunks(), limits=self.limits).tagged(

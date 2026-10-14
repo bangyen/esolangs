@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 type AnswerMode = Literal["output", "dump", "termination"]
+#: The input shapes whose bits arrive as one unseparated character run.
+CHAR_STREAMS: frozenset[str] = frozenset(
+    {"char_stream", "char_stream_padded", "char_stream_cyclic"}
+)
+
 type InputShape = Literal[
     "line_per_bit",
     "char_stream",

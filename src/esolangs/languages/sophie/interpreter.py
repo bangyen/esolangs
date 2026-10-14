@@ -28,6 +28,11 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
+_AT_NUMBER = re.compile(r"@\$(\d+){")
+_AT_CHAR = re.compile(r"@(.){")
+_LOAD_NUMBER = re.compile(r"#\$(\d+)")
+_LOAD_CHAR = re.compile(r"#(.)")
+
 
 def _brackets(code: str) -> Iterator[tuple[int, str]]:
     """Yield structural brackets, skipping literal data in loads and guards."""
@@ -41,30 +46,11 @@ def _brackets(code: str) -> Iterator[tuple[int, str]]:
             yield token.start(), glyph
 
 
-def matches(code: str) -> None:
-    """Reject unmatched structural brackets; loaded and tested brackets are data."""
-    brackets = list(_brackets(code))
-    for opener, closer in (("[", "]"), ("{", "}")):
-        depth = 0
-        for index, glyph in brackets:
-            if glyph == opener:
-                depth += 1
-            elif glyph == closer:
-                if depth == 0:
-                    raise syntax_error(
-                        f"unmatched '{closer}' at position {index}",
-                        "put the matching opener before this closing delimiter",
-                    )
-                depth -= 1
-        if depth:
-            raise syntax_error(
-                f"unmatched '{opener}'",
-                "close this opening delimiter with its matching partner",
-            )
-
-
 def _partners(code: str) -> dict[int, int]:
-    """Return literal-aware partners for code already accepted by matches."""
+    """Return each structural bracket's partner, rejecting unmatched ones.
+
+    Loaded and tested brackets are data, not structure.
+    """
     table: dict[int, int] = {}
     brackets = list(_brackets(code))
     for opener, closer in (("[", "]"), ("{", "}")):
@@ -72,8 +58,18 @@ def _partners(code: str) -> dict[int, int]:
         for index, glyph in brackets:
             if glyph == opener:
                 stack.append(index)
-            elif glyph == closer and stack:
+            elif glyph == closer:
+                if not stack:
+                    raise syntax_error(
+                        f"unmatched '{closer}' at position {index}",
+                        "put the matching opener before this closing delimiter",
+                    )
                 table[stack.pop()] = index
+        if stack:
+            raise syntax_error(
+                f"unmatched '{opener}'",
+                "close this opening delimiter with its matching partner",
+            )
     return table
 
 
@@ -129,19 +125,24 @@ def _advance(
     elif c == "&":
         return (acc, ind, stk, True)
     else:
-        val = code[ind:]
-        if m := re.match(r"@\$(\d+){", val):
+        if m := _AT_NUMBER.match(code, ind):
             ind = _branch(
-                code, partners, ind, m.end() - 1, taken=acc == parse_integer(m[1])
+                code,
+                partners,
+                ind,
+                m.end() - 1 - ind,
+                taken=acc == parse_integer(m[1]),
             )
-        elif m := re.match(r"@(.){", val):
-            ind = _branch(code, partners, ind, m.end() - 1, taken=acc == ord(m[1]))
-        elif m := re.match(r"#\$(\d+)", val):
+        elif m := _AT_CHAR.match(code, ind):
+            ind = _branch(
+                code, partners, ind, m.end() - 1 - ind, taken=acc == ord(m[1])
+            )
+        elif m := _LOAD_NUMBER.match(code, ind):
             acc = parse_integer(m[1])
-            ind += m.end() - 1
-        elif m := re.match(r"#(.)", val):
+            ind = m.end() - 1
+        elif m := _LOAD_CHAR.match(code, ind):
             acc = ord(m[1])
-            ind += m.end() - 1
+            ind = m.end() - 1
 
     return (acc, ind + 1, stk, halted)
 
@@ -174,7 +175,6 @@ class _Machine:
         Unbalanced brackets are a malformed program, raised eagerly before
         any command runs.
         """
-        matches(code)
         # Where each bracket's partner is, matched once rather than
         # rescanned from the bracket on every loop skip and block entry.
         self._partners = _partners(code)

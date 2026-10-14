@@ -13,16 +13,12 @@ from collections.abc import Collection, Iterator
 from contextlib import contextmanager
 from typing import NoReturn
 
-from esolangs.cli.help import (
-    HELP,
-)
-from esolangs.cli.hints import (
-    _cli_error_text,
-    _did_you_mean,
-)
+from esolangs.cli.help import HELP
+from esolangs.cli.hints import _cli_error_text, _did_you_mean
 from esolangs.exceptions import EsolangError
 from esolangs.generation.wrap import DEFAULT_WIDTH
-from esolangs.runtime._validate import check_timeout
+from esolangs.registry import resolve
+from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -76,7 +72,7 @@ _SHORT_OPTIONS = {"-p": "--portable", "-s": "--settings"}
 
 
 def _expand_short_options(rest: list[str]) -> list[str]:
-    """Expand the three short options before the positional separator."""
+    """Expand the short options before the positional separator."""
     expanded: list[str] = []
     i = 0
     while i < len(rest):
@@ -97,28 +93,39 @@ def _expand_short_options(rest: list[str]) -> list[str]:
     return expanded
 
 
-def _pop_set_pairs(rest: list[str]) -> tuple[list[str], list[str]]:
-    """Remove repeatable ``--set KEY=VALUE`` options before ``--``."""
-    args: list[str] = []
-    pairs: list[str] = []
+def _scan_values(
+    rest: list[str], names: Collection[str]
+) -> Iterator[tuple[str | None, str]]:
+    """Yield ``(name, value)`` per ``--name V`` or ``--name=V``, else ``(None, arg)``.
+
+    Only ``names`` before ``--`` are options; everything else is yielded as is.
+    """
     i = 0
     while i < len(rest):
         arg = rest[i]
         if arg == "--":
-            args.extend(rest[i:])
-            break
+            yield from ((None, tail) for tail in rest[i:])
+            return
         name, sep, inline = arg.partition("=")
-        if name != "--set":
-            args.append(arg)
+        if name not in names:
+            yield None, arg
             i += 1
         elif sep:
-            pairs.append(inline)
+            yield name, inline
             i += 1
         elif i + 1 < len(rest):
-            pairs.append(rest[i + 1])
+            yield name, rest[i + 1]
             i += 2
         else:
-            _fail("--set needs a value")
+            _fail(f"{name} needs a value")
+
+
+def _pop_set_pairs(rest: list[str]) -> tuple[list[str], list[str]]:
+    """Remove repeatable ``--set KEY=VALUE`` options before ``--``."""
+    args: list[str] = []
+    pairs: list[str] = []
+    for name, value in _scan_values(rest, {"--set"}):
+        (args if name is None else pairs).append(value)
     return args, pairs
 
 
@@ -205,8 +212,6 @@ def _check_count(
         # resolver can match the joined words; it was never asked.
         joined = " ".join(args)
         try:
-            from esolangs.registry import resolve
-
             resolved = resolve(joined)
         except EsolangError:
             resolved = None
@@ -273,7 +278,7 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
             i += 1
             continue
         width = _integer(value, "--width")
-        if width is not None and width <= 0:
+        if width <= 0:
             _fail(f"--width must be positive, got {width}")
     return args, width, bare
 
@@ -316,26 +321,12 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
     """
     args: list[str] = []
     found: dict[str, str] = {}
-    i = 0
-    while i < len(rest):
-        arg = rest[i]
-        if arg == "--":
-            args.extend(rest[i:])
-            break
-        name, sep, inline = arg.partition("=")
-        if name not in names:
-            args.append(arg)
-            i += 1
-        elif sep:
-            _refuse_repeat(found, name)
-            found[name] = inline
-            i += 1
-        elif i + 1 < len(rest):
-            _refuse_repeat(found, name)
-            found[name] = rest[i + 1]
-            i += 2
+    for name, value in _scan_values(rest, names):
+        if name is None:
+            args.append(value)
         else:
-            _fail(f"{name} needs a value")
+            _refuse_repeat(found, name)
+            found[name] = value
     return args, found
 
 
@@ -393,15 +384,12 @@ def _errors(code: int = 2) -> Iterator[None]:
         _fail(exc, code)
 
 
-def _integer(
-    value: str, name: str, *, kind: str = "an integer", show_value: bool = True
-) -> int:
+def _integer(value: str, name: str, *, kind: str = "an integer") -> int:
     """Parse an integer with a flag-specific usage error."""
     try:
         return int(value)
     except ValueError:
-        suffix = f", got {value!r}" if show_value else ""
-        _fail(f"{name} must be {kind}{suffix}")
+        _fail(f"{name} must be {kind}, got {value!r}")
         raise  # pragma: no cover - _fail exits
 
 
@@ -427,14 +415,11 @@ def _scale_of(options: dict[str, str]) -> int | None:
     """Read a positive integer pixel scale."""
     if "--scale" not in options:
         return None
-    from esolangs.exceptions import ArgumentError
-    from esolangs.runtime._validate import check_scale
-
     try:
         return check_scale(
             _integer(options["--scale"], "--scale", kind="a positive integer")
         )
-    except (ValueError, ArgumentError):
+    except ValueError:
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
         raise  # pragma: no cover - _fail exits
 

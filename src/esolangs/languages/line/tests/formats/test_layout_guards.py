@@ -64,7 +64,7 @@ def test_return_that_crosses_body_ink_is_refused(monkeypatch) -> None:
 
 def test_empty_graph_is_refused() -> None:
     with pytest.raises(ValueError, match="empty path"):
-        render.render(None)  # type: ignore[arg-type]
+        render.render(None)
 
 
 def test_canvas_clips_outside_strokes_and_polygon_fills() -> None:

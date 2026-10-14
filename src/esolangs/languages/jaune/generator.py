@@ -94,33 +94,13 @@ class _JauneLabels:
         return build()
 
 
-def _jaune_ordered(
-    truth_table: str, perm: tuple[int, ...], *, share: bool = False
-) -> str:
-    """Emit one input order's Jaune program; see :func:`jaune`.
-
-    Untested inputs are read into the cell the next read overwrites; a leaf
-    prints from the cell it stands on (1 on then, 0 on else); the pointer's
-    position on entry to a node is a function of level alone.  An inverted
-    input swaps which half is ``then``.
-
-    With ``share`` a subtree equal to one already laid out jumps to it:
-    ``X?`` for a then arm, ``Y!`` for an else arm, as the tested cell holds
-    0 or 1.  A node's code is fixed by its rows and the cell it is entered
-    from (its parent's), a leaf's by its value and the value it adjusts
-    from, so those name a copy.  A test whose halves agree is passed over.
-    A then arm's first copy has its label already; any other copy that is
-    jumped to gets one, and which those are is known only after the layout,
-    so the tree is laid out twice: a probe records them, the second pass
-    labels exactly those.
-    """
-    n = _validate_truth_table(truth_table)
-    labels = _JauneLabels()
-    constant = constant_span_test(truth_table)
-    flip = _inverted_inputs(truth_table, perm, constant)
-    ids = subtree_ids(truth_table)  # O(2**n), so a subtree's name is O(1)
-
-    stored = stored_inputs(truth_table, perm)
+def _read_prologue(
+    n: int,
+    stored: frozenset[int] | set[int],
+    flip: frozenset[int],
+    constant: Callable[[int, int], bool],
+) -> tuple[str, dict[int, int], int]:
+    """Return the read code, each stored input's cell, and the entry cell."""
     # Reads run in input order; only a stored input advances the pointer, so
     # the kept bits occupy a contiguous block from cell 0.
     cell_of: dict[int, int] = {}
@@ -150,37 +130,73 @@ def _jaune_ordered(
     elif reads.endswith(">"):
         reads = reads[:-1]
         scratch = slot - 1
+    return reads, cell_of, scratch
 
-    def name(level: int, lo: int, entry: int, held: int) -> tuple[int, ...] | None:
-        if not share:
+
+class _Layout:
+    """One input order's decision tree, laid out with :class:`_JauneLabels`."""
+
+    def __init__(self, truth_table: str, perm: tuple[int, ...], *, share: bool) -> None:
+        self.truth_table = truth_table
+        self.perm = perm
+        self.share = share
+        self.n = _validate_truth_table(truth_table)
+        self.labels = _JauneLabels()
+        self.constant = constant_span_test(truth_table)
+        self.flip = _inverted_inputs(truth_table, perm, self.constant)
+        # O(2**n), so a subtree's name is O(1)
+        self.ids = subtree_ids(truth_table)
+        stored = stored_inputs(truth_table, perm)
+        self.reads, self.cell_of, self.scratch = _read_prologue(
+            self.n, stored, self.flip, self.constant
+        )
+
+    def program(self) -> str:
+        return self.labels.render(
+            lambda: self.reads + self.node(0, 0, 2**self.n, self.scratch, None),
+            share=self.share,
+        )
+
+    def name(
+        self, level: int, lo: int, entry: int, held: int
+    ) -> tuple[int, ...] | None:
+        if not self.share:
             return None
-        key = subtree_slot(ids, level, lo >> (n - level), skip=True)[2]
+        key = subtree_slot(self.ids, level, lo >> (self.n - level), skip=True)[2]
         return (*key, held) if key[0] < 0 else (*key, entry)
 
-    def arm(level: int, lo: int, hi: int, cell: int, held: int) -> tuple[str, int]:
+    def arm(
+        self, level: int, lo: int, hi: int, cell: int, held: int
+    ) -> tuple[str, int]:
         """Return an arm's code and, for a copy laid out before, its label."""
-        key = name(level, lo, cell, held)
+        labels = self.labels
+        key = self.name(level, lo, cell, held)
         if key in labels.placed:
             labels.jumped.add(key)
             return "", labels.placed[key]
-        return labels.first(key) + node(level, lo, hi, cell, held), 0
+        return labels.first(key) + self.node(level, lo, hi, cell, held), 0
 
-    def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
-        if level == n or constant(lo, hi):
+    def node(self, level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
+        truth_table, constant, labels = self.truth_table, self.constant, self.labels
+        if level == self.n or constant(lo, hi):
             return _leaf(int(truth_table[lo]), held)
         # A clobbered input has no cell to test.  Its bit cannot change the
         # answer, so the two halves of this span are value-identical and
         # descending into either one is the same function -- take the zero
         # half, which keeps the row span halving in step with the level.
         # Shared, any test whose halves agree is passed over the same way.
-        block = lo >> (n - level)
-        agrees = share and ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]
+        block = lo >> (self.n - level)
+        ids = self.ids
+        agrees = (
+            self.share and ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]
+        )
         mid = (lo + hi) // 2
-        if perm[level] not in cell_of or agrees:
-            return node(level + 1, lo, mid, entry, held)
-        cell = cell_of[perm[level]]
+        test = self.perm[level]
+        if test not in self.cell_of or agrees:
+            return self.node(level + 1, lo, mid, entry, held)
+        cell = self.cell_of[test]
         (elo, ehi), (tlo, thi) = (lo, mid), (mid, hi)
-        if perm[level] in flip:
+        if test in self.flip:
             (elo, ehi), (tlo, thi) = (tlo, thi), (elo, ehi)
         # Halves 0 and 1 by cell value print the cell; 1 and 0 its inverse,
         # where a 1 jumps to one ``-`` and a 0 adds two before it.
@@ -194,34 +210,55 @@ def _jaune_ordered(
             skip = labels.fresh()
             return move_text(entry, cell, ">", "<") + f"{skip}?++{skip}:-^."
         nav = move_text(entry, cell, ">", "<")
-        then_key = name(level + 1, tlo, cell, 1)
-        else_key = name(level + 1, elo, cell, 0)
+        then_key = self.name(level + 1, tlo, cell, 1)
+        else_key = self.name(level + 1, elo, cell, 0)
         both = then_key not in labels.placed and else_key not in labels.placed
         if both and else_key in labels.targets and then_key not in labels.targets:
             # The else arm is labelled for its copies, so ``!`` jumps to it
             # and the then arm falls through: one label, not two.
-            then = node(level + 1, tlo, thi, cell, 1)
-            else_, else_at = arm(level + 1, elo, ehi, cell, 0)
+            then = self.node(level + 1, tlo, thi, cell, 1)
+            else_, else_at = self.arm(level + 1, elo, ehi, cell, 0)
             return nav + f"{else_at or labels.placed[else_key]}!{then}{else_}"
         if both:
             # Both arms laid out here: the then arm's label is the branch's.
             then_lbl = labels.fresh()
             labels.first(then_key, then_lbl)
-            then = node(level + 1, tlo, thi, cell, 1)
-            else_, else_at = arm(level + 1, elo, ehi, cell, 0)
+            then = self.node(level + 1, tlo, thi, cell, 1)
+            else_, else_at = self.arm(level + 1, elo, ehi, cell, 0)
             if else_at:
                 # The then arm held a copy of the else arm, laid out first.
                 return nav + f"{else_at}!{then_lbl}:{then}"
             return nav + f"{then_lbl}?{else_}{then_lbl}:{then}"
-        then, then_at = arm(level + 1, tlo, thi, cell, 1)
-        else_, else_at = arm(level + 1, elo, ehi, cell, 0)
+        then, then_at = self.arm(level + 1, tlo, thi, cell, 1)
+        else_, else_at = self.arm(level + 1, elo, ehi, cell, 0)
         if then_at and else_at:
             return nav + f"{then_at}?{else_at}!"
         if then_at:
             return nav + f"{then_at}?{else_}"
         return nav + f"{else_at}!{then}"
 
-    return labels.render(lambda: reads + node(0, 0, 2**n, scratch, None), share=share)
+
+def _jaune_ordered(
+    truth_table: str, perm: tuple[int, ...], *, share: bool = False
+) -> str:
+    """Emit one input order's Jaune program; see :func:`jaune`.
+
+    Untested inputs are read into the cell the next read overwrites; a leaf
+    prints from the cell it stands on (1 on then, 0 on else); the pointer's
+    position on entry to a node is a function of level alone.  An inverted
+    input swaps which half is ``then``.
+
+    With ``share`` a subtree equal to one already laid out jumps to it:
+    ``X?`` for a then arm, ``Y!`` for an else arm, as the tested cell holds
+    0 or 1.  A node's code is fixed by its rows and the cell it is entered
+    from (its parent's), a leaf's by its value and the value it adjusts
+    from, so those name a copy.  A test whose halves agree is passed over.
+    A then arm's first copy has its label already; any other copy that is
+    jumped to gets one, and which those are is known only after the layout,
+    so the tree is laid out twice: a probe records them, the second pass
+    labels exactly those.
+    """
+    return _Layout(truth_table, perm, share=share).program()
 
 
 LANGUAGE = Language(

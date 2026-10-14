@@ -24,7 +24,7 @@ def _fixture(words, pattern, core_bits):
     context = _prepare(table)
     states = tuple(dict.fromkeys(context.ids[depth]))
     metric = _price(context, depth, states, _body_metrics(context))
-    candidate, _ = _bfpda_tree(table, classes=blocks, class_depth=depth)
+    candidate, _ = _bfpda_tree(context, classes=blocks, class_depth=depth)
     assert len(candidate) == metric.size
     return table, candidate, metric, depth, ignored
 
@@ -72,7 +72,7 @@ def test_four_class_cap_bank_covers_every_essential_row(seed, start) -> None:
     assert metric.commands <= 162
     program = bfpda(table)
     assert len(program) <= len(candidate)
-    plain, _ = _bfpda_tree(table)
+    plain, _ = _bfpda_tree(_prepare(table))
     assert len(program) < len(plain)
     rows = _rows(start, start + 64, depth, 6, ignored)
     assert _execute_bank(table, candidate, rows) <= metric.commands
@@ -82,20 +82,20 @@ def test_four_class_cap_bank_covers_every_essential_row(seed, start) -> None:
 @pytest.mark.parametrize("classes", [("0001",), ("0001", "0001")])
 def test_invalid_labels_abort(classes) -> None:
     with pytest.raises(ValueError, match="distinct residuals"):
-        _bfpda_tree("0001" * 8, classes=classes, class_depth=3)
+        _bfpda_tree(_prepare("0001" * 8), classes=classes, class_depth=3)
 
 
 def test_word_must_fit_the_retired_stack() -> None:
     classes = ("0001", "0110", "0011", "0101")
     with pytest.raises(ValueError, match="retired stack"):
-        _bfpda_tree(reflected_table("".join(classes), 4), classes=classes)
+        _bfpda_tree(_prepare(reflected_table("".join(classes), 4)), classes=classes)
 
 
 def test_bank_keeps_existing_paths_when_no_candidate_is_admissible() -> None:
     table = reflected_table("0001011000110101", 4)
     context = _prepare(table)
-    assert best_bank(table, context, 42, 10000) is None
-    assert best_bank(table, context, 10000, 0) is None
+    assert best_bank(context, 42, 10000) is None
+    assert best_bank(context, 10000, 0) is None
 
 
 def test_emitter_drift_aborts(monkeypatch) -> None:
@@ -106,12 +106,12 @@ def test_emitter_drift_aborts(monkeypatch) -> None:
     table, _, _, _, _ = _fixture(words, "0123456776543210", 2)
     monkeypatch.setattr(module, "_bfpda_tree", lambda *_args, **_kwargs: (".", 1))
     with pytest.raises(ValueError, match="disagrees with its price"):
-        best_bank(table, _prepare(table), 162, 10000)
+        best_bank(_prepare(table), 162, 10000)
 
 
 def test_two_class_bank_keeps_separate_prefix_and_body_admission() -> None:
     table = "00000100"
     context = _prepare(table)
     # Correlating tails prices this at 46; its former classifier admission is 47.
-    assert best_bank(table, context, 46, 10000) is None
-    assert best_bank(table, context, 47, 10000) is not None
+    assert best_bank(context, 46, 10000) is None
+    assert best_bank(context, 47, 10000) is not None

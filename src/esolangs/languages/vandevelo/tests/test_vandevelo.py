@@ -75,7 +75,7 @@ def _stacked(expression: _Expr, stage: int = 0, *, left: bool | None = None) -> 
 
 def _step(state: _State, expression: _Expr, **kwargs: object) -> None:
     statement = _Statement(target=None, strict=True, negate=False, parts=(expression,))
-    _advance(state, (statement,), **kwargs)  # type: ignore[arg-type]
+    _advance(state, (statement,), **kwargs)
 
 
 @pytest.mark.parametrize(

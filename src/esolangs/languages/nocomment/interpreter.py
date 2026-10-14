@@ -169,12 +169,13 @@ class _Machine:
                 f"'f' at position {ind} pops the stack and the stack is empty",
                 hint="push a value before reading or removing the stack top",
             )
-        if char in "sb" and acc and not stack:
+        jumping = char in "sb" and acc
+        if jumping and not stack:
             raise HaltError(
                 f"{char!r} at position {ind} peeks the stack and the stack is empty",
                 hint="push a value before reading or removing the stack top",
             )
-        if char in "sb" and acc and stack:
+        if jumping:
             # ``s`` skips X forward, ``b`` jumps back X-1: next is ind ± X + 1.
             # One check for both, or each direction leaves a dead branch.
             delta = stack[-1] if char == "s" else -stack[-1]

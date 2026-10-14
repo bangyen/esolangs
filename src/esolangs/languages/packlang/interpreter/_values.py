@@ -1,10 +1,8 @@
 """Packlang store lookup and checked scalar/expression values."""
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.packlang.interpreter._types import _Expr, _Store
 from esolangs.runtime.source_hints import keyword_hint
-
-type _Expr = tuple[object, ...]
-type _Store = tuple[tuple[str, object], ...]
 
 
 def _get(store: _Store, name: str) -> object:

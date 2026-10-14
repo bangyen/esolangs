@@ -312,5 +312,5 @@ def test_variable_transition_keeps_old_maps_immutable() -> None:
     assert effects == (2, (), False)
     assert output is None
     with pytest.raises(TypeError):
-        moved[0]["name"] = 8  # type: ignore[index]
+        moved[0]["name"] = 8
     assert _advance(before, (7, "name")) == (moved, effects, output)

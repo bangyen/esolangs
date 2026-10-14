@@ -39,7 +39,11 @@ def _one(cell: int) -> str:
 
 
 def suffolk(truth_table: str) -> str:
-    """Return the smaller admitted NOR DAG or countdown program."""
+    """Return the smaller of the countdown-sweep and shared-NOR-DAG programs.
+
+    The DAG route is only admitted when it fits the workspace ledger;
+    otherwise -- or when it is longer -- the countdown sweep wins.
+    """
     lookup = _suffolk_lookup(truth_table)
     shared = shared_dag(truth_table, _validate_truth_table(truth_table))
     return lookup if shared is None or len(shared) >= len(lookup) else shared
@@ -50,10 +54,10 @@ def _suffolk_lookup(truth_table: str) -> str:
 
     ``!`` is the only write and computes ``max(0, cell + 1 - acc)``: a
     clamped subtraction. This candidate counts table steps. Cell 0 counts
-    down from ``H - x``,
-    and so reads zero on exactly the last ``x`` of the sweep's ``H`` rounds,
-    which turns ``count <- max(0, count + 1 - cell0)`` into "add one if the
-    row is below ``x``".  Counting the rows where the table steps up and
+    down from ``H - x``, and so reads zero on exactly the last ``x`` of
+    the sweep's ``H`` rounds, which turns
+    ``count <- max(0, count + 1 - cell0)`` into "add one if the row is
+    below ``x``".  Counting the rows where the table steps up and
     where it steps down telescopes to ``f(x)``, since between two steps the
     table is constant.  The top input splits the table in half and each half
     gets its own pair of counters, halving the sweep.
@@ -69,29 +73,31 @@ def _suffolk_lookup(truth_table: str) -> str:
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
     half = len(reduced) // 2
     halves = (reduced[:half], reduced[half:])
+    # Each half's (falling, rising) step counters, in table order.
+    (falls0, rises0), (falls1, rises1) = _COUNTS
     out = [_write(_DOWN)]  # H - x = 1 + the weights of the zero bits
 
     for i in range(n):
         if i not in used:
             # Drain an input the table ignores.  Cell 3 is still zero and a
             # read leaves it there: 48 or 49 outruns the clamp.
-            out.append(">" * _COUNTS[0][1] + ",!")
+            out.append(">" * rises0 + ",!")
             continue
         # Reading adds the byte to the accumulator, so a cell holding 48
         # comes back holding the *negated* bit.
-        out.append(_one(_COUNTS[0][0]) + _write(_COUNTS[0][0]) * (_ASCII_ZERO - 1))
-        out.append(">" * _COUNTS[0][0] + ",!")
+        out.append(_one(falls0) + _write(falls0) * (_ASCII_ZERO - 1))
+        out.append(">" * falls0 + ",!")
         input_position = used.index(i)
         if input_position > 0:
-            out.append(_read(_TWO) + _read(_COUNTS[0][0]) + _write(_TWO))
+            out.append(_read(_TWO) + _read(falls0) + _write(_TWO))
             out.append((_read(_TWO) + _write(_DOWN)) * (half >> input_position))
         else:
             # The top bit steers the halves instead of the countdown.
-            out.append(_read(_RAW) + _read(_COUNTS[0][0]) + _write(_RAW))
+            out.append(_read(_RAW) + _read(falls0) + _write(_RAW))
             out.append(_read(_NEGATED) + _read(_RAW) + _write(_NEGATED))
 
     out.append(_one(_TWO) + _write(_TWO))  # cell 1 <- 2
-    out.append(_read(_TWO) + _write(_COUNTS[0][0]))  # and the read cell <- 0
+    out.append(_read(_TWO) + _write(falls0))  # and the read cell <- 0
 
     step = _read(_TWO) + _write(_DOWN)
     for round_ in range(half):
@@ -99,8 +105,9 @@ def _suffolk_lookup(truth_table: str) -> str:
             out.append(step)
         row = half - 1 - round_
         for table, (falls, rises) in zip(halves, _COUNTS, strict=True):
-            above = int(table[row + 1]) if row + 1 < half else 0
-            rise = int(table[row]) - above
+            # The row the sweep just left (one higher); past the top it is 0.
+            previous = int(table[row + 1]) if row + 1 < half else 0
+            rise = int(table[row]) - previous
             if rise:
                 out.append(_read(_DOWN) + _write(rises if rise > 0 else falls))
 
@@ -111,13 +118,13 @@ def _suffolk_lookup(truth_table: str) -> str:
     # Each half answers max(0, 2 - (f + 1) - 2 * bit), which is the other
     # half's answer or zero, so their sum is the complement of the one the
     # top bit selects and one more clamp turns it back into f + 1.
-    out.append(_one(_COUNTS[0][1]) + _read(_COUNTS[0][0]))
-    out.append(_read(_RAW) * 2 + _write(_COUNTS[0][1]))
-    out.append(_one(_COUNTS[1][1]) + _read(_COUNTS[1][0]))
-    out.append(_read(_NEGATED) * 2 + _write(_COUNTS[1][1]))
-    out.append(_one(_COUNTS[0][0]) + _read(_COUNTS[0][1]) + _read(_COUNTS[1][1]))
-    out.append(_write(_COUNTS[0][0]) + _write(_TWO) * (_ASCII_ZERO - 2))
-    return "".join(out) + _read(_TWO) + _read(_COUNTS[0][0]) + "."
+    out.append(_one(rises0) + _read(falls0))
+    out.append(_read(_RAW) * 2 + _write(rises0))
+    out.append(_one(rises1) + _read(falls1))
+    out.append(_read(_NEGATED) * 2 + _write(rises1))
+    out.append(_one(falls0) + _read(rises0) + _read(rises1))
+    out.append(_write(falls0) + _write(_TWO) * (_ASCII_ZERO - 2))
+    return "".join(out) + _read(_TWO) + _read(falls0) + "."
 
 
 def _nor(target: int, *operands: int) -> str:
@@ -134,6 +141,7 @@ def shared_dag(table: str, inputs: int) -> str | None:
     count = len(used)
     # Store complemented cofactors: false/true use the shared one/zero cells.
     slots = {0: 3, 1: 4}
+    # (depth, zero-slot, one-slot, target): the mux each distinct cofactor needs.
     nodes: list[tuple[int, int, int, int]] = []
     for depth in range(count - 1, -1, -1):
         for index, state in enumerate(ids[depth]):
@@ -190,7 +198,6 @@ LANGUAGE = Language(
     "Suffolk",
     "suffolk",
     category="tape_based",
-    weekly_mutation=("generator",),
     boolean=suffolk,
     # Both routes project to the essential inputs.
     shape=Shape.REDUCING,

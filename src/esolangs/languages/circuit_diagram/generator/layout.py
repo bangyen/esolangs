@@ -1,6 +1,7 @@
 """Wire layouts shared by the Circuit Diagram generators."""
 
 from bisect import bisect_left, insort
+from collections.abc import Sequence
 from itertools import pairwise
 from typing import Literal
 
@@ -37,6 +38,12 @@ class _Layout:
         # Glyph coordinates indexed both ways, for the run/glyph checks.
         self._glyph_rows: dict[int, list[int]] = {}
         self._glyph_cols: dict[int, list[int]] = {}
+
+    def input_port(self, row: int, column: int, signal: int) -> None:
+        """Draw an input's ``-`` port at the left edge, wired to ``column``."""
+        self.glyph(0, row, "-")
+        self.junction(column, row, signal)
+        self.run_horizontal(0, column, row, signal)
 
     def glyph(self, x: int, y: int, char: str) -> None:
         """Place a literal character (a gate, an input dash, an output)."""
@@ -248,13 +255,11 @@ class _Layout:
 class _RoutingLayout(_Layout):
     """Layout whose wires are laid in fixed shapes over interval runs.
 
-    The base class stores each run as one interval; this subclass used to
-    also mirror every covered cell into ``_horizontal_cells`` /
-    ``_vertical_cells`` so a route could be tested cell by cell.  That is
-    O(area) time and memory for checks interval overlap answers in
-    O(log runs + overlaps), and the H-layout's area is linear in the table,
-    so the per-cell maps put a large constant on every build.  Junctions
-    and reservations are indexed per row and column for the same reason.
+    The base class stores each run as one interval; this subclass checks
+    routes against those intervals, not per-cell maps, which cost O(area)
+    time and memory for checks that interval overlap answers in
+    O(log runs + overlaps).  Junctions and reservations are indexed per
+    row and column for the same reason.
     """
 
     def __init__(self) -> None:
@@ -434,3 +439,27 @@ class _RoutingLayout(_Layout):
             ):
                 return False
         return True
+
+
+def _layout_area(layout: _Layout) -> int:
+    """Return the bounding-box area, the model-selection metric."""
+    height, width = layout.bounds()
+    return height * width
+
+
+def _resolve_order(
+    order: Sequence[int] | None, n: int, ports: int | None, what: str
+) -> tuple[list[int], int]:
+    """Default the read order and port count, refusing a bad order.
+
+    The order must be ``n`` distinct ports below ``ports``.
+    """
+    order = list(range(n)) if order is None else list(order)
+    ports = n if ports is None else ports
+    if (
+        len(order) != n
+        or len(set(order)) != n
+        or any(index < 0 or index >= ports for index in order)
+    ):
+        raise ValueError(f"{what} input order must name distinct original ports")
+    return order, ports

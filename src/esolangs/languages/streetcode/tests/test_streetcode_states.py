@@ -12,6 +12,10 @@ from esolangs.languages.streetcode.interpreter.geometry import (
     _Latches,
     _Merge,
 )
+from esolangs.languages.streetcode.interpreter.validation import (
+    check_state_invariants,
+    drive_states,
+)
 from esolangs.languages.streetcode.tests.streetcode_support import _RING_PROGRAM
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
@@ -90,7 +94,7 @@ class TestStreetcodeDriveStates:
     def test_every_state_has_a_successor(self) -> None:
         """A validated street is total: no reachable state wedges the car."""
         machine = _Machine(self._corridor(), IO())
-        graph = machine._drive_states((1, 1))  # noqa: SLF001
+        graph = drive_states(machine.grid, (1, 1))
         # ``None`` means only "ran out of road" now -- a deliberate stop at
         # ``;`` reports itself as ``"halt"`` -- so a wedge needs no check
         # against the square underneath.
@@ -105,13 +109,13 @@ class TestStreetcodeDriveStates:
         """``_drive_states`` drives the live machine, so it must restore it."""
         machine = _Machine(self._corridor(), IO())
         before = machine.snapshot()
-        machine._drive_states((1, 1))  # noqa: SLF001
+        drive_states(machine.grid, (1, 1))
         assert machine.snapshot() == before
 
     def test_each_state_is_keyed_by_both_branch_bits(self) -> None:
         """Both tape reads a step can make are probed, so all four pairs."""
         machine = _Machine(self._corridor(), IO())
-        graph = machine._drive_states((1, 1))  # noqa: SLF001
+        graph = drive_states(machine.grid, (1, 1))
         assert graph
         for edges in graph.values():
             assert set(edges) == {(0, 0), (0, 1), (1, 0), (1, 1)}
@@ -147,12 +151,12 @@ class TestStreetcodeDriveStates:
             code = code[:-1]
         machine = _Machine(code, IO())
         start = (machine.row, machine.col)
-        shipped = machine._drive_states(start)  # noqa: SLF001
+        shipped = drive_states(machine.grid, start)
 
         original = module._MOUTH_MAX_DEPTH  # noqa: SLF001
         module._MOUTH_MAX_DEPTH = machine.grid.height + machine.grid.width  # noqa: SLF001
         try:
-            generous = machine._drive_states(start)  # noqa: SLF001
+            generous = drive_states(machine.grid, start)
         finally:
             module._MOUTH_MAX_DEPTH = original  # noqa: SLF001
         assert shipped == generous
@@ -181,9 +185,7 @@ class TestStreetcodeDriveInvariants:
         machine = self._machine()
         assert not machine.grid.open_at(3, 2)
         with pytest.raises(AssertionError, match="not open floor"):
-            machine._check_state_invariants(  # noqa: SLF001
-                _State(3, 2, "S", _NO_LATCHES), {}
-            )
+            check_state_invariants(machine.grid, _State(3, 2, "S", _NO_LATCHES), {})
 
     def test_a_teleporting_step_is_caught(self) -> None:
         """A successor two cells away is the car skipping a square."""
@@ -191,7 +193,7 @@ class TestStreetcodeDriveInvariants:
         state = _State(2, 1, "E", _NO_LATCHES)
         edges = {(0, 0): _State(2, 3, "E", _NO_LATCHES)}
         with pytest.raises(AssertionError, match="not one orthogonal step"):
-            machine._check_state_invariants(state, edges)  # noqa: SLF001
+            check_state_invariants(machine.grid, state, edges)
 
     def test_a_step_into_a_wall_is_caught(self) -> None:
         """A successor on a wall cell, one step away or not."""
@@ -199,7 +201,7 @@ class TestStreetcodeDriveInvariants:
         state = _State(2, 2, "S", _NO_LATCHES)
         edges = {(0, 0): _State(3, 2, "S", _NO_LATCHES)}
         with pytest.raises(AssertionError, match="which is not open"):
-            machine._check_state_invariants(state, edges)  # noqa: SLF001
+            check_state_invariants(machine.grid, state, edges)
 
     def test_a_merge_target_off_the_travel_axis_is_caught(self) -> None:
         """The approach holds its lane, so the target is straight ahead."""
@@ -208,7 +210,7 @@ class TestStreetcodeDriveInvariants:
         merge = _Merge(1, 4, "right", "E", crossing=False)
         state = _State(2, 1, "E", _Latches(merge, None, 0))
         with pytest.raises(AssertionError, match="off the axis"):
-            machine._check_state_invariants(state, {})  # noqa: SLF001
+            check_state_invariants(machine.grid, state, {})
 
     def test_a_merge_target_behind_the_car_is_caught(self) -> None:
         """The car drives forwards onto the target; it cannot reverse to it."""
@@ -216,7 +218,7 @@ class TestStreetcodeDriveInvariants:
         merge = _Merge(2, 1, "right", "E", crossing=False)
         state = _State(2, 3, "E", _Latches(merge, None, 0))
         with pytest.raises(AssertionError, match="behind it"):
-            machine._check_state_invariants(state, {})  # noqa: SLF001
+            check_state_invariants(machine.grid, state, {})
 
     def test_a_stale_latch_is_not_checked(self) -> None:
         """A latch the next step abandons describes no geometry."""
@@ -225,7 +227,7 @@ class TestStreetcodeDriveInvariants:
         # longer holds, so neither rule applies.
         merge = _Merge(5, 4, "right", "S", crossing=False)
         state = _State(2, 1, "E", _Latches(merge, None, 0))
-        machine._check_state_invariants(state, {})  # noqa: SLF001
+        check_state_invariants(machine.grid, state, {})
 
     def test_every_shipped_program_satisfies_them(self) -> None:
         """The invariants hold over every program the repo ships."""

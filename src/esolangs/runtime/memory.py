@@ -23,6 +23,22 @@ def format_integer(value: int) -> str:
     return str(Decimal(value))
 
 
+def wrap_int32(value: int) -> int:
+    """Wrap ``value`` to a signed 32-bit integer (C ``int`` arithmetic)."""
+    return (value + 2**31) % 2**32 - 2**31
+
+
+def trunc_div(left: int, right: int) -> int:
+    """Divide truncating toward zero, as C does, without a float round trip."""
+    quotient = abs(left) // abs(right)
+    return -quotient if (left < 0) != (right < 0) else quotient
+
+
+def trunc_mod(left: int, right: int) -> int:
+    """Return C's remainder, which takes the dividend's sign."""
+    return left - trunc_div(left, right) * right
+
+
 def parse_int_memory(code: str) -> list[int]:
     """Split ``code`` into a list of whitespace-separated integers.
 

@@ -13,8 +13,9 @@ from esolangs.languages.circuit_diagram.generator import (
     _Builder,
     _Dag,
     _finish_fold,
+    _note_mux,
 )
-from esolangs.languages.circuit_diagram.generator.layout import _Layout
+from esolangs.languages.circuit_diagram.generator.layout import _Layout, _resolve_order
 
 
 class _SparseWork:
@@ -98,13 +99,7 @@ class _MaskFolder:
             node = len(self.nodes) + 2
             self.nodes[key] = node
             self.ops.append((level, zero, one, node))
-            # ``0/x`` and ``x/1`` read the plain rail only; the other rules
-            # read ``~selector``, as in :func:`_dag`.
-            if zero != 0 and one != 1:
-                self.needed.add(self.prefix - 1 - level)
-            for child in (zero, one):
-                if child > 1:
-                    self.reads[child] = self.reads.get(child, 0) + 1
+            _note_mux(self.needed, self.reads, self.prefix - 1 - level, zero, one)
         return node
 
 
@@ -138,7 +133,7 @@ def _sparse_mask_dag(
     root = folder.build(prefix, 0, 0, len(rows))
     if root is None:
         return None
-    return folder.ops, root, folder.needed, folder.reads
+    return _Dag(folder.ops, root, folder.needed, folder.reads)
 
 
 def sparse_mask_model(
@@ -159,26 +154,14 @@ def sparse_mask_model(
     dag = _sparse_mask_dag(positions, prefix, work)
     if dag is None:
         return None
-    order = list(range(prefix)) if input_order is None else list(input_order)
-    if port_inputs is None:
-        port_inputs = prefix
-    if (
-        len(order) != prefix
-        or len(set(order)) != prefix
-        or any(index < 0 or index >= port_inputs for index in order)
-    ):
-        raise ValueError("fold input order must name distinct original ports")
-    if not work.spend((len(dag[0]) + port_inputs) ** 2):
+    order, port_inputs = _resolve_order(input_order, prefix, port_inputs, "fold")
+    if not work.spend((len(dag.ops) + port_inputs) ** 2):
         return None
     # Unbanded folds make O(nodes+ports) taps; each interval guard scans at
     # most that many runs. Fenwick column work fits the same quadratic bound.
     builder = _Builder()
     ports = [builder.input_bus() for _ in range(port_inputs)]
     rails = [ports[order[level]] for level in range(prefix)]
-    complemented = dag[2]
-    selectors: list[list[int | None]] = [
-        [rail, builder.invert(rail) if level in complemented else None]
-        for level, rail in enumerate(rails)
-    ]
+    selectors = builder.selectors(rails, dag.needed)
     builder.band_start = builder.next_column
     return _finish_fold(builder, selectors, dag)

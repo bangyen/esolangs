@@ -93,7 +93,7 @@ def certificate() -> tuple[list[list[int]], Matrix, Matrix]:
     raise RuntimeError("balanced certificate iteration budget exceeded")
 
 
-def _rotation_image(
+def _rotation_image(  # noqa: C901
     rows: list[list[int]], nonempty: Matrix, nonprint: Matrix, bodies: Matrix
 ) -> tuple[Matrix, Matrix, Matrix]:
     numerator, denominator = ROTATION_BOUND

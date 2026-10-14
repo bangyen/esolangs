@@ -1,7 +1,9 @@
 """Circuit Diagram affine chains and exact width transitions."""
 
 from esolangs.generation.helpers import _validate_truth_table, grid_width
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.circuit_diagram.generator import (
+    _OUTPUT_GLYPH_COLUMNS,
     _Builder,
     _circuit_diagram_at,
     _narrowest_present,
@@ -56,7 +58,7 @@ def affine_circuit(
     selected = [rail for bit, rail in enumerate(reversed(rails)) if coefficients[bit]]
     builder.band_start = builder.next_column
     # Reserve the output dash and colon beyond the last gate group.
-    builder.limit = max(1, width - 2)
+    builder.limit = max(1, width - _OUTPUT_GLYPH_COLUMNS)
     if not selected:
         result = builder.constant(rails[0], "X" if constant else "x")
     elif len(selected) == 1:
@@ -67,7 +69,7 @@ def affine_circuit(
             result = builder.gate("x", result, rail)
     builder.output(result)
     if _events is not None and builder.next_limit is not None:
-        _events.append(builder.next_limit + 2)
+        _events.append(builder.next_limit + _OUTPUT_GLYPH_COLUMNS)
     return builder.layout.render()
 
 
@@ -90,13 +92,13 @@ def balance_circuit_diagram(table: str, default: str) -> str:
         else:
             events.append(span)
             shifted: list[int] = []
-            banded = _circuit_diagram_at(table, max(1, width - 2), _events=shifted)
-            events.extend(point + 2 for point in shifted)
+            banded = _circuit_diagram_at(
+                table, max(1, width - _OUTPUT_GLYPH_COLUMNS), _events=shifted
+            )
+            events.extend(point + _OUTPUT_GLYPH_COLUMNS for point in shifted)
             affine = affine_circuit(table, width, _events=events)
             candidates.append(_narrowest_present(flat, banded, affine))
         # Until a failed column comparison becomes true, the drawing and its
         # band decisions stay fixed. A drawing's own span can also start fitting.
         width = min(events)
-    from esolangs.generation.wrap import balance_score
-
     return min(candidates, key=balance_score)

@@ -17,7 +17,13 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _FALSE_COMMAND, _false, _join_tokens, balance_score
+from esolangs.generation.wrap import (
+    _FALSE_COMMAND,
+    _false,
+    _join_tokens,
+    balance_score,
+    wrap_program,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -44,8 +50,6 @@ def false(truth_table: str, width: int | None = None) -> str:
     # spells that value with single-character operands when width is one.
     if width is None:
         return program
-    from esolangs.generation.wrap import wrap_program
-
     if width == 1:
         program = program.replace("'0", "6 8*")
     return wrap_program(program, "false", width)
@@ -55,7 +59,7 @@ def false(truth_table: str, width: int | None = None) -> str:
 _OPEN, _BETWEEN, _CLOSE = _TEST_ONE[:-1], "?0=", "?"
 
 
-def _shared(truth_table: str, n: int) -> str:
+def _shared(truth_table: str, n: int) -> str:  # noqa: C901
     """Return the tree with repeated halves stored in variables and fetched.
 
     A half is a lambda either way, so ``[text]`` becomes ``x;`` wherever it

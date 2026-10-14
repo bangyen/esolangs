@@ -29,15 +29,14 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.shared_flag import shared_flag_tree
 from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.languages.factor.interpreter import _MODULUS, _RESIDUE
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime._digits import digit_limit_for
 
 __all__ = ["factor"]
 
-#: A prime's residue mod ``_MODULUS`` selects the instruction it stands for.
-_MODULUS = 11
-_BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
+_BF_RESIDUE = {char: residue for residue, char in _RESIDUE.items()}
 
 # Exact prime enumeration, in bounded segments. ``isprime`` becomes a BPSW
 # probable-prime test above 2**64; Factor is uncapped, so it cannot certify the
@@ -95,14 +94,12 @@ def _encode(code: str) -> int:
 def _program(
     truth_table: str,
     *,
-    shared: bool = False,
+    forms: frozenset[str] = frozenset(),
     keep_constant_input: bool = False,
-    multiple: bool = True,
-    bank: bool = True,
-    bank_only: bool = False,
-    bank_ranked: bool = True,
 ) -> str:
     """Build the compact tree in input order, using the final input's flag.
+
+    Nonempty ``forms`` also tries those shared-residual bodies.
 
     The tree tests the essential inputs only, so its last level is the last
     one the table reads and keeps its binary leaves; an ignored input is
@@ -161,7 +158,7 @@ def _program(
         body, pos = "[->-<]", 0
     prefix = build + reads + (dedent if normalized else "")
     plain = prefix + body + move_text(pos, result, ">", "<") + "."
-    if not shared:
+    if not forms:
         return plain
     # Six offset-building trips and 48 dedent trips, with no opener retest.
     prelude = 199 * n + 48 * len(perm) + 240
@@ -172,10 +169,7 @@ def _program(
         result,
         binary_leaves=True,
         command_budget=265 * n + 230 - prelude,
-        multiple=multiple,
-        bank=bank,
-        bank_only=bank_only,
-        bank_ranked=bank_ranked,
+        forms=forms,
     )
     if candidate is None:
         return plain
@@ -199,44 +193,30 @@ def factor(truth_table: str) -> str:
     return _factor(truth_table)
 
 
+#: The residual forms each candidate tries, the plain tree first.
+_FORM_SETS: tuple[tuple[str, ...], ...] = (
+    (),
+    ("single",),
+    ("single", "multiple"),
+    ("bank", "mixed_bank"),
+    ("ranked_bank", "mixed_bank"),
+)
+
+
 def _factor(truth_table: str, *, keep_constant_input: bool = False) -> str:
     """Encode the tree, optionally retaining constant-input normalization."""
-    plain = _program(truth_table, keep_constant_input=keep_constant_input)
-    candidate = _program(
-        truth_table,
-        shared=True,
-        bank_only=True,
-        keep_constant_input=keep_constant_input,
-    )
-    layered = _program(
-        truth_table, shared=True, bank=False, keep_constant_input=keep_constant_input
-    )
-    first = _program(
-        truth_table,
-        shared=True,
-        bank_only=True,
-        bank_ranked=False,
-        keep_constant_input=keep_constant_input,
-    )
-    single = _program(
-        truth_table,
-        shared=True,
-        multiple=False,
-        keep_constant_input=keep_constant_input,
-    )
+    keep = keep_constant_input
+    codes = [
+        _program(truth_table, forms=frozenset(forms), keep_constant_input=keep)
+        for forms in _FORM_SETS
+    ]
 
     def encoded(code: str) -> str:
         number = _encode(code)
         with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
             return str(number)
 
-    return min(
-        (
-            encoded(code)
-            for code in dict.fromkeys((plain, single, layered, first, candidate))
-        ),
-        key=len,
-    )
+    return min((encoded(code) for code in dict.fromkeys(codes)), key=len)
 
 
 def balance_factor(truth_table: str, default: str) -> str:

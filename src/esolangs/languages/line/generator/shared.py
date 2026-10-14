@@ -19,10 +19,35 @@ from .render import (
     _check_unit,
     _Cursor,
     _layout,
+    _moved,
     _Plan,
     chain,
+    chain_onto,
+    correction,
 )
 from .tree_layout import tree_extents
+
+
+def _shared_rows(
+    children: dict[int, tuple[int, int]], zero: int, one: int, n: int
+) -> tuple[int, set[int]]:
+    """``(depth, rows)``: the one arm's rows equal to the zero arm's skipped residual.
+
+    Walk the zero arm through test-free levels; ``rows`` is empty when none repeats.
+    """
+    state, depth = zero, 1
+    aligned = [one]
+    while depth < n and children[state][0] == children[state][1]:
+        state = children[state][0]
+        depth += 1
+        aligned = [child for parent in aligned for child in children[parent]]
+        if depth < n and state in aligned:
+            return depth, {
+                (1 << (depth - 1)) + index
+                for index, residual in enumerate(aligned)
+                if residual == state
+            }
+    return depth, set()
 
 
 def shared_tree(
@@ -39,30 +64,12 @@ def shared_tree(
     zero, one = children[levels[0][0]]
     if zero == one or constants[zero] is not None:
         return None
-    state, depth = zero, 1
-    aligned = [one]
-    rows: set[int] = set()
-    while depth < n and children[state][0] == children[state][1]:
-        state = children[state][0]
-        depth += 1
-        aligned = [child for parent in aligned for child in children[parent]]
-        if depth < n and state in aligned:
-            rows = {
-                (1 << (depth - 1)) + index
-                for index, residual in enumerate(aligned)
-                if residual == state
-            }
-            break
+    depth, rows = _shared_rows(children, zero, one, n)
     if not rows:
         return None
     if not multiple:
         rows = {min(rows)}
     root = Node("?")
-
-    def moved(pointer: int, cell: int, rest: Node) -> Node:
-        for _ in range(abs(cell - pointer)):
-            rest = Node(">" if cell > pointer else "<", next=rest)
-        return rest
 
     shared_cost = 0
     returns = 0
@@ -77,7 +84,7 @@ def shared_tree(
                 # The nonzero root arm still holds 1 in its consumed input.
                 # Clear it, return, and take the already-drawn zero arm once.
                 return (
-                    moved(pointer, order[0], Node("-", goto=root)),
+                    _moved(pointer, order[0], Node("-", goto=root)),
                     abs(pointer - order[0]) + 3 + shared_cost,
                 )
             if level == n or children[residual][0] != children[residual][1]:
@@ -86,14 +93,14 @@ def shared_tree(
             level += 1
             start *= 2
         if level == n:
-            correction = {1: ["+"], 0: [], -1: ["-"]}[residual - known]
-            return chain(*correction, "o"), len(correction) + 2
+            fix = correction(residual, known)
+            return chain(*fix, "o"), len(fix) + 2
         cell = order[level]
         lo, hi = children[residual]
         node = Node("?")
         node.zero, zero_cost = build(lo, level + 1, cell, 0, 2 * start)
         node.nonzero, one_cost = build(hi, level + 1, cell, 1, 2 * start + 1)
-        return moved(pointer, cell, node), abs(pointer - cell) + 1 + max(
+        return _moved(pointer, cell, node), abs(pointer - cell) + 1 + max(
             zero_cost, one_cost
         )
 
@@ -109,10 +116,7 @@ def shared_tree(
     if returns == 0 or (multiple and returns == 1) or commands > budget:
         return None
     head = chain(*("i" + ">i" * (n - 1)))
-    tail = head
-    while tail.next is not None:
-        tail = tail.next
-    tail.next = moved(n - 1, order[0], root)
+    chain_onto(head, _moved(n - 1, order[0], root))
     return head, commands
 
 
@@ -126,6 +130,37 @@ class CanvasPlan:
     def __call__(self) -> Canvas:
         """Rasterize the checked strokes."""
         return self.draw()
+
+
+def stroke_plan(
+    strokes: list[list[tuple[int, int]]],
+    start: tuple[int, int],
+    heading: tuple[int, int],
+    old_area: int,
+    unit: int,
+) -> CanvasPlan | None:
+    """Plan the strokes' bounding canvas, arrowhead at ``start`` facing ``heading``.
+
+    None unless that canvas is smaller than ``old_area``.
+    """
+    points = [point for stroke in strokes for point in stroke]
+    top, bottom = min(y for y, _ in points), max(y for y, _ in points)
+    left, right = min(x for _, x in points), max(x for _, x in points)
+    width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
+    if width * height >= old_area:
+        return None
+
+    def rasterize() -> Canvas:
+        canvas = Canvas(width, height)
+        for stroke in strokes:
+            canvas.line(
+                [((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke]
+            )
+        y, x = (start[0] - top + 1) * unit, (start[1] - left + 1) * unit
+        _arrowhead(canvas, y, x, heading, unit)
+        return canvas
+
+    return CanvasPlan(rasterize, width * height)
 
 
 def shared_canvas(root: Node, old_area: int, *, unit: int = _UNIT) -> CanvasPlan | None:
@@ -170,20 +205,4 @@ def shared_canvas(root: Node, old_area: int, *, unit: int = _UNIT) -> CanvasPlan
         # Straight exits and perpendicular trunk merges retain the collision
         # guard; an obstructed return keeps the preceding layout.
         return None
-    ys = [y for stroke in cursor.strokes for y, _ in stroke]
-    xs = [x for stroke in cursor.strokes for _, x in stroke]
-    top, bottom, left, right = min(ys), max(ys), min(xs), max(xs)
-    width, height = (right - left + 2) * unit, (bottom - top + 2) * unit
-    if width * height >= old_area:
-        return None
-
-    def rasterize() -> Canvas:
-        canvas = Canvas(width, height)
-        for stroke in cursor.strokes:
-            canvas.line(
-                [((x - left + 1) * unit, (y - top + 1) * unit) for y, x in stroke]
-            )
-        _arrowhead(canvas, (1 - top) * unit, (1 - left) * unit, (-1, 0), unit)
-        return canvas
-
-    return CanvasPlan(rasterize, width * height)
+    return stroke_plan(cursor.strokes, (0, 0), (-1, 0), old_area, unit)

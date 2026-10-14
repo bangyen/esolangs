@@ -191,10 +191,10 @@ class TestTheSignaturesAgreeWithThemselves:
     )
     def test_both_accept_and_refuse_the_same_things(self, call: object) -> None:
         """The annotation is only right while the behaviour matches it."""
-        call([1, 0])  # type: ignore[operator]
-        call((1, 0))  # type: ignore[operator]
+        call([1, 0])
+        call((1, 0))
         with pytest.raises(esolangs.ArgumentError, match="list or tuple"):
-            call(range(2))  # type: ignore[operator]
+            call(range(2))
 
 
 class TestWidthIsCheckedWhereverItIsTaken:
@@ -204,12 +204,12 @@ class TestWidthIsCheckedWhereverItIsTaken:
     def test_instantiate_refuses_what_generate_refuses(self, width: object) -> None:
         template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, template, [1, 0], width=width)  # type: ignore[arg-type]
+            esolangs.instantiate(TEMPLATE_LANGUAGE, template, [1, 0], width=width)
 
     @pytest.mark.parametrize("width", [0, "8", 2.5])
     def test_generate_still_refuses_them(self, width: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.generate(REFERENCE, "0110", width=width)  # type: ignore[arg-type]
+            esolangs.generate(REFERENCE, "0110", width=width)
 
 
 class TestBitsAreBits:
@@ -219,11 +219,11 @@ class TestBitsAreBits:
     def test_both_encoders_refuse_the_same_bits(self, bits: object) -> None:
         """A dict was iterated as its *keys*, answering a different row."""
         with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.encode_inputs(REFERENCE, bits)  # type: ignore[arg-type]
+            esolangs.encode_inputs(REFERENCE, bits)
         template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
         with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, template, bits)  # type: ignore[arg-type]
+            esolangs.instantiate(TEMPLATE_LANGUAGE, template, bits)
 
     def test_a_non_string_template_is_refused(self) -> None:
         with pytest.raises(esolangs.TemplateError, match="template must be"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, None, [1, 0])  # type: ignore[arg-type]
+            esolangs.instantiate(TEMPLATE_LANGUAGE, None, [1, 0])

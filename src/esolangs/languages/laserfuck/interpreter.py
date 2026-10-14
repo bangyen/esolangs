@@ -64,6 +64,12 @@ _CELL_BITS = 32
 _CELL_MODULUS = 1 << _CELL_BITS
 _CELL_SIGN = 1 << (_CELL_BITS - 1)
 
+#: Beam headings: 0=up, 1=down, 2=left, 3=right.
+_UP, _DOWN, _LEFT, _RIGHT = range(4)
+
+#: Row/col deltas per heading, in the order above.
+_DELTAS = ((-1, 0), (1, 0), (0, -1), (0, 1))
+
 
 def _cell_value(value: int) -> int:
     """Return ``value`` in the tape's signed 32-bit range.
@@ -85,10 +91,35 @@ def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
     return put(tape, ptr, (_cell_value(value), touched))
 
 
-def _move(row: int, col: int, d: int, _rows: int) -> tuple[int, int]:
+def _move(row: int, col: int, d: int) -> tuple[int, int]:
     """Move without folding a skipped edge back into the grid."""
-    delta = ((-1, 0), (1, 0), (0, -1), (0, 1))[d]
+    delta = _DELTAS[d]
     return (row + delta[0], col + delta[1])
+
+
+def _mirror_slash(d: int) -> int:
+    """Reflect heading ``d`` off a ``/`` mirror (up<->right, down<->left)."""
+    return 3 - d
+
+
+def _mirror_backslash(d: int) -> int:
+    r"""Reflect heading ``d`` off a ``\`` mirror (up<->left, down<->right)."""
+    return (d + 2) % 4
+
+
+def _flip_vertical(d: int) -> int:
+    """Reverse a vertical heading (up<->down)."""
+    return 1 - d
+
+
+def _flip_horizontal(d: int) -> int:
+    """Reverse a horizontal heading (left<->right)."""
+    return 5 - d
+
+
+def _split_heading(d: int, split: int) -> int:
+    """Return the heading perpendicular to ``d``, chosen by ``split``."""
+    return 2 * (1 - d // 2) + split
 
 
 def _advance(
@@ -127,19 +158,19 @@ def _advance(
             ind %= len(lsrs)
         return (tape, ptr, lsrs, ind, jmp, pos)
     elif op == "*":
-        lsrs = (*lsrs, (row, col, 2 * (1 - d // 2) + split))
+        lsrs = (*lsrs, (row, col, _split_heading(d, split)))
     elif op in "_(":
-        if d < 2 and (get(tape, ptr)[0] != 0 or op == "_"):
-            d = 1 - d
+        if _UP <= d <= _DOWN and (get(tape, ptr)[0] != 0 or op == "_"):
+            d = _flip_vertical(d)
     elif op in "|)":
-        if d > 1 and (get(tape, ptr)[0] != 0 or op == "|"):
-            d = 5 - d
+        if _LEFT <= d <= _RIGHT and (get(tape, ptr)[0] != 0 or op == "|"):
+            d = _flip_horizontal(d)
     elif op == "/":
-        d = 3 - d
+        d = _mirror_slash(d)
     elif op in "^v{}":
         d = "^v{}".find(op)
     elif op == "\\":
-        d = (d + 2) % 4
+        d = _mirror_backslash(d)
     elif op == "+":
         tape = _write(tape, ptr, get(tape, ptr)[0] + 1, 1)
     elif op == "-":
@@ -292,15 +323,25 @@ class _Machine:
         lsrs = cast(_BranchState, state)[2]
         return lsrs is not None and not lsrs
 
+    def _read(self, row: int, col: int) -> str:
+        """Return the cell at ``(row, col)``, or ``"x"`` off the grid.
+
+        The grid is padded to a rectangle, so a beam reads ``"x"`` -- the
+        self-deleting command -- only once it leaves the text.
+        """
+        if 0 <= row < self.rows and 0 <= col < len(self.text[0]):
+            return self.text[row][col]
+        return "x"
+
     def branching_successors(
         self, state: object, _limit: int
     ) -> tuple[_BranchState, ...] | None:
         """Return the state for every draw this state could make.
 
-        Mirrors :meth:`step`, since the move, off-grid death and ``#`` skip
-        live there.  Fanout is two at ``*`` and four at the unplaced start.
-        ``,`` returns ``None`` (each branch would need its own input
-        cursor), so the caller reports undecided.
+        Shares the move, off-grid death and ``#`` skip with :meth:`step`.
+        Fanout is two at ``*`` and four at the unplaced start.  ``,``
+        returns ``None`` (each branch would need its own input cursor), so
+        the caller reports undecided.
         """
         tape, ptr, lsrs, ind, jmp = cast(_BranchState, state)
         if lsrs is None:
@@ -310,17 +351,13 @@ class _Machine:
             )
 
         row, col, d = lsrs[ind]
-        row, col = _move(row, col, d, self.rows)
+        row, col = _move(row, col, d)
 
         if ind in jmp:
             moved = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
             return ((tape, ptr, moved, (ind + 1) % len(moved), jmp - {ind}),)
 
-        op = (
-            self.text[row][col]
-            if 0 <= row < self.rows and 0 <= col < len(self.text[0])
-            else "x"
-        )
+        op = self._read(row, col)
         if op == ",":
             return None
 
@@ -374,7 +411,7 @@ class _Machine:
                 self._dumped = True
             return
         row, col, d = self.lsrs[self.ind]
-        row, col = _move(row, col, d, self.rows)
+        row, col = _move(row, col, d)
         self.pos = (row, col, d)
 
         if self.ind in self.jmp:
@@ -383,18 +420,15 @@ class _Machine:
             self.ind = (self.ind + 1) % len(self.lsrs)
             return
 
-        op = (
-            self.text[row][col]
-            if 0 <= row < self.rows and 0 <= col < len(self.text[0])
-            else "x"
-        )
+        op = self._read(row, col)
 
         byte = None
         if op == ",":
             byte = self.io.input_char()
             self._input_reads += 1
-        split = draw(self._rng, 2) if op == "*" else 0
+        split = 0
         if op == "*":
+            split = draw(self._rng, 2)
             self._draws += 1
 
         self._restore(_advance(self._state, op, row, col, d, byte, split))

@@ -20,6 +20,38 @@ from esolangs.registry._language import Language
 #: instruction adds.  One digit where the special zero ``-7`` spent two.
 _ADD = 7
 
+#: Memory layout.  Each instruction occupies ``_WORD`` consecutive cells, and
+#: every instruction word is four cells ``(a, b, c, d)``: ``a``/``b`` are the
+#: addends, ``c`` is the literal jump destination, and ``d`` is the
+#: conditional cell.  A jump destination of ``_WORD * i`` is therefore the
+#: first cell of instruction ``i``.
+_WORD = 4
+#: Operand offsets within one instruction word.
+_A_OPERAND, _B_OPERAND, _C_OPERAND = 0, 1, 2
+
+
+def _cell(instruction: int, operand: int = _A_OPERAND) -> int:
+    """Memory address of ``operand`` (default ``a``) of ``instruction``."""
+    return _WORD * instruction + operand
+
+
+class _TrampolineLabels:
+    """Hands out unique trampoline label pairs for ``branch_positive``.
+
+    An explicit allocator instead of a ``nonlocal`` counter: the label
+    counter is mutable allocator state, and the class makes its ownership
+    visible at the call site.
+    """
+
+    def __init__(self) -> None:
+        self._next = 0
+
+    def branch_pair(self) -> tuple[str, str]:
+        """Return the next ``(positive, zero)`` trampoline label pair."""
+        tag = self._next
+        self._next += 1
+        return f"branch_{tag}_positive", f"branch_{tag}_zero"
+
 
 type _Operand = int | str
 type _Instruction = tuple[_Operand, _Operand, _Operand, _Operand]
@@ -32,7 +64,7 @@ def _memory(
     names: list[str] | None = None,
 ) -> list[int]:
     """Resolve operands and literal jumps, allocating names in mention order."""
-    base = 4 * len(instructions)
+    base = _WORD * len(instructions)
     # A dict, not a list: list ``in`` + ``.index`` per operand was 2.4s of a
     # 3.8s six-input build.
     address = {
@@ -45,14 +77,13 @@ def _memory(
         return address[value] if isinstance(value, str) else value
 
     for i, (a, b, target, d) in enumerate(instructions):
-        c = (
-            4 * (i + 1)
-            if target == "next"
-            else 4 * targets[target]
-            if isinstance(target, str)
-            else target
-        )
-        memory[4 * i : 4 * i + 4] = [operand(a), operand(b), c, operand(d)]
+        if target == "next":
+            c = _cell(i + 1)
+        elif isinstance(target, str):
+            c = _cell(targets[target])
+        else:
+            c = target
+        memory[_cell(i) : _cell(i) + _WORD] = [operand(a), operand(b), c, operand(d)]
     for name, value in values.items():
         memory[address[name]] = value
     return memory
@@ -122,7 +153,7 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
         "R": 0,
         "OUT": _ASCII_ZERO,
     }
-    branch_id = 0
+    trampolines = _TrampolineLabels()
 
     def mark(name: str) -> None:
         labels[name] = len(instructions)
@@ -141,19 +172,15 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
 
     def branch_positive(cell: str, positive: str, zero: str) -> None:
         """Branch on ``cell > 0`` and restore the reusable jump cell."""
-        nonlocal branch_id
-        tag = branch_id
-        branch_id += 1
+        positive_trampoline, zero_trampoline = trampolines.branch_pair()
         at = len(instructions)
         # The jump cell is the ``c`` operand of the dispatch instruction
         # itself -- there is no indirect jump to hide it behind now.
-        jump_cell = 4 * (at + 1) + 2
-        positive_trampoline = f"branch_{tag}_positive"
-        zero_trampoline = f"branch_{tag}_zero"
+        jump_cell = _cell(at + 1, _C_OPERAND)
         emit(jump_cell, "FOUR", "next", cell)
         # The trampolines are two instructions apart; their midpoint is the
         # value from which adding/subtracting FOUR selects either one.
-        emit("ZERO", "ZERO", 4 * (at + 3))
+        emit("ZERO", "ZERO", _cell(at + 3))
         mark(positive_trampoline)
         emit(jump_cell, "FOUR", "next")
         emit("ZERO", "ZERO", positive)
@@ -231,7 +258,7 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
     memory = _memory(instructions, values, labels)
     # Advancing this instruction's destination advances LOAD_CHUNK's b
     # operand through the contiguous chunk cells.
-    memory[4 * load_operand_increment] = 4 * load_chunk + 1
+    memory[_cell(load_operand_increment)] = _cell(load_chunk, _B_OPERAND)
     return " ".join(map(str, memory))
 
 
@@ -259,7 +286,6 @@ def _addsubjump_ordered(
     perm: tuple[int, ...],
     *,
     shared: bool = False,
-    skip_equal: bool = True,
 ) -> str:
     """Emit one input order's AddSubJump program; see :func:`addsubjump`.
 
@@ -294,8 +320,10 @@ def _addsubjump_ordered(
 
     # The entry jumps over these two instruction-width data blocks.  Their
     # fixed addresses hold the operands repeated throughout the tree:
-    # D48=4, D49=5, U=6 and C48=8.  It adds U to itself, a no-op.
-    emit(6, 6, 12, _ADD)
+    # D48=4, D49=5, U=6 and C48=8.  The adds target U, instruction 1's own
+    # ``c`` operand, which nothing writes -- adding U to itself is a no-op.
+    u_cell = _cell(1, _C_OPERAND)
+    emit(u_cell, u_cell, _cell(3), _ADD)
     instructions += [(_ASCII_ZERO, _ASCII_ONE, 0, 0), (-_ASCII_ZERO, 0, 0, 0)]
 
     stored = stored_inputs(truth_table, perm)
@@ -312,7 +340,7 @@ def _addsubjump_ordered(
         bit = f"B{i}"
         values[bit] = 0
         emit(bit, -1, "next", _ADD)  # B += input byte (48/49)
-        emit(bit, 8, "next", _ADD)  # B += -48
+        emit(bit, _cell(2, _A_OPERAND), "next", _ADD)  # B += -48
         emit(bit, bit, "next", _ADD)  # double
         emit(bit, bit, "next", _ADD)  # double -> {0, 4}
 
@@ -329,7 +357,7 @@ def _addsubjump_ordered(
     def build(level: int, lo: int, hi: int, residual: int) -> None:
         if shared:
             if residual in seen:
-                emit(6, 6, seen[residual], _ADD)
+                emit(u_cell, u_cell, seen[residual], _ADD)
                 return
             label = f"R{residual}"
             seen[residual] = label
@@ -337,11 +365,11 @@ def _addsubjump_ordered(
         if constant(lo, hi):
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
-            emit(-1, 4 + int(truth_table[lo]), -8, _ADD)
+            emit(-1, _cell(1, _A_OPERAND) + int(truth_table[lo]), -8, _ADD)
             return
         half = (hi - lo) // 2
         if perm[level] not in stored or (
-            shared and skip_equal and children[residual][0] == children[residual][1]
+            shared and children[residual][0] == children[residual][1]
         ):
             # Reads already happened; this residual does not depend on the bit.
             build(level + 1, lo, lo + half, children[residual][0])
@@ -352,13 +380,14 @@ def _addsubjump_ordered(
         # destination the only computed jump is a self-modifying one.  It
         # rests on the zero trampoline two slots on, and ``B`` (0 or 4) moves
         # it to the one trampoline.
-        jump = 4 * (base + 1) + 2
+        jump = _cell(base + 1, _C_OPERAND)
         emit(jump, bit, "next", _ADD)  # c of the goto += B, the hoisted bit
-        emit(6, 6, 4 * (base + 2), _ADD)  # goto, rests on the zero trampoline
+        # Goto: rests on the zero trampoline.
+        emit(u_cell, u_cell, _cell(base + 2), _ADD)
         ztarget = f"Z{base}"
         otarget = f"O{base}"
-        emit(6, 6, ztarget, _ADD)  # zero trampoline
-        emit(6, 6, otarget, _ADD)  # one trampoline
+        emit(u_cell, u_cell, ztarget, _ADD)  # zero trampoline
+        emit(u_cell, u_cell, otarget, _ADD)  # one trampoline
         targets[ztarget] = len(instructions)
         build(level + 1, lo, lo + half, children[residual][0])
         targets[otarget] = len(instructions)

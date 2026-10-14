@@ -1,16 +1,18 @@
 """Exact root recovery for the Polynomial interpreter.
 
-:mod:`.polynomial` reads instructions off the roots of a program; this finds
-them.  Primality is proven in every range (:func:`_is_proven_prime`), the
-two peels divide out what an instruction can encode, and the rest goes to
-``p``-adic lifting and a 2-D lattice (:func:`_dense_gaussian_roots`), so a
-cold parse is polynomial in the source length for every source.
+:mod:`esolangs.languages.polynomial.interpreter` reads instructions off the
+roots of a program; this finds them.  Primality is proven in every range
+(:func:`_is_proven_prime`), the two peels divide out what an instruction can
+encode, and the rest goes to ``p``-adic lifting and a 2-D lattice
+(:func:`_dense_gaussian_roots`), so a cold parse is polynomial in the source
+length for every source.
 """
 
 import functools
 import math
 import re
 from collections.abc import Callable, Iterable, Iterator
+from itertools import islice
 from typing import Any, NamedTuple
 
 try:
@@ -148,10 +150,26 @@ def _aks(number: int) -> bool:
     if number < 2:
         return False
     bits = number.bit_length()
-    for exponent in range(2, bits + 1):
-        if _integer_root(number, exponent) ** exponent == number:
-            return False
+    if any(
+        _integer_root(number, exponent) ** exponent == number
+        for exponent in range(2, bits + 1)
+    ):
+        return False
     square = bits * bits
+    modulus = _aks_modulus(number, square)
+    if any(
+        1 < math.gcd(base, number) < number
+        for base in range(2, min(modulus, number - 1) + 1)
+    ):
+        return False
+    if number <= modulus:
+        return True
+    limit = math.isqrt(_totient(modulus) * square)
+    return all(_aks_congruence(number, modulus, base) for base in range(1, limit + 1))
+
+
+def _aks_modulus(number: int, square: int) -> int:
+    """Return the least ``r`` coprime to ``number`` with ``ord_r(number) > square``."""
     modulus = 2
     while True:
         if math.gcd(modulus, number) == 1:
@@ -160,35 +178,30 @@ def _aks(number: int) -> bool:
                 value = value * number % modulus
                 order += 1
             if order > square:
-                break
+                return modulus
         modulus += 1
-    for base in range(2, min(modulus, number - 1) + 1):
-        if 1 < math.gcd(base, number) < number:
-            return False
-    if number <= modulus:
-        return True
-    limit = math.isqrt(_totient(modulus) * square)
-    shift = number % modulus
-    for base in range(1, limit + 1):
-        # (x + base)**number modulo (x**modulus - 1, number), square-and-multiply.
-        power = [0] * modulus
-        power[0] = 1
-        factor = [0] * modulus
-        factor[0] = base % number
-        factor[1 % modulus] += 1
-        exponent = number
-        while exponent:
-            if exponent & 1:
-                power = _cyclic_mul(power, factor, number)
-            exponent >>= 1
-            if exponent:
-                factor = _cyclic_mul(factor, factor, number)
-        expected = [0] * modulus
-        expected[shift] = 1
-        expected[0] = (expected[0] + base) % number
-        if power != expected:
-            return False
-    return True
+
+
+def _aks_congruence(number: int, modulus: int, base: int) -> bool:
+    """Whether ``(x + a)**n == x**n + a`` mod ``(x**r - 1, n)``, for ``a = base``."""
+    # Square-and-multiply over the cyclic coefficient array.
+    power = [0] * modulus
+    power[0] = 1
+    factor = [0] * modulus
+    factor[0] = base % number
+    # The x term of (x + base): slot 1, wrapped for the cyclic array.
+    factor[1 % modulus] += 1
+    exponent = number
+    while exponent:
+        if exponent & 1:
+            power = _cyclic_mul(power, factor, number)
+        exponent >>= 1
+        if exponent:
+            factor = _cyclic_mul(factor, factor, number)
+    expected = [0] * modulus
+    expected[number % modulus] = 1
+    expected[0] = (expected[0] + base) % number
+    return power == expected
 
 
 #: Largest exponent a real instruction's root can carry, from the
@@ -257,8 +270,23 @@ _NTT_FIELDS = ((163841, 5, 15, 3), (65537, 1, 16, 3))
 #: division over multi-thousand-digit coefficients.
 _TRIAL_MODULUS = (1 << 61) - 1
 
+#: The lattice argument needs ``P > _LATTICE_MARGIN * B**2`` for Cauchy's root
+#: bound ``B``: minimum ``sqrt(P)`` then exceeds ``sqrt(16/3) * B`` with room,
+#: which forces both nearest-plane roundings (``docs/proofs/index.md``).
+_LATTICE_MARGIN = 16
+
 #: Nonzero bytes in a packed root mask; see :func:`_iter_bits`.
 _NONZERO_BYTE = re.compile(rb"[^\x00]")
+
+
+def _first_primes(count: int) -> Iterator[int]:
+    """Yield the first ``count`` primes; ``primerange(2, n*n + 3)`` holds > ``n``."""
+    return islice(_require_sympy().primerange(2, count * count + 3), count)
+
+
+def _peel_prime_count(degree: int) -> int:
+    """How many primes the peels enumerate for a polynomial of ``degree``."""
+    return max(1, degree * _PEEL_PRIME_SLACK)
 
 
 def _ntt_radix2(vec: list[int], modulus: int, root: int) -> list[int]:
@@ -364,7 +392,6 @@ def _quadratic_candidates_ntt(
     Spurious pairs survive at the product of the densities (~0.2% on dense
     n=10) and die in trial division.
     """
-    sp = _require_sympy()
     field_data = []
     for (modulus, _, _, generator), roots in zip(_NTT_FIELDS, root_sets, strict=True):
         mask = 0
@@ -373,41 +400,52 @@ def _quadratic_candidates_ntt(
         field_data.append(
             (modulus, pow(generator, (modulus - 1) // 4, modulus), roots, mask)
         )
-    for index, base in enumerate(  # pragma: no branch - ends on the break
-        sp.primerange(2, prime_count * prime_count + 3)
-    ):
-        if index >= prime_count:
-            break
-        candidates: set[tuple[int, int]] = set()
+    for base in _first_primes(prime_count):
         # If the instruction prime equals one field, its conjugate roots
         # coincide there.  Pair in the other field and use the collision as
         # the cross-check; every generated prime is therefore recoverable.
         primary = 1 if base == field_data[0][0] else 0
-        m0, i0, _roots0, mask0 = field_data[primary]
-        m1, i1, roots1, _mask1 = field_data[1 - primary]
-        full = (1 << m0) - 1
-        power0 = base % m0
-        power1 = base % m1
-        square = base * base
-        for _exponent in range(_PEEL_MAX_IMAGINARY_EXPONENT):
-            delta = 2 * i0 * power0 % m0
-            rotated = ((mask0 << delta) | (mask0 >> (m0 - delta))) & full
-            hits = mask0 & rotated
-            if hits:
-                offset0 = i0 * power0 % m0
-                offset1 = i1 * power1 % m1
-                for r in _iter_bits(hits, m0):
-                    residue = (r - offset0) % m0
-                    first = residue + ((-real_bound - residue + m0 - 1) // m0) * m0
-                    for real in range(first, real_bound + 1, m0):
-                        if (real + offset1) % m1 in roots1 and (
-                            real - offset1
-                        ) % m1 in roots1:
-                            candidates.add((real, square))
-            power0 = power0 * base % m0
-            power1 = power1 * base % m1
-            square *= base * base
-        yield from sorted(candidates)
+        yield from sorted(
+            _ntt_pairs(base, field_data[primary], field_data[1 - primary], real_bound)
+        )
+
+
+def _ntt_pairs(
+    base: int,
+    paired: tuple[int, int, set[int], int],
+    check: tuple[int, int, set[int], int],
+    real_bound: int,
+) -> set[tuple[int, int]]:
+    """Return ``(a, base**(2*b))`` candidates: paired, then checked.
+
+    Each field is ``(modulus, sqrt(-1), roots, root bitmask)``.
+    """
+    m0, i0, _roots0, mask0 = paired
+    m1, i1, roots1, _mask1 = check
+    candidates: set[tuple[int, int]] = set()
+    full = (1 << m0) - 1
+    power0 = base % m0
+    power1 = base % m1
+    square = base * base
+    for _exponent in range(_PEEL_MAX_IMAGINARY_EXPONENT):
+        delta = 2 * i0 * power0 % m0
+        rotated = ((mask0 << delta) | (mask0 >> (m0 - delta))) & full
+        hits = mask0 & rotated
+        if hits:
+            offset0 = i0 * power0 % m0
+            offset1 = i1 * power1 % m1
+            for r in _iter_bits(hits, m0):
+                residue = (r - offset0) % m0
+                first = residue + ((-real_bound - residue + m0 - 1) // m0) * m0
+                for real in range(first, real_bound + 1, m0):
+                    if (real + offset1) % m1 in roots1 and (
+                        real - offset1
+                    ) % m1 in roots1:
+                        candidates.add((real, square))
+        power0 = power0 * base % m0
+        power1 = power1 * base % m1
+        square *= base * base
+    return candidates
 
 
 def _ntt_real_bound(degree: int) -> int:
@@ -421,36 +459,6 @@ def _ntt_real_bound(degree: int) -> int:
     the acceptance test.
     """
     return max(_NTT_FIELDS[0][0] // 2, degree * degree)
-
-
-def _divide_quadratic_mod(
-    coefficients: list[int], real: int, square: int
-) -> list[int] | None:
-    """:func:`_divide_quadratic` over GF(:data:`_TRIAL_MODULUS`).
-
-    The screen: ``None`` means the exact division cannot succeed either.
-    """
-    modulus = _TRIAL_MODULUS
-    b1 = -2 * real % modulus
-    b0 = (real * real + square) % modulus
-    size = len(coefficients)
-    quotient: list[int] = []
-    for index in range(size - 2):
-        value = coefficients[index]
-        if index >= 1:
-            value -= b1 * quotient[index - 1]
-        if index >= 2:
-            value -= b0 * quotient[index - 2]
-        quotient.append(value % modulus)
-    linear = (coefficients[size - 2] - b1 * quotient[size - 3]) % modulus
-    if size >= 4:
-        linear = (linear - b0 * quotient[size - 4]) % modulus
-    if linear:
-        return None
-    constant = (coefficients[size - 1] - b0 * quotient[size - 3]) % modulus
-    if constant:
-        return None
-    return quotient
 
 
 def _divide_out_quadratics(
@@ -467,7 +475,9 @@ def _divide_out_quadratics(
     ordered = sorted(candidates) if isinstance(candidates, set) else candidates
     for real, square in ordered:
         while len(remainder) >= 3:
-            quotient_mod = _divide_quadratic_mod(remainder_mod, real, square)
+            quotient_mod = _divide_quadratic(
+                remainder_mod, real, square, _TRIAL_MODULUS
+            )
             if quotient_mod is None:
                 break
             quotient = _divide_quadratic(remainder, real, square)
@@ -482,15 +492,20 @@ def _divide_out_quadratics(
 
 
 def _divide_quadratic(
-    coefficients: list[int], real: int, square: int
+    coefficients: list[int], real: int, square: int, modulus: int | None = None
 ) -> list[int] | None:
     """Divide by ``(x - real)**2 + square`` exactly, or report that it does not.
 
     Long division on the integer coefficient list; a ``Poly`` division at
     this degree costs orders of magnitude more.  ``None`` on a remainder.
+    With a ``modulus`` it is the screen over that field: ``None`` there
+    means the exact division cannot succeed either.
     """
     b1 = -2 * real
     b0 = real * real + square
+    if modulus is not None:
+        b1 %= modulus
+        b0 %= modulus
     size = len(coefficients)
     if size < 3:
         return None
@@ -501,16 +516,17 @@ def _divide_quadratic(
             value -= b1 * quotient[index - 1]
         if index >= 2:
             value -= b0 * quotient[index - 2]
-        quotient.append(value)
+        quotient.append(value if modulus is None else value % modulus)
     # Both remainder positions have to vanish for this to be a factor.
     # ``size >= 3`` from the guard above, so that much always applies.
     linear = coefficients[size - 2] - b1 * quotient[size - 3]
     if size >= 4:
         linear -= b0 * quotient[size - 4]
-    if linear:
-        return None
     constant = coefficients[size - 1] - b0 * quotient[size - 3]
-    if constant:
+    if modulus is not None:
+        linear %= modulus
+        constant %= modulus
+    if linear or constant:
         return None
     return quotient
 
@@ -530,38 +546,48 @@ def _peel_instruction_quadratics(
     """
     if len(coefficients) < 3:
         return [], coefficients
+    roots = _roots_in_peel_field(coefficients)
+    if not roots:
+        return [], coefficients
+    prime_count = _peel_prime_count(len(coefficients) - 1)
+    return _divide_out_quadratics(
+        coefficients, _quadratic_candidates_mod(roots, prime_count)
+    )
 
+
+def _roots_in_peel_field(coefficients: list[int]) -> set[int]:
+    """Return the roots of the polynomial in GF(:data:`_PEEL_MODULUS`).
+
+    Empty when the field factorization fails: it is the whole search, and the
+    caller's remainder search still sees everything.
+    """
     sp = _require_sympy()
     modulus = _PEEL_MODULUS
-    x = sp.Symbol("x")
     try:
-        field_poly = sp.Poly(coefficients, x, domain=sp.GF(modulus))
+        field_poly = sp.Poly(coefficients, sp.Symbol("x"), domain=sp.GF(modulus))
         _content, field_factors = field_poly.factor_list()
     except (sp.PolynomialError, NotImplementedError, ValueError):
-        # The field factorization is the whole search; without it there is
-        # nothing to peel and the caller's factor_list still sees everything.
-        return [], coefficients
-
+        return set()
     roots: set[int] = set()
     for factor, _multiplicity in field_factors:
         if factor.degree() != 1:
             continue
         lead, constant = (int(k) % modulus for k in factor.all_coeffs())
         roots.add((-constant * pow(lead, -1, modulus)) % modulus)
-    if not roots:
-        return [], coefficients
+    return roots
 
-    # One instruction is at least two degrees, so the degree bounds the
-    # primes a program of this size can have reached.
-    prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
+
+def _quadratic_candidates_mod(
+    roots: set[int], prime_count: int
+) -> set[tuple[int, int]]:
+    """Propose ``(a, p**(2*b))`` from roots mod :data:`_PEEL_MODULUS`.
+
+    A pair of roots ``a ± sqrt(-q)`` marks each candidate ``q``.
+    """
+    sp = _require_sympy()
+    modulus = _PEEL_MODULUS
     candidates: set[tuple[int, int]] = set()
-    # `primerange(2, n*n + 3)` always holds more than `n` primes, so the loop
-    # leaves on the `break` and never by running out.
-    for index, base in enumerate(  # pragma: no branch
-        sp.primerange(2, prime_count * prime_count + 3)
-    ):
-        if index >= prime_count:
-            break
+    for base in _first_primes(prime_count):
         for exponent in range(1, _PEEL_MAX_IMAGINARY_EXPONENT + 1):
             square = base ** (2 * exponent)
             root_of_negative = sp.sqrt_mod((-square) % modulus, modulus)
@@ -583,8 +609,7 @@ def _peel_instruction_quadratics(
                 if abs(real) > _PEEL_MAX_REAL_PART:
                     continue
                 candidates.add((real, square))
-
-    return _divide_out_quadratics(coefficients, candidates)
+    return candidates
 
 
 def _peel_prime_power_roots(
@@ -599,14 +624,9 @@ def _peel_prime_power_roots(
     At large degree the ``screen`` (root of the original mod the NTT fields)
     gates the Horner: 14.6K probes -> ~170 on dense n=8, 48.7s -> under 1s.
     """
-    sp = _require_sympy()
     found: list[int] = []
-    limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
-    # As above: the range always outlasts `limit`, so this ends on the `break`.
-    for prime_index, base in enumerate(  # pragma: no branch
-        sp.primerange(2, limit * limit + 3)
-    ):
-        if prime_index >= limit or len(coefficients) <= 1:
+    for base in _first_primes(_peel_prime_count(len(coefficients) - 1)):
+        if len(coefficients) <= 1:
             break
         candidate = base
         for _exponent in range(_PEEL_MAX_EXPONENT):
@@ -857,38 +877,27 @@ def _dense_gaussian_roots(coefficients: list[int]) -> set[_Gaussian]:
     Deterministic and polynomial time, no factorization over ``Z``: take the
     squarefree part; pick the least prime ``p = 1 (mod 4)`` that keeps it
     squarefree of full degree; find its roots mod ``p`` by exhausting GF(p)
-    (``p`` is polynomially bounded); Hensel-lift each to ``P = p**k > 16
-    B**2`` with ``B`` Cauchy's root bound; a root ``a + c i`` maps to
+    (``p`` is polynomially bounded); Hensel-lift each to ``P = p**k >
+    16 B**2`` (:data:`_LATTICE_MARGIN`) with ``B`` Cauchy's root bound; a root
+    ``a + c i`` maps to
     ``a + c*iota`` for a fixed ``iota = sqrt(-1) mod P``, so ``(a, c)`` is the
     short vector of a coset of ``{(u, v): u + v*iota = 0 (mod P)}`` --
     determinant ``P``, minimum at least ``sqrt(P)`` -- and nearest-plane
     rounding on a reduced basis returns it.  Every candidate is checked by
     exact evaluation, so the set is exactly the roots.
     """
-    sp = _require_sympy()
-    start = 0
-    while start < len(coefficients) and not coefficients[start]:
-        start += 1
-    stop = len(coefficients)
-    while stop > start and not coefficients[stop - 1]:
-        stop -= 1
-    poly = coefficients[start:stop]
+    poly = _trim_zeros(coefficients)
     if len(poly) < 2:
         return set()
     # ``poly`` has a nonzero lead and degree >= 1, so its squarefree part does too.
+    sp = _require_sympy()
     squarefree = [int(k) for k in sp.Poly(poly, sp.Symbol("x")).sqf_part().all_coeffs()]
-    lead = abs(poly[0])
-    bound = 1 + -(-max(abs(k) for k in poly[1:]) // lead)
     base = _root_prime(squarefree)
     residues = [r for r in range(base) if not _value_mod(squarefree, r, base)]
     if not residues:
         return set()
-    modulus = base
-    while modulus <= 16 * bound * bound:
-        modulus *= base
-    iota = next(r for r in range(2, base) if (r * r + 1) % base == 0)
-    (iota,) = _hensel_lift([1, 0, 1], [iota], base, modulus)
-    basis = _gauss_reduce((modulus, 0), ((-iota) % modulus, 1))
+    modulus = _lift_modulus(poly, base)
+    basis = _gaussian_lattice_basis(base, modulus)
     terms = [(len(poly) - 1 - i, k) for i, k in enumerate(poly) if k][::-1]
     found: set[_Gaussian] = set()
     for lifted in _hensel_lift(squarefree, residues, base, modulus):
@@ -896,6 +905,42 @@ def _dense_gaussian_roots(coefficients: list[int]) -> set[_Gaussian]:
         if candidate != (0, 0) and _sparse_value(terms, candidate) == (0, 0):
             found.add(candidate)
     return found
+
+
+def _trim_zeros(coefficients: list[int]) -> list[int]:
+    """Drop the leading and trailing zeros of a descending coefficient list."""
+    start = 0
+    while start < len(coefficients) and not coefficients[start]:
+        start += 1
+    stop = len(coefficients)
+    while stop > start and not coefficients[stop - 1]:
+        stop -= 1
+    return coefficients[start:stop]
+
+
+def _lift_modulus(poly: list[int], base: int) -> int:
+    """Return the least power of ``base`` above ``_LATTICE_MARGIN * B**2``.
+
+    ``B`` is Cauchy's bound on the roots' absolute value.
+    """
+    lead = abs(poly[0])
+    bound = 1 + -(-max(abs(k) for k in poly[1:]) // lead)
+    modulus = base
+    while modulus <= _LATTICE_MARGIN * bound * bound:
+        modulus *= base
+    return modulus
+
+
+def _gaussian_lattice_basis(
+    base: int, modulus: int
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Reduced basis of ``{(u, v): u + v*iota = 0 (mod modulus)}``.
+
+    ``iota`` is ``sqrt(-1)`` mod ``base`` lifted to ``modulus``.
+    """
+    iota = next(r for r in range(2, base) if (r * r + 1) % base == 0)
+    (iota,) = _hensel_lift([1, 0, 1], [iota], base, modulus)
+    return _gauss_reduce((modulus, 0), ((-iota) % modulus, 1))
 
 
 def _sparse_roots(terms: dict[int, int]) -> list[_Root]:
@@ -992,49 +1037,47 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     """
     _require_sympy()
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
-        from esolangs.languages.polynomial.generator.resources import (
-            estimate_cold_parse,
-        )
-
-        estimate = estimate_cold_parse(list(coefficients))
-        root_sets = tuple(_roots_mod(list(coefficients), f) for f in _NTT_FIELDS)
-
-        def in_every_field(candidate: int) -> bool:
-            return all(
-                candidate % field[0] in roots
-                for field, roots in zip(_NTT_FIELDS, root_sets, strict=True)
-            )
-
-        peeled, remainder = _peel_prime_power_roots(list(coefficients), in_every_field)
-        roots = [_Root(root, 0) for root in peeled]
-        if len(remainder) > 1:
-            prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
-            # Streaming stops the prime window once exact division consumes
-            # the source; dense n=8 otherwise times out collecting unused pairs.
-            candidates = _quadratic_candidates_ntt(
-                prime_count,
-                (root_sets[0], root_sets[1]),
-                estimate.real_lift_bound,
-            )
-            quadratics, remainder = _divide_out_quadratics(remainder, candidates)
-        else:
-            quadratics = []
+        peeled, quadratics, remainder = _peel_screened(list(coefficients))
     else:
         peeled, remainder = _peel_prime_power_roots(list(coefficients))
-        roots = [_Root(root, 0) for root in peeled]
+        quadratics = []
         if len(remainder) > 1:
             quadratics, remainder = _peel_instruction_quadratics(remainder)
-        else:
-            quadratics = []
-
+    roots = [_Root(root, 0) for root in peeled]
     for real, square in quadratics:
         imaginary = math.isqrt(square)
         roots.extend([_Root(real, imaginary), _Root(real, -imaginary)])
-    if len(remainder) <= 1:
-        return tuple(roots)
-
     roots.extend(_remainder_roots(remainder))
     return tuple(roots)
+
+
+def _peel_screened(
+    coefficients: list[int],
+) -> tuple[list[int], list[tuple[int, int]], list[int]]:
+    """Both peels with candidates screened through the NTT fields' root sets.
+
+    Returns ``(real roots, quadratics, remainder)``.
+    """
+    root_sets = tuple(_roots_mod(coefficients, f) for f in _NTT_FIELDS)
+
+    def in_every_field(candidate: int) -> bool:
+        return all(
+            candidate % field[0] in roots
+            for field, roots in zip(_NTT_FIELDS, root_sets, strict=True)
+        )
+
+    peeled, remainder = _peel_prime_power_roots(list(coefficients), in_every_field)
+    quadratics: list[tuple[int, int]] = []
+    if len(remainder) > 1:
+        # Streaming stops the prime window once exact division consumes
+        # the source; dense n=8 otherwise times out collecting unused pairs.
+        candidates = _quadratic_candidates_ntt(
+            _peel_prime_count(len(coefficients) - 1),
+            (root_sets[0], root_sets[1]),
+            _ntt_real_bound(len(coefficients) - 1),
+        )
+        quadratics, remainder = _divide_out_quadratics(remainder, candidates)
+    return peeled, quadratics, remainder
 
 
 def _find_roots(coefficients: list[int]) -> list[_Root]:

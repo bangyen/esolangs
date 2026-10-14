@@ -34,7 +34,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import balance_score
+from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -67,7 +67,7 @@ def crement(truth_table: str, width: int | None = None) -> str:
     tester data is filled.
     """
     template = in_input_order(truth_table, _crement_shared)
-    if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
+    if width is None or width <= 0 or grid_width(template) <= width:
         return template
     return _narrow(template, width)
 
@@ -88,9 +88,7 @@ def _narrow(template: str, width: int) -> str:
         narrowed = narrowed.replace(
             TEMPLATE_CHAR * len(PAIR[0]), f"+J 0 {TEMPLATE_CHAR}"
         )
-    if max(map(len, narrowed.splitlines())) > width:
-        from esolangs.generation.wrap import wrap_space_delimited
-
+    if grid_width(narrowed) > width:
         return wrap_space_delimited(narrowed, width)
     return narrowed
 

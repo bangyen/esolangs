@@ -258,7 +258,7 @@ def _check_loops(failures: list[str]) -> int:
     return count
 
 
-def _check_routing(failures: list[str]) -> int:
+def _check_routing(failures: list[str]) -> int:  # noqa: C901
     """Pin the executed facts behind the routing lemma."""
     from esolangs.languages.polynomial.generator import polynomial
     from esolangs.languages.polynomial.interpreter import _advance, _bracket_pairs
@@ -384,7 +384,7 @@ def _check_routing(failures: list[str]) -> int:
     return count
 
 
-def _check_routing_bound(failures: list[str]) -> int:
+def _check_routing_bound(failures: list[str]) -> int:  # noqa: C901
     """Pin the facts around the sharpened routing bound."""
     from esolangs.languages.polynomial.interpreter import (
         _COND,

@@ -89,13 +89,13 @@ from esolangs.languages.packlang.interpreter._parse import (
     _PRINT,
     _READ,
     _VALUE,
-    _Expr,
     _Function,
     _parse,
     _Program,
     _Type,
 )
 from esolangs.languages.packlang.interpreter._scope import _visible
+from esolangs.languages.packlang.interpreter._types import _Expr, _Store
 from esolangs.languages.packlang.interpreter._values import (
     _get,
     _int,
@@ -110,13 +110,7 @@ from esolangs.runtime.io import IO
 # recursing natively, so a runaway program grows the frame list on the
 # heap and never touches Python's stack.  That class revisits no state, so
 # it is what ``esolangs.run``'s wall-clock ``timeout`` is for -- the same
-# reasoning ``grapheme.py`` and ``function_x_y.py`` record.
-
-
-#: One variable: its name and its value.  Arrays hold a tuple of values;
-#: scalars a single int.
-type _Slot = tuple[str, object]
-type _Store = tuple[_Slot, ...]
+# reasoning ``grapheme.py`` records.
 
 
 @dataclass(frozen=True)
@@ -146,7 +140,7 @@ class _Frame:
 type _State = tuple[_Frame, ...]
 
 
-def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
+def _evaluate(node: _Expr, store: _Store) -> int:
     """Return the value of an expression, which contains no unresolved call.
 
     Pure with respect to the store, and no longer recursive through a
@@ -174,18 +168,18 @@ def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int
             )
         return len(value)
     if kind == "xor":
-        left = _evaluate(_node(node[1]), store, program, caller)
-        right = _evaluate(_node(node[2]), store, program, caller)
+        left = _evaluate(_node(node[1]), store)
+        right = _evaluate(_node(node[2]), store)
         return left ^ right
     if kind == "not":
-        value = _evaluate(_node(node[1]), store, program, caller)
+        value = _evaluate(_node(node[1]), store)
         return 0 if _truth(value) else 1
     if kind == "apply":
-        return _apply(node, store, program, caller)
+        return _apply(node, store)
     raise HaltError(f"cannot evaluate {kind!r}")
 
 
-def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
+def _apply(node: _Expr, store: _Store) -> int:
     """Evaluate an array index.  A function call never reaches here.
 
     Indexing and calling look alike in the grammar, and the store decides
@@ -206,7 +200,7 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
             f"indexing {name!r} takes exactly one index",
             hint="supply exactly one index when accessing an array",
         )
-    index = _evaluate(args[0], store, program, caller)
+    index = _evaluate(args[0], store)
     if not 0 <= index < len(value):
         raise HaltError(
             f"index {index} is outside {name!r}",
@@ -215,9 +209,7 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
     return _int(value[index])
 
 
-def _pending_call(
-    node: _Expr, store: _Store, program: _Program, caller: str
-) -> _Expr | None:
+def _pending_call(node: _Expr, store: _Store) -> _Expr | None:
     """Return the call :func:`_evaluate` would reach first, or None.
 
     Leftmost-innermost, which is ``_evaluate``'s own order: a call's own
@@ -232,15 +224,15 @@ def _pending_call(
     if kind in ("lit", "done", "var", "length"):
         return None
     if kind == "not":
-        return _pending_call(_node(node[1]), store, program, caller)
+        return _pending_call(_node(node[1]), store)
     if kind == "xor":
-        return _pending_call(_node(node[1]), store, program, caller) or _pending_call(
-            _node(node[2]), store, program, caller
+        return _pending_call(_node(node[1]), store) or _pending_call(
+            _node(node[2]), store
         )
     if kind != "apply":
         return None
     for arg in _node(node[2]):
-        found = _pending_call(_node(arg), store, program, caller)
+        found = _pending_call(_node(arg), store)
         if found is not None:
             return found
     name = str(node[1])
@@ -326,14 +318,14 @@ def _initial_store(func: _Function, program: _Program) -> _Store:
 
 
 def _type_of(name: str, func: _Function, program: _Program) -> _Type:
-    return func.locals.get(name) or program.types.get((func.package, name)) or _Type()
+    return func.locals.get(name) or program.globals.get((func.package, name)) or _Type()
 
 
 def _statement(
     frame: _Frame,
     program: _Program,
     byte: int | None,
-    stmt: tuple[object, ...] | None = None,
+    stmt: tuple[object, ...],
 ) -> tuple[_Frame, str | None, bool]:
     """Return the frame after one statement, any output, and whether to read.
 
@@ -342,54 +334,28 @@ def _statement(
     shell calls back with the byte in ``byte`` -- so the transition stays a
     function of its arguments and the two ports remain the shell's.
     """
-    if stmt is None:  # pragma: no cover - both call sites pass `prepared`
-        stmt = frame.func.body[frame.pc]
     op = stmt[0]
     store = frame.store
-    # Name resolution is done from the running function's own package.
-    package = frame.func.package
     pc = frame.pc + 1
     out: str | None = None
     result = frame.result
 
     if op == _PRINT:
-        value = _evaluate(_node(stmt[1]), store, program, package)
+        value = _evaluate(_node(stmt[1]), store)
         out = chr(value % 256)
     elif op == _READ:
         if byte is None:
             return frame, None, True
-        store = _write(
-            store,
-            program,
-            str(stmt[1]),
-            stmt[2],
-            lambda _old: byte,
-            package,
-        )
+        store = _write(store, str(stmt[1]), stmt[2], lambda _old: byte)
     elif op == _INIT:
         kind = _type_of(str(stmt[1]), frame.func, program)
-        store = _write(
-            store,
-            program,
-            str(stmt[1]),
-            stmt[2],
-            lambda _o: kind.low,
-            package,
-            whole=kind,
-        )
+        store = _write(store, str(stmt[1]), stmt[2], lambda _o: kind.low, whole=kind)
     elif op in (_INCR, _DECR):
         step = 1 if op == _INCR else -1
         kind = _type_of(str(stmt[1]), frame.func, program)
-        store = _write(
-            store,
-            program,
-            str(stmt[1]),
-            stmt[2],
-            lambda old: kind.clamp(old + step),
-            package,
-        )
+        store = _write(store, str(stmt[1]), stmt[2], lambda old: kind.clamp(old + step))
     elif op == _JUMP_UNLESS:
-        guard = _evaluate(_node(stmt[1]), store, program, package)
+        guard = _evaluate(_node(stmt[1]), store)
         if not _truth(guard):
             pc = _int(stmt[2])
     elif op == _JUMP:
@@ -397,7 +363,7 @@ def _statement(
     # Every opcode the parser emits has an arm above, so the chain is
     # exhaustive and this last test never falls through.
     elif op == _VALUE:  # pragma: no branch
-        result = _evaluate(_node(stmt[1]), store, program, package)
+        result = _evaluate(_node(stmt[1]), store)
 
     return (
         replace(frame, store=store, pc=pc, result=result, pending=None, returned=None),
@@ -408,11 +374,9 @@ def _statement(
 
 def _write(
     store: _Store,
-    program: _Program,
     name: str,
     index: object,
     update: Callable[[int], int],
-    caller: str,
     whole: _Type | None = None,
 ) -> _Store:
     """Apply ``update`` to a variable or one array element.
@@ -429,7 +393,7 @@ def _write(
                 f"{name!r} is an array and needs an index",
                 hint="supply an index when assigning an array element",
             )
-        at = _evaluate(_node(index), store, program, caller)
+        at = _evaluate(_node(index), store)
         if not 0 <= at < len(value):
             raise HaltError(
                 f"index {at} is outside {name!r}",
@@ -470,17 +434,15 @@ def _expression_of(stmt: tuple[object, ...]) -> _Expr | None:
 def _resolved(frame: _Frame) -> tuple[object, ...]:
     """Return the statement to run: the parsed one, or the resolved copy.
 
-    Handing the rewritten *statement* to :func:`_advance` rather than
+    Handing the rewritten *statement* to :func:`_statement` rather than
     rebuilding the function keeps the parsed program untouched -- it is
     shared by every frame and by each lap of a ``While``.
     """
     stmt = frame.func.body[frame.pc]
     if frame.pending is None:
         return stmt
-    slot = _EXPR_SLOT.get(str(stmt[0]))
-    if slot is None:  # pragma: no cover - only _JUMP lacks a slot, and a
-        # jump never has a pending call, so the check above returns first
-        return stmt
+    # A pending call came from this statement's expression, so it has a slot.
+    slot = _EXPR_SLOT[str(stmt[0])]
     parts = list(stmt)
     parts[slot] = frame.pending
     return tuple(parts)
@@ -494,21 +456,18 @@ def _resolve(frame: _Frame, program: _Program) -> tuple[_Frame, _Frame | None]:
     working = frame.pending if frame.pending is not None else expr
     package = frame.func.package
     if frame.returned is not None:
-        call = _pending_call(working, frame.store, program, package)
+        call = _pending_call(working, frame.store)
         # A value is waiting only because a call was found and stepped,
         # so the same search finds it again here.
         if call is not None:  # pragma: no branch
             working = _substitute(working, call, frame.returned)
         frame = replace(frame, returned=None)
-    call = _pending_call(working, frame.store, program, package)
-    if call is None:
-        frame = replace(frame, pending=working)
-        return frame, None
+    call = _pending_call(working, frame.store)
     frame = replace(frame, pending=working)
+    if call is None:
+        return frame, None
     func = _callee(call, program, package)
-    values = [
-        _evaluate(_node(arg), frame.store, program, package) for arg in _node(call[2])
-    ]
+    values = [_evaluate(_node(arg), frame.store) for arg in _node(call[2])]
     return frame, _entered(func, values, program)
 
 
@@ -532,6 +491,40 @@ def _advance(
     return (*callers[:-1], result), output, wants_read
 
 
+def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
+    """Return the parsed program as a hashable, order-canonical key.
+
+    :meth:`_Machine.snapshot` carries this so a repeated state proves a
+    loop; the key identifies the whole program -- every function with its
+    package, parameters, body, callees, and local types, plus the
+    dependency graph and the globals -- while saying nothing about how
+    the run has proceeded.  Every mapping is sorted by name before it is
+    packed, so the key is canonical: the same program always yields the
+    same key regardless of declaration order.
+    """
+    return (
+        tuple(
+            sorted(
+                (
+                    name,
+                    func.package,
+                    func.params,
+                    func.body,
+                    func.uses,
+                    tuple(
+                        sorted(
+                            (slot, *kind.key()) for slot, kind in func.locals.items()
+                        )
+                    ),
+                )
+                for name, func in program.functions.items()
+            )
+        ),
+        tuple(sorted(program.dependencies.items())),
+        tuple(sorted((key, *kind.key()) for key, kind in program.globals.items())),
+    )
+
+
 class _Machine:
     """The run state: a stack of call frames and the parsed program.
 
@@ -549,44 +542,10 @@ class _Machine:
         self.io = io
         self.program = _parse(code, literal_policy)
         self._input_reads = 0
-        self._program_key = (
-            tuple(
-                sorted(
-                    (
-                        name,
-                        func.package,
-                        func.params,
-                        func.body,
-                        func.uses,
-                        tuple(
-                            sorted(
-                                (
-                                    slot,
-                                    kind.low,
-                                    kind.high,
-                                    kind.under,
-                                    kind.over,
-                                    kind.length,
-                                )
-                                for slot, kind in func.locals.items()
-                            )
-                        ),
-                    )
-                    for name, func in self.program.functions.items()
-                )
-            ),
-            tuple(sorted(self.program.dependencies.items())),
-            tuple(
-                sorted(
-                    (key, kind.low, kind.high, kind.under, kind.over, kind.length)
-                    for key, kind in self.program.globals.items()
-                )
-            ),
-        )
+        self._program_key = _program_key(self.program)
         entry = self.program.entry
         # _parse raises when a program has no entry, so this cannot be None.
-        if entry is None:
-            raise AssertionError("entry is not None")
+        assert entry is not None
         self.frames: _State = (_Frame(entry, _initial_store(entry, self.program)),)
 
     @property

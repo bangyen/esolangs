@@ -14,7 +14,7 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
 from pathlib import Path
@@ -22,7 +22,7 @@ from typing import Protocol
 
 # scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from verify.process import run_bounded
+from verify.process import run_bounded, write_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -148,7 +148,6 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
         in {
             "uv.lock",
             ".coveragerc",
-            "conftest.py",
             "tests/__init__.py",
             "tests/tooling/script_support.py",
             "setup.cfg",
@@ -301,27 +300,25 @@ class VerifiedCache:
             return None
         query = [cmd[0], str(Path(__file__).resolve()), "python checks"]
         query_key = json.dumps([query, sorted(env.items())])
-        if query_key in self.runtimes:
-            runtime = self.runtimes[query_key][2]
-            return self._key(step, cmd, env, runtime)
-        try:
-            result = run_bounded(
-                query,
-                env=env,
-                cwd=self.root,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except (OSError, subprocess.SubprocessError):
-            return None
-        runtime = result.stdout.strip()
-        if len(runtime) != 64 or any(
-            char not in "0123456789abcdef" for char in runtime
-        ):
-            return None
-        self.runtimes[query_key] = (query, env, runtime)
-        return self._key(step, cmd, env, runtime)
+        if query_key not in self.runtimes:
+            try:
+                result = run_bounded(
+                    query,
+                    env=env,
+                    cwd=self.root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+            except (OSError, subprocess.SubprocessError):
+                return None
+            runtime = result.stdout.strip()
+            if len(runtime) != 64 or any(
+                char not in "0123456789abcdef" for char in runtime
+            ):
+                return None
+            self.runtimes[query_key] = (query, env, runtime)
+        return self._key(step, cmd, env, self.runtimes[query_key][2])
 
     def _key(self, step: str, cmd: list[str], env: dict[str, str], runtime: str) -> str:
         inputs = self.initial[0]
@@ -360,13 +357,16 @@ class VerifiedCache:
                 (self.path(key), {"key": key, "output": output, "returncode": 0})
             )
 
-    def finish(self) -> bool:
-        """Publish clean results only if repository and runtime inputs stayed fixed."""
+    def _stable(self) -> bool:
+        """Whether the repository inputs still match the initial snapshot."""
         try:
-            stable = _tree(self.root) == self.initial
+            return _tree(self.root) == self.initial
         except (OSError, subprocess.SubprocessError):
             return False
-        if not stable:
+
+    def finish(self) -> bool:
+        """Publish clean results only if repository and runtime inputs stayed fixed."""
+        if not self._stable():
             return False
 
         def matches(runtime: tuple[list[str], dict[str, str], str]) -> bool:
@@ -387,20 +387,10 @@ class VerifiedCache:
         with ThreadPoolExecutor(max_workers=2) as pool:
             if not all(pool.map(matches, self.runtimes.values())):
                 return False
-        try:
-            stable = _tree(self.root) == self.initial
-        except (OSError, subprocess.SubprocessError):
-            return False
-        if not stable:
+        if not self._stable():
             return False
         for path, entry in self.pending:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                mode="w", dir=path.parent, delete=False
-            ) as stream:
-                json.dump(entry, stream)
-                temporary = Path(stream.name)
-            temporary.replace(path)
+            write_text(path, json.dumps(entry))
         return True
 
 
@@ -448,6 +438,11 @@ def _scope_changed_files() -> tuple[str, ...]:
     return tuple(changed_files())
 
 
+def verify_full() -> bool:
+    """Whether ``VERIFY_FULL`` asks for the whole tree."""
+    return os.environ.get("VERIFY_FULL", "0") not in ("", "0")
+
+
 def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
     """Return the step names to skip as unaffected, and why.
 
@@ -458,7 +453,7 @@ def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
     """
     if full:
         return None, "--full requested"
-    if os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
+    if verify_full():
         return None, "VERIFY_FULL set"
     changed = list(_scope_changed_files())
     reason = widens_to_everything(changed)
@@ -498,6 +493,46 @@ INTERPRETER_CONTRACT_TESTS = (
 )
 
 
+def _import_references(
+    source: Path, text: str, normalise: Callable[[str], str], owners: dict[str, str]
+) -> set[str]:
+    """Return every module, owner and imported name ``source`` refers to."""
+    references = set()
+    package = list(source.parent.relative_to(ROOT / "src").parts)
+    for node in ast.walk(ast.parse(text)):
+        if isinstance(node, ast.ImportFrom):
+            prefix = node.module or ""
+            if node.level:
+                prefix = ".".join(
+                    [
+                        *package[: len(package) - node.level + 1],
+                        *(prefix.split(".") if prefix else []),
+                    ]
+                )
+            references.add(normalise(prefix))
+            for alias in node.names:
+                references.add(normalise(prefix + "." + alias.name))
+                references.add(owners.get(alias.name, alias.name))
+        elif isinstance(node, ast.Import):
+            references.update(normalise(alias.name) for alias in node.names)
+    return references
+
+
+def _named_owner(stem: str, owners: dict[str, str]) -> str | None:
+    """Return the language a ``test_[boolean_]<name>`` file stem names, if any."""
+    for prefix in ("test_boolean_", "test_"):
+        if stem.startswith(prefix):
+            suffix = stem.removeprefix(prefix)
+            matches = [
+                name
+                for name in owners
+                if suffix == name or suffix.startswith(name + "_")
+            ]
+            if matches:
+                return owners[max(matches, key=len)]
+    return None
+
+
 def _generator_test_scope(module: str) -> list[str] | None:
     """Keep shared tests and dependent language suites for a leaf generator."""
     from esolangs.registry import LANGUAGES
@@ -514,7 +549,6 @@ def _generator_test_scope(module: str) -> list[str] | None:
                 language.name,
                 *language.aliases,
                 language.boolean.__name__,
-                owner,
             ):
                 owners[name] = owner
 
@@ -549,25 +583,7 @@ def _generator_test_scope(module: str) -> list[str] | None:
             if not any(dep.rsplit(".", 1)[-1] in text for dep in dependents):
                 continue
             if source not in imports:
-                references = set()
-                package = list(source.parent.relative_to(ROOT / "src").parts)
-                for node in ast.walk(ast.parse(text)):
-                    if isinstance(node, ast.ImportFrom):
-                        prefix = node.module or ""
-                        if node.level:
-                            prefix = ".".join(
-                                [
-                                    *package[: len(package) - node.level + 1],
-                                    *(prefix.split(".") if prefix else []),
-                                ]
-                            )
-                        references.add(normalise(prefix))
-                        for alias in node.names:
-                            references.add(normalise(prefix + "." + alias.name))
-                            references.add(owners.get(alias.name, alias.name))
-                    elif isinstance(node, ast.Import):
-                        references.update(normalise(alias.name) for alias in node.names)
-                imports[source] = references
+                imports[source] = _import_references(source, text, normalise, owners)
             if imports[source] & dependents:
                 owner = normalise(
                     source.relative_to(ROOT / "src")
@@ -588,18 +604,7 @@ def _generator_test_scope(module: str) -> list[str] | None:
         path = test.relative_to(ROOT).as_posix()
         if not _is_collected(path):
             continue
-        test_owner: str | None = None
-        for prefix in ("test_boolean_", "test_"):
-            if test.stem.startswith(prefix):
-                suffix = test.stem.removeprefix(prefix)
-                matches = [
-                    name
-                    for name in owners
-                    if suffix == name or suffix.startswith(name + "_")
-                ]
-                if matches:
-                    test_owner = owners[max(matches, key=len)]
-                    break
+        test_owner = _named_owner(test.stem, owners)
         # Only language-local directories follow this naming convention.
         local = test.parent.name in {"generators", "interpreters", "languages"}
         relative = test.relative_to(ROOT).parts

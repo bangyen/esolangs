@@ -130,15 +130,12 @@ class Language:
     proof_workspace: ProofFormula | None = None
     # Shared sweeps that run long for it: marked slow, or left to its tests.
     slow_scaling: bool = False
-    slow_stepping: bool = False
     slow_width_sweep: bool = False
     # Tooling: reader checks, payload split (data, control, pc, flag bits),
-    # leak-sweep digits, weekly mutation suites, the README's TUI frame.
+    # leak-sweep digits.
     reader_checked: bool = False
     payload: Callable[[Any], Payload] | None = None
     fuzz_max_digits: int | None = None
-    weekly_mutation: tuple[str, ...] = ()
-    showcase: bool = False
     category: str = "other"
 
     def __post_init__(self) -> None:
@@ -147,6 +144,13 @@ class Language:
             object.__setattr__(self, "id", canonical_id(self.name))
         if self.wrap is not None and self.no_wrap:
             raise ValueError(f"{self.name}: wrap and no_wrap exclude each other")
+
+    @property
+    def source_suffix(self) -> str:
+        """Return the file suffix this language's source is saved under."""
+        if self.source_kind is SourceKind.RASTER:
+            return ".png"
+        return ".txt.gz" if self.compressed_source else ".txt"
 
     @property
     def parameterized(self) -> bool:

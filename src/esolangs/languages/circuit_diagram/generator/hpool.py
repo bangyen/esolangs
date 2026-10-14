@@ -8,28 +8,19 @@ from esolangs.generation.helpers import _validate_truth_table
 
 from .hcells import _HCellLayout
 from .hlayout import (
+    _Block,
     _depth,
     _h_reserve_terms,
     _h_route_literals,
     _h_route_results,
     _HTermPlan,
+    _merge_results,
 )
-from .layout import _Layout, _Shape
+from .layout import _Layout, _resolve_order, _Shape
 
-
-@dataclass(frozen=True)
-class _PoolBlock:
-    x: int
-    y: int
-    width: int
-    height: int
-
-    def quadrants(self, width: int, height: int) -> tuple[_PoolBlock, ...]:
-        far_x, far_y = self.width - width, self.height - height
-        return tuple(
-            _PoolBlock(self.x + dx, self.y + dy, width, height)
-            for dx, dy in ((0, 0), (far_x, 0), (0, far_y), (far_x, far_y))
-        )
+# The shared H pool only pays off with six or more essential inputs; with
+# fewer, the H-term layout is already minimal.
+_H_POOL_MIN_INPUTS = 6
 
 
 @dataclass(frozen=True)
@@ -43,6 +34,26 @@ class _FooterPlan(_HTermPlan):
             if _depth(prefix) == self.inputs
             else (x + 4, y - 3)
         )
+
+
+def _pool_tail(inputs: int) -> int:
+    """Return an H pool's leaf width: three inputs when ``inputs`` is odd, else four."""
+    return 3 if inputs % 2 else 4
+
+
+def _pool_leaf(tail: int) -> int:
+    """Return the side of a pool's leaf block for a three/four-input tail."""
+    return 96 if tail == 3 else 192
+
+
+def _pool_inset(tail: int) -> int:
+    """Return how far the prefix site sits inside the leaf's right edge."""
+    return 8 if tail == 3 else 16
+
+
+def _atom_inputs(n: int) -> int:
+    """Return a class's input width: seven when ``n`` is odd, else eight."""
+    return 7 if n % 2 else 8
 
 
 def _atom_gate_bound(inputs: int) -> int:
@@ -64,7 +75,7 @@ def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
         raise ValueError(
             "cofactor pools need an even prefix and three/four suffix inputs"
         )
-    leaf = 96 if tail_inputs == 3 else 192
+    leaf = _pool_leaf(tail_inputs)
     if prefix_inputs == 0:
         return leaf
     return (
@@ -76,14 +87,15 @@ def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
 
 def _h_pool_area_floor(inputs: int, ports: int) -> int:
     """Bound small-pool area from its bottom-right retained term glyph."""
-    tail = 3 if inputs % 2 else 4
+    tail = _pool_tail(inputs)
     prefix = inputs - tail
     if prefix < 2:
         return 0
     side = _h_pool_size(prefix, tail)
-    leaf, inset = (96, 8) if tail == 3 else (192, 16)
     margin = 8 * ports + 8
-    return (margin + side - inset + 1) * (margin + side - leaf + 9)
+    return (margin + side - _pool_inset(tail) + 1) * (
+        margin + side - _pool_leaf(tail) + 9
+    )
 
 
 def _h_pool_layout(
@@ -92,7 +104,7 @@ def _h_pool_layout(
     """Route fixed-size cofactor pools through a prefix H tree in O(T) area."""
     return _pool_layout(
         table,
-        3 if (len(table).bit_length() - 1) % 2 else 4,
+        _pool_tail(len(table).bit_length() - 1),
         input_order=input_order,
         port_inputs=port_inputs,
     )
@@ -112,7 +124,7 @@ def _large_pool_layout(
     n=8/10/12 and n=9/11/13, native emitted growth ratios are 3.369/4.209.
     """
     n, order, ports = _pool_inputs(table, input_order, port_inputs)
-    k = 7 if n % 2 else 8
+    k = _atom_inputs(n)
     if ceiling is not None and n > k:
         leaf = _large_leaf_height(k)
         side = leaf
@@ -135,131 +147,201 @@ def _pool_inputs(
 ) -> tuple[int, list[int], int]:
     _validate_truth_table(table)
     n = len(table).bit_length() - 1
-    order = list(range(n)) if order is None else order
-    ports = n if ports is None else ports
-    if (
-        len(order) != n
-        or len(set(order)) != n
-        or any(index < 0 or index >= ports for index in order)
-    ):
-        raise ValueError("cofactor pool input order must name distinct original ports")
+    order, ports = _resolve_order(order, n, ports, "cofactor pool")
     return n, order, ports
 
 
-def _pool_layout(
-    table: str,
-    k: int,
-    *,
-    input_order: list[int] | None,
-    port_inputs: int | None,
-) -> _Layout:
+def _pool_atoms(table: str, k: int, p: int) -> dict[str, _Layout]:
+    """Return one atom layout per distinct mixed suffix chunk."""
     from . import _circuit_diagram_model
 
-    n, order, port_inputs = _pool_inputs(table, input_order, port_inputs)
-    large = k >= 7
-    if large and n <= k:
-        return _circuit_diagram_model(
-            table, None, input_order=order, port_inputs=port_inputs
-        )
-    atoms = {}
-    p = n - k
     if p < 2:
         raise ValueError("cofactor pools need at least two prefix inputs")
+    atoms: dict[str, _Layout] = {}
     for i in range(0, len(table), 1 << k):
         chunk = table[i : i + (1 << k)]
         if "0" in chunk and "1" in chunk and chunk not in atoms:
             atoms[chunk] = _circuit_diagram_model(chunk, None)
-    if large:
+    return atoms
+
+
+@dataclass(frozen=True)
+class _PoolGeometry:
+    leaf_width: int
+    leaf_height: int
+    prefix_x: int
+    bank_y: int
+    dimensions: dict[int, tuple[int, int]]
+
+
+def _pool_geometry(k: int, p: int, atoms: dict[str, _Layout]) -> _PoolGeometry:
+    """Leaf rectangle plus the block size at every even prefix depth."""
+    if k >= 7:
         leaf_height = _large_leaf_height(k)
         atom_width = max((atom.bounds()[1] for atom in atoms.values()), default=0)
         leaf_width = max(leaf_height, 8 * ((atom_width + 8 * k + 55) // 8))
         prefix_x, bank_y = leaf_width - 16, 8 * k + 8
     else:
-        leaf_width = leaf_height = 96 if k == 3 else 192
-        prefix_x, bank_y = leaf_width - (8 if k == 3 else 16), 40
+        leaf_width = leaf_height = _pool_leaf(k)
+        prefix_x, bank_y = leaf_width - _pool_inset(k), 40
     dimensions = {0: (leaf_width, leaf_height)}
     for remaining in range(2, p + 1, 2):
         width, height = dimensions[remaining - 2]
         band = 16 * (remaining + k) + 8
         dimensions[remaining] = 2 * width + band, 2 * height + band
-    width, height = dimensions[p]
-    blocks = {1: _PoolBlock(0, 0, width, height)}
-    sites: dict[int, tuple[int, int]] = {}
+    return _PoolGeometry(leaf_width, leaf_height, prefix_x, bank_y, dimensions)
 
-    def descend(prefix: int, r: int, block: _PoolBlock) -> None:
-        if r == 0:
-            sites[prefix] = (block.x + prefix_x, block.y + 8)
-            return
-        child_width, child_height = dimensions[r - 2]
-        track = 8 * (r + k)
-        left, top = block.x + child_width, block.y + child_height
-        sites[prefix] = (left + 2 * track + 8, top + track + 8)
-        sites[2 * prefix] = (left + track, top + track)
-        sites[2 * prefix + 1] = (left + track, top + 2 * track + 8)
-        for bits, child in enumerate(block.quadrants(child_width, child_height)):
-            blocks[4 * prefix + bits] = child
-            descend(4 * prefix + bits, r - 2, child)
 
-    descend(1, p, blocks[1])
-    margin = 8 * port_inputs + 8
-    sites = {a: (x + margin, y + margin) for a, (x, y) in sites.items()}
-    levels: list[list[int]] = [[] for _ in range(p + 1)]
-    for prefix in sites:
-        levels[_depth(prefix)].append(prefix)
-    signals = {
-        prefix: i
-        for i, prefix in enumerate(prefix for prefix in sites if _depth(prefix) >= 2)
-    }
-    literal_start = len(signals)
-    serial = literal_start + 2 * n
+def _descend(
+    sites: dict[int, tuple[int, int]],
+    blocks: dict[int, _Block],
+    geometry: _PoolGeometry,
+    k: int,
+    prefix: int,
+    r: int,
+    block: _Block,
+) -> None:
+    """Record every prefix site and leaf block under ``block``."""
+    if r == 0:
+        sites[prefix] = (block.x + geometry.prefix_x, block.y + 8)
+        return
+    child_width, child_height = geometry.dimensions[r - 2]
+    track = 8 * (r + k)
+    left, top = block.x + child_width, block.y + child_height
+    sites[prefix] = (left + 2 * track + 8, top + track + 8)
+    sites[2 * prefix] = (left + track, top + track)
+    sites[2 * prefix + 1] = (left + track, top + 2 * track + 8)
+    for bits, child in enumerate(block.quadrants(child_width, child_height)):
+        blocks[4 * prefix + bits] = child
+        _descend(sites, blocks, geometry, k, 4 * prefix + bits, r - 2, child)
 
-    def fresh() -> int:
-        nonlocal serial
-        serial += 1
-        return serial - 1
 
-    plan: _HTermPlan = (
-        _FooterPlan(p, sites, signals, literal_start, {}, set(), 0, levels, leaf_height)
-        if large
-        else _HTermPlan(p, sites, signals, literal_start, {}, set(), 0, levels)
-    )
-    layout = _HCellLayout(margin + dimensions[p][0] + 64)
-    anchors = _h_reserve_terms(layout, plan)
-    points: dict[int, tuple[int, int]] = {}
-    values: dict[int, int | None] = {}
-    atom_routes: list[tuple[tuple[int, int], tuple[int, int], int, _Shape]] = []
-    feeds: list[tuple[int, int, tuple[int, int]]] = []
-    for prefix in levels[p]:
-        chunk = table[
-            (prefix - (1 << p)) * (1 << k) : (prefix - (1 << p) + 1) * (1 << k)
-        ]
-        if "1" not in chunk:
-            values[prefix] = None
-            continue
-        x, y = sites[prefix]
-        if "0" not in chunk:
-            values[prefix] = signals[prefix]
-            points[prefix] = (x + 1, y)
-            continue
-        atom = atoms[chunk]
+class _Serial:
+    """Fresh signal numbers above the literal range."""
+
+    def __init__(self, start: int) -> None:
+        self._next = start
+
+    def fresh(self) -> int:
+        self._next += 1
+        return self._next - 1
+
+    def owner(self, mapping: dict[int, int], signal: int) -> int:
+        """Return the pool signal for an atom-local ``signal``, minting it once."""
+        if signal not in mapping:
+            mapping[signal] = self.fresh()
+        return mapping[signal]
+
+
+class _PoolBuild:
+    """Pool layout under construction; the methods run in emission order."""
+
+    def __init__(
+        self,
+        table: str,
+        k: int,
+        order: list[int],
+        ports: int,
+        atoms: dict[str, _Layout],
+    ) -> None:
+        self.table, self.k, self.order, self.ports = table, k, order, ports
+        self.atoms = atoms
+        self.n = len(table).bit_length() - 1
+        self.p = self.n - k
+        self.large = k >= 7
+        self.geometry = _pool_geometry(k, self.p, atoms)
+        width, height = self.geometry.dimensions[self.p]
+        self.blocks = {1: _Block(0, 0, width, height)}
+        raw: dict[int, tuple[int, int]] = {}
+        _descend(raw, self.blocks, self.geometry, k, 1, self.p, self.blocks[1])
+        self.margin = 8 * ports + 8
+        self.sites = {
+            a: (x + self.margin, y + self.margin) for a, (x, y) in raw.items()
+        }
+        self.levels: list[list[int]] = [[] for _ in range(self.p + 1)]
+        for prefix in self.sites:
+            self.levels[_depth(prefix)].append(prefix)
+        self.signals = {
+            prefix: i
+            for i, prefix in enumerate(
+                prefix for prefix in self.sites if _depth(prefix) >= 2
+            )
+        }
+        literal_start = len(self.signals)
+        self.serial = _Serial(literal_start + 2 * self.n)
+        self.plan: _HTermPlan = (
+            _FooterPlan(
+                self.p,
+                self.sites,
+                self.signals,
+                literal_start,
+                {},
+                set(),
+                0,
+                self.levels,
+                self.geometry.leaf_height,
+            )
+            if self.large
+            else _HTermPlan(
+                self.p,
+                self.sites,
+                self.signals,
+                literal_start,
+                {},
+                set(),
+                0,
+                self.levels,
+            )
+        )
+        self.layout = _HCellLayout(self.margin + width + 64)
+        self.anchors = _h_reserve_terms(self.layout, self.plan)
+        self.points: dict[int, tuple[int, int]] = {}
+        self.values: dict[int, int | None] = {}
+        self.atom_routes: list[
+            tuple[tuple[int, int], tuple[int, int], int, _Shape]
+        ] = []
+        self.feeds: list[tuple[int, int, tuple[int, int]]] = []
+
+    def place_leaves(self) -> None:
+        """Place each prefix leaf's constant or atom with its footer gate."""
+        p, k = self.p, self.k
+        for prefix in self.levels[p]:
+            offset = (prefix - (1 << p)) * (1 << k)
+            chunk = self.table[offset : offset + (1 << k)]
+            if "1" not in chunk:
+                self.values[prefix] = None
+                continue
+            x, y = self.sites[prefix]
+            if "0" not in chunk:
+                self.values[prefix] = self.signals[prefix]
+                self.points[prefix] = (x + 1, y)
+                continue
+            self._place_atom(prefix, self.atoms[chunk])
+
+    def _check_fits(self, atom: _Layout) -> None:
         h, w = atom.bounds()
+        k, geometry = self.k, self.geometry
         # Three/four-input bounds retain the original leaf geometry.
         # Larger atoms reserve their proven height and measured width.
         too_large = (
-            w + 8 * k + 48 > leaf_width or h + 8 * k + 48 > leaf_height
-            if large
+            w + 8 * k + 48 > geometry.leaf_width
+            or h + 8 * k + 48 > geometry.leaf_height
+            if self.large
             else w > (80 if k == 3 else 168) or h > (56 if k == 3 else 132)
         )
         if too_large:
             raise AssertionError(f"cofactor pool exceeded its rectangle: {w}x{h}")
-        block = blocks[prefix]
-        ox, oy = block.x + margin + 8, block.y + margin + bank_y
+
+    def _place_atom(self, prefix: int, atom: _Layout) -> None:
+        p, k, layout, plan = self.p, self.k, self.layout, self.plan
+        self._check_fits(atom)
+        block = self.blocks[prefix]
+        ox = block.x + self.margin + 8
+        oy = block.y + self.margin + self.geometry.bank_y
         owners = {i: plan.literal(p + i, "1") for i in range(k)}
 
-        def owner(signal: int, mapping: dict[int, int] = owners) -> int:
-            if signal not in mapping:
-                mapping[signal] = fresh()
-            return mapping[signal]
+        def owner(signal: int) -> int:
+            return self.serial.owner(owners, signal)
 
         output = next((a, b) for (a, b), char in atom.glyphs.items() if char == ":")
         for (a, b), char in atom.glyphs.items():
@@ -276,82 +358,117 @@ def _pool_layout(
                 layout.run_vertical(col + ox, a + oy - 1, b + oy, owner(signal))
         for i in range(k):
             target = (ox, oy + 2 * i)
-            signal = plan.literal(p + i, "1")
-            layout.junction(*target, signal)
-            feeds.append((p + i, prefix, target))
+            layout.junction(*target, plan.literal(p + i, "1"))
+            self.feeds.append((p + i, prefix, target))
         output_point = (output[0] - 2 + ox, output[1] + oy)
         atom_signal = owner(atom.junctions[output[0] - 2, output[1]])
-        gx, gy = plan.result_anchor(prefix)
-        result = fresh()
+        self._place_footer(prefix, output_point, atom_signal)
+
+    def _place_footer(
+        self, prefix: int, output_point: tuple[int, int], atom_signal: int
+    ) -> None:
+        layout, signals = self.layout, self.signals
+        x, y = self.sites[prefix]
+        gx, gy = self.plan.result_anchor(prefix)
+        result = self.serial.fresh()
         layout.glyph(gx, gy, "a")
         layout.reserve((gx - 1, gy - 1), signals[prefix])
         layout.reserve((gx - 1, gy + 1), atom_signal)
         layout.reserve((gx + 1, gy), result)
-        points[prefix] = (gx + 1, gy)
-        values[prefix] = result
-        atom_routes.append(((x + 1, y), (gx - 1, gy - 1), signals[prefix], "down"))
+        self.points[prefix] = (gx + 1, gy)
+        self.values[prefix] = result
+        self.atom_routes.append(((x + 1, y), (gx - 1, gy - 1), signals[prefix], "down"))
         # A footer's lower input must be approached from below: descending
         # along its input column would cross the upper prefix port.
-        atom_routes.append(
+        self.atom_routes.append(
             (
                 output_point,
                 (gx - 1, gy + 1),
                 atom_signal,
-                "under" if large else "across",
+                "under" if self.large else "across",
             )
         )
-    result_gates = set()
-    for depth in range(p - 1, -1, -1):
-        for prefix in levels[depth]:
-            lo, hi = values.get(2 * prefix), values.get(2 * prefix + 1)
-            if lo is not None and hi is not None:
-                values[prefix] = fresh()
-                result_gates.add(prefix)
-            else:
-                values[prefix] = lo if lo is not None else hi
-    # The leaf offset puts every incoming suffix lane above the atom's
-    # y=40 input bank. Without it dense n=8 routes cross another atom's
-    # lower gate port at (1008,730); all eight-input controls now execute.
-    for depth in range(p, n):
-        for prefix, (x, y) in sites.items():
-            below = 8 * (depth - _depth(prefix))
-            point = x - 6 - below, y - 6 - below + (8 * k if _depth(prefix) == p else 0)
-            anchors[depth, "1", prefix] = point
-            layout.reserve(point, plan.literal(depth, "1"))
-        row = 8 * order[depth]
-        signal = plan.literal(depth, "1")
-        layout.glyph(0, row, "-")
-        layout.junction(2, row, signal)
-        layout.run_horizontal(0, 2, row, signal)
-        layout.route((2, row), anchors[depth, "1", 1], signal, "across")
-    for index in range(port_inputs):
-        if index not in order:
-            signal = fresh()
-            layout.glyph(0, 8 * index, "-")
-            layout.junction(2, 8 * index, signal)
-            layout.run_horizontal(0, 2, 8 * index, signal)
-    _h_route_literals(
-        layout,
-        plan,
-        {key: point for key, point in anchors.items() if key[0] < p},
-        input_order=order[:p],
-    )
-    for depth in range(p, n):
-        signal = plan.literal(depth, "1")
-        for prefix in sites:
-            point = anchors[depth, "1", prefix]
-            layout.junction(*point, signal)
-            if prefix != 1:
-                layout.route(anchors[depth, "1", prefix // 2], point, signal)
-    for depth, prefix, target in feeds:
-        layout.route(anchors[depth, "1", prefix], target, plan.literal(depth, "1"))
-    for source, target, signal, shape in atom_routes:
-        layout.route(source, target, signal, shape)
-    result_signal = values[1]
-    if result_signal is None:
-        raise ValueError("cofactor pools need a selected row")
-    plan = replace(
-        plan, results=values, result_gates=result_gates, result_signal=result_signal
-    )
-    _h_route_results(layout, plan, leaf_points=points)
-    return layout.seal()
+
+    def merge_results(self) -> set[int]:
+        """OR sibling values up the tree; return the prefixes that get a gate."""
+        return _merge_results(self.values, self.levels, self.serial.fresh)
+
+    def route_suffix_inputs(self) -> None:
+        """Reserve and feed the suffix literal lanes, then park unused ports."""
+        p, n, k = self.p, self.n, self.k
+        layout, plan, anchors = self.layout, self.plan, self.anchors
+        # The leaf offset puts every incoming suffix lane above the atom's
+        # y=40 input bank. Without it dense n=8 routes cross another atom's
+        # lower gate port at (1008,730); all eight-input controls now execute.
+        for depth in range(p, n):
+            for prefix, (x, y) in self.sites.items():
+                below = 8 * (depth - _depth(prefix))
+                point = (
+                    x - 6 - below,
+                    y - 6 - below + (8 * k if _depth(prefix) == p else 0),
+                )
+                anchors[depth, "1", prefix] = point
+                layout.reserve(point, plan.literal(depth, "1"))
+            row = 8 * self.order[depth]
+            signal = plan.literal(depth, "1")
+            layout.input_port(row, 2, signal)
+            layout.route((2, row), anchors[depth, "1", 1], signal, "across")
+        for index in range(self.ports):
+            if index not in self.order:
+                signal = self.serial.fresh()
+                layout.input_port(8 * index, 2, signal)
+
+    def route_wires(self) -> None:
+        """Route prefix literals, suffix fan-out, atom feeds and footer inputs."""
+        p, n = self.p, self.n
+        layout, plan, anchors = self.layout, self.plan, self.anchors
+        _h_route_literals(
+            layout,
+            plan,
+            {key: point for key, point in anchors.items() if key[0] < p},
+            input_order=self.order[:p],
+        )
+        for depth in range(p, n):
+            signal = plan.literal(depth, "1")
+            for prefix in self.sites:
+                point = anchors[depth, "1", prefix]
+                layout.junction(*point, signal)
+                if prefix != 1:
+                    layout.route(anchors[depth, "1", prefix // 2], point, signal)
+        for depth, prefix, target in self.feeds:
+            layout.route(anchors[depth, "1", prefix], target, plan.literal(depth, "1"))
+        for source, target, signal, shape in self.atom_routes:
+            layout.route(source, target, signal, shape)
+
+    def finish(self, result_gates: set[int]) -> _Layout:
+        result_signal = self.values[1]
+        if result_signal is None:
+            raise ValueError("cofactor pools need a selected row")
+        plan = replace(
+            self.plan,
+            results=self.values,
+            result_gates=result_gates,
+            result_signal=result_signal,
+        )
+        _h_route_results(self.layout, plan, leaf_points=self.points)
+        return self.layout.seal()
+
+
+def _pool_layout(
+    table: str,
+    k: int,
+    *,
+    input_order: list[int] | None,
+    port_inputs: int | None,
+) -> _Layout:
+    from . import _circuit_diagram_model
+
+    n, order, ports = _pool_inputs(table, input_order, port_inputs)
+    if k >= 7 and n <= k:
+        return _circuit_diagram_model(table, None, input_order=order, port_inputs=ports)
+    build = _PoolBuild(table, k, order, ports, _pool_atoms(table, k, n - k))
+    build.place_leaves()
+    result_gates = build.merge_results()
+    build.route_suffix_inputs()
+    build.route_wires()
+    return build.finish(result_gates)

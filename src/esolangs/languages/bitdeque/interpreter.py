@@ -7,9 +7,8 @@ target past the last command ends the run and a taken GOTO 0 raises
 :class:`HaltError` (the wiki leaves both open).  The wiki has no I/O,
 so the deque is printed space-separated when the program ends -- the
 repo's convention.  A word that is not one of the six upper-case commands
-raises :class:`ValueError` (the old tokenizer ran a lower-case program
-as nothing).  :func:`_advance` is pure over an immutable ``_State``; the
-dump is the shell's post-halt step.
+raises :class:`ValueError`.  :func:`_advance` is pure over an immutable
+``_State``; the dump is the shell's post-halt step.
 """
 
 from __future__ import annotations
@@ -39,6 +38,7 @@ from esolangs.runtime.source_hints import keyword_hint, syntax_error
 type _State = tuple[int, int, tuple[int, ...], bool]
 
 _COMMANDS = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", "GOTO")
+_TOKEN = re.compile(r"(?<!\S)(INJECT|PUSH|EJECT|POP|INVERT|GOTO\s+\d+)(?!\S)")
 
 
 def _advance(state: _State, sym: str) -> _State:
@@ -69,32 +69,17 @@ def _advance(state: _State, sym: str) -> _State:
     return (ind + 1, reg, deq, rendered)
 
 
-def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
+def _reject_stray_text(code: str) -> None:
     """Refuse a word that is not one of the six commands.
 
-    ``findall`` kept what matched: ``push invert push`` ran as nothing and
-    exited 0, and a seventh word is never deliberate.
+    A seventh word is never deliberate, and ``findall`` would skip it.
     """
-    end = 0
-    for match in pattern.finditer(code):
-        if stray := code[end : match.start()].strip():
-            raise syntax_error(
-                f"{stray.split()[0]!r} is not a Bitdeque command; the "
-                f"commands are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, "
-                f"in upper case",
-                keyword_hint(
-                    stray.split()[0],
-                    _COMMANDS,
-                    "write uppercase commands; GOTO takes a nonnegative target",
-                ),
-            )
-        end = match.end()
-    if tail := code[end:].strip():
+    if stray := _TOKEN.sub(" ", code).split():
         raise syntax_error(
-            f"{tail.split()[0]!r} is not a Bitdeque command; the commands "
-            f"are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
+            f"{stray[0]!r} is not a Bitdeque command; the commands are "
+            f"INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
             keyword_hint(
-                tail.split()[0],
+                stray[0],
                 _COMMANDS,
                 "write uppercase commands; GOTO takes a nonnegative target",
             ),
@@ -104,7 +89,7 @@ def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
 class _Machine:
     """Per-run Bitdeque state: the token cursor, register, and deque."""
 
-    #: Whether the tape/registers are written on the step *after* the halt.
+    #: Whether the deque is printed on the step *after* the halt.
     #: It belongs to the language, not to whoever is stepping it: ``run``
     #: ends its loop with one more ``step()``, so a caller who stops at
     #: ``halted`` has driven the program correctly and still holds none of
@@ -114,10 +99,8 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
-        lst = tuple(r"GOTO\s+(\d+)" if name == "GOTO" else name for name in _COMMANDS)
-        join = rf"(?<!\S)({'|'.join(lst)})(?!\S)"
-        _reject_stray_text(code, re.compile(join))
-        self.tokens = re.findall(join, code)
+        _reject_stray_text(code)
+        self.tokens = _TOKEN.findall(code)
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
@@ -180,7 +163,7 @@ class _Machine:
                 self.render()
                 self.state = (ind, reg, deq, True)
             return
-        self.state = _advance(self.state, self.tokens[ind][0])
+        self.state = _advance(self.state, self.tokens[ind])
 
     def render(self) -> None:
         """Print the deque contents, one value per space, no trailing newline."""

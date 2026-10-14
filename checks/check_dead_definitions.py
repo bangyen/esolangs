@@ -19,8 +19,8 @@ exactly the case to report, and the fix is to move it under ``tests/``.
 
 Run::
 
-    python scripts/check_dead_definitions.py           # the repo
-    python scripts/check_dead_definitions.py ROOT      # another tree
+    python checks/check_dead_definitions.py           # the repo
+    python checks/check_dead_definitions.py ROOT      # another tree
 """
 
 import ast

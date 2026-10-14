@@ -51,6 +51,7 @@ from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
 _MEMO_TYPES = (tuple, frozenset, Fraction)
+MAX_RECORD_CHARS = 1024 * 1024
 
 
 def artifact_hash(program: esolangs.Program) -> str:
@@ -441,20 +442,6 @@ def _execute(
     return result
 
 
-def _commands(
-    language: str,
-    program: esolangs.Program,
-    table: str,
-    row: int,
-    cap: int,
-) -> int | None:
-    """Return steps to halt for the size screens, checking the same artifact."""
-    result = _execute(language, program, table, row, cap, None, source_digest="")
-    if result["matches"] is False:
-        raise ValueError(f"{language} row {row}: wrong generated answer")
-    return cast("int | None", result["commands"])
-
-
 def _measure(
     language: str,
     table: str,
@@ -632,14 +619,27 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
 
 
-MAX_RECORD_CHARS = 1024 * 1024
+def _post(
+    messages: queue.Queue[str | None], stopped: threading.Event, record: str | None
+) -> None:
+    """Queue ``record`` for the waiting caller, giving up once ``stopped``.
+
+    Takes the queue and event, not the worker: a restart rebinds both, and a
+    thread from the old process must not post into the new one's queue.
+    """
+    while not stopped.is_set():
+        try:
+            messages.put(record, timeout=0.05)
+            return
+        except queue.Full:
+            pass
 
 
 class Worker:
     """Reuse one interpreter across a sweep; kill the tree on any deadline."""
 
     def __init__(self, command: list[str] | None = None) -> None:
-        """Spawn ``command``, or this module in ``--worker`` mode by default."""
+        """Spawn ``command``, or ``_benchmark_worker.py`` by default."""
         self.command = command or [
             sys.executable,
             str(Path(__file__).resolve().parent / "_benchmark_worker.py"),
@@ -715,12 +715,7 @@ class Worker:
                                 }
                             }
                         )
-                    while not stopped.is_set():
-                        try:
-                            messages.put(line, timeout=0.05)
-                            break
-                        except queue.Full:
-                            pass
+                    _post(messages, stopped, line)
                     if line is None or oversized:
                         break
 
@@ -754,7 +749,7 @@ class Worker:
             if check_log and self.log_overflow.is_set():
                 raise RuntimeError("benchmark diagnostic byte limit exceeded")
 
-    def measure(
+    def measure(  # noqa: C901
         self,
         arguments: dict[str, Any],
         identity: dict[str, Any],
@@ -791,12 +786,7 @@ class Worker:
                     failure = json.dumps(
                         {"error": {"type": type(error).__name__, "message": str(error)}}
                     )
-                    while not stopped.is_set():
-                        try:
-                            messages.put(failure, timeout=0.05)
-                            break
-                        except queue.Full:
-                            pass
+                    _post(messages, stopped, failure)
 
             self.writer = threading.Thread(target=send, daemon=True)
             self.writer.start()

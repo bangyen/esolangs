@@ -190,13 +190,138 @@ class Node:
 
 
 def chain(*ops: str) -> Node:
-    """Build a straight-through Node chain from an opcode string, e.g. "+++"."""
+    """Build a straight-through Node chain from opcodes, e.g. ``chain(*"+++")``."""
     if not ops:
         raise ValueError("chain() requires at least one opcode")
     node = Node(ops[-1])
     for op in reversed(ops[:-1]):
         node = Node(op, next=node)
     return node
+
+
+def correction(value: int, known: int) -> str:
+    """Return the ``+``/``-`` op turning a cell holding ``known`` into ``value``."""
+    return {1: "+", 0: "", -1: "-"}[value - known]
+
+
+def loader_reads(n: int, kept: list[int]) -> str:
+    """Return the read phase: every input read, the kept ones one cell apart.
+
+    Trailing ignored inputs use a spare cell, so the head steps back to the
+    final kept cell.
+    """
+    reads = "".join("i" + (">" if i in kept and i < n - 1 else "") for i in range(n))
+    return reads + "<" if kept[-1] < n - 1 else reads
+
+
+def chain_onto(head: Node, tail: Node) -> None:
+    """Append ``tail`` after the last node of ``head``'s chain."""
+    end = head
+    while end.next is not None:
+        end = end.next
+    end.next = tail
+
+
+def _moved(pointer: int, cell: int, rest: Node) -> Node:
+    """Prefix ``rest`` with the moves from ``pointer`` to ``cell``."""
+    step = ">" if cell > pointer else "<"
+    for _ in range(abs(cell - pointer)):
+        rest = Node(step, next=rest)
+    return rest
+
+
+def _guard_return(
+    cursor: _Cursor,
+    target: Node,
+    legs: list[tuple[tuple[int, int], int]],
+    plan: _Plan,
+) -> list[tuple[tuple[int, int], int]] | None:
+    """``legs`` if they clear existing ink, else a trunk merge, else None.
+
+    Drift guard, real mode only: the construction never reads ink, so
+    anything it did not reserve must be caught, not drawn through.  This is
+    what fired on the ring wrapping into a long run drawn before the fork,
+    now reserved by `_stem_len`.  Endpoints (body tip, stem merge) are
+    legitimate ink.  A clean return is recorded as the target's trunk.
+    """
+    occupied = cursor.occupied
+    assert occupied is not None
+    start = (cursor.y, cursor.x)
+    stop_at = occupied if plan.ancestor_returns else None
+    cells = _leg_cells(start, legs, stop_at)
+    blocked = cells[-1] != _leg_end(start, legs) or any(
+        c in occupied for c in cells[1:-1]
+    )
+    if blocked:
+        trunk = plan.returns.get(id(target))
+        merged = (
+            None
+            if trunk is None
+            else _merge_return_legs(cells, trunk, plan.return_indices[id(target)])
+        )
+        if merged is None:
+            return None
+        cells = _leg_cells(start, merged)
+        if any(c in occupied for c in cells[1:-1]):
+            return None
+        legs = merged
+    if plan.ancestor_returns and id(target) not in plan.returns:
+        plan.returns[id(target)] = cells
+        plan.return_indices[id(target)] = {cell: i for i, cell in enumerate(cells)}
+    return legs
+
+
+def _draw_loop_back(
+    cursor: _Cursor,
+    target: Node,
+    entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
+    plan: _Plan,
+    *,
+    measuring: bool,
+) -> None:
+    """Draw the ``goto`` loop-back to ``target`` from the cursor's current point.
+
+    Raises :exc:`ValueError` when no loop-back can be constructed: the
+    target must be an ancestor ``?`` fork whose body chain the ``goto``
+    ends (the shape a compiled loop produces).  Never draws a reconnection
+    through ink.
+    """
+    # Flush this stroke into `occupied` so the loop-back sees it.
+    cursor.finish()
+    # Return path (:func:`_loop_return_legs`), drawn in measuring
+    # mode too so extents contain it and ancestors reserve room --
+    # this is what makes nesting unbounded.  The target is in
+    # `entries` for any compiled graph; a subtree measured alone
+    # lacks its outermost fork, which the caller's frame draws.
+    legs = None
+    if id(target) in entries:
+        legs = _loop_return_legs(
+            (cursor.y, cursor.x),
+            target,
+            entries,
+            plan,
+            cursor.heading if plan.ancestor_returns else None,
+        )
+    if legs is not None and cursor.occupied is not None:
+        legs = _guard_return(cursor, target, legs, plan)
+    if legs is not None:
+        for direction, length in legs:
+            cursor.advance(direction, length)
+        cursor.finish()
+        return
+    if measuring:
+        # Target outside this measured subtree: the owner draws it.
+        return
+    # Target not an ancestor fork, or the body's end off its own
+    # box -- a hand-built graph, or a compiled body whose tail sits
+    # inside the box (see `_loop_return_legs`).  Never draw a
+    # reconnection through ink.
+    raise ValueError(
+        "loop-back could not be constructed for this goto -- its "
+        "target must be an ancestor '?' fork whose body chain the "
+        "goto ends (the shape a compiled loop produces); see "
+        "_loop_return_legs for the geometric premises"
+    )
 
 
 # Grid cells (`_UNIT` pixels each) a loop-back keeps from unrelated ink.
@@ -212,6 +337,16 @@ _CLEARANCE = 1
 _TREE_GAP = _CLEARANCE + 1
 
 
+def _leg_end(
+    start: tuple[int, int], legs: list[tuple[tuple[int, int], int]]
+) -> tuple[int, int]:
+    """Return the cell the ``legs`` walk ends on from ``start``."""
+    return (
+        start[0] + sum(direction[0] * length for direction, length in legs),
+        start[1] + sum(direction[1] * length for direction, length in legs),
+    )
+
+
 def _leg_cells(
     start: tuple[int, int],
     legs: list[tuple[tuple[int, int], int]],
@@ -219,10 +354,7 @@ def _leg_cells(
 ) -> list[tuple[int, int]]:
     """Return walked cells, stopping at occupied interior ink when requested."""
     cells = [start]
-    end = (
-        start[0] + sum(direction[0] * length for direction, length in legs),
-        start[1] + sum(direction[1] * length for direction, length in legs),
-    )
+    end = _leg_end(start, legs)
     y, x = start
     for (dy, dx), length in legs:
         for _ in range(length):
@@ -417,6 +549,93 @@ def _stem_len(node: Node, plan: _Plan) -> int:
     return max(_STEM_LEN, x1 + _RING_OFFSET + _CLEARANCE)
 
 
+_Point = tuple[int, int]
+_Box = tuple[int, int, int, int]  # (y0, y1, x0, x1)
+
+
+def _perimeter_entry(
+    ey: int, ex: int, box: _Box, direction: _Point | None
+) -> tuple[_Point, tuple[_Point, int] | None] | None:
+    """Canonical-frame ``(point, extension)`` on ``box``'s perimeter, or None.
+
+    An interior tip first runs straight along ``direction`` to the perimeter
+    (``extension`` is that leg); without a direction it is rejected.
+    """
+    y0, y1, x0, x1 = box
+
+    def on_perimeter(y: int, x: int) -> bool:
+        return (y in (y0, y1) and x0 <= x <= x1) or (x in (x0, x1) and y0 <= y <= y1)
+
+    if on_perimeter(ey, ex):
+        return (ey, ex), None
+    if direction is None:
+        return None
+    dy, dx = direction
+    distance = (
+        (y1 - ey if dy > 0 else ey - y0) if dy else (x1 - ex if dx > 0 else ex - x0)
+    )
+    ey += dy * distance
+    ex += dx * distance
+    if not on_perimeter(ey, ex):
+        return None
+    return (ey, ex), (direction, distance)
+
+
+def _ring_points(
+    tip: _Point, box: _Box, bay_y: int, arrival_x: int
+) -> list[_Point] | None:
+    """Corner points from ``tip`` on ``box``'s perimeter around the ring to the bay.
+
+    Enters the bay via the rear corner ``(bay_y, hi_x)`` so no bay segment
+    crosses the arm stroke at ``x = 0``; ends at ``(bay_y, arrival_x)``.
+    """
+    ey, ex = tip
+    y0, y1, x0, x1 = box
+    far_y = y1 + _RING_OFFSET
+    lo_x = x0 - _RING_OFFSET
+    hi_x = x1 + _RING_OFFSET
+    on_y = ey in (y0, y1) and x0 <= ex <= x1
+    on_x = ex in (x0, x1) and y0 <= ey <= y1
+    pts: list[_Point] = [tip]
+    if on_x and ex == x1:  # rear side: out, then down to the bay corner
+        pts += [(ey, hi_x), (bay_y, hi_x)]
+    elif on_y and ey == y1:  # far side: out, over the far-rear corner, down
+        pts += [(far_y, ex), (far_y, hi_x), (bay_y, hi_x)]
+    elif on_x and ex == x0:  # vertex-ward side: the long way around
+        pts += [(ey, lo_x), (far_y, lo_x), (far_y, hi_x), (bay_y, hi_x)]
+    else:  # bay side
+        if ex == 0:
+            # Would land on the arm stroke's own line.
+            return None
+        if ex >= 1:
+            pts += [(bay_y, ex)]
+        else:
+            # Left of the arm stroke: go around the ring.
+            pts += [
+                (bay_y, ex),
+                (bay_y, lo_x),
+                (far_y, lo_x),
+                (far_y, hi_x),
+                (bay_y, hi_x),
+            ]
+    pts.append((bay_y, arrival_x))
+    return pts
+
+
+def _axis_aligned_legs(pts: list[_Point]) -> list[tuple[_Point, int]] | None:
+    """Unit-direction legs through ``pts``; None on a diagonal step."""
+    legs: list[tuple[_Point, int]] = []
+    for a, b in itertools.pairwise(pts):
+        dy, dx = b[0] - a[0], b[1] - a[1]
+        if dy and dx:  # pragma: no cover - geometry guard
+            return None
+        if not dy and not dx:
+            continue
+        direction = ((dy > 0) - (dy < 0), (dx > 0) - (dx < 0))
+        legs.append((direction, abs(dy) + abs(dx)))
+    return legs
+
+
 def _loop_return_legs(
     start: tuple[int, int],
     target: Node,
@@ -444,84 +663,54 @@ def _loop_return_legs(
     a_h = _turn_left(h)
     arm_run = _arm_spacing(target.nonzero, plan)
     entry_pt = (vertex[0] + a_h[0] * arm_run, vertex[1] + a_h[1] * arm_run)
-    y0, y1, x0, x1 = _subtree_extent(target.nonzero, plan)
+    box = _subtree_extent(target.nonzero, plan)
 
-    # `start` in the canonical frame (+y = a_h, +x = turn_left(a_h));
-    # projection inverts `_rotate` exactly.
+    # `start` and `heading` in the canonical frame (+y = a_h, +x =
+    # turn_left(a_h)); projection inverts `_rotate` exactly.
     ly, lx = _turn_left(a_h)
-    off = (start[0] - entry_pt[0], start[1] - entry_pt[1])
-    ey = off[0] * a_h[0] + off[1] * a_h[1]
-    ex = off[0] * ly + off[1] * lx
-    on_y = ey in (y0, y1) and x0 <= ex <= x1
-    on_x = ex in (x0, x1) and y0 <= ey <= y1
-    extension = None
-    if not (on_y or on_x):
-        if heading is None:
-            return None
-        direction = (
-            heading[0] * a_h[0] + heading[1] * a_h[1],
-            heading[0] * ly + heading[1] * lx,
-        )
-        dy, dx = direction
-        distance = (
-            (y1 - ey if dy > 0 else ey - y0) if dy else (x1 - ex if dx > 0 else ex - x0)
-        )
-        extension = (direction, distance)
-        ey += dy * distance
-        ex += dx * distance
-        on_y = ey in (y0, y1) and x0 <= ex <= x1
-        on_x = ex in (x0, x1) and y0 <= ey <= y1
-        if not (on_y or on_x):
-            return None
 
-    axis_y = -arm_run
-    bay_y = y0 - _RING_OFFSET
-    far_y = y1 + _RING_OFFSET
-    lo_x = x0 - _RING_OFFSET
-    hi_x = x1 + _RING_OFFSET
+    def project(v: _Point) -> _Point:
+        return v[0] * a_h[0] + v[1] * a_h[1], v[0] * ly + v[1] * lx
+
+    ey, ex = project((start[0] - entry_pt[0], start[1] - entry_pt[1]))
+    entry = _perimeter_entry(ey, ex, box, None if heading is None else project(heading))
+    if entry is None:
+        return None
+    tip, extension = entry
+
+    bay_y = box[0] - _RING_OFFSET
     # Guaranteed by `_arm_spacing`'s floor + corridor; a failure here is a
     # hand-built graph.
-    if bay_y < axis_y + _DIAGONAL_APPROACH:
+    if bay_y < -arm_run + _DIAGONAL_APPROACH:
         return None
 
-    tgt_x = _RETURN_STEM_T
-    approach = (axis_y + _DIAGONAL_APPROACH, tgt_x + _DIAGONAL_APPROACH)
-
-    # Enter the bay via the rear corner `(bay_y, hi_x)` so no bay segment
-    # crosses the arm stroke at x = 0.
-    pts: list[tuple[int, int]] = [(ey, ex)]
-    if on_x and ex == x1:  # rear side: out, then down to the bay corner
-        pts += [(ey, hi_x), (bay_y, hi_x)]
-    elif on_y and ey == y1:  # far side: out, over the far-rear corner, down
-        pts += [(far_y, ex), (far_y, hi_x), (bay_y, hi_x)]
-    elif on_x and ex == x0:  # vertex-ward side: the long way around
-        pts += [(ey, lo_x), (far_y, lo_x), (far_y, hi_x), (bay_y, hi_x)]
-    else:  # bay side
-        if ex == 0:
-            # Would land on the arm stroke's own line.
-            return None
-        if ex >= 1:
-            pts += [(bay_y, ex)]
-        else:
-            # Left of the arm stroke: go around the ring.
-            pts += [(bay_y, ex), (bay_y, lo_x), (far_y, lo_x), (far_y, hi_x)]
-            pts += [(bay_y, hi_x)]
-    pts += [(bay_y, approach[1]), approach]
-
-    legs: list[tuple[tuple[int, int], int]] = []
-    if extension is not None:
-        legs.append(extension)
-    for a, b in itertools.pairwise(pts):
-        dy, dx = b[0] - a[0], b[1] - a[1]
-        if dy and dx:  # pragma: no cover - geometry guard
-            return None
-        if not dy and not dx:
-            continue
-        direction = ((dy > 0) - (dy < 0), (dx > 0) - (dx < 0))
-        legs.append((direction, abs(dy) + abs(dx)))
+    pts = _ring_points(tip, box, bay_y, _RETURN_STEM_T + _DIAGONAL_APPROACH)
+    if pts is None:
+        return None
+    pts.append((-arm_run + _DIAGONAL_APPROACH, _RETURN_STEM_T + _DIAGONAL_APPROACH))
+    body = _axis_aligned_legs(pts)
+    if body is None:
+        return None
+    legs = ([extension] if extension is not None else []) + body
     legs.append(((-1, -1), _DIAGONAL_APPROACH))
-
     return [(_rotate(d, a_h), n) for d, n in legs]
+
+
+def _unit_step(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int] | None:
+    """``b - a`` if it is a single orthogonal cell step, else None."""
+    step = (b[0] - a[0], b[1] - a[1])
+    return step if abs(step[0]) + abs(step[1]) == 1 else None
+
+
+def _straight_run(
+    cells: list[tuple[int, int]], at: int, step: tuple[int, int], sign: int, count: int
+) -> bool:
+    """Whether ``cells[at + sign*i] == cells[at] + sign*i*step`` for i in 1..count."""
+    return all(
+        cells[at + sign * i]
+        == (cells[at][0] + sign * i * step[0], cells[at][1] + sign * i * step[1])
+        for i in range(1, count + 1)
+    )
 
 
 def _merge_return_legs(
@@ -533,25 +722,21 @@ def _merge_return_legs(
     hit = len(cells) - 1
     join = index.get(cells[hit])
     distance = _DIAGONAL_APPROACH
-    if join is None or hit < distance:
+    if join is None or hit < distance or join + distance >= len(trunk):
         return None
-    if join + distance >= len(trunk):
+    forward = _unit_step(trunk[join], trunk[join + 1])
+    arrival = _unit_step(cells[hit - 1], cells[hit])
+    if forward is None or arrival is None:
         return None
-    forward = tuple(trunk[join + 1][a] - trunk[join][a] for a in (0, 1))
-    arrival = tuple(cells[hit][a] - cells[hit - 1][a] for a in (0, 1))
-    if sum(abs(c) for c in forward) != 1 or sum(abs(c) for c in arrival) != 1:
+    if forward[0] * arrival[0] + forward[1] * arrival[1]:
         return None
-    if sum(a * b for a, b in zip(forward, arrival, strict=True)):
-        return None
-    if any(
-        trunk[join + i] != tuple(trunk[join][a] + i * forward[a] for a in (0, 1))
-        or cells[hit - i] != tuple(cells[hit][a] - i * arrival[a] for a in (0, 1))
-        for i in range(1, distance + 1)
+    if not (
+        _straight_run(trunk, join, forward, 1, distance)
+        and _straight_run(cells, hit, arrival, -1, distance)
     ):
         return None
-    points = cells[: hit - distance + 1]
     result: list[tuple[tuple[int, int], int]] = []
-    for a, b in itertools.pairwise(points):
+    for a, b in itertools.pairwise(cells[: hit - distance + 1]):
         direction = (b[0] - a[0], b[1] - a[1])
         if result and result[-1][0] == direction:
             result[-1] = (direction, result[-1][1] + 1)
@@ -605,78 +790,8 @@ def _layout(
                 count += 1
         cursor.emit_op(op, count)
         if node.goto is not None:
-            # Flush this stroke into `occupied` so the loop-back sees it.
-            cursor.finish()
-            # Return path (:func:`_loop_return_legs`), drawn in measuring
-            # mode too so extents contain it and ancestors reserve room --
-            # this is what makes nesting unbounded.  The target is in
-            # `entries` for any compiled graph; a subtree measured alone
-            # lacks its outermost fork, which the caller's frame draws.
-            legs = None
-            if id(node.goto) in entries:
-                legs = _loop_return_legs(
-                    (cursor.y, cursor.x),
-                    node.goto,
-                    entries,
-                    plan,
-                    cursor.heading if plan.ancestor_returns else None,
-                )
-            if legs is not None and cursor.occupied is not None:
-                # Drift guard, real mode only: the construction never reads
-                # ink, so anything it did not reserve must be caught, not
-                # drawn through.  This is what fired on the ring wrapping
-                # into a long run drawn before the fork, now reserved by
-                # `_stem_len`.  Endpoints (body tip, stem merge) are
-                # legitimate ink.
-                stop_at = cursor.occupied if plan.ancestor_returns else None
-                cells = _leg_cells((cursor.y, cursor.x), legs, stop_at)
-                end = (
-                    cursor.y + sum(direction[0] * length for direction, length in legs),
-                    cursor.x + sum(direction[1] * length for direction, length in legs),
-                )
-                blocked = cells[-1] != end or any(
-                    c in cursor.occupied for c in cells[1:-1]
-                )
-                if blocked:
-                    trunk = plan.returns.get(id(node.goto))
-                    legs = (
-                        None
-                        if trunk is None
-                        else _merge_return_legs(
-                            cells, trunk, plan.return_indices[id(node.goto)]
-                        )
-                    )
-                    if legs is not None:
-                        cells = _leg_cells((cursor.y, cursor.x), legs)
-                        if any(c in cursor.occupied for c in cells[1:-1]):
-                            legs = None
-                if (
-                    legs is not None
-                    and plan.ancestor_returns
-                    and id(node.goto) not in plan.returns
-                ):
-                    plan.returns[id(node.goto)] = cells
-                    plan.return_indices[id(node.goto)] = {
-                        cell: i for i, cell in enumerate(cells)
-                    }
-            if legs is not None:
-                for direction, length in legs:
-                    cursor.advance(direction, length)
-                cursor.finish()
-                return
-            if measuring:
-                # Target outside this measured subtree: the owner draws it.
-                return
-            # Target not an ancestor fork, or the body's end off its own
-            # box -- a hand-built graph, or a compiled body whose tail sits
-            # inside the box (see `_loop_return_legs`).  Never draw a
-            # reconnection through ink.
-            raise ValueError(
-                "loop-back could not be constructed for this goto -- its "
-                "target must be an ancestor '?' fork whose body chain the "
-                "goto ends (the shape a compiled loop produces); see "
-                "_loop_return_legs for the geometric premises"
-            )
+            _draw_loop_back(cursor, node.goto, entries, plan, measuring=measuring)
+            return
         node = node.next
     cursor.finish()
 
@@ -784,6 +899,34 @@ def _arrowhead(
     draw.polygon([tip, base_l, base_r], colour=0)
 
 
+def _rasterize(
+    strokes: list[list[tuple[int, int]]], start_heading: tuple[int, int], unit: int
+) -> Canvas:
+    """Draw ``strokes`` (cell coordinates) and the start arrowhead on a canvas."""
+    ys = [p[0] for stroke in strokes for p in stroke]
+    xs = [p[1] for stroke in strokes for p in stroke]
+    if not ys:
+        raise ValueError("program produced an empty path")
+    min_y, max_y = min(ys), max(ys)
+    min_x, max_x = min(xs), max(xs)
+
+    margin = unit
+    width = (max_x - min_x) * unit + margin * 2
+    height = (max_y - min_y) * unit + margin * 2
+
+    def to_px(pt: tuple[int, int]) -> tuple[float, float]:
+        y, x = pt
+        return (x - min_x) * unit + margin, (y - min_y) * unit + margin
+
+    canvas = Canvas(width, height)
+    for stroke in strokes:
+        canvas.line([to_px(p) for p in stroke])
+
+    start_px, start_py = to_px((0, 0))
+    _arrowhead(canvas, start_py, start_px, start_heading, unit)
+    return canvas
+
+
 def render(
     root: Node,
     start_heading: tuple[int, int] = (-1, 0),
@@ -820,27 +963,7 @@ def render(
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] = {}
     _layout(root, cursor, plan, entries)
 
-    ys = [p[0] for stroke in cursor.strokes for p in stroke]
-    xs = [p[1] for stroke in cursor.strokes for p in stroke]
-    if not ys:
-        raise ValueError("program produced an empty path")
-    min_y, max_y = min(ys), max(ys)
-    min_x, max_x = min(xs), max(xs)
-
-    margin = unit
-    width = (max_x - min_x) * unit + margin * 2
-    height = (max_y - min_y) * unit + margin * 2
-
-    def to_px(pt: tuple[int, int]) -> tuple[float, float]:
-        y, x = pt
-        return (x - min_x) * unit + margin, (y - min_y) * unit + margin
-
-    canvas = Canvas(width, height)
-    for stroke in cursor.strokes:
-        canvas.line([to_px(p) for p in stroke])
-
-    start_px, start_py = to_px((0, 0))
-    _arrowhead(canvas, start_py, start_px, start_heading, unit)
+    canvas = _rasterize(cursor.strokes, start_heading, unit)
     return canvas.upscale(scale)
 
 

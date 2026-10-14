@@ -126,8 +126,7 @@ class _Machine:
         bits: list[str] = []
         if any("." in line for line in self.code):
             for k in io.input_all():
-                val = f"{ord(k):07b}"
-                bits += list(val.zfill(_BYTE_BITS))
+                bits += format(ord(k), f"0{_BYTE_BITS}b")
         self.state: _State = (0, 0, 0, 0, (), tuple(bits), False)
 
     # The language's own names.  They are views on the current state rather

@@ -3,7 +3,7 @@
 Through five inputs, a decision tree from labelled loop strips
 (:func:`_streetcode_strip`), per-level blocks joined side by side.  Each
 per-input strip walks a cell by 48 (an ASCII digit to a bit, a fresh cell
-to a digit); its hallway loop spends the 48 as unary cells, 29 rows by 4
+to a digit); its hallway loop spends the 48 as unary cells, 30 rows by 4
 columns.
 
 From six inputs the tree goes away: the table is written one cell per
@@ -87,16 +87,15 @@ def _streetcode_ring(c: str) -> list[str]:
         (_RING_ENTRY, _RING_COUNTER - 1, "^"),
         (_RING_LAP, _RING_PER_LAP, c),
     ):
-        for i, (r, col) in enumerate(cells):
-            if i < keep:
-                grid[r][col] = char
+        for r, col in cells[:keep]:
+            grid[r][col] = char
     return ["".join(row) for row in grid]
 
 
 def _streetcode_hallway(c: str) -> list[str]:
     """Build a wall-hugging loop of exactly 48 ``c`` cells, one per row-pair.
 
-    29 rows by 4 columns, for width-constrained programs.
+    30 rows by 4 columns, for width-constrained programs.
     """
     top = ["----", "    ", "    ", "+  +", "|  |"]
     row = f"|{c * 2}|"
@@ -113,18 +112,6 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
     wall = "-" * width
     first = [wall, " " * width, before, wall]
     return _streetcode_combine([first, block])
-
-
-# ``~=I^`` leads into a collect loop: ``~`` consumes the +1 the previous loop
-# left on the cell behind, ``=`` advances CP onto a fresh cell, ``I`` reads
-# the next bit (ASCII ``'0'``/``'1'``), and ``^`` bumps it to 49 or 50, which
-# forces the cell nonzero before the loop's junction is tested -- the
-# ambiguous-turn rule (leftmost when the CPth cell is 0, otherwise
-# second-leftmost) has to see a nonzero cell to turn into the loop rather
-# than drive past it.  The loader label is the same without an ``I``.
-# The +1 it leaves behind is not slack. Every gap crossing reads the CPth
-# cell; a bare 0 there would steer the car West back down the street instead
-# of East onto the next loop.
 
 
 def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
@@ -300,6 +287,16 @@ def _streetcode_populate(n: int) -> list[str]:
     turn and ramps a fresh cell to ``'0'`` + 1 (:func:`_streetcode_leaf`).
     """
     start = ["+--", "|  ", "|C^", "+--"]
+    # ``~=I^`` leads into a collect loop: ``~`` consumes the +1 the previous loop
+    # left on the cell behind, ``=`` advances CP onto a fresh cell, ``I`` reads
+    # the next bit (ASCII ``'0'``/``'1'``), and ``^`` bumps it to 49 or 50, which
+    # forces the cell nonzero before the loop's junction is tested -- the
+    # ambiguous-turn rule (leftmost when the CPth cell is 0, otherwise
+    # second-leftmost) has to see a nonzero cell to turn into the loop rather
+    # than drive past it.  The loader label is the same without an ``I``.
+    # The +1 it leaves behind is not slack. Every gap crossing reads the CPth
+    # cell; a bare 0 there would steer the car West back down the street instead
+    # of East onto the next loop.
     col = _streetcode_strip("~=I^", _streetcode_hallway("~"))
     # The rewind strip walks CP back over the n cells the input loops filled,
     # so it carries n '_' instructions.  Streets are two characters wide, so
@@ -553,7 +550,10 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     if len(table) > 1:
         truth_table, n = table, len(table).bit_length() - 1
     else:
-        weights = [1] * n  # a constant keeps one level to fork on
+        # A constant keeps one level to fork on, over two equal cells; the
+        # other inputs are lone reads.
+        weights = [0] * (n - 1) + [1]
+        truth_table, n = table * 2, 1
     gaps, pending = [], 0
     for weight in weights:
         if weight:
@@ -623,6 +623,37 @@ def _streetcode_narrow(flat: str, width: int) -> str:
     )
 
 
+# Arity from which the flat lookup is the only shape.  Random tables at n=5
+# are 46% smaller flat (509645 vs 940336 chars over 200), and 53% at n=6.
+_FLAT_FROM = 6
+
+
+def _tree_shapes(
+    truth_table: str, n: int, tree: list[str], *, hallway: bool
+) -> list[str]:
+    """Return the tree shapes below ``_FLAT_FROM`` inputs, hallway first if asked.
+
+    The flat lookup joins the race at the last such arity.
+    """
+    # The per-input loops trade rows for columns, so only width selection
+    # needs them.  The shared lap is strictly shorter through every table at
+    # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
+    # decisively as the input count grows.
+    programs = [_streetcode_hallway_program(n, tree)] if hallway else []
+    # The shared shape is not lifted: its prefix is as long as the street it
+    # heads, so a westbound run of it crosses the loops' own mouths, and at
+    # each one CP names a cell nothing has seeded yet.  No ordering of the
+    # seeds avoids that.  It is built once per input order, identity first,
+    # so a table no reorder improves keeps the program it already emitted.
+    programs.extend(_streetcode_shared_programs(truth_table, n, tree))
+    # At five the flat lookup wins on dense and parity tables and loses on
+    # one that folds, so it is compared; without it parity at five costs
+    # 3251 against 2534 and the odd rungs stop growing linearly.
+    if n == _FLAT_FROM - 1:
+        programs.append(_streetcode_flat(truth_table, n))
+    return programs
+
+
 def streetcode(truth_table: str, width: int | None = None) -> str:
     """Build a Streetcode program computing the given truth table.
 
@@ -640,28 +671,13 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     -> 258x9 at ``width=40``), which is a shape switch, not a missing piece.
     """
     n = _validate_truth_table(truth_table)
-    if n >= 6:
+    if n >= _FLAT_FROM:
         flat = _streetcode_flat(truth_table, n)
         if width is None or grid_width(flat) <= width:
             return flat
         return _streetcode_narrow(flat, width)
     tree = _streetcode_tree(truth_table)
-    # The per-input loops trade rows for columns, so only width selection
-    # needs them.  The shared lap is strictly shorter through every table at
-    # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
-    # decisively as the input count grows.
-    programs = [_streetcode_hallway_program(n, tree)] if width is not None else []
-    # The shared shape is not lifted: its prefix is as long as the street it
-    # heads, so a westbound run of it crosses the loops' own mouths, and at
-    # each one CP names a cell nothing has seeded yet.  No ordering of the
-    # seeds avoids that.  It is built once per input order, identity first,
-    # so a table no reorder improves keeps the program it already emitted.
-    programs.extend(_streetcode_shared_programs(truth_table, n, tree))
-    # At five the flat lookup wins on dense and parity tables and loses on
-    # one that folds, so it is compared; without it parity at five costs
-    # 3251 against 2534 and the odd rungs stop growing linearly.
-    if n == 5:
-        programs.append(_streetcode_flat(truth_table, n))
+    programs = _tree_shapes(truth_table, n, tree, hallway=width is not None)
     if width is not None:
         fitting = [p for p in programs if grid_width(p) <= width]
         if fitting:
@@ -675,17 +691,11 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
 def _balance(table: str, default: str) -> str:
     """Compare each fit threshold and the seven/nine-column fallback regimes."""
     n = _validate_truth_table(table)
-    if n >= 6:
+    if n >= _FLAT_FROM:
         flat = _streetcode_flat(table, n)
         shapes = [flat, _streetcode_rotate(flat)]
     else:
-        tree = _streetcode_tree(table)
-        shapes = [
-            _streetcode_hallway_program(n, tree),
-            *_streetcode_shared_programs(table, n, tree),
-        ]
-        if n == 5:
-            shapes.append(_streetcode_flat(table, n))
+        shapes = _tree_shapes(table, n, _streetcode_tree(table), hallway=True)
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]

@@ -20,15 +20,15 @@ import importlib
 import inspect
 import re
 import signal
-import threading
 import time as _time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from functools import cache, partial
 from math import isqrt
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 from esolangs._language import Language
 from esolangs.compressed import CompressedText
+from esolangs.debugger import make_debugger
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -44,7 +44,12 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.generation.helpers import mark_runs, same_up_to_wrapping, unmark
+from esolangs.generation.helpers import (
+    check_table_text,
+    mark_runs,
+    same_up_to_wrapping,
+    unmark,
+)
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width(language)`` got False for
@@ -58,10 +63,8 @@ from esolangs.generation.wrap import takes_width as _takes_width
 from esolangs.portable import dump_program, load_program
 from esolangs.raster import Raster
 from esolangs.registry import (
-    INTERPRETERS,
     LANGUAGES,
     SourceKind,
-    parameterized_ids,
     recover_setters,
     render_template,
     resolve,
@@ -80,6 +83,7 @@ from esolangs.runtime._execution import (
     interpreter_module,
     prepare_call,
 )
+from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import run_isolated as _run_isolated
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._source import (
@@ -95,6 +99,7 @@ from esolangs.runtime._validate import (
     check_scale,
     check_seed,
     check_timeout,
+    check_whole,
     check_width,
 )
 from esolangs.runtime.io import ScriptedIO
@@ -199,7 +204,7 @@ def generate(
         if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
             raise with_hint(
                 ArgumentError("scale is only supported for raster generators"),
-                ("omit scale for text languages; apply it only to raster source"),
+                "omit scale for text languages; apply it only to raster source",
             )
         source = generate(
             language, truth_table, width=width, balance=balance, settings=settings
@@ -214,41 +219,7 @@ def generate(
             ),
         )
     if balance:
-        default = generate(language, truth_table, settings=settings)
-        lang = LANGUAGES[resolve(language)]
-        balancer = lang.balance
-        if isinstance(default, CompressedText):
-            return default.wrapped(max(1, isqrt(len(default))))
-        if isinstance(default, Raster):
-            if balancer is None:
-                return default
-            raster_balance = cast(Callable[[str, Raster], Raster], balancer)
-            return raster_balance(truth_table, default).tagged(
-                resolve(language), settings=settings, scale=1
-            )
-        if balancer is not None:
-            # A dialect setting the balancer names changes what it rebuilds.
-            accepted = inspect.signature(balancer).parameters
-            balance_options = {
-                key: value for key, value in options.items() if key in accepted
-            }
-            text = cast(Callable[..., str], balancer)(
-                truth_table, default, **balance_options
-            )
-            if isinstance(default, _Template):
-                text, char, pairs = render_template(lang.id, text, default.inputs)
-                return _Template(text, default.language, char, pairs, settings=settings)
-            return _Tagged(text, resolve(language), settings=settings)
-        if isinstance(default, _Template):
-            marked = mark_runs(default, default.char, default.setters)
-            text = unmark(
-                balance_program(marked, lang.id), default.char, default.inputs
-            )
-            return _Template(
-                text, default.language, default.char, default.setters, settings=settings
-            )
-        text = balance_program(default, lang.id)
-        return _Tagged(text, resolve(language), settings=settings)
+        return _generate_balanced(language, truth_table, options, settings)
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
     fn = lang.boolean
@@ -258,14 +229,7 @@ def generate(
             f"{resolved} has no boolean generator under this repository's "
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
-    if not isinstance(truth_table, str):
-        raise with_hint(
-            TruthTableError(
-                f"truth table must be a string of '0' and '1', got "
-                f"{type(truth_table).__name__}"
-            ),
-            ("pass truth-table text, for example '0110' for two-input XOR"),
-        )
+    check_table_text(truth_table)
     check_width(width)
     laid_out = width is not None and _takes_width(fn)
     try:
@@ -288,7 +252,7 @@ def generate(
     if isinstance(generated, CompressedText):
         return generated.wrapped(width).tagged(resolved, settings=settings)
     slots = str(generated)
-    if lang.id not in parameterized_ids():
+    if not lang.parameterized:
         program = slots if laid_out else wrap_program(slots, lang.id, width)
         return _Tagged(program, resolved, settings=settings)
     # The generator spells each input as a run; the public template is
@@ -297,6 +261,48 @@ def generate(
     wrap_to = None if laid_out else width
     text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
     return _Template(text, resolved, char, pairs, settings=settings)
+
+
+def _generate_balanced(
+    language: str,
+    truth_table: str,
+    options: dict[str, Any],
+    settings: DialectSettings | None,
+) -> Program:
+    """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
+    default = generate(language, truth_table, settings=settings)
+    name = resolve(language)
+    lang = LANGUAGES[name]
+    balancer = lang.balance
+    if isinstance(default, CompressedText):
+        return default.wrapped(max(1, isqrt(len(default))))
+    if isinstance(default, Raster):
+        if balancer is None:
+            return default
+        raster_balance = cast(Callable[[str, Raster], Raster], balancer)
+        return raster_balance(truth_table, default).tagged(
+            name, settings=settings, scale=1
+        )
+    if balancer is not None:
+        # A dialect setting the balancer names changes what it rebuilds.
+        accepted = inspect.signature(balancer).parameters
+        balance_options = {
+            key: value for key, value in options.items() if key in accepted
+        }
+        text = cast(Callable[..., str], balancer)(
+            truth_table, default, **balance_options
+        )
+        if isinstance(default, _Template):
+            text, char, pairs = render_template(lang.id, text, default.inputs)
+            return _Template(text, default.language, char, pairs, settings=settings)
+        return _Tagged(text, name, settings=settings)
+    if isinstance(default, _Template):
+        marked = mark_runs(default, default.char, default.setters)
+        text = unmark(balance_program(marked, lang.id), default.char, default.inputs)
+        return _Template(
+            text, default.language, default.char, default.setters, settings=settings
+        )
+    return _Tagged(balance_program(default, lang.id), name, settings=settings)
 
 
 def _is_template_for(
@@ -360,7 +366,7 @@ def instantiate(
                 f"inputs rather than embedding them, so there is nothing to "
                 f"instantiate"
             ),
-            ("run the raster with stdin=encode_inputs(language, bits)"),
+            "run the raster with stdin=encode_inputs(language, bits)",
         )
     if not isinstance(template, str):
         # Before the provenance check, which calls ``template.replace`` and
@@ -401,7 +407,7 @@ def instantiate(
                 f"{name} reads its inputs rather than embedding them, so there "
                 f"is nothing to instantiate; pass them in as stdin instead"
             ),
-            ("run the generated program with stdin=encode_inputs(language, bits)"),
+            "run the generated program with stdin=encode_inputs(language, bits)",
         )
     origin = getattr(template, "language", None)
     if origin is not None and origin != name:
@@ -411,37 +417,14 @@ def instantiate(
                 f"it as {name} would substitute {name}'s setter code into a "
                 f"{origin} program -- which runs, and answers the wrong row"
             ),
-            ("instantiate the template using the language that generated it"),
+            "instantiate the template using the language that generated it",
         )
     bits = check_bits(bits, "bits")
-    tagged = template if isinstance(template, _Template) else None
-    if tagged is None:
-        if char not in template:
-            # An ordinary program and an already-filled template look the
-            # same from here, so the message names both.
-            raise with_hint(
-                TemplateError(
-                    f"this {name} text has no run of {char!r} to fill: it is either "
-                    f"an ordinary program or a template instantiate() has already "
-                    f"been applied to, and generate({name!r}, table) returns the "
-                    f"template to fill"
-                ),
-                (
-                    "keep the original unfilled generate() result "
-                    "and instantiate it separately for each row"
-                ),
-            )
-        try:
-            pairs = recover_setters(LANGUAGES[name].id, template)
-        except ValueError as exc:
-            raise with_hint(
-                TemplateError(f"not a {name} template: {exc}"),
-                (
-                    "recreate the template with generate(); avoid "
-                    "manually editing its placeholder runs"
-                ),
-            ) from exc
-        tagged = _Template(template, name, char, pairs, settings=settings)
+    tagged = (
+        template
+        if isinstance(template, _Template)
+        else _recover_template(name, template, char, settings)
+    )
     if len(bits) != tagged.inputs:
         given = (
             f"{len(bits)} bit was given"
@@ -460,6 +443,38 @@ def instantiate(
     return _Tagged(
         wrap_program(program, LANGUAGES[name].id, width), name, settings=settings
     )
+
+
+def _recover_template(
+    name: str, template: str, char: str, settings: DialectSettings | None
+) -> _Template:
+    """Tag a plain-string template, recovering its setters from the language's."""
+    if char not in template:
+        # An ordinary program and an already-filled template look the
+        # same from here, so the message names both.
+        raise with_hint(
+            TemplateError(
+                f"this {name} text has no run of {char!r} to fill: it is either "
+                f"an ordinary program or a template instantiate() has already "
+                f"been applied to, and generate({name!r}, table) returns the "
+                f"template to fill"
+            ),
+            (
+                "keep the original unfilled generate() result "
+                "and instantiate it separately for each row"
+            ),
+        )
+    try:
+        pairs = recover_setters(LANGUAGES[name].id, template)
+    except ValueError as exc:
+        raise with_hint(
+            TemplateError(f"not a {name} template: {exc}"),
+            (
+                "recreate the template with generate(); avoid "
+                "manually editing its placeholder runs"
+            ),
+        ) from exc
+    return _Template(template, name, char, pairs, settings=settings)
 
 
 #: ``run(..., isolated=True)``'s deadline when ``timeout`` is None: the
@@ -494,8 +509,8 @@ def _check_runnable(language: str, program: Program) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
-    wrong answer (an unfilled template can run as nothing).  Public because the
-    debugger stepped a template to ``output: '0'``; the CLI's ``debug`` calls it.
+    wrong answer (an unfilled template can run as nothing).  Shared by
+    ``_check_program`` and the CLI's ``debug``.
     """
     name = resolve(language)
     if isinstance(program, (Raster, CompressedText)):
@@ -591,12 +606,8 @@ def _run_bounded(
     with ``partial_output``. Works on Windows and worker threads; loading
     and individual steps cannot be interrupted.
     """
-    from esolangs.runtime._validate import check_whole
-
     check_whole(max_steps, "max_steps")
     check_timeout(timeout)
-    from esolangs.debugger import make_debugger
-
     debugger = make_debugger(
         language, program, stdin=stdin, scale=scale, settings=settings
     )
@@ -673,23 +684,12 @@ def run(
     check_scale_for(language, scale)
     check_seed(seed)
     check_timeout(timeout)
-    from esolangs.runtime._isolated import check_memory
-
-    check_memory(max_memory, isolated=isolated)
-    if max_output is not None:
-        from esolangs.runtime._validate import check_whole
-
-        check_whole(max_output, "max_output")
-        if not isolated:
-            raise with_hint(
-                ArgumentError("max_output requires isolated=True"),
-                ("set isolated=True to bound output, or omit max_output"),
-            )
+    check_limits(max_output, max_memory, isolated=isolated)
     if isolated:
         if max_steps is not None:
             raise with_hint(
                 ArgumentError("isolated and max_steps are mutually exclusive"),
-                ("use isolation with timeout, or use max_steps without isolation"),
+                "use isolation with timeout, or use max_steps without isolation",
             )
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         # Every option defaults to None, so passing them unconditionally

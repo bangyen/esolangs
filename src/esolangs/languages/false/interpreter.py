@@ -40,14 +40,16 @@ why ``ip`` stays a real offset even inside one.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from string import ascii_lowercase
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import trunc_div, wrap_int32
 from esolangs.runtime.source_hints import syntax_error
 
-_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+_LETTERS = ascii_lowercase
 _VARS = len(_LETTERS)
 
 
@@ -94,18 +96,7 @@ class _Loop(_Frame):
 type _State = tuple[tuple[_Value, ...], tuple[_Value | None, ...], tuple[_Frame, ...]]
 
 #: What one step may hand back for the shell to write.
-type _Effect = tuple[str, object] | None
-
-
-def _wrap32(value: int) -> int:
-    """Wrap ``value`` to a signed 32-bit integer, the spec's width."""
-    return (value + 2**31) % 2**32 - 2**31
-
-
-def _trunc_div(left: int, right: int) -> int:
-    """Divide truncating toward zero, as C and the 68000 do."""
-    quotient = abs(left) // abs(right)
-    return -quotient if (left < 0) != (right < 0) else quotient
+type _Effect = tuple[str, int | str] | None
 
 
 def _closers(code: str) -> dict[int, int]:
@@ -196,7 +187,7 @@ def _literal(code: str, pc: int, end: int) -> tuple[int, int]:
     value = 0
     while stop < end and "0" <= code[stop] <= "9":
         # Bounded accumulation avoids Python's decimal conversion limit.
-        value = _wrap32(value * 10 + int(code[stop]))
+        value = wrap_int32(value * 10 + int(code[stop]))
         stop += 1
     return value, stop
 
@@ -208,22 +199,22 @@ def _binary(char: str, stack: tuple[_Value, ...]) -> tuple[_Value, ...]:
     two = _number(right, f"{char!r}")
     one = _number(left, f"{char!r}")
     if char == "+":
-        return (*rest, _wrap32(one + two))
+        return (*rest, wrap_int32(one + two))
     if char == "-":
-        return (*rest, _wrap32(one - two))
+        return (*rest, wrap_int32(one - two))
     if char == "*":
-        return (*rest, _wrap32(one * two))
+        return (*rest, wrap_int32(one * two))
     if char == "/":
         if two == 0:
             raise HaltError(
                 "FALSE divides by zero here",
                 hint="ensure the divisor is nonzero before dividing",
             )
-        return (*rest, _wrap32(_trunc_div(one, two)))
+        return (*rest, wrap_int32(trunc_div(one, two)))
     if char == "&":
-        return (*rest, _wrap32(one & two))
+        return (*rest, wrap_int32(one & two))
     if char == "|":
-        return (*rest, _wrap32(one | two))
+        return (*rest, wrap_int32(one | two))
     if char == ">":
         return (*rest, -1 if one > two else 0)
     # The caller admits only the eight operators above and ``=``.
@@ -263,12 +254,12 @@ def _finalize(state: _State) -> _State:
     return (stack, variables, frames)
 
 
-def _advance(
-    state: _State, code: str, closers: dict[int, int], line: str | None = None
+def _advance(  # noqa: C901
+    state: _State, code: str, closers: dict[int, int], char_input: int | None = None
 ) -> tuple[_State, _Effect]:
     """Return the state after one command, and what to write.
 
-    Pure: ``^``'s line arrives as ``line`` and every write leaves as the
+    Pure: ``^``'s character code arrives as ``char_input`` and every write leaves as the
     effect, so the frame bookkeeping is testable without a port.
     """
     state = _finalize(state)
@@ -326,10 +317,10 @@ def _advance(
         return ((*rest, rest[len(rest) - 1 - index]), variables, frames), None
     if char == "_":
         top, rest = _pop(stack)
-        return ((*rest, _wrap32(-_number(top, "'_'"))), variables, frames), None
+        return ((*rest, wrap_int32(-_number(top, "'_'"))), variables, frames), None
     if char == "~":
         top, rest = _pop(stack)
-        return ((*rest, _wrap32(~_number(top, "'~'"))), variables, frames), None
+        return ((*rest, wrap_int32(~_number(top, "'~'"))), variables, frames), None
     if char in "+-*/&|>=":
         return (_binary(char, stack), variables, frames), None
     if char == ":":
@@ -391,7 +382,7 @@ def _advance(
     if char == "^":
         # The read already happened in the shell.  ``None`` is end of input,
         # which the spec answers with -1.
-        value = -1 if line is None else ord(line[0]) if line else 0
+        value = -1 if char_input is None else char_input
         return ((*stack, value), variables, frames), None
     # ``ß``/``B`` flush a buffer this package does not have, and every other
     # character is ignored, as the reference's parser ignores whitespace.
@@ -445,29 +436,29 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one command, with the reads and writes the transition asks."""
-        if self.halted:
-            return
         state = _finalize(self.state)
         frames = state[2]
+        if not frames:
+            return
         char = self.code[frames[-1].pc]
-        line: str | None = None
+        char_input: int | None = None
         if char == "^":
             try:
-                line = chr(self.io.input_char())
+                char_input = self.io.input_char()
             except EOFError:
                 # ``^`` has an EOF value in the spec, so the port's raise is
-                # caught and turned into it -- as nine other interpreters here
-                # turn it into their own language's.  Letting it escape made
+                # caught and turned into it, as other interpreters here do for
+                # their own languages.  Letting it escape made
                 # the reference's own cat loop (``[^1_=~][,]#``) a crash.
-                line = None
-        self.state, effect = _advance(state, self.code, self.closers, line)
+                char_input = None
+        self.state, effect = _advance(state, self.code, self.closers, char_input)
         if effect is None:
             return
         kind, value = effect
         if kind == "num":
-            self.io.print_num(int(str(value)))
+            self.io.print_num(int(value))
         elif kind == "char":
-            self.io.print_char(chr(int(str(value))))
+            self.io.print_char(chr(int(value)))
         else:
             self.io.print_str(str(value))
 

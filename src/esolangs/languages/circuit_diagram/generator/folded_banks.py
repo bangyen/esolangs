@@ -9,10 +9,20 @@ from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
     _essential_table,
-    hpool,
 )
-from esolangs.languages.circuit_diagram.generator.banks import _assemble_banks
-from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
+from esolangs.languages.circuit_diagram.generator.banks import (
+    _POOLED_MASK_INPUTS,
+    _assemble_banks,
+    _bank_rectangle,
+    _chunks,
+    _class_gate_cap,
+    _gate_count,
+    _pool_budget,
+)
+from esolangs.languages.circuit_diagram.generator.hpool import (
+    _atom_inputs,
+    _large_pool_layout,
+)
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 
 
@@ -27,7 +37,7 @@ def _folded_class_masks(
             "".join(str(int(chunk == word)) for chunk in chunks), prefix
         )
         # Include original ports in the quadratic fold-work bound.
-        work += (len(_dag(reduced, len(used))[0]) + prefix) ** 2
+        work += (len(_dag(reduced, len(used)).ops) + prefix) ** 2
         if work > 4 * table_size:
             return None
         masks.append((used, reduced))
@@ -39,13 +49,12 @@ def folded_class_bank_candidate(
 ) -> _Layout | None:
     """Return a bounded separate bank with folded masks above eight inputs."""
     n = _validate_truth_table(table)
-    tail = 7 if n % 2 else 8
+    tail = _atom_inputs(n)
     prefix = n - tail
-    # Pooled masks through eight inputs already use this same fold.
-    if prefix <= 8:
+    if prefix <= _POOLED_MASK_INPUTS:
         return None
     size = 1 << tail
-    chunks = [table[i : i + size] for i in range(0, len(table), size)]
+    chunks = _chunks(table, size)
     counts = Counter(chunks)
     classes = [word for word in counts if "1" in word]
     q = len(classes)
@@ -55,10 +64,8 @@ def folded_class_bank_candidate(
         return None
     # q <= 2**(tail+2) and prefix >= tail+1 give clock <= 2n+2:
     # parallel folds, one AND, ceil(log2 q) ORs and three I/O ticks.
-    budget = hpool._h_pool_area_floor(n, n)  # noqa: SLF001
-    if ceiling is not None:
-        budget = min(budget, ceiling)
-    if budget <= 0:
+    budget = _pool_budget(n, ceiling)
+    if budget is None:
         return None
     masks = _folded_class_masks(chunks, classes, prefix, len(table))
     if masks is None:
@@ -82,23 +89,14 @@ def folded_class_bank_candidate(
                 return None
             models.append((model, list(range(prefix, n))))
         parts.append(models)
-    gates = sum(
-        sum(char in "ao~xX" for char in m.glyphs.values())
-        for group in parts
-        for m, order in group
-    )
-    if gates + 2 * q - 1 > 2 * len(table) + 8 * n + 111:
+    gates = sum(_gate_count(m) for group in parts for m, order in group)
+    if gates + 2 * q - 1 > _class_gate_cap(len(table), n):
         return None
     dimensions = [m.bounds() for group in parts for m, order in group]
-    carry = (q - 1).bit_length() + 1
-    # Model bands, AND/separator rows, q-1 OR returns and inclusive footer.
-    height = 2 * n + 8 + 4 * prefix + sum(h + 8 for h, w in dimensions) + 32 * q + 5
-    width = max(w for h, w in dimensions) + 2 * n + 40 + 2 * carry
+    height, width = _bank_rectangle(dimensions, n, prefix, q)
     if height * width > budget:
         return None
-    model = _assemble_banks(
-        parts, n, prefix, share_prefix_complements=False, online_returns=True
-    )
+    model = _assemble_banks(parts, n, prefix)
     h, w = model.bounds()
     if h > height or w > width:
         raise AssertionError("folded bank exceeds its preflight rectangle")

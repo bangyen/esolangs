@@ -18,7 +18,7 @@ directly with ``python -m``.
 ``describe`` and ``read-answer`` are here because the two facts that decided
 every wrong answer this tool ever handed out -- how a language wants its
 input bits, and where in the output its answer sits -- were readable from
-Python and from nowhere else.  A shell user could run all ten of the
+Python and from nowhere else.  A shell user could run every one of the
 languages that do not simply print their answer, and could not judge one of
 them: some languages' answer is a mark on one cell of a grid.
 
@@ -37,7 +37,9 @@ a traceback should mean.
 from __future__ import annotations
 
 import json
+import os
 import sys
+from itertools import pairwise
 from typing import cast
 
 from esolangs import (
@@ -54,6 +56,7 @@ from esolangs import (
 )
 from esolangs.cli.args import (
     _check_count,
+    _errors,
     _expand_short_options,
     _fail,
     _integer,
@@ -67,10 +70,7 @@ from esolangs.cli.args import (
     _split_positional,
 )
 from esolangs.cli.debug import _debug
-from esolangs.cli.help import (
-    HELP,
-    USAGE,
-)
+from esolangs.cli.help import HELP, USAGE
 from esolangs.cli.hints import (
     _as_argument,
     _cli_error_text,
@@ -80,14 +80,10 @@ from esolangs.cli.hints import (
     _looks_like_a_table,
     _shell_hint,
 )
-from esolangs.cli.io import (
-    _read_stdin,
-)
+from esolangs.cli.io import _read_stdin
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import (
-    EsolangError,
-)
+from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._describe import SHAPES, STATE_MODELS
 
@@ -186,7 +182,7 @@ def _list(rest: list[str]) -> None:
                         "generator_restrictions": facts["generator_restrictions"],
                         "has_example": bool(facts["examples"]),
                     }
-                    for name, facts in ((name, describe(name)) for name in names)
+                    for name, facts in zip(names, map(describe, names), strict=True)
                 ],
                 indent=2,
             )
@@ -225,10 +221,12 @@ def _list(rest: list[str]) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
+    value_options = {"--bits", "--scale", "--settings"}
+    flag_options = {"--balance", "--plain"}
     rest, set_pairs = _pop_set_pairs(rest)
-    rest, options = _pop_options(rest, {"--bits", "--scale", "--settings"})
+    rest, options = _pop_options(rest, value_options)
     rest, portable = _pop_portable(rest)
-    rest, flags = _pop_flags(rest, {"--balance", "--plain"})
+    rest, flags = _pop_flags(rest, flag_options)
     balance = "--balance" in flags
     scale = _scale_of(options)
     before = list(rest)
@@ -238,24 +236,14 @@ def _generate(rest: list[str]) -> None:
     rest = _split_positional(
         rest,
         set(),
-        {
-            "--bits",
-            "--width",
-            "--balance",
-            "--scale",
-            "--settings",
-            "--set",
-            "--portable",
-            "--plain",
-        },
+        value_options | flag_options | {"--width", "--set", "--portable"},
     )
     # `--width` takes an *optional* N, so a truth table typed straight after
     # it is consumed as the width and the report lands on the table being
     # missing -- which is baffling when you did type one.
     eaten = ""
     if width is not None and not bare:
-        for i, arg in enumerate(before[:-1]):
-            value = before[i + 1]
+        for arg, value in pairwise(before):
             if arg == "--width" and _looks_like_a_table(value):
                 eaten = (
                     f"\n\nnote: --width consumed {value!r}, which looks like a "
@@ -359,6 +347,32 @@ def _settings_sentence(facts: LanguageInfo) -> str:
     return "; ".join(rendered)
 
 
+#: The facts ``describe`` lists under "details:", in order.
+_DETAIL_KEYS = (
+    "source_kind",
+    "state_model",
+    "boolean_generator",
+    "parameterized",
+    "reads_input",
+    "width_effect",
+    "generator_max_inputs",
+    "generator_restrictions",
+    "input_shape",
+    "input_encoding",
+    "answer_mode",
+    "answer_encoding",
+    "answer_pattern",
+    "answer_convention",
+    "self_halts",
+    "dumps_on_the_post_halt_step",
+    "steppable_to_answer",
+    "eof_is_a_value",
+    "random",
+    "examples",
+    "wiki_url",
+)
+
+
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
     rest, flags = _pop_flags(rest, {"--json", "--spec"})
@@ -366,11 +380,8 @@ def _describe(rest: list[str]) -> None:
     as_json = "--json" in flags
     as_spec = "--spec" in flags
     _check_count("describe", rest, 1)
-    try:
+    with _errors():
         facts = describe(rest[0])
-    except EsolangError as exc:
-        _fail(exc)
-        raise  # pragma: no cover - unreachable; _fail exits
     if as_spec:
         print(json.dumps(facts, indent=2) if as_json else facts["spec"])
         return
@@ -383,12 +394,11 @@ def _describe(rest: list[str]) -> None:
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
-    hidden = set()
-    if not facts["reads_input"] and facts["parameterized"]:
-        hidden = {"input_shape", "input_encoding"}
+    embeds_bits = not facts["reads_input"] and facts["parameterized"]
+    hidden = {"input_shape", "input_encoding"} if embeds_bits else set()
     name = str(facts["name"])
     print(name)
-    if hidden:
+    if embeds_bits:
         print(
             "input: none -- this generator embeds the bits in the program: "
             f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
@@ -401,29 +411,11 @@ def _describe(rest: list[str]) -> None:
     print(f"spec: esolangs describe --spec {_as_argument(name)}")
     print()
     print("details:")
-    details = [
-        ("source_kind", facts["source_kind"]),
-        ("state_model", facts["state_model"]),
-        ("boolean_generator", facts["boolean_generator"]),
-        ("parameterized", facts["parameterized"]),
-        ("reads_input", facts["reads_input"]),
-        ("width_effect", facts["width_effect"]),
-        ("generator_max_inputs", facts["generator_max_inputs"]),
-        ("generator_restrictions", facts["generator_restrictions"]),
-        ("input_shape", facts["input_shape"]),
-        ("input_encoding", facts["input_encoding"]),
-        ("answer_mode", facts["answer_mode"]),
-        ("answer_encoding", facts["answer_encoding"]),
-        ("answer_pattern", facts["answer_pattern"]),
-        ("answer_convention", facts["answer_convention"]),
-        ("self_halts", facts["self_halts"]),
-        ("dumps_on_the_post_halt_step", facts["dumps_on_the_post_halt_step"]),
-        ("steppable_to_answer", facts["steppable_to_answer"]),
-        ("eof_is_a_value", facts["eof_is_a_value"]),
-        ("random", facts["random"]),
-        ("examples", f"{len(facts['examples'])} committed (paths in --json)"),
-        ("wiki_url", facts["wiki_url"]),
-    ]
+    shown_facts: dict[str, object] = {
+        **facts,
+        "examples": f"{len(facts['examples'])} committed (paths in --json)",
+    }
+    details = [(key, shown_facts[key]) for key in _DETAIL_KEYS]
     width = max(len(key) for key, _value in details)
     for key, value in details:
         if value is None or value == "" or key in hidden:
@@ -437,14 +429,10 @@ def _read_answer(rest: list[str]) -> None:
     rest = _split_positional(rest, set())
     _check_count("read-answer", rest, 1)
     language = rest[0]
-    try:
+    with _errors():
         facts = describe(language)
-    except EsolangError as exc:
-        _fail(exc)
-        raise  # pragma: no cover - unreachable; _fail exits
     if facts["answer_mode"] == "termination":
-        polarity = facts["answer_encoding"]
-        zero, one = polarity
+        zero, one = facts["answer_encoding"]
         _fail(
             f"{facts['name']} answers by {zero} for a 0 and {one} for a 1, so "
             f"there is no output to read; use: esolangs run "
@@ -458,10 +446,8 @@ def _read_answer(rest: list[str]) -> None:
             f"output in: esolangs run {language} prog.txt | esolangs "
             f"read-answer {language}"
         )
-    try:
+    with _errors():
         print(read_answer(language, output))
-    except EsolangError as exc:
-        _fail(exc)
 
 
 def main() -> None:
@@ -496,8 +482,6 @@ def main() -> None:
         # Python flushes stdout at exit and would report the same error
         # again from the interpreter's own teardown; pointing it at
         # ``devnull`` is the documented way to stop that.
-        import os
-
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         sys.exit(120)
     except Exception as exc:

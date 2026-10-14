@@ -4,7 +4,7 @@ import importlib
 
 import pytest
 
-from esolangs.languages.circuit_diagram.generator import circuit_diagram
+from esolangs.languages.circuit_diagram.generator import _Dag, circuit_diagram
 from esolangs.languages.circuit_diagram.generator.bundled_banks import (
     bundled_class_bank_candidate,
 )
@@ -58,7 +58,7 @@ def test_mask_work_is_checked_before_building_forests(monkeypatch) -> None:
     masks = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"
     )
-    monkeypatch.setattr(masks, "_dag", lambda *_args: ([None] * 1000, None))
+    monkeypatch.setattr(masks, "_dag", lambda *_args: _Dag([None] * 1000, 0, set(), {}))
     monkeypatch.setattr(
         module, "_suffix_forest", lambda *_args: pytest.fail("mask work rejected")
     )

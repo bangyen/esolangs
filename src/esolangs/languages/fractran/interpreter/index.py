@@ -6,17 +6,21 @@ import re
 from bisect import bisect_left, bisect_right
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import cache
 from itertools import pairwise
 from math import prod
 
 type Factors = tuple[tuple[int, int], ...]
 type Rule = tuple[Factors, Factors]
+type _Groups = dict[int, tuple[tuple[int, int], ...]]
 
 _POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
+#: A fraction or term: a run between whitespace and commas.
+TOKEN = re.compile(r"[^\s,]+")
 
 #: Every source may name bases up to this, however short it is.
 SMALL_BASE = 256
+#: Sieve scratch is allowed up to this many entries per source character.
+_SIEVE_RATIO = 8
 
 
 def integer(value: Factors) -> int:
@@ -44,7 +48,7 @@ class Index:
     rules: tuple[Rule, ...]
     literal: tuple[tuple[Factors, Factors], ...]
     offsets: tuple[int, ...]
-    groups: dict[int, tuple[tuple[int, int], ...]]
+    groups: _Groups
     keys: dict[int, tuple[int, ...] | None]
     unconditional: int | None
 
@@ -96,22 +100,50 @@ def _least_primes(limit: int) -> list[int]:
     return least
 
 
-def compile_index(code: str) -> Index | None:
-    """Compile small bases exactly; leave expensive factorization to the literal VM."""
-    tokens = [(m.start(), m.group()) for m in re.finditer(r"[^\s,]+", code)]
-    if not tokens:
-        return None
-    # Shipped generators use small bases; dense initial products admit more.
-    # Keep arbitrary large literals out of indexed factorization.
-    limit = max(
-        SMALL_BASE,
-        len(code),
-        (tokens[0][1].count("*") + 1) ** 2,
-    )
+class _Factorizer:
+    """Memoized prime factorization of the bases a source names."""
 
+    def __init__(self, maximum: int, size: int) -> None:
+        # Sieve actual bases, never the quadratic admission limit. Cap scratch
+        # space by source size; sparse large bases retain trial division.
+        self._least = _least_primes(maximum) if maximum <= _SIEVE_RATIO * size else None
+        self._memo: dict[int, Factors] = {}
+
+    def __call__(self, base: int) -> Factors:
+        found = self._memo.get(base)
+        if found is None:
+            found = self._memo[base] = self._factor(base)
+        return found
+
+    def _factor(self, base: int) -> Factors:
+        result: dict[int, int] = {}
+        if self._least is not None:
+            while base > 1:
+                prime = self._least[base]
+                result[prime] = result.get(prime, 0) + 1
+                base //= prime
+            return tuple(result.items())
+        p = 2
+        while p * p <= base:
+            while base % p == 0:
+                result[p] = result.get(p, 0) + 1
+                base //= p
+            p += 1
+        if base > 1:
+            result[base] = result.get(base, 0) + 1
+        return tuple(result.items())
+
+
+def _parse_terms(
+    tokens: list[str], limit: int
+) -> tuple[dict[str, tuple[int, int]], int] | None:
+    """Return each distinct term's (base, exponent) and the largest base.
+
+    ``None`` when a term is not a power or its base exceeds ``limit``.
+    """
     terms: dict[str, tuple[int, int]] = {}
     maximum = 1
-    for position, (_offset, token) in enumerate(tokens):
+    for position, token in enumerate(tokens):
         head, slash, tail = token.partition("/")
         products = (token,) if position == 0 else (head, tail if slash else "1")
         for text in products:
@@ -130,49 +162,28 @@ def compile_index(code: str) -> Index | None:
                 exponent = 1 if match[2] is None else int(match[2])
                 terms[term] = base, exponent
                 maximum = max(maximum, base)
-    # Sieve actual bases, never the quadratic admission limit. Cap scratch
-    # space by source size; sparse large bases retain cached trial division.
-    least = _least_primes(maximum) if maximum <= 8 * len(code) else None
+    return terms, maximum
 
-    @cache
-    def factor(base: int) -> Factors:
-        result: dict[int, int] = {}
-        if least is not None:
-            while base > 1:
-                prime = least[base]
-                result[prime] = result.get(prime, 0) + 1
-                base //= prime
-            return tuple(result.items())
-        p = 2
-        while p * p <= base:
-            while base % p == 0:
-                result[p] = result.get(p, 0) + 1
-                base //= p
-            p += 1
-        if base > 1:
-            result[base] = result.get(base, 0) + 1
-        return tuple(result.items())
 
-    def product(text: str) -> Factors:
-        result: dict[int, int] = {}
-        for term in text.split("*"):
-            base, exponent = terms[term]
-            for p, e in factor(base):
-                result[p] = result.get(p, 0) + e * exponent
-        return tuple(sorted((p, e) for p, e in result.items() if e))
+def _product(
+    text: str, terms: Mapping[str, tuple[int, int]], factor: _Factorizer
+) -> Factors:
+    """Return the sorted prime exponents of a product of powers."""
+    result: dict[int, int] = {}
+    for term in text.split("*"):
+        base, exponent = terms[term]
+        for p, e in factor(base):
+            result[p] = result.get(p, 0) + e * exponent
+    return tuple(sorted((p, e) for p, e in result.items() if e))
 
-    initial = product(tokens[0][1])
-    rules: list[Rule] = []
-    literal: list[tuple[Factors, Factors]] = []
+
+def _bucket(
+    rules: list[Rule],
+) -> tuple[_Groups, dict[int, tuple[int, ...] | None], int | None]:
+    """Return guard buckets, their bisect keys, and the first unguarded rule."""
     groups: dict[int, list[tuple[int, int]]] = {}
     unconditional = None
-    for index, (_offset, token) in enumerate(tokens[1:]):
-        head, slash, tail = token.partition("/")
-        numerator, denominator = product(head), product(tail if slash else "1")
-        literal.append((numerator, denominator))
-        delta = advance(numerator, tuple((p, -e) for p, e in denominator))
-        guard = tuple((p, -e) for p, e in delta if e < 0)
-        rules.append((guard, delta))
+    for index, (guard, _delta) in enumerate(rules):
         if guard:
             # The largest guard prime is the most selective: a bucket keyed
             # on a prime many rules share would be scanned rule by rule.
@@ -185,12 +196,41 @@ def compile_index(code: str) -> Index | None:
     for p, group in packed.items():
         negative = tuple(-threshold for _, threshold in group)
         keys[p] = negative if all(a <= b for a, b in pairwise(negative)) else None
+    return packed, keys, unconditional
+
+
+def compile_index(code: str) -> Index | None:
+    """Compile small bases exactly; leave expensive factorization to the literal VM."""
+    found = [(m.start(), m.group()) for m in TOKEN.finditer(code)]
+    if not found:
+        return None
+    tokens = [token for _offset, token in found]
+    # Shipped generators use small bases; dense initial products admit more.
+    # Keep arbitrary large literals out of indexed factorization.
+    limit = max(SMALL_BASE, len(code), (tokens[0].count("*") + 1) ** 2)
+    parsed = _parse_terms(tokens, limit)
+    if parsed is None:
+        return None
+    terms, maximum = parsed
+    factor = _Factorizer(maximum, len(code))
+    initial = _product(tokens[0], terms, factor)
+    rules: list[Rule] = []
+    literal: list[tuple[Factors, Factors]] = []
+    for token in tokens[1:]:
+        head, slash, tail = token.partition("/")
+        numerator = _product(head, terms, factor)
+        denominator = _product(tail if slash else "1", terms, factor)
+        literal.append((numerator, denominator))
+        delta = advance(numerator, tuple((p, -e) for p, e in denominator))
+        guard = tuple((p, -e) for p, e in delta if e < 0)
+        rules.append((guard, delta))
+    groups, keys, unconditional = _bucket(rules)
     return Index(
         initial,
         tuple(rules),
         tuple(literal),
-        tuple(offset for offset, _ in tokens),
-        packed,
+        tuple(offset for offset, _ in found),
+        groups,
         keys,
         unconditional,
     )
@@ -243,6 +283,32 @@ def factor_writes(value: Mapping[int, int], delta: Factors) -> FactorWrites:
     )
 
 
+def _cleanup_start(rules: tuple[Rule, ...]) -> int:
+    """Return where the maximal suffix of pure-removal rules begins."""
+    start = len(rules)
+    for rule in range(start - 1, -1, -1):
+        delta = rules[rule][1]
+        if not delta or any(change > 0 for _prime, change in delta):
+            break
+        start = rule
+    return start
+
+
+def _anchor_groups(rules: tuple[Rule, ...]) -> dict[int, list[tuple[int, int]]]:
+    """Group guarded rules as (threshold, rule) under their most shared guard prime."""
+    counts: dict[int, int] = {}
+    for guard, _delta in rules:
+        for prime, _threshold in guard:
+            counts[prime] = counts.get(prime, 0) + 1
+    grouped: dict[int, list[tuple[int, int]]] = {}
+    for rule, (guard, _delta) in enumerate(rules):
+        if guard:
+            # Frequent anchors keep phase changes out of secondary scans.
+            anchor, threshold = max(guard, key=lambda item: (counts[item[0]], -item[0]))
+            grouped.setdefault(anchor, []).append((threshold, rule))
+    return grouped
+
+
 class Cursor:
     """Maintain exact guard eligibility while changing only affected exponents."""
 
@@ -252,25 +318,9 @@ class Cursor:
         self.index = index
         self.value = dict(index.initial)
         self.absent = len(index.rules)
-        self.cleanup_start = self.absent
-        for rule in range(self.absent - 1, -1, -1):
-            delta = index.rules[rule][1]
-            if not delta or any(change > 0 for _prime, change in delta):
-                break
-            self.cleanup_start = rule
+        self.cleanup_start = _cleanup_start(index.rules)
         self.cleanup_position: int | None = None
-        counts: dict[int, int] = {}
-        for guard, _delta in index.rules:
-            for prime, _threshold in guard:
-                counts[prime] = counts.get(prime, 0) + 1
-        grouped: dict[int, list[tuple[int, int]]] = {}
-        for rule, (guard, _delta) in enumerate(index.rules):
-            if guard:
-                # Frequent anchors keep phase changes out of secondary scans.
-                anchor, threshold = max(
-                    guard, key=lambda item: (counts[item[0]], -item[0])
-                )
-                grouped.setdefault(anchor, []).append((threshold, rule))
+        grouped = _anchor_groups(index.rules)
         self.primes = tuple(grouped)
         self.anchors = {prime: group for group, prime in enumerate(grouped)}
         self.keys: list[tuple[int, ...]] = []

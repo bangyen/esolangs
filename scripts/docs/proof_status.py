@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from .anchors import anchors
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -57,24 +58,8 @@ def _check_evidence(reference: str, *, precise: bool) -> None:
         raise ValueError(f"missing evidence: {reference}")
     if precise and (not separator or not anchor):
         raise ValueError(f"invalid audit evidence: {reference}")
-    if separator:
-        anchors = set()
-        counts: dict[str, int] = {}
-        fenced = False
-        for line in target.read_text(encoding="utf-8").splitlines():
-            if line.startswith(("```", "~~~")):
-                fenced = not fenced
-            if fenced:
-                continue
-            anchors.update(re.findall(r'<a id="([\w-]+)"></a>', line))
-            heading = re.match(r"^#{1,6} +(.+?)(?: +#+)?$", line)
-            if heading:
-                slug = re.sub(r"[^\w\- ]", "", heading[1].lower()).replace(" ", "-")
-                count = counts.get(slug, 0)
-                counts[slug] = count + 1
-                anchors.add(f"{slug}-{count}" if count else slug)
-        if anchor not in anchors:
-            raise ValueError(f"missing evidence anchor: {reference}")
+    if separator and anchor not in anchors(target.read_text(encoding="utf-8")):
+        raise ValueError(f"missing evidence anchor: {reference}")
 
 
 def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
@@ -155,6 +140,13 @@ def render_totals(proofs: tuple[ProofRow, ...]) -> str:
     )
 
 
+def splice(text: str, name: str, body: str) -> str:
+    """Replace the block ``name`` marks in ``text``, keeping the markers."""
+    start, end = f"<!-- {name}:START -->", f"<!-- {name}:END -->"
+    block = start + "\n\n" + body + "\n\n" + end
+    return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
+
+
 def update_docs(root: Path = ROOT) -> None:
     """Render the status tables and totals without changing surrounding prose."""
     proofs, audits = load()
@@ -162,7 +154,6 @@ def update_docs(root: Path = ROOT) -> None:
         (
             root / "docs/proofs/index.md",
             "PROOF-STATUS",
-            "",
             [
                 "| Generator | Proof | Qualification | Scaling | Execution | "
                 "Workspace |",
@@ -183,11 +174,10 @@ def update_docs(root: Path = ROOT) -> None:
                 ],
             ],
         ),
-        (root / "docs/proofs/index.md", "PROOF-TOTALS", "", [render_totals(proofs)]),
+        (root / "docs/proofs/index.md", "PROOF-TOTALS", [render_totals(proofs)]),
         (
             root / "docs/proofs/index.md",
             "SCALING-STATUS",
-            "",
             [
                 "| Language | Totality | Generation time | Output size |",
                 "| --- | --- | --- | --- |",
@@ -199,13 +189,6 @@ def update_docs(root: Path = ROOT) -> None:
             ],
         ),
     )
-    for path, marker, indent, lines in tables:
+    for path, marker, lines in tables:
         text = path.read_text(encoding="utf-8")
-        start, end = f"<!-- {marker}:START -->", f"<!-- {marker}:END -->"
-        before, rest = text.split(start, 1)
-        _, after = rest.split(end, 1)
-        body = "\n".join(indent + line for line in lines)
-        path.write_text(
-            before + start + "\n\n" + body + "\n\n" + indent + end + after,
-            encoding="utf-8",
-        )
+        path.write_text(splice(text, marker, "\n".join(lines)), encoding="utf-8")

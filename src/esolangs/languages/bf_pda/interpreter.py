@@ -30,23 +30,23 @@ def _top(stack: tuple[int, ...]) -> int:
 def _advance(state: _State, code: str, jumps: dict[int, int]) -> _State:
     """Return the state after executing the command at the cursor.
 
-    ``jumps`` pairs the brackets, matched once at load (both used to scan
-    per jump).  Every command sets the cursor itself, since the brackets
-    jump past their partner.
+    ``jumps`` pairs the brackets, matched once at load.  Every command sets
+    the cursor itself, since the brackets jump past their partner.
     """
     ip, stack = state
-    if code[ip] == "@":
+    command = code[ip]
+    if command == "@":
         # Empty stack: push the zero the peek saw, then flip it.
         stack = (*stack[:-1], stack[-1] ^ 1) if stack else (1,)
-    elif code[ip] == "<":
+    elif command == "<":
         stack = (*stack, 0)
-    elif code[ip] == ">":
+    elif command == ">":
         # Empty stack pops nothing.
         stack = stack[:-1]
-    elif code[ip] == "[":
+    elif command == "[":
         if _top(stack) == 0:
             return (jumps[ip] + 1, stack)
-    elif code[ip] == "]" and _top(stack) == 1:
+    elif command == "]" and _top(stack) == 1:
         return (jumps[ip] + 1, stack)
     return (ip + 1, stack)
 
@@ -61,9 +61,8 @@ class _Machine:
                 "BF-PDA program cannot be empty",
                 "provide a nonempty program; . prints the initial zero bit",
             )
-        # One walk for balance and the jump table (this used to rescan per
-        # jump).  An unmatched ``[`` is reported at the innermost waiting
-        # one; the old ``rfind`` named a matched bracket in ``[[]``.
+        # One walk for balance and the jump table.  An unmatched ``[`` is
+        # reported at the innermost waiting one.
         self.jumps = match_brackets(code)
 
         self.io = io
@@ -97,7 +96,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor.
 
-        ``.`` is here, through :func:`_top`.
+        ``.`` prints the top bit here.
         """
         if self.halted:
             return

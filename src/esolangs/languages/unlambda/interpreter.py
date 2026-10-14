@@ -25,7 +25,7 @@ applicable, so nothing at run time is invalid and no
 ``@`` consumes the next Unicode character, including newlines. The spec
 does not define character encoding. Both input branches are live.  At end of
 input ``@`` hands its argument ``v``, which the
-shell reaches by catching the ``EOFError`` the port raises, as nine other
+shell reaches by catching the ``EOFError`` the port raises, as other
 interpreters here catch it and carry on with their language's value; letting
 it escape would make ``@``'s failure branch unreachable and every
 read-until-EOF program a crash.  A read at EOF clears the current character.
@@ -358,11 +358,11 @@ def _apply(
 
 
 def _advance(
-    state: _State, line: str | None = None, *, at_eof: bool = False
+    state: _State, read_char: str | None = None, *, at_eof: bool = False
 ) -> tuple[_State, str | None]:
     """Return the state after one machine step, and the text to print.
 
-    Pure: ``@``'s line arrives as ``line``, ``at_eof`` says the read found
+    Pure: ``@``'s character arrives as ``read_char``, ``at_eof`` says the read found
     nothing, and a print leaves as the return value.
     """
     task, kont, char, done = state
@@ -378,7 +378,7 @@ def _advance(
     if isinstance(task, _Apply):
         if task.f == _Cmd("@"):
             # The specification makes both ?x and | see no character at EOF.
-            char = None if at_eof else line[0] if line else "\n"
+            char = None if at_eof else read_char
         return _apply(task.f, task.a, kont, char, read_ok=not at_eof)
     if kont is None:
         return (task, kont, char, True), None
@@ -434,19 +434,16 @@ class _Machine:
             return
         task = self.state[0]
         reading = isinstance(task, _Apply) and task.f == _Cmd("@")
-        line: str | None = None
+        read_char: str | None = None
         at_eof = False
         if reading:
             try:
-                line = chr(self.io.input_char())
+                read_char = chr(self.io.input_char())
             except EOFError:
                 # The spec's end-of-input branch: ``@`` hands its argument
-                # ``v`` rather than ``i``.  Nine interpreters here already
-                # catch this raise and carry on with the value their language
-                # defines; letting it escape instead would make the branch
-                # unreachable and break every read-until-EOF program.
+                # ``v`` rather than ``i`` (see the module docstring).
                 at_eof = True
-        self.state, out = _advance(self.state, line, at_eof=at_eof)
+        self.state, out = _advance(self.state, read_char, at_eof=at_eof)
         if out is not None:
             self.io.print_str(out)
 

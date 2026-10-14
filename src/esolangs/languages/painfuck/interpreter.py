@@ -45,8 +45,10 @@ detector is unsound on it, but the machine enumerates every coin outcome
 for the bounded all-branches detector in :mod:`esolangs.vm`.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import cast
+from enum import Enum, auto
+from typing import Any, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -136,35 +138,25 @@ class _Halted(Exception):  # noqa: N818 - carries a state, not a message
         self.error = error
 
 
-class _Reader:
-    """Hands out the inputs already supplied, then asks for one more."""
+class _Cursor[T]:
+    """Hands out the values already supplied, then asks for one more.
 
-    def __init__(self, values: tuple[str | int, ...]) -> None:
+    ``signal`` is raised, with the caller's keywords, when the values run
+    out: ``_NeedRead`` for inputs, ``_NeedCoin`` for coin flips.
+    """
+
+    def __init__(
+        self, values: tuple[T, ...], signal: Callable[..., BaseException]
+    ) -> None:
         """Start at the beginning of ``values``."""
         self._values = values
         self._pos = 0
+        self._signal = signal
 
-    def take(self, *, line: bool) -> str | int:
-        """Return the next input, or signal that another is needed."""
+    def take(self, **kwargs: Any) -> T:
+        """Return the next value, or raise the signal for another."""
         if self._pos >= len(self._values):
-            raise _NeedRead(line=line)
-        value = self._values[self._pos]
-        self._pos += 1
-        return value
-
-
-class _Coins:
-    """Hands out the coin flips already drawn, then asks for one more."""
-
-    def __init__(self, values: tuple[int, ...]) -> None:
-        """Start at the beginning of ``values``."""
-        self._values = values
-        self._pos = 0
-
-    def take(self) -> int:
-        """Return the next flip, or signal that another is needed."""
-        if self._pos >= len(self._values):
-            raise _NeedCoin
+            raise self._signal(**kwargs)
         value = self._values[self._pos]
         self._pos += 1
         return value
@@ -175,12 +167,6 @@ def _grow(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
     if ptr < len(tape):
         return tape
     return (*tape, *([0] * (ptr + 1 - len(tape))))
-
-
-#: Idempotent commands: a repeat of any length is one application.  ``h``
-#: halves the cell it writes, so it is collapsed by the shift in
-#: :func:`_advance` instead.
-_IDEMPOTENT = frozenset("zwqd")
 
 
 def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
@@ -201,6 +187,391 @@ def _skip_loop(prog: str, ind: int, n: int) -> int:
     return ind
 
 
+def _collapse_add(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
+    """Return the tape after ``rep`` ``p``s: ``+2`` each, as one closed form."""
+    return _set(tape, ptr, tape[ptr] + 2 * rep)
+
+
+def _collapse_sub(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
+    """Return the tape after ``rep`` ``s``s: ``-1`` each, as one closed form."""
+    return _set(tape, ptr, tape[ptr] - rep)
+
+
+def _collapse_right(
+    tape: tuple[int, ...], ptr: int, rep: int
+) -> tuple[tuple[int, ...], int]:
+    """Return the tape and pointer after ``rep`` ``r``s: ``+2`` each."""
+    ptr += 2 * rep
+    return _grow(tape, ptr), ptr
+
+
+def _collapse_left(
+    tape: tuple[int, ...], ptr: int, origin: int, rep: int
+) -> tuple[tuple[int, ...], int, int]:
+    """Return tape, pointer and origin after ``rep`` ``l``s, as one closed form.
+
+    Past the left edge the tape grows by the overshoot.
+    """
+    grown = max(0, rep - ptr)
+    return (0,) * grown + tape, ptr + grown - rep, origin + grown
+
+
+def _collapse_half(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
+    """Return the tape after ``rep`` ``h``s, as one closed form.
+
+    Repeated floor division by two is an arithmetic shift.  The author
+    specifies rounding negative odd values down.
+    """
+    return _set(tape, ptr, tape[ptr] >> rep)
+
+
+def _collapse_square_fixed(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
+    """Return the tape after collapsing ``k`` at a fixed point (``|x| <= 1``).
+
+    Squaring has a closed form -- ``x ** (2 ** rep)`` -- but for ``|x| > 1``
+    the *result* has 2**rep times the bits, so no rewrite makes it
+    affordable (measured at 1.0x); the loop is not the cost there.  At the
+    fixed points it collapses.
+    """
+    return _set(tape, ptr, tape[ptr] * tape[ptr])
+
+
+def _collapse_print(tape: tuple[int, ...], ptr: int, c: str, rep: int) -> _Print:
+    """Return one effect carrying a repeated print's ``rep``.
+
+    A repeated print emits the same cell every time -- nothing in the loop
+    writes the tape -- so one effect carries the count rather than
+    appending ``rep`` identical ones.
+    """
+    value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
+    return _Print(value, as_char=c == "u", count=rep)
+
+
+def _scan_c_run(prog: str, ind: int, n: int) -> tuple[str, int, int]:
+    """Consume a ``c`` run and any trailing ``t`` run.
+
+    Return ``(command, ind, rep)``.  A ``c`` run is one count: ``ccc`` is
+    ``7**3``.  A ``t`` run after the ``c`` run repeats the ``c`` itself:
+    ``ct`` is four ``c``s, ``7 ** 4``; ``ctt`` thirteen, ``7 ** 13``.  Read
+    here, not by the ``t`` executing (that made ``pt`` and ``ct`` unable to
+    both be right).
+    """
+    rep = 1
+    while True:
+        c = prog[ind] if ind < n else _NUL
+        ind += 1
+        rep *= 7
+        if c != "c":
+            break
+    adds = 0
+    if c == "t":
+        adds = 1
+        while ind < n and prog[ind] == "t":
+            ind += 1
+            adds += 1
+    if adds:
+        rep **= (3 ** (adds + 1) - 1) // 2
+        c = prog[ind] if ind < n else _NUL
+        ind += 1
+    return c, ind, rep
+
+
+def _scan_t_run(prog: str, ind: int) -> tuple[str, int]:
+    """Walk left over a ``t`` run and name its command.
+
+    Return ``(command, rep)``.  Each ``t`` contributes another power of
+    three: the author's ``ptto`` example is ``2 * (1 + 3 + 9) = 26``.  "The
+    last command" is the previous character of the program, so a ``t``
+    after a jump repeats the text before it.
+    """
+    rep = 1
+    found = False
+    while ind > 0:
+        ind -= 1
+        if prog[ind] != "t":
+            found = True
+            break
+        rep *= 3
+    return (prog[ind] if found else _NUL, rep)
+
+
+class _After(Enum):
+    """How a slow-path iteration can end the step: ``y`` out of repeats, or ``e``."""
+
+    BREAK = auto()
+    DONE = auto()
+
+
+class _Step:
+    """The pure core's mutable working state for one step."""
+
+    def __init__(
+        self,
+        state: _State,
+        prog: str,
+        n: int,
+        reads: tuple[str | int, ...],
+        coins: tuple[int, ...],
+    ) -> None:
+        """Unpack ``state`` and read the first command."""
+        self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin = state
+        self.prog = prog
+        self.n = n
+        self.reads = _Cursor(reads, _NeedRead)
+        self.coins = _Cursor(coins, _NeedCoin)
+        self.effects: list[_Effect] = []
+        self.cmd = self.prog[self.ind]
+        self.ind += 1
+
+    def snapshot(self) -> _State:
+        """Return the working fields as the value the transition works on."""
+        return (self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin)
+
+    def finish(self) -> tuple[_State, tuple[_Effect, ...]]:
+        """Return the step's result once the repeat counter runs out."""
+        tape, loop, ptr, ind, rep, origin = self.snapshot()
+        return (tape, loop, ptr, ind, rep + 1, origin), tuple(self.effects)
+
+    def finish_at_end(self) -> tuple[_State, tuple[_Effect, ...]]:
+        """Return the step's result for ``e``: the cursor past the program."""
+        state = (self.tape, self.loop, self.ptr, self.n, 0, self.origin)
+        return state, tuple(self.effects)
+
+
+def _do_p(step: _Step) -> None:
+    """Add two to the cell."""
+    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] + 2)
+
+
+def _do_s(step: _Step) -> None:
+    """Subtract one from the cell."""
+    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] - 1)
+
+
+def _do_r(step: _Step) -> None:
+    """Move the pointer two cells right, growing the tape."""
+    step.ptr += 2
+    step.tape = _grow(step.tape, step.ptr)
+
+
+def _do_l(step: _Step) -> None:
+    """Move the pointer one cell left, growing the tape past the edge."""
+    if step.ptr:
+        step.ptr -= 1
+    else:
+        step.tape, step.origin = (0, *step.tape), step.origin + 1
+
+
+def _do_i(step: _Step) -> None:
+    """Read a decimal integer into the cell."""
+    try:
+        line = step.reads.take(line=True)
+    except _NeedRead as want:
+        raise _NeedRead(line=True, state=step.snapshot()) from want
+    try:
+        step.tape = _set(step.tape, step.ptr, int(line))
+    except ValueError:
+        raise _Halted(
+            step.snapshot(),
+            step.effects,
+            HaltError(hint="supply a decimal integer for i input"),
+        ) from None
+
+
+def _do_j(step: _Step) -> None:
+    """Read one character code into the cell."""
+    try:
+        byte = step.reads.take(line=False)
+    except _NeedRead as want:
+        raise _NeedRead(line=False, state=step.snapshot()) from want
+    step.tape = _set(step.tape, step.ptr, int(byte))
+
+
+def _do_o(step: _Step) -> None:
+    """Queue the cell as a decimal number for printing."""
+    step.effects.append(_Print(step.tape[step.ptr], as_char=False))
+
+
+def _do_u(step: _Step) -> None:
+    """Queue the cell's low byte as a character for printing."""
+    step.effects.append(_Print(step.tape[step.ptr] & 0xFF, as_char=True))
+
+
+def _do_a(step: _Step) -> None:
+    """Enter the loop on nonzero; skip to its end on zero."""
+    if step.tape[step.ptr] != 0:
+        step.loop = (*step.loop, step.ind - 1)
+    else:
+        step.ind = _skip_loop(step.prog, step.ind, step.n)
+
+
+def _do_b(step: _Step) -> None:
+    """Jump back to the matching loop entry, or fault."""
+    if not step.loop:
+        raise _Halted(
+            step.snapshot(),
+            step.effects,
+            HaltError(
+                "unmatched 'b': the loop stack is empty",
+                hint="execute a matching loop opener before b",
+            ),
+        )
+    step.ind = step.loop[-1]
+    step.loop = step.loop[:-1]
+
+
+def _do_k(step: _Step) -> None:
+    """Square the cell."""
+    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] * step.tape[step.ptr])
+
+
+def _do_z(step: _Step) -> None:
+    """Zero the cell."""
+    step.tape = _set(step.tape, step.ptr, 0)
+
+
+def _do_h(step: _Step) -> None:
+    """Halve the cell, rounding down."""
+    step.tape = _set(step.tape, step.ptr, _half(step.tape[step.ptr]))
+
+
+def _do_w(step: _Step) -> None:
+    """Copy the right neighbour into the cell (zero past the end)."""
+    right = step.tape[step.ptr + 1] if step.ptr + 1 < len(step.tape) else 0
+    step.tape = _set(step.tape, step.ptr, right)
+
+
+def _do_q(step: _Step) -> None:
+    """Copy the left neighbour into the cell (zero past the start)."""
+    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr - 1] if step.ptr else 0)
+
+
+def _do_c(step: _Step) -> None:
+    """Rebind to the command a ``c`` run names, with its repeat count."""
+    step.cmd, step.ind, step.rep = _scan_c_run(step.prog, step.ind, step.n)
+
+
+def _do_y(step: _Step) -> _After | None:
+    """Flip a coin per remaining repeat, then bind the next command forward.
+
+    Each repeat flips separately, so the count that runs is binomial
+    (``cyp`` spans 0..14 by twos, not ``{0, 2}``); the wiki states only
+    ``rep`` 1, where both agree.  Drawn per iteration because the repeat
+    collapse cannot flip.  ``rep`` was already decremented, so the flips
+    owed are this iteration plus ``rep``.
+    """
+    owed = step.rep + 1
+    step.rep = owed - sum(step.coins.take() for _ in range(owed))
+    if step.ind < step.n:
+        step.cmd = step.prog[step.ind]
+        step.ind += 1
+    return _After.BREAK if step.rep <= 0 else None
+
+
+def _do_e(_step: _Step) -> _After:
+    """Halt: end the step with the cursor past the program."""
+    return _After.DONE
+
+
+def _do_v(step: _Step) -> None:
+    """Run the next command only when the cell is zero; consume it either way."""
+    if step.ind < step.n:
+        step.cmd = step.prog[step.ind]
+        step.rep = int(step.tape[step.ptr] == 0)
+        step.ind += 1
+
+
+def _do_d(step: _Step) -> None:
+    """Return the pointer to the starting cell."""
+    step.ptr = step.origin
+
+
+def _do_t(step: _Step) -> None:
+    """Rebind to the command before the ``t`` run, with its repeat count."""
+    step.cmd, step.rep = _scan_t_run(step.prog, step.ind)
+
+
+def _do_nothing(_step: _Step) -> None:
+    """Ignore any other character."""
+
+
+#: One slow-path iteration per command.  The rebinding commands (``c``,
+#: ``y``, ``v``, ``t``) write the step's command directly, so the loop
+#: needs no re-sync at the iteration boundary.
+_DISPATCH: dict[str, Callable[[_Step], _After | None]] = {
+    "p": _do_p,
+    "s": _do_s,
+    "r": _do_r,
+    "l": _do_l,
+    "i": _do_i,
+    "j": _do_j,
+    "o": _do_o,
+    "u": _do_u,
+    "a": _do_a,
+    "b": _do_b,
+    "k": _do_k,
+    "z": _do_z,
+    "h": _do_h,
+    "w": _do_w,
+    "q": _do_q,
+    "c": _do_c,
+    "y": _do_y,
+    "e": _do_e,
+    "v": _do_v,
+    "d": _do_d,
+    "t": _do_t,
+}
+
+
+#: Idempotent commands: a repeat of any length is one application.  ``h``
+#: is not one: :func:`_collapse_half` shifts it instead.
+_IDEMPOTENT = frozenset("zwqd")
+
+
+def _collapse_repeat(step: _Step) -> bool:
+    """Collapse a repeated command into one closed form when affordable.
+
+    ``rep`` is exponential (7 per ``c``, 3 per ``t``; up to 3**15), so the
+    remaining iterations are computed directly; the slow path gives the
+    same state.  This runs inside the loop because ``c``/``t``/``y``/``v``
+    rebind the command mid-step.  Idempotents and ``a``/``b`` only shorten
+    to a single iteration.
+
+    Return True when the whole repeat collapsed (``rep`` is now 0).
+    """
+    if step.rep <= 1:
+        return False
+    cmd, rep = step.cmd, step.rep
+    if cmd == "p":
+        step.tape = _collapse_add(step.tape, step.ptr, rep)
+    elif cmd == "s":
+        step.tape = _collapse_sub(step.tape, step.ptr, rep)
+    elif cmd == "r":
+        step.tape, step.ptr = _collapse_right(step.tape, step.ptr, rep)
+    elif cmd == "l":
+        step.tape, step.ptr, step.origin = _collapse_left(
+            step.tape, step.ptr, step.origin, rep
+        )
+    elif cmd == "h":
+        step.tape = _collapse_half(step.tape, step.ptr, rep)
+    elif cmd == "k" and -1 <= step.tape[step.ptr] <= 1:
+        step.tape = _collapse_square_fixed(step.tape, step.ptr)
+    elif cmd in "ou":
+        step.effects.append(_collapse_print(step.tape, step.ptr, cmd, rep))
+    elif cmd in _IDEMPOTENT or cmd in "ab":
+        # Repeating these is doing them once: an idempotent writes a value
+        # fixed by the state this iteration began in, and the wiki defines
+        # ``a``/``b`` as jumps, so a repeat decides the same way every
+        # time.  Without this a repeated ``a`` pushed ``rep`` identical
+        # stack entries, needing ``rep`` ``b``s to unwind.
+        step.rep = 1
+        return False
+    else:
+        return False
+    step.rep = 0
+    return True
+
+
 def _advance(
     state: _State,
     prog: str,
@@ -210,199 +581,24 @@ def _advance(
 ) -> tuple[_State, tuple[_Effect, ...]]:
     """Return the state after one step, and what it wants written.
 
-    Pure.  Writes are collected, not performed, because the repeat counter
+    Pure: writes are collected, not performed, because the repeat counter
     can print many times per step; inputs arrive in ``reads`` and ``y``
-    coins in ``coins``.  The command is a local, not state: ``c``, ``y``,
-    ``v``, ``t`` refetch mid-repeat, and a repeated ``j`` reads each time.
+    coins in ``coins``.  The rebinding commands (``c``, ``y``, ``v``,
+    ``t``) write the step's command directly, and a repeated ``j`` reads
+    each time.
     """
-    tape, loop, ptr, ind, rep, origin = state
-    reader = _Reader(reads)
-    coin = _Coins(coins)
-    effects: list[_Effect] = []
-    c = prog[ind]
-    ind += 1
+    step = _Step(state, prog, n, reads, coins)
 
-    while rep > 0:
-        # ``rep`` is exponential (7 per ``c``, 3 per ``t``; up to 3**15),
-        # and these commands are affine in it, so the remaining iterations
-        # are one closed form; the slow path below gives the same state.
-        # Inside the loop because ``c``/``t``/``y``/``v`` rebind ``c``
-        # mid-step -- a ``t`` run names its command only after multiplying.
-        # Prints, reads, ``a``/``b`` and the rebinding commands keep their iterations.
-        if rep > 1:
-            if c == "p":
-                tape, rep = _set(tape, ptr, tape[ptr] + 2 * rep), 0
-                continue
-            if c == "s":
-                tape, rep = _set(tape, ptr, tape[ptr] - rep), 0
-                continue
-            if c == "r":
-                ptr += 2 * rep
-                tape, rep = _grow(tape, ptr), 0
-                continue
-            if c == "l":
-                # Past the left edge the tape grows by the overshoot.
-                grown = max(0, rep - ptr)
-                tape, origin = (0,) * grown + tape, origin + grown
-                ptr, rep = ptr + grown - rep, 0
-                continue
-            if c == "h":
-                # Repeated floor division by two is an arithmetic shift.
-                # The author specifies rounding negative odd values down.
-                tape, rep = _set(tape, ptr, tape[ptr] >> rep), 0
-                continue
-            if c == "k" and -1 <= tape[ptr] <= 1:
-                # Squaring has a closed form -- ``x ** (2 ** rep)`` -- but
-                # for ``|x| > 1`` the *result* has 2**rep times the bits, so
-                # no rewrite makes it affordable (measured at 1.0x); the loop
-                # is not the cost there.  At the fixed points it collapses.
-                tape, rep = _set(tape, ptr, tape[ptr] * tape[ptr]), 0
-                continue
-            if c in "ou":
-                # A repeated print emits the same cell every time -- nothing
-                # in the loop writes the tape -- so one effect carries the
-                # count rather than appending ``rep`` identical ones.
-                value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
-                effects.append(_Print(value, as_char=c == "u", count=rep))
-                rep = 0
-                continue
-            if c in _IDEMPOTENT:
-                # Repeating these is doing them once: each writes a value
-                # fixed by the state this iteration began in.
-                rep = 1
-            elif c in "ab":
-                # The wiki defines these as jumps, so a repeat decides the
-                # same way every time.  Without this a repeated ``a`` pushed
-                # ``rep`` identical stack entries, needing ``rep`` ``b``s.
-                rep = 1
-
-        rep -= 1
-
-        if c == "p":
-            tape = _set(tape, ptr, tape[ptr] + 2)
-        elif c == "s":
-            tape = _set(tape, ptr, tape[ptr] - 1)
-        elif c == "r":
-            ptr += 2
-            tape = _grow(tape, ptr)
-        elif c == "l":
-            if ptr:
-                ptr -= 1
-            else:
-                tape, origin = (0, *tape), origin + 1
-        elif c == "i":
-            try:
-                line = reader.take(line=True)
-            except _NeedRead as want:
-                raise _NeedRead(
-                    line=True, state=(tape, loop, ptr, ind, rep, origin)
-                ) from want
-            try:
-                tape = _set(tape, ptr, int(str(line)))
-            except ValueError:
-                raise _Halted(
-                    (tape, loop, ptr, ind, rep, origin),
-                    effects,
-                    HaltError(hint="supply a decimal integer for i input"),
-                ) from None
-        elif c == "j":
-            # ``j`` is answered with a character code, so this is already an int.
-            try:
-                byte = reader.take(line=False)
-            except _NeedRead as want:
-                raise _NeedRead(
-                    line=False, state=(tape, loop, ptr, ind, rep, origin)
-                ) from want
-            tape = _set(tape, ptr, int(str(byte)))
-        elif c == "o":
-            effects.append(_Print(tape[ptr], as_char=False))
-        elif c == "u":
-            effects.append(_Print(tape[ptr] & 0xFF, as_char=True))
-        elif c == "a":
-            if tape[ptr] != 0:
-                loop = (*loop, ind - 1)
-            else:
-                ind = _skip_loop(prog, ind, n)
-        elif c == "b":
-            if not loop:
-                raise _Halted(
-                    (tape, loop, ptr, ind, rep, origin),
-                    effects,
-                    HaltError(
-                        "unmatched 'b': the loop stack is empty",
-                        hint="execute a matching loop opener before b",
-                    ),
-                )
-            ind = loop[-1]
-            loop = loop[:-1]
-        elif c == "k":
-            tape = _set(tape, ptr, tape[ptr] * tape[ptr])
-        elif c == "z":
-            tape = _set(tape, ptr, 0)
-        elif c == "h":
-            tape = _set(tape, ptr, _half(tape[ptr]))
-        elif c == "w":
-            tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
-        elif c == "q":
-            tape = _set(tape, ptr, tape[ptr - 1] if ptr else 0)
-        elif c == "c":
-            rep = 1
-            while c == "c":
-                c = prog[ind] if ind < n else _NUL
-                ind += 1
-                rep *= 7
-            # A ``t`` run after the ``c`` run repeats the ``c`` itself:
-            # ``ct`` is four ``c``s, ``7 ** 4``.  Read here, not by the
-            # ``t`` executing (that made ``pt`` and ``ct`` unable to both be
-            # right).  The run loop already pulled the next char into ``c``.
-            adds = 0
-            if c == "t":
-                adds = 1
-                while ind < n and prog[ind] == "t":
-                    ind += 1
-                    adds += 1
-            if adds:
-                rep **= (3 ** (adds + 1) - 1) // 2
-                c = prog[ind] if ind < n else _NUL
-                ind += 1
-        elif c == "y":
-            # ``y`` binds forward and each repeat flips separately, so the
-            # count that runs is binomial (``cyp`` spans 0..14 by twos, not
-            # ``{0, 2}``); the wiki states only ``rep`` 1, where both agree.
-            # Drawn here because the affine collapses cannot flip per
-            # iteration.  ``rep`` was decremented above: owed is this + ``rep``.
-            owed = rep + 1
-            rep = owed - sum(coin.take() for _ in range(owed))
-            if ind < n:
-                c = prog[ind]
-                ind += 1
-            if rep <= 0:
-                break
-        elif c == "e":
-            return ((tape, loop, ptr, n, 0, origin), tuple(effects))
-        elif c == "v" and ind < n:
-            # "Do next command if value on tape is zero": else skip it.
-            # Either way the next command is consumed once.
-            c, rep = prog[ind], int(tape[ptr] == 0)
-            ind += 1
-        elif c == "d":
-            ptr = origin
-        elif c == "t":
-            # Each t contributes another power of three. The author's
-            # ptto example is 2 * (1 + 3 + 9) = 26.
-            val = ind
-            rep = 1
-            found = False
-            while ind > 0:
-                ind -= 1
-                if prog[ind] != "t":
-                    found = True
-                    break
-                rep *= 3
-            c = prog[ind] if found else _NUL
-            ind = val
-
-    return ((tape, loop, ptr, ind, rep + 1, origin), tuple(effects))
+    while step.rep > 0:
+        if _collapse_repeat(step):
+            continue
+        step.rep -= 1
+        after = _DISPATCH.get(step.cmd, _do_nothing)(step)
+        if after is _After.DONE:
+            return step.finish_at_end()
+        if after is _After.BREAK:
+            break
+    return step.finish()
 
 
 class _Machine:
@@ -554,13 +750,6 @@ class _Machine:
                 self._random_draws += 1
                 continue
             except _Halted as halt:
-                # Preserve partial output across a fault.  Unreachable
-                # today: only ``o``/``u`` print, only ``i``/``b`` raise, and
-                # a step runs one command (exhaustive to length 5 with a
-                # repeat and a fault: effects always empty, probe as
-                # control).  Kept so ``_Halted.effects`` has a reader.
-                for effect in halt.effects:  # pragma: no cover - see above
-                    self._write(effect)
                 self._restore(halt.state)
                 raise halt.error from None
             break

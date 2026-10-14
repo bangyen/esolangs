@@ -70,7 +70,7 @@ class _State(NamedTuple):
     """The movement half of a machine's state.
 
     Tape, CP and I/O are absent: they do not steer, and leaving them out
-    makes the state space finite (see ``_Machine._drive_states``).  A
+    makes the state space finite (see ``validation.drive_states``).  A
     NamedTuple so graph keys and successors are hashable and named.
     """
 
@@ -91,9 +91,6 @@ _ReachableCell = NewType("_ReachableCell", tuple[int, int])
 # Intentional ``;`` stop, distinct from a probe's ``None``.  Construction
 # rejects the latter, so a survivor is a validator bug rather than a halt.
 _Halt = Literal["halt"]
-# A state's successors, keyed by the two branch bits movement can read in
-# one step: the arrival cell and the post-instruction cell, in that order.
-_Edges = dict[tuple[int, int], "_State | _Halt | None"]
 
 # No merge in progress and nothing to suppress: the latches a car starts
 # with and is reset to when a ``U`` clears them, named so the reset is one
@@ -113,8 +110,8 @@ _WALLS = frozenset("+-|")
 # ``_Grid.open_at`` checks bounds separately because it is not drivable.
 _VOID = "?"
 
-# Closed set: every glyph maps here or to ``NOP``, so :meth:`_Machine.step`
-# is exhaustive.  Cells keep the glyph as drawn (``_validate_connected``
+# Closed set: every glyph maps here or to ``NOP``, so :func:`_advance`
+# is exhaustive.  Cells keep the glyph as drawn (``_connection_violation``
 # names stray ink): ``#`` on the street is a no-op, beside it malformed.
 _Op = Literal["NOP", "INC", "DEC", "RIGHT", "LEFT", "IN", "OUT", "TURN", "HALT"]
 
@@ -289,11 +286,11 @@ def _drives_on_the_right(grid: _Grid, state: _State) -> bool:
     A lane is the car's own when the wall it hugs is on its *right*.  The
     drive-state search probes both branch conditions, so it reaches
     wrong-side successors a real run never does; those have no successor
-    and looked like the wedged streets :meth:`_Machine._validate_total`
+    and looked like the wedged streets ``validation.validate_total``
     rejects, refusing correct programs with tightly drawn lanes.  Walls on
     both sides or neither is not a violation.
     """
-    car = _Car(state.row, state.col, state.heading)
+    car = state.car
     open_right = _open_toward(grid, car, _right(state.heading))
     open_left = _open_toward(grid, car, _left(state.heading))
     return not (open_right and not open_left)
@@ -613,11 +610,7 @@ def _lawful_turn(grid: _Grid, car: _Car, heading: _Heading) -> bool:
 
 
 class _Steer(NamedTuple):
-    """What a steering phase decided: a heading, and the latches after it.
-
-    ``None`` for the heading is a phase declining; it may still change the
-    latches (an abandoned merge), hence ``(None, latches)``.
-    """
+    """What a steering phase decided: a heading, and the latches after it."""
 
     heading: _Heading
     latches: _Latches
@@ -812,11 +805,11 @@ def _drive[StateT: _State](
 ) -> "StateT | _Halt | None":
     """Return the state one step on from ``state``, or why there is none.
 
-    The whole movement semantics; pure, so :meth:`_Machine._drive_states`
+    The whole movement semantics; pure, so ``validation.drive_states``
     can enumerate it and :meth:`_Machine.step` replay it.  ``;`` is
     ``"halt"``; ``U`` reverses into the lane now on the right and clears
     every latch.  ``None`` is running out of road (a wedged street, which
-    :meth:`_Machine._validate_total` rejects), deliberately not ``"halt"``.
+    ``validation.validate_total`` rejects), deliberately not ``"halt"``.
     Value-dependent halts stay in :meth:`_Machine.step`.
     """
     car = state.car

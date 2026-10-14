@@ -4,13 +4,14 @@ from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
 from esolangs.generation.helpers import essential_inputs, read_at
-from esolangs.languages.slow_acv_mammalian.interpreter import MammalianModuli
+from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_head, _leaf
+from esolangs.languages.slow_acv_mammalian.interpreter import _ARRAYS, MammalianModuli
 
 
 @dataclass
 class _State:
     head: int = 0
-    rest: list[int] = field(default_factory=lambda: [0] * 23)
+    rest: list[int] = field(default_factory=lambda: [0] * _ARRAYS)
     acc: int = 0
     ptr: int = 0
 
@@ -20,15 +21,15 @@ class _State:
 
 def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
     """Return the earliest SEED count reaching a head congruent to want modulo 23."""
-    if step == 23:
-        wraps = (head - want) * pow(modulus, -1, 23) % 23
+    if step == _ARRAYS:
+        wraps = (head - want) * pow(modulus, -1, _ARRAYS) % _ARRAYS
         return max(0, -(-(wraps * modulus - head) // step))
-    inverse = pow(step, -1, 23)
+    inverse = pow(step, -1, _ARRAYS)
     for wraps in range(step + 1):
         first = max(0, -(-(wraps * modulus - head) // step))
         last = min(modulus - 1, ((wraps + 1) * modulus - 1 - head) // step)
-        residue = (want - head + wraps * modulus) * inverse % 23
-        count = first + (residue - first) % 23
+        residue = (want - head + wraps * modulus) * inverse % _ARRAYS
+        count = first + (residue - first) % _ARRAYS
         if count <= last:
             return count
     raise AssertionError("no routing head")  # pragma: no cover - coprime steps
@@ -36,12 +37,9 @@ def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
 
 def _read_seeds(head: int, total: int, modulus: int) -> int:
     """Reach the earliest nonwrapping head whose two DIGEST sums XOR to 48."""
-    offset = (total + head - 16) % 64
-    count = offset % 2 if offset <= 14 else 64 - offset
+    count = _aim(total + head)
     if head + count > modulus - 17:
-        offset = (total - 16) % 64
-        first = offset % 2 if offset <= 14 else 64 - offset
-        count = modulus - head + first
+        count = modulus - head + _aim(total)
     return count
 
 
@@ -49,15 +47,15 @@ class _Chain:
     def __init__(self, modulus: int, *, io_modulus: int | None = None) -> None:
         moduli = MammalianModuli(modulus, modulus if io_modulus is None else io_modulus)
         self.modulus, self.io_modulus = moduli.cell_modulus, moduli.io_modulus
-        units = [array for array in range(23) if gcd(array + 1, modulus) == 1]
+        units = [array for array in range(_ARRAYS) if gcd(array + 1, modulus) == 1]
         self.weight = units[1]
         self.step = self.weight + 1
         for seeds in range(1, 23):
             for first in units:
                 if first in (0, self.weight):
                     continue
-                head = (first - self.weight) % 23
-                second = (first + seeds * self.step) % 23
+                head = (first - self.weight) % _ARRAYS
+                second = (first + seeds * self.step) % _ARRAYS
                 if second in units and second not in (
                     0,
                     self.weight,
@@ -93,11 +91,7 @@ class _Chain:
         head = (value - rest) % self.io_modulus
         tokens = []
         if head >= self.modulus:
-            # For 255-cell/256-I/O arithmetic, synthesize low byte 255
-            # before the final DIGEST; no SEED can make head 255.
-            first = (127 - rest) % 256
-            if first >= 254:
-                first = (255 - rest) % 256
+            first = _crossing_head(rest)
             tokens += self.set_head(state, first)
             state.acc = self.head(state) + rest
             tokens += ["DIGEST"]
@@ -115,10 +109,11 @@ class _Chain:
 
     def route(self, state: _State, dest: int, *, short: bool = False) -> list[str]:
         tokens = self.clear(state) if state.acc else []
-        want = (dest - state.ptr) % 23
-        count = (want - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
+        want = (dest - state.ptr) % _ARRAYS
         if short:
             count = _routing_seeds(self.head(state), state.ptr + 1, want, self.modulus)
+        else:
+            count = (want - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
         tokens += self.seed(state, count % self.modulus)
         state.ptr = dest
         return [*tokens, "SPRINT"]
@@ -224,8 +219,7 @@ class _Chain:
             seeds = _read_seeds(state.head, start, self.modulus)
         else:
             tokens += self.seed(state, (-state.head) % self.modulus)
-            offset = (start - 16) % 64
-            seeds = start % 2 if offset <= 14 else 64 - offset
+            seeds = _aim(start)
         tokens += self.seed(state, seeds)
         first = start + state.head
         tokens += ["DIGEST"]
@@ -287,7 +281,7 @@ class _Chain:
         self, state: _State, weight: int, pool: int, *, compact: bool = True
     ) -> list[str]:
         tokens = self.route(state, pool, short=True)
-        hop = (self.weight - pool) % 23
+        hop = (self.weight - pool) % _ARRAYS
         if compact and self.modulus == self.io_modulus:
             inverse = pow(pool + 1, -1, self.modulus)
             head, rest = self.head(state), state.rest[pool]
@@ -295,7 +289,7 @@ class _Chain:
             def seeds(first: int, second: int) -> int:
                 a = (first - rest) % self.modulus
                 b = (second - rest - first) % self.modulus
-                end = (-pool) % 23
+                end = (-pool) % _ARRAYS
                 return (
                     ((a - head) * inverse) % self.modulus
                     + ((b - a) * inverse) % self.modulus
@@ -339,10 +333,7 @@ class _Chain:
             level, state = self.level(state, weight, len(tokens), pool)
             tokens += level
         tokens += self.route(state, self.weight)
-        count = (self.dispatch_head - self.head(state)) * pow(
-            self.step, -1, self.modulus
-        )
-        tokens += self.seed(state, count % self.modulus)
+        tokens += self.set_head(state, self.dispatch_head)
         tokens += ["DIGEST", "LEAPFROG"]
         return tokens + ["SEED"] * max(0, base - len(tokens))
 
@@ -376,16 +367,7 @@ class _Chain:
             for offset in range(1 << free):
                 suffix = int(f"{offset:0{free}b}"[::-1], 2)
                 digit = table[(group << free) | suffix]
-                leaf = [
-                    "EXCRETE",
-                    *["SEED"] * (int(digit) * self.digit_seeds),
-                    "SPRINT",
-                    "CONSUME",
-                    "PRONOUNCE",
-                    "EXCRETE",
-                    "LEAPFROG",
-                ]
-                tokens += leaf + ["SEED"] * (unit - len(leaf))
+                tokens += _leaf(int(digit) * self.digit_seeds, unit=unit)
         return " ".join(tokens)
 
 

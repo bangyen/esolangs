@@ -45,7 +45,7 @@ class TestTheDetectorsTakeAVM:
     def test_an_object_that_is_neither_raises_type_error(self) -> None:
         """The unwrap looks one level deep, and no further."""
         with pytest.raises(TypeError, match="steppable with a snapshot"):
-            run_until_halt_or_cycle(object())  # type: ignore[arg-type]
+            run_until_halt_or_cycle(object())
 
     def test_a_zero_branch_cap_stops_before_exploring(self) -> None:
         """A zero cap stops before exploring the initial branching state."""
@@ -62,7 +62,7 @@ class TestTheDetectorsTakeAVM:
 
         with pytest.raises(TimeoutError, match="branching states"):
             run_until_halt_or_all_branches_cycle(
-                _Unbounded(),  # type: ignore[arg-type]
+                _Unbounded(),
                 limit=0,
             )
 

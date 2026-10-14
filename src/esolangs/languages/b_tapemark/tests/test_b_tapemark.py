@@ -6,7 +6,6 @@ from esolangs.languages.b_tapemark.interpreter import (
     _advance,
     _Grid,
     _load,
-    _read,
     run,
 )
 from esolangs.runtime.io import ScriptedIO
@@ -96,7 +95,7 @@ def test_input_command_without_a_symbol_is_refused() -> None:
     state = _load(">-!")
     for _ in range(3):
         state = _advance(state)[0]
-        if _read(state.grids[state.program], state.positions[state.program]) == "-":
+        if state.grids[state.program].at(state.positions[state.program]) == "-":
             break
     with pytest.raises(ValueError, match="input symbol required"):
         _advance(state)

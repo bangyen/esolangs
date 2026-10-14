@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from itertools import pairwise
 
 from esolangs.generation.helpers import (
@@ -34,6 +35,23 @@ class FlagDialect:
     retest: bool = False
 
 
+def _tape_dialect(*, flip: bool) -> FlagDialect:
+    """Return the brainfuck spelling; a flipped tree clears with ``+``."""
+    return FlagDialect(
+        lambda here, there: move_text(here, there, ">", "<"),
+        one="+",
+        zero="+" if flip else "-",
+        opener="[",
+        closer="]",
+        decrement="-",
+        retest=flip,
+    )
+
+
+#: Every residual form :func:`shared_flag_tree` can try.
+FLAG_FORMS = frozenset({"single", "multiple", "bank", "ranked_bank", "mixed_bank"})
+
+
 def shared_flag_tree(
     truth_table: str,
     perm: tuple[int, ...],
@@ -42,72 +60,44 @@ def shared_flag_tree(
     *,
     binary_leaves: bool = False,
     command_budget: int | None = None,
-    multiple: bool = True,
-    bank: bool = True,
-    bank_only: bool = False,
-    bank_ranked: bool = True,
+    forms: frozenset[str] = FLAG_FORMS,
 ) -> tuple[str, int] | None:
-    """Return the shortest admitted single-, multiple- or banked-residual body."""
+    """Return the shortest admitted body among ``forms``.
+
+    ``single`` defers the one repeated block, ``multiple`` every repeated
+    block; ``bank`` gives blocks unused flags one per depth, ``ranked_bank``
+    by copy count, and ``mixed_bank`` unions the two.
+    """
     shared = repeated_block(truth_table)
     if shared is None:
         return None
-    single = flag_tree_body(
-        truth_table, perm, start, result, shared=shared, binary_leaves=binary_leaves
+    body = partial(
+        flag_tree_body, truth_table, perm, start, result, binary_leaves=binary_leaves
     )
+    bodies = [body(shared=shared)] if "single" in forms else []
     blocks = repeated_blocks(truth_table)
-    forms = [] if bank_only else [single]
-    if multiple and not bank_only and len(blocks) > 1:
-        forms.append(
-            flag_tree_body(
-                truth_table,
-                perm,
-                start,
-                result,
-                shared_blocks=blocks,
-                binary_leaves=binary_leaves,
-            )
-        )
-    if multiple and bank:
-        seen = set()
-        reserved = 2 * perm[-1] + 1 == result
-        for ranked in (bank_ranked,) if bank_only else (False, True):
-            banked, levels = repeated_bank(
-                truth_table, reserve_last=reserved, ranked=ranked
-            )
-            if banked and banked not in seen:
-                seen.add(banked)
-                forms.append(
-                    flag_tree_body(
-                        truth_table,
-                        perm,
-                        start,
-                        result,
-                        shared_blocks=banked,
-                        flag_levels=levels,
-                        binary_leaves=binary_leaves,
-                    )
-                )
+    if "multiple" in forms and len(blocks) > 1:
+        bodies.append(body(shared_blocks=blocks))
+    reserved = 2 * perm[-1] + 1 == result
+    banks = [
+        repeated_bank(truth_table, reserve_last=reserved, ranked=ranked)
+        for form, ranked in (("bank", False), ("ranked_bank", True))
+        if form in forms
+    ]
+    if "mixed_bank" in forms:
         # The mixed bank unions the one-per-depth picks with the copy-ranked
         # bank; built once because the ranking only picks which of the bank's
         # blocks enter, and the union already holds the per-depth picks.
-        mixed, mixed_levels = repeated_mixed_bank(
-            truth_table, reserve_last=reserved, ranked=True
-        )
-        if len(mixed) > 1 and mixed not in seen:
-            seen.add(mixed)
-            forms.append(
-                flag_tree_body(
-                    truth_table,
-                    perm,
-                    start,
-                    result,
-                    shared_blocks=mixed,
-                    flag_levels=mixed_levels,
-                    binary_leaves=binary_leaves,
-                )
-            )
+        mixed = repeated_mixed_bank(truth_table, reserve_last=reserved, ranked=True)
+        if len(mixed[0]) > 1:
+            banks.append(mixed)
+    seen = set()
+    for banked, levels in banks:
+        if banked and banked not in seen:
+            seen.add(banked)
+            bodies.append(body(shared_blocks=banked, flag_levels=levels))
     admitted = [
-        form for form in forms if command_budget is None or form[1] <= command_budget
+        form for form in bodies if command_budget is None or form[1] <= command_budget
     ]
     return min(admitted, key=lambda form: len(form[0])) if admitted else None
 
@@ -138,29 +128,24 @@ def flag_tree_body(
     reuses it. Other pending flags stay zero on that path.
     """
     n = _validate_truth_table(truth_table)
-    clear = dialect.zero if dialect else "+" if flip else "-"
-    set_one = dialect.one if dialect else "+"
-    opener = dialect.opener if dialect else "["
-    closer = dialect.closer if dialect else "]"
-    decrement = dialect.decrement if dialect else "-"
-    retest = int(dialect.retest if dialect else flip)
+    spelling = dialect or _tape_dialect(flip=flip)
+    clear, set_one, decrement = spelling.zero, spelling.one, spelling.decrement
+    opener, closer, retest = spelling.opener, spelling.closer, int(spelling.retest)
     blocks = (shared,) if shared is not None else shared_blocks
     depths = [depth for depth, _ in blocks]
-    if flag_levels:
-        if (
-            len(flag_levels) != len(blocks)
-            or any(left > right for left, right in pairwise(depths))
-            or len(set(flag_levels)) != len(flag_levels)
-            or any(
-                level < depth for level, depth in zip(flag_levels, depths, strict=True)
-            )
-            or any(level >= n for level in flag_levels)
-            or any(2 * perm[level] + 1 == result for level in flag_levels)
-        ):
-            raise ValueError("a residual bank needs distinct unused descendant flags")
-    elif any(left >= right for left, right in pairwise(depths)):
-        raise ValueError("deferred levels must be distinct, increasing input levels")
-    if any(depth < 0 or depth >= n for depth in depths):
+    if flag_levels and (
+        len(flag_levels) != len(blocks)
+        or any(left > right for left, right in pairwise(depths))
+        or len(set(flag_levels)) != len(flag_levels)
+        or any(level < depth for level, depth in zip(flag_levels, depths, strict=True))
+        or any(level >= n for level in flag_levels)
+        or any(2 * perm[level] + 1 == result for level in flag_levels)
+    ):
+        raise ValueError("a residual bank needs distinct unused descendant flags")
+    increasing = bool(flag_levels) or all(
+        left < right for left, right in pairwise(depths)
+    )
+    if not increasing or any(not 0 <= depth < n for depth in depths):
         raise ValueError("deferred levels must be distinct, increasing input levels")
     pending_levels = flag_levels or tuple(depths)
     fold_zero = bool(blocks) if fold_zero is None else fold_zero
@@ -191,7 +176,7 @@ def flag_tree_body(
 
     def move(target: int) -> None:
         nonlocal pos
-        emit(dialect.move(pos, target) if dialect else move_text(pos, target, ">", "<"))
+        emit(spelling.move(pos, target))
         pos = target
 
     def constant(i: int, combo: int) -> str | None:
@@ -199,7 +184,7 @@ def flag_tree_body(
         span = 1 << (n - i)
         return truth_table[combo] if is_constant(combo, combo + span) else None
 
-    def branch(i: int, combo: int) -> _Cost:
+    def branch(i: int, combo: int) -> _Cost[int]:
         """Emit one side of node ``i``: a folded leaf or the child subtree."""
         start = count
         value = constant(i + 1, combo)
@@ -211,7 +196,7 @@ def flag_tree_body(
         # value == "0": the leaf emits nothing
         return _Cost(count - start)
 
-    def node(i: int, combo: int) -> _Cost:
+    def node(i: int, combo: int) -> _Cost[int]:
         """Emit node ``i``: test bit ``i``, run one side, leave flag_i = 0."""
         start = count
         key = (i, ids[i][combo >> (n - i)])

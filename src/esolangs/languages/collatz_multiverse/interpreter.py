@@ -187,27 +187,30 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Execute one line, moving the pointer.
-
-        Every ``input`` the line names (up to three) is read here, in the
-        transition's order.
-        """
+        """Execute one line, moving the pointer."""
         if self.halted:
             return
         line = self.parsed[self.state[0] - 1]
-        var1, idx1, var2, idx2, var3, idx3, do_print = line
-        # The three operand slots are read left to right, and an index is
-        # read before the array it indexes -- the order the old _read
-        # recursion produced.
+        value, self.state = _advance(self.state, line, self._collect_reads(line))
+        if line[-1] == "DO":
+            self.io.print_char(chr(value & 0xFF))
+
+    def _collect_reads(self, line: _Line) -> tuple[int, ...]:
+        """Pre-read every ``input`` the line names, in operand consumption order.
+
+        ``_advance`` is pure, so the shell reads here instead.  The slots map
+        to operands left to right, and within one operand the index's
+        ``input`` (if any) comes before the operand's own -- the order
+        ``_operand`` pops them.
+        """
+        var1, idx1, var2, idx2, var3, idx3, _do_print = line
         reads = []
         for name, index in ((var1, idx1), (var2, idx2), (var3, idx3)):
             if index == "input":
                 reads.append(self.io.input_num())
             if name == "input":
                 reads.append(self.io.input_num())
-        value, self.state = _advance(self.state, line, tuple(reads))
-        if do_print == "DO":
-            self.io.print_char(chr(value & 0xFF))
+        return tuple(reads)
 
 
 #: One operand as parsed: a name, and the index name when it is an array
@@ -219,17 +222,24 @@ type _Operand = tuple[str, str | None]
 #: in the order the regex captures them.
 type _Line = tuple[str, str | None, str, str | None, str, str | None, str]
 
+#: An operand's value and its resolved array index, as read by ``_operand``.
+type _Resolved = tuple[int, int]
+
 
 def _plain(state: _State, name: str) -> int:
-    """Read a non-indexed, non-input operand (index operands come here too)."""
+    """Read a plain variable: the line pointer for ``lineNumber``, else its register.
+
+    Array index names resolve here too -- they are ordinary variables.
+    """
     ip, regs, _arrays = state
     return ip if name == "lineNumber" else _reg_get(regs, name)
 
 
-def _operand(state: _State, spec: _Operand, pending: list[int]) -> tuple[int, int]:
-    """Read one operand and its resolved array index.
+def _operand(state: _State, spec: _Operand, pending: list[int]) -> _Resolved:
+    """Read one operand's value and its resolved array index.
 
-    ``pending`` is consumed in operand order: index before its name, left to right.
+    ``pending`` (from ``_collect_reads``) is consumed front to back: an
+    operand's index ``input`` before the operand's own ``input``.
     """
     name, index = spec
     idx = 0
@@ -255,16 +265,16 @@ def _advance(
     """Return the computed value and the state after executing one line.
 
     The value comes back because ``DO PRINT`` is the shell's.  ``reads``
-    holds the pre-read ``input`` values.
+    holds the pre-read ``input`` values in ``_collect_reads`` order.
     """
     ip, regs, arrays = state
     var1, idx1, var2, idx2, var3, idx3, _do_print = line
     pending = list(reads)
 
-    target, target_index = _operand(state, (var1, idx1), pending)
+    current, target_index = _operand(state, (var1, idx1), pending)
     a, _ = _operand(state, (var2, idx2), pending)
     b, _ = _operand(state, (var3, idx3), pending)
-    value = target * a + b if target == 0 or target % 2 != 0 else target // 2
+    value = current * a + b if current == 0 or current % 2 != 0 else current // 2
 
     next_ip = ip + 1
     if var1 == "lineNumber":

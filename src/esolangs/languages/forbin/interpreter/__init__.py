@@ -54,18 +54,22 @@ actually uses (there is no return-value-threading idiom across nested
 calls; ``return`` exits the whole function immediately).  A statement's own
 expression evaluation, and any *expression-position* call it contains
 (``x = f(y)``, where the assignment needs the result back synchronously),
-still runs to completion inside one ``step()`` through the pure recursive
-``_eval``/``_call``/``_run`` -- Forbin has no realistic program shape that
-recurses that way, so this narrower scope fixes the depth cap for the
-pattern the language is actually written in without the larger risk of
-converting expression evaluation itself into an explicit continuation
-stack.
+still runs to completion inside one ``step()``: expressions evaluate
+through ``_eval``/``_call``, and an expression-position call runs the same
+step core to completion via ``_run`` -- there is one statement
+implementation, shared by the resumable machine and direct execution.
+Forbin has no realistic program shape that recurses that way, so this
+narrower scope fixes the depth cap for the pattern the language is
+actually written in without the larger risk of converting expression
+evaluation itself into an explicit continuation stack.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import sys
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from itertools import product
 from types import MappingProxyType
 from typing import Literal, NamedTuple
 
@@ -78,6 +82,7 @@ from esolangs.languages.forbin.interpreter._parse import (
     _ValueNode,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._fault import _Fault
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -95,15 +100,6 @@ class _NeedByte(Exception):  # noqa: N818 - an internal resumption signal
     def __init__(self, effects: tuple[str, ...] = ()) -> None:
         super().__init__()
         self.effects = effects
-
-
-class _Fault(Exception):  # noqa: N818 - an internal resumption signal
-    """Carries the output prefix computed before a fault, and the fault."""
-
-    def __init__(self, effects: tuple[str, ...], error: BaseException) -> None:
-        super().__init__(str(error))
-        self.effects = effects
-        self.error = error
 
 
 def _frozen(locals_: Mapping[str, object]) -> Mapping[str, object]:
@@ -137,12 +133,12 @@ class _Frame:
 
     fn: _Function
     scope: int
-    pos: int
-    for_rows: tuple[tuple[object, ...], ...] | None
-    for_names: tuple[str, ...]
-    for_ind: int
-    for_started: bool
-    for_body_pos: int
+    pos: int = 0
+    for_rows: tuple[tuple[object, ...], ...] | None = None
+    for_names: tuple[str, ...] = ()
+    for_ind: int = 0
+    for_started: bool = False
+    for_body_pos: int = 0
 
 
 @dataclass(frozen=True)
@@ -183,21 +179,6 @@ class _State:
     next_scope: int
     bits: tuple[int, ...]
     reads: int
-
-
-class _BitReader:
-    """A read-only view of the input bit buffer for the VM's ``views``.
-
-    The old stateful reader is gone: reads are part of the pure transition
-    and the buffer lives in :class:`_State`.  This view keeps the ``reader``
-    property (and so the VM's named views) intact.
-    """
-
-    __slots__ = ("bits", "reads")
-
-    def __init__(self, bits: tuple[int, ...], reads: int) -> None:
-        self.bits = bits
-        self.reads = reads
 
 
 def _new_scope(
@@ -335,7 +316,7 @@ def _enter(
         scopes, callee.fn, callee.scope, locals_, next_scope
     )
     return (
-        _Frame(callee.fn, scope, 0, None, (), 0, for_started=False, for_body_pos=0),
+        _Frame(callee.fn, scope),
         next_scope,
         scopes,
     )
@@ -384,86 +365,125 @@ def _call(
     )
 
 
+#: Marks "no frame returned a value" from the step core.  A fresh object
+#: is never a Forbin value, so ``is``/``is not`` comparisons are exact.
+_NO_RETURN = object()
+
+
 def _run(
     frame: _Frame,
     globals_: Mapping[str, _Function],
     ctx: _Ctx,
 ) -> tuple[object | None, _Ctx]:
-    """Run ``frame``'s body to completion, recursing into expression calls.
+    """Run ``frame``'s body to completion through the step core.
 
     Only reached for expression-position calls (``x = f(y)``), whose own
     recursion depth is bounded by Python's default recursion limit -- a
-    statement-position call (``f(y);``) is stepped through ``_Machine``'s
-    explicit ``frames`` stack instead and is not depth-limited at all.
+    statement-position call (``f(y);``) pushes onto the explicit frame
+    stack instead of recursing, so that pattern is not depth-limited at
+    all.  The stack still cannot grow without bound here: past the host's
+    own recursion limit a runaway raises :class:`RecursionError`, which
+    the ``step()`` shell reports as a halt, exactly as the old recursive
+    executor did.
     """
-    for stmt in frame.fn.body:
-        got, ctx = _exec_stmt(stmt, frame, globals_, ctx)
-        if got is not None:
-            return got, ctx
-    return None, ctx
+    frames: tuple[_Frame, ...] = (frame,)
+    result: object | None = None
+    while frames:
+        if len(frames) > sys.getrecursionlimit():
+            raise RecursionError(
+                "statement-position calls nested past the host's depth limit"
+            )
+        frames, ctx, returned = _step_frames(frames, globals_, ctx)
+        if returned is not _NO_RETURN and not frames:
+            # Only the outermost frame's own return value is this run's
+            # result.  A return from an inner frame (e.g. a nested
+            # statement-position call evaluated through the step core)
+            # just pops that frame; recording it would leak the inner
+            # value to the enclosing expression-position call.
+            result = returned
+    return result, ctx
 
 
-def _exec_stmt(
-    stmt: _Statement,
-    frame: _Frame,
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[object | None, _Ctx]:
-    """Execute one statement, returning its value if it was a ``return``."""
-    if stmt[0] == "return":
-        return _eval(stmt[1], frame, globals_, ctx)
-    if stmt[0] == "assign":
-        targets, rhs = stmt[1], stmt[2]
-        bindings: list[tuple[str, object]] = []
-        if len(rhs) == 1:
-            for name in targets:
-                if name == "_":
-                    continue
-                value, ctx = _eval(rhs[0], frame, globals_, ctx)
-                bindings.append((name, value))
-        else:
-            for name, value_node in zip(targets, rhs, strict=False):
-                if name == "_":
-                    continue
-                value, ctx = _eval(value_node, frame, globals_, ctx)
-                bindings.append((name, value))
-        for name, value in bindings:
-            ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
-        return None, ctx
-    if stmt[0] == "call":
-        callee, ctx = _eval(stmt[1], frame, globals_, ctx)
-        args: list[object] = []
-        for argument in stmt[2]:
-            value, ctx = _eval(argument, frame, globals_, ctx)
-            args.append(value)
-        _value, ctx = _call(callee, args, globals_, ctx)
-        return None, ctx
-    # The three arms above are the other statement kinds, so what is
-    # left is a ``for``.
-    spec, body = stmt[1], stmt[2]
-    rows, names, ctx = _for_rows(spec, frame, globals_, ctx)
-    for row in rows:
-        for name, value in zip(names, row, strict=False):
-            if name != "_":
-                ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
-        got, ctx = _exec_block(body, frame, globals_, ctx)
-        if got is not None:
-            return got, ctx
-    return None, ctx
-
-
-def _exec_block(
+def _run_block(
     stmts: list[_Statement],
     frame: _Frame,
     globals_: Mapping[str, _Function],
     ctx: _Ctx,
 ) -> tuple[object | None, _Ctx]:
-    """Run a block of statements in ``frame``'s scope; None unless a return fired."""
-    for stmt in stmts:
-        got, ctx = _exec_stmt(stmt, frame, globals_, ctx)
-        if got is not None:
-            return got, ctx
-    return None, ctx
+    """Run ``stmts`` to completion in ``frame``'s scope; the return value or None.
+
+    Drives the step core on a synthetic frame sharing ``frame``'s scope,
+    so direct execution and the resumable machine share one statement
+    implementation.
+    """
+    block_fn = _Function("$block", [])
+    block_fn.body = stmts
+    block_frame = _Frame(block_fn, frame.scope)
+    return _run(block_frame, globals_, ctx)
+
+
+def _advance_pos(frame: _Frame) -> _Frame:
+    """Return ``frame`` with its statement cursor moved past one statement."""
+    return replace(frame, pos=frame.pos + 1)
+
+
+def _advance_body_pos(frame: _Frame) -> _Frame:
+    """Return ``frame`` with its for-body cursor moved past one statement."""
+    return replace(frame, for_body_pos=frame.for_body_pos + 1)
+
+
+def _step_stmt(
+    stmt: _Statement,
+    frame: _Frame,
+    frames: tuple[_Frame, ...],
+    advance: Callable[[_Frame], _Frame],
+    globals_: Mapping[str, _Function],
+    ctx: _Ctx,
+) -> tuple[tuple[_Frame, ...], _Ctx, object]:
+    """Execute one statement as a single step of the core.
+
+    ``advance`` moves the cursor the statement was read from -- the
+    statement cursor, or the for-body cursor while stepping a loop body.
+    Returns the new frame stack, the context, and the statement's return
+    value, or :data:`_NO_RETURN` when the statement did not return.  A
+    ``for`` nested in a loop body runs atomically, since the frame's
+    ``for_*`` fields already track the outer loop.
+    """
+    if stmt[0] == "for":
+        rows, names, ctx = _for_rows(stmt[1], frame, globals_, ctx)
+        returned: object = _NO_RETURN
+        for row in rows:
+            for name, value in zip(names, row, strict=False):
+                if name != "_":
+                    ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
+            got, ctx = _run_block(stmt[2], frame, globals_, ctx)
+            if got is not None:
+                returned = got
+                break
+        if returned is not _NO_RETURN:
+            return frames[:-1], ctx, returned
+        return (*frames[:-1], advance(frame)), ctx, _NO_RETURN
+    pushed, ctx = _start_statement_call(stmt, frame, globals_, ctx)
+    if isinstance(pushed, _Frame):
+        return (*frames[:-1], advance(frame), pushed), ctx, _NO_RETURN
+    if pushed is False:
+        return (*frames[:-1], advance(frame)), ctx, _NO_RETURN
+    if stmt[0] == "return":
+        value, ctx = _eval(stmt[1], frame, globals_, ctx)
+        return frames[:-1], ctx, value
+    if stmt[0] != "assign":
+        raise AssertionError(f"unexpected statement kind: {stmt[0]}")
+    targets, rhs = stmt[1], stmt[2]
+    bindings: list[tuple[str, object]] = []
+    # One right-hand side is evaluated afresh for every target.
+    nodes = rhs * len(targets) if len(rhs) == 1 else rhs
+    for name, node in zip(targets, nodes, strict=False):
+        if name != "_":
+            value, ctx = _eval(node, frame, globals_, ctx)
+            bindings.append((name, value))
+    for name, value in bindings:
+        ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
+    return (*frames[:-1], advance(frame)), ctx, _NO_RETURN
 
 
 def _for_rows(
@@ -486,30 +506,19 @@ def _for_rows(
     rows: list[list[object]] = []
     for pat in patterns:
         items = pat[1] if pat[0] == "group" else [pat]
-        wilds = [j for j, p in enumerate(items) if p[0] == "*"]
-        if not wilds:
+        wilds = sum(p[0] == "*" for p in items)
+        # No wildcard is one empty combination: one row of values.
+        for combo in product((0, 1), repeat=wilds):
             row: list[object] = []
+            w = 0
             for p in items:
-                if p[0] == "value":
+                if p[0] == "*":
+                    row.append(combo[w])
+                    w += 1
+                else:
                     value, ctx = _eval(p[1], frame, globals_, ctx)
                     row.append(value)
-                else:
-                    row.append(0)
             rows.append(row)
-        else:
-            import itertools
-
-            for combo in itertools.product((0, 1), repeat=len(wilds)):
-                row = []
-                w = 0
-                for p in items:
-                    if p[0] == "*":
-                        row.append(combo[w])
-                        w += 1
-                    else:
-                        value, ctx = _eval(p[1], frame, globals_, ctx)
-                        row.append(value)
-                rows.append(row)
     return rows, names, ctx
 
 
@@ -535,11 +544,6 @@ def _start_statement_call(
     return pushed, ctx
 
 
-def _state_of(frames: tuple[_Frame, ...], ctx: _Ctx) -> _State:
-    """Return the immutable run state a transition attempt has reached."""
-    return _State(frames, ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads)
-
-
 def _advance(
     state: _State,
     globals_: Mapping[str, _Function],
@@ -556,24 +560,33 @@ def _advance(
     out: list[str] = []
     ctx = _Ctx(state.scopes, state.next_scope, state.bits, state.reads, 0, out, inputs)
     try:
-        new_state = _step(state, globals_, ctx)
+        frames, ctx, _returned = _step_frames(state.frames, globals_, ctx)
     except _NeedByte:
         raise _NeedByte(tuple(out)) from None
     except _Fault:
         raise
     except BaseException as exc:
         raise _Fault(tuple(out), exc) from None
-    return new_state, tuple(out)
+    return _State(frames, ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads), tuple(out)
 
 
-def _step(state: _State, globals_: Mapping[str, _Function], ctx: _Ctx) -> _State:
-    """Advance one statement, row, or call, appending output to ``ctx.out``."""
-    frames = state.frames
+def _step_frames(
+    frames: tuple[_Frame, ...],
+    globals_: Mapping[str, _Function],
+    ctx: _Ctx,
+) -> tuple[tuple[_Frame, ...], _Ctx, object]:
+    """Advance one statement, row, or call: the single stepping core.
+
+    Returns the new frame stack, the context, and the value of a frame
+    that returned on this step, or :data:`_NO_RETURN` when none did.
+    Output accumulates in ``ctx.out``; a read that runs out raises
+    :data:`_NeedByte`.
+    """
     frame = frames[-1]
     if frame.for_rows is not None:
-        return _step_for(state, frame, globals_, ctx)
+        return _step_for_frames(frames, frame, globals_, ctx)
     if frame.pos >= len(frame.fn.body):
-        return _state_of(frames[:-1], ctx)
+        return frames[:-1], ctx, _NO_RETURN
     stmt = frame.fn.body[frame.pos]
     if stmt[0] == "for":
         rows, names, ctx = _for_rows(stmt[1], frame, globals_, ctx)
@@ -584,35 +597,23 @@ def _step(state: _State, globals_: Mapping[str, _Function], ctx: _Ctx) -> _State
             for_ind=0,
             for_started=False,
         )
-        return _state_of((*frames[:-1], frame), ctx)
-    pushed, ctx = _start_statement_call(stmt, frame, globals_, ctx)
-    if isinstance(pushed, _Frame):
-        frame = replace(frame, pos=frame.pos + 1)
-        return _state_of((*frames[:-1], frame, pushed), ctx)
-    got, ctx = (
-        (None, ctx) if pushed is False else _exec_stmt(stmt, frame, globals_, ctx)
-    )
-    frame = replace(frame, pos=frame.pos + 1)
-    frames = (*frames[:-1], frame)
-    if got is not None:
-        frames = frames[:-1]
-    return _state_of(frames, ctx)
+        return (*frames[:-1], frame), ctx, _NO_RETURN
+    return _step_stmt(stmt, frame, frames, _advance_pos, globals_, ctx)
 
 
-def _step_for(
-    state: _State,
+def _step_for_frames(
+    frames: tuple[_Frame, ...],
     frame: _Frame,
     globals_: Mapping[str, _Function],
     ctx: _Ctx,
-) -> _State:
-    """Advance a ``for`` loop already in progress.
+) -> tuple[tuple[_Frame, ...], _Ctx, object]:
+    """Advance a ``for`` loop already in progress: the core's loop half.
 
-    One row-body statement, one new row, or the loop's own completion.  The
-    body is read from ``fn.body[pos]`` rather than stored on the frame, so
-    the frame holds no parsed statements.
+    One row-body statement, one new row, or the loop's own completion.
+    The body is read from ``fn.body[pos]`` rather than stored on the
+    frame, so the frame holds no parsed statements.
     """
-    frames = state.frames
-    # This method only runs while the cursor sits on the ``for`` whose
+    # This function only runs while the cursor sits on the ``for`` whose
     # rows it is walking, so the statement under it is that ``for``.
     # The tag is checked rather than tested-and-skipped: narrowing the
     # union is what lets ``current[2]`` be read at all, and a plain
@@ -625,28 +626,19 @@ def _step_for(
     body = current[2]
     if frame.for_started and frame.for_body_pos < len(body):
         stmt = body[frame.for_body_pos]
-        pushed, ctx = _start_statement_call(stmt, frame, globals_, ctx)
-        if isinstance(pushed, _Frame):
-            frame = replace(frame, for_body_pos=frame.for_body_pos + 1)
-            return _state_of((*frames[:-1], frame, pushed), ctx)
-        got, ctx = (
-            (None, ctx) if pushed is False else _exec_stmt(stmt, frame, globals_, ctx)
-        )
-        frame = replace(frame, for_body_pos=frame.for_body_pos + 1)
-        frames = (*frames[:-1], frame)
-        if got is not None:
-            frames = frames[:-1]
-        return _state_of(frames, ctx)
+        return _step_stmt(stmt, frame, frames, _advance_body_pos, globals_, ctx)
     if frame.for_ind >= len(frame.for_rows or ()):
         frame = replace(frame, for_rows=None, pos=frame.pos + 1)
-        return _state_of((*frames[:-1], frame), ctx)
+        return (*frames[:-1], frame), ctx, _NO_RETURN
     row = frame.for_rows[frame.for_ind] if frame.for_rows is not None else ()
     frame = replace(frame, for_ind=frame.for_ind + 1)
     for name, value in zip(frame.for_names, row, strict=False):
         if name != "_":
             ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
-    return _state_of(
-        (*frames[:-1], replace(frame, for_started=True, for_body_pos=0)), ctx
+    return (
+        (*frames[:-1], replace(frame, for_started=True, for_body_pos=0)),
+        ctx,
+        _NO_RETURN,
     )
 
 
@@ -664,9 +656,16 @@ class _Machine:
         # Where the source ends, kept because ``ip`` still has to report a
         # position once every frame has been popped.
         self._length = len(code)
-        # Identity -> (serial, object): holding the object keeps its id
-        # from being reused, so a serial names one object for the run.
-        self._serials: dict[int, tuple[int, object]] = {}
+        # First-sight identity numbering: the counter hands out each
+        # serial, and the dict remembers which objects were already
+        # numbered, so a serial names one object for the whole run.
+        # The dict stores only ids, not the objects, so this is a
+        # convention, not a structural guarantee: callers must number
+        # only objects that stay reachable from the machine's state for
+        # the rest of the run, since a freed object's id could be
+        # recycled for a different object.
+        self._serials: dict[int, int] = {}
+        self._next_serial = 0
         parser = _Parser(code)
         self.globals = parser.parse()
         if "main" not in self.globals:
@@ -679,9 +678,7 @@ class _Machine:
             MappingProxyType({}), global_fn, None, MappingProxyType({}), 0
         )
         self._global_scope = global_scope
-        global_frame = _Frame(
-            global_fn, global_scope, 0, None, (), 0, for_started=False, for_body_pos=0
-        )
+        global_frame = _Frame(global_fn, global_scope)
         self.state = _State((), scopes, next_scope, (), 0)
         for initializer in parser.initializers:
             self._run_initializer(initializer, global_frame)
@@ -690,9 +687,7 @@ class _Machine:
         main_scope, next_scope, scopes = _new_scope(
             self.state.scopes, main_fn, global_scope, main_locals, self.state.next_scope
         )
-        main_frame = _Frame(
-            main_fn, main_scope, 0, None, (), 0, for_started=False, for_body_pos=0
-        )
+        main_frame = _Frame(main_fn, main_scope)
         self.state = _State(
             (main_frame,), scopes, next_scope, self.state.bits, self.state.reads
         )
@@ -719,7 +714,7 @@ class _Machine:
                 tuple(inputs),
             )
             try:
-                _value, ctx = _exec_stmt(initializer, global_frame, self.globals, ctx)
+                _value, ctx = _run_block([initializer], global_frame, self.globals, ctx)
             except _NeedByte:
                 flushed = self._flush(out, flushed)
                 inputs.append(self.io.input_char())
@@ -742,14 +737,9 @@ class _Machine:
         return list(self.state.frames)
 
     @property
-    def reader(self) -> _BitReader:
-        """A read-only view of the input bit buffer, for the VM's views."""
-        return _BitReader(self.state.bits, self.state.reads)
-
-    @property
     def halted(self) -> bool:
         """Whether the frame stack has emptied (``main`` returned or ended)."""
-        return not self.frames
+        return not self.state.frames
 
     # The VM's language-shaped view: a call-frame language whose store is
     # the innermost frame's integer locals.
@@ -892,7 +882,11 @@ class _Machine:
 
     def _serial(self, thing: object) -> int:
         """Return ``thing``'s serial: its identity numbered by first sight."""
-        return self._serials.setdefault(id(thing), (len(self._serials), thing))[0]
+        key = id(thing)
+        if key not in self._serials:
+            self._serials[key] = self._next_serial
+            self._next_serial += 1
+        return self._serials[key]
 
     def _render(self, value: object) -> str:
         """``repr(value)``, but a closure names its function and scope.

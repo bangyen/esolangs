@@ -18,11 +18,6 @@ _JUMP_UNLESS = "jz"  # If/While guard: jump when the expression is false
 _JUMP = "jmp"  # While back-edge
 _VALUE = "val"  # a bare expression statement: the function's return value
 
-#: An expression node: a tag followed by names, literals, or sub-nodes.
-#: Heterogeneous by nature, so the slots are narrowed at use by
-#: :func:`_node` and :func:`_int` rather than modelled per tag.
-type _Expr = tuple[object, ...]
-
 
 class _Type:
     """A declared type's bounds and the values it wraps to.
@@ -57,6 +52,10 @@ class _Type:
             return self.over
         return value
 
+    def key(self) -> tuple[int, int, int, int, int | None]:
+        """Return every field, hashable, for a program's snapshot key."""
+        return self.low, self.high, self.under, self.over, self.length
+
     def zero(self) -> object:
         """Return the type's default: its minimum, or a row of them."""
         return (self.low,) * self.length if self.length is not None else self.low
@@ -90,6 +89,14 @@ class _Function:
         self.package = package
         self.locals = local_types
         self.uses = uses
+
+
+_DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
+
+
+def _starts_name(word: str | None) -> bool:
+    """Whether ``word`` begins as an identifier: a letter or underscore."""
+    return word is not None and (word[:1].isalpha() or word[:1] == "_")
 
 
 class _Parser:
@@ -163,11 +170,6 @@ class _Parser:
             self.expect(",")
             length = self.number()
             self.expect(")")
-            if length < 0:  # pragma: no cover - `number` requires isdigit
-                raise syntax_error(
-                    "array length must not be negative",
-                    "use an array length of zero or greater",
-                )
             return _Type(inner.low, inner.high, inner.under, inner.over, length)
         if name == "Pointer":
             self.expect("(")
@@ -222,7 +224,7 @@ class _Parser:
             return node
         if word.isdigit():
             return ("lit", self.literals.parse(word))
-        if not word[:1].isalpha() and word[:1] != "_":
+        if not _starts_name(word):
             raise syntax_error(
                 f"unexpected token {word!r} in an expression",
                 "use a decimal number, variable, call or ! expression",
@@ -250,7 +252,7 @@ class _Parser:
     def lvalue(self) -> tuple[str, tuple[object, ...] | None]:
         """Parse a target: a name, optionally with an index."""
         name = self.next_token()
-        if not (name[:1].isalpha() or name[:1] == "_"):
+        if not _starts_name(name):
             raise syntax_error(
                 f"expected a variable name, got {name!r}",
                 "use an identifier starting with a letter or underscore",
@@ -315,11 +317,10 @@ class _Parser:
         self.expect(";")
         if expr[0] == "apply" and expr[1] in ("charPut", "charGet"):
             args = expr[2]
-            # ``_primary`` always builds an "apply" with a tuple of nodes,
+            # ``primary`` always builds an "apply" with a tuple of nodes,
             # so this narrowing cannot fail; it is spelled for the checker
             # and would be a malformed tree rather than a bad program.
-            if not isinstance(args, tuple):
-                raise AssertionError("isinstance(args, tuple)")
+            assert isinstance(args, tuple)
             if expr[1] == "charPut":
                 if len(args) != 1:
                     raise syntax_error(
@@ -340,8 +341,9 @@ class _Parser:
             index = None
             if target[0] == "apply":
                 slots = target[2]
-                if not isinstance(slots, tuple):
-                    raise AssertionError("isinstance(slots, tuple)")
+                # ``primary`` built this "apply" with a tuple of slots, so
+                # this narrowing cannot fail; it is spelled for the checker.
+                assert isinstance(slots, tuple)
                 if len(slots) != 1:
                     raise ValueError("charGet array target takes exactly one index")
                 index = slots[0]
@@ -360,7 +362,7 @@ class _Parser:
         try:
             self.parse_type()
             name = self.peek()
-            ok = bool(name and (name[:1].isalpha() or name[:1] == "_"))
+            ok = _starts_name(name)
             if ok:
                 self.pos += 1
                 ok = self.peek() == ";"
@@ -371,19 +373,15 @@ class _Parser:
             self.pos = save
 
 
-_DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
-
-
 class _Program:
     """A parsed program: its functions, globals, and dependency graph."""
 
-    __slots__ = ("dependencies", "entry", "functions", "globals", "types")
+    __slots__ = ("dependencies", "entry", "functions", "globals")
 
     def __init__(self) -> None:
         self.functions: dict[tuple[str, str], _Function] = {}
         self.globals: dict[tuple[str, str], _Type] = {}
         self.dependencies: dict[str, frozenset[str]] = {}
-        self.types: dict[tuple[str, str], _Type] = {}
         self.entry: _Function | None = None
 
 
@@ -426,9 +424,6 @@ def _parse_packages(parser: _Parser) -> _Program:
         parser.expect(";")
         program.dependencies[package] = frozenset(deps)
         program.globals.update(
-            ((package, name), kind) for name, kind in globals_here.items()
-        )
-        program.types.update(
             ((package, name), kind) for name, kind in globals_here.items()
         )
         for name, func in members:
@@ -515,8 +510,8 @@ def _entry(program: _Program, order: list[str]) -> _Function:
         ]
         if len(candidates) == 1:
             return candidates[0]
-    # A parameterless function anywhere, as the last resort: PlusOrMinus's
-    # own function takes a parameter, so such a program has no entry.
+    # No candidate: PlusOrMinus's own function takes a parameter, so such a
+    # program has no entry.
     raise syntax_error(
         "program has no parameterless entry function",
         (

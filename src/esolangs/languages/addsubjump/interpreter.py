@@ -224,45 +224,81 @@ def _split_labels(line: list[str]) -> tuple[list[str], list[str]]:
     return labels, rest
 
 
+def _define(labels: dict[str, int], name: str, address: int, hint: str) -> None:
+    """Bind ``name`` to ``address``, refusing a second definition."""
+    if name in labels:
+        raise syntax_error(f"duplicate label {name!r}", hint)
+    labels[name] = address
+
+
+def _data_operands(
+    tokens: list[str], labels: dict[str, int], address: int
+) -> list[str]:
+    """Return a ``.data`` line's items, binding each ``name:item`` label."""
+    operands: list[str] = []
+    for token in tokens:
+        name, sep, item = token.partition(":")
+        if not sep:
+            operands.append(token)
+            continue
+        if not name:
+            raise syntax_error(
+                "empty AddSubJump label",
+                "put a name before : in the data declaration",
+            )
+        _define(
+            labels, name, address + len(operands), "give each data label a unique name"
+        )
+        if item:
+            operands.append(item)
+    return operands
+
+
+def _resolve(token: str, next_ip: int, labels: dict[str, int]) -> int:
+    """Return an operand: an integer, ``?`` (the next instruction), or a label."""
+    if token == "?":  # assembly punctuation, not a password
+        return next_ip
+    try:
+        return _integer(token)
+    except ValueError:
+        pass
+    if not _LABEL.fullmatch(token):
+        raise syntax_error(
+            f"invalid AddSubJump operand {token!r}",
+            ("use an integer, ?, or a label with an optional signed decimal offset"),
+        )
+    match = re.fullmatch(r"(.+?)([+-]\d+)?", token)
+    if match is None:  # pragma: no cover - _LABEL accepted the same grammar
+        raise AssertionError("label grammar disagrees with its parser")
+    name, offset = match.groups()
+    if name not in labels:
+        raise syntax_error(
+            f"undefined label {name!r}", "define the label before using its address"
+        )
+    return labels[name] + (_integer(offset) if offset else 0)
+
+
 def _assembly(code: str) -> list[int]:
     """Assemble documented AddSubJump source into integer memory."""
     macros, source = _macros(_source_lines(code))
-    lines = _expand(source, macros)
-    parsed: list[tuple[int, bool, list[str]]] = []
+    # Each line's operands, whether it is data, and the address after it.
+    parsed: list[tuple[list[str], bool, int]] = []
     labels = dict(_BUILTINS)
     address = 0
-    for line in lines:
+    for line in _expand(source, macros):
         definitions, tokens = _split_labels(line)
         for name in definitions:
-            if name in labels:
-                raise syntax_error(
-                    f"duplicate label {name!r}",
-                    "give each label a unique name distinct from built-in labels",
-                )
-            labels[name] = address
+            _define(
+                labels,
+                name,
+                address,
+                "give each label a unique name distinct from built-in labels",
+            )
         if not tokens:
             continue
         data = tokens[0] == ".data"
         if data:
-            operands = []
-            for token in tokens[1:]:
-                if ":" not in token:
-                    operands.append(token)
-                    continue
-                name, item = token.split(":", 1)
-                if not name:
-                    raise syntax_error(
-                        "empty AddSubJump label",
-                        "put a name before : in the data declaration",
-                    )
-                if name in labels:
-                    raise syntax_error(
-                        f"duplicate label {name!r}",
-                        "give each data label a unique name",
-                    )
-                labels[name] = address + len(operands)
-                if item:
-                    operands.append(item)
+            operands = _data_operands(tokens[1:], labels, address)
         else:
             operands = tokens[1:] if tokens[0].upper() == "ASJ" else tokens
             if len(operands) not in (2, 3, 4):
@@ -271,39 +307,15 @@ def _assembly(code: str) -> list[int]:
                     f"got {len(operands)}",
                     ("write ASJ with 2 to 4 address operands"),
                 )
-        parsed.append((address, data, operands))
         address += len(operands) if data else 4
-
-    def value(token: str, next_ip: int) -> int:
-        if token == "?":  # assembly punctuation, not a password
-            return next_ip
-        try:
-            return _integer(token)
-        except ValueError:
-            pass
-        if not _LABEL.fullmatch(token):
-            raise syntax_error(
-                f"invalid AddSubJump operand {token!r}",
-                (
-                    "use an integer, ?, or a label with an optional signed "
-                    "decimal offset"
-                ),
-            )
-        match = re.fullmatch(r"(.+?)([+-]\d+)?", token)
-        if match is None:  # pragma: no cover - _LABEL accepted the same grammar
-            raise AssertionError("label grammar disagrees with its parser")
-        name, offset = match.groups()
-        if name not in labels:
-            raise syntax_error(
-                f"undefined label {name!r}", "define the label before using its address"
-            )
-        return labels[name] + (_integer(offset) if offset else 0)
+        parsed.append((operands, data, address))
 
     memory: list[int] = []
-    for at, data, operands in parsed:
-        next_ip = at + (len(operands) if data else 4)
-        values = [value(token, next_ip) for token in operands]
+    for operands, data, next_ip in parsed:
+        values = [_resolve(token, next_ip, labels) for token in operands]
         if not data:
+            # An omitted ``c`` falls through; an omitted ``d`` reads the
+            # constant 0, so the instruction adds.
             if len(values) == 2:
                 values += [next_ip, _ZERO]
             elif len(values) == 3:
@@ -394,7 +406,8 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
         return -1
     if addr == _FUM:
         return fum
-    return cells.get(addr, 0) if 0 <= addr < length else 0
+    # Silent past -9: an unassigned special address reads 0.
+    return 0
 
 
 def _too_large(state: _State, addr: int) -> bool:
@@ -403,12 +416,7 @@ def _too_large(state: _State, addr: int) -> bool:
     Values are unbounded; the list of cells is not: halt, not ``OverflowError``.
     """
     _cells, length = state[0]
-    return (
-        addr != _IO
-        and addr not in _SPECIAL
-        and addr >= length
-        and addr + 1 > _MAX_MEMORY
-    )
+    return addr not in _SPECIAL and addr >= length and addr + 1 > _MAX_MEMORY
 
 
 def _store(state: _State, addr: int, value: int) -> _State:
@@ -452,7 +460,7 @@ def _advance(
     if a == _IO:
         value = vb
     else:
-        va = _load(state, a, next(pending) if a == _IO else None)
+        va = _load(state, a)
         value = va - vb if vd > 0 else va + vb
 
     after = _store(state, a, value)
@@ -540,8 +548,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.
 
-        Up to three operands may name the input port, so the shell reads them
-        in the transition's order (``d``, ``b``, then ``a`` unless written).
+        ``d`` and ``b`` may name the input port, so the shell reads them in
+        the transition's order; an ``a`` naming it is written, not read.
         """
         if self.halted:
             return
@@ -552,11 +560,7 @@ class _Machine:
                 f"memory address {format_integer(a)} is too large",
                 hint="keep memory addresses within the interpreter allocation limit",
             )
-        reads = tuple(
-            self.io.input_char()
-            for addr in ((d, b) if a == _IO else (d, b, a))
-            if addr == _IO
-        )
+        reads = tuple(self.io.input_char() for addr in (d, b) if addr == _IO)
         value, self.state = _advance(self.state, reads, operands)
         if a == _IO:
             self.io.print_char(chr(value & 0xFF))

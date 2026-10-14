@@ -73,6 +73,34 @@ def leave(block: set[Point], dp: int, cc: int) -> Point:
     return max(candidates, key=lambda point: point[0] * lx + point[1] * ly)
 
 
+def exit_step(
+    rows: Sequence[Sequence[Pixel]],
+    block: set[Point],
+    dp: int,
+    cc: int,
+    colour: Callable[[Pixel], Pixel],
+) -> tuple[Point, int, int, Pixel] | None:
+    """Return the first non-black codel past ``block``, the dp and cc, and its colour.
+
+    The eight attempts alternately toggle cc and rotate dp clockwise; None
+    means every exit is black or off the image, with dp and cc back at the start.
+    """
+    width, height = len(rows[0]), len(rows)
+    for attempt in range(8):
+        x, y = leave(block, dp, cc)
+        dx, dy = DIRECTIONS[dp]
+        tx, ty = x + dx, y + dy
+        if 0 <= tx < width and 0 <= ty < height:
+            seen = colour(rows[ty][tx])
+            if seen != BLACK:
+                return (tx, ty), dp, cc, seen
+        if attempt % 2 == 0:
+            cc *= -1
+        else:
+            dp = (dp + 1) % 4
+    return None
+
+
 def slide(
     rows: Sequence[Sequence[Pixel]],
     start: Point,

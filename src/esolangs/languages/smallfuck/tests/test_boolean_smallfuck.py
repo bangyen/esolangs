@@ -211,7 +211,7 @@ def test_invalid_multiple_definitions_abort(blocks, flags, message) -> None:
 
 @pytest.mark.medium
 def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
-    from esolangs.generation.shared_block import repeated_block
+    from esolangs.generation.shared_block import repeated_blocks
     from esolangs.languages.smallfuck.generator import _smallfuck_tree
     from tests.support.generator_support import assert_shared_program
 
@@ -222,7 +222,7 @@ def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
     bound = 9 * n * n + 100 * n + 20
     forms = [
         _smallfuck_tree(table, perm),
-        _smallfuck_tree(table, perm, repeated_block(table)),
+        _smallfuck_tree(table, perm, shared_blocks=repeated_blocks(table)),
     ]
     previous = min((p for p, c in forms if c <= bound), key=len)
     ignored = ((1 << (n - 6)) - 1) << 3
@@ -288,7 +288,10 @@ def test_pair_definitions_require_retired_levels_and_an_exclusive_mode() -> None
         _smallfuck_tree("0110", (0, 1), paired_roots=((6, 0),))
     with pytest.raises(ValueError, match="no other definitions"):
         _smallfuck_tree(
-            "0110100110010110", (0, 1, 2, 3), (2, 0), paired_roots=((6, 0),)
+            "0110100110010110",
+            (0, 1, 2, 3),
+            shared_blocks=((2, 0),),
+            paired_roots=((6, 0),),
         )
 
 

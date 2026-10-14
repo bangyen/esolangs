@@ -48,11 +48,6 @@ type _State = tuple[int, int, int]
 type _Move = tuple[int, int, int, tuple[tuple[int, int], int] | None]
 
 
-def _colour(grid: _Grid, cell: tuple[int, int]) -> int:
-    """Return a cell's colour; an unpainted cell is black (``0``)."""
-    return grid.get(cell, 0)
-
-
 def _advance(state: _State, grid: _Grid, program: str) -> _Move:
     """Return the position after one instruction, plus any paint it made.
 
@@ -76,7 +71,7 @@ def _advance(state: _State, grid: _Grid, program: str) -> _Move:
             "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
         )
     dx, dy = _MOVE[heading]
-    if (_colour(grid, (x + dx, y + dy)) == 1) == command.isupper():
+    if (grid.get((x + dx, y + dy), 0) == 1) == command.isupper():
         return (x + dx, y + dy, ip, None)
     return (x, y, ip, None)
 
@@ -158,7 +153,7 @@ class _Machine:
             cell, colour = paint
             # Guarded: 73.7% of paints are redundant, and only a real change
             # may drop ``snapshot``'s cached grid.  Black is stored, not
-            # deleted; ``_glyph``/``_colour`` read via ``grid.get(cell, 0)``.
+            # deleted; ``_glyph`` and ``_advance`` read via ``grid.get(cell, 0)``.
             if self.grid.get(cell) != colour:
                 self.grid[cell] = colour
                 self._frozen = None
@@ -180,7 +175,7 @@ class _Machine:
         render to one.  The render branch does not advance, or the picture
         would be one instruction past the boundary.
         """
-        if self.halted or self._interrupted:
+        if self._interrupted:
             if not self._dumped:
                 self.io.print_str(self.render())
                 self._dumped = True

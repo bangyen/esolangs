@@ -34,7 +34,7 @@ sharing stubs cannot shrink it.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Callable
+from dataclasses import dataclass
 from functools import cache
 from itertools import product
 
@@ -47,28 +47,22 @@ from esolangs.registry._language import Language, Shape
 from esolangs.runtime.source_hints import with_hint
 
 from .core import (
-    _ACTIVE,
-    _ALL1,
     _ALL2,
     _ANSWER,
     _C_INITS,
     _C_POST,
-    _C_SCHEDULE,
     _CASCADE_N,
     _CONSTS,
     _ENTRY,
     _K_CELL,
     _NEXT,
-    _OPS,
     _T_FLOOR,
     _T_HELPERS,
     _T_HUB_CELLS,
     _T_LABELS,
     _T_LOW,
     _T_SEEDS,
-    _W_OFFSETS,
-    _W_OPS,
-    _W_READOUT,
+    _W_PATHS,
     _W_SELECT,
     _W_SELECT_OPS,
     _WIDE_N,
@@ -80,6 +74,7 @@ from .core import (
     _char_for,
     _decoder_entry,
     _emit_chain,
+    _emit_fold,
     _fold,
     _g,
     _main_planner,
@@ -93,10 +88,12 @@ from .core import (
     _program,
     _render,
     _rot,
+    _seed_label_chains,
     _skeleton,
     _t_hubs,
     _t_jump,
     _table_char,
+    _turn_hubs,
     _valid_chars,
     _wide,
     _wide_program,
@@ -123,8 +120,12 @@ from .digits import _DIGITS_N, _digits_program
 # from a seed ``s`` (a walked cell rotated ``k`` times), so they hold ``s`` and
 # ``f(s)`` alternately, ``f`` swapping 0/1 trits; each value owns a hub.  A hub
 # holds a source character rotated until it names a free stub; the N hubs hold
-# all-1 twice and reach the decoder at 29525 as before.
+# all-1 twice and reach the decoder at ``_T_DECODER`` (29525) as before.
 _THIRTEEN_N = 13
+#: The decoder address the twelve/thirteen-input builds jump to; the N hubs
+#: hold one less.  Hub placement keeps a guard band around it clear.
+_T_DECODER = 29525
+_T_DECODER_AVOID = range(_T_DECODER - 5, _T_DECODER + 275)
 
 _Layout = tuple[
     dict[int, str],
@@ -199,7 +200,7 @@ def _thirteen() -> _Layout:
     ]
     values, pointer = _pointers(label, _seed_values(seeds, _T_SEEDS))
     data, stubs, hub_turns = _t_place(
-        values, label, cells_of_tables | set(range(29520, 29800))
+        values, label, cells_of_tables | set(_T_DECODER_AVOID)
     )
 
     cell = [*mix, helper["z0"], helper["all1"], helper["all2"]]
@@ -207,24 +208,19 @@ def _thirteen() -> _Layout:
     # all-2 is one more ``p`` with ``A = all-2`` (``crazy(all-2, all-1)``).
     _build_constants(main, helper)
     _prime(main, helper, (helper["all1"], helper["all2"], *sorted(label)))
-    for lab, (_, turns) in _T_SEEDS.items():
-        for _ in range(turns):
-            main.op("*", seeds[lab])
-        for p in sorted(label):
-            if label[p] == lab:
-                main.op("p", p)
+    _seed_label_chains(
+        main,
+        helper,
+        {lab: " ".join(["rot"] * turns) for lab, (_, turns) in _T_SEEDS.items()},
+        seeds,
+        label,
+    )
     main.op("*", helper["z1"])
     for v in sorted(pointer):
         if label[pointer[v]] == "N":
             _n_hub_pass(main, pointer[v], v)
-    for v, turns in sorted(hub_turns.items()):
-        for _ in range(turns):
-            main.hub(pointer[v], v)
-            main.raw("*")
-    for _ in range(_CASCADE_N):
-        main.raw("/")
-        _ops(main, cell, _C_SCHEDULE)
-    _ops(main, cell, _C_POST[0])
+    _turn_hubs(main, pointer, hub_turns)
+    _emit_fold(main, cell)
     main.raw("/")
     _ops(main, select, _W_SELECT_OPS)
     main.goto(select[0])
@@ -238,26 +234,14 @@ def _thirteen() -> _Layout:
         targets.append(state[:2])
     parts = [main.code]
     for x in (0, 1):
-        path = _Planner(targets[x][0] + 1, select[0] + 1, mem, data)
-        _ops(path, cell, _W_OPS[0][x])
-        path.op("*", helper["all2"])
-        path.op("p", helper["a1"])
-        _t_jump(path, cell[_W_READOUT[0][x]], _W_OFFSETS[0][x])
-        parts.append(path.code)
+        parts.append(_thirteen_path(0, x, targets, select, cell, helper, mem, data))
     dec = _Planner(_NEXT + 1, 0, mem, data)
     _decoder_entry(dec, _NEXT + 1)
     dec.goto(select[1])
     dec.raw("i")
     parts.append(dec.code)
     for x in (0, 1):
-        path = _Planner(targets[x][1] + 1, select[1] + 1, mem, data)
-        _ops(path, cell, _W_OPS[1][x])
-        # Level 1 left ``a1`` at 48: two rounds give 69 and then 48 again.
-        for _ in range(2):
-            path.op("*", helper["all2"])
-            path.op("p", helper["a1"])
-        _t_jump(path, cell[_W_READOUT[1][x]], _W_OFFSETS[1][x])
-        parts.append(path.code)
+        parts.append(_thirteen_path(1, x, targets, select, cell, helper, mem, data))
 
     code = _merge_code(
         (*parts, stubs), data, cells_of_tables, code_end, ceiling=_T_FLOOR
@@ -277,6 +261,30 @@ def _seed_values(
             a = _rot(a)
         out.append((lab, a))
     return out
+
+
+def _thirteen_path(
+    lvl: int,
+    x: int,
+    targets: list[list[int]],
+    select: list[int],
+    cell: list[int],
+    helper: dict[str, int],
+    mem: dict[int, int | None],
+    data: dict[int, int],
+) -> dict[int, str]:
+    """Emit one twelve/thirteen-input level path, never walked, only jumped to.
+
+    Level 1 left ``a1`` at 48: two rounds give 69 and then 48 again.
+    """
+    path = _Planner(targets[x][lvl] + 1, select[lvl] + 1, mem, data)
+    spec = _W_PATHS[lvl][x]
+    _ops(path, cell, spec.ops)
+    for _ in range(1 if lvl == 0 else 2):
+        path.op("*", helper["all2"])
+        path.op("p", helper["a1"])
+    _t_jump(path, cell[spec.readout], spec.offset)
+    return path.code
 
 
 def _thirteen_program(truth_table: str) -> str:
@@ -320,38 +328,147 @@ def _thirteen_program(truth_table: str) -> str:
 # Levels resolve bottom-up: every row reads its level-1 cell; a row whose
 # cell is shared moves on and reads its next one, which may in turn push
 # another row on.  Levels one and two resolve all but 80 of the 8,192 copies,
-# and the third level's own region gives those room.  The decoder at 29525
-# would sit among the level-1 and level-2 cells, so the N hubs hold 13168 and
+# and the third level's own region gives those room.  The decoder at
+# ``_T_DECODER`` (29525) would sit among the level-1 and level-2 cells, so
+# the N hubs hold 13168 and
 # it runs from 13169 -- the same residue, so its second pass is unchanged.
 # The walked cells the readout ops touch are packed into 163..243 with ten
 # trampolines (``p`` with ``A = all-2`` over a walked cell whose ``g`` is at
 # least 81 leaves a value that ``j`` lands inside the window); that keeps the
 # main code under the level-3 region.
 _FOURTEEN_N = 14
-#: Fifteen and sixteen inputs: :mod:`esolangs.generation.malbolge.digits`.
+#: Fifteen and sixteen inputs: :mod:`esolangs.languages.malbolge.generator.digits`.
 MAX_INPUTS = _DIGITS_N
 #: ``g`` values of the extra state cells 5, 6 and 7.
 _F_EXTRA = (57, 75, 119)
-#: The readout ops, in three segments run after the eleven-bit post-map:
-#: ``(0, i)`` is ``p`` and ``(1, i)`` is ``*`` on state cell ``i``, ``(2, k)``
-#: is ``*`` on the constant 0, all-1 or all-2 (setting ``A`` to it), and
-#: ``(3, c)`` snapshots ``A`` into copy ``c``'s readout at the segment's level.
-_F_SEGMENTS: tuple[tuple[tuple[int, int], ...], ...] = (
+
+
+# ---------------------------------------------------------------------------
+# Readout op language: one typed op per step of the searched readout search.
+@dataclass(frozen=True)
+class _MixOp:
+    """One readout op: ``p`` (crazy) ``A`` with mixer state cell ``index``."""
+
+    index: int
+
+
+@dataclass(frozen=True)
+class _RotOp:
+    """One readout op: ``*`` (rotation) on mixer state cell ``index``."""
+
+    index: int
+
+
+@dataclass(frozen=True)
+class _SetConstOp:
+    """One readout op: ``*`` on ``_CONSTS[index]``.
+
+    The constant is 0, all-1 or all-2; the op sets ``A`` to it.
+    """
+
+    index: int
+
+
+@dataclass(frozen=True)
+class _SnapshotOp:
+    """One readout op: snapshot ``A`` into copy ``index``'s readout.
+
+    The snapshot lands at this segment's level.
+    """
+
+    index: int
+
+
+_SegmentOp = _MixOp | _RotOp | _SetConstOp | _SnapshotOp
+
+
+#: The readout ops, in three segments run after the eleven-bit post-map.
+_F_SEGMENTS: tuple[tuple[_SegmentOp, ...], ...] = (
     (
-        *((3, 0), (1, 6), (0, 2), (0, 1), (0, 6), (0, 6), (1, 7), (2, 1)),
-        *((0, 7), (1, 7), (0, 2), (1, 0), (0, 2), (0, 5), (0, 6), (0, 1)),
-        *((0, 3), (0, 7), (2, 0), (0, 2), (1, 1), (0, 2), (1, 7), (1, 7)),
-        *((1, 7), (1, 6), (0, 2), (1, 5), (0, 7), (0, 2), (1, 0), (0, 5)),
-        *((0, 2), (0, 0), (3, 2), (3, 1), (3, 3)),
+        _SnapshotOp(0),
+        _RotOp(6),
+        _MixOp(2),
+        _MixOp(1),
+        _MixOp(6),
+        _MixOp(6),
+        _RotOp(7),
+        _SetConstOp(1),
+        _MixOp(7),
+        _RotOp(7),
+        _MixOp(2),
+        _RotOp(0),
+        _MixOp(2),
+        _MixOp(5),
+        _MixOp(6),
+        _MixOp(1),
+        _MixOp(3),
+        _MixOp(7),
+        _SetConstOp(0),
+        _MixOp(2),
+        _RotOp(1),
+        _MixOp(2),
+        _RotOp(7),
+        _RotOp(7),
+        _RotOp(7),
+        _RotOp(6),
+        _MixOp(2),
+        _RotOp(5),
+        _MixOp(7),
+        _MixOp(2),
+        _RotOp(0),
+        _MixOp(5),
+        _MixOp(2),
+        _MixOp(0),
+        _SnapshotOp(2),
+        _SnapshotOp(1),
+        _SnapshotOp(3),
     ),
     (
-        *((3, 0), (0, 7), (3, 2), (3, 1), (1, 6), (0, 3), (1, 6), (2, 2)),
-        *((0, 2), (1, 2), (0, 3), (1, 7), (1, 3), (1, 7), (1, 6), (0, 4)),
-        *((1, 7), (1, 7), (0, 4), (2, 0), (0, 5), (0, 3), (1, 6), (0, 4)),
-        *((1, 5), (0, 4), (1, 4), (0, 1), (1, 3), (0, 1), (1, 1), (1, 0)),
-        *((0, 1), (3, 3)),
+        _SnapshotOp(0),
+        _MixOp(7),
+        _SnapshotOp(2),
+        _SnapshotOp(1),
+        _RotOp(6),
+        _MixOp(3),
+        _RotOp(6),
+        _SetConstOp(2),
+        _MixOp(2),
+        _RotOp(2),
+        _MixOp(3),
+        _RotOp(7),
+        _RotOp(3),
+        _RotOp(7),
+        _RotOp(6),
+        _MixOp(4),
+        _RotOp(7),
+        _RotOp(7),
+        _MixOp(4),
+        _SetConstOp(0),
+        _MixOp(5),
+        _MixOp(3),
+        _RotOp(6),
+        _MixOp(4),
+        _RotOp(5),
+        _MixOp(4),
+        _RotOp(4),
+        _MixOp(1),
+        _RotOp(3),
+        _MixOp(1),
+        _RotOp(1),
+        _RotOp(0),
+        _MixOp(1),
+        _SnapshotOp(3),
     ),
-    ((0, 5), (3, 0), (1, 2), (3, 1), (3, 3), (1, 2), (1, 2), (3, 2)),
+    (
+        _MixOp(5),
+        _SnapshotOp(0),
+        _RotOp(2),
+        _SnapshotOp(1),
+        _SnapshotOp(3),
+        _RotOp(2),
+        _RotOp(2),
+        _SnapshotOp(2),
+    ),
 )
 #: Per copy, the ``o`` run before each level's table ``j``.
 _F_OFFSETS = ((3, 18, 18), (22, 19, 1), (14, 16, 15), (14, 24, 18))
@@ -363,11 +480,12 @@ _F_PREP = (
     ((95, "rot K0"), (56, "rot rot rot rot K0")),
     ((59, "rot rot rot rot K0"), (110, "rot K0")),
 )
-#: The level-3 pair: ``crazy(crazy(A, 42646), 16402)`` has top trits 0 and 2.
-#: Each pair of cells is prepared by one chained ``p`` over all-1 cells, from
-#: ``A = 45927`` (``g`` 63 rotated four times) and ``A = 32805`` (45, four);
-#: spare all-1 cells between them swap ``A`` back.
-_F_LEVEL3 = (42646, 16402)
+#: The level-3 readout pair: ``crazy(crazy(A, _L3_CELL_A), _L3_CELL_B)`` has top
+#: trits 0 and 2.  Each pair of cells is prepared by one chained ``p`` over
+#: all-1 cells, from ``A = 45927`` (``g`` 63 rotated four times) and
+#: ``A = 32805`` (45, four); spare all-1 cells between them swap ``A`` back.
+_L3_CELL_A = 42646
+_L3_CELL_B = 16402
 _F_LEVEL3_SEEDS = ((63, 4), (45, 4))
 #: The selector: a cell (``g`` 33) takes ``p`` with each input, rotated
 #: eight and then six times, and ``p`` over the prepared cells then gives
@@ -450,19 +568,19 @@ def _f_tables() -> tuple[
         a = _apply(cells, a, _C_POST[0])
         state = [*cells[:5], *_F_EXTRA]
         for lvl, segment in enumerate(_F_SEGMENTS):
-            for kind, index in segment:
-                if kind == 0:
-                    a = state[index] = _crazy(a, state[index])
-                elif kind == 1:
-                    a = state[index] = _rot(state[index])
-                elif kind == 2:
-                    a = _CONSTS[index]
+            for op in segment:
+                if isinstance(op, _MixOp):
+                    a = state[op.index] = _crazy(a, state[op.index])
+                elif isinstance(op, _RotOp):
+                    a = state[op.index] = _rot(state[op.index])
+                elif isinstance(op, _SetConstOp):
+                    a = _CONSTS[op.index]
                 else:
                     if lvl < 2:
-                        a = _crazy(a, prep[index][lvl])
+                        a = _crazy(a, prep[op.index][lvl])
                     else:
-                        a = _crazy(_crazy(a, _F_LEVEL3[0]), _F_LEVEL3[1])
-                    tables[lvl][index][row] = a + 1 + _F_OFFSETS[index][lvl]
+                        a = _crazy(_crazy(a, _L3_CELL_A), _L3_CELL_B)
+                    tables[lvl][op.index][row] = a + 1 + _F_OFFSETS[op.index][lvl]
     reach = [[1] * rows for _ in range(4)]
     count = Counter(tables[0][c][row] for c in range(4) for row in range(rows))
     changed = True
@@ -537,16 +655,65 @@ class _Window:
         raise AssertionError(f"no walked cell with g {value}")  # pragma: no cover
 
 
-@cache
-def _fourteen() -> _Layout:
-    """Return ``(code, data, level, tables, labels)`` for fourteen inputs.
+@dataclass
+class _FAllocation:
+    """Walked cells and label tables for the fourteen-input build.
 
-    ``level[c][row]`` is the level (0-based) at which copy ``c`` of the
-    eleven-bit prefix ``row`` resolves and ``tables[level][c][row]`` its
-    cells.  Raises if any code, stub, hub, handler or data cell collides with
-    another or with a table cell, or if the decoder's second pass breaks.
+    Allocation order is load-bearing: ``_Window.take`` hands out the first
+    free cell with the wanted ``g`` value, so reordering these allocations
+    would move every address that follows.
     """
-    tables, level = _f_tables()
+
+    window: _Window
+    mix: list[int]
+    xcell: int
+    helper: dict[str, int]
+    extras: list[int]
+    readout: dict[tuple[int, int], int]
+    select: list[int]
+    triples: list[int]
+    spares: list[int]
+    singles: list[int]
+    level3_seeds: list[int]
+    hub_a: int
+    hub_prep: int
+    seeds: dict[str, int]
+    label: dict[int, str]
+
+
+@dataclass
+class _FPlacement:
+    """Hub, stub and data placement for the fourteen-input build."""
+
+    values: dict[int, int]
+    pointer: dict[int, int]
+    decoder: set[int]
+    avoid: set[int]
+    data: dict[int, int]
+    stubs: dict[int, str]
+    hub_turns: dict[int, int]
+
+
+@dataclass
+class _FMain:
+    """The walked main code of the fourteen-input build."""
+
+    main: _Planner
+    mem: dict[int, int | None]
+    handlers: dict[int, str]
+    code_end: int
+
+
+_FTableCells = tuple[tuple[tuple[int, ...], ...], ...]
+_FRowLevels = tuple[tuple[int, ...], ...]
+
+
+def _f_check_tables(tables: _FTableCells, level: _FRowLevels) -> set[int]:
+    """Check the resolved tables; return the set of table cells.
+
+    Every resolved cell must be read by exactly one row, and every cell must
+    lie inside the store.
+    """
     read = Counter(
         tables[lvl][c][row]
         for c in range(4)
@@ -560,7 +727,15 @@ def _fourteen() -> _Layout:
     cells_of_tables = set(read)
     if max(cells_of_tables) >= _WORDS:
         raise AssertionError("a table cell is past the store")
+    return cells_of_tables
 
+
+def _f_allocate() -> _FAllocation:
+    """Allocate every walked cell of the fourteen-input build, in order.
+
+    ``_Window.take`` returns the first free cell with the wanted ``g`` value,
+    so this order fixes every address the build that follows finds.
+    """
     window = _Window()
     walked = window.take
     mix = [walked(v) for v in _C_INITS]
@@ -585,54 +760,99 @@ def _fourteen() -> _Layout:
     singles = [a for a in range(34, 128) if a not in label and _g(a) >= 81]
     singles += [a for a in range(*_F_WINDOW) if a not in window.used and _g(a) >= 81]
     readout.update({(c, 2): triples[4 + c] for c in range(4)})
+    return _FAllocation(
+        window,
+        mix,
+        xcell,
+        helper,
+        extras,
+        readout,
+        select,
+        triples,
+        spares,
+        singles,
+        level3_seeds,
+        hub_a,
+        hub_prep,
+        seeds,
+        label,
+    )
 
-    values, pointer = _pointers(label, _seed_values(seeds, _F_SEEDS))
+
+def _f_place(alloc: _FAllocation, cells_of_tables: set[int]) -> _FPlacement:
+    """Place the hubs, stubs and data cells, keeping the tables clear.
+
+    The decoder runs from ``_F_DECODER``; its first cell is read while the N
+    hubs still hold one less, so that address stays avoided too.
+    """
+    values, pointer = _pointers(alloc.label, _seed_values(alloc.seeds, _F_SEEDS))
     decoder = set(range(_F_DECODER - 1, _F_DECODER + _F_DECODER_SPAN))
     avoid = cells_of_tables | decoder
-    data, stubs, hub_turns = _t_place(values, label, avoid, _F_HUB_CELLS)
+    data, stubs, hub_turns = _t_place(values, alloc.label, avoid, _F_HUB_CELLS)
+    return _FPlacement(values, pointer, decoder, avoid, data, stubs, hub_turns)
 
-    cell = [*mix, *extras]
-    konst = (helper["z0"], helper["all1"], helper["all2"])
-    main, mem = _main_planner(data)
+
+def _f_emit_constants(
+    main: _Planner, mem: dict[int, int | None], alloc: _FAllocation
+) -> None:
+    """Emit the mixer inits: constants, priming, trampolines, label chains."""
+    helper = alloc.helper
     _build_constants(main, helper)
     _prime(
         main,
         helper,
-        (helper["all1"], helper["all2"], *sorted(label), *triples, *spares),
+        (
+            helper["all1"],
+            helper["all2"],
+            *sorted(alloc.label),
+            *alloc.triples,
+            *alloc.spares,
+        ),
     )
-    for a in singles[:_F_TRAMPOLINES]:
+    for a in alloc.singles[:_F_TRAMPOLINES]:
         main.op("*", helper["all2"])
         main.op("p", a)
         mem[a] = _crazy(_ALL2, _g(a))
-    for lab, (_, turns) in _F_SEEDS.items():
-        for _ in range(turns):
-            main.op("*", seeds[lab])
-        for p in sorted(label):
-            if label[p] == lab:
-                main.op("p", p)
+    _seed_label_chains(
+        main,
+        helper,
+        {lab: " ".join(["rot"] * turns) for lab, (_, turns) in _F_SEEDS.items()},
+        alloc.seeds,
+        alloc.label,
+    )
     for pair, seed, (_, turns) in zip(
-        (0, 4), level3_seeds, _F_LEVEL3_SEEDS, strict=True
+        (0, 4), alloc.level3_seeds, _F_LEVEL3_SEEDS, strict=True
     ):
         for _ in range(turns):
             main.op("*", seed)
         for k in range(4):
-            main.op("p", triples[pair + k])
+            main.op("p", alloc.triples[pair + k])
             if k < 3:
-                main.op("p", spares[pair // 4 * 3 + k])
-    for (c, lvl), target in sorted(readout.items()):
+                main.op("p", alloc.spares[pair // 4 * 3 + k])
+    for (c, lvl), target in sorted(alloc.readout.items()):
         if lvl < 2:
             _emit_chain(main, target, _F_PREP[c][lvl][1], helper)
-    for target, (_, chain) in zip(select, _F_SELECT_PREP, strict=True):
+    for target, (_, chain) in zip(alloc.select, _F_SELECT_PREP, strict=True):
         _emit_chain(main, target, chain, helper)
+
+
+def _f_emit_hubs(
+    main: _Planner,
+    mem: dict[int, int | None],
+    alloc: _FAllocation,
+    place: _FPlacement,
+) -> dict[int, str]:
+    """Emit the hub passes, the N-hub decoder cells and the level-3 handlers."""
+    helper, pointer, label = alloc.helper, place.pointer, alloc.label
     main.op("*", helper["z1"])
     nhubs = [v for v in sorted(pointer) if label[pointer[v]] == "N"]
     for v in nhubs:
         _n_hub_pass(main, pointer[v], v)
     # A = 36066, and each p over an all-1 cell swaps it with 13168.
-    _emit_chain(main, hub_prep, _F_HUB_A[1][1], helper)
-    main.op("*", hub_a)
-    main.op("p", hub_prep)
-    flips = iter(spares[6:])
+    _emit_chain(main, alloc.hub_prep, _F_HUB_A[1][1], helper)
+    main.op("*", alloc.hub_a)
+    main.op("p", alloc.hub_prep)
+    flips = iter(alloc.spares[6:])
     for i, v in enumerate(nhubs):
         main.hub(pointer[v], v, 2)
         main.raw("p")
@@ -643,71 +863,128 @@ def _fourteen() -> _Layout:
         if i + 1 < len(nhubs):
             main.op("p", next(flips))
     handlers: dict[int, str] = {}
-    reserved = set(stubs) | set(data) | avoid | set(range(_F_DECODER))
+    reserved = set(place.stubs) | set(place.data) | place.avoid | set(range(_F_DECODER))
     for v in nhubs:
-        chain, code_of = _f_handler(v, reserved | set(handlers), select[4], mem, data)
-        reserved |= set(data)
+        chain, code_of = _f_handler(
+            v, reserved | set(handlers), alloc.select[4], mem, place.data
+        )
+        reserved |= set(place.data)
         handlers.update(code_of)
         for op in chain.split():
             if op != "rot":
                 main.op("*", helper[_K_CELL[op]])
             main.hub(pointer[v], v, 11)
             main.raw("*" if op == "rot" else "p")
-    for v, turns in sorted(hub_turns.items()):
-        for _ in range(turns):
-            main.hub(pointer[v], v)
-            main.raw("*")
-    for _ in range(_CASCADE_N):
-        main.raw("/")
-        _ops(main, mix, _C_SCHEDULE)
-    _ops(main, mix, _C_POST[0])
+    _turn_hubs(main, pointer, place.hub_turns)
+    return handlers
+
+
+def _f_emit_segment(
+    main: _Planner,
+    lvl: int,
+    segment: tuple[_SegmentOp, ...],
+    cell: list[int],
+    konst: tuple[int, int, int],
+    readout: dict[tuple[int, int], int],
+    triples: list[int],
+) -> None:
+    """Emit one readout segment's typed ops over the mixer and state cells."""
+    for op in segment:
+        if isinstance(op, _MixOp):
+            main.op("p", cell[op.index])
+        elif isinstance(op, _RotOp):
+            main.op("*", cell[op.index])
+        elif isinstance(op, _SetConstOp):
+            main.op("*", konst[op.index])
+        elif lvl < 2:
+            main.op("p", readout[op.index, lvl])
+        else:
+            main.op("p", triples[op.index])
+            main.op("p", readout[op.index, 2])
+
+
+def _f_emit_readouts(
+    main: _Planner,
+    alloc: _FAllocation,
+    cell: list[int],
+    konst: tuple[int, int, int],
+) -> None:
+    """Emit the eleven-bit fold, the readout segments and the selector jump."""
+    helper = alloc.helper
+    _emit_fold(main, alloc.mix)
     for lvl, segment in enumerate(_F_SEGMENTS):
-        for kind, index in segment:
-            if kind < 2:
-                main.op(_OPS[kind], cell[index])
-            elif kind == 2:
-                main.op("*", konst[index])
-            elif lvl < 2:
-                main.op("p", readout[index, lvl])
-            else:
-                main.op("p", triples[index])
-                main.op("p", readout[index, 2])
+        _f_emit_segment(main, lvl, segment, cell, konst, alloc.readout, alloc.triples)
     for rotations in _F_SELECT[1:]:
         main.raw("/")
-        main.op("p", xcell)
+        main.op("p", alloc.xcell)
         for _ in range(rotations):
-            main.op("*", xcell)
-    for target in select:
+            main.op("*", alloc.xcell)
+    for target in alloc.select:
         main.op("p", target)
     main.op("*", helper["all2"])
     main.op("p", helper["a1"])
-    main.goto(select[0])
+    main.goto(alloc.select[0])
     main.raw("i")
-    code_end = main.c
 
-    parts = [main.code, handlers]
+
+def _f_emit_main(alloc: _FAllocation, place: _FPlacement) -> _FMain:
+    """Walk the main code: inits, hubs, readouts.  Return it with its end."""
+    cell = [*alloc.mix, *alloc.extras]
+    konst = (alloc.helper["z0"], alloc.helper["all1"], alloc.helper["all2"])
+    main, mem = _main_planner(place.data)
+    _f_emit_constants(main, mem, alloc)
+    handlers = _f_emit_hubs(main, mem, alloc, place)
+    _f_emit_readouts(main, alloc, cell, konst)
+    return _FMain(main, mem, handlers, main.c)
+
+
+def _f_emit_epilogue(
+    alloc: _FAllocation, place: _FPlacement, emitted: _FMain
+) -> list[dict[int, str]]:
+    """Emit the per-level selector stubs and the decoder; check its second pass."""
+    main, mem = emitted.main, emitted.mem
+    parts: list[dict[int, str]] = [main.code, emitted.handlers]
     for lvl, per_copy in enumerate(_f_select()):
-        entry = select[2 * lvl] + 1
+        entry = alloc.select[2 * lvl] + 1
         for c, value in enumerate(per_copy):
-            stub = _Planner(value + 1, entry, mem, data)
-            _t_jump(stub, readout[c, lvl], _F_OFFSETS[c][lvl])
+            stub = _Planner(value + 1, entry, mem, place.data)
+            _t_jump(stub, alloc.readout[c, lvl], _F_OFFSETS[c][lvl])
             parts.append(stub.code)
-    dec = _Planner(_F_DECODER, 0, mem, data)
+    dec = _Planner(_F_DECODER, 0, mem, place.data)
     _decoder_entry(dec, _F_DECODER)
     for _ in range(_F_DECODER_NOPS):
         dec.raw("o")
-    dec.goto(select[2])
+    dec.goto(alloc.select[2])
     dec.raw("i")
     second = [_second_pass(op, a) for a, op in sorted(dec.code.items())]
     if second[: _F_DECODER_NOPS + 2] != ["o"] * (_F_DECODER_NOPS + 1) + ["i"]:
         raise AssertionError("the decoder's second pass changed")
-    if not set(dec.code) <= decoder:
+    if not set(dec.code) <= place.decoder:
         raise AssertionError("the decoder overran its span")
     parts.append(dec.code)
+    return parts
 
-    code = _merge_code((*parts, stubs), data, cells_of_tables, code_end)
-    labels = {p - 1: lab for p, lab in label.items()}
-    return code, data, level, tables, labels
+
+@cache
+def _fourteen() -> _Layout:
+    """Return ``(code, data, level, tables, labels)`` for fourteen inputs.
+
+    ``level[c][row]`` is the level (0-based) at which copy ``c`` of the
+    eleven-bit prefix ``row`` resolves and ``tables[level][c][row]`` its
+    cells.  Raises if any code, stub, hub, handler or data cell collides with
+    another or with a table cell, or if the decoder's second pass breaks.
+    """
+    tables, level = _f_tables()
+    cells_of_tables = _f_check_tables(tables, level)
+    alloc = _f_allocate()
+    place = _f_place(alloc, cells_of_tables)
+    emitted = _f_emit_main(alloc, place)
+    parts = _f_emit_epilogue(alloc, place, emitted)
+    code = _merge_code(
+        (*parts, place.stubs), place.data, cells_of_tables, emitted.code_end
+    )
+    labels = {p - 1: lab for p, lab in alloc.label.items()}
+    return code, place.data, level, tables, labels
 
 
 def _fourteen_program(truth_table: str) -> str:
@@ -775,7 +1052,6 @@ LANGUAGE = Language(
     "malbolge",
     category="other",
     # The program is the full 59049-cell store.
-    slow_stepping=True,
     # Every source loads into 59,049 cells, so every program -- this
     # generator's or any other -- is bounded by a constant.
     size_bound=lambda _n: 59_049,

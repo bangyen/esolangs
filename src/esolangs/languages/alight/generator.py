@@ -9,16 +9,18 @@ commands over an O(2**n) literal, no branching.  That is why its
 no subtrees to fold or share.  The reads are unconditional and first.
 """
 
+from collections.abc import Callable
 from functools import cache
 from itertools import pairwise
 from math import isqrt, prod
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import near_even_counts
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.interpreter._dialect import (
     EXPRESSION_SYNTAXES,
@@ -266,7 +268,7 @@ def _smallest(*programs: str | None, minimax: bool = True) -> str:
 def _postfix_width(units: list[list[str]], width: int) -> str:
     """Return the fold of ``units`` if it fits ``width``, else one column."""
     program = _alight_folded(units, width)
-    return program if _dimensions(program)[0] <= width else "\n".join(_flatten(units))
+    return _fit(program, width) or "\n".join(_flatten(units))
 
 
 def alight(
@@ -290,6 +292,135 @@ def alight(
     )
 
 
+class _Layout(NamedTuple):
+    """The dimensions selecting an Alight layout strategy.
+
+    ``expression_syntax`` is ``"infix"`` or ``"postfix"``; ``unbounded``
+    is ``width is None``; ``dropped`` marks tables with ignored inputs,
+    which are read and dropped while the rest index the lookup.
+    """
+
+    expression_syntax: str
+    unbounded: bool
+    dropped: bool
+
+
+class _Build(NamedTuple):
+    """Resolved inputs for one layout decision."""
+
+    truth_table: str
+    n: int
+    width: int | None
+    projected: str
+    essential: list[bool]
+    dropped: bool
+
+
+def _layout_flat_infix(build: _Build) -> str:
+    """Return the unbounded infix layout: one straight lookup."""
+    if build.dropped:
+        return _alight_flat_compact(build.projected, build.n, build.essential)
+    return _alight_flat_compact(build.truth_table, build.n)
+
+
+def _layout_flat_postfix(build: _Build) -> str:
+    """Return the unbounded postfix layout: one straight lookup."""
+    if build.dropped:
+        return _flatten(
+            _postfix_units(
+                build.projected, build.n, len(build.projected), build.essential
+            )
+        )
+    return _flatten(_postfix_units(build.truth_table, build.n, len(build.truth_table)))
+
+
+def _layout_bounded_infix(build: _Build) -> str:
+    """Return the bounded infix layout without dropped inputs."""
+    width = build.width
+    assert width is not None
+    return select_alight(build.truth_table, build.n, width)
+
+
+def _layout_bounded_postfix(build: _Build) -> str:
+    """Return the bounded postfix layout, projected too when inputs drop."""
+    width = build.width
+    assert width is not None
+    units = _postfix_units(
+        build.truth_table,
+        build.n,
+        _alight_chunk(len(build.truth_table), width),
+    )
+    program = _postfix_width(units, width)
+    if not build.dropped:
+        return program
+    units = _postfix_units(
+        build.projected,
+        build.n,
+        _alight_chunk(len(build.projected), width),
+        build.essential,
+    )
+    return _smallest(program, _postfix_width(units, width), minimax=False)
+
+
+def _layout_bounded_dropped(build: _Build) -> str:
+    """Return the bounded infix layout with dropped inputs.
+
+    ``select_alight`` models ``n`` reads, so the dropped build is rendered
+    from the model's plan for the projected table.  32.6% by chars at n=8,
+    1 ignored, width 80 (audit).
+    """
+    width = build.width
+    assert width is not None
+    essential = build.essential
+    plan = min(
+        (p for p in _plans(build.n, tuple(essential)) if p.ready() <= width),
+        key=_Plan.score,
+    )
+    planned = _emit(build.projected, build.n, plan, essential)
+    if any(essential):
+        return planned
+    program = select_alight(build.truth_table, build.n, width)
+    flat = _alight_flat_compact(build.projected, build.n, essential)
+    return _smallest(
+        *_constant_candidates(program, [program, _fit(planned, width)], flat, width)
+    )
+
+
+def _constant_candidates(
+    program: str, candidates: list[str | None], flat: str, width: int
+) -> list[str | None]:
+    """Pin constant tables to the legacy layout's size.
+
+    With no essential inputs the fold planner can pick a squarer fold far
+    larger than the legacy pick -- at n=4, width 40 the area grew from 121
+    to 682 cells -- so the flat line and its column form are always
+    considered, and every candidate must be no longer and no larger in area
+    than the ``select_alight`` program.  Pinned by
+    ``test_constant_lookup_executes_every_layout`` (n=4, width 40).
+    """
+    candidates = [*candidates, _fit(flat, width), "\n".join(flat)]
+    area = prod(_dimensions(program))
+    return [
+        candidate
+        for candidate in candidates
+        if candidate is not None
+        and len(candidate) <= len(program)
+        and prod(_dimensions(candidate)) <= area
+    ]
+
+
+_STRATEGIES: dict[_Layout, Callable[[_Build], str]] = {
+    _Layout("infix", unbounded=True, dropped=False): _layout_flat_infix,
+    _Layout("infix", unbounded=True, dropped=True): _layout_flat_infix,
+    _Layout("postfix", unbounded=True, dropped=False): _layout_flat_postfix,
+    _Layout("postfix", unbounded=True, dropped=True): _layout_flat_postfix,
+    _Layout("infix", unbounded=False, dropped=False): _layout_bounded_infix,
+    _Layout("infix", unbounded=False, dropped=True): _layout_bounded_dropped,
+    _Layout("postfix", unbounded=False, dropped=False): _layout_bounded_postfix,
+    _Layout("postfix", unbounded=False, dropped=True): _layout_bounded_postfix,
+}
+
+
 def _program(
     truth_table: str,
     width: int | None = None,
@@ -300,86 +431,25 @@ def _program(
 ) -> str:
     """Lay out the lookup, optionally retaining constant-input indexing."""
     n = _validate_truth_table(truth_table)
-    validate_expression_syntax(expression_syntax)
-    validate_list_update(list_update)
+    _dialect(expression_syntax, list_update)
     if width is not None and width < 1:
         raise ValueError("width must be at least 1")
     weights, projected = input_weights(truth_table, n)
     essential = [bool(weight) for weight in weights]
-    dropped = not all(weights) and (any(weights) or not keep_constant_input)
     # An ignored input is read and dropped, and the table is indexed by the
     # rest, including the one-entry table of a constant.
-    if width is None and dropped:
-        if expression_syntax == "postfix":
-            return _flatten(_postfix_units(projected, n, len(projected), essential))
-        return _alight_flat_compact(projected, n, essential)
-    if expression_syntax == "postfix":
-        units = _postfix_units(
-            truth_table,
-            n,
-            len(truth_table)
-            if width is None
-            else _alight_chunk(len(truth_table), width),
-        )
-        if width is None:
-            return _flatten(units)
-        program = _postfix_width(units, width)
-        if dropped:
-            units = _postfix_units(
-                projected, n, _alight_chunk(len(projected), width), essential
-            )
-            return _smallest(program, _postfix_width(units, width), minimax=False)
-        return program
-    flat = _alight_flat_compact(truth_table, n)
-    if width is None:
-        return flat
-
-    program = select_alight(truth_table, n, width)
-    if not dropped:
-        return program
-    # select_alight models n reads, so the dropped build is rendered here:
-    # the model's plan for the projected table, and a fold at ``width``.
-    # 32.6% by chars at n=8, 1 ignored, width 80 (audit); area measured in
-    # the commit.  A candidate wider than ``width`` is discarded.
-
-    plan = min(
-        (
-            p
-            for p in (
-                _plans(sum(essential))
-                if any(essential)
-                else _plans(n, tuple(essential))
-            )
-            if p.ready() <= width
-        ),
-        key=_Plan.score,
+    dropped = not all(weights) and (any(weights) or not keep_constant_input)
+    build = _Build(
+        truth_table=truth_table,
+        n=n,
+        width=width,
+        projected=projected,
+        essential=essential,
+        dropped=dropped,
     )
-    flat = _alight_flat_compact(projected, n, essential)
-    if plan.kind < 2:  # a column, or the one row (never the minimum here)
-        planned = ("\n".join(flat), flat)[plan.kind]
-    else:
-        planned = _alight_folded(
-            _alight_units(projected, n, plan.chunk, essential), plan.columns
-        )
-    units = _alight_units(projected, n, _alight_chunk(len(projected), width), essential)
-    candidates = [
-        program,
-        _fit(planned, width),
-        _fit(_alight_folded(units, width), width),
-    ]
-    if not any(essential):
-        # At n=4, width 40, a squarer fold grew 121 to 682 cells.
-        # Preserve the legacy area and length, including a direct column.
-        candidates.extend([_fit(flat, width), "\n".join(flat)])
-        area = prod(_dimensions(program))
-        candidates = [
-            candidate
-            for candidate in candidates
-            if candidate is not None
-            and len(candidate) <= len(program)
-            and prod(_dimensions(candidate)) <= area
-        ]
-    return _smallest(*candidates)
+    return _STRATEGIES[
+        _Layout(expression_syntax, unbounded=width is None, dropped=dropped)
+    ](build)
 
 
 def _postfix_units(
@@ -389,42 +459,11 @@ def _postfix_units(
     return _alight_units(table, n, chunk, essential, postfix=True)
 
 
-def _balance(table: str, default: Any, *, expression_syntax: str = "infix") -> Any:
-    """Defer to the ``balance`` submodule, which imports this one.
-
-    The notation is a keyword: it changes the reconstructed instructions.
-    """
-    return balance_alight(table, default, expression_syntax=expression_syntax)
-
-
 def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") -> None:
     """Validate Alight's dialect settings, one keyword per setting."""
     validate_expression_syntax(expression_syntax)
     validate_list_update(list_update)
 
-
-LANGUAGE = Language(
-    "Alight",
-    "alight",
-    category="grid_based",
-    boolean=alight,
-    dialect=_dialect,
-    dialect_values={
-        "expression_syntax": EXPRESSION_SYNTAXES,
-        "list_update": LIST_UPDATES,
-    },
-    # Not a tree: a Horner row index into a string literal.
-    shape=Shape.LOOKUP,
-    split=True,
-    contract=BooleanContract(
-        input_shape="char_stream",
-    ),
-    balance=_balance,
-    no_wrap="a command is a word walked cell by cell; a row end cuts it",
-    eof="it raises its own error before the read is reached",
-    underfed_raises=True,
-    empty_program="empty program",
-)
 
 _Affine = tuple[int, int]
 _EAST = len(_ALIGHT_EAST_TURN)
@@ -457,10 +496,19 @@ class _Plan(NamedTuple):
 def _fold_shape(
     pieces: list[_Affine], span: _Affine, value: int, stop: int
 ) -> tuple[int, int, int, int]:
-    """Return width, height, length and the next greedy row-fit transition."""
+    """Return width, height, length and the next greedy row-fit transition.
+
+    ``pieces`` are ``(slope, intercept)`` affine lengths of each row-unit as
+    a function of the fold width ``value``; ``span`` is the same pair for
+    the widest row.  Units are placed greedily left to right, each row
+    reserving its turn's cells; a row fails when its affine width plus the
+    turn reserve exceeds the widest row.  That boundary,
+    ``rate * value + offset``, is linear in ``value``, so ``stop`` narrows
+    to the nearest width that could change the fit, letting the caller step
+    straight there instead of re-testing every width.
+    """
     at = 0
     rows = 0
-    used = (0, 0)
     while at < len(pieces):
         reserve = _EAST if rows == 0 else (_WEST + 1 if rows % 2 else _EAST + 1)
         used = (0, 0)
@@ -495,6 +543,93 @@ def _fold_shape(
     return columns, height, length, stop
 
 
+class _Rows(NamedTuple):
+    """Fold-model inputs: literal ``size``, command widths around the lookup."""
+
+    size: int
+    prefix: list[int]
+    lookup: int
+    tail: list[int]
+    flat: int
+
+    @property
+    def overhead(self) -> int:
+        """Guard and lookup width around the index text."""
+        return _ALIGHT_OVERHEAD + 2 * len(_half_before(self.size))
+
+
+def _whole_folds(rows: _Rows) -> list[_Plan]:
+    """Fold plans with the whole table in one lookup, one per fit transition.
+
+    They win only at n<=4 (dropping them costs +74-84% minimax there, 0.00%
+    at n=5..9 over 200 random tables, bounded and balanced).
+    """
+    size = rows.size
+    shift = rows.overhead + _EAST
+    whole = (
+        1
+        if _alight_chunk(size, 1) == size
+        else shift + size + rows.lookup - rows.overhead
+    )
+    lengths = [*rows.prefix, size + rows.lookup, *rows.tail]
+    pieces = [(0, length) for length in lengths]
+    widest = max(lengths)
+    lower = max(whole, widest + _EAST + 1)
+    upper = max(lower, rows.flat)
+    plans = []
+    while lower <= upper:
+        width, height, length, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
+        columns = whole if lower == widest + _EAST + 1 else lower
+        plans.append(_Plan(_FOLD, columns, size, width, height, length))
+        lower = stop
+    return plans
+
+
+def _chunked_folds(rows: _Rows) -> list[_Plan]:
+    """Fold plans splitting the table into ``count`` guarded lookups."""
+    size = rows.size
+    shift = rows.overhead + _EAST
+    cutoff = size + rows.lookup - rows.overhead
+    plans: list[_Plan] = []
+    if cutoff <= 1:
+        return plans
+    maximum = cutoff - 1
+    powers = []
+    power = 10
+    while power < size:
+        powers.append(power + 1)
+        power *= 10
+    for count in near_even_counts(size):
+        low = (size + count - 1) // count
+        high = min(maximum, (size - 1) // (count - 1))
+        if low > high:
+            continue
+        events = {low, high + 1}
+        for number in range(1, count):
+            events.update(
+                point
+                for power in powers
+                if low < (point := (power + number - 1) // number) <= high
+            )
+        for lo, hi in pairwise(sorted(events)):
+            first = (1, 30 + len(_half_before(lo)))
+            pieces = [(0, length) for length in rows.prefix] + [first]
+            for number in range(1, count):
+                digits = len(_half_before(number * lo))
+                pieces.append(
+                    (1 - count, size + 27 + 2 * digits)
+                    if number == count - 1
+                    else (1, 27 + 2 * digits)
+                )
+            pieces.extend((0, length) for length in rows.tail)
+            while lo < hi:
+                width, height, length, stop = _fold_shape(pieces, (1, shift), lo, hi)
+                columns = 1 if lo == 1 else lo + shift
+                plans.append(_Plan(_FOLD, columns, lo, width, height, length))
+                lo = stop
+    return plans
+
+
 @cache
 def _plans(n: int, kept: tuple[bool, ...] | None = None) -> tuple[_Plan, ...]:
     """Return native-dominating fold endpoints; geometry ignores literal bits.
@@ -506,83 +641,27 @@ def _plans(n: int, kept: tuple[bool, ...] | None = None) -> tuple[_Plan, ...]:
     size = 1 << sum(essential)
     flat = size + len(_alight_flat_compact("", n, essential))
     base = [len(";".join(unit)) + 1 for unit in _alight_units("", n, 0, essential)]
-    prefix, tail = base[:-3], base[-2:]
-    plans = [
+    rows = _Rows(size, base[:-3], base[-3], base[-2:], flat)
+    return (
         _Plan(_COLUMN, 0, 0, 1, flat, 2 * flat - 1),
         _Plan(_ROW, 0, 0, flat, 1, flat),
-    ]
-    index = len(_half_before(size))
-    overhead = _ALIGHT_OVERHEAD + 2 * index
-    shift = overhead + _EAST
-    whole = 1 if _alight_chunk(size, 1) == size else shift + size + base[-3] - overhead
-    whole_pieces = [(0, length) for length in [*prefix, size + base[-3], *tail]]
-    lower = max(whole, max(length for _, length in whole_pieces) + _EAST + 1)
-    upper = max(lower, flat)
-    while lower <= upper:
-        width, height, length, stop = _fold_shape(
-            whole_pieces, (1, 0), lower, upper + 1
-        )
-        columns = (
-            whole
-            if lower == max(length for _, length in whole_pieces) + _EAST + 1
-            else lower
-        )
-        plans.append(_Plan(_FOLD, columns, size, width, height, length))
-        lower = stop
-    cutoff = size + base[-3] - overhead
-    if cutoff > 1:
-        maximum = cutoff - 1
-        quotients = {size}
-        for divisor in range(1, isqrt(size - 1) + 1):
-            quotients.update((divisor + 1, (size - 1) // divisor + 1))
-        powers = []
-        power = 10
-        while power < size:
-            powers.append(power + 1)
-            power *= 10
-        for count in quotients:
-            low = (size + count - 1) // count
-            high = min(maximum, (size - 1) // (count - 1))
-            if low > high:
-                continue
-            events = {low, high + 1}
-            for number in range(1, count):
-                events.update(
-                    point
-                    for power in powers
-                    if low < (point := (power + number - 1) // number) <= high
-                )
-            for lower, upper in pairwise(sorted(events)):
-                first = (1, 30 + len(_half_before(lower)))
-                pieces = [(0, length) for length in prefix] + [first]
-                for number in range(1, count):
-                    digits = len(_half_before(number * lower))
-                    pieces.append(
-                        (1 - count, size + 27 + 2 * digits)
-                        if number == count - 1
-                        else (1, 27 + 2 * digits)
-                    )
-                pieces.extend((0, length) for length in tail)
-                while lower < upper:
-                    width, height, length, stop = _fold_shape(
-                        pieces, (1, shift), lower, upper
-                    )
-                    columns = 1 if lower == 1 else lower + shift
-                    plans.append(_Plan(_FOLD, columns, lower, width, height, length))
-                    lower = stop
-    return tuple(plans)
+        *_whole_folds(rows),
+        *_chunked_folds(rows),
+    )
+
+
+def _render(table: str, n: int, plan: _Plan, essential: list[bool] | None) -> str:
+    """Return the program ``plan`` describes for ``table``."""
+    flat = _alight_flat_compact(table, n, essential)
+    if plan.kind == _COLUMN:
+        return "\n".join(flat)
+    if plan.kind == _ROW:
+        return flat
+    return _alight_folded(_alight_units(table, n, plan.chunk, essential), plan.columns)
 
 
 def _emit(table: str, n: int, plan: _Plan, essential: list[bool] | None = None) -> str:
-    flat = _alight_flat_compact(table, n, essential)
-    if plan.kind == _COLUMN:
-        program = "\n".join(flat)
-    elif plan.kind == _ROW:
-        program = flat
-    else:
-        program = _alight_folded(
-            _alight_units(table, n, plan.chunk, essential), plan.columns
-        )
+    program = _render(table, n, plan, essential)
     if (*_dimensions(program), len(program)) != (plan.width, plan.height, plan.length):
         raise AssertionError("Alight fold model disagrees with the rendered program")
     return program
@@ -594,30 +673,35 @@ def select_alight(table: str, n: int, width: int) -> str:
     return _emit(table, n, plan)
 
 
+def _squareness(width: int, height: int, length: int) -> tuple[int, int, int]:
+    """Rank a shape: imbalance, then length, then width (``balance_score``'s order)."""
+    return abs(width - height), length, width
+
+
 def _balance_postfix(
     table: str, n: int, default: str, essential: list[bool] | None = None
 ) -> str:
-    """Balance whole and square-root chunks at greedy fold transitions."""
+    """Balance square-root chunks at greedy fold transitions."""
     width, height = _dimensions(default)
-    best = (abs(width - height), len(default), width)
+    best = _squareness(width, height, len(default))
     selected: tuple[list[list[str]], int, tuple[int, int, int]] | None = None
-    size = len(table)
-    for chunk in {size, isqrt(size - 1) + 1}:
-        units = _postfix_units(table, n, chunk, essential)
-        pieces = [(0, len(";".join(unit)) + 1) for unit in units]
-        lower = max(length for _, length in pieces) + _EAST + 1
-        upper = sum(length for _, length in pieces)
-        while lower <= upper:
-            _, height, _, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
-            # Height is constant until the next row-fit transition; its nearest
-            # permitted width minimizes imbalance without a width sweep.
-            columns = min(max(height, lower), stop - 1)
-            width, height, length, _ = _fold_shape(pieces, (1, 0), columns, stop)
-            score = (abs(width - height), length, width)
-            if score < best:
-                best = score
-                selected = units, columns, (width, height, length)
-            lower = stop
+    # Whole-table chunks add 0.00% to the square-root chunk on 200 random
+    # tables each at n=7 and 8; alone they lose 41-60% in area-imbalance.
+    units = _postfix_units(table, n, isqrt(len(table) - 1) + 1, essential)
+    pieces = [(0, len(";".join(unit)) + 1) for unit in units]
+    lower = max(length for _, length in pieces) + _EAST + 1
+    upper = sum(length for _, length in pieces)
+    while lower <= upper:
+        _, height, _, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
+        # Height is constant until the next row-fit transition; its nearest
+        # permitted width minimizes imbalance without a width sweep.
+        columns = min(max(height, lower), stop - 1)
+        width, height, length, _ = _fold_shape(pieces, (1, 0), columns, stop)
+        score = _squareness(width, height, length)
+        if score < best:
+            best = score
+            selected = units, columns, (width, height, length)
+        lower = stop
     if selected is None:
         return default
     units, columns, shape = selected
@@ -668,12 +752,37 @@ def _balance_projected(
     plans = _plans(n, tuple(essential))
     records = [next(plan for plan in plans if plan.kind == _ROW)]
     best: _Plan | None = None
+    # Keep only the plans whose score improves as their ready width grows;
+    # the balance winner is the squarest of those plus the row candidate.
     for plan in sorted(plans, key=lambda plan: (plan.ready(), plan.score())):
         if best is None or plan.score() < best.score():
             best = plan
             records.append(plan)
     selected = min(
-        records,
-        key=lambda plan: (abs(plan.width - plan.height), plan.length, plan.width),
+        records, key=lambda plan: _squareness(plan.width, plan.height, plan.length)
     )
     return _emit(table, n, selected, essential)
+
+
+LANGUAGE = Language(
+    "Alight",
+    "alight",
+    category="grid_based",
+    boolean=alight,
+    dialect=_dialect,
+    dialect_values={
+        "expression_syntax": EXPRESSION_SYNTAXES,
+        "list_update": LIST_UPDATES,
+    },
+    # Not a tree: a Horner row index into a string literal.
+    shape=Shape.LOOKUP,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+    balance=balance_alight,
+    no_wrap="a command is a word walked cell by cell; a row end cuts it",
+    eof="it raises its own error before the read is reached",
+    underfed_raises=True,
+    empty_program="empty program",
+)

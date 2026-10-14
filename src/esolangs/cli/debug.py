@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from contextlib import nullcontext
 
 from esolangs import _check_runnable, describe
 from esolangs.cli.args import (
@@ -25,7 +26,6 @@ from esolangs.cli.hints import (
     _template_hint,
 )
 from esolangs.cli.io import (
-    _null_context,
     _read_program,
     _read_stdin,
     _resolve_target,
@@ -65,16 +65,15 @@ def _debug(rest: list[str]) -> None:
     language, path, content = _resolve_target("debug", rest, limit, portable=portable)
     numbers = {
         name: _integer(options[name], name)
-        for name in ("--steps", "--watch-cell", "--break-at")
+        for name in ("--watch-cell", "--steps", "--break-at")
         if name in options
     }
     cell = _pop_cell(options)
     # The breakpoint value may be negative; its cell index may not.
     if cell is not None:
         _nonnegative(cell[0], "--break-on-cell index", cell[0])
-    for name in ("--watch-cell", "--steps", "--break-at"):
-        if name in numbers:
-            _nonnegative(numbers[name], name, options[name])
+    for name, number in numbers.items():
+        _nonnegative(number, name, options[name])
     settings = _settings_of(options, set_pairs, language=language)
     with _errors():
         if not portable:
@@ -113,15 +112,15 @@ def _debug(rest: list[str]) -> None:
             _fail("--break-on-output needs some text; every output contains ''")
         dbg.break_on_output(options["--break-on-output"])
         breakpoints_set = True
-    if "--break-at" in options:
-        dbg.break_at(int(options["--break-at"]))
+    if "--break-at" in numbers:
+        dbg.break_at(numbers["--break-at"])
         breakpoints_set = True
     if cell is not None:
         dbg.break_on_cell(*cell)
         breakpoints_set = True
-    watched = int(options["--watch-cell"]) if "--watch-cell" in options else None
+    watched = numbers.get("--watch-cell")
     history = dbg.watch_cell(watched) if watched is not None else None
-    steps = int(options["--steps"]) if "--steps" in options else None
+    steps = numbers.get("--steps")
     # A debugged program is one the caller is already unsure of, so a raise
     # here is a result to report rather than a crash to propagate: the
     # state up to the fault is the thing they asked to see.
@@ -136,7 +135,7 @@ def _debug(rest: list[str]) -> None:
     if facts["answer_mode"] == "termination" and not bounded:
         _termination_notice(facts["name"], "--timeout SECONDS or --steps N")
     try:
-        with _unbounded_notice("debug") if not bounded else _null_context():
+        with _unbounded_notice("debug") if not bounded else nullcontext():
             reason = dbg.run(max_steps=steps, timeout=limit)
     except Exception as exc:
         fault = f"{type(exc).__name__}: {error_text(exc)}"
@@ -158,22 +157,19 @@ def _debug(rest: list[str]) -> None:
         # all-`None` case was annotated and the *mixed* case was not, which
         # is the one where a reader actually needs telling: a row reading
         # `[None, None, 0, 0, ...]` otherwise looks like a value.
-        if set(values) <= {None}:
-            untouched = " (never written)"
-        elif None in values:
-            untouched = " (None: the cell did not exist yet at that step)"
-        else:
-            untouched = ""
+        label = options["--watch-cell"]
         if set(values) <= {None}:
             # Verdict first, and no wall of Nones: a never-written cell used
             # to print four hundred of them and put "(never written)" at the
             # far right of a wrapped line.
-            print(
-                f"cell {options['--watch-cell']}: never written in "
-                f"{len(values)} step(s)"
-            )
+            print(f"cell {label}: never written in {len(values)} step(s)")
         else:
-            print(f"cell {options['--watch-cell']}: {_abridge(values)}{untouched}")
+            untouched = (
+                " (None: the cell did not exist yet at that step)"
+                if None in values
+                else ""
+            )
+            print(f"cell {label}: {_abridge(values)}{untouched}")
     if fault is not None:
         print(f"raised: {fault}")
         # 1, like ``run``: the program itself failed.  This exited 0 for

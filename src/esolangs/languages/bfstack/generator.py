@@ -84,10 +84,7 @@ def _bfstack_small(truth_table: str, n: int) -> str:
 
     At most ``_BLOCK_INPUTS`` essential inputs; an ignored input weighs nothing.
     """
-    weights, projected = input_weights(truth_table, n)
-    decoder, preset = _bfstack_decoder(projected)
-    encoder = _bfstack_encoder(weights, preset=preset)
-    return encoder + decoder + "<" + "+" * _ASCII_ZERO + "."
+    return _bfstack_class(truth_table, n) + "+" * _ASCII_ZERO + "."
 
 
 def _bfstack_class(prefix: str, bits: int) -> str:
@@ -95,6 +92,11 @@ def _bfstack_class(prefix: str, bits: int) -> str:
     weights, projected = input_weights(prefix, bits)
     decoder, preset = _bfstack_decoder(projected)
     return _bfstack_encoder(weights, preset=preset) + decoder + "<"
+
+
+def _constant_leaf(reads: int, bit: str) -> str:
+    """Return the program that reads ``reads`` inputs and prints ``bit``."""
+    return ",<" * reads + ">" + "+" * (_ASCII_ZERO + int(bit)) + ".<"
 
 
 def bfstack(truth_table: str) -> str:
@@ -108,7 +110,7 @@ def bfstack(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        return ",<" * n + ">" + "+" * (_ASCII_ZERO + int(truth_table[0])) + ".<"
+        return _constant_leaf(n, truth_table[0])
     if n <= _BLOCK_INPUTS or 0 < len(essential_inputs(truth_table, n)) <= _BLOCK_INPUTS:
         return _bfstack_small(truth_table, n)
     constant = constant_span_test(truth_table)
@@ -141,12 +143,7 @@ def bfstack(truth_table: str) -> str:
     def build(level: int, lo: int, hi: int) -> str:
         remaining = n - level
         if constant(lo, hi):
-            return (
-                ",<" * remaining
-                + ">"
-                + "+" * (_ASCII_ZERO + int(truth_table[lo]))
-                + ".<"
-            )
+            return _constant_leaf(remaining, truth_table[lo])
         if remaining <= _BLOCK_INPUTS:
             plain = _bfstack_small(truth_table[lo:hi], remaining) + "<"
         else:

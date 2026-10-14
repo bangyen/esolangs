@@ -27,8 +27,8 @@ from esolangs.runtime.io import IO
 #: returns a new one rather than editing one in place, and the grid is a
 #: ``tuple`` for the same reason.
 #:
-#: This is exactly what ``snapshot`` returns, and always has been, so the
-#: state and its hashable view are the same tuple.
+#: This is exactly what ``snapshot`` returns, so the state and its
+#: hashable view are the same tuple.
 #:
 #: The code and its loop pairing are deliberately not in here.  Neither
 #: changes during a run, so carrying them would put constant data in every
@@ -36,17 +36,15 @@ from esolangs.runtime.io import IO
 type _State = tuple[int, int, tuple[int, ...]]
 
 
-def _matches(code: str) -> tuple[dict[int, int], set[int]]:
-    """Return ``{l: partner}`` and the set of loop-open indices."""
+def _matches(code: str) -> dict[int, int]:
+    """Return ``{l: partner}``; an ``l`` opens a loop when its partner is later."""
     stack: list[int] = []
     match: dict[int, int] = {}
-    open_l: set[int] = set()
     for i, char in enumerate(code):
         if char != "l":
             continue
         if not stack:
             stack.append(i)
-            open_l.add(i)
         else:
             j = stack.pop()
             match[i] = j
@@ -55,14 +53,13 @@ def _matches(code: str) -> tuple[dict[int, int], set[int]]:
         # One glyph both opens and closes here, so the pairing cannot come
         # from `match_brackets`; the rejection is still the shared one.
         raise unmatched("l", stack[-1])
-    return match, open_l
+    return match
 
 
 def _advance(
     state: _State,
     code: str,
     match: dict[int, int],
-    open_l: set[int],
 ) -> _State:
     """Return the state after executing the command at the cursor.
 
@@ -92,10 +89,7 @@ def _advance(
         grid = (*grid[:ptr], 0, *grid[ptr + 1 :])
     elif char == "l":
         partner = match[ind]
-        if ind in open_l:
-            if grid[ptr] == 0:
-                ind = partner
-        elif grid[ptr] != 0:
+        if (grid[ptr] == 0) == (partner > ind):
             ind = partner
     return (ind + 1, ptr, grid)
 
@@ -109,7 +103,7 @@ class _Machine:
         # Only the eight commands are instructions, so ``j`` ("Jump over the
         # next instruction") skips the next command, not a space before it.
         code = self.code = "".join(filter("asdfjkl;".__contains__, code))
-        self.match, self.open_l = _matches(code)
+        self.match = _matches(code)
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
@@ -165,7 +159,7 @@ class _Machine:
         ind, ptr, grid = self.state
         if self.code[ind] == "k":
             self.io.print_char(chr(grid[ptr] & 0xFF))
-        self.state = _advance(self.state, self.code, self.match, self.open_l)
+        self.state = _advance(self.state, self.code, self.match)
 
 
 def run(code: str, io: IO) -> None:

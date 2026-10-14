@@ -62,7 +62,7 @@ def test_stored_variables_are_frozen_and_do_not_mutate_retained_state() -> None:
     var = stored[0][1]
     assert isinstance(var, MappingProxyType)
     with pytest.raises(TypeError):
-        var["VAR1"] = 99  # type: ignore[index]
+        var["VAR1"] = 99
     # The retained map is a value: a later store makes a fresh proxy.
     later = _advance(_advance(stored, "PSH INT 3"), "PSH VAR2")
     assert dict(var)["VAR1"] == 7

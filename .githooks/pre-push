@@ -6,10 +6,10 @@
 #     git config core.hooksPath .githooks
 #
 # The script runs the local-checkable subset of the CI workflow (lint,
-# pytest, bandit, the Python-only verify scripts) so failures are
+# pytest, the Python-only verify scripts) so failures are
 # caught before pushing rather than in GitHub Actions.
 #
-# verify.py scopes itself to the files the branch touched, so a push that
+# gate.py scopes itself to the files the branch touched, so a push that
 # moved one interpreter does not re-prove the other twelve cross-checks.  It
 # widens back to the full stack whenever the diff cannot be read or shared
 # machinery moved, and CI still runs everything on every push regardless.
@@ -56,7 +56,7 @@ fi
 # Check the tree being pushed, not the one holding the hook.  With
 # core.hooksPath set, git runs *this* file for every worktree of the repo,
 # so `dirname "$0"` points at the main checkout even when the push comes
-# from a worktree -- and verify.py derives its ROOT (the venv it picks and
+# from a worktree -- and gate.py derives its ROOT (the venv it picks and
 # the PYTHONPATH it exports) from its own location.  Resolving the script
 # through the top level of the working tree git is pushing keeps the checks
 # pointed at the commits actually being sent; otherwise a worktree push
@@ -65,18 +65,18 @@ fi
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT=""
 [ -n "$ROOT" ] || ROOT="$(dirname "$0")/.."
 # Say so before handing off.  Starting python, importing, and working out the
-# scope all happen before verify.py's first line of output, and a push that
+# scope all happen before gate.py's first line of output, and a push that
 # prints nothing at all looks like a push that has wedged rather than one that
 # is working.  Naming the escape hatch here is the point: the checks take a
 # minute or so on a branch that moved the shared machinery, and a user who
 # cannot see why reaches for --no-verify, which skips them entirely.
 #
-# verify.py prints one line per step and replays the output of the ones that
+# gate.py prints one line per step and replays the output of the ones that
 # failed.  `just test --verbose` streams every step's output live instead; it
 # is a wall of text, which is why the hook does not ask for it.
 echo "pre-push: running scripts/verify/gate.py (about a minute; --no-verify skips it)"
 
-# verify.py picks the project interpreter itself (.venv, then uv run), so
+# gate.py picks the project interpreter itself (.venv, then uv run), so
 # the hook can hand it any python that can execute the file.
 if [ -n "$VERIFY_FULL" ] && [ "$VERIFY_FULL" != "0" ]; then
     exec "${PY:-python3}" "$ROOT/scripts/verify/gate.py" --full

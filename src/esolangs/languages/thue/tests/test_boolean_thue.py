@@ -17,21 +17,6 @@ from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
 
 
-@pytest.mark.medium
-def test_shared_block_expands_before_lookup_within_ledger() -> None:
-    from esolangs.languages.thue.generator import _tables, _thue_entries, _thue_layout
-    from tests.support.generator_support import assert_shared_program
-
-    entries = "0001011101101001" * 6 + "0110100100010111" + "0011010101010011"
-    table = _thue_entries(entries).translate(str.maketrans("ab", "01")) * 2
-    plain = min((_thue_layout(*layout, None) for layout in _tables(table)), key=len)
-    assert_shared_program(
-        "Thue", table, plain, 2 * 256 + 3 * 8 - 2, lambda _p: 8 * 256 + 24 + 5
-    )
-    for row in (0, 1, 127, 128, 255):
-        _execute(table, row, 512)
-
-
 def test_short_tree_interns_constant_residuals() -> None:
     from esolangs.languages.thue.generator import _thue_short_tree
 

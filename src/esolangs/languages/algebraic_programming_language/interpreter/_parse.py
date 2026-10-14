@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from math import isfinite
 from typing import Literal
@@ -31,9 +32,12 @@ _Call = tuple[Literal["call"], str, tuple["_Node", ...]]
 _Node = _Lit | _Var | _Ref | _Neg | _Ret | _Bin | _Call
 
 # The spec allows accented Latin, Cyrillic, and Greek letters as well, so
-# case is tested with ``str`` methods rather than against these ASCII
-# spellings; the constants are kept for the digits and the symbol class.
+# case is tested with ``str`` methods rather than against ASCII spellings;
+# only the digits are spelled out.
 _DIGITS = "0123456789"
+# A fractional part only counts when a digit follows the dot; otherwise the
+# dot is an operator symbol in its own right.
+_TOKEN = re.compile(r"[0-9]+(?:\.[0-9]+)?|\S")
 # Operator symbols are "any non-alphanumeric ... and non-+-*/%&|()={}$
 # symbol", so the reserved set is exactly what a custom operator may not
 # use.
@@ -89,28 +93,7 @@ def _tokens(line: str) -> list[str]:
     one at a time, so keeping them separate is what lets a multi-symbol
     pattern be recognised at all.
     """
-    out: list[str] = []
-    ind = 0
-    while ind < len(line):
-        char = line[ind]
-        if char.isspace():
-            ind += 1
-            continue
-        if char in _DIGITS:
-            start = ind
-            while ind < len(line) and line[ind] in _DIGITS:
-                ind += 1
-            # A fractional part only counts when a digit follows the dot;
-            # otherwise the dot is an operator symbol in its own right.
-            if ind + 1 < len(line) and line[ind] == "." and line[ind + 1] in _DIGITS:
-                ind += 1
-                while ind < len(line) and line[ind] in _DIGITS:
-                    ind += 1
-            out.append(line[start:ind])
-            continue
-        out.append(char)
-        ind += 1
-    return out
+    return _TOKEN.findall(line)
 
 
 def _number(word: str) -> _Number:
@@ -134,7 +117,6 @@ class _Parser:
 
     def __init__(self, tokens: list[str], defs: Mapping[str, _Definition]) -> None:
         self.tokens = tokens
-        self.defs = defs
         self.ind = 0
         # Definitions are fixed during one parse. Rescanning them per operand
         # timed out the 219,826-character generated n=16 dense control at 2s.
@@ -264,10 +246,6 @@ class _Parser:
                 return node
             node = match
 
-    def _operators(self) -> list[_Definition]:
-        """Return the custom operators, longest pattern first."""
-        return self.operator_patterns
-
     def _match_operator(self, left: _Node | None) -> _Node | None:
         """Try each custom operator pattern at the cursor; None if none fit.
 
@@ -275,7 +253,7 @@ class _Parser:
         operator, and None when looking for a *prefix* one, whose pattern
         opens with a symbol and so takes nothing from its left.
         """
-        for definition in self._operators():
+        for definition in self.operator_patterns:
             leading = definition.name.startswith("\0")
             if leading != (left is not None):
                 continue

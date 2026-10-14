@@ -45,6 +45,11 @@ def test_relative_transitive_and_cyclic_imports_are_hashed(source_tree, module) 
     assert len(sources) == len(set(sources))
 
 
+def test_every_registered_interpreter_resolves() -> None:
+    for module, _ in leaks._runners().values():  # noqa: SLF001
+        assert leaks._module_path(module), module  # noqa: SLF001
+
+
 @pytest.mark.usefixtures("source_tree")
 def test_helper_change_selects_its_importer() -> None:
     changed = "src/esolangs/runtime/shared/aux.py"

@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable, Iterator
 from itertools import count, islice
+from string import ascii_letters
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -14,13 +15,11 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, balance_score
+from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
-_FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-
+_FORBIN_ALPHABET = ascii_letters
 _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
 
 
@@ -48,8 +47,8 @@ class _Names:
     def __init__(self, n: int, block: int) -> None:
         self._names = _forbin_names()
 
-        def take(count: int) -> list[str]:
-            return list(islice(self._names, count))
+        def take(size: int) -> list[str]:
+            return list(islice(self._names, size))
 
         # The tree names an input bit once a node and calls ``table`` or a
         # constant printer once a leaf, so those repeat with the table
@@ -101,7 +100,7 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     """
     if width is not None:
         natural = forbin(truth_table)
-        if max(map(len, natural.splitlines())) <= width:
+        if grid_width(natural) <= width:
             return natural
     # The tree is built over the essential inputs; an ignored input is still
     # read, but its kept bit drops into the scratch name with the other seven.
@@ -129,8 +128,6 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     if width is None:
         return program
     # Whitespace separates every grammar token; identifiers and '..' stay whole.
-    from esolangs.generation.wrap import wrap_space_delimited
-
     tokens = re.findall(r"[A-Za-z_][A-Za-z_0-9]*|\.\.|[^\s]", program)
     return wrap_space_delimited(" ".join(tokens), width)
 

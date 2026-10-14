@@ -26,4 +26,4 @@ def _visible(func: _Function, caller: str, program: _Program) -> bool:
         if package == func.package:
             return True
         frontier.extend(program.dependencies.get(package, frozenset()))
-    return func.package in seen
+    return False

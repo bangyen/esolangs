@@ -207,7 +207,7 @@ def test_root_hint_does_not_require_an_exact_root() -> None:
 
 def _read_cell(state: object) -> int:
     """Return the cell under the pointer of a Super SNUSP branching state."""
-    _cursor, (pointer, cells), *_rest = state  # type: ignore[misc]
+    _cursor, (pointer, cells), *_rest = state
     return next((value for index, value in cells if index == pointer), 0)
 
 

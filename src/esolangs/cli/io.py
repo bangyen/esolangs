@@ -10,29 +10,16 @@ import json
 import sys
 import threading
 from collections.abc import Callable
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import AbstractContextManager
 
 from esolangs import _read_source, load_program
-from esolangs.cli.args import (
-    _check_count,
-    _errors,
-    _fail,
-)
-from esolangs.cli.hints import (
-    _TIMEOUT_EXIT,
-    _decode_note,
-)
+from esolangs.cli.args import _check_count, _errors, _fail
+from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.registry import resolve
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-
-
-def _null_context() -> AbstractContextManager[None]:
-    """Return a do-nothing ``with`` target, for an already-bounded run."""
-    return nullcontext()
-
 
 #: How long a blocking stdin read waits before it says that it is waiting.
 #: Shorter than the run notice: a read that has not finished is far more
@@ -109,11 +96,7 @@ def _read_program(
         content = _bounded_read(path, timeout)
     try:
         if portable:
-            try:
-                document = content.decode("utf-8")
-            except UnicodeDecodeError as exc:
-                raise ProgramError("portable program must be UTF-8 JSON") from exc
-            program = load_program(language, document)
+            program = load_program(language, _portable_text(content))
             dialect_options(language, effective_settings(language, program, settings))
             return program
         return _read_source(language, _FileSource(path, content))
@@ -122,15 +105,19 @@ def _read_program(
         raise  # pragma: no cover - _fail exits
 
 
+def _portable_text(content: bytes) -> str:
+    """Decode a portable document, which must be UTF-8."""
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProgramError("portable program must be UTF-8 JSON") from exc
+
+
 def _portable_language(path: str, timeout: float | None = None) -> tuple[str, bytes]:
     """Return the language and acquired bytes of a portable document."""
     content = _bounded_read(path, timeout)
     try:
-        document = content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ProgramError("portable program must be UTF-8 JSON") from exc
-    try:
-        value = json.loads(document)
+        value = json.loads(_portable_text(content))
     except ValueError as exc:
         raise ProgramError(f"invalid portable program: {exc}") from exc
     if not isinstance(value, dict) or not isinstance(value.get("language"), str):
@@ -147,13 +134,12 @@ def _resolve_target(
     document carrying its own language; otherwise the positionals are
     the language and the program path.
     """
-    if not (portable and len(rest) == 1):
-        _check_count(command, rest, 2)
     if portable and len(rest) == 1:
         path = rest[0]
         with _errors():
             language, content = _portable_language(path, timeout)
     else:
+        _check_count(command, rest, 2)
         language, path = rest[0], rest[1]
         content = None
     return language, path, content

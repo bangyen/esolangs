@@ -15,7 +15,8 @@ alone handles I/O and random draws, then rebinds the returned state.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from operator import add, and_, mul, or_, sub, xor
 from typing import cast
 
 from esolangs.exceptions import HaltError
@@ -90,7 +91,39 @@ def _top(values: tuple[int, ...]) -> int:
     return values[-1]
 
 
-def _advance(
+_COMBINE: dict[str, Callable[[int, int], int]] = {
+    "&": and_,
+    "*": mul,
+    "+": add,
+    "-": sub,
+    "^": xor,
+    "|": or_,
+}
+
+
+def _combine(command: str, value: int, operand: int) -> int:
+    """Return the cell ``value`` combined with the stacked ``operand``."""
+    if command in _COMBINE:
+        return _COMBINE[command](value, operand)
+    if command == ";":
+        return _floor_root(value, operand)
+    if command == ":":
+        if not operand:
+            raise HaltError(
+                f"':' divides {value} by zero",
+                hint="ensure the divisor is nonzero before dividing",
+            )
+        return value // operand
+    if operand < 0:
+        direction = "left" if command == "[" else "right"
+        raise HaltError(
+            f"{command!r} shifts {direction} by {operand}, which is negative",
+            hint="use a nonnegative shift count",
+        )
+    return value << operand if command == "[" else value >> operand
+
+
+def _advance(  # noqa: C901
     state: _State,
     code: Sequence[str],
     char_input: int | None = None,
@@ -126,43 +159,7 @@ def _advance(
             rem = abs(value) % abs(divisor)
             cells = _write(cells, pointer, -rem if value < 0 else rem)
         elif command in "&*+-:;[]^|":
-            operand = _top(values)
-            if command == "&":
-                value &= operand
-            elif command == "*":
-                value *= operand
-            elif command == "+":
-                value += operand
-            elif command == "-":
-                value -= operand
-            elif command == ":":
-                if not operand:
-                    raise HaltError(
-                        f"':' divides {value} by zero",
-                        hint="ensure the divisor is nonzero before dividing",
-                    )
-                value //= operand
-            elif command == ";":
-                value = _floor_root(value, operand)
-            elif command == "[":
-                if operand < 0:
-                    raise HaltError(
-                        f"'[' shifts left by {operand}, which is negative",
-                        hint="use a nonnegative shift count",
-                    )
-                value <<= operand
-            elif command == "]":
-                if operand < 0:
-                    raise HaltError(
-                        f"']' shifts right by {operand}, which is negative",
-                        hint="use a nonnegative shift count",
-                    )
-                value >>= operand
-            elif command == "^":
-                value ^= operand
-            else:
-                value |= operand
-            cells = _write(cells, pointer, value)
+            cells = _write(cells, pointer, _combine(command, value, _top(values)))
         elif command == ",":
             if char_input is None:
                 raise HaltError(

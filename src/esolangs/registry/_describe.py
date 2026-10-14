@@ -9,7 +9,6 @@ from esolangs.registry import (
     LANGUAGES,
     Language,
     example_stems,
-    parameterized_ids,
     resolve,
     wiki_url,
 )
@@ -80,7 +79,7 @@ def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
     ``spec`` contains the interpreter docstring; missing docstrings raise.
-    ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
+    ``dialect_settings`` gives runtime defaults and choices.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
     category, recorded by the registry), ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means
@@ -117,20 +116,14 @@ def describe(language: str) -> LanguageInfo:
     # Package-relative: repository-relative paths broke a ``chdir`` away and
     # under any install, and absolute ones froze the install location into
     # the public output.  ``importlib.resources.files("esolangs")`` resolves.
-    suffix = (
-        ".png"
-        if lang.source_kind.value == "raster"
-        else ".txt.gz"
-        if lang.compressed_source
-        else ".txt"
-    )
     examples = sorted(
         f"languages/{lang.id}/{p.name}"
-        for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{suffix}")
+        for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
     )
     traits = machine_traits(name)
-    parameterized = lang.id in parameterized_ids()
+    parameterized = lang.parameterized
     contract = lang.contract
+    width_effect = _width_effect(lang)
     return {
         "name": name,
         "dialect_settings": dialect_choices(name),
@@ -145,7 +138,7 @@ def describe(language: str) -> LanguageInfo:
         "parameterized": parameterized,
         "reads_input": (lang.boolean is not None) and not parameterized,
         # Computed once so the two cannot drift into disagreeing.
-        "width_aware": (width_effect := _width_effect(lang)) == "layout",
+        "width_aware": width_effect == "layout",
         "width_effect": width_effect,
         "input_encoding": contract.alphabet,
         "input_shape": contract.input_shape,

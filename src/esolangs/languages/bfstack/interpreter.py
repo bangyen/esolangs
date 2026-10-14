@@ -6,7 +6,7 @@ adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
 empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
 raises :class:`ValueError` when reached; exhausted input raises
 :class:`EOFError`.  :func:`_advance` is pure and total over an
-immutable ``_State``: :func:`_needs_operand` lets the shell reject an
+immutable ``_State``: ``_NEEDS_OPERAND`` lets the shell reject an
 empty-stack step first, and :func:`_forward_table` maps an unmatched
 ``[`` to ``None`` for the shell to raise on.
 """
@@ -37,11 +37,6 @@ type _State = tuple[int, tuple[int, ...], tuple[int, ...]]
 #: an empty one.  ``>`` pushes and ``,`` pushes, so neither needs an
 #: operand; ``]`` needs a *loop* stack entry, which is checked separately.
 _NEEDS_OPERAND = frozenset("<+-.[")
-
-
-def _needs_operand(char: str) -> bool:
-    """Whether ``char`` requires a non-empty data stack to run."""
-    return char in _NEEDS_OPERAND
 
 
 def _forward_table(code: str) -> dict[int, int | None]:
@@ -160,7 +155,7 @@ class _Machine:
             return
         ind, stk, lst = self.state
         char = self.code[ind]
-        if _needs_operand(char) and not stk:
+        if char in _NEEDS_OPERAND and not stk:
             raise HaltError(
                 f"{char!r} at position {ind} needs a value on the stack and "
                 f"the stack is empty",

@@ -42,12 +42,12 @@ def test_evaluate_files(name: str, tmp_path: Path) -> None:
 @pytest.mark.parametrize("inputs", [True, 0, 65, 2.5, "2"])
 def test_api_refuses_bad_inputs(inputs: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="inputs must"):
-        _evaluate(REFERENCE, ",.", inputs=inputs)  # type: ignore[arg-type]
+        _evaluate(REFERENCE, ",.", inputs=inputs)
 
 
 def test_api_refuses_bad_source() -> None:
     with pytest.raises(esolangs.ProgramError, match="string of source"):
-        _evaluate(REFERENCE, 42, inputs=1)  # type: ignore[arg-type]
+        _evaluate(REFERENCE, 42, inputs=1)
 
 
 @pytest.mark.parametrize(
@@ -198,7 +198,7 @@ def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch) -> None:
     bounds = []
     monkeypatch.setattr(evaluator, "monotonic", lambda: clock[0])
 
-    def run(_name, _source, stdin, timeout):
+    def run(_name, _source, stdin, timeout, **_options):
         bounds.append(timeout)
         clock[0] += 3
         return stdin

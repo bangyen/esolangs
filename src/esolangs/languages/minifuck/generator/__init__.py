@@ -7,23 +7,31 @@ The simulator laws are pinned differentially against the interpreter.
 
 import re
 from collections.abc import Callable
-from functools import cache
+from functools import cache, partial
 from itertools import pairwise
 from math import isqrt
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
+    _parity_bias,
     _validate_shape,
     _validate_truth_table,
     essential_inputs,
+    grid_width,
     mark_runs,
     read_at,
     same_up_to_wrapping,
     unmark,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _MINIFUCK_COMMAND, _RUN, _minifuck, balance_score
+from esolangs.generation.wrap import (
+    _MINIFUCK_COMMAND,
+    _RUN,
+    _minifuck,
+    balance_score,
+    wrap_program,
+)
 from esolangs.languages.minifuck.generator.mux import (
     _MUX_MIN_ARITY,
     _canonical_endgame,
@@ -82,19 +90,34 @@ def _degenerate(truth_table: str, n: int) -> str | None:
 #: An ignored input's run between two fixed halves: either fill walks the
 #: fresh tape back to fresh -- zero cells, pointer 0, no skip pending -- so a
 #: block in front of a program leaves it the start it was verified from.
-_INERT = "[[<<[" + _MINIFUCK_INPUT + "<"
+_INERT = "".join(
+    (
+        "[[",  # walk right twice, setting the two cells the guard clears
+        "<<",  # walk back to cell 0
+        "[",  # clear cell 1 (and cell 2 on the skip), skipping into the run
+        _MINIFUCK_INPUT,  # the ignored input's own two-character run
+        "<",  # step home to cell 0
+    )
+)
 
 
-def _reduce(
-    truth_table: str, n: int
-) -> tuple[int, str, list[int], tuple[int, ...], int] | None:
-    """Return (leading ignored, inner table, essential inputs, gaps, trailing ignored).
+class _Reduced(NamedTuple):
+    """A table with its ignored inputs removed."""
 
-    ``None`` when every input is essential.  A table that ignores inputs is a
-    smaller table wearing extra ones: the caller puts an inert block in front
-    for each leading ignored input and a run after the print for each
-    trailing one.  An ignored input between two essential ones replaces a
-    lookup pad step (``gaps``), extending the pad when fresh cells are needed.
+    first: int  # leading ignored inputs
+    table: str  # inner table over the essential inputs
+    kept: list[int]  # essential inputs
+    gaps: tuple[int, ...]  # ignored inputs between consecutive essential ones
+    after: int  # trailing ignored inputs
+
+
+def _reduce(truth_table: str, n: int) -> _Reduced | None:
+    """Drop ignored inputs; ``None`` when every input is essential.
+
+    The caller puts an inert block in front for each leading ignored input
+    and a run after the print for each trailing one.  An ignored input
+    between two essential ones replaces a lookup pad step (``gaps``),
+    extending the pad when fresh cells are needed.
     """
     essential = essential_inputs(truth_table, n)
     if len(essential) == n:
@@ -102,109 +125,104 @@ def _reduce(
     first = essential[0] if essential else 0
     after = n - 1 - essential[-1] if essential else n
     gaps = tuple(b - a - 1 for a, b in pairwise(essential))
-    return first, read_at(truth_table, essential, n), essential, gaps, after
+    return _Reduced(first, read_at(truth_table, essential, n), essential, gaps, after)
+
+
+#: Table width from which the direct lookup beats the ladder: O(T) text.
+_LOOKUP_MIN_ARITY = 5
 
 
 @cache
 def _solve(truth_table: str) -> str:
-    """Build a Minifuck template for the given truth table.
+    """Build the positional Minifuck template for a truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first).  Runs become ``[<`` for a one and
     ``xx`` for a zero.  The program embeds each input once, computes past
     the pool, relays the answer into the *pointer*, and prints one digit.
-    The strip uses closed-form displacement laws, pinned against the
-    interpreter. Cached; no route searches.
-
-    Ignored inputs leave the index; an interior run extends its pad enough to
-    cross the preceding setter. Ten seeded n=8 tables ignoring input 6 average
-    5,209.8 characters against 10,239.1 before (49.1% smaller, seed 6072026).
+    Closed-form displacement laws, pinned against the interpreter; cached.
     """
     n = _validate_shape(truth_table)
-
-    # A table that ignores inputs is a smaller table wearing extra ones: solve
-    # it there, put an inert block in front for each ignored input before the
-    # essential ones and a run after the print for each one past them.  An
-    # ignored input between two essential ones replaces a lookup pad's last
-    # step; fresh padding grows only when the ignored run needs it.
     reduced = _reduce(truth_table, n)
     if reduced is not None:
-        first, inner_table, kept, gaps, after = reduced
-        if not any(gaps):
-            inner = _solve(inner_table)
-        else:
-            inner = _mux_lookup(inner_table, len(kept), gaps=gaps)
-        return _INERT * first + inner + _MINIFUCK_INPUT * after
-
-    # The strip's crossover: the direct lookup is O(T) for every wider table.
-    if n >= 5:
+        return _solve_reduced(reduced)
+    if n >= _LOOKUP_MIN_ARITY:
         return _mux_lookup(truth_table, n)
-
-    # Nullary and unary inner solves use the embed's named standing column.
     if n < _MUX_MIN_ARITY:
+        # Nullary and unary tables use the embed's named standing column.
         degenerate = _degenerate(truth_table, n)
         if degenerate is None:  # pragma: no cover - nullary/unary column rule
             raise ValueError(
                 f"the Minifuck boolean generator could not build {truth_table!r}"
             )
         return degenerate
-
     return _mux(truth_table, n)
+
+
+def _solve_reduced(reduced: _Reduced) -> str:
+    """Solve the inner table, then add the ignored inputs back as inert text.
+
+    An interior ignored input replaces a lookup pad's last step; fresh
+    padding grows only when the ignored run needs it.  Ten seeded n=8 tables
+    ignoring input 6 average 5,209.8 characters against 10,239.1 without the
+    reduction (49.1% smaller, seed 6072026).
+    """
+    first, inner_table, kept, gaps, after = reduced
+    if any(gaps):
+        inner = _mux_lookup(inner_table, len(kept), gaps=gaps)
+    else:
+        inner = _solve(inner_table)
+    return _INERT * first + inner + _MINIFUCK_INPUT * after
+
+
+def _balance_score(program: str, width: int) -> tuple[int, int]:
+    """Rank width-budgeted candidates: line overflow first, length second."""
+    return max(0, grid_width(program) - width), len(program)
 
 
 def minifuck(truth_table: str, width: int | None = None) -> str:
     """Build a Minifuck template for the given truth table.
 
-    Compare the positional decoder with an affine byte accumulator. Defaults
-    retain ``(xx, [<)`` setters; narrow columns use ``(x, [)``. All candidates
-    consume inputs in order. Sixty-four seeded affine tables at n=16 average
-    552.8 characters against 30,849.8 before (98.2% smaller, seed 32026).
-    Non-affine diagrams with at most two residuals per input level share a byte
-    accumulator; wider diagrams store each residual once when its tape walks
-    fit the positional text budget.
+    Races the positional decoder against byte-accumulator forms and keeps the
+    smallest (``width`` set: least overflow, then smallest).  An affine table
+    uses the parity column (seeded n=16: 552.8 characters against 30,849.8
+    positional).  Other tables try :func:`two_state` (at most two residuals
+    per level) and :func:`stored` (each residual once, within the positional
+    length); each wins up to ~90% on tables it fits (stored from n=12).
+    Defaults retain ``(xx, [<)`` setters; narrow columns use ``(x, [)``.
     """
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
+    legacy = _lookup_layout(truth_table, n, natural, width)
     mask = _affine_mask(truth_table)
     if mask is None:
-        legacy = _lookup_layout(truth_table, n, natural, width)
-        candidates = [legacy]
-        candidates.extend(
-            candidate
-            for candidate in (two_state(truth_table), stored(truth_table, len(legacy)))
-            if candidate is not None
-        )
-        if width is None or width <= 0:
-            return min(candidates, key=len)
-        candidates = [legacy] + [
-            wrapped
-            for candidate in candidates[1:]
-            if len(wrapped := _wrap_template(candidate, n, width)) <= len(legacy)
-        ]
-        return min(
-            candidates,
-            key=lambda program: (
-                max(0, max(map(len, program.splitlines())) - width),
-                len(program),
-            ),
-        )
+        return _race_states(truth_table, n, legacy, width)
     shared = _parity_columns(n, int(truth_table[0]), mask=mask, paired=True)
     if width is None or width <= 0:
         return min(natural, shared, key=len)
-    legacy = _lookup_layout(truth_table, n, natural, width)
     shared = _wrap_template(shared, n, width)
-    if max(map(len, shared.splitlines())) > width:
+    if grid_width(shared) > width:
         shared = _parity_columns(n, int(truth_table[0]), mask=mask)
     if len(shared) > len(legacy):
         return legacy
-    return min(
-        legacy,
-        shared,
-        key=lambda program: (
-            max(0, max(map(len, program.splitlines())) - width),
-            len(program),
-        ),
-    )
+    return min(legacy, shared, key=partial(_balance_score, width=width))
+
+
+def _race_states(truth_table: str, n: int, legacy: str, width: int | None) -> str:
+    """Pick the best of the positional layout and the byte-state forms."""
+    others = [
+        candidate
+        for candidate in (two_state(truth_table), stored(truth_table, len(legacy)))
+        if candidate is not None
+    ]
+    if width is None or width <= 0:
+        return min([legacy, *others], key=len)
+    candidates = [legacy] + [
+        wrapped
+        for candidate in others
+        if len(wrapped := _wrap_template(candidate, n, width)) <= len(legacy)
+    ]
+    return min(candidates, key=partial(_balance_score, width=width))
 
 
 @cache
@@ -228,20 +246,13 @@ def _lookup_layout(table: str, n: int, natural: str, width: int | None) -> str:
     if width is None or width <= 0:
         return natural
     wrapped = _wrap_template(natural, n, width)
-    if max(map(len, wrapped.splitlines())) <= width:
+    if grid_width(wrapped) <= width:
         return wrapped
-    if width < 4 and all(
-        int(bit) == ((row.bit_count() ^ int(table[0])) & 1)
-        for row, bit in enumerate(table)
-    ):
+    if width < 4 and _parity_bias(table) is not None:
         return _parity_columns(n, int(table[0]))
     narrow = _narrow(table, n)
     narrow = _wrap_template(narrow, n, width)
-    return (
-        narrow
-        if max(map(len, narrow.splitlines())) < max(map(len, wrapped.splitlines()))
-        else wrapped
-    )
+    return narrow if grid_width(narrow) < grid_width(wrapped) else wrapped
 
 
 def _paired(truth_table: str, n: int, gaps: tuple[int, ...] = ()) -> str:
@@ -258,31 +269,47 @@ def _paired(truth_table: str, n: int, gaps: tuple[int, ...] = ()) -> str:
 def _narrow(truth_table: str, n: int) -> str:
     """Return the paired lookup, dropping ignored inputs as :func:`_solve` does."""
     reduced = _reduce(truth_table, n)
-    if reduced is None or not reduced[2]:
+    if reduced is None or not reduced.kept:
         return _paired(truth_table, n)
     first, inner_table, kept, gaps, after = reduced
     inner = _paired(inner_table, len(kept), gaps)
     return _INERT * first + inner + _MINIFUCK_INPUT * after
 
 
+class _ParityEmitter:
+    """Emit parity-column commands while tracking the tape model.
+
+    ``[`` walks right and flips the landing cell (flipping the next cell
+    too, and skipping an instruction, when it lands on zero); ``<`` walks
+    left, staying at cell 0.  ``bits`` mirrors the cells and ``pointer``
+    the head, so the caller can read each cell's parity back after the
+    setters; ``parts`` collects the emitted program text.
+    """
+
+    def __init__(self, *, paired: bool) -> None:
+        self.bits = [0] * 10
+        self.pointer = 0
+        self.parts = [] if paired else ["q"]
+
+    def emit(self, command: str) -> None:
+        self.parts.append(command)
+        if command == "<":
+            self.pointer = max(0, self.pointer - 1)
+        else:
+            self.pointer += 1
+            self.bits[self.pointer] ^= 1
+            if not self.bits[self.pointer]:
+                self.bits[self.pointer + 1] ^= 1
+
+
 def _parity_columns(
     n: int, complement: int, *, mask: int | None = None, paired: bool = False
 ) -> str:
     """Accumulate XOR in bit 7; unselected setters write cell 9 instead."""
-    bits = [0] * 10
-    pointer = 0
-    parts = [] if paired else ["q"]
-
-    def emit(command: str) -> None:
-        nonlocal pointer
-        parts.append(command)
-        if command == "<":
-            pointer = max(0, pointer - 1)
-        else:
-            pointer += 1
-            bits[pointer] ^= 1
-            if not bits[pointer]:
-                bits[pointer + 1] ^= 1
+    emitter = _ParityEmitter(paired=paired)
+    emit = emitter.emit
+    bits = emitter.bits
+    parts = emitter.parts
 
     for i in range(n):
         stop = 6 if mask is None or mask & (1 << (n - 1 - i)) else 8
@@ -313,21 +340,20 @@ def minifuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 
 def _wrap_template(template: str, n: int, width: int) -> str:
     """Wrap a template with each two-character input run kept atomic."""
-    from esolangs.generation.wrap import wrap_program
-
     marked = mark_runs(template, TEMPLATE_CHAR, (PAIR,) * n)
     return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
+
+
+def _tokens(program: str, n: int) -> list[str]:
+    """Split a program into commands, each two-character input run one token."""
+    marked = mark_runs(program.replace("\n", ""), TEMPLATE_CHAR, (PAIR,) * n)
+    return re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
 
 
 def _lookup_balance(table: str, default: str) -> str:
     """Balance ordinary and paired skip tokens, including the parity column."""
     n = _validate_truth_table(table)
-
-    def tokens(program: str) -> list[str]:
-        marked = mark_runs(program.replace("\n", ""), TEMPLATE_CHAR, (PAIR,) * n)
-        return re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
-
-    normal = tokens(default)
+    normal = _tokens(default, n)
     floor = max(map(len, normal))
     width = balanced_token_width(normal, minimum=floor)
     candidates = [
@@ -335,16 +361,13 @@ def _lookup_balance(table: str, default: str) -> str:
         _lookup_layout(table, n, default, width),
         _lookup_layout(table, n, default, 1),
     ]
-    parity = all(
-        int(bit) == ((row.bit_count() ^ int(table[0])) & 1)
-        for row, bit in enumerate(table)
-    )
+    parity = _parity_bias(table) is not None
     lower = 4 if parity else 1
     if lower < floor:
         # Below the ordinary token floor, paired tokens win throughout the
         # regime exactly when their own floor is smaller; otherwise the
         # generator retains the ordinary tokens throughout it.
-        narrow = tokens(_lookup_layout(table, n, default, lower))
+        narrow = _tokens(_lookup_layout(table, n, default, lower), n)
         width = balanced_token_width(narrow, minimum=lower, maximum=floor - 1)
         candidates.append(_lookup_layout(table, n, default, width))
     best = min(candidates, key=balance_score)
@@ -370,28 +393,21 @@ def _square_tail(program: str) -> str:
 
 def _balance(table: str, default: str) -> str:
     """Compare byte accumulators with the positional balance floor."""
+    n = len(table).bit_length() - 1
     legacy = _lookup_balance(table, _solve(table))
     mask = _affine_mask(table)
     if mask is None:
         forms = [(two_state(table), False), (stored(table, len(legacy)), True)]
     else:
-        forms = [
-            (
-                _parity_columns(
-                    len(table).bit_length() - 1, int(table[0]), mask=mask, paired=True
-                ),
-                False,
-            )
-        ]
-    n = len(table).bit_length() - 1
+        parity = _parity_columns(n, int(table[0]), mask=mask, paired=True)
+        forms = [(parity, False)]
     candidates = [legacy]
     if len(default) <= len(legacy):
         candidates.append(default)
     for shared, tape in forms:
         if shared is None:
             continue
-        marked = mark_runs(shared, TEMPLATE_CHAR, (PAIR,) * n)
-        tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
+        tokens = _tokens(shared, n)
         # A unary tape walk can contain O(T) tokens. A square-root wrap and
         # inert tail give a square without enumerating token-fit widths.
         width = (

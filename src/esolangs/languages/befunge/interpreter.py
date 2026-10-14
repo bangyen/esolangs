@@ -5,8 +5,7 @@ stack and a heading, wraps at the edges, and ``p`` edits the grid in place.
 ``,`` and ``.`` print, ``~`` and ``&`` read, and string mode pushes cells as
 bytes. Values must fit the platform C signed long; overflow raises HaltError.
 Source cells are bytes; storage and output use unsigned bytes.
-Unknown bytes are no-ops. EOF propagates. The playfield is the 80x25 torus;
-division
+Unknown bytes are no-ops. EOF propagates. The playfield is the 80x25 torus; division
 truncates toward zero, and a zero divisor reads the result from the user.
 (The wiki says "rounded down", but the C reference interpreter truncates, so
 -7 / 2 is -3.)  A pop off the empty stack yields 0, ``g`` outside the grid
@@ -20,17 +19,21 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from ctypes import c_long, sizeof
+from operator import add, mul, sub
 from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import trunc_div, trunc_mod
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
 
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
+_HEADINGS = dict(zip(">v<^", _DIRECTIONS, strict=True))
+_ARITHMETIC = {"+": add, "-": sub, "*": mul}
 _WIDTH = 80
 _HEIGHT = 25
 _LONG_BITS = sizeof(c_long) * 8
@@ -58,6 +61,22 @@ def _push(stack: _Stack, *values: int) -> _Stack:
     return stack
 
 
+def _divide(a: int, b: int, command: str, number_input: int | None) -> int:
+    """Return ``b / a`` or ``b % a``, with the quotient truncated toward zero.
+
+    On a zero divisor the result is read from the user instead; with no
+    input left that raises :class:`HaltError`.
+    """
+    if not a:
+        if number_input is None:
+            raise HaltError(
+                f"'{command}' divides by zero and needs a result",
+                hint="ensure the divisor is nonzero before dividing",
+            )
+        return number_input
+    return trunc_div(b, a) if command == "/" else trunc_mod(b, a)
+
+
 def _values(stack: _Stack) -> tuple[int, ...]:
     """Return the stack in bottom-to-top order without recursive traversal."""
     values = []
@@ -67,7 +86,7 @@ def _values(stack: _Stack) -> tuple[int, ...]:
     return tuple(reversed(values))
 
 
-def _advance(
+def _advance(  # noqa: C901
     state: _State,
     char_input: int | None = None,
     number_input: int | None = None,
@@ -97,36 +116,9 @@ def _advance(
     elif command in "+-*/%":
         a, stack = _pop(stack)
         b, stack = _pop(stack)
-        if command == "+":
-            stack = _push(stack, b + a)
-        elif command == "-":
-            stack = _push(stack, b - a)
-        elif command == "*":
-            stack = _push(stack, b * a)
-        elif command == "/":
-            if not a:
-                if number_input is None:
-                    raise HaltError(
-                        "'/' divides by zero and needs a result",
-                        hint="ensure the divisor is nonzero before dividing",
-                    )
-                stack = _push(stack, number_input)
-            else:
-                quotient = abs(b) // abs(a)
-                stack = _push(stack, -quotient if (a < 0) != (b < 0) else quotient)
-        else:
-            if not a:
-                if number_input is None:
-                    raise HaltError(
-                        "'%' divides by zero and needs a result",
-                        hint="ensure the divisor is nonzero before dividing",
-                    )
-                stack = _push(stack, number_input)
-            else:
-                quotient = abs(b) // abs(a)
-                if (a < 0) != (b < 0):
-                    quotient = -quotient
-                stack = _push(stack, b - quotient * a)
+        operation = _ARITHMETIC.get(command)
+        value = operation(b, a) if operation else _divide(a, b, command, number_input)
+        stack = _push(stack, value)
     elif command == "!":
         a, stack = _pop(stack)
         stack = _push(stack, 0 if a else 1)
@@ -134,14 +126,8 @@ def _advance(
         a, stack = _pop(stack)
         b, stack = _pop(stack)
         stack = _push(stack, 1 if b > a else 0)
-    elif command == ">":
-        dx, dy = 1, 0
-    elif command == "<":
-        dx, dy = -1, 0
-    elif command == "^":
-        dx, dy = 0, -1
-    elif command == "v":
-        dx, dy = 0, 1
+    elif command in _HEADINGS:
+        dx, dy = _HEADINGS[command]
     elif command == "?":
         if random_dir is None:
             raise HaltError(
@@ -234,7 +220,7 @@ class _Machine:
         rows = [row.ljust(_WIDTH) for row in code]
         rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
         self.grid = tuple(tuple(row) for row in rows)
-        self.code, self.io, self._rng = code, io, rng
+        self.io, self._rng = io, rng
         self.state: _State = ((0, 0, 1, 0), self.grid, None, False, False)
 
     @property
@@ -293,16 +279,15 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        (col, row, _dx, _dy), grid, _stack, _string, _done = self.state
+        (col, row, _, _), grid, stack, string, _ = self.state
         command = grid[row][col]
-        interpreting = not _string
+        interpreting = not string
         char_input = self.io.input_char() if interpreting and command == "~" else None
         # An empty stack pops as 0, so it is a zero divisor like any other and
         # must read a result too.  Guarding on a non-empty stack instead made
         # `0/` read while `/` halted, on the same divisor.
         needs_number = interpreting and (
-            command == "&"
-            or (command in "/%" and (not self.state[2] or self.state[2][0] == 0))
+            command == "&" or (command in "/%" and (not stack or stack[0] == 0))
         )
         number_input = None
         if needs_number:

@@ -21,6 +21,7 @@ from esolangs.languages.qoibl.interpreter import (
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import EmptyProgramContract, SnapshotContract
 from tests.interpreters.runner import run_printing
+from tests.support.event_io import EventIO
 
 _SET1_3 = "we y we yy we"  # var[1] = 3
 _SET1_7 = "we y we yyy we"  # var[1] = 7
@@ -432,28 +433,12 @@ class TestPureTransition:
         assert out == (chr(1),)
 
 
-class _EventIO(ScriptedIO):
-    """A ``ScriptedIO`` that records each read and write in order."""
-
-    def __init__(self, stdin: str = "") -> None:
-        super().__init__(stdin)
-        self.events: list[tuple[str, str]] = []
-
-    def print_char(self, char: str) -> None:
-        self.events.append(("out", char))
-        super().print_char(char)
-
-    def input_char(self, prompt: str = "Input: ") -> int:
-        self.events.append(("in", ""))
-        return super().input_char(prompt)
-
-
 class TestOutputOrdering:
     """Output computed before a later read or fault is still written."""
 
     def test_output_before_eof_is_written_and_ordered(self) -> None:
         """``we tt y tt we et we`` prints chr(1), then reads and hits EOF."""
-        io = _EventIO("")
+        io = EventIO("")
         with pytest.raises(EOFError):
             run(["we tt y tt we et we"], io)
         assert io.events == [("out", chr(1)), ("in", "")]
@@ -462,7 +447,7 @@ class TestOutputOrdering:
         """The same target prints before the value's division by zero halts."""
         from esolangs.exceptions import HaltError
 
-        io = _EventIO("")
+        io = EventIO("")
         with pytest.raises(HaltError, match="division by zero"):
             run(["we tt y tt we e ry yy ry qe e qe we"], io)
         assert io.events == [("out", chr(1))]
@@ -471,7 +456,7 @@ class TestOutputOrdering:
         """Two statements: the first prints, the second prints then faults."""
         from esolangs.exceptions import HaltError
 
-        io = _EventIO("")
+        io = EventIO("")
         with pytest.raises(HaltError, match="division by zero"):
             run(
                 [

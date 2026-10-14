@@ -33,6 +33,8 @@ from collections.abc import Mapping
 from typing import cast
 
 from esolangs.languages.fractran.interpreter.index import (
+    _POWER,
+    TOKEN,
     Cursor,
     Factors,
     FactorWrites,
@@ -53,7 +55,9 @@ type _Fraction = tuple[int, int]
 #: they are not part of the state.
 type _State = tuple[int, bool]
 
-_POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
+#: Cursor only when rules <= this many per prime of the start: beyond it the
+#: n=10 shipped control paid 296 secondary updates vs 14 scan probes.
+_RULES_PER_PRIME = 16
 
 
 def _product(text: str) -> int:
@@ -73,7 +77,7 @@ def _product(text: str) -> int:
 
 def _parse(code: str) -> tuple[int, tuple[_Fraction, ...], tuple[int, ...]]:
     """Return the starting value, the fractions, and each token's offset."""
-    tokens = [(found.start(), found.group()) for found in re.finditer(r"[^\s,]+", code)]
+    tokens = [(found.start(), found.group()) for found in TOKEN.finditer(code)]
     if not tokens:
         raise syntax_error(
             "a FRACTRAN program needs a starting value",
@@ -155,12 +159,12 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self._index = compile_index(code)
-        # The n=10 shipped control needed 296 secondary updates vs 14 scan probes.
-        # Keep sparse rule/state ratios on scans; dense bases avoid tuple copying.
+        # Sparse rule/state ratios stay on scans; dense bases avoid tuple copying.
         self._cursor = (
             Cursor(self._index)
             if self._index is not None
-            and len(self._index.rules) <= 16 * max(1, len(self._index.initial))
+            and len(self._index.rules)
+            <= _RULES_PER_PRIME * max(1, len(self._index.initial))
             else None
         )
         self._scan_factors = () if self._index is None else self._index.initial

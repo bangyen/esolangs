@@ -138,7 +138,7 @@ def _expected_stream_size(
     return total
 
 
-def _validate_png(
+def _validate_png(  # noqa: C901
     data: bytes,
 ) -> tuple[int, int, int, bytes]:
     """Validate the container and stream before Pillow allocates pixels."""
@@ -234,7 +234,7 @@ def _validate_png(
         )
     offset = 0
     passes = (
-        [_pass_size(width, height, i) for i in range(7)]
+        [_pass_size(width, height, i) for i in range(len(_ADAM7))]
         if interlace
         else [(width, height)]
     )

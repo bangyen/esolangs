@@ -336,12 +336,3 @@ options:
 
 """,
 }
-
-HELP["run"] = HELP["run"].replace(
-    "{termination_languages}",
-    ", ".join(
-        lang.name
-        for lang in LANGUAGES.values()
-        if lang.contract.answer_mode == "termination"
-    ),
-)

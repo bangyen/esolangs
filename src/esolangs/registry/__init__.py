@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
-from esolangs.generation.helpers import MOST_INPUTS, Setters
+from esolangs.generation.helpers import MOST_INPUTS, Setters, mark_runs, runs, unmark
+from esolangs.generation.wrap import wrap_program
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
 
@@ -84,19 +85,25 @@ def example_stems() -> dict[str, str]:
     from esolangs.generation import examples as _examples
 
     return {
-        canonical_id(stem.replace("-", " ")): stem
-        for stem in _examples.BOOLEAN_EXAMPLES
+        example.language: stem for stem, example in _examples.BOOLEAN_EXAMPLES.items()
     }
 
 
+@cache
 def _examples_by_id() -> dict[str, BooleanExample]:
+    """Return canonical id -> example, for the templates only."""
     from esolangs.generation import examples as _examples
 
     return {
-        canonical_id(stem.replace("-", " ")): example
-        for stem, example in _examples.BOOLEAN_EXAMPLES.items()
+        example.language: example
+        for example in _examples.BOOLEAN_EXAMPLES.values()
         if example.setters is not None
     }
+
+
+def _reads_inputs(language_id: str) -> TemplateError:
+    """Refuse a template operation on a language that reads its inputs."""
+    return TemplateError(f"{language_id} reads its inputs rather than embedding them")
 
 
 def template_char(language_id: str) -> str | None:
@@ -105,15 +112,20 @@ def template_char(language_id: str) -> str | None:
     return None if example is None else example.char
 
 
+def _example(language_id: str) -> BooleanExample:
+    """Return the template example of ``language_id``, or refuse."""
+    example = _examples_by_id().get(language_id)
+    if example is None:
+        raise TemplateError(f"unknown language: {language_id}")
+    return example
+
+
 def template_body(language_id: str, text: str) -> str:
     """Return ``text`` without the header a template carries for its setters.
 
     A template is all program; no remaining language carries a header.
     """
-    example = _examples_by_id().get(language_id)
-    if example is None:
-        raise TemplateError(f"unknown language: {language_id}")
-    body = example.body
+    body = _example(language_id).body
     return text if body is None else body(text)
 
 
@@ -124,14 +136,9 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
     or the rendered run form -- the setters read what they need from it,
     which for the two-route generators is the route's prefix.
     """
-    example = _examples_by_id().get(language_id)
-    if example is None:
-        raise TemplateError(f"unknown language: {language_id}")
-    setters = example.setters
+    setters = _example(language_id).setters
     if setters is None:
-        raise TemplateError(
-            f"{language_id} reads its inputs rather than embedding them"
-        )
+        raise _reads_inputs(language_id)
     return setters(template, n)
 
 
@@ -148,24 +155,14 @@ def render_template(
     wrapper breaks every run of the same length the same way, so the wrapped
     template is the wrapped form of every program it fills to.
     """
-    from esolangs.generation.helpers import mark_runs, unmark
-    from esolangs.generation.wrap import wrap_program
-
     char = template_char(language_id)
     if char is None:
-        raise TemplateError(
-            f"{language_id} reads its inputs rather than embedding them"
-        )
+        raise _reads_inputs(language_id)
     setters = template_setters(language_id, slots, n)
     if width is None:
         return slots, char, setters
     wrapped = wrap_program(mark_runs(slots, char, setters), language_id, width)
     return unmark(wrapped, char, n), char, setters
-
-
-#: The most inputs :func:`recover_setters` searches for; past this every
-#: generator is capped by its own table size.
-_MOST_INPUTS = MOST_INPUTS
 
 
 def recover_setters(language_id: str, template: str) -> Setters:
@@ -178,15 +175,12 @@ def recover_setters(language_id: str, template: str) -> Setters:
     is the one value at which the widths sum to what the text holds.  The
     runs are then checked against it like any other template.
     """
-    from esolangs.generation.helpers import runs
-
     char = template_char(language_id)
     if char is None:
-        raise TemplateError(
-            f"{language_id} reads its inputs rather than embedding them"
-        )
+        raise _reads_inputs(language_id)
     total = template.count(char)
-    for n in range(1, _MOST_INPUTS + 1):
+    # Past MOST_INPUTS every generator is capped by its own table size.
+    for n in range(1, MOST_INPUTS + 1):
         setters = template_setters(language_id, template, n)
         if sum(len(zero) for zero, _one in setters) != total:
             continue

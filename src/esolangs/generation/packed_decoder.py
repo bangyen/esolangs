@@ -1,5 +1,7 @@
 """Shared packed subtract-and-branch decoder with constant and payload folding."""
 
+from typing import NamedTuple
+
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -31,6 +33,53 @@ def packed_decoder(
     return min(literal, banked, key=len)
 
 
+class _Loads(NamedTuple):
+    """Instruction indices whose operands are patched once addresses are known."""
+
+    increment: int
+    clear: int
+    reference: int
+    chunk: int
+
+
+class _Assembler:
+    """Subtract-and-branch instructions over named cells, with labels."""
+
+    def __init__(self) -> None:
+        self.instructions: list[tuple[int | str, int | str, str]] = []
+        self.labels: dict[str, int] = {}
+
+    def mark(self, name: str) -> None:
+        self.labels[name] = len(self.instructions)
+
+    def emit(self, a: int | str, b: int | str, target: str = "next") -> int:
+        self.instructions.append((a, b, target))
+        return len(self.instructions) - 1
+
+    def jump(self, target: str) -> None:
+        self.emit("ZERO", "ZERO", target)
+
+    def clear(self, dst: str) -> None:
+        self.emit(dst, dst)
+
+    def increment(self, dst: int | str) -> None:
+        self.emit(dst, "NEGONE")
+
+    def add(self, dst: str, src: str) -> None:
+        self.clear("NEG")
+        self.emit("NEG", src)
+        self.emit(dst, "NEG")
+
+    def copy(self, dst: str, src: str) -> None:
+        self.clear(dst)
+        self.add(dst, src)
+
+    def branch_positive(self, cell: str, positive: str, zero: str) -> None:
+        # A positive result falls through; zero branches through c.
+        self.emit(cell, "ZERO", zero)
+        self.jump(positive)
+
+
 def _packed_build(
     truth_table: str,
     *,
@@ -58,8 +107,11 @@ def _packed_build(
         -int(truth_table[start : start + n][::-1], 2)
         for start in range(0, len(truth_table), n)
     ]
+    asm = _Assembler()
+    _emit_reads(asm, weights, direct=direct)
+    loads = _emit_decode(asm, direct=direct, share_chunks=share_chunks)
+    values = _cell_values(n, direct=direct)
     unique = list(dict.fromkeys(chunks))
-    slot_of = {value: i for i, value in enumerate(unique)}
     data_names = (
         [
             *(f"REF{i}" for i in range(len(chunks))),
@@ -68,8 +120,25 @@ def _packed_build(
         if share_chunks
         else [f"CHUNK{i}" for i in range(len(chunks))]
     )
-    instructions: list[tuple[int | str, int | str, str]] = []
-    labels: dict[str, int] = {}
+    layout = _direct_layout if direct else _indirect_layout
+    memory, address = layout(asm, [*values], data_names)
+    for name, value in values.items():
+        memory[address[name]] = value
+    if share_chunks:
+        slot_of = {value: i for i, value in enumerate(unique)}
+        for i, value in enumerate(unique):
+            memory[address[f"BANK{i}"]] = value
+        for i, value in enumerate(chunks):
+            memory[address[f"REF{i}"]] = -address[f"BANK{slot_of[value]}"]
+    else:
+        for i, value in enumerate(chunks):
+            memory[address[f"CHUNK{i}"]] = value
+    _patch_loads(memory, loads, direct=direct, share_chunks=share_chunks)
+    return " ".join(map(str, memory))
+
+
+def _cell_values(n: int, *, direct: bool) -> dict[str, int]:
+    """Return the decoder's named cells and their initial values, in layout order."""
     values: dict[str, int] = {
         "ZERO": 0,
         "ONE": 1,
@@ -90,180 +159,153 @@ def _packed_build(
         "OUT": _ASCII_ZERO,
         "HALT": -1,
     }
-
     if not direct:
         del values["POS48"]
+    return values
 
-    def mark(name: str) -> None:
-        labels[name] = len(instructions)
 
-    def emit(a: int | str, b: int | str, target: str = "next") -> int:
-        instructions.append((a, b, target))
-        return len(instructions) - 1
-
-    def jump(target: str) -> None:
-        emit("ZERO", "ZERO", target)
-
-    def clear(dst: str) -> None:
-        emit(dst, dst)
-
-    def increment(dst: int | str) -> None:
-        emit(dst, "NEGONE")
-
-    def add(dst: str, src: str) -> None:
-        clear("NEG")
-        emit("NEG", src)
-        emit(dst, "NEG")
-
-    def copy(dst: str, src: str) -> None:
-        clear(dst)
-        add(dst, src)
-
-    def branch_positive(cell: str, positive: str, zero: str) -> None:
-        # A positive result falls through; zero branches through c.
-        emit(cell, "ZERO", zero)
-        jump(positive)
-
+def _emit_reads(asm: _Assembler, weights: list[int], *, direct: bool) -> None:
+    """Read every input, folding the essential ones into the binary row ``INDEX``."""
     if direct:
         for weight in weights:
-            emit("TMP", "INPUT")
+            asm.emit("TMP", "INPUT")
             if not weight:
                 continue
-            emit("TMP", "POS48")
-            add("INDEX", "INDEX")
-            add("INDEX", "TMP")
-    else:
-        # Read ASCII bits once and form their binary row index.
-        for weight in weights:
-            clear("TMP")
-            emit("TMP", -2)
-            if not weight:
-                continue
-            emit("TMP", "NEG48")
-            clear("BIT")
-            emit("BIT", "TMP")
-            add("INDEX", "INDEX")
-            add("INDEX", "BIT")
+            asm.emit("TMP", "POS48")
+            asm.add("INDEX", "INDEX")
+            asm.add("INDEX", "TMP")
+        return
+    # Read ASCII bits once and form their binary row index.
+    for weight in weights:
+        asm.clear("TMP")
+        asm.emit("TMP", -2)
+        if not weight:
+            continue
+        asm.emit("TMP", "NEG48")
+        asm.clear("BIT")
+        asm.emit("BIT", "TMP")
+        asm.add("INDEX", "INDEX")
+        asm.add("INDEX", "BIT")
 
-    mark("select_test")
-    branch_positive("INDEX", "select_step", "selected")
-    mark("select_step")
-    emit("INDEX", "ONE")
-    emit("COUNT", "ONE")
-    increment("OFFSET")
-    branch_positive("COUNT", "select_test", "advance_chunk")
-    mark("advance_chunk")
-    load_operand_increment = emit(0, "NEGONE")
-    add("COUNT", "N")
-    clear("OFFSET")
-    jump("select_test")
 
-    mark("selected")
-    clear("TABLE")
-    patch_clear = load_reference = -1
+def _emit_decode(asm: _Assembler, *, direct: bool, share_chunks: bool) -> _Loads:
+    """Select ``INDEX``'s chunk, shift out its bit, print it; return the patch sites."""
+    asm.mark("select_test")
+    asm.branch_positive("INDEX", "select_step", "selected")
+    asm.mark("select_step")
+    asm.emit("INDEX", "ONE")
+    asm.emit("COUNT", "ONE")
+    asm.increment("OFFSET")
+    asm.branch_positive("COUNT", "select_test", "advance_chunk")
+    asm.mark("advance_chunk")
+    increment = asm.emit(0, "NEGONE")
+    asm.add("COUNT", "N")
+    asm.clear("OFFSET")
+    asm.jump("select_test")
+
+    asm.mark("selected")
+    asm.clear("TABLE")
+    clear = reference = -1
     if share_chunks:
         # Clear the upcoming load's source operand, then load a bank address
         # by subtracting its negative reference. Only this operand is patched.
-        patch_clear = emit(0, 0)
-        load_reference = emit(0, "REF0")
-    load_chunk = emit("TABLE", 0 if share_chunks else "CHUNK0")
-    copy("SHIFT", "OFFSET")
-    increment("SHIFT")
+        clear = asm.emit(0, 0)
+        reference = asm.emit(0, "REF0")
+    chunk = asm.emit("TABLE", 0 if share_chunks else "CHUNK0")
+    asm.copy("SHIFT", "OFFSET")
+    asm.increment("SHIFT")
 
     # Divide by two OFFSET+1 times; the last remainder is the selected bit.
-    mark("div_init")
-    clear("Q")
-    clear("R")
-    mark("div_test")
-    branch_positive("TABLE", "div_first", "division_complete")
-    mark("div_first")
-    emit("TABLE", "ONE")
-    branch_positive("TABLE", "div_pair", "div_odd")
-    mark("div_pair")
-    emit("TABLE", "ONE")
-    increment("Q")
-    jump("div_test")
-    mark("div_odd")
-    increment("R")
-    jump("division_complete")
+    asm.mark("div_init")
+    asm.clear("Q")
+    asm.clear("R")
+    asm.mark("div_test")
+    asm.branch_positive("TABLE", "div_first", "division_complete")
+    asm.mark("div_first")
+    asm.emit("TABLE", "ONE")
+    asm.branch_positive("TABLE", "div_pair", "div_odd")
+    asm.mark("div_pair")
+    asm.emit("TABLE", "ONE")
+    asm.increment("Q")
+    asm.jump("div_test")
+    asm.mark("div_odd")
+    asm.increment("R")
+    asm.jump("division_complete")
 
-    mark("division_complete")
-    emit("SHIFT", "ONE")
-    branch_positive("SHIFT", "divide_again", "output")
-    mark("divide_again")
-    copy("TABLE", "Q")
-    jump("div_init")
-    mark("output")
-    add("OUT", "R")
-    emit("OUTPUT" if direct else -3, "OUT")
-    jump("halt" if direct else "@HALT")
+    asm.mark("division_complete")
+    asm.emit("SHIFT", "ONE")
+    asm.branch_positive("SHIFT", "divide_again", "output")
+    asm.mark("divide_again")
+    asm.copy("TABLE", "Q")
+    asm.jump("div_init")
+    asm.mark("output")
+    asm.add("OUT", "R")
+    asm.emit("OUTPUT" if direct else -3, "OUT")
+    asm.jump("halt" if direct else "@HALT")
+    return _Loads(increment, clear, reference, chunk)
 
-    def write_data(memory: list[int], address: dict[str, int]) -> None:
-        for name, value in values.items():
-            memory[address[name]] = value
-        if share_chunks:
-            for i, value in enumerate(unique):
-                memory[address[f"BANK{i}"]] = value
-            for i, value in enumerate(chunks):
-                memory[address[f"REF{i}"]] = -address[f"BANK{slot_of[value]}"]
+
+def _direct_layout(
+    asm: _Assembler, cells: list[str], data: list[str]
+) -> tuple[list[int], dict[str, int]]:
+    """Lay out the direct variant: literal branch targets, cells after the code."""
+    names = [*cells, *data]
+    base = 3 * len(asm.instructions)
+    address = {name: base + i for i, name in enumerate(names)}
+    memory = [0] * (base + len(names))
+
+    def operand(value: int | str) -> int:
+        return address[value] if isinstance(value, str) else value
+
+    for i, (a, b, target) in enumerate(asm.instructions):
+        c = (
+            3 * (i + 1)
+            if target == "next"
+            else (-1 if target == "halt" else 3 * asm.labels[target])
+        )
+        if b == "INPUT":
+            triple = [-1, operand(a), c]
+        elif a == "OUTPUT":
+            triple = [operand(b), -1, c]
         else:
-            for i, value in enumerate(chunks):
-                memory[address[f"CHUNK{i}"]] = value
+            triple = [operand(b), operand(a), c]
+        memory[3 * i : 3 * i + 3] = triple
+    return memory, address
 
-    def patch_loads(memory: list[int]) -> None:
-        source = 0 if direct else 1
-        destination = 1 - source
-        load = load_reference if share_chunks else load_chunk
-        memory[3 * load_operand_increment + destination] = 3 * load + source
-        if share_chunks:
-            field = 3 * load_chunk + source
-            memory[3 * patch_clear] = field
-            memory[3 * patch_clear + 1] = field
-            memory[3 * load_reference + destination] = field
 
-    if direct:
-        names = [*values, *data_names]
-        base = 3 * len(instructions)
-        address = {name: base + i for i, name in enumerate(names)}
-        memory = [0] * (base + len(names))
-
-        def direct_operand(value: int | str) -> int:
-            return address[value] if isinstance(value, str) else value
-
-        for i, (a, b, target) in enumerate(instructions):
-            c = (
-                3 * (i + 1)
-                if target == "next"
-                else (-1 if target == "halt" else 3 * labels[target])
-            )
-            if b == "INPUT":
-                triple = [-1, direct_operand(a), c]
-            elif a == "OUTPUT":
-                triple = [direct_operand(b), -1, c]
-            else:
-                triple = [direct_operand(b), direct_operand(a), c]
-            memory[3 * i : 3 * i + 3] = triple
-        write_data(memory, address)
-        patch_loads(memory)
-        return " ".join(map(str, memory))
-
-    target_names = [f"TARGET{i}" for i in range(len(instructions))]
-    names = [*values, *target_names, *data_names]
-    base = 3 * len(instructions)
+def _indirect_layout(
+    asm: _Assembler, cells: list[str], data: list[str]
+) -> tuple[list[int], dict[str, int]]:
+    """Lay out the indirect variant: each branch goes through a target cell."""
+    target_names = [f"TARGET{i}" for i in range(len(asm.instructions))]
+    names = [*cells, *target_names, *data]
+    base = 3 * len(asm.instructions)
     address = {name: base + i for i, name in enumerate(names)}
     memory = [0] * (base + len(names))
 
     def operand(value: int | str) -> int:
         return address[value] if isinstance(value, str) else int(value)
 
-    for i, (a, b, target) in enumerate(instructions):
+    for i, (a, b, target) in enumerate(asm.instructions):
         if target.startswith("@"):
             c = address[target[1:]]
         else:
             c = address[target_names[i]]
-            memory[c] = 3 * (i + 1) if target == "next" else 3 * labels[target]
+            memory[c] = 3 * (i + 1) if target == "next" else 3 * asm.labels[target]
         memory[3 * i : 3 * i + 3] = [operand(a), operand(b), c]
+    return memory, address
 
-    write_data(memory, address)
-    patch_loads(memory)
-    return " ".join(map(str, memory))
+
+def _patch_loads(
+    memory: list[int], loads: _Loads, *, direct: bool, share_chunks: bool
+) -> None:
+    """Point the self-modifying load at the first chunk, or its bank reference."""
+    source = 0 if direct else 1
+    destination = 1 - source
+    load = loads.reference if share_chunks else loads.chunk
+    memory[3 * loads.increment + destination] = 3 * load + source
+    if share_chunks:
+        field = 3 * loads.chunk + source
+        memory[3 * loads.clear] = field
+        memory[3 * loads.clear + 1] = field
+        memory[3 * loads.reference + destination] = field

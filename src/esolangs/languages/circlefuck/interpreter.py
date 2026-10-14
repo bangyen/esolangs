@@ -250,7 +250,7 @@ class _Machine:
 
     @property
     def state(self) -> _State:
-        """The machine's fields as the value the old transition took."""
+        """The machine's fields as an immutable state value."""
         return (self._ind, self._ptr, tuple(self._cells), self._done)
 
     @property

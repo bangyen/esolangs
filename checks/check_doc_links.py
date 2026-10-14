@@ -27,47 +27,20 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from docs.anchors import FENCE, anchors
+
 ROOT = Path(__file__).resolve().parents[1]
 
-_FENCE = re.compile(r"```.*?```", re.DOTALL)
 _INLINE_CODE = re.compile(r"`[^`\n]*`")
 _LINK = re.compile(r"\]\(\s*([^)\s]+)")
-_HEADING = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$", re.MULTILINE)
-_EXPLICIT_ANCHOR = re.compile(r"<a\s+(?:id|name)=\"([^\"]+)\"")
 _EXTERNAL = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//|/)", re.IGNORECASE)
-
-
-def slug(heading: str) -> str:
-    """Return GitHub's anchor slug for a heading.
-
-    Lowercase; drop everything but letters, digits, underscores, hyphens and
-    spaces; turn spaces into hyphens.  ``&`` and the like vanish rather than
-    becoming ``amp``, which is what ``github-slugger`` does.
-    """
-    text = heading.strip().lower()
-    text = re.sub(r"[^\w\- ]", "", text, flags=re.UNICODE)
-    return text.replace(" ", "-")
-
-
-def anchors(text: str) -> set[str]:
-    """Return every heading and explicit anchor a reader can link to in ``text``."""
-    found = {slug(m.group(1)) for m in _HEADING.finditer(_FENCE.sub("", text))}
-    found |= {m.group(1) for m in _EXPLICIT_ANCHOR.finditer(text)}
-    # GitHub disambiguates a repeated heading, but a repeated anchor is a
-    # document bug rather than a link target, so only headings get suffixes.
-    seen: dict[str, int] = {}
-    for match in _HEADING.finditer(_FENCE.sub("", text)):
-        base = slug(match.group(1))
-        count = seen.get(base, 0)
-        seen[base] = count + 1
-        if count:
-            found.add(f"{base}-{count}")
-    return found
 
 
 def _targets(text: str) -> list[str]:
     """Return the link targets in ``text``, code spans removed."""
-    stripped = _INLINE_CODE.sub("", _FENCE.sub("", text))
+    stripped = _INLINE_CODE.sub("", FENCE.sub("", text))
     return [m.group(1) for m in _LINK.finditer(stripped)]
 
 

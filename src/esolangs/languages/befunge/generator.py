@@ -47,6 +47,16 @@ def _check_cap(n: int) -> None:
         )
 
 
+def _min_columns(count: int, bound: int) -> int:
+    """Return the fewest columns that keep ``count`` and ``bound`` under 25 rows."""
+    return (count + bound + 22) // 23 + 2
+
+
+def _header_rows(bound: int, columns: int) -> int:
+    """Return the rows a header of ``bound`` cells folds into at ``columns``."""
+    return (bound + columns - 3) // (columns - 2)
+
+
 def _header(reads: str, width: str, offset: str) -> str:
     """Return the lookup header: fold ``reads`` into an index, print ``g`` at it."""
     return (
@@ -108,11 +118,11 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     # n=6, widths 4-8; unreachable at n>=7); the narrow bound applies only
     # when it proves that the count remains single-digit.
     header_bound = len(reads) + _BOUND_NARROW
-    columns = max(width, 4, (count + header_bound + 22) // 23 + 2)
+    columns = max(width, 4, _min_columns(count, header_bound))
     if columns >= 10:
         header_bound = len(reads) + _BOUND_WIDE
-        columns = min(80, max(width, 4, (count + header_bound + 22) // 23 + 2))
-    header_rows = (header_bound + columns - 3) // (columns - 2)
+        columns = min(80, max(width, 4, _min_columns(count, header_bound)))
+    header_rows = _header_rows(header_bound, columns)
     literal = _literal(columns)
     header = _header(reads, literal, _literal(header_rows))
     folded = _fold_header(header, columns, header_rows)
@@ -140,8 +150,8 @@ def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
     # ceil(B/(W-2)) + ceil(T/W) <= 25, including the n=13 dense build.
     bound = len(reads) + _BOUND_PACKED
     requested = 80 if width is None or width <= 0 else width
-    columns = min(80, max(requested, (count + bound + 22) // 23 + 2))
-    header_rows = (bound + columns - 3) // (columns - 2)
+    columns = min(80, max(requested, _min_columns(count, bound)))
+    header_rows = _header_rows(bound, columns)
     literal = _literal(columns)
     # For u = row % 6, its binary digits build 2**u without a loop:
     # (1+u%2)*(1+3*((u//2)%2))*(1+15*(u//4)).
@@ -187,7 +197,7 @@ def balance_befunge(truth_table: str, default: str) -> str:
         count = (count + 5) // 6
         layouts = [(5 * n + _BOUND_PACKED, 10, 80)]
     for bound, low, high in layouts:
-        floor = max(low, (count + bound + 22) // 23 + 2)
+        floor = max(low, _min_columns(count, bound))
         if floor > high:
             continue
         side = isqrt(count + bound - 1) + 1

@@ -133,8 +133,10 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
         False,
         (3, 7),
     ),
+    # Each one entry costs a step; a constant folds to one level, so the
+    # worst table is all ones but one.
     "Streetcode": (
-        lambda n, _: 3 * 2**n + 110 * n + 56 if n < 8 else 4 * 2**n + 14 * n + 600,
+        lambda n, _: 3 * 2**n + 110 * n + 55 if n < 8 else 4 * 2**n + 14 * n + 599,
         True,
         (6, 8),
     ),
@@ -231,8 +233,8 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         # and constants use only their clock gate.
         return (_seeded(n, 1), _parity(n), "1" * width)
     if name == "Streetcode":
-        # Its worst in both columns on all 10 tables checked to n = 7: all ones.
-        return ("1" * width,)
+        # Its worst in both columns, n = 6..8: one zero, the last entry.
+        return ("1" * (width - 1) + "0",)
     if name == "Malbolge":
         # Straight-line code: all 10 tables tie at every n measured.
         return (_dense(n),)

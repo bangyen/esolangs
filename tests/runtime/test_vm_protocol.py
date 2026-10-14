@@ -110,7 +110,7 @@ def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
     assert vm.dumps_on_the_post_halt_step == (language in DUMPS_ON_THE_POST_HALT_STEP)
     machine = _machine_of(vm)
     assert machine is not None, f"{language}'s adapter wraps no state object"
-    hash(machine.snapshot())  # type: ignore[attr-defined]
+    hash(machine.snapshot())
     if language in NEVER_SELF_HALTS:
         for _ in range(_PREFIX_STEPS):
             vm.step()
@@ -125,7 +125,7 @@ def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
 
     settled = _observe(vm)
     state = vm.snapshot()
-    hash(machine.snapshot())  # type: ignore[attr-defined]
+    hash(machine.snapshot())
     vm.step()
     assert vm.halted
     assert _observe(vm) == settled
@@ -446,31 +446,31 @@ class TestRunUntilHalt:
         from esolangs.vm import run_until_halt
 
         machine = self._counter(3)
-        assert run_until_halt(machine, 10) is True  # type: ignore[arg-type]
-        assert machine.steps == 3  # type: ignore[attr-defined]
+        assert run_until_halt(machine, 10) is True
+        assert machine.steps == 3
 
     def test_the_budget_buys_exactly_that_many_steps(self) -> None:
         """A limit of ``n`` executes ``n`` commands, not ``n - 1`` or ``n + 1``."""
         from esolangs.vm import run_until_halt
 
         machine = self._counter(100)
-        assert run_until_halt(machine, 10) is False  # type: ignore[arg-type]
-        assert machine.steps == 10  # type: ignore[attr-defined]
+        assert run_until_halt(machine, 10) is False
+        assert machine.steps == 10
 
     def test_no_limit_runs_to_the_halt(self) -> None:
         """``None`` is unbounded, which is what a known-halting run wants."""
         from esolangs.vm import run_until_halt
 
         machine = self._counter(500)
-        assert run_until_halt(machine) is True  # type: ignore[arg-type]
-        assert machine.steps == 500  # type: ignore[attr-defined]
+        assert run_until_halt(machine) is True
+        assert machine.steps == 500
 
     def test_an_already_halted_machine_takes_no_step(self) -> None:
         from esolangs.vm import run_until_halt
 
         machine = self._counter(0)
-        assert run_until_halt(machine, 10) is True  # type: ignore[arg-type]
-        assert machine.steps == 0  # type: ignore[attr-defined]
+        assert run_until_halt(machine, 10) is True
+        assert machine.steps == 0
 
     def test_stop_is_checked_before_the_step_it_stops(self) -> None:
         """The predicate fires with the state it watched still intact."""
@@ -479,24 +479,21 @@ class TestRunUntilHalt:
         machine = self._counter(100)
         assert (
             run_until_halt(
-                machine,  # type: ignore[arg-type]
+                machine,
                 50,
-                stop=lambda: machine.steps == 4,  # type: ignore[attr-defined]
+                stop=lambda: machine.steps == 4,
             )
             is False
         )
-        assert machine.steps == 4  # type: ignore[attr-defined]
+        assert machine.steps == 4
 
     def test_stop_true_at_the_start_takes_no_step(self) -> None:
         """A breakpoint on the initial position fires without executing it."""
         from esolangs.vm import run_until_halt
 
         machine = self._counter(100)
-        assert (
-            run_until_halt(machine, 50, stop=lambda: True)  # type: ignore[arg-type]
-            is False
-        )
-        assert machine.steps == 0  # type: ignore[attr-defined]
+        assert run_until_halt(machine, 50, stop=lambda: True) is False
+        assert machine.steps == 0
 
     def test_a_negative_budget_is_refused(self) -> None:
         """A negative count is refused before execution."""

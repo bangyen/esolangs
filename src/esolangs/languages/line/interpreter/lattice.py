@@ -1,21 +1,12 @@
 """Extract a Line program's path tree by probing 8-pointed stars at each vertex.
 
-Replaces :mod:`extract`'s pixel walker, whose one structural gap was a
-merge -- one stroke's last leg running into another's ink with no
-background pixel between, which three local fixes each broke on a new
-bend.  At every vertex, probe all 8 compass directions and count the lit
-ones: 2 is a bend (continue), 3 is a fork or an incidental merge (both
-stop the stroke), 4 is a crossing (pass straight through).  A real fork's
-two other directions are the pair perpendicular to arrival (the wiki's
-T-branch); a merge's are not.  ``multiplication.png``'s hand-decoded
-``(194, 228)`` merge reads exactly 3.
-
-The probe is a 3-pixel band (the ray plus one each side): a single ray
-missed segments a pixel short of the unit and vertices a pixel off the
-true corner (``addition.png``'s T-bar sits one row above where the stem's
-path data ends).  Length is read where all three rays lose ink at once.
-Over ~90 direction-change vertices in both fixtures every bend reads 2,
-every fork or merge 3, and the only 1 is a genuine dead end.
+At every vertex, probe all 8 compass directions and count the lit ones:
+2 is a bend (continue), 3 is a fork or a merge (both stop the stroke),
+4 is a crossing (pass straight through).  A fork's two other directions
+are the pair perpendicular to the arrival heading (the wiki's T-branch);
+a merge's are not.  The probe is a 3-pixel band (the ray plus one each
+side), so vertices a pixel off the true corner still read their
+segments; length is read where all three rays lose ink at once.
 """
 
 from __future__ import annotations
@@ -48,10 +39,16 @@ def _ink(mask: Mask, y: int, x: int) -> bool:
 # which run a pixel or two off it, and no run is capped at a multiple of it.
 UNIT = 20
 
+
 # Stay one quarter-unit inside the nominal corner spacing.  At UNIT=20 this
 # preserves the measured 15px probe; deriving it keeps the same clearance when
 # a smaller lattice unit is introduced.
-_PROBE_LENGTH = max(1, UNIT * 3 // 4)
+def _probe_length(unit: int) -> int:
+    """Return how far a probe reaches: three quarters of a lattice unit."""
+    return max(1, (3 * unit) // 4)
+
+
+_PROBE_LENGTH = _probe_length(UNIT)
 
 
 def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
@@ -65,8 +62,8 @@ def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
 def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
     """Which of the 8 directions have a real band segment from this vertex.
 
-    ``length`` need only be shorter than the shortest real segment (all
-    >= 19px on both fixtures); the default is three quarters of :data:`UNIT`.
+    ``length`` need only be shorter than the shortest real segment; the
+    default is three quarters of :data:`UNIT`.
     """
     lit = set()
     for idx, (dy, dx) in enumerate(_DIRS):
@@ -77,8 +74,8 @@ def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
     return lit
 
 
-# Ink depth _snap requires before trusting an offset: a neighbouring leg
-# brushing past satisfied a 1-pixel check at addition.png's V-notch.
+# Ink depth _snap requires before trusting an offset: a single pixel of ink
+# can be a nearby leg brushing past, not the true centerline.
 _SNAP_CONFIRM = 6
 
 
@@ -88,10 +85,10 @@ def _snap(
     """Find which of ``(y, x)``'s band offsets is the true centerline for ``direction``.
 
     A recorded vertex can be a pixel off the true corner of the leg leaving
-    it (a diagonal touching down one row below the bar it turns into).
-    Snapping once, before walking a chosen direction, avoids the overshoot
-    the band would cause per step; several pixels of ink are required, since
-    a nearby leg can brush past for one.
+    it, which would overshoot the band if walked step by step.  Snapping
+    once onto that leg's centerline first avoids this; several pixels of
+    ink are required in the chosen direction, since a nearby leg can brush
+    past for one.
     """
     dy, dx = _DIRS[direction]
     pdy, pdx = _DIRS[(direction + 2) % 8]
@@ -110,12 +107,9 @@ def _walk_segment(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]
 
     Advances while the exact next pixel is ink -- not the band, which
     overshoots onto a neighbouring leg within its lateral reach.  Runs to
-    the run's real end, with no length ceiling: it terminates because every
-    step moves one pixel closer to an edge and off-mask reads as
-    background.  A ceiling (it was ``UNIT * 20`` = 400px) *invents a vertex*
-    mid-run, and ``_classify`` then reads whatever sits there -- 400px up
-    ``+[>++++++++[>+<-]<-]>>.``'s stem sits a loop-back's merge point, so
-    the walk ended there, 4958 of 5577 pixels short.
+    the segment's real end, with no length ceiling: it terminates because
+    every step moves one pixel closer to an edge and off-mask reads as
+    background.
     """
     dy, dx = _DIRS[direction]
     py, px = y, x
@@ -126,23 +120,11 @@ def _walk_segment(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]
         py, px = ny, nx
 
 
-def find_start(
-    mask: Mask, approx_y: int, approx_x: int, heading: int
-) -> tuple[int, int]:
-    """Return the path-start vertex for a caller already holding one.
-
-    :func:`extract.find_cursor` lands on the arrowhead's tip on both fixtures;
-    this is a named passthrough, ``mask``/``heading`` for interface symmetry.
-    """
-    del mask, heading
-    return approx_y, approx_x
-
-
 @dataclass
 class Vertex:
     """One lattice point the walk passes through, plus the heading taken.
 
-    ``heading`` is the :data:`extract._DIRS` index travelled *away*; ``None``
+    ``heading`` is the :data:`_DIRS` index travelled *away*; ``None``
     at a stroke's final vertex.
     """
 
@@ -155,8 +137,8 @@ class Vertex:
 class Stroke:
     """One matched straight-through run of lattice vertices, tree-shaped.
 
-    Mirrors :class:`extract.Stroke` with on-lattice :class:`Vertex` objects
-    rather than a dense pixel path.
+    Built from on-lattice :class:`Vertex` objects rather than a dense pixel
+    path; ``extract.Stroke`` is this class.
     """
 
     vertices: list[Vertex]
@@ -189,9 +171,8 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
         return "end", []
     if len(rest) == 1:
         return "straight", list(rest)
-    # Rotate off the *heading*, not `back` (180 degrees out, which once
-    # named every arm as its opposite): the wiki's rule and render.py's
-    # turns are in the cursor's own frame.
+    # Rotate off the *heading*, not `back` (180 degrees out): the wiki's
+    # rule and render.py's turns are in the cursor's own frame.
     heading = _opposite(back)
     right, left = (heading + 2) % 8, (heading - 2) % 8
     straight = heading
@@ -205,21 +186,19 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
 def _resnap_dead_end(
     mask: Mask, y: int, x: int, heading: int, unit: int = UNIT
 ) -> tuple[int, int]:
-    """Recover a vertex :func:`_walk_segment` stopped a column short of.
+    """Recover a vertex :func:`_walk_segment` stopped one column short of.
 
     The walk advances in one direction, so a corner one pixel over on the
-    perpendicular axis can read as a dead end: ``multiplication.png``'s S
-    segment stopped at ``(72, 267)`` (``{N}``) one column short of the
-    NE-turning ``(72, 268)`` (``{N, NE}``), silently dropping a ~460px branch
-    (caught by comparing coverage against :mod:`extract`'s walker).  Only
-    called when ``star`` already reads a dead end; tries both perpendicular
-    neighbours and returns the first whose star is more than ``back``.
+    perpendicular axis can read as a dead end and silently drop a branch.
+    Only called when ``star`` already reads a dead end; tries both
+    perpendicular neighbours and returns the first whose star shows more
+    than ``back``.
     """
     back = _opposite(heading)
     pdy, pdx = _DIRS[(heading + 2) % 8]
     for k in (-1, 1):
         cy, cx = y + pdy * k, x + pdx * k
-        if star(mask, cy, cx, max(1, unit * 3 // 4)) - {back}:
+        if star(mask, cy, cx, _probe_length(unit)) - {back}:
             return cy, cx
     return y, x
 
@@ -254,10 +233,10 @@ def walk_tree(
             return Stroke(vertices, unit=unit)
 
         back = _opposite(heading)
-        lit = star(mask, y, x, max(1, unit * 3 // 4))
+        lit = star(mask, y, x, _probe_length(unit))
         if not lit - {back}:
             y, x = _resnap_dead_end(mask, y, x, heading, unit)
-            lit = star(mask, y, x, max(1, unit * 3 // 4))
+            lit = star(mask, y, x, _probe_length(unit))
         visited.add((y, x))
         kind, options = _classify(lit, back)
 

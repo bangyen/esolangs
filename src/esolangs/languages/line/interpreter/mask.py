@@ -24,7 +24,8 @@ codebase used -- ``mask.shape``, ``mask[y, x]``, ``mask.any()``, ``.sum()``
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import operator
+from collections.abc import Callable, Iterator
 
 from esolangs.runtime.source_hints import syntax_error
 
@@ -87,32 +88,26 @@ class Mask:
                 "use masks with identical height and width",
             )
 
-    def __and__(self, other: Mask) -> Mask:
-        """Pixelwise AND with a same-shaped mask."""
+    def _combine(self, other: Mask, op: Callable[[int, int], int]) -> Mask:
+        """Apply ``op`` row by row with a same-shaped mask."""
         self._check(other)
         return Mask(
             self.height,
             self.width,
-            [a & b for a, b in zip(self.rows, other.rows, strict=True)],
+            [op(a, b) for a, b in zip(self.rows, other.rows, strict=True)],
         )
+
+    def __and__(self, other: Mask) -> Mask:
+        """Pixelwise AND with a same-shaped mask."""
+        return self._combine(other, operator.and_)
 
     def __or__(self, other: Mask) -> Mask:
         """Pixelwise OR with a same-shaped mask."""
-        self._check(other)
-        return Mask(
-            self.height,
-            self.width,
-            [a | b for a, b in zip(self.rows, other.rows, strict=True)],
-        )
+        return self._combine(other, operator.or_)
 
     def __xor__(self, other: Mask) -> Mask:
         """Pixelwise XOR with a same-shaped mask."""
-        self._check(other)
-        return Mask(
-            self.height,
-            self.width,
-            [a ^ b for a, b in zip(self.rows, other.rows, strict=True)],
-        )
+        return self._combine(other, operator.xor)
 
     def __invert__(self) -> Mask:
         """Flip every pixel, staying inside the canvas width.
@@ -198,7 +193,7 @@ class Mask:
         """Build from a list of rows, each a bool sequence or a '.#' string.
 
         Only used by tests and by callers building a mask literally; the real
-        pipeline goes through :mod:`png`.
+        pipeline goes through :func:`from_grey`.
         """
         height = len(rows)
         width = len(rows[0]) if height else 0

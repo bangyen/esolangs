@@ -7,7 +7,7 @@ class TestSeparationLaws:
     """The first law is the least mean; the rest are the greedy cover."""
 
     @pytest.mark.slow
-    def test_the_separation_law_is_the_least_mean(self) -> None:
+    def test_the_separation_law_is_the_least_mean(self) -> None:  # noqa: C901
         """The law's constants are re-derived, not trusted."""
         from itertools import product
 
@@ -63,7 +63,7 @@ class TestSeparationLaws:
             total = 0
             tables = ["".join(t) for t in product("01", repeat=2**n)]
             for table in tables:
-                b = proto.clone([_WORK_BUDGET])  # type: ignore[attr-defined]
+                b = proto.clone([_WORK_BUDGET])
                 try:
                     _verdict_junky(b, table)
                     _endgame(b)

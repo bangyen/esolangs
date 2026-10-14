@@ -86,7 +86,7 @@ def test_eleven_input_tables_differ_in_one_cell_per_row() -> None:
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_eleven_inputs_sampled(shape: object) -> None:
     """Every eighth row and every second-level row of the two shapes."""
-    table = shape(11)  # type: ignore[operator]
+    table = shape(11)
     rows = sorted({*range(0, 2**11, 8), *_second_level_rows()})
     assert _rows(table, rows) == [table[row] for row in rows]
 
@@ -107,7 +107,7 @@ def test_twelve_inputs_split_the_last_off_the_cascade() -> None:
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_twelve_inputs_sampled(shape: object) -> None:
     """Every sixteenth row and every second-level row of the two shapes."""
-    table = shape(12)  # type: ignore[operator]
+    table = shape(12)
     rows = sorted({*range(0, 2**12, 16), *_wide_second_level_rows()})
     assert _rows(table, rows) == [table[row] for row in rows]
 
@@ -140,7 +140,7 @@ def test_thirteen_inputs_label_every_residue() -> None:
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_thirteen_inputs_sampled(shape: object) -> None:
     """Every thirty-second row and every second-level row of the two shapes."""
-    table = shape(13)  # type: ignore[operator]
+    table = shape(13)
     rows = sorted({*range(0, 2**13, 32), *_thirteen_second_level_rows()})
     assert _rows(table, rows) == [table[row] for row in rows]
 
@@ -201,7 +201,7 @@ def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
 @pytest.mark.parametrize("shape", [dense, parity])
 def test_fourteen_inputs_sampled(shape: object) -> None:
     """Every 64th row, every level-3 row and every fourth level-2 row."""
-    table = shape(14)  # type: ignore[operator]
+    table = shape(14)
     rows = sorted(
         {*range(0, 2**14, 64), *_fourteen_rows({2}), *_fourteen_rows({1})[::4]}
     )
@@ -287,6 +287,7 @@ def test_public_high_arity_routes_execute_boundary_rows(n: int) -> None:
 def test_fourteen_rejects_colliding_final_level(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(_module, "_F_LEVEL3", (0, 0))
+    monkeypatch.setattr(_module, "_L3_CELL_A", 0)
+    monkeypatch.setattr(_module, "_L3_CELL_B", 0)
     with pytest.raises(AssertionError, match="a row never resolves"):
         _module._f_tables.__wrapped__()  # noqa: SLF001

@@ -11,7 +11,12 @@ Larger folds compare fixed-size cofactor pools against this lattice over
 essential inputs; ignored inputs keep their original ports and drive no gates.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
+from itertools import count
 from typing import cast
 
 from esolangs.languages.circuit_diagram.generator.hcells import _HCellLayout
@@ -41,20 +46,19 @@ _RESULT_TRACK = (4, 3)
 
 @dataclass(frozen=True)
 class _Block:
-    """Square reserved by one recursive H-layout subtree."""
+    """Rectangle reserved by one recursive H-layout subtree."""
 
     x: int
     y: int
-    size: int
+    width: int
+    height: int
 
-    def quadrants(self, child_size: int) -> tuple["_Block", ...]:
+    def quadrants(self, width: int, height: int) -> tuple[_Block, ...]:
         """Return four corner children around this block's centre cross."""
-        far = self.size - child_size
-        return (
-            _Block(self.x, self.y, child_size),
-            _Block(self.x + far, self.y, child_size),
-            _Block(self.x, self.y + far, child_size),
-            _Block(self.x + far, self.y + far, child_size),
+        far_x, far_y = self.width - width, self.height - height
+        return tuple(
+            _Block(self.x + dx, self.y + dy, width, height)
+            for dx, dy in ((0, 0), (far_x, 0), (0, far_y), (far_x, far_y))
         )
 
 
@@ -79,14 +83,16 @@ def _h_size(inputs: int) -> int:
 
 def _h_blocks(inputs: int) -> dict[int, _Block]:
     """Assign every two-level heap node a non-overlapping H-layout square."""
-    root = _Block(0, 0, _h_size(inputs))
+    root = _Block(0, 0, _h_size(inputs), _h_size(inputs))
     blocks = {1: root}
 
     def descend(prefix: int, remaining: int, block: _Block) -> None:
         if remaining < 2:
             return
         child_size = _h_size(remaining - 2)
-        for bits, child in zip(range(4), block.quadrants(child_size), strict=True):
+        for bits, child in zip(
+            range(4), block.quadrants(child_size, child_size), strict=True
+        ):
             blocks[4 * prefix + bits] = child
             descend(4 * prefix + bits, remaining - 2, child)
 
@@ -103,7 +109,7 @@ def _h_sites(inputs: int) -> dict[int, tuple[int, int]]:
         if remaining == 0:
             continue
         if remaining == 1:
-            sites[prefix] = (block.x + block.size // 2, block.y + block.size // 2)
+            sites[prefix] = (block.x + block.width // 2, block.y + block.width // 2)
             continue
         child = _h_size(remaining - 2)
         left = block.x + child
@@ -126,15 +132,15 @@ def _h_minterm_sites(inputs: int) -> dict[int, tuple[int, int]]:
         for prefix, block in blocks.items():
             if _depth(prefix) == inputs:
                 sites[prefix] = (
-                    block.x + block.size // 2,
-                    block.y + block.size // 2,
+                    block.x + block.width // 2,
+                    block.y + block.width // 2,
                 )
     else:
         for prefix, block in blocks.items():
             if _depth(prefix) != inputs - 1:
                 continue
-            middle_x = block.x + block.size // 2
-            middle_y = block.y + block.size // 2
+            middle_x = block.x + block.width // 2
+            middle_y = block.y + block.width // 2
             sites[2 * prefix] = (middle_x - _LATTICE, middle_y + _LATTICE)
             sites[2 * prefix + 1] = (middle_x + _LATTICE, middle_y + _LATTICE)
     return sites
@@ -184,23 +190,13 @@ def _h_term_plan(table: str, *, port_inputs: int | None = None) -> _HTermPlan:
     }
     literal_start = len(signals)
 
-    next_signal = literal_start + 2 * inputs
     results: dict[int, int | None] = {
         prefix: signals[prefix] if table[prefix - (1 << inputs)] == "1" else None
         for prefix in sites
         if _depth(prefix) == inputs
     }
-    result_gates: set[int] = set()
-    for depth in range(inputs - 1, -1, -1):
-        for prefix in levels[depth]:
-            zero = results.get(2 * prefix)
-            one = results.get(2 * prefix + 1)
-            if zero is not None and one is not None:
-                results[prefix] = next_signal
-                next_signal += 1
-                result_gates.add(prefix)
-            else:
-                results[prefix] = zero if zero is not None else one
+    serial = count(literal_start + 2 * inputs)
+    result_gates = _merge_results(results, levels, partial(next, serial))
     result_signal = results[1]
     if result_signal is None:  # handled by the scalar constant construction
         raise AssertionError("the H layout needs at least one selected minterm")
@@ -280,17 +276,13 @@ def _h_route_literals(
             if index not in kept:
                 row = _LATTICE * index
                 signal = first_unused + index
-                layout.glyph(0, row, "-")
-                layout.junction(2, row, signal)
-                layout.run_horizontal(0, 2, row, signal)
+                layout.input_port(row, 2, signal)
     input_starts: dict[tuple[int, str], tuple[int, int]] = {}
     for depth in range(inputs):
         row = _LATTICE * order[depth]
         plain = literal(depth, "1")
         negated = literal(depth, "0")
-        layout.glyph(0, row, "-")
-        layout.junction(2, row, plain)
-        layout.run_horizontal(0, 2, row, plain)
+        layout.input_port(row, 2, plain)
         layout.junction(2, row + 2, plain)
         layout.junction(3, row + 2, plain)
         layout.run_vertical(2, row, row + 2, plain)
@@ -417,6 +409,26 @@ def _h_route_results(
                 if child_result is None:  # pragma: no cover - filtered above
                     raise AssertionError("missing result signal")
                 layout.route(result_points[child], target, child_result)
+
+
+def _merge_results(
+    results: dict[int, int | None], levels: list[list[int]], fresh: Callable[[], int]
+) -> set[int]:
+    """OR sibling results up the tree; return the prefixes that get a gate.
+
+    Two live children take a ``fresh()`` signal; one passes its own up.
+    """
+    gates = set()
+    for level in reversed(levels[:-1]):
+        for prefix in level:
+            zero = results.get(2 * prefix)
+            one = results.get(2 * prefix + 1)
+            if zero is not None and one is not None:
+                results[prefix] = fresh()
+                gates.add(prefix)
+            else:
+                results[prefix] = zero if zero is not None else one
+    return gates
 
 
 def _result_children(results: dict[int, int | None], prefix: int) -> list[int]:

@@ -36,29 +36,14 @@ from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
-
-
-def _wrap32(value: int) -> int:
-    """Wrap ``value`` to a signed 32-bit integer (C++ ``int`` arithmetic)."""
-    return (value + 2**31) % 2**32 - 2**31
-
-
-def _trunc_div(a: int, b: int) -> int:
-    """C++-style integer division, truncating toward zero."""
-    return int(a / b)
-
-
-def _trunc_mod(a: int, b: int) -> int:
-    """C++-style remainder (the sign of the dividend)."""
-    return a - _trunc_div(a, b) * b
-
+from esolangs.runtime.memory import trunc_div, trunc_mod, wrap_int32
 
 _BINARY: dict[str, Callable[[int, int], int]] = {
     "+": add,
     "-": sub,
     "*": mul,
-    "/": _trunc_div,
-    "%": _trunc_mod,
+    "/": trunc_div,
+    "%": trunc_mod,
 }
 
 
@@ -136,7 +121,11 @@ def _abort(state: _State) -> _State:
     return (stack, table, frames, error or top_level)
 
 
-def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
+#: Each block opener's closer.
+_CLOSER = {"(": ")", "[": "]", "{": "}"}
+
+
+def _scan(frame: _Frame, opener: str, closer: str) -> tuple[str, int] | None:
     """Return a bracket's body and the cursor past it, or ``None`` if open."""
     start = frame.pc - 1
     pc = frame.pc
@@ -146,9 +135,9 @@ def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
             return None
         inner = frame.code[pc]
         pc += 1
-        if inner == add:
+        if inner == opener:
             match += 1
-        elif inner == sub:
+        elif inner == closer:
             match -= 1
         # Tested after the advance, so the cursor ends one *past* the
         # closing bracket rather than on it.
@@ -157,7 +146,7 @@ def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
     return (frame.code[start + 1 : pc - 1], pc)
 
 
-def _advance(state: _State, line: str | None = None) -> _State:
+def _advance(state: _State, line: str | None = None) -> _State:  # noqa: C901
     """Return the state after executing one command of the active frame.
 
     Pure; ``.``'s value is read by the caller first, ``,``'s line arrives
@@ -202,8 +191,7 @@ def _advance(state: _State, line: str | None = None) -> _State:
             return _abort(state)
         return ((*stack[:-3], *stack[-2:], stack[-3]), table, frames, error)
     if char in "([{":
-        sub = ")" if char == "(" else "]" if char == "[" else "}"
-        found = _scan(frame, char, sub)
+        found = _scan(frame, char, _CLOSER[char])
         if found is None:
             # The scan walked to the end without closing, and the original
             # left the cursor there before aborting.
@@ -229,7 +217,7 @@ def _advance(state: _State, line: str | None = None) -> _State:
             return ((*rest, two, one), table, frames, error)
         if char in "/%" and two == 0:
             return _abort(popped)
-        return ((*rest, _wrap32(_BINARY[char](one, two))), table, frames, error)
+        return ((*rest, wrap_int32(_BINARY[char](one, two))), table, frames, error)
 
     return state
 
@@ -324,11 +312,8 @@ class _Machine:
         if self.halted:
             return
         state = _finalize(self._state)
-        stack, _table, frames, _error = state
+        stack, table, frames, error = state
         char = ""
-        if frames and frames[-1].pc < len(frames[-1].code):
-            char = frames[-1].code[frames[-1].pc]
-
         # The cursor moves past the command before the command runs, and
         # the original had already written that when anything it did
         # raised -- an empty stack, or the input port at EOF.  Committing
@@ -337,12 +322,11 @@ class _Machine:
         # A bracket walks further than one place: its scan runs before the
         # condition is tested, so a raise afterwards leaves the cursor past
         # the whole body.
-        stack, table, frames, error = state
         if frames and frames[-1].pc < len(frames[-1].code):
+            char = frames[-1].code[frames[-1].pc]
             frame = _at(frames[-1], frames[-1].pc + 1)
             if char in "([{":
-                sub = ")" if char == "(" else "]" if char == "[" else "}"
-                found = _scan(frame, char, sub)
+                found = _scan(frame, char, _CLOSER[char])
                 frame = _at(frame, found[1] if found else len(frame.code))
             frames = (*frames[:-1], frame)
         self._restore((stack, table, frames, error))

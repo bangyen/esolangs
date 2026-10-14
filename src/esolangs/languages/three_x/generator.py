@@ -1,6 +1,8 @@
 """Boolean generator for three x."""
 
 from collections import Counter
+from dataclasses import dataclass
+from enum import Enum, auto
 from fractions import Fraction
 from functools import cache
 
@@ -83,8 +85,51 @@ _COMPLEMENT = _NEG_ONE + "#3#x"
 _SWAP = str.maketrans("01", "10")
 
 
-#: The result variable's marker; the others are ``("bit" | "not", depth)``.
-_RESULT = ("result", 0)
+class _Kind(Enum):
+    """The kind of one piece of the emit stream.
+
+    Declared in the same order as the variable names these replace
+    (``"bit" < "flag" < "not" < "result"``), so sorting names by
+    ``kind.value`` keeps the cheapest-key assignment byte-identical.
+    """
+
+    BIT = auto()
+    FLAG = auto()
+    NOT = auto()
+    RESULT = auto()
+    TEXT = auto()
+
+
+@dataclass(frozen=True)
+class _Piece:
+    """One unit of the emit stream: verbatim text or a named variable.
+
+    ``text`` carries the literal for :attr:`_Kind.TEXT`; ``depth`` carries
+    the variable's tree depth for the other kinds.
+    """
+
+    kind: _Kind
+    text: str = ""
+    depth: int = 0
+
+
+#: The result variable's marker; the other variables are ``_Piece`` values
+#: with kind BIT, NOT, or FLAG and their tree depth.
+_RESULT = _Piece(_Kind.RESULT)
+
+
+class _Top(Enum):
+    """What the emitted code leaves on top of the 3x stack inside a guard.
+
+    ``(`` does not pop its condition, and a nested guard's two exits both
+    leave a zero; a write leaves the top alone, so it is always known -- and
+    it is what closing the guard costs, nothing or ``33x``, against ``333x``
+    from a clean stack.
+    """
+
+    CLEAN = auto()  # program start: nothing known is on top
+    THREE = auto()  # the guard's own nonzero condition is on top
+    ZERO = auto()  # a nested guard closed; both exits left a zero
 
 
 #: Fewest rows of a block worth sharing.
@@ -176,6 +221,171 @@ def _three_x_build(
         shares = (*shares, trial[1])
 
 
+class _Emitter:
+    """Builds the tree's pieces; ``flag_of`` maps shared blocks to their flag."""
+
+    def __init__(
+        self, table: str, essential: list[int], shares: tuple[str, ...]
+    ) -> None:
+        self.table = table
+        self.essential = essential
+        self.width = len(essential)
+        self.constant = constant_span_test(table)
+        self.shares = shares
+        self.flag_of = {block: i for i, block in enumerate(shares)}
+        self.pieces: list[_Piece] = []
+        self.patterns: dict[tuple[int, int], str] = {}
+        self.top = _Top.CLEAN
+
+    def pattern(self, rows: int, level: int) -> str:
+        """Return the column a span of ``rows`` reads at its ``level``."""
+        if (rows, level) not in self.patterns:
+            half = rows >> (level + 1)
+            self.patterns[rows, level] = ("0" * half + "1" * half) * (
+                rows // (2 * half)
+            )
+        return self.patterns[rows, level]
+
+    def write(self, value: str, var: _Piece = _RESULT) -> None:
+        self.pieces.append(var)
+        self.pieces.append(_Piece(_Kind.TEXT, ("3" if value == "1" else _ZERO) + "v"))
+
+    def copy(self, level: int, *, complement: bool) -> None:
+        self.pieces.append(_RESULT)
+        self.pieces.append(
+            _Piece(
+                _Kind.NOT if complement else _Kind.BIT,
+                depth=self.essential[level],
+            )
+        )
+        self.pieces.append(_Piece(_Kind.TEXT, "^v"))
+
+    def open(self) -> None:
+        self.pieces.append(_Piece(_Kind.TEXT, "^("))
+        self.top = _Top.THREE
+
+    def close(self) -> None:
+        self.pieces.append(
+            _Piece(_Kind.TEXT, ("" if self.top is _Top.ZERO else "33x") + ")")
+        )
+        self.top = _Top.ZERO
+
+    def settle(self, state: tuple[str, ...], keep: int = -1) -> tuple[str, ...]:
+        """Clear every flag but ``keep``, writing only where it may be set."""
+        out = list(state)
+        for i in range(1, len(state)):
+            want = "1" if i - 1 == keep else "0"
+            if out[i] != want:
+                self.write(want, _Piece(_Kind.FLAG, depth=i - 1))
+                out[i] = want
+        return tuple(out)
+
+    def build(
+        self, lo: int, hi: int, depth: int, state: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        """Emit rows ``[lo, hi)``; return the result's and flags' values after.
+
+        ``""`` means a value depends on bits below, which only costs the
+        caller's next sibling its skipped writes.
+        """
+        table = self.table
+        if self.flag_of:
+            keep = self.flag_of.get(table[lo:hi], -1)
+            if keep >= 0:
+                return self.settle(state, keep)
+        if self.constant(lo, hi):
+            state = self.settle(state)
+            if table[lo] != state[0]:
+                self.write(table[lo])
+            return (table[lo], *state[1:])
+        span = table[lo:hi]
+        for level in range(depth, self.width):
+            column = self.pattern(hi - lo, level - depth)
+            if span == column:
+                self.copy(level, complement=False)
+                return ("", *self.settle(state)[1:])
+            if span == column.translate(_SWAP):
+                self.copy(level, complement=True)
+                return ("", *self.settle(state)[1:])
+
+        mid = (lo + hi) // 2
+        if table[lo:mid] == table[mid:hi]:
+            return self.build(lo, mid, depth + 1, state)
+        first = self.build(lo, mid, depth + 1, state)
+        self.pieces.append(_Piece(_Kind.BIT, depth=self.essential[depth]))
+        self.open()
+        second = self.build(mid, hi, depth + 1, first)
+        self.close()
+        return tuple(x if x == y else "" for x, y in zip(first, second, strict=True))
+
+    def emit_all(self) -> list[_Piece]:
+        """Return the tree, each shared block under its flag, then the output."""
+        table, shares = self.table, self.shares
+        # Every flag starts set, as an unset variable reads 3.
+        self.build(0, 2**self.width, 0, ("1",) * (1 + len(shares)))
+        self.flag_of.clear()
+        for i, block in enumerate(shares):
+            size = len(block)
+            lo = next(
+                at
+                for at in range(0, len(table), size)
+                if table[at : at + size] == block
+            )
+            self.pieces.append(_Piece(_Kind.FLAG, depth=i))
+            self.open()
+            self.build(lo, lo + size, self.width - size.bit_length() + 1, ("",))
+            self.close()
+        self.pieces.append(_Piece(_Kind.TEXT, "3" + _ZERO))
+        self.pieces.append(_RESULT)
+        self.pieces.append(_Piece(_Kind.TEXT, "^x!"))
+        return self.pieces
+
+
+def _read_head(pieces: list[_Piece], perm: tuple[int, ...], n: int) -> list[_Piece]:
+    """Return the input reads, storing a complement only where the tree copies one.
+
+    The reads run in stream order and only the store target moves: stream
+    input ``i`` goes into the name the tree tests at depth ``perm.index(i)``.
+    """
+    named = {piece for piece in pieces if piece.kind is not _Kind.TEXT}
+    depth_of = {stream: depth for depth, stream in enumerate(perm)}
+    head: list[_Piece] = []
+    for i in range(n):
+        head.append(_Piece(_Kind.TEXT, "?"))
+        depth = depth_of[i]
+        bit = _Piece(_Kind.BIT, depth=depth)
+        mark = _Piece(_Kind.NOT, depth=depth)
+        if bit in named or mark in named:
+            head.append(_Piece(_Kind.TEXT, _SCALE))
+            if mark in named:
+                head.extend(
+                    [
+                        _Piece(_Kind.TEXT, _COMPLEMENT),
+                        mark,
+                        _Piece(_Kind.TEXT, "#v"),
+                        mark,
+                        _Piece(_Kind.TEXT, "^" + _COMPLEMENT),
+                    ]
+                )
+            head.extend([bit, _Piece(_Kind.TEXT, "#v")])
+    return head
+
+
+def _key_pieces(pieces: list[_Piece]) -> str:
+    """Render ``pieces``, giving the cheapest key to the most-read name.
+
+    Every use pays its key's length, so this is a rearrangement, and the deep
+    tree levels -- read exponentially more often -- take the short end on
+    their own.
+    """
+    uses = Counter(piece for piece in pieces if piece.kind is not _Kind.TEXT)
+    order = sorted(uses, key=lambda name: (-uses[name], name.kind.value, name.depth))
+    keys = dict(zip(order, _constants(len(order)), strict=True))
+    return "".join(
+        keys[piece] if piece.kind is not _Kind.TEXT else piece.text for piece in pieces
+    )
+
+
 def _three_x_emit(
     table: str,
     perm: tuple[int, ...],
@@ -190,126 +400,8 @@ def _three_x_emit(
     unset (3) at the start and any other leaf clears it, so the last write
     wins as it does for the result.
     """
-    width = len(essential)
-    pieces: list[str | tuple[str, int]] = []
-    constant = constant_span_test(table)
-    patterns: dict[tuple[int, int], str] = {}
-    flag_of = {block: i for i, block in enumerate(shares)}
-    # What the stack top holds inside the guard being emitted: 3 from the
-    # guard's own condition (``(`` does not pop it), or 0 once a nested guard
-    # has closed (both of its exits leave one).  A write leaves it alone, so
-    # it is always known -- and it is what the closing zero costs, nothing or
-    # ``33x``, against ``333x`` from a clean stack.
-    top = ""
-
-    def pattern(rows: int, level: int) -> str:
-        """Return the column a span of ``rows`` reads at its ``level``."""
-        if (rows, level) not in patterns:
-            half = rows >> (level + 1)
-            patterns[rows, level] = ("0" * half + "1" * half) * (rows // (2 * half))
-        return patterns[rows, level]
-
-    def write(value: str, var: tuple[str, int] = _RESULT) -> None:
-        pieces.append(var)
-        pieces.append(("3" if value == "1" else _ZERO) + "v")
-
-    def copy(level: int, *, complement: bool) -> None:
-        pieces.append(_RESULT)
-        pieces.append(("not" if complement else "bit", essential[level]))
-        pieces.append("^v")
-
-    def settle(state: tuple[str, ...], keep: int = -1) -> tuple[str, ...]:
-        """Clear every flag but ``keep``, writing only where it may be set."""
-        out = list(state)
-        for i in range(1, len(state)):
-            want = "1" if i - 1 == keep else "0"
-            if out[i] != want:
-                write(want, ("flag", i - 1))
-                out[i] = want
-        return tuple(out)
-
-    def build(lo: int, hi: int, depth: int, state: tuple[str, ...]) -> tuple[str, ...]:
-        """Emit rows ``[lo, hi)``; return the result's and flags' values after.
-
-        ``""`` means a value depends on bits below, which only costs the
-        caller's next sibling its skipped writes.
-        """
-        nonlocal top
-        if flag_of:
-            keep = flag_of.get(table[lo:hi], -1)
-            if keep >= 0:
-                return settle(state, keep)
-        if constant(lo, hi):
-            state = settle(state)
-            if table[lo] != state[0]:
-                write(table[lo])
-            return (table[lo], *state[1:])
-        span = table[lo:hi]
-        for level in range(depth, width):
-            column = pattern(hi - lo, level - depth)
-            if span == column:
-                copy(level, complement=False)
-                return ("", *settle(state)[1:])
-            if span == column.translate(_SWAP):
-                copy(level, complement=True)
-                return ("", *settle(state)[1:])
-
-        mid = (lo + hi) // 2
-        if table[lo:mid] == table[mid:hi]:
-            return build(lo, mid, depth + 1, state)
-        first = build(lo, mid, depth + 1, state)
-        pieces.append(("bit", essential[depth]))
-        pieces.append("^(")
-        top = "3"
-        second = build(mid, hi, depth + 1, first)
-        pieces.append(("" if top == "0" else "33x") + ")")
-        top = "0"
-        return tuple(x if x == y else "" for x, y in zip(first, second, strict=True))
-
-    # Every flag starts set, as an unset variable reads 3.
-    build(0, 2**width, 0, ("1",) * (1 + len(shares)))
-    flag_of.clear()
-    for i, block in enumerate(shares):
-        size = len(block)
-        lo = next(
-            at for at in range(0, len(table), size) if table[at : at + size] == block
-        )
-        pieces.append(("flag", i))
-        pieces.append("^(")
-        top = "3"
-        build(lo, lo + len(block), width - len(block).bit_length() + 1, ("",))
-        pieces.append(("" if top == "0" else "33x") + ")")
-        top = "0"
-    pieces.append("3" + _ZERO)
-    pieces.append(_RESULT)
-    pieces.append("^x!")
-
-    # The reads run in stream order and only the store target moves: stream
-    # input ``i`` goes into the name the tree tests at depth ``perm.index(i)``.
-    # A complement is stored only where the tree copies one.
-    named = {piece for piece in pieces if isinstance(piece, tuple)}
-    depth_of = {stream: depth for depth, stream in enumerate(perm)}
-    head: list[str | tuple[str, int]] = []
-    for i in range(n):
-        head.append("?")
-        depth = depth_of[i]
-        if ("bit", depth) in named or ("not", depth) in named:
-            head.append(_SCALE)
-            if ("not", depth) in named:
-                mark = ("not", depth)
-                head.extend([_COMPLEMENT, mark, "#v", mark, "^" + _COMPLEMENT])
-            head.extend([("bit", depth), "#v"])
-    pieces = head + pieces
-
-    # The cheapest key to the most-read name: every use pays its key's
-    # length, so this is a rearrangement, and the deep tree levels -- read
-    # exponentially more often -- take the short end on their own.
-    uses = Counter(piece for piece in pieces if isinstance(piece, tuple))
-    order = sorted(uses, key=lambda name: (-uses[name], name))
-    keys = dict(zip(order, _constants(len(order)), strict=True))
-    return "".join(
-        keys[piece] if isinstance(piece, tuple) else piece for piece in pieces
-    )
+    body = _Emitter(table, essential, shares).emit_all()
+    return _key_pieces(_read_head(body, perm, n) + body)
 
 
 LANGUAGE = Language(

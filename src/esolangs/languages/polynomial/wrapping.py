@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from itertools import pairwise
 from math import isqrt
-from typing import Any
 
 from esolangs.generation.wrap import balance_score
 
@@ -82,8 +80,3 @@ def _folded_term(term: str, width: int) -> str:
     """
     rows = [term[i : i + width] for i in range(0, len(term), max(1, width))]
     return "\n".join(rows)
-
-
-def same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
-    """Whether the command text agrees after discarding whitespace."""
-    return "".join(template.split()) == "".join(plain.split())

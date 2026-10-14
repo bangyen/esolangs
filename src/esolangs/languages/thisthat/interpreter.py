@@ -44,11 +44,11 @@ draw source and retries.  A retry is sound because the transition is pure.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from itertools import product
 from types import MappingProxyType
-from typing import Literal
+from typing import ClassVar, Literal
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -59,6 +59,9 @@ from esolangs.runtime.source_hints import with_hint
 
 type _Point = tuple[int, int]
 type _Channel = Literal["execution", "data"]
+
+#: Each constant gate's value; ``▦`` sends nothing.
+_GATE_VALUE: dict[str, int | None] = {"□": 0, "■": 1, "▦": None}
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
@@ -92,7 +95,7 @@ _DOUBLE = frozenset("═║╔╗╚╝╠╣╦╩╬")
 _ARROWS = frozenset("▲▶▼◀△▷▽◁")
 _NODES = frozenset("▣◉◘▲▶▼◀△▷▽◁◯◔◈◇◧⬓◨⬒◹◺◐◑◒◓□■▦")
 _PRIORITY = {"◘": 2, "◈": 2, "◹": 2, "◺": 2, "◇": 3, "◧": 3, "⬓": 3, "◨": 3, "⬒": 3}
-_ARROW_DIRECTION = dict(zip("▶◀▲▼▷◁△▽", "EWNS EWNS".replace(" ", ""), strict=True))
+_ARROW_DIRECTION = dict(zip("▶◀▲▼▷◁△▽", "EWNSEWNS", strict=True))
 _BLACK_SIDE = {"◐": "W", "◑": "E", "◒": "S", "◓": "N"}
 _WHITE_SIDE = {node: _OPPOSITE[side] for node, side in _BLACK_SIDE.items()}
 
@@ -120,11 +123,11 @@ type _State = tuple[
 ]
 
 
-class _NeedInputError(Exception):
-    """The transition needs one more input character to finish its step.
+class _StepError(Exception):
+    """Base for signals that pause a pure transition so the shell can answer.
 
     ``effects`` is the immutable prefix of prints the transition already
-    produced; the shell flushes it before reading.
+    produced; the shell flushes it before answering the signal.
     """
 
     def __init__(self, effects: tuple[int, ...] = ()) -> None:
@@ -132,20 +135,19 @@ class _NeedInputError(Exception):
         self.effects = effects
 
 
-class _NeedDrawError(Exception):
-    """The transition needs one more random draw to finish its step.
+class _NeedInputError(_StepError):
+    """The transition needs one more input character to finish its step."""
 
-    ``effects`` is the immutable prefix of prints the transition already
-    produced; the shell flushes it before drawing.
-    """
+
+class _NeedDrawError(_StepError):
+    """The transition needs one more random draw to finish its step."""
 
     def __init__(self, upper: int = 0, effects: tuple[int, ...] = ()) -> None:
-        super().__init__(upper)
+        super().__init__(effects)
         self.upper = upper
-        self.effects = effects
 
 
-class _FaultError(Exception):
+class _FaultError(_StepError):
     """A transition fault carrying the prints produced before it.
 
     The shell flushes ``effects`` and re-raises ``cause``, so output that
@@ -153,9 +155,8 @@ class _FaultError(Exception):
     """
 
     def __init__(self, cause: BaseException, effects: tuple[int, ...]) -> None:
-        super().__init__(cause)
+        super().__init__(effects)
         self.cause = cause
-        self.effects = effects
 
 
 def _char(grid: tuple[str, ...], point: _Point) -> str:
@@ -295,7 +296,7 @@ def _ordered_groups(
 
 @dataclass
 class _Step:
-    """Mutable workspace for one pure transition; never escapes :func:`_advance`."""
+    """Mutable workspace for advancing one cycle's pointers."""
 
     grid: tuple[str, ...]
     cells: dict[_Point, int]
@@ -366,7 +367,8 @@ class _Step:
         self._emit(pointer, _exits(self.grid, pointer, "data"), "data", value)
         self._emit(pointer, _exits(self.grid, pointer, "execution"), "execution")
 
-    def _merge(self, cell: str, arrived: list[_Pointer]) -> None:
+    def merge(self, cell: str, arrived: list[_Pointer]) -> None:
+        """Fold the pointers that arrived together on ``cell`` into ``following``."""
         if cell == "◈":
             if len(arrived) < 2:
                 self.following.extend(arrived)
@@ -381,8 +383,8 @@ class _Step:
         for pointers in groups:
             if not pointers:
                 continue
-            if cell in "□■▦" and pointers[0].channel == "execution":
-                value = {"□": 0, "■": 1, "▦": None}[cell]
+            if cell in _GATE_VALUE and pointers[0].channel == "execution":
+                value = _GATE_VALUE[cell]
                 for pointer in pointers:
                     self._send(pointer, value)
                 continue
@@ -401,102 +403,135 @@ class _Step:
                     value = int(any(bit == 1 for bit in bits))
                 else:
                     value = sum(bit == 1 for bit in bits) % 2
-            channel: _Channel = "execution" if chosen.channel == "execution" else "data"
+            channel = chosen.channel
             self._emit(chosen, _exits(self.grid, chosen, channel), channel, value)
 
-    def _advance_one(self, pointer: _Pointer) -> None:
+    def advance(self, pointer: _Pointer) -> None:
+        """Advance one pointer through the cell it stands on."""
         cell = _char(self.grid, pointer.position)
-        if cell in _SINGLE | _DOUBLE:
-            channel: _Channel = "execution" if cell in _SINGLE else "data"
-            value = pointer.value if channel == "data" else None
-            self._emit(pointer, _exits(self.grid, pointer, channel), channel, value)
-        elif cell == "▣":
-            self._emit(pointer, _exits(self.grid, pointer, "execution"), "execution")
-        elif cell == "◉":
-            self.halting = True
-        elif cell in _ARROWS:
-            direction = _ARROW_DIRECTION[cell]
-            incoming = _incoming(pointer)
-            if cell in "△▷▽◁" and incoming not in (
-                None,
-                direction,
-                _OPPOSITE[direction],
-            ):
-                direction = incoming
-            exits = [
-                point
-                for point in _directed_exit(
-                    self.grid, pointer, direction, pointer.channel
-                )
-                if point != pointer.previous
-            ]
-            self._emit(pointer, exits, pointer.channel, pointer.value)
-        elif cell == "◯":
-            self._pass(pointer)
-        elif cell == "◔":
-            if pointer.paused:
-                self._pass(pointer)
-            else:
-                self.following.append(
-                    _Pointer(
-                        pointer.position,
-                        pointer.previous,
-                        pointer.channel,
-                        pointer.value,
-                        paused=True,
-                    )
-                )
-        elif cell == "◇":
-            if pointer.channel == "execution":
-                self._send(pointer, self._read_bit())
-            elif pointer.value is not None:
-                self.effects.append(pointer.value)
-            elif self.set_ended:
-                self.set_ended = False
-            else:
-                while self._read_char() not in (None, 10):
-                    pass
-        elif cell in "◧⬓◨⬒":
-            axis: Literal["row", "column"] = "column" if cell in "⬓⬒" else "row"
-            operation = _tail if cell in "◨⬒" else _head
-            if pointer.channel == "execution":
-                self.cells, value = operation(self.cells, self.cursor, axis, None)
-                self._send(pointer, value)
-            else:
-                if pointer.value is not None:
-                    self.cells, _ = operation(
-                        self.cells, self.cursor, axis, pointer.value
-                    )
-                self._emit(
-                    pointer, _exits(self.grid, pointer, "execution"), "execution"
-                )
-        elif cell in "◹◺":
-            if pointer.channel == "data" and pointer.value != 1:
-                return
-            moved = cell == "◹" or self.cursor > 0
-            if moved:
-                self.cursor += 1 if cell == "◹" else -1
-            if pointer.channel == "execution":
-                self._send(pointer, int(moved))
-            else:
-                self._emit(
-                    pointer, _exits(self.grid, pointer, "execution"), "execution"
-                )
-        elif cell in _BLACK_SIDE:
-            route_direction = _router_direction(cell, pointer)
-            exits = (
-                []
-                if route_direction is None
-                else _directed_exit(self.grid, pointer, route_direction, "execution")
-            )
-            self._emit(pointer, exits, "execution")
-        elif cell in "□■▦":
-            self._send(pointer, {"□": 0, "■": 1, "▦": None}[cell])
-        else:
+        handler = self._CELL_HANDLERS.get(cell)
+        if handler is None:
             raise HaltError(
                 f"unsupported thisthat cell: {cell!r}",
                 hint="use cells documented by esolangs describe --spec thisthat",
             )
+        handler(self, pointer)
+
+    def _cell_wire(self, pointer: _Pointer) -> None:
+        """Carry a pointer along a single- or double-line wire."""
+        cell = _char(self.grid, pointer.position)
+        channel: _Channel = "execution" if cell in _SINGLE else "data"
+        value = pointer.value if channel == "data" else None
+        self._emit(pointer, _exits(self.grid, pointer, channel), channel, value)
+
+    def _cell_start(self, pointer: _Pointer) -> None:
+        """Send a start node's pointer down its execution wires."""
+        self._emit(pointer, _exits(self.grid, pointer, "execution"), "execution")
+
+    def _cell_halt(self, _pointer: _Pointer) -> None:
+        """Halt at the end of this cycle."""
+        self.halting = True
+
+    def _cell_arrow(self, pointer: _Pointer) -> None:
+        """Route a pointer through an arrow, never back the way it came."""
+        cell = _char(self.grid, pointer.position)
+        direction = _ARROW_DIRECTION[cell]
+        incoming = _incoming(pointer)
+        if cell in "△▷▽◁" and incoming not in (
+            None,
+            direction,
+            _OPPOSITE[direction],
+        ):
+            direction = incoming
+        exits = [
+            point
+            for point in _directed_exit(self.grid, pointer, direction, pointer.channel)
+            if point != pointer.previous
+        ]
+        self._emit(pointer, exits, pointer.channel, pointer.value)
+
+    def _cell_pause(self, pointer: _Pointer) -> None:
+        """Hold a pointer for one cycle, then let it through."""
+        if pointer.paused:
+            self._pass(pointer)
+        else:
+            self.following.append(
+                _Pointer(
+                    pointer.position,
+                    pointer.previous,
+                    pointer.channel,
+                    pointer.value,
+                    paused=True,
+                )
+            )
+
+    def _cell_input(self, pointer: _Pointer) -> None:
+        """Read a bit on execution entry; print one on data entry."""
+        if pointer.channel == "execution":
+            self._send(pointer, self._read_bit())
+        elif pointer.value is not None:
+            self.effects.append(pointer.value)
+        elif self.set_ended:
+            self.set_ended = False
+        else:
+            while self._read_char() not in (None, 10):
+                pass
+
+    def _cell_stack(self, pointer: _Pointer) -> None:
+        """Push to or pop from the head or tail of the selected bistack axis."""
+        cell = _char(self.grid, pointer.position)
+        axis: Literal["row", "column"] = "column" if cell in "⬓⬒" else "row"
+        operation = _tail if cell in "◨⬒" else _head
+        if pointer.channel == "execution":
+            self.cells, value = operation(self.cells, self.cursor, axis, None)
+            self._send(pointer, value)
+        else:
+            if pointer.value is not None:
+                self.cells, _ = operation(self.cells, self.cursor, axis, pointer.value)
+            self._emit(pointer, _exits(self.grid, pointer, "execution"), "execution")
+
+    def _cell_cursor(self, pointer: _Pointer) -> None:
+        """Move the bistack cursor up (``◹``) or down (``◺``)."""
+        cell = _char(self.grid, pointer.position)
+        if pointer.channel == "data" and pointer.value != 1:
+            return
+        moved = cell == "◹" or self.cursor > 0
+        if moved:
+            self.cursor += 1 if cell == "◹" else -1
+        if pointer.channel == "execution":
+            self._send(pointer, int(moved))
+        else:
+            self._emit(pointer, _exits(self.grid, pointer, "execution"), "execution")
+
+    def _cell_router(self, pointer: _Pointer) -> None:
+        """Route an execution pointer through a black/white half-cell."""
+        cell = _char(self.grid, pointer.position)
+        route_direction = _router_direction(cell, pointer)
+        exits = (
+            []
+            if route_direction is None
+            else _directed_exit(self.grid, pointer, route_direction, "execution")
+        )
+        self._emit(pointer, exits, "execution")
+
+    def _cell_constant(self, pointer: _Pointer) -> None:
+        """Send the gate's constant down the data wires."""
+        cell = _char(self.grid, pointer.position)
+        self._send(pointer, _GATE_VALUE[cell])
+
+    _CELL_HANDLERS: ClassVar[dict[str, Callable[[_Step, _Pointer], None]]] = {
+        **dict.fromkeys(_SINGLE | _DOUBLE, _cell_wire),
+        "▣": _cell_start,
+        "◉": _cell_halt,
+        **dict.fromkeys(_ARROWS, _cell_arrow),
+        "◯": _pass,
+        "◔": _cell_pause,
+        "◇": _cell_input,
+        **dict.fromkeys("◧⬓◨⬒", _cell_stack),
+        **dict.fromkeys("◹◺", _cell_cursor),
+        **dict.fromkeys(_BLACK_SIDE, _cell_router),
+        **dict.fromkeys(_GATE_VALUE, _cell_constant),
+    }
 
 
 def _advance(
@@ -527,31 +562,26 @@ def _advance(
     try:
         for position, arrived in _ordered_groups(grid, pointers):
             cell = _char(grid, position)
-            is_data_gate = cell in "□■▦" and any(p.channel == "data" for p in arrived)
+            is_data_gate = cell in _GATE_VALUE and any(
+                p.channel == "data" for p in arrived
+            )
             if cell in "◘◈" or is_data_gate:
-                step._merge(cell, arrived)  # noqa: SLF001 - same-module workspace
+                step.merge(cell, arrived)
             else:
                 for pointer in arrived:
-                    step._advance_one(pointer)  # noqa: SLF001 - same-module workspace
-    except _NeedInputError as need:
-        need.effects = tuple(step.effects)
-        raise
-    except _NeedDrawError as need:
+                    step.advance(pointer)
+    except (_NeedInputError, _NeedDrawError) as need:
         need.effects = tuple(step.effects)
         raise
     except Exception as error:
         raise _FaultError(error, tuple(step.effects)) from error
-    if step.halting:
-        return (
-            ((), MappingProxyType(step.cells), step.cursor, True, step.set_ended),
-            tuple(step.effects),
-        )
+    following = () if step.halting else tuple(step.following)
     return (
         (
-            tuple(step.following),
+            following,
             MappingProxyType(step.cells),
             step.cursor,
-            halted,
+            step.halting,
             step.set_ended,
         ),
         tuple(step.effects),
@@ -620,18 +650,6 @@ class _Machine:
     @property
     def cursor(self) -> int:
         return self.state[2]
-
-    @cursor.setter
-    def cursor(self, value: int) -> None:
-        self.state = (self.state[0], self.state[1], value, self.state[3], self.state[4])
-
-    @property
-    def _halted(self) -> bool:
-        return self.state[3]
-
-    @property
-    def _set_ended(self) -> bool:
-        return self.state[4]
 
     @property
     def halted(self) -> bool:
@@ -774,7 +792,7 @@ class _Machine:
             step = self._workspace(following)
             step.draws = draws
             try:
-                step._merge(cell, arrived)  # noqa: SLF001 - same-module workspace
+                step.merge(cell, arrived)
                 return
             except _NeedDrawError as need:
                 draws = (*draws, draw(self.rng, need.upper))
@@ -787,7 +805,7 @@ class _Machine:
             step = self._workspace(following)
             step.draws = draws
             try:
-                step._advance_one(pointer)  # noqa: SLF001 - same-module workspace
+                step.advance(pointer)
                 return
             except _NeedDrawError as need:
                 draws = (*draws, draw(self.rng, need.upper))

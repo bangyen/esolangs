@@ -117,6 +117,21 @@ under a fixed template and fill mapping.
   [the construction summary](proofs/index.md#malbolge-bound).
   The shipped cap remains sixteen.
 
+  A cheaper seventeen-input layout is checked but unbuilt (2026-10-13). The
+  sixteen-input readout gives two cells per 14-bit prefix, one each for the
+  last group bit `b` = 0 and 1. A third cell per prefix forces one low digit to its
+  missing value and moves that digit to the top. The three maps are disjoint, giving 49,152
+  cells and leaving 9,897 (one cell wraps; reorder the top digit). That
+  replaces the 8,377-10,449-cell address fold with two extra group-4 runs.
+  Navigation dominates code: sixteen's main line is 5,505 cells, of which
+  4,624 are `o`. Six run-time pointer cells cut it to about 4,040 with all
+  65,536 rows still correct (scratch, unshipped). Seven meanings per cell need
+  the address parity. Its trit-sum parity should follow from `p` with `A`
+  all-2 then all-1 (checked per trit), folding ten rotations into an all-1
+  accumulator (not executed).
+  The decoder, label layout and placement remain unbuilt; the estimate
+  (5-6k code cells against about 6.1k) is unmeasured.
+
 
   Counting bounds each family independently of mixer quality:
 
@@ -241,12 +256,12 @@ helper, and one is exempt. Presence does not establish complete sharing.
   and emitted text by O(T), rather than claiming every shared rectangle has
   linear area.
 - Line compares complete ordered residual folds by exact emitted pixel area;
-  a complete fold wins a fallback tie. The five unpacked models have no
-  sharing cutoff. The [construction proof](proofs/line-sharing.md) establishes
+  a complete fold wins a fallback tie. Neither fold (streaming, projected
+  streaming) has a sharing cutoff. The [construction proof](proofs/line-sharing.md) establishes
   complete state sharing, O(T) modeling and area-admitted output. On 200
-  seeded eight-input tables, complete drawings total 6,834,444,000 scale-one
-  pixels against 3,809,364,000 for the smaller fallback (79.41% larger);
-  102,400 native rows pass the unchanged command and workspace bounds. This
+  seeded eight-input tables, complete drawings total 7,929,032,800 scale-one
+  pixels against 3,809,364,000 for the smaller fallback (108.15% larger);
+  51,200 native rows of the public PNGs pass. This
   is the canonical average-larger exemption, not a physical area lower bound.
   Partial-prefix cloning remains unshipped: its 2.19% aggregate planned gain
   misses the bespoke gate; its native positive control passes all 256 rows,
@@ -257,8 +272,8 @@ helper, and one is exempt. Presence does not establish complete sharing.
 - Line:
   The Margulis cofactor witness establishes an expander minor in the
   original-order residual graph, not a language-wide area floor. At twelve
-  inputs, Line's reverse-order destination layout passes all 4,096 rows in
-  34,750,000 scale-one pixels with at most 50 commands. Reversal reduces the
+  inputs, Line's default layout passes all 4,096 rows in
+  12,483,200 scale-one pixels. Reversal reduces the
   witness's nonconstant residual states from 18,437 to 548 at nineteen inputs
   (graph counts only). A language-wide area lower bound needs a physical embedding
   proof and a witness covering alternative input orders and encodings.
@@ -288,8 +303,6 @@ dispatch.
 - Painfuck admits a bank at several depths; one cell per input level
   is the whole pool.
 - brainfuck admits a bank at several depths; one cell per input level
-  is the whole pool.
-- Boolfuck admits a bank at several depths; one cell per input level
   is the whole pool.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every

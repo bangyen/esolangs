@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Callable, Iterable
 from functools import cache
-from typing import Protocol
+from typing import NamedTuple, Protocol
 
 from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2, _crazy
 
@@ -157,11 +157,19 @@ def _step(
     return tuple(cells)
 
 
-@cache
-def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
-    """Return the table-independent source cells and the row address map."""
-    starts = _INITS[0]
-    x = _addr_of(starts, (), low=35)
+class _Layout(NamedTuple):
+    """Where the skeleton's walked cells sit."""
+
+    x: int  #: mixer cell 0, the readout and the entry's ``X``
+    cells: list[int]  #: the five mixer cells
+    value_cell: int  #: the preload value cell
+    operands: list[int]  #: the preload's two operand cells
+    modified: set[int]  #: every cell the code writes, which ``d`` must not land on
+
+
+def _layout() -> _Layout:
+    """Place the mixer, stub operand and preload cells among the walked ``g`` values."""
+    x = _addr_of(_INITS[0], (), low=35)
     cells = [x]
     for init in _INITS[1:]:
         cells.append(_addr_of(init, (x + 1, *cells)))
@@ -176,67 +184,82 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
         cell = _addr_of(value, tuple(avoid))
         operands.append(cell)
         avoid.add(cell)
-    modified = {*cells, vc, operand_cell, *operands}
+    return _Layout(x, cells, vc, operands, {*cells, vc, operand_cell, *operands})
 
-    # The entry ``j`` reads its own cell, so its address fixes ``X``: the
-    # character at ``S`` must be ``X - 2`` and decipher to ``j``.  ``S`` is
-    # set past every navigation cell so the initial walk sets their ``g``
-    # values before the mixer reads them.
-    s = next(
-        candidate for candidate in range(222, 800) if candidate % 94 == (42 - x) % 94
-    )
-    code: dict[int, str] = dict.fromkeys(range(s), "o")
-    code[s] = "j"
-    c = s + 1
-    d = x - 1
 
-    def set_d(target: int) -> None:
+class _Skeleton:
+    """Code emitter tracking ``d`` below the entry ``j`` at ``s``."""
+
+    def __init__(self, layout: _Layout) -> None:
+        # The entry ``j`` reads its own cell, so its address fixes ``X``: the
+        # character at ``S`` must be ``X - 2`` and decipher to ``j``.  ``S`` is
+        # set past every navigation cell so the initial walk sets their ``g``
+        # values before the mixer reads them.
+        self.s = next(
+            candidate
+            for candidate in range(222, 800)
+            if candidate % 94 == (42 - layout.x) % 94
+        )
+        self.code: dict[int, str] = dict.fromkeys(range(self.s), "o")
+        self.code[self.s] = "j"
+        self.c = self.s + 1
+        self.d = layout.x - 1
+        self.modified = layout.modified
+
+    def set_d(self, target: int) -> None:
         """Emit ``o``s and a ``j`` so that ``d`` becomes ``target``."""
-        nonlocal c, d
-        if d == target:
+        if self.d == target:
             return
         address = _addr_of(target - 1, ())
-        while address < d or address in modified or address >= s:
+        while address < self.d or address in self.modified or address >= self.s:
             address += 94
-        while d < address:
-            code[c] = "o"
-            c += 1
-            d += 1
-        code[c] = "j"
-        c += 1
-        d = target
+        while self.d < address:
+            self.code[self.c] = "o"
+            self.c += 1
+            self.d += 1
+        self.code[self.c] = "j"
+        self.c += 1
+        self.d = target
 
-    def emit(op: str, cell: int | None = None) -> None:
-        nonlocal c, d
+    def emit(self, op: str, cell: int | None = None) -> None:
         if cell is not None:
-            set_d(cell)
-        code[c] = op
-        c += 1
-        d += 1  # every Malbolge instruction increments ``d``
+            self.set_d(cell)
+        self.code[self.c] = op
+        self.c += 1
+        self.d += 1  # every Malbolge instruction increments ``d``
 
+
+def _skeleton_code(n: int, layout: _Layout) -> dict[int, str]:
+    """Return the code: ``n`` mixer rounds, the preload, then the closing ``i``."""
+    sk = _Skeleton(layout)
     for i in range(n):
-        emit("/")
+        sk.emit("/")
         schedule = _SCHEDULE if i < n - 1 else _SCHEDULE + _POST
         for kind, index in schedule:
-            emit("p" if kind == 0 else "*", cells[index])
+            sk.emit(_OPS[kind], layout.cells[index])
         if i < n - 1:
-            set_d(x - 1)
-    emit("*", vc)
+            sk.set_d(layout.x - 1)
+    sk.emit("*", layout.value_cell)
     for _ in range(_PRELOAD_ROTATIONS - 1):
-        set_d(vc)
-        emit("*", vc)
-    for cell in operands:
-        set_d(cell)
-        emit("p")
-    set_d(x)
-    code[c] = "i"
+        sk.set_d(layout.value_cell)
+        sk.emit("*", layout.value_cell)
+    for cell in layout.operands:
+        sk.set_d(cell)
+        sk.emit("p")
+    sk.set_d(layout.x)
+    sk.code[sk.c] = "i"
+    return sk.code
 
-    # The fold is a prefix computation, so expanding the levels breadth first
-    # computes each distinct prefix once: refolding from ``_INITS`` per row
-    # costs ``n`` steps a row and so ``Theta(T log T)``, while the shared
-    # levels total ``2**(n+1) - 2`` steps and so ``Theta(T)``.  Branching
-    # ``48`` before ``49`` leaves the list in the MSB-first row order the
-    # caller indexes by.
+
+def _row_addresses(n: int) -> tuple[int, ...]:
+    """Return each row's readout cell, in MSB-first row order.
+
+    The fold is a prefix computation, so expanding the levels breadth first
+    computes each distinct prefix once: refolding from ``_INITS`` per row
+    costs ``n`` steps a row and so ``Theta(T log T)``, while the shared
+    levels total ``2**(n+1) - 2`` steps and so ``Theta(T)``.  Branching
+    ``48`` before ``49`` leaves the list in the order the caller indexes by.
+    """
     states: list[tuple[int, ...]] = [_INITS]
     for i in range(n):
         schedule = _SCHEDULE if i < n - 1 else _SCHEDULE + _POST
@@ -244,7 +267,13 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
     addresses = tuple(state[0] for state in states)
     if len(set(addresses)) != len(addresses):
         raise AssertionError("mixer collided")
-    return code, addresses
+    return addresses
+
+
+@cache
+def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
+    """Return the table-independent source cells and the row address map."""
+    return _skeleton_code(n, _layout()), _row_addresses(n)
 
 
 # ---------------------------------------------------------------------------
@@ -298,32 +327,7 @@ _START_D = 34 + (7 - _ENTRY) % 94
 #: the residue cover: every ``h mod 94`` must admit a ``T`` of each label
 #: among the eight characters the loader accepts at ``h``.
 _PAIRS = (34, 36, 39, 41, 51, 53, 55, 59, 61, 63, 65, 67, 72, 105, 107, 109, 115)
-_NEXTS = (
-    76,
-    77,
-    78,
-    80,
-    81,
-    82,
-    83,
-    84,
-    85,
-    86,
-    87,
-    88,
-    89,
-    90,
-    91,
-    92,
-    93,
-    94,
-    95,
-    96,
-    97,
-    98,
-    101,
-    102,
-)
+_NEXTS = (*range(76, 79), *range(80, 99), 101, 102)
 #: Helper inits: ``{0,1}``-trit cells become all-1 / 0 under ``A = 0`` and
 #: ``A = all-1``; 80 and 78 build all-2; 113 seeds the pair chain; 69 and 48
 #: give ``A = tau(69) = 48`` before each level's jump (48 -> 69 -> 48 on the
@@ -449,10 +453,7 @@ def _head(
         main.op("p", a)
         main.op("p", a + 1)
 
-    for _ in range(_CASCADE_N):
-        main.raw("/")
-        _ops(main, cell, _C_SCHEDULE)
-    _ops(main, cell, _C_POST[0])
+    _emit_fold(main, cell)
     return main, cell, helper, frozen
 
 
@@ -460,6 +461,14 @@ def _ops(target: _OpTarget, cell: list[int], ops: tuple[tuple[int, int], ...]) -
     """Emit ``ops`` (``(kind, index)`` pairs) over ``cell``."""
     for kind, index in ops:
         target.op(_OPS[kind], cell[index])
+
+
+def _emit_fold(target: _OpTarget, cell: list[int]) -> None:
+    """Emit the eleven-bit fold over ``cell``: the cascade, then its post-step."""
+    for _ in range(_CASCADE_N):
+        target.raw("/")
+        _ops(target, cell, _C_SCHEDULE)
+    _ops(target, cell, _C_POST[0])
 
 
 def _decoder_entry(dec: _OpTarget, start: int) -> None:
@@ -575,19 +584,30 @@ def _cascade() -> _Cascade:
 # The decoder at 29525 selects through ``B2`` the same way, and each level-2
 # path runs its own post-map, searched to separate its half's colliding rows.
 _WIDE_N = 12
-#: Per level, per ``x``: the ops the path runs before the jump (cell index 7
-#: is the all-2 cell, so ``(1, 7)`` sets ``A = all-2``), the readout cell and
-#: the table offset.  Level 1 reads cell 0 for both halves, negated for
-#: ``x = 1``; each level-2 path carries its own searched post-map.
-_W_OPS: tuple[tuple[tuple[tuple[int, int], ...], ...], ...] = (
-    ((), ((1, 7), (0, 0))),
+
+
+class _WidePath(NamedTuple):
+    """A twelve-input path: ops before the jump, readout cell, table offset."""
+
+    ops: tuple[tuple[int, int], ...]
+    readout: int
+    offset: int
+
+
+#: Per level, per ``x``.  Cell index 7 is the all-2 cell, so ``(1, 7)`` sets
+#: ``A = all-2``.  Level 1 reads cell 0 for both halves, negated for ``x = 1``;
+#: each level-2 path carries its own searched post-map (not derivable by rule).
+_W_PATHS: tuple[tuple[_WidePath, _WidePath], tuple[_WidePath, _WidePath]] = (
+    (_WidePath((), 0, 0), _WidePath(((1, 7), (0, 0)), 0, 543)),
     (
-        ((1, 7), (1, 7), (0, 3), (0, 6), (0, 2), (1, 0), (0, 6)),
-        ((1, 7), (1, 0), (1, 1), (0, 2), (1, 2), (0, 0), (0, 3), (1, 0), (1, 3)),
+        _WidePath(((1, 7), (1, 7), (0, 3), (0, 6), (0, 2), (1, 0), (0, 6)), 6, 4),
+        _WidePath(
+            ((1, 7), (1, 0), (1, 1), (0, 2), (1, 2), (0, 0), (0, 3), (1, 0), (1, 3)),
+            0,
+            2,
+        ),
     ),
 )
-_W_READOUT = ((0, 0), (6, 0))
-_W_OFFSETS = ((0, 543), (4, 2))
 #: Selector cells, all free pointer-region cells: ``B`` (level 1), ``B2``
 #: (level 2) and a scratch cell, and the ops that fold input twelve into
 #: them, ``(kind, index)`` run from ``A = '0' + x``.  They were searched so
@@ -614,20 +634,15 @@ _Wide = tuple[
 ]
 
 
-def _wide_build(
+def _wide_code(
     select: tuple[int, ...], select_ops: tuple[tuple[int, int], ...]
-) -> _Wide:
-    """Return ``(code, level, tables, labels)`` for twelve inputs.
-
-    ``level[x][row]`` and ``tables[level][x][row]`` are indexed by the last
-    input ``x`` and the eleven-bit prefix ``row``.  Raises if any path, table
-    cell or stub collides.
-    """
+) -> tuple[dict[int, str], int]:
+    """Return the code (main, decoder, four paths, stubs) and the main code's end."""
     b, b2 = select[:2]
     main, cell, helper, frozen = _head(select)
     main.raw("/")
     for kind, which in select_ops:
-        main.op("p" if kind == 0 else "*", select[which])
+        main.op(_OPS[kind], select[which])
     main.set_d(b)
     main.raw("i")
     code_end = main.c
@@ -647,11 +662,12 @@ def _wide_build(
     for lvl, preload in ((0, ("a1",)), (1, ("a2", "a2"))):
         for x in (0, 1):
             path = _Walker(values[x][lvl] + 1, (b2 if lvl else b) + 1, frozen)
-            _ops(path, cell, _W_OPS[lvl][x])
+            spec = _W_PATHS[lvl][x]
+            _ops(path, cell, spec.ops)
             for name in preload:
                 path.op("*", helper["w"])
                 path.op("p", helper[name])
-            _jump(path, cell[_W_READOUT[lvl][x]], _W_OFFSETS[lvl][x])
+            _jump(path, cell[spec.readout], spec.offset)
             walkers.append(path.code)
 
     code = dict.fromkeys(range(_ENTRY), "o")
@@ -663,9 +679,14 @@ def _wide_build(
     if set(stubs) & set(code):
         raise AssertionError("a path overlaps a stub")
     code.update(stubs)
-    reserved = _reserved(code)
+    return code, code_end
 
-    level: list[list[int]] = [[], []]
+
+def _wide_tables(
+    code: dict[int, str], code_end: int
+) -> tuple[tuple[tuple[int, ...], ...], tuple[tuple[tuple[int, ...], ...], ...]]:
+    """Return ``(level, tables)`` per last input ``x``, raising on a collision."""
+    reserved = _reserved(code)
     tables: list[list[list[int]]] = [[[], []], [[], []]]
     for row in range(1 << _CASCADE_N):
         cells, a = _fold(row)
@@ -673,12 +694,11 @@ def _wide_build(
         for x in (0, 1):
             state = list(cells)
             for lvl in (0, 1):
-                _apply(state, 0, _W_OPS[lvl][x])
-                readout = state[_W_READOUT[lvl][x]]
-                tables[lvl][x].append(readout + 1 + _W_OFFSETS[lvl][x])
+                spec = _W_PATHS[lvl][x]
+                _apply(state, 0, spec.ops)
+                tables[lvl][x].append(state[spec.readout] + 1 + spec.offset)
     counts = Counter(tables[0][0] + tables[0][1])
-    for x in (0, 1):
-        level[x] = [0 if counts[h] == 1 else 1 for h in tables[0][x]]
+    level = [[0 if counts[h] == 1 else 1 for h in tables[0][x]] for x in (0, 1)]
     first = set(counts)
     second = [
         tables[1][x][row]
@@ -693,11 +713,23 @@ def _wide_build(
             if h < code_end or h >= _WORDS or h in reserved or (lvl and h in first):
                 raise AssertionError(f"table cell {h} collides at level {lvl + 1}")
     return (
-        code,
         tuple(tuple(lv) for lv in level),
         tuple(tuple(tuple(t) for t in tl) for tl in tables),
-        _labels(),
     )
+
+
+def _wide_build(
+    select: tuple[int, ...], select_ops: tuple[tuple[int, int], ...]
+) -> _Wide:
+    """Return ``(code, level, tables, labels)`` for twelve inputs.
+
+    ``level[x][row]`` and ``tables[level][x][row]`` are indexed by the last
+    input ``x`` and the eleven-bit prefix ``row``.  Raises if any path, table
+    cell or stub collides.
+    """
+    code, code_end = _wide_code(select, select_ops)
+    level, tables = _wide_tables(code, code_end)
+    return code, level, tables, _labels()
 
 
 @cache
@@ -885,6 +917,26 @@ def _emit_chain(path: _Planner, target: int, ops: str, helper: dict[str, int]) -
             path.op("p", target)
 
 
+def _seed_label_chains(
+    main: _Planner,
+    helper: dict[str, int],
+    chains: dict[str, str],
+    seeds: dict[str, int],
+    label: dict[int, str],
+) -> None:
+    """Run each label's seed chain, then ``p`` every pointer cell of that label.
+
+    ``chains[lab]`` is the op string :func:`_emit_chain` runs on
+    ``seeds[lab]``; a class's pointer cells then alternate that value and
+    its 0/1 swap.
+    """
+    for lab, chain in chains.items():
+        _emit_chain(main, seeds[lab], chain, helper)
+        for p in sorted(label):
+            if label[p] == lab:
+                main.op("p", p)
+
+
 def _t_jump(path: _Planner, readout: int, offset: int) -> None:
     """``j`` to the table cell, ``j`` to its pointer, ``j`` to the hub, ``i``."""
     path.op("j", readout)
@@ -992,6 +1044,16 @@ def _prime(main: _Planner, helper: dict[str, int], cells: Iterable[int]) -> None
         main.op("p", p)
     main.op("*", helper["w"])
     main.op("p", helper["all2"])
+
+
+def _turn_hubs(
+    main: _Planner, pointer: dict[int, int], hub_turns: dict[int, int]
+) -> None:
+    """Turn each hub ``V`` its ``hub_turns[V]`` times, in ``V`` order."""
+    for v, turns in sorted(hub_turns.items()):
+        for _ in range(turns):
+            main.hub(pointer[v], v)
+            main.raw("*")
 
 
 def _n_hub_pass(main: _Planner, pointer: int, v: int) -> None:

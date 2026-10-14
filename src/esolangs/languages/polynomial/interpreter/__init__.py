@@ -44,6 +44,7 @@ from esolangs.languages.polynomial.interpreter.roots import (
 from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import trunc_div, trunc_mod
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -76,7 +77,7 @@ def brackets(string: list[list[int]], pointer: int) -> int:
     """
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
-    direct = (1, -1)[length and end]
+    direct = -1 if length and end else 1
     count = direct
     while count:
         pointer += direct
@@ -247,15 +248,6 @@ def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
     return tuple(tuple(instr) for instr in convert([k for k in roots if k.imag >= 0]))
 
 
-#: The arithmetic instructions, in the order their codes select them.
-#: Each is a function of the register and the instruction's operand, so
-#: none of them reaches the machine the way the old bound lambdas did.
-def _quotient(register: int, operand: int) -> int:
-    """Return C integer division without converting through float."""
-    magnitude = abs(register) // abs(operand)
-    return -magnitude if (register < 0) != (operand < 0) else magnitude
-
-
 def _power(register: int, exponent: int) -> int:
     """Return the integer assignment of the specified power."""
     if exponent >= 0:
@@ -270,13 +262,16 @@ def _power(register: int, exponent: int) -> int:
     return 0
 
 
+#: The arithmetic instructions, in the order their codes select them.
+#: Each is a function of the register and the instruction's operand, so
+#: none of them reaches the machine the way the old bound lambdas did.
 _ARITH: tuple[Callable[[int, int], int], ...] = (
     lambda r, a: r + a,  # +=
     lambda r, a: r - a,  # -=
     lambda r, a: r * a,  # *=
-    lambda r, a: _quotient(r, a),  # /=
-    lambda r, a: r - a * _quotient(r, a),  # %=
-    lambda r, a: _power(r, a),  # ^
+    trunc_div,  # /=
+    trunc_mod,  # %=
+    _power,  # ^
 )
 
 #: The branch conditions, keyed by ``(code - 1) % 4`` the way the
@@ -331,10 +326,10 @@ def _advance(
     reg, ind = state
     instruction = instructions[ind]
     one = instruction[0]
-    rest = instruction[1:] if len(instruction) > 1 else []
+    two = instruction[1] if len(instruction) > 1 else 0
     output: str | None = None
 
-    if two := ([*rest, 0])[0]:
+    if two:
         if one:
             reg = _ARITH[two - 1](reg, one)
         elif two - 1:
@@ -366,11 +361,12 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Recover ``code``'s instructions and start with a zero register."""
         self.io = io
-        self.instructions = [list(instr) for instr in _parse_program(code)]
+        program = _parse_program(code)
+        self.instructions = [list(instr) for instr in program]
         # Bracket partners, paired once instead of scanned for per jump.
         self._pairs = _bracket_pairs(self.instructions)
         self._input_reads = 0
-        self._program_key = tuple(tuple(instr) for instr in self.instructions)
+        self._program_key = program
         self.ind = 0
         self.reg = 0
 
@@ -406,7 +402,7 @@ class _Machine:
             return
         instruction = self.instructions[self.ind]
         one = instruction[0]
-        two = ([*instruction[1:], 0])[0]
+        two = instruction[1] if len(instruction) > 1 else 0
 
         byte = None
         if two and not one and two - 1:

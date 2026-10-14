@@ -48,9 +48,8 @@ def _advance(
 ) -> tuple[_State, str | None]:
     """Delete one queue bit, conditionally append, and advance the rule."""
     head, read, _answer, printed = state
-    return ((head + 1) % len(program), read + 1, bit, printed), (
-        program[head] if bit == "1" else None
-    )
+    append = program[head] if bit == "1" else None
+    return ((head + 1) % len(program), read + 1, bit, printed), append
 
 
 class _Machine:

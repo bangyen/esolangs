@@ -45,29 +45,33 @@ def dump_program(
         "version": 1,
         "language": name,
         "settings": encoded,
-        "kind": "png" if isinstance(source, Raster) else "text",
-        "source": (
-            base64.b64encode(source.to_png()).decode("ascii")
-            if isinstance(source, Raster)
-            else base64.b64encode(source.to_gzip()).decode("ascii")
-            if isinstance(source, CompressedText)
-            else str(source)
-        ),
     }
-    if isinstance(source, CompressedText):
+    if isinstance(source, Raster):
+        document.update(
+            kind="png", source=base64.b64encode(source.to_png()).decode("ascii")
+        )
+    elif isinstance(source, CompressedText):
         document.update(
             kind="gzip",
             source=base64.b64encode(source.to_gzip()).decode("ascii"),
             limits=asdict(source.limits) if source.limits is not None else None,
         )
-    if isinstance(source, _Template):
-        document.update(kind="template", char=source.char, setters=source.setters)
+    elif isinstance(source, _Template):
+        document.update(
+            kind="template",
+            source=str(source),
+            char=source.char,
+            setters=source.setters,
+        )
+    else:
+        document.update(kind="text", source=str(source))
     return json.dumps(
         document, ensure_ascii=True, sort_keys=True, separators=(",", ":")
     )
 
 
 def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a JSON object, refusing a duplicate field."""
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
@@ -77,6 +81,7 @@ def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _settings(value: Any, language: str) -> DialectSettings | None:
+    """Restore saved dialect settings, validated for ``language``."""
     if value is None:
         return None
     if not isinstance(value, dict):
@@ -100,9 +105,9 @@ def _load_png(
     value: dict[str, Any], name: str, settings: DialectSettings | None
 ) -> Program:
     """Restore a ``png`` document's raster."""
-    return Raster.from_png(
-        base64.b64decode(value["source"], validate=True)
-    ).tagged(name, settings=settings)
+    return Raster.from_png(base64.b64decode(value["source"], validate=True)).tagged(
+        name, settings=settings
+    )
 
 
 def _load_gzip(

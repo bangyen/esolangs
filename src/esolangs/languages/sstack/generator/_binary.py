@@ -118,13 +118,13 @@ def _prefix(
 
     def visit(level: int, block: int) -> _Metric:
         key = ids[level][block]
-        if (level, key) in selected or level == stop_depth or key < 2:
-            if (level, key) in selected:
-                target = selected[level, key]
-                if emit is not None:
-                    for bit in range(width):
-                        emit(f'"{1 + (target // radix**bit % radix)}/e"')
-                return _Metric(5 * width, width + tails[target])
+        if (level, key) in selected:
+            target = selected[level, key]
+            if emit is not None:
+                for bit in range(width):
+                    emit(f'"{1 + (target // radix**bit % radix)}/e"')
+            return _Metric(5 * width, width + tails[target])
+        if level == stop_depth or key < 2:
             if emit is not None:
                 if level == stop_depth:
                     emit(block << (n - level))
@@ -197,11 +197,11 @@ def _render(
             program, commands = build(table[row : row + (1 << remaining)])
             expected = metrics[depth][key]
             if not program.startswith(_PROLOGUE) or (
-                len(program) - 12,
+                len(program) - len(_PROLOGUE),
                 commands - 2,
             ) != (expected.chars, expected.commands):
                 raise ValueError("inline SStack builder disagrees with the bank price")
-            bodies[key] = program[12:]
+            bodies[key] = program[len(_PROLOGUE) :]
         return bodies[key]
 
     out = [_PROLOGUE]

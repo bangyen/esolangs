@@ -25,13 +25,14 @@ from esolangs.runtime._answers import (
     read_answer,
 )
 from esolangs.runtime._execution import check_signal_timeout
+from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.vm import make_vm
+from esolangs.vm import make_vm, run_until_halt_or_cycle
 
 
 class _Default:
@@ -149,18 +150,9 @@ def _iter_evaluate(
     Retained dialect choices apply to filling and execution; explicit ``settings``
     overrides individual choices.
     """
-    from esolangs.runtime._isolated import check_memory
-
-    check_memory(max_memory, isolated=isolated)
+    check_limits(max_output, max_memory, isolated=isolated)
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)
-    if max_output is not None:
-        check_whole(max_output, "max_output")
-        if not isolated:
-            raise with_hint(
-                ArgumentError("max_output requires isolated=True"),
-                "set isolated=True to bound each row's output, or omit max_output",
-            )
     started = monotonic()
     check_timeout(total_timeout)
     # Checked here, not only inside ``run``: the termination path drives the
@@ -171,11 +163,10 @@ def _iter_evaluate(
     if not isinstance(timeout, _Default):
         check_timeout(timeout)
     name = resolve(language)
-    contract = LANGUAGES[name].contract
     parameterized = LANGUAGES[name].parameterized
     check_scale_for(name, scale)
     rows = _evaluation_rows(inputs, max_rows)
-    terminating = contract.answer_mode == "termination"
+    terminating = LANGUAGES[name].contract.answer_mode == "termination"
     if terminating and scale is not None:
         # Scale upscales raster output; a termination answer (halts vs
         # diverges) has no raster to upscale.  No current termination
@@ -184,43 +175,25 @@ def _iter_evaluate(
         # answers by termination, where scale would otherwise be
         # silently dropped on the termination path below.
         raise ArgumentError("scale has no meaning for termination-mode evaluation")
-    bound: float | None
-    if isinstance(timeout, _Default):
-        bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
-    else:
-        # ``None`` is unbounded, as in :func:`run`, and the thread escape
-        # hatch (the guard is ``SIGALRM``).
-        bound = timeout
-    if isolated and bound is None and total_timeout is None:
-        raise with_hint(
-            ArgumentError("isolated evaluation requires a finite timeout"),
-            ("set a positive finite timeout, for example timeout=5.0"),
-        )
-    if not isolated:
-        # The termination path drives ``_run`` directly and so never reached
-        # ``run``'s guard: off a main thread it leaked ``signal.signal``'s
-        # bare ValueError.  ``timeout=None`` is the route out, as for
-        # :func:`run`; the divergers are settled by a repeated state.
-        check_signal_timeout(
-            bound if total_timeout is None else total_timeout,
-            "evaluation's timeout guard uses SIGALRM and needs a Unix main "
-            "thread; off it, pass timeout=None -- a diverging row is "
-            "settled by a repeated machine state rather than waited for",
-        )
+    bound = _row_timeout(
+        timeout, terminating=terminating, isolated=isolated, total=total_timeout
+    )
     deadline = None if total_timeout is None else started + total_timeout
     program = _prepare(
         lambda: esolangs._read_source(name, program),  # noqa: SLF001
         deadline,
         isolated=isolated,
     )
-    if terminating:
-        # Which of halting and diverging means 1, as data.  It is
-        # ``("halts", "diverges")`` for all four, but reading the order
-        # rather than assuming it is what keeps this branch language-free.
-        encoding = list(contract.answer_values)
-        diverges_is = str(encoding.index("diverges"))
-        halts_is = str(encoding.index("halts"))
     settings = effective_settings(name, program, settings)
+    answer_row = _row_answerer(
+        name,
+        terminating=terminating,
+        isolated=isolated,
+        settings=settings,
+        scale=scale,
+        max_output=max_output,
+        max_memory=max_memory,
+    )
     instantiator = esolangs.instantiate
     if settings is not None:
         instantiator = partial(instantiator, settings=settings)
@@ -234,61 +207,7 @@ def _iter_evaluate(
 
         try:
             source, stdin = _prepare(prepare_row, deadline, isolated=isolated)
-            row_bound = _remaining(deadline, bound)
-            if terminating:
-                source = cast("str", source)
-                if isolated:
-                    from esolangs.runtime._isolated import termination_isolated
-
-                    termination_runner = termination_isolated
-                    if settings is not None:
-                        termination_runner = partial(
-                            termination_runner, settings=settings
-                        )
-                    if max_output is not None:
-                        termination_runner = partial(
-                            termination_runner, max_output=max_output
-                        )
-                    if max_memory is not None:
-                        termination_runner = partial(
-                            termination_runner, max_memory=max_memory
-                        )
-                    answer = termination_runner(
-                        name,
-                        source,
-                        stdin,
-                        cast("float", row_bound),
-                        halts_is,
-                        diverges_is,
-                    )
-                else:
-                    terminator = _terminates
-                    if settings is not None:
-                        terminator = partial(terminator, settings=settings)
-                    answer = terminator(
-                        name, source, stdin, row_bound, halts_is, diverges_is
-                    )
-            else:
-                runner = esolangs.run
-                if settings is not None:
-                    runner = partial(runner, settings=settings)
-                if scale is not None:
-                    runner = partial(runner, scale=scale)
-                if max_output is not None:
-                    runner = partial(runner, max_output=max_output)
-                if max_memory is not None:
-                    runner = partial(runner, max_memory=max_memory)
-                if isolated:
-                    output = runner(
-                        name,
-                        source,
-                        stdin=stdin,
-                        timeout=cast("float", row_bound),
-                        isolated=True,
-                    )
-                else:
-                    output = runner(name, source, stdin=stdin, timeout=row_bound)
-                answer = read_answer(name, output)
+            answer = answer_row(source, stdin, _remaining(deadline, bound))
             if deadline is not None and monotonic() >= deadline:
                 raise ExecutionTimeoutError("evaluation exceeded its total deadline")
         except EsolangError as exc:
@@ -301,6 +220,98 @@ def _iter_evaluate(
             )
             raise
         yield answer
+
+
+def _row_timeout(
+    timeout: float | _Default | None,
+    *,
+    terminating: bool,
+    isolated: bool,
+    total: float | None,
+) -> float | None:
+    """Return each row's own time bound; refuse one no guard can enforce."""
+    bound: float | None
+    if isinstance(timeout, _Default):
+        bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
+    else:
+        # ``None`` is unbounded, as in :func:`run`, and the thread escape
+        # hatch (the guard is ``SIGALRM``).
+        bound = timeout
+    if isolated and bound is None and total is None:
+        raise with_hint(
+            ArgumentError("isolated evaluation requires a finite timeout"),
+            ("set a positive finite timeout, for example timeout=5.0"),
+        )
+    if not isolated:
+        # The termination path drives ``_run`` directly and so never reached
+        # ``run``'s guard: off a main thread it leaked ``signal.signal``'s
+        # bare ValueError.  ``timeout=None`` is the route out, as for
+        # :func:`run`; the divergers are settled by a repeated state.
+        check_signal_timeout(
+            bound if total is None else total,
+            "evaluation's timeout guard uses SIGALRM and needs a Unix main "
+            "thread; off it, pass timeout=None -- a diverging row is "
+            "settled by a repeated machine state rather than waited for",
+        )
+    return bound
+
+
+def _row_answerer(
+    name: str,
+    *,
+    terminating: bool,
+    isolated: bool,
+    settings: DialectSettings | None,
+    scale: int | None,
+    max_output: int | None,
+    max_memory: int | None,
+) -> Callable[[Program, str, float | None], str]:
+    """Return the call that turns one row's source, stdin and bound into its bit."""
+    if not terminating:
+        run = esolangs.run
+        return lambda source, stdin, bound: read_answer(
+            name,
+            run(
+                name,
+                source,
+                stdin=stdin,
+                timeout=bound,
+                isolated=isolated,
+                scale=scale,
+                max_output=max_output,
+                max_memory=max_memory,
+                settings=settings,
+            ),
+        )
+    # Which of halting and diverging means 1, as data.  It is
+    # ``("halts", "diverges")`` for all four, but reading the order
+    # rather than assuming it is what keeps this branch language-free.
+    values = LANGUAGES[name].contract.answer_values
+    diverges_is = str(values.index("diverges"))
+    halts_is = str(values.index("halts"))
+    if isolated:
+        from esolangs.runtime._isolated import termination_isolated
+
+        return lambda source, stdin, bound: termination_isolated(
+            name,
+            cast("str", source),
+            stdin,
+            cast("float", bound),
+            halts_is,
+            diverges_is,
+            settings=settings,
+            max_output=max_output,
+            max_memory=max_memory,
+        )
+    return lambda source, stdin, bound: _terminates(
+        name,
+        cast("str", source),
+        stdin,
+        bound,
+        halts_is,
+        diverges_is,
+        settings=settings,
+    )
 
 
 def _evaluate(
@@ -361,8 +372,6 @@ def _terminates(
 
     Repeated snapshots prove divergence; a growing state needs the deadline.
     """
-    from esolangs.vm import run_until_halt_or_cycle
-
     dialect_options(name, settings)
 
     # A box, because ``_run`` exists to apply the timeout and discards what

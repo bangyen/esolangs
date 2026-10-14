@@ -76,7 +76,7 @@ class _Machine:
 
         The shell: the two ports live here and nothing else does.
         """
-        # A halted machine ignores a further step (``contract.py`` checks).
+        # A halted machine ignores a further step (``registry/_contracts.py`` checks).
         if self.halted:
             return
         c = self.code[self.ind]

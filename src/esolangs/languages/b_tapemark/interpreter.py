@@ -107,16 +107,6 @@ class _State:
     halted: bool = False
 
 
-def _read(grid: _Grid, point: _Point) -> str:
-    """Return ``grid``'s symbol at ``point``, or blank."""
-    return grid.at(point)
-
-
-def _write(grid: _Grid, point: _Point, char: str) -> _Grid:
-    """Return ``grid`` with ``char`` at ``point`` without mutating it."""
-    return grid.marked(point, char)
-
-
 def _move(point: _Point, direction: int) -> _Point:
     """Return the adjacent point in ``direction``."""
     dx, dy = _DIRECTIONS[direction]
@@ -175,8 +165,8 @@ def _advance(
     positions = state.positions
     direction = state.direction
     grids = state.grids
-    command = _read(grids[program], positions[program])
-    data_symbol = _read(grids[data], positions[data])
+    command = grids[program].at(positions[program])
+    data_symbol = grids[data].at(positions[data])
     output = None
 
     if command == "!":
@@ -191,14 +181,14 @@ def _advance(
                 "input symbol required for '-' command",
                 "supply a character of input before executing -",
             )
-        changed = _write(grids[data], positions[data], input_symbol)
+        changed = grids[data].marked(positions[data], input_symbol)
         grids = (grids[0], changed) if data else (changed, grids[1])
     elif command == "*":
         skipped = _move(positions[program], direction)
         positions = (skipped, positions[1]) if program == 0 else (positions[0], skipped)
         if data_symbol == " ":
-            copied = _read(grids[program], skipped)
-            changed = _write(grids[data], positions[data], copied)
+            copied = grids[program].at(skipped)
+            changed = grids[data].marked(positions[data], copied)
             grids = (grids[0], changed) if data else (changed, grids[1])
     elif command == "|":
         moved = _move(positions[data], direction)
@@ -247,10 +237,10 @@ class _Machine:
             return
         program = self.state.program
         data = 1 - program
-        command = _read(self.state.grids[program], self.state.positions[program])
+        command = self.state.grids[program].at(self.state.positions[program])
         needs_input = (
             command == "-"
-            and _read(self.state.grids[data], self.state.positions[data]) == " "
+            and self.state.grids[data].at(self.state.positions[data]) == " "
         )
         symbol = chr(self.io.input_char()) if needs_input else None
         self.state, output = _advance(self.state, symbol)

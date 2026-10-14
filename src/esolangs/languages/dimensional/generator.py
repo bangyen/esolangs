@@ -1,9 +1,9 @@
 """Boolean-function generator for Dimensional.
 
-A bare ``>`` takes its dimension from the byte it stands on (``:260`` parses
-none, ``:382`` reads the cell, in ``interpreters/dimensional.py``),
+A bare ``>`` takes its dimension from the byte it stands on (the interpreter's
+``>`` arm parses no number and reads the cell instead),
 so ``d>`` displaces the pointer by the bit read -- dimension 1 for a one, 0 for
-a zero; ``{d`` loops on a *coordinate* (``:296``), so the index doubles.
+a zero; ``{d`` loops on a *coordinate* (its ``{`` arm), so the index doubles.
 
 The table is painted, two characters an entry: a trailing zero run is left
 unpainted (unvisited cells read 0); an interior run of zeros is a counter

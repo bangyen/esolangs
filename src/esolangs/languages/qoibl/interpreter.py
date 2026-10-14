@@ -37,6 +37,7 @@ from types import MappingProxyType
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._fault import _Fault
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -179,7 +180,7 @@ class _Reading:
             beg = self._after[marker][lo]
             if beg < hi:
                 # Found before the ``qe`` arm is reached, which is what keeps
-                # an arithmetic value out of a ``qe`` key -- as before.
+                # an arithmetic value out of a ``qe`` key.
                 if beg + 1 >= hi or tokens[beg + 1] not in OPERATORS:
                     return False
                 if beg + 2 >= hi or tokens[beg + 2] != marker:
@@ -238,7 +239,7 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
     """Cut ``tokens`` into the shortest prefixes that each parse.
 
     Settled from the right: ``cut[i]`` is the shortest statement at ``i``
-    whose remainder also splits (the same cut the recursive search found).
+    whose remainder also splits.
     Still quadratic in tokens, with a small constant.
     """
     size = len(tokens)
@@ -298,19 +299,6 @@ class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
     def __init__(self, effects: _Effects = ()) -> None:
         super().__init__()
         self.effects = effects
-
-
-class _Fault(Exception):  # noqa: N818 - an internal resumption signal
-    """Carries the output prefix computed before a fault, and the fault.
-
-    The shell flushes ``effects`` and re-raises ``error``, so output written
-    before a later read fails or an operation halts is not lost.
-    """
-
-    def __init__(self, effects: _Effects, error: BaseException) -> None:
-        super().__init__(str(error))
-        self.effects = effects
-        self.error = error
 
 
 def _eval(
@@ -504,7 +492,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The 256 variables, unset ones reading as zero."""
-        return [self.var.get(k, 0) for k in range(256)]
+        return [self.var.get(k, 0) for k in range(_VARIABLES)]
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

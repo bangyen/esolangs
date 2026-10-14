@@ -17,16 +17,19 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
 
-def _run(entry: str, count: int) -> str:
+def _run(entry: str, count: int) -> tuple[str, int]:
     """Push ``count`` copies of ``entry`` (``O``/``I``), by a loop when shorter.
 
-    The accumulator is set to ``2 * (count // 2)`` by Horner's rule (``x``
-    doubles, ``+`` adds two); each trip pushes two and subtracts two.
+    Returns the code and its executed command count.  The accumulator is set
+    to ``2 * (count // 2)`` by Horner's rule (``x`` doubles, ``+`` adds two);
+    each trip runs ``>``, pushes two, subtracts two and runs ``<``.
     """
     bits = bin(count // 2)[2:]
     setup = "OA+" + "".join("x" + "+" * (bit == "1") for bit in bits[1:])
     loop = setup + ">" + entry * 2 + "-<" + entry * (count % 2)
-    return min(entry * count, loop, key=len)
+    if count <= len(loop):
+        return entry * count, count
+    return loop, len(setup) + 5 * (count // 2) + count % 2
 
 
 def _runs(bits: str) -> tuple[str, int]:
@@ -35,33 +38,27 @@ def _runs(bits: str) -> tuple[str, int]:
     commands = 0
     for entry, run in groupby(bits):
         count = len(list(run))
-        char = "I" if entry == "1" else "O"
-        code = _run(char, count)
+        code, executed = _run("I" if entry == "1" else "O", count)
         parts.append(code)
-        commands += (
-            count
-            if code == char * count
-            else code.index(">") + 5 * (count // 2) + count % 2
-        )
+        commands += executed
     return "".join(parts), commands
 
 
 def _shared_pushes(bits: str, n: int, kept: int) -> str | None:
     """Count two identical aligned halves before lookup overwrites the counter."""
     ids = subtree_ids(bits)
-    chosen: tuple[int, int] | None = None
-    for depth, layer in enumerate(ids[:-1]):
-        span = 1 << (len(ids) - 1 - depth)
-        for index, state in enumerate(layer):
-            if (
-                state >= 2
-                and span // 2 > 7
-                and ids[depth + 1][2 * index] == ids[depth + 1][2 * index + 1]
-            ):
-                chosen = index * span, span
-                break
-        if chosen is not None:
-            break
+    chosen = next(
+        (
+            (index * span, span)
+            for depth, layer in enumerate(ids[:-1])
+            for span in [1 << (len(ids) - 1 - depth)]
+            for index, state in enumerate(layer)
+            if state >= 2
+            and span // 2 > 7
+            and ids[depth + 1][2 * index] == ids[depth + 1][2 * index + 1]
+        ),
+        None,
+    )
     if chosen is None:
         return None
     start, span = chosen

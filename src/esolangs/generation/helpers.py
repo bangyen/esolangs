@@ -35,6 +35,11 @@ def grid_width(program: str) -> int:
     return max(map(len, program.split("\n")))
 
 
+def grid_area(program: str) -> int:
+    """Return the cells of the program's bounding rectangle."""
+    return grid_width(program) * (program.count("\n") + 1)
+
+
 def narrowest_grid(*candidates: str) -> str:
     """Return the narrowest layout, keeping the earlier one on a tie."""
     return min(candidates, key=grid_width)
@@ -155,6 +160,18 @@ class SubtreeDiagram:
     def repeated_near(self, key: int, depth: int) -> list[int]:
         """Return the nodes met twice or more within ``depth`` levels below."""
         return [name for name, count in self._count(key, depth).items() if count > 1]
+
+
+def check_table_text(truth_table: object) -> None:
+    """Refuse a truth table that is not text."""
+    if not isinstance(truth_table, str):
+        raise with_hint(
+            TruthTableError(
+                f"truth table must be a string of '0' and '1', got "
+                f"{type(truth_table).__name__}"
+            ),
+            ("pass truth-table text, for example '0110' for two-input XOR"),
+        )
 
 
 def _validate_truth_table(truth_table: str) -> int:
@@ -597,6 +614,21 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     return tuple(order)
 
 
+def affine_form(table: str, n: int) -> tuple[int, list[int]] | None:
+    """Return ``(bias, coefficients)`` when ``table`` is an XOR of inputs, else None.
+
+    Coefficients are per input, first input first; checked against every row.
+    """
+    bias = int(table[0])
+    coefficients = [int(table[1 << (n - i - 1)]) ^ bias for i in range(n)]
+    expected = [bias]
+    for coefficient in reversed(coefficients):
+        expected += [value ^ coefficient for value in expected]
+    if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
+        return None
+    return bias, coefficients
+
+
 def move_text(start: int, target: int, right: str, left: str) -> str:
     """Return the moves taking a one-dimensional pointer to ``target``.
 
@@ -623,7 +655,6 @@ def decision_tree_body(
     for a caller that pays per maximal run rather than per character, and
     so wants to fold the ASCII offsets the reads and the print would
     otherwise spend 48 characters on each.
-    :func:`_decision_tree_program` joins the three parts back.
     ``binary_leaves`` transfers the final bit directly into the answer.
     """
     n = _validate_truth_table(truth_table)
@@ -640,6 +671,11 @@ def decision_tree_body(
     is_constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
 
+    def set_result() -> None:
+        """Add one to the answer cell."""
+        move(result)
+        cells.append("+")
+
     def constant(i: int, combo: int) -> str | None:
         """Return the shared value of the subtree at ``(i, combo)``, else None."""
         span = 2 ** (n - i)
@@ -652,8 +688,7 @@ def decision_tree_body(
             move(2 * perm[i + 1])
             node(i + 1, combo)
         elif value == "1":
-            move(result)
-            cells.append("+")
+            set_result()
 
     def node(i: int, combo: int) -> None:
         """Emit node ``i``: test ``b_i``, run one side, leave both cells zero.
@@ -669,13 +704,11 @@ def decision_tree_body(
         if binary_leaves and i == n - 1:
             if truth_table[combo] == truth_table[combo + 1]:
                 if truth_table[combo] == "1":
-                    move(result)
-                    cells.append("+")
+                    set_result()
                 return
             move(bit)
             if truth_table[combo] == "1":
-                move(result)
-                cells.append("+")
+                set_result()
                 move(bit)
             cells.append("[-")
             move(result)
@@ -728,6 +761,16 @@ def same_up_to_wrapping(template: str, plain: str) -> bool:
 def same_tokens(template: str, program: object) -> bool:
     """Whether the two hold the same whitespace-separated tokens."""
     return isinstance(program, str) and template.split() == program.split()
+
+
+def same_token_layout(template: str, plain: str, _layout: object) -> bool:
+    """Compare whitespace-separated tokens: ``same_layout`` for token languages."""
+    return same_tokens(template, plain)
+
+
+def same_ignoring_whitespace(template: str, plain: str, _layout: object) -> bool:
+    """Compare with whitespace removed: ``same_layout`` for languages ignoring it."""
+    return "".join(template.split()) == "".join(plain.split())
 
 
 def layout_width(template: str) -> int:

@@ -15,9 +15,9 @@ walk.  Nothing is pre-painted, and the marks each pass leaves are read by
 the verdict, not cleared.
 
 Nothing replays what it emitted; the suite runs emitted programs on the
-real interpreter, exhaustively at ``n <= 3``.  :func:`_replay_verdict`
-is a separate 123 interpreter for those tests, checked against the real
-one on random programs.
+real interpreter, exhaustively at ``n <= 3``.  The tests' ``_replay_verdict``
+is a separate 123 interpreter, checked against the real one on random
+programs.
 """
 
 from __future__ import annotations
@@ -410,7 +410,7 @@ def _endgame(b: _Builder) -> None:
 
 
 def _paint_source(offsets: list[int]) -> str:
-    """Spell :func:`_paint_all` without constructing per-row tape states."""
+    """Spell the paint pass's source without constructing per-row tape states."""
     targets = set(offsets)
     top = max(offsets)
     return _ZERO * top + "".join(

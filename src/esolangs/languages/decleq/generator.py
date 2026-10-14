@@ -16,6 +16,21 @@ from esolangs.registry._language import Language
 __all__ = ["decleq"]
 
 
+# Fixed low-memory layout. Cells 0-2 hold the entry instruction ``0 0 code``;
+# every unconditional decrement targets cell 0, whose value never triggers a
+# branch. Cells 3-14 hold two print gadgets, each a ``-2 K 0`` decrement pair
+# followed by a ``0 0 END`` terminator; a leaf reaches a gadget by jumping to
+# its address. Cells 15-17 hold the print constants and the table-index
+# counter; cells 18 onward hold the per-input read cells.
+_OUT_ZERO = 3  # print-"0" gadget: ``-2 k48 0``
+_HALT = 6  # halt: ``0 0 END`` of the first gadget, jumping one past memory
+_OUT_ONE = 9  # print-"1" gadget: ``-2 k49 0``
+_K48 = 15  # constant 48 (ASCII "0"), the print-"0" gadget's operand
+_K49 = 16  # constant 49 (ASCII "1"), the print-"1" gadget's operand
+_COUNTER = 17  # table-index counter, initialized to ``2**k``
+_READ_BASE = 18  # input i is read at ``_READ_BASE + i``
+
+
 def decleq(truth_table: str) -> str:
     """Return a Decleq program for a binary, MSB-first ``2**n`` truth table.
 
@@ -43,124 +58,133 @@ def decleq(truth_table: str) -> str:
     # Routing only the essential inputs drops an ignored one's level and the
     # leaves it doubles, but it can move the leaf depth off a constant half
     # the full routing exploits (0100010011111111: 1345 -> 1371), so both run.
+    # All n inputs are read either way; only the essential ones pay the chain,
+    # so an ignored input left routed is a level whose sides share a subtree.
+    reduced = read_at(truth_table, essential, n)
     return min(
-        _decleq_build(read_at(truth_table, essential, n), n, essential, essential),
-        _decleq_build(truth_table, n, list(range(n)), essential),
+        _CodeBuilder(reduced, n, essential, essential).build(),
+        _CodeBuilder(truth_table, n, list(range(n)), essential).build(),
         key=len,
     )
 
 
-def _decleq_build(
-    truth_table: str, n: int, routes: list[int], normalized: list[int]
-) -> str:
-    """Build over ``truth_table``, the table read at the inputs ``routes`` names.
+class _CodeBuilder:
+    """Emits a decleq program into a cell list for one truth table.
 
-    All ``n`` inputs are read; only the ``normalized`` ones pay the chain, and
-    only they are counted, so an ignored input left in ``routes`` is a level
-    whose sides are equal and share one subtree.
+    Owns the cell list and every piece of state the recursive tree emission
+    mutates: the routing plan, the dedup map for repeated subtrees, and the
+    END operands backpatched once emission finishes.
     """
-    m = len(routes)
-    # The table depth: the fewest low inputs whose lookup pays for the
-    # tree above it, ``2**k >= 2 n``, and never more inputs than there are.
-    k = min(m, (2 * n - 1).bit_length())
-    span = 2**k
 
-    is_constant = constant_span_test(truth_table)
+    def __init__(
+        self, truth_table: str, n: int, routes: list[int], normalized: list[int]
+    ) -> None:
+        self.truth_table = truth_table
+        self.routes = routes
+        self.normalized = normalized
+        self.m = len(routes)
+        # The table depth: the fewest low inputs whose lookup pays for the
+        # tree above it, ``2**k >= 2 n``, and never more inputs than there are.
+        self.k = min(self.m, (2 * n - 1).bit_length())
+        self.span = 2**self.k
+        self.is_constant = constant_span_test(truth_table)
+        self.read_cells = list(range(_READ_BASE, _READ_BASE + n))
+        # The code starts on a multiple of three so wrap_grid's columns are
+        # the operand columns; at most two pad cells.
+        self.code = -(-(_READ_BASE + n) // 3) * 3
+        self.mem: list[int] = []
+        self.ends = [_HALT + 2, _HALT + 8]  # the two END operands, patched last
+        # A constant prints at the root and never looks an id up.
+        self.ids = subtree_ids(truth_table) if self.m else []
+        self.done: dict[tuple[int, int], int] = {}
 
-    # Fixed low addresses; a leaf reaches a gadget by ``0 0 gadget``.
-    out_zero, halt, out_one = 3, 6, 9
-    k48, k49, counter = 15, 16, 17
-    read_cells = list(range(18, 18 + n))
-    # The code starts on a multiple of three so wrap_grid's columns are the
-    # operand columns; at most two pad cells.
-    code = -(-(18 + n) // 3) * 3
+    def build(self) -> str:
+        """Emit the full program and return it as a space-separated string."""
+        self.mem = [0, 0, self.code, -2, _K48, 0, 0, 0, 0, -2, _K49, 0, 0, 0, 0]
+        pad = self.code - _READ_BASE
+        self.mem += [_ASCII_ZERO, _ASCII_ONE, self.span] + [0] * pad
+        self._emit_preamble()
+        self.node(0, 0)
+        # Deriving END from the cell count keeps it out of wrap_grid's way: a
+        # leaf's table-top operand is within ``2**k + 8`` of it, so the two
+        # differ by at most one digit, and _cell_width drops an outlier only
+        # at twice the next width.
+        for addr in self.ends:
+            self.mem[addr] = len(self.mem)
+        return " ".join(map(str, self.mem))
 
-    mem: list[int] = [0, 0, code, -2, k48, 0, 0, 0, 0, -2, k49, 0, 0, 0, 0]
-    mem += [_ASCII_ZERO, _ASCII_ONE, span] + [0] * (code - 18)
-    ends = [halt + 2, halt + 8]  # the two END operands, patched last
+    def emit(self, a: int, b: int, c: int) -> None:
+        """Append one ``a b c`` instruction to the cell list."""
+        self.mem.extend([a, b, c])
 
-    def emit(a: int, b: int, c: int) -> None:
-        mem.extend([a, b, c])
+    def pc(self) -> int:
+        """Return the address of the next emitted instruction."""
+        return len(self.mem)
 
-    def pc() -> int:
-        return len(mem)
+    def _emit_preamble(self) -> None:
+        # A read falls through and these decrements never reach 0: target 0.
+        for rc in self.read_cells:
+            self.emit(-1, rc, 0)
+        for i in self.normalized:
+            for _ in range(47):
+                self.emit(self.read_cells[i], self.read_cells[i], 0)
+        # Index: the low ``k`` inputs, each one taking its weight off the
+        # counter. A zero (1) decrements to 0 and jumps the run; a one (2)
+        # falls into it.
+        for j in range(self.m - self.k, self.m):
+            if self.routes[j] not in self.normalized:
+                continue
+            rc = self.read_cells[self.routes[j]]
+            weight = 2 ** (self.m - 1 - j)
+            self.emit(rc, rc, self.pc() + 3 * (weight + 1))
+            for _ in range(weight):
+                self.emit(_COUNTER, _COUNTER, 0)
 
-    # A read falls through and these decrements never reach 0: target 0.
-    for rc in read_cells:
-        emit(-1, rc, 0)
-    for i in normalized:
-        for _ in range(47):
-            emit(read_cells[i], read_cells[i], 0)
-
-    # Index: the low ``k`` inputs, each one taking its weight off the
-    # counter.  A zero (1) decrements to 0 and jumps the run; a one (2)
-    # falls into it.
-    for j in range(m - k, m):
-        if routes[j] not in normalized:
-            continue
-        rc = read_cells[routes[j]]
-        weight = 2 ** (m - 1 - j)
-        emit(rc, rc, pc() + 3 * (weight + 1))
-        for _ in range(weight):
-            emit(counter, counter, 0)
-
-    def leaf(row: int) -> None:
+    def leaf(self, row: int) -> None:
         """Print row ``counter`` of the table at ``row``, then halt.
 
         ``counter`` holds ``2**k - index``; the loop runs it down and takes
         one off the output's address operand per pass but the last, so the
         operand ends ``index`` above the table's base.
         """
-        loop = pc()
+        loop = self.pc()
         out = loop + 9
-        emit(counter, counter, out)
-        emit(out + 1, out + 1, 0)
-        emit(0, 0, loop)
-        emit(-2, out + 6 + span - 1, 0)
-        emit(0, 0, halt)
-        mem.extend(_ASCII_ZERO + int(c) for c in truth_table[row : row + span])
+        self.emit(_COUNTER, _COUNTER, out)
+        self.emit(out + 1, out + 1, 0)
+        self.emit(0, 0, loop)
+        self.emit(-2, out + 6 + self.span - 1, 0)
+        self.emit(0, 0, _HALT)
+        table_row = self.truth_table[row : row + self.span]
+        self.mem.extend(_ASCII_ZERO + int(c) for c in table_row)
 
-    # A constant prints at the root and never looks an id up.
-    ids = subtree_ids(truth_table) if m else []
-    done: dict[tuple[int, int], int] = {}
-
-    def earlier(level: int, row: int) -> int | None:
+    def earlier(self, level: int, row: int) -> int | None:
         """Address of an equal non-constant subtree already emitted, if any."""
-        if is_constant(row, row + 2 ** (m - level)):
+        if self.is_constant(row, row + 2 ** (self.m - level)):
             return None
-        return done.get((level, ids[level][row >> (m - level)]))
+        return self.done.get((level, self.ids[level][row >> (self.m - level)]))
 
-    def node(level: int, row: int) -> None:
-        width = 2 ** (m - level)
-        if (copy := earlier(level, row)) is not None:
-            emit(0, 0, copy)
+    def node(self, level: int, row: int) -> None:
+        """Emit the decision tree at ``level`` covering ``row``'s span."""
+        width = 2 ** (self.m - level)
+        if (copy := self.earlier(level, row)) is not None:
+            self.emit(0, 0, copy)
             return
-        if is_constant(row, row + width):
-            emit(0, 0, out_one if truth_table[row] == "1" else out_zero)
+        if self.is_constant(row, row + width):
+            self.emit(0, 0, _OUT_ONE if self.truth_table[row] == "1" else _OUT_ZERO)
             return
-        done[level, ids[level][row >> (m - level)]] = pc()
-        if level == m - k:
-            leaf(row)
+        self.done[level, self.ids[level][row >> (self.m - level)]] = self.pc()
+        if level == self.m - self.k:
+            self.leaf(row)
             return
-        rc = read_cells[routes[level]]
-        emit(rc, rc, 0)
-        branch = pc() - 3
-        node(level + 1, row + width // 2)
-        target = earlier(level + 1, row)
+        rc = self.read_cells[self.routes[level]]
+        self.emit(rc, rc, 0)
+        branch = self.pc() - 3
+        self.node(level + 1, row + width // 2)
+        target = self.earlier(level + 1, row)
         if target is None:
-            target = pc()
-            node(level + 1, row)
-        mem[branch + 2] = target
-
-    node(0, 0)
-
-    # Deriving END from the cell count keeps it out of wrap_grid's way: a
-    # leaf's table-top operand is within ``2**k + 8`` of it, so the two
-    # differ by at most one digit, and _cell_width drops an outlier only at
-    # twice the next width.
-    for addr in ends:
-        mem[addr] = len(mem)
-    return " ".join(map(str, mem))
+            target = self.pc()
+            self.node(level + 1, row)
+        self.mem[branch + 2] = target
 
 
 LANGUAGE = Language(

@@ -11,82 +11,96 @@ import tokenize
 from contextlib import suppress
 from pathlib import Path
 
+#: Registries a language's name indexes.
+_REGISTRIES = frozenset({"LANGUAGES", "BY_ID", "WRAPPERS", "INTERPRETERS", "RUNNERS"})
+#: Calls taking a language name: first argument, or second for the wrappers.
+_LANGUAGE_CALLS = frozenset(
+    {
+        "run",
+        "generate",
+        "Language",
+        "describe",
+        "encode_inputs",
+        "read_answer",
+        "instantiate",
+        "resolve",
+        "canonical_id",
+        "wrap_program",
+        "balance_program",
+    }
+)
+_SECOND_ARGUMENT = frozenset({"wrap_program", "balance_program"})
+#: Removal helpers whose tests carry language names as scanner fixtures.
+_SCANNER_HELPERS = frozenset(
+    {
+        "_owner_id",
+        "_stale_timing",
+        "_drop_bullets",
+        "_drop_doc_entries",
+        "_mention_edit",
+    }
+)
+_DEPENDENCY = "code: remove or replace the language dependency"
 
-def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
-    """Classify a raw hit without suppressing ambiguous values or fixtures."""
-    path, number, text = mention.split(":", 2)
-    tree = None
-    if path.endswith(".py") and (root / path).is_file():
-        # Broken sources still need a visible dependency report.
-        with suppress(SyntaxError):
-            tree = ast.parse((root / path).read_text(encoding="utf-8"))
-    line = int(number)
-    calls = (
-        [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
-        if tree is not None
-        else []
+
+def _spans(node: ast.expr | ast.stmt, line: int) -> bool:
+    """Whether ``node`` covers ``line``."""
+    return node.lineno <= line <= (node.end_lineno or node.lineno)
+
+
+def _spells(node: ast.expr, name: str | None, line: int) -> bool:
+    """Whether ``node`` is a string literal spelling ``name`` and covers ``line``."""
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and name is not None
+        and node.value.casefold() == name.casefold()
+        and _spans(node, line)
     )
-    if tree is not None:
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Subscript):
-                continue
-            collection, key = node.value, node.slice
-            owner = (
-                collection.id
-                if isinstance(collection, ast.Name)
-                else collection.attr
-                if isinstance(collection, ast.Attribute)
-                else ""
-            )
-            if (
-                owner in {"LANGUAGES", "BY_ID", "WRAPPERS", "INTERPRETERS", "RUNNERS"}
-                and isinstance(key, ast.Constant)
-                and isinstance(key.value, str)
-                and name is not None
-                and key.value.casefold() == name.casefold()
-                and key.lineno <= line <= (key.end_lineno or key.lineno)
-            ):
-                return "code: remove or replace the language dependency"
-    for call in calls:
-        function = call.func
-        called = (
-            function.attr
-            if isinstance(function, ast.Attribute)
-            else function.id
-            if isinstance(function, ast.Name)
-            else ""
-        )
-        if called not in {
-            "run",
-            "generate",
-            "Language",
-            "describe",
-            "encode_inputs",
-            "read_answer",
-            "instantiate",
-            "resolve",
-            "canonical_id",
-            "wrap_program",
-            "balance_program",
-        }:
+
+
+def _short_name(node: ast.expr) -> str:
+    """Return a name's id or an attribute's last part, else the empty string."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return ""
+
+
+def _parse(root: Path, path: str) -> ast.Module | None:
+    """Parse a hit's Python file, or None; broken sources still get a label."""
+    if not path.endswith(".py") or not (root / path).is_file():
+        return None
+    with suppress(SyntaxError):
+        return ast.parse((root / path).read_text(encoding="utf-8"))
+    return None
+
+
+def _code_label(tree: ast.Module, path: str, line: int, name: str | None) -> str | None:
+    """Classify a hit from the syntax tree alone, or None to fall through."""
+    nodes = list(ast.walk(tree))
+    if any(
+        isinstance(node, ast.Subscript)
+        and _short_name(node.value) in _REGISTRIES
+        and _spells(node.slice, name, line)
+        for node in nodes
+    ):
+        return _DEPENDENCY
+    for call in (node for node in nodes if isinstance(node, ast.Call)):
+        called = _short_name(call.func)
+        if called not in _LANGUAGE_CALLS:
             continue
-        position = 1 if called in {"wrap_program", "balance_program"} else 0
+        position = 1 if called in _SECOND_ARGUMENT else 0
         arguments = call.args[position : position + 1] + [
             keyword.value for keyword in call.keywords if keyword.arg == "language"
         ]
-        if any(
-            isinstance(arg, ast.Constant)
-            and isinstance(arg.value, str)
-            and name is not None
-            and arg.value.casefold() == name.casefold()
-            and arg.lineno <= line <= (arg.end_lineno or arg.lineno)
-            for arg in arguments
-        ):
-            return "code: remove or replace the language dependency"
-    if tree is not None and name is not None:
+        if any(_spells(arg, name, line) for arg in arguments):
+            return _DEPENDENCY
+    if name is not None:
         bindings = {
             alias.asname or alias.name
-            for node in ast.walk(tree)
+            for node in nodes
             if isinstance(node, ast.ImportFrom)
             and node.module is not None
             and node.module.split(".", 1)[0] in sys.stdlib_module_names
@@ -104,19 +118,17 @@ def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
                     )
                 )
             )
-            for node in ast.walk(tree)
+            for node in nodes
             if hasattr(node, "lineno")
         ):
             return "identifier: standard-library binding; retain it"
-    if tree is not None and any(
-        isinstance(node, ast.Import | ast.ImportFrom)
-        and node.lineno <= line <= (node.end_lineno or node.lineno)
-        for node in ast.walk(tree)
+    if any(
+        isinstance(node, ast.Import | ast.ImportFrom) and _spans(node, line)
+        for node in nodes
     ):
-        return "code: remove or replace the language dependency"
+        return _DEPENDENCY
     if (
-        tree is not None
-        and name is not None
+        name is not None
         and re.fullmatch(r"[0-9]+[a-z]", name)
         and any(
             isinstance(node, ast.Constant)
@@ -124,29 +136,44 @@ def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
             and node.lineno == line
             and re.search(rf"(?<![\w]){re.escape(name)}(?=[\^+ -])", node.value)
             and "=" in node.value
-            for node in ast.walk(tree)
+            for node in nodes
         )
     ):
         return "identifier: arithmetic coefficient in source; retain it"
-    if tree is not None and path == "tests/tooling/test_new_language.py":
-        helpers = {
-            "_owner_id",
-            "_stale_timing",
-            "_drop_bullets",
-            "_drop_doc_entries",
-            "_mention_edit",
-        }
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.FunctionDef):
-                continue
-            if node.lineno <= line <= (node.end_lineno or node.lineno) and any(
-                isinstance(part, ast.Attribute)
-                and isinstance(part.value, ast.Name)
-                and part.value.id == "remove_language"
-                and part.attr in helpers
-                for part in ast.walk(node)
-            ):
-                return "fixture: deliberate scanner regression data"
+    if path == "tests/tooling/test_new_language.py" and any(
+        isinstance(node, ast.FunctionDef)
+        and _spans(node, line)
+        and any(
+            isinstance(part, ast.Attribute)
+            and isinstance(part.value, ast.Name)
+            and part.value.id == "remove_language"
+            and part.attr in _SCANNER_HELPERS
+            for part in ast.walk(node)
+        )
+        for node in nodes
+    ):
+        return "fixture: deliberate scanner regression data"
+    return None
+
+
+def _in_string_statement(tree: ast.Module, line: int) -> bool:
+    """Whether ``line`` is inside a bare string statement, such as a docstring."""
+    return any(
+        isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+        and _spans(node, line)
+        for node in ast.walk(tree)
+    )
+
+
+def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
+    """Classify a raw hit without suppressing ambiguous values or fixtures."""
+    path, number, text = mention.split(":", 2)
+    line = int(number)
+    tree = _parse(root, path)
+    if tree is not None and (label := _code_label(tree, path, line, name)):
+        return label
     if (
         name is not None
         and name.casefold().isidentifier()
@@ -161,14 +188,7 @@ def mention_edit(root: Path, mention: str, name: str | None = None) -> str:
     if path.endswith((".md", ".tex")):
         return "prose: reword or drop the mention"
     if text.lstrip().startswith("#") or (
-        tree is not None
-        and any(
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-            and node.lineno <= line <= (node.end_lineno or node.lineno)
-            for node in ast.walk(tree)
-        )
+        tree is not None and _in_string_statement(tree, line)
     ):
         return "comment: reword or drop the mention"
     if path.endswith((".toml", ".yaml", ".yml", ".json")):

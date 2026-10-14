@@ -85,6 +85,8 @@ _OUTPUT: Final = ":"
 _ZERO: Final = "("
 _ONE: Final = ")"
 _CLOCK: Final = "t"
+#: The one-character glyphs a label match can collide with.
+_SYMBOLS: frozenset[str] = _GATES | frozenset((_CLOCK,))
 _REMOVE: Final = "%"
 
 # What a _Gate's built-in ``kind`` may be.  Named functions are cast at
@@ -121,12 +123,6 @@ _OUT_OF_SCOPE = {
     "}": "user-defined functions",
     "?": "the splitter/combiner primitive '?'",
 }
-
-
-def _opposite(direction: tuple[int, int]) -> tuple[int, int]:
-    """Return the direction pointing the other way along the same line."""
-    d_row, d_col = direction
-    return (-d_row, -d_col)
 
 
 class _Grid:
@@ -308,7 +304,7 @@ class _Parser:
                 text = match.group()
                 if text in self.definitions:
                     continue
-                if len(text) == 1 and text in (_GATES | frozenset((_CLOCK,))):
+                if text in _SYMBOLS:
                     continue
                 expression = next(
                     (
@@ -375,15 +371,12 @@ class _Parser:
                 start, col = match.start(), match.end()
                 if text in self.definitions:
                     continue
-                if len(text) == 1 and text in (_GATES | frozenset((_CLOCK,))):
+                if text in _SYMBOLS:
                     continue
-                if self.grid.at(row, start - 1) not in _WIRES:
-                    if text[0].isdigit():
-                        raise Hint.WIRE_LABEL.error(
-                            f"wire label at ({start}, {row}) annotates no wire"
-                        )
-                    continue  # pragma: no cover - validation rejects this label
-                if self.grid.at(row, col) not in _WIRES:
+                if (
+                    self.grid.at(row, start - 1) not in _WIRES
+                    or self.grid.at(row, col) not in _WIRES
+                ):
                     if text[0].isdigit():
                         raise Hint.WIRE_LABEL.error(
                             f"wire label at ({start}, {row}) annotates no wire"
@@ -493,10 +486,7 @@ class _Parser:
                 if match.group() not in self.definitions
                 if self.grid.at(row, match.start() - 1) in _WIRES
                 and self.grid.at(row, match.end()) in _WIRES
-                and not (
-                    len(match.group()) == 1
-                    and match.group() in (_GATES | frozenset((_CLOCK,)))
-                )
+                and match.group() not in _SYMBOLS
             ]
             builtins = [
                 match
@@ -520,16 +510,8 @@ class _Parser:
             for col, end, char, body in sorted(candidates):
                 if any(col in label for label in labels):
                     continue
-                # ``_GATE_CELL`` is built from these two alphabets, so one of
-                # the arms always takes; they are spelled out because
-                # membership is what narrows the character to ``_GateKind``,
-                # which a regex match cannot do.
-                if char in _GATES:
-                    kind: _GateKind = char
-                elif char in _MOVERS:
-                    kind = char
-                else:
-                    kind = cast(_GateKind, char)
+                # A built-in gate or mover, or a function name.
+                kind = cast(_GateKind, char)
                 gate = _Gate(kind, row, col, body, self.definitions)
                 if char == _OUTPUT:
                     outputs: list[_Wiring] = []
@@ -662,9 +644,7 @@ class _Parser:
 
     def _implied_widths(self, gate: _Gate) -> list[tuple[_Wiring, int]]:
         """Return the widths ``gate`` forces on its output wirings."""
-        if gate.kind == _OUTPUT:
-            return []
-        if gate.kind in (_ZERO, _ONE):
+        if gate.kind in (_OUTPUT, _ZERO, _ONE):
             return []
         if gate.kind == _CLOCK:
             return [(gate.outputs[0], 32)]

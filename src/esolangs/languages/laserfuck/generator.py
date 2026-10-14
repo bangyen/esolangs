@@ -112,13 +112,11 @@ def _laserfuck_reads(perm: tuple[int, ...]) -> str:
     return out + move_text(at, 0, ">", "<")
 
 
-def _laserfuck_ring_reader(
-    n: int, perm: tuple[int, ...] | None = None
-) -> tuple[list[str], int]:
-    r"""Build the looping input reader, and say how wide it is.
+def _laserfuck_ring_reader(n: int, perm: tuple[int, ...] | None = None) -> list[str]:
+    r"""Build the looping input reader.
 
-    Returns the reader's rows and the column the beam leaves them on, moving
-    right, with the pointer on cell 0.
+    Returns the reader's rows; the beam leaves them moving right, with the
+    pointer on cell 0.
 
     The tape is laid out as *cell 0 = counter and answer*, cells 1..n =
     inputs.  Cell 0 earns that double duty: the counter ends the reader at
@@ -150,13 +148,11 @@ def _laserfuck_ring_reader(
     # Which input goes in which cell is the reorder (see _laserfuck_reads).
     reads = _laserfuck_reads(tuple(range(n)) if perm is None else perm)
     # one '-' for the counter and one for each input, then home again
-    retire = "".join("->" for _ in range(n)) + "-" + "<" * n + "#/)"
+    retire = "->" * n + "-" + "<" * n + "#/)"
 
     body = "}" + preload + "}" + multiply + reads + "}" + retire
-    top = [" "] * (len(body) + 2)
+    top = [*body, " ", " "]
     ret = [" "] * (len(body) + 2)
-    for i, char in enumerate(body):
-        top[i] = char
     # each ring's return leg: '^' under its own '}', '{' under its '/'
     first = 1 + len(preload)
     ret[first] = "^"
@@ -164,7 +160,7 @@ def _laserfuck_ring_reader(
     second = len(body) - len(retire) - 1
     ret[second] = "^"
     ret[second + 1 + retire.index("/")] = "{"
-    return ["".join(top).rstrip(), "".join(ret).rstrip()], len(body)
+    return ["".join(top).rstrip(), "".join(ret).rstrip()]
 
 
 # Rotating or mirroring a LaserFuck block is a character substitution: the
@@ -233,7 +229,7 @@ def _laserfuck_reader_blocks(
     perm: tuple[int, ...] | None = None,
 ) -> list[list[str]]:
     """Cut the flat reader into rectangles, padded so a rotation is exact."""
-    rows, _ = _laserfuck_ring_reader(n, perm)
+    rows = _laserfuck_ring_reader(n, perm)
     width = max(len(line) for line in rows)
     padded = [line.ljust(width) for line in rows]
     starts = [col for col, char in enumerate(padded[0]) if char == "}"]
@@ -335,17 +331,17 @@ def _laserfuck_assemble_reader(
     rows: list[list[tuple[int, str]]] = [[] for _ in range(height)]
     for (r, c), char in cells.items():
         rows[r].append((c, char))
-    return [_laserfuck_join(sorted(marks))[0] for marks in rows], row, col
+    return [_laserfuck_join(sorted(marks)) for marks in rows], row, col
 
 
-def _laserfuck_join(marks: list[tuple[int, str]]) -> tuple[str]:
+def _laserfuck_join(marks: list[tuple[int, str]]) -> str:
     """Join ``(column, text)`` runs left to right, padding gaps with blanks."""
     parts: list[str] = []
     cursor = 0
     for col, text in marks:
         parts.append(" " * (col - cursor) + text)
         cursor = col + len(text)
-    return ("".join(parts),)
+    return "".join(parts)
 
 
 _ReaderCandidate = tuple[int, int, tuple[str, ...], int, int]
@@ -457,63 +453,78 @@ class _LaserGrid:
         return "\n".join(lines)
 
 
-def _laserfuck_tree(truth_table: str, n: int, *, fold: bool = True) -> _LaserTree:
-    """Emit the decision-tree runs and their padded upright block."""
-    # The tree is built as its own block, mirrored, and hung under the
-    # reader: the beam turns down at the reader's end and a '/' faces it
-    # left, so no return row is needed to reach a rightward tree.
-    # A node is ``>#v)``: '#' skips the 'v' going in, ')' tests the cell; a
-    # zero continues on the row, a one turns back onto 'v' and drops to a
-    # '\' on a fresh row.  Rows scale with *one* edges, not nodes.
-    # Rows are ``(column, text)`` runs, filled left to right with no blanks
-    # (``><-+``, ``x``, ``>#v)``, ``\``); the old n! order search paid a
-    # cell dict twice over a mostly-blank staircase.  A row is appended
-    # exactly when a ``one`` edge creates it, so ``len(rows)`` is the next index.
-    rows: list[list[tuple[int, str]]] = [[]]
+class _TreeEmitter:
+    r"""Lays the decision tree as ``(column, text)`` runs, one row per *one* edge.
 
-    constant = constant_span_test(truth_table)
-    ids = subtree_ids(truth_table)
+    The tree is built as its own block, mirrored, and hung under the reader:
+    the beam turns down at the reader's end and a ``/`` faces it left, so no
+    return row is needed to reach a rightward tree.  A node is ``>#v)``: ``#``
+    skips the ``v`` going in, ``)`` tests the cell; a zero continues on the
+    row, a one turns back onto ``v`` and drops to a ``\`` on a fresh row.
+    Rows are blank-free runs (``><-+``, ``x``, ``>#v)``, ``\``) filled left to
+    right.  A row is appended exactly when a ``one`` edge creates it, so
+    ``len(rows)`` is the next index.
+    """
 
-    def emit(depth: int, first: int, row: int, col: int, skipped: int = 0) -> None:
+    def __init__(self, truth_table: str, n: int) -> None:
+        self.table = truth_table
+        self.n = n
+        self.constant = constant_span_test(truth_table)
+        self.ids = subtree_ids(truth_table)
+        self.rows: list[list[tuple[int, str]]] = [[]]
+
+    def leaf(self, depth: int, first: int, row: int, col: int, skipped: int) -> None:
+        """Sweep the cells, then ``+`` for a one answer and ``x``.
+
+        Inputs sit in cells 1..n, cell 0 at zero, so a zero answer needs no
+        code.  Sweep all ``n`` cells from cell ``n`` down or an unconsumed one
+        prints beside the answer: cells above ``depth`` are unknown, two ``-``
+        retire either (0 -> -2, 1 -> -1); consumed cells keep the sized run,
+        so a folded table's sweep is unchanged.
+        """
+        n = self.n
+        run = ">" * (n - depth)
+        run += "--<" * (n - depth)
+        for level in range(depth, 0, -1):
+            bit = (first >> (n - level)) & 1
+            # A level without a test left its cell unknown: flat ``--``.
+            run += "-" * (2 if skipped >> (level - 1) & 1 else bit + 1) + "<"
+        run += "+" if self.table[first] == "1" else ""
+        self.rows[row].append((col, run + "x"))
+
+    def emit(
+        self, depth: int, first: int, row: int, col: int, skipped: int = 0
+    ) -> None:
         """Lay one row span, entered at ``(row, col)`` going right.
 
         ``skipped`` has bit ``d`` set where level ``d`` took no test.
         """
-        stop = first + 2 ** (n - depth)
-        if depth == n or constant(first, stop):
-            index = first
-            # Inputs sit in cells 1..n, cell 0 at zero, so a zero answer
-            # needs no code.  Sweep all ``n`` cells from cell ``n`` down or
-            # an unconsumed one prints beside the answer: cells above
-            # ``depth`` are unknown, two ``-`` retire either (0 -> -2, 1 -> -1);
-            # consumed cells keep the sized run, so an unfolded table is unchanged.
-            run = ">" * (n - depth)
-            run += "--<" * (n - depth)
-            for level in range(depth, 0, -1):
-                bit = (first >> (n - level)) & 1
-                # A level without a test left its cell unknown: flat ``--``.
-                run += "-" * (2 if skipped >> (level - 1) & 1 else bit + 1) + "<"
-            run += "+" if truth_table[index] == "1" else ""
-            rows[row].append((col, run + "x"))
+        n = self.n
+        if depth == n or self.constant(first, first + 2 ** (n - depth)):
+            self.leaf(depth, first, row, col, skipped)
             return
-        below = ids[depth + 1]
+        below = self.ids[depth + 1]
         place = first >> (n - depth)
-        if fold and below[2 * place] == below[2 * place + 1]:
+        if below[2 * place] == below[2 * place + 1]:
             # Equal halves (an ignored input, a repeat): the input is still
             # read, so step the pointer past its cell, but test nothing.
-            rows[row].append((col, ">"))
-            emit(depth + 1, first, row, col + 1, skipped | 1 << depth)
+            self.rows[row].append((col, ">"))
+            self.emit(depth + 1, first, row, col + 1, skipped | 1 << depth)
             return
-        rows[row].append((col, ">#v)"))
-        emit(depth + 1, first, row, col + 4, skipped)  # zero carries on
-        drop = len(rows)
-        rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
-        emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3, skipped)
+        self.rows[row].append((col, ">#v)"))
+        self.emit(depth + 1, first, row, col + 4, skipped)  # zero carries on
+        drop = len(self.rows)
+        self.rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
+        self.emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3, skipped)
 
-    emit(0, 0, 0, 0)
+
+def _laserfuck_tree(truth_table: str, n: int) -> _LaserTree:
+    """Emit the decision-tree runs and their padded upright block."""
+    tree = _TreeEmitter(truth_table, n)
+    tree.emit(0, 0, 0, 0)
+    rows = tree.rows
     span = max(col + len(text) for marks in rows for col, text in marks)
-    upright = [_laserfuck_join(marks)[0].ljust(span) for marks in rows]
-
+    upright = [_laserfuck_join(marks).ljust(span) for marks in rows]
     return _LaserTree(rows, upright)
 
 
@@ -582,7 +593,6 @@ def _laserfuck_build(
     width: int | None = None,
     *,
     vertical_tree: bool = False,
-    fold: bool = True,
 ) -> str:
     r"""Build one LaserFuck program, placing inputs in ``perm`` tape order.
 
@@ -611,29 +621,33 @@ def _laserfuck_build(
     """
     n = _validate_truth_table(truth_table)
     reader = _laserfuck_reader(n, perm, width, vertical_tree=vertical_tree)
-    reader_rows = reader.rows
-
-    margin = MARGIN
     grid = _LaserGrid()
-
-    # The funnel: every start heading ends up on row 0 moving right.  Cell
-    # (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
-    grid.put(0, 1, "}")
-    grid.put(0, 2, "}")
-    grid.put(1, 0, "|")
-    grid.put(1, 1, "o")
-    grid.put(1, 2, "^")
-    grid.put(2, 1, "_")
-
+    _laserfuck_funnel(grid)
     # The rings go on rows 0 and 1; the beam leaves them still moving right
     # with the pointer on cell 0.
-    for offset, text in enumerate(reader_rows):
+    for offset, text in enumerate(reader.rows):
         for index, char in enumerate(text):
             if char != " ":
-                grid.put(offset, margin + index, char)
-    tree = _laserfuck_tree(truth_table, n, fold=fold)
+                grid.put(offset, MARGIN + index, char)
+    tree = _laserfuck_tree(truth_table, n)
     _laserfuck_attach_tree(grid, reader, tree, width, vertical_tree=vertical_tree)
     return grid.render()
+
+
+def _laserfuck_funnel(grid: _LaserGrid) -> None:
+    """Draw the start funnel: every heading ends up on row 0 moving right.
+
+    Cell (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
+    """
+    for row, col, char in (
+        (0, 1, "}"),
+        (0, 2, "}"),
+        (1, 0, "|"),
+        (1, 1, "o"),
+        (1, 2, "^"),
+        (2, 1, "_"),
+    ):
+        grid.put(row, col, char)
 
 
 def laserfuck(truth_table: str, width: int | None = None) -> str:
@@ -674,31 +688,18 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     _validate_truth_table(truth_table)
     if width is None and len(truth_table) > 16:
         return _laserfuck_weighted(truth_table)
-    # Folding equal halves (ignored inputs, repeats) drops tests but moved a
-    # width layout's area up 7 of ~500 on some n=3 tables, so under a width
-    # the unfolded build stays a candidate, judged by area.
-    built = [
-        _laserfuck_pool(truth_table, width, fold=fold)
-        for fold in ((True,) if width is None else (True, False))
-    ]
-    return min(built, key=lambda form: _laserfuck_rank(form, width))
+    return _laserfuck_pool(truth_table, width)
 
 
-def _laserfuck_rank(program: str, width: int | None) -> tuple[int, int]:
-    """Rank by columns past the request, then area (rows times widest row)."""
-    span = grid_width(program)
-    return (0 if width is None else max(span, width), len(program.splitlines()) * span)
-
-
-def _laserfuck_pool(truth_table: str, width: int | None, *, fold: bool) -> str:
-    """Return the best candidate over input orders, tree placements and fold."""
+def _laserfuck_pool(truth_table: str, width: int | None) -> str:
+    """Return the best candidate over input orders and tree placements."""
     orders = input_orders(truth_table)
     identity = orders[0]
 
-    best = _laserfuck_build(truth_table, identity, width, fold=fold)
+    best = _laserfuck_build(truth_table, identity, width)
     for perm in orders[1:]:
         candidate = _laserfuck_build(
-            permute_truth_table(truth_table, perm), perm, width, fold=fold
+            permute_truth_table(truth_table, perm), perm, width
         )
         if len(candidate) < len(best):
             best = candidate
@@ -710,7 +711,7 @@ def _laserfuck_pool(truth_table: str, width: int | None, *, fold: bool) -> str:
         # this bounded fallback keeps the full family O(T).
         if grid_width(best) > width and len(truth_table) <= 8:
             candidate = _laserfuck_build(
-                truth_table, identity, width, vertical_tree=True, fold=fold
+                truth_table, identity, width, vertical_tree=True
             )
             if grid_width(candidate) > width:
                 candidate = _laserfuck_raise_funnel(candidate)

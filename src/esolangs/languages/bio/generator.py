@@ -1,8 +1,5 @@
 """Boolean template generator for bio."""
 
-from collections.abc import Callable
-from typing import Any
-
 from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -10,6 +7,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
     mark_runs,
+    same_ignoring_whitespace,
     unmark,
 )
 from esolangs.generation.wrap import balance_program
@@ -22,6 +20,15 @@ __all__ = ["BIO_PAIR", "bio"]
 
 
 BIO_PAIR = ("0oz;", "0ox;")
+
+#: ``x = 2 * x`` through ``y``: the first loop moves each unit of ``x`` into
+#: ``y`` twice, the second moves ``y`` back; both registers stay non-negative,
+#: so each loop terminates and ``y`` ends at zero.
+_BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
+
+#: Around an ignored input's setter: park ``x`` in ``y``, then clear what the
+#: setter added and move ``x`` back, so ``y`` ends at zero as doubling leaves it.
+_BIO_SKIP = ("0ix{1ox;0oy;};", "0ix{1ox;};0iy{1oy;0ox;};")
 
 
 def bio(truth_table: str) -> str:
@@ -80,16 +87,6 @@ def _bio(
     return pack + init + "".join(opens) + closes + "0oy;" * _ASCII_ZERO + "1iy;"
 
 
-#: ``x = 2 * x`` through ``y``: the first loop moves each unit of ``x`` into
-#: ``y`` twice, the second moves ``y`` back; both registers stay non-negative,
-#: so each loop terminates and ``y`` ends at zero.
-_BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
-
-#: Around an ignored input's setter: park ``x`` in ``y``, then clear what the
-#: setter added and move ``x`` back, so ``y`` ends at zero as doubling leaves it.
-_BIO_SKIP = ("0ix{1ox;0oy;};", "0ix{1ox;};0iy{1oy;0ox;};")
-
-
 def balance_bio(table: str, default: str) -> str:
     """Keep the prior constant index when its wrapped shape balances better."""
     n = _validate_truth_table(table)
@@ -104,18 +101,13 @@ def balance_bio(table: str, default: str) -> str:
     return unmark(balanced_projection(marked, legacy, "bio"), TEMPLATE_CHAR, n)
 
 
-def _same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
-    """BIO discards whitespace."""
-    return "".join(template.split()) == "".join(plain.split())
-
-
 LANGUAGE = Language(
     "BIO",
     "bio",
     category="register_based",
     boolean=bio,
     balance=balance_bio,
-    same_layout=_same_layout,
+    same_layout=same_ignoring_whitespace,
     # Not a tree: one nested level per row whatever the table says.
     shape=Shape.LOOKUP,
     contract=BooleanContract(),

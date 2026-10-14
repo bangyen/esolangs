@@ -8,6 +8,7 @@ from esolangs.languages.forbin.interpreter import _Machine as Forbin
 from esolangs.languages.forbin.tests.forbin_support import run_program
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.support.event_io import EventIO
 
 
 def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
@@ -366,17 +367,17 @@ class TestSnapshotWithoutTheCycleDetector:
             "\x01",
         ),
         # a statement-position call inside a for-loop body is stepped
-        # through _step_for's own frame-push, not _exec_stmt's
+        # through the step core's own frame-push
         ("helper { out 0,1,0,0,1,0,0,0; } main { for _:0..0 { helper 0; } }", "", "H"),
         # a return statement run directly by step() (not through a pushed
-        # frame) still pops the current frame via its own got-is-not-None path
+        # frame) still pops the current frame via its own return-value path
         ("main { return 1; out 0,0,0,0,0,0,0,1; }", "", ""),
-        # a return statement inside a for-loop body, run through
-        # _step_for's own statement handling, also pops the frame
+        # a return statement inside a for-loop body, run through the core's
+        # own for-body statement handling, also pops the frame
         ("main { for _:0..0 { return 1; } out 0,0,0,0,0,0,0,1; }", "", ""),
-        # a return inside a for-loop body, reached through the recursive
-        # _run/_exec_stmt/_exec_block path (an expression-position call),
-        # propagates out through _exec_block's own got-is-not-None return
+        # a return inside a for-loop body, reached through _run driving the
+        # step core (an expression-position call), propagates out as the
+        # block's return value
         (
             "f { for i:(1, 0) { return i; } return 0; } main { r = (f 0); out "
             "0,0,0,0,0,0,0,r; }",
@@ -450,28 +451,12 @@ class TestPureTransition:
         assert scope.locals["x"] == 1  # most significant bit first
 
 
-class _EventIO(ScriptedIO):
-    """A ``ScriptedIO`` that records each read and write in order."""
-
-    def __init__(self, stdin: str = "") -> None:
-        super().__init__(stdin)
-        self.events: list[tuple[str, str]] = []
-
-    def print_char(self, char: str) -> None:
-        self.events.append(("out", char))
-        super().print_char(char)
-
-    def input_char(self, prompt: str = "Input: ") -> int:
-        self.events.append(("in", ""))
-        return super().input_char(prompt)
-
-
 class TestOutputOrdering:
     """Output computed before a later read or fault is still written."""
 
     def test_output_before_eof_within_a_statement(self) -> None:
         """``out`` in an expression-position call precedes its own ``in``."""
-        io = _EventIO("")
+        io = EventIO("")
         program = "pr { out 0,1,0,0,0,0,0,1; return (in 0); }\nmain { x = (pr 0); }"
         with pytest.raises(EOFError):
             run(program, io)
@@ -479,7 +464,7 @@ class TestOutputOrdering:
 
     def test_output_before_eof_across_initializers(self) -> None:
         """A first initializer's ``out`` precedes a later initializer's ``in``."""
-        io = _EventIO("")
+        io = EventIO("")
         program = (
             "pr { out 0,1,0,0,0,0,0,1; return 0; }\nx = (pr 0);\ny = (in 0);\nmain { }"
         )
@@ -489,7 +474,7 @@ class TestOutputOrdering:
 
     def test_output_before_a_halt_within_a_statement(self) -> None:
         """``out`` precedes a later undeclared-name halt."""
-        io = _EventIO("")
+        io = EventIO("")
         program = "pr { out 0,1,0,0,0,0,0,1; return q; }\nmain { x = (pr 0); }"
         with pytest.raises(HaltError, match="undeclared"):
             run(program, io)

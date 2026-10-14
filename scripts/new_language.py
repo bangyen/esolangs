@@ -12,7 +12,7 @@ to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures what the proof ledger's cells state.  ``finish``
-regenerates every committed artifact and runs the full ``verify.py`` gate.
+regenerates every committed artifact and runs the full ``verify/gate.py`` gate.
 ``remove`` deletes what ``check`` asks for, regenerates, and lists the
 mentions left in prose for a hand edit.
 """
@@ -217,25 +217,26 @@ def _tests_module(module: str, attr: str) -> Container[str]:
     return value
 
 
-def _unregistered(name: str, slug: str) -> list[Gap]:
-    module = slug
-    package = ROOT / "src/esolangs/languages" / slug / "generator"
-    generator = next(
+def _source_file(base: Path) -> Path | None:
+    """Return ``base.py``, else ``base/__init__.py``, whichever exists."""
+    return next(
         (
             path
-            for path in (
-                package.with_suffix(".py"),
-                package / "__init__.py",
-            )
+            for path in (base.with_suffix(".py"), base / "__init__.py")
             if path.exists()
         ),
         None,
     )
+
+
+def _unregistered(name: str, slug: str) -> list[Gap]:
+    package = ROOT / "src/esolangs/languages" / slug / "generator"
+    generator = _source_file(package)
     if generator is None:
         return [
             Gap(
                 "src/esolangs/registry/_table.py",
-                f'add Language("{name}", "{module}") to _INTERPRETER_ONLY; add '
+                f'add Language("{name}", "{slug}") to _INTERPRETER_ONLY; add '
                 "split=True only if run() takes list[str], one string per line, "
                 "and random=True if an instruction draws at random",
             )
@@ -243,7 +244,7 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
     return [
         Gap(
             str(generator.relative_to(ROOT)),
-            f'end it with LANGUAGE = Language("{name}", "{module}", '
+            f'end it with LANGUAGE = Language("{name}", "{slug}", '
             f"boolean={slug}); add split=True only if run() takes list[str], "
             "one string per source line, and contract=BooleanContract(...) if "
             "its programs do not read one 0/1 line per input "
@@ -264,17 +265,7 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
     """List the steps every language needs, generator or not."""
     gaps = []
     base = ROOT / "src/esolangs/languages" / module / "interpreter"
-    source = next(
-        (
-            p
-            for p in (
-                base.with_suffix(".py"),
-                base / "__init__.py",
-            )
-            if p.exists()
-        ),
-        None,
-    )
+    source = _source_file(base)
     if source is None:
         gaps.append(Gap(f"{base.relative_to(ROOT)}.py", "write the interpreter"))
     elif PLACEHOLDER in source.read_text(encoding="utf-8"):
@@ -300,9 +291,10 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         for path in tests
         if "def test_placeholder_" in path.read_text(encoding="utf-8")
     )
-    if _registered_generator(name):
-        pass  # tests/support/samples.py derives its sample from the generator
-    elif name not in _tests_module("support.samples", "SAMPLES"):
+    # tests/support/samples.py derives a generator language's sample itself.
+    if not _registered_generator(name) and name not in _tests_module(
+        "support.samples", "SAMPLES"
+    ):
         gaps.append(
             Gap(
                 "tests/support/samples.py",
@@ -334,9 +326,8 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     assert lang.boolean is not None
     gen = lang.boolean.__name__
     module_rel = lang.boolean.__module__.replace(".", "/")
-    source = ROOT / f"src/{module_rel}.py"
-    if not source.exists():
-        source = ROOT / f"src/{module_rel}/__init__.py"
+    base = ROOT / f"src/{module_rel}"
+    source = _source_file(base) or base / "__init__.py"
     source_rel = str(source.relative_to(ROOT))
     gaps = []
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
@@ -376,7 +367,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 source_rel,
                 "add balance=_balance to its LANGUAGE: a "
                 "`_balance(table, default)` returning the squarest of its "
-                "width regimes (see tools/arrowqueue.py)",
+                "width regimes (see src/esolangs/languages/arrowqueue/generator.py)",
             )
         )
     return gaps + _ledger_gaps(lang.name)
@@ -450,8 +441,7 @@ def quick_tests(name: str) -> list[str]:
     from esolangs.registry._language import Shape
 
     lang = LANGUAGES[name]
-    nodes: list[str] = []
-    nodes += [
+    nodes = [
         path.relative_to(ROOT).as_posix()
         for path in sorted(
             (ROOT / "src/esolangs/languages" / lang.id / "tests").rglob("test_*.py")
@@ -460,7 +450,7 @@ def quick_tests(name: str) -> list[str]:
     nodes += [
         "tests/interpreters/test_interpreter_conventions.py"
         "::test_interpreter_docstrings_follow_the_template",
-        f"tests/interpreters/test_interpreters_robustness.py"
+        "tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
     ]
     if lang.boolean is None:
@@ -690,8 +680,9 @@ def main(argv: list[str] | None = None) -> int:
         for changed in sorted(_dirty() - before):
             print(f"regenerated {changed}")
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
-        print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
-        failed = subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT)
+        tests = quick_tests(args.name)
+        print("+ pytest", " ".join(tests), flush=True)
+        failed = subprocess.run([*quick, *tests], cwd=ROOT)
         if failed.returncode:
             print(f"{args.name}: integrated, but fix the failures above first")
             return 1

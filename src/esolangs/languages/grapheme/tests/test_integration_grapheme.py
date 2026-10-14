@@ -198,7 +198,7 @@ def test_grapheme_names_its_input_alphabet() -> None:
 
 def test_the_named_alphabet_is_the_one_that_works() -> None:
     """The point of the key: using it reproduces the truth table."""
-    zero, one = esolangs.describe("Grapheme")["input_encoding"]  # type: ignore[misc]
+    zero, one = esolangs.describe("Grapheme")["input_encoding"]
     program = esolangs.generate("Grapheme", XOR)
     got = "".join(
         esolangs.run("Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n")

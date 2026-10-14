@@ -22,7 +22,7 @@ class TestChain:
 
     def test_opcodes_are_linked_in_order(self) -> None:
         head = chain("+", "-", "o")
-        assert [head.op, head.next.op, head.next.next.op] == ["+", "-", "o"]  # type: ignore[union-attr]
+        assert [head.op, head.next.op, head.next.next.op] == ["+", "-", "o"]
 
 
 class TestMeasuringNothing:

@@ -7,10 +7,11 @@ past the label budget, falls back to a positional walk
 inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
 """
 
+import functools
 import string
 from collections.abc import Callable
+from typing import NamedTuple
 
-from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _GREEDY_ORDER_MAX_ARITY,
@@ -26,7 +27,6 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import _six_five
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.runtime.source_hints import with_hint
 
 __all__ = ["six_five"]
 
@@ -37,18 +37,15 @@ _SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
 
 #: A walk read's -40, 48/49 to the 8/9 its ``79`` names, in the fewest
 #: tokens: seven (``9`` is -6, ``2`` is -5), not eight ``2``s.
-_SIX_FIVE_NORMALIZE = "99999" + "22"
+_SIX_FIVE_NORMALIZE = "9999922"
 
 #: A tree read's 0 bit (1 is one more): under ``7n``'s cap of 35 by -17,
 #: three tokens as is each leaf's +16..+18, where 8/9 took seven.
 _SIX_FIVE_HELD = 31
-_SIX_FIVE_TREE_NORMALIZE = "99" + "2"
+_SIX_FIVE_TREE_NORMALIZE = "992"
 
 #: The node test: skip the left arm's jump when the bit is 0.
 _SIX_FIVE_TEST = "7V"
-
-#: :func:`_six_five_const`'s text for ``v`` read as ``-v``.
-_SIX_FIVE_NEGATE = str.maketrans("652", "925")
 
 
 def _six_five_label(value: int) -> str:
@@ -92,16 +89,6 @@ def _six_five_halves(
     return table[lo] + table[mid] == pair and constant(lo, mid) and constant(mid, hi)
 
 
-def _six_five_inverted() -> str:
-    """Print NOT the tested cell's bit, held as 1/2; the cell two on is blank.
-
-    Adds are monotone, so none maps a read to 49/48; instead ``71`` skips
-    the ``1`` on a 0 bit, which prints ``1 + 48`` where it stands, and a 1
-    bit prints ``0 + 48`` two cells on.  No test, so no label.
-    """
-    return "71" + "1" + _six_five_const(_ASCII_ZERO) + "A0"
-
-
 def six_five(truth_table: str) -> str:
     """Build a 6-5 program computing the given truth table.
 
@@ -119,12 +106,12 @@ def six_five(truth_table: str) -> str:
     conditional strides past 35 inputs.
     """
     orders = _six_five_orders(truth_table, compact=True)
-    best = _six_five_chosen(truth_table, orders, share=True)
+    best = _six_five_chosen(truth_table, orders)
     if not best:
         remaining = dict.fromkeys(
             order for order in _six_five_orders(truth_table) if order not in orders
         )
-        best = _six_five_chosen(truth_table, remaining, share=True)
+        best = _six_five_chosen(truth_table, remaining)
     if not best:
         # Every order overflowed the budget even shared, so the table has
         # too many distinct subtrees for any tree-shaped emission.  The walk
@@ -155,12 +142,10 @@ def _six_five_orders(
     )
 
 
-def _six_five_chosen(
-    truth_table: str, orders: dict[tuple[int, ...], None], *, share: bool
-) -> str:
-    """Return the shortest tree over ``orders``, or ``""`` if none fits.
+def _six_five_chosen(truth_table: str, orders: dict[tuple[int, ...], None]) -> str:
+    """Return the shortest shared tree over ``orders``, or ``""`` if none fits.
 
-    With ``share`` each order's tree may jump to its repeated subtrees.
+    Each order's tree may jump to its repeated subtrees.
     """
     best = ""
     best_order: tuple[str, tuple[int, ...]] = (truth_table, ())
@@ -170,7 +155,7 @@ def _six_five_chosen(
             if perm == tuple(range(len(perm)))
             else permute_truth_table(truth_table, perm)
         )
-        candidate = _six_five_hoisted(table, perm, share=share)
+        candidate = _six_five_hoisted(table, perm)
         # An empty candidate means this order overflowed the label budget,
         # so it is skipped rather than winning on length 0.
         if candidate and (not best or len(candidate) < len(best)):
@@ -179,7 +164,7 @@ def _six_five_chosen(
         # Only the winner prints a lone copied read raw: that shrinks it and
         # its steps, and choosing with it could hand a shorter, slower order
         # the win.
-        best = _six_five_hoisted(*best_order, raw_copies=True, share=share)
+        best = _six_five_hoisted(*best_order, raw_copies=True)
     return best
 
 
@@ -252,12 +237,35 @@ def _six_five_guarded(truth_table: str) -> str:
     return "".join(out)
 
 
+def _six_five_reads(
+    n: int, stored: set[int], lazy: set[int]
+) -> tuple[str, dict[int, int], int, int]:
+    """Return the reads, each stored input's cell, the end pointer and next slot.
+
+    Reads run in input order; only a stored input claims a cell, so the kept
+    bits occupy a contiguous block from cell 0 and every clobbered read
+    reuses the one cell past it.
+    """
+    cell_of: dict[int, int] = {}
+    reads = ""
+    slot = 0
+    pos = 0
+    for i in range(n):
+        reads += _six_five_move(pos, slot)
+        pos = slot
+        reads += "B"
+        if i in stored:
+            reads += "" if i in lazy else _SIX_FIVE_TREE_NORMALIZE
+            cell_of[i] = slot
+            slot += 1
+    return reads, cell_of, pos, slot
+
+
 def _six_five_hoisted(
     truth_table: str,
     perm: tuple[int, ...],
     *,
     raw_copies: bool = False,
-    share: bool = False,
 ) -> str:
     """Emit the read-up-front 6-5 program for one input order.
 
@@ -275,46 +283,14 @@ def _six_five_hoisted(
     # measurement was taken against, and sharing only pays once there are
     # duplicates worth merging.  Past the budget the DAG is tried before
     # the order is given up on.
-    shared = _six_five_markers(truth_table) > 35
-    if perm == tuple(range(n)) and not shared:
-        return _six_five_stream_ordered(truth_table, share=share)
+    shared = _six_five_markers(truth_table) > _SIX_FIVE_MAX_LABEL
     stored = stored_inputs(truth_table, perm)
     constant = constant_span_test(truth_table)
     # An input the tree tests at one node alone is normalized there, not at
     # its read: the same three tokens, run only on the paths through it.
-    uses = dict.fromkeys(stored, 0)
-
-    def count(level: int, lo: int, hi: int) -> None:
-        if level == n or constant(lo, hi):
-            return
-        mid = (lo + hi) // 2
-        if perm[level] not in stored:
-            count(level + 1, lo, mid)
-            return
-        if _six_five_halves(truth_table, constant, lo, hi, "01"):
-            uses[perm[level]] += 1 if raw_copies else 2
-            return
-        uses[perm[level]] += 1
-        count(level + 1, lo, mid)
-        count(level + 1, mid, hi)
-
-    count(0, 0, 2**n)
+    uses = _six_five_use_counts(truth_table, perm, stored, raw_copies=raw_copies)
     lazy = set() if shared else {i for i, used in uses.items() if used == 1}
-    # Reads run in input order; only a stored input claims a cell, so the
-    # kept bits occupy a contiguous block from cell 0 and every clobbered
-    # read reuses the one cell past it.
-    cell_of: dict[int, int] = {}
-    reads = ""
-    slot = 0
-    pos = 0
-    for i in range(n):
-        reads += _six_five_move(pos, slot)
-        pos = slot
-        reads += "B"
-        if i in stored:
-            reads += "" if i in lazy else _SIX_FIVE_TREE_NORMALIZE
-            cell_of[i] = slot
-            slot += 1
+    reads, cell_of, pos, slot = _six_five_reads(n, stored, lazy)
     # A clobbered read leaves 48/49 under the pointer, so the cell the reads
     # finish on is blank only when the last read was stored and advanced past
     # it.  A whole-table constant has no parent cell to print from and builds
@@ -322,55 +298,18 @@ def _six_five_hoisted(
     # past the shared scratch when the final read clobbered.
     scratch = slot + 1 if n and (n - 1) not in stored else slot
     ids = subtree_ids(truth_table)  # O(2**n), so a subtree's name is O(1)
+    tree = _Tree(truth_table, perm, constant, cell_of, ids, lazy, scratch)
 
-    def leaf(value: str, entry: int, held: int | None) -> str:
-        if held is None:
-            # No node tested anything, so no cell holds a known value.
-            digit = _ASCII_ZERO + int(value)
-            return _six_five_move(entry, scratch) + _six_five_const(digit) + "A0"
-        return _six_five_const(_ASCII_ZERO + int(value) - held) + "A0"
-
-    def node(
-        layout: _Layout, level: int, lo: int, hi: int, entry: int, held: int | None
-    ) -> str:
-        if level == n or constant(lo, hi):
-            return leaf(truth_table[lo], entry, held)
-        # A clobbered input has no cell to test.  Its bit cannot change the
-        # answer, so the two halves of this span are value-identical and
-        # descending into either is the same function -- take the zero half,
-        # which keeps the row span halving in step with the level.  Shared,
-        # any test whose halves agree is passed over the same way.
-        mid = (lo + hi) // 2
-        if perm[level] not in cell_of or layout.agrees(ids, level, lo):
-            return node(layout, level + 1, lo, mid, entry, held)
-        cell = cell_of[perm[level]]
-        nav = _six_five_move(entry, cell)
-        if _six_five_halves(truth_table, constant, lo, hi, "01"):
-            # A read left raw prints as it came.
-            base = _ASCII_ZERO if perm[level] in lazy else _SIX_FIVE_HELD
-            return nav + leaf("0", cell, base)
-        if perm[level] in lazy:
-            nav += _SIX_FIVE_TREE_NORMALIZE
-        # No inverted-bit print: from 31/32 it is 17 characters to a node's 14.
-        # A child's code is fixed by its rows and the cell it is entered from,
-        # the parent's, so that pair names it for sharing.
-        return nav + layout.branch(
-            layout.name(ids, level + 1, lo, cell, skip=True, leaf=(0,)),
-            lambda: node(layout, level + 1, lo, mid, cell, _SIX_FIVE_HELD),
-            layout.name(ids, level + 1, mid, cell, skip=True, leaf=(1,)),
-            lambda: node(layout, level + 1, mid, hi, cell, _SIX_FIVE_HELD + 1),
-        )
-
-    def tree(layout: _Layout) -> str:
-        return node(layout, 0, 0, 2**n, pos, None)
+    def emit(layout: _Layout) -> str:
+        return _six_five_node(layout, tree, 0, 0, 2 ** len(perm), pos, None)
 
     # One layout handles sharing both inside and beyond the plain-tree budget.
     # The old DAG precheck rejected layouts the emitter can fit: 50 seeded
     # dense n=7 tables shrink from 37,828 to 17,803 characters without it.
-    plain = _Layout.shared(tree) if shared else tree(_Layout())
+    plain = _Layout.shared(emit) if shared else emit(_Layout())
     if not plain:
         return ""
-    jumped = _Layout.shared(tree) if share and not shared else ""
+    jumped = _Layout.shared(emit) if not shared else ""
     return reads + (jumped if jumped and len(jumped) < len(plain) else plain)
 
 
@@ -476,6 +415,114 @@ class _Layout:
         return _SIX_FIVE_TEST + "8" + self._label(label) + left + right
 
 
+def _six_five_use_counts(
+    truth_table: str, perm: tuple[int, ...], stored: set[int], *, raw_copies: bool
+) -> dict[int, int]:
+    """Count the tree paths that test each stored input, to find the lazy ones.
+
+    Mirrors the walk :func:`_six_five_node` will descend: a copy node
+    (``"01"`` halves) reads its input once per subtree it copies, counted
+    as two paths unless the winner chose its ``raw_copies`` form.  A stored
+    input tested on exactly one path is normalized at that node rather
+    than at its read.
+    """
+    constant = constant_span_test(truth_table)
+    uses = dict.fromkeys(stored, 0)
+
+    def tally(level: int, lo: int, hi: int) -> None:
+        if level == len(perm) or constant(lo, hi):
+            return
+        mid = (lo + hi) // 2
+        if perm[level] not in stored:
+            tally(level + 1, lo, mid)
+            return
+        if _six_five_halves(truth_table, constant, lo, hi, "01"):
+            uses[perm[level]] += 1 if raw_copies else 2
+            return
+        uses[perm[level]] += 1
+        tally(level + 1, lo, mid)
+        tally(level + 1, mid, hi)
+
+    tally(0, 0, 2 ** len(perm))
+    return uses
+
+
+def _six_five_leaf(value: str, entry: int, held: int | None, scratch: int) -> str:
+    """Emit the leaf printing ``value`` from the cell it is entered on.
+
+    ``held`` is the value the entry cell is known to hold (``None`` when no
+    node tested anything); the leaf adds the difference to it.  A held-less
+    leaf builds its digit from zero on ``scratch``.
+    """
+    if held is None:
+        # No node tested anything, so no cell holds a known value.
+        digit = _ASCII_ZERO + int(value)
+        return _six_five_move(entry, scratch) + _six_five_const(digit) + "A0"
+    return _six_five_const(_ASCII_ZERO + int(value) - held) + "A0"
+
+
+class _Tree(NamedTuple):
+    """What every node of one order's hoisted tree reads."""
+
+    truth_table: str
+    perm: tuple[int, ...]
+    constant: Callable[[int, int], bool]
+    cell_of: dict[int, int]
+    ids: list[list[int]]
+    lazy: set[int]
+    scratch: int
+
+
+def _six_five_node(
+    layout: _Layout,
+    tree: _Tree,
+    level: int,
+    lo: int,
+    hi: int,
+    entry: int,
+    held: int | None,
+) -> str:
+    """Emit one node (or folded leaf) of the hoisted tree over ``layout``.
+
+    A node is ``7V``: ``7`` compares the cell to 31, a zero bit skips the
+    ``8n`` jump into the left subtree, a one bit jumps to the n-th ``4``.
+    ``entry`` is the cell the pointer stands on; ``held`` the value known
+    to be there.  A leaf prints from the cell it stands on (32 on the jump,
+    31 on the fall-through); the pointer's entry position is a function of
+    level alone.
+    """
+    truth_table, perm, constant, cell_of, ids, lazy, scratch = tree
+    n = len(perm)
+    if level == n or constant(lo, hi):
+        return _six_five_leaf(truth_table[lo], entry, held, scratch)
+    # A clobbered input has no cell to test.  Its bit cannot change the
+    # answer, so the two halves of this span are value-identical and
+    # descending into either is the same function -- take the zero half,
+    # which keeps the row span halving in step with the level.  Shared,
+    # any test whose halves agree is passed over the same way.
+    mid = (lo + hi) // 2
+    child = functools.partial(_six_five_node, layout, tree)
+    if perm[level] not in cell_of or layout.agrees(ids, level, lo):
+        return child(level + 1, lo, mid, entry, held)
+    cell = cell_of[perm[level]]
+    nav = _six_five_move(entry, cell)
+    if _six_five_halves(truth_table, constant, lo, hi, "01"):
+        # A read left raw prints as it came.
+        base = _ASCII_ZERO if perm[level] in lazy else _SIX_FIVE_HELD
+        return nav + _six_five_leaf("0", cell, base, scratch)
+    if perm[level] in lazy:
+        nav += _SIX_FIVE_TREE_NORMALIZE
+    # No inverted-bit print: from 31/32 it is 17 characters to a node's 14.
+    # A child's code is fixed by its rows and the cell it is entered from,
+    # the parent's, so that pair names it for sharing.
+    return nav + layout.branch(
+        layout.name(ids, level + 1, lo, cell, skip=True, leaf=(0,)),
+        lambda: child(level + 1, lo, mid, cell, _SIX_FIVE_HELD),
+        layout.name(ids, level + 1, mid, cell, skip=True, leaf=(1,)),
+        lambda: child(level + 1, mid, hi, cell, _SIX_FIVE_HELD + 1),
+    )
+
+
 def _six_five_move(frm: int, to: int) -> str:
     """Pointer ops walking from cell ``frm`` to cell ``to``.
 
@@ -486,82 +533,6 @@ def _six_five_move(frm: int, to: int) -> str:
         distance = to - frm
         return "1" * ((distance + 1) // 2) + ("3" if distance % 2 else "")
     return "3" * (frm - to)
-
-
-def _six_five_stream_ordered(truth_table: str, *, share: bool = False) -> str:
-    """Emit the read-at-the-node 6-5 program.
-
-    Reads with ``B`` at the node and normalizes in place, so no pointer moves
-    (competitive on shallow tables).  Splits in stream order: one candidate.
-    A constant subtree folds (14 chars at n == 3, 16 at n == 5 for a constant table)
-    but still spends its reads, so a folded leaf reads them two cells on and
-    steps back to its tested cell.  Raises :class:`GeneratorCapError` past 35 labels.
-
-    With ``share`` the tree that jumps to repeated subtrees competes: every
-    node is entered on cell 0 and reads its own input, so a subtree's code
-    is fixed by its rows alone.  A test whose halves agree still reads.
-    """
-    n = _validate_truth_table(truth_table)
-    labels = _six_five_markers(truth_table)
-    if labels > _SIX_FIVE_MAX_LABEL:
-        raise with_hint(
-            GeneratorCapError(
-                "the 6-5 decision tree has 35 branch labels, but this table needs "
-                f"{labels} after folding its constant subtrees (n == {n})"
-            ),
-            (
-                "check another generator's limits for this "
-                "table; formatting cannot add branch labels"
-            ),
-        )
-    constant = constant_span_test(truth_table)
-    ids = subtree_ids(truth_table)
-
-    def build(layout: _Layout, rows: range, bit: int, base: int) -> str:
-        if len(rows) == 1:
-            return (
-                _six_five_const(_ASCII_ZERO + int(truth_table[rows[0]]) - base) + "A0"
-            )
-        lo, hi = rows.start, rows.stop
-        if constant(lo, hi):
-            # Folded leaf: the skipped reads still run (stream sync), two
-            # cells on under a node, whose tested cell's 31/32 is then built
-            # on; a whole-table constant builds on a blank cell.
-            reads = "B" * (n - bit + 1)
-            value = _ASCII_ZERO + int(truth_table[lo])
-            if base:
-                return "1" + reads + "33" + _six_five_const(value - base) + "A0"
-            return reads + "1" + _six_five_const(value) + "A0"
-        rest = n - bit
-        if _six_five_halves(truth_table, constant, lo, hi, "01"):
-            # Print the read as it came; the rest of the stream reads two cells on.
-            return "B" + ("1" + "B" * rest + "33" if rest else "") + "A0"
-        if rest and _six_five_halves(truth_table, constant, lo, hi, "10"):
-            # -47 takes the read to 1/2; the rest read into cell 1, not 2.
-            # With no reads left for a node's leaves to repeat, it is shorter.
-            reads = "13" + "B" * rest + "3"
-            to_one = _six_five_const(_ASCII_ZERO - 1).translate(_SIX_FIVE_NEGATE)
-            return "B" + to_one + reads + _six_five_inverted()
-        mid = (lo + hi) // 2
-        if layout.agrees(ids, bit - 1, lo):
-            return "B" + build(layout, range(lo, mid), bit + 1, _SIX_FIVE_HELD)
-        return (
-            "B"
-            + _SIX_FIVE_TREE_NORMALIZE
-            + layout.branch(
-                layout.name(ids, bit, lo, 0, skip=False, leaf=(0, bit)),
-                lambda: build(layout, range(lo, mid), bit + 1, _SIX_FIVE_HELD),
-                layout.name(ids, bit, mid, 0, skip=False, leaf=(1, bit)),
-                lambda: build(layout, range(mid, hi), bit + 1, _SIX_FIVE_HELD + 1),
-            )
-        )
-
-    def tree(layout: _Layout) -> str:
-        return build(layout, range(2**n), 1, 0)
-
-    plain = tree(_Layout())
-    jumped = _Layout.shared(tree) if share else ""
-    return jumped if jumped and len(jumped) < len(plain) else plain
 
 
 def _six_five_const(value: int) -> str:
@@ -584,7 +555,6 @@ LANGUAGE = Language(
     "six_five",
     category="tape_based",
     boolean=six_five,
-    internal_cap="the stream-ordered tree is tried only when its labels fit",
     contract=BooleanContract(
         input_shape="char_stream",
     ),

@@ -126,9 +126,9 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
 
     for stream in (Broken(), Wrong(), NeedsArgument()):
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run(REFERENCE, stream, **bounds)  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, stream, **bounds)
         with pytest.raises(esolangs.ArgumentError):
-            esolangs.run(REFERENCE, ",.", stdin=stream, **bounds)  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, ",.", stdin=stream, **bounds)
 
 
 @pytest.mark.parametrize("blocked", ["program", "stdin"])

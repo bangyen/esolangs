@@ -6,28 +6,21 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
+    grid_area,
     grid_width,
     read_at,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.dig.generator._layout import _dig_alt_clear as _dig_alt_clear
-from esolangs.languages.dig.generator._layout import _dig_layout as _dig_layout
-from esolangs.languages.dig.generator._layout import (
-    _dig_leaf_inputs as _dig_leaf_inputs,
-)
+from esolangs.languages.dig.generator._layout import _DIG_LEAF_BITS, _dig_layout
 from esolangs.languages.dig.generator._leaf import (
     _DIG_DIGITS,
     _DIG_OPAQUE,
     _DIG_PRINT,
     _DIG_SPAN,
+    _DIG_TURNS,
+    _DIG_TURNS_CW,
     _dig_constant_leaf,
     _render,
-)
-from esolangs.languages.dig.generator._leaf import (
-    _dig_adder as _dig_adder,
-)
-from esolangs.languages.dig.generator._leaf import (
-    _dig_flat_leaf as _dig_flat_leaf,
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 from esolangs.registry._language import Language
@@ -51,6 +44,12 @@ _DIG_STRIDE = len(_DIG_BRANCH)
 _DIG_BAND = _DIG_STRIDE + 1
 
 
+# Largest n built as plain decision trees; above it the alternating layout
+# (flat leaves) beats the trees on every random table measured (1.9-5.1x smaller,
+# n=5..8), at it the two race, and below it the layout cannot be built (n=2, 3).
+_DIG_TREE_MAX = 4
+
+
 # Offset of a block's ``#``, the cell its children attach under.
 _DIG_LAST = _DIG_STRIDE - 1
 
@@ -63,9 +62,9 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     makes windows exactly ``_DIG_BAND`` long and pads the value to an odd
     offset from the ``$``, where the other band's ``$`` and ``#`` never look.
     """
-    out = ""
     if not aligned:
         return _dig_constant_leaf(reads, value)
+    out = ""
     while reads > _DIG_BAND - 1:
         take = _DIG_BAND - 2
         out += f"${take + 1}" + "~" * take
@@ -157,10 +156,6 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
         """Whether this level's block is entered facing west."""
         return split is not None and level >= split
 
-    def dollar(level: int) -> int:
-        """Return the column of this level's ``$``, the cell the mole meets first."""
-        return columns[level]
-
     def place(row: int, col: int, text: str) -> None:
         """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
 
@@ -176,7 +171,7 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
 
     def block(row: int, level: int, text: str) -> None:
         """Write a block so the mole meets its first cell first."""
-        col = dollar(level)
+        col = columns[level]
         if leftward(level):
             place(row, col - len(text) + 1, text[::-1])
         else:
@@ -199,7 +194,7 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
             return
         skip = skips[level]
         block(row, level, f"${3 + skip}{'~' * skip}~;#")
-        col = dollar(level)
+        col = columns[level]
         last = _DIG_LAST + skip
         hop = col - last if leftward(level) else col + last
         step = 2 ** (m - level - 1)
@@ -272,7 +267,9 @@ def _dig_lane_shared(truth_table: str, n: int) -> str | None:
     Reject crossings and paths above the execution ledger. A six-bit leaf's
     worst walk is the sum of its adder, painter, selector and output legs.
     """
-    return _dig_layout(truth_table, n, sharing=True) if n > 6 else None
+    if n <= _DIG_LEAF_BITS:
+        return None
+    return _dig_layout(truth_table, n, sharing=True)
 
 
 def _dig_parallel_shared(truth_table: str, n: int) -> str | None:
@@ -281,42 +278,36 @@ def _dig_parallel_shared(truth_table: str, n: int) -> str | None:
     Stretch branch counters around gutters, preserve rigid leaf stamps,
     and reject collisions or paths past the existing execution ledger.
     """
-    return _dig_layout(truth_table, n, sharing=True, parallel=True) if n > 6 else None
-
-
-def _dig_center_shared(truth_table: str, n: int) -> str | None:
-    """Bridge offset leaves to the entry nearest their callers' box center.
-
-    Heading-separated doglegs must clear retained stamps and fit the
-    ledger. Ignored-prefix parity shrinks 2,627/2,698 cells to 1,960;
-    eight seeded n=12 sparse/disjoint pairs shrink 77,816 to 62,272 (20.0%).
-    Full-input routes may refuse.
-    """
-    return _dig_layout(truth_table, n, sharing=True, offset=True) if n > 8 else None
+    return (
+        _dig_layout(truth_table, n, sharing=True, parallel=True)
+        if n > _DIG_LEAF_BITS
+        else None
+    )
 
 
 def _dig_size(program: str) -> tuple[int, int]:
     """Rank grid area first, then text length for ties."""
-    return len(program.splitlines()) * grid_width(program), len(program)
+    return grid_area(program), len(program)
 
 
-def _dig_center_choice(table: str, n: int, current: str, width: int | None) -> str:
-    """Shrink area while fitting width or lowering its existing floor."""
-    candidates = tuple(
-        filter(None, (_dig_center_shared(table, n), _dig_indexed_shared(table, n)))
-    )
-    if width is not None:
-        candidates = tuple(
-            p
-            for p in candidates
-            if grid_width(p) <= width
-            or (grid_width(current) > width and grid_width(p) <= grid_width(current))
-        )
-    if not candidates:
+def _dig_indexed_choice(table: str, n: int, current: str, width: int | None) -> str:
+    """Swap in the indexed leaf decoder if it shrinks area and fits ``width``.
+
+    A candidate over ``width`` still qualifies when it lowers the floor
+    ``current`` already sits above.
+    """
+    candidate = _dig_indexed_shared(table, n)
+    if candidate is None:
         return current
-    candidate = min(candidates, key=_dig_size)
-
-    return candidate if _dig_size(candidate)[0] < _dig_size(current)[0] else current
+    if (
+        width is not None
+        and grid_width(candidate) > width
+        and (
+            grid_width(current) <= width or grid_width(candidate) > grid_width(current)
+        )
+    ):
+        return current
+    return candidate if grid_area(candidate) < grid_area(current) else current
 
 
 def _dig_quarter_turn(program: str) -> str:
@@ -324,7 +315,7 @@ def _dig_quarter_turn(program: str) -> str:
     rows = program.splitlines()
     height = len(rows)
     span = max(map(len, rows))
-    arrows = str.maketrans("^>'<", ">'<^")
+    arrows = str.maketrans(_DIG_TURNS, _DIG_TURNS_CW)
     grid = [[" "] * (height + 1) for _ in range(span + 1)]
     grid[0][height] = "'"
     for row, line in enumerate(rows):
@@ -404,18 +395,25 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
         # The n=8 column uses 16 cells against the row's 51, despite more text.
         column = _dig_discards(n, truth_table[0] + ":") + "\n@"
         return min(built, column, key=_dig_size)
-    if width is None and essential and 0 < essential[0] == n - len(essential):
-        # Inputs before the first essential one can be read and dropped above
-        # the smaller table's program, when that uses less area.
-        inner = dig(read_at(truth_table, essential, n), share=share)
-        # Grids are measured by area: the n=10 parity-prefix wrapper used
-        # 2,736 cells against the integrated reader's 2,627, despite less text.
-        return min(
-            built,
-            _dig_discards(essential[0]) + "\n" + inner,
-            key=_dig_size,
-        )
-    return built
+    if width is not None:
+        return built
+    wrapped = _dig_discarded(truth_table, n, essential, share=share)
+    # Grids are measured by area: the n=10 parity-prefix wrapper used
+    # 2,736 cells against the integrated reader's 2,627, despite less text.
+    return built if wrapped is None else min(built, wrapped, key=_dig_size)
+
+
+def _dig_discarded(
+    table: str, n: int, essential: list[int], *, share: bool = True
+) -> str | None:
+    """Return the smaller table's program below a column dropping lead inputs.
+
+    None unless the ignored inputs are exactly the leading ones.
+    """
+    if not essential or not 0 < essential[0] == n - len(essential):
+        return None
+    inner = dig(read_at(table, essential, n), share=share)
+    return _dig_discards(essential[0]) + "\n" + inner
 
 
 def _dig_build(
@@ -424,14 +422,19 @@ def _dig_build(
     """Return :func:`dig`'s layout for every table, ignored inputs included."""
     if width is not None and 0 < width < 8 and truth_table == "0110":
         return _dig_xor_pair()
+
+    def settle(current: str) -> str:
+        """Try the indexed decoder against the cheapest layout so far."""
+        return _dig_indexed_choice(truth_table, n, current, width) if share else current
+
     lane = _dig_lane_shared(truth_table, n) if share else None
     parallel = _dig_parallel_shared(truth_table, n) if share else None
-    if width is None and n > 4:
+    if width is None and n > _DIG_TREE_MAX:
         current = min(
             filter(None, (lane, parallel, _dig_alternating(truth_table, n))),
             key=len,
         )
-        return _dig_center_choice(truth_table, n, current, width) if share else current
+        return settle(current)
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
         return flat
@@ -439,16 +442,22 @@ def _dig_build(
     # the eastbound one starts its last block, which is what fixes the
     # split rather than any search: the halves are as even as that allows.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
+    trees = min((flat, banded), key=len)
+    if width is None and n == _DIG_TREE_MAX and share:
+        # Both build at n=4 and neither dominates: over all 65,536 tables
+        # racing them saves 30.7% of length (33.2% of area) against the trees alone.
+        layouts = filter(None, (lane, parallel, _dig_alternating(truth_table, n)))
+        return min(trees, settle(min(layouts, key=len)), key=len)
     if width is None:
-        return min((flat, banded), key=len)
-    if n <= 4:
+        return trees
+    if n <= _DIG_TREE_MAX:
         if grid_width(flat) <= width:
             return flat
         if grid_width(banded) <= width:
             return banded
     candidates = tuple(filter(None, (flat, banded, lane, parallel)))
     fitting = [p for p in candidates if grid_width(p) <= width]
-    if n > 4:
+    if n > _DIG_TREE_MAX:
         # Width 40 used 11,250 banded cells on the n=8 repeated-leaf case;
         # the 35-column unshared layout needs 1,925.
         alternating = _dig_alternating(truth_table, n)
@@ -456,14 +465,14 @@ def _dig_build(
             fitting.append(alternating)
     if fitting:
         current = min(fitting, key=len)
-        return _dig_center_choice(truth_table, n, current, width) if share else current
+        return settle(current)
     # A bounded flat width keeps the rotated entry padding O(T).
-    if n <= 4:
+    if n <= _DIG_TREE_MAX:
         candidates += (_dig_quarter_turn(flat),)
     # Equal-width narrow fallbacks still prefer the shorter route: the n=9
     # parity prefix otherwise kept 27,036 banded cells over 2,556 shared cells.
     current = min(candidates, key=lambda program: (grid_width(program), len(program)))
-    return _dig_center_choice(truth_table, n, current, width) if share else current
+    return settle(current)
 
 
 def _balance(table: str, default: str) -> str:
@@ -480,12 +489,10 @@ def _balance(table: str, default: str) -> str:
         dig(table, 8),
     ]
     essential = essential_inputs(table, n)
-    if essential and 0 < essential[0] == n - len(essential):
-        # A discard column can be more square even when its area is larger.
-        inner = dig(read_at(table, essential, n))
-        wrapped = _dig_discards(essential[0]) + "\n" + inner
-        legacy = min(_dig_build(table, n, None, share=True), wrapped, key=len)
-        candidates.append(legacy)
+    if (wrapped := _dig_discarded(table, n, essential)) is not None:
+        # A discard column can be more square even when its area is larger,
+        # and longer than the build it wraps (n=4 races the alternating layout).
+        candidates += [_dig_build(table, n, None, share=True), wrapped]
     if n >= 2:
         banded = _dig_grid(table, n, (n + 3) // 2)
         if grid_width(banded) < grid_width(flat):

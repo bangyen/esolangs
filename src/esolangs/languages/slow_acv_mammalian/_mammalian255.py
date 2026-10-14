@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass, replace
 
+from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_head
+
 
 @dataclass
 class _State:
@@ -23,12 +25,9 @@ class _State:
         head = (value - self.rest) % self.io_modulus
         tokens = []
         if head == 255:
-            # Adjacent sums crossing 127/128 (or 255/256) XOR to 255
-            # in the low byte.  The final head is 254-2*value mod 256,
-            # hence even and reachable despite the missing head 255.
-            first = (127 - self.rest) % 256
-            if first >= 254:
-                first = (255 - self.rest) % 256
+            # The final head is 254-2*value mod 256, hence even and
+            # reachable despite the missing head 255.
+            first = _crossing_head(self.rest)
             tokens += self.seed((first - self.head) % 255)
             self.acc = self.head + self.rest
             tokens += ["DIGEST"]
@@ -96,8 +95,7 @@ def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
         tokens += state.raise_to(one_pos + 15)
         tokens += state.seed((-state.head) % 255)
         start = state.rest
-        offset = (start - 16) % 64
-        first_seeds = start % 2 if offset <= 14 else 64 - offset
+        first_seeds = _aim(start)
         first = start + first_seeds
         tokens += state.seed(first_seeds)
         tokens += ["DIGEST"]

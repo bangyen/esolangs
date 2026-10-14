@@ -1,10 +1,13 @@
 """Build brainfuck Boolean programs with folded trees or affine streams."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    affine_form,
     constant_span_test,
     decision_tree_body,
     essential_inputs,
@@ -12,12 +15,279 @@ from esolangs.generation.helpers import (
     move_text,
     subtree_ids,
 )
-from esolangs.generation.shared_block import ContinuationCost as _Cost
-from esolangs.generation.shared_block import _repeated_blocks, repeated_block
-from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
+from esolangs.generation.shared_block import (
+    ContinuationCost,
+    _repeated_blocks,
+    repeated_block,
+)
+from esolangs.generation.shared_flag import (
+    FLAG_FORMS,
+    flag_tree_body,
+    shared_flag_tree,
+)
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+
+
+class _PendingKey(NamedTuple):
+    """Identify a deferred bank body: its decoder label and high-bit cell.
+
+    ``code`` selects the shared body; ``free`` is the retired input cell
+    holding the label's high marker, or None when the label needs none.
+    """
+
+    code: int
+    free: int | None
+
+
+#: A priced bank prefix whose deferred continuations are pending keys.
+_BankCost = ContinuationCost[_PendingKey]
+
+
+@dataclass
+class _BankState:
+    """Mutable working state threaded through the bank builders."""
+
+    out: list[str]
+    count: int
+    pos: int
+    targets: dict[_PendingKey, tuple[int, int | None]]
+
+
+class _BankPlan(NamedTuple):
+    """Read-only inputs the bank builders close over."""
+
+    n: int
+    depth: int
+    ids: list[list[int]]
+    constant: Callable[[int, int], bool]
+    flags: tuple[int, ...]
+    result: int
+    selected: dict[int, int]
+    completed_one: int
+    high_bit: int
+    table: str
+    unwritten: set[int]
+    words: dict[int, str]
+
+
+def _emit(state: _BankState, code: str) -> None:
+    """Append emitted text and account its length."""
+    state.out.append(code)
+    state.count += len(code)
+
+
+def _move(state: _BankState, target: int) -> None:
+    """Emit the run reaching ``target`` and move the head there."""
+    _emit(state, move_text(state.pos, target, ">", "<"))
+    state.pos = target
+
+
+def _drain(state: _BankState, source: int, target: int) -> None:
+    """Emit ``[-]``-style transfer of ``source`` into ``target``; ends on source."""
+    _move(state, source)
+    _emit(state, "[-")
+    _move(state, target)
+    _emit(state, "+")
+    _move(state, source)
+    _emit(state, "]")
+
+
+def _clear(state: _BankState, plan: _BankPlan, cell: int) -> int:
+    """Clear ``cell`` and return its command price."""
+    _move(state, cell)
+    _emit(state, "[-]")
+    return 1 if cell in plan.unwritten else 3
+
+
+def _inline(state: _BankState, plan: _BankPlan, word: str) -> int:
+    """Emit a shared body for ``word``; return its command count.
+
+    Each word is its own definition: defer its greatest repeat, so a
+    nested body shares like a top-level one.  Zero-constant elision
+    stays off -- its price is not the bank's price model.
+    """
+    code, commands = flag_tree_body(
+        word,
+        tuple(range(plan.depth, plan.n)),
+        state.pos,
+        plan.result,
+        shared=repeated_block(word),
+        fold_zero=False,
+    )
+    _emit(state, code)
+    state.pos = plan.result
+    return commands
+
+
+def _register_target(
+    state: _BankState, code: int, free: int | None = None
+) -> _PendingKey:
+    """Record a deferred body and return its key."""
+    key = _PendingKey(code, free)
+    state.targets[key] = (code, free)
+    return key
+
+
+def _split[Branch](
+    state: _BankState,
+    bit: int,
+    one: Callable[[], Branch],
+    zero: Callable[[], Branch],
+) -> tuple[Branch, int, Branch, int]:
+    """Emit both guarded arms; return their bodies and path overheads.
+
+    The type parameter is real: the bank prices tree prefixes with
+    ``Branch`` as ``_BankCost`` and decoder subtrees with ``Branch`` as
+    ``dict[int, int]``, sharing one guarded-arm shape.
+    """
+    beginning = state.count
+    flag = bit + 1
+    _move(state, flag)
+    _emit(state, "+")
+    _move(state, bit)
+    zero_entry = state.count - beginning + 1
+    _emit(state, "[-")
+    _move(state, flag)
+    _emit(state, "-")
+    one_entry = state.count - beginning
+    one_body = one()
+    finish = state.count
+    _move(state, bit)
+    _emit(state, "]")
+    one_finish = state.count - finish
+    zero_start = state.count
+    _move(state, flag)
+    _emit(state, "[-")
+    one_finish += state.count - zero_start - 1
+    zero_entry += state.count - zero_start
+    zero_body = zero()
+    finish = state.count
+    _move(state, flag)
+    _emit(state, "]")
+    return (
+        one_body,
+        one_entry + one_finish,
+        zero_body,
+        zero_entry + state.count - finish,
+    )
+
+
+def _node(
+    state: _BankState, plan: _BankPlan, i: int, lo: int, hi: int, free: int | None
+) -> _BankCost:
+    """Price the bank prefix over ``[lo, hi)`` at tree level ``i``."""
+    beginning = state.count
+    sub_id = plan.ids[i][lo >> (plan.n - i)]
+    if i == plan.depth:
+        code = plan.selected.get(sub_id)
+        if code is not None and (not (code & plan.high_bit) or free is not None):
+            cells = (*plan.flags, plan.result, free)
+            for bit, cell in enumerate(cells):
+                if code & (1 << bit):
+                    if cell is None:
+                        raise ValueError("a high marker needs a retired input")
+                    _move(state, cell)
+                    _emit(state, "+")
+            return _BankCost(
+                state.count - beginning,
+                target=_register_target(
+                    state, code, free if code & plan.high_bit else None
+                ),
+            )
+        commands = _inline(state, plan, plan.table[lo:hi])
+        if plan.constant(lo, hi):
+            return _BankCost(
+                commands,
+                target=_register_target(
+                    state, plan.completed_one if plan.table[lo] == "1" else 0
+                ),
+            )
+        return _BankCost(
+            commands,
+            (
+                _BankCost(0, target=_register_target(state, 0)),
+                _BankCost(0, target=_register_target(state, plan.completed_one)),
+            ),
+        )
+    if plan.constant(lo, hi):
+        if plan.table[lo] == "1":
+            _move(state, plan.result)
+            _emit(state, "+")
+        # Unvisited prefix bits must not masquerade as a high marker.
+        adjustment = sum(
+            _clear(state, plan, 2 * level) - 3 for level in range(i, plan.depth)
+        )
+        return _BankCost(
+            state.count - beginning + adjustment,
+            target=_register_target(
+                state, plan.completed_one if plan.table[lo] == "1" else 0
+            ),
+        )
+    mid = (lo + hi) // 2
+    zero_id, one_id = (
+        plan.ids[i + 1][lo >> (plan.n - i - 1)],
+        plan.ids[i + 1][mid >> (plan.n - i - 1)],
+    )
+    if zero_id == one_id:
+        cleared = _clear(state, plan, 2 * i)
+        prefix = state.count - beginning + cleared - 3
+        return _BankCost(prefix, (_node(state, plan, i + 1, lo, mid, 2 * i),))
+    # An active one guard still tests its cleared input when it closes.
+    # Only a zero arm (whose one test has finished) or an ignored input
+    # can hold the high marker. With neither available, keep this copy.
+    one, one_cost, zero, zero_cost = _split(
+        state,
+        2 * i,
+        lambda: _node(state, plan, i + 1, mid, hi, free),
+        lambda: _node(state, plan, i + 1, lo, mid, 2 * i),
+    )
+    return _BankCost(0, (_BankCost(one_cost, (one,)), _BankCost(zero_cost, (zero,))))
+
+
+def _decode(
+    state: _BankState,
+    plan: _BankPlan,
+    scratch: tuple[int, ...],
+    bit: int,
+    labels: tuple[int, ...],
+) -> dict[int, int]:
+    """Price each decoder label's shared body; return the label costs."""
+    beginning = state.count
+    if bit < 0:
+        code = labels[0]
+        if code == plan.completed_one:
+            _move(state, plan.result)
+            _emit(state, "+")
+        elif code != 0:
+            return {code: _inline(state, plan, plan.words[code])}
+        return {code: state.count - beginning}
+    groups = [
+        tuple(code for code in labels if (code >> bit) & 1 == value) for value in (0, 1)
+    ]
+    cell = scratch[bit]
+    if not groups[0] or not groups[1]:
+        if groups[1]:
+            _move(state, cell)
+            _emit(state, "-")
+        flat = state.count - beginning
+        return {
+            label: flat + cost
+            for label, cost in _decode(
+                state, plan, scratch, bit - 1, groups[1] or groups[0]
+            ).items()
+        }
+    one, one_cost, zero, zero_cost = _split(
+        state,
+        cell,
+        lambda: _decode(state, plan, scratch, bit - 1, groups[1]),
+        lambda: _decode(state, plan, scratch, bit - 1, groups[0]),
+    )
+    return {
+        **{label: cost + one_cost for label, cost in one.items()},
+        **{label: cost + zero_cost for label, cost in zero.items()},
+    }
 
 
 def binary_bank(
@@ -61,136 +331,24 @@ def binary_bank(
         codes[i]: table[row : row + (1 << remaining)]
         for i, (_, row) in enumerate(blocks)
     }
-    out: list[str] = []
-    pos = start
-    count = 0
-    targets: dict[int, tuple[int, int | None]] = {}
+    plan = _BankPlan(
+        n=n,
+        depth=depth,
+        ids=ids,
+        constant=constant,
+        flags=flags,
+        result=result,
+        selected=selected,
+        completed_one=completed_one,
+        high_bit=high_bit,
+        table=table,
+        unwritten=unwritten,
+        words=words,
+    )
+    state = _BankState(out=[], count=0, pos=start, targets={})
 
-    def emit(code: str) -> None:
-        nonlocal count
-        out.append(code)
-        count += len(code)
-
-    def move(target: int) -> None:
-        nonlocal pos
-        emit(">" * (target - pos) if target >= pos else "<" * (pos - target))
-        pos = target
-
-    def clear(cell: int) -> int:
-        move(cell)
-        emit("[-]")
-        return 1 if cell in unwritten else 3
-
-    def inline(word: str) -> int:
-        nonlocal pos
-        # Each word is its own definition: defer its greatest repeat, so a
-        # nested body shares like a top-level one.  Zero-constant elision
-        # stays off -- its price is not the bank's price model.
-        code, commands = flag_tree_body(
-            word,
-            tuple(range(depth, n)),
-            pos,
-            result,
-            shared=repeated_block(word),
-            fold_zero=False,
-        )
-        emit(code)
-        pos = result
-        return commands
-
-    def pending_target(code: int, free: int | None = None) -> int:
-        key = code * (n + 1) + (0 if free is None else free // 2 + 1)
-        targets[key] = (code, free)
-        return key
-
-    def split[Branch](
-        bit: int, one: Callable[[], Branch], zero: Callable[[], Branch]
-    ) -> tuple[Branch, int, Branch, int]:
-        """Emit both guarded arms and return their bodies and path overheads."""
-        beginning = count
-        flag = bit + 1
-        move(flag)
-        emit("+")
-        move(bit)
-        zero_entry = count - beginning + 1
-        emit("[-")
-        move(flag)
-        emit("-")
-        one_entry = count - beginning
-        one_body = one()
-        finish = count
-        move(bit)
-        emit("]")
-        one_finish = count - finish
-        zero_start = count
-        move(flag)
-        emit("[-")
-        one_finish += count - zero_start - 1
-        zero_entry += count - zero_start
-        zero_body = zero()
-        finish = count
-        move(flag)
-        emit("]")
-        return one_body, one_entry + one_finish, zero_body, zero_entry + count - finish
-
-    def node(i: int, lo: int, hi: int, free: int | None) -> _Cost:
-        beginning = count
-        key = ids[i][lo >> (n - i)]
-        if i == depth:
-            code = selected.get(key)
-            if code is not None and (not (code & high_bit) or free is not None):
-                cells = (*flags, result, free)
-                for bit, cell in enumerate(cells):
-                    if code & (1 << bit):
-                        if cell is None:
-                            raise ValueError("a high marker needs a retired input")
-                        move(cell)
-                        emit("+")
-                return _Cost(
-                    count - beginning,
-                    target=pending_target(code, free if code & high_bit else None),
-                )
-            commands = inline(table[lo:hi])
-            if constant(lo, hi):
-                return _Cost(
-                    commands,
-                    target=pending_target(completed_one if table[lo] == "1" else 0),
-                )
-            return _Cost(
-                commands,
-                (
-                    _Cost(0, target=pending_target(0)),
-                    _Cost(0, target=pending_target(completed_one)),
-                ),
-            )
-        if constant(lo, hi):
-            if table[lo] == "1":
-                move(result)
-                emit("+")
-            # Unvisited prefix bits must not masquerade as a high marker.
-            adjustment = sum(clear(2 * level) - 3 for level in range(i, depth))
-            return _Cost(
-                count - beginning + adjustment,
-                target=pending_target(completed_one if table[lo] == "1" else 0),
-            )
-        mid = (lo + hi) // 2
-        zero_id, one_id = ids[i + 1][lo >> (n - i - 1)], ids[i + 1][mid >> (n - i - 1)]
-        if zero_id == one_id:
-            cleared = clear(2 * i)
-            prefix = count - beginning + cleared - 3
-            return _Cost(prefix, (node(i + 1, lo, mid, 2 * i),))
-        # An active one guard still tests its cleared input when it closes.
-        # Only a zero arm (whose one test has finished) or an ignored input
-        # can hold the high marker. With neither available, keep this copy.
-        one, one_cost, zero, zero_cost = split(
-            2 * i,
-            lambda: node(i + 1, mid, hi, free),
-            lambda: node(i + 1, lo, mid, 2 * i),
-        )
-        return _Cost(0, (_Cost(one_cost, (one,)), _Cost(zero_cost, (zero,))))
-
-    prefix = node(0, 0, len(table), None)
-    labels = tuple(sorted({code for code, _ in targets.values()}))
+    prefix = _node(state, plan, 0, 0, len(table), None)
+    labels = tuple(sorted({code for code, _ in state.targets.values()}))
     width = max(labels).bit_length()
     if width > depth:
         return None
@@ -199,79 +357,35 @@ def binary_bank(
     # input is zero. Collect it before reusing those cells as decoder bits.
     collector_base = 0
     for i in range(depth if width == remaining + 2 else 0):
-        collector_base += abs(pos - 2 * i) + 1
-        move(2 * i)
-        emit("[-")
-        move(collector)
-        emit("+")
-        move(2 * i)
-        emit("]")
+        collector_base += abs(state.pos - 2 * i) + 1
+        _drain(state, 2 * i, collector)
     scratch = tuple(2 * (depth - width + i) for i in range(width))
     metadata = (*flags, result, collector)[:width]
     transfer_base = 0
     transfer_active = []
     for source, target in zip(metadata, scratch, strict=True):
-        transfer_base += abs(pos - source) + 1
+        transfer_base += abs(state.pos - source) + 1
         transfer_active.append(2 * abs(source - target) + 3)
-        move(source)
-        emit("[-")
-        move(target)
-        emit("+")
-        move(source)
-        emit("]")
+        _drain(state, source, target)
 
-    def decode(bit: int, labels: tuple[int, ...]) -> dict[int, int]:
-        beginning = count
-        if bit < 0:
-            code = labels[0]
-            if code == completed_one:
-                move(result)
-                emit("+")
-            elif code != 0:
-                return {code: inline(words[code])}
-            return {code: count - beginning}
-        groups = [
-            tuple(code for code in labels if (code >> bit) & 1 == value)
-            for value in (0, 1)
-        ]
-        cell = scratch[bit]
-        if not groups[0] or not groups[1]:
-            if groups[1]:
-                move(cell)
-                emit("-")
-            flat = count - beginning
-            return {
-                label: flat + cost
-                for label, cost in decode(bit - 1, groups[1] or groups[0]).items()
-            }
-        one, one_cost, zero, zero_cost = split(
-            cell,
-            lambda: decode(bit - 1, groups[1]),
-            lambda: decode(bit - 1, groups[0]),
-        )
-        return {
-            **{label: cost + one_cost for label, cost in one.items()},
-            **{label: cost + zero_cost for label, cost in zero.items()},
-        }
-
-    decoder = decode(width - 1, labels)
-    final_move = abs(result - pos)
-    move(result)
-    tails: dict[int | None, int] = {
+    decoder = _decode(state, plan, scratch, width - 1, labels)
+    final_move = abs(result - state.pos)
+    _move(state, result)
+    tails: dict[_PendingKey | None, int] = {
         key: collector_base
         + (2 * abs(collector - free) + 3 if free is not None else 0)
         + transfer_base
         + sum(active for bit, active in enumerate(transfer_active) if code & (1 << bit))
         + decoder[code]
         + final_move
-        for key, (code, free) in targets.items()
+        for key, (code, free) in state.targets.items()
     }
     commands = prefix.evaluate(tails)
     # The body keeps every value binary and every address lies in 0..2n.
     # Adding ASCII 48 only to R therefore preserves the 2n+6 tape-bit cap.
     if commands > command_budget:
         return None
-    return "".join(out), commands
+    return "".join(state.out), commands
 
 
 def larger_suffix_bank(table: str, command_budget: int) -> tuple[str, int] | None:
@@ -336,13 +450,10 @@ def bf_tree(truth_table: str) -> str:
 def _affine_stream(table: str) -> str | None:
     """Stream an admitted affine table through one bit and a toggle scratch."""
     n = _validate_truth_table(table)
-    bias = int(table[0])
-    coefficients = [int(table[1 << (n - i - 1)]) ^ bias for i in range(n)]
-    expected = [bias]
-    for coefficient in reversed(coefficients):
-        expected += [value ^ coefficient for value in expected]
-    if any(str(value) != bit for value, bit in zip(expected, table, strict=True)):
+    form = affine_form(table, n)
+    if form is None:
         return None
+    bias, coefficients = form
     # Input, accumulator, scratch occupy cells 0, 1, 2. Each selected read
     # costs at most 66 commands; a trailing ignored read must leave a bit
     # rather than ASCII beside the final ASCII output to retain workspace.
@@ -382,9 +493,9 @@ def _bf_ordered(
         else:
             reads.append("")
             pending += ","
-    cells = [(_RIGHT * 2).join(reads)]
+    header = (_RIGHT * 2).join(reads)
+    cells = [header]
     pos = 2 * max(n - 1, 0)
-    header = cells[0]
     tree_start = pos
 
     # The tree itself.
@@ -398,36 +509,30 @@ def _bf_ordered(
     plain = "".join(cells)
     if not share:
         return plain
+    # The body's share of the 69n + 44 command ceiling.
+    budget = 69 * n + 44 - len(header) - _ASCII_ZERO - 1
+    bodies = []
     shared = shared_flag_tree(
         truth_table,
         perm,
         tree_start,
         2 * n,
-        command_budget=69 * n + 44 - len(header) - _ASCII_ZERO - 1,
-        bank=bank,
+        command_budget=budget,
+        forms=FLAG_FORMS if bank else frozenset({"single", "multiple"}),
     )
-    if shared is not None:
-        body, commands = shared
-        candidate = header + body + "+" * _ASCII_ZERO + "."
-        if len(header) + commands + _ASCII_ZERO + 1 <= 69 * n + 44 and len(
-            candidate
-        ) < len(plain):
-            plain = candidate
+    if shared is not None and shared[1] <= budget:
+        bodies.append(shared[0])
     if bank and perm == tuple(range(n)):
-        binary = binary_bank(truth_table, 69 * n + 44 - len(header) - _ASCII_ZERO - 1)
-        if binary is not None:
-            body, _ = binary
-            candidate = header + body + "+" * _ASCII_ZERO + "."
-            if len(candidate) < len(plain):
-                plain = candidate
-        larger = larger_suffix_bank(
-            truth_table, 69 * n + 44 - len(header) - _ASCII_ZERO - 1
-        )
-        if larger is not None:
-            body, _ = larger
-            candidate = header + body + "+" * _ASCII_ZERO + "."
-            if len(candidate) < len(plain):
-                plain = candidate
+        for banked in (
+            binary_bank(truth_table, budget),
+            larger_suffix_bank(truth_table, budget),
+        ):
+            if banked is not None:
+                bodies.append(banked[0])
+    for body in bodies:
+        candidate = header + body + "+" * _ASCII_ZERO + "."
+        if len(candidate) < len(plain):
+            plain = candidate
     return plain
 
 
@@ -435,7 +540,6 @@ LANGUAGE = Language(
     "brainfuck",
     "brainfuck",
     category="tape_based",
-    weekly_mutation=("interpreter",),
     boolean=brainfuck,
     contract=BooleanContract(
         input_shape="char_stream",

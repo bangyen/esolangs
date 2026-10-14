@@ -1,13 +1,10 @@
 """Boolean-function generator for RAM0."""
 
-from collections.abc import Callable
-from typing import Any
-
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     in_input_order,
-    same_tokens,
+    same_token_layout,
     subtree_ids,
     subtree_slot,
 )
@@ -50,13 +47,17 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     """
     if width is None:
         return in_input_order(truth_table, _ram0_shared)
-    from esolangs.generation.wrap import wrap_space_delimited
 
     if width == 1 and len(truth_table) <= 8:  # three inputs
         program = _ram0_nand(truth_table)
     else:
         program = in_input_order(truth_table, _ram0_shared)
     return wrap_space_delimited(program, width)
+
+
+def _address(k: int, op: str) -> list[str]:
+    """Return the unary address ``k`` (reset, ``k`` increments) then ``op``."""
+    return ["Z", *["A"] * k, op]
 
 
 def _ram0_nand(truth_table: str) -> str:
@@ -67,7 +68,7 @@ def _ram0_nand(truth_table: str) -> str:
     tokens = ["Z", "N", "A", "S"]
 
     def address_op(address: int, op: str) -> None:
-        tokens.extend(["Z", *("A" for _ in range(address)), op])
+        tokens.extend(_address(address, op))
 
     def target(address: int) -> None:
         address_op(address, "N")
@@ -142,8 +143,11 @@ def _ram0_ordered(
     """
     n = _validate_truth_table(truth_table)
 
-    # Initial z == 0 makes C skip the widening end target.  Leaves jump to
-    # that target through fixed 1-based address 2.
+    # "END@" is a forward reference: leaves jump to command 2, and command 2
+    # must hold the address just past the last tree token -- which is only
+    # known once the tree is laid out.  The leading "C" skips its operand
+    # while z is still zero, so the operand doubles as the halt trampoline:
+    # a leaf's goto 2 lands on "goto end" and halts with z as the answer.
     tokens = ["C", "END@"]
 
     # Store the deepest, most repeated test at address zero.  Placeholders
@@ -151,48 +155,66 @@ def _ram0_ordered(
     address_of = {input_index: n - 1 - level for level, input_index in enumerate(perm)}
     for i in range(n):
         address = address_of[i]
-        tokens.append("Z")
-        tokens.extend("A" for _ in range(address))
-        tokens.append("N")
+        tokens.extend(_address(address, "N"))
         tokens.extend(("Z", _RAM0_INPUT))  # reset, then set the bit
         tokens.append("S")
 
-    pos = len(tokens)  # instantiated command index of the next command
+    pos = len(tokens)  # token count before the tree starts
     ids = subtree_ids(truth_table)
     tree: list[str] = []
     # First address of each emitted subtree, by :func:`subtree_slot` name.
     placed: dict[tuple[int, int], int] = {}
 
+    def addr() -> int:
+        """Return the 1-based address the next emitted token will occupy."""
+        return pos + len(tree) + 1
+
     def resolve(level: int, block: int) -> tuple[int, int, tuple[int, int]]:
+        """Return the canonical ``(level, block, slot)`` for a subtree.
+
+        With sharing on, tests whose halves agree are skipped over to the
+        surviving half (see :func:`subtree_slot`); the slot names the subtree
+        for the ``placed`` lookup.
+        """
         return subtree_slot(ids, level, block, skip=share)
 
     def emit(level: int, block: int) -> None:
-        """Lay the subtree out where control falls in, or jump to its copy."""
+        """Lay the subtree out where control falls in, or jump to its copy.
+
+        A node is ``Z A.. L C <one>``: ``Z A.. L`` loads the level's test bit
+        into ``z``, then ``C`` falls through into the zero subtree laid out
+        next, or jumps to the one subtree -- an already-emitted copy when
+        sharing, else the address the one subtree is about to occupy,
+        backpatched into the head below.
+        """
         level, block, slot = resolve(level, block)
         copy = placed.get(slot)
-        # A jump is one token; a leaf is 3, so jump to it only if copy has <3 digits.
+        # A goto is one token; re-emitting a leaf is three, so only jump to
+        # a leaf copy while its address text is shorter than the leaf.
         if copy is not None and (slot[0] >= 0 or len(str(copy)) < len(_LEAF)):
             tree.append(str(copy))
             return
         if share:
-            placed.setdefault(slot, pos + len(tree) + 1)
+            placed.setdefault(slot, addr())
         if slot[0] < 0:
             tree.extend(["Z", "A" if slot[1] else "Z", "2"])
             return
         at = len(tree)
-        head = ["Z", *("A" for _ in range(n - 1 - level)), "L", "C"]
+        head = [*_address(n - 1 - level, "L"), "C"]
+        # Reserve the head plus its goto operand; the one-subtree address is
+        # backpatched once the fall-through zero subtree is laid out.
         tree.extend([""] * (len(head) + 1))
         emit(level + 1, 2 * block)
         # The one subtree is jumped to, so an earlier copy costs nothing.
         one = placed.get(resolve(level + 1, 2 * block + 1)[2])
         if one is None:
-            one = pos + len(tree) + 1
+            one = addr()
             emit(level + 1, 2 * block + 1)
         tree[at : at + len(head) + 1] = [*head, str(one)]
 
     emit(0, 0)
     tokens += tree
-    end = pos + len(tree) + 1  # 1-based goto operand just past the last command
+    end = addr()  # 1-based goto operand just past the last command
     return " ".join(str(end) if t == "END@" else t for t in tokens)
 
 
@@ -205,17 +227,12 @@ def _balance(table: str, default: str) -> str:
     )
 
 
-def _same_layout(template: str, plain: str, _layout: Callable[[int], Any]) -> bool:
-    """Instructions tokenize on whitespace, which its wrapper turns to newlines."""
-    return same_tokens(template, plain)
-
-
 LANGUAGE = Language(
     "RAM0",
     "ram0",
     category="register_based",
     boolean=ram0,
-    same_layout=_same_layout,
+    same_layout=same_token_layout,
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"z: (\d+)",

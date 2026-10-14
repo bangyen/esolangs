@@ -61,9 +61,11 @@ from .core import (
     _program,
     _render,
     _rot,
+    _seed_label_chains,
     _t_hubs,
     _t_jump,
     _table_char,
+    _turn_hubs,
     _valid_chars,
 )
 
@@ -101,6 +103,11 @@ _D_OPERANDS = {86: "rot K2", 101: "rot K2"}
 _D_FLOOR = 6000
 
 
+def _top_bit_held(n: int, group: int) -> bool:
+    """Whether fifteen inputs hold group 4's first read at the constant ``'0'``."""
+    return n < _DIGITS_N and group == len(_D_INITS) - 1
+
+
 def _swap12(value: int) -> int:
     """``p`` with ``A = 2``: trit 0 swaps 1 and 2, constant 1s and 2s stay."""
     return _crazy(2, value)
@@ -116,10 +123,10 @@ def _readouts(n: int) -> tuple[int, ...]:
     """
     states = [29524]
     for group, init in enumerate(_D_INITS):
-        last = n < _DIGITS_N and group == len(_D_INITS) - 1
+        held = _top_bit_held(n, group)
         following = []
         for s in states:
-            for bits in range(4 if last else 8):
+            for bits in range(4 if held else 8):
                 reads = iter(48 + ((bits >> k) & 1) for k in (2, 1, 0))
                 cells, a = list(init), 0
                 for op in _GADGET:
@@ -228,15 +235,10 @@ def _digits(n: int) -> _Digits:
     _prime(
         main, helper, (helper["all1"], helper["all2"], s_cell, z_cell, *sorted(label))
     )
-    for lab, (_, ops) in _D_SEEDS.items():
-        _emit_chain(main, seeds[lab], ops, helper)
-        for p in sorted(label):
-            if label[p] == lab:
-                main.op("p", p)
-    for v, turns in sorted(hub_turns.items()):
-        for _ in range(turns):
-            main.hub(pointer[v], v)
-            main.raw("*")
+    _seed_label_chains(
+        main, helper, {lab: ops for lab, (_, ops) in _D_SEEDS.items()}, seeds, label
+    )
+    _turn_hubs(main, pointer, hub_turns)
     for f, ops in sorted(_D_OPERANDS.items()):
         _emit_chain(main, f, ops, helper)
 
@@ -250,7 +252,7 @@ def _digits(n: int) -> _Digits:
         first = True
         for op in _GADGET:
             if op == "/":
-                if first and n == _DIGITS_N - 1 and group == len(gadget) - 1:
+                if first and _top_bit_held(n, group):
                     main.op("*", helper["all2"])
                     main.op("p", to_48[1])
                 else:

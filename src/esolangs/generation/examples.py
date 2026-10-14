@@ -19,7 +19,7 @@ spelling that drifted made an instantiated program loop and the suite hang.
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import cast
+from typing import Any, cast
 
 from esolangs.compressed import CompressedText
 from esolangs.generation.helpers import (
@@ -29,8 +29,13 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, Language, SourceKind, canonical_id, resolve
-from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
+from esolangs.registry import LANGUAGES, Language, canonical_id, resolve
+from esolangs.registry._contracts import (
+    CHAR_STREAMS,
+    AnswerMode,
+    BooleanContract,
+    InputShape,
+)
 from esolangs.runtime._program import Program
 
 # Examples use AND2 on 0,1 unless the source budget requires a smaller
@@ -110,9 +115,6 @@ class BooleanExample:
     #: The ``(zero, one)`` text per input, read off a template; ``fill`` is
     #: :func:`instantiate` with these and nothing else.
     setters: Callable[[str, int], Setters] | None = None
-    #: The one ``(zero, one)`` pair every input is spelled with, where the
-    #: embed is uniform; ``setters`` is then derived from it.
-    pair: tuple[str, str] | None = None
     #: The character the public template spells its inputs with, one run
     #: per input; outside the language's alphabet.
     char: str = TEMPLATE_CHAR
@@ -128,15 +130,12 @@ class BooleanExample:
     @property
     def filename(self) -> str:
         """Return the example filename in the language's source format."""
-        kind = LANGUAGES[resolve(self.stem.replace("-", " "))].source_kind
-        lang = LANGUAGES[resolve(self.stem.replace("-", " "))]
-        return self.stem + (
-            ".png"
-            if kind is SourceKind.RASTER
-            else ".txt.gz"
-            if lang.compressed_source
-            else ".txt"
-        )
+        return self.stem + LANGUAGES[resolve(self.language)].source_suffix
+
+    @property
+    def language(self) -> str:
+        """Return the canonical id of the language ``stem`` names."""
+        return canonical_id(self.stem.replace("-", " "))
 
     def build(
         self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
@@ -151,12 +150,13 @@ class BooleanExample:
         if balance:
             import esolangs
 
-            language = canonical_id(self.stem.replace("-", " "))
             program = esolangs.generate(
-                language, self.table, balance=True, scale=self.scale
+                self.language, self.table, balance=True, scale=self.scale
             )
             if self.fill is not None:
-                program = esolangs.instantiate(language, cast(str, program), self.bits)
+                program = esolangs.instantiate(
+                    self.language, cast(str, program), self.bits
+                )
             return program
         if width is not None and takes_width(self.generator):
             program = self.generator(self.table, width)
@@ -168,18 +168,27 @@ class BooleanExample:
             return program.upscaled(self.scale)
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
-        return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
+        return wrap_program(program, self.language, width)
 
     @property
     def stdin(self) -> str:
         """Return the example input with its language-specific separators."""
-        if self.input_shape in {
-            "char_stream",
-            "char_stream_padded",
-            "char_stream_cyclic",
-        }:
+        if self.input_shape in CHAR_STREAMS:
             return "".join(self.inputs)
         return "".join(f"{line}\n" for line in self.inputs)
+
+
+def _contract_fields(contract: BooleanContract) -> dict[str, Any]:
+    """Return the example fields an interpreter's I/O contract fixes."""
+    return {
+        "answer_mode": contract.answer_mode,
+        "answer_pattern": contract.answer_pattern,
+        "answer_values": contract.answer_values,
+        "alphabet": contract.alphabet,
+        "input_shape": contract.input_shape,
+        "ghost_digit": contract.ghost_digit,
+        "note": contract.note,
+    }
 
 
 def _contract_for(interpreter: str) -> BooleanContract:
@@ -209,20 +218,14 @@ def _reader(
     if contract.input_shape in {"char_stream", "char_stream_padded"}:
         inputs = ("".join(inputs),)
     return BooleanExample(
-        answer_mode=contract.answer_mode,
-        answer_pattern=contract.answer_pattern,
-        answer_values=contract.answer_values,
+        **_contract_fields(contract),
         generator=generator,
         table=table,
         interpreter=interpreter,
         expected=expected,
         inputs=inputs,
-        alphabet=contract.alphabet,
-        input_shape=contract.input_shape,
-        ghost_digit=contract.ghost_digit,
         split=split,
         kwargs=kwargs,
-        note=contract.note,
     )
 
 
@@ -237,7 +240,6 @@ def _embedded(
     table: str = AND2,
     bits: tuple[int, ...] = (0, 1),
     expected: str = "0",
-    expected_compared: bool = True,
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
 ) -> BooleanExample:
@@ -250,28 +252,19 @@ def _embedded(
         raise TypeError("exactly one of pair and setters")
     if setters is None:
         setters = uniform(pair)
-    contract = _contract_for(interpreter)
     return BooleanExample(
-        answer_mode=contract.answer_mode,
-        answer_pattern=contract.answer_pattern,
-        answer_values=contract.answer_values,
-        alphabet=contract.alphabet,
-        input_shape=contract.input_shape,
-        ghost_digit=contract.ghost_digit,
+        **_contract_fields(_contract_for(interpreter)),
         generator=generator,
         table=table,
         interpreter=interpreter,
         expected=expected,
-        expected_compared=expected_compared,
         bits=bits,
         fill=_fill_from(setters, body, char),
         setters=setters,
-        pair=pair,
         char=char,
         body=body,
         split=split,
         kwargs=kwargs,
-        note=contract.note,
     )
 
 
@@ -288,8 +281,8 @@ def uniform(pair: tuple[str, str] | None) -> Callable[[str, int], Setters]:
 
 def _fill_from(
     setters: Callable[[str, int], Setters],
-    body: Callable[[str], str] | None = None,
-    char: str = TEMPLATE_CHAR,
+    body: Callable[[str], str] | None,
+    char: str,
 ) -> Callable[[str, list[int]], str]:
     """Return the substitution a ``setters`` function defines."""
 
@@ -332,7 +325,6 @@ def _register() -> None:
                 setters=spec.setters,
                 char=spec.char or TEMPLATE_CHAR,
                 expected=spec.expected,
-                expected_compared=spec.expected_compared,
                 split=lang.split,
                 kwargs=spec.kwargs,
             )
@@ -349,9 +341,13 @@ def _register() -> None:
                 split=lang.split,
                 kwargs=spec.kwargs,
             )
-        example = replace(example, expected_compared=spec.expected_compared)
         stem = _stem(lang)
-        BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem, scale=spec.scale)
+        BOOLEAN_EXAMPLES[stem] = replace(
+            example,
+            stem=stem,
+            scale=spec.scale,
+            expected_compared=spec.expected_compared,
+        )
 
 
 _register()

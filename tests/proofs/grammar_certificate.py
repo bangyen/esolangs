@@ -3,8 +3,8 @@
 import re
 from collections import deque
 from collections.abc import Iterable
-from re import _constants as rc  # type: ignore[attr-defined]
-from re import _parser  # type: ignore[attr-defined]
+from re import _constants as rc
+from re import _parser
 from typing import Any
 
 

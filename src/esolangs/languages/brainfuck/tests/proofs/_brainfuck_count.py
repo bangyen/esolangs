@@ -3,8 +3,8 @@
 import itertools
 from collections.abc import Iterable
 from functools import lru_cache
-from re import _constants as rc  # type: ignore[attr-defined]
-from re import _parser  # type: ignore[attr-defined]
+from re import _constants as rc
+from re import _parser
 from typing import Any
 
 ALPHABET = ".,-+<>[]"
@@ -30,7 +30,7 @@ def sole_loop_counts(length: int, letters: int = 6) -> list[int]:
     return sequences
 
 
-def local_patterns() -> set[str]:
+def local_patterns() -> set[str]:  # noqa: C901
     patterns = {
         "+-",
         "-+",
@@ -141,7 +141,7 @@ def regular_patterns() -> list[str]:
     return patterns
 
 
-def automaton(patterns: Iterable[str], regexes: Iterable[str]) -> list[list[int]]:
+def automaton(patterns: Iterable[str], regexes: Iterable[str]) -> list[list[int]]:  # noqa: C901
     # Trie shares the finite prefixes; Thompson states handle regular tails.
     edges: list[dict[str, list[int]]] = [{}]
     eps: list[list[int]] = [[]]

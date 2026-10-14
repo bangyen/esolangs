@@ -26,15 +26,6 @@ def _at_eof(state: _BFState) -> _BFState:
     return ind + 1, ptr, tape, 0, True
 
 
-class _UnaryBFMachine(_BFMachine):
-    def step(self) -> None:
-        try:
-            super().step()
-        except EOFError:
-            # Only comma reads input; it has no jump and replaces the cell.
-            self.state = _at_eof(self.state)
-
-
 def load_source(source: ProgramSource) -> str | CompressedText:
     """Keep gzip source compressed; accept the ordinary text containers too."""
     value, _path = _read_container(source)
@@ -72,11 +63,18 @@ def decode(code: str | CompressedText) -> str:
     )
 
 
-class _Machine(_UnaryBFMachine):
+class _Machine(_BFMachine):
     """Decode Unary, then run it as Brainfuck with zero-valued EOF."""
 
     def __init__(self, code: str | CompressedText, io: IO) -> None:
         super().__init__(decode(code), io)
+
+    def step(self) -> None:
+        try:
+            super().step()
+        except EOFError:
+            # Only comma reads input; it has no jump and replaces the cell.
+            self.state = _at_eof(self.state)
 
 
 def run(code: str | CompressedText | ProgramSource, io: IO) -> None:

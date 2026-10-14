@@ -73,7 +73,7 @@ a run prints exactly one character.
 """
 
 from collections.abc import Iterator
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -88,7 +88,11 @@ from esolangs.languages.circuit_diagram.generator.hlayout import (
     _h_term_area_floor,
     _h_term_layout,
 )
-from esolangs.languages.circuit_diagram.generator.layout import _Layout
+from esolangs.languages.circuit_diagram.generator.layout import (
+    _Layout,
+    _layout_area,
+    _resolve_order,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -103,6 +107,14 @@ __all__ = ["circuit_diagram"]
 # each other (see the module docstring's note on the eight-way ``.``).
 _COL_STEP = 2
 _ROW_STEP = 2
+
+# Layout competition only starts at eight inputs: below that, the
+# fixed-order folds and shared banks cannot beat the direct mux build
+# (see the ``circuit_diagram`` docstring).
+_COMPETING_MODEL_MIN_INPUTS = 8
+# Columns the output dash and colon add past the final gate group, so
+# banding rebuilds this much narrower when the first attempt is too wide.
+_OUTPUT_GLYPH_COLUMNS = 2
 
 
 class _Builder:
@@ -275,6 +287,15 @@ class _Builder:
         self.buses[signal] = (column, row)
         return signal
 
+    def selectors(
+        self, rails: list[int], complemented: set[int]
+    ) -> list[list[int | None]]:
+        """Return ``[rail, ~rail]`` per level, the complement only where read."""
+        return [
+            [rail, self.invert(rail) if level in complemented else None]
+            for level, rail in enumerate(rails)
+        ]
+
     def invert(self, source: int) -> int:
         """Return a signal carrying ``~source``, computed once.
 
@@ -391,6 +412,13 @@ class _Builder:
 _Value = int | Literal["0", "1"]
 
 
+def _signal(arm: _Value) -> int:
+    """Narrow a mux arm the constant cases have already ruled out."""
+    if not isinstance(arm, int):  # pragma: no cover - constants handled above
+        raise AssertionError("unexpected constant mux arm")
+    return arm
+
+
 def _mux(
     builder: _Builder, selectors: list[int | None], zero: _Value, one: _Value
 ) -> _Value:
@@ -409,32 +437,45 @@ def _mux(
     # The plain rail's two rules come first: a level that only ever takes
     # them has no complement to read (see :func:`_complemented_levels`).
     if zero == "0":
-        if not isinstance(one, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("a", selector, one)
+        return builder.gate("a", selector, _signal(one))
     if one == "1":
-        if not isinstance(zero, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("o", selector, zero)
+        return builder.gate("o", selector, _signal(zero))
     negated = selectors[1]
     if negated is None:  # pragma: no cover - built before the fold
         raise AssertionError("selector has no complemented rail")
     if zero == "1" and one == "0":
         return negated
     if one == "0":
-        if not isinstance(zero, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("a", negated, zero)
+        return builder.gate("a", negated, _signal(zero))
     if zero == "1":
-        if not isinstance(one, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("o", negated, one)
+        return builder.gate("o", negated, _signal(one))
     off = builder.gate("a", negated, zero)
     on = builder.gate("a", selector, one)
     return builder.gate("o", off, on)
 
 
-_Dag = tuple[list[tuple[int, int, int, int]], int, set[int], dict[int, int]]
+class _Dag(NamedTuple):
+    """A shared Shannon-fold DAG; see :func:`_dag`."""
+
+    ops: list[tuple[int, int, int, int]]
+    root: int
+    needed: set[int]
+    reads: dict[int, int]
+
+
+def _note_mux(
+    needed: set[int], reads: dict[int, int], selector: int, zero: int, one: int
+) -> None:
+    """Record a new ``zero/one`` mux on ``selector``'s rail.
+
+    ``0/x`` is ``selector AND x`` and ``x/1`` is ``selector OR x``: only the
+    plain rail is read, as for ``0/1``; any other mux needs ``~selector``.
+    """
+    if zero != 0 and one != 1:
+        needed.add(selector)
+    for child in (zero, one):
+        if child > 1:
+            reads[child] = reads.get(child, 0) + 1
 
 
 def _dag(truth_table: str, n: int) -> _Dag:
@@ -460,34 +501,27 @@ def _dag(truth_table: str, n: int) -> _Dag:
                 if key not in nodes:
                     nodes[key] = len(nodes) + 2
                     ops.append((level, zero, identity, nodes[key]))
-                    # ``0/x`` is ``selector AND x`` and ``x/1`` is ``selector
-                    # OR x``: only the plain rail is read, as for ``0/1``.
-                    if zero != 0 and identity != 1:
-                        needed.add(n - 1 - level)
-                    for child in (zero, identity):
-                        if child > 1:
-                            reads[child] = reads.get(child, 0) + 1
+                    _note_mux(needed, reads, n - 1 - level, zero, identity)
                 identity = nodes[key]
             level += 1
         stack.append((identity, level))
     [(root, level)] = stack
     if level != n:  # pragma: no cover - validation guarantees 2**n entries
         raise AssertionError("incomplete Shannon fold")
-    return ops, root, needed, reads
+    return _Dag(ops, root, needed, reads)
 
 
 def _emit_dag(
     builder: _Builder, selectors: list[list[int | None]], dag: _Dag
 ) -> dict[int, _Value]:
     """Emit shared muxes and retain their values for single or multiple roots."""
-    ops, _, _, reads = dag
     n = len(selectors)
     values: dict[int, _Value] = {0: "0", 1: "1"}
-    for level, zero, one, node in ops:
+    for level, zero, one, node in dag.ops:
         signal = _mux(builder, selectors[n - 1 - level], values[zero], values[one])
         values[node] = signal
         if isinstance(signal, int) and signal in builder.stride_of:
-            builder.pending[signal] = reads.get(node, 0)
+            builder.pending[signal] = dag.reads.get(node, 0)
     return values
 
 
@@ -495,7 +529,7 @@ def _finish_fold(
     builder: _Builder, selectors: list[list[int | None]], dag: _Dag
 ) -> _Layout:
     """Emit one root, using a self-fed gate for either constant."""
-    result = _emit_dag(builder, selectors, dag)[dag[1]]
+    result = _emit_dag(builder, selectors, dag)[dag.root]
     if isinstance(result, str):
         rail = selectors[0][0]
         if rail is None:  # pragma: no cover - every selector has a plain rail
@@ -550,29 +584,16 @@ def _circuit_diagram_model(
 
     builder = _Builder(narrow=limit is not None)
     n = len(truth_table).bit_length() - 1
-    order = list(range(n)) if input_order is None else input_order
-    port_inputs = n if port_inputs is None else port_inputs
-    if (
-        len(order) != n
-        or len(set(order)) != n
-        or any(index < 0 or index >= port_inputs for index in order)
-    ):
-        raise ValueError("fold input order must name distinct original ports")
+    order, port_inputs = _resolve_order(input_order, n, port_inputs, "fold")
     # Every input keeps its ``-`` row (the read order), but the fold uses
     # only the essential inputs' rails; an ignored rail drives nothing, as
     # every rail but the first does for a constant table.
     used, table = _essential_table(truth_table, n)
     ports = [builder.input_bus() for _ in range(port_inputs)]
     rails = [ports[order[i]] for i in used]
-    truth_table = table
-    n = len(used)
 
-    dag = _dag(truth_table, n)
-    complemented = dag[2]
-    selectors: list[list[int | None]] = [
-        [rail, builder.invert(rail) if level in complemented else None]
-        for level, rail in enumerate(rails)
-    ]
+    dag = _dag(table, len(used))
+    selectors = builder.selectors(rails, dag.needed)
     builder.band_start = builder.next_column
     builder.limit = limit
 
@@ -590,7 +611,7 @@ def _linear_shared_layout(
     Record every model in ``_models`` for final character comparison.
     Ordered interval work is O(M log M), with M=O(T/log T) residuals.
     """
-    from .hpool import _h_pool_area_floor
+    from .hpool import _H_POOL_MIN_INPUTS, _h_pool_area_floor
 
     used, projected = _essential_table(table, inputs)
     candidates = [(projected, used)]
@@ -605,10 +626,8 @@ def _linear_shared_layout(
         for prefix, point in _h_minterm_sites(inputs).items()
         if prefix.bit_length() - 1 >= 2
     ]
-    floor = (max(x for x, _ in sites) - min(x for x, _ in sites) + 1) * (
-        max(y for _, y in sites) - min(y for _, y in sites) + 1
-    )
-    if len(used) >= 6:
+    floor = _box_area(sites)
+    if len(used) >= _H_POOL_MIN_INPUTS:
         # Early admission must not suppress a smaller pooled fallback.
         floor = min(
             floor,
@@ -622,20 +641,11 @@ def _linear_shared_layout(
         )
         if _models is not None:
             _models.append(model)
-        height, width = model.bounds()
-        area = height * width
-        if area <= floor and (selected is None or area < floor):
+        area = _layout_area(model)
+        if area < floor or (area == floor and selected is None):
             floor = area
             selected = model
     return selected
-
-
-def _affine_circuit(
-    table: str, width: int, *, _events: list[int] | None = None
-) -> str | None:
-    from esolangs.languages.circuit_diagram.generator.balance import affine_circuit
-
-    return affine_circuit(table, width, _events=_events)
 
 
 def _narrowest_present(*forms: str | None) -> str:
@@ -643,15 +653,45 @@ def _narrowest_present(*forms: str | None) -> str:
     return narrowest_grid(*(form for form in forms if form is not None))
 
 
+def _box_area(points: list[tuple[int, int]]) -> int:
+    """Return the area of the smallest box holding every point."""
+    xs = [x for x, _ in points]
+    ys = [y for _, y in points]
+    return (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1)
+
+
+def _competing_model_circuit(truth_table: str, inputs: int) -> str:
+    """Return the smallest emitted-character circuit among the n>=8 layouts.
+
+    Fixed-order folds compete by area against prefix H-layouts and shared
+    class banks; sharing wins character ties.
+    """
+    from .compete import select_competing_model  # cycle: candidates import this module
+    from .source_size import layout_source_size
+
+    retained: list[_Layout] = []
+    _linear_shared_layout(truth_table, inputs, retained)
+    selected = select_competing_model(truth_table, inputs)
+    # Text contracts count characters; a taller area winner can lose.
+    fallback = selected
+    code = fallback.render()
+    size = len(code)
+    for model in retained:
+        model_size = layout_source_size(model)
+        if model_size < size or (model_size == size and selected not in retained):
+            selected, size = model, model_size
+    return code if selected is fallback else selected.render()
+
+
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
-    See :func:`_circuit_diagram_at` for the construction.  ``width`` asks
+    See :func:`_circuit_diagram_model` for the construction.  ``width`` asks
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
     From eight inputs, three complete fixed-order folds compete by emitted
-    characters against prefix H-layouts and shared cofactor banks. Interval
+    characters against prefix H-layouts and shared class banks. Interval
     models count characters before rendering, so a node cap cannot hide a
     smaller complete fold. Sharing wins character ties.
 
@@ -664,98 +704,13 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1
     # Constants need only the scalar clock gate, not a minterm lattice.
-    if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
-        from .banks import _cofactor_bank_candidate, _residual_class_bank_candidate
-        from .bundled_banks import bundled_class_bank_candidate
-        from .folded_banks import folded_class_bank_candidate
-        from .hpool import _h_pool_area_floor, _h_pool_layout, _large_pool_layout
-        from .source_size import layout_source_size
-        from .sparse_banks import sparse_class_bank_candidate
-
-        retained: list[_Layout] = []
-        _linear_shared_layout(truth_table, inputs, retained)
-        selected: _Layout | None = None
-        used, projected = _essential_table(truth_table, inputs)
-        ceiling = None
-        folded = folded_class_bank_candidate(truth_table, ceiling)
-        if folded is not None:
-            selected = folded
-            height, columns = selected.bounds()
-            ceiling = height * columns
-        sparse = sparse_class_bank_candidate(truth_table, ceiling)
-        if sparse is not None:
-            height, columns = sparse.bounds()
-            if ceiling is None or height * columns < ceiling:
-                selected = sparse
-                ceiling = height * columns
-        large = _large_pool_layout(
-            projected, input_order=used, port_inputs=inputs, ceiling=ceiling
-        )
-        large_area = None
-        if large is not None:
-            height, columns = large.bounds()
-            large_area = height * columns
-        if selected is None:
-            # Mandatory term glyphs prove these floors. Only skip an older
-            # layout when it is strictly larger, preserving its area ties.
-            if large_area is None or large_area >= _h_term_area_floor(
-                len(used), inputs
-            ):
-                selected = _h_term_layout(
-                    projected, input_order=used, port_inputs=inputs
-                )
-            if len(used) >= 6 and (
-                large_area is None
-                or large_area >= _h_pool_area_floor(len(used), inputs)
-            ):
-                pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
-                pool_height, pool_columns = pooled.bounds()
-                if selected is None:
-                    selected = pooled
-                else:
-                    height, columns = selected.bounds()
-                    if pool_height * pool_columns < height * columns:
-                        selected = pooled
-        prefer_old_bank = selected is None
-        if large is not None:
-            if selected is None:
-                selected = large
-            else:
-                height, columns = selected.bounds()
-                if large_area is not None and large_area < height * columns:
-                    selected, prefer_old_bank = large, True
-        if selected is None:  # both fallbacks above are construction invariants
-            raise AssertionError("missing Circuit Diagram layout")
-        height, columns = selected.bounds()
-        bundled = bundled_class_bank_candidate(truth_table, height * columns)
-        if bundled is not None:
-            bank_height, bank_columns = bundled.bounds()
-            if bank_height * bank_columns < height * columns:
-                selected = bundled
-                height, columns = bank_height, bank_columns
-        classes = _residual_class_bank_candidate(truth_table, height * columns)
-        if classes is not None:
-            class_height, class_columns = classes.bounds()
-            if class_height * class_columns < height * columns:
-                selected, prefer_old_bank = classes, True
-        height, columns = selected.bounds()
-        bank = _cofactor_bank_candidate(truth_table, height * columns)
-        if bank is not None:
-            bank_height, bank_columns = bank.bounds()
-            area = bank_height * bank_columns
-            if area < height * columns or (
-                prefer_old_bank and area == height * columns
-            ):
-                selected = bank
-        # Text contracts count characters; a taller area winner can lose.
-        fallback = selected
-        code = fallback.render()
-        size = len(code)
-        for model in retained:
-            model_size = layout_source_size(model)
-            if model_size < size or (model_size == size and selected not in retained):
-                selected, size = model, model_size
-        return code if selected is fallback else selected.render()
+    if (
+        width is None
+        and inputs >= _COMPETING_MODEL_MIN_INPUTS
+        and "1" in truth_table
+        and "0" in truth_table
+    ):
+        return _competing_model_circuit(truth_table, inputs)
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:
         return flat
@@ -763,8 +718,12 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     if grid_width(banded) <= width:
         return banded
     # The output dash and colon extend beyond the final gate group.
-    banded = _circuit_diagram_at(truth_table, max(1, width - 2))
-    affine = _affine_circuit(truth_table, width)
+    banded = _circuit_diagram_at(truth_table, max(1, width - _OUTPUT_GLYPH_COLUMNS))
+    from esolangs.languages.circuit_diagram.generator.balance import (
+        affine_circuit,  # circular
+    )
+
+    affine = affine_circuit(truth_table, width)
     return _narrowest_present(flat, banded, affine)
 
 

@@ -34,10 +34,9 @@ from esolangs.runtime._source import raster_source as load_source
 from esolangs.runtime.codels import (
     BLACK,
     COLOURS,
-    DIRECTIONS,
     WHITE,
+    exit_step,
     find_block,
-    leave,
     slide,
 )
 from esolangs.runtime.io import IO
@@ -69,7 +68,7 @@ def _binary(
     return (*stack[:-2], operation(stack[-2], stack[-1])) if len(stack) >= 2 else stack
 
 
-def _command(
+def _command(  # noqa: C901
     change: tuple[int, int], size: int, stack: tuple[int, ...]
 ) -> tuple[tuple[int, ...], int, int, _Effect]:
     """Return the stack, control changes, and requested I/O effect."""
@@ -123,6 +122,19 @@ def _command(
     return stack, 0, 0, None
 
 
+def _slid(
+    rows: tuple[tuple[Pixel, ...], ...],
+    start: Point,
+    current: Point,
+    dp: int,
+    cc: int,
+    stack: tuple[int, ...],
+) -> _State:
+    """Slide from white ``start``; a slide with no exit halts at ``current``."""
+    slid = slide(rows, start, dp, cc, _colour)
+    return (current, dp, cc, stack, True) if slid is None else (*slid, stack, False)
+
+
 def _advance(
     state: _State, rows: tuple[tuple[Pixel, ...], ...]
 ) -> tuple[_State, _Effect]:
@@ -132,45 +144,28 @@ def _advance(
         return state, None
     colour = _colour(rows[current[1]][current[0]])
     if colour == WHITE:
-        slid = slide(rows, current, dp, cc, _colour)
-        return (
-            (current, dp, cc, stack, True) if slid is None else (*slid, stack, False)
-        ), None
+        return _slid(rows, current, current, dp, cc, stack), None
     block = find_block(rows, current, _colour)
-    for attempt in range(8):
-        exit_x, exit_y = leave(block, dp, cc)
-        dx, dy = DIRECTIONS[dp]
-        target = exit_x + dx, exit_y + dy
-        x, y = target
-        if 0 <= x < len(rows[0]) and 0 <= y < len(rows):
-            target_colour = _colour(rows[y][x])
-            if target_colour == WHITE:
-                slid = slide(rows, target, dp, cc, _colour)
-                return (
-                    (current, dp, cc, stack, True)
-                    if slid is None
-                    else (*slid, stack, False)
-                ), None
-            if target_colour != BLACK:
-                old_hue, old_lightness = COLOURS[colour]
-                new_hue, new_lightness = COLOURS[target_colour]
-                stack, dp_change, cc_change, effect = _command(
-                    ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
-                    len(block),
-                    stack,
-                )
-                return (
-                    target,
-                    (dp + dp_change) % 4,
-                    -cc if cc_change % 2 else cc,
-                    stack,
-                    False,
-                ), effect
-        if attempt % 2 == 0:
-            cc *= -1
-        else:
-            dp = (dp + 1) % 4
-    return (current, dp, cc, stack, True), None
+    exit_ = exit_step(rows, block, dp, cc, _colour)
+    if exit_ is None:
+        return (current, dp, cc, stack, True), None
+    target, dp, cc, target_colour = exit_
+    if target_colour == WHITE:
+        return _slid(rows, target, current, dp, cc, stack), None
+    old_hue, old_lightness = COLOURS[colour]
+    new_hue, new_lightness = COLOURS[target_colour]
+    stack, dp_change, cc_change, effect = _command(
+        ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
+        len(block),
+        stack,
+    )
+    return (
+        target,
+        (dp + dp_change) % 4,
+        -cc if cc_change % 2 else cc,
+        stack,
+        False,
+    ), effect
 
 
 class _Machine:

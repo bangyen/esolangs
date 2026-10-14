@@ -19,13 +19,6 @@ type _State = tuple[str, int, tuple[str, ...]]
 type _Effect = str | None
 
 
-def _fail() -> None:
-    raise HaltError(
-        "Underload stack underflow",
-        hint="leave enough stack entries for the operation to consume",
-    )
-
-
 def _element(program: str, start: int) -> tuple[str, int]:
     """Return a parenthesized element's contents and following offset."""
     depth = 1
@@ -64,7 +57,10 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
         )
     needed = 2 if command in "~*" else 1
     if len(stack) < needed:
-        _fail()
+        raise HaltError(
+            "Underload stack underflow",
+            hint="leave enough stack entries for the operation to consume",
+        )
     if command == "~":
         stack[-2:] = stack[-2:][::-1]
     elif command == ":":

@@ -11,12 +11,19 @@ With G gates, n+G wire bits, at most 2G+1 latch bits and halt give
 from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.circuit_diagram.generator import hpool
 from esolangs.languages.circuit_diagram.generator.banks import (
+    _POOLED_MASK_INPUTS,
     _assemble_banks,
+    _bank_rectangle,
+    _class_gate_cap,
+    _gate_count,
     _online_bank_area_floor,
+    _pool_budget,
 )
-from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
+from esolangs.languages.circuit_diagram.generator.hpool import (
+    _atom_inputs,
+    _large_pool_layout,
+)
 from esolangs.languages.circuit_diagram.generator.layout import _Layout
 from esolangs.languages.circuit_diagram.generator.sparse_masks import (
     _SparseWork,
@@ -29,9 +36,9 @@ def sparse_class_bank_candidate(
 ) -> _Layout | None:
     """Admit repeated classes by mask work, ticks, gates and retained area."""
     n = _validate_truth_table(table)
-    tail = 7 if n % 2 else 8
+    tail = _atom_inputs(n)
     prefix = n - tail
-    if prefix <= 8 or len(set(table)) == 1:
+    if prefix <= _POOLED_MASK_INPUTS or len(set(table)) == 1:
         return None
     size = 1 << tail
     positions: dict[str, list[int]] = {}
@@ -47,10 +54,8 @@ def sparse_class_bank_candidate(
     depth = (q - 1).bit_length()
     if 2 * max(prefix, tail) + depth + 5 > 2 * n + 2:
         return None
-    budget = hpool._h_pool_area_floor(n, n)  # noqa: SLF001
-    if ceiling is not None:
-        budget = min(budget, ceiling)
-    if budget <= 0:
+    budget = _pool_budget(n, ceiling)
+    if budget is None:
         return None
     work = _SparseWork(4 * len(table))
     parts: list[list[tuple[_Layout, list[int]]]] = []
@@ -69,19 +74,16 @@ def sparse_class_bank_candidate(
             models.append((body, list(range(prefix, n))))
         for model, _order in models:
             dimensions.append(model.bounds())
-            gates += sum(char in "ao~xX" for char in model.glyphs.values())
-        if gates > 2 * len(table) + 8 * n + 111:
+            gates += _gate_count(model)
+        if gates > _class_gate_cap(len(table), n):
             return None
         if _online_bank_area_floor(dimensions, n, prefix, q, ands) > budget:
             return None
         parts.append(models)
-    height = 2 * n + 8 + 4 * prefix + sum(h + 8 for h, _w in dimensions) + 32 * q + 5
-    width = max(w for _h, w in dimensions) + 2 * n + 40 + 2 * (depth + 1)
+    height, width = _bank_rectangle(dimensions, n, prefix, q)
     if height * width > budget:
         return None
-    model = _assemble_banks(
-        parts, n, prefix, share_prefix_complements=False, online_returns=True
-    )
+    model = _assemble_banks(parts, n, prefix)
     h, w = model.bounds()
     if h > height or w > width:
         raise AssertionError("sparse bank exceeds its preflight rectangle")

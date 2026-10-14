@@ -220,7 +220,7 @@ def test_boolean_example(name: str) -> None:
         assert not run_until_halt_or_cycle(vm)
         while vm.ip != 0:
             vm.step()
-        got = vm._machine.render()  # type: ignore[attr-defined]  # noqa: SLF001
+        got = vm._machine.render()  # noqa: SLF001
     elif isinstance(program, str):
         # language-owners: ["Suffolk"]
         # Suffolk used to need a branch here: its reading programs stopped
@@ -267,10 +267,10 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         module = self._redirect(monkeypatch, tmp_path / "examples")
-        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("sample", "x")]))  # type: ignore[attr-defined]
-        module.write_set("boolean")  # type: ignore[attr-defined]
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("sample", "x")]))
+        module.write_set("boolean")
         capsys.readouterr()
-        module.write_set("boolean")  # type: ignore[attr-defined]
+        module.write_set("boolean")
 
         lines = capsys.readouterr().out.splitlines()
         assert lines
@@ -290,12 +290,12 @@ class TestTheWritersWriteWhatTheBuildersBuild:
             if canonical_id(stem.replace("-", " ")) == painted["id"]
         )
         raster = Raster.from_png(BOOLEAN_GENERATED[stem].build(balance=True).to_png())
-        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))  # type: ignore[attr-defined]
-        module.write_set("boolean")  # type: ignore[attr-defined]
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))
+        module.write_set("boolean")
         path = tmp_path / "examples" / "img/img.png"
         Image.open(path).save(path, compress_level=1)
         recompressed = path.read_bytes()
-        module.write_set("boolean")  # type: ignore[attr-defined]
+        module.write_set("boolean")
         assert path.read_bytes() == recompressed
 
     def test_main_with_no_arguments_writes_every_set(
@@ -305,8 +305,8 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         written: list[str] = []
         monkeypatch.setattr(module, "write_set", written.append)
         monkeypatch.setattr(sys, "argv", ["generate.py"])
-        assert module.examples_main() == 0  # type: ignore[attr-defined]
-        assert written == list(module.SETS)  # type: ignore[attr-defined]
+        assert module.examples_main() == 0
+        assert written == list(module.SETS)
 
 
 def test_an_unknown_interpreter_names_the_file_to_fix() -> None:

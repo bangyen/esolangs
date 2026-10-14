@@ -305,8 +305,7 @@ class Debugger:
             # dump step below, because the dump changes ``output``:
             # after-only lost ``vm.halted and vm.output == ""`` on the
             # dumping languages, before-only puts the dumped text out of reach.
-            if self._at_breakpoint():
-                self._suppressed = set(self._hits)
+            if self._stopped_at_breakpoint():
                 return "breakpoint"
             if self.dumps_on_the_post_halt_step and not self._dumped:
                 # Cross the halt for the dumping languages, or ``run``
@@ -318,16 +317,21 @@ class Debugger:
                 self._dumped = True
                 complete_vm(self.vm, max_steps=0)
                 self._record()
-                if self._at_breakpoint():
-                    self._suppressed = set(self._hits)
+                if self._stopped_at_breakpoint():
                     return "breakpoint"
             return "halted"
         if self._timed_out:
             return "timeout"
-        if self._at_breakpoint():
-            self._suppressed = set(self._hits)
+        if self._stopped_at_breakpoint():
             return "breakpoint"
         return "max_steps"
+
+    def _stopped_at_breakpoint(self) -> bool:
+        """Whether a breakpoint holds; if so, suppress it until it changes."""
+        if not self._at_breakpoint():
+            return False
+        self._suppressed = set(self._hits)
+        return True
 
     def _stop(self, deadline: float | None) -> bool:
         """Whether to stop before the next step: a breakpoint, or the clock."""

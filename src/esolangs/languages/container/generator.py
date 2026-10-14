@@ -9,10 +9,12 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    grid_width,
     input_weights,
     short_name,
     subtree_ids,
 )
+from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -27,7 +29,7 @@ _TREE_MAX_N = 6
 
 
 def _free_names(taken: Iterable[str]) -> Iterator[str]:
-    """Yield the shortest letter names not in ``taken``, which may grow."""
+    """Yield the shortest letter names not in ``taken``."""
     for index in count():
         name = short_name(index, ascii_letters)
         if name not in taken:
@@ -45,10 +47,8 @@ class _Node(NamedTuple):
 
 @dataclass
 class _TreePlan:
-    n: int
     root_tests: int
     nodes: list[_Node]
-    order: list[int]
     parents: dict[int, list[int]]
     relays: dict[int, int]
 
@@ -109,7 +109,7 @@ def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _T
                     continue
                 either.setdefault(identity, i)
             children(tests, lo, i)
-    return _TreePlan(n, root_tests, nodes, list(range(len(nodes))), parents, relays)
+    return _TreePlan(root_tests, nodes, parents, relays)
 
 
 def _container_tree(
@@ -165,7 +165,7 @@ def _container_tree(
     n = _validate_truth_table(truth_table)
     plan = _container_plan(truth_table, n, prune=prune, share=share)
     nodes, root_tests = plan.nodes, plan.root_tests
-    order, parents, relays = plan.order, plan.parents, plan.relays
+    parents, relays = plan.parents, plan.relays
     fed: dict[int, list[int]] = {}
     for relay, target in relays.items():
         fed.setdefault(target, []).append(relay)
@@ -173,19 +173,19 @@ def _container_tree(
     def row_of(i: int) -> int:  # the root (-1) is a constant table's only leaf
         return nodes[i].lo if i >= 0 else 0
 
-    leaves = [i for i in order if nodes[i].tests == n] or [-1]
+    leaves = [i for i, node in enumerate(nodes) if node.tests == n] or [-1]
     ones = sum(truth_table[row_of(i)] == "1" for i in leaves)
     invert = ones > len(leaves) - ones
     wanted = "0" if invert else "1"
     answers = {i for i in leaves if truth_table[row_of(i)] == wanted}
-    order = [i for i in order if nodes[i].tests < n or i in answers]
+    order = [i for i, node in enumerate(nodes) if node.tests < n or i in answers]
 
     identifiers = _free_names(_RESERVED)
     names = {i: next(identifiers) for i in [-1, *order]}
-    gates = {
-        (nodes[i].born - 1, (nodes[i].lo >> (n - nodes[i].born)) & 1): "" for i in order
+    keys = {
+        (nodes[i].born - 1, (nodes[i].lo >> (n - nodes[i].born)) & 1) for i in order
     }
-    gates = {key: next(identifiers) for key in sorted(gates)}
+    gates = {key: next(identifiers) for key in sorted(keys)}
     root, output_gate = names[-1], next(identifiers)
 
     # A positive delta is spelt unsigned, as ``int`` reads it.
@@ -374,9 +374,7 @@ def _narrow_rule_parts(program: str, width: int) -> list[str | tuple[int, str]]:
         left, right = condition.split(operator)
         if len(f"{delta} {condition}") > width and right.isdecimal():
             if right not in constants:
-                name = next(identifiers)
-                occupied.add(name)
-                constants[right] = name
+                constants[right] = next(identifiers)
             name = constants[right]
             # ``Container<=Constant`` only: a named bound flips to ``>=``.
             replacement = f"{left}>={name}" if operator == ">=" else f"{name}>={left}"
@@ -416,7 +414,7 @@ def container(truth_table: str, width: int | None = None) -> str:
         program = _container_tree(truth_table, share=True)
     else:
         program = _container_threshold(truth_table)
-    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+    if width is None or width <= 0 or grid_width(program) <= width:
         return program
     narrow = _narrow_rules(program, width)
     if n > _TREE_MAX_N:
@@ -424,16 +422,14 @@ def container(truth_table: str, width: int | None = None) -> str:
     return min(
         narrow,
         _narrow_rules(_container_threshold(truth_table), width),
-        key=lambda text: (max(map(len, text.splitlines())), len(text)),
+        key=lambda text: (grid_width(text), len(text)),
     )
 
 
 def balance_container(table: str, default: str) -> str:
     """Compare rule-fit and decimal-delta budget transitions."""
-    from esolangs.generation.wrap import balance_score
-
     n = _validate_truth_table(table)
-    span = max(map(len, default.splitlines()))
+    span = grid_width(default)
     programs = [default]
     if n <= _TREE_MAX_N:
         programs.append(_container_threshold(table))
@@ -467,7 +463,7 @@ def balance_container(table: str, default: str) -> str:
         candidates.append(
             min(
                 (_narrow_rules(program, width) for program in programs),
-                key=lambda text: (max(map(len, text.splitlines())), len(text)),
+                key=lambda text: (grid_width(text), len(text)),
             )
         )
     return min(candidates, key=balance_score)

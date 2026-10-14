@@ -1,6 +1,7 @@
 """Immutable specification choices for generation and execution."""
 
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
 from difflib import get_close_matches
 from typing import Any, TypedDict, cast
@@ -25,10 +26,9 @@ class DialectSettings:
     def __init__(self, **choices: int | str | None) -> None:
         """Copy typed overrides; language-specific validation precedes use."""
         integer = {key for key, values in _CHOICES.items() if type(values[0]) is int}
-        text = set(_CHOICES) - integer
         for key, value in choices.items():
-            if key not in integer | text:
-                known = sorted(integer | text)
+            if key not in _CHOICES:
+                known = sorted(_CHOICES)
                 close = get_close_matches(key, known, n=1, cutoff=0.6)
                 suggestion = f" (did you mean {close[0]}?)" if close else ""
                 raise ArgumentError(
@@ -53,7 +53,7 @@ class DialectSettings:
             if values:
                 raise ArgumentError(f"{name} supports no dialect settings")
         else:
-            keys = list(inspect.signature(dialect).parameters)
+            keys = _dialect_keys(dialect)
             unknown = values.keys() - set(keys)
             if unknown:
                 raise ArgumentError(
@@ -68,6 +68,11 @@ class DialectSettings:
                     f"invalid dialect settings for {name}: {error}"
                 ) from error
         return values
+
+
+def _dialect_keys(dialect: Callable[..., Any]) -> list[str]:
+    """Return the setting names a dialect validator accepts."""
+    return list(inspect.signature(dialect).parameters)
 
 
 def dialect_options(language: str, settings: DialectSettings | None) -> dict[str, Any]:
@@ -106,13 +111,10 @@ def effective_settings(
 
 
 class DialectOption(TypedDict):
-    """Supported resolutions of conflicting rules within one specification."""
+    """A dialect setting's default and its accepted choices."""
 
     default: int | str | None
-    choices: tuple[int | str, ...] | None
-    minimum: int | None
-    nullable: bool
-    requires: dict[str, tuple[str, ...]]
+    choices: tuple[int | str, ...]
 
 
 def dialect_choices(language: str) -> dict[str, DialectOption]:
@@ -123,16 +125,13 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
     dialect = LANGUAGES[name].dialect
     if dialect is None:
         return {}
-    keys = list(inspect.signature(dialect).parameters)
+    keys = _dialect_keys(dialect)
     machine = interpreter_module(name)._Machine  # noqa: SLF001 - interpreter adapter
     parameters = inspect.signature(machine).parameters
     return {
         key: {
             "default": cast("int | str | None", parameters[key].default),
             "choices": _CHOICES[key],
-            "minimum": None,
-            "nullable": False,
-            "requires": {},
         }
         for key in keys
     }

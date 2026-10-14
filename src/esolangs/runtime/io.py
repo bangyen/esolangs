@@ -193,7 +193,6 @@ class ScriptedIO(IO):
         )
         self._source = stdin
         self._offset = 0
-        self._reads = 0
         self._line_reads = 0
         self._character_reads = False
         self._past_end = 0

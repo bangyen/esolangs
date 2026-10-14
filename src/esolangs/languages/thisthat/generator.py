@@ -7,6 +7,7 @@ from typing import Literal
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
+    grid_area,
     grid_width,
     narrowest_grid,
     read_at,
@@ -143,8 +144,8 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
     if program == plain:
         return old
     candidate = _narrow_tree(truth_table, program, width)
-    old_area = len(old.splitlines()) * grid_width(old)
-    area = len(candidate.splitlines()) * grid_width(candidate)
+    old_area = grid_area(old)
+    area = grid_area(candidate)
     if grid_width(candidate) <= max(width, grid_width(old)) and area < old_area:
         return candidate
     return old
@@ -303,28 +304,26 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
-    order = tuple(range(len(essential)))
-    if not (prune and essential):
-        return _layout(truth_table, n, essential, order, prune=prune)
-    return _layout(truth_table, n, essential, order)
+    return _layout(truth_table, n, essential, prune=prune)
+
+
+def _identity_plan(m: int) -> tuple[list[bool], list[bool]]:
+    """Return the deque plan that pops inputs ``0..m-1`` in order.
+
+    Every input goes to the tail and every level pops the head.
+    """
+    return [False] * m, [True] * m
 
 
 def _layout(
     truth_table: str,
     n: int,
     essential: list[int],
-    order: tuple[int, ...],
     *,
     prune: bool = True,
 ) -> str:
-    """Lay out the tree over ``truth_table``, whose level ``k`` pops ``order[k]``.
-
-    ``""`` when the row cannot pop them in that order.
-    """
-    plan = _deque_plan(order) if order else ([], [])
-    if plan is None:
-        return ""
-    head_push, head_pop = plan
+    """Lay out the tree over ``truth_table``, whose level ``k`` pops input ``k``."""
+    head_push, head_pop = _identity_plan(len(essential))
     # No essential input: the table is one constant char, which subtree_ids
     # (table length 2**n) is not asked about.
     ids = subtree_ids(truth_table) if essential else [[int(truth_table[0])]]
@@ -387,18 +386,7 @@ def _layout(
     loader_y = min_y - 2
     # An ignored input's read sends its bit nowhere and goes straight on.
     start_x = min(min_x, root[0] - 2 * n - 2 * len(essential) - 2)
-    builder.node((start_x, loader_y), "▣")
-    previous = (start_x, loader_y)
-    for i in range(n):
-        diamond = (previous[0] + 2, loader_y)
-        builder.node(diamond, "◇")
-        builder.connect(_path(previous, diamond, "horizontal"), "single")
-        previous = diamond
-        if i in essential:
-            push = (diamond[0] + 2, loader_y)
-            builder.node(push, "◧" if head_push[essential.index(i)] else "◨")
-            builder.connect(_path(diamond, push, "horizontal"), "double")
-            previous = push
+    previous = _draw_loader(builder, (start_x, loader_y), n, essential, head_push)
     entry = (root[0], root[1] - 1)
     route = _path(previous, (root[0], loader_y), "horizontal")
     route += _path((root[0], loader_y), entry, "vertical")[1:]
@@ -424,76 +412,18 @@ def _balance(truth_table: str, default: str) -> str:
     return min(candidates, key=balance_score)
 
 
-def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
-    """Return head pushes by input and head pops by level that pop ``order``.
-
-    Inputs are read in order and each goes to the row's head or tail, so
-    the row reads (head first) the head-pushed inputs descending, input 0,
-    then the tail-pushed ones ascending; the tree pops either end at each
-    level.  Before input 0 is popped each pop is the largest left on its
-    side, so that prefix splits into two descending runs, the tail run
-    above every input popped after 0; those are all tail-pushed, so they
-    leave the row as a run each pop takes the least or the greatest of.
-    ``None`` when ``order`` has no such split: the plan is the greedy fit
-    (a tie goes to the lower run), which finds every poppable order.
-    """
-    depth = len(order)
-    zero = order.index(0)
-    floor = max(order[zero + 1 :], default=-1)
-    head_push = [False] * depth
-    head_pop = []
-    last = {True: depth, False: depth}
-    for x in order[:zero]:
-        fits = [
-            head for head in (True, False) if x < last[head] and (head or x > floor)
-        ]
-        if not fits:
-            return None
-        head = min(fits, key=last.__getitem__)
-        last[head] = x
-        head_push[x] = head
-        head_pop.append(head)
-    head_pop.append(True)
-    rest = sorted(order[zero + 1 :])
-    for x in order[zero + 1 :]:
-        if x not in (rest[0], rest[-1]):
-            return None
-        head_pop.append(x == rest[0])
-        rest.remove(x)
-    return head_push, head_pop
-
-
-LANGUAGE = Language(
-    "thisthat",
-    "thisthat",
-    category="grid_based",
-    random=True,
-    boolean=thisthat,
-    split=True,
-    contract=BooleanContract(
-        input_shape="char_stream",
-        ignores_whitespace=True,
-        input_sets=True,
-    ),
-    balance=_balance,
-    no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
-    eof="an exhausted '◇' sends the spec's empty transfer",
-    empty_program="thisthat needs at least one start node",
-)
-
 _MIN_NODE_BUDGET = 8
 
 
-def shared_tree(table: str) -> tuple[str, int] | None:
-    """Return a shared grid and maximum cycles within the previous area envelope."""
-    n = _validate_truth_table(table)
-    limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))
-    ess = _essential(subtree_ids(table), n)
-    if not ess:
-        return None
-    table = read_at(table, ess, n)
-    m = len(ess)
-    ids = subtree_ids(table)
+def _build_dag(
+    ids: list[list[int]], m: int
+) -> tuple[
+    list[list[tuple[int, int]]],
+    dict[tuple[int, int], list[tuple[int, int]]],
+    set[tuple[int, int]],
+    dict[tuple[int, int], int],
+]:
+    """Return (layers, children, terminal, incoming) of the shared-subtree DAG."""
     representatives = {(0, ids[0][0]): 0}
     pending = [[(0, ids[0][0])]] + [[] for _ in range(m - 1)]
     layers = []
@@ -523,32 +453,18 @@ def shared_tree(table: str) -> tuple[str, int] | None:
                     incoming[child] += 1
                 kids.append(child)
             children[key] = kids
-    if not any(key[0] >= 0 and count > 1 for key, count in incoming.items()):
-        return None
-    nodes = [key for layer in layers for key in layer] + sorted(terminal)
-    banks = [
-        max((len(layer) for layer in layers[parity::2]), default=0) for parity in (0, 1)
-    ]
-    # The former node cap bounded both dimensions independently. Price their
-    # product instead, admitting long narrow DAGs within the same O(T) envelope.
-    count = len(nodes)
-    width = 2 * sum(banks) + 2 * n + 2 * m + 9
-    height = 8 * count - 1
-    if width * height > (4 * limit + 4 * n + 9) * (8 * limit - 1):
-        return None
-    slots = {key: slot for layer in layers for slot, key in enumerate(layer)}
-    columns = {
-        key: 4 + 2 * key[1]
-        if key[0] < 0
-        else 8 + 2 * (slots[key] + banks[0] * (key[0] % 2))
-        for key in nodes
-    }
-    ys = {key: 8 * i for i, key in enumerate(nodes)}
-    builder = _Builder()
-    plan = _deque_plan(tuple(range(m)))
-    if plan is None:
-        raise ValueError("input order has no deque plan")
-    push, pop = plan
+    return layers, children, terminal, incoming
+
+
+def _draw_nodes(
+    builder: _Builder,
+    nodes: list[tuple[int, int]],
+    ys: dict[tuple[int, int], int],
+    columns: dict[tuple[int, int], int],
+    children: dict[tuple[int, int], list[tuple[int, int]]],
+    pop: list[bool],
+) -> tuple[dict[tuple[int, int], int], dict[int, dict[int, int]]]:
+    """Draw every node and its outgoing wires; return (costs, bus events)."""
     # Two column banks alternate with depth. A bank's old edges end before
     # its next parents begin; constants retain their own two downward buses.
     costs: dict[tuple[int, int], int] = {}
@@ -587,6 +503,11 @@ def shared_tree(table: str) -> tuple[str, int] | None:
                 steps.append(6 + 2 * col + target_y - row + costs[child])
             costs[key] = max(steps)
         builder.connect(_path(point, router, "horizontal"), "double")
+    return costs, buses
+
+
+def _draw_buses(builder: _Builder, buses: dict[int, dict[int, int]]) -> None:
+    """Draw each bus column as its merged runs of overlapping edges."""
     # Merge overlapping bus edges before drawing: independently tracing every
     # route to a terminal costs N² on a narrow N-node DAG. Each bus is scanned
     # once within the admitted rectangle, keeping construction O(T).
@@ -600,27 +521,110 @@ def shared_tree(table: str) -> tuple[str, int] | None:
             elif not active and begin is not None:
                 builder.connect(_path((col, begin), (col, row), "vertical"), "single")
                 begin = None
+
+
+def _hollow_crossings(builder: _Builder) -> None:
+    """Turn four-way single-wire crossings into hollow arrows."""
     # Hollow downward arrows pass horizontal traffic straight through while
     # keeping vertical traffic downward; solid arrows merge at destinations.
     for point, (kind, ports) in list(builder.wires.items()):
         if kind == "single" and ports == set("EWNS"):
             builder.node(point, "▽")
-    start = (-(2 * n + 2 * m + 2), -6)
+
+
+def _draw_loader(
+    builder: _Builder,
+    start: tuple[int, int],
+    n: int,
+    essential: list[int],
+    push: list[bool],
+) -> tuple[int, int]:
+    """Draw the start node and one read per input, rightward; return the end.
+
+    An essential input's read is followed by its push; an ignored input's read
+    sends its bit nowhere and goes straight on.
+    """
     builder.node(start, "▣")
     previous = start
     for i in range(n):
-        diamond = (previous[0] + 2, -6)
+        diamond = (previous[0] + 2, start[1])
         builder.node(diamond, "◇")
         builder.connect(_path(previous, diamond, "horizontal"), "single")
         previous = diamond
-        if i in ess:
-            p = (previous[0] + 2, -6)
-            builder.node(p, "◧" if push[ess.index(i)] else "◨")
-            builder.connect(_path(previous, p, "horizontal"), "double")
-            previous = p
+        if i in essential:
+            pushed = (diamond[0] + 2, start[1])
+            builder.node(pushed, "◧" if push[essential.index(i)] else "◨")
+            builder.connect(_path(diamond, pushed, "horizontal"), "double")
+            previous = pushed
+    return previous
+
+
+def _draw_input_chain(
+    builder: _Builder, n: int, m: int, ess: list[int], push: list[bool]
+) -> None:
+    """Draw the input-reading chain feeding the root entry."""
+    previous = _draw_loader(builder, (-(2 * n + 2 * m + 2), -6), n, ess, push)
     builder.connect(
         _path(previous, (0, -6), "horizontal")
         + _path((0, -6), (0, -4), "vertical")[1:],
         "single",
     )
+
+
+def shared_tree(table: str) -> tuple[str, int] | None:
+    """Return a shared grid and maximum cycles within the previous area envelope."""
+    n = _validate_truth_table(table)
+    limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))
+    ess = _essential(subtree_ids(table), n)
+    if not ess:
+        return None
+    table = read_at(table, ess, n)
+    m = len(ess)
+    layers, children, terminal, incoming = _build_dag(subtree_ids(table), m)
+    if not any(key[0] >= 0 and count > 1 for key, count in incoming.items()):
+        return None
+    nodes = [key for layer in layers for key in layer] + sorted(terminal)
+    banks = [
+        max((len(layer) for layer in layers[parity::2]), default=0) for parity in (0, 1)
+    ]
+    # The former node cap bounded both dimensions independently. Price their
+    # product instead, admitting long narrow DAGs within the same O(T) envelope.
+    count = len(nodes)
+    width = 2 * sum(banks) + 2 * n + 2 * m + 9
+    height = 8 * count - 1
+    if width * height > (4 * limit + 4 * n + 9) * (8 * limit - 1):
+        return None
+    slots = {key: slot for layer in layers for slot, key in enumerate(layer)}
+    columns = {
+        key: 4 + 2 * key[1]
+        if key[0] < 0
+        else 8 + 2 * (slots[key] + banks[0] * (key[0] % 2))
+        for key in nodes
+    }
+    ys = {key: 8 * i for i, key in enumerate(nodes)}
+    push, pop = _identity_plan(m)
+    builder = _Builder()
+    costs, buses = _draw_nodes(builder, nodes, ys, columns, children, pop)
+    _draw_buses(builder, buses)
+    _hollow_crossings(builder)
+    _draw_input_chain(builder, n, m, ess, push)
     return builder.render(), 2 * n + 2 * m + 4 + costs[nodes[0]]
+
+
+LANGUAGE = Language(
+    "thisthat",
+    "thisthat",
+    category="grid_based",
+    random=True,
+    boolean=thisthat,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+        ignores_whitespace=True,
+        input_sets=True,
+    ),
+    balance=_balance,
+    no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
+    eof="an exhausted '◇' sends the spec's empty transfer",
+    empty_program="thisthat needs at least one start node",
+)

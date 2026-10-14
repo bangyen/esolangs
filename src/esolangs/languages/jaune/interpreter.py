@@ -25,7 +25,7 @@ loop is bounded by the caller's ``timeout``.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -58,7 +58,7 @@ _NumberedOp = Literal[":", "?", "!", "$", "@"]
 # Spelling the alphabets as typed containers rather than plain strings is
 # what lets ``in`` narrow a parsed character to its operator type, so the
 # constructors below take it directly instead of casting.
-_BARE: frozenset[_CountedOp] = frozenset(("^", ">", "<", "#", "&", "%", "."))
+_BARE: frozenset[_CountedOp] = frozenset(("^", ">", "<", "#", "&", "%", ".", ";"))
 _NUMBERED: frozenset[_NumberedOp] = frozenset((":", "?", "!", "$", "@"))
 
 # The grammar makes ``v`` a ``number``, so every operator taking one admits
@@ -70,8 +70,7 @@ _NUMBERED: frozenset[_NumberedOp] = frozenset((":", "?", "!", "$", "@"))
 # ``v:`` and ``v$`` are admitted by the grammar and deliberately absent: a
 # marker read at runtime has no findable identity, since ``_find`` matches
 # the parsed argument and the markers are fall-through positions that never
-# execute.  The compiler's ``prep`` strips both (``compilers/jaune.py``), so
-# dropping them at parse keeps the two engines agreeing.
+# execute, so dropping them at parse loses nothing.
 _READ_OPERAND: dict[str, _CountedOp] = {
     "+": "v+",
     "-": "v-",
@@ -104,6 +103,37 @@ class _Numbered:
 _Command = _Counted | _Numbered
 
 
+def _number_command(
+    code: str, out: list[_Command], i: int, sign: Literal["+", "-"] | None
+) -> int:
+    """Append the command a digit run names, and return the new cursor.
+
+    ``i`` points at the run's first character (the sign when one is given).
+    When an operator follows the digits it consumes the number: a numbered
+    operator takes it as its argument, ``+``/``-`` as a repeat count.  A run
+    with no operator is a no-op -- except for a sign stranded from its
+    digits, which is a lone +1/-1 whose digits re-parse on the next pass.
+    """
+    n = len(code)
+    j = i + (1 if sign is not None else 0)
+    k = j
+    while k < n and code[k] in "0123456789":
+        k += 1
+    num = int(code[i:k])
+    if k < n and (op := code[k]) in _NUMBERED:
+        out.append(_Numbered(op, num))
+        return k + 1
+    if k < n and code[k] in "+-":
+        # "-" reaches here as a counted subtract, never as a jump: the
+        # numbered operators above do not include it.
+        out.append(_Counted("+" if code[k] == "+" else "-", num))
+        return k + 1
+    if sign is not None:
+        out.append(_Counted(sign, 1))
+        return i + 1
+    return k  # a bare number with no operator: ignore (no-op)
+
+
 def _parse(code: str) -> list[_Command]:
     """Parse a program into commands, expanding counts and number operands."""
     out: list[_Command] = []
@@ -111,28 +141,25 @@ def _parse(code: str) -> list[_Command]:
     n = len(code)
     while i < n:
         c = code[i]
-        if c in "+-" and i + 1 < n and code[i + 1] in "0123456789":
-            j = i + 1
-            while j < n and code[j] in "0123456789":
-                j += 1
-            if j < n and (code[j] in _NUMBERED or code[j] in "+-"):
-                num = int(code[i:j])
-                op = code[j]
-                if op in _NUMBERED:
-                    out.append(_Numbered(op, num))
-                elif op == "+":
-                    out.append(_Counted("+", num))
+        if c in "+-0123456789":
+            # One token shape: an optional sign, digits, then an operator.
+            # The sign rides on the number only when digits follow it; a
+            # bare run of + or - counts repeats, and bare digits with no
+            # operator are a no-op.
+            if c in "+-":
+                if i + 1 < n and code[i + 1] in "0123456789":
+                    i = _number_command(code, out, i, "+" if c == "+" else "-")
                 else:
-                    out.append(_Counted("-", num))
-                i = j + 1
+                    # a run like ++ is a counted command (repeat)
+                    j = i
+                    while j < n and code[j] == c:
+                        j += 1
+                    out.append(_Counted("+" if c == "+" else "-", j - i))
+                    i = j
             else:
-                out.append(_Counted("+" if c == "+" else "-", 1))
-                i += 1
+                i = _number_command(code, out, i, None)
         elif c in _BARE:
             out.append(_Counted(c))
-            i += 1
-        elif c == ";":
-            out.append(_Counted(";"))
             i += 1
         elif c == "v":
             # 'v' reads a digit; as an operand ('v+') the read value is the
@@ -145,31 +172,7 @@ def _parse(code: str) -> list[_Command]:
             else:
                 out.append(_Counted("v"))
                 i += 1
-        elif c in "+-":
-            # a run like ++ is a counted command (repeat); a bare + is +1
-            j = i
-            while j < n and code[j] == c:
-                j += 1
-            count = j - i
-            out.append(_Counted("+" if c == "+" else "-", count))
-            i = j
-        elif c in "0123456789":
-            j = i
-            while j < n and code[j] in "0123456789":
-                j += 1
-            num = int(code[i:j])
-            if j < n and (op := code[j]) in _NUMBERED:
-                out.append(_Numbered(op, num))
-                i = j + 1
-            elif j < n and code[j] in "+-":
-                # "-" reaches here as a counted subtract, never as a jump:
-                # the numbered operators above do not include it.
-                out.append(_Counted("+" if code[j] == "+" else "-", num))
-                i = j + 1
-            else:
-                # a bare number with no operator: ignore (no-op)
-                i = j
-        elif c in ":-?!$@":
+        elif c in ":?!$@":
             # a bare operator with no number: malformed
             raise syntax_error(
                 f"command {c!r} requires a number",
@@ -190,11 +193,6 @@ def _parse(code: str) -> list[_Command]:
 type _State = tuple[Chunked[int], int, int, int, tuple[int, ...]]
 
 
-def _set(cells: Chunked[int], ptr: int, value: int) -> Chunked[int]:
-    """Return ``cells`` with the cell at ``ptr`` set to ``value``."""
-    return put(cells, ptr, value)
-
-
 def _markers(commands: Sequence[_Command]) -> dict[tuple[str, int | None], int]:
     """Return the index of the first marker for each ``op`` and argument.
 
@@ -207,122 +205,223 @@ def _markers(commands: Sequence[_Command]) -> dict[tuple[str, int | None], int]:
     return marks
 
 
+def _label_target(marks: dict[tuple[str, int | None], int], num: int | None) -> int:
+    """Return the marker index of label ``num``; HaltError when undefined."""
+    target = marks.get((":", num))
+    if target is None:
+        raise HaltError(
+            f"jump to undefined label {num}",
+            hint="define the destination label or correct the jump target",
+        )
+    return target
+
+
+def _sub_target(marks: dict[tuple[str, int | None], int], num: int | None) -> int:
+    """Return the marker index of subroutine ``num``; HaltError when undefined."""
+    target = marks.get(("$", num))
+    if target is None:
+        raise HaltError(
+            f"call to undefined subroutine {num}",
+            hint="define the subroutine or correct the call target",
+        )
+    return target
+
+
+#: Everything one opcode's transition may need: the state, the command
+#: list, the marker table, the command being executed, and the read value.
+@dataclass
+class _Step:
+    state: _State
+    commands: Sequence[_Command]
+    marks: dict[tuple[str, int | None], int]
+    cmd: _Command
+    value: int | None
+
+
+#: One opcode's transition: a step in, the next state out.
+type _Handler = Callable[[_Step], _State]
+
+
+def _h_print(step: _Step) -> _State:
+    """``^``: the cell is unchanged; the caller prints it."""
+    cells, ptr, hold, pos, calls = step.state
+    return (cells, ptr, hold, pos + 1, calls)
+
+
+def _h_read(step: _Step) -> _State:
+    """``v``: store the read value in the cell."""
+    cells, ptr, hold, pos, calls = step.state
+    value = step.value if step.value is not None else 0
+    return (put(cells, ptr, value), ptr, hold, pos + 1, calls)
+
+
+def _h_read_adjust(step: _Step) -> _State:
+    """``v+``/``v-``: add or subtract the read value."""
+    cells, ptr, hold, pos, calls = step.state
+    val = step.value if step.value is not None else 0
+    delta = val if step.cmd.op == "v+" else -val
+    return (put(cells, ptr, get(cells, ptr) + delta), ptr, hold, pos + 1, calls)
+
+
+def _h_right(step: _Step) -> _State:
+    """``>``: move right, appending a zero cell past the edge."""
+    cells, ptr, hold, pos, calls = step.state
+    ptr += 1
+    if ptr == length(cells):
+        cells = append(cells, 0)
+    return (cells, ptr, hold, pos + 1, calls)
+
+
+def _h_left(step: _Step) -> _State:
+    """``<``: move left; at cell 0 the tape grows a zero cell on the left."""
+    cells, ptr, hold, pos, calls = step.state
+    if ptr:
+        ptr -= 1
+    else:
+        cells = prepend(cells, 0)
+    return (cells, ptr, hold, pos + 1, calls)
+
+
+def _h_hold(step: _Step) -> _State:
+    """``#``: copy the cell into the hold register."""
+    cells, ptr, _hold, pos, calls = step.state
+    return (cells, ptr, get(cells, ptr), pos + 1, calls)
+
+
+def _h_add_hold(step: _Step) -> _State:
+    """``&``: add the hold register back into the cell."""
+    cells, ptr, hold, pos, calls = step.state
+    return (put(cells, ptr, get(cells, ptr) + hold), ptr, hold, pos + 1, calls)
+
+
+def _h_zero(step: _Step) -> _State:
+    """``%``: zero the cell."""
+    cells, ptr, hold, pos, calls = step.state
+    return (put(cells, ptr, 0), ptr, hold, pos + 1, calls)
+
+
+def _h_inc(step: _Step) -> _State:
+    """``+``: add the repeat count; a bare ``+`` adds one."""
+    cells, ptr, hold, pos, calls = step.state
+    delta = step.cmd.arg if step.cmd.arg is not None else 1
+    return (put(cells, ptr, get(cells, ptr) + delta), ptr, hold, pos + 1, calls)
+
+
+def _h_dec(step: _Step) -> _State:
+    """``-``: subtract the repeat count; a bare ``-`` subtracts one."""
+    cells, ptr, hold, pos, calls = step.state
+    delta = step.cmd.arg if step.cmd.arg is not None else 1
+    return (put(cells, ptr, get(cells, ptr) - delta), ptr, hold, pos + 1, calls)
+
+
+def _h_jump_nz(step: _Step) -> _State:
+    """``?``: jump to the label when the cell is nonzero."""
+    cells, ptr, hold, pos, calls = step.state
+    target = _label_target(step.marks, step.cmd.arg)
+    if get(cells, ptr) != 0:
+        return (cells, ptr, hold, target, calls)
+    return (cells, ptr, hold, pos + 1, calls)
+
+
+def _h_jump_z(step: _Step) -> _State:
+    """``!``: jump to the label when the cell is zero."""
+    cells, ptr, hold, pos, calls = step.state
+    target = _label_target(step.marks, step.cmd.arg)
+    if get(cells, ptr) == 0:
+        return (cells, ptr, hold, target, calls)
+    return (cells, ptr, hold, pos + 1, calls)
+
+
+def _h_call(step: _Step) -> _State:
+    """``@``: call the subroutine, pushing the return position."""
+    cells, ptr, hold, pos, calls = step.state
+    target = _sub_target(step.marks, step.cmd.arg)
+    return (cells, ptr, hold, target, (*calls, pos + 1))
+
+
+def _h_read_jump(step: _Step) -> _State:
+    """``v?``/``v!``: the read value names the label to jump to."""
+    cells, ptr, hold, pos, calls = step.state
+    num = step.value if step.value is not None else 0
+    target = _label_target(step.marks, num)
+    cell = get(cells, ptr)
+    taken = cell != 0 if step.cmd.op == "v?" else cell == 0
+    if taken:
+        return (cells, ptr, hold, target, calls)
+    return (cells, ptr, hold, pos + 1, calls)
+
+
+def _h_read_call(step: _Step) -> _State:
+    """``v@``: the read value names the subroutine to call."""
+    cells, ptr, hold, pos, calls = step.state
+    num = step.value if step.value is not None else 0
+    target = _sub_target(step.marks, num)
+    return (cells, ptr, hold, target, (*calls, pos + 1))
+
+
+def _h_return(step: _Step) -> _State:
+    """``;``: return to the most recent call site."""
+    cells, ptr, hold, _pos, calls = step.state
+    if not calls:
+        raise HaltError(
+            "; with no active subroutine call",
+            hint="call a subroutine before returning with ;",
+        )
+    return (cells, ptr, hold, calls[-1], calls[:-1])
+
+
+def _h_end(step: _Step) -> _State:
+    """``.``: end the main program."""
+    cells, ptr, hold, _pos, calls = step.state
+    return (cells, ptr, hold, len(step.commands), calls)
+
+
+def _h_fallthrough(step: _Step) -> _State:
+    """``:`` and ``$`` are positions rather than commands: fall through."""
+    cells, ptr, hold, pos, calls = step.state
+    return (cells, ptr, hold, pos + 1, calls)
+
+
+_HANDLERS: dict[str, _Handler] = {
+    "^": _h_print,
+    "v": _h_read,
+    "v+": _h_read_adjust,
+    "v-": _h_read_adjust,
+    ">": _h_right,
+    "<": _h_left,
+    "#": _h_hold,
+    "&": _h_add_hold,
+    "%": _h_zero,
+    "+": _h_inc,
+    "-": _h_dec,
+    "?": _h_jump_nz,
+    "!": _h_jump_z,
+    "@": _h_call,
+    "v?": _h_read_jump,
+    "v!": _h_read_jump,
+    "v@": _h_read_call,
+    ";": _h_return,
+    ".": _h_end,
+    ":": _h_fallthrough,
+    "$": _h_fallthrough,
+}
+
+
 def _advance(
     state: _State,
     commands: Sequence[_Command],
     marks: dict[tuple[str, int | None], int],
     value: int | None = None,
 ) -> _State:
-    """Return the state after executing ``cmd``.
+    """Return the state after executing the command at the cursor.
 
     ``marks`` is :func:`_markers` for ``commands``, required rather than
-    rebuilt per step.  Pure: ``^``'s cell is carried forward and the three
-    reading forms arrive as ``value``.  ``>`` past the edge appends a cell;
-    ``<`` at 0 prepends a cell.  Taken jumps, calls and returns set the
-    cursor outright and return early.
+    rebuilt per step.  ``^``'s cell is carried forward and the reading forms
+    arrive as ``value``; taken jumps, calls and returns set the cursor
+    outright, and every other command falls through to the next one.
     """
-    cells, ptr, hold, pos, calls = state
-    cmd = commands[pos]
-    c = cmd.op
-
-    if c == "^":
-        pass  # printed by the caller; the cell is unchanged
-    elif c == "v":
-        cells = _set(cells, ptr, value if value is not None else 0)
-    elif c in ("v+", "v-"):
-        val = value if value is not None else 0
-        cells = _set(cells, ptr, get(cells, ptr) + (val if c == "v+" else -val))
-    elif c == ">":
-        ptr += 1
-        if ptr == length(cells):
-            cells = append(cells, 0)
-    elif c == "<":
-        # At cell 0 the tape grows a zero cell on the left, and index 0 is
-        # now that cell.  The wiki says only "Moves pointer to the previous
-        # cell" and nothing about the left edge, so a cell left of the start
-        # is allowed.
-        if ptr:
-            ptr -= 1
-        else:
-            cells = prepend(cells, 0)
-    elif c == "#":
-        hold = get(cells, ptr)
-    elif c == "&":
-        cells = _set(cells, ptr, get(cells, ptr) + hold)
-    elif c == "%":
-        cells = _set(cells, ptr, 0)
-    elif c == "+":
-        cells = _set(
-            cells, ptr, get(cells, ptr) + (cmd.arg if cmd.arg is not None else 1)
-        )
-    elif c == "-":
-        cells = _set(
-            cells, ptr, get(cells, ptr) - (cmd.arg if cmd.arg is not None else 1)
-        )
-    elif c == "?":
-        target = marks.get((":", cmd.arg))
-        if target is None:
-            raise HaltError(
-                f"jump to undefined label {cmd.arg}",
-                hint="define the destination label or correct the jump target",
-            )
-        if get(cells, ptr) != 0:
-            return (cells, ptr, hold, target, calls)
-    elif c == "!":
-        target = marks.get((":", cmd.arg))
-        if target is None:
-            raise HaltError(
-                f"jump to undefined label {cmd.arg}",
-                hint="define the destination label or correct the jump target",
-            )
-        if get(cells, ptr) == 0:
-            return (cells, ptr, hold, target, calls)
-    elif c == "@":
-        target = marks.get(("$", cmd.arg))
-        if target is None:
-            raise HaltError(
-                f"call to undefined subroutine {cmd.arg}",
-                hint="define the subroutine or correct the call target",
-            )
-        return (cells, ptr, hold, target, (*calls, pos + 1))
-    elif c in ("v?", "v!"):
-        # The read names the label, so the operand is the digit just taken
-        # rather than a parsed one.  The read happens whether or not the
-        # branch is taken -- the grammar evaluates the number to have a
-        # command at all -- so input advances either way.
-        num = value if value is not None else 0
-        target = marks.get((":", num))
-        if target is None:
-            raise HaltError(
-                f"jump to undefined label {num}",
-                hint="define the destination label or correct the jump target",
-            )
-        cell = get(cells, ptr)
-        taken = cell != 0 if c == "v?" else cell == 0
-        if taken:
-            return (cells, ptr, hold, target, calls)
-    elif c == "v@":
-        num = value if value is not None else 0
-        target = marks.get(("$", num))
-        if target is None:
-            raise HaltError(
-                f"call to undefined subroutine {num}",
-                hint="define the subroutine or correct the call target",
-            )
-        return (cells, ptr, hold, target, (*calls, pos + 1))
-    elif c == ";":
-        if not calls:
-            raise HaltError(
-                "; with no active subroutine call",
-                hint="call a subroutine before returning with ;",
-            )
-        return (cells, ptr, hold, calls[-1], calls[:-1])
-    elif c == ".":
-        return (cells, ptr, hold, len(commands), calls)
-    # ":" and "$" are positions rather than commands -- a label and a
-    # subroutine definition -- so execution falls through them in place.
-
-    return (cells, ptr, hold, pos + 1, calls)
+    cmd = commands[state[3]]
+    return _HANDLERS[cmd.op](_Step(state, commands, marks, cmd, value))
 
 
 class _Machine:

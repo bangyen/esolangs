@@ -13,6 +13,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.wrap import balance_score, wrap_program
+from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
 from esolangs.languages.taglate.proof_formulas import execution, workspace
 from esolangs.languages.taglate.wrapping import _taglate, same_layout
 from esolangs.registry._contracts import BooleanContract
@@ -113,109 +115,69 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
-def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str:
-    r"""Build a Taglate program computing the given truth table.
+def _widen_even(used: list[int], n: int) -> list[int]:
+    """Widen an odd dependency set above 1 by one adjacent ignored input.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    ``n == 1`` reads the single input with ``h`` and computes the affine
-    combination ``base + bit * coeff`` with the ``b``/``c``/``a`` queue
-    arithmetic, then prints it.
-
-    For ``n >= 2`` the program is ``seed\\n<commands>``.  The seed holds
-    ``n_effective`` literal ``'1'``s (``n_effective - 1`` leading, one
-    trailing) around a run of ``'0'``s; the prefix of ``h``/``e``/``b``/
-    ``d``/``j`` commands reads ``n_effective`` inputs and interleaves the
-    (reordered) truth-table bits into ``[0, s0, 0, s1, 0, s2, ...]`` value
-    slots, followed by two 48s and the inputs.  Odd ``n`` prepends a fake
-    zero input (ghost digit) so the slot stride lands on a separator, and
-    pads the table to ``n_effective = n + 1`` inputs.
-
-    The command list alternates even-reduce blocks (select half the
-    value slots on an input bit, keep all inputs) and odd-reduce blocks
-    (retire the previous input, swap the current one in, even-reduce).
-    Neither reduce pops inputs; ``e^6 f^(n_effective - 2) e^2`` reshapes
-    the queue into the 8-cell ``[0, v0, 0, v1, 48, 48, prev, curr]``
-    layout, and ``_SEL1_N2`` selects between the last two candidate
-    values on the two remaining inputs and prints ``48 + bit``.
-
-    **A table that ignores some of its inputs is emitted as the smaller
-    table.**  Nothing here costs anything per *row* -- a one and a zero are
-    both two characters (``bd``/``bb``) -- but almost everything costs per
-    *input*, and the seed alone is ``2**(n_eff + 2)`` cells, so dropping one
-    input drops a whole tier: a constant table goes from 451 characters to
-    21, and ``11110000`` (which depends only on its first input) to 21 as
-    well.  The ignored inputs are still read, then discarded: ``h`` appends
-    the character to the queue's tail, ``e`` repeated once per queued cell
-    rotates it back to the front, and ``f`` drops it, leaving the queue
-    exactly as it was so the reduces' positional arithmetic is undisturbed.
-    The rotation count is the queue length at that point, which before any
-    command has run is the seed's -- computed, not searched.
-
-    A discard can also go *between* the reduced program's reads.  After its
-    ``j``-th ``h``, the queue has ``len(seed) + j`` cells; ``h`` then appends
-    the ignored input, so rotating that many times brings the new tail cell
-    to the front for ``f``.  That restores the exact queue the next command
-    expects, allowing a gapped set such as inputs 0 and 2.  An odd-sized
-    dependency set would make the reduced program ghost-pad itself and expect
-    an input the stream does not carry, so the set is widened by one adjacent
-    ignored input to keep it even.
+    An odd set would make the reduced program ghost-pad itself and expect an
+    input the stream does not carry.
     """
-    n = _validate_truth_table(truth_table)
-
-    ghost = n % 2 == 1 and n > 1
-    if len(set(truth_table)) == 1 and not keep_constant_layout:
-        return truth_table[0] + "\n" + "h" * (n + ghost) + "i"
-    used = essential_inputs(truth_table, n)
-    # A constant table depends on nothing, so it reduces to the smallest
-    # valid table there is -- a one-input constant, never the length-1
-    # table, which is not a valid shape.
-    if not used and n > 1:
-        used = [0]
-    # An odd-sized dependency set would make the *reduced* program
-    # ghost-pad itself and expect an input the stream does not carry, so
-    # widen it by one adjacent ignored input to keep it even.
     if len(used) % 2 == 1 and len(used) > 1:
         if used[-1] + 1 < n:
-            used = [*used, used[-1] + 1]
-        elif used[0] > 0:
-            used = [used[0] - 1, *used]
-    # A single input needs no ghost, so odd size is fine there.
-    if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
-        reduced = read_at(truth_table, used, n)
-        seed, commands = _taglate_raw(
-            reduced, keep_constant_layout=keep_constant_layout
-        ).split("\n", 1)
-        discard = "h" + "e" * len(seed) + "f"
-        # Odd ``n`` above 1 is called with a leading ghost digit, which is
-        # one more input to read and throw away before the real ones.
-        leading = used[0] + ghost
-        reads = commands.split("h")
-        parts = [reads[0] + "h"]
-        for read, (before, after) in enumerate(pairwise(used), start=1):
-            between = "h" + "e" * (len(seed) + read) + "f"
-            parts.append(between * (after - before - 1))
-            parts.append(reads[read] + "h")
-        parts.append(reads[-1])
-        trailing = n - used[-1] - 1
-        return seed + "\n" + discard * leading + "".join(parts) + "h" * trailing
+            return [*used, used[-1] + 1]
+        if used[0] > 0:
+            return [used[0] - 1, *used]
+    return used
 
-    if n == 1:
-        base = _ASCII_ZERO + int(truth_table[0])
-        coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
-        seed = "0" + chr(coeff) + chr(base)
-        return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
 
-    # For odd n, prepend a fake zero-input (ghost) to make the stride land
-    # on a separator.  n_effective is the number of h-reads and levels.
-    if ghost:
-        n_eff = n + 1
-        # Ghost=1 rows are never taken; pad them with 0.
-        full_tt = truth_table.ljust(2**n_eff, "0")
-    else:
-        n_eff = n
-        full_tt = truth_table
+def _with_discards(reduced: str, used: list[int], n: int, *, ghost: bool) -> str:
+    """Re-expand the program for ``used`` inputs to read all ``n``.
+
+    Each ignored input is read with ``h``, rotated to the front with ``e``
+    once per queued cell, and dropped with ``f``, leaving the queue as the
+    reduced program expects.  The count is the queue length at that point
+    (seed plus the reads so far), computed, not searched.  The ghost digit
+    of odd ``n`` above 1 is one more input to discard up front.
+    """
+    seed, commands = reduced.split("\n", 1)
+    discard = "h" + "e" * len(seed) + "f"
+    reads = commands.split("h")
+    parts = [reads[0] + "h"]
+    for read, (before, after) in enumerate(pairwise(used), start=1):
+        between = "h" + "e" * (len(seed) + read) + "f"
+        parts.append(between * (after - before - 1))
+        parts.append(reads[read] + "h")
+    parts.append(reads[-1])
+    leading = used[0] + ghost
+    trailing = n - used[-1] - 1
+    return seed + "\n" + discard * leading + "".join(parts) + "h" * trailing
+
+
+def _affine(truth_table: str) -> str:
+    """One input: ``base + bit * coeff`` by ``b``/``c``/``a`` queue arithmetic.
+
+    The general layout needs two inputs, so n == 1 cannot share it.
+    """
+    base = _ASCII_ZERO + int(truth_table[0])
+    coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
+    seed = "0" + chr(coeff) + chr(base)
+    return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
+
+
+def _full_layout(truth_table: str, n: int, *, ghost: bool) -> str:
+    """Program for a table that uses every input, ``n >= 2``.
+
+    The seed holds ``n_eff`` literal ``'1'``s (``n_eff - 1`` leading, one
+    trailing) around a run of ``'0'``s.  ``h``/``e``/``b``/``d``/``j`` read
+    ``n_eff`` inputs and interleave the reordered table into value slots
+    ``[0, s0, 0, s1, ...]``, then two 48s and the inputs.  Alternating
+    even/odd reduce blocks halve the slots without popping inputs;
+    ``e^6 f^(n_eff - 2) e^2`` reshapes the queue into the 8-cell layout
+    ``_SEL1_N2`` selects on.  Odd ``n`` pads the table to ``n_eff = n + 1``
+    with a ghost input so the slot stride lands on a separator.
+    """
+    n_eff = n + ghost
+    # Ghost=1 rows are never taken; pad them with 0.
+    full_tt = truth_table.ljust(2**n_eff, "0")
 
     seed = "1" * (n_eff - 1) + "0" * (2 ** (n_eff + 2) + 2) + "1"
 
@@ -235,16 +197,10 @@ def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str
     select_parts: list[str] = []
     for level in range(n_eff - 1):
         pairs = 2 ** (n_eff - level)
-        if level % 2 == 0:
-            select_parts.append(_even_reduce(pairs, level, n_eff))
-        else:
-            select_parts.append(_odd_reduce(pairs, level, n_eff))
+        reduce = _even_reduce if level % 2 == 0 else _odd_reduce
+        select_parts.append(reduce(pairs, level, n_eff))
 
     if n_eff > 2:
-        # Drop the first n_eff-2 already-used inputs, then rotate the
-        # remaining two inputs so the queue matches the 8-cell [0, w0, 0,
-        # w1, 48, 48, prev, curr] layout that the committed n=2 odd
-        # selector (_SEL1_N2) expects.
         select_parts.append("e" * 6 + "f" * (n_eff - 2) + "e" * 2)
     select_parts.append(_SEL1_N2)
 
@@ -252,10 +208,40 @@ def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str
     return result
 
 
+def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str:
+    """Build a Taglate program computing the given truth table.
+
+    A table that ignores some inputs is emitted as the smaller table over
+    the inputs it uses, with the ignored ones read and discarded: a constant
+    table goes from 451 characters to 21, ``11110000`` to 21 as well.  Odd
+    ``n`` above 1 feeds a leading ghost digit.  ``keep_constant_layout``
+    skips the constant shortcut (the balancer wants the full shape).
+    """
+    n = _validate_truth_table(truth_table)
+
+    ghost = n % 2 == 1 and n > 1
+    if len(set(truth_table)) == 1 and not keep_constant_layout:
+        return truth_table[0] + "\n" + "h" * (n + ghost) + "i"
+    used = essential_inputs(truth_table, n)
+    # A constant table reduces to a one-input constant, never the length-1
+    # table, which is not a valid shape.
+    if not used and n > 1:
+        used = [0]
+    used = _widen_even(used, n)
+    # A single input needs no ghost, so odd size is fine there.
+    if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
+        reduced = _taglate_raw(
+            read_at(truth_table, used, n),
+            keep_constant_layout=keep_constant_layout,
+        )
+        return _with_discards(reduced, used, n, ghost=ghost)
+    if n == 1:
+        return _affine(truth_table)
+    return _full_layout(truth_table, n, ghost=ghost)
+
+
 def _seed_commands(seed: str) -> str:
     """Build a generator seed from the empty queue with bounded ASCII passes."""
-    from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, _URL_SAFE
-
     targets = list(map(ord, seed))
     subtract = len(targets) == 3 and targets[1] == 65535
     if subtract:
@@ -264,16 +250,13 @@ def _seed_commands(seed: str) -> str:
     prefixes: list[str] = []
     suffixes: list[str] = []
 
-    def encode(text: str) -> str:
-        return "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in text)
-
     prefix, suffix = _PREFIX, _SUFFIX
     enough = 0
     while enough < count:
         prefixes.append(prefix)
         suffixes.append(suffix)
         enough += sum(ord(c) >= 49 for c in prefix + suffix)
-        prefix, suffix = encode(prefix), encode(suffix)
+        prefix, suffix = percent_encode(prefix), percent_encode(suffix)
     # Encoding distributes over concatenation; nested URLs are these layers.
     values = list(map(ord, "".join(prefixes + suffixes[::-1])))
     parts: list[str] = ["t" * len(prefixes)]
@@ -297,23 +280,24 @@ def _seed_commands(seed: str) -> str:
     return "".join(parts)
 
 
+def _bootstrapped(program: str) -> str:
+    """Return ``program`` with its literal seed rebuilt from the empty queue."""
+    seed, _, commands = program.partition("\n")
+    return "\n" + _seed_commands(seed) + commands
+
+
 def taglate(truth_table: str, width: int | None = None) -> str:
     """Return Taglate code; narrow seeds bootstrap an empty queue."""
-    from esolangs.generation.wrap import wrap_program
-
     program = _taglate_raw(truth_table)
     if width is None:
         return program
-    seed, _, commands = program.partition("\n")
-    if len(seed) > width:
-        program = "\n" + _seed_commands(seed) + commands
+    if len(program.partition("\n")[0]) > width:
+        program = _bootstrapped(program)
     return wrap_program(program, "taglate", width)
 
 
 def balance_taglate(table: str, default: str) -> str:
     """Compare the square crossing for literal and bootstrapped queues."""
-    from esolangs.generation.wrap import balance_score
-
     if len(set(table)) == 1:
         return min(
             _balanced(default),
@@ -325,11 +309,9 @@ def balance_taglate(table: str, default: str) -> str:
 
 def _balanced(default: str) -> str:
     """Compare literal and bootstrapped folds of one queue construction."""
-    from esolangs.generation.wrap import balance_score, wrap_program
-
     seed, _, commands = default.partition("\n")
     candidates = [default]
-    bootstrapped = "\n" + _seed_commands(seed) + commands
+    bootstrapped = _bootstrapped(default)
     regimes = [
         (default, len(seed), max(len(seed), len(commands))),
         (bootstrapped, 1, len(seed) - 1),

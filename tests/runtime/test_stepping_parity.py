@@ -146,7 +146,7 @@ class TestTheConstructorsTakeWhatRunTakes:
         example = pathlib.Path(
             str(files("esolangs") / esolangs.describe(REFERENCE)["examples"][0])
         )
-        machine = build(REFERENCE, example, stdin="1\n0\n")  # type: ignore[operator]
+        machine = build(REFERENCE, example, stdin="1\n0\n")
         assert machine.halted is False
 
     def test_the_path_and_the_source_build_the_same_machine(self) -> None:

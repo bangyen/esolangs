@@ -58,25 +58,26 @@ Judgment calls where the manual or C-INTERCAL leave a gap:
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from functools import partial
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.intercal.interpreter._parse import (
-    _SELF_ABSTAIN,
-    _SELF_REINSTATE,
     _fail,
     _Key,
     _load,
     _Node,
     _parse_expression,
+    _SelfAbstain,
     _Statement,
     _statements,
     _unary,
 )
 from esolangs.runtime._drive import drive
+from esolangs.runtime._fault import _Fault
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -139,17 +140,17 @@ def _evaluate(
     node: _Node, scalars: Mapping[_Key, int], arrays: Mapping[_Key, _Array]
 ) -> _Value:
     """Return ``(value, width)``; C-INTERCAL types every result statically."""
-    tag = node[0]
+    tag = node.tag
     if tag == "#":
-        return node[1], 16
+        return node.arg1, 16
     if tag == "." or tag == ":":
-        return scalars.get((tag, node[1]), 0), _WIDTH[tag]
+        return scalars.get((tag, node.arg1), 0), _WIDTH[tag]
     if tag == "u":
-        value, width = _evaluate(node[2], scalars, arrays)
-        return _unary(value, width, node[1]), width
+        value, width = _evaluate(node.arg2, scalars, arrays)
+        return _unary(value, width, node.arg1), width
     if tag == "$":
-        left, _ = _evaluate(node[1], scalars, arrays)
-        right, _ = _evaluate(node[2], scalars, arrays)
+        left, _ = _evaluate(node.arg1, scalars, arrays)
+        right, _ = _evaluate(node.arg2, scalars, arrays)
         if left > _ONESPOT_MAX or right > _ONESPOT_MAX:
             raise _fail(
                 "E533",
@@ -158,18 +159,18 @@ def _evaluate(
             )
         return (_spread(left) << 1) | _spread(right), 32
     if tag == "~":
-        left, _ = _evaluate(node[1], scalars, arrays)
-        right, width = _evaluate(node[2], scalars, arrays)
+        left, _ = _evaluate(node.arg1, scalars, arrays)
+        right, width = _evaluate(node.arg2, scalars, arrays)
         return _select(left, right), width
     data, index = _element(node, scalars, arrays)
-    return data.get(index, 0), _WIDTH[node[1]]
+    return data.get(index, 0), _WIDTH[node.arg1]
 
 
 def _element(
     node: _Node, scalars: Mapping[_Key, int], arrays: Mapping[_Key, _Array]
 ) -> tuple[Mapping[int, int], int]:
     """Locate a subscripted element: its array's store and flat index."""
-    _tag, sigil, number, subscripts = node
+    sigil, number, subscripts = node.arg1, node.arg2, node.arg3
     dimensions, data = arrays.get((sigil, number), ((), {}))
     if len(subscripts) != len(dimensions):
         raise _fail(
@@ -254,15 +255,6 @@ class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
         self.effects = effects
 
 
-class _Fault(Exception):  # noqa: N818 - an internal resumption signal
-    """Carries the output prefix computed before a fault, and the fault."""
-
-    def __init__(self, effects: tuple[str, ...], error: BaseException) -> None:
-        super().__init__(str(error))
-        self.effects = effects
-        self.error = error
-
-
 def _frozen_scalars(scalars: Mapping[_Key, int]) -> Mapping[_Key, int]:
     """Return ``scalars`` as an immutable mapping, sharing an existing freeze."""
     return (
@@ -330,7 +322,7 @@ def _link(
         command, kind = statement.command, statement.kind
         if kind is not None:
             by_kind.setdefault(kind, []).append(i)
-        target = command[1] if len(command) > 1 else None
+        target = command.arg1
         if kind in codes and isinstance(target, int) and target not in labels:
             raise _fail(codes[kind], f"unknown INTERCAL label: {target}")
         if kind not in ("come from", "next from"):
@@ -406,29 +398,29 @@ def _reach(state: _State, i: int, program: _Program) -> tuple[_State, bool]:
     """Apply ONCE/AGAIN at statement ``i``; report if it was reinstated."""
     before = state.abstained[i]
     after = program.statements[i].after
-    if after == _SELF_ABSTAIN:
+    if after == _SelfAbstain.ABSTAIN:
         state = _set_abstained(state, i, before or 1)
-    elif after == _SELF_REINSTATE:
+    elif after == _SelfAbstain.REINSTATE:
         state = _set_abstained(state, i, 0)
     return state, not before
 
 
 def _store(state: _State, target: _Node, value: int) -> _State:
     """Return ``state`` with ``value`` stored at ``target``."""
-    if target[0] == "sub":
-        sigil = str(target[1])
+    if target.tag == "sub":
+        sigil = str(target.arg1)
         dimensions, data = state.arrays.get(
-            (sigil, target[2]), ((), MappingProxyType({}))
+            (sigil, target.arg2), ((), MappingProxyType({}))
         )
         _unused, index = _element(target, state.scalars, state.arrays)
     else:
-        sigil = str(target[0])
+        sigil = str(target.tag)
     if sigil in ".," and value > _ONESPOT_MAX:
         raise _fail("E275", "INTERCAL onespot assignment overflow")
-    key = (sigil, target[2]) if target[0] == "sub" else (sigil, target[1])
+    key = (sigil, target.arg2) if target.tag == "sub" else (sigil, target.arg1)
     if key in state.ignored:
         return state
-    if target[0] == "sub":
+    if target.tag == "sub":
         arrays = _frozen_arrays(
             {
                 **state.arrays,
@@ -452,9 +444,9 @@ def _array(state: _State, key: _Key) -> _Array:
 
 def _read_out(state: _State, item: _Node) -> tuple[_State, str]:
     """Return the state and the text one READ OUT item writes."""
-    if item[0] != "array":
+    if item.tag != "array":
         return state, _roman(_value(state, item)) + "\n"
-    (size,), data = _array(state, (str(item[1]), int(item[2])))
+    (size,), data = _array(state, (str(item.arg1), int(item.arg2)))
     characters = []
     last_out = state.last_out
     for index in range(size):
@@ -471,8 +463,8 @@ def _write_in(
     A Turing Tape array consumes one explicit character per element (``None``
     for the EOF value 256); a numeric target consumes one explicit line.
     """
-    if item[0] == "array":
-        key = (str(item[1]), int(item[2]))
+    if item.tag == "array":
+        key = (str(item.arg1), int(item.arg2))
         (size,), data = _array(state, key)
         last_in = state.last_in
         for index in range(size):
@@ -509,7 +501,7 @@ def _write_in(
         value = value * 10 + _DIGITS[word]
         if value > _TWOSPOT_MAX:
             raise _fail("E533", "INTERCAL twospot input overflow")
-    sigil = item[1] if item[0] == "sub" else item[0]
+    sigil = item.arg1 if item.tag == "sub" else item.tag
     if sigil in ".," and value > _ONESPOT_MAX:
         raise _fail("E275", "INTERCAL onespot input overflow")
     return _store(state, item, value), pos
@@ -586,7 +578,7 @@ def _leave(
             c
             for c in program.come_computed
             if not state.abstained[c]
-            and _value(state, program.statements[c].command[1]) == statement.label
+            and _value(state, program.statements[c].command.arg1) == statement.label
         )
     taken = []
     for c in candidates:
@@ -609,6 +601,156 @@ def _leave(
     return state, pos
 
 
+@dataclass
+class _Step:
+    """The working state of one ``_execute`` call, shared by its handlers."""
+
+    state: _State
+    i: int
+    statement: _Statement
+    program: _Program
+    draws: Sequence[int]
+    pos: int
+    inputs: Sequence[int | str | None]
+    input_pos: int
+    out: list[str]
+
+
+def _handle_calculate(step: _Step) -> bool:
+    """``.1 <- expr``: evaluate and store."""
+    command = step.statement.command
+    step.state = _store(step.state, command.arg1, _value(step.state, command.arg2))
+    return False
+
+
+def _handle_dimension(step: _Step) -> bool:
+    """``,1 SUB #1 <- #n BY #m``: dimension an array."""
+    command = step.statement.command
+    sizes = tuple(_value(step.state, size) for size in command.arg2)
+    if 0 in sizes:
+        raise _fail("E240", "an INTERCAL array dimension must be positive")
+    if command.arg1 not in step.state.ignored:
+        step.state = replace(
+            step.state,
+            arrays=_frozen_arrays(
+                {**step.state.arrays, command.arg1: (sizes, MappingProxyType({}))}
+            ),
+        )
+    return False
+
+
+def _handle_next(step: _Step) -> bool:
+    """``NEXT``: push the return and jump to the label."""
+    step.state = _push(step.state, step.i + 1, step.i)
+    step.state = replace(
+        step.state, ind=step.program.labels[step.statement.command.arg1]
+    )
+    return True
+
+
+def _handle_forget(step: _Step) -> bool:
+    """``FORGET``: drop that many entries off the NEXT stack."""
+    nexts = step.state.nexts
+    count = _value(step.state, step.statement.command.arg1)
+    step.state = replace(step.state, nexts=nexts[: max(0, len(nexts) - count)])
+    return False
+
+
+def _handle_resume(step: _Step) -> bool:
+    """``RESUME``: pop the stack down to the ``count``th-from-top entry."""
+    count = _value(step.state, step.statement.command.arg1)
+    step.state, step.pos = _resume(
+        step.state, count, step.program, step.draws, step.pos
+    )
+    return True
+
+
+def _handle_variable_item(step: _Step, action: str) -> bool:
+    """One ``STASH``/``RETRIEVE``/``IGNORE``/``REMEMBER`` item."""
+    for key in step.statement.command.arg1:
+        step.state = _variable(step.state, action, key)
+    return False
+
+
+def _handle_abstain(step: _Step) -> bool:
+    """``ABSTAIN``: raise the targets' abstain counters."""
+    command = step.statement.command
+    amount = None if command.arg2 is None else _value(step.state, command.arg2)
+    for target in _targets(command.arg1, step.program):
+        if amount is not None:
+            step.state = _set_abstained(
+                step.state, target, step.state.abstained[target] + amount
+            )
+        elif not step.state.abstained[target]:
+            step.state = _set_abstained(step.state, target, 1)
+    return False
+
+
+def _handle_reinstate(step: _Step) -> bool:
+    """``REINSTATE``: lower the targets' abstain counters."""
+    command = step.statement.command
+    for target in _targets(command.arg1, step.program):
+        if (
+            step.program.statements[target].kind is not None
+            and step.state.abstained[target]
+        ):
+            step.state = _set_abstained(
+                step.state, target, step.state.abstained[target] - 1
+            )
+    return False
+
+
+def _handle_read(step: _Step) -> bool:
+    """``READ OUT``: append each item's text to the output."""
+    for item in step.statement.command.arg1:
+        step.state, text = _read_out(step.state, item)
+        step.out.append(text)
+    return False
+
+
+def _handle_write(step: _Step) -> bool:
+    """``WRITE IN``: consume one input per item."""
+    for item in step.statement.command.arg1:
+        step.state, step.input_pos = _write_in(
+            step.state, item, step.inputs, step.input_pos
+        )
+    return False
+
+
+def _handle_give_up(step: _Step) -> bool:
+    """``GIVE UP``: run past the last statement."""
+    step.state = replace(step.state, ind=len(step.program.statements))
+    return True
+
+
+def _handle_try_again(step: _Step) -> bool:
+    """``TRY AGAIN``: restart at the first statement."""
+    step.state = replace(step.state, ind=0)
+    return True
+
+
+#: The command handlers, by action tag.  A handler returns ``True`` when the
+#: command already continued the run itself (``NEXT``/``RESUME`` finish the
+#: statement early); ``False`` means ``_execute`` still runs ``_leave``.
+_EXECUTE_HANDLERS: dict[str, Callable[[_Step], bool]] = {
+    "calculate": _handle_calculate,
+    "dimension": _handle_dimension,
+    "next": _handle_next,
+    "forget": _handle_forget,
+    "resume": _handle_resume,
+    **{
+        action: partial(_handle_variable_item, action=action)
+        for action in ("stash", "retrieve", "ignore", "remember")
+    },
+    "abstain": _handle_abstain,
+    "reinstate": _handle_reinstate,
+    "read": _handle_read,
+    "write": _handle_write,
+    "give up": _handle_give_up,
+    "try again": _handle_try_again,
+}
+
+
 def _execute(
     state: _State,
     i: int,
@@ -617,67 +759,20 @@ def _execute(
     draws: Sequence[int],
     pos: int,
     inputs: Sequence[int | str | None],
-    input_pos: int,
     out: list[str],
-) -> tuple[_State, int, int]:
+) -> tuple[_State, int]:
     """Run one statement's command, appending its output to ``out``."""
     command = statement.command
-    action = command[0]
-    if action == "calculate":
-        state = _store(state, command[1], _value(state, command[2]))
-    elif action == "dimension":
-        sizes = tuple(_value(state, size) for size in command[2])
-        if 0 in sizes:
-            raise _fail("E240", "an INTERCAL array dimension must be positive")
-        if command[1] not in state.ignored:
-            state = replace(
-                state,
-                arrays=_frozen_arrays(
-                    {**state.arrays, command[1]: (sizes, MappingProxyType({}))}
-                ),
-            )
-    elif action == "next":
-        state = _push(state, i + 1, i)
-        return replace(state, ind=program.labels[command[1]]), pos, input_pos
-    elif action in ("forget", "resume"):
-        count = _value(state, command[1])
-        if action == "resume":
-            state, pos = _resume(state, count, program, draws, pos)
-            return state, pos, input_pos
-        nexts = state.nexts
-        state = replace(state, nexts=nexts[: max(0, len(nexts) - count)])
-    elif action in ("stash", "retrieve", "ignore", "remember"):
-        for key in command[1]:
-            state = _variable(state, action, key)
-    elif action == "abstain":
-        amount = None if command[2] is None else _value(state, command[2])
-        for t in _targets(command[1], program):
-            if amount is not None:
-                state = _set_abstained(state, t, state.abstained[t] + amount)
-            elif not state.abstained[t]:
-                state = _set_abstained(state, t, 1)
-    elif action == "reinstate":
-        for t in _targets(command[1], program):
-            if program.statements[t].kind is not None and state.abstained[t]:
-                state = _set_abstained(state, t, state.abstained[t] - 1)
-    elif action == "read":
-        for item in command[1]:
-            state, text = _read_out(state, item)
-            out.append(text)
-    elif action == "write":
-        for item in command[1]:
-            state, input_pos = _write_in(state, item, inputs, input_pos)
-    elif action == "give up":
-        return replace(state, ind=len(program.statements)), pos, input_pos
-    elif action == "try again":
-        return replace(state, ind=0), pos, input_pos
-    else:
+    handler = _EXECUTE_HANDLERS.get(command.tag)
+    if handler is None:
         raise HaltError(
-            f"INTERCAL syntax error (E000) in {statement.text!r}: {command[1]}",
+            f"INTERCAL syntax error (E000) in {statement.text!r}: {command.arg1}",
             hint="use statements supported by esolangs describe --spec INTERCAL",
         )
-    state, pos = _leave(state, i, program, draws, pos)
-    return state, pos, input_pos
+    step = _Step(state, i, statement, program, draws, pos, inputs, 0, out)
+    if handler(step):
+        return step.state, step.pos
+    return _leave(step.state, step.i, step.program, step.draws, step.pos)
 
 
 def _advance(
@@ -729,10 +824,7 @@ def _statement_step(
     if reinstated:
         runs, pos = _runs(statement.chance, draws, pos)
         if runs:
-            state, pos, _input_pos = _execute(
-                state, i, statement, program, draws, pos, inputs, 0, out
-            )
-            return state, pos
+            return _execute(state, i, statement, program, draws, pos, inputs, out)
     state, pos = _leave(state, i, program, draws, pos)
     return state, pos
 
@@ -903,7 +995,7 @@ class _Machine:
         if self.branching_halted(current):
             return (current,)
         ind: int = current[0]
-        if self._program.statements[ind].command[0] == "write" and not current[5][ind]:
+        if self._program.statements[ind].command.tag == "write" and not current[5][ind]:
             return None
         successors = []
         pending: list[tuple[int, ...]] = [()]

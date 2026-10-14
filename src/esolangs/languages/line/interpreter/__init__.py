@@ -22,8 +22,15 @@ from esolangs.runtime.io import IO
 from .extract import extract_mask
 from .mask import from_grey
 from .simulate import IO as _LINE_IO
-from .simulate import _State
+from .simulate import (
+    _advance,
+    _freeze_program,
+    _needs_input,
+    _State,
+    compile_program,
+)
 from .simulate import run_compiled as _run_compiled
+from .simulate import run_node as _run_node
 
 if TYPE_CHECKING:
     from esolangs.languages.line.generator.render import Node
@@ -85,8 +92,6 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
 
 @lru_cache(maxsize=8)
 def _compiled(program: Raster, scale: int | None = None) -> _Compiled:
-    from .simulate import compile_program
-
     return compile_program(
         extract_mask(from_grey(_grey_rows(program.rows)), scale=scale)
     )
@@ -98,15 +103,11 @@ class _Machine:
     @staticmethod
     def run_node(node: Node, io: IO) -> None:
         """Execute the graph retained by a generated raster."""
-        from .simulate import run_node
-
-        run_node(node, _LINE_IO(read=io.input_num, write=io.print_num))
+        _run_node(node, _LINE_IO(read=io.input_num, write=io.print_num))
 
     ip_shape = "grid"
 
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
-        from .simulate import _freeze_program
-
         self.program = _freeze_program(
             _compiled(program, scale if scale is not None else program.scale)
         )
@@ -139,17 +140,9 @@ class _Machine:
         return node, at, pointer, cells, self.io.progress()
 
     def step(self) -> None:
-        from .simulate import _advance
-
-        node, at = self.state[:2]
-        if node is None:
+        if self.halted:
             return
-        frame = self.program[node]
-        value = (
-            self.io.input_num()
-            if at < len(frame.ops) and frame.ops[at][0] == "i"
-            else None
-        )
+        value = self.io.input_num() if _needs_input(self.program, self.state) else None
         self.state, output = _advance(self.state, self.program, value)
         if output is not None:
             self.io.print_num(output)

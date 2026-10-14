@@ -93,7 +93,7 @@ def _write(code: _Grid, row: int, col: int, value: int) -> _Grid:
     return (*code[:row], (*line[:col], value, *line[col + 1 :]), *code[row + 1 :])
 
 
-def _advance(
+def _advance(  # noqa: C901
     state: _State,
     size: int,
     value: int | None = None,

@@ -35,7 +35,7 @@ def test_a_planted_unread_name_is_reported(tmp_path: Path) -> None:
             ),
         },
     )
-    found = checker.dead_definitions(root)  # type: ignore[attr-defined]
+    found = checker.dead_definitions(root)
     assert [(p.name, n) for p, n, _ in found] == [("gen.py", "_old_route")]
 
 
@@ -51,7 +51,7 @@ def test_an_import_alias_counts_as_a_read(tmp_path: Path) -> None:
             ),
         },
     )
-    assert checker.dead_definitions(root) == []  # type: ignore[attr-defined]
+    assert checker.dead_definitions(root) == []
 
 
 def test_a_forward_reference_counts_as_a_read(tmp_path: Path) -> None:
@@ -70,7 +70,7 @@ def test_a_forward_reference_counts_as_a_read(tmp_path: Path) -> None:
             ),
         },
     )
-    found = checker.dead_definitions(root)  # type: ignore[attr-defined]
+    found = checker.dead_definitions(root)
     assert [n for _, n, _ in found] == []
 
 

@@ -5,13 +5,54 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import IntEnum
 from itertools import pairwise
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
 
-type _Node = tuple[Any, ...]
+
+class _Node(NamedTuple):
+    """A parse-tree node: ``tag`` names the form, ``arg1``-``arg3`` its parts.
+
+    The parts' meaning depends on ``tag``:
+
+    - ``("#", value)``: a 16-bit constant.
+    - ``(".", number)`` / ``(":", number)``: a scalar variable.
+    - ``("u", operator, child)``: a unary ``&``/``V``/``?`` application.
+    - ``("$", left, right)`` / ``("~", left, right)``: mingle / select.
+    - ``("sub", sigil, number, subscripts)``: an array element.
+    - ``("array", sigil, number)``: a whole array (an I/O item).
+    - ``("calculate", target, expression)``;
+      ``("dimension", key, sizes)``: a DIMENSION command, where ``key`` is
+      a ``_DimensionKey`` (``sigil`` and ``number`` fields naming the array)
+      and ``sizes`` is a tuple of dimension expressions.
+    - ``("next", label)``; ``("forget" | "resume", expression)``;
+      ``("stash" | "retrieve" | "ignore" | "remember", keys)``;
+      ``("abstain", target, count)``; ``("reinstate", target)``;
+      ``("read" | "write", items)``; ``("give up",)``; ``("try again",)``;
+      ``("come from" | "next from", target)``; ``("error", message)``.
+    """
+
+    tag: str
+    arg1: Any = None
+    arg2: Any = None
+    arg3: Any = None
+
+
 type _Key = tuple[str, int]
+
+
+class _DimensionKey(NamedTuple):
+    """A ``("dimension", key, sizes)`` node's key: the array's sigil and number.
+
+    Hashable, so it serves as a dict key in ``_handle_dimension``; it
+    compares equal to the plain ``(sigil, number)`` tuple other nodes use.
+    """
+
+    sigil: str
+    number: int
+
 
 _MINGLES = "$¢£¤€"
 _UNARIES = "&V?"
@@ -38,8 +79,18 @@ _GERUNDS = (
     ("COMMENT", "error"),
 )
 
-# A ONCE/AGAIN outcome once the statement is reached.
-_SELF_ABSTAIN, _SELF_REINSTATE = 1, 2
+
+class _SelfAbstain(IntEnum):
+    """A statement's ONCE/AGAIN outcome once the statement is reached.
+
+    ``ABSTAIN``: the statement abstains itself when reached (``ONCE``, or
+    ``AGAIN`` on a ``DO NOT`` statement).  ``REINSTATE``: the statement
+    reinstates itself when reached (``AGAIN``, or ``ONCE`` on a ``DO NOT``
+    statement).
+    """
+
+    ABSTAIN = 1
+    REINSTATE = 2
 
 
 def _fail(code: str, message: str, hint: str | None = None) -> HaltError:
@@ -146,7 +197,7 @@ class _Parser:
             return self.group(char)
         if char in _UNARIES:
             self.at += 1
-            return ("u", char, self.unambiguous())
+            return _Node("u", char, self.unambiguous())
         found = self.literal(".:#,;")
         if found is None:
             raise _fail(
@@ -157,19 +208,19 @@ class _Parser:
         sigil, unary, number = found
         node: _Node
         if sigil == "#":
-            node = ("#", _unary(number, 16, unary) if unary else number)
+            node = _Node("#", _unary(number, 16, unary) if unary else number)
             return node
         if sigil in ",;":
             if not self.keyword("SUB"):
                 raise _fail("E000", "an INTERCAL array needs SUB in an expression")
-            node = ("sub", sigil, number, self.subscripts())
+            node = _Node("sub", sigil, number, self.subscripts())
         else:
-            node = (sigil, number)
-        return ("u", unary, node) if unary else node
+            node = _Node(sigil, number)
+        return _Node("u", unary, node) if unary else node
 
     def subscripts(self) -> tuple[_Node, ...]:
         items = [self.unambiguous()]
-        while items[-1][0] != "sub" and self.operand_follows():
+        while items[-1].tag != "sub" and self.operand_follows():
             items.append(self.unambiguous())
         return tuple(items)
 
@@ -177,12 +228,6 @@ class _Parser:
         self.at += 1
         self.groups.append(delimiter)
         char = self.peek()
-        if not char:
-            raise _fail(
-                "E000",
-                "incomplete INTERCAL expression",
-                hint="supply a complete INTERCAL operand or expression",
-            )
         unary = char if char in _UNARIES else ""
         self.at += bool(unary)
         inner = self.expression()
@@ -194,7 +239,7 @@ class _Parser:
             )
         self.at += 1
         self.groups.pop()
-        return ("u", unary, inner) if unary else inner
+        return _Node("u", unary, inner) if unary else inner
 
     def expression(self) -> _Node:
         """Parse an expression; binary operators right-associate (0.26+)."""
@@ -202,7 +247,7 @@ class _Parser:
         char = self.peek()
         if char and char in _MINGLES + "~":
             self.at += 1
-            return ("$" if char in _MINGLES else "~", left, self.expression())
+            return _Node("$" if char in _MINGLES else "~", left, self.expression())
         return left
 
     def separated[T](self, item: Callable[[], T]) -> tuple[T, ...]:
@@ -239,7 +284,7 @@ class _Parser:
         start = self.at
         found = self.literal(",;")
         if found is not None and not found[1] and not self.keyword("SUB"):
-            return ("array", found[0], found[2])
+            return _Node("array", found[0], found[2])
         self.at = start
         if output:
             return self.expression()
@@ -247,9 +292,9 @@ class _Parser:
         if found is not None:
             if found[1]:
                 raise _fail("E000", "invalid INTERCAL variable")
-            return (found[0], found[2])
+            return _Node(found[0], found[2])
         node = self.unambiguous()
-        if node[0] != "sub":
+        if node.tag != "sub":
             raise _fail("E000", "invalid INTERCAL variable")
         return node
 
@@ -262,50 +307,54 @@ class _Parser:
                 hint="use statements supported by esolangs describe --spec INTERCAL",
             )
         sigil, _unary_mark, number = found
-        target: _Node = (sigil, number)
+        target: _Node = _Node(sigil, number)
         if sigil in ",;" and self.keyword("SUB"):
-            target = ("sub", sigil, number, self.subscripts())
+            target = _Node("sub", sigil, number, self.subscripts())
         if not self.keyword("<-"):
             raise _fail("E000", "invalid INTERCAL calculation")
-        if target[0] in ",;":
+        if target.tag in ",;":
             dimensions = [self.expression()]
             while self.keyword("BY"):
                 dimensions.append(self.expression())
-            return ("dimension", (sigil, number), tuple(dimensions))
-        return ("calculate", target, self.expression())
+            return _Node("dimension", _DimensionKey(sigil, number), tuple(dimensions))
+        return _Node("calculate", target, self.expression())
 
     def command(self) -> _Node:
         label = self.label()
         if label is not None:
             if not self.keyword("NEXT"):
                 raise _fail("E000", "a label in a statement body must precede NEXT")
-            return ("next", label)
+            return _Node("next", label)
         for word in ("FORGET", "RESUME"):
             if self.keyword(word):
-                return (word.lower(), self.expression())
+                return _Node(word.lower(), self.expression())
         for word in ("STASH", "RETRIEVE", "IGNORE", "REMEMBER"):
             if self.keyword(word):
-                return (word.lower(), self.separated(self.variable))
+                return _Node(word.lower(), self.separated(self.variable))
         if self.keyword("ABSTAIN"):
             count = None if self.keyword("FROM") else self.expression()
             if count is not None and not self.keyword("FROM"):
                 raise _fail("E000", "computed ABSTAIN needs FROM")
-            return ("abstain", self.required_target(), count)
+            return _Node("abstain", self.required_target(), count)
         if self.keyword("REINSTATE"):
-            return ("reinstate", self.required_target())
+            return _Node("reinstate", self.required_target())
         if self.keyword("READ OUT"):
-            return ("read", self.separated(lambda: self.io_item(output=True)))
+            return _Node("read", self.separated(lambda: self.io_item(output=True)))
         if self.keyword("WRITE IN"):
-            return ("write", self.separated(lambda: self.io_item(output=False)))
+            return _Node("write", self.separated(lambda: self.io_item(output=False)))
         if self.keyword("GIVE UP"):
-            return ("give up",)
+            return _Node("give up")
         if self.keyword("TRY AGAIN"):
-            return ("try again",)
+            return _Node("try again")
         for word in ("COME FROM", "NEXT FROM"):
             if self.keyword(word):
                 found = self.target()
                 kind = word.lower()
-                return (kind, found) if found is not None else (kind, self.expression())
+                return (
+                    _Node(kind, found)
+                    if found is not None
+                    else _Node(kind, self.expression())
+                )
         return self.lvalue_assignment()
 
     def required_target(self) -> int | frozenset[str]:
@@ -400,7 +449,7 @@ class _Statement:
     @property
     def kind(self) -> str | None:
         """The gerund kind, or ``None`` for ``GIVE UP``, which has none."""
-        return _KIND.get(str(self.command[0]))
+        return _KIND.get(self.command.tag)
 
 
 def _load(text: str) -> _Statement:
@@ -424,11 +473,11 @@ def _load(text: str) -> _Statement:
         parser = _Parser(body.replace("!", "'."))
         command = parser.command()
         if parser.keyword("ONCE"):
-            after = _SELF_REINSTATE if abstained else _SELF_ABSTAIN
+            after = _SelfAbstain.REINSTATE if abstained else _SelfAbstain.ABSTAIN
         elif parser.keyword("AGAIN"):
-            after = _SELF_ABSTAIN if abstained else _SELF_REINSTATE
+            after = _SelfAbstain.ABSTAIN if abstained else _SelfAbstain.REINSTATE
         if parser.peek():
-            listed = command[0] in ("write", "stash", "retrieve", "ignore", "remember")
+            listed = command.tag in ("write", "stash", "retrieve", "ignore", "remember")
             raise _fail(
                 "E000",
                 "invalid INTERCAL variable list"
@@ -436,5 +485,5 @@ def _load(text: str) -> _Statement:
                 else "unrecognized INTERCAL statement",
             )
     except HaltError as error:
-        command = ("error", str(error))
+        command = _Node("error", str(error))
     return _Statement(text, label, bool(polite), abstained, chance, command, after)

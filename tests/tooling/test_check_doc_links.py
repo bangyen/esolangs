@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +73,30 @@ def test_a_repeated_heading_gets_a_suffix_anchor(tmp_path: Path) -> None:
         {"a.md": "## Notes\n\n## Notes\n", "b.md": "[second](a.md#notes-1)\n"},
     )
     assert checker.broken_links(tmp_path, files) == []
+
+
+def test_a_tilde_fenced_heading_is_not_an_anchor(tmp_path: Path) -> None:
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {"a.md": "~~~\n## Hidden\n~~~\n", "b.md": "[x](a.md#hidden)\n"},
+    )
+    assert checker.broken_links(tmp_path, files) == [("b.md", "a.md#hidden")]
+
+
+def test_proof_evidence_shares_the_link_gates_anchors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A ``name=`` anchor is evidence; a heading in a ``~~~`` fence is not."""
+    load_script()  # puts scripts/ on the path, as the gate itself does
+    from docs import proof_status
+
+    page = tmp_path / "page.md"
+    page.write_text('<a name="kept"></a>\n~~~\n## Hidden\n~~~\n', encoding="utf-8")
+    monkeypatch.setattr(proof_status, "ROOT", tmp_path)
+    proof_status._check_evidence("page.md#kept", precise=True)  # noqa: SLF001
+    with pytest.raises(ValueError, match="missing evidence anchor"):
+        proof_status._check_evidence("page.md#hidden", precise=True)  # noqa: SLF001
 
 
 def test_the_committed_tree_has_no_dead_links() -> None:

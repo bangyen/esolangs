@@ -49,11 +49,15 @@ def _cli_error_text(exc: BaseException) -> str:
     return message + notes
 
 
+def _notes(exc: BaseException) -> str:
+    """Return ``exc``'s notes rendered with CLI flags."""
+    return _cli_error_text(exc)[len(str(exc)) :]
+
+
 def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
     """Keep generator notes and point template input advice at the CLI."""
     message = str(exc)
-    notes = _cli_error_text(exc)[len(message) :]
-    notes = notes.replace(
+    notes = _notes(exc).replace(
         "run the generated program with stdin=encode_inputs(language, bits)",
         f"pipe input from esolangs encode {_as_argument(language)} <bits> "
         "when running the generated program",
@@ -64,7 +68,7 @@ def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
 def _template_hint(exc: TemplateError, language: str) -> str:
     """Re-point a template refusal at the CLI flag that fills the slots."""
     message = str(exc)
-    notes = _cli_error_text(exc)[len(message) :]
+    notes = _notes(exc)
     pointer = "fill them with esolangs.instantiate("
     if pointer not in message:
         return message + notes
@@ -149,11 +153,6 @@ def _stdin_hint(facts: LanguageInfo) -> str:
             f"read no stdin, so there is probably nothing to send -- close it"
         )
     return "; try: esolangs encode <language> <bits> | ..."
-
-    # No note about ``--table`` here.  The first draft printed one whenever
-    # it was absent, which is every call that is simply checking a shape --
-    # advice on correct input, which is the thing this CLI has spent several
-    # rounds removing.  The private stdin check says what the flag adds.
 
 
 def _input_sentence(facts: LanguageInfo) -> str:

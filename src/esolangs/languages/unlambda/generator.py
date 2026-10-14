@@ -65,7 +65,7 @@ def _leaf(n: int, level: int, bit: str) -> str:
     return printing if not unread else _INERT + _SKIP * unread + printing
 
 
-def unlambda(truth_table: str) -> str:
+def unlambda(truth_table: str) -> str:  # noqa: C901
     """Return an Unlambda program computing ``truth_table``.
 
     Reads ``n`` characters, one ``0``/``1`` per input in table order, and

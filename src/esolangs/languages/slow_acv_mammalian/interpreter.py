@@ -25,6 +25,9 @@ from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 MODULI = (255, 256)
 
+#: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
+_ARRAYS = 23
+
 
 @dataclass(frozen=True)
 class MammalianModuli:
@@ -101,7 +104,7 @@ def _total(
             flat[n] -= num
 
     out: list[tuple[int, ...]] = []
-    for k in range(23):
+    for k in range(_ARRAYS):
         out.append(tuple(flat[: size[k]]))
         flat = flat[size[k] :]
     return tuple(out)
@@ -149,11 +152,7 @@ _INS = (
     "PRONOUNCE",
 )
 
-# Token -> opcode, so a step names its instruction by lookup.  ``step``
-# used ``_INS.index(...)``, which walks the tuple comparing strings, and
-# does it once per token executed: SEED is first and costs one compare,
-# but PRONOUNCE is last and costs ten, so the price depended on which
-# instruction was running rather than on the work it did.
+# Token -> opcode, so a step names its instruction by lookup.
 _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 
@@ -201,7 +200,7 @@ def _advance(
             # "tuple index out of range"; a run that walked off the end
             # said "list" before and callers see the message, so keep it.
             raise IndexError("list index out of range")
-        ptr = (ptr + curr[acc]) % 23
+        ptr = (ptr + curr[acc]) % _ARRAYS
     elif n == 7 and curr and curr[-1]:
         target = acc - curr[0] - 1
         if target < 0:
@@ -228,7 +227,7 @@ class _Machine:
         self.moduli = MammalianModuli(cell_modulus, io_modulus)
         self.io = io
         self.tokens = _tokens(code)
-        self.lst: _Arrays = tuple((0,) for _ in range(23))
+        self.lst: _Arrays = tuple((0,) for _ in range(_ARRAYS))
         self.ind = self.ptr = self.acc = 0
         self._halted_by_command = False
 

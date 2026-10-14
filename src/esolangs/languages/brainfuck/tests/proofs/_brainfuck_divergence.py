@@ -89,7 +89,7 @@ def states() -> list[State]:
     return sorted(reached)
 
 
-def matrix_image(
+def matrix_image(  # noqa: C901
     rows: list[list[int]],
     classes: list[State],
     matrices: list[Matrix],

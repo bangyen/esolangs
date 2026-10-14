@@ -24,10 +24,10 @@ from esolangs.languages.polynomial.interpreter.roots import (
     _divide_out_quadratics,
     _divide_quadratic,
     _factor_roots,
+    _is_proven_prime,
     _remainder_roots,
     _Root,
     _squarefree_mod,
-    prime,
 )
 from esolangs.runtime.io import IO
 from tests.interpreters.contract import CycleContract, SnapshotContract
@@ -408,7 +408,7 @@ class TestRootsHelpers:
     """Small pure helpers behind the root search, at their edges."""
 
     def test_numbers_below_two_are_not_prime(self) -> None:
-        assert not prime(1)
+        assert not _is_proven_prime(1)
 
     def test_a_modular_screen_false_positive_fails_exact_division(self) -> None:
         """``x^2 + 1 + M`` divides by ``x^2 + 1`` mod ``M`` but not exactly."""

@@ -11,6 +11,14 @@ from esolangs.languages.streetcode.interpreter import _Machine, run
 from esolangs.languages.streetcode.interpreter.geometry import (
     _ReachableCell,
 )
+from esolangs.languages.streetcode.interpreter.validation import (
+    block,
+    connection_violation,
+    enclosure_violation,
+    glyph_violation,
+    validate_width,
+    width_violation,
+)
 from esolangs.languages.streetcode.tests.streetcode_support import (
     _RING_PROGRAM,
     machine_unvalidated,
@@ -124,7 +132,7 @@ class TestStreetcodeStatedInvariants:
         """``_block`` states what it needs rather than trusting the caller."""
         machine = _Machine(self._street(), IO())
         with pytest.raises(AssertionError, match="on the border"):
-            machine._block(_ReachableCell((0, 0)))  # noqa: SLF001
+            block(machine.grid, _ReachableCell((0, 0)))
 
     @pytest.mark.parametrize("cell", [(1, 1), (2, 4)])
     def test_an_interior_cell_reads_its_neighbourhood(
@@ -132,25 +140,25 @@ class TestStreetcodeStatedInvariants:
     ) -> None:
         """The precondition admits every cell the enclosure check allows."""
         machine = _Machine(self._street(), IO())
-        assert len(machine._block(_ReachableCell(cell))) == 9  # noqa: SLF001
+        assert len(block(machine.grid, _ReachableCell(cell))) == 9
 
     def test_a_valid_street_violates_nothing(self) -> None:
         """Every stated rule holds of a program the validator accepted."""
         machine = _Machine(self._street(), IO())
-        reachable = machine._validate_width((machine.row, machine.col))  # noqa: SLF001
+        reachable = validate_width(machine.grid, (machine.row, machine.col))
         assert reachable is not None
-        assert machine._width_violation(reachable) is None  # noqa: SLF001
-        assert machine._enclosure_violation(reachable) is None  # noqa: SLF001
-        assert machine._glyph_violation() is None  # noqa: SLF001
-        assert machine._connection_violation(reachable) is None  # noqa: SLF001
+        assert width_violation(machine.grid, reachable) is None
+        assert enclosure_violation(machine.grid, reachable) is None
+        assert glyph_violation(machine.grid) is None
+        assert connection_violation(machine.grid, reachable) is None
 
     def test_a_violation_is_what_the_validator_raises(self) -> None:
         """The rule and the rejection are one statement, not two."""
         code = ["+---", "|C  ", "|   ", "+---"]
         machine = machine_unvalidated(code)
-        reachable = machine._validate_width((machine.row, machine.col))  # noqa: SLF001
+        reachable = validate_width(machine.grid, (machine.row, machine.col))
         assert reachable is not None
-        violation = machine._enclosure_violation(reachable)  # noqa: SLF001
+        violation = enclosure_violation(machine.grid, reachable)
         assert violation is not None
         with pytest.raises(ValueError, match=re.escape(violation)):
             _Machine(code, IO())
