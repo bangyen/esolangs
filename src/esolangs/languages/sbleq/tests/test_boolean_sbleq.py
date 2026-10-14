@@ -8,7 +8,6 @@ import pytest
 import esolangs
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages import generators as boolean
-from esolangs.languages.sbleq.generator import _sbleq_hoisted
 from esolangs.languages.sbleq.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
@@ -65,11 +64,9 @@ class TestSbleq:
     def test_a_repeated_subtree_is_jumped_to(self) -> None:
         """XOR's second test reaches the leaves already emitted for the first."""
         shared = boolean.sbleq("0110").split()
-        plain = _sbleq_hoisted("0110", (0, 1)).split()
-        # Two two-instruction leaves out, one jump in, three cells apiece.
-        assert len(plain) - len(shared) == 3 * (4 - 1)
+        # Four leaves, two distinct: each output is emitted once, then jumped to.
         assert shared[-3:-1] == ["0", "0"]
-        assert shared.count("-3") == plain.count("-3") - 2 == 2
+        assert shared.count("-3") == 2
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""

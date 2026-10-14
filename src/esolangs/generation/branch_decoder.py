@@ -13,16 +13,15 @@ def hoisted_tree(
     truth_table: str,
     perm: tuple[int, ...],
     *,
-    share: bool = False,
     direct: bool = False,
 ) -> str:
     """Emit one input order's hoisted program; with shared residuals.
 
     ``perm[k]`` is the input the tree tests at level ``k``; the read block
     stays in input order, so the program consumes its input stream exactly
-    as the node-read build did.  ``share`` jumps to a subtree already
-    emitted instead of repeating it. ``direct`` renders byte I/O
-    and immediate jump targets from the same folded instructions.
+    as the node-read build did.  A subtree already emitted is jumped to,
+    not repeated.  ``direct`` renders byte I/O and immediate jump targets
+    from the same folded instructions.
     """
     n = _validate_truth_table(truth_table)
     neg49 = 0
@@ -40,7 +39,7 @@ def hoisted_tree(
     placed: dict[tuple[int, int], int] = {}
 
     def resolve(level: int, block: int) -> tuple[int, int, tuple[int, int]]:
-        return subtree_slot(ids, level, block, skip=share)
+        return subtree_slot(ids, level, block, skip=True)
 
     def emit(level: int, block: int) -> None:
         """Lay the subtree out where control falls in, or jump to its copy.
@@ -51,8 +50,7 @@ def hoisted_tree(
         if slot in placed:
             instructions.append((0, 0, "jump", placed[slot]))
             return
-        if share:
-            placed[slot] = len(instructions)
+        placed[slot] = len(instructions)
         if slot[0] < 0:
             instructions.append((-3, 1 + slot[1], "out", 0))
             instructions.append((0, 0, "halt", 0))

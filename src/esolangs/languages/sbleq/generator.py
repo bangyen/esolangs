@@ -28,16 +28,11 @@ def sbleq(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return _sbleq_constant(n, truth_table[0])
-    tree = in_input_order(truth_table, _sbleq_shared)
+    tree = in_input_order(truth_table, _sbleq_hoisted)
     if len(truth_table) <= _TREE_ROWS:
         return tree
     packed = packed_decoder(truth_table)
     return tree if len(tree) < len(packed) else packed
-
-
-def _sbleq_shared(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one order's shared tree; see :func:`_sbleq_hoisted`."""
-    return _sbleq_hoisted(truth_table, perm, share=True)
 
 
 def _balance(table: str, default: str) -> str:
@@ -49,9 +44,9 @@ def _balance(table: str, default: str) -> str:
         return candidate
     n = len(table).bit_length() - 1
     legacy = [
-        _sbleq_hoisted(table, tuple(range(n)), share=True)
+        _sbleq_hoisted(table, tuple(range(n)))
         if constant
-        else in_input_order(table, _sbleq_shared)
+        else in_input_order(table, _sbleq_hoisted)
     ]
     if large:
         legacy.append(_packed_build(table, keep_constant_layout=constant))
