@@ -550,7 +550,10 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     if len(table) > 1:
         truth_table, n = table, len(table).bit_length() - 1
     else:
-        weights = [1] * n  # a constant keeps one level to fork on
+        # A constant keeps one level to fork on, over two equal cells; the
+        # other inputs are lone reads.
+        weights = [0] * (n - 1) + [1]
+        truth_table, n = table * 2, 1
     gaps, pending = [], 0
     for weight in weights:
         if weight:
