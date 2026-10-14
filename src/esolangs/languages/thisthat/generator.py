@@ -108,10 +108,9 @@ class _Builder:
 def thisthat(truth_table: str, width: int | None = None) -> str:
     """Return a linear-area tree or a bounded DAG with shared residuals.
 
-    The DAG uses directed crossings within the preceding O(T) area envelope.
-    The old grid,
-    cycle bound and coordinate widths guard admission; narrow small arities
-    additionally compare folded strips and streaming trees.
+    The DAG uses directed crossings within the O(T) area of the plain tree;
+    `_admit_shared` guards admission.  Narrow small arities additionally
+    compare folded strips and streaming trees.
     """
     if width is not None and 0 < width < 3 and truth_table == "0110":
         # Equal-length paths merge both input transfers on native XOR.
@@ -124,18 +123,8 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
     shared = shared_tree(truth_table)
     if shared is not None:
         candidate, cycles = shared
-        n = _validate_truth_table(truth_table)
-        bound = 32 * (1 << (n // 2)) - 29 if n % 2 == 0 else 48 * (1 << (n // 2)) - 29
-        old_rows, old_cols = len(program.splitlines()), grid_width(program)
-        rows, cols = len(candidate.splitlines()), grid_width(candidate)
-        # One pointer and the same bistack cells: keeping the sum of coordinate
-        # widths no larger preserves the existing written-state bound.
-        coordinates = (rows - 1).bit_length() + (cols - 1).bit_length()
-        old_coordinates = (old_rows - 1).bit_length() + (old_cols - 1).bit_length()
-        if (
-            rows * cols < old_rows * old_cols
-            and cycles <= bound
-            and coordinates <= old_coordinates
+        if _admit_shared(
+            program, candidate, cycles, _validate_truth_table(truth_table)
         ):
             program = candidate
     if width is None or width <= 0:
@@ -149,6 +138,25 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
     if grid_width(candidate) <= max(width, grid_width(old)) and area < old_area:
         return candidate
     return old
+
+
+def _admit_shared(plain: str, shared: str, cycles: int, n: int) -> bool:
+    """Whether the shared DAG replaces the plain tree: smaller, bounded run.
+
+    The cycle bound is 32 * 2^(n/2) - 29 for even ``n`` and 48 * 2^(n//2) - 29
+    for odd.  The coordinate widths (one pointer, same bistack cells) must not
+    exceed the plain tree's.
+    """
+    bound = 32 * (1 << (n // 2)) - 29 if n % 2 == 0 else 48 * (1 << (n // 2)) - 29
+    old_rows, old_cols = len(plain.splitlines()), grid_width(plain)
+    rows, cols = len(shared.splitlines()), grid_width(shared)
+    coordinates = (rows - 1).bit_length() + (cols - 1).bit_length()
+    old_coordinates = (old_rows - 1).bit_length() + (old_cols - 1).bit_length()
+    return (
+        rows * cols < old_rows * old_cols
+        and cycles <= bound
+        and coordinates <= old_coordinates
+    )
 
 
 def _narrow_tree(truth_table: str, program: str, width: int) -> str:
