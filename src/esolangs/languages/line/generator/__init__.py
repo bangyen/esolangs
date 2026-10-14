@@ -54,7 +54,11 @@ from esolangs.languages.line.generator.render import (
     correction,
     loader_reads,
 )
-from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
+from esolangs.languages.line.generator.shared import (
+    CanvasPlan,
+    shared_canvas,
+    shared_tree,
+)
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
@@ -186,45 +190,46 @@ def _shared_candidates(truth_table: str, n: int) -> list[Node]:
     return nodes
 
 
+class _Candidate(NamedTuple):
+    """Smallest layout so far; ``plan`` (shared or folded) outranks ``canvas``."""
+
+    node: Node
+    area: int
+    canvas: Canvas | None = None
+    plan: CanvasPlan | None = None
+    complete: bool = False
+
+
 @lru_cache(maxsize=8)
 def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     _check_unit(unit)
-    node = line_boolean(truth_table)
     n = _validate_truth_table(truth_table)
-    canvas = small_tree_canvas(node, unit=unit) if n <= _SMALL_MAX else None
 
-    def area(tree: Node, drawn: Canvas | None) -> int:
-        if drawn is not None:
-            return drawn.width * drawn.height
+    def candidate(tree: Node) -> _Candidate:
+        if n <= _SMALL_MAX and (drawn := small_tree_canvas(tree, unit=unit)):
+            return _Candidate(tree, drawn.width * drawn.height, drawn)
         top, bottom, left, right = tree_extents(tree)[id(tree)]
-        return (bottom - top + 2) * (right - left + 2) * unit**2
+        return _Candidate(tree, (bottom - top + 2) * (right - left + 2) * unit**2)
 
-    smallest = area(node, canvas)
+    best = candidate(line_boolean(truth_table))
     projected = projected_boolean(truth_table)
     if projected is not None:
-        drawn = small_tree_canvas(projected, unit=unit) if n <= _SMALL_MAX else None
-        projected_area = area(projected, drawn)
-        if projected_area < smallest:
-            node, canvas, smallest = projected, drawn, projected_area
-    shared_nodes = _shared_candidates(truth_table, n)
-    selected_draw = None
-    for graph in shared_nodes:
-        draw = shared_canvas(graph, smallest, unit=unit)
+        other = candidate(projected)
+        if other.area < best.area:
+            best = other
+    for graph in _shared_candidates(truth_table, n):
+        draw = shared_canvas(graph, best.area, unit=unit)
         if draw is not None:
-            smallest = draw.area
-            selected_draw = draw
-            node = graph
-    complete_selected = False
+            best = _Candidate(graph, draw.area, plan=draw)
     for build in (streaming_canvas, projected_streaming_canvas):
         # A complete fold wins a fallback tie; a later fold retains the first tie.
-        fold = build(truth_table, smallest + int(not complete_selected), unit=unit)
+        fold = build(truth_table, best.area + int(not best.complete), unit=unit)
         if fold is not None:
-            node, selected_draw = fold
-            smallest = selected_draw.area
-            complete_selected = True
-    if selected_draw is not None:
-        return lazy_raster(lambda: _grey_rows(selected_draw()), node)
+            best = _Candidate(fold[0], fold[1].area, plan=fold[1], complete=True)
+    node, canvas, plan = best.node, best.canvas, best.plan
+    if plan is not None:
+        return lazy_raster(lambda: _grey_rows(plan()), node)
     if canvas is not None:
         return lazy_raster(lambda: _grey_rows(canvas), node)
     return lazy_raster(lambda: _render_node(node, unit=unit), node)
