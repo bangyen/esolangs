@@ -30,7 +30,7 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
 
 
 def test_an_error_records_the_state_it_leaves() -> None:
-    """A draft that moved its pointer before a failing read passed an error-only diff."""
+    """A draft moving its pointer before a failing read passed an error-only diff."""
     module = tracediff._load(_INTERPRETER, "tracediff_error")  # noqa: SLF001
     *_, last = tracediff.trace(module, ("+,", ""), frozenset())
     assert last[:2] == ("error", "InputExhaustedError")

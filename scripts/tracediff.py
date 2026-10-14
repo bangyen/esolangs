@@ -18,6 +18,7 @@ import importlib
 import importlib.util
 import itertools
 import random
+import re
 import subprocess
 import sys
 import tempfile
@@ -39,6 +40,7 @@ SAMPLES = importlib.import_module("tests.support.samples").SAMPLES
 #: Steps traced per program; past it a run counts as non-halting.
 LIMIT = 400
 RANDOM_PROGRAMS = 3000
+_ADDRESS = re.compile(r" at 0x[0-9a-f]+")
 
 type Program = tuple[str, str]
 type Event = tuple[object, ...]
@@ -49,16 +51,32 @@ def _load(path: Path, name: str) -> ModuleType:
     if spec is None or spec.loader is None:
         raise SystemExit(f"cannot load {path}")
     module = importlib.util.module_from_spec(spec)
+    # Dataclasses look their module up while it is still executing.
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
 
-def _source_path(module: str) -> Path:
+def _source_path(module: str, ref: str) -> tuple[Path, str]:
+    """Return the interpreter's file and the name to load other copies under.
+
+    A package's old ``__init__`` is loaded inside the package, so its relative
+    imports reach the current submodules: sound only when it alone changed.
+    """
     path = Path(importlib.import_module(module).__file__ or "")
-    if path.name == "__init__.py":
-        # Relative imports inside the package would resolve to the new copy.
-        raise SystemExit(f"{module} is a package; only single-file interpreters")
-    return path
+    if path.name != "__init__.py":
+        return path, "tracediff"
+    changed = subprocess.run(
+        ["git", "diff", "--name-only", ref, "--", path.parent.relative_to(ROOT)],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    others = [name for name in changed if not name.endswith("/__init__.py")]
+    if others:
+        raise SystemExit(f"{module} changed beyond __init__.py: {others}")
+    return path, f"{module}.tracediff"
 
 
 def _revision(path: Path, ref: str, scratch: Path) -> Path:
@@ -92,23 +110,39 @@ def _views(machine: object, ignored: frozenset[str]) -> Event:
     for name in names:
         try:
             value = getattr(machine, name)
-        except Exception as error:  # noqa: BLE001 - a raising view is behaviour too
+        except Exception as error:
             seen.append((name, _error(error)))
             continue
         if isinstance(value, list):
             # A grown store makes repr dominate the run; a hash compares in C.
-            value = (len(value), hash(tuple(map(repr, value))))
-        seen.append((name, repr(value)))
+            value = (len(value), hash(tuple(map(_repr, value))))
+        seen.append((name, _repr(value)))
     return tuple(seen)
 
 
-def trace(module: ModuleType, program: Program, ignored: frozenset[str]) -> list[Event]:
-    """Return one event per step: views, snapshot and output so far."""
+def _repr(value: object) -> str:
+    """``repr`` without memory addresses, which differ between module copies."""
+    return _ADDRESS.sub("", repr(value))
+
+
+def trace(
+    module: ModuleType,
+    program: Program,
+    ignored: frozenset[str],
+    *,
+    split: bool = False,
+) -> list[Event]:
+    """Return one event per step: views, snapshot and output so far.
+
+    ``split`` passes the source as lines, as the registry does for grids:
+    a string there built a one-column grid and every program failed alike.
+    """
     code, stdin = program
     io = ScriptedIO(stdin)
     try:
-        machine = module._Machine(code, io)  # noqa: SLF001
-    except Exception as error:  # noqa: BLE001
+        source = code.splitlines() if split else code
+        machine = module._Machine(source, io)  # noqa: SLF001
+    except Exception as error:
         return [("error", *_error(error))]
     events: list[Event] = []
     try:
@@ -121,26 +155,42 @@ def trace(module: ModuleType, program: Program, ignored: frozenset[str]) -> list
                     events.append(("dumped", io.getvalue()))
                 break
             machine.step()
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         events.append(("error", *_error(error), machine.snapshot()))
     return events
 
 
+def _halts(events: list[Event]) -> bool:
+    """Whether a trace ended by halting: no error, and inside the step limit."""
+    return events[-1][0] != "error" and len(events) < LIMIT
+
+
 def _random_programs(corpus: list[Program], count: int) -> list[Program]:
-    """Seeded programs over the corpus alphabet, or small integer tokens."""
+    """Seeded programs over the corpus alphabet, and small integer tokens.
+
+    Integer tokens appear when some corpus program is integers alone; a
+    language that also takes assembly gets both kinds, half each.
+    """
     rng = random.Random(0)
     texts = [code for code, _ in corpus if code.strip()]
     inputs = sorted({stdin for _, stdin in corpus}) or [""]
-    numeric = bool(texts) and all(
-        token.lstrip("-").isdigit() for code in texts for token in code.split()
-    )
+    numbers = [
+        [int(token) for token in code.split()]
+        for code in texts
+        if all(token.lstrip("-").isdigit() for token in code.split())
+    ]
+    mixed = len(numbers) < len(texts)
     alphabet = sorted(set("".join(texts)) | {" "})
+    # Negative values the corpus uses are special addresses (AddSubJump's
+    # flags sit at -2..-9); without them a flag mutant went unseen.
+    low = min([-1, *(value for row in numbers for value in row)])
     programs = []
     for _ in range(count):
-        if numeric:
+        if numbers and not (mixed and rng.random() < 0.5):
             # Random digit strings address millions of cells; small ones
             # reach jumps, I/O and in-range writes instead.
-            words = (str(rng.randint(-1, 40)) for _ in range(rng.randint(1, 15)))
+            size = rng.randint(1, 15)
+            words = (str(rng.randint(max(low, -16), 40)) for _ in range(size))
             code = " ".join(words)
         else:
             code = "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 14)))
@@ -175,7 +225,9 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
                             code = esolangs.instantiate(name, program, bits)
                             programs.append((str(code), ""))
                         else:
-                            stdin = esolangs.encode_inputs(name, bits, truth_table=table)
+                            stdin = esolangs.encode_inputs(
+                                name, bits, truth_table=table
+                            )
                             programs.append((str(program), str(stdin)))
     return programs + _random_programs(programs, count)
 
@@ -185,11 +237,14 @@ def differences(
     new: ModuleType,
     programs: list[Program],
     ignored: frozenset[str] = frozenset(),
+    *,
+    split: bool = False,
 ) -> list[tuple[Program, int, Event | None, Event | None]]:
     """Return each differing program with its first differing step."""
     found = []
     for program in programs:
-        before, after = trace(old, program, ignored), trace(new, program, ignored)
+        before = trace(old, program, ignored, split=split)
+        after = trace(new, program, ignored, split=split)
         if before != after:
             padded = zip([*before, None], [*after, None], strict=False)
             step = next(i for i, (a, b) in enumerate(padded) if a != b)
@@ -200,6 +255,7 @@ def differences(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("language")
     parser.add_argument("--old", default="main", help="git revision (default main)")
@@ -211,21 +267,27 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     name = resolve(args.language)
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
+    split = LANGUAGES[name].split
     new = importlib.import_module(INTERPRETERS[name])
     programs = corpus(name, args.random)
+    path, prefix = _source_path(INTERPRETERS[name], args.old)
     with tempfile.TemporaryDirectory() as scratch:
-        old_path = _revision(_source_path(INTERPRETERS[name]), args.old, Path(scratch))
-        old = _load(old_path, "tracediff_old")
-    found = differences(old, new, programs, ignored)
+        old = _load(_revision(path, args.old, Path(scratch)), f"{prefix}_old")
+    found = differences(old, new, programs, ignored, split=split)
     for (code, stdin), step, before, after in found[:3]:
         print(f"DIFF {code[:60]!r} stdin={stdin[:20]!r} at step {step}")
         print(f"  {args.old}: {before!r:.300}")
         print(f"  new: {after!r:.300}")
-    print(f"{name}: {len(programs)} programs, {len(found)} differ from {args.old}")
+    # A diff over programs that all fail at once proves nothing: say so.
+    halting = sum(_halts(trace(new, p, ignored, split=split)) for p in programs)
+    print(
+        f"{name}: {len(programs)} programs ({halting} halt cleanly), "
+        f"{len(found)} differ from {args.old}"
+    )
     if args.mutant is None:
         return int(bool(found))
-    mutant = _load(args.mutant, "tracediff_mutant")
-    caught = len(differences(old, mutant, programs, ignored))
+    mutant = _load(args.mutant, f"{prefix}_mutant")
+    caught = len(differences(old, mutant, programs, ignored, split=split))
     print(f"control: mutant differs on {caught}")
     return int(bool(found) or not caught)
 
