@@ -532,6 +532,26 @@ def _streetcode_room(
         grid[_WEST, col] = "~"
 
 
+def _flat_inputs(truth_table: str, n: int) -> tuple[str, int, list[int], int]:
+    """Return table, arity, per-level ignored-input gaps and the trailing run."""
+    weights, table = input_weights(truth_table, n)
+    if len(table) > 1:
+        n = len(table).bit_length() - 1
+    else:
+        # A constant keeps one level to fork on, over two equal cells; the
+        # other inputs are lone reads.
+        weights = [0] * (n - 1) + [1]
+        table, n = table * 2, 1
+    gaps, pending = [], 0
+    for weight in weights:
+        if weight:
+            gaps.append(pending)
+            pending = 0
+        else:
+            pending += 1
+    return table, n, gaps, pending
+
+
 def _streetcode_flat(truth_table: str, n: int) -> str:
     """Build the table as cells and drive to the one the inputs address.
 
@@ -546,21 +566,7 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     whose read overwrites the cell; one past the last indexed input is an
     ``I`` ahead of the tail.  The table holds the indexed inputs' entries alone.
     """
-    weights, table = input_weights(truth_table, n)
-    if len(table) > 1:
-        truth_table, n = table, len(table).bit_length() - 1
-    else:
-        # A constant keeps one level to fork on, over two equal cells; the
-        # other inputs are lone reads.
-        weights = [0] * (n - 1) + [1]
-        truth_table, n = table * 2, 1
-    gaps, pending = [], 0
-    for weight in weights:
-        if weight:
-            gaps.append(pending)
-            pending = 0
-        else:
-            pending += 1
+    truth_table, n, gaps, pending = _flat_inputs(truth_table, n)
     fill = "".join(("^" if bit == "1" else "") + "=" for bit in reversed(truth_table))
     fill += "^"
     # ``pending`` trailing ignored inputs are lone ``I`` between the last
