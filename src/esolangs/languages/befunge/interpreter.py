@@ -1,25 +1,34 @@
-r"""Interpreter for Befunge.
+r"""Befunge-93: the program is a grid, and a pointer walks it.
 
-Befunge is a two-dimensional grid language: the instruction pointer carries a
-stack and a heading, wraps at the edges, and ``p`` edits the grid in place.
-``,`` and ``.`` print, ``~`` and ``&`` read, and string mode pushes cells as
-bytes. Values must fit the platform C signed long; overflow raises HaltError.
-Source cells are bytes; storage and output use unsigned bytes.
-Unknown bytes are no-ops. EOF propagates. The playfield is the 80x25 torus; division
-truncates toward zero, and a zero divisor reads the result from the user.
-(The wiki says "rounded down", but the C reference interpreter truncates, so
--7 / 2 is -3.)  A pop off the empty stack yields 0, ``g`` outside the grid
-pushes 0, and ``p`` outside is ignored.  ``.`` prints the integer and a
-trailing space.  An empty or oversized program raises :class:`ValueError`
-(spaces past column 80 are dropped, not counted); a zero divisor with no
-result to read raises :class:`~esolangs.exceptions.HaltError`.
+The pointer starts top left heading right, carries one stack, and wraps at
+the edges of an 80x25 torus.  Each cell it lands on is a command:
+
+- ``0``-``9`` push a digit.  ``+ - * / %`` pop ``a``, then ``b``, and push
+  ``b op a``; ``!`` pushes ``not a``, and `` ` `` pushes ``b > a``.
+- ``:`` duplicates the top, ``\`` swaps the top two, ``$`` drops one.
+- ``> v < ^`` set the heading and ``?`` picks one at random.  ``_`` pops
+  and heads right on zero, else left; ``|`` heads down on zero, else up.
+  ``#`` jumps over the next cell.
+- ``"`` toggles string mode, which pushes every cell it crosses as a byte.
+- ``g`` pops ``y``, ``x`` and pushes that cell; ``p`` pops ``y``, ``x``,
+  ``v`` and writes ``v`` there, so a program can rewrite itself.
+- ``.`` prints a number and a space, ``,`` a character; ``&`` reads a
+  number, ``~`` a character.  ``@`` halts.  Any other byte does nothing.
+
+Where the spec is silent this follows the C reference interpreter: division
+truncates toward zero (the wiki says "rounded down", but -7 / 2 is -3), and
+a zero divisor reads the result from the user, raising
+:class:`~esolangs.exceptions.HaltError` if none is left.  A pop off the
+empty stack yields 0, ``g`` outside the grid pushes 0, ``p`` outside is
+ignored.  Values must fit a C signed long, else HaltError.  Cells are
+bytes.  EOF on ``&`` or ``~`` propagates.  An empty or oversized program
+raises :class:`ValueError` (spaces past column 80 are dropped, not counted).
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from ctypes import c_long, sizeof
-from operator import add, mul, sub
 from typing import NamedTuple, cast
 
 from esolangs.exceptions import HaltError
@@ -33,7 +42,23 @@ from esolangs.runtime.source_hints import syntax_error
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
 _HEADINGS = dict(zip(">v<^", _DIRECTIONS, strict=True))
-_ARITHMETIC = {"+": add, "-": sub, "*": mul}
+#: ``_`` and ``|``: the heading on a popped zero, and on anything else.
+_BRANCHES = {"_": ((1, 0), (-1, 0)), "|": ((0, 1), (0, -1))}
+#: Commands that read from outside the state; a zero divisor reads too.
+_READS = {"~": "char", "&": "number", "?": "draw"}
+#: Commands that only touch the stack: how many they pop (top first), and
+#: what they push in its place.
+_STACK_OPS: dict[str, tuple[int, Callable[..., tuple[int, ...]]]] = {
+    **{digit: (0, lambda d=int(digit): (d,)) for digit in "0123456789"},
+    "+": (2, lambda a, b: (b + a,)),
+    "-": (2, lambda a, b: (b - a,)),
+    "*": (2, lambda a, b: (b * a,)),
+    "!": (1, lambda a: (int(not a),)),
+    "`": (2, lambda a, b: (int(b > a),)),
+    ":": (1, lambda a: (a, a)),
+    "\\": (2, lambda a, b: (a, b)),
+    "$": (1, lambda _a: ()),
+}
 _WIDTH = 80
 _HEIGHT = 25
 _LONG_BITS = sizeof(c_long) * 8
@@ -59,6 +84,15 @@ type _Effect = str | None
 def _pop(stack: _Stack) -> tuple[int, _Stack]:
     """Return the top and the rest; an empty stack reads as 0."""
     return (0, None) if stack is None else stack
+
+
+def _pops(stack: _Stack, count: int) -> tuple[tuple[int, ...], _Stack]:
+    """Return the top ``count`` values, top first, and the rest."""
+    values = []
+    for _ in range(count):
+        value, stack = (0, None) if stack is None else stack
+        values.append(value)
+    return tuple(values), stack
 
 
 def _push(stack: _Stack, *values: int) -> _Stack:
@@ -95,110 +129,102 @@ def _values(stack: _Stack) -> tuple[int, ...]:
     return tuple(reversed(values))
 
 
-def _advance(  # noqa: C901
+def _supplied(value: int | None, command: str, what: str) -> int:
+    """Return an input the shell read for ``command``; refuse a missing one."""
+    if value is None:
+        raise HaltError(
+            f"'{command}' reads {what} and there is no input left",
+            hint="supply another input value or stop reading at end of input",
+        )
+    return value
+
+
+def _put(grid: _Grid, x: int, y: int, value: int) -> _Grid:
+    """Return the grid with cell (x, y) set to a byte; outside, unchanged."""
+    if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
+        return grid
+    row = (*grid[y][:x], chr(value & 0xFF), *grid[y][x + 1 :])
+    return (*grid[:y], row, *grid[y + 1 :])
+
+
+def _reads(state: _State) -> str | None:
+    """Name what the next command takes from outside the state, if anything.
+
+    ``"char"`` for ``~``, ``"number"`` for ``&``, ``"divisor"`` for a zero
+    divisor (an empty stack pops as 0, so ``/`` alone reads too), and
+    ``"draw"`` for ``?``.  String mode reads nothing: it pushes the cell.
+    """
+    (col, row, _dx, _dy), grid, stack, string, done = state
+    if done or string:
+        return None
+    command = grid[row][col]
+    if command in "/%" and _pop(stack)[0] == 0:
+        return "divisor"
+    return _READS.get(command)
+
+
+def _advance(
     state: _State,
     char_input: int | None = None,
     number_input: int | None = None,
     random_dir: int | None = None,
 ) -> tuple[_State, _Effect]:
-    """Return the next state and the text this cell prints, if any."""
+    """Run the cell under the pointer, then move one cell along the heading.
+
+    Inputs come from the shell, which reads what :func:`_reads` names; the
+    result is the next state and the text this cell prints, if any.
+    """
     (col, row, dx, dy), grid, stack, string, done = state
     if done:
         return state, None
-    height, width = len(grid), len(grid[0])
     command, effect = grid[row][col], None
-
     if string and command != '"':
-        # String mode consumes every cell, spaces included, until the quote.
-        (col, row) = (
-            (col + dx) % width,
-            (row + dy) % height,
-        )
-        return (
-            state._replace(cursor=(col, row, dx, dy), stack=_push(stack, ord(command))),
-            None,
-        )
-    if command == '"':
-        string = not string
-    elif command in "0123456789":
-        stack = _push(stack, int(command))
-    elif command in "+-*/%":
-        a, stack = _pop(stack)
-        b, stack = _pop(stack)
-        operation = _ARITHMETIC.get(command)
-        value = operation(b, a) if operation else _divide(a, b, command, number_input)
-        stack = _push(stack, value)
-    elif command == "!":
-        a, stack = _pop(stack)
-        stack = _push(stack, 0 if a else 1)
-    elif command == "`":
-        a, stack = _pop(stack)
-        b, stack = _pop(stack)
-        stack = _push(stack, 1 if b > a else 0)
-    elif command in _HEADINGS:
-        dx, dy = _HEADINGS[command]
-    elif command == "?":
-        if random_dir is None:
-            raise HaltError(
-                "'?' needs a random draw and none was supplied",
-                hint="supply a randomness source for this operation",
-            )
-        dx, dy = _DIRECTIONS[random_dir]
-    elif command == "_":
-        a, stack = _pop(stack)
-        dx, dy = (1, 0) if a == 0 else (-1, 0)
-    elif command == "|":
-        a, stack = _pop(stack)
-        dx, dy = (0, 1) if a == 0 else (0, -1)
-    elif command == ":":
-        a, stack = _pop(stack)
-        stack = _push(stack, a, a)
-    elif command == "\\":
-        a, stack = _pop(stack)
-        b, stack = _pop(stack)
-        stack = _push(stack, a, b)
-    elif command == "$":
-        _value, stack = _pop(stack)
-    elif command == ".":
-        a, stack = _pop(stack)
-        effect = f"{a} "
-    elif command == ",":
-        a, stack = _pop(stack)
-        effect = chr(a & 0xFF)
-    elif command == "#":
-        col, row = (col + dx) % width, (row + dy) % height
-    elif command == "g":
-        y, stack = _pop(stack)
-        x, stack = _pop(stack)
-        in_grid = 0 <= y < height and 0 <= x < width
-        stack = _push(stack, ord(grid[y][x]) if in_grid else 0)
-    elif command == "p":
-        y, stack = _pop(stack)
-        x, stack = _pop(stack)
-        v, stack = _pop(stack)
-        if 0 <= y < height and 0 <= x < width:
-            rows = list(grid)
-            cols = list(rows[y])
-            cols[x] = chr(v & 0xFF)
-            rows[y] = tuple(cols)
-            grid = tuple(rows)
-    elif command == "&":
-        if number_input is None:
-            raise HaltError(
-                "'&' reads a number and there is no input left",
-                hint="supply another input value or stop reading at end of input",
-            )
-        stack = _push(stack, number_input)
-    elif command == "~":
-        if char_input is None:
-            raise HaltError(
-                "'~' reads a character and there is no input left",
-                hint="supply another input value or stop reading at end of input",
-            )
-        stack = _push(stack, char_input)
-    elif command == "@":
-        done = True
-    col, row = (col + dx) % width, (row + dy) % height
+        stack = _push(stack, ord(command))
+    elif command in _STACK_OPS:
+        arity, operation = _STACK_OPS[command]
+        popped, stack = _pops(stack, arity)
+        stack = _push(stack, *operation(*popped))
+    else:
+        match command:
+            case '"':
+                string = not string
+            case ">" | "v" | "<" | "^":
+                dx, dy = _HEADINGS[command]
+            case "?":
+                if random_dir is None:
+                    raise HaltError(
+                        "'?' needs a random draw and none was supplied",
+                        hint="supply a randomness source for this operation",
+                    )
+                dx, dy = _DIRECTIONS[random_dir]
+            case "_" | "|":
+                a, stack = _pop(stack)
+                dx, dy = _BRANCHES[command][bool(a)]
+            case "#":
+                col, row = (col + dx) % len(grid[0]), (row + dy) % len(grid)
+            case "/" | "%":
+                (a, b), stack = _pops(stack, 2)
+                stack = _push(stack, _divide(a, b, command, number_input))
+            case ".":
+                a, stack = _pop(stack)
+                effect = f"{a} "
+            case ",":
+                a, stack = _pop(stack)
+                effect = chr(a & 0xFF)
+            case "g":
+                (y, x), stack = _pops(stack, 2)
+                in_grid = 0 <= y < len(grid) and 0 <= x < len(grid[0])
+                stack = _push(stack, ord(grid[y][x]) if in_grid else 0)
+            case "p":
+                (y, x, value), stack = _pops(stack, 3)
+                grid = _put(grid, x, y, value)
+            case "&":
+                stack = _push(stack, _supplied(number_input, "&", "a number"))
+            case "~":
+                stack = _push(stack, _supplied(char_input, "~", "a character"))
+            case "@":
+                done = True
+    col, row = (col + dx) % len(grid[0]), (row + dy) % len(grid)
     return _State((col, row, dx, dy), grid, stack, string, done), effect
 
 
@@ -273,44 +299,29 @@ class _Machine:
         current = cast(_State, state)
         if current.done:
             return (current,)
-        col, row, _dx, _dy = current.cursor
-        command = current.grid[row][col]
-        interpreting = not current.string
-        stack = current.stack
-        if interpreting and command in "~&":
-            return None
-        if interpreting and command in "/%" and (not stack or stack[0] == 0):
-            # Zero divisors read a result too; predicting a halt loses that input.
-            return None
-        if interpreting and command == "?":
-            return tuple(_advance(current, random_dir=d)[0] for d in range(4))
-        return (_advance(current)[0],)
+        match _reads(current):
+            case None:
+                return (_advance(current)[0],)
+            case "draw":
+                return tuple(_advance(current, random_dir=d)[0] for d in range(4))
+            case _:
+                return None  # a read cannot be forked
 
     def step(self) -> None:
         if self.halted:
             return
-        (col, row, _, _), grid, stack, string, _ = self.state
-        command = grid[row][col]
-        interpreting = not string
-        char_input = self.io.input_char() if interpreting and command == "~" else None
-        # An empty stack pops as 0, so it is a zero divisor like any other and
-        # must read a result too.  Guarding on a non-empty stack instead made
-        # `0/` read while `/` halted, on the same divisor.
-        needs_number = interpreting and (
-            command == "&" or (command in "/%" and (not stack or stack[0] == 0))
-        )
+        reads = _reads(self.state)
+        char_input = self.io.input_char() if reads == "char" else None
         number_input = None
-        if needs_number:
+        if reads in ("number", "divisor"):
             try:
                 number_input = self.io.input_num()
             except EOFError:
-                # `&` is a plain read, so its EOF propagates.  A zero divisor
-                # is documented to raise HaltError instead, and the eager read
-                # here fired first -- leaving `_advance`'s HaltError branch
-                # unreachable through `run`.  Hand it the missing result.
-                if command == "&":
+                # `&` is a plain read: its EOF propagates.  A zero divisor
+                # gets no result instead, and halts as documented.
+                if reads == "number":
                     raise
-        random_dir = draw(self._rng, 4) if interpreting and command == "?" else None
+        random_dir = draw(self._rng, 4) if reads == "draw" else None
         self.state, effect = _advance(self.state, char_input, number_input, random_dir)
         if effect is not None:
             self.io.print_str(effect)
