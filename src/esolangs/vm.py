@@ -125,6 +125,25 @@ def _checked_unwrap(
     return _unwrap(machine, protocol, role, hint=hint)
 
 
+def _refuse_random(machine: object, proof: str) -> None:
+    """Raise when ``machine`` draws: ``proof`` assumes the next lap repeats.
+
+    Branching cannot stand in -- a growing state never repeats -- so a
+    random machine is refused rather than handed over.
+    """
+    inner = getattr(machine, "vm", machine)
+    inner = getattr(inner, "_machine", inner)
+    if isinstance(inner, _BranchingStepMachine) and not getattr(inner, "halted", True):
+        raise with_hint(
+            TypeError(
+                f"random machines: a {proof} proof assumes each lap repeats "
+                "the last, and a draw can change the next one"
+            ),
+            "bound the run instead; run_until_halt_or_all_branches_cycle "
+            "decides exact cycles over every draw",
+        )
+
+
 def run_until_halt_or_cycle(
     machine: _StepMachine | VM, limit: int | None = None
 ) -> bool:
@@ -300,8 +319,10 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     lap (``f(x - 1)`` over unbounded ints); O(depth) per push.  ``limit``
     bounds pushes examined -- a repeat shows within a few frames (three
     across the suite) -- and exhausting it raises
-    :class:`TimeoutError`.  No call stack raises :class:`TypeError`.
+    :class:`TimeoutError`.  No call stack, or a random machine, raises
+    :class:`TypeError`.
     """
+    _refuse_random(machine, "replayed-ancestor")
     machine = cast(
         _FramedMachine,
         _checked_unwrap(
@@ -425,8 +446,9 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     ``>+[[<]>[>]+]`` is out of reach (visits share a frozen prefix, and a
     machine counting its walk into ``ip`` could halt on a count the pair
     never saw).  ``limit`` is in steps and raises :class:`TimeoutError`;
-    no tape raises :class:`TypeError`.
+    no tape, or a random machine, raises :class:`TypeError`.
     """
+    _refuse_random(machine, "tape-growth")
     machine = cast(
         _TapeMachine,
         _checked_unwrap(
@@ -576,8 +598,10 @@ def run_until_halt_or_value_growth(
     is consistent with anything next.  ``limit`` is in steps; a step costs
     the whole tape, and 20_000 is the measured turn of that curve (~1.6s
     worst case, under a millisecond on the two programs this is for).
-    Bounded values raise :class:`TypeError`: a climbing byte wraps.
+    Bounded values raise :class:`TypeError`: a climbing byte wraps.  So does a
+    random machine.
     """
+    _refuse_random(machine, "value-growth")
     machine = cast(
         _AffineMachine,
         _checked_unwrap(
