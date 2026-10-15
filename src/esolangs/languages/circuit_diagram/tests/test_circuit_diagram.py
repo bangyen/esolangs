@@ -1,5 +1,8 @@
 r"""Unit tests for the Circuit Diagram interpreter."""
 
+# Deferred: ``_lru_cache_wrapper[...]`` is not subscriptable before 3.13.
+from __future__ import annotations
+
 import time
 from collections import OrderedDict
 from functools import _lru_cache_wrapper, lru_cache, partial

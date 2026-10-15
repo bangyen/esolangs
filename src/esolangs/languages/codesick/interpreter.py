@@ -138,6 +138,10 @@ def _advance(
 class _Machine:
     """The shell around :func:`_advance`: memory, labels, input and output."""
 
+    #: Stdin is one string, read once: an underfed run reads a shorter
+    #: string and answers the row it spells.
+    eof_is_a_value = True
+
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         parsed, reads = _load(code)
