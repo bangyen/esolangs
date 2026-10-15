@@ -1,15 +1,18 @@
-"""Boolean program generator for 1 + i: a decision tree of functions.
+"""1 + i Boolean program generator: a decision tree of function literals.
 
-A node pushes its 0-child and its 1-child as function literals, reads its
-bit with ``B`` and lets ``?`` invoke the 1-child on a nonzero bit, the
-0-child on zero.  ``?`` leaves both functions on the stack, so every child
-starts with ``$$``.  Equal halves (``subtree_ids``) push one literal and
-duplicate it with ``:``; other repeats are not shared, since a function
-deeper in the stack is reached only by rolling the whole stack.  A
-constant subtable still reads its remaining bits (``B$`` each) and prints
-``iic+`` (0) or ``ici*`` (1); a last-level node whose halves are 0 and 1
-prints its bit, and 1 and 0 prints ``1 - b`` (``ici*Bii**+``).  Size and
-build time O(T); at most 6n + 5 steps.
+A node pushes its 0- and 1-child as function literals, reads its bit with
+``B`` and lets ``?`` invoke one; ``?`` leaves both on the stack, so every child
+starts with ``$$``.  Equal halves (``subtree_ids``) push one literal and ``:``
+it.  A constant subtable still reads its bits (``B$`` each) and prints
+``iic+`` (0) or ``ici*`` (1); a last-level 0/1 node prints ``b`` or ``1 - b``
+(``ici*Bii**+``).
+
+Size:
+    O(T) size and build, at most 6n + 5 steps; n=10 and: 227 chars,
+    n=10 random 1847: 7,527 chars.
+
+Decisions:
+    Other repeats are not shared: a deeper function needs a whole-stack roll.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
