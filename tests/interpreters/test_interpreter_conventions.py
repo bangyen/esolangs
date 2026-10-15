@@ -234,7 +234,11 @@ def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:
         issues.append("reads input but does not document EOF")
     if "raise HaltError" in source and "HaltError" not in doc:
         issues.append("raises HaltError but does not document it")
-    if "raise ValueError" in source and "ValueError" not in doc:
+    # The public name: the runtime turns an interpreter's ValueError into
+    # ProgramError, which is what a caller catches.
+    if "raise ValueError" in source and not {"ValueError", "ProgramError"} & set(
+        re.findall(r"\w+", doc)
+    ):
         issues.append("raises ValueError but does not document it")
     if re.search(r"^Implementation:$", doc, re.MULTILINE):
         issues.append("implementation notes belong in comments beside the code")

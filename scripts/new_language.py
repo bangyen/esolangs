@@ -194,16 +194,10 @@ def _seed_curation(name: str) -> None:
 
 
 def _interpreter_stub(name: str) -> str:
+    """Return ``_template.py`` named for ``name``, its maintainer comment dropped."""
     template = (ROOT / "src/esolangs/runtime/_template.py").read_text()
-    body = template.split('"""', 2)[2]
-    return (
-        f'"""Interpreter for {name}.\n\n{PLACEHOLDER} the machine from the wiki '
-        "page: memory, pointer, commands>\n\nA malformed program raises "
-        ":class:`ValueError`;\nexhausted input raises :class:`EOFError` <or, if the "
-        "spec gives EOF a value, say what a read returns and set eof= on "
-        "its LANGUAGE>.\n"
-        '"""' + body
-    )
+    _, doc, body = template.split('"""', 2)
+    return '"""' + doc.replace("<Language>", name) + '"""' + body
 
 
 @dataclass(frozen=True)

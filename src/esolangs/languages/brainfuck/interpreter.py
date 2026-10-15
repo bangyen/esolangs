@@ -1,12 +1,19 @@
 """Interpreter for Brainfuck.
 
 8-bit wrapping tape growing in both directions, matching-bracket loops.
-``<`` at the leftmost cell adds a fresh zero cell to its left: the wiki
-allows cells left of the start ("an interpreter may provide some"), and
-its primo and KSab Hello Worlds need four and five of them.  Unbalanced
-brackets raise :class:`ValueError`; ``,`` raises :class:`EOFError` on
-exhausted input (the spec leaves EOF undefined), so ``,[.,]`` ends with
-an error.
+
+Input/output:
+    ``,`` reads one byte and ``.`` writes one.  ``,`` at EOF raises (the
+    spec leaves EOF undefined), so ``,[.,]`` ends with an error.
+
+Errors:
+    ProgramError: Unbalanced brackets.
+    InputExhaustedError: ``,`` at EOF.
+
+Decisions:
+    * ``<`` at the leftmost cell adds a fresh zero cell to its left: the
+      wiki allows cells left of the start ("an interpreter may provide
+      some"), and its primo and KSab Hello Worlds need four and five.
 """
 
 from __future__ import annotations

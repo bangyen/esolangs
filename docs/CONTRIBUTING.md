@@ -151,9 +151,14 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 - B-tapemark receives whole source.
 - EGL receives whole source.
 
-`tests/test_interpreter_conventions.py` checks the module docstring names
-the language and mentions `EOF`, `HaltError` or `ValueError` wherever the
-interpreter reads input or raises them.
+The module docstring is the language's spec (`describe()["spec"]`); its
+shape (prose, then `Commands:`, `Input/output:`, `Errors:`, `Decisions:`) is
+`_template.py`'s own docstring, which `just new-language` copies.  `Errors:`
+names the public exception a caller catches, not the builtin the interpreter
+raises, and every entry is checked by triggering it.
+`tests/interpreters/test_interpreter_conventions.py` checks the docstring
+names the language and mentions `EOF`, `HaltError`, and `ProgramError` (or
+`ValueError`) wherever the interpreter reads input or raises them.
 
 ## What makes a generator optimization worth shipping
 
