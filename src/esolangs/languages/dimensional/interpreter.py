@@ -272,15 +272,14 @@ def _advance(  # noqa: C901
 ) -> tuple[_State, _Effect | None]:
     """Return the state after one command, and what it wants done.
 
-    Pure in the sense the series means: it reads its arguments and returns
-    a description.  The tape is reached only through ``value`` and
-    ``coord``, which the two loop forms need to decide where the cursor
-    goes, and the three reading commands arrive as ``port``.
+    Pure: it reads its arguments and returns a description.  The tape is
+    reached only through ``value`` and ``coord``, which the two loop forms
+    need to place the cursor; the three reading commands arrive as ``port``.
 
-    The cursor is already past the command.  Its advance is the caller's,
-    because several commands can reject their operand -- a ``:`` with
-    nothing after it, a ``=`` without two hex digits -- and the original
-    had moved the cursor before it looked.
+    The cursor is already past the command; the caller advances it, since
+    several commands can reject their operand (a ``:`` with nothing after
+    it, a ``=`` without two hex digits) and the original had moved the
+    cursor before looking.
     """
     ind, comment, axis = state
     c = code[ind - 1]
@@ -424,14 +423,13 @@ class _Machine:
     def step(self) -> None:
         """Execute one command (or comment character), advancing the position.
 
-        The ports live here rather than in the transition: this is the
-        shell.  ``.`` prints the addressed byte, and ``,``/``d``/``x`` read
-        one -- as a character, a decimal number, and a hex number.
+        The ports live here, not in the transition.  ``.`` prints the
+        addressed byte; ``,``/``d``/``x`` read one as a character, a decimal
+        number, and a hex number.
 
-        The cursor is advanced before the command runs, because several
-        commands reject their operand after the original had already moved
-        it: a ``:`` at the end of the code, a ``=`` without two hex digits,
-        and any of the three reads at EOF.
+        The cursor advances before the command runs, since the original had
+        moved it before rejecting a ``:`` at the end of the code, a ``=``
+        without two hex digits, or any of the three reads at EOF.
         """
         if self.halted:
             return

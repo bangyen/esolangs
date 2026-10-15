@@ -455,10 +455,9 @@ def _arm_spacing(arm: Node | None, plan: _Plan, *, tree: bool = False) -> int:
     term amplified with depth (7760x3800 vs ~1600 at depth 3).  The arm's
     *lateral* reach is the fork's own trunk direction, reserved by
     :func:`_stem_len` instead, where it costs one stem rather than a
-    depth-amplified box.  A
-    goto-carrying arm adds one :data:`_GOTO_CORRIDOR`, which guarantees
-    :func:`_loop_return_legs` a bay of ``_BRANCH_SPACING + _GOTO_CORRIDOR``
-    = 8 -- exactly the lane at :data:`_DIAGONAL_APPROACH` plus
+    depth-amplified box.  A goto-carrying arm adds one :data:`_GOTO_CORRIDOR`,
+    guaranteeing :func:`_loop_return_legs` a bay of ``_BRANCH_SPACING +
+    _GOTO_CORRIDOR`` = 8, the lane at :data:`_DIAGONAL_APPROACH` plus
     ``_CLEARANCE`` both sides.  One per arm, not per goto: nested returns ride
     their own fork's bay (dropping the multiplier shrank areas 17% at depth
     4 to 44% at depth 10).  A goto-free program renders pixel-identically.
@@ -512,15 +511,14 @@ def _stem_len(node: Node, plan: _Plan) -> int:
 
     A loop-back's ring reaches ``hi_x`` back along the trunk from the vertex
     (:func:`_loop_return_legs`), and that direction is *lateral* in the body
-    arm's own frame -- the one direction :func:`_arm_spacing` deliberately
-    does not reserve.  Nothing else reserves it either, so at
-    :data:`_STEM_LEN` the ring wrapped back past the fork into the straight
-    run drawn before it and the drift guard raised: every depth >= 2 program
-    with a leading run of 6 or more `+` failed (5 cleared it, 6 did not).
-    Sizing the stem to the ring instead keeps the wrap inside the stem's own
-    span, which the fork's measured extent already covers.  Only a fork its
-    own body loops back to pays it, so a goto-free program -- and any fork
-    whose ring is shorter than the floor -- renders pixel-identically.
+    arm's own frame, which :func:`_arm_spacing` does not reserve and nothing
+    else does.  At :data:`_STEM_LEN` the ring wrapped back past the fork into
+    the straight run drawn before it and the drift guard raised: every
+    depth >= 2 program with a leading run of 6 or more `+` failed (5 cleared
+    it).  Sizing the stem to the ring keeps the wrap inside the stem's span,
+    which the fork's measured extent already covers.  Only a fork its own
+    body loops back to pays it, so a goto-free program -- and any fork whose
+    ring is shorter than the floor -- renders pixel-identically.
     """
     if id(node) in plan.tree:
         return plan.stem

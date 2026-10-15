@@ -94,13 +94,12 @@ class _Builder:
     def render(self, *, reflect: bool = False) -> str:
         """Render after removing wholly blank rows and columns.
 
-        Each row is drawn from its own cells, only as long as its last
-        one, so the cost is the output's size rather than its bounding box.
-        Dropping an empty row or column cannot move a beam: a blank cell is
-        a no-op wherever it sits.  ``reflect`` mirrors the grid top to
-        bottom, mirrors included, which leaves every row's length alone; a
-        horizontal mirror is as faithful and is not offered, because it
-        moves every ragged edge to the left, where it is rendered.
+        Each row is drawn only as far as its last cell, so cost is the
+        output's size, not its bounding box.  Dropping an empty row or column
+        cannot move a beam: a blank cell is a no-op anywhere.  ``reflect``
+        mirrors the grid top to bottom, mirrors included, leaving every row's
+        length alone; a horizontal mirror is as faithful but not offered, as
+        it moves every ragged edge to the left, where it is rendered.
         """
 
         def axis(values: set[int], *, reverse: bool = False) -> list[int]:

@@ -5,12 +5,11 @@ command, so what a character *means* depends on how many commands have run.
 The generator writes a brainfuck program and :class:`_Builder` spells each
 command against the cycle in force -- backward by default, forward when asked.
 
-``rotation`` selects the cycle, and that is the builder's only parameter: the
-two cycles are the eight commands read in opposite directions, so each holds
-``[`` and ``]`` adjacent and the phase arithmetic below is the same for both.  A
-command that reads as a bracket to a seek depends on the cycle, which
-:func:`_shows` resolves, and the builder spells the intended command through
-the same cycle it will execute under.
+``rotation`` is the builder's only parameter: the two cycles are the eight
+commands read in opposite directions, so each holds ``[`` and ``]`` adjacent
+and the phase arithmetic below is the same for both.  Which command reads as
+a bracket to a seek depends on the cycle (:func:`_shows`), and the builder
+spells the intended command through the cycle it will execute under.
 
 Loops are where that bites.  A bracket seeks its partner before rotating, so
 a loop is sound when its ``[`` and ``]`` execute at the same rotation modulo

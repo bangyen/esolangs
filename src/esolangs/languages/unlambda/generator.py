@@ -4,9 +4,8 @@ Each half of a node is a ``d`` promise, forced by the ``?`` test that selects
 it: Unlambda evaluates an argument before applying it, so a half spelled
 inline would read twice a level and print both answers.  ``?c`` hands its
 argument the spec's ``i`` on a match and ``v`` otherwise.  The ``?1`` flag is
-computed *before* the zero half runs, since that half's read replaces the
-character ``?`` looks at -- testing it afterwards asked about a deeper
-level's character and fired both halves on ``0`` then ``1``.
+computed *before* the zero half runs: that half's read replaces the character
+``?`` looks at, so testing afterwards fired both halves on ``0`` then ``1``.
 
 Each node is a function of one argument, the *share*:
 ``` `@`d`k``s``?0i`dZ``?1i`dO ``` reads, takes both flags at once, and returns

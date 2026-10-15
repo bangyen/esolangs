@@ -7,19 +7,17 @@ Execution starts at the leftmost program-bit and halts when the data-string
 empties; an initially empty program or data-string halts at once, per the
 wiki's first sentence.
 
-Two spec gaps are decided here, the wiki writing a system as prose ("program
-0011, data 1") and never fixing a file format.  The source carries both strings
-separated by a comma, program first, all whitespace ignored so a long program
-may be broken across lines; with no comma it is a program and no data.  And the
-answer is the bit the last ``0`` consumes, printed once the run ends: BCT has no
-I/O vocabulary, and the wiki puts a simulated machine's "input and output" in
-"the sequence of deleted data-bits", so the last deletion is where a result
-already lives.  Nothing is printed when no ``0`` ever fires.
+Two spec gaps are decided here.  The wiki writes a system as prose ("program
+0011, data 1") and fixes no file format, so the source carries both strings
+separated by a comma, program first, whitespace ignored (long programs may
+span lines); with no comma it is a program and no data.  BCT has no I/O
+vocabulary, and the wiki puts a simulated machine's "input and output" in
+"the sequence of deleted data-bits", so the answer is the bit the last ``0``
+consumes, printed once the run ends; nothing is printed when no ``0`` fires.
 
-A character outside ``01,`` and a second comma raise :class:`ValueError`; no
-operation can be invalid once a program parses, so no
-:class:`~esolangs.exceptions.HaltError` arises, and nothing is read so no
-``EOFError`` comes from here.
+A character outside ``01,`` and a second comma raise :class:`ValueError`; a
+parsed program has no invalid operation (no
+:class:`~esolangs.exceptions.HaltError`) and nothing is read (no ``EOFError``).
 """
 
 from __future__ import annotations

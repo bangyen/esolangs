@@ -267,14 +267,13 @@ def find_cursor(mask: Mask) -> Cursor:
     """Isolate the whole arrowhead shape via erosion + growth.
 
     The arrowhead is the only multi-pixel-thick region, so :meth:`Mask.erode`
-    finds its interior (the largest one, so a stray artifact is not
-    mistaken for the cursor).  ``blob`` then grows outward from that
-    interior, admitting a pixel only while it is itself blob-like
-    (``_BLOB_NEIGHBOR_MIN``): a plain flood fill would keep going where the
-    tip touches the path and swallow the drawing, while a fixed radius
-    would leave the 1px outline and the tips behind.  Exactly one
-    arrowhead-shaped blob is required: none raises the shape error, two or
-    more the ambiguity error.
+    finds its interior (the largest, so a stray artifact is not taken for the
+    cursor).  ``blob`` grows outward from it, admitting a pixel only while it
+    is itself blob-like (``_BLOB_NEIGHBOR_MIN``): a plain flood fill would
+    swallow the drawing where the tip touches the path, a fixed radius would
+    leave the 1px outline and the tips behind.  Exactly one arrowhead-shaped
+    blob is required: none raises the shape error, two or more the ambiguity
+    error.
     """
     thick = mask.erode()
     if not thick.any():

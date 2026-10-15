@@ -15,23 +15,18 @@ Subcommands:
 Every subcommand takes ``--help``.  For anything else, invoke the module
 directly with ``python -m``.
 
-``describe`` and ``read-answer`` are here because the two facts that decided
-every wrong answer this tool ever handed out -- how a language wants its
-input bits, and where in the output its answer sits -- were readable from
-Python and from nowhere else.  A shell user could run every one of the
-languages that do not simply print their answer, and could not judge one of
-them: some languages' answer is a mark on one cell of a grid.
+``describe`` and ``read-answer`` expose the two facts behind every wrong
+answer this tool handed out -- how a language wants its input bits, and where
+its answer sits in the output (for some, a mark on one cell of a grid) --
+which were otherwise readable only from Python.
 
-Exit codes separate the failures a caller handles differently: **2** is a
-usage error (an unknown command, option, or language -- nothing ran), **1**
-is the program's own failure (it read past its input, halted on an invalid
-operation, was a template), and **124** is a run stopped by ``--timeout``,
-after timeout(1) -- from every command that takes one, not only ``run`` and
-``debug``.  That last one used to be 1 as well, which left the three
-languages whose answer *is* a timeout indistinguishable from a crash.
-Only
-an unexpected error still reaches the terminal as a traceback, which is what
-a traceback should mean.
+Exit codes: **2** is a usage error (unknown command, option, or language;
+nothing ran), **1** is the program's own failure (read past its input, halted
+on an invalid operation, was a template), and **124** is a run stopped by
+``--timeout``, after timeout(1), from every command that takes one.  124 is
+distinct from 1 so the three languages whose answer *is* a timeout are not
+confused with a crash.  Only an unexpected error reaches the terminal as a
+traceback.
 """
 
 from __future__ import annotations
@@ -537,19 +532,16 @@ def _read_answer(rest: list[str]) -> None:
 def main() -> None:
     """Dispatch the ``esolangs`` subcommands, and handle an interrupt.
 
-    ``KeyboardInterrupt`` is caught here because this tool *invites* it:
-    on a language that answers by not terminating it prints "will run until
-    you stop it", and then dumped a traceback when the reader did. 130 is
-    the shell convention for a command killed by SIGINT.
+    ``KeyboardInterrupt`` is caught because a language that answers by not
+    terminating prints "will run until you stop it", inviting the interrupt;
+    exit 130 is the shell convention for SIGINT.
 
-    ``BrokenPipeError`` likewise: ``esolangs generate ... | head`` is an
-    ordinary thing to type, and closing the pipe before the first write
-    left ``Exception ignored while flushing sys.stdout`` on the terminal
-    and exit 120.
+    ``BrokenPipeError`` likewise: ``esolangs generate ... | head`` closes the
+    pipe before the first write, which otherwise left ``Exception ignored
+    while flushing sys.stdout`` on the terminal and exit 120.
 
-    Anything else is a bug in this package rather than in the program
-    being run, and exits 70 with a one-line report instead of a
-    traceback.
+    Anything else is a bug in this package, not the program being run, and
+    exits 70 with a one-line report instead of a traceback.
     """
     for stream in (sys.stdout, sys.stderr):
         # An ASCII locale (or PYTHONIOENCODING=ascii) cannot encode Forþ:

@@ -60,11 +60,10 @@ def polynomial(truth_table: str) -> str:
     construction is :func:`_polynomial_hybrid` at some ``k``: ``k == n`` a
     folded tree, ``k == 0`` one state machine (an ordered BDD merging equal
     residuals: parity needs two states per level, 11 instructions per
-    input), the interior a machine per residual.  A leading ignored run is drained
-    to bare reads.
-    Reordering is unreachable (a read assigns the single register).
-    Selection is on rendered characters.
-    More than ``_POLYNOMIAL_MAX_INSTRS`` raises :class:`ValueError`.
+    input), the interior a machine per residual.  A leading ignored run is
+    drained to bare reads.  Reordering is unreachable (a read assigns the
+    single register).  Selection is on rendered characters.  More than
+    ``_POLYNOMIAL_MAX_INSTRS`` raises :class:`ValueError`.
     """
     n = _validate_truth_table(truth_table)
 

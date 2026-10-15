@@ -89,21 +89,21 @@ class LanguageInfo(TypedDict):
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
-    ``spec`` contains the interpreter docstring; missing docstrings raise.
+    ``spec`` is the interpreter docstring; a missing one raises.
     ``dialect_settings`` gives runtime defaults and choices.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
     category, recorded by the registry), ``wiki_url``.
-    Generation: ``generator_max_inputs`` is an explicit arity cap (None means
-    none declared, or no generator); ``generator_restrictions`` names additional
+    Generation: ``generator_max_inputs`` is an explicit arity cap (None: none
+    declared, or no generator); ``generator_restrictions`` names additional
     table-dependent budgets, None when there are none.  ``boolean_generator``;
     ``shape`` is the generator's construction growth class -- ``"tree"``,
-    ``"reducing"`` or ``"lookup"`` -- and None without a generator;
+    ``"reducing"`` or ``"lookup"`` -- None without a generator;
     ``parameterized`` (a template, filled by :func:`instantiate`,
     ``reads_input`` false).  Width: ``width_effect`` is
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
     tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
     narrower ``== "layout"``.  Input: ``input_shape`` and ``input_encoding``,
-    the ``(zero, one)`` pair -- the wrong alphabet is a wrong answer; both
+    the ``(zero, one)`` pair (the wrong alphabet is a wrong answer); both
     None unless ``reads_input``.  Answer: ``answer_mode`` is ``"output"``
     (last non-whitespace character), ``"dump"`` (a fixed place in the final
     state) or ``"termination"`` (a proven halt or divergence);
@@ -113,10 +113,9 @@ def describe(language: str) -> LanguageInfo:
     ``("o", "@")`` is a grid mark); :func:`read_answer` returns ``"0"``/``"1"``.
     Machine traits (``self_halts``, ``dumps_on_the_post_halt_step``,
     ``steppable_to_answer``, ``eof_is_a_value``) are documented on
-    :func:`~esolangs.vm.machine_traits`.  ``random``: the interpreter has
-    instructions that draw at random (``run(seed=...)`` fixes them).
-    ``examples`` lists the committed programs as POSIX paths relative to
-    the package
+    :func:`~esolangs.vm.machine_traits`.  ``random``: the interpreter draws at
+    random (``run(seed=...)`` fixes it).  ``examples`` lists the committed
+    programs as POSIX paths relative to the package
     (``importlib.resources.files("esolangs") / path``);
     ``languages/EXAMPLES.md`` says what each computes.
     """

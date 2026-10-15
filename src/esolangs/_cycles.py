@@ -283,17 +283,16 @@ class _FramedMachine(_SteppableMachine, Protocol):
 def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) -> bool:
     """Step ``machine`` until it halts or a call provably replays an ancestor.
 
-    Infinite recursion pushes a frame per step, so the snapshot never
-    repeats; instead each pushed frame is compared with those beneath it,
-    and an equal ``frame_entry_key`` means it replays what the ancestor is
-    still inside.  ``True`` on a halt, ``False`` once such a frame lands.
-    The input position carries the soundness (a base case one read away
-    would otherwise be called a hang).  Misses bindings that differ every
-    lap (``f(x - 1)`` over unbounded ints); O(depth) per push.  ``limit``
-    bounds pushes examined -- a repeat shows within a few frames (three
-    across the suite) -- and exhausting it raises
-    :class:`TimeoutError`.  No call stack, or a random machine, raises
-    :class:`TypeError`.
+    Infinite recursion pushes a frame per step, so snapshots never repeat;
+    each pushed frame is compared with those beneath it, and an equal
+    ``frame_entry_key`` means it replays what the ancestor is still inside.
+    ``True`` on a halt, ``False`` once such a frame lands.  The input
+    position carries the soundness (a base case one read away would
+    otherwise be called a hang).  Misses bindings that differ every lap
+    (``f(x - 1)`` over unbounded ints); O(depth) per push.  ``limit`` bounds
+    pushes examined -- a repeat shows within a few frames (three across the
+    suite) -- and exhausting it raises :class:`TimeoutError`.  No call
+    stack, or a random machine, raises :class:`TypeError`.
     """
     _refuse_random(machine, "replayed-ancestor")
     machine = cast(
@@ -348,11 +347,10 @@ class _TapeMachine(_SteppableMachine, Protocol):
     ``ip`` is ``Hashable``: a 2D position includes its heading.
     Opting in claims the language reads and writes only the cell under
     the pointer, is translation-invariant for ``ptr >= 1``, and grows
-    rightward by fresh zeros (growing leftward only from ``ptr == 0``,
-    which the certificate's ``m >= 1`` excludes).  The adapters that
-    implement this protocol are the carriers; absolute addresses,
-    wrapping or fixed tapes, and leftward growth away from ``ptr == 0``
-    must not declare it.
+    rightward by fresh zeros (leftward only from ``ptr == 0``, which the
+    certificate's ``m >= 1`` excludes).  Absolute addresses, wrapping or
+    fixed tapes, and leftward growth away from ``ptr == 0`` must not
+    declare it.
     """
 
     @property

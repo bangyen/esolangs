@@ -74,13 +74,12 @@ INTERPRETERS = {
 def example_stems() -> dict[str, str]:
     """Return canonical id -> the example filename stem, per language.
 
-    The stems are dash-separated display names; every
-    internal reference is the canonical ID, and a few
-    match neither by hand.  Deriving the map from the same example table
-    :meth:`~esolangs.generation.examples.BooleanExample.build` uses keeps the two
-    from drifting: a mismatch is a missing key, not a silently empty example
-    list, which once left a fifth of the registry reporting none.  The import
-    is deferred because ``examples`` imports this module.
+    Stems are dash-separated display names, internal references are canonical
+    IDs, and a few match neither by hand.  The map derives from the example
+    table :meth:`~esolangs.generation.examples.BooleanExample.build` uses, so
+    a mismatch is a missing key, not a silently empty example list (which once
+    left a fifth of the registry reporting none).  The import is deferred
+    because ``examples`` imports this module.
     """
     from esolangs.generation import examples as _examples
 
@@ -231,12 +230,10 @@ def wiki_url(name: str) -> str:
 def resolve(name: str) -> str:
     """Return the registered display name matching ``name``.
 
-    An exact hit wins; otherwise the name is matched by :func:`canonical_id`,
-    which makes the lookup case- and punctuation-insensitive: ``Brainfuck``,
-    ``brainfuck`` and ``BRAINFUCK`` all reach the registered ``brainfuck``.
-    The display names mix conventions,
-    so a caller cannot guess the spelling, and "unknown language" for a name
-    plainly in ``esolangs list`` is the wrong answer.  A miss raises
+    An exact hit wins; otherwise :func:`canonical_id` makes the lookup case-
+    and punctuation-insensitive: ``Brainfuck``, ``brainfuck`` and ``BRAINFUCK``
+    all reach the registered ``brainfuck``.  Display names mix conventions, so
+    callers cannot guess the spelling.  A miss raises
     :class:`UnknownLanguageError` naming the closest registered spellings.
     """
     if not isinstance(name, str):

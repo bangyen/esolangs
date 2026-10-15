@@ -104,10 +104,9 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
     A real root ``p**v`` (``1 <= v <= 8``) is ``[v]``; a root ``a + p**b i``
     (``1 <= b <= 6``) is ``[a, b]``; anything else is dropped.  The codes
     come out grouped by ascending ``p`` and, within one prime, in
-    ``(imag, real)`` order -- what scanning every integer up to the largest
-    root did, but with each root recognised by its integer ``v``-th roots and
-    a proven primality test, so the cost is polynomial in the roots' bits
-    rather than in their values.
+    ``(imag, real)`` order, as scanning every integer up to the largest root
+    would give.  Roots are recognised by integer ``v``-th roots and a proven
+    primality test, so cost is polynomial in the roots' bits, not values.
     """
     keyed: list[tuple[int, int, int, list[int]]] = []
     for root in pre:

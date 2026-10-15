@@ -60,18 +60,17 @@ def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
     One ``$`` arms the whole forward leg: ``~ * ;`` per leading bit, then a
     bare ``~`` for the last, whose weight is one.  An ignored input weighs 0
     and is a bare ``~`` the next read overwrites, so it may not be last; at
-    least one leading weight is nonzero.  The partial products stay
-    in the grid where ``;`` wrote them, and the return leg one cell to the
-    side adds them back -- a ``+`` under a ``;`` is the only placement that
-    puts a stored operand where the mole can reach it, since a work command
-    reads its neighbours and never the cell it stands on.
+    least one leading weight is nonzero.  The partial products stay in the
+    grid where ``;`` wrote them, and the return leg one cell to the side adds
+    them back: a ``+`` under a ``;`` is the only placement that puts a stored
+    operand where the mole can reach it, since a work command reads its
+    neighbours, never its own cell.
 
-    ``bonus`` rides the forward leg instead, added straight onto the first
-    product: the return leg's own operands come from the row above it, and
-    that row is the forward leg, so a constant there would be armed.  The
-    two leaves' counts index from different offsets -- a row count clears
-    the ``$`` that arms it and the blank under it, a column count nothing --
-    which is the whole reason this is a parameter.
+    ``bonus`` rides the forward leg, added straight onto the first product:
+    the return leg's operands come from the row above it, which is the
+    forward leg, so a constant there would be armed.  The two leaves' counts
+    index from different offsets (a row count clears the arming ``$`` and the
+    blank under it, a column count nothing), hence the parameter.
 
     Returns the cells, the turns as local headings, the operand each reader
     must find, where the mole leaves heading back, and the bounding box.

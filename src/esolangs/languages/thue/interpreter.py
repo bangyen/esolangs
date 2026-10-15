@@ -6,14 +6,13 @@ the starting state.  A step replaces one occurrence of some rule's ``lhs``
 with its ``rhs``, and the program ends when no ``lhs`` occurs.  ``:::`` as a
 right-hand side substitutes a line of input; a ``~`` prefix prints the rest.
 
-Which occurrence of which rule is the spec's choice, and it is random, so this
-interpreter *draws* it through the shared
-:mod:`~esolangs.runtime.randomness` hook rather than pinning a tie-break:
-pinned, overlapping rules would compute whatever this file preferred.  ``rng``
-fixes the draw for reproducibility, and the branching protocol below lets the
-hang proof search *every* draw, as a random-branch language does.  A program whose
-rewrites never collide has one in every state, so no draw can change it --
-how the generated programs stay reproducible, asserted by their suite.
+The spec picks the occurrence and rule at random, so this interpreter *draws*
+through the shared :mod:`~esolangs.runtime.randomness` hook rather than
+pinning a tie-break (pinned, overlapping rules would compute whatever this
+file preferred).  ``rng`` fixes the draw, and the branching protocol below
+lets the hang proof search *every* draw.  A program whose rewrites never
+collide has one choice per state, so no draw changes it; that keeps generated
+programs reproducible (asserted by their suite).
 
 The separator is the first ``::=`` line with nothing but whitespace on either
 side, and a ``~`` rule whose text is empty prints a newline and nothing else;

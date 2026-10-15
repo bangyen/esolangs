@@ -1,25 +1,20 @@
 """Boolean image masks as one integer per row, with no third-party arrays.
 
-A Line drawing is a sparse black-and-white image, and almost everything done
-to one here is either a whole-image bitwise step (erode, redraw-and-compare)
-or a single-pixel probe from the walker.  Storing each row as one Python
-``int`` -- bit ``x`` set means pixel ``(y, x)`` is ink -- serves both: CPython
-does bigint bitwise ops a machine word at a time, so a row-wide AND is one
-fast operation rather than a per-pixel Python loop, while ``(row >> x) & 1``
-is as quick as any other scalar read.
+Almost everything done to a Line drawing is a whole-image bitwise step (erode,
+redraw-and-compare) or a single-pixel probe from the walker.  Storing each row
+as one Python ``int`` -- bit ``x`` set means pixel ``(y, x)`` is ink -- serves
+both: CPython does bigint bitwise ops a word at a time, so a row-wide AND is
+one operation, while ``(row >> x) & 1`` is as quick as any scalar read.
 
-That combination is why this file exists instead of numpy.  On the largest
-canvas the test suite builds (a 5-input decision tree, 3600x2600), eroding
-via row bitmasks and scanning for the upscale factor both finish in under
-10ms, against 0.01s and 0.37s for the numpy equivalents -- the scale scan
-wins because it can stop at the first non-uniform block instead of
-materialising a padded copy per candidate.  Single-pixel reads measured
-identical to numpy's scalar indexing.  Nothing here is a compromise made to
-shed the dependency; the representation genuinely fits the problem.
+Against numpy, on the largest canvas the test suite builds (a 5-input decision
+tree, 3600x2600), eroding via row bitmasks and scanning for the upscale factor
+both finish in under 10ms, against 0.01s and 0.37s for numpy -- the scale scan
+wins because it stops at the first non-uniform block instead of materialising a
+padded copy per candidate.  Single-pixel reads measured identical to numpy's.
 
-:class:`Mask` deliberately mimics the small slice of the ndarray API this
-codebase used -- ``mask.shape``, ``mask[y, x]``, ``mask.any()``, ``.sum()``
--- so the walker in ``lattice.py`` reads exactly as it did before.
+:class:`Mask` mimics the small slice of the ndarray API this codebase used --
+``mask.shape``, ``mask[y, x]``, ``mask.any()``, ``.sum()`` -- so the walker in
+``lattice.py`` reads as it did before.
 """
 
 from __future__ import annotations

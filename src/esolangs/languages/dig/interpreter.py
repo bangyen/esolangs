@@ -3,27 +3,26 @@
 2D esoteric language with a mole that moves on a grid and can dig underground.
 Movement commands work overground, work commands function underground.
 
-The wiki only lists ``@`` as a halt; this interpreter also stops the program
-(without error) when the mole walks off the grid.  A work command that needs a
-digit from an adjacent cell but finds none, or divides by an adjacent zero, is
-an invalid runtime operation and halts the program with
-:class:`~esolangs.exceptions.HaltError`; an empty program is malformed and
-rejected with :class:`ValueError`.
+The wiki only lists ``@`` as a halt; this interpreter also stops cleanly when
+the mole walks off the grid.  A work command that needs an adjacent digit but
+finds none, or divides by an adjacent zero, halts with
+:class:`~esolangs.exceptions.HaltError`; an empty program is rejected with
+:class:`ValueError`.
 
 ``#`` reads its steer from an adjacent digit and the wiki covers every case
 ("Rotates Mole to left when value beside it is 0, and right when 1.  When
 it's neither of those, keep straight.").  ``%`` is specified only for 0 and
 1 ("Overrides current value with space when 0, and newline when 1"); the
-other eight digits leave the mole unchanged here rather than being assigned
-a meaning the wiki does not give them.
+other eight digits leave the mole unchanged rather than get an invented
+meaning.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
-The mole holds one integer (a letter is its code), and ``:`` prints one
-below 10 as a decimal and any other as a character: the page has no
-types.  ``;`` copies the mole into its cell and keeps it ("the ``;`` is
-given the Moles current value"), so the truth machine prints ``2111...``
-on 1, as drawn; zeroing the mole there would make it print ``111...``.
+The mole holds one integer (a letter is its code); ``:`` prints one below 10
+as a decimal and any other as a character, as the page has no types.  ``;``
+copies the mole into its cell and keeps it ("the ``;`` is given the Moles
+current value"), so the truth machine prints ``2111...`` on 1, as drawn;
+zeroing the mole would print ``111...``.
 """
 
 from functools import lru_cache
@@ -100,14 +99,12 @@ def _advance(  # noqa: C901
 ) -> _State:
     """Return the state after executing the cell under the mole.
 
-    Pure: it reads ``state`` and returns a new one.  Two effects stay with
-    the caller.  ``:`` prints the mole -- this only clears it -- and the
-    reads ``=``/``~`` arrive as ``value``, already taken from the port,
-    with ``None`` standing for the empty read that zeroes the mole.
+    Pure; two effects stay with the caller.  ``:`` prints the mole (this only
+    clears it), and the reads ``=``/``~`` arrive as ``value``, already taken
+    from the port, with ``None`` the empty read that zeroes the mole.
 
-    A work command fires only while ``num`` is positive, and every one that
-    fires spends one.  Outside that, a cell is scenery the mole walks over
-    -- which is what lets a Dig grid carry its data in plain sight.
+    A work command fires only while ``num`` is positive, and each spends one;
+    otherwise a cell is scenery, so a grid can carry data in plain sight.
     """
     code, row, col, move, mole, num, done = state
     char = code[row][col]

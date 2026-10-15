@@ -289,14 +289,13 @@ def _addsubjump_ordered(
 ) -> str:
     """Emit one input order's AddSubJump program; see :func:`addsubjump`.
 
-    ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame; ``perm`` surfaces only where a node names the *stream*
-    input whose cell it tests.
+    ``truth_table`` is already permuted, so row indices are in the permuted
+    frame; ``perm`` surfaces only where a node names the *stream* input
+    whose cell it tests.
 
     Cells are named by the input they hold (``B{i}`` for stream input ``i``),
-    not by the instruction index that allocated them.  The node-read build
-    keyed its names off ``len(instructions)``, which a reorder shifts; naming
-    by input keeps every reference stable however the tree comes out.
+    not by the allocating instruction index: the node-read build keyed names
+    off ``len(instructions)``, which a reorder shifts.
     """
     n = _validate_truth_table(truth_table)
 

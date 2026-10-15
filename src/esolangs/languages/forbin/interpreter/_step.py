@@ -111,14 +111,12 @@ def _run(
 ) -> tuple[object | None, _Ctx]:
     """Run ``frame``'s body to completion through the step core.
 
-    Only reached for expression-position calls (``x = f(y)``), whose own
-    recursion depth is bounded by Python's default recursion limit -- a
+    Only reached for expression-position calls (``x = f(y)``), whose
+    recursion depth is bounded by Python's default recursion limit; a
     statement-position call (``f(y);``) pushes onto the explicit frame
-    stack instead of recursing, so that pattern is not depth-limited at
-    all.  The stack still cannot grow without bound here: past the host's
-    own recursion limit a runaway raises :class:`RecursionError`, which
-    the ``step()`` shell reports as a halt, exactly as the old recursive
-    executor did.
+    stack, so it is not depth-limited.  Past the host's recursion limit a
+    runaway raises :class:`RecursionError`, which the ``step()`` shell
+    reports as a halt.
     """
     frames: tuple[_Frame, ...] = (frame,)
     result: object | None = None

@@ -13,33 +13,30 @@ clean-room reading skips the whole literal; "the next instruction" allows
 both).  ``!`` on an integer is the invalid operation above, as a number
 is no "Eval code" (the clean-room reading runs its decimal digits).
 
-``!`` evaluates a string as a program.  That nested program runs on an
-explicit *frame stack* rather than through Python recursion: ``!`` pushes a
-frame and returns, and the next ``step()`` continues inside it.  Lamfunc's
-machine is built the same way, and for the same reasons.
+``!`` evaluates a string as a program.  The nested program runs on an
+explicit *frame stack*, not Python recursion: ``!`` pushes a frame and
+returns, and the next ``step()`` continues inside it (Lamfunc's machine is
+built the same way).
 
-Doing it this way is what makes nesting visible to the rest of the library.
-One command is one ``step()`` however deep it sits, so the VM's step budget
-counts honestly; every intermediate state reaches ``snapshot()``, so the
-state-cycle detector can prove a nested loop; and nesting depth is data
-rather than Python stack, so a self-referential program no longer dies with
-``RecursionError``.  Running a nested program to completion inside its
-caller's step hid all three.
+This keeps nesting visible to the rest of the library.  One command is one
+``step()`` however deep, so the VM's step budget counts honestly; every
+intermediate state reaches ``snapshot()``, so the state-cycle detector can
+prove a nested loop; and nesting depth is data, so a self-referential
+program no longer dies with ``RecursionError``.  Running a nested program to
+completion inside its caller's step hid all three.
 
-A frame stack is also what lets the *ancestor* check apply.  Endless
-recursion pushes a frame per call and pops none, so the whole-state
-snapshot grows forever and never repeats -- the unbounded-growth class
+The frame stack also enables the *ancestor* check.  Endless recursion pushes
+a frame per call and pops none, so the whole-state snapshot grows forever and
+never repeats -- the unbounded-growth class
 :func:`esolangs.vm.run_until_halt_or_cycle` cannot decide.
-:func:`esolangs.vm.run_until_halt_or_ancestor` decides it instead, by
-comparing each pushed frame against the ones beneath it, and
-:meth:`_Machine.frame_entry_key` is what it compares.
+:func:`esolangs.vm.run_until_halt_or_ancestor` decides it by comparing each
+pushed frame against those beneath it via :meth:`_Machine.frame_entry_key`.
 
-Because a step is one command again, it prints at most once, so the effects
-stay in the shell the way every other interpreter here does it.
+A step prints at most once, so effects stay in the shell as in every other
+interpreter here.
 
-:class:`_Machine` accepts the program in its constructor, as the other
-interpreters do.  It stores the text in the first frame rather than parsing
-it, because Eval's commands are one character wide.
+:class:`_Machine` takes the program in its constructor and stores the text in
+the first frame unparsed, since Eval's commands are one character wide.
 """
 
 from __future__ import annotations
@@ -110,14 +107,12 @@ def _iterate(
 ) -> tuple[_Core, int, _Val | None, str | None]:
     """Execute one command, returning core, index, any output, any call.
 
-    Pure: it reads ``core`` and returns a new one, and reaches no ``IO``.
-    A ``.`` reports the value it would print and a ``!`` reports the
-    program it would enter; the shell prints the one and pushes a frame for
-    the other.  Both are ``None`` for every other command.
+    Pure; reaches no ``IO``.  A ``.`` reports the value it would print and a
+    ``!`` the program it would enter; the shell prints the one and pushes a
+    frame for the other.  Both are ``None`` for every other command.
 
-    ``!`` deliberately does *not* run the nested program here.  Returning
-    it to the caller is what puts it on the frame stack, and that is what
-    makes each of its commands a step of its own.
+    ``!`` does *not* run the nested program here: returning it puts it on the
+    frame stack, which makes each of its commands a step of its own.
     """
     ptr, stacks = core
     char = sym[ind]
@@ -258,13 +253,12 @@ class _Machine:
         """Return what ``frame`` is about to run, for the ancestor check.
 
         Two frames with equal keys replay each other.  For Eval that is the
-        program text and the cursor into it -- but also *both stacks*,
-        because frames here share one store rather than carrying their own
-        bindings: the same program run twice does different things if the
-        values beneath it differ, and only the stacks say so.
+        program text and the cursor into it, plus *both stacks*: frames share
+        one store, so the same program behaves differently if the values
+        beneath it differ.
 
-        The input cursor joins them for the reason other languages include
-        it, though Eval never reads input at all, so it never varies.
+        The input cursor is included as in other languages, though Eval never
+        reads input, so it never varies.
 
         See :func:`esolangs.vm.run_until_halt_or_ancestor`.
         """
@@ -280,14 +274,13 @@ class _Machine:
     def step(self) -> None:
         """Execute one command of the innermost frame.
 
-        One command, however deep -- so a nested program's commands are
-        steps in their own right.  An exhausted frame pops, which is a step
-        too; that is what returning from a call costs.
+        One command however deep, so a nested program's commands are steps in
+        their own right.  An exhausted frame pops, which is also a step (the
+        cost of returning from a call).
 
-        The print and the :class:`HaltError` live here because this is the
-        shell.  A step prints at most once now, so there is nothing to
-        collect: the fault carries no outputs, since anything printed
-        before it was printed by an earlier step and is already out.
+        The print and the :class:`HaltError` live here, in the shell.  A step
+        prints at most once, so the fault carries no outputs: anything
+        printed before it came from an earlier step and is already out.
         """
         core, frames = self._state
         if not frames:

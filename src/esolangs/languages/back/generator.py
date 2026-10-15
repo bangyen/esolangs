@@ -111,40 +111,38 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
     r"""Build a Back template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-    Width puts the loader above the tree, removing two entry columns.
-    Unfitting parity tables use a one-column accumulator in answer cell n;
-    earlier cells remain scratch rather than carrying the inputs.
+    inputs (most significant first); the length implies ``n``.  Width puts the
+    loader above the tree, removing two entry columns.  Unfitting parity
+    tables use a one-column accumulator in answer cell n; earlier cells stay
+    scratch rather than carrying the inputs.
 
-    Back is a no-input grid language: a beam travels the grid and ``-`` flips
-    the current tape bit, ``+`` steps the beam forward when the current bit
-    is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
-    and ``*`` halts printing the tape.  Each input is embedded once by
-    filling its tape cell over two load rows: a constant ``-`` primes the
-    cell to 1 for either bit, then the input's run finishes it -- ``+`` (inert on
-    a set cell) for a one, ``-`` (flipping it back) for a zero.  So cells
-    ``0..n-1`` hold the inputs and cell ``n`` is the answer cell.  Both
-    bits cost the same two rows, so the height cannot leak an input.
+    Back is a no-input grid language: a beam travels the grid; ``-`` flips
+    the current tape bit, ``+`` steps the beam forward when the bit is 0,
+    ``<``/``>`` move the tape pointer, ``\`` reflects the beam down, and ``*``
+    halts printing the tape.  Each input is embedded once, filling its tape
+    cell over two load rows: a constant ``-`` primes the cell to 1 for either
+    bit, then the input's run finishes it -- ``+`` (inert on a set cell) for a
+    one, ``-`` (flipping it back) for a zero.  Cells ``0..n-1`` hold the
+    inputs, cell ``n`` is the answer cell, and both bits cost two rows, so the
+    height cannot leak an input.
 
-    A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
-    the beam straight past the ``\`` when it is 0) and ``\`` reflects the
-    beam down when it is 1, while ``>`` advances the tape pointer to the next
-    input.  Both branches advance the pointer once, so a leaf at depth ``d``
-    has the pointer at cell ``d``.  A leaf walks to cell ``n``, flips it with
-    ``-`` when its value is 1, and halts.
+    A decision node is ``+\>``: ``+`` tests the current bit (skipping the
+    ``\`` when it is 0), ``\`` reflects the beam down when it is 1, and ``>``
+    advances the pointer to the next input.  Both branches advance once, so a
+    leaf at depth ``d`` has the pointer at cell ``d``.  A leaf walks to cell
+    ``n``, flips it with ``-`` when its value is 1, and halts.  The answer is
+    the *value* of cell ``n``, which the halt dump prints; the head's position
+    is not printed.
 
     The load runs *down column 0* and the tree starts at column 1, so no row
     carries the load's width as indent.  A ``/`` at the origin does both
     turns: the beam starts heading right, the ``/`` sends it up and off the
     top edge onto the bottom row, it runs the load upward back to the origin,
     and the ``/`` -- now taking a beam heading up -- turns it right into the
-    tree.  The load is written bottom-to-top, and the drawing is reflected
-    for output, so the tree grows left and its triangular padding lands at
-    line ends where it is stripped.  A two-row outer route converts Back's
-    fixed eastward start into the westward entry the reflected root needs.
-
-    The answer is the *value* of cell ``n``, which the halt dump prints;
-    the head's position is not printed.
+    tree.  The load is written bottom-to-top and the drawing reflected for
+    output, so the tree grows left and its triangular padding lands at line
+    ends where it is stripped.  A two-row outer route converts Back's fixed
+    eastward start into the westward entry the reflected root needs.
 
     A node whose one-subtree equals the zero-subtree of the next node on its
     level draws none: the beam falls down the column onto that node's mirror,

@@ -23,12 +23,11 @@ applicable, so nothing at run time is invalid and no
 :class:`~esolangs.exceptions.HaltError` arises.
 
 ``@`` consumes the next Unicode character, including newlines. The spec
-does not define character encoding. Both input branches are live.  At end of
-input ``@`` hands its argument ``v``, which the
-shell reaches by catching the ``EOFError`` the port raises, as other
-interpreters here catch it and carry on with their language's value; letting
-it escape would make ``@``'s failure branch unreachable and every
-read-until-EOF program a crash.  A read at EOF clears the current character.
+does not define character encoding.  Both input branches are live: at end of
+input ``@`` hands its argument ``v``, which the shell reaches by catching the
+port's ``EOFError`` (as other interpreters here do); letting it escape would
+make ``@``'s failure branch unreachable and every read-until-EOF program a
+crash.  A read at EOF clears the current character.
 """
 
 from __future__ import annotations

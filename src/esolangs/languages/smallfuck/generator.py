@@ -159,13 +159,12 @@ def _paired_roots(table: str) -> tuple[tuple[int, int], ...]:
 class _Tree:
     """Emitter state and engines for one Smallfuck decision tree.
 
-    Holds everything the tree's mutually recursive engines share: the
-    table and split order, the constant-span test and subtree ids, the
-    output builder, the deferred-block definitions, and the paired-roots
-    decoder state.  The former closures ``split``, ``clear_prefix``,
-    ``transfer``, ``arm``, ``tree``, and ``emit_paired_roots`` are methods
-    here, so the recursion no longer threads through closure scope and the
-    decoder phase needs no ``nonlocal`` mutation.
+    Holds what the mutually recursive engines share: the table and split
+    order, the constant-span test and subtree ids, the output builder, the
+    deferred-block definitions, and the paired-roots decoder state.
+    ``split``, ``clear_prefix``, ``transfer``, ``arm``, ``tree``, and
+    ``emit_paired_roots`` are methods, so the decoder phase needs no
+    ``nonlocal`` mutation.
     """
 
     def __init__(

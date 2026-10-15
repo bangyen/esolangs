@@ -1,12 +1,11 @@
 """Boolean-function generator for Painfuck.
 
-Painfuck's own commands, not brainfuck's transliterated: ``i`` reads a
-line as a *number* and ``o`` prints one, so the ASCII offset the
-brainfuck family pays twice per program -- 49% of its characters at
-``n == 4``, 70% at ``n == 2`` -- is not paid at all.  ``r`` moves two
-right, which is exactly the cell layout's stride, and ``d`` resets the
-pointer, so returning to the reads costs one character instead of one
-per cell.
+Uses Painfuck's own commands, not transliterated brainfuck: ``i`` reads and
+``o`` prints a *number*, so the ASCII offset brainfuck pays twice per
+program (49% of its characters at ``n == 4``, 70% at ``n == 2``) vanishes.
+``r`` moves two right, the cell layout's stride, and ``d`` resets the
+pointer, so returning to the reads costs one character instead of one per
+cell.
 """
 
 from esolangs.generation.helpers import (

@@ -235,12 +235,11 @@ class _Machine:
 
         Locals are captured via :meth:`_render` (``repr`` with closure
         scope ids, so a snapshot is the same on every run) since a function
-        value is not meaningfully hashable -- sufficient for the
-        state-cycle detector's purpose, since a genuine hang re-executes
-        the same cursor with the same bindings on every lap.  A call that
-        never returns pushes one new frame per step and none is ever
-        popped, so this cannot mistake unbounded recursion for a repeat:
-        the frame tuple's length strictly grows.
+        value is not meaningfully hashable; that suffices because a genuine
+        hang re-executes the same cursor with the same bindings every lap.
+        A call that never returns pushes a frame per step and none is
+        popped, so unbounded recursion is never mistaken for a repeat: the
+        frame tuple's length strictly grows.
         """
         return (
             tuple(
@@ -333,14 +332,12 @@ class _Machine:
     def step(self) -> None:
         """Execute one statement, one ``for``-loop row, or advance a call.
 
-        The shell: it reads the bytes the statement asks for and writes
-        what the transition returns.  An *expression-position* call
-        (``x = (f y);``) still recurses natively through ``_eval``, so a
-        deep enough one exhausts Python's own stack.  That is a valid
-        Forbin operation the host cannot afford rather than the invalid
-        one :class:`HaltError` names, but the alternative is leaking the
-        interpreter's implementation strategy to the caller as a raw
-        traceback, so it halts here and says which limit it hit.
+        The shell: reads the bytes the statement asks for, writes what the
+        transition returns.  An *expression-position* call (``x = (f y);``)
+        recurses natively through ``_eval``, so a deep enough one exhausts
+        Python's stack.  That is a valid Forbin operation the host cannot
+        afford, not the invalid one :class:`HaltError` names; it halts here
+        and says which limit it hit rather than leaking a raw traceback.
         """
         if self.halted:
             return

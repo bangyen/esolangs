@@ -63,11 +63,10 @@ def subtree_ids(truth_table: str) -> list[list[int]]:
 
     ``ids[d][k]`` names the ``k``-th subtable of ``2**(n - d)`` rows:
     ``ids[0]`` is the whole table, ``ids[n]`` its rows.  A constant subtable
-    is ``0`` or ``1`` at every level, and any other id is fresh the first
-    time its pair of halves turns up, so ids ascend with first occurrence
-    along a level.  Built bottom-up from the child ids, one dict lookup a
-    node -- the quasi-reduced decision diagram, interned rather than
-    searched, in O(T).
+    is ``0`` or ``1`` at every level; any other id is fresh the first time
+    its pair of halves turns up, so ids ascend with first occurrence along a
+    level.  Built bottom-up from the child ids, one dict lookup a node (the
+    quasi-reduced decision diagram, interned rather than searched), in O(T).
     """
     n = _validate_truth_table(truth_table)
     level = [int(bit) for bit in truth_table]
@@ -520,18 +519,17 @@ def best_input_order(
 ) -> str:
     """Return the shorter program from the identity and greedy input orders.
 
-    ``build(permuted_table, perm)`` splits on ``perm[k]`` at level ``k``
-    over the *permuted* table.  Through :data:`_GREEDY_ORDER_MAX_ARITY` the
-    greedy order is scored level by level (``O(n * 2**n)``), both built
-    since routing costs can outweigh folds; wider tables use the identity.
-    Identity first, ties keep it, so reordering only ever shrinks.
-    Only the *test* order moves; the reads stay in input order.  That rules
-    out a one-register language with no storage (a bit is branched on
-    before the next read).  Several were wrongly excluded once and keep
-    their node-read build as a candidate since hoisting has a price; one is
-    a true negative (a store instruction exists, but every conditional and
-    arithmetic instruction rejects a variable operand -- no return leg,
-    verified against the interpreter and the wiki).
+    ``build(permuted_table, perm)`` splits on ``perm[k]`` at level ``k`` of
+    the *permuted* table.  Up to :data:`_GREEDY_ORDER_MAX_ARITY` both orders
+    are built (greedy scoring is ``O(n * 2**n)``; routing can outweigh
+    folds); wider tables use the identity, which also wins ties, so
+    reordering never grows a program.  Only the *test* order moves; reads
+    stay in input order, which rules out a one-register language with no
+    storage (it branches on a bit before the next read).  Languages once
+    wrongly excluded keep their node-read build as a candidate, since
+    hoisting costs.  One true negative has a store but no conditional or
+    arithmetic taking a variable operand (checked against the interpreter
+    and the wiki).
     """
     orders = input_orders(truth_table, max_arity=_GREEDY_ORDER_MAX_ARITY)
     identity = orders[0]
@@ -554,14 +552,13 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     the live blocks; ties keep the lowest index so an unhelped table
     yields the identity.
 
-    A block's whole scoreboard comes from one pass over its rows: the AND
-    and OR of the row indices holding a ``1`` and of those holding a
-    ``0``.  Input ``i``'s zero half is constant iff every ``1`` row, or
-    every ``0`` row, has bit ``i`` set (an empty class vacuously does),
-    and its one half iff every row of one class has it clear.  So a level
-    costs ``O(live rows)`` however many inputs are scored, ``O(n * 2**n)``
-    in all; each level must still read every live row, so parity cannot
-    do better.
+    A block's scoreboard comes from one pass over its rows: the AND and OR
+    of the row indices holding a ``1`` and of those holding a ``0``.  Input
+    ``i``'s zero half is constant iff every ``1`` row, or every ``0`` row,
+    has bit ``i`` set (an empty class vacuously does), and its one half iff
+    every row of one class has it clear.  So a level costs ``O(live rows)``
+    however many inputs are scored, ``O(n * 2**n)`` in all; each level must
+    still read every live row, so parity cannot do better.
     """
     full = (1 << n) - 1
 

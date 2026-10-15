@@ -1,12 +1,11 @@
 """Little-endian bit buffering shared by bit-oriented interpreters.
 
-Bytes arrive and leave least-significant-bit first: the first bit read
-is the byte's low bit, and the first bit written becomes the emitted
-byte's low bit.  The buffers are plain tuples, so machines with
-immutable state can rebound them; fetching bytes from input and
-emitting full bytes stays with the caller, whose EOF and destination
-policies differ per language.  Callers refill an empty input buffer
-before taking from it.
+Bytes arrive and leave least-significant-bit first: the first bit read is
+the byte's low bit, and the first bit written becomes the emitted byte's low
+bit.  The buffers are plain tuples, so immutable-state machines can rebind
+them.  Fetching and emitting bytes stays with the caller, whose EOF and
+destination policies differ per language; callers refill an empty input
+buffer before taking from it.
 """
 
 #: ``(incoming, remaining)``: the buffered input byte and bits left in it.

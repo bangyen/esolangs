@@ -43,16 +43,15 @@ def _replace(
 ) -> object:
     """Return ``root`` with every occurrence of ``old`` replaced by ``updated``.
 
-    A structural copy that preserves sharing: containers that do not hold
-    ``old`` are returned unchanged, and one rebuilt container is reused
-    through ``memo`` wherever the original was aliased.  Cyclic lists --
-    which the language can build -- are pre-registered so the walk
-    terminates; a rebuilt cycle keeps pointing at the original, which no
-    registry-corpus program reaches.
+    A structural copy that preserves sharing: containers not holding ``old``
+    are returned unchanged, and a rebuilt container is reused through
+    ``memo`` wherever the original was aliased.  Cyclic lists, which the
+    language can build, are pre-registered so the walk terminates; a rebuilt
+    cycle keeps pointing at the original, which no registry-corpus program
+    reaches.
 
     AST nodes are rebuilt as their own type, so a pending expression that
-    referenced ``old`` stays a typed tree rather than decaying to plain
-    tuples.
+    referenced ``old`` stays a typed tree, not plain tuples.
     """
     if root is old:
         return updated

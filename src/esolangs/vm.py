@@ -153,14 +153,13 @@ class VM(Protocol):
         """The current code/instruction position, language-shaped.
 
         An index, a coordinate tuple, or ``None`` once the agent is
-        consumed.  The tuple's arity is not stable within a run: a
-        language may change shape (to ``None``, to ``()``, growing and
-        shrinking), so size nothing to
-        the initial arity; :meth:`~esolangs.debugger.Debugger.break_at`
-        checks kind, not arity.  For the grid languages the leading
-        components are row then column, never x then y; others report a
-        tuple without being grids, and ``describe(...)["state_model"]``
-        separates them.
+        consumed.  Tuple arity is unstable within a run (a language may
+        change shape to ``None`` or ``()``, or grow and shrink), so size
+        nothing to the initial arity;
+        :meth:`~esolangs.debugger.Debugger.break_at` checks kind, not arity.
+        For grid languages the leading components are row then column, never
+        x then y; others report a tuple without being grids, and
+        ``describe(...)["state_model"]`` separates them.
         """
 
     @property

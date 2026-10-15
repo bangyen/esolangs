@@ -1,13 +1,11 @@
 """Build-time machine-state model for the SLOW ACV MAMMALIAN generator.
 
-:class:`_Sums` tracks the machine state the construction reasons about:
-the heads of all 23 arrays, the two big non-head sums (arrays 0 and 16),
-the accumulator, the pointer, and the cells of the small arrays the
-machine indexes into.  :func:`_replay` and :func:`_apply` evolve that
-state token by token, exactly as the interpreter would.  Every build
-step emits its tokens against this model and asserts the model agrees
-with the token-level arithmetic, so a build that finishes is correct by
-construction.
+:class:`_Sums` tracks the heads of all 23 arrays, the two big non-head sums
+(arrays 0 and 16), the accumulator, the pointer, and the cells of the small
+arrays the machine indexes into.  :func:`_replay` and :func:`_apply` evolve
+it token by token as the interpreter would.  Every build step emits its
+tokens against this model and asserts it agrees with the token-level
+arithmetic, so a finished build is correct by construction.
 """
 
 from collections.abc import Sequence
@@ -158,15 +156,14 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
 def _leaf(digit: int, *, unit: int) -> list[str]:
     """Return the tokens run ``digit`` executes, padded to one slot.
 
-    ``EXCRETE`` clears the accumulator the dispatch left, the ``SPRINT``
-    rides array 16's head to a print array, ``CONSUME`` lifts its middle
-    cell -- ``'0'`` or ``'1'`` -- and ``PRONOUNCE`` writes it.  The
-    closing ``EXCRETE`` leaves a nonzero cell so the ``LEAPFROG`` fires,
-    and with a zero accumulator it can only aim before the program, which
-    halts the run.  One SEED separates the two print arrays
-    (``generator._dispatch_head``), so the digit *is* the step count, and
-    nothing here reads array 16's sum: every leaf is the same length
-    whatever row reached it.
+    ``EXCRETE`` clears the accumulator the dispatch left, ``SPRINT`` rides
+    array 16's head to a print array, ``CONSUME`` lifts its middle cell
+    (``'0'`` or ``'1'``) and ``PRONOUNCE`` writes it.  The closing
+    ``EXCRETE`` leaves a nonzero cell so ``LEAPFROG`` fires; with a zero
+    accumulator it can only aim before the program, which halts the run.
+    One SEED separates the two print arrays (``generator._dispatch_head``),
+    so the digit is the step count, and nothing reads array 16's sum: every
+    leaf has the same length whatever row reached it.
     """
     body = [
         "EXCRETE",

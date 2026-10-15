@@ -149,18 +149,17 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     def paint_leaf(lo: int, depth: int, _cursor: None) -> int:
         """Draw the leaf for ``truth_table[lo]``; return its middle column.
 
-        Constant: no branch below here can change the answer, so this is a
-        leaf.  Leaves all sit on the bottom row whatever their depth, so the
-        rail from the switch above covers the levels this fold skipped: the
-        rows are a fixed grid and only the branching goes away.
+        Constant: no branch below can change the answer.  Leaves all sit on
+        the bottom row whatever their depth, so the rail from the switch
+        above covers the skipped levels: rows are a fixed grid and only the
+        branching goes away.
 
-        The *reads* those levels would have done do not go away.  A program
-        must consume its ``n`` inputs whatever the table says -- the reads
-        are the interface, and a folded run that skipped them left the
-        caller's remaining bits on the stream -- so each skipped level puts
-        its ``/ /`` nodes on the rail, where the pointer runs straight
-        through them into the leaf below.  The flat layout puts leaves on a
-        fixed row, so the walk cursor is unused here.
+        The skipped levels' *reads* stay: a program must consume its ``n``
+        inputs whatever the table says (a folded run that skipped them left
+        the caller's remaining bits on the stream), so each skipped level
+        puts its ``/ /`` nodes on the rail, where the pointer runs straight
+        through them into the leaf.  Leaves sit on a fixed row, so the walk
+        cursor is unused.
         """
         middle = _FLOWCHART_PITCH * len(middles) + 2
         _paint(cells, middle - 1, leaf_top, _set(truth_table[lo]))

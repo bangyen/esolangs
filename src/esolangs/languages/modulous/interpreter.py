@@ -5,12 +5,11 @@ or variable value; POP/SWP/DUP reshape the stack; PRT prints the top as an
 integer or byte; INP reads a line; JMP/IF conditionally jump; RST resets the
 pointer to the start of the program; and END halts.
 
-The wiki declares four variables (VAR1-VAR4), and those are the four that
-exist: every variable op -- the ``PSH`` store, the ``PRT`` read, and the
-``VARn+k``/``VARn-k`` arithmetic -- halts on any other name.  The store
-used to be the exception, creating whatever name it was given, which made
+The wiki declares four variables (VAR1-VAR4), and only those exist: every
+variable op -- the ``PSH`` store, the ``PRT`` read, and the
+``VARn+k``/``VARn-k`` arithmetic -- halts on any other name.  Otherwise
 ``[PSH VAR VAR1]`` (the keyword spelling; the syntax is ``[PSH VAR1]``)
-store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
+would store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
 
 A ``JMP`` condition reads an empty stack's top as 0, and a backward jump
 past the start wraps to the end; the wiki says neither.  Other operations
@@ -19,18 +18,17 @@ are invalid: they halt the program with
 :class:`~esolangs.exceptions.HaltError`, and a malformed token (a missing
 required argument) is rejected with :class:`ValueError`.
 
-**Unknown commands and stray text are refused, and that is a choice.**  The
-wiki says only that "a module is a command surrounded by square brackets"
-and never says what an implementation should do with anything else, so
-there is no spec to follow here.  Both used to be silent: ``[PRTINT]`` -- a
-plausible slip for ``[PRT INT]`` -- ran as nothing at all, and ``[PSH INT
-1[END]`` dropped the unbalanced first half and ran the second, each exiting
-0 having printed nothing.  A program that does nothing and reports success
-is the worst answer to a typo, so both raise now.  A reader who wants a
-comment has ``[]``, which the empty-token rule already skips.
+**Unknown commands and stray text are refused, by choice.**  The wiki says
+only that "a module is a command surrounded by square brackets" and not
+what to do with anything else.  Silently ignoring them ran ``[PRTINT]`` (a
+plausible slip for ``[PRT INT]``) as nothing, and ``[PSH INT 1[END]``
+dropped the unbalanced first half and ran the second, each exiting 0 with
+no output; a program that does nothing and reports success is the worst
+answer to a typo, so both raise.  ``[]``, which the empty-token rule skips,
+serves as a comment.
 
 A ``STR`` push takes its string in straight quotes or in the typographic
-pair “ ”, which is how the wiki's own Hello World writes it.
+pair “ ”, as the wiki's own Hello World writes it.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
@@ -142,11 +140,10 @@ def _pre_read(
 ) -> tuple[int, str, str, int | None]:
     """Resolve one token and parse what its shell pre-reads.
 
-    Shared by execution and the all-outcomes search: both wrap a backward
-    jump past the start the same way, split the token the same way, and
-    need the same answers before they do their own effectful part -- the
-    executor prints, reads, and draws, while the search validates,
-    declines, and forks.
+    Shared by execution and the all-outcomes search, which wrap a backward
+    jump and split the token alike and need the same answers before their
+    own effectful part (the executor prints, reads, and draws; the search
+    validates, declines, and forks).
 
     Returns ``(ind, mod, command, datum)``: the wrapped cursor, the token,
     its keyword (``""`` for an empty token), and the parsed pre-read --
@@ -255,15 +252,14 @@ class _Machine:
         """Return the state for every value ``RND`` could draw.
 
         Uses the same :func:`_advance` transition as :meth:`step`, so a
-        successor that dispatched on the un-advanced core cannot re-run the
+        successor cannot dispatch on the un-advanced core and re-run the
         same token forever.
 
-        ``RND n`` takes its range from the program text rather than from a
-        fixed coin, so one token can ask for arbitrarily many outcomes; a
-        bound above ``_RND_FANOUT`` raises ``TimeoutError`` rather than being
-        materialized, and the caller's ``limit`` is not consulted.
-        ``n < 1`` draws nothing and is left to the single deterministic
-        call, exactly as the step leaves it.
+        ``RND n`` takes its range from the program text, so one token can ask
+        for arbitrarily many outcomes; a bound above ``_RND_FANOUT`` raises
+        ``TimeoutError`` rather than being materialized, and the caller's
+        ``limit`` is not consulted.  ``n < 1`` draws nothing and is left to
+        the single deterministic call, as in the step.
         """
         core, halted = _thaw(cast(_BranchState, state))
         stk, var, ind = core

@@ -1,40 +1,35 @@
 r"""Boolean-function generator for Circuit Diagram.
 
-Circuit Diagram is a language for drawing boolean circuits, so a truth
-table is its native idiom.  The generated ASCII gate network reads one bit
-per input wire, folds adjacent cofactors through muxes, and prints through
-``:``.
+The generated ASCII gate network reads one bit per input wire, folds adjacent
+cofactors through muxes, and prints through ``:``.
 
 Layout
 ------
 
-The geometry controls the program -- the language has no statements to
-sequence, only cells that have to line up -- so the program is built as a
-*model* of wire segments first and rendered to characters afterwards,
-rather than painted cell by cell in draw order.
+The language has no statements, only cells that have to line up, so the
+program is built as a *model* of wire segments and rendered to characters
+afterwards, not painted cell by cell in draw order.
 
 Every signal owns a vertical **bus column**; every gate owns a three-row
 **band**.  A gate at ``(c, r)`` reads its two inputs from ``.`` cells at
 ``(c - 1, r - 1)`` and ``(c - 1, r + 1)`` and drives a ``.`` at
-``(c + 1, r)`` -- the spec's own AND sample -- so each gate is fed by two
-horizontal segments running from a bus column to its left-hand junctions,
-and its result leaves along a fresh bus.
+``(c + 1, r)`` (the spec's AND sample), so each gate is fed by two
+horizontal segments from a bus column to its left-hand junctions, and its
+result leaves along a fresh bus.
 
 **Crossings are the point, not a hazard.**  Shared selectors make the
-network non-planar, so wires must cross.  The spec's crossover figure puts ``-=-``
-between two horizontal wires and ``|`` above and below, with "opposite
-wires are connected", so one ``=`` carries a horizontal and a vertical wire
-past each other independently.  The renderer therefore derives each cell
-from what covers it: a horizontal segment alone is ``-``, a vertical
-segment alone is ``|``, both together is ``=``, and an endpoint is ``.``.
+network non-planar.  The spec's crossover figure puts ``-=-`` between two
+horizontal wires and ``|`` above and below, with "opposite wires are
+connected", so one ``=`` carries a horizontal and a vertical wire past each
+other independently.  The renderer derives each cell from what covers it: a
+horizontal segment alone is ``-``, a vertical alone is ``|``, both is ``=``,
+and an endpoint is ``.``.
 
-What the layout must still guarantee is that nothing *merges* by accident.
-A ``.`` connects to all eight of its neighbours, so two junctions belonging
-to different signals that come to rest diagonally adjacent silently become
-one wiring.  The renderer checks that mechanically -- along with two
-segments of different signals sharing a cell in the same direction -- and
-raises rather than emitting a circuit that is wrong in a way only the truth
-table would reveal.
+Nothing may *merge* by accident.  A ``.`` connects to all eight neighbours,
+so junctions of different signals resting diagonally adjacent silently
+become one wiring.  The renderer checks that, and two segments of different
+signals sharing a cell in the same direction, and raises rather than emit a
+circuit wrong in a way only the truth table would reveal.
 
 Construction
 ------------
@@ -66,10 +61,9 @@ gate, the shape the wiki's own constant-output circuit uses.
 
 **Every wiring is driven exactly once.**  A ``:`` prints in *every*
 generation its wire carries a value, and a wiring driven twice takes the
-XOR of its drivers, so a second driver would corrupt both the value and the
-output length.  Each bus here is written by exactly one gate (or one input
-port) and only ever read after that, which is why the tests can assert that
-a run prints exactly one character.
+XOR of its drivers, corrupting both the value and the output length.  Each
+bus is written by one gate (or input port) and only read after that, so a
+run prints exactly one character.
 """
 
 from collections.abc import Iterator
@@ -194,21 +188,18 @@ class _Builder:
     def _band(self) -> None:
         """Start a fresh band of columns, carrying the live signals back left.
 
-        Gates march right because one has to sit right of every bus it
-        reads, so a column group freed behind the drawing can never be
-        handed out again -- which is what makes the width grow with the
-        network's depth.  A band breaks that: every signal still live is
-        *moved* to a column near the left, and the columns behind it all
-        become free again.
+        A gate must sit right of every bus it reads, so a group freed behind
+        the drawing can never be handed out again, and width grows with the
+        network's depth.  A band *moves* every live signal to a column near
+        the left and frees all the columns behind it.
 
-        Moving a bus needs no new primitive: :meth:`_tap` runs it down and
-        then left, one wiring with one driver, crossing the rails with ``=``.
-        Each carried signal takes its own row, since two signals' horizontal
-        runs on one row would collide.
+        :meth:`_tap` does the move (down then left, one wiring with one
+        driver, crossing the rails with ``=``).  Each carried signal takes
+        its own row, since two horizontal runs on one row would collide.
 
-        Resetting the column counter is safe for the reason group reuse is:
-        the drawing only ever moves down, so a column re-used in this band
-        is entered below everything the last band left in it.
+        Resetting the column counter is safe as group reuse is: the drawing
+        only moves down, so a re-used column is entered below everything the
+        last band left in it.
         """
         for offset, signal in enumerate(self.live):
             column = self.band_start + offset * _COL_STEP
@@ -268,13 +259,12 @@ class _Builder:
     def input_bus(self) -> int:
         """Draw one input line and return the signal its bit arrives on.
 
-        The spec makes a ``-`` at the start of a line an input port, so each
-        input owns a row of its own; the rows are taken in order, which is
-        the order the interpreter reads the bits in.
+        A ``-`` at the start of a line is an input port, so each input owns a
+        row, taken in the order the interpreter reads the bits.
 
-        One bus column is enough: an input port has no glyph, no inputs and
-        no output column, and a gate's three columns left two empty columns
-        per input for every later wire to cross.
+        One bus column is enough: a port has no glyph, inputs or output
+        column, and a gate's three columns left two empty columns per input
+        for later wires to cross.
         """
         signal = self._new_signal()
         column = self._new_column()
@@ -319,15 +309,13 @@ class _Builder:
     def gate(self, kind: _GateGlyph, left: int, right: int) -> int:
         """Place a two-input ``kind`` gate and return its output signal.
 
-        The group is taken before the inputs are read and the inputs are
-        released after, so a gate can never be handed the very group it is
-        about to read out of.
+        The group is taken before the inputs are read and they are released
+        after, so a gate is never handed the group it reads out of.
 
-        When a width was asked for and this gate would take the drawing past
-        it, :meth:`_band` carries the live signals back to the left first --
-        so the check happens here, before the group is chosen, and the
-        inputs' columns are re-read afterwards because the band has moved
-        them.
+        If this gate would take the drawing past a requested width,
+        :meth:`_band` first carries the live signals left, before the group
+        is chosen; the inputs' columns are re-read afterwards since the band
+        moved them.
         """
         if not self._room(max(self.buses[left][0], self.buses[right][0])):
             self._band()
@@ -376,13 +364,12 @@ class _Builder:
     def output(self, source: int) -> None:
         """Draw the ``:`` that prints ``source``'s value.
 
-        ``:`` reads only a ``-`` directly to its left, so the signal is
-        handed one cell along from the junction its bus already ends on.
+        ``:`` reads only a ``-`` directly to its left, so the signal moves one
+        cell along from the junction its bus ends on.
 
-        No band or gate columns are reserved: the bus it reads is the last
-        one built, so its row is free to the right.  A fresh band put the
-        output three rows below its gate -- the staircase small circuits
-        used to end on.
+        No band or gate columns are reserved: the bus is the last one built,
+        so its row is free to the right.  A fresh band would put the output
+        three rows below its gate, a staircase on small circuits.
         """
         column, row = self.buses[source]
         self.layout.glyph(column + 1, row, "-")
@@ -687,8 +674,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
     See :func:`_circuit_diagram_model` for the construction.  ``width`` asks
-    for a column count: the drawing is built once without one, and again
-    inside the width if that came out too wide.
+    for a column count: built once without one, again inside it if too wide.
 
     From eight inputs, three complete fixed-order folds compete by emitted
     characters against prefix H-layouts and shared class banks. Interval

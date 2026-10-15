@@ -382,10 +382,9 @@ def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
     ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
     :func:`_extend_plans`'s two-line trick.  Only referenced constants are built.
 
-    ``zero`` names the never-written register the language reads as 0.  It is
-    a parameter because the name is free -- any register never assigned reads
-    as 0 -- and a caller that spells zero on most of its lines wants the
-    shortest spelling.
+    ``zero`` names the never-written register the language reads as 0; the
+    name is free (any never-assigned register reads as 0), so a caller that
+    spells zero on most lines can pick the shortest.
     """
     need = sorted(n for n in set(needed) if n > 2)
     lines = [

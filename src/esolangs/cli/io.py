@@ -284,14 +284,13 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
 def _write_output(text: str) -> None:
     """Write program output to stdout, whatever bytes it turned out to be.
 
-    A program can legitimately print a lone surrogate (a print command emits
-    the accumulator as a character with no bound), on which
-    ``sys.stdout.write`` raised a nineteen-line traceback.  Written through
-    the byte stream with ``surrogatepass`` when the text stream refuses,
-    keeping ``run --help``'s verbatim promise; a stream with no ``buffer``
-    falls back to an escaped form.  A stream that cannot encode a character
-    at all (an ASCII locale) gets it backslash-escaped: ``surrogatepass``
-    raised again there, exit 70.
+    A program can print a lone surrogate (a print command emits the
+    accumulator as an unbounded character), which made ``sys.stdout.write``
+    raise a nineteen-line traceback.  When the text stream refuses, write
+    through the byte stream with ``surrogatepass``, keeping ``run --help``'s
+    verbatim promise; a stream with no ``buffer`` gets an escaped form.  A
+    stream that cannot encode a character at all (an ASCII locale) gets it
+    backslash-escaped, since ``surrogatepass`` raised again there (exit 70).
     """
     stream = getattr(sys.stdout, "buffer", None)
     if stream is None:

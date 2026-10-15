@@ -73,20 +73,19 @@ def _scan(
 ) -> tuple[str, int, int]:
     """Read one command from ``(row, col)`` along ``heading``.
 
-    Returns the command's text and the cell the terminating ``;`` sat on --
-    the *pivot*, since a ``turn`` turns as if the semicolon were the command
-    and the next one starts one cell beyond it.  That rule is what closes
-    the wiki's cat loop: the ``;`` ending ``var c`` is the same cell the
-    vertical ``turn right`` ends on, read from the other direction.
+    Returns the command's text and the cell its terminating ``;`` sat on --
+    the *pivot*: a ``turn`` turns as if the semicolon were the command, and
+    the next command starts one cell beyond it.  This closes the wiki's cat
+    loop: the ``;`` ending ``var c`` is the cell the vertical ``turn right``
+    ends on, read from the other direction.
 
-    A run that reaches the grid edge without a ``;`` ends there, with the
-    last cell as the pivot.  Both cat examples finish on an edge-terminated
-    ``end``, so the edge has to close a command; whether *walking on* from
-    there is legal is the caller's, and only ``end`` survives it.
+    A run reaching the grid edge without a ``;`` ends there, last cell as
+    pivot (both cat examples finish on an edge-terminated ``end``); whether
+    *walking on* from there is legal is the caller's, and only ``end``
+    survives it.
 
-    Quotes shield their contents: a ``;`` inside ``"..."`` is a character of
-    the string (the wiki says so explicitly), and ``'`` shields the single
-    character after it, so ``';`` is a semicolon literal.
+    A ``;`` inside ``"..."`` is a string character (the wiki says so), and
+    ``'`` shields the next character, so ``';`` is a semicolon literal.
     """
     drow, dcol = heading
     height, width = len(grid), len(grid[0])

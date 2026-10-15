@@ -23,16 +23,14 @@ from esolangs.runtime.source_hints import syntax_error
 class _State(NamedTuple):
     """One instant of a run: the code cursor, the data stack, the loop stack.
 
-    A value, not a record: every transition below returns a new one rather
-    than editing one in place, and both stacks are tuples for the same reason.
+    A value: every transition returns a new one, and both stacks are tuples.
 
-    The loop stack is state, not a scratch register: a ``]`` reads the
-    position a matching ``[`` pushed, so two runs sitting on the same
-    command with different loop stacks will go different places next.
+    The loop stack is state, not scratch: ``]`` reads the position its ``[``
+    pushed, so two runs on the same command with different loop stacks go
+    different places next.
 
-    The code is deliberately not in here.  It does not change during a run,
-    so carrying it would put constant data in every value the cycle detector
-    stores.  It is a parameter to the transition instead.
+    The code is a transition parameter, not a field: it is constant, and
+    carrying it would put it in every value the cycle detector stores.
     """
 
     ind: int

@@ -199,21 +199,20 @@ def generate(
 ) -> Program:
     """Return a program in ``language`` computing ``truth_table``.
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
-    length implies ``n``.  Some languages embed their inputs in the
-    program text; for those this returns a *template* with each input as a
-    run of one character (``$`` unless the language declares another), one
-    run per input, exactly as long as the code :func:`instantiate` fills it
-    with.  ``describe(language)["parameterized"]`` says which you have; a
-    template handed to :func:`run` is refused.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Languages
+    that embed inputs in the program text get a *template*: one run of one
+    character per input (``$`` unless the language declares another), as long
+    as the code :func:`instantiate` fills it with.
+    ``describe(language)["parameterized"]`` says which you have; :func:`run`
+    refuses a template.
 
     ``width`` is a request, not a bound (``describe(language)["width_effect"]``):
-    it does nothing where newlines are semantic, and a single token longer
-    than the width still overruns it.  A template wraps with each run kept
-    whole, so every row breaks in the same places.
+    it does nothing where newlines are semantic, and a token longer than the
+    width still overruns it.  A template wraps with each run kept whole, so
+    every row breaks in the same places.
     ``balance`` minimizes the rendered width/height difference across supported
-    layouts, breaking ties by source length (raster pixel area), then width.
-    Token and routing constraints can prevent a square layout.
+    layouts, breaking ties by source length (raster pixel area), then width;
+    token and routing constraints can prevent a square layout.
     Raster ``scale`` replicates pixels after layout; 1 preserves native output.
     Tagged results retain ``settings`` for execution.
     """
@@ -442,13 +441,12 @@ def instantiate(
 ) -> str:
     """Fill a parameterized generator's template with ``bits``.
 
-    Substituting the runs by hand does not work: each language spells a
-    set-input its own way.  A language whose generator reads its inputs, or
-    a template from a different language, raises
-    :class:`~esolangs.exceptions.TemplateError`.  ``width`` applies here too.
-    A template :func:`generate` returned carries its setters; a plain string
-    has them recovered from the language's own. Retained dialect choices follow
-    the filled program; explicit settings overrides individual choices.
+    Hand substitution fails: each language spells a set-input its own way.  A
+    language whose generator reads its inputs, or a template from another
+    language, raises :class:`~esolangs.exceptions.TemplateError`.  ``width``
+    applies here too.  A template from :func:`generate` carries its setters; a
+    plain string has them recovered from the language's own.  Retained dialect
+    choices follow the filled program; explicit settings override individual ones.
     """
     settings = effective_settings(language, template, settings)
     dialect_options(language, settings)
@@ -686,9 +684,8 @@ def run(
     Tagged source retains dialect choices; explicit ``settings`` overrides
     individual retained choices. Plain source uses the supplied settings.
     ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
-    filename is refused.  A Path and its text are
-    not quite the same argument: a file loses one trailing newline and has
-    CRLF and lone CR line endings read as LF; a string keeps both.
+    filename is refused.  A Path differs from its text: a file loses one
+    trailing newline and has CRLF and lone CR read as LF; a string keeps both.
 
     Bytes contain UTF-8 text or PNG source, as accepted by the interpreter.
     Readable streams are consumed from their current position and left open.
@@ -706,11 +703,11 @@ def run(
     ``max_memory`` caps Linux worker virtual address space in bytes, including
     Python overhead; other platforms refuse it. Loading in the parent is not capped.
 
-    ``stdin`` is consumed verbatim using the language's input unit, without
-    Boolean validation. Reading past
-    the end usually raises :class:`~esolangs.exceptions.InputExhaustedError`;
-    ``describe(language)["eof_is_a_value"]`` marks languages supplying a value.
-    Some halt instead. Build a Boolean-generated program's stdin with
+    ``stdin`` is consumed verbatim in the language's input unit, without
+    Boolean validation.  Reading past the end usually raises
+    :class:`~esolangs.exceptions.InputExhaustedError`;
+    ``describe(language)["eof_is_a_value"]`` marks languages supplying a value,
+    and some halt instead.  Build a Boolean-generated program's stdin with
     :func:`encode_inputs`, which validates the bits.
 
     ``timeout`` is wall-clock seconds (None: unbounded) and raises
@@ -719,8 +716,8 @@ def run(
     it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
     ``isolated=True`` or :meth:`Debugger.run` (stepping) bounds the run.
     ``seed``, an integer, fixes the languages that draw
-    (``describe(language)["random"]``) and is refused by the rest.  An
-    unloadable program raises :class:`~esolangs.exceptions.ProgramError`.
+    (``describe(language)["random"]``); the rest refuse it.  An unloadable
+    program raises :class:`~esolangs.exceptions.ProgramError`.
     """
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)  # validate before any route

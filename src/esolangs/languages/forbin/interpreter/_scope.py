@@ -52,9 +52,8 @@ class _Frame:
     companions track a ``for`` loop in progress at that cursor, one row
     resumed per step, and ``for_body_pos`` is the cursor into the *current*
     row's body -- a nested resumable sequence sharing this frame's scope, not
-    a pushed frame, since loop-variable/outer-variable writes land in the
-    same scope.  The body itself is read from ``fn.body[pos]`` rather than
-    stored, so the frame holds no parsed statements.
+    a pushed frame, since loop-variable and outer-variable writes land in
+    the same scope.  The body is read from ``fn.body[pos]``, not stored.
     """
 
     fn: _Function

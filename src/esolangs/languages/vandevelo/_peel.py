@@ -101,16 +101,15 @@ def _nearest(
     """Return the ``cap`` nearest differences from canonical ``pivot`` inside ``node``.
 
     Smallest by ``(bit_count, value)``, skipping ``seen`` and the node's
-    span: the differences are walked in that order -- each weight's values
-    ascending, by Gosper's next-permutation step -- testing membership, so
-    a dense set yields its head after about ``cap / density`` probes.  When
-    four times ``cap`` probes have not filled the list the set is sparse
-    and the whole of it is listed instead, at its size; the answer is the
-    same either way.  This is the one step on a node that costs points,
-    not cosets: listing only the representatives' differences costs
-    cosets but moves emitted size by up to 4% a table, either sign, at
-    n=8..12.  With ``scan`` off the probes' finds are returned as they
-    stand.
+    span: differences are walked in that order (each weight's values
+    ascending, by Gosper's step), testing membership, so a dense set yields
+    its head after about ``cap / density`` probes.  After ``4 * cap`` probes
+    without filling the list the set is sparse and is listed whole, at its
+    size; the answer is the same either way.  This is the one step on a node
+    that costs points, not cosets: listing only the representatives'
+    differences costs cosets but moves emitted size by up to 4% a table,
+    either sign, at n=8..12.  With ``scan`` off the probes' finds are
+    returned as they stand.
     """
     reps = node.reps
     reduce = node.reduce
@@ -268,9 +267,8 @@ def _ensure_popular(node: _Node, n: int) -> None:
     of the ``|S|**2`` pairs, so each draw clears half the average with
     probability at least a half.  A uniform pair of points is a uniform
     pair of cosets plus a span element that changes no pair count, so the
-    draw is between representatives.  :data:`_SAMPLES` draws cost what
-    scoring that many candidates does; the first to clear joins the
-    candidates.
+    draw is between representatives.  :data:`_SAMPLES` draws cost as much as
+    scoring that many candidates; the first to clear joins the candidates.
     """
     size = node.size
     total = 1 << n

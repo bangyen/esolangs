@@ -61,22 +61,20 @@ from esolangs.runtime.source_hints import keyword_hint, syntax_error
 class _Walker:
     """One walk in progress: where it is, what it can see, and its call.
 
-    A call is a *separate walk* with its own pointer and namespace, which
-    is what makes the Evil Hack -- a function's code sharing cells with
-    the caller's -- need nothing special: whoever is walking reads the
-    cell in their own direction.
+    A call is a *separate walk* with its own pointer and namespace, so the
+    Evil Hack -- a function's code sharing cells with the caller's -- needs
+    nothing special: each walker reads the cell in its own direction.
 
-    ``pending`` is the current command's expression with the calls that
-    have already returned rewritten into it as literals, and ``returned``
-    the value a just-finished callee is handing back.  Both are what let a
-    call inside an expression suspend: the command is re-entered once per
-    call it contains, each time with one more resolved.
+    ``pending`` is the current command's expression with already-returned
+    calls rewritten into it as literals; ``returned`` is the value a
+    just-finished callee hands back.  Together they let a call inside an
+    expression suspend: the command is re-entered once per call it
+    contains, each time with one more resolved.
 
-    The grid is not here: no command writes to the program, so it is a
-    constant of the run.  ``vars`` is frozen to an alias-preserving graph by
-    :func:`_freeze` before a snapshot stores it, because lists can be
-    aliased and a live reference would let a later command mutate a
-    snapshot the cycle detector had already banked.
+    The grid is not here: no command writes to the program.  ``vars`` is
+    frozen to an alias-preserving graph by :func:`_freeze` before a snapshot
+    stores it, since lists can be aliased and a live reference would let a
+    later command mutate a snapshot the cycle detector already banked.
     """
 
     __slots__ = ("col", "heading", "pending", "returned", "row", "vars")
@@ -168,10 +166,9 @@ class _Expressions:
         """Resolve calls left to right, stopping at the first user one.
 
         Returns the rewritten expression and the name of the user call to
-        push, or None when nothing is left to run.  Every call it passes
-        -- **builtins included** -- is replaced by its value, so a
-        builtin is evaluated once even when a command resumes after a
-        user call.
+        push, or None when nothing is left to run.  Every call passed --
+        **builtins included** -- is replaced by its value, so a builtin runs
+        once even when a command resumes after a user call.
 
         Resolved operands and operators are retained too: ``1/0+at{l,.5,66}``
         must fail before the setter changes ``l``.
@@ -227,14 +224,13 @@ class _Expressions:
     def evaluate(self, expr: _Expr) -> _Value:
         """Evaluate a parsed expression in this frame's namespace.
 
-        The nodes are typed, so each tag dispatches to typed fields.
-        Nodes are built by the parser, by ``_Expressions.reduce``
-        (which folds resolved calls into values and rebuilds nodes
-        with reduced children), and by ``_parse._replace_first``
-        (which rebuilds the path to a replaced call).  A node is
-        still a tuple underneath -- immutable, so a snapshot can
-        carry one -- with the tag first, which is what keeps the
-        legacy ``("tag", ...)`` spelling working.
+        Nodes are typed, so each tag dispatches to typed fields.  They are
+        built by the parser, by ``_Expressions.reduce`` (folds resolved calls
+        into values, rebuilds nodes with reduced children), and by
+        ``_parse._replace_first`` (rebuilds the path to a replaced call).  A
+        node is still an immutable tuple underneath, so a snapshot can carry
+        one, with the tag first, keeping the legacy ``("tag", ...)`` spelling
+        working.
         """
         if isinstance(expr, _Num):
             return expr.value
@@ -549,15 +545,14 @@ class _Core:
     def command(self, value: _Value | object = _MISSING) -> int | None:
         """Execute one command, leaving the pointer at the next one's start.
 
-        Pure: the input character an ``inp`` command needs arrives as
-        ``value`` (or the command asks for it by raising :class:`_NeedInputError`
-        when ``value`` is the missing sentinel); the character an ``out``
-        writes is returned rather than written.  A command holding calls
-        takes more than one step: each step runs the leftmost-innermost user
-        call by *pushing* a walker for it, and the value comes back rewritten
-        into ``pending`` as a literal.  The command itself runs on the step
-        where none is left, so no part of an Alight program executes inside
-        another command's step.
+        Pure: the character an ``inp`` needs arrives as ``value`` (or the
+        command raises :class:`_NeedInputError` when ``value`` is the missing
+        sentinel); the character an ``out`` writes is returned, not written.
+        A command holding calls takes several steps: each runs the
+        leftmost-innermost user call by *pushing* a walker, and the value
+        comes back rewritten into ``pending`` as a literal.  The command
+        itself runs on the step where none is left, so no part of a program
+        executes inside another command's step.
         """
         self.handlers.input = value
         self.handlers.output = None

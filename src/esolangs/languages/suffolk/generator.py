@@ -54,15 +54,14 @@ def suffolk(truth_table: str) -> str:
 def _suffolk_lookup(truth_table: str) -> str:
     """Build Suffolk by one countdown sweep over the table's steps.
 
-    ``!`` is the only write and computes ``max(0, cell + 1 - acc)``: a
-    clamped subtraction. This candidate counts table steps. Cell 0 counts
-    down from ``H - x``, and so reads zero on exactly the last ``x`` of
-    the sweep's ``H`` rounds, which turns
-    ``count <- max(0, count + 1 - cell0)`` into "add one if the row is
-    below ``x``".  Counting the rows where the table steps up and
-    where it steps down telescopes to ``f(x)``, since between two steps the
-    table is constant.  The top input splits the table in half and each half
-    gets its own pair of counters, halving the sweep.
+    ``!`` is the only write and computes ``max(0, cell + 1 - acc)``, a
+    clamped subtraction.  This candidate counts table steps.  Cell 0 counts
+    down from ``H - x``, so it reads zero on exactly the last ``x`` of the
+    sweep's ``H`` rounds, turning ``count <- max(0, count + 1 - cell0)``
+    into "add one if the row is below ``x``".  Counting the rows where the
+    table steps up and where it steps down telescopes to ``f(x)``, since
+    between two steps the table is constant.  The top input splits the table
+    in half and each half gets its own pair of counters, halving the sweep.
     """
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:

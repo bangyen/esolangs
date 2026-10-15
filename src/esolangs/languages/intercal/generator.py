@@ -125,15 +125,14 @@ def _mux(
 def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's template with repeated subexpressions assigned once.
 
-    The Shannon tree is reduced to a diagram (:func:`_diagram`), and a node
-    read by two or more parents is given a spare variable, ``.k <- expr``,
-    and named by it wherever it recurs, when that is shorter: the rule
-    weighs the node's inlined text against one statement and a name per
-    reader, so it is local to the node.  A level's ``~selector`` recurs in
-    every node of the level and is assigned once by the same rule.
-    Variables are numbered from ``.{n + 2}``: the complements, then the
-    nodes bottom-up, so the short names go to the deep nodes, which are
-    the most numerous and the most often read.
+    The Shannon tree is reduced to a diagram (:func:`_diagram`); a node read
+    by two or more parents gets a spare variable, ``.k <- expr``, named
+    wherever it recurs, when that is shorter.  The rule weighs the node's
+    inlined text against one statement plus a name per reader, so it is local
+    to the node.  A level's ``~selector`` recurs in every node of the level
+    and is assigned once by the same rule.  Variables are numbered from
+    ``.{n + 2}``: the complements, then the nodes bottom-up, so the short
+    names go to the deep nodes, the most numerous and most often read.
     """
     n = _validate_truth_table(truth_table)
     nodes, root = _diagram(truth_table, n)
