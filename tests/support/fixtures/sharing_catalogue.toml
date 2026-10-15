@@ -20,6 +20,7 @@
 "Ascenic" = "threshold scan over the Horner row code; no subtable is drawn"
 "Collatz Multiverse" = "indexed packed cells, with no subtable branch"
 "Eval" = "one literal table halved by position"
+"Fackward" = "a block nests its subtrees, so a repeated subtable is copied"
 "Grapheme" = "one integer table literal"
 "Piet++" = "lookup strip has no subtable calls"
 "Taglate" = "indexed table reduction, with no subtable branch"

@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 88 languages</summary>
+<summary>Show all 89 languages</summary>
 
 ### Grid-based Languages
 
@@ -37,6 +37,7 @@ Languages that use a stack for data manipulation.
 - [Caballo](https://esolangs.org/wiki/Caballo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/caballo/interpreter.py))
 - [Eval](https://esolangs.org/wiki/Eval) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/eval/interpreter.py))
 - [FALSE](https://esolangs.org/wiki/FALSE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/false/interpreter.py))
+- [Fackward](https://esolangs.org/wiki/Fackward) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fackward/interpreter.py))
 - [Forþ](https://esolangs.org/wiki/For%C3%BE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/forth/interpreter.py))
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/grapheme/interpreter.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/modulous/interpreter.py))

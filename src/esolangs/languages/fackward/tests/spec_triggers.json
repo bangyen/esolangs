@@ -1,0 +1,9 @@
+{
+ "triggers": [
+  {"program": "x", "stdin": "", "expect": "ProgramError", "claim": "a character outside the syntax"},
+  {"program": "[", "stdin": "", "expect": "ProgramError", "claim": "an unmatched bracket"},
+  {"program": "-5", "stdin": "", "expect": "HaltError", "claim": "printing a number that is no code point"},
+  {"program": "/1 0", "stdin": "", "expect": "HaltError", "claim": "/ by 0"},
+  {"program": ")[5]-1$", "stdin": "", "expect": "HaltError", "claim": "$ with a negative count"}
+ ]
+}

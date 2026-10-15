@@ -77,6 +77,8 @@ from esolangs.languages.egl.generator import LANGUAGE as _EGL_LANGUAGE
 from esolangs.languages.egl.generator import egl
 from esolangs.languages.eval.generator import LANGUAGE as _EVAL_LANGUAGE
 from esolangs.languages.eval.generator import eval  # noqa: A004 - the language's name
+from esolangs.languages.fackward.generator import LANGUAGE as _FACKWARD_LANGUAGE
+from esolangs.languages.fackward.generator import fackward
 from esolangs.languages.factor.generator import LANGUAGE as _FACTOR_LANGUAGE
 from esolangs.languages.factor.generator import factor
 from esolangs.languages.false.generator import LANGUAGE as _FALSE_LANGUAGE
@@ -223,6 +225,7 @@ _LANGUAGES = (
     _DIMENSIONAL_LANGUAGE,
     _EGL_LANGUAGE,
     _EVAL_LANGUAGE,
+    _FACKWARD_LANGUAGE,
     _FACTOR_LANGUAGE,
     _FALSE_LANGUAGE,
     _FARGO_LANGUAGE,
@@ -312,6 +315,7 @@ __all__ = [
     "dimensional",
     "egl",
     "eval",
+    "fackward",
     "factor",
     "false",
     "fargo",

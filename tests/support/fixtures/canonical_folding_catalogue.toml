@@ -16,6 +16,7 @@
 "Polynomial" = "a constant table is the k=0 state machine"
 
 [ignored_local]
+"Fackward" = "_skip" # equal halves drop their bit unread by a swap
 "Fargo" = "_arm_expression" # zero ANF arms omit their variable
 "INTERCAL" = "_diagram" # equal children replace their selector
 "Vandevelo" = "_constraints" # affine guards retain independent tests
@@ -36,6 +37,7 @@
 "Dimensional" = "_program" # reads and literal output
 "EGL" = "_program" # scratch reads beside a literal answer cell
 "Eval" = "_eval_ordered" # one projected table entry
+"Fackward" = "_skip" # n bit-dropping levels, then a literal leaf
 "Fargo" = "_arm_expression" # literal zero or one ANF coefficient
 "Fish" = "input_weights" # one projected grid cell
 "Grapheme" = "_program" # one-entry integer lookup

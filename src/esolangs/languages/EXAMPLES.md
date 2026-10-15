@@ -52,6 +52,7 @@ don't edit by hand.
 | `dimensional/dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
 | `egl/egl.txt` | EGL | `0001` | `01` | 01 | '0' |
 | `eval/eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
+| `fackward/fackward.txt` | Fackward | `0001` | `01` | 01 | '0' |
 | `factor/factor.txt` | Factor | `0001` | `01` | 01 | '0' |
 | `false/false.txt` | FALSE | `0001` | `01` | 01 | '0' |
 | `fargo/fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |

@@ -784,6 +784,18 @@ workspace = "poly n: at most 3n + bl(n) + 15 bits: line index, scale times code,
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Fackward"
+labels = ["tree"]
+qualification = """\
+    a level is a block whose quiet pass reads the bit; `/ c 49` makes it 0 \
+    or 1, that many `~` swap the two child blocks, `!` drops one and `)` \
+    runs the other; equal halves fold"""
+scaling = "linear: one block a node; a subtable repeated under two parents is copied"
+execution = "poly n: worst 40n + 4 steps: 40 a level, then print and halt"
+workspace = "linear: at most 8L bits: the two stacks hold the program's tokens"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Codesick"
 labels = ["tree"]
 qualification = """\
