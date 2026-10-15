@@ -5,6 +5,24 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 0.13.0
+
+- **Breaking:** Remove 123, BF-PDA, BIO, Jaune, NoComment and Sophie; their
+  names no longer resolve.
+- **Breaking:** `describe()["state_model"]` adds `program` and `variables`:
+  ///, Crement, Inject, Malbolge and Thue report `program`; Algebraic
+  Programming Language, Container, Forbin, INTERCAL, Packlang and Vandevelo
+  report `variables`; FRACTRAN reports `register`.
+- Add ABCDirection, Interprogck8, Caballo and Rubic (81 languages).
+- Add `list` filters `--template`, `--reads-input`, `--input-shape`,
+  `--random`, `--width-effect` and `--grep`, with matching
+  `list --json --details` fields.
+- Remove the termination-answer notes from `run` and `debug`; a timeout is a
+  plain timeout (exit status unchanged).
+- Fix hang detection for random languages: a program that never draws is now
+  proven to hang (Befunge `>v`/`^<` raised `TypeError`).
+- Simplify internals; split large interpreters into modules.
+
 ## 0.12.0
 
 - **Breaking:** `generate("Unary", ...)` returns a gzip-backed `CompressedText`
