@@ -5,6 +5,37 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 0.14.0
+
+- **Breaking:** `describe()["input_shape"]` and `["input_encoding"]` are
+  `None` unless `reads_input` (templates and Deadfish, HQ9+, Nope.); the CLI
+  list filters agree.  `encode_inputs` refuses Deadfish, HQ9+ and Nope.
+- **Breaking:** `run(isolated=)` and `generate(balance=)` must be `bool`.
+- **Breaking:** a program object's language tag must name a registered
+  language and is stored canonically; its settings need a language and must
+  be valid for it.  Generated programs are immutable.  `Raster` and
+  `CompressedText` refuse bad arguments with `ProgramError`/`ArgumentError`
+  (they raised `TypeError`, `AttributeError` or bare `ValueError`).
+- **Breaking:** `eof_is_a_value` is true for Fish, thisthat, Piet, Piet++ and
+  Unary; `VM.memory` is integer cells only (`[]` for Caballo, Crement and
+  B-tapemark).
+- **Breaking:** numeric input reads ASCII decimal only (`1_0` and `٣` were
+  accepted).  An upscaled raster over 2^28 pixels raises `ArgumentError`.
+- **Breaking (CLI):** `help <unknown>` exits 2; a failed run's partial
+  output gets no added newline on a pipe; `describe --spec --json` prints the
+  spec as a JSON string.
+- Add `Debugger.eof_is_a_value`; `Debugger.break_at` and `--break-at` take
+  negative positions.
+- Fix: an isolated worker exits when its parent is killed (SIGTERM/SIGHUP
+  left it running); the CLI with closed stdin, stdout or stderr, or an ASCII
+  locale, no longer exits 70; `instantiate(truth_table=)` accepts every
+  width-aware template; scaled rasters, `InputExhaustedError` and
+  `UnknownLanguageError` pickle intact; `typing.get_type_hints` resolves on
+  `Raster` and `CompressedText`; isolated and stepped timeouts share one
+  message; bit~ reads input as a byte; Piet and Piet++ drop surrogates.
+- Docs: corrected example sizes, counts, and the spec text of 13 languages
+  against their behaviour; a dialect-settings section in usage.md.
+
 ## 0.13.0
 
 - **Breaking:** Remove 123, BF-PDA, BIO, Jaune, NoComment and Sophie; their
