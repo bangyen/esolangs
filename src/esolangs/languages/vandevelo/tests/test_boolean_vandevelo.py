@@ -5,14 +5,14 @@ from itertools import product
 
 import pytest
 
-from esolangs.languages.vandevelo.generator import (
+from esolangs.languages.vandevelo._peel import (
     _SAMPLES,
     _best,
     _ensure_popular,
     _Node,
     _pairs,
-    vandevelo,
 )
+from esolangs.languages.vandevelo.generator import vandevelo
 from esolangs.languages.vandevelo.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -72,7 +72,7 @@ def test_a_test_implied_by_an_earlier_half_space_is_dropped(
     """Rows past ``a? :: loop?`` all have ``a`` at 0; nothing tests it again."""
     import importlib
 
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._cover")
     monkeypatch.setattr(module, "_affine_coset", lambda *_: None)
     lines = vandevelo("01111111").splitlines()
     assert lines[4:] == ["a? :: loop?", "c? :: loop?", "b? :: loop?"]
@@ -112,7 +112,7 @@ def test_parity_is_a_single_hyperplane() -> None:
 def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
     import importlib
 
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._cover")
 
     def reject(*_args: object) -> None:
         raise AssertionError("an affine table entered the cube peel")
@@ -140,9 +140,9 @@ def test_affine_cosets_and_complements_bypass_the_peel(
 ) -> None:
     import importlib
 
-    from esolangs.languages.vandevelo.generator import _affine_coset
+    from esolangs.languages.vandevelo._affine import _affine_coset
 
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._cover")
 
     def reject(*_args: object) -> None:
         raise AssertionError("an affine coset entered the cube peel")
@@ -178,7 +178,7 @@ def test_affine_cosets_and_complements_bypass_the_peel(
 
 
 def test_coset_membership_work_is_geometric() -> None:
-    from esolangs.languages.vandevelo.generator import _affine_coset
+    from esolangs.languages.vandevelo._affine import _affine_coset
 
     class CountedTable(str):
         reads = 0
@@ -206,7 +206,7 @@ def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
     program = vandevelo(table)
     results = (_result(program, bits) for bits in product(range(2), repeat=4))
     assert "".join(results) == table
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._peel")
     monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
     assert len(vandevelo(table)) > len(program)
 
@@ -215,7 +215,7 @@ def test_the_peel_partitions_the_one_set_into_cubes() -> None:
     """Every harvested cube lies in the 1-set, and together they tile it."""
     import random
 
-    from esolangs.languages.vandevelo.generator import _Peel
+    from esolangs.languages.vandevelo._peel import _Peel
 
     rng = random.Random(5)
     for n in (6, 8, 9):
@@ -255,7 +255,7 @@ def _spread_cube(n: int, dim: int) -> list[int]:
 
 
 def _check_basis(dirs: list[int], n: int) -> list[int]:
-    from esolangs.languages.vandevelo.generator import _constraints
+    from esolangs.languages.vandevelo._affine import _constraints
 
     duals = [w for w, _ in _constraints(0, dirs, n)]
     assert len(duals) == n - len(dirs)
@@ -272,7 +272,7 @@ def _check_basis(dirs: list[int], n: int) -> list[int]:
 
 def test_constraints_weigh_four_per_input_plus_a_core() -> None:
     """The O(T) upkeep bound rests on the per-clause constraint weight."""
-    from esolangs.languages.vandevelo.generator import _echelon
+    from esolangs.languages.vandevelo._affine import _echelon
 
     n, dim = 16, 4
     dirs = _spread_cube(n, dim)
@@ -287,7 +287,7 @@ def test_constraints_weigh_four_per_input_plus_a_core() -> None:
 
 def test_constraints_keep_the_earliest_triple_before_a_later_pair() -> None:
     """A five-column dependency offers both witnesses; the first stays stable."""
-    from esolangs.languages.vandevelo.generator import _constraints
+    from esolangs.languages.vandevelo._affine import _constraints
 
     columns = (1, 2, 4, 8, 15, 7)
     dirs = [
@@ -300,7 +300,7 @@ def test_constraints_keep_the_earliest_triple_before_a_later_pair() -> None:
 
 
 def test_repeated_columns_keep_the_witness_before_core_growth() -> None:
-    from esolangs.languages.vandevelo.generator import _constraints
+    from esolangs.languages.vandevelo._affine import _constraints
 
     columns = (1, 2, 4, 7, 8, 15, 7)
     dirs = [
@@ -365,7 +365,7 @@ def test_short_names_are_unique_and_skip_builtins() -> None:
 
 def test_a_near_full_chain_holds_cosets_not_points() -> None:
     """Three zeros keep each level near ``T``; its stored cosets halve."""
-    from esolangs.languages.vandevelo.generator import _Node
+    from esolangs.languages.vandevelo._peel import _Node
 
     n = 12
     node = _Node.root(set(range(1 << n)) - {5, 1234, 4000})
@@ -385,7 +385,7 @@ def test_fallback_draws_a_half_average_direction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Three span cosets with no scored candidate: the fallback must fire."""
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._peel")
     span = set(range(4))
     points = {base ^ offset for base in (0, 4, 8) for offset in span}
     node = _Node.root(points).below(1).below(2)
@@ -409,7 +409,7 @@ def test_assure_finds_a_half_average_direction() -> None:
     """Sparse, dense, and inside a span: the pigeonhole bucket count suffices."""
     import random
 
-    from esolangs.languages.vandevelo.generator import _assure
+    from esolangs.languages.vandevelo._peel import _assure
 
     rng = random.Random(3)
     n = 8
@@ -433,9 +433,9 @@ def test_the_clause_bound_holds_on_assure_alone(
     """No scored candidates, no sampling: the guarded chains still bound C."""
     import random
 
-    from esolangs.languages.vandevelo.generator import _Peel
+    from esolangs.languages.vandevelo._peel import _Peel
 
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._peel")
     monkeypatch.setattr(module, "_nearest", lambda *_, **__: [])
     monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
     rng = random.Random(7)
@@ -454,7 +454,7 @@ def test_the_clause_bound_holds_on_assure_alone(
 
 
 def test_certification_refresh_scans_charge_to_removed_cosets(monkeypatch) -> None:
-    from esolangs.languages.vandevelo.generator import _Peel
+    from esolangs.languages.vandevelo._peel import _Peel
 
     peel = _Peel(set(range(128)), 7)
     refresh = _Peel.refresh
@@ -479,9 +479,9 @@ def test_certification_refresh_scans_charge_to_removed_cosets(monkeypatch) -> No
 
 
 def test_certification_assures_unrefreshed_candidate_pools(monkeypatch) -> None:
-    from esolangs.languages.vandevelo.generator import _Peel
+    from esolangs.languages.vandevelo._peel import _Peel
 
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._peel")
     monkeypatch.setattr(module, "_nearest", lambda *_, **__: [])
     monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
     peel = _Peel({row for row in range(256) if row % 5 != 0}, 8)
@@ -504,7 +504,7 @@ def test_certification_assures_unrefreshed_candidate_pools(monkeypatch) -> None:
 
 
 def test_certification_discards_dead_candidates_before_refresh() -> None:
-    from esolangs.languages.vandevelo.generator import _Peel
+    from esolangs.languages.vandevelo._peel import _Peel
 
     peel = _Peel({*range(128), 200, 201}, 8)
     node = peel.certify()
@@ -555,14 +555,9 @@ def test_identifier_charge_on_a_rendered_wide_program() -> None:
 def test_refresh_skips_a_full_pool_and_refills_after_pair_loss(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from esolangs.languages.vandevelo.generator import (
-        _CANDIDATES,
-        _nearest,
-        _Peel,
-        _remove,
-    )
+    from esolangs.languages.vandevelo._peel import _CANDIDATES, _nearest, _Peel, _remove
 
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._peel")
     peel = _Peel(set(range(128)), 7)
     calls: list[int] = []
 
@@ -592,7 +587,7 @@ def test_refresh_skips_a_full_pool_and_refills_after_pair_loss(
 @pytest.mark.parametrize("density", [1, 2, 5, 16])
 @pytest.mark.parametrize("cap", [0, 1, 3, 12, 48])
 def test_nearest_matches_independent_expanded_quotient(density, cap) -> None:
-    from esolangs.languages.vandevelo.generator import _nearest, _Node
+    from esolangs.languages.vandevelo._peel import _nearest, _Node
 
     n = 6
     node = _Node.root(set(range(1 << n))).below(0b100101).below(0b010011)
@@ -619,7 +614,7 @@ def test_nearest_matches_independent_expanded_quotient(density, cap) -> None:
 
 
 def test_nearest_fallback_reduces_only_the_bounded_probes(monkeypatch) -> None:
-    from esolangs.languages.vandevelo.generator import _nearest, _Node
+    from esolangs.languages.vandevelo._peel import _nearest, _Node
 
     node = _Node.root(set(range(256))).below(0b10010101).below(0b01001011)
     reduce = _Node.reduce
@@ -647,7 +642,7 @@ def test_nearest_corpus_matches_direct_reduction_and_executes(monkeypatch) -> No
     import importlib
     import random
 
-    module = importlib.import_module("esolangs.languages.vandevelo.generator")
+    module = importlib.import_module("esolangs.languages.vandevelo._peel")
     rng = random.Random(739)
     tables = [format(i, "08b") for i in range(256)]
     for n in (4, 5, 6):
@@ -657,7 +652,7 @@ def test_nearest_corpus_matches_direct_reduction_and_executes(monkeypatch) -> No
                 for _ in range(4)
             )
     programs = [(vandevelo(t), vandevelo(t, width=1)) for t in tables]
-    from esolangs.languages.vandevelo.generator import _nearest as nearest
+    from esolangs.languages.vandevelo._peel import _nearest as nearest
 
     def direct_nearest(node, pivot, seen, n, cap, *, scan=True):
         assert pivot in node.reps
