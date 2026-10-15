@@ -1,5 +1,6 @@
 """Unit tests for the esolangs command-line interface."""
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -62,6 +63,20 @@ class TestInProcess:
             esolangs.read_answer(_RASTER, esolangs.run(_RASTER, image, stdin=stdin))
             == "1"
         )
+
+    def test_an_oversized_scale_is_a_usage_error(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It rendered outside the error handler: internal error, exit 70."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "--scale", "999999999", _RASTER, "0110"], capsys)
+        assert exc.value.code == 2
+        assert "pixel limit" in capsys.readouterr().err
+
+    def test_spec_json_is_the_spec(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """``--spec --json`` printed every fact, ignoring ``--spec``."""
+        out = call_main(["describe", "--spec", "--json", REFERENCE], capsys)
+        assert json.loads(out) == esolangs.describe(REFERENCE)["spec"]
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

@@ -92,7 +92,7 @@ one command in full; `--version` prints the version.  Short forms: -p is
 most significant first; its length sets the input count (0110 is two-input XOR).
 
 exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal
-error (a bug in esolangs), 120 stdout closed early, 124 a bound ran out,
+error (a bug in esolangs), 120 stdout closed early, 124 the timeout ran out,
 130 interrupted.
 
 examples:
@@ -245,7 +245,7 @@ printed before a failure is written too, then the error on stderr.
 
 exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
 (unknown language, malformed program, unreadable file), 70 internal error (a
-bug in esolangs), 120 stdout closed early, 124 the bound ran out,
+bug in esolangs), 120 stdout closed early, 124 the timeout ran out,
 130 interrupted.
 
 options:
@@ -290,10 +290,11 @@ options:
               wiki page.  Every language carries one, they run to a
               few thousand characters, and they are the best documentation
               here for *writing* a program rather than generating one.
+              With --json, the spec as one JSON string.
   --json      print `esolangs.describe` verbatim as JSON: every key the
-              Python API returns, including the interpreter path, the full
-              spec text, proof metadata, and example paths that the default
-              layout summarizes or omits.
+              Python API returns, including the full spec text, dialect
+              settings and example paths that the default layout
+              summarizes or omits.
 
 examples:
   esolangs describe brainfuck

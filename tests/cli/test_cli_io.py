@@ -218,6 +218,20 @@ class TestAClosedPipeIsNotAnError:
         )
         assert closed.returncode == 120, closed.stderr
 
+    def test_a_closed_stdin_reads_as_empty(self) -> None:
+        """``read-answer <&-`` reported an internal error, exit 70."""
+        import subprocess
+
+        closed = subprocess.run(
+            ["sh", "-c", f"'{sys.executable}' -m esolangs read-answer {REFERENCE} <&-"],
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert closed.returncode == 2, closed.stderr
+        assert "nothing on stdin" in closed.stderr
+
 
 class TestProgramFilesLoad:
     """The newline a text file ends with is the file's, not the program's."""

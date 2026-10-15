@@ -38,9 +38,17 @@ class _Tagged(str):
     ) -> Self:
         """Return ``text`` tagged as a ``language`` program."""
         program = super().__new__(cls, text)
-        program.language = language
-        program.settings = settings
+        object.__setattr__(program, "language", language)
+        object.__setattr__(program, "settings", settings)
         return program
+
+    def __setattr__(self, name: str, value: object) -> None:
+        """Refuse: a retag (``p.language = "Minifuck"``) changed what ran."""
+        raise AttributeError(f"{type(self).__name__} is immutable")
+
+    def __delattr__(self, name: str) -> None:
+        """Refuse, as :meth:`__setattr__` does."""
+        raise AttributeError(f"{type(self).__name__} is immutable")
 
     def __reduce__(self) -> tuple[object, ...]:
         """Pickle with language and dialect provenance for workers."""
@@ -76,8 +84,8 @@ class _Template(_Tagged):
     ) -> Self:
         """Return ``text`` tagged as ``language``'s template."""
         template = super().__new__(cls, text, language, settings)
-        template.char = char
-        template.setters = check_setters(setters)
+        object.__setattr__(template, "char", char)
+        object.__setattr__(template, "setters", check_setters(setters))
         runs(text, char, template.setters)
         return template
 
@@ -87,7 +95,17 @@ class _Template(_Tagged):
         return len(self.setters)
 
     def fill(self, bits: Sequence[int]) -> str:
-        """Return the program for ``bits``."""
+        """Return the program for ``bits``; the wrong count is a TemplateError."""
+        from esolangs.exceptions import TemplateError
+        from esolangs.runtime._validate import check_bits
+
+        # ``fill([0])`` on a two-input template raised a bare ValueError.
+        bits = check_bits(bits, "bits")
+        if len(bits) != self.inputs:
+            raise TemplateError(
+                f"this template has {self.inputs} inputs, but {len(bits)} "
+                f"bits were given"
+            )
         return fill_runs(str(self), self.char, self.setters, bits)
 
     def __reduce__(self) -> tuple[object, ...]:

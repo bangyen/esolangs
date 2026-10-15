@@ -356,7 +356,8 @@ def _generate(rest: list[str]) -> None:
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
-    _emit(program, plain="--plain" in flags)
+    with _errors():  # A raster renders here, and may exceed the pixel limit.
+        _emit(program, plain="--plain" in flags)
 
 
 def _answer_sentence(facts: LanguageInfo) -> str:
@@ -440,7 +441,8 @@ def _describe(rest: list[str]) -> None:
     with _errors():
         facts = describe(rest[0])
     if as_spec:
-        print(json.dumps(facts, indent=2) if as_json else facts["spec"])
+        # ``--json`` encodes the spec; it printed every fact, ignoring --spec.
+        print(json.dumps(facts["spec"]) if as_json else facts["spec"])
         return
     if as_json:
         # Verbatim, including the keys the reading layout hides: a caller

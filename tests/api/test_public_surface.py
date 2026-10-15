@@ -227,3 +227,44 @@ class TestBitsAreBits:
     def test_a_non_string_template_is_refused(self) -> None:
         with pytest.raises(esolangs.TemplateError, match="template must be"):
             esolangs.instantiate(TEMPLATE_LANGUAGE, None, [1, 0])
+
+
+class TestProgramObjectsRefuseMisuse:
+    """1.0 audit, round 2: each slipped past ``except EsolangError``."""
+
+    def test_fill_refuses_the_wrong_bit_count(self) -> None:
+        template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+        with pytest.raises(esolangs.TemplateError):
+            template.fill([0])  # type: ignore[union-attr]
+
+    def test_a_generated_programs_tag_is_read_only(self) -> None:
+        program = esolangs.generate(REFERENCE, "0110")
+        with pytest.raises(AttributeError, match="immutable"):
+            program.language = TEMPLATE_LANGUAGE  # type: ignore[union-attr]
+
+    @pytest.mark.parametrize("language", ["nonesuch", 5])
+    def test_a_tag_must_name_a_language(self, language: object) -> None:
+        with pytest.raises(esolangs.UnknownLanguageError):
+            esolangs.Raster((((0, 0, 0),),)).tagged(language)  # type: ignore[arg-type]
+
+    def test_compressed_limits_are_typed(self) -> None:
+        import gzip
+
+        with pytest.raises(esolangs.ArgumentError, match="limits"):
+            esolangs.CompressedText(gzip.compress(b"x"), limits=5)  # type: ignore[arg-type]
+
+    def test_flags_must_be_bools(self) -> None:
+        """A truthy ``isolated="no"`` switched the sandbox on."""
+        with pytest.raises(esolangs.ArgumentError, match="isolated"):
+            esolangs.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
+        with pytest.raises(esolangs.ArgumentError, match="balance"):
+            esolangs.generate(REFERENCE, "0110", balance="no")  # type: ignore[arg-type]
+
+    @pytest.mark.medium
+    def test_both_routes_word_a_timeout_alike(self) -> None:
+        messages = set()
+        for isolated in (False, True):
+            with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+                esolangs.run(REFERENCE, "+[]", timeout=0.5, isolated=isolated)
+            messages.add(str(caught.value))
+        assert messages == {"execution exceeded the 0.5-second timeout"}

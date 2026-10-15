@@ -316,7 +316,7 @@ a major release, compatibility covers:
   ones keyword-only), and deliberate `EsolangError` exceptions;
 - CLI command names, JSON field meanings, and exit statuses: 0 success,
   1 the program broke, 2 the ask was wrong, 70 internal error, 120 stdout
-  closed early, 124 a bound ran out, 130 interrupted;
+  closed early, 124 the timeout ran out, 130 interrupted;
 - existing `describe()` fields and their value types (an absent value is
   `None`; `examples` are paths relative to the package);
 - interpreter semantics for valid programs, including I/O and answers;

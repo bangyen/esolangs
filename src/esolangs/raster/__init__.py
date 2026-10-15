@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
 
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
-from esolangs.runtime._validate import check_scale
+from esolangs.runtime._validate import check_provenance, check_scale
 from esolangs.runtime.source_hints import syntax_error
 
 from . import png
@@ -115,6 +115,7 @@ def _assign(
     """Initialize ``raster``'s fields; the one path both constructors share."""
     if scale is not None:
         check_scale(scale)
+    check_provenance(language, settings)
     object.__setattr__(raster, "_rows", rows)
     object.__setattr__(raster, "_normalizations", {})
     object.__setattr__(raster, "_materialize", materialize)

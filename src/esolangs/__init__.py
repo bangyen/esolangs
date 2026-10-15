@@ -96,6 +96,7 @@ from esolangs.runtime._source import (
 )
 from esolangs.runtime._validate import (
     check_bits,
+    check_flag,
     check_scale,
     check_seed,
     check_timeout,
@@ -200,6 +201,7 @@ def generate(
     """
     options = dialect_options(language, settings)
     check_scale(scale)
+    check_flag(balance, "balance")
     if scale != 1:
         if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
             raise with_hint(
@@ -696,6 +698,7 @@ def run(
     check_scale_for(language, scale)
     check_seed(seed)
     check_timeout(timeout)
+    check_flag(isolated, "isolated")
     check_limits(max_output, max_memory, isolated=isolated)
     if isolated:
         if max_steps is not None:

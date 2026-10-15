@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 _INFINITE = (float("inf"), float("-inf"))
 
 #: The shortest wall-clock bound the ``SIGALRM`` guard can service.  See
@@ -224,3 +226,30 @@ def check_scale(scale: object) -> int:
             ),
         )
     return scale
+
+
+def check_flag(value: object, name: str) -> bool:
+    """Return ``value`` if it is a bool; ``isolated="no"`` read as True."""
+    from esolangs.exceptions import ArgumentError
+
+    if not isinstance(value, bool):
+        raise ArgumentError(
+            f"{name} must be True or False, got {_argument_repr(value)}"
+        )
+    return value
+
+
+def check_provenance(language: object, settings: object) -> None:
+    """Refuse a program tag naming no language, or settings of the wrong type.
+
+    ``Raster(...).tagged("nonesuch")`` and ``.tagged(5)`` were kept as given.
+    """
+    from esolangs.exceptions import ArgumentError
+    from esolangs.registry import resolve
+    from esolangs.settings import DialectSettings
+
+    if language is not None:
+        resolve(cast("str", language))
+    if settings is not None and not isinstance(settings, DialectSettings):
+        got = _argument_repr(settings)
+        raise ArgumentError(f"settings must be a DialectSettings or None, got {got}")

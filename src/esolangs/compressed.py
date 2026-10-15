@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
+from esolangs.runtime._validate import check_provenance
 
 if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
@@ -71,6 +72,10 @@ class CompressedText:
         """Validate the stream and measure its expanded characters."""
         if not isinstance(self.data, bytes):
             raise ProgramError("gzip source must be bytes")
+        check_provenance(self.language, self.settings)
+        if self.limits is not None and not isinstance(self.limits, TextLimits):
+            # ``limits=5`` raised a bare AttributeError from ``check_gzip``.
+            raise ArgumentError("limits must be a TextLimits or None")
         if self.limits is not None:
             self.limits.check_gzip(len(self.data))
         object.__setattr__(self, "_size", sum(len(chunk) for chunk in self.chunks()))

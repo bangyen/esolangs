@@ -254,7 +254,8 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
     thread rather than :func:`select.select` because tests supply an
     object with no ``fileno``.
     """
-    if sys.stdin.isatty():
+    # None: fd 0 was closed at startup (``<&-``), an internal error, exit 70.
+    if sys.stdin is None or sys.stdin.isatty():
         return ""
 
     def _read_text() -> str:

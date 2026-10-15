@@ -25,7 +25,7 @@ _TIMEOUT_EXIT = 124
 def _exit_code(exc: EsolangError) -> int:
     """Return the exit code ``exc`` should leave behind.
 
-    ``run --help`` documents 124 for a bound running out, and three of the
+    ``run --help`` documents 124 for the timeout running out, and three of the
     five commands exited 1 on it.  ``ValueError`` is misuse, 2; else 1.
     """
     if isinstance(exc, ExecutionTimeoutError):
