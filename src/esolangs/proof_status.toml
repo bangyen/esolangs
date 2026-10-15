@@ -747,6 +747,17 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "1 + i"
+labels = ["tree"]
+qualification = """\
+    a node pushes its two children as function literals, reads its bit with `B` \
+    and `?` invokes one; constant subtables read their remaining bits unbranched"""
+scaling = "linear: at most 10.5T - 10 characters, ten a node"
+execution = "poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b"
+workspace = "poly n: at most 4bl(L) + 40 bits: two functions, a decider and a frame"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Codesick"
 labels = ["tree"]
 qualification = """\

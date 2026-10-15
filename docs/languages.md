@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 85 languages</summary>
+<summary>Show all 86 languages</summary>
 
 ### Grid-based Languages
 
@@ -30,6 +30,7 @@ Languages that move a pointer or beam across a 2D grid.
 
 Languages that use a stack for data manipulation.
 
+- [1 + i](https://esolangs.org/wiki/1_+_i) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/one_i/interpreter.py))
 - [3x](https://esolangs.org/wiki/3x) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/three_x/interpreter.py))
 - [BFStack](https://esolangs.org/wiki/BFStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bfstack/interpreter.py))
 - [Caballo](https://esolangs.org/wiki/Caballo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/caballo/interpreter.py))

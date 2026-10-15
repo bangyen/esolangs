@@ -65,6 +65,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `minsky_swap/minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
 | `modulous/modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
 | `object_disoriented/object-disoriented.txt` | Object disoriented | `0001` | `01` | 01 | '0' |
+| `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |

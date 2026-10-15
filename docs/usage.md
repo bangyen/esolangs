@@ -164,6 +164,7 @@ Build language-specific stdin with `encode_inputs`:
 
 | Language | `input_shape` | Alphabet | stdin for inputs 1, 0, 1 |
 | --- | --- | --- | --- |
+| 1 + i | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
