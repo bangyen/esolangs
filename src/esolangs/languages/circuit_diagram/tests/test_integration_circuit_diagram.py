@@ -1,5 +1,7 @@
 """Circuit Diagram through the shared API, CLI and machinery."""
 
+import functools
+
 import pytest
 
 import esolangs
@@ -78,13 +80,18 @@ class TestAFailedRowSaysWhichRow:
         assert "after 5 rows" in note
         assert "01101" in note  # the answers that did come back
 
-    def test_a_real_timeout_carries_one_too(self) -> None:
+    def test_a_real_timeout_carries_one_too(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Not only the stand-in: the path a caller actually hits."""
         from esolangs.languages.circuit_diagram import interpreter as circuit_diagram
 
         table = "".join(str(bin(r).count("1") & 1) for r in range(128))
         # A warm compile cache (another test, same worker) beats 5 ms a row.
-        circuit_diagram._compile.cache_clear()  # noqa: SLF001
+        # A fresh cache, not cache_clear(): freeing the worker's cached
+        # circuits took a 1 ms Circuit Diagram test to 3.19 s on CI.
+        cold = functools.lru_cache(maxsize=16)(circuit_diagram._compile.__wrapped__)  # noqa: SLF001
+        monkeypatch.setattr(circuit_diagram, "_compile", cold)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))
