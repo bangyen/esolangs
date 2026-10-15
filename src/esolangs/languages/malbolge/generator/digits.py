@@ -40,33 +40,37 @@ from typing import NamedTuple
 
 from esolangs.languages.malbolge.interpreter import _crazy
 
+from .cascade import (
+    _build_constants,
+    _table_char,
+)
 from .core import (
     _ANSWER,
-    _CONSTS,
     _K_CELL,
     _T_HELPERS,
     _T_HUB_CELLS,
     _T_LABELS,
     _T_LOW,
-    _WORDS,
-    _build_constants,
     _chain,
     _emit_chain,
-    _g,
     _main_planner,
     _merge_code,
     _options_of,
     _pointers,
     _prime,
-    _program,
-    _render,
-    _rot,
     _seed_label_chains,
     _t_hubs,
     _t_jump,
-    _table_char,
     _turn_hubs,
     _walker,
+)
+from .isa import (
+    _CONSTS,
+    _WORDS,
+    _g,
+    _program,
+    _render,
+    _rot,
 )
 
 #: The largest input count the generator builds.

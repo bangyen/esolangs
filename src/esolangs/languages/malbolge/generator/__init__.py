@@ -47,60 +47,68 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime.source_hints import with_hint
 
-from .core import (
-    _ALL2,
-    _ANSWER,
+from .cascade import (
     _C_INITS,
     _C_POST,
     _CASCADE_N,
-    _CONSTS,
     _ENTRY,
-    _K_CELL,
     _NEXT,
+    _build_constants,
+    _cascade_program,
+    _decoder_entry,
+    _emit_fold,
+    _fold,
+    _ops,
+    _table_char,
+)
+from .core import (
+    _ANSWER,
+    _K_CELL,
     _T_FLOOR,
     _T_HELPERS,
     _T_HUB_CELLS,
     _T_LABELS,
     _T_LOW,
     _T_SEEDS,
-    _W_PATHS,
-    _W_SELECT,
-    _W_SELECT_OPS,
-    _WIDE_N,
-    _WORDS,
-    _apply,
-    _build_constants,
-    _cascade_program,
     _chain,
-    _char_for,
-    _decoder_entry,
     _emit_chain,
-    _emit_fold,
-    _fold,
-    _g,
     _main_planner,
     _merge_code,
     _n_hub_pass,
-    _ops,
     _options_of,
     _Planner,
     _pointers,
     _prime,
-    _program,
-    _render,
-    _rot,
     _seed_label_chains,
-    _skeleton,
     _t_hubs,
     _t_jump,
-    _table_char,
     _turn_hubs,
     _valid_chars,
     _walker,
+)
+from .digits import _DIGITS_N, _digits_program
+from .isa import (
+    _ALL2,
+    _CONSTS,
+    _WORDS,
+    _apply,
+    _char_for,
+    _g,
+    _program,
+    _render,
+    _rot,
+)
+from .skeleton import (
+    _skeleton,
+)
+from .wide import (
+    _W_PATHS,
+    _W_SELECT,
+    _W_SELECT_OPS,
+    _WIDE_N,
     _wide,
     _wide_program,
 )
-from .digits import _DIGITS_N, _digits_program
 
 # ---------------------------------------------------------------------------
 # Thirteen inputs: the twelve-input core, with input thirteen read by the stub.
