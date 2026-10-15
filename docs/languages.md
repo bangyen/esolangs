@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 83 languages</summary>
+<summary>Show all 84 languages</summary>
 
 ### Grid-based Languages
 
@@ -40,6 +40,7 @@ Languages that use a stack for data manipulation.
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/modulous/interpreter.py))
 - [Piet](https://esolangs.org/wiki/Piet) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/piet/interpreter.py))
 - [Piet++](https://esolangs.org/wiki/Piet++) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/piet_plus_plus/interpreter.py))
+- [Quassaunt](https://esolangs.org/wiki/Quassaunt) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/quassaunt/interpreter.py))
 - [SStack](https://esolangs.org/wiki/SStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sstack/interpreter.py))
 - [Smu](https://esolangs.org/wiki/Smu) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/smu/interpreter.py))
 - [Underload](https://esolangs.org/wiki/Underload) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/underload/interpreter.py))

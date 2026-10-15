@@ -129,6 +129,8 @@ from esolangs.languages.polynomial.generator import LANGUAGE as _POLYNOMIAL_LANG
 from esolangs.languages.polynomial.generator import polynomial
 from esolangs.languages.qoibl.generator import LANGUAGE as _QOIBL_LANGUAGE
 from esolangs.languages.qoibl.generator import qoibl
+from esolangs.languages.quassaunt.generator import LANGUAGE as _QUASSAUNT_LANGUAGE
+from esolangs.languages.quassaunt.generator import quassaunt
 from esolangs.languages.ram0.generator import LANGUAGE as _RAM0_LANGUAGE
 from esolangs.languages.ram0.generator import ram0
 from esolangs.languages.rotfuck.generator import LANGUAGE as _ROTFUCK_LANGUAGE
@@ -237,6 +239,7 @@ _LANGUAGES = (
     _PIET_PLUS_PLUS_LANGUAGE,
     _POLYNOMIAL_LANGUAGE,
     _QOIBL_LANGUAGE,
+    _QUASSAUNT_LANGUAGE,
     _RAM0_LANGUAGE,
     _ROTFUCK_LANGUAGE,
     _RUBIC_LANGUAGE,
@@ -321,6 +324,7 @@ __all__ = [
     "piet_plus_plus",
     "polynomial",
     "qoibl",
+    "quassaunt",
     "ram0",
     "rotfuck",
     "rubic",

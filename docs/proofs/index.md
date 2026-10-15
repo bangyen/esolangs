@@ -453,6 +453,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
 | Object disoriented | tree | a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; equal halves drop the bit untested and constant subtables fold | linear: at most 39T + 21 characters: 35 a node, 4 a leaf | poly n: worst 67n + 34 commands: one tree path, 67 ops a level | poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3) + 2bl(L)+bl(6n+8)+bl(6n+9)+bl(n)+19 bits: two frames and six cells a level |
 | SendStuff | tree | each distinct subtable is one named node reached by reference; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched | linear: O(T/n) nodes with O(n)-digit names | poly n: worst 4n + 2 steps: four sends a level, root and leaf one each | poly n: at most (n+1)(bl(L)+10) + bl(n) bits: a pending frame for each 1 taken, one sending frame |
+| Quassaunt | tree | each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched | linear: O(T/n) nodes with O(n)-digit names | linear: at most 5⌊L/57⌋ + 21n + 9 steps: five a stored node, 21 a level | linear: at most 24L bits: the running code, the stored code and the stack, each within the source |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits | linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
 | Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
@@ -571,7 +572,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 78 theoretical totality arguments and
+Accordingly, this ledger records 79 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

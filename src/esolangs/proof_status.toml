@@ -733,6 +733,20 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Quassaunt"
+labels = ["tree"]
+qualification = """\
+    each distinct subtable's code is stored once in a global and run by name; a \
+    node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; \
+    equal halves and constant chains read their bits unbranched"""
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "linear: at most 5⌊L/57⌋ + 21n + 9 steps: five a stored node, 21 a level"
+workspace = """\
+    linear: at most 24L bits: the running code, the stored code and the stack, \
+    each within the source"""
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Packlang"
 labels = ["linear lookup"]
 qualification = "one 128-row array block, painted inside the `If` that selects it"

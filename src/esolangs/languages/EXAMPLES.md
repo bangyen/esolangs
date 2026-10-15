@@ -70,6 +70,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `piet_plus_plus/piet-plus-plus.png` | Piet++ | `0001` | `01` | 0 1 | '0' |
 | `polynomial/polynomial.txt` | Polynomial | `0001` | `01` | 01 | '0' |
 | `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
+| `quassaunt/quassaunt.txt` | Quassaunt | `0001` | `01` | 01 | '0' |
 | `ram0/ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `rotfuck/rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
 | `rubic/rubic.txt` | Rubic | `0001` | `01` | 01 | '0' |
