@@ -290,9 +290,6 @@ def normal_gates(table: str) -> str | None:
 
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
-    # Dropping the single-block, bank and mixed-bank candidates costs at most
-    # 6.2% over 200 tables per class at n=9 and n=12 (repeat tables, jointly);
-    # the per-level blocks form is kept: dropping it loses 19.8% (noisy affine).
     programs = [_boolfuck_tree(truth_table)[0]]
     for candidate in (affine_stream(truth_table), normal_gates(truth_table)):
         if candidate is not None:

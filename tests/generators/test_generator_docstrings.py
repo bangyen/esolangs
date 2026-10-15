@@ -7,9 +7,11 @@ exception.  ``untriggerable`` maps an entry no call reaches to the reason.
 """
 
 import ast
+import io
 import json
 import pathlib
 import re
+import tokenize
 
 import pytest
 
@@ -21,6 +23,8 @@ from tests.generators.generator_sections import (
     PUBLIC_ERRORS,
     SECTIONS,
     anchors,
+    figures,
+    measured,
     named_table,
     raises_entries,
 )
@@ -134,6 +138,67 @@ def test_generator_docstrings_follow_the_template() -> None:
         name: _doc_issues(_doc(name), capped=_capped(name)) for name in _generated()
     }
     assert {name: issues for name, issues in failures.items() if issues} == {}
+
+
+def _notes(source: str) -> list[tuple[int, str]]:
+    """Return ``(line, text)`` for each function/class docstring and comment."""
+    found = [
+        (node.lineno, doc)
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        and (doc := ast.get_docstring(node))
+    ]
+    found += [
+        (tok.start[0], tok.string)
+        for tok in tokenize.generate_tokens(io.StringIO(source).readline)
+        if tok.type == tokenize.COMMENT
+    ]
+    return found
+
+
+def _repeats(module_doc: str, sources: dict[str, str]) -> list[str]:
+    """Return ``path:line figure`` for each module-docstring figure said again."""
+    told = measured(module_doc)
+    return sorted(
+        f"{path}:{line} {figure}"
+        for path, source in sources.items()
+        for line, text in _notes(source)
+        for figure in figures(text) & told
+    )
+
+
+def test_the_repeat_check_catches_a_figure_said_twice() -> None:
+    """Positive control, and a short integer or other figure does not count."""
+    source = 'def f():\n    """Saves 9.61% at n=10."""\n    # 1,186 chars\n'
+    assert _repeats("A.\n\nDecisions:\n    9.61%, 1186 chars", {"g.py": source}) == [
+        "g.py:1 9.61%",
+        "g.py:3 1186",
+    ]
+    assert _repeats("A.\n\nSize:\n    n=10, 7.5%", {"g.py": source}) == []
+    # An anchor's size, a prose constant and the 10% bar are not restatements.
+    assert (
+        _repeats("A 9.61% prose.\n\nSize:\n    n=2 and: 1,186 chars", {"g.py": source})
+        == []
+    )
+    assert measured("A.\n\nDecisions:\n    10% bar, 4.8%") == {"4.8%"}
+
+
+def test_a_module_docstring_figure_is_said_once() -> None:
+    """A measurement lives in one place, so an update cannot miss its twin."""
+    repeats = {}
+    for name in _generated():
+        root = _LANGUAGES_DIR / LANGUAGES[name].id
+        paths = (
+            [root / "generator.py"]
+            if (root / "generator.py").exists()
+            else [*sorted((root / "generator").rglob("*.py"))]
+        )
+        sources = {
+            path.relative_to(root).as_posix(): path.read_text() for path in paths
+        }
+        if found := _repeats(_doc(name), sources):
+            repeats[name] = found
+    assert repeats == {}
 
 
 def _size(program: esolangs.Program) -> tuple[int, str]:

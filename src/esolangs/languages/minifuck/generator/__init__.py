@@ -8,6 +8,12 @@ The simulator laws are pinned differentially against the interpreter.
 Size:
     Parity is O(n) through the affine column, other tables O(T).
     n=16 parity: 489 chars, n=10 random 1847: 40,581 chars.
+
+Decisions:
+    Seeded n=16 affine: 552.8 characters against 30,849.8 positional.
+    :func:`two_state` allows at most two residuals per level, :func:`stored`
+    each residual once within the positional length; each wins up to ~90% on
+    tables it fits (stored from n=12).
 """
 
 import re
@@ -186,14 +192,8 @@ def _overflow_score(program: str, width: int) -> tuple[int, int]:
 
 
 def minifuck(truth_table: str, width: int | None = None) -> str:
-    """Build a Minifuck template for the given truth table.
+    """Build a Minifuck template; ``width`` set: least overflow, then smallest.
 
-    Races the positional decoder against byte-accumulator forms and keeps the
-    smallest (``width`` set: least overflow, then smallest).  An affine table
-    uses the parity column (seeded n=16: 552.8 characters against 30,849.8
-    positional).  Other tables try :func:`two_state` (at most two residuals
-    per level) and :func:`stored` (each residual once, within the positional
-    length); each wins up to ~90% on tables it fits (stored from n=12).
     Defaults retain ``(xx, [<)`` setters; narrow columns use ``(x, [)``.
     """
     n = _validate_truth_table(truth_table)

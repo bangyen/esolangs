@@ -10,7 +10,9 @@ ASCII ``'0'`` (:data:`_ANSWER`), so the output byte is ``'0'`` or ``'1'``.
 
 The default is a deque lookup, one pushed entry a row (a run of equal entries
 sets the register once), so it has no subtrees to share.  With ``width`` it
-draws a decision tree, stacked if narrower, repeating subtrees once.
+draws a decision tree, stacked if narrower; the stacked one draws a repeated
+subtree once when ``width`` leaves room for its rail columns and characters
+and rectangle both shrink.
 
 Size:
     O(T) characters; n=10 random 1847: 15,154 chars, n=12 random 1847:
@@ -152,20 +154,13 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     middles: list[int] = []
 
     def paint_leaf(lo: int, depth: int, _cursor: None) -> int:
-        """Draw the leaf for ``truth_table[lo]``; return its middle column.
-
-        Constant: no branch below can change the answer.  Leaves all sit on
-        the bottom row whatever their depth, so the rail from the switch
-        above covers the skipped levels: rows are a fixed grid and only the
-        branching goes away.
-
-        The skipped levels' *reads* stay: a program must consume its ``n``
-        inputs whatever the table says (a folded run that skipped them left
-        the caller's remaining bits on the stream), so each skipped level
-        puts its ``/ /`` nodes on the rail, where the pointer runs straight
-        through them into the leaf.  Leaves sit on a fixed row, so the walk
-        cursor is unused.
-        """
+        """Draw the leaf for ``truth_table[lo]``; return its middle column."""
+        # Constant: no branch below can change the answer.  Leaves sit on the
+        # bottom row whatever their depth, so the rail from the switch above
+        # covers the skipped levels (rows are a fixed grid; the walk cursor is
+        # unused).  The skipped levels' *reads* stay: a folded run that
+        # skipped them left the caller's remaining bits on the stream, so
+        # each puts its ``/ /`` nodes on the rail.
         middle = _FLOWCHART_PITCH * len(middles) + 2
         _paint(cells, middle - 1, leaf_top, _set(truth_table[lo]))
         cells[(middle, leaf_top + 1)] = "│"
@@ -552,11 +547,7 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.
-    Constants read a straight skip chain and print once. Otherwise, without
-    ``width``, preloads paired answers into deques and selects one
-    by the input bits; with it, draws a decision tree, stacked if narrower,
-    and in the stacked one draws a repeated subtree once when ``width`` leaves
-    room for its rail columns and characters and rectangle both shrink.
+    Constants read a straight skip chain and print once.
     """
     _validate_truth_table(truth_table)
     if width is None:

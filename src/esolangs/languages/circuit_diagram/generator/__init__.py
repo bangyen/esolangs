@@ -75,7 +75,7 @@ _ROW_STEP = 2
 
 # Layout competition only starts at eight inputs: below that, the
 # fixed-order folds and shared banks cannot beat the direct mux build
-# (see the ``circuit_diagram`` docstring).
+# (see :func:`_competing_model_circuit`).
 _COMPETING_MODEL_MIN_INPUTS = 8
 # Columns the output dash and colon add past the final gate group, so
 # banding rebuilds this much narrower when the first attempt is too wide.
@@ -162,7 +162,10 @@ class _Builder:
         A gate must sit right of every bus it reads, so a group freed behind
         the drawing can never be handed out again, and width grows with the
         network's depth.  A band *moves* every live signal to a column near
-        the left and frees all the columns behind it.
+        the left and frees all the columns behind it.  A mux layout's floor
+        is what a band cannot reclaim -- the rails and complements, live for
+        the whole drawing -- plus the carried signals and one gate group:
+        about ``8 * n`` columns, growing with the inputs rather than the table.
 
         :meth:`_tap` does the move (down then left, one wiring with one
         driver, crossing the rails with ``=``).  Each carried signal takes
@@ -230,13 +233,11 @@ class _Builder:
     def input_bus(self) -> int:
         """Draw one input line and return the signal its bit arrives on.
 
-        A ``-`` at the start of a line is an input port, so each input owns a
-        row, taken in the order the interpreter reads the bits.
-
-        One bus column is enough: a port has no glyph, inputs or output
-        column, and a gate's three columns left two empty columns per input
-        for later wires to cross.
+        Each input owns a row, in the order the interpreter reads the bits.
         """
+        # One bus column is enough: a port has no glyph, inputs or output
+        # column, and a gate's three columns left two empty columns per input
+        # for later wires to cross.
         signal = self._new_signal()
         column = self._new_column()
         row = self.next_row
@@ -282,12 +283,9 @@ class _Builder:
 
         The group is taken before the inputs are read and they are released
         after, so a gate is never handed the group it reads out of.
-
-        If this gate would take the drawing past a requested width,
-        :meth:`_band` first carries the live signals left, before the group
-        is chosen; the inputs' columns are re-read afterwards since the band
-        moved them.
         """
+        # Past a requested width, _band carries the live signals left before
+        # the group is chosen, so the inputs' columns are re-read after it.
         if not self._room(max(self.buses[left][0], self.buses[right][0])):
             self._band()
         first, column = self._gate_columns(
@@ -337,11 +335,9 @@ class _Builder:
 
         ``:`` reads only a ``-`` directly to its left, so the signal moves one
         cell along from the junction its bus ends on.
-
-        No band or gate columns are reserved: the bus is the last one built,
-        so its row is free to the right.  A fresh band would put the output
-        three rows below its gate, a staircase on small circuits.
         """
+        # No band is reserved: the bus is the last one built, so its row is
+        # free to the right; a fresh band would stair-step small circuits.
         column, row = self.buses[source]
         self.layout.glyph(column + 1, row, "-")
         self.layout.glyph(column + 2, row, ":")
@@ -621,8 +617,10 @@ def _box_area(points: list[tuple[int, int]]) -> int:
 def _competing_model_circuit(truth_table: str, inputs: int) -> str:
     """Return the smallest emitted-character circuit among the n>=8 layouts.
 
-    Fixed-order folds compete by area against prefix H-layouts and shared
-    class banks; sharing wins character ties.
+    Three complete fixed-order folds compete by area against prefix
+    H-layouts and shared class banks; sharing wins character ties.  Interval
+    models count characters before rendering, so a node cap cannot hide a
+    smaller complete fold.
     """
     from .compete import select_competing_model  # cycle: candidates import this module
     from .source_size import layout_source_size
@@ -645,18 +643,9 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
     See :func:`_circuit_diagram_model` for the construction.  ``width`` asks
-    for a column count: built once without one, again inside it if too wide.
-
-    From eight inputs, three complete fixed-order folds compete by emitted
-    characters against prefix H-layouts and shared class banks. Interval
-    models count characters before rendering, so a node cap cannot hide a
-    smaller complete fold. Sharing wins character ties.
-
-    What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
-    floor is what a band cannot reclaim -- the rails and complements, live
-    for the whole drawing -- plus the carried signals and one gate group:
-    about ``8 * n`` columns, growing with the inputs rather than the table.
-    Below that floor, affine tables use native XOR/XNOR chains.
+    for a column count: built once without one, again inside it if too wide
+    (:meth:`_Builder._band`); below the banding floor, affine tables use
+    native XOR/XNOR chains.
     """
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1

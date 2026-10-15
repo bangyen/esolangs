@@ -11,11 +11,10 @@ Size:
     n=10 and: 132 chars, n=10 random 1847: 5,292 chars.
 
 Decisions:
-    The positional walk spends exactly ``n`` labels: dense n == 10 is 10
-    labels, 5309 chars, 1024 rows in 12s.  Counting labels exactly rather
-    than as a bound took one n == 6 table from a tree at 341 to 561.
-    Dropping the old DAG precheck shrinks 50 seeded dense n=7 tables from
-    37,828 to 17,803 characters.
+    The positional walk spends exactly ``n`` labels.  Counting tree labels
+    exactly rather than as a bound made one n == 6 table longer
+    (:func:`_six_five_markers`).  Dropping the old DAG precheck shrinks
+    sharing-heavy tables (:func:`_six_five_hoisted`).
 """
 
 import functools
@@ -101,20 +100,9 @@ def _six_five_halves(
 
 
 def six_five(truth_table: str) -> str:
-    """Build a 6-5 program computing the given truth table.
+    """Build a 6-5 program for ``truth_table`` (length ``2**n``, MSB first).
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
-    node is ``7V``: ``7`` compares the cell to 31, a zero bit skips the
-    ``8n`` jump into the left subtree, a one bit jumps to the n-th ``4``.  A
-    leaf adds ``48 + value - base`` (31 left, 32 right) in sixes and fives
-    (:func:`_six_five_const`), prints with ``A``, halts with ``0``.
-    Constant subtrees fold.
-
-    Each input order uses the same layout: fold constants, then share
-    repeated subtrees if shorter or necessary to fit the 35-label budget.
-    Identity and reverse compete first; fold-greedy and first-then-reversed
-    are budget fallbacks. If none fits, use the positional walk, then
-    conditional strides past 35 inputs.
+    Node and leaf shapes: :func:`_six_five_node`, :func:`_six_five_leaf`.
     """
     orders = _six_five_orders(truth_table, compact=True)
     best = _six_five_chosen(truth_table, orders)
@@ -136,7 +124,10 @@ def six_five(truth_table: str) -> str:
 def _six_five_orders(
     truth_table: str, *, compact: bool = False
 ) -> dict[tuple[int, ...], None]:
-    """Return two routine orders, or all four for label-budget fallback."""
+    """Return identity and reverse, or all four for label-budget fallback.
+
+    The other two are fold-greedy and first-then-reversed.
+    """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
     if compact:

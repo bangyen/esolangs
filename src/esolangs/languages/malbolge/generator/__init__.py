@@ -3,7 +3,7 @@
 ``malbolge(truth_table)`` reads one ``0``/``1`` line per input and folds them
 through a fixed five-cell branch-free mixer into a distinct address ``h(row)``.
 The runtime then jumps to a three-cell stub at ``h(row)`` that prints the
-row's answer.  The whole 59049-cell source is the program: the mixer inits,
+row's answer.  The whole fixed-size source is the program: the mixer inits,
 the navigation constants and the stubs are all source characters, so there is
 no initializer.
 
@@ -93,16 +93,7 @@ def _fourteen_program(truth_table: str) -> str:
 
 
 def malbolge(truth_table: str) -> str:
-    """Return a Malbolge program computing ``truth_table``.
-
-    ``n`` is recovered from the table.  Through ten inputs the program is one
-    source stub per row; eleven inputs use the pointer cascade, twelve the
-    cascade with a selector on the last input, thirteen that build with the
-    last input read by the answer stub, fourteen four copies of that table
-    picked by inputs twelve and thirteen, fifteen and sixteen a positional
-    address with no cascade.  ``n > 16`` is refused.  Every build is the
-    full 59049-cell store.
-    """
+    """Return a Malbolge program computing ``truth_table`` (``n`` <= 16)."""
     n = _validate_truth_table(truth_table)
     if n > _DIGITS_N:
         raise with_hint(
@@ -141,13 +132,12 @@ LANGUAGE = Language(
     "Malbolge",
     "malbolge",
     category="program_based",
-    # The program is the full 59049-cell store.
-    # Every source loads into 59,049 cells, so every program -- this
+    # Every source loads into the fixed store, so every program -- this
     # generator's or any other -- is bounded by a constant.
     size_bound=lambda _n: 59_049,
     generator_max_inputs=MAX_INPUTS,
     boolean=malbolge,
-    # Not a tree: straight-line code into a fixed 59049-cell store.
+    # Not a tree: straight-line code into the fixed store.
     shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="the answer is one character and is printed with no newline",

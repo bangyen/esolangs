@@ -1,8 +1,9 @@
 """Qoibl Boolean program generator: one packed binary literal, divided down.
 
 The whole table is a literal, bit ``k`` holding row ``k``; each input read
-squares and multiplies ``power`` so it ends as ``2**index``, and the printed
-character is ``'0'`` plus the low bit of ``literal // power``.
+squares and multiplies ``power`` so it ends as ``2**index`` (the row index
+accumulates in the exponent by Horner's rule), and the printed character is
+``'0'`` plus the low bit of ``literal // power``.
 
 Size:
     O(T) characters for the literal, O(n) statements;
@@ -62,15 +63,7 @@ def _print(expr: str) -> str:
 
 
 def qoibl(truth_table: str, width: int | None = None) -> str:
-    """Build a Qoibl program computing the given truth table.
-
-    ``truth_table`` has length ``2**n``, most significant input first.  The
-    whole table rides in one binary literal, bit ``k`` holding row ``k``.
-    Each essential input read multiplies ``2**bit`` into ``power``, so after
-    the reads ``power`` is ``2**index`` -- the row index accumulates in the
-    exponent by Horner's rule.  ``packed // power`` then shifts the table
-    down to the row, and the printed character is ``'0'`` plus its low bit.
-    """
+    """Build a Qoibl program; ``truth_table`` has length ``2**n``, MSB first."""
     n = _validate_truth_table(truth_table)
     # An ignored input is read into ``p`` until the first essential read sets
     # it, then into ``row``, which the packed literal overwrites: it costs no

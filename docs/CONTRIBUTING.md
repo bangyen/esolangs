@@ -167,7 +167,9 @@ then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor,
 `n=10 random 1847: 1,118 chars`, which
 `tests/generators/test_generator_docstrings.py` regenerates, so a size change
 updates it.  `Raises:` lists `GeneratorCapError` wherever the generator can
-refuse a table, with a trigger in `tests/generator_triggers.json`.
+refuse a table, with a trigger in `tests/generator_triggers.json`.  A figure
+in `Size:` or `Decisions:` appears nowhere else in the generator: a figure
+about one helper lives beside it instead.
 
 ## What makes a generator optimization worth shipping
 

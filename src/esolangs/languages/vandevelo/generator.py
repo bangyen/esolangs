@@ -37,8 +37,8 @@ Decisions:
     dimensions the peel produces.  Ordering bare tests first saved 0.0% of
     characters and 8.8% of steps at n=7 and was retired.  Avoiding
     ``x? == Nil?`` (eight characters, four steps over a bare ``x?``) took
-    the three-input tables from 26,438 to 23,425 characters.  A bank cap of
-    ``n`` or ``2 * n`` costs 40% and 23% at n=13 in forced respelling.
+    the three-input tables from 26,438 to 23,425 characters.  Tighter bank
+    caps force respelling (:func:`_bank_cap`).
 """
 
 from __future__ import annotations

@@ -20,7 +20,8 @@ Size:
     dense tables through ``n == 12``.
 
 Decisions:
-    The tree it replaced was super-linear, ``S(d) >= (2 + 1/255) S(d-1)``.
+    The tree it replaced was super-linear, ``S(d) >= (2 + 1/m) S(d-1)`` for
+    modulus ``m`` (see ``_CHAIN_MIN_INPUTS`` for where the tree still wins).
 """
 
 from collections.abc import Sequence
@@ -106,7 +107,8 @@ _FREE = len(_POOLS) + 1
 _CHAIN_MIN_INPUTS = {255: 3, 256: 2}
 
 #: Leaf slot of the I/O-255 chain above :data:`_FREE` inputs: the longest
-#: leaf is seven tokens, and its weights step by 255 instead of 256.
+#: leaf is seven tokens, and its weights step by 255 instead of 256, so 32
+#: seven-token leaves pack into each 255-token block.
 _COMPACT_UNIT = 7
 
 #: Bound on the leaf-base fixed point and the arm-slot widening below; both
@@ -776,13 +778,7 @@ def slow_acv_mammalian(
 ) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
-    Constants read into array zero and print from a separate coprime array.
-    Otherwise, one read node per input (``ACCEPT``), one dispatch jump, one
-    leaf slot per entry: O(T) text. Above five inputs, modulo-255 I/O
-    packs 32 seven-token leaves into each 255-token block.
-    Cell modulus 255 uses coprime-array chains above two inputs with
-    I/O modulus 255, or above one with 256; smaller tables use a tree.
-    Essential-input chains compete with the original layout by text length.
+    Cell modulus 256 is the weighted chain; 255 dispatches in :func:`_program_255`.
     """
     return _program(truth_table, cell_modulus=cell_modulus, io_modulus=io_modulus)
 

@@ -9,7 +9,7 @@ are unconditional and first.
 Size:
     O(n) commands over an O(2**n) literal, no branching.
     n=10 random 1847: 1,227 chars, n=16 random 1847: 65,837 chars.
-    A 0% fold is the construction working (``shape`` is ``LOOKUP``): a
+    A zero fold is the construction working (``shape`` is ``LOOKUP``): a
     literal has no subtrees to fold or share.
 """
 
@@ -284,12 +284,10 @@ def alight(
 ) -> str:
     """Return an Alight program printing ``truth_table``'s entry for its input.
 
-    Reads ``n`` characters, folds them into the row by Horner, prints the
-    table character: a branch-free single line, ``O(2**n)`` literal plus
-    ``O(n)`` reads.  ``width`` is a hard bound; the layout minimizing
-    ``max(width, height)`` wins for infix, ties preferring less area.
-    Postfix folds commands or rotates them into one column.  Only
-    two-argument ``at`` is emitted, so every ``list_update`` runs it.
+    ``width`` is a hard bound; infix takes the layout minimizing
+    ``max(width, height)``, ties by area; postfix folds or rotates into one
+    column.  Only two-argument ``at`` is emitted, so every ``list_update``
+    runs it.
     """
     return _program(
         truth_table, width, expression_syntax=expression_syntax, list_update=list_update

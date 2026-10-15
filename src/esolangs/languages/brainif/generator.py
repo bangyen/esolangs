@@ -12,8 +12,7 @@ Size:
 Decisions:
     The residual DAG cuts the three-input total from 319,576 to 291,524
     characters and steps from 134,984 to 74,440.  Looping four levels bottoms
-    out the per-entry constant at 25.4 over n=8..12 (three reads 25.8, five
-    25.5).
+    out the per-entry constant over n=8..12.
 """
 
 from itertools import count, pairwise
@@ -64,10 +63,9 @@ _TREE_LEVELS = 4
 def brainif(truth_table: str, width: int | None = None) -> str:
     """Build BrainIf, reading each input in order.
 
-    The residual DAG reuses one input cell and shares equal cofactors.
-    It cuts the three-input total from 319,576 to 291,524 characters and
-    steps from 134,984 to 74,440, with no table growing or slowing.
-    Width requests retain the tree/spatial construction.
+    The residual DAG reuses one input cell and shares equal cofactors, with
+    no table growing or slowing.  Width requests retain the tree/spatial
+    construction.
     """
     if width is not None:
         plain = _brainif_tree(truth_table, width)

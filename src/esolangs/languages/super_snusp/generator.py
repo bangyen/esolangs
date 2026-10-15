@@ -10,7 +10,8 @@ Size:
 
 Decisions:
     A packed integer has no subtrees to fold or share.  A bounded ANF
-    evaluator beat the lookup by only 1.92% at its n=4 cap, under the 10% bar.
+    evaluator beat the lookup by only 1.92% at its n=4 cap (polarity pass
+    1.59%), under the 10% bar.
 """
 
 import re
@@ -69,9 +70,7 @@ def _emit_lookup(truth_table: str) -> str:
 def _super_snusp_flat(truth_table: str) -> str:
     """Emit the straight-line program: the lookup, or a fixed form at n=2.
 
-    A bounded ANF evaluator beat the lookup by only 1.92% at its n=4 cap
-    (polarity pass 1.59%), under the 10% bar.  Every path consumes exactly
-    ``n`` input lines.
+    Every path consumes exactly ``n`` input lines.
     """
     n = _validate_truth_table(truth_table)
     if n == 2 and truth_table in _TWO_INPUT_SHORT:
@@ -141,15 +140,9 @@ def _super_snusp_folded(program: str, width: int) -> str:
 
 
 def super_snusp(truth_table: str, width: int | None = None) -> str:
-    """Build a deterministic Super SNUSP program for ``truth_table``.
+    """Build a Super SNUSP program; ``width`` folds it (:func:`_super_snusp_folded`).
 
-    The integer lookup emits one or two commands per table entry and O(n)
-    setup while consuming every input.
-
-    ``width`` asks for a column count, and the straight line folds into a
-    boustrophedon to meet one -- see :func:`_super_snusp_folded`, where the
-    mirrors turn a row round in one row and one column.  A width under the
-    floor returns the narrowest program rather than refusing.
+    A width under the floor returns the narrowest program rather than refusing.
     """
     return _super_snusp_layout(_super_snusp_flat(truth_table), width)
 

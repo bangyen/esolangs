@@ -69,12 +69,8 @@ _STATEMENT_OVERHEAD = 2
 def intercal(truth_table: str, width: int | None = None) -> str:
     """Return a polite C-INTERCAL template computing ``truth_table``.
 
-    Inputs are tested in input order (the greedy order costs +2.14% on three
-    inputs, +1.68% on the five-input sample).  A ``width`` breaks over-wide
-    statements between tokens.  Narrower rebuilds (unsimplified, per-operation
-    names, split mingles) were retired: at n=7..10 wrapping the natural
-    program is smaller at every width from 1 to 259, by 26.2% (n=7) to
-    32.3% (n=10).
+    Inputs are tested in input order.  A ``width`` breaks over-wide
+    statements between tokens.
     """
     natural = in_input_order(truth_table, _intercal_shared)
     if width is None or width <= 0:

@@ -79,8 +79,6 @@ def _generate(truth_table: str) -> Raster:
     initial = (0, 170, 0)
     default = strip(_operations(truth_table, inputs), initial, _next_colour)
     operations = _bounded_operations(truth_table)
-    # Seed 20261009, 200 tables/arity: n=7 area 223839 -> 180736;
-    # n=8 419430 -> 301751 codels. All 256 n=3 tables retain their strip.
     cells = sum(operation.size for operation in operations)
     # Alternating two/three-row turns set the aspect scale; one width
     # keeps default generation linear instead of enumerating row-fit regimes.

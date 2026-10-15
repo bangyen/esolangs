@@ -2,9 +2,11 @@
 
 The reader normalizes the input characters into cells 1..n; the tree tests
 them with ``>#v)`` nodes, one row per *one* edge, and each leaf retires the
-cells and adds ``+`` for a one.  Subtrees that agree become leaves, and the
-input order that emits the shortest program wins.  Above sixteen entries
-(without a width) the weighted linear-space lookup replaces the tree.
+cells and adds ``+`` for a one.  Subtrees that agree become leaves, but equal
+subtrees are never shared: a leaf retires by the bits on its path (``-`` x
+bit+1), so they differ under different parents.  The input order that emits
+the shortest program wins.  Above sixteen entries (without a width) the
+weighted linear-space lookup replaces the tree.
 
 Size:
     About 23T chars from n=5 (weighted lookup); n=4 random 1847: 482 chars,
@@ -667,33 +669,10 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
     :func:`_laserfuck_build` is the construction; this is the search over
-    input orders around it.
-
-    The tree splits on its inputs in whichever order emits the shortest
-    program, so more subtrees fold.  That is a *placement*: a node is
-    ``>#v)``, which steps the pointer and tests the cell under it, so level
-    ``k`` tests cell ``k + 1`` whatever is in it, and moving which cell an
-    input is read into changes what every node tests.  Only the reader's
-    read section changes (see :func:`_laserfuck_reads`); the tree, the fold,
-    the leaf sweeps and the retire ring are untouched, and the reads stay in
-    stream order, one ``,`` per input.
-
-    The identity order is built first and ties keep it, so a table no
-    reorder improves emits what it always did.
-
-    Without a width, the natural layout is built; the narrowest-reader
-    (``width=1``) layout is 21.3% shorter by length at n=4 but doubles the
-    area (-106.7%), so it is not tried.  The greedy order saves 12.3% of
-    area at n=4.
-
-    A constant span is one leaf and a node whose halves agree is passed over.
-    A leaf retires the cells it consumed by the bits on its path (``-`` x
-    bit+1), so equal subtrees are different code under different parents:
-    none is shared.
-
-    A width is applied to every candidate, not the winner: the reader's
-    orientations and the tree's placement already trade rows against columns,
-    so the narrowest program is often not the shortest.
+    input orders around it (:func:`_laserfuck_pool`).  A width is applied to
+    every candidate, not the winner: the reader's orientations and the tree's
+    placement already trade rows against columns, so the narrowest program is
+    often not the shortest.
     """
     _validate_truth_table(truth_table)
     if width is None and len(truth_table) > 16:
@@ -702,7 +681,15 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
 
 
 def _laserfuck_pool(truth_table: str, width: int | None) -> str:
-    """Return the best candidate over input orders and tree placements."""
+    """Return the best candidate over input orders and tree placements.
+
+    Order is a *placement*: a node is ``>#v)``, which steps the pointer and
+    tests the cell under it, so level ``k`` tests cell ``k + 1`` whatever is
+    in it, and moving which cell an input is read into changes what every
+    node tests.  Only the reader's read section changes (see
+    :func:`_laserfuck_reads`), and the reads stay in stream order.  The
+    identity order is built first and ties keep it.
+    """
     orders = input_orders(truth_table)
     identity = orders[0]
 

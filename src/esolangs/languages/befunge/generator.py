@@ -83,15 +83,7 @@ def _header(reads: str, width: str, offset: str) -> str:
 
 
 def befunge(truth_table: str, width: int | None = None) -> str:
-    """Return a Befunge grid computing ``truth_table``.
-
-    The natural grid has a straight header and a power-of-two table width
-    near ``sqrt(T)``.  An over-wide header folds along alternating rows;
-    ``g`` addresses the table below them.  Above ten inputs, printable ASCII
-    cells pack six answers each; above ``MAX_INPUTS`` raises
-    ``GeneratorCapError``.  A parity table with ``width < 4`` uses one vertical
-    column of sums modulo two instead.
-    """
+    """Return a Befunge grid computing ``truth_table``, at most ``width`` wide."""
     n = _validate_truth_table(truth_table)
     _check_cap(n)
     # An ignored input is read and popped; the table indexes the rest.
@@ -102,10 +94,13 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     if width is not None and 0 < width < 4:
         bias = _parity_bias(truth_table)
         if bias is not None:
-            # At most 25 commands even at n=10, within the native torus.
+            # One vertical column of sums modulo two: at most 25 commands even
+            # at n=10, within the native torus.
             header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
             return "\n".join(header)
     count = len(table)
+    # The natural grid: a straight header over a power-of-two table width near
+    # ``sqrt(T)``; an over-wide header folds (:func:`_fold_header`).
     shift = count.bit_length() // 2
     table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.

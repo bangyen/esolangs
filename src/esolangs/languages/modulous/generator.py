@@ -72,8 +72,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # top and discarding ``index`` of them uncovers ``truth_table[index]`` --
     # the row index read MSB first, which is what the weights below build.  A
     # pushed zero is the counter; an ignored input is read and popped, and the
-    # table is indexed by the rest.  Letting the first read be the counter
-    # saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under the 10% bar.
+    # table is indexed by the rest.
     weights, truth_table = input_weights(truth_table, n)
     reads = ["[PSH INT 0]"]
     for weight in weights:

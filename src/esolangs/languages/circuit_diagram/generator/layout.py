@@ -8,6 +8,10 @@ from typing import Literal
 # Owner of a reserved result anchor; no real signal may route through it.
 _HOLD = -1
 
+# ``down`` runs along the source's column then the target's row, ``across``
+# the source's row then the target's column, ``under`` the source's column to
+# two rows past the target, across, and back up into it -- feeding a gate's
+# lower input when a sibling wire already corners on the target's row.
 _Shape = Literal["down", "across", "under"]
 
 
@@ -212,9 +216,7 @@ class _Layout:
         Cell priority is glyph, junction ``.``, then wires: a horizontal and
         a vertical sharing a cell is a crossover ``=`` (the spec connects
         "opposite wires" across it), either alone is ``-`` or ``|``.  Rows
-        are painted into byte buffers (horizontal runs by slice, the rest
-        point by point) and cut at their last occupied cell, matching
-        per-cell ``rstrip`` since every covered cell renders non-space.
+        are cut at their last occupied cell.
         """
         self._check_junction_spacing()
 
@@ -372,13 +374,8 @@ class _RoutingLayout(_Layout):
     ) -> None:
         """Lay one wire in the given shape; the caller has chosen its lane.
 
-        ``down`` runs along the source's column and then the target's row,
-        ``across`` along the source's row and then the target's column, and
-        ``under`` along the source's column to two rows past the target,
-        across, and back up into it -- the shape that feeds a gate's lower
-        input when a sibling wire already corners on the target's row.  The
-        collision check is a guard on the layout's spacing rules, not a
-        search: a wire that does not fit is a spacing bug.
+        The collision check guards the spacing rules, not a search: a wire
+        that does not fit is a spacing bug.
         """
         sx, sy = source
         tx, ty = target

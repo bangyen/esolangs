@@ -178,14 +178,8 @@ def render(
 ) -> Canvas:
     """Lay out and rasterize a Line program, returning a :class:`Canvas`.
 
-    ``start_heading`` defaults to "up", as every wiki example.  ``scale``
-    replicates pixels (:func:`extract.normalize_scale` divides it out); 1
-    matches the wiki.  Raise it for lossy storage: against JPEG a 1px
-    drawing extracts exactly down to quality 34 and is destroyed by 28, 2x
-    holds to 15, 4x to 10.  Redundancy at write time, not leniency at read
-    time; :func:`extract.coverage_gap` stays strict.
-    ``compact=False`` retains the previous acyclic spacing for balancing's
-    no-growth fallback.
+    ``start_heading`` defaults to "up", as every wiki example; ``compact=False``
+    keeps the previous acyclic spacing for balancing's no-growth fallback.
     """
     _check_unit(unit)
     plan = _Plan()
@@ -203,6 +197,10 @@ def render(
     _layout(root, cursor, plan, entries)
 
     canvas = _rasterize(cursor.strokes, start_heading, unit)
+    # scale replicates pixels (extract.normalize_scale divides it out); 1 matches
+    # the wiki.  Against JPEG a 1px drawing extracts exactly down to quality 34
+    # and is destroyed by 28, 2x holds to 15, 4x to 10: redundancy at write time,
+    # not leniency at read time (extract.coverage_gap stays strict).
     return canvas.upscale(scale)
 
 

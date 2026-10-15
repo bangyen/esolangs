@@ -318,8 +318,7 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
 
     Ignored inputs are read and dropped.  A node whose halves agree pops its
     bit onto the unpopped column stack.  Kept inputs are tested in input
-    order (a greedy order saves 0.2% at n=8, under the 10% bar); the root's arms
-    are not swapped (swapping saves 0.5% at n=8, under the 10% bar).
+    order; the root's arms are not swapped.
     """
     n = _validate_truth_table(truth_table)
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))

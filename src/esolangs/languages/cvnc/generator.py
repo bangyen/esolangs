@@ -364,16 +364,7 @@ def _prologue_syllables(squarings: int) -> int:
 
 
 def cvnc(truth_table: str) -> str:
-    """Build a CV(N)(C) program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    program reads ``n`` lines and prints ``0`` or ``1``.  One read and one
-    ``ɰ``/``ʋ`` branch per level, every leaf printing with ``θ`` and
-    jumping to the one shared halt gadget.  Splits stay in input order.
-    A program not shorter than the gadget's reach gets one more squaring,
-    repeated until it fits; each prologue change rebases the shared body
-    before the reach is checked again.
-    """
+    """Build a CV(N)(C) program; it reads ``n`` lines, splits in input order."""
     # A tree over the inputs that matter, its ignored reads bare, against the
     # full tree, whose sharing is sometimes the shorter; a tie keeps the full.
     n = _validate_truth_table(truth_table)
@@ -381,6 +372,9 @@ def cvnc(truth_table: str) -> str:
     shapes = [(truth_table, [1] * n)]
     if 1 < len(table) < len(truth_table):
         shapes.append((table, weights))
+    # A program not shorter than the gadget's reach gets one more squaring,
+    # repeated until it fits; each prologue change rebases the shared body
+    # before the reach is checked again.
     squarings = _HALT_SQUARINGS
     while True:
         offset = _prologue_syllables(squarings)

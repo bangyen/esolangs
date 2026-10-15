@@ -98,14 +98,9 @@ class _Builder:
         self.put(turn, y + 4, "/")
 
     def render(self, *, reflect: bool = False) -> str:
-        """Render after removing wholly blank rows and columns.
+        """Render without wholly blank rows and columns.
 
-        Each row is drawn only as far as its last cell, so cost is the
-        output's size, not its bounding box.  Dropping an empty row or column
-        cannot move a beam: a blank cell is a no-op anywhere.  ``reflect``
-        mirrors the grid top to bottom, mirrors included, leaving every row's
-        length alone; a horizontal mirror is as faithful but not offered, as
-        it moves every ragged edge to the left, where it is rendered.
+        ``reflect`` mirrors the grid top to bottom, mirrors included.
         """
 
         def axis(values: set[int], *, reverse: bool = False) -> list[int]:
@@ -119,13 +114,20 @@ class _Builder:
             order = range(hi, lo - 1, -1) if reverse else range(lo, hi + 1)
             return [v for v in order if v in values]
 
+        # Dropping an empty row or column cannot move a beam: a blank cell is
+        # a no-op anywhere.
         xs = axis({x for x, _ in self.cells})
         ys = axis({y for _, y in self.cells}, reverse=reflect)
         column = {x: i for i, x in enumerate(xs)}
+        # Reflecting leaves every row's length alone.  A horizontal mirror is
+        # as faithful but not offered: it moves every ragged edge to the left,
+        # where it is rendered.
         symbols = {"/": "\\", "\\": "/"} if reflect else {}
         rows: dict[int, dict[int, str]] = {y: {} for y in ys}
         for (x, y), char in self.cells.items():
             rows[y][column[x]] = symbols.get(char, char)
+        # Each row is drawn only as far as its last cell, so cost is the
+        # output's size, not its bounding box.
         lines = []
         for y in ys:
             cells = rows[y]

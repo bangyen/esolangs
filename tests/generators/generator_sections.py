@@ -21,6 +21,27 @@ ANCHOR = re.compile(
 
 _ENTRY = re.compile(r"^    (\w+):")
 
+#: A measured figure: a percentage, a decimal, or an integer of 3+ digits.
+#: Shorter integers (``n=10``, ``2**n``) recur legitimately.
+FIGURE = re.compile(r"\d+(?:\.\d+)?%|\d+\.\d+|\d{1,3}(?:,\d{3})+|\d{3,}")
+
+
+def figures(text: str) -> set[str]:
+    """Return the measured figures in ``text``, thousands separators removed."""
+    return {m.replace(",", "") for m in FIGURE.findall(text)}
+
+
+def measured(doc: str) -> set[str]:
+    """Return the figures ``Size:`` and ``Decisions:`` report.
+
+    Anchors are regenerated, not restated, and ``10%`` is CONTRIBUTING's bar;
+    a constant in the prose (``59049``, a cap) is code, named beside its use.
+    """
+    told = " ".join(
+        line.strip() for name in ("Size", "Decisions") for line in section(doc, name)
+    )
+    return figures(ANCHOR.sub("", told)) - {"10%"}
+
 
 def named_table(n: int, name: str) -> str:
     """Return the ``2**n``-row table an anchor names, MSB-first rows."""

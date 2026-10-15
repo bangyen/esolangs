@@ -72,8 +72,6 @@ def _program(
     if width == 1 and n <= 2:
         return wrap_program(_dimensional_bare(truth_table, n), "dimensional", width)
     # An ignored input is a bare ``d``: the next read overwrites its byte.
-    # Skipping the first read's doubling saves 16 characters, 2.2% at n=8:
-    # not worth the special case.
     weights, truth_table = input_weights(truth_table, n)
     reads = (_DOUBLE + _READ if weight else "d" for weight in weights)
     index = "".join(reads)
@@ -132,9 +130,6 @@ def _advance(length: int) -> str:
 
 def _dimensional_bare(table: str, n: int) -> str:
     """Program painting the leaf coordinates (axis 2+2i+bit); width 1, n<=2.
-
-    Essential for the width: the shared index form is 102-161 characters
-    against this form's 189-437, but wraps no narrower than two columns.
 
     An ignored input paints nothing.  Before the last essential read its
     ``d`` is overwritten by the next; after it, ``d`` would clobber the leaf,

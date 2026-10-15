@@ -50,19 +50,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     """Build a Clockwise program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    program prints ``'0'`` or ``'1'``.  With ``width`` set and exceeded, the
-    program rotates counterclockwise (two columns for n <= 2, else
-    ``2*n + 5``).
-
-    A flat indexed lookup: one ``!`` per entry in a row of ``!``/``-``
-    pairs, a Horner-rule index (MSB first) in the accumulator, and one
-    doubling gadget per input (widths double upward, so ``O(T)``).  An
-    ignored input's seven reads run just before the next indexed input's,
-    which overwrite the bit they leave; inputs past the last essential one
-    are read on the return rail after printing.  A
-    literal row has no subtrees to fold or share.
-    Constants read a full input rotation, clear the accumulator and emit the
-    seven answer bits on a closed two-column ring.
+    program prints ``'0'`` or ``'1'``.
     """
     total = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
