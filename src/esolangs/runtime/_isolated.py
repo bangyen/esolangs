@@ -13,7 +13,7 @@ from functools import lru_cache
 from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
 from threading import Event, Thread
-from time import monotonic
+from time import monotonic, sleep
 from typing import Any, TextIO, cast
 
 from esolangs import exceptions
@@ -401,10 +401,28 @@ def termination_isolated(
         return _launch(request, timeout, max_output=max_output)
 
 
+def _exit_with_parent() -> None:
+    """End this worker once its parent is gone.
+
+    A SIGTERM or SIGHUP to the parent skips its kill-and-reap, and the
+    orphan (reparented to 1) ran a looping program for hours.
+    """
+    parent = os.getppid()
+
+    def watch() -> None:
+        while os.getppid() == parent:
+            sleep(0.25)
+        os._exit(1)
+
+    Thread(target=watch, daemon=True).start()
+
+
 def _worker() -> None:
     """Stream output and a structured verdict to the parent."""
     import esolangs
     from esolangs.runtime.io import ScriptedIO
+
+    _exit_with_parent()
 
     def send(message: dict[str, Any]) -> None:
         print(json.dumps(message), flush=True)

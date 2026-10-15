@@ -32,7 +32,7 @@ Unparsable statements are E000 syntax errors raised only when executed. Errors
 raise ``HaltError`` naming their E-number; program-wide checks (labels,
 politeness, NEXT/ABSTAIN/COME FROM targets) raise at load. Numeric ``WRITE IN``
 at EOF raises ``EOFError``; Turing Tape input stores 256 at EOF. A ``%n`` draws
-from the ``rng`` hook (:mod:`esolangs.runtime.randomness`).
+at random; ``esolangs.run(..., seed=s)`` fixes the draw.
 
 Judgment calls where the manual or C-INTERCAL leave a gap:
 

@@ -27,7 +27,7 @@ Judgment calls the wiki leaves open:
   ``[0,(2x+1)2^y]``, so ``pp`` pops the result.  Both versions are pinned.
 
 A malformed program raises :class:`ValueError`; the draw uses the
-randomness hook, so ``run(..., rng=Seeded(s))`` is reproducible.
+randomness hook, so ``esolangs.run(..., seed=s)`` is reproducible.
 """
 
 from __future__ import annotations

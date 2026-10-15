@@ -66,6 +66,10 @@ def decode(code: str | CompressedText) -> str:
 class _Machine(_BFMachine):
     """Decode Unary, then run it as Brainfuck with zero-valued EOF."""
 
+    #: The zero is a value: an underfed run finishes on another row.  The
+    #: census missed it because a termination answer has no output to read.
+    eof_is_a_value = True
+
     def __init__(self, code: str | CompressedText, io: IO) -> None:
         super().__init__(decode(code), io)
 

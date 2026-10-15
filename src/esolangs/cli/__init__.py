@@ -539,15 +539,24 @@ def main() -> None:
     being run, and exits 70 with a one-line report instead of a
     traceback.
     """
+    if sys.stderr is None:
+        # Started with fd 2 closed (``2>&-``): every note and error wrote to
+        # None, so even a successful `run` printed nothing and exited 1.
+        sys.stderr = open(os.devnull, "w")  # noqa: SIM115 - lives for the run
     if sys.stdout is None:
         # Started with fd 1 closed (``esolangs list >&-``): ``print`` drops
         # silently and the flush below raised AttributeError, exit 70.  The
         # same outcome as a pipe closed early, so the same exit.
-        if sys.stderr is not None:  # ``>&- 2>&-`` closes both.
-            sys.stderr.write("stdout is closed; nothing was written\n")
+        sys.stderr.write("stdout is closed; nothing was written\n")
         sys.exit(120)
     try:
-        _dispatch()
+        try:
+            _dispatch()
+        except SystemExit:
+            # An early exit flushes here too: `debug`'s exit 1 into a closed
+            # pipe printed "Exception ignored while flushing sys.stdout".
+            sys.stdout.flush()
+            raise
         # Flushed here, where the failure is catchable.  Python flushes
         # stdout again during interpreter shutdown, and a pipe closed
         # before the first write made *that* print "Exception ignored

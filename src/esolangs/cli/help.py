@@ -206,7 +206,9 @@ options:
   --set KEY=VALUE
                one dialect override without JSON, repeatable and applied
                after --settings.
-  --plain      export compressed text as ordinary source text.
+  --plain      export compressed text as ordinary source text.  Without it,
+               compressed text is written as gzip and a raster as PNG --
+               binary bytes, so redirect them to a file.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.

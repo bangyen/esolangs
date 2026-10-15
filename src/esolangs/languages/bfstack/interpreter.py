@@ -4,8 +4,9 @@ Brainfuck commands on a stack: ``>`` pushes 0, ``<`` pops, ``+``/``-``
 adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
 ``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  An
 empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
-raises :class:`ValueError` when reached; exhausted input raises
-:class:`EOFError`.
+raises :class:`ValueError` when skipped (top zero) -- entered, it needs no
+partner, as in the original's forward scan (``>+[`` runs and halts);
+exhausted input raises :class:`EOFError`.
 """
 
 from __future__ import annotations

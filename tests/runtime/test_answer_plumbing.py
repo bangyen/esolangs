@@ -254,6 +254,10 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             return "raised", None
         except esolangs.EsolangError:
             return "language error", None
+        if esolangs.describe(name)["answer_mode"] == "termination":
+            # A halt is the answer, with no output to read: Unary's EOF zero
+            # passed as "unreadable" while it answered another row.
+            return "answered", "0"
         try:
             return "answered", esolangs.read_answer(name, output)
         except esolangs.EsolangError:
