@@ -48,7 +48,7 @@ It also binds `instantiate`; use the package functions across languages.
 `balance=True` minimizes the rendered width/height difference across supported
 layouts, breaking ties by source length (raster pixel area), then width.
 It excludes `width`. Raster generators accept `scale=1` (CLI: `--scale N`),
-applied after layout.
+applied after layout; rendering more than 2^28 pixels raises `ArgumentError`.
 
 - Line compares forward and reverse input-test orders for balance. It
   constructs O(T) pixels for a truth table of length T and detects
@@ -296,9 +296,9 @@ assert len(debug.output) > 2
 `describe(language)` returns the language’s API metadata:
 `source_kind`, `state_model` (its category: register, tape, stack, grid,
 queue, program, variables or other), `shape` (its generator’s construction growth: tree,
-reducing or lookup; None without a generator), `input_shape`,
-`input_encoding`, `answer_mode`, `answer_encoding`,
-`width_effect`, `parameterized`, `reads_input`, `random` (the interpreter draws
+reducing or lookup; None without a generator), `input_shape` and
+`input_encoding` (None unless `reads_input`), `answer_mode`,
+`answer_encoding`, `width_effect`, `parameterized`, `reads_input`, `random` (the interpreter draws
 at random, so `run(seed=...)` applies) and the rest.
 `esolangs describe --json <language>` prints it; `esolangs list --details`
 shows the `gen`, `tmpl`, and `ex` markers.

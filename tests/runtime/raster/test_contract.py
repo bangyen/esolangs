@@ -206,9 +206,24 @@ def test_repeated_tuple_rows_do_not_hide_an_invalid_mutation() -> None:
         Raster(rows())
 
 
-def test_raster_rejects_a_noniterable_pixel() -> None:
-    with pytest.raises(TypeError):
-        Raster(((None,),))
+@pytest.mark.parametrize("rows", [((None,),), 5, None, ((5,),), ()])
+def test_raster_refuses_with_a_program_error(rows: object) -> None:
+    """A raw TypeError or ValueError escaped ``except EsolangError``."""
+    with pytest.raises(esolangs.ProgramError):
+        Raster(rows)  # type: ignore[arg-type]
+
+
+def test_raster_repr_names_its_size() -> None:
+    assert repr(Raster(((((1, 2, 3),) * 2),))) == (
+        "Raster(2x1, language=None, scale=None)"
+    )
+
+
+def test_an_oversized_upscale_is_refused_before_rendering() -> None:
+    """``scale=99999`` was OOM-killed with no message."""
+    program = esolangs.generate(RASTER_LANGUAGES[0], "0110", scale=10**4)
+    with pytest.raises(esolangs.ArgumentError, match="pixel limit"):
+        program.to_png()
 
 
 @pytest.mark.medium

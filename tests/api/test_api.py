@@ -140,6 +140,18 @@ def test_describe_covers_state_models() -> None:
     assert {"stack", "register", "grid", "tape"} <= models
 
 
+def test_input_fields_exist_only_where_stdin_is_read() -> None:
+    """Templates and interpreter-only languages reported ``line_per_bit``."""
+    for name in esolangs.list_languages():
+        facts = esolangs.describe(name)
+        has_input = facts["input_shape"] is not None
+        assert has_input is facts["reads_input"], name
+        assert (facts["input_encoding"] is not None) is has_input, name
+        if not facts["boolean_generator"]:
+            with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
+                esolangs.encode_inputs(name, [1])
+
+
 def test_shape_is_the_generator_axis() -> None:
     """A generator reports its construction shape; no generator means None."""
     for name in esolangs.list_languages():

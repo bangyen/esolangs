@@ -445,8 +445,8 @@ def _settings_of(
     if "--settings" in options:
         try:
             parsed = json.loads(options["--settings"])
-        except ValueError:
-            _fail("--settings must be a JSON object")
+        except ValueError as exc:
+            _fail(f"--settings is not valid JSON ({exc}); pass a JSON object")
         if not isinstance(parsed, dict):
             _fail("--settings must be a JSON object")
         values.update(parsed)

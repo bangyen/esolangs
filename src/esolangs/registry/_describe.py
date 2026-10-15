@@ -70,8 +70,8 @@ class LanguageInfo(TypedDict):
     reads_input: bool
     width_aware: bool
     width_effect: WidthEffect
-    input_encoding: tuple[str, str]
-    input_shape: InputShape
+    input_encoding: tuple[str, str] | None
+    input_shape: InputShape | None
     answer_mode: AnswerMode
     answer_pattern: str | None
     answer_encoding: tuple[str, str]
@@ -103,8 +103,8 @@ def describe(language: str) -> LanguageInfo:
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
     tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
     narrower ``== "layout"``.  Input: ``input_shape`` and ``input_encoding``,
-    the ``(zero, one)`` pair -- the wrong
-    alphabet is a wrong answer.  Answer: ``answer_mode`` is ``"output"``
+    the ``(zero, one)`` pair -- the wrong alphabet is a wrong answer; both
+    None unless ``reads_input``.  Answer: ``answer_mode`` is ``"output"``
     (last non-whitespace character), ``"dump"`` (a fixed place in the final
     state) or ``"termination"`` (a proven halt or divergence);
     ``answer_pattern`` is the regex whose first group holds it (None: no regex);
@@ -135,6 +135,8 @@ def describe(language: str) -> LanguageInfo:
     parameterized = lang.parameterized
     contract = lang.contract
     width_effect = _width_effect(lang)
+    generates = lang.boolean is not None
+    reads_input = generates and not parameterized
     return {
         "name": name,
         "dialect_settings": dialect_choices(name),
@@ -142,17 +144,18 @@ def describe(language: str) -> LanguageInfo:
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
-        "shape": lang.shape.value if lang.boolean is not None else None,
-        "boolean_generator": lang.boolean is not None,
+        "shape": lang.shape.value if generates else None,
+        "boolean_generator": generates,
         "generator_max_inputs": lang.generator_max_inputs,
         "generator_restrictions": lang.generator_restrictions or None,
         "parameterized": parameterized,
-        "reads_input": (lang.boolean is not None) and not parameterized,
+        "reads_input": reads_input,
         # Computed once so the two cannot drift into disagreeing.
         "width_aware": width_effect == "layout",
         "width_effect": width_effect,
-        "input_encoding": contract.alphabet,
-        "input_shape": contract.input_shape,
+        # Defaults leaked here as facts: Deadfish "read" ``line_per_bit``.
+        "input_encoding": contract.alphabet if reads_input else None,
+        "input_shape": contract.input_shape if reads_input else None,
         "answer_mode": contract.answer_mode,
         "answer_pattern": contract.answer_pattern or None,
         "answer_encoding": contract.answer_values,

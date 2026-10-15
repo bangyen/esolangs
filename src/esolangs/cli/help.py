@@ -55,7 +55,7 @@ USAGE = f"""usage: esolangs <command> [...]
 commands:
   Generator-made (the API invents source from a truth table):
     generate [--width [N] | --balance] [--bits BITS] [--scale N]
-             [--settings JSON] [--set KEY=VALUE] [--portable]
+             [--settings JSON] [--set KEY=VALUE] [--portable] [--plain]
              <language> <truth-table>
                                 print a program computing a truth table
                                 (--width wraps it; --bits fills a template)
@@ -176,7 +176,7 @@ example:
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
-                         [--portable] <language> <truth-table>
+                         [--portable] [--plain] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 

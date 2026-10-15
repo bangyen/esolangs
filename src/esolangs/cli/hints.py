@@ -157,6 +157,8 @@ def _stdin_hint(facts: LanguageInfo) -> str:
 
 def _input_sentence(facts: LanguageInfo) -> str:
     """Describe this language's stdin in one line, with an example."""
+    if facts["input_encoding"] is None:
+        return "none"
     zero, one = facts["input_encoding"]
     shape = str(facts["input_shape"])
     example = f"{one}{zero}"

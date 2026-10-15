@@ -129,7 +129,7 @@ _VALUE_FILTERS: dict[str, tuple[tuple[str, ...], Callable[[str], object]]] = {
     ),
     "--state-model": (STATE_MODELS, lambda name: describe(name)["state_model"]),
     "--shape": (SHAPES, lambda name: describe(name)["shape"]),
-    "--input-shape": (INPUT_SHAPES, lambda name: LANGUAGES[name].contract.input_shape),
+    "--input-shape": (INPUT_SHAPES, lambda name: describe(name)["input_shape"]),
     "--width-effect": (WIDTH_EFFECTS, lambda name: describe(name)["width_effect"]),
 }
 
@@ -214,9 +214,7 @@ def _list(rest: list[str]) -> None:
                         "state_model": facts["state_model"],
                         "shape": facts["shape"],
                         "answer_mode": facts["answer_mode"],
-                        "input_shape": (
-                            facts["input_shape"] if facts["reads_input"] else None
-                        ),
+                        "input_shape": facts["input_shape"],
                         "random": facts["random"],
                         "width_effect": facts["width_effect"],
                         # The three the marker column encodes, spelled out.
@@ -453,15 +451,15 @@ def _describe(rest: list[str]) -> None:
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
-    embeds_bits = not facts["reads_input"] and facts["parameterized"]
-    hidden = {"input_shape", "input_encoding"} if embeds_bits else set()
     name = str(facts["name"])
     print(name)
-    if embeds_bits:
+    if facts["parameterized"]:
         print(
             "input: none -- this generator embeds the bits in the program: "
             f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
         )
+    elif not facts["reads_input"]:
+        print("input: none -- this language reads no stdin")
     else:
         print(f"input: {_input_sentence(facts)}")
     print(f"answer: {_answer_sentence(facts)}")
@@ -477,7 +475,7 @@ def _describe(rest: list[str]) -> None:
     details = [(key, shown_facts[key]) for key in _DETAIL_KEYS]
     width = max(len(key) for key, _value in details)
     for key, value in details:
-        if value is None or value == "" or key in hidden:
+        if value is None or value == "":
             continue
         shown = " ".join(str(v) for v in value) if isinstance(value, tuple) else value
         print(f"  {key.ljust(width)}  {shown}")
@@ -526,6 +524,12 @@ def main() -> None:
     being run, and exits 70 with a one-line report instead of a
     traceback.
     """
+    if sys.stdout is None:
+        # Started with fd 1 closed (``esolangs list >&-``): ``print`` drops
+        # silently and the flush below raised AttributeError, exit 70.  The
+        # same outcome as a pipe closed early, so the same exit.
+        sys.stderr.write("stdout is closed; nothing was written\n")
+        sys.exit(120)
     try:
         _dispatch()
         # Flushed here, where the failure is catchable.  Python flushes

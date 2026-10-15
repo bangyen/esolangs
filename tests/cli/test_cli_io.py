@@ -19,9 +19,7 @@ from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
-_SPELLED = one_where(
-    lambda d: d["input_encoding"] != ("0", "1"), boolean_generator=True
-)
+_SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=True)
 
 
 class TestTheStdinReaderInProcess:
@@ -205,6 +203,20 @@ class TestAClosedPipeIsNotAnError:
         first.wait(timeout=30)
         assert first.stderr is not None
         assert "BrokenPipeError" not in first.stderr.read()
+
+    def test_a_closed_stdout_exits_120(self) -> None:
+        """``esolangs list >&-`` reported an internal error, exit 70."""
+        import subprocess
+
+        # Closed before Python starts, so ``sys.stdout`` is None.
+        closed = subprocess.run(
+            ["sh", "-c", f"'{sys.executable}' -m esolangs list >&-"],
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert closed.returncode == 120, closed.stderr
 
 
 class TestProgramFilesLoad:

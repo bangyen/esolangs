@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, cast
 if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
 
-from esolangs.exceptions import MissingDependencyError, ProgramError
+from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error
 
@@ -20,10 +20,35 @@ from . import png
 
 Pixel = tuple[int, int, int]
 Rows = tuple[tuple[Pixel, ...], ...]
+#: An upscaled image renders at most this many pixels (8 bytes of row
+#: reference each, 2 GiB).  ``generate("Piet", "0110", scale=99999)`` was
+#: OOM-killed with no message; Line's n=10 program is 74M pixels at scale 1.
+MAX_UPSCALED_PIXELS = 1 << 28
+
+
+def _pixel_error() -> ValueError:
+    """Return the ProgramError for a pixel that is not an 8-bit RGB triple."""
+    return syntax_error(
+        "Raster pixels must be 8-bit RGB triples",
+        "use three integer RGB channels from 0 through 255 for every pixel",
+        error_type=ProgramError,
+    )
 
 
 def _freeze_rows(rows: Rows) -> Rows:
-    """Return validated immutable RGB rows, detached from the caller."""
+    """Return validated immutable RGB rows, detached from the caller.
+
+    Every refusal is a ProgramError: a raw ValueError or TypeError
+    (``Raster(5)``) escaped ``except EsolangError``.
+    """
+    try:
+        return _freeze_iterable_rows(rows)
+    except TypeError as exc:
+        raise _pixel_error() from exc
+
+
+def _freeze_iterable_rows(rows: Rows) -> Rows:
+    """:func:`_freeze_rows`, raising TypeError on a non-iterable row or pixel."""
     # Generated images reuse immutable palette tuples millions of times.
     # Identity avoids equality accepting bool/float channels as cached integers.
     validated: dict[int, Pixel] = {}
@@ -52,13 +77,7 @@ def _freeze_rows(rows: Rows) -> Rows:
                 or not 0 <= value <= 255
                 for value in frozen
             ):
-                raise syntax_error(
-                    "Raster pixels must be 8-bit RGB triples",
-                    (
-                        "use three integer RGB channels from 0 through 255 for "
-                        "every pixel"
-                    ),
-                )
+                raise _pixel_error()
             if frozen_row is None and frozen is not pixel:
                 frozen_row = list(takewhile(partial(is_not, pixel), row))
             if frozen_row is not None:
@@ -79,6 +98,7 @@ def _freeze_rows(rows: Rows) -> Rows:
         raise syntax_error(
             "Raster needs non-empty equal-width rows",
             ("provide at least one nonempty row and keep all rows the same width"),
+            error_type=ProgramError,
         )
     return result
 
@@ -161,9 +181,19 @@ class Raster:
                 raise syntax_error(
                     "Raster needs pixels or a materializer",
                     "supply RGB pixels or a function that materializes them",
+                    error_type=ProgramError,
                 )
             return
         object.__setattr__(self, "_rows", _freeze_rows(self._rows))
+
+    def __repr__(self) -> str:
+        """Name the size, language and scale; a lazy raster stays unrendered."""
+        size = (
+            f"{len(self._rows[0])}x{len(self._rows)}"
+            if self._rows is not None
+            else "unrendered"
+        )
+        return f"Raster({size}, language={self.language!r}, scale={self.scale!r})"
 
     def __eq__(self, other: object) -> bool:
         """Whether two rasters have identical RGB pixels."""
@@ -239,6 +269,14 @@ class Raster:
             return self
 
         def materialize() -> Rows:
+            base = self.rows
+            pixels = len(base) * len(base[0]) * scale * scale
+            if pixels > MAX_UPSCALED_PIXELS:
+                raise ArgumentError(
+                    f"scale {scale} makes a {len(base[0]) * scale}x"
+                    f"{len(base) * scale} image ({pixels} pixels), over the "
+                    f"{MAX_UPSCALED_PIXELS}-pixel limit; use a smaller scale"
+                )
             rows = [
                 tuple(pixel for pixel in row for _ in range(scale)) for row in self.rows
             ]

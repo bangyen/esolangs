@@ -203,7 +203,10 @@ def _iter_evaluate(
         def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
             if parameterized:
                 return instantiator(name, cast("str", program), bits), ""
-            return program, encode_inputs(name, bits)
+            # A language with no generator reads no stdin at all.
+            return program, (
+                encode_inputs(name, bits) if LANGUAGES[name].boolean is not None else ""
+            )
 
         try:
             source, stdin = _prepare(prepare_row, deadline, isolated=isolated)

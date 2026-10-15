@@ -40,6 +40,10 @@ def encode_inputs(
             f"there is nothing to encode; pass the bits to instantiate() "
             f"instead"
         )
+    if lang.boolean is None:
+        # Deadfish, HQ9+ and Nope. have no input instruction; the registry's
+        # default contract encoded ``"1\n0\n"`` for them all the same.
+        raise ArgumentError(f"{name} reads no stdin, so there is nothing to encode")
     # Checked for the same reason ``instantiate`` checks it: a 2 or a "1"
     # is not caught downstream.  It encodes as a 1 and the program answers
     # a different row of the table, which is the wrong answer arriving with
