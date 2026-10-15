@@ -1,12 +1,12 @@
 """Interpreter for Alight, a two-dimensional language of word commands.
 
-The language spec is the wiki page, https://esolangs.org/wiki/Alight; where
-its prose and its examples disagree this interpreter follows the examples
-(infix operators evaluated left to right, in-place three-argument ``at``),
-as recorded in ``docs/limitations.md`` under "Interpreter conventions".
-An in-place ``at`` is seen through every variable naming that list.
-``inp`` at EOF reads ``eof``; invalid runtime operations raise
-:class:`~esolangs.exceptions.HaltError`.
+Spec: https://esolangs.org/wiki/Alight; where prose and examples disagree this follows
+the examples (infix left to right, in-place three-argument ``at``, seen through every
+variable naming that list; ``docs/limitations.md``).  ``inp`` at EOF reads ``eof``.
+
+Errors:
+    ProgramError: unparsable command or expression; empty program; no ``begin``.
+    HaltError: any invalid runtime operation (bad type, unknown name, zero divisor).
 """
 
 from esolangs.languages.alight.interpreter._machine import _Machine

@@ -12,22 +12,28 @@ At the end, negative weights are dropped and one stack is drawn by weight
 and printed; an empty mapping prints nothing.  The wiki's Addition
 ``[d2i2](1+di-)p`` maps ``[2,1]`` to ``[3]``.
 
-Judgment calls the wiki leaves open:
+The draw uses the randomness hook, so ``esolangs.run(..., seed=s)`` is
+reproducible.
 
-- Input is whitespace-delimited naturals, the first on top (the wiki
-  writes stacks top first); a token that is not a natural raises
-  :class:`HaltError`, and empty input is the empty stack.
-- Output is the drawn stack in the wiki's notation, top first: ``[0,3]``.
-- ``|`` separates branches as ``+`` does: the wiki's lookup-table example
-  uses it.  Whitespace is ignored: the examples contain spaces.
-- A command or group reached with an empty mapping is skipped whole, as
-  the wiki allows ("all of these commands are no-ops, and thus can be
-  skipped").
-- The wiki's pairing example ends ``pp``; its parts leave
-  ``[0,(2x+1)2^y]``, so ``pp`` pops the result.  Both versions are pinned.
+Input/output:
+    Input is whitespace-delimited naturals, the first on top (the wiki
+    writes stacks top first); empty input is the empty stack.  Output is
+    the drawn stack in the wiki's notation, top first: ``[0,3]``.
 
-A malformed program raises :class:`ValueError`; the draw uses the
-randomness hook, so ``esolangs.run(..., seed=s)`` is reproducible.
+Errors:
+    ProgramError: A malformed program: a character that is not a command,
+    an unclosed ``(`` or ``[``, or a ``)`` or ``]`` with no opener.
+    HaltError: An input token that is not a natural.
+
+Decisions:
+    * ``|`` separates branches as ``+`` does: the wiki's lookup-table
+      example uses it.  Whitespace is ignored: the examples contain spaces.
+    * A command or group reached with an empty mapping is skipped whole, as
+      the wiki allows ("all of these commands are no-ops, and thus can be
+      skipped").
+    * The wiki's pairing example ends ``pp``; its parts leave
+      ``[0,(2x+1)2^y]``, so ``pp`` pops the result.  Both versions are
+      pinned.
 """
 
 from __future__ import annotations

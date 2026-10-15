@@ -1,19 +1,28 @@
-"""Pure-core interpreter for Crement.
+"""Interpreter for Crement.
 
 Each instruction stores an opcode, polarity, address, and data. ``ADDRESS``
 and ``DATA`` copy their own data plus or minus one into another instruction;
 ``JUMP`` branches when its data has the selected sign. Execution past the
-program halts. Negative instruction addresses are undefined and raise
-:class:`~esolangs.exceptions.HaltError`.
+program halts, and the language has no input or output.
 
 Syntax follows the prose: a label is "a colon and then the name", and a
-term is a sign and a name, a natural number or ``@``.  The page's Minsky
-translation templates write ``label:`` and ``@next+0``, which this parser
-rejects.  Rewritten in the prose syntax they do not run as their comments
-say: DEC1's ``+J @label+4 1`` never disables itself, so a decrement loops,
-and INC1/SWAP's ``+J @next 0`` never jumps ("the condition is if the data
-field ... is positive"), so control falls into whatever follows.  With
-``+J @label+3 1`` and data ``1`` they compute; the page states no outputs.
+term is a sign and a name, a natural number or ``@``.
+
+Errors:
+    ProgramError: A line without three fields (after an optional label); an
+        opcode other than ``+A -A +D -D +J -J``; an invalid or duplicate
+        label; an undefined label; a number that is not a signed sum of
+        integers, labels and ``@``.
+    HaltError: Executing, jumping to or writing to a negative address (undefined).
+
+Decisions:
+    * The page's Minsky translation templates write ``label:`` and
+      ``@next+0``, which this parser rejects.  Rewritten in the prose syntax
+      they do not run as their comments say: DEC1's ``+J @label+4 1`` never
+      disables itself, so a decrement loops, and INC1/SWAP's ``+J @next 0``
+      never jumps ("the condition is if the data field ... is positive"), so
+      control falls into whatever follows.  With ``+J @label+3 1`` and data
+      ``1`` they compute; the page states no outputs.
 """
 
 from __future__ import annotations

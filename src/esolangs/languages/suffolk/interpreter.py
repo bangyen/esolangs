@@ -3,12 +3,22 @@
 ``>`` moves right, ``<`` sums the cell into the accumulator and rewinds,
 ``!`` writes the cell a value from the accumulator clamped at zero, ``,``
 reads a byte, ``.`` prints the accumulator minus one; the code reruns
-forever.  The wiki has ``,`` read one character with EOF zeroing the
-accumulator; this reads consecutive characters, zeroes the accumulator at EOF,
-and ends the scripted run there.  ``self_halts`` is ``False``: it does not promise
-the run never ends -- a read that runs out of input ends it.  An empty
-program raises :class:`ValueError`.
-:func:`run` otherwise stops on a repeated state, never a pass count.
+forever.  ``self_halts`` is ``False``: it does not promise the run never
+ends -- a read that runs out of input ends it.  :func:`run` otherwise stops
+on a repeated state, never a pass count.
+
+Input/output:
+    ``,`` reads consecutive characters, summing each into the accumulator;
+    ``.`` prints the accumulator minus one.  At EOF ``,`` zeroes the
+    accumulator and ends the scripted run, never raising.
+
+Errors:
+    ProgramError: Empty program.
+
+Decisions:
+    * The wiki has ``,`` read one character with EOF zeroing the accumulator;
+      this reads consecutive characters, zeroes the accumulator at EOF, and
+      ends the scripted run there.
 """
 
 from __future__ import annotations

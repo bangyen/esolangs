@@ -1,0 +1,11 @@
+{
+ "triggers": [
+  {
+   "program": "anything",
+   "stdin": "",
+   "expect": "output",
+   "output": "Nope.",
+   "claim": "Every source prints exactly Nope. with no newline."
+  }
+ ]
+}

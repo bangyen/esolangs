@@ -2,11 +2,18 @@
 
 Brainfuck commands on a stack: ``>`` pushes 0, ``<`` pops, ``+``/``-``
 adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
-``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  An
-empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
-raises :class:`ValueError` when skipped (top zero) -- entered, it needs no
-partner, as in the original's forward scan (``>+[`` runs and halts);
-exhausted input raises :class:`EOFError`.
+``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  A ``[`` needs
+no partner while entered, as in the original's forward scan (``>+[`` runs
+and halts).
+
+Input/output:
+    ``,`` reads one byte and ``.`` writes one.
+
+Errors:
+    ProgramError: an unmatched ``[`` when skipped (top zero).
+    InputExhaustedError: ``,`` at EOF.
+    HaltError: ``<``, ``+``, ``-``, ``.`` or ``[`` on an empty stack (pop or
+    output); ``]`` with no open loop.
 """
 
 from __future__ import annotations

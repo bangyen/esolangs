@@ -6,43 +6,64 @@ steps along its cycle, ``k`` the count translated so far; others are
 dropped.  This inverts the generator's rotation, so generated programs
 round-trip.
 
-Tape of unbounded integers from one 0 cell.  ``p``/``s`` add 2/subtract
-1; ``r``/``l`` move two right/one left; ``i``/``j``
-read a number/byte; ``o``/``u`` print number/byte; ``a``/``b`` loop while
-nonzero; ``k`` squares, ``z`` zeroes, ``h`` halves rounded down; ``w``/``q``
-copy from right/left neighbour; ``c`` repeats the next command
-``7**run``; ``y`` skips the next command (with probability 1/2, per the
-wiki); ``v`` executes it only when the cell is zero; ``d`` resets the pointer;
-``t`` repeats the previous command ``3**run``; ``e`` halts.
+Tape of unbounded integers from one 0 cell.  Step-capable.  ``y`` is random,
+so the cycle detector is unsound on it, but the machine enumerates every coin
+outcome for the bounded all-branches detector in :mod:`esolangs.vm`.
 
-The tape is unbounded both ways: ``l`` at the leftmost cell grows it a
-zero cell on the left.  The wiki says nothing about the left edge, and
-cells left of the start are allowed.  ``d`` ("go back to the
-start of tape") returns to the cell the run started on, wherever the
-tape has grown since, and ``q`` at the leftmost cell copies the zero to
-its left, as ``w`` at the rightmost copies the zero to its right.
+Commands:
+    ``p``: add 2.
+    ``s``: subtract 1.
+    ``r``: move two right.
+    ``l``: move one left.
+    ``i``: read a number.
+    ``j``: read a byte.
+    ``o``: print the number.
+    ``u``: print the byte.
+    ``a``: loop while nonzero.
+    ``b``: loop end.
+    ``k``: square.
+    ``z``: zero.
+    ``h``: halve, rounded down.
+    ``w``: copy from the right neighbour.
+    ``q``: copy from the left neighbour.
+    ``c``: repeat the next command ``7**run``.
+    ``y``: skip the next command (with probability 1/2, per the wiki).
+    ``v``: execute the next command only when the cell is zero.
+    ``d``: reset the pointer.
+    ``t``: repeat the previous command ``3**run``.
+    ``e``: halt.
 
-A ``c`` run is one count: ``ccc`` is ``7**3``. ``cp`` runs ``p``
-seven times; ``pt`` four, and ``ptt`` thirteen (the author's ``ptto``
-prints 26). Each successive ``t`` contributes the next power of three.
-``ct`` is four ``c``s, ``7**4``; ``ctt`` thirteen, ``7**13``.  "The last
-command" is the previous character of the program, so ``vpt`` repeats ``p``
-(not ``vp``) and a ``t`` after a jump repeats the text before it. A repeated
-``y`` is each its own flip, so ``cyp`` spans ``{0, 2, ..., 14}`` weighted
-``Binomial(7, 1/2)``.
+Input/output:
+    ``u`` prints ``chr(cell & 0xFF)``.  Reads at exhausted input raise.
+    ``i`` on a non-integer line halts.
 
-Divergences from the retired cross-check (written alongside this
-interpreter, so never independent evidence): repeated ``y`` rebound and
-executed there; reads at exhausted input raise :class:`EOFError` (it
-exited 3); ``i`` on a non-integer line raises :class:`HaltError` (it
-exited 3); a ``t`` run walking before the program repeats NUL in both;
-out-of-program reads are NUL, so an unmatched ``a`` on zero halts; ``u``
-prints ``chr(cell & 0xFF)``.  Invalid runtime operations halt with
-:class:`~esolangs.exceptions.HaltError`.
+Errors:
+    InputExhaustedError: ``i`` or ``j`` reads at EOF.
+    HaltError: ``i`` on a non-integer line; ``b`` with no open loop.
 
-Step-capable via :class:`_Machine`.  ``y`` is random, so the cycle
-detector is unsound on it, but the machine enumerates every coin outcome
-for the bounded all-branches detector in :mod:`esolangs.vm`.
+Decisions:
+    * The tape is unbounded both ways: ``l`` at the leftmost cell grows it a
+      zero cell on the left.  The wiki says nothing about the left edge, and
+      cells left of the start are allowed.
+    * ``d`` ("go back to the start of tape") returns to the cell the run
+      started on, wherever the tape has grown since, and ``q`` at the leftmost
+      cell copies the zero to its left, as ``w`` at the rightmost copies the
+      zero to its right.
+    * A ``c`` run is one count: ``ccc`` is ``7**3``. ``cp`` runs ``p`` seven
+      times; ``pt`` four, and ``ptt`` thirteen (the author's ``ptto`` prints
+      26). Each successive ``t`` contributes the next power of three.  ``ct``
+      is four ``c``s, ``7**4``; ``ctt`` thirteen, ``7**13``.
+    * "The last command" is the previous character of the program, so ``vpt``
+      repeats ``p`` (not ``vp``) and a ``t`` after a jump repeats the text
+      before it.
+    * A repeated ``y`` is each its own flip, so ``cyp`` spans
+      ``{0, 2, ..., 14}`` weighted ``Binomial(7, 1/2)``.
+    * Divergences from the retired cross-check (written alongside this
+      interpreter, so never independent evidence): repeated ``y`` rebound and
+      executed there; reads at exhausted input raise (it exited 3); ``i`` on a
+      non-integer line halts (it exited 3); a ``t`` run walking before the
+      program repeats NUL in both; out-of-program reads are NUL, so an
+      unmatched ``a`` on zero halts.
 """
 
 from collections.abc import Callable

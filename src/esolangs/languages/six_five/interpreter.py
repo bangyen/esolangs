@@ -1,24 +1,29 @@
 """6-5: a tape language spelled in digits.
 
 A pointer walks a tape of integer cells that starts as one zero.  The
-program is read left to right, one instruction at a time:
+program is read left to right, one instruction at a time.  ``0`` halts, as
+does running off the end.
 
-- ``5`` and ``6`` add 5 and 6 to the cell; ``2`` and ``9`` subtract them.
-- ``1`` moves the pointer two cells right, ``3`` one cell left.
-- ``A`` prints the cell as a character, ``B`` reads one into it.
-- ``4`` is a marker.  ``8n`` jumps to the n-th marker, and ``7n`` skips the
-  next instruction when the cell equals n.  The operand n is the next
-  character, read as a digit: ``0``-``9``, then ``A``=10 onward.
-- ``0`` halts, as does running off the end.  ``C`` starts a comment to the
-  end of the line, and any other character is ignored.
+Commands:
+    ``5``, ``6``: add 5, 6 to the cell.  ``2``, ``9``: subtract 5, 6.
+    ``1``: move the pointer two cells right.  ``3``: one cell left.
+    ``A``: print the cell as a character.  ``B``: read one into it.
+    ``4``: a marker.  ``8n``: jump to the n-th marker.
+    ``7n``: skip the next instruction when the cell equals n.
+    ``C``: a comment to the end of the line.  Any other character is ignored.
+    The operand n is the next character, read as a digit: ``0``-``9``, then
+    ``A``=10 onward.
 
-The wiki names no failures, so: an ``8n`` with no n-th marker falls
-through, and an ignored character is no instruction for ``7n`` to skip.
-``3`` at the leftmost cell grows the tape a zero cell on the left: the spec
-says nothing about the left edge, and cells left of the start are allowed.
-Printing a cell outside the character range halts with
-:class:`~esolangs.exceptions.HaltError`; exhausted input raises
-:class:`EOFError`.
+Errors:
+    HaltError: ``A`` prints a cell outside the character range.
+    InputExhaustedError: ``B`` at EOF.
+
+Decisions:
+    * The wiki names no failures: an ``8n`` with no n-th marker falls
+      through, and an ignored character is no instruction for ``7n`` to skip.
+    * ``3`` at the leftmost cell grows the tape a zero cell on the left: the
+      spec says nothing about the left edge, and cells left of the start are
+      allowed.
 """
 
 from __future__ import annotations

@@ -28,35 +28,43 @@ Also here: computed ``ABSTAIN``, ``COME FROM`` by expression and gerund,
 threads, backtracking, ``CREATE``, operand overloading, ``PIN``, CLC-INTERCAL
 I/O and wimpmode.
 
-Unparsable statements are E000 syntax errors raised only when executed. Errors
-raise ``HaltError`` naming their E-number; program-wide checks (labels,
-politeness, NEXT/ABSTAIN/COME FROM targets) raise at load. Numeric ``WRITE IN``
-at EOF raises ``EOFError``; Turing Tape input stores 256 at EOF. A ``%n`` draws
-at random; ``esolangs.run(..., seed=s)`` fixes the draw.
+A ``%n`` draws at random; ``esolangs.run(..., seed=s)`` fixes the draw.
 
-Judgment calls where the manual or C-INTERCAL leave a gap:
+Input/output:
+    Numeric ``WRITE IN`` at EOF raises; Turing Tape input stores 256 at EOF.
 
-* A statement starts at ``DO``/``PLEASE`` even inside a word (``DOUBLE``), as
-  C-INTERCAL lexes; a label starts one only before an identifier. A line with
-  no identifier that is a complete core command stays its own statement.
-* Politeness keeps the stricter one-fifth to one-third rule for any length;
-  running off the end halts quietly instead of E633.
-* Zero prints a lone overbar over an empty line, as the manual says; a value
-  below 4000 prints one line, where C-INTERCAL prints an empty overbar line first.
-* Whitespace may split a number from its sigil and its own digits, as
-  C-INTERCAL's lexer allows, though the manual says it cannot.
-* Digit words read in any case, split at any whitespace; C-INTERCAL wants
-  upper case split at spaces.  Of two errors in one statement, the
-  right-hand side's is raised before the target subscript's.
-* ``READ OUT`` takes any expression; a subscript list holds bare operands, and
-  a subscripted element may be the left operand of a binary operator.
-* Array elements start at 0, where C-INTERCAL leaves them uninitialised;
-  ``RETRIEVE`` restores an array even if it is undimensioned.
-* Turing Tape characters are code points; the tape differences are taken
-  modulo 256 and output bytes are written as code points 0-255.
-* ``ONCE``/``AGAIN`` take effect when the statement is reached (for ``COME
-  FROM`` when it fires); a computed ``COME FROM`` is checked at every labelled
-  statement, a gerund one after every statement of that kind.
+Errors:
+    HaltError: every INTERCAL error, naming its E-number.  Unparsable
+    statements are E000 syntax errors raised only when executed;
+    program-wide checks (labels, politeness E079/E099, NEXT/ABSTAIN/COME
+    FROM targets) raise at load.  No ProgramError arises.
+    InputExhaustedError: numeric ``WRITE IN`` at EOF.
+
+Decisions:
+    * A statement starts at ``DO``/``PLEASE`` even inside a word
+      (``DOUBLE``), as C-INTERCAL lexes; a label starts one only before an
+      identifier.  A line with no identifier that is a complete core command
+      stays its own statement.
+    * Politeness keeps the stricter one-fifth to one-third rule for any
+      length; running off the end halts quietly instead of E633.
+    * Zero prints a lone overbar over an empty line, as the manual says; a
+      value below 4000 prints one line, where C-INTERCAL prints an empty
+      overbar line first.
+    * Whitespace may split a number from its sigil and its own digits, as
+      C-INTERCAL's lexer allows, though the manual says it cannot.
+    * Digit words read in any case, split at any whitespace; C-INTERCAL wants
+      upper case split at spaces.  Of two errors in one statement, the
+      right-hand side's is raised before the target subscript's.
+    * ``READ OUT`` takes any expression; a subscript list holds bare operands,
+      and a subscripted element may be the left operand of a binary operator.
+    * Array elements start at 0, where C-INTERCAL leaves them uninitialised;
+      ``RETRIEVE`` restores an array even if it is undimensioned.
+    * Turing Tape characters are code points; the tape differences are taken
+      modulo 256 and output bytes are written as code points 0-255.
+    * ``ONCE``/``AGAIN`` take effect when the statement is reached (for
+      ``COME FROM`` when it fires); a computed ``COME FROM`` is checked at
+      every labelled statement, a gerund one after every statement of that
+      kind.
 """
 
 from __future__ import annotations

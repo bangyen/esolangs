@@ -6,19 +6,24 @@ comments) forming self-modifying memory; ``x x next`` is the countdown
 idiom.  Unbounded cells; no instruction cap (a decrementing cell never
 repeats a state), so ``esolangs.run``'s ``timeout`` is the guard.
 
-The page is ten lines and names no halt, so these are choices
-("Memory-mapped I/O: It is optional / -2 b c Outputs b / -1 b c Set b to
-user input"):
+``a = -2`` prints ``memory[b]`` as a byte, ``a = -1`` reads one Unicode
+character code; both ignore ``c`` and fall through.
 
-* I/O is implemented: ``a = -2`` prints ``memory[b]`` as a byte, ``a = -1``
-  reads one Unicode character code; EOF raises :class:`EOFError`.  Both
-  ignore ``c`` and fall through (SUBBIG, whose assembly the example uses,
-  jumps to ``c``).
-* The pointer halts off the end of the store as it has grown (not of the
-  source).  A read out of range is zero; a write past the end grows the
-  store; a negative write indexes from the right (an error is the other
-  reading), and one past the left end raises
-  :class:`~esolangs.exceptions.HaltError`.
+Errors:
+    ProgramError: A source token that is not an integer.
+    InputExhaustedError: ``a = -1`` at EOF.
+    HaltError: A write past the left end of the store.
+    InterpreterLimitError: A write that would grow the store past 2**24 cells.
+
+Decisions:
+    * The page is ten lines and names no halt: its optional I/O ("Memory-mapped
+      I/O: It is optional / -2 b c Outputs b / -1 b c Set b to user input") is
+      implemented, falling through where SUBBIG, whose assembly the example
+      uses, jumps to ``c``.
+    * The pointer halts off the end of the store as it has grown (not of the
+      source).  A read out of range is zero; a write past the end grows the
+      store; a negative write indexes from the right (an error is the other
+      reading).
 """
 
 from __future__ import annotations

@@ -3,33 +3,51 @@
 Source is IPA symbols parsed as CV(N)(C) syllables; parsing is only about
 validity, since every symbol is a command run in written order.  Memory
 is an unsigned *accumulator*, a *deque*, and a *function* built symbol by
-symbol.  Fricatives do I/O (``θ`` int, ``f`` char, ``s`` read int, ``ʒ``
-read char); plosives build the function (``d`` ``a``, ``b`` ``+``, ``t``
-``-``, ``ɡ`` ``×``, ``q`` ``÷``, ``ʔ`` ``(``, ``ʡ`` ``)``, ``p``/``k``
-pop a literal from front/back, ``c`` resets); approximants are control
-flow (``ɰ̊``/``ɰ`` loop while zero/nonzero to ``ʋ``, ``ɹ``/``j`` goto
-character/syllable); vowels modify the accumulator (``i`` ++, ``ə`` --
-floored, ``æ`` square, ``o`` isqrt, ``u`` apply); nasals work the deque
-(``m``/``n`` push front/back, ``ŋ``/``ɲ`` pop).
+symbol.
 
-Gaps decided: syllabification is greedy and takes a coda only when no
-vowel follows (forced; parses all four wiki examples and rejects
-``susŋ``); ``ɰ̊`` is two codepoints joined by the tokenizer; ``ɹ``
-counts codepoints, landing on the ring resumes at the ``ɰ̊``; a goto past
-the end halts; an opener jumps *past* its ``ʋ`` (the truth machine on
-input 0 requires it) and ``ʋ`` jumps onto its opener; ``×``/``÷`` bind
-tighter than ``+``/``-`` (pinned by the Hello, world! example) and ``÷``
-floors; an invalid function is inert but division by zero raises
-:class:`~esolangs.exceptions.HaltError`, as does popping an empty deque;
-subtraction and ``s`` floor at zero; unbalanced loops, an empty program
-or an unsyllabifiable source raise :class:`ValueError`; ``s`` reads junk
-as zero, while EOF raises :class:`EOFError`.
+Commands:
+    θ: print the accumulator as an integer
+    f: print the accumulator as a character
+    s: read an integer into the accumulator
+    ʒ: read a character into the accumulator
+    d, b, t, ɡ, q, ʔ, ʡ: append ``a``, ``+``, ``-``, ``×``, ``÷``, ``(``,
+        ``)`` to the function
+    p, k: pop a literal from the front/back of the deque into the function
+    c: reset the function
+    ɰ̊, ɰ: loop to ``ʋ`` while the accumulator is zero/nonzero
+    ʋ: end of loop
+    ɹ, j: goto character/syllable
+    i, ə: increment, decrement (floored)
+    æ, o: square, integer square root
+    u: apply the function
+    m, n: push the accumulator to the front/back of the deque
+    ŋ, ɲ: pop the front/back of the deque into the accumulator
 
-Compatibility extensions: ASCII ``g`` folds to the command table's ``ɡ`` to
-accept the wiki's Hello, world! spelling. LF is discarded before tokenization,
-syllabification and character-offset calculation so line-wrapped generated
-programs run. These extend the IPA-source rule; spaces, tabs and CR remain
-invalid.
+Input/output:
+    ``s`` reads junk as zero, and negative input floors at zero.
+
+Errors:
+    ProgramError: An empty program; a character that is not a command; a
+    source that does not syllabify; unbalanced loops.
+    InputExhaustedError: ``s`` or ``ʒ`` at EOF.
+    HaltError: Division by zero in the function; popping an empty deque.
+
+Decisions:
+    * Syllabification is greedy and takes a coda only when no vowel follows
+      (forced; parses all four wiki examples and rejects ``susŋ``).
+    * ``ɰ̊`` is two codepoints joined by the tokenizer; ``ɹ`` counts
+      codepoints, landing on the ring resumes at the ``ɰ̊``.
+    * A goto past the end halts.
+    * An opener jumps *past* its ``ʋ`` (the truth machine on input 0
+      requires it) and ``ʋ`` jumps onto its opener.
+    * ``×``/``÷`` bind tighter than ``+``/``-`` (pinned by the Hello,
+      world! example) and ``÷`` floors.
+    * An invalid function is inert; subtraction floors at zero.
+    * ASCII ``g`` folds to the command table's ``ɡ`` to accept the wiki's
+      Hello, world! spelling.  LF is discarded before tokenization,
+      syllabification and character-offset calculation so line-wrapped
+      generated programs run.  These extend the IPA-source rule; spaces,
+      tabs and CR remain invalid.
 """
 
 from __future__ import annotations

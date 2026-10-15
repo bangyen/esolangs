@@ -1,0 +1,18 @@
+{
+ "triggers": [
+  {
+   "program": "+",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "the program halts on an empty pop"
+  },
+  {
+   "program": "~",
+   "stdin": "",
+   "expect": "output",
+   "output": "0",
+   "claim": "the queue is dumped when the run ends (walk off the grid)"
+  }
+ ]
+}

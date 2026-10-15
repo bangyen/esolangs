@@ -1,0 +1,34 @@
+{
+ "triggers": [
+  {
+   "program": "1,1:x",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "x at EOF"
+  },
+  {
+   "program": "0,1:",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a dimension below 1"
+  },
+  {
+   "program": "1,1:>",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a pointer move outside the grid"
+  },
+  {
+   "program": "1,1:(",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "an unmatched parenthesis"
+  },
+  {
+   "program": "x",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "no leading width,height:"
+  }
+ ]
+}

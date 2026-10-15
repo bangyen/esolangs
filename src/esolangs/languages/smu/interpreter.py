@@ -12,29 +12,34 @@ comments to end of line and whitespace, then expands macros: a name (digits
 then one ASCII letter) opens a definition the first time and closes it the
 second; afterwards the name expands.  Other characters are ignored.
 
-Judgment calls:
-
-- An unset variable reads as the empty string.  The wiki cat needs it: at
-  EOF it looks up ``==``, never set, and runs the result as an empty
-  program, which ends the run with nothing left to execute.
-- Bits ride bytes little-endian: each input byte supplies
-  eight runs' bits, low bit first, and output bits pack low bit first into
-  bytes, a partial byte padded with zeros at halt.  So the wiki cat copies
-  bytes.  Input is reduced modulo 256.  EOF is a value, ``=``, never an
-  ``EOFError``.
-- Output ``=`` ("wait for more input unless EOF") prints nothing: input is
-  a stream read one bit per run, so there is nothing to wait for.
-- Output of ``(`` or ``)`` is unspecified and raises
-  :class:`~esolangs.exceptions.HaltError` before any of the string prints.
-- Parentheses "must be nested correctly": an unbalanced source raises
-  :class:`ValueError`; an unbalanced string popped as the next program
-  raises :class:`~esolangs.exceptions.HaltError` before it runs.
-- A second macro name inside a definition raises :class:`ValueError`
-  ("you cannot define a macro inside of another macro"), as does a
-  definition left open; digits not followed by a letter are ignored.
-
 Cost: each run scans its program once for top-level literals; ``|`` and
 ``+`` build Python strings, so each costs the length of what it builds.
+
+Input/output:
+    One input bit per run, bits riding bytes little-endian: each input byte
+    supplies eight runs' bits, low bit first, and output bits pack low bit
+    first into bytes, a partial byte padded with zeros at halt.  Input is
+    reduced modulo 256.  EOF is a value, ``=``, never an error.
+
+Errors:
+    ProgramError: Unbalanced parentheses in the source; a second macro name
+        inside a definition; a definition left open.
+    HaltError: Output of a string holding ``(`` or ``)`` (before any of it
+        prints); an unbalanced string popped as the next program (before it
+        runs).
+
+Decisions:
+    * An unset variable reads as the empty string.  The wiki cat needs it: at
+      EOF it looks up ``==``, never set, and runs the result as an empty
+      program, which ends the run with nothing left to execute.
+    * Bits ride bytes little-endian, so the wiki cat copies bytes.
+    * Output ``=`` ("wait for more input unless EOF") prints nothing: input
+      is a stream read one bit per run, so there is nothing to wait for.
+    * Output of ``(`` or ``)`` is unspecified, so it halts.
+    * Parentheses "must be nested correctly".
+    * A second macro name inside a definition is an error ("you cannot
+      define a macro inside of another macro"); digits not followed by a
+      letter are ignored.
 """
 
 from __future__ import annotations

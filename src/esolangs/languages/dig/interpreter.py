@@ -1,28 +1,34 @@
-"""Dig interpreter implementation.
+"""Interpreter for Dig.
 
 2D esoteric language with a mole that moves on a grid and can dig underground.
-Movement commands work overground, work commands function underground.
+Movement commands work overground, work commands function underground.  The
+mole holds one integer (a letter is its code).
 
 The wiki only lists ``@`` as a halt; this interpreter also stops cleanly when
-the mole walks off the grid.  A work command that needs an adjacent digit but
-finds none, or divides by an adjacent zero, halts with
-:class:`~esolangs.exceptions.HaltError`; an empty program is rejected with
-:class:`ValueError`.
+the mole walks off the grid.
 
-``#`` reads its steer from an adjacent digit and the wiki covers every case
-("Rotates Mole to left when value beside it is 0, and right when 1.  When
-it's neither of those, keep straight.").  ``%`` is specified only for 0 and
-1 ("Overrides current value with space when 0, and newline when 1"); the
-other eight digits leave the mole unchanged rather than get an invented
-meaning.
+Input/output:
+    ``:`` prints the mole.  ``=`` reads one character and ``~`` an integer.
+    Exhausted input raises (the repo-wide convention).
 
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
+Errors:
+    ProgramError: An empty program; a ``~`` token that is not an integer.
+    InputExhaustedError: ``=`` or ``~`` at EOF.
+    HaltError: A work command that needs an adjacent digit but finds none;
+        division by an adjacent zero; a negative ``$`` digging distance.
 
-The mole holds one integer (a letter is its code); ``:`` prints one below 10
-as a decimal and any other as a character, as the page has no types.  ``;``
-copies the mole into its cell and keeps it ("the ``;`` is given the Moles
-current value"), so the truth machine prints ``2111...`` on 1, as drawn;
-zeroing the mole would print ``111...``.
+Decisions:
+    * ``#`` reads its steer from an adjacent digit and the wiki covers every
+      case ("Rotates Mole to left when value beside it is 0, and right when
+      1.  When it's neither of those, keep straight.").
+    * ``%`` is specified only for 0 and 1 ("Overrides current value with
+      space when 0, and newline when 1"); the other eight digits leave the
+      mole unchanged rather than get an invented meaning.
+    * ``:`` prints a value below 10 as a decimal and any other as a
+      character, as the page has no types.
+    * ``;`` copies the mole into its cell and keeps it ("the ``;`` is given
+      the Moles current value"), so the truth machine prints ``2111...`` on
+      1, as drawn; zeroing the mole would print ``111...``.
 """
 
 from functools import lru_cache

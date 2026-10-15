@@ -1,0 +1,29 @@
+{
+ "triggers": [
+  {
+   "program": "1",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a symbol other than zero or whitespace"
+  },
+  {
+   "program": "00",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: an incomplete 3-bit triple"
+  },
+  {
+   "program": "00000000000000",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: unmatched brackets (14 zeros decode to '[')"
+  },
+  {
+   "program": "0000000000000",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "',' at EOF stores zero, no error (13 zeros decode to ',')"
+  }
+ ]
+}

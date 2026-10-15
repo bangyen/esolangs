@@ -1,0 +1,22 @@
+{
+ "triggers": [
+  {
+   "program": "M",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: underflow"
+  },
+  {
+   "program": "W",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "W reads one line and raises at EOF"
+  },
+  {
+   "program": "a",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a character outside A-Z"
+  }
+ ]
+}

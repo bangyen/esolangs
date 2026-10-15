@@ -1,34 +1,46 @@
 """Interpreter for Fargo.
 
-Memory is an *input number* (read once before the run; empty or
-non-integer is 0, so there is no EOF) and a write-only *output number*.
-A line is a definition, a call, blank, or a ``#`` comment.  Builtins:
-``<``/``>`` shift by 1; ``&`` ``|`` ``^`` bitwise; ``[] x``, ``+[] x y``,
-``[?] x y`` make/concatenate/index arrays; ``@ x`` reads input bit
-``x``; ``% x y`` sets output bit ``x``; ``$`` prints the output number;
-``: x y`` does ``y`` iff ``x`` is nonzero.  A definition's parameters
-are the tokens before the first already-defined name (the function's own
-name counts, so it can recurse); a ``:``-prefixed token is passed raw.
+Memory is an *input number* (read once before the run) and a write-only
+*output number*.  A line is a definition, a call, blank, or a ``#`` comment.
+A definition's parameters are the tokens before the first already-defined
+name (the function's own name counts, so it can recurse); a ``:``-prefixed
+token is passed raw.  No expression can build a negative bit index.
 
-Gaps decided: ``:`` is lazy, forced by the wiki truth machine's
-``: @ 0 one`` (strict evaluation would loop on input 0); ``%``, ``$``
-and a failed ``:`` return 0; a definition's code must be exactly one
-outer call (:class:`ValueError`; a bare literal or value argument is
-none), though a top-level line may hold several (``$ $``); ``% x y``
-writes ``y``'s low bit ("sets the xth bit ... to y" leaves y=10 open;
-the clean-room reading writes 1 for any nonzero y); redefinition is
-unreachable, since a defined first token parses as a call.
-:class:`~esolangs.exceptions.HaltError` for an undefined name, a ``:``
-body taking arguments, bad array indexing, and shifting or combining an
-array.  No expression can build a negative bit index (see
-:meth:`_Machine._bit`).
+Evaluation uses an explicit frame stack: recursion is Fargo's only loop,
+native recursion would hit Python's limit, and the growing stack is what
+:func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
 
-Evaluation uses an explicit ``_Frame`` stack: recursion is Fargo's only
-loop, native recursion would hit Python's limit, and the growing stack is
-what :func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
+Commands:
+    ``<``/``>``: shift by 1.
+    ``&`` ``|`` ``^``: bitwise.
+    ``[] x``, ``+[] x y``, ``[?] x y``: make/concatenate/index arrays.
+    ``@ x``: reads input bit ``x``.
+    ``% x y``: sets output bit ``x``.
+    ``$``: prints the output number.
+    ``: x y``: does ``y`` iff ``x`` is nonzero.
 
-Its initial number is a whitespace-delimited integer token; the spec does not
-define text framing.
+Input/output:
+    The input number is a whitespace-delimited integer token; the spec does
+    not define text framing.  Empty or non-integer input is 0, so there is no
+    EOF.
+
+Errors:
+    ProgramError: A definition whose code is not exactly one outer call (a
+    bare literal or value argument is none), or a call left wanting arguments.
+    HaltError: An undefined name, calling a non-function argument, a ``:``
+    body taking arguments, bad array indexing, and shifting or combining an
+    array.
+
+Decisions:
+    * ``:`` is lazy, forced by the wiki truth machine's ``: @ 0 one`` (strict
+      evaluation would loop on input 0).
+    * ``%``, ``$`` and a failed ``:`` return 0.
+    * A definition's code must be exactly one outer call, though a top-level
+      line may hold several (``$ $``).
+    * ``% x y`` writes ``y``'s low bit ("sets the xth bit ... to y" leaves
+      y=10 open; the clean-room reading writes 1 for any nonzero y).
+    * Redefinition is unreachable, since a defined first token parses as a
+      call.
 """
 
 from __future__ import annotations

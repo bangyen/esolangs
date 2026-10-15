@@ -1,0 +1,23 @@
+{
+ "triggers": [
+  {
+   "program": "d;\nd;\ninject d=(/x",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: a malformed inject regex"
+  },
+  {
+   "program": "a;\na;\na;",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a label written a third time"
+  },
+  {
+   "program": "data;\nx\ndata;\nreadto data\nsend data",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "readto at EOF empties the block instead of raising"
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "triggers": [
+  {
+   "program": "EXE",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: EXE with an empty slot"
+  },
+  {
+   "program": "foo",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: an unrecognised line when executed"
+  },
+  {
+   "program": "u",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "InputExhaustedError: reading past the end of the input"
+  }
+ ]
+}

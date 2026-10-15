@@ -1,4 +1,4 @@
-"""Piet++ raster interpreter following https://esolangs.org/wiki/Piet%2B%2B.
+"""Interpreter for Piet++ (https://esolangs.org/wiki/Piet%2B%2B).
 
 Piet's traversal (blocks, DP/CC, white slides, black walls, halting) over a
 64-colour space: channel bytes 00/55/AA/FF are levels 0-3, and a transition
@@ -8,42 +8,45 @@ pointer starts at the top stack, depth 0.  A command whose operands are
 missing or of the wrong type, or that needs a parent the top stack lacks, is
 ignored without popping, as the page recommends.
 
-Both wiki programs with stated outputs pin the semantics: XKCD Random Number
-prints ``4`` (push-stack, push-int 4, push-down, recursive out-integer) and
-User:Miui/Nah.'s 1x330 column prints ``Nah.``.  Old minus new prints nothing
-in either, which settles the delta's sign.
+Input/output:
+    An In at EOF is ignored, and In Integer consumes a token that is not an
+    integer.  Out on a stack prints its elements top first, recursing into
+    stacks.
 
-Judgment calls for what the page leaves open:
-
-- Read and Write pop their x operand: Write's "the third value is popped"
-  reaches the third value only if x left first.  The offsets add to the
-  codel just entered, where the transition's command runs.  An off-image
-  target, or a Write value outside 0..0xFFFFFF, ignores the command whole.
-- Colours are packed 0xRRGGBB; alpha is dropped.  A pixel outside the 64
-  colours (Write may store one) slides like white, as Piet's module treats
-  non-standard colours.
-- A Write lands at once; the next step reads the updated image, so a
-  rewritten current codel changes its own block, and one written black
-  halts the run (the page gives no way off a black codel).
-- A codel is one pixel ("a block of color equivalent to a single pixel")
-  of the codel grid; the grid's scale is detected when omitted
-  (so enlarged images such as ``generate(..., scale=2)`` read correctly),
-  and an explicit ``scale`` overrides detection.
-- Add with a stack keeps stack order: an integer above a stack goes on its
-  top, below it on its bottom, and stack ``B`` below stack ``T`` makes
-  ``B``'s elements the bottom of ``T``.
-- ``Down`` makes a nested stack the current one, and both see the same
-  value: the page's aliasing.
-- Size pushes without popping ("pushes the size of the top item").
-- Out on a stack prints its elements top first, recursing into stacks.
-- Roll-Context follows the page's first three examples: levels 0..y-1 are
-  linked by each level's top stack, every level but the deepest needs one,
-  a level's data is everything but that link, and level ``i`` takes level
-  ``i + x``'s data.  The fourth example's "insufficient depth" contradicts
-  the second, which has the same shape and rolls; it is not followed.
-- Roll and Roll-Context of depth 0 pop both operands and move nothing;
-  Divide and Mod by zero are ignored; both floor.  An In at EOF is ignored,
-  and In Integer consumes a token that is not an integer.
+Decisions:
+    * Both wiki programs with stated outputs pin the semantics: XKCD Random
+      Number prints ``4`` (push-stack, push-int 4, push-down, recursive
+      out-integer) and User:Miui/Nah.'s 1x330 column prints ``Nah.``.  Old
+      minus new prints nothing in either, which settles the delta's sign.
+    * Read and Write pop their x operand: Write's "the third value is
+      popped" reaches the third value only if x left first.  The offsets add
+      to the codel just entered, where the transition's command runs.  An
+      off-image target, or a Write value outside 0..0xFFFFFF, ignores the
+      command whole.
+    * Colours are packed 0xRRGGBB; alpha is dropped.  A pixel outside the 64
+      colours (Write may store one) slides like white, as Piet's module
+      treats non-standard colours.
+    * A Write lands at once; the next step reads the updated image, so a
+      rewritten current codel changes its own block, and one written black
+      halts the run (the page gives no way off a black codel).
+    * A codel is one pixel ("a block of color equivalent to a single pixel")
+      of the codel grid; the grid's scale is detected when omitted (so
+      enlarged images such as ``generate(..., scale=2)`` read correctly),
+      and an explicit ``scale`` overrides detection.
+    * Add with a stack keeps stack order: an integer above a stack goes on
+      its top, below it on its bottom, and stack ``B`` below stack ``T``
+      makes ``B``'s elements the bottom of ``T``.
+    * ``Down`` makes a nested stack the current one, and both see the same
+      value: the page's aliasing.
+    * Size pushes without popping ("pushes the size of the top item").
+    * Roll-Context follows the page's first three examples: levels 0..y-1
+      are linked by each level's top stack, every level but the deepest
+      needs one, a level's data is everything but that link, and level ``i``
+      takes level ``i + x``'s data.  The fourth example's "insufficient
+      depth" contradicts the second, which has the same shape and rolls; it
+      is not followed.
+    * Roll and Roll-Context of depth 0 pop both operands and move nothing;
+      Divide and Mod by zero are ignored; both floor.
 """
 
 from __future__ import annotations

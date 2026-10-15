@@ -2,12 +2,21 @@ r"""Interpreter for Circlefuck.
 
 The tape is the program: cells wrap, ``+``/``-`` adjust, ``,`` reads,
 ``.`` prints, ``[``/``]`` jump to matching brackets, ``@`` halts,
-``{``/``}`` insert and remove cells. An empty program raises
-:class:`ValueError`; an unmatched taken bracket suspends forever.
-Deleting the last cell halts with
-:class:`~esolangs.exceptions.HaltError`; EOF is a no-op.  Three digits
-past 255 (``\256``) are a malformed ``\NNN`` ("between 000 and 255"),
-not ``\2`` then ``56``: the page does not say which.
+``{``/``}`` insert and remove cells.  An unmatched taken bracket suspends
+forever.
+
+Input/output:
+    ``,`` reads one byte; at EOF it is a no-op.
+
+Errors:
+    ProgramError: An empty program, or an invalid escape: a trailing or
+    unknown ``\`` escape, a ``\o`` or ``\x`` without its three octal or two
+    hex digits, or three decimal digits past 255.
+    HaltError: ``}`` deleting the last cell.
+
+Decisions:
+    * Three digits past 255 (``\256``) are a malformed ``\NNN`` ("between
+      000 and 255"), not ``\2`` then ``56``: the page does not say which.
 """
 
 from __future__ import annotations

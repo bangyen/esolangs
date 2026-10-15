@@ -4,13 +4,21 @@ Super SNUSP is a grid language with a signed sparse tape and value stack.
 ``"`` starts rightward.  Absent one, the page says "Starts at bottom
 right": the IP starts rightward on the last line's last non-space character,
 the one reading under which the wiki's Cat (no ``\"``) copies its input.
-EOF propagates.  ``@`` ("Input decimal number") reads a whitespace-delimited
-token and refuses one that is not an integer. Invalid stack/arithmetic operations raise
-:class:`~esolangs.exceptions.HaltError`; an empty program raises
-:class:`ValueError`.
 
-The execution model is a pure transition over immutable ``_State``. The shell
+The execution model is a pure transition over immutable state. The shell
 alone handles I/O and random draws, then rebinds the returned state.
+
+Input/output:
+    ``,`` reads a character; ``@`` ("Input decimal number") reads a
+    whitespace-delimited token and refuses one that is not an integer.  EOF
+    propagates.
+
+Errors:
+    ProgramError: Empty program.
+    InputExhaustedError: ``,`` or ``@`` at EOF.
+    ArgumentError: An ``@`` token that is not an integer.
+    HaltError: Invalid stack/arithmetic operations (an empty stack read,
+        zero divisor, negative shift, bad root, ``.`` on a non-code-point).
 """
 
 from __future__ import annotations

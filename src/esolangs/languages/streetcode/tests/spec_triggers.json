@@ -1,0 +1,22 @@
+{
+ "triggers": [
+  {
+   "program": "C~O;",
+   "expect": "HaltError",
+   "claim": "O on a cell that is not a code point",
+   "stdin": ""
+  },
+  {
+   "program": "CI;",
+   "expect": "InputExhaustedError",
+   "claim": "I at EOF",
+   "stdin": ""
+  },
+  {
+   "program": "x",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "not exactly one C"
+  }
+ ]
+}

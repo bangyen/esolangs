@@ -1,0 +1,28 @@
+{
+ "triggers": [
+  {
+   "program": "0!",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "! on an integer"
+  },
+  {
+   "program": "^",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "^ on an empty stack"
+  },
+  {
+   "program": ";",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "a pop on an empty stack"
+  },
+  {
+   "program": "\"a\"+",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "arithmetic on a non-numeric top"
+  }
+ ]
+}

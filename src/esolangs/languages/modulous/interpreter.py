@@ -5,35 +5,40 @@ or variable value; POP/SWP/DUP reshape the stack; PRT prints the top as an
 integer or byte; INP reads a line; JMP/IF conditionally jump; RST resets the
 pointer to the start of the program; and END halts.
 
-The wiki declares four variables (VAR1-VAR4), and only those exist: every
-variable op -- the ``PSH`` store, the ``PRT`` read, and the
-``VARn+k``/``VARn-k`` arithmetic -- halts on any other name.  Otherwise
-``[PSH VAR VAR1]`` (the keyword spelling; the syntax is ``[PSH VAR1]``)
-would store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
-
-A ``JMP`` condition reads an empty stack's top as 0, and a backward jump
-past the start wraps to the end; the wiki says neither.  Other operations
-that act on an empty stack, an undefined variable, or a missing operand
-are invalid: they halt the program with
-:class:`~esolangs.exceptions.HaltError`, and a malformed token (a missing
-required argument) is rejected with :class:`ValueError`.
-
-**Unknown commands and stray text are refused, by choice.**  The wiki says
-only that "a module is a command surrounded by square brackets" and not
-what to do with anything else.  Silently ignoring them ran ``[PRTINT]`` (a
-plausible slip for ``[PRT INT]``) as nothing, and ``[PSH INT 1[END]``
-dropped the unbalanced first half and ran the second, each exiting 0 with
-no output; a program that does nothing and reports success is the worst
-answer to a typo, so both raise.  ``[]``, which the empty-token rule skips,
-serves as a comment.
-
 A ``STR`` push takes its string in straight quotes or in the typographic
 pair “ ”, as the wiki's own Hello World writes it.
 
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
+Input/output:
+    Input numbers are whitespace-delimited tokens and strings are lines; the
+    spec does not define their text framing.  Exhausted input raises (the
+    repo-wide convention).
 
-Input numbers are whitespace-delimited tokens and strings are lines; the
-spec does not define their text framing.
+Errors:
+    ProgramError: Text outside any ``[command]`` or an unbalanced bracket; an
+    unknown command; a missing required argument; ``PSH STR`` with no quoted
+    string; an invalid ``PSH`` operand; a non-integer operand; a ``PRT``
+    character out of range.
+    InputExhaustedError: ``INP`` at EOF.
+    HaltError: An operation on an empty stack (except a ``JMP`` condition); an
+    undefined variable (any name but VAR1-VAR4); ``SWP`` with fewer than two
+    values; ``RND`` with a bound below 1.
+
+Decisions:
+    * The wiki declares four variables (VAR1-VAR4), and only those exist:
+      every variable op -- the ``PSH`` store, the ``PRT`` read, and the
+      ``VARn+k``/``VARn-k`` arithmetic -- halts on any other name.  Otherwise
+      ``[PSH VAR VAR1]`` (the keyword spelling; the syntax is ``[PSH VAR1]``)
+      would store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
+    * A ``JMP`` condition reads an empty stack's top as 0, and a backward jump
+      past the start wraps to the end; the wiki says neither.
+    * Unknown commands and stray text are refused.  The wiki says only that
+      "a module is a command surrounded by square brackets" and not what to do
+      with anything else.  Silently ignoring them ran ``[PRTINT]`` (a
+      plausible slip for ``[PRT INT]``) as nothing, and ``[PSH INT 1[END]``
+      dropped the unbalanced first half and ran the second, each exiting 0
+      with no output; a program that does nothing and reports success is the
+      worst answer to a typo, so both raise.  ``[]``, which the empty-token
+      rule skips, serves as a comment.
 """
 
 import re

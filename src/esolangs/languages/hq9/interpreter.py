@@ -1,12 +1,15 @@
 """Interpreter for HQ9+.
 
-ASCII H/Q are case-insensitive; other characters are ignored. H prints
-"Hello, world!" plus newline: the spec's `Print "hello, world"` links to the
-Hello, world! page and gives no punctuation. Q prints exact source without
-adding a newline. 9 prints 99 descending verses and the store verse, two
-lines per verse with one blank line between verses; the spec names the song
-and no text. + increments an unbounded accumulator. No input, EOFError,
-ValueError or HaltError arises.
+ASCII H/Q are case-insensitive; other characters are ignored.  H prints
+"Hello, world!" plus newline.  Q prints exact source without adding a
+newline.  9 prints 99 descending verses and the store verse, two lines per
+verse with one blank line between verses.  + increments an unbounded
+accumulator.  No input is read, so EOF never arises, and no error arises.
+
+Decisions:
+    * H's text: the spec's `Print "hello, world"` links to the Hello,
+      world! page and gives no punctuation.
+    * 9's text: the spec names the song and no text.
 """
 
 from esolangs.runtime._drive import drive

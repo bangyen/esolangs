@@ -1,18 +1,24 @@
-"""Polynomial interpreter implementation.
+"""Interpreter for Polynomial.
 
-Polynomial programs are polynomial functions ``f(x) = ...``; real zeroes
-are control flow and complex zeroes register operations on a single
-integer register, in ascending-prime order. Division and remainder
-truncate toward zero; output ignores negatives and EOF stores -1; ``^``
-of a zero register by a negative power raises
-:class:`~esolangs.exceptions.HaltError`.
-Malformed programs raise :class:`ValueError`; an unmatched opener only
-when it would jump (on a zero register it is entered).  Spec gaps, decided here:
-an imaginary zero ``3i``..``6i`` reads input like ``2i`` (the wiki names
-only ``i`` and ``2i``); any closer (2 or 6) closes the innermost opener,
-and the opener alone decides if or while.  No instruction cap: a
-growing register never repeats, and ``esolangs.run``'s ``timeout`` is
-the guard.
+Programs are polynomial functions ``f(x) = ...``; real zeroes are control
+flow and complex zeroes register operations on a single integer register,
+in ascending-prime order.  Division and remainder truncate toward zero.
+No instruction cap: a growing register never repeats, and ``esolangs.run``'s
+``timeout`` is the guard.
+
+Input/output:
+    Output ignores negatives; a read at EOF stores -1.
+
+Errors:
+    ProgramError: Source does not start with ``f(x) =``; an unmatched
+    opener, only when it would jump (on a zero register it is entered).
+    HaltError: ``^`` of a zero register by a negative power.
+
+Decisions:
+    * An imaginary zero ``3i``..``6i`` reads input like ``2i`` (the wiki
+      names only ``i`` and ``2i``).
+    * Any closer (2 or 6) closes the innermost opener, and the opener alone
+      decides if or while.
 """
 
 import functools

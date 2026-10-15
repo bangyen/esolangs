@@ -1,0 +1,16 @@
+{
+ "triggers": [
+  {
+   "program": "0",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: goto 0 when it runs."
+  },
+  {
+   "program": "00",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: goto 00 when it runs."
+  }
+ ]
+}

@@ -17,11 +17,12 @@ statement, so a statement holding calls is re-entered once per call: each
 step runs the leftmost-innermost one that has not returned, and its value
 comes back rewritten into the statement's expression as a literal.  So
 one command of the innermost function is one ``step()``, every
-intermediate state reaches :meth:`_Machine.snapshot`, and a loop inside a
+intermediate state reaches ``snapshot``, and a loop inside a
 called function is provable by :func:`esolangs.vm.run_until_halt_or_cycle`
 instead of hanging unobserved.  The transition performs no IO itself: it
 *requests* a read by returning a flag and the shell takes the byte, also
-from a callee.
+from a callee.  IO inside a called function works: callees are framed, so
+the same shell performs their ``charPut``/``charGet`` in call order.
 
 There is no recursion ceiling.  A program that recurses forever grows the
 frame list, not Python's stack; that class revisits no state, so
@@ -33,39 +34,40 @@ all-0/1 digit strings as binary and every other number as decimal; this makes
 the dependency example's ``110000`` mean 48. Generation uses the same policy
 for expression literals, type bounds and array lengths.
 
-Further decisions for gaps the wiki leaves open:
+Input/output:
+    ``charGet`` consumes the next character, including newlines.  EOF yields
+    newline byte 10, as specified; the wiki cat's ``c ^ 10`` terminator
+    therefore remains reachable.
 
-* **Entry point.**  The wiki never says what runs.  This interpreter calls
-  the parameterless function named ``main``, else the sole parameterless
-  function of the last-declared package, which makes PlusOrMinus runnable
-  (its ``Integer plusOrMinus : code`` names a package variable rather than
-  taking an argument).  A program with no
-  such function raises :class:`ValueError`, as does an unbalanced or
-  empty program, a malformed declaration, or a builtin called with the
-  wrong argument count; a user function called so raises
-  :class:`~esolangs.exceptions.HaltError` when the call runs.
-* **EOF.** ``charGet`` consumes the next character, including newlines.
-  Exhausted input yields newline byte 10, as specified; the wiki cat's
-  ``c ^ 10`` terminator therefore remains reachable.
-* **Invalid runtime operations** raise
-  :class:`~esolangs.exceptions.HaltError`: an undefined variable or
-  function, an array index outside its length, and one rule of this
-  interpreter's own -- **dependency visibility is enforced**.  A package
-  calls its own functions and those of the packages it depends on, and
-  nothing else.  The wiki says a dependency may itself have dependencies,
-  so the relation is followed transitively.
-* **IO inside a called function works.**  Because callees are framed,
-  their statements are stepped like any other, so the same shell performs
-  their ``charPut``/``charGet`` in call order.
-* **Bounds.**  A plain ``Integer`` and a ``Char`` are bytes, 0..255 and
-  wrapping both ways, matching ``charPut``'s byte output (the wiki gives
-  ``Integer`` no range, and charPut prints ``v % 256``);
-  ``Integer(min, max, under, over)`` wraps to the named values instead.
-  ``INIT`` sets a variable to its type's minimum, and an ``Array`` to a
-  row of them, which is what the cat example's ``INIT input`` relies on.
-* **A function's value** is its last evaluated expression statement (the
-  trailing ``0;`` in every wiki example); a function that evaluates none
-  returns 0.
+Errors:
+    ProgramError: No parameterless entry function; an unbalanced or empty
+    program; characters that are no token; a malformed declaration; an unknown
+    datatype; an ``Integer`` minimum above its maximum; a duplicate function in
+    a package; several parameterless ``main``; ``charPut`` or ``charGet``
+    called with the wrong argument count.
+    HaltError: An undefined variable or function; an array index outside its
+    length; a call to a function whose package is not a dependency; a user
+    function called with the wrong argument count.
+
+Decisions:
+    * Entry point: the wiki never says what runs.  This interpreter calls the
+      parameterless function named ``main``, else the sole parameterless
+      function of the last-declared package, which makes PlusOrMinus runnable
+      (its ``Integer plusOrMinus : code`` names a package variable rather
+      than taking an argument).
+    * Dependency visibility is enforced, a rule of this interpreter's own.  A
+      package calls its own functions and those of the packages it depends on,
+      and nothing else.  The wiki says a dependency may itself have
+      dependencies, so the relation is followed transitively.
+    * A plain ``Integer`` and a ``Char`` are bytes, 0..255 and wrapping both
+      ways, matching ``charPut``'s byte output (the wiki gives ``Integer`` no
+      range, and charPut prints ``v % 256``); ``Integer(min, max, under,
+      over)`` wraps to the named values instead.  ``INIT`` sets a variable to
+      its type's minimum, and an ``Array`` to a row of them, which is what the
+      cat example's ``INIT input`` relies on.
+    * A function's value is its last evaluated expression statement (the
+      trailing ``0;`` in every wiki example); a function that evaluates none
+      returns 0.
 """
 
 from collections.abc import Callable

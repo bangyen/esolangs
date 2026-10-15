@@ -1,27 +1,41 @@
 r"""Interpreter for SStack (Seven Stacks).
 
 Seven stacks ``a``-``g`` of unbounded unsigned integers; an empty stack
-reads 0.  Commands: ``>x/y<`` move a top, ``+x/y+``/``-x/y-`` move it
-incremented/decremented (decrementing 0 is a nop), ``;x;`` push an input
-byte, ``:x:`` print the top as a byte, ``"N/y"`` push decimal ``N``,
-``~x~`` pop, ``[x\y/ ... ]`` loop while the tops of ``x`` and ``y`` are
-equal.  The page has no example with a stated output (its brainfuck
-interpreter is marked untested and has a ``[d\g`` typo), so every gap
-below is a judgment call from the command list alone:
-
-- Whitespace is discarded everywhere before parsing ("new lines ... are
-  optional"); any other stray character raises :class:`ValueError`, as do
-  unmatched brackets and a stack name outside ``a``-``g``.
-- Popping an empty stack (``>``, ``+``, ``-``, ``~``) reads 0 and leaves
-  it empty: "accsess empty stack ... would return 0".
-- ``:x:`` peeks; a top above 255 has no byte and raises
-  :class:`HaltError`.
-- ``;x;`` at EOF raises :class:`EOFError` (the page is silent).
-- The page's ``!`` input separator belongs to its brainfuck interpreter's
-  input, not to SStack source, so it is a stray character here.
-
-Stacks are persistent cons cells, so a push or pop is O(1) and the
+reads 0.  Stacks are persistent cons cells, so a push or pop is O(1) and the
 snapshot shares structure instead of copying seven stacks per step.
+
+Commands:
+    ``>x/y<``: move a top.
+    ``+x/y+``, ``-x/y-``: move it incremented/decremented (decrementing 0 is
+    a nop).
+    ``;x;``: push an input byte.
+    ``:x:``: print the top as a byte.
+    ``"N/y"``: push decimal ``N``.
+    ``~x~``: pop.
+    ``[x\y/ ... ]``: loop while the tops of ``x`` and ``y`` are equal.
+
+Input/output:
+    ``;x;`` reads one byte, ``:x:`` writes one.  ``;x;`` at EOF raises (the
+    page is silent).
+
+Errors:
+    ProgramError: Any non-whitespace stray character, unmatched brackets, a
+        stack name outside ``a``-``g``.
+    InputExhaustedError: ``;x;`` at EOF.
+    HaltError: ``:x:`` with a top above 255, which is not a byte.
+
+Decisions:
+    * The page has no example with a stated output (its brainfuck
+      interpreter is marked untested and has a ``[d\g`` typo), so every gap
+      is a judgment call from the command list alone.
+    * Whitespace is discarded everywhere before parsing ("new lines ... are
+      optional").
+    * Popping an empty stack (``>``, ``+``, ``-``, ``~``) reads 0 and leaves
+      it empty: "accsess empty stack ... would return 0".
+    * ``:x:`` peeks.
+    * The page's ``!`` input separator belongs to its brainfuck
+      interpreter's input, not to SStack source, so it is a stray character
+      here.
 """
 
 from __future__ import annotations

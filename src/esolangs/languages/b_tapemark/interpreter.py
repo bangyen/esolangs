@@ -4,15 +4,23 @@ B-tapemark has two unbounded sparse grids, one direction shared by their
 position markers, and commands that can swap which grid is executing.  Quoted
 comments and the unique direction marker become blank cells when loaded.
 
-Invalid source symbols raise :class:`ValueError`, as the wiki requires, as do
-missing or repeated starts and unmatched quotes.  An input symbol that is no
-command runs as a blank once a swap puts it on the first grid: the wiki
-rejects other symbols only "when the program is loaded".
 Source rows use LF, CRLF or CR; other characters occupy a column.
-Exhausted input raises :class:`EOFError`, following the package convention.
 
-Input symbols are consecutive Unicode characters, including newlines; the spec
-does not define their encoding or framing.
+Input/output:
+    ``-`` on a blank data cell reads one symbol.  Input symbols are
+    consecutive Unicode characters, including newlines; the spec does not
+    define their encoding or framing.
+
+Errors:
+    ProgramError: an invalid source symbol outside quotes (as the wiki
+    requires), a missing or repeated start marker, an unmatched quote.
+    InputExhaustedError: ``-`` on a blank data cell at EOF, following the
+    package convention.
+
+Decisions:
+    * An input symbol that is no command runs as a blank once a swap puts it
+      on the first grid: the wiki rejects other symbols only "when the
+      program is loaded".
 """
 
 from __future__ import annotations

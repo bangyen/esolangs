@@ -1,0 +1,11 @@
+{
+ "triggers": [
+  {
+   "generate": "01",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "an In at EOF is ignored"
+  }
+ ]
+}

@@ -1,8 +1,17 @@
 """Boolfuck with a two-sided bit tape and little-endian byte I/O.
 
-EOF supplies zero bits. Partial output bytes are padded at halt. Noncommands
-are ignored; unmatched brackets raise ValueError. Unicode input is reduced
-modulo 256, matching the package's byte interfaces.
+Commands act on the bit under the pointer: ``+`` flips it, ``,`` reads a bit
+into it, ``;`` writes it, ``<`` and ``>`` move the pointer, and ``[ ]`` loop
+while it is 1.  Noncommands are ignored.
+
+Input/output:
+    Bits move least-significant first, eight to a byte.  Unicode input is
+    reduced modulo 256, matching the package's byte interfaces.  EOF supplies
+    zero bits, so a read never raises.  A partial output byte is padded with
+    zero bits at halt.
+
+Errors:
+    ProgramError: unmatched brackets.
 """
 
 from typing import NamedTuple

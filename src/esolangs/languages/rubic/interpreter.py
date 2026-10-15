@@ -2,36 +2,43 @@
 
 The memory is a Rubik's cube and one integer, The Variable (V), starting
 at 0 and solved with white up, green front, orange left (yellow, blue and
-red opposite).  Tokens are whitespace-separated and case-insensitive:
-
-- ``R U L F B D`` turn that face a clockwise quarter as seen from it; ``M``,
-  ``E``, ``S`` turn the middle slice as ``R``, ``U``, ``F`` do.  A ``'``
-  suffix turns anticlockwise, a ``2`` suffix a half turn.
-- ``.x +x -x *x /x %x`` set, add, subtract, multiply, floor-divide (0 when
-  x is 0) and reduce V mod x (unchanged when x is 0).  ``x`` is a colour
-  pair such as ``wg``: the stickers of the second colour on the face whose
-  centre is the first, the centre not counted.  Colours are ``w g o`` and,
-  primed, their opposites ``w' g' o'`` (yellow, blue, red).
-- ``!`` prints V mod 128 as a character.
-- ``( ... )`` runs its body V times, V read on entry.  A negative V runs it
-  |V| times backwards, each command inverted: a turn turns back, ``.x``
-  sets -x, ``+``/``-`` and ``*``/``/`` swap, ``%x`` is skipped, ``!``
-  reads one character into V as its code point, and a nested loop runs
-  normally, by V's sign on reaching it.
-
+red opposite).  Tokens are whitespace-separated and case-insensitive.  A
+colour pair ``x`` such as ``wg`` counts the stickers of the second colour on
+the face whose centre is the first, the centre not counted.  Colours are
+``w g o`` and, primed, their opposites ``w' g' o'`` (yellow, blue, red).
 The wiki's Hello World prints ``Hello World!`` and a newline.
 
-Judgment calls the wiki leaves open:
+Commands:
+    ``R U L F B D``: turn that face a clockwise quarter as seen from it.
+    ``M E S``: turn the middle slice as ``R``, ``U``, ``F`` do.
+    ``'`` suffix: turns anticlockwise; ``2`` suffix: a half turn.
+    ``.x``: set V to x.
+    ``+x -x *x``: add, subtract, multiply.
+    ``/x``: floor-divide (0 when x is 0).
+    ``%x``: reduce V mod x (unchanged when x is 0).
+    ``!``: print V mod 128 as a character.
+    ``( ... )``: run the body V times, V read on entry.  A negative V runs
+    it |V| times backwards, each command inverted: a turn turns back, ``.x``
+    sets -x, ``+``/``-`` and ``*``/``/`` swap, ``%x`` is skipped, ``!``
+    reads one character into V as its code point, and a nested loop runs
+    normally, by V's sign on reaching it.
 
-- The cat program ``r b -go ( ! ) !`` never reads: after ``r b`` there is
-  no orange on the green face, so ``go`` is 0 and it prints NUL.
-  ``og`` is 1 there and is the only pair of those two colours that is, so
-  ``r b -og ( ! ) !`` is the repair.  Both are pinned.
-- A read past the end of the input raises :class:`EOFError`.
-- V is unbounded; ``%x`` with x > 0 leaves 0..x-1 (Python's ``%``,
-  matching the floored ``/``).
-- An unknown token, a colour pair that is not two colours, or an unmatched
-  parenthesis raises :class:`ValueError`.
+Input/output:
+    A backwards ``!`` reads one character; a read past the end of the input
+    raises (see Errors).
+
+Errors:
+    ProgramError: An unknown token, a colour pair that is not two colours,
+    or an unmatched parenthesis.
+    InputExhaustedError: A backwards ``!`` at EOF.
+
+Decisions:
+    * The cat program ``r b -go ( ! ) !`` never reads: after ``r b`` there is
+      no orange on the green face, so ``go`` is 0 and it prints NUL.
+      ``og`` is 1 there and is the only pair of those two colours that is,
+      so ``r b -og ( ! ) !`` is the repair.  Both are pinned.
+    * V is unbounded; ``%x`` with x > 0 leaves 0..x-1 (Python's ``%``,
+      matching the floored ``/``).
 """
 
 from __future__ import annotations

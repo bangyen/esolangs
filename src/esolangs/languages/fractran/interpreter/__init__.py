@@ -15,13 +15,16 @@ value *is* the result, and this interpreter prints it. Small-base sources
 retain exact prime exponents and indexed guards; other sources use the literal
 integer scan. Debug values are materialized on request.
 
-An empty source, a token that is not a fraction or a product of powers, a
-zero or negative value, and a zero denominator raise :class:`ValueError`.
 No operation is invalid once a program parses (every step is a
-multiplication already checked to divide), so no
-:class:`~esolangs.exceptions.HaltError` arises and a value no fraction
-divides is the normal end.  Nothing is read, so no ``EOFError``: a
-program's inputs are in its starting value.
+multiplication already checked to divide), so no HaltError arises and a value
+no fraction divides is the normal end.
+
+Input/output:
+    Nothing is read, so no EOF: a program's inputs are in its starting value.
+
+Errors:
+    ProgramError: An empty source, a token that is not a fraction or a product
+    of powers, a zero or negative value, and a zero denominator.
 """
 
 from __future__ import annotations

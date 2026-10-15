@@ -1,0 +1,17 @@
+{
+ "triggers": [
+  {
+   "program": "!",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "A source character that does not decipher to an instruction."
+  },
+  {
+   "program": "ubO",
+   "stdin": "",
+   "expect": "output",
+   "output": "¨",
+   "claim": "EOF is the value 59048, not an error (prints 59048 & 0xFF = 168)."
+  }
+ ]
+}

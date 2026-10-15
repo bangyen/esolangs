@@ -7,17 +7,25 @@ Special addresses: ``-1`` I/O (read a byte / print ``*b``),
 ``-2``..``-5`` Carry/Zero/Negative/Overflow, ``-6``/``-7``/``-8`` the
 constants 1/0/-1, ``-9`` the flag update mode (starts 0).  Jumping to a
 special address or off the end halts.  Cells are unbounded (Carry and
-Overflow stay 0); reading ``-1`` raises :class:`EOFError` when input runs
-out; malformed source raises :class:`ValueError`; no instruction cap
-(``esolangs.run``'s ``timeout``); a write to an address too large to
-allocate halts with :class:`HaltError`.
+Overflow stay 0); no instruction cap (``esolangs.run``'s ``timeout``).
 
-The spec leaves input representation unspecified; this interpreter reads
-consecutive Unicode characters, including newlines.  It is silent past
-``-9`` too: those addresses read 0 and drop writes.  Writing the port
-prints ``*b`` whatever ``*d`` is ("writing to it outputs" names no
-difference), and with FUM set every write sets the flags, read-only ones
-included.
+Input/output:
+    Reading ``-1`` takes one character; at EOF it raises.
+
+Errors:
+    ProgramError: malformed source (a bad, nested, duplicate, or recursive
+    macro, a duplicate, empty, or undefined label, an invalid operand, an
+    instruction without 2 to 4 operands).
+    InputExhaustedError: reading ``-1`` at EOF.
+    HaltError: a write to an address too large to allocate.
+
+Decisions:
+    * The spec leaves input representation unspecified; this interpreter
+      reads consecutive Unicode characters, including newlines.
+    * It is silent past ``-9`` too: those addresses read 0 and drop writes.
+    * Writing the port prints ``*b`` whatever ``*d`` is ("writing to it
+      outputs" names no difference), and with FUM set every write sets the
+      flags, read-only ones included.
 """
 
 import re

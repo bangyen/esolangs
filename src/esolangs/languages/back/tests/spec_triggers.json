@@ -1,0 +1,24 @@
+{
+ "triggers": [
+  {
+   "program": "",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "an empty program"
+  },
+  {
+   "program": "*",
+   "stdin": "",
+   "expect": "output",
+   "output": "0",
+   "claim": "* halts, printing the tape"
+  },
+  {
+   "program": "-*",
+   "stdin": "",
+   "expect": "output",
+   "output": "1",
+   "claim": "- flips the current bit"
+  }
+ ]
+}

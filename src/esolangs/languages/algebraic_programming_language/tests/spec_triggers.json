@@ -1,0 +1,53 @@
+{
+ "triggers": [
+  {
+   "program": "0 ** (0 - 1)",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: 0 ** -1"
+  },
+  {
+   "program": "1 / 0",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: division by zero"
+  },
+  {
+   "program": "a",
+   "stdin": "x",
+   "expect": "HaltError",
+   "claim": "HaltError: input line that is not a number"
+  },
+  {
+   "program": "5 % 0",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: modulo by zero"
+  },
+  {
+   "program": "a",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "InputExhaustedError: EOF while binding a variable"
+  },
+  {
+   "program": "1(2)",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: 1(2) bracket multiplication"
+  },
+  {
+   "program": "1 +",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: unparsable expression"
+  },
+  {
+   "program": "1 + 2",
+   "stdin": "",
+   "expect": "output",
+   "output": "3\n",
+   "claim": "an executed line prints its result and a newline"
+  }
+ ]
+}

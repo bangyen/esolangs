@@ -4,8 +4,14 @@ Source is ``p0;p1;...;pk,queue``: bit-string productions, a comma, then the
 initial bit queue.  Whitespace is ignored and productions may be empty.  Each
 step deletes the queue's first bit and, if it was 1, appends the current
 production; either way the next production comes up.  The queue running dry
-halts the machine, which then prints the last deleted bit.  Invalid source
-raises ValueError; no stdin is read.
+halts the machine, which then prints the last deleted bit.
+
+Input/output:
+    No stdin is read.  The output is the last deleted bit.
+
+Errors:
+    ProgramError: Not exactly one comma, a character outside ``01;,``, or a
+        semicolon in the queue.
 """
 
 from __future__ import annotations

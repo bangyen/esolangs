@@ -6,33 +6,40 @@ with ``a``/``b`` naming ``X``'s members, ``s`` naming ``X`` itself, ``p``
 naming ``Y`` by reference, and a fresh local ``t``; ``r`` ends it.  There is
 no control flow: the input bit ``1`` is ``n fpz rz zz``, an object that
 calls its parameter, and ``0`` is ``z``, which does nothing, so ``f i X``
-runs ``X`` only on a 1.  ``o`` prints ``z`` as 0 and anything else as 1;
-both directions pack bits most significant first.  The wiki's Delayed cat
-echoes its input through the first byte above 128.
+runs ``X`` only on a 1.  The wiki's Delayed cat echoes its input through the
+first byte above 128.
 
-Judgment calls the wiki leaves open:
+Input/output:
+    ``o`` prints ``z`` as 0 and anything else as 1; both directions pack bits
+    most significant first.  Input at EOF raises.
 
-- An lvalue argument (``a b s t p``) is passed as its place: writes inside
-  the call reach it, so ``f a a`` aliases.  Any other argument is a
-  temporary that the call may write and the caller never sees.
-- A write to ``s`` lands on the called object's place when its function
-  returns; ``a``/``b`` writes land at once.
-- ``t`` starts as ``z``.  ``l"id".`` is the macro the wiki calls it: the
-  class's ``n(f)**``, members evaluated where it is written.  ``main`` is
-  entered as ``flmain.z``.
-- Objects with the same function and members are equal, so ``n rz zz``
-  is ``z`` and prints 0.
-- Whitespace is ignored outside comments; a class name runs to its ``.``
-  with whitespace dropped.  Commands are lowercase.
-- A partial output byte at the halt is never printed: a char is printed
-  "when the 8th bit is sent".
-- The wiki's Hello world lacks ``r`` in ``p0``/``p1`` and, repaired, prints
-  its data backwards ("hello wolrd" reversed, each byte bit-reversed): its
-  stack pops last-in first.  The Minifuck interpreter does not parse (``c
-  fnrfaz pz t`` leaves ``c`` without a destination).  Both are pinned.
+Errors:
+    ProgramError: A form that ends early; a class name or comment with no
+    closing ``.``; an empty class name; an unknown object letter; a ``c``
+    destination other than ``a b s t p``; a top-level item that is not a
+    definition ``d``; a class defined twice; no ``main`` class; an undefined
+    class; a class that instantiates itself in its members.
+    InputExhaustedError: ``i`` reads a new byte at EOF.
 
-A malformed program raises :class:`ValueError`; exhausted input raises
-:class:`EOFError`.
+Decisions:
+    * An lvalue argument (``a b s t p``) is passed as its place: writes inside
+      the call reach it, so ``f a a`` aliases.  Any other argument is a
+      temporary that the call may write and the caller never sees.
+    * A write to ``s`` lands on the called object's place when its function
+      returns; ``a``/``b`` writes land at once.
+    * ``t`` starts as ``z``.  ``l"id".`` is the macro the wiki calls it: the
+      class's ``n(f)**``, members evaluated where it is written.  ``main`` is
+      entered as ``flmain.z``.
+    * Objects with the same function and members are equal, so ``n rz zz``
+      is ``z`` and prints 0.
+    * Whitespace is ignored outside comments; a class name runs to its ``.``
+      with whitespace dropped.  Commands are lowercase.
+    * A partial output byte at the halt is never printed: a char is printed
+      "when the 8th bit is sent".
+    * The wiki's Hello world lacks ``r`` in ``p0``/``p1`` and, repaired, prints
+      its data backwards ("hello wolrd" reversed, each byte bit-reversed): its
+      stack pops last-in first.  The Minifuck interpreter does not parse (``c
+      fnrfaz pz t`` leaves ``c`` without a destination).  Both are pinned.
 """
 
 from __future__ import annotations

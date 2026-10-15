@@ -1,8 +1,8 @@
 """Interpreter for Nope.
 
 Every source, including empty source, prints exactly "Nope." and halts.
-No parsing or input is performed; no newline is appended. No ValueError,
-EOFError or HaltError arises under the constant-language semantics.
+No parsing or input is performed; no newline is appended.  No error arises
+under the constant-language semantics.
 """
 
 from esolangs.runtime._drive import drive

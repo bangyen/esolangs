@@ -1,0 +1,16 @@
+{
+ "triggers": [
+  {
+   "program": ".",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": ". with no input bits"
+  },
+  {
+   "program": "S",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "the pointer walking off the edge"
+  }
+ ]
+}

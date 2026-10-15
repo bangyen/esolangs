@@ -1,41 +1,44 @@
 r"""Interpreter for Back.
 
-A beam bounces across a grid at right angles: \\ and / reflect its direction,
-< and > move the tape pointer, - flips the current bit, + steps the beam
-forward when the current bit is 0, and * halts, printing the tape.
+A beam starts top-left heading right and bounces across a grid at right
+angles: ``\`` and ``/`` reflect its direction, ``<`` and ``>`` move the tape
+pointer, ``-`` flips the current bit, ``+`` steps the beam forward when the
+current bit is 0, and ``*`` halts, printing the tape.  The grid is padded to
+a rectangle and the beam wraps both axes.  ``+`` skips a cell: a step on a
+zero bit, then the shared move.
 
-The wiki says only "Halt the program" of ``*`` and defines no output, so the
-dump follows the repo convention for interpreter-only languages (a sibling
-interpreter prints its registers): the cells space-separated on one line,
-no trailing newline.  Both the choice to print and the separator are this
-interpreter's.  (Another dump uses line breaks between values; that is no
-divergence -- its spec asks for them by name.)
-
-The tape is unbounded both ways: ``<`` at the leftmost cell adds a zero cell
-on the left (the dump prints it).  The spec is silent on the left edge, and
-cells left of the start are allowed.
-
-The interpreter runs on a :class:`_Machine` (the beam's position and
-direction, the bit tape, and the tape pointer), so it is step-capable:
+The machine holds the beam's position and direction, the bit tape and the
+tape pointer, rebound as one state each step, so mutation lives in one
+assignment and every rule about what Back *does* stays in the pure layer.
 ``step()`` executes one cell, setting ``halted`` when the beam reaches a
 ``*`` and printing the tape on the step after that -- the post-halt dump
-the other interpreter-only languages here share.
+the other interpreter-only languages here share; the dump, the one effect,
+is done by ``step`` before it calls the pure transition.
 
 A program with no ``*`` bounces the beam forever.  The grid is finite, so a
 loop that never grows the tape revisits a snapshot and
 ``esolangs.vm.run_until_halt_or_cycle`` proves it.  A loop that grows it --
 ``>`` past the right end, or ``<`` at the left -- yields a new snapshot every
 lap, the unbounded-growth case the detector cannot catch; only the wall-clock
-timeout stops it.  (The empty program is rejected outright, so the fuzz
-suite's empty-program invariant is unaffected.)
+timeout stops it.
 
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so mutation lives in one
-assignment and every rule about what Back *does* stays in the pure layer.
-The one effect -- ``*`` printing the tape -- is done by ``step`` before it
-calls the pure transition.
+Input/output:
+    No input.  The wiki says only "Halt the program" of ``*`` and defines no
+    output, so the dump follows the repo convention for interpreter-only
+    languages (a sibling interpreter prints its registers): the cells
+    space-separated on one line, no trailing newline.  Both the choice to
+    print and the separator are this interpreter's.  (Another dump uses line
+    breaks between values; that is no divergence -- its spec asks for them
+    by name.)
 
-Malformed programs raise :class:`ValueError`.
+Errors:
+    ProgramError: an empty program (no lines, or only blank ones), rejected
+    outright so the fuzz suite's empty-program invariant is unaffected.
+
+Decisions:
+    * The tape is unbounded both ways: ``<`` at the leftmost cell adds a zero
+      cell on the left (the dump prints it).  The spec is silent on the left
+      edge, and cells left of the start are allowed.
 """
 
 from __future__ import annotations

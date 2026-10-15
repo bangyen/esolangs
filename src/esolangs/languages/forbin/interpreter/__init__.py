@@ -1,39 +1,46 @@
 """Interpreter for Forbin.
 
-An imperative language whose only datatypes are functions and bits:
-functions with bit arguments and nested definitions, iteration and range
-for-loops (a range loop ``for i:1..0`` doubles as an if-statement), the NOT
-operator, and the ``in``/``out`` builtins that read one bit and write one
-byte as eight bit arguments (most significant first).
+An imperative language whose only datatypes are functions and bits: functions
+with bit arguments and nested definitions, iteration and range for-loops (a
+range loop ``for i:1..0`` doubles as an if-statement), the NOT operator, and
+the ``in``/``out`` builtins that read one bit and write one byte as eight bit
+arguments (most significant first).
 
-Decisions for gaps in the wiki spec (documented):
-- the entry point is the function ``main``, called with a single dummy
-  argument 0 (the examples always call ``main 0``);
-- extra call arguments are discarded (``main 0`` passes a dummy), and
-  unpassed parameters are set to 0;
-- ``in`` reads the next bit and raises :class:`EOFError` when the input is
-  exhausted (as the Brainfuck interpreter does); the wiki's cat example is
-  not reproduced because its range-loop "while" (``for _:0..1`` runs twice)
-  doubles every byte — it was never run, Forbin being unimplemented;
-- statements may omit the trailing ``;`` before a closing ``}`` (the wiki's
-  cat example writes ``shouldLoop = 1`` with no semicolon);
-- a trailing statement semicolon is otherwise optional, matching the wiki's
-  loose examples;
-- scoping is lexical ("local to a function (and its children...)"): a
-  frame's scope node's ``parent`` is where its function was written, and an
-  assignment updates the nearest scope holding the name, since ``{code} 0;``
-  must be "the same" as ``code``;
-- an iteration list's values are evaluated once, before the first pass;
-- ``return`` needs a value ("default is 0" is read as falling off the
-  end) and ``out`` exactly eight; uneven multiple assignments pair by
-  position, and a loop variable that "must first be defined" is bound
-  even if it is not;
-- ``f;``, and ``(f)`` inside an expression, call with no arguments (as a
-  statement, ``(f);`` calls ``f``'s result), though the wiki says
-  "something has to be passed to call it" (generated code passes ``0``);
-- a call that resolves to no function is an invalid operation
-  (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
-  :class:`ValueError`.
+Input/output:
+    ``in`` reads the next bit and raises at EOF (as the Brainfuck interpreter
+    does); the wiki's cat example is not reproduced because its range-loop
+    "while" (``for _:0..1`` runs twice) doubles every byte -- it was never
+    run, Forbin being unimplemented.
+
+Errors:
+    ProgramError: Malformed syntax; no ``main`` function.
+    InputExhaustedError: ``in`` when the input is exhausted.
+    HaltError: A call that resolves to no function (an invalid operation), an
+    undeclared identifier, ``!`` of a non-bit, ``out`` without exactly eight
+    bit arguments, a ``for`` bound that is not a number, expression-position
+    recursion past the host's depth limit.
+
+Decisions:
+    * The entry point is the function ``main``, called with a single dummy
+      argument 0 (the examples always call ``main 0``).
+    * Extra call arguments are discarded (``main 0`` passes a dummy), and
+      unpassed parameters are set to 0.
+    * Statements may omit the trailing ``;`` before a closing ``}`` (the
+      wiki's cat example writes ``shouldLoop = 1`` with no semicolon).
+    * A trailing statement semicolon is otherwise optional, matching the
+      wiki's loose examples.
+    * Scoping is lexical ("local to a function (and its children..."): a
+      frame's scope node's ``parent`` is where its function was written, and
+      an assignment updates the nearest scope holding the name, since
+      ``{code} 0;`` must be "the same" as ``code``.
+    * An iteration list's values are evaluated once, before the first pass.
+    * ``return`` needs a value ("default is 0" is read as falling off the
+      end) and ``out`` exactly eight; uneven multiple assignments pair by
+      position, and a loop variable that "must first be defined" is bound
+      even if it is not.
+    * ``f;``, and ``(f)`` inside an expression, call with no arguments (as a
+      statement, ``(f);`` calls ``f``'s result), though the wiki says
+      "something has to be passed to call it" (generated code passes ``0``).
 """
 
 from __future__ import annotations

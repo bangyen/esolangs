@@ -5,6 +5,10 @@ digits; other characters are comments).  Primes ascending, residue mod 11
 selects the command (``> < + - . , [ ]`` for residues 1-8); the exponent
 is the repeat count, other residues are ignored.  Decoding delegates to
 the brainfuck interpreter.  No digits, 0 and 1 halt with no output.
+
+Errors:
+    ProgramError: Unbalanced brackets in the decoded program.
+    InputExhaustedError: ``,`` at EOF.
 """
 
 import math

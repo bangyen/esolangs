@@ -1,0 +1,23 @@
+{
+ "triggers": [
+  {
+   "program": "INVERT GOTO 0",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "a taken GOTO 0"
+  },
+  {
+   "program": "push",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a word that is not one of the six upper-case commands"
+  },
+  {
+   "program": "INVERT PUSH GOTO 9 INVERT PUSH",
+   "stdin": "",
+   "expect": "output",
+   "output": "1",
+   "claim": "a target past the last command ends the run; the deque is printed"
+  }
+ ]
+}

@@ -3,10 +3,15 @@
 A binary tape.  ``[`` and ``.`` both first move right and flip the cell
 they land on; then ``[``, if that cell became 0, flips the next one and
 skips the next instruction, and ``.`` prints cells 0-7 as a byte or
-*reads* one when they are zero.  ``<`` moves left but stays at cell 0.  Not implicitly
-looped; printing leaves the window as it is, so a looping read must also
-clear it.  Any other character is a no-op.  Exhausted input raises
-:class:`EOFError`.
+*reads* one when they are zero.  ``<`` moves left but stays at cell 0.  Not
+implicitly looped; printing leaves the window as it is, so a looping read must
+also clear it.  Any other character is a no-op.
+
+Input/output:
+    ``.`` reads one byte into cells 0-7 when they are zero.
+
+Errors:
+    InputExhaustedError: ``.`` reads at EOF.
 """
 
 from esolangs.runtime._drive import drive

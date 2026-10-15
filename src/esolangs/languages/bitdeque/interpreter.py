@@ -2,12 +2,20 @@
 
 PUSH/INJECT append the register to the deque, POP/EJECT pop it (0 when
 empty), INVERT flips the register, GOTO N jumps to the Nth command,
-counting from 1 as "the Nth operation" reads, when it is nonzero; a
-target past the last command ends the run and a taken GOTO 0 raises
-:class:`HaltError` (the wiki leaves both open).  The wiki has no I/O,
-so the deque is printed space-separated when the program ends -- the
-repo's convention.  A word that is not one of the six upper-case commands
-raises :class:`ValueError`.
+counting from 1 as "the Nth operation" reads, when it is nonzero.
+
+Input/output:
+    No input.  The deque is printed space-separated when the program ends.
+
+Errors:
+    ProgramError: a word that is not one of the six upper-case commands.
+    HaltError: a taken ``GOTO 0``.
+
+Decisions:
+    * A target past the last command ends the run and a taken GOTO 0 raises
+      HaltError (the wiki leaves both open).
+    * The wiki has no I/O, so the deque is printed at the end -- the repo's
+      convention.
 """
 
 from __future__ import annotations

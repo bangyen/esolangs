@@ -1,14 +1,17 @@
-"""RAM0 interpreter implementation.
+"""Interpreter for RAM0.
 
 Two registers (z, n) and unbounded RAM; seven commands: Z, A, N, C, L,
 S, and goto.  The run halts when the cursor runs off the token list, and
 then dumps the RAM once, in the order its addresses were first written.
+A goto past the last command halts, as running off the end does.
 
-Gotos are 1-based ("counting the first command as 1"), so ``0`` (or ``00``)
-names no command and raises :class:`~esolangs.exceptions.HaltError` when it
-runs.  It is not a comment: the wiki keeps digits out of the comment
-alphabet ("characters other than ``ZANCLS`` and digits").  A goto past the
-last command halts, as running off the end does.
+Errors:
+    HaltError: Goto ``0`` (or ``00``) when it runs.
+
+Decisions:
+    * Gotos are 1-based ("counting the first command as 1"), so ``0`` names
+      no command.  It is not a comment: the wiki keeps digits out of the
+      comment alphabet ("characters other than ``ZANCLS`` and digits").
 """
 
 from __future__ import annotations

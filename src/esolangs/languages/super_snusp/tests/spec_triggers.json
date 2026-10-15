@@ -1,0 +1,28 @@
+{
+ "triggers": [
+  {
+   "program": "@",
+   "stdin": "x",
+   "expect": "ArgumentError",
+   "claim": "ArgumentError: @ reads a non-integer token"
+  },
+  {
+   "program": "$",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "empty stack read"
+  },
+  {
+   "program": ",",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": ", at EOF"
+  },
+  {
+   "program": "",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "Empty program"
+  }
+ ]
+}

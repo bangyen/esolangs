@@ -4,17 +4,23 @@ Malbolge is a self-modifying machine of 59049 ten-trit words: three registers
 ``a``/``c``/``d``, a deciphered opcode, and an instruction that is re-enciphered
 after every execution.  ``i`` and ``j`` move the pointers, ``*`` rotates and
 ``p`` applies the crazy operation to memory, ``<`` prints and ``/`` reads, ``o``
-is a nop and ``v`` halts.
+is a nop and ``v`` halts.  The run halts when the cell at ``c`` leaves 33-126.
 
-The reference interpreter hangs forever when the cell at ``c`` leaves 33-126;
-this one halts instead, the behaviour the wiki attributes to the specification.
-When ``i`` lands ``c`` on such a cell, the cell is left as it is rather than
-encrypted: the spec's table has no entry for it (the reference indexes
-outside its array), and the next instruction runs at ``c + 1``.
-Input consumes consecutive Unicode characters, including newlines; the spec
-does not define encoding or framing. EOF is the value 59048, not an error.  A
-source character that does not decipher to an instruction raises
-:class:`ValueError`.
+Input/output:
+    Input consumes consecutive Unicode characters, including newlines.  EOF is
+    the value 59048, not an error.
+
+Errors:
+    ProgramError: A source character that does not decipher to an instruction.
+
+Decisions:
+    * The reference interpreter hangs forever when the cell at ``c`` leaves
+      33-126; this one halts instead, the behaviour the wiki attributes to the
+      specification.
+    * When ``i`` lands ``c`` on such a cell, the cell is left as it is rather
+      than encrypted: the spec's table has no entry for it (the reference
+      indexes outside its array), and the next instruction runs at ``c + 1``.
+    * The spec does not define input encoding or framing.
 """
 
 from __future__ import annotations

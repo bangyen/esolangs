@@ -12,16 +12,18 @@ claims -- so ``iissso`` prints 0 by landing on 256 exactly while
 ``diissisdo`` prints 288, 289 sailing past untouched.  The wiki calls those
 cases mandatory, and they are asserted as such.
 
-Two decisions, both spelled out by the page.  A character that is not a
-command is ignored ("anything that is not a command is not accepted",
-"errors are not acknowledged"), so a program cannot be malformed and no
-:class:`ValueError` is raised from here, deliberately.  ``h``, which the
-command table carries as "(optional)", halts; it is honoured.
+Input/output:
+    Nothing is read (no EOF) and no operation can be invalid, so no
+    HaltError arises.
 
-Each ``o`` writes the number and a newline: the wiki's shell transcript puts
-one value per line, and without a separator printing 1 then 2 reads as 12.
-Nothing is read and no operation can be invalid, so neither ``EOFError`` nor
-:class:`~esolangs.exceptions.HaltError` arises.
+Decisions:
+    * A character that is not a command is ignored ("anything that is not a
+      command is not accepted", "errors are not acknowledged"), so a program
+      cannot be malformed and no ProgramError is raised, deliberately.
+    * ``h``, which the command table carries as "(optional)", halts; it is honoured.
+    * Each ``o`` writes the number and a newline: the wiki's shell transcript
+      puts one value per line, and without a separator printing 1 then 2
+      reads as 12.
 """
 
 from __future__ import annotations

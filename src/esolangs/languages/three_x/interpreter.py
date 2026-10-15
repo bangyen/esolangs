@@ -6,15 +6,20 @@ pops and prints (integer when whole), ``v`` stores the top under a popped
 key, ``^`` pushes a key's value (3 if unset), ``#`` swaps, ``(``/``)``
 loop while the top is nonzero, ``[`` prints the literal up to ``]``.
 
-Underflow, an unmatched ``(``, a stray ``)`` and division by zero raise
-:class:`HaltError`; ``?`` raises :class:`EOFError` at end of input (the
-cross-check exits 3) and rejects anything but an integer or fraction;
-``[`` with no ``]`` prints nothing (the rest runs as code) and a stray
-``]`` is ignored, the wiki naming neither; malformed programs raise
-:class:`ValueError`.
+Input/output:
+    Input numbers are whitespace-delimited integer or fraction tokens; the
+    spec does not define delimiters.  ``?`` at EOF raises (the cross-check
+    exits 3).
 
-Input numbers are whitespace-delimited integer or fraction tokens; the spec
-does not define delimiters.
+Errors:
+    ProgramError: ``?`` reads anything but an integer or fraction (nonzero
+    denominator), and any other malformed program.
+    InputExhaustedError: ``?`` at EOF.
+    HaltError: underflow, an unmatched ``(``, a stray ``)``, division by zero.
+
+Decisions:
+    * ``[`` with no ``]`` prints nothing (the rest runs as code) and a stray
+      ``]`` is ignored, the wiki naming neither.
 """
 
 from __future__ import annotations

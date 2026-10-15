@@ -1,15 +1,18 @@
 """Interpreter for Minsky Swap.
 
 Two unbounded registers and a swappable register pointer.  The Nth ``~``
-jumps to the Nth number on the jump line, 1-based ("line N", per the
-wiki); a ``~`` with no jump number raises :class:`ValueError`.  Two
-choices the wiki leaves open: "The code line is split into characters,
-each character being a command", but a character that is no command is
-ignored rather than rejected; and a jump number ``0`` names no command,
-so that ``~`` falls through to the next command.  The wiki defines no
-I/O, so both registers are printed once at the end, space-separated with
-no trailing newline -- the repo's convention for interpreter-only
-languages, not the spec's; another spec pins newlines instead.
+jumps to the Nth number on the jump line, 1-based ("line N", per the wiki).
+Both registers print once at the end, space-separated, no trailing newline.
+
+Errors:
+    ProgramError: ``~`` with no jump number; a malformed ``inc(n);`` line.
+
+Decisions:
+    * "The code line is split into characters, each character being a command",
+      but a character that is no command is ignored, not rejected.
+    * Jump number ``0`` names no command: that ``~`` falls through.
+    * The wiki defines no I/O; the end print is the repo's convention for
+      interpreter-only languages, not the spec's; another spec pins newlines.
 """
 
 from __future__ import annotations

@@ -5,38 +5,48 @@ strings and functions, with an untyped variable map.  ``E``/``F``/``H``
 toggle string/int/function mode, accumulating characters into a value
 pushed when the mode ends.
 
-Repository deviations: loading removes LF before validation, modes and indexing
-so line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
-``integer_conversion="between_letters"`` keeps existing programs and generators:
-``FAFY`` prints 1. ``"after_each_letter"`` follows the prose and prints 10;
-int mode and string-to-integer conversion share this rule. Numeric and function
-conversions are unchanged. Reading an unset variable pushes its name: the
-spec leaves initial values unspecified, and its "Using variables" example
-(``EVARIABLEEMYVAREKCDY`` prints ``VARIABL``) reads a name it never set.
-
-Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
-integer (alphabet ``A``-``J``), and division by zero halt
-(:class:`~esolangs.exceptions.HaltError`); a character outside
-``A``-``Z`` is malformed (:class:`ValueError`); ``G``/``I``/``Q``/``Z``
-run a function in a fresh normal-mode context sharing stack and
-variables; ``W`` reads a line and raises :class:`EOFError` at end of
-input; ``N`` on a function returns its body.  "each one representing a
-command": ``U``/``V``/``X`` skip letters, not whole literals, and funcmode
-ends at the next ``H`` even inside ``E...E``; ``Z`` on a non-function does
-nothing; ``V``'s count converts as ``J`` does; a literal still open at the
-end of the code is pushed.
-
+Each uppercase letter is a command; the stack holds unbounded integers,
+strings and functions, with an untyped variable map.  ``E``/``F``/``H``
+toggle string/int/function mode, accumulating characters into a value
+pushed when the mode ends.  A literal still open at the end of the code is
+pushed.  ``G``/``I``/``Q``/``Z`` run a function in a fresh normal-mode
+context sharing stack and variables.  "each one representing a command":
+``U``/``V``/``X`` skip letters, not whole literals, and funcmode ends at the
+next ``H`` even inside ``E...E``.  ``Z`` on a non-function does nothing;
+``V``'s count converts as ``J`` does; ``N`` on a function returns its body.
 Unbounded pushes are what ``esolangs.run``'s ``timeout`` catches, and
-ancestor replay is decided by
-:func:`esolangs.vm.run_until_halt_or_ancestor`.
+ancestor replay is decided by :func:`esolangs.vm.run_until_halt_or_ancestor`.
 
-The page's truth machine ``HFAFYHWJUZFZFY`` works for input 0 only: on 1,
-``U`` pops the 1, ``Z`` pops the function off an otherwise empty stack, its
-loop never runs, and ``FZFY`` prints 0.  Only a ``Z`` that keeps its function
-on the stack would loop, against the table's "Pop A"; not adopted.
+Input/output:
+    ``W`` reads one line, excluding its newline, and raises at EOF.
 
-The spec asks for strings without defining their delimiter; W reads one line,
-excluding its newline.
+Errors:
+    ProgramError: a character outside ``A``-``Z`` (after LF removal);
+    ``integer_conversion`` other than ``between_letters`` or
+    ``after_each_letter``; an unhandled letter reached through a string
+    read from input and run by ``G``/``I``.
+    InputExhaustedError: ``W`` at EOF.
+    HaltError: underflow, math or ``Y`` on a function, a negative ``N``
+    integer (alphabet ``A``-``J``), division by zero, and ``G`` on a value
+    that is neither string nor function.
+
+Decisions:
+    * Loading removes LF before validation, modes and indexing so line-wrapped
+      generated programs run.  Spaces, tabs and CR remain malformed.
+    * ``integer_conversion="between_letters"`` keeps existing programs and
+      generators: ``FAFY`` prints 1.  ``"after_each_letter"`` follows the
+      prose and prints 10; int mode and string-to-integer conversion share
+      this rule.  Numeric and function conversions are unchanged.
+    * Reading an unset variable pushes its name: the spec leaves initial
+      values unspecified, and its "Using variables" example
+      (``EVARIABLEEMYVAREKCDY`` prints ``VARIABL``) reads a name it never set.
+    * The page's truth machine ``HFAFYHWJUZFZFY`` works for input 0 only: on
+      1, ``U`` pops the 1, ``Z`` pops the function off an otherwise empty
+      stack, its loop never runs, and ``FZFY`` prints 0.  Only a ``Z`` that
+      keeps its function on the stack would loop, against the table's "Pop
+      A"; not adopted.
+    * The spec asks for strings without defining their delimiter; ``W`` reads
+      one line, excluding its newline.
 """
 
 from __future__ import annotations

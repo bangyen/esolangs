@@ -3,25 +3,29 @@
 Brainfuck whose program rotates: every executed command turns all
 non-comment characters one step around ``+-><,.[]``.  A comment is passed
 over without rotating: only executed commands advance the rotation.
+Tape as plain Brainfuck: 8-bit.  The rotation count is tracked and the
+effective character derived, not the text rewritten.  Brackets seek their
+partner in the program as it stands, then the program rotates; a jump lands
+one past the partner.  Unbalanced sources are legal.
 
-* **Direction** (``rotation``).  The prose turns ``+`` into ``-``, but then
-  the wiki's one-character cat ``,[`` fires a ``]`` with no ``[`` and
-  prints nothing.  Turned the other way (``+`` into ``]``) it reads ``<.``
-  after the ``,`` and echoes one character.  Examples outrank prose, so the
-  default is ``"backward"``; ``"forward"`` follows the prose.  The wiki
-  Hello World prints no greeting in either direction.
-* **Brackets** seek their partner in the program as it stands, then the
-  program rotates: the rotation comes "after the instruction is executed",
-  and the jump is part of executing it.  A jump lands one past the partner.
-  A partnerless bracket that fires raises
-  :class:`~esolangs.exceptions.HaltError` without rotating; unbalanced
-  sources are legal.
+Errors:
+    InputExhaustedError: ``,`` at EOF.
+    ArgumentError: A ``rotation`` setting other than ``backward`` or
+        ``forward`` (the interpreter itself raises ValueError).
+    HaltError: A partnerless bracket that fires, without rotating.
 
-Tape as plain Brainfuck: 8-bit, :class:`EOFError` on exhausted input, and
-``<`` at the leftmost cell grows the tape a zero cell on the left (the spec
-says nothing about the left edge, so a cell left of the start is allowed).
-The rotation count is tracked and the effective character derived, not the
-text rewritten. Invalid rotation settings raise :class:`ValueError`.
+Decisions:
+    * Direction (``rotation``).  The prose turns ``+`` into ``-``, but then
+      the wiki's one-character cat ``,[`` fires a ``]`` with no ``[`` and
+      prints nothing.  Turned the other way (``+`` into ``]``) it reads
+      ``<.`` after the ``,`` and echoes one character.  Examples outrank
+      prose, so the default is ``"backward"``; ``"forward"`` follows the
+      prose.  The wiki Hello World prints no greeting in either direction.
+    * The rotation comes "after the instruction is executed", and the jump
+      is part of executing it, so a bracket seeks before the rotation.
+    * ``<`` at the leftmost cell grows the tape a zero cell on the left (the
+      spec says nothing about the left edge, so a cell left of the start is
+      allowed).
 """
 
 from esolangs.exceptions import HaltError

@@ -1,0 +1,28 @@
+{
+ "triggers": [
+  {
+   "program": "x ~> Inp?",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "InputExhaustedError: Inp at EOF"
+  },
+  {
+   "program": "y?",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a read of an undefined variable"
+  },
+  {
+   "program": "foo",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: an invalid expression"
+  },
+  {
+   "program": "2? -> 2? --Infinite loop",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: the Comments example's ? target is malformed"
+  }
+ ]
+}

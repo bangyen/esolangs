@@ -4,13 +4,23 @@ One command a line: ``if <value> <command>`` runs when the cell equals the
 value; commands increment, move, goto a line, read a byte, or output.
 Cells are wrapping bytes: the page gives BrainIf "an identical memory
 tape" to brainfuck, whose bytes wrap here (so ``if 256 ...`` never fires).
-A line missing its operands, or ``goto 0`` ("line numbers starting at
-1"), raises :class:`ValueError` when reached, guard or not; exhausted input
-raises :class:`EOFError`.  ``move left`` at the leftmost cell grows the
-tape a zero cell on the left: the spec says nothing about the left edge,
-and cells left of the start are allowed.  The guard reads the
-cell as it stands, so ``if 0 increment`` / ``if 1 increment`` both fire in
-one pass -- the language's behaviour, and a reorder was reverted.
+The guard reads the cell as it stands, so ``if 0 increment`` / ``if 1
+increment`` both fire in one pass -- the language's behaviour, and a
+reorder was reverted.
+
+Input/output:
+    ``input`` reads one byte, only when its guard passes.  Exhausted input
+    raises, so ``input`` at EOF ends with an error.
+
+Errors:
+    ProgramError: A line missing its operands, or ``goto 0`` ("line numbers
+    starting at 1"); raised when the line is reached, guard or not.
+    InputExhaustedError: ``input`` at EOF.
+
+Decisions:
+    * ``move left`` at the leftmost cell grows the tape a zero cell on the
+      left: the spec says nothing about the left edge, and cells left of
+      the start are allowed.
 """
 
 from __future__ import annotations

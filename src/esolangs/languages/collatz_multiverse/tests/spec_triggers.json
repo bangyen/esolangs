@@ -1,0 +1,34 @@
+{
+ "triggers": [
+  {
+   "program": "x = input x + x, NOT PRINT.",
+   "stdin": "x",
+   "expect": "ArgumentError",
+   "claim": "ArgumentError: a non-integer input token"
+  },
+  {
+   "program": "x = input x + x, NOT PRINT.",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "input at EOF"
+  },
+  {
+   "program": "this is not a line",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a malformed line"
+  },
+  {
+   "program": "x = 3 x + 1, NOT PRINT.",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a numeric literal"
+  },
+  {
+   "program": "input = x x + x, NOT PRINT.",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "input redefined"
+  }
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "triggers": [
+  {
+   "program": " , \n,o,\n , ",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "InputExhaustedError: , at EOF (every heading reaches a comma)"
+  }
+ ]
+}

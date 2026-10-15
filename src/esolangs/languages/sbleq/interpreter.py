@@ -7,21 +7,32 @@ pointer, ``-2`` the next input character (zero at EOF), ``-3``
 outputs the other operand; none appears in ``c``.  ``store`` selects the
 base (``a``), ``S*bl*q`` (``a`` and ``b``) or ``Subl*q`` (``b``)
 variant, and ``indirect`` the ``S**bleq``/``Subl**q``/``S**bl**q`` family,
-which replaces ``a`` and ``b`` by ``*a`` and ``*b``.  The wiki does not say
-whether the special addresses apply before or after that indirection; here
-``*a`` is the address held at cell ``a``, so it may itself be ``-1``, ``-2``
-or ``-3``, and an ``a`` that is already negative raises :class:`ValueError`.
+which replaces ``a`` and ``b`` by ``*a`` and ``*b``.
 
 Programs are whitespace-separated integers loaded at address zero; reads
 past the end are zero.  Execution halts off the end of the program (fewer
 than three cells left at the pointer) or on a negative jump target; the
-wiki names no halt.  Malformed programs raise :class:`ValueError`.
+wiki names no halt.
 
-Other readings of the bare "-1 IP", "-2 returns next byte of user input"
-and "none of which could be in ``c``": writing ``-1`` moves the pointer
-and a result above zero then advances three from there; ``-2`` in both
-operands is one read, not two; any negative ``c`` raises when its
-instruction runs, jump taken or not (after a ``-3`` print).
+Input/output:
+    ``-2`` reads one input character, zero at EOF; ``-2`` in both operands
+    is one read, not two.  ``-3`` prints the other operand.
+
+Errors:
+    ProgramError: A non-integer program token; a negative ``c``, raised when
+    its instruction runs, jump taken or not (after a ``-3`` print); an
+    address below ``-3``; an unknown ``store``; under ``indirect``, a
+    negative ``a`` or ``b``.
+    InterpreterLimitError: A store to an address past the cell limit.
+
+Decisions:
+    * The wiki does not say whether the special addresses apply before or
+      after the indirection; here ``*a`` is the address held at cell ``a``,
+      so it may itself be ``-1``, ``-2`` or ``-3``, and an ``a`` that is
+      already negative raises.
+    * Bare "-1 IP", "-2 returns next byte of user input" and "none of which
+      could be in ``c``": writing ``-1`` moves the pointer and a result
+      above zero then advances three from there.
 """
 
 from esolangs.runtime._drive import drive
