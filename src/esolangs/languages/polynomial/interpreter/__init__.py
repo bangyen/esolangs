@@ -20,12 +20,16 @@ from collections.abc import Callable, Sequence
 from typing import cast
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.polynomial.interpreter.roots import (
+from esolangs.languages.polynomial.interpreter.peel import (
     _PEEL_MAX_EXPONENT,
     _PEEL_MAX_IMAGINARY_EXPONENT,
-    _find_roots,
+)
+from esolangs.languages.polynomial.interpreter.primality import (
     _prime_power,
     _require_sympy,
+)
+from esolangs.languages.polynomial.interpreter.roots import (
+    _find_roots,
     _Root,
     _sparse_roots,
 )

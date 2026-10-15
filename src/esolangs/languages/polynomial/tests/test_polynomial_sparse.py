@@ -16,15 +16,19 @@ from esolangs.languages.polynomial.interpreter import (
     sanitize,
     sanitize_terms,
 )
-from esolangs.languages.polynomial.interpreter.roots import (
-    _aks,
+from esolangs.languages.polynomial.interpreter.gaussian import (
     _dense_gaussian_roots,
     _gap_chunks,
     _gauss_reduce,
+    _sparse_multiplicity,
+)
+from esolangs.languages.polynomial.interpreter.primality import (
+    _aks,
     _integer_root,
     _is_proven_prime,
+)
+from esolangs.languages.polynomial.interpreter.roots import (
     _Root,
-    _sparse_multiplicity,
     _sparse_roots,
 )
 
@@ -332,7 +336,7 @@ class TestProvenPrimality:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Past the Miller--Rabin range a probable prime is certified by AKS."""
-        import esolangs.languages.polynomial.interpreter.roots as module
+        import esolangs.languages.polynomial.interpreter.primality as module
 
         monkeypatch.setattr(module, "_EXACT_ISPRIME_LIMIT", 100)
         calls: list[int] = []

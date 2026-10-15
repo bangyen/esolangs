@@ -144,7 +144,7 @@ class ColdParseEstimate:
 
 def estimate_cold_parse(coeffs: list[int]) -> ColdParseEstimate:
     """Bound the implemented fast peel; do not price the remainder root search."""
-    from esolangs.languages.polynomial.interpreter.roots import (
+    from esolangs.languages.polynomial.interpreter.ntt import (
         _NTT_FIELDS,
         _ntt_real_bound,
     )

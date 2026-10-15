@@ -17,17 +17,24 @@ from esolangs.languages.polynomial.interpreter import (
     run,
     sanitize,
 )
+from esolangs.languages.polynomial.interpreter import primality as primality_module
 from esolangs.languages.polynomial.interpreter import roots as roots_module
-from esolangs.languages.polynomial.interpreter.roots import (
-    _TRIAL_MODULUS,
+from esolangs.languages.polynomial.interpreter.gaussian import (
     _dense_gaussian_roots,
+    _squarefree_mod,
+)
+from esolangs.languages.polynomial.interpreter.peel import (
+    _TRIAL_MODULUS,
     _divide_out_quadratics,
     _divide_quadratic,
-    _factor_roots,
+)
+from esolangs.languages.polynomial.interpreter.primality import (
     _is_proven_prime,
+)
+from esolangs.languages.polynomial.interpreter.roots import (
+    _factor_roots,
     _remainder_roots,
     _Root,
-    _squarefree_mod,
 )
 from esolangs.runtime.io import IO
 from tests.interpreters.contract import CycleContract, SnapshotContract
@@ -56,12 +63,14 @@ def test_missing_math_extra_is_actionable(monkeypatch: pytest.MonkeyPatch) -> No
     with monkeypatch.context() as missing:
         missing.delitem(sys.modules, "sympy")
         missing.setattr(builtins, "__import__", without_sympy)
+        importlib.reload(primality_module)
         importlib.reload(roots_module)
         importlib.reload(polynomial_module)
         with pytest.raises(
             esolangs.MissingDependencyError, match=r"pip install 'esolangs\[math\]'"
         ):
             esolangs.run("Polynomial", "f(x) = x")
+    importlib.reload(primality_module)
     importlib.reload(roots_module)
     importlib.reload(polynomial_module)
 
@@ -278,8 +287,10 @@ class TestPeelPrimePowerRoots:
         """Every shape the peel cannot enumerate still comes back."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.peel import (
             _PEEL_MAX_EXPONENT,
+        )
+        from esolangs.languages.polynomial.interpreter.roots import (
             _factor_roots,
         )
 
@@ -307,7 +318,7 @@ class TestPeelPrimePowerRoots:
         """A root outside the enumeration stays in the remainder."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.peel import (
             _peel_prime_power_roots,
         )
 
@@ -325,7 +336,7 @@ class TestPeelPrimePowerRoots:
         """Anything peeled divides the polynomial with no remainder."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.peel import (
             _peel_prime_power_roots,
         )
 
@@ -363,7 +374,7 @@ class TestFactorRootsRejections:
 
     def test_a_pair_the_peels_miss_is_decoded_by_the_remainder_search(self) -> None:
         """A real part past the peel's bound still decodes, one stage later."""
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.peel import (
             _PEEL_MAX_REAL_PART,
         )
 
@@ -385,12 +396,12 @@ class TestPeelQuadraticsFallback:
         """A ``PolynomialError`` from sympy leaves the coefficients alone."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter import roots as mod
+        from esolangs.languages.polynomial.interpreter import peel as mod
 
         def refuse(*_args: object, **_kwargs: object) -> object:
             raise sp.PolynomialError("constructed")
 
-        monkeypatch.setattr(mod.sp, "Poly", refuse)
+        monkeypatch.setattr(sp, "Poly", refuse)
         coefficients = [1, 0, 1, 0, 1]
         peeled = mod._peel_instruction_quadratics(coefficients)  # noqa: SLF001
         assert peeled == ([], coefficients)
@@ -479,7 +490,7 @@ class TestPeelInstructionQuadratics:
         """``_PEEL_MODULUS`` must be ``1 (mod 4)``, or the peel finds nothing."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.peel import (
             _PEEL_MAX_IMAGINARY_EXPONENT,
             _PEEL_MODULUS,
         )
@@ -505,7 +516,7 @@ class TestPeelInstructionQuadratics:
         """What the peel cannot take stays in the remainder, exactly."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.peel import (
             _PEEL_MAX_REAL_PART,
             _peel_instruction_quadratics,
         )
@@ -591,7 +602,7 @@ class TestNttRecovery:
     # never run a program.  See `duration_policy.CI_SCALE` for the ceiling.
     def test_roots_mod_is_the_exact_root_set(self) -> None:
         """Planted roots come back exactly -- no more, no fewer."""
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.ntt import (
             _NTT_FIELDS,
             _roots_mod,
         )
@@ -604,7 +615,7 @@ class TestNttRecovery:
 
     def test_zero_is_reported_when_x_divides(self) -> None:
         """The one point outside the multiplicative group is still seen."""
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.ntt import (
             _NTT_FIELDS,
             _roots_mod,
         )
@@ -615,7 +626,7 @@ class TestNttRecovery:
         """A field collision swaps pairing fields instead of losing the root."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.ntt import (
             _NTT_FIELDS,
             _quadratic_candidates_ntt,
         )
@@ -640,8 +651,10 @@ class TestNttRecovery:
         """
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.ntt import (
             _NTT_MIN_DEGREE,
+        )
+        from esolangs.languages.polynomial.interpreter.roots import (
             _factor_roots,
             _Root,
         )
@@ -674,10 +687,12 @@ class TestNttRecovery:
         """Arbitrary operands outside the generated envelope retain fallback."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import (
+        from esolangs.languages.polynomial.interpreter.ntt import (
             _NTT_MIN_DEGREE,
-            _factor_roots,
             _ntt_real_bound,
+        )
+        from esolangs.languages.polynomial.interpreter.roots import (
+            _factor_roots,
             _Root,
         )
         from esolangs.languages.polynomial.interpreter.roots import (
@@ -710,7 +725,9 @@ class TestNttRecovery:
         """Each field is ``(c * 2**k + 1, c, k, g)``, prime, ``1 (mod 4)``."""
         import sympy as sp
 
-        from esolangs.languages.polynomial.interpreter.roots import _NTT_FIELDS
+        from esolangs.languages.polynomial.interpreter.ntt import (
+            _NTT_FIELDS,
+        )
 
         seen = set()
         for modulus, cofactor, log_size, generator in _NTT_FIELDS:
@@ -756,7 +773,9 @@ class TestPolynomialHighPrecisionRoots:
 
     def test_a_real_root_past_float64_still_decodes(self) -> None:
         """``251**8`` exceeds 2**53, where ``complex`` would round it."""
-        from esolangs.languages.polynomial.interpreter.roots import _Root
+        from esolangs.languages.polynomial.interpreter.roots import (
+            _Root,
+        )
 
         root = 251**8
         assert float(root) != root, "the witness must not fit float64"
