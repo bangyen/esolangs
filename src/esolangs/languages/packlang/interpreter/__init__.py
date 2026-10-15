@@ -42,8 +42,9 @@ Further decisions for gaps the wiki leaves open:
   PlusOrMinus runnable, its ``Integer plusOrMinus : code`` naming a
   package variable rather than taking an argument.  A program with no
   such function raises :class:`ValueError`, as does an unbalanced or
-  empty program, a malformed declaration, or a call with the wrong
-  argument count.
+  empty program, a malformed declaration, or a builtin called with the
+  wrong argument count; a user function called so raises
+  :class:`~esolangs.exceptions.HaltError` when the call runs.
 * **EOF.** ``charGet`` consumes the next character, including newlines.
   Exhausted input yields newline byte 10, as specified; the wiki cat's
   ``c ^ 10`` terminator therefore remains reachable.

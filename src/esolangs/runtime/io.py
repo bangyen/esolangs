@@ -10,6 +10,7 @@ without inserting delimiters. Output is buffered by ScriptedIO.
 from __future__ import annotations
 
 import io as _stdlib_io
+import re
 
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._input import InputSource, read_input
@@ -127,6 +128,9 @@ class IO:
         """Read a whitespace-delimited integer from the shared cursor."""
         token = self.input_token(prompt)
         try:
+            # ASCII decimal only: Python's int() also took "1_0" and "٣".
+            if not re.fullmatch(r"[+-]?[0-9]+", token):
+                raise ValueError(token)
             return parse_integer(token)
         except ValueError as exc:
             raise syntax_error(

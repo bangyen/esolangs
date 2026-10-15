@@ -3,7 +3,7 @@
 Headers declare containers (``name = initial:`` or a bare ``name:``);
 following indented lines attach conditional deltas (``n cond``) to the
 most recent container.  Each tick updates every container from the *old*
-values; PRINT outputs OUT as a byte when it turns on, the empty-named
+values; PRINT outputs OUT mod 128 (an ASCII character) when it turns on, the empty-named
 container reads a character into IN when it fires, and EXIT halts.  A rule
 before any declaration, or a condition on an undeclared container (the
 page gives undeclared names no value), raises :class:`ValueError`; an

@@ -1,7 +1,7 @@
 r"""Interpreter for Super SNUSP.
 
 Super SNUSP is a grid language with a signed sparse tape and value stack.
-``\"`` starts rightward.  Absent one, the page says "Starts at bottom
+``"`` starts rightward.  Absent one, the page says "Starts at bottom
 right": the IP starts rightward on the last line's last non-space character,
 the one reading under which the wiki's Cat (no ``\"``) copies its input.
 EOF propagates.  ``@`` ("Input decimal number") reads a whitespace-delimited

@@ -157,7 +157,7 @@ class _Machine:
         char = self.code[ind]
         byte = target = None
         if char == ")":
-            byte = self.io.input_char()
+            byte = self.io.input_char() % 256  # As Boolfuck: a byte, not U+0100.
         elif char == "(":
             val = tape[cell : cell + 8]
             self.io.print_char(chr(int("".join(map(str, val)), 2)))

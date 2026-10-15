@@ -243,6 +243,21 @@ class TestAClosedPipeIsNotAnError:
         )
         assert (closed.returncode, closed.stdout) == (0, b"\x01")
 
+    def test_an_ascii_stdout_escapes_instead_of_crashing(self) -> None:
+        """``PYTHONIOENCODING=ascii esolangs list`` died mid-line, exit 70."""
+        import os
+        import subprocess
+
+        listed = subprocess.run(
+            [sys.executable, "-m", "esolangs", "list"],
+            env={**os.environ, "PYTHONIOENCODING": "ascii"},
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        assert listed.returncode == 0, listed.stderr
+        assert b"For\\xfe" in listed.stdout
+
     @pytest.mark.slow
     def test_an_isolated_worker_dies_with_its_parent(self, tmp_path: Path) -> None:
         """SIGTERM to the parent skipped its reap; the worker looped for hours."""

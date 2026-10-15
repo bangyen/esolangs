@@ -14,9 +14,11 @@ car across the street in two steps, and a ``U`` on the cell where that
 turn lands does not reverse it again.
 
 Errors: a malformed program (:mod:`.validation`) raises :class:`ValueError` at
-construction (streets two wide, road enclosed, wall forms, no ``-`` beside ``|``, one
-network, exactly one ``C``); a ``U`` with no opposite lane raises
-:class:`~esolangs.exceptions.HaltError`.  ``_`` at cell 0 raises ``HaltError``:
+construction (exactly one ``C``; and where walls are drawn, streets two wide,
+road enclosed, wall forms, no ``-`` beside ``|``, one network -- a wall-free grid
+or an isolated ``C`` is no street, driven as written); a ``U`` with no
+opposite lane raises :class:`~esolangs.exceptions.HaltError`.  ``_`` at
+cell 0 raises ``HaltError``:
 the wiki says "The CP is unsigned and right-unbounded", so no cell lies
 left of 0, and an abort beats a wrong answer.  ``O`` on a non-code-point
 raises ``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; a

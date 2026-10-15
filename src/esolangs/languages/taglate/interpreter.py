@@ -11,7 +11,8 @@ loop conditions -- the wiki's two empty-seed examples disagree here: its
 URL example (``tgyigz``) needs ``gy`` to exit on an empty queue, while its
 cat (``gyhigz``) only works if ``gy`` enters on one.  Reading empty as 0
 follows the URL example, so the cat prints nothing.  Unmatched
-``gy``/``gz`` raise :class:`ValueError`; a non-command character (and a
+``gy``/``gz`` raise :class:`ValueError` when they would jump (an entered
+``gy`` needs no partner); a non-command character (and a
 lone ``g``) is **skipped** -- so ``qqq`` runs cleanly, where a
 word-command queue language would reject it.  ``t`` keeps the RFC
 3986 unreserved set and ``%XX``-encodes the rest (uppercase hex, wider above 255),

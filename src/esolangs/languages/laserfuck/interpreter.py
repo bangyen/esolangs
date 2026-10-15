@@ -1,8 +1,8 @@
 r"""Interpreter for LaserFuck.
 
 A laser starts at ``o`` with a random heading.  ``>``/``<``/``+``/``-``/
-``,`` work a brainfuck tape, ``\`` and ``/`` reflect, ``_``/``|`` and
-``(``/``)`` reflect when the cell is nonzero (or always), ``^v{}`` set the
+``,`` work a brainfuck tape, ``\`` and ``/`` reflect, ``_``/``|`` reflect
+always and ``(``/``)`` only when the cell is nonzero, ``^v{}`` set the
 heading, ``#`` skips, ``x`` deletes the laser, ``*`` splits it
 perpendicular at random.  When no lasers remain the tape is printed:
 decimal by default, byte mode (no separators) when the first grid cell is

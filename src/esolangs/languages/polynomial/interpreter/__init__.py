@@ -6,7 +6,8 @@ integer register, in ascending-prime order. Division and remainder
 truncate toward zero; output ignores negatives and EOF stores -1; ``^``
 of a zero register by a negative power raises
 :class:`~esolangs.exceptions.HaltError`.
-Malformed programs raise :class:`ValueError`.  Spec gaps, decided here:
+Malformed programs raise :class:`ValueError`; an unmatched opener only
+when it would jump (on a zero register it is entered).  Spec gaps, decided here:
 an imaginary zero ``3i``..``6i`` reads input like ``2i`` (the wiki names
 only ``i`` and ``2i``); any closer (2 or 6) closes the innermost opener,
 and the opener alone decides if or while.  No instruction cap: a

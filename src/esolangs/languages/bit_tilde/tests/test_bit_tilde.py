@@ -163,3 +163,10 @@ class TestStateViewValues:
             machine.step()
         assert machine.cell == 6  # walked out to 7 and back one
         assert machine.ind == 9  # still counting forward
+
+
+def test_a_wide_character_reads_as_a_byte() -> None:
+    """``)`` on U+0100 leaked "zip() argument 2 is longer than argument 1"."""
+    import esolangs
+
+    assert esolangs.run("bit~", ")(", stdin="Ā") == "\x00"

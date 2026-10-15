@@ -244,7 +244,7 @@ class _Machine:
                 return (*stack, value)
         elif action == "write_num":
             io.print_num(value)
-        else:
+        elif not 0xD800 <= value <= 0xDFFF:  # A surrogate is no character either.
             with suppress(ValueError):
                 io.print_char(chr(value))
         return stack

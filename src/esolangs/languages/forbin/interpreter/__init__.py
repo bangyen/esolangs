@@ -28,7 +28,8 @@ Decisions for gaps in the wiki spec (documented):
   end) and ``out`` exactly eight; uneven multiple assignments pair by
   position, and a loop variable that "must first be defined" is bound
   even if it is not;
-- ``f;`` and ``(f)`` call with no arguments, though the wiki says
+- ``f;``, and ``(f)`` inside an expression, call with no arguments (as a
+  statement, ``(f);`` calls ``f``'s result), though the wiki says
   "something has to be passed to call it" (generated code passes ``0``);
 - a call that resolves to no function is an invalid operation
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises

@@ -539,6 +539,12 @@ def main() -> None:
     being run, and exits 70 with a one-line report instead of a
     traceback.
     """
+    for stream in (sys.stdout, sys.stderr):
+        # An ASCII locale (or PYTHONIOENCODING=ascii) cannot encode Forþ:
+        # `list` died mid-line with exit 70.  Escape instead.
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(errors="backslashreplace")
     if sys.stderr is None:
         # Started with fd 2 closed (``2>&-``): every note and error wrote to
         # None, so even a successful `run` printed nothing and exited 1.

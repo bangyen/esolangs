@@ -34,6 +34,13 @@ def execute(program: Raster, stdin: str = "") -> str:
     return io.getvalue()
 
 
+def test_a_surrogate_is_popped_and_not_printed() -> None:
+    """The spec drops a char outside Unicode; U+D800 was written as bytes."""
+    io = ScriptedIO("")
+    assert _Machine.perform_io((0xD800,), ("write_char", 0xD800), io) == (0xD800,)
+    assert io.getvalue() == ""
+
+
 def test_push_and_output_number() -> None:
     # Three light-red codels push 3; red -> dark magenta outputs it.
     program = raster(

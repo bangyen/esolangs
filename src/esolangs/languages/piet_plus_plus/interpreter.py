@@ -478,7 +478,7 @@ class _Machine:
         for item in values:
             if number:
                 self.io.print_num(item)
-            else:
+            elif not 0xD800 <= item <= 0xDFFF:  # As Piet: no surrogate output.
                 with suppress(ValueError, OverflowError):
                     self.io.print_char(chr(item))
 

@@ -6,6 +6,7 @@ carries a size and a deadline, and two notices say why nothing happened.
 
 from __future__ import annotations
 
+import codecs
 import json
 import sys
 import threading
@@ -288,18 +289,26 @@ def _write_output(text: str) -> None:
     ``sys.stdout.write`` raised a nineteen-line traceback.  Written through
     the byte stream with ``surrogatepass`` when the text stream refuses,
     keeping ``run --help``'s verbatim promise; a stream with no ``buffer``
-    falls back to an escaped form.
+    falls back to an escaped form.  A stream that cannot encode a character
+    at all (an ASCII locale) gets it backslash-escaped: ``surrogatepass``
+    raised again there, exit 70.
     """
+    encoding = sys.stdout.encoding or "utf-8"
     try:
-        sys.stdout.write(text)
+        text.encode(encoding)  # Strict: ``main`` made the stream itself lenient.
     except UnicodeEncodeError:
         stream = getattr(sys.stdout, "buffer", None)
         if stream is None:
             sys.stdout.write(text.encode("utf-8", "backslashreplace").decode("utf-8"))
             return
+        utf8 = codecs.lookup(encoding).name == "utf-8"
         sys.stdout.flush()
-        stream.write(text.encode(sys.stdout.encoding or "utf-8", "surrogatepass"))
+        stream.write(
+            text.encode(encoding, "surrogatepass" if utf8 else "backslashreplace")
+        )
         stream.flush()
+        return
+    sys.stdout.write(text)
 
 
 def _emit_partial(exc: EsolangError) -> None:
