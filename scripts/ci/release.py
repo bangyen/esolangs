@@ -397,8 +397,12 @@ def smoke_main(argv: list[str] | None = None) -> None:
 def main(argv: list[str] | None = None) -> int:
     """Dispatch one release subcommand."""
     argv = sys.argv[1:] if argv is None else argv
+    usage = "usage: release.py {normalize|smoke} ..."
+    if argv[:1] in (["-h"], ["--help"]):
+        print(f"{usage}\n\n{__doc__}")
+        return 0
     if not argv:
-        raise SystemExit("usage: release.py {normalize|smoke} ...")
+        raise SystemExit(usage)
     command, rest = argv[0], argv[1:]
     if command == "normalize":
         return normalize_main(rest)
