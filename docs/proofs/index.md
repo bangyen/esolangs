@@ -61,11 +61,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   clear unread set inputs. Runs fire at most `n+1` fractions on
   `O(n log n)`-bit values. Distinct row addresses instead cost
   `Theta(T log T)` text; that is a construction bound, not a language bound.
-  Indexed execution and literal scanning have different costs. The experimental
-  direct-mapping chunk construction gives `O(T)` bit work for generation,
-  sparse-factor loading and execution, with `O(T)` persistent source/index bits;
-  materializing the initial integer is outside this sparse-factor contract.
-  It does not replace the public decision-diagram generator.
+  Indexed execution and literal scanning have different costs.
   Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
   and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
 - brainfuck: <a id="brainfuck-behaviours"></a> the exponential growth rate
