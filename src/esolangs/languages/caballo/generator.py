@@ -46,6 +46,7 @@ LANGUAGE = Language(
     category="stack_based",
     boolean=caballo,
     contract=BooleanContract(
+        answer_mode="dump",
         answer_pattern=r"^(\[\]|\[1\])$",
         answer_values=("[]", "[1]"),
         note="Caballo reads its inputs as the initial stack, the first on "
