@@ -12,7 +12,7 @@ The rule is deliberately narrow:
 - every leading-underscore name anywhere else in ``src/``.
 
 A public name outside ``generation/`` is package API and may be consumed by the
-suite alone (``vm.py``'s termination provers), so it is not judged here.
+suite alone (``_cycles.py``'s termination provers), so it is not judged here.
 Dunder names are protocol hooks.  ``from m import x as y`` counts a use of
 ``y`` as a use of ``x``.  Tests are not read: a name only a test reaches is
 exactly the case to report, and the fix is to move it under ``tests/``.
