@@ -654,7 +654,12 @@ def _run_bounded(
         exc.partial_output = debugger.output
         raise
     if reason != "halted":
-        error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
+        # One wording per bound: a timeout reads as it does unstepped.
+        error = ExecutionTimeoutError(
+            f"execution exceeded the {timeout}-second timeout"
+            if reason == "timeout"
+            else f"execution stopped at the {reason} bound"
+        )
         error.partial_output = debugger.output
         raise error
     return debugger.output

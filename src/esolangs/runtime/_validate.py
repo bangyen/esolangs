@@ -18,7 +18,10 @@ _TIMEOUT_CEILING = 2_592_000.0
 def _argument_repr(value: object) -> str:
     """Describe rejected values even beyond CPython's decimal rendering cap."""
     try:
-        return repr(value)
+        shown = repr(value)
+        # A default repr carries an address ("<object object at 0x10...>"),
+        # which differs per run; the type alone is the useful part.
+        return f"<{type(value).__name__}>" if " at 0x" in shown else shown
     except ValueError:
         if isinstance(value, int):
             sign = "negative " if value < 0 else ""

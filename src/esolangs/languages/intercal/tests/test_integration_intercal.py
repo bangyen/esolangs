@@ -3,7 +3,16 @@
 import pytest
 
 import esolangs
+from tests.cli.test_cli import call_main
 from tests.support.witness_tables import witnesses
+
+
+def test_describe_keeps_the_newline_answer_on_one_line(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The zero answer ``"_\\n"`` was printed raw and split its line."""
+    out = call_main(["describe", "INTERCAL"], capsys)
+    assert "answer: printed output (_\\n for 0, I for 1)" in out
 
 
 @pytest.mark.parametrize("width", [1, 40])

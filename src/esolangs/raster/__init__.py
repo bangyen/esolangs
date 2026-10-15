@@ -128,6 +128,16 @@ def _assign(
     return raster
 
 
+def _rebuilt(
+    rows: Rows,
+    language: str | None,
+    settings: DialectSettings | None,
+    scale: int | None,
+) -> Raster:
+    """Unpickle a :class:`Raster` (``__reduce__``'s constructor)."""
+    return Raster(rows, language=language, settings=settings, scale=scale)
+
+
 def lazy_raster(
     materialize: Callable[[], Rows],
     payload: object | None = None,
@@ -199,6 +209,10 @@ class Raster:
     def __eq__(self, other: object) -> bool:
         """Whether two rasters have identical RGB pixels."""
         return isinstance(other, Raster) and self.rows == other.rows
+
+    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+        """Pickle the pixels and tags: an upscaled raster's renderer is a closure."""
+        return (_rebuilt, (self.rows, self.language, self.settings, self.scale))
 
     def __hash__(self) -> int:
         """Hash the immutable RGB pixels, once."""

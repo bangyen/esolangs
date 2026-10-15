@@ -269,6 +269,38 @@ class TestProgramObjectsRefuseMisuse:
             typing.get_type_hints(cls)
             typing.get_type_hints(cls.tagged)
 
+    def test_a_scaled_raster_pickles(self) -> None:
+        """Its renderer was a local closure: PicklingError."""
+        import pickle
+
+        raster = esolangs.Raster((((0, 0, 0),),)).upscaled(2)
+        restored = pickle.loads(pickle.dumps(raster))
+        assert restored == raster
+        assert restored.scale == 2
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda: esolangs.CompressedText.repeated("a", 3, limits=5),
+            lambda: esolangs.CompressedText.repeated(b"x", 3),
+            lambda: esolangs.CompressedText.from_chunks(None),
+            lambda: esolangs.CompressedText.from_chunks([b"x"]),
+        ],
+    )
+    def test_compressed_builders_refuse_bad_types(self, call: object) -> None:
+        with pytest.raises(esolangs.ArgumentError):
+            call()  # type: ignore[operator]
+
+    def test_a_refused_object_is_named_without_its_address(self) -> None:
+        debugger = debugger_api.make_debugger(REFERENCE, "+")
+        with pytest.raises(esolangs.ArgumentError) as caught:
+            debugger.watch_cell(object())  # type: ignore[arg-type]
+        assert " at 0x" not in str(caught.value)
+
+    def test_a_stepped_timeout_reads_as_an_unstepped_one(self) -> None:
+        with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.2-second"):
+            esolangs.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)
+
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
         with pytest.raises(esolangs.ArgumentError, match="need a language"):

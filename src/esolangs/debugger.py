@@ -264,12 +264,16 @@ class Debugger:
         return _watch(self._stack_history, slot, "slot")
 
     def _record(self) -> None:
-        memory = self.vm.memory
-        for index, cell_history in self._cell_history.items():
-            cell_history.append(_value_at(memory, index))
-        stack = self.vm.stack
-        for slot, stack_history in self._stack_history.items():
-            stack_history.append(_value_at(stack, slot, from_top=True))
+        # Read only when watched: ``vm.memory`` copies the tape, so reading it
+        # unconditionally made every step O(tape) (``+[>+]``: 80k steps 8.3 s).
+        if self._cell_history:
+            memory = self.vm.memory
+            for index, cell_history in self._cell_history.items():
+                cell_history.append(_value_at(memory, index))
+        if self._stack_history:
+            stack = self.vm.stack
+            for slot, stack_history in self._stack_history.items():
+                stack_history.append(_value_at(stack, slot, from_top=True))
 
     def step(self) -> None:
         """Execute one command, recording any watches.

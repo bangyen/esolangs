@@ -37,7 +37,12 @@ from esolangs.cli.io import (
     _unbounded_notice,
     _write_output,
 )
-from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
+from esolangs.exceptions import (
+    ArgumentError,
+    EsolangError,
+    ExecutionTimeoutError,
+    TemplateError,
+)
 from esolangs.runtime._isolated import check_memory
 from esolangs.settings import dialect_options
 
@@ -84,8 +89,10 @@ def _run(rest: list[str]) -> None:
         )
         if max_memory < 1:
             _fail(f"--max-memory must be a positive integer, got {max_memory}")
-        with _errors():
+        try:
             check_memory(max_memory, isolated=isolated)
+        except ArgumentError as exc:  # "max_memory is supported only on Linux"
+            _fail(str(exc).replace("max_memory", "--max-memory"))
     rest = _split_positional(
         rest, set(), value_options | {"--set", "--portable", "--isolated"}
     )

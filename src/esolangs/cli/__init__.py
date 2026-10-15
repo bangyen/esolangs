@@ -360,9 +360,18 @@ def _generate(rest: list[str]) -> None:
         _emit(program, plain="--plain" in flags)
 
 
+def _printable(value: object) -> str:
+    """Return ``value`` as text that stays on one line.
+
+    INTERCAL's zero answer ends in a newline; printed raw it split its line.
+    """
+    text = str(value)
+    return text if text.isprintable() else repr(text)[1:-1]
+
+
 def _answer_sentence(facts: LanguageInfo) -> str:
     """State where the answer bit lives, in the terms a shell user needs."""
-    zero, one = facts["answer_encoding"]
+    zero, one = map(_printable, facts["answer_encoding"])
     mode = facts["answer_mode"]
     if mode == "termination":
         text = f"termination ({zero} for 0, {one} for 1)"
@@ -479,7 +488,11 @@ def _describe(rest: list[str]) -> None:
     for key, value in details:
         if value is None or value == "":
             continue
-        shown = " ".join(str(v) for v in value) if isinstance(value, tuple) else value
+        shown = (
+            " ".join(map(_printable, value))
+            if isinstance(value, tuple)
+            else _printable(value)
+        )
         print(f"  {key.ljust(width)}  {shown}")
 
 
