@@ -43,11 +43,8 @@ from esolangs.languages.line.generator.forward import (
     projected_streaming_canvas,
     streaming_canvas,
 )
-from esolangs.languages.line.generator.render import (
-    _UNIT,
-    Canvas,
+from esolangs.languages.line.generator.layout import (
     Node,
-    _check_unit,
     _has_goto,
     _moved,
     chain,
@@ -55,6 +52,7 @@ from esolangs.languages.line.generator.render import (
     correction,
     loader_reads,
 )
+from esolangs.languages.line.generator.render import _UNIT, Canvas, _check_unit
 from esolangs.languages.line.generator.shared import (
     CanvasPlan,
     shared_canvas,
@@ -69,7 +67,7 @@ from esolangs.registry._language import Language, SourceKind
 def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     """Build a Line program computing ``truth_table`` (see module docstring).
 
-    Returns a :class:`render.Node` graph for :func:`render.render`; Line has no text.
+    Returns a :class:`layout.Node` graph for :func:`render.render`; Line has no text.
     """
     n = _validate_truth_table(truth_table)
     order = tuple(range(n - 1, -1, -1)) if reverse else tuple(range(n))

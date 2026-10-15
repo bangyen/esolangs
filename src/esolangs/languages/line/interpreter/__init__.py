@@ -33,7 +33,7 @@ from .simulate import run_compiled as _run_compiled
 from .simulate import run_node as _run_node
 
 if TYPE_CHECKING:
-    from esolangs.languages.line.generator.render import Node
+    from esolangs.languages.line.generator.layout import Node
 
     from .simulate import _Compiled
 

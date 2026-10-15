@@ -97,7 +97,7 @@ def test_projection_leaves_fully_essential_trees_to_existing_constructors() -> N
 def test_compact_loader_admits_a_shared_return_within_the_original_input_budget() -> (
     None
 ):
-    from esolangs.languages.line.generator.render import _has_goto
+    from esolangs.languages.line.generator.layout import _has_goto
     from esolangs.languages.line.generator.shared import shared_tree
 
     rng = random.Random(73041)

@@ -376,11 +376,11 @@ def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
 
 
 # Each opcode's kink as (relative_turn, unit_length) pairs (+1/-1 diagonal
-# jog, +2/-2 sideways).  Mirrors render.py's `_OPS` exactly.
+# jog, +2/-2 sideways).  Mirrors layout.py's `_OPS` exactly.
 # Unit length matters, not just sign: `i`'s middle run is 2 units, which is
 # what separates it from `>` `>` back to back with no gap; both start
 # `(+1, -2)`.  `+`/`-` are the only entries whose leg length is not fixed
-# -- it is the repeat count (see :data:`DEFAULT_UNIT` and render.py's
+# -- it is the repeat count (see :data:`DEFAULT_UNIT` and layout.py's
 # `_op_segments`).
 _FIXED_SIGNATURES: dict[tuple[tuple[int, int], ...], str] = {
     ((1, 1), (-2, 1)): ">",
@@ -457,7 +457,7 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
     if not runs:
         return []
 
-    # ``heading`` updates at ordinary corners, as render.py's cursor does
+    # ``heading`` updates at ordinary corners, as layout.py's cursor does
     # between opcodes.  Only a run tested as a kink leg is unit-checked; a
     # run that rounds to 0 (noise) or matches no template updates heading.
     heading = runs[0][0]
