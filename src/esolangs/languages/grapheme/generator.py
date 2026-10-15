@@ -4,11 +4,7 @@ The literal (int mode, ~0.302 letters an entry) is indexed by Horner's rule
 run on the complemented input bits; it has no subtrees to fold or share.
 
 Size:
-    O(T) letters; n=10 random 1847: 481 chars, n=12 random 1847: 1,434 chars.
-
-Raises:
-    ArgumentError: the literal's decimal form passes Python's 4300-digit
-        integer-string limit (n=16).
+    O(T) letters; n=10 random 1847: 481 chars, n=16 random 1847: 19,985 chars.
 """
 
 from esolangs.generation.constant_projection import (
@@ -24,6 +20,7 @@ from esolangs.languages.grapheme.interpreter import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
+from esolangs.runtime.memory import format_integer
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
 #: with no letter is 6 -- ``F`` closes the mode.  16 with a borrow spells it.
@@ -42,7 +39,7 @@ def _grapheme_push65(dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> str:
 
 def _grapheme_literal(value: int, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> str:
     """Return a literal for nonnegative ``value`` without a leading decimal 6."""
-    digits = [int(c) for c in str(value)]
+    digits = [int(c) for c in format_integer(value)]
     if digits[0] == 6:
         raise AssertionError("a leading 6 has nothing to borrow from")
     for at in range(len(digits) - 1, 0, -1):
@@ -67,7 +64,7 @@ def _grapheme_table(table: str) -> int:
     """Pack entry ``i`` at bit ``len(table) - 1 - i``, lifted to lead with 1."""
     span = 1 << len(table)
     value = int(table, 2)
-    lift: int = 10 ** (len(str(span)) + 1)
+    lift: int = 10 ** (len(format_integer(span)) + 1)
     return value + -(-(lift - value) // span) * span
 
 
