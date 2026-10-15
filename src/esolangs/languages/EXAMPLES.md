@@ -74,6 +74,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `rotfuck/rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
 | `rubic/rubic.txt` | Rubic | `0001` | `01` | 01 | '0' |
 | `sbleq/sbleq.txt` | S*bleq | `0001` | `01` | 01 | '0' |
+| `sendstuff/sendstuff.txt` | SendStuff | `0001` | `01` | 01 | '0' |
 | `slashes/slashes.txt` | /// | `0001` | `01` | embedded 01 | '0' |
 | `slow_acv_mammalian/slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck/smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
