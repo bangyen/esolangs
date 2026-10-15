@@ -129,6 +129,8 @@ from esolangs.languages.piet_plus_plus.generator import (
     LANGUAGE as _PIET_PLUS_PLUS_LANGUAGE,
 )
 from esolangs.languages.piet_plus_plus.generator import piet_plus_plus
+from esolangs.languages.pointless.generator import LANGUAGE as _POINTLESS_LANGUAGE
+from esolangs.languages.pointless.generator import pointless
 from esolangs.languages.polynomial.generator import LANGUAGE as _POLYNOMIAL_LANGUAGE
 from esolangs.languages.polynomial.generator import polynomial
 from esolangs.languages.qoibl.generator import LANGUAGE as _QOIBL_LANGUAGE
@@ -243,6 +245,7 @@ _LANGUAGES = (
     _PAINFUCK_LANGUAGE,
     _PIET_LANGUAGE,
     _PIET_PLUS_PLUS_LANGUAGE,
+    _POINTLESS_LANGUAGE,
     _POLYNOMIAL_LANGUAGE,
     _QOIBL_LANGUAGE,
     _QUASSAUNT_LANGUAGE,
@@ -330,6 +333,7 @@ __all__ = [
     "painfuck",
     "piet",
     "piet_plus_plus",
+    "pointless",
     "polynomial",
     "qoibl",
     "quassaunt",

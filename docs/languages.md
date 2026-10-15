@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 86 languages</summary>
+<summary>Show all 87 languages</summary>
 
 ### Grid-based Languages
 
@@ -71,6 +71,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Line](https://esolangs.org/wiki/Line) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/line/interpreter/__init__.py))
 - [Minifuck](https://esolangs.org/wiki/Minifuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/minifuck/interpreter.py))
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/painfuck/interpreter.py))
+- [Pointless](https://esolangs.org/wiki/Pointless) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/pointless/interpreter.py))
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/rotfuck/interpreter.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sbleq/interpreter.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/slow_acv_mammalian/interpreter.py))

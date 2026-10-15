@@ -76,6 +76,7 @@ don't edit by hand.
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
 | `piet_plus_plus/piet-plus-plus.png` | Piet++ | `0001` | `01` | 0 1 | '0' |
+| `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |
 | `polynomial/polynomial.txt` | Polynomial | `0001` | `01` | 01 | '0' |
 | `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
 | `quassaunt/quassaunt.txt` | Quassaunt | `0001` | `01` | 01 | '0' |

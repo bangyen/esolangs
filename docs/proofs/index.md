@@ -455,6 +455,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | SendStuff | tree | each distinct subtable is one named node reached by reference; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched | linear: O(T/n) nodes with O(n)-digit names | poly n: worst 4n + 2 steps: four sends a level, root and leaf one each | poly n: at most (n+1)(bl(L)+10) + bl(n) bits: a pending frame for each 1 taken, one sending frame |
 | Quassaunt | tree | each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched | linear: O(T/n) nodes with O(n)-digit names | linear: at most 5⌊L/57⌋ + 21n + 9 steps: five a stored node, 21 a level | linear: at most 24L bits: the running code, the stored code and the stack, each within the source |
 | 1 + i | tree | a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched | linear: at most 10.5T - 10 characters, ten a node | poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b | poly n: at most 4bl(L) + 40 bits: two functions, a decider and a frame |
+| Pointless | tree | each distinct subtable is one function; `,=` maps a character to its bit through the cells 48 and 49, and `[` tests the bit's cell; the one `!` seeds the 1s that make `+` an increment | linear: O(T/n) nodes with O(n)-digit names | poly n: worst 26n + 311 steps: setup, then 26 a level | poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape |
 | Codesick | tree | each distinct subtable is one labelled node; it appends its marker to the unread bits, and a substring test for `0` before the marker reads the last bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump | linear: O(T/n) nodes with O(n)-digit names | poly n: worst 3n + 1 steps: three a level, the leaf one | poly n: at most 24n + 16 bits: the unread bits and one marker |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits | linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
@@ -574,7 +575,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 81 theoretical totality arguments and
+Accordingly, this ledger records 82 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
