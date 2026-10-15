@@ -229,14 +229,6 @@ def _fails(row: Growth) -> str:
     return ""
 
 
-# language-owners: ["Factor"]
-#: Controls: label, whether the bound must reject it, and the series.  The
-#: three linear ones differ only in prologue and must read *exactly* four --
-#: that is the property the retired size ratio lacked, and it is asserted
-#: rather than described.  ``T^1.05`` is carried as a known blind spot: it
-#: reads 4.284, inside the bound, which is the same limit the module
-#: docstring states for Factor.  Twelve doublings do not separate it from a
-#: line, and a bound tuned until they did would fail most of the registry.
 _CONTROLS: tuple[tuple[str, bool, Callable[[int], int]], ...] = (
     ("linear", False, lambda n: 17 * 2**n),
     ("linear, +500 prologue", False, lambda n: 17 * 2**n + 500),

@@ -169,10 +169,6 @@ _STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
 #: unchanged; only the number of runs that pay for it is.
 _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
-# language-owners: ["Befunge", "Factor"]
-# Lowering the final cap would miss late exceptions.  The optimizations below
-# instead bound Factor's pre-step arithmetic and make Befunge's pushes O(1),
-# leaving all 20,000 steps intact.  Measurements are in the verification history.
 
 # Four inputs, not a dozen: the distinctions that actually change a read
 # are no input at all, a blank line, a digit, and a non-digit.  Extra

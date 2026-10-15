@@ -79,8 +79,6 @@ from esolangs.languages.eval.generator import LANGUAGE as _EVAL_LANGUAGE
 from esolangs.languages.eval.generator import eval  # noqa: A004 - the language's name
 from esolangs.languages.fackward.generator import LANGUAGE as _FACKWARD_LANGUAGE
 from esolangs.languages.fackward.generator import fackward
-from esolangs.languages.factor.generator import LANGUAGE as _FACTOR_LANGUAGE
-from esolangs.languages.factor.generator import factor
 from esolangs.languages.false.generator import LANGUAGE as _FALSE_LANGUAGE
 from esolangs.languages.false.generator import false
 from esolangs.languages.fargo.generator import LANGUAGE as _FARGO_LANGUAGE
@@ -99,10 +97,6 @@ from esolangs.languages.grapheme.generator import LANGUAGE as _GRAPHEME_LANGUAGE
 from esolangs.languages.grapheme.generator import grapheme
 from esolangs.languages.home_row.generator import LANGUAGE as _HOME_ROW_LANGUAGE
 from esolangs.languages.home_row.generator import home_row
-from esolangs.languages.hq9_with_headers.generator import (
-    LANGUAGE as _HQ9_WITH_HEADERS_LANGUAGE,
-)
-from esolangs.languages.hq9_with_headers.generator import hq9_with_headers
 from esolangs.languages.inject.generator import LANGUAGE as _INJECT_LANGUAGE
 from esolangs.languages.inject.generator import inject
 from esolangs.languages.intercal.generator import LANGUAGE as _INTERCAL_LANGUAGE
@@ -131,14 +125,8 @@ from esolangs.languages.packlang.generator import LANGUAGE as _PACKLANG_LANGUAGE
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
 from esolangs.languages.painfuck.generator import painfuck
-from esolangs.languages.parenthesys.generator import LANGUAGE as _PARENTHESYS_LANGUAGE
-from esolangs.languages.parenthesys.generator import parenthesys
 from esolangs.languages.piet.generator import LANGUAGE as _PIET_LANGUAGE
 from esolangs.languages.piet.generator import piet
-from esolangs.languages.piet_plus_plus.generator import (
-    LANGUAGE as _PIET_PLUS_PLUS_LANGUAGE,
-)
-from esolangs.languages.piet_plus_plus.generator import piet_plus_plus
 from esolangs.languages.pointless.generator import LANGUAGE as _POINTLESS_LANGUAGE
 from esolangs.languages.pointless.generator import pointless
 from esolangs.languages.polynomial.generator import LANGUAGE as _POLYNOMIAL_LANGUAGE
@@ -234,7 +222,6 @@ _LANGUAGES = (
     _EGL_LANGUAGE,
     _EVAL_LANGUAGE,
     _FACKWARD_LANGUAGE,
-    _FACTOR_LANGUAGE,
     _FALSE_LANGUAGE,
     _FARGO_LANGUAGE,
     _FISH_LANGUAGE,
@@ -244,7 +231,6 @@ _LANGUAGES = (
     _FRACTRAN_LANGUAGE,
     _GRAPHEME_LANGUAGE,
     _HOME_ROW_LANGUAGE,
-    _HQ9_WITH_HEADERS_LANGUAGE,
     _INJECT_LANGUAGE,
     _INTERCAL_LANGUAGE,
     _INTERPROGCK8_LANGUAGE,
@@ -258,9 +244,7 @@ _LANGUAGES = (
     _ONE_I_LANGUAGE,
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
-    _PARENTHESYS_LANGUAGE,
     _PIET_LANGUAGE,
-    _PIET_PLUS_PLUS_LANGUAGE,
     _POINTLESS_LANGUAGE,
     _POLYNOMIAL_LANGUAGE,
     _QOIBL_LANGUAGE,
@@ -327,7 +311,6 @@ __all__ = [
     "egl",
     "eval",
     "fackward",
-    "factor",
     "false",
     "fargo",
     "fish",
@@ -337,7 +320,6 @@ __all__ = [
     "fractran",
     "grapheme",
     "home_row",
-    "hq9_with_headers",
     "inject",
     "intercal",
     "interprogck8",
@@ -351,9 +333,7 @@ __all__ = [
     "one_i",
     "packlang",
     "painfuck",
-    "parenthesys",
     "piet",
-    "piet_plus_plus",
     "pointless",
     "polynomial",
     "qoibl",

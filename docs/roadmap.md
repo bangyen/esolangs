@@ -16,7 +16,6 @@ Edit `src/esolangs/proof_status.toml` and run
 `python scripts/docs/generate.py docs` to update it. Proved limits remain
 evidence, not optimization tasks.
 
-- Factor has a documented language lower bound.
 - Polynomial has a documented language lower bound.
 - Unary has a documented language lower bound.
 - Befunge has a finite-source totality exception.

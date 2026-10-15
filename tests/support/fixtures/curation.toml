@@ -35,7 +35,6 @@ Dig = { backlinks = 11, route = "first implementation" }
 Dimensional = { backlinks = 9, route = "first implementation" }
 EGL = { backlinks = 2, route = "first implementation" }
 Eval = { backlinks = 3, route = "first implementation" }
-Factor = { backlinks = 13, route = "first implementation" }
 FALSE = { backlinks = 90, route = "fame" }
 Fargo = { backlinks = 3, route = "first implementation" }
 Fish = { backlinks = 91, route = "fame" }
@@ -59,7 +58,6 @@ Modulous = { backlinks = 6, route = "first implementation" }
 Packlang = { backlinks = 4, route = "first implementation" }
 Painfuck = { backlinks = 3, route = "first implementation" }
 Piet = { backlinks = 65, route = "fame" }
-"Piet++" = { backlinks = 8, route = "first implementation" }
 Polynomial = { backlinks = 6, route = "first implementation" }
 Qoibl = { backlinks = 3, route = "first implementation" }
 RAM0 = { backlinks = 6, route = "first implementation" }
@@ -91,5 +89,3 @@ Pointless = { backlinks = 0, route = "first implementation" }
 Ascenic = { backlinks = 0, route = "first implementation" }
 Fackward = { backlinks = 0, route = "first implementation" }
 "What!?" = { backlinks = 0, route = "first implementation" }
-"HQ9+ with headers" = { backlinks = 1, route = "first implementation" }
-Parenthesys = { backlinks = 1, route = "first implementation" }

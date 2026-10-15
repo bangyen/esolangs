@@ -53,7 +53,6 @@ don't edit by hand.
 | `egl/egl.txt` | EGL | `0001` | `01` | 01 | '0' |
 | `eval/eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
 | `fackward/fackward.txt` | Fackward | `0001` | `01` | 01 | '0' |
-| `factor/factor.txt` | Factor | `0001` | `01` | 01 | '0' |
 | `false/false.txt` | FALSE | `0001` | `01` | 01 | '0' |
 | `fargo/fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |
 | `fish/fish.txt` | Fish | `0001` | `01` | 01 | '0' |
@@ -63,7 +62,6 @@ don't edit by hand.
 | `fractran/fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
-| `hq9_with_headers/hq9-with-headers.txt` | HQ9+ with headers | `0001` | `01` | 0 1 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
 | `interprogck8/interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
@@ -77,9 +75,7 @@ don't edit by hand.
 | `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
-| `parenthesys/parenthesys.txt` | Parenthesys | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
-| `piet_plus_plus/piet-plus-plus.png` | Piet++ | `0001` | `01` | 0 1 | '0' |
 | `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |
 | `polynomial/polynomial.txt` | Polynomial | `0001` | `01` | 01 | '0' |
 | `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |

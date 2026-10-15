@@ -44,7 +44,7 @@ Exceptions and per-language notes:
 
 <!-- RASTER-SOURCES:START -->
 
-Line, Piet and Piet++ carry a raster source: `generate` returns an
+Line and Piet carry a raster source: `generate` returns an
 `esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
 codec, and `describe` reports `source_kind="raster"`.
 
@@ -55,7 +55,6 @@ describes text bundling only.
 
 - Line retains its graph for repeated generated rows; stepping parses pixels.
 - Piet emits and executes pixels.
-- Piet++ emits and executes pixels.
 
 ## Source positions
 
@@ -79,7 +78,6 @@ at n=7..8 across these generators:
 
 - Unlambda was included in the trailing-input measurement.
 - brainfuck was included in the trailing-input measurement.
-- Factor was included in the trailing-input measurement.
 
 Input reordering counts toward generation cost: at most four named candidates,
 with the generic greedy scorer stopping at n=10. Generators may not use BFS or
@@ -117,7 +115,6 @@ Each missed the 10% bar:
   2.1% gain misses the 10% bar, so plain order ships (d5bac32).
 - Circuit Diagram's default path builds the identity order: four orders save
   8.48% of area at n=7, under the 10% bar. Width requests still try four.
-- Factor subtree dispatch loses 1.0% at three inputs and gains 3.4% at five.
 - brainfuck lacks a cheaper jump, call, or label.
 
 ### Largest input counts
@@ -215,10 +212,6 @@ Shipped limits, in inputs:
   `Theta(T**2 / log T)` for every cofactor and operand sign. See
   [polynomial](proofs/index.md#polynomial-bound).
 
-- Factor has a language floor
-  `Omega(T log T)`, a weighted exponent-vector count on D-digit integers
-  ([factor](proofs/index.md#factor-bound)); its worst-case generated encoding is `Theta(T log T)`.
-
 ### Scaling
 
 Size is measured from rendered output, and correctness claims require running
@@ -228,7 +221,6 @@ more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude
 loading and use the worst sampled parity row. A sub-10 ms run does not
 establish an exponent.
 
-- Factor loading is dominated by integer factorization.
 - Circuit Diagram loading is dominated by parsing super-linear area.
 
 - FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
@@ -325,8 +317,6 @@ A bank block must defer through a distinct unused flag at a level no
 shallower than its own: a shallower ancestor would rewrite the flag before
 dispatch.
 
-- Factor admits a bank at several depths; one cell per input level
-  is the whole pool.
 - Painfuck admits a bank at several depths; one cell per input level
   is the whole pool.
 - brainfuck admits a bank at several depths; one cell per input level
@@ -365,7 +355,7 @@ controlled by executed checks in each language's own tests.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 92 languages.
+The collection has 88 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -412,8 +402,18 @@ Nor does a route admit a command-for-command substitution of a collected
 language: a fixed token map under which every program behaves the same adds
 no interpreter or generator, the ground that excludes Trivial brainfuck
 substitution as a family. Adopted 2026-10-14 for candidates; no collected
-language is one (Piet++ adds nested stacks, Painfuck +2/-1 steps, ROTfuck a
-rotating command set).
+language is one (Painfuck adds +2/-1 steps, ROTfuck a rotating command set).
+
+The first-implementation route also excludes a language whose generator
+re-spells a collected generator: the construction transfers step for step
+by token substitution and uses nothing the older language lacks, so the
+language adds no generator. Same family is not enough; Rubic's tree branches
+on cube parity, not a jump. Adopted 2026-10-15, retroactively: Factor
+(brainfuck's flag tree as a prime product), HQ9+ with headers (Qoibl's packed
+literal), Parenthesys (Alight's indexed string) and Piet++ (Piet's strip,
+recoloured) were removed. Painfuck shares brainfuck's flag tree but stays: its
+moves use `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
+admissions are exempt: Subleq re-spells S\*bleq.
 
 ### Recognition sources
 
@@ -510,7 +510,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`tests/support/fixtures/curation.toml`) records each
 language's backlinks and route: 21 clear the fame gate
-and 71 are first implementations.
+and 67 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
@@ -521,11 +521,6 @@ languages implemented elsewhere before the 2026-09-27 rule (123, BF-PDA, BIO,
 Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
 
 ### Notes on individual languages
-
-- Piet++ (8) is a first implementation: the page is in the Unimplemented
-  category, and the only other code is a partial C# executor (Esolang-NET/Piet)
-  whose Read, Write and Roll-Context are no-ops, so it cannot arbitrate the
-  conventions below.
 
 - Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis.
 - Deadfish (315) is interpreter-only because it has no input vocabulary.
@@ -668,9 +663,6 @@ one reading. These are those choices.
   errors; its page allows cells left of the start, and two of its Hello
   Worlds need them. Its page describes implementation conventions rather than
   conflicting requirements.
-- Factor uses wrapping bytes, a tape growing in both directions and EOF
-  errors: its cell range and right growth are explicit, while its left edge
-  and EOF are unspecified.
 - Line leaves cell width and tape boundaries unspecified: cells are unbounded
   integers and the sparse tape extends in both directions.
 - Flowchart leaves path timing, cursor ownership and equal-distance junctions
@@ -723,12 +715,6 @@ one reading. These are those choices.
   output `=` prints nothing, `(` or `)` halts, and an unbalanced program
   popped to run halts. The page's expanded cat drops the `=` after `(+=)`
   and forces a leading 1; the compact source fixes the repair.
-- Piet++ settles its open conventions from the page text alone (the module
-  docstring names each): Read and Write pop their x operand and offset from
-  the codel just entered; a Write lands at once and may recolour the running
-  block; invalid or ill-typed commands are ignored without popping, as the
-  page recommends; a codel is one pixel.  XKCD Random Number (`4`) and
-  User:Miui/Nah. (`Nah.`) pin the delta sign.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
 

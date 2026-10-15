@@ -22,7 +22,6 @@
 "Eval" = "one literal table halved by position"
 "Fackward" = "a block nests its subtrees, so a repeated subtable is copied"
 "Grapheme" = "one integer table literal"
-"Piet++" = "lookup strip has no subtable calls"
 "Taglate" = "indexed table reduction, with no subtable branch"
 "Vandevelo" = "sum of affine-coset guards, with no subtable branch"
 "bit~" = "planted lookup entries, with no subtable branch"

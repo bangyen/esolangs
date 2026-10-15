@@ -444,19 +444,6 @@ workspace = "linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
-generator = "Factor"
-labels = ["tree"]
-qualification = """\
-    Brainfuck tree over the essential inputs followed by a total arbitrary-precision \
-    segmented-sieve encoding; fixed-modulus short intervals bound its adaptive \
-    residue sequence; unused level flags defer repeated residuals in depth order"""
-scaling = """\
-    lower bound: tight language and generated Theta(T log T) ([summary](#factor-bound))"""
-execution = "poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1"
-workspace = "poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits"
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
 generator = "FALSE"
 labels = ["tree"]
 qualification = "—"
@@ -810,28 +797,6 @@ workspace = "poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: t
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
-generator = "HQ9+ with headers"
-labels = ["linear lookup"]
-qualification = """\
-    the table is one decimal literal, divided by the power of two the reads \
-    square up, and `[~::]` tests the quotient's parity"""
-scaling = "linear: one table literal, one read command per input"
-execution = "poly n: worst 4n + 10 steps: four ops a read, ten for startup and answer"
-workspace = "linear: worst 3T + 5 + bl(4n+11) + bl(2n) bits: variables, op index and reads"
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
-generator = "Parenthesys"
-labels = ["linear lookup"]
-qualification = """\
-    the table is one string literal, and `ind` indexes it with a nested \
-    Horner expression over the reads"""
-scaling = "linear: one table string, one Horner level per input"
-execution = "poly n: worst 6n + 2 steps: six ops a later read, eight for the first and the answer"
-workspace = "linear: at most 8T + 8⌊n/3⌋ + 43 + bl(6n+2) + bl(2n) bits: the final call's stack"
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
 generator = "Codesick"
 labels = ["tree"]
 qualification = """\
@@ -874,20 +839,6 @@ labels = ["finite lookup"]
 qualification = """\
     each table entry is pushed and an input index selects its output; literal \
     products replace conjunction tables"""
-scaling = "linear: one bounded-width strip with O(T) codels"
-execution = """\
-    linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation"""
-workspace = """\
-    linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the \
-    stack"""
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
-generator = "Piet++"
-labels = ["finite lookup"]
-qualification = """\
-    Piet's lookup recoloured into Piet++ deltas: each table entry is pushed and an \
-    input index rolls its output up; literal products replace conjunction tables"""
 scaling = "linear: one bounded-width strip with O(T) codels"
 execution = """\
     linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation"""
@@ -1212,13 +1163,6 @@ totality = "Exception"
 generation_time = "Linear"
 output_size = "Linear"
 evidence = "docs/proofs/index.md#exceptions-and-walls"
-
-[[audit]]
-generator = "Factor"
-totality = "Total"
-generation_time = "Language lower bound"
-output_size = "Language lower bound"
-evidence = "docs/proofs/index.md#factor-bound"
 
 [[audit]]
 generator = "Ascenic"
