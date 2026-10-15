@@ -75,7 +75,15 @@ def _run(rest: list[str]) -> None:
         _nonnegative(max_output, "--max-output", options["--max-output"])
     max_memory = None
     if "--max-memory" in options:
-        max_memory = _integer(options["--max-memory"], "--max-memory")
+        # Checked by flag name, as --max-output is; the API's message said
+        # "max_memory requires isolated=True".
+        if not isolated:
+            _fail("--max-memory requires --isolated")
+        max_memory = _integer(
+            options["--max-memory"], "--max-memory", kind="a positive integer"
+        )
+        if max_memory < 1:
+            _fail(f"--max-memory must be a positive integer, got {max_memory}")
         with _errors():
             check_memory(max_memory, isolated=isolated)
     rest = _split_positional(

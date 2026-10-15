@@ -217,6 +217,12 @@ class TestAClosedPipeIsNotAnError:
             check=False,
         )
         assert closed.returncode == 120, closed.stderr
+        both = subprocess.run(
+            ["sh", "-c", f"'{sys.executable}' -m esolangs list >&- 2>&-"],
+            timeout=30,
+            check=False,
+        )
+        assert both.returncode == 120  # It wrote to a None stderr: exit 1.
 
     def test_a_closed_stdin_reads_as_empty(self) -> None:
         """``read-answer <&-`` reported an internal error, exit 70."""

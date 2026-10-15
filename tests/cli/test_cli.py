@@ -73,6 +73,26 @@ class TestInProcess:
         assert exc.value.code == 2
         assert "pixel limit" in capsys.readouterr().err
 
+    def test_break_at_on_a_coordinate_ip_is_a_usage_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A grid language's refusal surfaced as an internal error, exit 70."""
+        grid = first(state_model="grid", source_kind="text")
+        path = tmp_path / "p.txt"
+        path.write_text("@")
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "--break-at", "3", grid, str(path)], capsys)
+        assert exc.value.code == 2
+
+    def test_max_memory_names_the_flags(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        path = tmp_path / "p.txt"
+        path.write_text("+")
+        with pytest.raises(SystemExit):
+            call_main(["run", "--max-memory", "1000", REFERENCE, str(path)], capsys)
+        assert "--max-memory requires --isolated" in capsys.readouterr().err
+
     def test_spec_json_is_the_spec(self, capsys: pytest.CaptureFixture[str]) -> None:
         """``--spec --json`` printed every fact, ignoring ``--spec``."""
         out = call_main(["describe", "--spec", "--json", REFERENCE], capsys)

@@ -191,8 +191,10 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`EXAMPLES.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
 input row and encoding.
 
-`esolangs run` warns about invalid stdin through the interpreter; pipe its
-output to `read-answer` when an answer bit is wanted.
+`esolangs run` passes stdin to the interpreter verbatim and does not check
+it against the alphabet above (`ab` reads as two bits in brainfuck); build it
+with `encode`, and pipe the output to `read-answer` when an answer bit is
+wanted.
 
 ## Templates
 
@@ -216,6 +218,14 @@ Their `answer_encoding` is `("halts", "diverges")`; its index gives the bit.
 `generate` and CLI `--width` bound columns through layout;
 `describe(language)["width_effect"]` identifies the three behaviours,
 including the languages it does not affect (`"none"`).
+
+## Dialect settings
+
+`describe(language)["dialect_settings"]` lists a language's choices and
+defaults. Pass `settings=DialectSettings(expression_syntax="postfix")` to
+`generate`, `run` or `make_debugger`; CLI `--settings JSON` and repeatable
+`--set KEY=VALUE`. A generated program retains its settings, so `run` needs
+them again only for plain text saved to a file; `--portable` keeps them.
 
 ## Bounded execution
 

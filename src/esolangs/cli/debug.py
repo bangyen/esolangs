@@ -112,7 +112,10 @@ def _debug(rest: list[str]) -> None:
         dbg.break_on_output(options["--break-on-output"])
         breakpoints_set = True
     if "--break-at" in numbers:
-        dbg.break_at(numbers["--break-at"])
+        try:
+            dbg.break_at(numbers["--break-at"])
+        except EsolangError as exc:  # A coordinate ip: exit 70, not 2.
+            _fail(exc)
         breakpoints_set = True
     if cell is not None:
         dbg.break_on_cell(*cell)

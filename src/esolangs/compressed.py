@@ -72,7 +72,10 @@ class CompressedText:
         """Validate the stream and measure its expanded characters."""
         if not isinstance(self.data, bytes):
             raise ProgramError("gzip source must be bytes")
-        check_provenance(self.language, self.settings)
+        # Canonical, so an alias tag compares equal to the name ``run`` checks.
+        object.__setattr__(
+            self, "language", check_provenance(self.language, self.settings)
+        )
         if self.limits is not None and not isinstance(self.limits, TextLimits):
             # ``limits=5`` raised a bare AttributeError from ``check_gzip``.
             raise ArgumentError("limits must be a TextLimits or None")

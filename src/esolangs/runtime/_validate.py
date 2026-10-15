@@ -239,10 +239,12 @@ def check_flag(value: object, name: str) -> bool:
     return value
 
 
-def check_provenance(language: object, settings: object) -> None:
-    """Refuse a program tag naming no language, or settings of the wrong type.
+def check_provenance(language: object, settings: object) -> str | None:
+    """Return the tag's canonical name; refuse no language or wrong settings.
 
-    ``Raster(...).tagged("nonesuch")`` and ``.tagged(5)`` were kept as given.
+    ``Raster(...).tagged("nonesuch")`` and ``.tagged(5)`` were kept as given,
+    and an alias (``"rotfuck"``) was stored as typed, so ``run`` refused the
+    program under every spelling.
     """
     from esolangs.exceptions import ArgumentError
     from esolangs.registry import resolve
@@ -253,9 +255,10 @@ def check_provenance(language: object, settings: object) -> None:
         got = _argument_repr(settings)
         raise ArgumentError(f"settings must be a DialectSettings or None, got {got}")
     if settings is None:
-        return
+        return name
     if name is None:
         # ``run`` reads retained settings only off a tagged program; untagged,
         # they were silently ignored.
         raise ArgumentError("settings need a language to apply to; pass language=")
     settings.options(name)  # As ``from_png`` checks what it reads.
+    return name

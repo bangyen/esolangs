@@ -127,6 +127,24 @@ def __getattr__(name: str) -> str:
     return version
 
 
+def _bind_annotation_names() -> None:
+    """Let ``typing.get_type_hints`` resolve the public classes' annotations.
+
+    ``compressed``, ``raster`` and ``tagged`` name ``DialectSettings`` only
+    under ``TYPE_CHECKING`` (``settings`` imports the registry, which imports
+    them), so ``get_type_hints(Raster)`` raised NameError on 3.12 to 3.14.
+    """
+    import esolangs.compressed
+    import esolangs.raster
+    import esolangs.tagged
+
+    for module in (esolangs.compressed, esolangs.raster, esolangs.tagged):
+        module.DialectSettings = DialectSettings  # type: ignore[attr-defined]
+
+
+_bind_annotation_names()
+
+
 #: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,
 #: ``Callable``, ``importlib``, ``pathlib``, ``signal`` and ``threading``
 #: alongside the six functions anyone wants, and there was no way to tell

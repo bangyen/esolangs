@@ -530,7 +530,8 @@ def main() -> None:
         # Started with fd 1 closed (``esolangs list >&-``): ``print`` drops
         # silently and the flush below raised AttributeError, exit 70.  The
         # same outcome as a pipe closed early, so the same exit.
-        sys.stderr.write("stdout is closed; nothing was written\n")
+        if sys.stderr is not None:  # ``>&- 2>&-`` closes both.
+            sys.stderr.write("stdout is closed; nothing was written\n")
         sys.exit(120)
     try:
         _dispatch()

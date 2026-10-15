@@ -152,6 +152,9 @@ def _stdin_hint(facts: LanguageInfo) -> str:
             f"; {facts['name']}'s generated programs embed their inputs and "
             f"read no stdin, so there is probably nothing to send -- close it"
         )
+    if not facts["boolean_generator"]:
+        # ``encode`` refuses these (Deadfish, HQ9+, Nope.): no input command.
+        return f"; {facts['name']} reads no stdin -- close it"
     return "; try: esolangs encode <language> <bits> | ..."
 
 

@@ -115,7 +115,7 @@ def _assign(
     """Initialize ``raster``'s fields; the one path both constructors share."""
     if scale is not None:
         check_scale(scale)
-    check_provenance(language, settings)
+    language = check_provenance(language, settings)
     object.__setattr__(raster, "_rows", rows)
     object.__setattr__(raster, "_normalizations", {})
     object.__setattr__(raster, "_materialize", materialize)
@@ -231,6 +231,7 @@ class Raster:
         scale: int | None = None,
     ) -> Raster:
         """Return this raster tagged as generated for ``language``."""
+        language = cast("str", check_provenance(language, None))
         return _assign(
             Raster.__new__(Raster),
             self._rows,

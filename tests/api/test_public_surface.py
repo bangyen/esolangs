@@ -253,6 +253,22 @@ class TestProgramObjectsRefuseMisuse:
         with pytest.raises(esolangs.ArgumentError, match="limits"):
             esolangs.CompressedText(gzip.compress(b"x"), limits=5)  # type: ignore[arg-type]
 
+    def test_an_alias_tag_is_stored_canonically(self) -> None:
+        """Stored as typed, ``run`` refused it under every spelling."""
+        tagged = esolangs.CompressedText.from_chunks(iter(["+."])).tagged(
+            REFERENCE.upper()
+        )
+        assert tagged.language == REFERENCE
+        assert esolangs.run(REFERENCE, tagged) == "\x01"
+
+    def test_public_annotations_resolve_at_runtime(self) -> None:
+        """``DialectSettings`` was a TYPE_CHECKING-only name: NameError."""
+        import typing
+
+        for cls in (esolangs.Raster, esolangs.CompressedText):
+            typing.get_type_hints(cls)
+            typing.get_type_hints(cls.tagged)
+
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
         with pytest.raises(esolangs.ArgumentError, match="need a language"):
