@@ -1,29 +1,46 @@
-# Limitations and contracts
+# Limitations
 
-Interpreter conventions, generator constraints, and proved limits.
+Known limits, by question. Find your language by name: each language's facts
+sit in bullets that start with its name.
+
+| You want to know | Go to |
+| --- | --- |
+| How an interpreter treats input, errors and I/O | [Interpreter conventions](#interpreter-conventions) |
+| Why a language differs from its wiki page | [Specification decisions](#specification-decisions) |
+| Why a generator stops at some number of inputs | [Largest input counts](#largest-input-counts) |
+| How big a generated program gets | [Scaling](#scaling) and [Source-count bound](#source-count-bound) |
+| Why a language is (not) in the collection | [Curation](#curation) |
+| Which languages use images as source | [Image-based languages](#image-based-languages) |
 
 - Polynomial has a [size lower bound](proofs/index.md#polynomial-bound).
 
 The measurement screens and profilers were removed once their
-findings were recorded here; numbers attributed to them are evidence, not a
+findings were recorded here. Numbers attributed to them are evidence, not a
 command to rerun.
 
 ## Interpreter conventions
 
-- Empty input is a no-op unless a language requires a seed or grid.
+Unless a language says otherwise:
+
+- Empty input is a no-op, except where a language requires a seed or grid.
 - Exhausted input raises `EOFError`; malformed programs raise `ValueError`;
-  runtime failure raises `HaltError`, unless the language says otherwise.
+  runtime failure raises `HaltError`.
 - Character input consumes Unicode characters, including newlines. Integer
   input consumes whitespace-delimited signed decimal tokens.
+- Explicit frame stacks are uncapped.
+
+Exceptions and per-language notes:
+
 - Unsquare uses Unicode character codes where input framing is unspecified.
 - Decleq uses Unicode character codes where input framing is unspecified;
   optional memory-mapped I/O is enabled.
 - AddSubJump uses Unicode character codes where input framing is unspecified.
 - Minifuck uses Unicode character codes where input framing is unspecified.
-- Explicit frame stacks are uncapped.
 - Forbin expression calls retain their documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
+
+### Image-based languages
 
 <!-- RASTER-SOURCES:START -->
 
@@ -33,8 +50,8 @@ codec, and `describe` reports `source_kind="raster"`.
 
 <!-- RASTER-SOURCES:END -->
 
-Text and raster share VM and step contracts; `RUNNERS` describes text
-bundling only.
+Text and image-based languages share the same VM and step rules; `RUNNERS`
+describes text bundling only.
 
 - Line retains its graph for repeated generated rows; stepping parses pixels.
 - Piet emits and executes pixels.
@@ -53,6 +70,8 @@ undeclared or misspelled values. Opaque positions have no source coordinate.
 
 ## Boolean generators
 
+### Input order
+
 Every path reads all n inputs in order; an ignored input is read and
 discarded, never left unread. Leaving a trailing ignored input unread would
 make input consumption depend on the table. The measured savings were 9-29%
@@ -61,6 +80,21 @@ at n=7..8 across these generators:
 - Unlambda was included in the trailing-input measurement.
 - brainfuck was included in the trailing-input measurement.
 - Factor was included in the trailing-input measurement.
+
+Input reordering counts toward generation cost: at most four named candidates,
+with the generic greedy scorer stopping at n=10. Generators may not use BFS or
+DFS; test-only oracles may.
+
+The removed screen script recorded permuted tables, not admissible reorders
+under a fixed template and fill mapping.
+
+- Dig must read in order.
+- Flowchart must read in order.
+- BrainIf must read in order.
+- SLOW ACV MAMMALIAN must read in order.
+- Minifuck has no derived instruction-only wire.
+
+### Parameterized generators
 
 Parameterized generators embed each input exactly once. Every emitted
 character is build work. The input text must have:
@@ -73,18 +107,11 @@ The template constructor enforces the shape. `tests/proofs/test_conventions.py`
 checks filled programs at n=2, 3, 5.
 
 Add a relaxed-width option only if it produces a smaller, executed build.
-A space option has no remaining use. Input reordering counts toward generation
-cost: at most four named candidates, with the generic greedy scorer stopping
-at n=10. Generators may not use BFS or DFS; test-only oracles may.
+A space option has no remaining use.
 
-The removed screen script recorded permuted tables, not admissible reorders
-under a fixed template and fill mapping.
+### Optimizations not shipped
 
-- Dig must read in order.
-- Flowchart must read in order.
-- BrainIf must read in order.
-- SLOW ACV MAMMALIAN must read in order.
-- Minifuck has no derived instruction-only wire.
+Each missed the 10% bar:
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
   2.1% gain misses the 10% bar, so plain order ships (d5bac32).
@@ -92,6 +119,8 @@ under a fixed template and fill mapping.
   8.48% of area at n=7, under the 10% bar. Width requests still try four.
 - Factor subtree dispatch loses 1.0% at three inputs and gains 3.4% at five.
 - brainfuck lacks a cheaper jump, call, or label.
+
+### Largest input counts
 
 - Malbolge:
   Malbolge's source-embedded generator covers sixteen inputs. Through ten, a
@@ -126,7 +155,6 @@ under a fixed template and fill mapping.
   Dispatch does not fit (2026-10-14, scratch, executed): the seven-class label
   window plus 14 hubs alone takes 5,155 main-line cells, leaving the line near
   7,200 against 6,562 before the third-cell fold and per-state transitions.
-
 
   Counting bounds each family independently of mixer quality:
 
@@ -166,17 +194,19 @@ under a fixed template and fill mapping.
   with universal O(T) size and generation time remains open; no language-wide
   impossibility was proved. See [the bound summary](proofs/index.md#vandevelo-sparse-bound).
 
-
-
 The no-`i`/`j` model cannot express NOT. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in
 33..126, and the input pair `(49, 48)` is unreachable, so NOT is not
 expressible at any length.
 
+Shipped limits, in inputs:
+
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; that positional readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/index.md#malbolge-bound)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
+
+### Size lower bounds
 
 - Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
   instruction-root values even when roots repeat, and the slack certificate
@@ -194,9 +224,9 @@ expressible at any length.
 Size is measured from rendered output, and correctness claims require running
 the generated program. A generator guarantees its size class, not its
 constant; constant-factor tweaks beyond the canonical set ship only at 10% or
-more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude loading and use the
-worst sampled parity row. A sub-10 ms run does not establish an exponent.
-Loading is intentionally excluded from execution time.
+more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude
+loading and use the worst sampled parity row. A sub-10 ms run does not
+establish an exponent.
 
 - Factor loading is dominated by integer factorization.
 - Circuit Diagram loading is dominated by parsing super-linear area.
@@ -207,6 +237,8 @@ Loading is intentionally excluded from execution time.
   most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
   versus 23.6 for the tree. The construction and the counting floor are in
   [fractran](proofs/index.md#fractran-bound) and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
+
+#### Sharing repeated subtables
 
 The canonical sharing piece is applied or exempt by measurement. Potential
 before a generator's own share is bounded per piece: repeated nodes,
@@ -236,10 +268,10 @@ requires a construction exemption rather than a sub-gate bound.
 - Dimensional is a lookup that names no decision-tree node.
 - LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 
-The sharing-helper presence proxy is enforced for 49 tree-shaped generators
-by `tests/generators/test_boolean_sharing_catalogue.py`: 32 reference a
-canonical helper (`subtree_ids`, `SubtreeDiagram`), eight a declared local
-helper, and nine are exempt. Presence does not establish complete sharing.
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 49
+tree-shaped generators use a sharing helper: 32 reference a canonical helper
+(`subtree_ids`, `SubtreeDiagram`), eight a declared local helper, and nine are
+exempt. Having a helper does not establish complete sharing.
 
 - Underload references a canonical sharing helper.
 - Unlambda references a canonical sharing helper.
@@ -275,13 +307,15 @@ helper, and nine are exempt. Presence does not establish complete sharing.
   [universal-circuit size bounds](https://encrypto.de/papers/KS16.pdf) count
   logical gates, not rendered area.
 
+#### Ignored inputs and constants
 
-The ignored-input and constant-folding pieces are held to
-`test_generator_shape_is_what_the_catalogue_says` (a tree row folds on a
-one-dependency table, a reducing row drops its ignored inputs) and to the
-presence proxy in `tests/generators/test_boolean_canonical_catalogue.py`, whose
-declared exceptions carry the piece natively (three rows for ignored inputs,
-eleven for constants).
+`test_generator_shape_is_what_the_catalogue_says` checks that a tree row folds
+on a one-dependency table and a reducing row drops its ignored inputs. A second
+test (`tests/generators/test_boolean_canonical_catalogue.py`) checks that
+generators have the helper; its declared exceptions handle the case themselves
+(three rows for ignored inputs, eleven for constants).
+
+#### Suffix banks
 
 The suffix bank defers each word's greatest repeat inside its own body, so a
 nested definition shares like a top-level one: the n=16 five-input fixture
@@ -298,11 +332,13 @@ dispatch.
 - brainfuck admits a bank at several depths; one cell per input level
   is the whole pool.
 
-The execution contract in `tests/proofs/deep/execution.py` holds every
+#### Run time and memory
+
+The execution check in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
 Persistent stores use shared 32-cell chunks.
 Those choices prevent repeated scans, but command cost and source size remain
-separate axes.
+separate axes. Loading is intentionally excluded from execution time.
 
 - RAM0 also indexes addresses.
 
@@ -344,6 +380,8 @@ verdicts, co-categories, I/O and branch vocabulary, and page length.
 - Alight was admitted by the 2D screen.
 - Pinyin was rejected by the 2D screen.
 
+### How a language is admitted
+
 Fame admits languages with at least 60 unique esolangs linking pages. Resolve
 title redirects, exhaust `list=backlinks` continuations, include redirect links
 across all namespaces, and deduplicate by page ID. Pause at least three seconds
@@ -362,7 +400,24 @@ User:Bangyen's. An intrinsic axis can choose between such candidates; it
 admits nothing alone and removes nothing. A stalled generator row stays open
 on the [roadmap](roadmap.md); the language stays.
 
-Recognition sources checked 2026-10-01 supply selections, not admission gates
+A route admits a language only when its specification fixes the core
+semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
+a linear source places blocks in the grid or what the generation pointer
+does, so its interpreter invented the core, the invented semantics the
+大白话 deferral rules out. Transistor (2) was built and dropped on
+2026-10-07 for the same reason: its page gives no grammar and no I/O, and
+its one loop example calls an undefined `or`.
+
+Nor does a route admit a command-for-command substitution of a collected
+language: a fixed token map under which every program behaves the same adds
+no interpreter or generator, the ground that excludes Trivial brainfuck
+substitution as a family. Adopted 2026-10-14 for candidates; no collected
+language is one (Piet++ adds nested stacks, Painfuck +2/-1 steps, ROTfuck a
+rotating command set).
+
+### Recognition sources
+
+Sources checked 2026-10-01 supply selections, not admission gates
 or popularity rankings.
 
 [Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code) has these
@@ -422,6 +477,8 @@ records administrator-selected features, not popularity endorsements:
 - Glass was featured.
 - /// was featured.
 
+### Backlink counts
+
 The 2026-10-01 count gives Brainfuck 2,057 backlinks; 282 counted only the first
 API batch. Brainfuck-relative gates and the indeterminate band are retired.
 
@@ -457,24 +514,13 @@ and 65 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
+### Removed languages
+
 Funge-98 (31, two dozen implementations) was removed on 2026-10-06. The six
 languages implemented elsewhere before the 2026-09-27 rule (123, BF-PDA, BIO,
 Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
 
-A route admits a language only when its specification fixes the core
-semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
-a linear source places blocks in the grid or what the generation pointer
-does, so its interpreter invented the core, the invented semantics the
-大白话 deferral rules out. Transistor (2) was built and dropped on
-2026-10-07 for the same reason: its page gives no grammar and no I/O, and
-its one loop example calls an undefined `or`.
-
-Nor does a route admit a command-for-command substitution of a collected
-language: a fixed token map under which every program behaves the same adds
-no interpreter or generator, the ground that excludes Trivial brainfuck
-substitution as a family. Adopted 2026-10-14 for candidates; no collected
-language is one (Piet++ adds nested stacks, Painfuck +2/-1 steps, ROTfuck a
-rotating command set).
+### Notes on individual languages
 
 - Piet++ (8) is a first implementation: the page is in the Unimplemented
   category, and the only other code is a partial C# executor (Esolang-NET/Piet)
@@ -560,6 +606,8 @@ n=8,10,12 are measurements. Each uses a 309-table, 3,352-row corpus.
   (112): excluded as a family, not a single language. Its backlink count
   does not establish fame for any particular member.
 
+### Rejected and deferred candidates
+
 The 2026-09-27 audit closed these candidates:
 
 - Self-replicating marbles leaves section order and collision timing undefined.
@@ -584,6 +632,9 @@ HuePrism, BitCode, PicCode, Brainloller, Braincopter, and the game-save
 languages remain rejected from the same image-source screen.
 
 ## Specification decisions
+
+Where a language's wiki page is silent or contradicts itself, the package picks
+one reading. These are those choices.
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
 - FALSE's `ø` pick counts from zero, so `0ø` is `$`; the description ("dup
