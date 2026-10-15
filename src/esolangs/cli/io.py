@@ -293,14 +293,18 @@ def _write_output(text: str) -> None:
     at all (an ASCII locale) gets it backslash-escaped: ``surrogatepass``
     raised again there, exit 70.
     """
+    stream = getattr(sys.stdout, "buffer", None)
+    if stream is None:
+        # A text-only stream (an in-process StringIO) takes any str verbatim.
+        try:
+            sys.stdout.write(text)
+        except UnicodeEncodeError:
+            sys.stdout.write(text.encode("utf-8", "backslashreplace").decode("utf-8"))
+        return
     encoding = sys.stdout.encoding or "utf-8"
     try:
         text.encode(encoding)  # Strict: ``main`` made the stream itself lenient.
     except UnicodeEncodeError:
-        stream = getattr(sys.stdout, "buffer", None)
-        if stream is None:
-            sys.stdout.write(text.encode("utf-8", "backslashreplace").decode("utf-8"))
-            return
         utf8 = codecs.lookup(encoding).name == "utf-8"
         sys.stdout.flush()
         stream.write(

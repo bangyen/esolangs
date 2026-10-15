@@ -84,6 +84,19 @@ class TestInProcess:
             call_main(["debug", "--break-at", "3", grid, str(path)], capsys)
         assert exc.value.code == 2
 
+    def test_a_closed_stdout_object_is_not_a_crash(self) -> None:
+        """reconfigure() on a closed file raised ValueError out of main()."""
+        import io
+
+        closed = io.TextIOWrapper(io.BytesIO())
+        closed.close()
+        with (
+            patch.object(sys, "argv", ["esolangs", "list"]),
+            patch.object(sys, "stdout", closed),
+            pytest.raises(SystemExit),
+        ):
+            main()
+
     def test_help_for_an_unknown_command_fails(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:

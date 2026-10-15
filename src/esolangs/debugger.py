@@ -61,6 +61,9 @@ class Debugger:
 
     def __init__(self, vm: VM) -> None:
         """Wrap ``vm`` with an empty breakpoint and watch set."""
+        if not isinstance(vm, VM):
+            # ``Debugger(None)`` built, then ``.halted`` raised AttributeError.
+            raise ArgumentError(f"vm must be a VM, got {_argument_repr(vm)}")
         self.vm = vm
         self._breakpoints: list[Callable[[VM], bool]] = []
         self._cell_history: dict[int, list[int | None]] = {}
@@ -152,8 +155,8 @@ class Debugger:
         """Return the wrapped machine's complete *internal* state, hashable.
 
         ``output`` is excluded, so equal internal state means the same future
-        except across the post-halt dump, where the last running and the
-        halted snapshot compare equal.  A repeated
+        computation; see :meth:`~esolangs.vm.VM.snapshot` for the post-halt
+        dump.  A repeated
         snapshot proves a loop, which settles the four termination languages in
         microseconds.
         """
@@ -171,7 +174,7 @@ class Debugger:
         A position never reached is accepted (the protocol has no ``len``).
         """
         if isinstance(ip, int) and not isinstance(ip, bool):
-            check_whole(ip, "ip")
+            pass  # Any int: AddSubJump and Subleq halt at -8 and -1.
         elif not (
             isinstance(ip, tuple)
             and ip

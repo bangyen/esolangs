@@ -327,6 +327,19 @@ class TestProgramObjectsRefuseMisuse:
                 continue
             assert all(type(cell) is int for cell in vm.memory), name
 
+    def test_a_portable_surrogate_is_refused_like_a_file(self) -> None:
+        document = esolangs.dump_program(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
+        with pytest.raises(esolangs.ProgramError, match="surrogates"):
+            esolangs.load_program(REFERENCE, document)
+
+    def test_a_debugger_needs_a_vm(self) -> None:
+        with pytest.raises(esolangs.ArgumentError, match="must be a VM"):
+            debugger_api.Debugger(None)  # type: ignore[arg-type]
+
+    def test_break_at_takes_a_negative_position(self) -> None:
+        """AddSubJump and Subleq halt at -8 and -1; break_at refused them."""
+        debugger_api.make_debugger(REFERENCE, "+").break_at(-1)
+
     def test_the_debugger_mirrors_every_vm_trait(self) -> None:
         debugger = debugger_api.make_debugger(REFERENCE, "+")
         assert debugger.eof_is_a_value is debugger.vm.eof_is_a_value

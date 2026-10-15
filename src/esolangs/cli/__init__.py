@@ -41,6 +41,7 @@ import os
 import re
 import sys
 from collections.abc import Callable
+from contextlib import suppress
 from itertools import pairwise
 from typing import cast
 
@@ -544,7 +545,9 @@ def main() -> None:
         # `list` died mid-line with exit 70.  Escape instead.
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None:
-            reconfigure(errors="backslashreplace")
+            # A closed stream refuses; the write that follows reports it.
+            with suppress(ValueError, OSError):
+                reconfigure(errors="backslashreplace")
     if sys.stderr is None:
         # Started with fd 2 closed (``2>&-``): every note and error wrote to
         # None, so even a successful `run` printed nothing and exited 1.

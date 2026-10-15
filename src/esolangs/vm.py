@@ -135,8 +135,9 @@ class VM(Protocol):
         """Return the internal state cycle detection compares, hashable.
 
         ``output`` is excluded, so equal internal state means the same future
-        -- except across the post-halt dump (``dumps_on_the_post_halt_step``):
-        the last running and the halted state compare equal, the write between.
+        computation.  The post-halt dump (``dumps_on_the_post_halt_step``)
+        writes output without changing the snapshot on most such languages
+        (Cyclic tag records the dump, so its snapshot changes).
         """
 
     @property
