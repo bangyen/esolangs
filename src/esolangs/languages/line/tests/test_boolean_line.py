@@ -9,7 +9,8 @@ import pytest
 
 import esolangs
 from esolangs.languages.line.generator import line_boolean
-from esolangs.languages.line.generator.render import Node, render
+from esolangs.languages.line.generator.layout import Node
+from esolangs.languages.line.generator.render import render
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.languages.line.interpreter.extract import extract
 from esolangs.languages.line.interpreter.simulate import (
@@ -346,7 +347,7 @@ def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) ->
     from esolangs.languages.line.generator import line_boolean
     from esolangs.languages.line.generator.render import render
 
-    module = importlib.import_module("esolangs.languages.line.generator.render")
+    module = importlib.import_module("esolangs.languages.line.generator.layout")
 
     def reject(*_args: object) -> None:
         raise AssertionError("tree renderer revisited a subtree")
@@ -360,7 +361,7 @@ def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) ->
 def test_shared_ancestor_return_executes_within_ledger(tmp_path: Path) -> None:
     """A consumed prefix bit selects one physical residual after returning."""
     from esolangs.languages.line.generator import _render_node
-    from esolangs.languages.line.generator.render import _has_goto
+    from esolangs.languages.line.generator.layout import _has_goto
     from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
     from tests.support.generator_support import assert_shared_program
 

@@ -7,7 +7,7 @@ import random
 import pytest
 
 from esolangs.languages.line.generator.forward import streaming_canvas
-from esolangs.languages.line.generator.render import Node
+from esolangs.languages.line.generator.layout import Node
 from tests.support.witness_tables import parity
 
 

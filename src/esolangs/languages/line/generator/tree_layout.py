@@ -1,6 +1,6 @@
 """Bottom-up extents for goto-free Line trees."""
 
-from .render import (
+from .layout import (
     _BRANCH_SPACING,
     _FORWARD,
     _STEM_LEN,

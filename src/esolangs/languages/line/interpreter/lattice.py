@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from .mask import Mask
 
-# (dy, dx) for N, NE, E, SE, S, SW, W, NW, matching render.py's headings.
+# (dy, dx) for N, NE, E, SE, S, SW, W, NW, matching layout.py's headings.
 # Owned here so extract.py imports it rather than the two importing each other.
 _DIRS: list[tuple[int, int]] = [
     (-1, 0),
@@ -172,7 +172,7 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
     if len(rest) == 1:
         return "straight", list(rest)
     # Rotate off the *heading*, not `back` (180 degrees out): the wiki's
-    # rule and render.py's turns are in the cursor's own frame.
+    # rule and layout.py's turns are in the cursor's own frame.
     heading = _opposite(back)
     right, left = (heading + 2) % 8, (heading - 2) % 8
     straight = heading
