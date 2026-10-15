@@ -408,6 +408,17 @@ def _exit_with_parent() -> None:
     orphan (reparented to 1) ran a looping program for hours.
     """
     parent = os.getppid()
+    if sys.platform == "linux":
+        # The kernel delivers it, with no thread: a watcher's stack counted
+        # against max_memory's RLIMIT_AS and tight budgets failed in CI.
+        import ctypes
+        import signal
+
+        libc = ctypes.CDLL(None, use_errno=True)
+        if libc.prctl(1, signal.SIGKILL, 0, 0, 0) == 0:  # PR_SET_PDEATHSIG
+            if os.getppid() != parent:  # Died before the request took.
+                os._exit(1)
+            return
 
     def watch() -> None:
         while os.getppid() == parent:
