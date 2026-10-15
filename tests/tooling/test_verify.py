@@ -752,7 +752,8 @@ def test_broken_streamed_stdout_does_not_fail_complete_logs(
 
     class Stream:
         def write(self, text):
-            if text == "tee output\n":
+            # Unbuffered children write the newline separately.
+            if "tee output" in text and not injected:
                 injected.append(True)
                 raise BrokenPipeError("injected closed stdout")
             return output.write(text)
