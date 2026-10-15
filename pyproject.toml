@@ -106,7 +106,12 @@ select = [
 ignore = [
     "D203",  # conflicts with D211 (blank line before class)
     "D213",  # conflicts with D212 (multi-line summary placement)
+    "D417",  # Args: lists only the non-obvious parameters
 ]
+
+[tool.ruff.lint.pydocstyle]
+# Sections (Args/Returns/Raises) on the public API only; prose elsewhere.
+convention = "google"
 
 [tool.ruff.lint.mccabe]
 # Ratchet: the functions above it carry `noqa: C901`, mostly opcode

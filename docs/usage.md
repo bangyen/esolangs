@@ -145,7 +145,7 @@ measured row to answer correctly.
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
 - `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
-- `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
+- `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
 
 <!-- PUBLIC-API:END -->
