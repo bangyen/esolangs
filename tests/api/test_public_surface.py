@@ -333,8 +333,28 @@ class TestProgramObjectsRefuseMisuse:
             esolangs.load_program(REFERENCE, document)
 
     def test_a_debugger_needs_a_vm(self) -> None:
-        with pytest.raises(esolangs.ArgumentError, match="must be a VM"):
-            debugger_api.Debugger(None)  # type: ignore[arg-type]
+        vm = debugger_api.make_vm(REFERENCE, "+")
+        for junk in (None, type(vm)):  # A VM *class* built, then broke on .run.
+            with pytest.raises(esolangs.ArgumentError, match="must be a VM"):
+                debugger_api.Debugger(junk)  # type: ignore[arg-type]
+
+        class Proxy:
+            def __getattr__(self, name: str) -> object:
+                return getattr(vm, name)
+
+        assert debugger_api.Debugger(Proxy()).run() == "halted"  # type: ignore[arg-type]
+
+    def test_a_portable_setter_surrogate_is_refused(self) -> None:
+        import json
+
+        document = json.loads(
+            esolangs.dump_program(
+                TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+            )
+        )
+        document["setters"] = [["\ud800", "\udfff"]] * len(document["setters"])
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.load_program(TEMPLATE_LANGUAGE, json.dumps(document))
 
     def test_break_at_takes_a_negative_position(self) -> None:
         """AddSubJump and Subleq halt at -8 and -1; break_at refused them."""

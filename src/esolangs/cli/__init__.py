@@ -548,11 +548,12 @@ def main() -> None:
             # A closed stream refuses; the write that follows reports it.
             with suppress(ValueError, OSError):
                 reconfigure(errors="backslashreplace")
-    if sys.stderr is None:
+    if sys.stderr is None or getattr(sys.stderr, "closed", False):
         # Started with fd 2 closed (``2>&-``): every note and error wrote to
         # None, so even a successful `run` printed nothing and exited 1.
         sys.stderr = open(os.devnull, "w")  # noqa: SIM115 - lives for the run
-    if sys.stdout is None:
+    if sys.stdout is None or getattr(sys.stdout, "closed", False):
+        # A closed stream object, in process, is the same case: it exited 70.
         # Started with fd 1 closed (``esolangs list >&-``): ``print`` drops
         # silently and the flush below raised AttributeError, exit 70.  The
         # same outcome as a pipe closed early, so the same exit.

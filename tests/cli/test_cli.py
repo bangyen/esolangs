@@ -84,8 +84,9 @@ class TestInProcess:
             call_main(["debug", "--break-at", "3", grid, str(path)], capsys)
         assert exc.value.code == 2
 
-    def test_a_closed_stdout_object_is_not_a_crash(self) -> None:
-        """reconfigure() on a closed file raised ValueError out of main()."""
+    @pytest.mark.parametrize("closed_streams", ["stdout", "both"])
+    def test_a_closed_stdout_object_exits_120(self, closed_streams: str) -> None:
+        """A closed stream object exited 70 (or raised, stderr closed too)."""
         import io
 
         closed = io.TextIOWrapper(io.BytesIO())
@@ -93,9 +94,23 @@ class TestInProcess:
         with (
             patch.object(sys, "argv", ["esolangs", "list"]),
             patch.object(sys, "stdout", closed),
-            pytest.raises(SystemExit),
+            patch.object(
+                sys, "stderr", closed if closed_streams == "both" else io.StringIO()
+            ),
+            pytest.raises(SystemExit) as exc,
         ):
             main()
+        assert exc.value.code == 120
+
+    def test_break_at_takes_a_negative_position(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Subleq and AddSubJump halt at -1 and -8; the flag refused them."""
+        path = tmp_path / "p.txt"
+        path.write_text("+")
+        assert "stopped" in call_main(
+            ["debug", "--break-at", "-1", REFERENCE, str(path)], capsys
+        )
 
     def test_help_for_an_unknown_command_fails(
         self, capsys: pytest.CaptureFixture[str]
@@ -473,10 +488,6 @@ _REFUSALS = {
     "a_negative_step_bound_is_refused": (
         "debug --steps -1 brainfuck prog:+",
         "must not be negative",
-    ),
-    "a_negative_break_at_is_refused": (
-        "debug --break-at -1 brainfuck prog:+",
-        "--break-at must not be negative",
     ),
     "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
 }

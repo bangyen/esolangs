@@ -61,8 +61,9 @@ class Debugger:
 
     def __init__(self, vm: VM) -> None:
         """Wrap ``vm`` with an empty breakpoint and watch set."""
-        if not isinstance(vm, VM):
+        if isinstance(vm, type) or not callable(getattr(vm, "step", None)):
             # ``Debugger(None)`` built, then ``.halted`` raised AttributeError.
+            # Duck-typed, so a delegating proxy passes; a VM class does not.
             raise ArgumentError(f"vm must be a VM, got {_argument_repr(vm)}")
         self.vm = vm
         self._breakpoints: list[Callable[[VM], bool]] = []
@@ -181,8 +182,7 @@ class Debugger:
             and all(isinstance(part, int) and not isinstance(part, bool) for part in ip)
         ):
             raise ArgumentError(
-                "ip must be a non-negative integer or a tuple of them, "
-                f"got {_argument_repr(ip)}"
+                f"ip must be an integer or a tuple of them, got {_argument_repr(ip)}"
             )
         here = self.vm.ip
         if here is not None and here != ():

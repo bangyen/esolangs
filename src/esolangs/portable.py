@@ -192,9 +192,9 @@ def load_program(language: str, document: str) -> Program:
             raise ValueError(f"program language must be {name}")
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")
-        # Strict UTF-8, as a program file is read: a JSON "\ud800" escape
-        # loaded a lone surrogate, which a file refuses as invalid UTF-8.
-        value["source"].encode("utf-8")
+        # Strict UTF-8 everywhere, as a program file is read: a JSON
+        # "\ud800" escape in the source or a setter loaded a lone surrogate.
+        json.dumps(value, ensure_ascii=False).encode("utf-8")
         settings = _settings(value["settings"], name)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
