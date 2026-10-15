@@ -111,6 +111,10 @@ from esolangs.languages.minsky_swap.generator import LANGUAGE as _MINSKY_SWAP_LA
 from esolangs.languages.minsky_swap.generator import minsky_swap
 from esolangs.languages.modulous.generator import LANGUAGE as _MODULOUS_LANGUAGE
 from esolangs.languages.modulous.generator import modulous
+from esolangs.languages.object_disoriented.generator import (
+    LANGUAGE as _OBJECT_DISORIENTED_LANGUAGE,
+)
+from esolangs.languages.object_disoriented.generator import object_disoriented
 from esolangs.languages.packlang.generator import LANGUAGE as _PACKLANG_LANGUAGE
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
@@ -224,6 +228,7 @@ _LANGUAGES = (
     _MINIFUCK_LANGUAGE,
     _MINSKY_SWAP_LANGUAGE,
     _MODULOUS_LANGUAGE,
+    _OBJECT_DISORIENTED_LANGUAGE,
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
     _PIET_LANGUAGE,
@@ -306,6 +311,7 @@ __all__ = [
     "minifuck",
     "minsky_swap",
     "modulous",
+    "object_disoriented",
     "packlang",
     "painfuck",
     "piet",

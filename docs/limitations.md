@@ -329,7 +329,7 @@ controlled by executed checks in each language's own tests.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 81 languages.
+The collection has 82 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -453,7 +453,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`tests/support/fixtures/curation.toml`) records each
 language's backlinks and route: 21 clear the fame gate
-and 60 are first implementations.
+and 61 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
