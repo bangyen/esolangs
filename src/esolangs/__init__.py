@@ -716,10 +716,10 @@ def run(
     :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
     :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
     it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
-    :meth:`Debugger.run` bounds by stepping.  ``seed``, an integer, fixes the
-    languages that draw (``describe(language)["random"]``) and is refused by
-    the rest.  An unloadable program raises
-    :class:`~esolangs.exceptions.ProgramError`.
+    ``isolated=True`` or :meth:`Debugger.run` (stepping) bounds the run.
+    ``seed``, an integer, fixes the languages that draw
+    (``describe(language)["random"]``) and is refused by the rest.  An
+    unloadable program raises :class:`~esolangs.exceptions.ProgramError`.
     """
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)  # validate before any route
@@ -773,7 +773,8 @@ def run(
     check_signal_timeout(
         timeout,
         "the timeout guard uses SIGALRM and needs a Unix main thread; "
-        "off it, either bound the run cooperatively with "
+        "off it, either pass isolated=True, which times a subprocess, or "
+        "bound the run cooperatively with "
         "esolangs.debugger.make_debugger(language, program, stdin)"
         ".run(timeout=...), "
         "which steps and so needs no signal",

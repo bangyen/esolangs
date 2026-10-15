@@ -197,7 +197,7 @@ class Debugger:
     def break_on_cell(self, index: int, value: int) -> None:
         """Stop when ``memory[index]`` holds ``value``.
 
-        ``value`` must be an ``int``, or it never fires.
+        A non-``int`` ``value`` raises ``ArgumentError``.
         """
         check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
