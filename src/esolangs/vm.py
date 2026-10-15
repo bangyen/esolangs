@@ -226,8 +226,10 @@ class VM(Protocol):
         ``True`` marks the languages that take a value instead, so an
         underfed program answers a different row.  Some are neither: a
         flag may be ``True`` yet the run halts on the read; another may be
-        ``False`` yet the read *ends* the program.  Every other language
-        reading stdin, swept one line short, matches its flag.
+        ``False`` yet the read *ends* the program.  A cyclic reader
+        (``input_shape`` ``char_stream_cyclic``, Clockwise) never reaches an
+        end to underfeed.  Every other language reading stdin, swept one line
+        short, matches its flag.
         """
 
     @property
@@ -315,8 +317,16 @@ class _DelegatingVM:
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells, or empty where there is no such store."""
-        return list(getattr(self._machine, "memory", ()))
+        """The addressable integer cells, or empty where there is no such store.
+
+        Empty too where the store is not integer cells (Caballo's mapping,
+        Crement's instructions, B-tapemark's grids): they leaked through as
+        ``list[int]``, and ``break_on_cell`` could not name a value.
+        """
+        cells = list(getattr(self._machine, "memory", ()))
+        if all(type(cell) is int for cell in cells):
+            return cells
+        return []
 
     @property
     def ptr(self) -> int | None:

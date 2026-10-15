@@ -312,6 +312,8 @@ def _emit_partial(exc: EsolangError) -> None:
     if not exc.partial_output:
         return
     _write_output(exc.partial_output)
-    if not exc.partial_output.endswith("\n"):
+    # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
+    # --max-output 3 cap 4 bytes.
+    if not exc.partial_output.endswith("\n") and sys.stdout.isatty():
         sys.stdout.write("\n")
     sys.stdout.flush()

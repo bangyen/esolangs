@@ -419,6 +419,8 @@ class _Machine:
     """Piet++ shell: one immutable :data:`_Core`, rebound per step."""
 
     ip_shape = "grid"
+    #: As Piet: an input command at EOF is ignored and the run goes on.
+    eof_is_a_value = True
 
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
         rows = program._normalized(scale)  # noqa: SLF001

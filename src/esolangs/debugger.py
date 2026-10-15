@@ -140,6 +140,14 @@ class Debugger:
         """
         return self.vm.steppable_to_answer
 
+    @property
+    def eof_is_a_value(self) -> bool:
+        """Whether a read past the end of the input yields a value here.
+
+        See :attr:`~esolangs.vm.VM.eof_is_a_value`; the one trait not mirrored.
+        """
+        return self.vm.eof_is_a_value
+
     def snapshot(self) -> object:
         """Return the wrapped machine's complete *internal* state, hashable.
 
@@ -158,7 +166,8 @@ class Debugger:
         wrong kind for this language, is refused rather than stored as a
         breakpoint that never fires.  Kind only, not arity (not constant within
         a run; see :attr:`~esolangs.vm.VM.ip`).  ``None`` is refused although
-        five languages reach it: use ``break_when(lambda vm: vm.ip is None)``.
+        some languages reach it (``///`` from its first step): use
+        ``break_when(lambda vm: vm.ip is None)``.
         A position never reached is accepted (the protocol has no ``len``).
         """
         if isinstance(ip, int) and not isinstance(ip, bool):

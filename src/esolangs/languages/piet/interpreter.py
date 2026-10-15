@@ -207,6 +207,9 @@ class _Machine:
     """A Piet run: one immutable state rebound after each pure transition."""
 
     ip_shape = "grid"
+    #: An input command at EOF is ignored and the run goes on, so an
+    #: underfed program answers another row (``10000000`` fed ``01``: 1).
+    eof_is_a_value = True
 
     @staticmethod
     def perform_io(

@@ -686,8 +686,8 @@ def run(
     individual retained choices. Plain source uses the supplied settings.
     ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
     filename is refused.  A Path and its text are
-    not quite the same argument: a file loses one trailing newline, a
-    string keeps it.
+    not quite the same argument: a file loses one trailing newline and has
+    CRLF and lone CR line endings read as LF; a string keeps both.
 
     Bytes contain UTF-8 text or PNG source, as accepted by the interpreter.
     Readable streams are consumed from their current position and left open.

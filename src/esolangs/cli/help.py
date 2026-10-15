@@ -35,8 +35,8 @@ def _capability_examples() -> tuple[str, str]:
                 )
                 setting = shlex.quote(f"{key}={values[-1]}")
                 dialects = (
-                    f"  esolangs generate --portable --settings {settings} "
-                    f"{quoted} 0110 > p.json\n"
+                    f"  esolangs generate --portable --settings {settings} \\\n"
+                    f"    {quoted} 0110 > p.json\n"
                     f"  esolangs generate --set {setting} {quoted} 0110"
                 )
                 break
@@ -197,12 +197,16 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  -p, --portable   write JSON retaining source, dialect choices, and template setters.
+  -p, --portable
+               write JSON retaining source, dialect choices, and template
+               setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
-  -s, --settings JSON  dialect overrides; describe lists supported settings.
-  --set KEY=VALUE  one dialect override without JSON, repeatable and applied
+  -s, --settings JSON
+               dialect overrides; describe lists supported settings.
+  --set KEY=VALUE
+               one dialect override without JSON, repeatable and applied
                after --settings.
-  --plain            export compressed text as ordinary source text.
+  --plain      export compressed text as ordinary source text.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.
@@ -269,7 +273,7 @@ examples:
   printf '10' | esolangs run brainfuck prog.txt
   printf '10' | esolangs run --timeout 5 brainfuck prog.txt
   esolangs generate --portable brainfuck 0110 > p.json
-  esolangs encode brainfuck 10 | esolangs run --portable brainfuck p.json \
+  esolangs encode brainfuck 10 | esolangs run --portable brainfuck p.json \\
     | esolangs read-answer brainfuck
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>

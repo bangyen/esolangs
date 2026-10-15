@@ -591,7 +591,10 @@ def _dispatch() -> None:
         print(f"esolangs {__version__}")
         sys.exit(0)
     if cmd in ("--help", "-h", "help"):
-        sys.stdout.write(HELP[rest[0]] if rest and rest[0] in HELP else USAGE)
+        if rest and rest[0] not in HELP:
+            # `help nope` printed the usage and exited 0.
+            _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(HELP))}")
+        sys.stdout.write(HELP[rest[0]] if rest else USAGE)
         sys.exit(0)
     if cmd not in HELP:
         # Languages and options both suggest a near miss; the subcommands

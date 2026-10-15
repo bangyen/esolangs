@@ -84,6 +84,25 @@ class TestInProcess:
             call_main(["debug", "--break-at", "3", grid, str(path)], capsys)
         assert exc.value.code == 2
 
+    def test_help_for_an_unknown_command_fails(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`help zzz` printed the usage and exited 0."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["help", "zzz"], capsys)
+        assert exc.value.code == 2
+        assert "unknown command: zzz" in capsys.readouterr().err
+
+    def test_partial_output_on_a_pipe_is_byte_exact(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A failed run added "\\n" to a pipe, against `run --help`."""
+        path = tmp_path / "p.txt"
+        path.write_text("+.,")
+        with pytest.raises(SystemExit):
+            call_main(["run", REFERENCE, str(path)], capsys)
+        assert capsys.readouterr().out == "\x01"
+
     def test_max_memory_names_the_flags(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

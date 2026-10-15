@@ -236,6 +236,7 @@ PUBLIC_MEMBERS = {
         "break_when",
         "clear_breakpoints",
         "dumps_on_the_post_halt_step",
+        "eof_is_a_value",
         "halted",
         "ip",
         "ip_shape",

@@ -5,8 +5,9 @@ from __future__ import annotations
 import re
 from typing import cast
 
-#: The address a default ``repr`` embeds.
-_ADDRESS = re.compile(r" at 0x[0-9a-fA-F]+")
+#: The address a default ``repr`` embeds, matched only where it closes the
+#: repr's ``>``: quoted text ("['x at 0xdead']", b" at 0xab") is the caller's.
+_ADDRESS = re.compile(r" at 0x[0-9a-fA-F]+(?=>)")
 
 _INFINITE = (float("inf"), float("-inf"))
 

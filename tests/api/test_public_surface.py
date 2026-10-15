@@ -3,6 +3,7 @@
 import ast
 import inspect
 import re
+from importlib.resources import files
 
 import pytest
 
@@ -308,6 +309,27 @@ class TestProgramObjectsRefuseMisuse:
             esolangs.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="<Raises>"):
             esolangs.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
+
+    def test_quoted_text_in_a_container_is_kept(self) -> None:
+        with pytest.raises(esolangs.ArgumentError, match=r"\['x at 0xdead'\]"):
+            esolangs.encode_inputs(REFERENCE, ["x at 0xdead"])  # type: ignore[list-item]
+
+    def test_memory_is_integer_cells_or_empty(self) -> None:
+        """Three languages exposed tuples and instructions as ``list[int]``."""
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if not facts["examples"]:
+                continue
+            source = (files("esolangs") / facts["examples"][0]).read_bytes()
+            try:
+                vm = debugger_api.make_vm(name, source.decode())
+            except (UnicodeDecodeError, esolangs.EsolangError):
+                continue
+            assert all(type(cell) is int for cell in vm.memory), name
+
+    def test_the_debugger_mirrors_every_vm_trait(self) -> None:
+        debugger = debugger_api.make_debugger(REFERENCE, "+")
+        assert debugger.eof_is_a_value is debugger.vm.eof_is_a_value
 
     def test_a_stepped_timeout_reads_as_an_unstepped_one(self) -> None:
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.2-second"):
