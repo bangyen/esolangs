@@ -129,6 +129,8 @@ from esolangs.languages.ram0.generator import LANGUAGE as _RAM0_LANGUAGE
 from esolangs.languages.ram0.generator import ram0
 from esolangs.languages.rotfuck.generator import LANGUAGE as _ROTFUCK_LANGUAGE
 from esolangs.languages.rotfuck.generator import rotfuck
+from esolangs.languages.rubic.generator import LANGUAGE as _RUBIC_LANGUAGE
+from esolangs.languages.rubic.generator import rubic
 from esolangs.languages.sbleq.generator import LANGUAGE as _SBLEQ_LANGUAGE
 from esolangs.languages.sbleq.generator import sbleq
 from esolangs.languages.six_five.generator import LANGUAGE as _SIX_FIVE_LANGUAGE
@@ -230,6 +232,7 @@ _LANGUAGES = (
     _QOIBL_LANGUAGE,
     _RAM0_LANGUAGE,
     _ROTFUCK_LANGUAGE,
+    _RUBIC_LANGUAGE,
     _SBLEQ_LANGUAGE,
     _SIX_FIVE_LANGUAGE,
     _SLASHES_LANGUAGE,
@@ -311,6 +314,7 @@ __all__ = [
     "qoibl",
     "ram0",
     "rotfuck",
+    "rubic",
     "sbleq",
     "six_five",
     "slashes",

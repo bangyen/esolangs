@@ -815,6 +815,18 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Rubic"
+labels = ["tree"]
+qualification = """\
+    every subtree undoes its `r2` store, so the cube is one of two states and each \
+    table expression is checked on both; equal halves read untested and constant \
+    subtables fold"""
+scaling = "linear: at most 94T characters, subtree_ids folding"
+execution = "poly n: at most 20n + 7 commands: a node runs 20 at most"
+workspace = "poly n: at most (3n+4)·bl(L) + 3n + 175 bits: n+1 loop frames, the cube"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "S*bleq"
 labels = ["finite lookup"]
 qualification = """\

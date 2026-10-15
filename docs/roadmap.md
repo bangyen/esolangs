@@ -32,10 +32,3 @@ evidence, not optimization tasks.
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
-
-## Languages
-
-First implementations, in order; each passes the intake rule.
-
-- **Rubic:** Total; a Rubik's cube is the only memory, so the input count is
-  capped.

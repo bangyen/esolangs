@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 80 languages</summary>
+<summary>Show all 81 languages</summary>
 
 ### Grid-based Languages
 
@@ -94,6 +94,7 @@ Languages that use registers to store and manipulate data.
 - [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/polynomial/interpreter/__init__.py))
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/qoibl/interpreter.py))
 - [RAM0](https://esolangs.org/wiki/RAM0) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/ram0/interpreter.py))
+- [Rubic](https://esolangs.org/wiki/Rubic) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/rubic/interpreter.py))
 
 ### Self-modifying Languages
 

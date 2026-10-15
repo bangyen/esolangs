@@ -463,6 +463,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input | poly n: worst n + 2 commands, one statement per input | linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1 |
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate | linear: O(T/n) distinct subtables, O(n) commands each | poly n: worst n^2 + 8n + 5 commands, one root-to-leaf path | poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits, S the token count |
 | ROTfuck | finite lookup | every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count | linear: bounded dependency scan and canonical residual IDs | linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: NAND's all-ones row, walks quadratic per digit | linear: at most 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n) bits: 2T + 7 cells |
+| Rubic | tree | every subtree undoes its `r2` store, so the cube is one of two states and each table expression is checked on both; equal halves read untested and constant subtables fold | linear: at most 94T characters, subtree_ids folding | poly n: at most 20n + 7 commands: a node runs 20 at most | poly n: at most (3n+4)·bl(L) + 3n + 175 bits: n+1 loop frames, the cube |
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: T/n packed chunks of n bits, O(n) decoder | linear: worst 3n + 2 instructions to n = 9, the tree route: n reads, 2n - 1 tests | linear: at most 3L bits: the self-modified program, decimal cells |
 | 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks | linear, time n log: greedy order scoring, capped at n <= 10 | linear: worst L commands: loop-free, each token runs at most once; constant tables run every token | linear: worst 2T + 7n + 9 + bl(n) bits past n = 6: a tape of 2T cells |
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf | linear: per-node landing search sized in O(1), not an O(weight) dry build | poly n: n read nodes after a fixed dispatch and leaf | poly n: each command adds at most one byte; commands are poly n |
@@ -572,7 +573,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 75 theoretical totality arguments and
+Accordingly, this ledger records 76 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
