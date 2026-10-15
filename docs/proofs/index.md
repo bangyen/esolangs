@@ -67,7 +67,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   materializing the initial integer is outside this sparse-factor contract.
   It does not replace the public decision-diagram generator.
   Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
-  and `src/esolangs/languages/fractran/tests/proofs/deep/`.
+  and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
 - brainfuck: <a id="brainfuck-behaviours"></a> the exponential growth rate
   of distinct behaviours of programs of at most `C` characters remains open.
   On the repository's bi-infinite wrapping-byte tape, over all inputs,

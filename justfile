@@ -134,7 +134,7 @@ gendiff language *args:
 
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:
-    {{PYTHON}} scripts/ci/shard.py refresh --serial-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
+    {{PYTHON}} scripts/ci/shard.py refresh --serial-node src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
 
 # create interpreter, generator and test stubs; pass e.g. --category tape_based
 new-language name *args:
@@ -162,7 +162,7 @@ proofs:
 # Not in `just test` or CI; run it when A Painter Ant's generator changes.
 # re-check the A Painter Ant uniform-in-n proof
 apa-proof:
-    {{PYTHON}} tests/proofs/deep/a_painter_ant.py
+    {{PYTHON}} -m esolangs.languages.a_painter_ant.tests.proof_a_painter_ant
 
 # clean generated files
 clean:
