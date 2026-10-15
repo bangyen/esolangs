@@ -3,8 +3,10 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.forbin.interpreter import _advance, _NeedByte, run
 from esolangs.languages.forbin.interpreter import _Machine as Forbin
+from esolangs.languages.forbin.interpreter import run
+from esolangs.languages.forbin.interpreter._scope import _NeedByte
+from esolangs.languages.forbin.interpreter._step import _advance
 from esolangs.languages.forbin.tests.forbin_support import run_program
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
