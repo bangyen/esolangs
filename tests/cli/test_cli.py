@@ -10,11 +10,13 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
+from esolangs.registry import LANGUAGES
 from tests.support.cli_support import _FakeStdin, _program, _refused
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
 _RASTER = first(source_kind="raster", boolean_generator=True)
+_GZIP = next(n for n, lang in LANGUAGES.items() if lang.compressed_source)
 
 RASTER = first(source_kind="raster", boolean_generator=True)
 TEMPLATED = first(parameterized=True)
@@ -355,6 +357,17 @@ class TestOutputAndAbridging:
         with patch.object(sys.stdout, "isatty", lambda: True):
             assert call_main(["run", REFERENCE, str(program)], capsys) == "\x01\n"
         assert call_main(["run", REFERENCE, str(program)], capsys) == "\x01"
+
+    def test_binary_programs_refuse_a_terminal(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """PNG and gzip bytes went to the terminal unannounced."""
+        with patch.object(sys.stdout, "isatty", lambda: True):
+            for args in (["generate", _RASTER, "0110"], ["generate", _GZIP, "01"]):
+                with pytest.raises(SystemExit) as exit_:
+                    call_main(args, capsys)
+                assert exit_.value.code == 2
+                assert "redirect stdout" in capsys.readouterr().err
 
     def test_a_long_watch_history_is_abridged(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

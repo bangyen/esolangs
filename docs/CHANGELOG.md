@@ -5,6 +5,15 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## Unreleased
+
+- **Breaking:** `DialectSettings` refuses a value outside its key's choices
+  (`None` included) when constructed; it was accepted until first use.
+- **Breaking (CLI):** `generate` refuses to write PNG or gzip to a terminal
+  (exit 2); redirect, or pass `--plain` for gzip.
+- `ExecutionTimeoutError.bound` names the bound that fired: `"timeout"` or
+  `"max_steps"`.
+
 ## 0.14.0
 
 - **Breaking:** `describe()["input_shape"]` and `["input_encoding"]` are

@@ -35,6 +35,11 @@ class ExecutionTimeoutError(HaltError, TimeoutError):
     Not a plain :class:`HaltError`: some languages answer by terminating.
     """
 
+    #: Which bound ended the run: ``"timeout"`` or ``"max_steps"``.  Both
+    #: raise this class, so a caller passing both could tell them apart only
+    #: by the message.
+    bound: str = "timeout"
+
     def __init__(self, *args: object) -> None:
         """Keep the timeout diagnostic and suggest checking termination first."""
         super().__init__(

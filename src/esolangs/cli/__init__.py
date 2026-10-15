@@ -357,6 +357,17 @@ def _generate(rest: list[str]) -> None:
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
+    binary = isinstance(program, Raster) or (
+        isinstance(program, CompressedText) and "--plain" not in flags
+    )
+    if binary and sys.stdout.isatty():
+        # Unary's gzip once landed on a terminal unannounced.
+        _fail(
+            f"{describe(rest[0])['name']} generates "
+            f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
+            f"redirect stdout to a file"
+            + ("" if isinstance(program, Raster) else " or pass --plain")
+        )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
         _emit(program, plain="--plain" in flags)
 

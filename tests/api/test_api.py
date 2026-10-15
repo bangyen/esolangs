@@ -124,6 +124,20 @@ def test_run_timeout_requires_main_thread() -> None:
     thread.join(5)
     assert isinstance(out[0], ValueError)
     assert "SIGALRM" in str(out[0])
+    assert "isolated=True" in str(out[0])
+
+
+def test_a_timeout_names_the_bound_that_fired() -> None:
+    """Both bounds raise one class; ``bound`` separates them, pickled too."""
+    import pickle
+
+    with pytest.raises(esolangs.ExecutionTimeoutError) as stepped:
+        esolangs.run(REFERENCE, "+[]", max_steps=100, timeout=30)
+    with pytest.raises(esolangs.ExecutionTimeoutError) as timed:
+        esolangs.run(REFERENCE, "+[]", timeout=0.05)
+    for caught, bound in ((stepped, "max_steps"), (timed, "timeout")):
+        assert caught.value.bound == bound
+        assert pickle.loads(pickle.dumps(caught.value)).bound == bound
 
 
 def test_describe_structured_summary() -> None:

@@ -267,12 +267,13 @@ def test_png_settings_retain_integer_choices() -> None:
     settings = esolangs.DialectSettings(**{key: choices[-1]})
     source = Raster((((1, 2, 3),),), language=owner, settings=settings)
     assert Raster.from_png(source.to_png()).settings == settings
+    huge = 1 << 20_000  # Past CPython's decimal rendering cap.
+    with pytest.raises(esolangs.ArgumentError, match="integer with 20001 bits"):
+        esolangs.DialectSettings(**{key: huge})
+    forged = esolangs.DialectSettings()
+    object.__setattr__(forged, "_items", ((key, huge),))
     with pytest.raises(esolangs.ArgumentError, match="invalid dialect"):
-        Raster(
-            (((1, 2, 3),),),
-            language=owner,
-            settings=esolangs.DialectSettings(**{key: 1 << 20_000}),
-        )
+        Raster((((1, 2, 3),),), language=owner, settings=forged)
 
 
 def test_png_language_tag_refuses_cross_language_execution() -> None:

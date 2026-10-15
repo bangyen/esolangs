@@ -85,6 +85,9 @@ assert esolangs.read_answer("brainfuck", output) == "1"
   assert esolangs.read_answer("Minifuck", output) == "1"
   ```
 
+  `bits[0]` is the most significant input. Template languages are those with
+  `describe(name)["parameterized"]` (CLI: `list --template`).
+
 - Piet returns an image source:
 
   ```python
@@ -94,6 +97,10 @@ assert esolangs.read_answer("brainfuck", output) == "1"
   stdin = esolangs.encode_inputs("Piet", [0, 1])
   assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
   ```
+
+`generate` returns a `Program`: a `str` subclass for text, a `Raster`, or a
+`CompressedText` (Unary). `str()` of the last two is a summary, not source;
+`dump_program` and `load_program` round-trip all three as text.
 
 To step through a text program and inspect its state:
 
@@ -246,7 +253,8 @@ can grow faster than any timeout fires. Elsewhere, cap the process yourself.
 
 `run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
-`partial_output` when either bound expires. `max_steps` selects cooperative stepping.
+`partial_output` when either bound expires; its `bound` is `"timeout"` or
+`"max_steps"`. `max_steps` selects cooperative stepping.
 A language whose `describe()["steppable_to_answer"]` is false (A Painter
 Ant) answers only through `run` without `max_steps`; stepped, it never halts.
 It steps all languages on Windows and worker threads; deadlines are checked
@@ -285,6 +293,15 @@ printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 `make_debugger(...).run()` returns one of `STOP_REASONS`:
 `"halted"`, `"breakpoint"`, `"max_steps"`, or `"timeout"`. Program faults raise
 an exception instead; the CLI catches it and prints `stopped: raised`.
+
+Every language steps under the debugger. Breakpoints: `break_at(ip)`,
+`break_on_cell(index, value)`, `break_on_stack(slot, value)`,
+`break_on_output(text)`, `break_when(predicate)`. Watches: `watch_cell(index)`
+and `watch_stack(slot)` return per-step histories; the CLI has only
+`--watch-cell`, so a stack language reports the cell as never written.
+`ip` (shaped by `ip_shape`), `memory`, `ptr`, `stack` and `views` inspect the
+machine. A cell the machine has not reached reads `None`, so
+`break_on_cell(i, 0)` fires only once the pointer gets there.
 
 `break_on_output(text)` stops once output contains `text`. After a hit, `run`
 suppresses that breakpoint until its condition becomes false, so resuming can

@@ -661,6 +661,7 @@ def _run_bounded(
             else f"execution stopped at the {reason} bound"
         )
         error.partial_output = debugger.output
+        error.bound = reason
         raise error
     return debugger.output
 
