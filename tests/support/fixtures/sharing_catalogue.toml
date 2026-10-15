@@ -17,6 +17,7 @@
 [exempt]
 "Piet" = "a strip has no jump, so a repeated subtable cannot be shared"
 "ArrowQueue" = "Horner marker cascade; no subtable is drawn"
+"Ascenic" = "threshold scan over the Horner row code; no subtable is drawn"
 "Collatz Multiverse" = "indexed packed cells, with no subtable branch"
 "Eval" = "one literal table halved by position"
 "Grapheme" = "one integer table literal"

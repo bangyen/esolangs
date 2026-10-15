@@ -113,6 +113,15 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   cube dimensions `(2,0)`/`(3,0)` and 204/221 characters. Those measurements
   check the route, not the asymptotic bound. Controls remain in
   `src/esolangs/languages/vandevelo/tests/`.
+- Ascenic: <a id="ascenic-bound"></a> worst-case source is `Theta(T**2)`
+  characters for both the language and generator. Arguments rise strictly
+  and are unary, so `L` lines cost at least `L(L+1)/2` characters, and a
+  size-`S` program is one of at most 20 opcodes per line over `L <= sqrt(2S)`
+  lines with arguments forming a partition of at most `S` into distinct parts:
+  `2**O(sqrt(S))` behaviours, so some table needs `S = Omega(T**2)`. Blank
+  lines and spaces add no behaviours. The threshold scan has at most
+  `2T + 6n + 6` lines with arguments below `4T + 16n + 4`, the matching
+  upper bound. Controls: `src/esolangs/languages/ascenic/tests/`.
 
 The ledger records coverage of every `2**n`-bit table for every finite `n`.
 “Total” means mathematical coverage. Ignore explicit digit, instruction,
@@ -456,6 +465,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Quassaunt | tree | each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched | linear: O(T/n) nodes with O(n)-digit names | linear: at most 5⌊L/57⌋ + 21n + 9 steps: five a stored node, 21 a level | linear: at most 24L bits: the running code, the stored code and the stack, each within the source |
 | 1 + i | tree | a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched | linear: at most 10.5T - 10 characters, ten a node | poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b | poly n: at most 4bl(L) + 40 bits: two functions, a decider and a frame |
 | Pointless | tree | each distinct subtable is one function; `,=` maps a character to its bit through the cells 48 and 49, and `[` tests the bit's cell; the one `!` seeds the 1s that make `+` an increment | linear: O(T/n) nodes with O(n)-digit names | poly n: worst 26n + 311 steps: setup, then 26 a level | poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape |
+| Ascenic | tree | Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump | lower bound: tight language and generated Theta(T**2) ([summary](#ascenic-bound)) | linear: worst 2T + 7n + 3 - 2⌊n/2⌋ commands: alternating answers, two lines a change | poly n: at most 3n + bl(n) + 15 bits: line index, scale times code, input cursor |
 | Codesick | tree | each distinct subtable is one labelled node; it appends its marker to the unread bits, and a substring test for `0` before the marker reads the last bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump | linear: O(T/n) nodes with O(n)-digit names | poly n: worst 3n + 1 steps: three a level, the leaf one | poly n: at most 24n + 16 bits: the unread bits and one marker |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits | linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
@@ -575,7 +585,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 82 theoretical totality arguments and
+Accordingly, this ledger records 83 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
@@ -869,6 +879,7 @@ size regression. Open generator-linearity work lives in the
 | --- | --- | --- | --- |
 | Befunge | Exception | Linear | Linear |
 | Factor | Total | Language lower bound | Language lower bound |
+| Ascenic | Total | Language lower bound | Language lower bound |
 | Malbolge | Exception | Open | Linear |
 | Polynomial | Cap | Language lower bound | Language lower bound |
 | Vandevelo | Total | Open | Measured |

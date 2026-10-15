@@ -19,6 +19,8 @@ from esolangs.languages.alight.generator import LANGUAGE as _ALIGHT_LANGUAGE
 from esolangs.languages.alight.generator import alight
 from esolangs.languages.arrowqueue.generator import LANGUAGE as _ARROWQUEUE_LANGUAGE
 from esolangs.languages.arrowqueue.generator import arrowqueue
+from esolangs.languages.ascenic.generator import LANGUAGE as _ASCENIC_LANGUAGE
+from esolangs.languages.ascenic.generator import ascenic
 from esolangs.languages.b_tapemark.generator import LANGUAGE as _B_TAPEMARK_LANGUAGE
 from esolangs.languages.b_tapemark.generator import b_tapemark
 from esolangs.languages.back.generator import LANGUAGE as _BACK_LANGUAGE
@@ -195,6 +197,7 @@ _LANGUAGES = (
     _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
     _ALIGHT_LANGUAGE,
     _ARROWQUEUE_LANGUAGE,
+    _ASCENIC_LANGUAGE,
     _B_TAPEMARK_LANGUAGE,
     _BACK_LANGUAGE,
     _BEFUNGE_LANGUAGE,
@@ -283,6 +286,7 @@ __all__ = [
     "algebraic_programming_language",
     "alight",
     "arrowqueue",
+    "ascenic",
     "b_tapemark",
     "back",
     "befunge",

@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 87 languages</summary>
+<summary>Show all 88 languages</summary>
 
 ### Grid-based Languages
 
@@ -32,6 +32,7 @@ Languages that use a stack for data manipulation.
 
 - [1 + i](https://esolangs.org/wiki/1_+_i) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/one_i/interpreter.py))
 - [3x](https://esolangs.org/wiki/3x) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/three_x/interpreter.py))
+- [Ascenic](https://esolangs.org/wiki/Ascenic) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/ascenic/interpreter.py))
 - [BFStack](https://esolangs.org/wiki/BFStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bfstack/interpreter.py))
 - [Caballo](https://esolangs.org/wiki/Caballo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/caballo/interpreter.py))
 - [Eval](https://esolangs.org/wiki/Eval) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/eval/interpreter.py))

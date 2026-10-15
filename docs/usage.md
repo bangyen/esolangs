@@ -148,6 +148,7 @@ Build language-specific stdin with `encode_inputs`:
 | 1 + i | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Ascenic | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Caballo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |

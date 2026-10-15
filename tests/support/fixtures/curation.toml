@@ -88,3 +88,4 @@ Quassaunt = { backlinks = 3, route = "first implementation" }
 Codesick = { backlinks = 2, route = "first implementation" }
 "1 + i" = { backlinks = 1, route = "first implementation" }
 Pointless = { backlinks = 0, route = "first implementation" }
+Ascenic = { backlinks = 0, route = "first implementation" }

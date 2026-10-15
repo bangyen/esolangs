@@ -770,6 +770,20 @@ workspace = "poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, 
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Ascenic"
+labels = ["tree"]
+qualification = """\
+    Horner's rule by built `-2` constants makes each row's code `base + 2r`; \
+    `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the \
+    parity answers; straight-line code, no jump"""
+scaling = """\
+    lower bound: tight language and generated Theta(T**2) \
+    ([summary](#ascenic-bound))"""
+execution = "linear: worst 2T + 7n + 3 - 2⌊n/2⌋ commands: alternating answers, two lines a change"
+workspace = "poly n: at most 3n + bl(n) + 15 bits: line index, scale times code, input cursor"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Codesick"
 labels = ["tree"]
 qualification = """\
@@ -1157,6 +1171,13 @@ totality = "Total"
 generation_time = "Language lower bound"
 output_size = "Language lower bound"
 evidence = "docs/proofs/index.md#factor-bound"
+
+[[audit]]
+generator = "Ascenic"
+totality = "Total"
+generation_time = "Language lower bound"
+output_size = "Language lower bound"
+evidence = "docs/proofs/index.md#ascenic-bound"
 
 [[audit]]
 generator = "Malbolge"
