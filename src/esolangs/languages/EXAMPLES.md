@@ -63,6 +63,7 @@ don't edit by hand.
 | `fractran/fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
+| `hq9_with_headers/hq9-with-headers.txt` | HQ9+ with headers | `0001` | `01` | 0 1 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
 | `interprogck8/interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |

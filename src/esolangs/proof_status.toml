@@ -810,6 +810,17 @@ workspace = "poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: t
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "HQ9+ with headers"
+labels = ["linear lookup"]
+qualification = """\
+    the table is one decimal literal, divided by the power of two the reads \
+    square up, and `[~::]` tests the quotient's parity"""
+scaling = "linear: one table literal, one read command per input"
+execution = "poly n: worst 4n + 10 steps: four ops a read, ten for startup and answer"
+workspace = "linear: worst 3T + 5 + bl(4n+11) + bl(2n) bits: variables, op index and reads"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Codesick"
 labels = ["tree"]
 qualification = """\
