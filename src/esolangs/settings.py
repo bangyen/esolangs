@@ -80,7 +80,9 @@ def dialect_options(language: str, settings: DialectSettings | None) -> dict[str
     if settings is None:
         return {}
     if not isinstance(settings, DialectSettings):
-        raise ArgumentError("settings must be a DialectSettings object")
+        raise ArgumentError(
+            f"settings must be a DialectSettings object, got {type(settings).__name__}"
+        )
     return settings.options(language)
 
 
@@ -93,7 +95,9 @@ def effective_settings(
     from esolangs.tagged import _Tagged
 
     if settings is not None and not isinstance(settings, DialectSettings):
-        raise ArgumentError("settings must be a DialectSettings object")
+        raise ArgumentError(
+            f"settings must be a DialectSettings object, got {type(settings).__name__}"
+        )
     if not isinstance(
         program, (_Tagged, Raster, CompressedText)
     ) or program.language != resolve(language):

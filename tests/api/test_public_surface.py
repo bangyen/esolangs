@@ -297,6 +297,18 @@ class TestProgramObjectsRefuseMisuse:
             debugger.watch_cell(object())  # type: ignore[arg-type]
         assert " at 0x" not in str(caught.value)
 
+    def test_a_refused_value_keeps_the_callers_text(self) -> None:
+        """Round 5's address stripping swallowed strings; a raising repr leaked."""
+
+        class Raises:
+            def __repr__(self) -> str:
+                raise RuntimeError("boom")
+
+        with pytest.raises(esolangs.ArgumentError, match="'x at 0xdead'"):
+            esolangs.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
+        with pytest.raises(esolangs.ArgumentError, match="<Raises>"):
+            esolangs.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
+
     def test_a_stepped_timeout_reads_as_an_unstepped_one(self) -> None:
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.2-second"):
             esolangs.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)

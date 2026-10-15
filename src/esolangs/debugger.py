@@ -127,7 +127,7 @@ class Debugger:
         """Whether the output lands on the step *after* ``halted`` goes true.
 
         A :meth:`run` returning ``"halted"`` has taken it; one returning
-        ``"breakpoint"`` may not have, so on these seven the stop reason, not
+        ``"breakpoint"`` may not have, so where this is true the stop reason, not
         ``halted``, says whether the answer is written.
         """
         return self.vm.dumps_on_the_post_halt_step
@@ -143,8 +143,9 @@ class Debugger:
     def snapshot(self) -> object:
         """Return the wrapped machine's complete *internal* state, hashable.
 
-        ``output`` is excluded (equal internal state means the same future), so
-        two snapshots compare equal across the post-halt dump.  A repeated
+        ``output`` is excluded, so equal internal state means the same future
+        except across the post-halt dump, where the last running and the
+        halted snapshot compare equal.  A repeated
         snapshot proves a loop, which settles the four termination languages in
         microseconds.
         """
@@ -228,7 +229,8 @@ class Debugger:
             signature(predicate).bind(self.vm)
         except TypeError as exc:
             raise ArgumentError(
-                f"predicate must take one argument, the VM: {exc}"
+                f"predicate must take one argument, the VM; "
+                f"{_argument_repr(predicate)} does not: {exc}"
             ) from exc
         except ValueError as exc:
             # No inspectable signature (``max``, ``int``): bare ValueError.

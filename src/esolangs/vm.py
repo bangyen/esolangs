@@ -134,8 +134,9 @@ class VM(Protocol):
     def snapshot(self) -> Hashable:
         """Return the internal state cycle detection compares, hashable.
 
-        ``output`` is excluded (the post-halt dump writes on seven
-        languages): equal internal state means the same future.
+        ``output`` is excluded, so equal internal state means the same future
+        -- except across the post-halt dump (``dumps_on_the_post_halt_step``):
+        the last running and the halted state compare equal, the write between.
         """
 
     @property

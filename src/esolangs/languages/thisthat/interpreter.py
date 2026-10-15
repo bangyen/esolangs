@@ -591,6 +591,8 @@ class _Machine:
     """thisthat shell: one immutable :data:`_Core`, rebound per cycle."""
 
     ip_shape = "grid"
+    #: A read at EOF sends an empty transfer and the run goes on.
+    eof_is_a_value = True
 
     def __init__(
         self, code: list[str], io: IO | None = None, rng: Randomness | None = None

@@ -148,8 +148,10 @@ class InputExhaustedError(EsolangError, EOFError):
 class GeneratorCapError(EsolangError, ValueError):
     """A boolean generator, such as a prime-based one, refusing too big a table.
 
-    Still a :class:`ValueError`.  The caps are not arity-bounded, which is why
-    ``describe`` carries no maximum arity.
+    Still a :class:`ValueError`.  Some caps depend on the table, not only its
+    arity, so ``describe()["generator_max_inputs"]`` is the arity bound and
+    ``generator_restrictions`` names the rest (Unary: at most 9 inputs, and
+    a work cap that refuses some 2-input tables).
     """
 
 

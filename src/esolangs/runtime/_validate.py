@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from typing import cast
+
+#: The address a default ``repr`` embeds.
+_ADDRESS = re.compile(r" at 0x[0-9a-fA-F]+")
 
 _INFINITE = (float("inf"), float("-inf"))
 
@@ -19,9 +23,6 @@ def _argument_repr(value: object) -> str:
     """Describe rejected values even beyond CPython's decimal rendering cap."""
     try:
         shown = repr(value)
-        # A default repr carries an address ("<object object at 0x10...>"),
-        # which differs per run; the type alone is the useful part.
-        return f"<{type(value).__name__}>" if " at 0x" in shown else shown
     except ValueError:
         if isinstance(value, int):
             sign = "negative " if value < 0 else ""
@@ -29,6 +30,13 @@ def _argument_repr(value: object) -> str:
         if isinstance(value, list):
             return "[" + ", ".join(_argument_repr(item) for item in value) + "]"
         return f"<{type(value).__name__}>"
+    except Exception:  # A caller's ``__repr__`` that raises (RuntimeError).
+        return f"<{type(value).__name__}>"
+    if isinstance(value, str):
+        return shown  # The caller's own text, even one reading " at 0x".
+    # A default repr carries an address ("<object object at 0x10...>") that
+    # differs per run; strip it, keeping the rest ("[<object object>]").
+    return _ADDRESS.sub("", shown)
 
 
 def check_whole(value: object, name: str) -> int:

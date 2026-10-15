@@ -162,7 +162,10 @@ def _input_sentence(facts: LanguageInfo) -> str:
     """Describe this language's stdin in one line, with an example."""
     if facts["input_encoding"] is None:
         return "none"
-    zero, one = facts["input_encoding"]
+    # Escaped: Unary's zero is NUL, written raw into the terminal.
+    zero, one = (
+        c if c.isprintable() else repr(c)[1:-1] for c in facts["input_encoding"]
+    )
     shape = str(facts["input_shape"])
     example = f"{one}{zero}"
     if shape == "row_index":

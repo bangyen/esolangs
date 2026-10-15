@@ -387,6 +387,8 @@ class _Machine:
 
     reproducible_seed = 0
     ip_shape = "grid"
+    #: ``i`` pushes -1 at EOF and the run goes on (underfed XOR printed -48).
+    eof_is_a_value = True
 
     def __init__(
         self, code: Sequence[str], io: IO, rng: Randomness | None = None

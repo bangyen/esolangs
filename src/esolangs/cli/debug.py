@@ -105,6 +105,12 @@ def _debug(rest: list[str]) -> None:
         _fail(exc)
     except ValueError as exc:
         _fail(f"{language}: {exc}")
+    if not dbg.vm.steppable_to_answer:
+        # A Painter Ant: `run` prints its grid, `debug` showed '' unexplained.
+        sys.stderr.write(
+            f"note: {language} answers only through `esolangs run`; stepped, "
+            f"it never halts\n"
+        )
     breakpoints_set = False
     if "--break-on-output" in options:
         if not options["--break-on-output"]:

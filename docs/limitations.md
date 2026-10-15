@@ -236,10 +236,10 @@ requires a construction exemption rather than a sub-gate bound.
 - Dimensional is a lookup that names no decision-tree node.
 - LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 
-The sharing-helper presence proxy is enforced for 48 tree-shaped generators
-by `tests/generators/test_boolean_sharing_catalogue.py`: 44 reference a
-canonical helper (`subtree_ids`, `SubtreeDiagram`), three a declared local
-helper, and one is exempt. Presence does not establish complete sharing.
+The sharing-helper presence proxy is enforced for 49 tree-shaped generators
+by `tests/generators/test_boolean_sharing_catalogue.py`: 32 reference a
+canonical helper (`subtree_ids`, `SubtreeDiagram`), eight a declared local
+helper, and nine are exempt. Presence does not establish complete sharing.
 
 - Underload references a canonical sharing helper.
 - Unlambda references a canonical sharing helper.
@@ -333,7 +333,8 @@ The collection has 81 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
-Its floor is 31, and all ten classics have generators. Removed: unused
+Its floor is 31; every language but the three interpreter-only classics
+(Deadfish, HQ9+, Nope.) has a generator. Removed: unused
 ordinary imperative entries with shared-shim generators; Nopstacle for
 incompatible embeds; ZTOALC L for a searched syntax-level lookup table. The 2D screen intersected
 1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
