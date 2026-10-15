@@ -158,12 +158,6 @@ proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
 
-# language-owners: ["A Painter Ant"]
-# Not in `just test` or CI; run it when A Painter Ant's generator changes.
-# re-check the A Painter Ant uniform-in-n proof
-apa-proof:
-    {{PYTHON}} -m esolangs.languages.a_painter_ant.tests.proof_a_painter_ant
-
 # clean generated files
 clean:
     #!/usr/bin/env bash
