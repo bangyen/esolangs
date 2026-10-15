@@ -1,28 +1,35 @@
-"""Build a Line program computing a given boolean truth table directly.
+"""Line Boolean program generator: a ``?`` tree over inputs read into cells.
 
-No brainfuck intermediate: Line's ``i`` reads a whole number and ``o``
-prints one, so 0/1 is exactly what ``IO`` hands over and no ASCII offset
-enters.  The program reads each input into its own cell, then walks a ``?``
-tree that tests only the inputs its subtree depends on: a level whose
-halves agree is skipped, so a constant is one leaf and an ignored input
-is read but never tested.  A leaf prints the cell it just tested, after
-one ``+`` or ``-`` when the entry differs from that bit; a constant has no
-test and prints the unread cell ``n``.  ``truth_table`` is a binary string of
-length ``2**n``, MSB first. Arms use measured subtree extents with one cell
-of clearance for forward-only subtrees, two otherwise. A bounded ancestor
-return shares a repeated nonconstant residual when it saves area within
-5n commands: clear a consumed input
-and re-enter its zero arm. Reads and the tape footprint stay unchanged.
-Projected loaders store only essential inputs: ignored reads overwrite the
-next kept slot, or one spare slot after the last kept input. Projected trees
-and ancestor returns compete by emitted area, including balanced layouts.
-Complete ordered residual folds share forward joins: the saved loader rewind
-pays for join transitions, and their measured area must beat the tree.
-Shared destination moves allow narrower nonterminal forks. Input-order streaming
-also shares reads on stems, overwriting cell zero and draining constant tails;
-its fresh output cell stays within the original tape. Projected streaming drains
-ignored inputs on essential stems, avoiding test-free layers. Complete folds win
-fallback area ties; larger drawings retain the smaller fallback.
+Line's ``i`` reads a whole number and ``o`` prints one, so 0/1 is what ``IO``
+hands over and no ASCII offset enters.  Reads each input into its own cell,
+then walks a ``?`` tree testing only the inputs its subtree depends on: a
+level whose halves agree is skipped, so a constant is one leaf and an ignored
+input is read but never tested.  A leaf prints the cell it just tested, after
+one ``+`` or ``-`` when the entry differs from that bit; a constant prints the
+unread cell ``n``.  Arms use measured subtree extents with one cell of
+clearance for forward-only subtrees, two otherwise.
+
+Candidates compete by emitted area; the smallest wins:
+
+- Ancestor return: shares a repeated nonconstant residual when it saves area
+  within 5n commands, clearing a consumed input and re-entering its zero arm.
+  Reads and tape footprint stay unchanged.
+- Projected loader: stores only essential inputs; ignored reads overwrite the
+  next kept slot, or one spare slot after the last kept input.
+- Ordered residual folds: share forward joins; the saved loader rewind pays
+  for join transitions, and measured area must beat the tree.  Shared
+  destination moves allow narrower nonterminal forks.
+- Input-order streaming: shares reads on stems, overwriting cell zero and
+  draining constant tails; its fresh output cell stays within the original
+  tape.  The projected form drains ignored inputs on essential stems,
+  avoiding test-free layers.
+
+Complete folds win fallback area ties; larger drawings retain the smaller
+fallback.
+
+Size:
+    Parity and and grow linearly in n, random in T; n=10 parity: 1,892,800
+    codels, n=10 and: 1,691,200 codels, n=8 random 1847: 19,359,600 codels.
 """
 
 from __future__ import annotations

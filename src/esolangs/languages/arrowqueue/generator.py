@@ -1,12 +1,20 @@
-"""Boolean-function generator for ArrowQueue: halt = 0, loop forever = 1.
+"""ArrowQueue Boolean program generator: a Horner cascade over one row per entry.
 
 A cascade: each stage doubles the queued markers then crosses the cell
-(Horner); one ``+`` per row turns right at the indexed row.  The tree it
-replaced (``n <= 4``) was at most 3.9% smaller at n=4 and kept ignored inputs.
-Rows are reached by a Horner count, so no subtree is drawn to share.
-Narrow paths drop ignored inputs too (area -46.8% / -70.5% at n=8, 1 / 2 ignored).
-Constant roots halt on an empty pop or circulate one right heading; input
-setters remain off those paths, as they do for ignored cascade inputs.
+(Horner); one ``+`` per row turns right at the indexed row.  Rows are
+reached by a Horner count, so no subtree is drawn to share.  Narrow paths
+drop ignored inputs too.  Constant roots halt on an empty pop or circulate
+one right heading; input setters remain off those paths, as they do for
+ignored cascade inputs.
+
+Size:
+    O(T) rows of three; n=10 random 1847: 13,671 chars, n=10 and: 5,500 chars.
+    Narrow paths drop ignored inputs for area -46.8% / -70.5% at n=8, 1 / 2
+    ignored.
+
+Decisions:
+    The decision tree (``n <= 4``) was at most 3.9% smaller at n=4 and kept
+    ignored inputs.
 """
 
 from esolangs.generation.helpers import (

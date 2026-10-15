@@ -1,4 +1,19 @@
-"""Boolean-function generator for Forbin."""
+"""Forbin Boolean program generator: painted blocks behind a branch tree.
+
+One multi-assignment reads all ``8n`` input bits and keeps each low bit.  The
+last seven inputs address a block of literal entries through a shift
+register in ``table``; the rest pick the block with range-loop ifs, and a
+constant span collapses to a call to a printer.  Repeated blocks or subtrees
+become one function nested in ``main``.
+
+Size:
+    Two characters per painted entry, O(T); n=10 random 1847: 3,472 chars,
+    n=12 random 1847: 10,230 chars.
+
+Decisions:
+    Sharing a repeated block or subtree: tables tiled from two random
+    128-entry blocks shrink n=9 -20.5%, n=10 -42.8%; random tables unchanged.
+"""
 
 import re
 from collections import Counter

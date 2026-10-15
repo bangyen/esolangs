@@ -1,4 +1,14 @@
-"""Boolean-function generator for Back."""
+r"""Back Boolean program generator: a decision tree over a loaded tape.
+
+A load column embeds each input once into its tape cell (a primer ``-``
+plus the input's run, two rows for either bit); each tree node ``+\>``
+tests the current cell and advances, and a leaf walks to the answer cell,
+flips it for a 1 and halts.  Fall-through sharing reuses an equal zero-side
+subtree, and ``width`` selects a descending layout or a parity accumulator.
+
+Size:
+    O(T) cells; n=8 random 1847: 2,443 chars, n=10 random 1847: 7,807 chars.
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass

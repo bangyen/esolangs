@@ -1,7 +1,13 @@
-"""Boolean-function generator for B-tapemark.
+"""B-tapemark Boolean program generator: a copied table walked by weighted stages.
 
-One copied cell a row is the indexed walk's target. Constant roots read all
-inputs into disposable marks and print a literal answer without that walk.
+The table is copied onto the blank grid, one cell per row; each input's stage
+walks the mark pointer by its weight when the bit is 0, and ``+`` prints the
+mark it ends on.  Constant roots read all inputs into disposable marks and
+print a literal answer without that walk.
+
+Size:
+    O(T) source and construction in both layouts; the narrow XOR2 needs
+    nine columns.  n=10 parity: 6,809 chars, n=10 random 1847: 6,809 chars.
 """
 
 from __future__ import annotations

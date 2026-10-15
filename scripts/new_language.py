@@ -78,10 +78,18 @@ def _slug(name: str) -> str:
 #: Left in a stub's docstring until it is written; ``check`` looks for it.
 PLACEHOLDER = "<describe"
 
-_GENERATOR = '''"""Boolean program generator for {name}.
+_GENERATOR = '''"""{name} Boolean program generator: <describe the construction>.
 
-<describe the construction: how a node reads its input, branches, and
-answers, and the size and build bound (O(T) for a decision tree)>
+<describe how the program reads its inputs, branches, and answers>
+
+Size:
+    <describe the growth in T or n>; n=4 parity: <count> chars
+
+Raises:
+    GeneratorCapError: <describe the cap; drop this section without one>
+
+Decisions:
+    <describe a rejected alternative and the measurement that rejected it>
 """
 
 from esolangs.registry._language import Language

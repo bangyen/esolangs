@@ -1,4 +1,19 @@
-"""Boolean-function generator for Clockwise."""
+"""Clockwise Boolean program generator: a flat indexed lookup on a ring.
+
+One ``!`` per entry in a row of ``!``/``-`` pairs, a Horner-rule index (MSB
+first) in the accumulator, and one doubling gadget per input (widths double
+upward).  An ignored input's seven reads run just before the next indexed
+input's, which overwrite the bit they leave; inputs past the last essential
+one are read on the return rail after printing.  A literal row has no
+subtrees to fold or share.  Constants read a full input rotation, clear the
+accumulator and emit the seven answer bits on a closed two-column ring.  A
+``width`` exceeded rotates the program counterclockwise (two columns for
+n <= 2, else ``2*n + 5``).
+
+Size:
+    O(T) cells; n=8 random 1847: 5,048 chars, n=10 random 1847: 17,740 chars,
+    n=12 random 1847: 67,368 chars.
+"""
 
 from math import ceil
 from typing import NamedTuple

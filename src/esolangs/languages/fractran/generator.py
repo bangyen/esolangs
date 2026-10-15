@@ -1,12 +1,15 @@
-"""FRACTRAN boolean templates: a decision tree whose equal subtables share a state.
+"""FRACTRAN Boolean program generator: a tree whose equal subtables share a state.
 
 Each input is the exponent of its own prime in the starting value; a state
 prime is a node, its two fractions test one input and the first-match rule
 is the else-branch.  Sharing makes the tree a reduced decision diagram, at
 most ``min(2**d, 2**2**(n - d))`` states at depth ``d``, ``O(T / log T)``
-in all, each written in ``O(log T)`` digits: ``Theta(T)`` text, and at most
-``n + 1`` fractions fire a run.  Every base is a prime below the text's
-length, which the interpreter's index factors and buckets by state.
+in all, each written in ``O(log T)`` digits.  Every base is a prime below the
+text's length, which the interpreter's index factors and buckets by state.
+
+Size:
+    Theta(T) text, at most ``n + 1`` fractions fire a run; n=10 parity: 364
+    chars, n=10 random 1847: 4,524 chars.
 """
 
 from __future__ import annotations

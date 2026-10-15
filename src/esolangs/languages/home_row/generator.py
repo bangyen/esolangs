@@ -1,4 +1,18 @@
-"""Boolean template generator for home row."""
+"""Home Row Boolean program generator: a weighted index counted down a leaf chain.
+
+Each input adds its binary weight to an index cell; guarded leaves then count
+the index down, printing at the selected row.  Ignored inputs keep a
+zero-weight gate; a constant table discards all setters and prints a literal.
+
+Size:
+    Up to 2**n leaves in a linear chain; n=10 and: 3,209 chars, n=10 random
+    1847: 8,711 chars, n=10 parity: 10,359 chars.
+
+Decisions:
+    Sharing runs of equal rows through ``js`` clamped decrements saves, at n=7,
+    33.3% on random, 39.8% on tiled, 29.7% with one half constant and 57.4%
+    with constant blocks.
+"""
 
 from itertools import groupby
 

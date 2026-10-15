@@ -1,4 +1,4 @@
-"""Boolean-function generator for Flowchart.
+"""Flowchart Boolean program generator: a deque lookup, or a decision tree.
 
 I/O is byte-oriented, low bit first.  Each input is a ``'0'``/``'1'``
 byte whose low bit is the value, so input ``k`` is read by eight ``/ /``
@@ -9,7 +9,12 @@ whole byte.  The answer is printed as R and then the seven high bits of
 ASCII ``'0'`` (:data:`_ANSWER`), so the output byte is ``'0'`` or ``'1'``.
 
 The default is a deque lookup, one pushed entry a row (a run of equal entries
-sets the register once), so it has no subtrees to share.
+sets the register once), so it has no subtrees to share.  With ``width`` it
+draws a decision tree, stacked if narrower, repeating subtrees once.
+
+Size:
+    O(T) characters; n=10 random 1847: 15,154 chars, n=12 random 1847:
+    58,138 chars.
 """
 
 from collections import Counter

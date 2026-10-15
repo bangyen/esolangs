@@ -1,11 +1,18 @@
-"""Befunge boolean program builder: the grid is the lookup table.
+"""Befunge Boolean program generator: the grid is the lookup table.
 
-``befunge(truth_table)`` reads one ``0``/``1`` integer token per input, folds them
-into a row index with Horner's rule, and reads the answer out of a grid the
-generator wrote, one cell per entry through ten inputs and six bits per cell
-above that. ``g`` addresses data the instruction pointer never walks: O(T)
-cells of source and O(n) executed commands, no branch and no loop; a grid
-has no subtrees to fold or share.
+Reads one ``0``/``1`` integer token per input, folds them into a row index
+with Horner's rule, and ``g`` fetches the answer from a table the instruction
+pointer never walks: one cell per entry through ten inputs, six per cell above.
+
+Size:
+    O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 64
+    chars, n=10 random 1847: 1,118 chars, n=13 random 1847: 1,545 chars.
+
+Raises:
+    GeneratorCapError: more than thirteen inputs, past the 80x25 grid.
+
+Decisions:
+    A grid has no subtrees, so nothing folds or is shared.
 """
 
 from __future__ import annotations

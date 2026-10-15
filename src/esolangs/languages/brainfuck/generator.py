@@ -1,4 +1,24 @@
-"""Build brainfuck Boolean programs with folded trees or affine streams."""
+"""brainfuck Boolean program generator: a flag-guarded tree or an affine stream.
+
+Input bits sit at cells ``2i`` with flags at ``2i+1``; branches clear both and
+one final print reads the result.  Equal sibling halves merge; repeated
+residuals use one unused flag per level and emit once in depth order, and
+banks defer several same-level blocks (two-input banks use four-bit labels
+with a retired input holding the high bit).  Affine tables stream through
+three cells instead, at most 66 commands per selected input.
+
+Size:
+    O(T) for dense tables, O(n) for affine ones; n=10 parity: 760 chars,
+    n=12 parity: 902 chars, n=10 random 1847: 10,792 chars.
+
+Decisions:
+    Flags cut n=10 sparse from 2,646 to 754 chars; folding and shared output
+    cut n=10 XOR from 77,939 to 18,495; the affine stream cut n=16 parity
+    from 672,691 to 1,186.  An ignored input read bare into the next kept
+    cell is 1.9% smaller at n=8 with one ignored, 6.7% with two; a trailing
+    one keeps its subtract, as ASCII 48/49 breaks the Workspace bound and
+    ``,[-]`` the execution bound (289 > 251 steps).
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass

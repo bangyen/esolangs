@@ -1,4 +1,16 @@
-"""Smallfuck boolean generator: a decision tree with banded result cells."""
+"""Smallfuck Boolean program generator: a decision tree with banded result cells.
+
+Input ``i`` is stored in cell ``3 i``; each level splits on its bit with a
+flag cell, XORing the answer into one result cell per band of three levels,
+which transfers to the parent band.  Cell 2 holds the answer.  Repeated
+residuals are deferred behind level flags or same-level banks, and repeated
+two-input functions share a decoder.
+
+Size:
+    O(T) for dense tables, about n**2 for parity and linear in n for ``and``;
+    n=10 random 1847: 12,363 chars, n=10 parity: 2,424 chars, n=10 and: 224
+    chars.
+"""
 
 import re
 from collections.abc import Callable

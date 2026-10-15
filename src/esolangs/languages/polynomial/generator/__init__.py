@@ -1,4 +1,4 @@
-"""Boolean-function generator for Polynomial.
+"""Polynomial Boolean program generator: instructions as polynomial roots.
 
 :mod:`esolangs.languages.polynomial.generator.algebra` is the algebra; this decides the
 instructions.  Every instruction is priced by opcode: ``[a, b]`` is the
@@ -6,8 +6,22 @@ factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
 ``+=`` at ``b == 1``, ``-=`` 2, ``*=`` 3, ``//=`` 4 and ``if > 0`` at
 ``v == 1``, ``endif`` 2, ``if < 0`` 3, ``if == 0`` 4.  So subtraction is
 ``+=`` with a negative operand, tests are ``if > 0`` only, and ``*=``/
-``//=`` are kept for the two places nothing cheaper reaches: dense n == 6
-renders 1.9x shorter than the ``-= 1; if == 0`` builder, n == 7 2.1x.
+``//=`` are kept for the two places nothing cheaper reaches.  Every program
+is a hybrid: ``k`` tree levels above one state machine per surviving
+residual, the shortest rendering winning.  An expansion bounded past
+1,000,000,000 characters also raises.
+
+Size:
+    Grows with the instruction count and the prime sizes; n=8 parity: 47,037
+    chars, n=8 random 1847: 1,600,593 chars, n=16 and: 234,362 chars.
+
+Raises:
+    GeneratorCapError: the cheapest construction needs more than 1934
+    instructions (dense n=11 needs 2447).
+
+Decisions:
+    Dense n == 6 renders 1.9x shorter with ``*=``/``//=`` than with the
+    ``-= 1; if == 0`` builder, n == 7 2.1x.
 """
 
 from collections.abc import Iterator

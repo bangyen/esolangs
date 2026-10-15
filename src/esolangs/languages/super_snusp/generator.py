@@ -1,7 +1,16 @@
-"""Boolean-function generator for Super SNUSP.
+"""Super SNUSP Boolean program generator: a packed-integer lookup.
 
-Tables use a linear packed-integer lookup, and never the language's random
-``=`` opcode.  A packed integer has no subtrees to fold or share.
+Horner's rule folds the inputs into a row in cell 0; cell 1 builds the table
+as one binary integer, shifts it by the row and takes the low bit.  The
+random ``=`` opcode is never used.  At n=2 five tables use a fixed short form.
+
+Size:
+    One ``*`` per entry plus one ``)`` per one entry, so T to 2T chars;
+    n=2 parity: 16 chars, n=16 and: 65,863 chars, n=16 parity: 98,630 chars.
+
+Decisions:
+    A packed integer has no subtrees to fold or share.  A bounded ANF
+    evaluator beat the lookup by only 1.92% at its n=4 cap, under the 10% bar.
 """
 
 import re

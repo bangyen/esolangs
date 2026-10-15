@@ -1,4 +1,4 @@
-"""Boolean-function generator for A Painter Ant (parameterized convention).
+"""A Painter Ant Boolean program generator: a corridor the inputs walk by weight.
 
 For indexed tables, row -1 is the never-painted lane, row 0 the white
 corridor, row +1 the answers. Each input is ``n`` (into the lane) or ``N``
@@ -6,9 +6,16 @@ corridor, row +1 the answers. Each input is ``n`` (into the lane) or ``N``
 ``E`` x ``2**(n-1-i)`` which only the corridor allows, then ``SN``; a pass
 ends on the answer, or for a one on the white corridor above it.  The
 corridor ends where the trailing run of equal answers starts: a walk halts
-there, and every index past it shares its answer.  Interior runs stay: the
-ant counts through every row, so no subtree folds or is shared.
-Constant roots restore each input to one white origin, then leave it black or white.
+there, and every index past it shares its answer.  Constant roots restore
+each input to one white origin, then leave it black or white.
+
+Size:
+    O(T) characters, one corridor cell per row; n=10 parity: 7,707 chars,
+    n=10 and: 6,174 chars.
+
+Decisions:
+    Interior runs stay: the ant counts through every row, so no subtree
+    folds or is shared.
 """
 
 from esolangs.generation.constant_projection import balance_legacy_walk

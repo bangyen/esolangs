@@ -1,8 +1,12 @@
-"""Boolean-function generator for Eval.
+"""Eval Boolean program generator: a literal table halved once per input.
 
-Named ``eval_lang`` so the module does not read as the builtin ``eval``.
+The table's bits are pushed on one stack and each input halves it (a zero
+discards the top half; a one reverses, discards, reverses back).  The halves
+are `;` runs totalling T/2 + T/4 + ... < T.
 
-The table is a literal halved by position: no subtrees to fold or share.
+Size:
+    About 2T chars, no subtrees to fold or share; n=10 random 1847: 2,178
+    chars, n=16 and: 131,280 chars.
 """
 
 from esolangs.generation.helpers import (

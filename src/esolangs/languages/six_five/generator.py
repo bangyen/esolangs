@@ -1,10 +1,21 @@
-"""Boolean-function generator for 6:5.
+"""6-5 Boolean program generator: a decision tree of ``7V`` tests.
 
 :func:`six_five` routes a decision tree that folds constant subtrees,
 jumps to its repeated subtrees where that is shorter, shares duplicates
-past the label budget, falls back to a positional walk
+past the label budget (35), falls back to a positional walk
 (:func:`_six_five_walk`) when the distinct subtrees overflow, and past 35
 inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
+
+Size:
+    O(T) worst case, small for structured tables; n=10 parity: 197 chars,
+    n=10 and: 132 chars, n=10 random 1847: 5,292 chars.
+
+Decisions:
+    The positional walk spends exactly ``n`` labels: dense n == 10 is 10
+    labels, 5309 chars, 1024 rows in 12s.  Counting labels exactly rather
+    than as a bound took one n == 6 table from a tree at 341 to 561.
+    Dropping the old DAG precheck shrinks 50 seeded dense n=7 tables from
+    37,828 to 17,803 characters.
 """
 
 import functools

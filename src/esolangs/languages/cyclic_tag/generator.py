@@ -1,8 +1,8 @@
-"""Cyclic tag boolean generator: zeros in the queue count the row.
+"""Cyclic tag Boolean program generator: zeros in the queue count the row.
 
 Each step deletes the queue's first bit and, if it was 1, appends the
 current production; the production pointer advances either way.  The queue
-here is the inputs, then a marker ``1``:
+is the inputs, then a marker ``1``:
 
 - Production i belongs to input i: a 1 appends two ``0`` per unit of the
   input's weight, so the queue gains 2 * row zeros.
@@ -14,10 +14,12 @@ here is the inputs, then a marker ``1``:
 
 ``0110`` on inputs 1, 0 (row 2) is ``0000;00;1;0;;1;;1;;0;,101``.  Its queue
 goes 101, 010000, 10000, 00001, 0001, 001, 01, 1, then 1 again as row 2
-appends its answer, then empty: it prints 1.
-
-A rule runs once a cycle, so none is shared.  A constant table is one empty
+appends its answer, then empty: it prints 1.  A constant table is one empty
 production: the inputs are deleted unread, then the literal answer.
+
+Size:
+    About 5T chars, two productions per row, none shared (a rule runs once a
+    cycle); n=10 random 1847: 5,141 chars, n=16 and: 327,713 chars.
 """
 
 from esolangs.generation.constant_projection import balance_legacy_walk

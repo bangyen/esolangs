@@ -1,4 +1,4 @@
-"""Underload boolean generator: each input picks a half of a promise tree.
+"""Underload Boolean program generator: each input picks a half of a promise tree.
 
 The template opens with one seven-character slot per input, filled with a
 selector: ``(()!!^)`` for 0 or ``(~:!!^)`` for 1.  The rest pushes the
@@ -13,12 +13,20 @@ on top, and the input's ``^`` keeps one and runs it: 0 runs ``!^`` (drop
 both selectors have one width and the template one shape per table.  A leaf
 pushes its bit, ``(0)`` or ``(1)``.
 
-A repeated subtree ``X`` is pushed once
-as ``(X)`` at a node above its copies and *carried*: kept on top, with the
-next input block right below it.  A carrying node opens with ``~`` to put
-that input back on top, and its selector leaves ``X`` on top again for the
-half it runs, so only one half ever needs it and nothing is duplicated.  A
-copy of ``X`` is then ``^``, and a half without one drops it with ``!``.
+A repeated subtree ``X`` is pushed once as ``(X)`` at a node above its copies
+and *carried*: kept on top, with the next input block right below it.  A
+carrying node opens with ``~`` to put that input back on top, and its selector
+leaves ``X`` on top again for the half it runs, so only one half ever needs it
+and nothing is duplicated.  A copy of ``X`` is then ``^``, and a half without
+one drops it with ``!``.
+
+Size:
+    Each node is built as text and the shortest candidate kept; a half is
+    copied into every enclosing node, O(T * n) characters.  n=10 parity: 3,695
+    chars, n=10 and: 222 chars, n=10 random 1847: 6,138 chars.
+
+Decisions:
+    A cost model plus writer was no faster than building text to n=18.
 """
 
 import re

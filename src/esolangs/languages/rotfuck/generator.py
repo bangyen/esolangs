@@ -1,23 +1,22 @@
-"""Boolean-function generator for ROTfuck, in either rotation direction.
+"""ROTfuck Boolean program generator: a tape lookup spelled against the rotation.
 
 ROTfuck turns every command one step around its cycle after each executed
-command, so what a character *means* depends on how many commands have run.
-The generator writes a brainfuck program and :class:`_Builder` spells each
-command against the cycle in force -- backward by default, forward when asked.
+command, so a character's meaning depends on how many commands have run.
+The generator writes brainfuck and :class:`_Builder` spells each command
+against the cycle in force, backward by default or forward by ``rotation``.
+The two cycles read the eight commands in opposite directions, each keeping
+``[`` and ``]`` adjacent, so the phase arithmetic is the same for both.
 
-``rotation`` is the builder's only parameter: the two cycles are the eight
-commands read in opposite directions, so each holds ``[`` and ``]`` adjacent
-and the phase arithmetic below is the same for both.  Which command reads as
-a bracket to a seek depends on the cycle (:func:`_shows`), and the builder
-spells the intended command through the cycle it will execute under.
+A bracket seeks its partner before rotating, so a loop is sound when its ``[``
+and ``]`` execute at the same rotation modulo eight (the *phase*) and nothing
+between them reads as a bracket there (:func:`_shows`).  Then every trip
+leaves the rotation where it found it, and a skip, an exit and a jump back all
+resume one past the phase.  A body is padded to seven modulo eight with
+no-op runs (:data:`_PADS`), each command placed to hide from every open seek.
 
-Loops are where that bites.  A bracket seeks its partner before rotating, so
-a loop is sound when its ``[`` and ``]`` execute at the same rotation modulo
-eight -- the *phase* -- and nothing between them reads as a bracket there.
-Then every trip leaves the rotation where it found it, and a skip, an exit
-and a jump back all resume one past the phase.  So a body is padded to
-seven modulo eight with runs that change nothing (:data:`_PADS`), and every
-command in it is placed at a rotation that hides it from each open seek.
+Size:
+    O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
+    strides; n=10 random 1847: 4,061 chars, n=10 and: 1,756 chars.
 """
 
 import heapq

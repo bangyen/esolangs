@@ -1,7 +1,19 @@
-"""INTERCAL boolean generator: a fully grouped Shannon expression.
+"""INTERCAL Boolean program generator: a fully grouped Shannon expression.
 
-Subexpressions the expression would repeat are assigned once to spare
-variables and named where they recur (:func:`_intercal_shared`).
+Inputs are read into ``.1``..``.n`` by a polite ``@@`` template, tested in
+input order, and the result is printed with ``READ OUT``.  Subexpressions the
+expression would repeat are assigned once to spare variables and named where
+they recur (:func:`_intercal_shared`).
+
+Size:
+    O(n) for structured tables, O(T) for random; n=10 parity: 1,262 chars,
+    n=10 random 1847: 8,947 chars.
+
+Decisions:
+    Greedy input order costs +2.14% on three inputs and +1.68% on the
+    five-input sample.  Narrower rebuilds (unsimplified, per-operation names,
+    split mingles) were retired: at n=7..10 wrapping the natural program is
+    smaller at every width from 1 to 259, by 26.2% (n=7) to 32.3% (n=10).
 """
 
 import re

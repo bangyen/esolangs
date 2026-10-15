@@ -162,6 +162,13 @@ in the language's own `tests/spec_triggers.json` (a program and the exception
 `Raises:` sections are held to the same standard by
 `tests/api/test_public_docstrings.py`.
 
+A generator's module docstring follows the `just new-language` stub: prose,
+then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor,
+`n=10 random 1847: 1,118 chars`, which
+`tests/generators/test_generator_docstrings.py` regenerates, so a size change
+updates it.  `Raises:` lists `GeneratorCapError` wherever the generator can
+refuse a table, with a trigger in `tests/generator_triggers.json`.
+
 ## What makes a generator optimization worth shipping
 
 A generator guarantees its size class (the Scaling column in

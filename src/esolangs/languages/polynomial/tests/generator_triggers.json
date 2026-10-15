@@ -1,0 +1,9 @@
+{
+ "triggers": [
+  {
+   "table": "n=11 random 1847",
+   "expect": "GeneratorCapError",
+   "claim": "the cheapest construction needs more than 1934 instructions (dense n=11 needs 2447)"
+  }
+ ]
+}

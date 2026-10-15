@@ -1,23 +1,23 @@
-"""Boolean-function generator for Crement: a decision tree over shared testers.
+"""Crement Boolean program generator: a decision tree over shared testers.
 
 Crement has no input instruction, so each input is embedded once as the
 *data* of a jump (:data:`PAIR`) that the tree reads by self-modification.
-Input ``i`` owns a two-line tester (``+J 0 b`` taken when the bit is 1,
-then ``+J 0 1``) whose targets a node fills in: two ``+A`` writes patching
-the one- and zero-targets to its children, then a jump into the tester.
-``+A t d`` stores ``d + 1``, so a child at line ``c`` is written ``c - 1``.
+Input ``i`` owns a two-line tester (``+J 0 b`` taken when the bit is 1, then
+``+J 0 1``) whose targets a node fills in: two ``+A`` writes patching the one-
+and zero-targets to its children, then a jump into the tester.  ``+A t d``
+stores ``d + 1``, so a child at line ``c`` is written ``c - 1``.  Layout: a jump
+to the root, the halt, ``+J @ 1`` (a one-step cycle), ``2 n`` tester lines,
+then the nodes, zero subtree first; constant subtrees fold to the two gadgets.
+A child is only an address, so a subtree equal to one already emitted at its
+level is named, not re-emitted, and a node with equal halves is skipped.
 
-Layout: a jump to the root, the halt, ``+J @ 1`` (a one-step cycle), then
-``2 n`` tester lines, then the nodes, zero subtree first so its root is
-``@+1``; constant subtrees fold to the two gadgets.  Halts for a 0 entry,
-diverges for a 1: at most ``5 n + 2`` commands over ``3 (2**n - 1) + 2 n + 3``
-lines.
+Size:
+    At most ``5 n + 2`` executed commands over ``3 (2**n - 1) + 2 n + 3`` lines;
+    n=10 parity: 659 chars, n=10 random 1847: 6,363 chars.
 
-Since a child is only an address, a subtree equal to one already emitted at
-its level is not emitted again: the patch names the earlier copy, and a node
-whose halves are equal is skipped for its child.  Over the 256 three-input
-tables that is 39,156 to 37,862 characters (3.3%); over 200 seeded
-five-input tables, 114,791 to 83,070 (27.6%).
+Decisions:
+    Sharing cuts the 256 three-input tables from 39,156 to 37,862 characters
+    (3.3%) and 200 seeded five-input tables from 114,791 to 83,070 (27.6%).
 """
 
 from collections.abc import Callable

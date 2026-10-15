@@ -1,4 +1,15 @@
-"""Boolean generator for Suffolk: shared NOR cofactors or a countdown sweep."""
+"""Suffolk Boolean program generator: shared NOR cofactors or a countdown sweep.
+
+Returns the shorter of two programs over the essential inputs: a mux DAG of
+NOR gates sharing equal cofactors (admitted only when it fits the workspace
+ledger), and a countdown sweep that counts the table's steps up and down.
+Either prints the answer from the accumulator after reading to exhaustion.
+
+Size:
+    DAG route O(T) (nodes limited to O(n), rendering O(n**2)); sweep route
+    O(T).  n=10 and: 1,910 chars, n=10 majority: 6,308 chars, n=10 random
+    1847: 7,780 chars.
+"""
 
 from typing import NamedTuple
 

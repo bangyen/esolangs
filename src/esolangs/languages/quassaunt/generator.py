@@ -1,4 +1,4 @@
-"""Boolean program generator for Quassaunt: a shared decision diagram.
+"""Quassaunt Boolean program generator: a shared decision diagram.
 
 Every distinct subtable's code is stored once, as a one-string set in a
 global ``[id]``, and a node runs a child by obtaining it and turning the
@@ -10,7 +10,10 @@ subset only when ``c`` is ``1``, so ``%%Ifpropersubset`` runs the right
 child.  A node whose halves agree, and a constant subtable's chain, reads
 its bit into a local and runs its child with ``%%Evaluatereplace``.
 Names are ``subtree_ids`` ids, the chains ``z<depth>``/``o<depth>``.
-Size and build time O(T): at most T - 1 diagram nodes and 2n chain nodes.
+
+Size:
+    O(T) size and build time: at most T - 1 diagram nodes and 2n chain
+    nodes; n=10 random 1847: 51,591 chars, n=10 parity: 4,296 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids

@@ -1,29 +1,23 @@
-"""Boolean-function generator for CV(N)(C).
+"""CV(N)(C) Boolean program generator: a decision tree on one accumulator.
 
-One accumulator, one input at a time, so a table is a decision tree.  The
-read is ``s``; the branch is ``ɰ`` ... ``ʋ`` (``ɰ`` jumps past ``ʋ`` on
-nonzero), one codepoint where the voiceless ``ɰ̊`` the prologue needs is two.
-A leaf prints with ``θ`` (the *number* print, so the output is the digit
-itself), leaves the accumulator at 1, and jumps with ``j`` to syllable 1,
-where one shared gadget squares its way past the end of the program and
-halts.  A constant subtree folds to one leaf but keeps its reads, the last
-floored by ``ə``.
+One read ``s`` and one ``ɰ`` ... ``ʋ`` branch per input (``ɰ`` jumps past ``ʋ``
+on nonzero; one codepoint where the prologue's voiceless ``ɰ̊`` is two).  A leaf
+prints with ``θ`` (the number print, so the output is the digit), leaves the
+accumulator at 1 and ``j``-jumps to syllable 1, where one shared gadget squares
+past the end of the program and halts.  A constant subtree folds to one leaf but
+keeps its reads, the last floored by ``ə``.  :func:`_render` spells commands as
+the fewest syllables: a consonant takes the next syllable's coda or opens it.
+Fillers ``c`` and ``u`` are inert (empty function cleared or applied).  ``j``
+also shares a repeated subtree (:class:`_Stream`): a later copy climbs to the
+first copy's syllable with ``i``, ``æ``, ``ə`` and jumps, where shorter.
 
-:func:`_render` is the size story: CV(N)(C) admits a nasal and a coda after
-a syllable's vowel, so a consonant command needs no vowel of its own when
-the next command can host it.  Per syllable it takes the cheaper of closing
-with the next consonant as a coda or letting it open the next syllable.  The
-fillers ``c`` and ``u`` are inert because no command here builds a function:
-``c`` clears an already-empty one and ``u`` applies it, leaving the
-accumulator alone.
+Size:
+    O(T) for dense tables, near-linear in n for parity; n=10 parity: 317
+    chars, n=10 random 1847: 5,215 chars, n=12 random 1847: 22,086 chars.
 
-A second construction, hoisting the reads into the deque to test in any
-order, saves 4.87% at n=8, under the 10% bar, and is not built.
-
-``j`` also shares a repeated subtree (:class:`_Stream`): the accumulator
-names a syllable, so a later copy climbs to the first copy's syllable with
-``i``, ``æ`` and ``ə`` and jumps into it, where that is shorter.  Leaves
-halt, so nothing returns.
+Decisions:
+    Hoisting the reads into the deque to test in any order saves 4.87% at n=8,
+    under the 10% bar, and is not built.
 """
 
 import math

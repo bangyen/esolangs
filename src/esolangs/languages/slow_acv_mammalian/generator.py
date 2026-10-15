@@ -1,9 +1,7 @@
-"""Boolean-function generator for SLOW ACV MAMMALIAN.
+"""SLOW ACV MAMMALIAN Boolean program generator: a weighted chain to a flat leaf table.
 
-The default modulo-256 construction chains one read node per input and
-dispatches into a flat leaf table: O(T) size and build (the tree it
-replaced was super-linear, ``S(d) >= (2 + 1/255) S(d-1)``).  Each bit's
-whole effect is banked on array 16's non-head sum as a weight -- the
+The default modulo-256 construction chains one read node per input.  Each
+bit's whole effect is banked on array 16's non-head sum as a weight -- the
 four lightest are banked blind, without ever reading the sum -- and the
 dispatch jump lands on the non-head sum, so the banked total names the
 leaf slot directly.  A leaf clears the accumulator, SPRINTs to a print
@@ -14,8 +12,15 @@ the bounded fixed-point searches raise instead of hanging.
 Three identities carry the control flow, each proved where it is used:
 ``landing = start - 15`` (:func:`_node`), ``target = nonhead + b``
 (:func:`_trampoline`), ``leaf = nonhead of array 16`` (:func:`_weights`).
-Executed evidence: every table through ``n == 3``, plus sampled rows of
-dense tables through ``n == 12``.
+
+Size:
+    O(T) size and build.
+    n=10 random 1847: 144,685 chars, n=12 random 1847: 339,503 chars.
+    Executed evidence: every table through ``n == 3``, plus sampled rows of
+    dense tables through ``n == 12``.
+
+Decisions:
+    The tree it replaced was super-linear, ``S(d) >= (2 + 1/255) S(d-1)``.
 """
 
 from collections.abc import Sequence

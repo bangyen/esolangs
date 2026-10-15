@@ -1,4 +1,4 @@
-"""Boolean program generator for ABCDirection.
+"""ABCDirection Boolean program generator: the table on the tape.
 
 The table, read at its ``k`` essential inputs, goes onto the tape, and the
 inputs walk the tape pointer to the answer; the grid draws no tree.
@@ -22,17 +22,20 @@ inputs walk the tape pointer to the answer; the grid draws no tree.
   then sends the pointer around a 2x2 loop that writes nothing, where the
   interpreter halts.
 
-Constant subtrees are not folded nor repeated ones shared: every row
-shares each input's move, so a constant block still needs a cell for each
-entry the pointer can land on, and sharing a repeated block needs moves
-that differ by path -- the per-path drawing of the ``4**n`` tree this
-replaced.  A wholly constant table is one cell and no gadget.
-
 Five rows: the write row at the bottom, and above it a four-row band the
 select gadgets fill from the right edge, reached by wrapping, under the
-write row's columns.  A random table measures 1,075 cells at ``n = 6`` and
-7.69 a row at ``n = 12``; the decision tree this replaced grew as
-``4**n``, 9,983,952 cells at ``n = 6``.
+write row's columns.  A wholly constant table is one cell and no gadget.
+
+Size:
+    O(T) cells, 7.69 a row at ``n = 12``; n=6 random 1847: 1,079 chars,
+    n=10 random 1847: 8,199 chars (1,075 cells at ``n = 6``).
+
+Decisions:
+    Constant subtrees are not folded nor repeated ones shared: every row
+    shares each input's move, so a constant block still needs a cell for each
+    entry the pointer can land on, and sharing a repeated block needs moves
+    that differ by path -- the per-path drawing of the ``4**n`` tree this
+    replaced (9,983,952 cells at ``n = 6``).
 """
 
 from esolangs.generation.helpers import (

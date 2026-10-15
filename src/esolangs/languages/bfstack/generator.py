@@ -1,12 +1,22 @@
-"""Boolean program generator for BFStack.
+"""BFStack Boolean program generator: byte-indexed row lists under prefix branches.
 
-No call or goto (loops nest) and the stack hides all but its top, so a repeated
-block cannot be reached from a flag.  A node whose four quarters are two
-distinct blocks instead classifies its two prefix bits and branches once, so
-each block is written once.  Two bits only: a classifier's weights sum to
-``2**d - 1``, so wider ones make the worst run exponential, not ``poly n``.
-The byte-indexed decoder lists the rarer value rather than folding a run: it
-has no range test, so each listed row is its own nested loop.
+Up to seven essential inputs are summed into a byte ``1 + row`` and a nested
+subtraction cascade lists the rarer value's rows; wider tables branch on the
+leading input into blocks.  A node whose four quarters are two distinct
+blocks instead classifies its two prefix bits and branches once, so each
+block is written once.
+
+Size:
+    O(T) chars; parity and and are linear in n.  n=10 parity: 2,728 chars,
+    n=10 and: 923 chars, n=10 random 1847: 6,983 chars.
+
+Decisions:
+    No call or goto (loops nest) and the stack hides all but its top, so a
+    repeated block cannot be reached from a flag.  Classifiers take two
+    bits only: their weights sum to ``2**d - 1``, so wider ones make the
+    worst run exponential, not ``poly n``.  The decoder lists the rarer
+    value rather than folding a run: it has no range test, so each listed
+    row is its own nested loop.
 """
 
 from functools import cache

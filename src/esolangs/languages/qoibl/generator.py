@@ -1,6 +1,15 @@
-"""Boolean generator for qoibl.
+"""Qoibl Boolean program generator: one packed binary literal, divided down.
 
-A packed literal has no subtrees to fold or share.
+The whole table is a literal, bit ``k`` holding row ``k``; each input read
+squares and multiplies ``power`` so it ends as ``2**index``, and the printed
+character is ``'0'`` plus the low bit of ``literal // power``.
+
+Size:
+    O(T) characters for the literal, O(n) statements;
+    n=10 parity: 1,728 chars, n=16 random 1847: 66,624 chars.
+
+Decisions:
+    A packed literal has no subtrees to fold or share.
 """
 
 from itertools import combinations

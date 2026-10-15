@@ -1,4 +1,4 @@
-"""Boolean program generator for Caballo: the wiki's conditional as a tree.
+"""Caballo Boolean program generator: the wiki's conditional as a tree.
 
 The inputs are the stack, the first on top.  A node tests the top with
 ``(dip R1+(1+di-)p R0)``: ``d`` drops the stack on a 0 bit, emptying the
@@ -6,7 +6,10 @@ first branch, and the zero test ``(1+di-)`` cancels to nothing on a 1.
 Both branches pop the bit.  A node whose halves agree pops it untested; a
 constant subtable pops the rest and leaves ``[1]`` (``qi``) or ``[]``, so
 one stack survives at weight 1 and the output is never drawn at random.
-T-1 nodes at most, appended into one buffer: size and build time O(T).
+
+Size:
+    T-1 nodes at most, appended into one buffer: size and build time O(T);
+    n=10 and: 187 chars, n=10 random 1847: 10,170 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids

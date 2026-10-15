@@ -1,4 +1,21 @@
-"""Boolean generator for collatz multiverse."""
+"""Collatz Multiverse Boolean program generator: a coded cell table and a decoder.
+
+Each input is read into a register; the essential ones are summed into an
+address that indexes an array ``A`` of four-row cells, and the last two inputs
+select a bit inside the decoded cell.  A constant table reads every input and
+prints one constant.  The shortest build over the essential inputs wins.
+
+Size:
+    O(T): one line per four-row cell plus four decoder lines per distinct
+    cell.  n=10 parity: 8,060 chars, n=10 and: 6,497 chars, n=10 random 1847:
+    11,744 chars.
+
+Decisions:
+    Cells of eight rows: up to 2048 decoder lines, more than the ``T / 8``
+    lines they save below fourteen inputs.  Decoder indexed by cell value
+    instead of code: 32 lines to reach ``1000``.  The empty cell on top code
+    saves 1.09% at n=8, under the 10% bar.
+"""
 
 import re
 from collections import Counter

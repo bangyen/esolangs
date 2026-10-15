@@ -1,4 +1,20 @@
-"""The LaserFuck boolean generator."""
+"""LaserFuck Boolean program generator: a reader ring, then a decision tree.
+
+The reader normalizes the input characters into cells 1..n; the tree tests
+them with ``>#v)`` nodes, one row per *one* edge, and each leaf retires the
+cells and adds ``+`` for a one.  Subtrees that agree become leaves, and the
+input order that emits the shortest program wins.  Above sixteen entries
+(without a width) the weighted linear-space lookup replaces the tree.
+
+Size:
+    About 23T chars from n=5 (weighted lookup); n=4 random 1847: 482 chars,
+    n=10 random 1847: 24,605 chars, n=16 and: 1,443,471 chars.
+
+Decisions:
+    The narrowest-reader (width=1) layout is 21.3% shorter by length at n=4
+    but doubles the area (-106.7%), so it is not tried.  The greedy order
+    saves 12.3% of area at n=4.
+"""
 
 from functools import cache
 from typing import NamedTuple

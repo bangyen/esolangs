@@ -1,4 +1,19 @@
-"""Boolean-function generator for Dig."""
+"""Dig Boolean program generator: a mole walks a decision tree.
+
+Each tree level is a ``$3~;#`` block that reads a bit, stores it and turns on
+it; leaves print the answer.  Up to four inputs the tree is laid out in one
+band or two that turn round, and at four it races the alternating layout;
+above, that flat-leaf layout, its shared variants and the indexed leaf
+decoder compete by length and grid area.
+
+Size:
+    Area O(T) past four inputs; n=10 parity: 614 chars, n=10 random 1847:
+    7,097 chars.
+
+Decisions:
+    Above four inputs the alternating layout beat plain trees on every random
+    table measured, 1.9-5.1x smaller at n=5..8.
+"""
 
 from typing import cast
 

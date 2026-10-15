@@ -1,25 +1,24 @@
-"""Linear Boolean-function generator for Packlang.
+"""Packlang Boolean program generator: a painted 128-row array, read by index.
 
-Packlang's ``Array`` starts every element at the element type's minimum, so
-a truth table is a *painted array* rather than a decision tree.  One array
-of 128 rows is enough: the inputs above the block index are read into a
-block number, each block paints the array inside the ``If`` that selects
-it, and the answer is a single index into it.
+``Array`` starts every element at the type's minimum, so a table is painted
+rather than branched.  Inputs above the block index are read into a block
+number; each block paints the array inside the ``If`` that selects it; the
+answer prints ``48 ^ t`` at the counted index.  A row costs one ``INCR t(k);``
+(writes count, so nothing is shorter) with ``k`` an offset inside the block,
+so digits stop growing past one block.  A block holding more ones than zeros
+is filled by a loop and its zeros punched out; an all-zero block paints
+nothing; a block equal to an earlier one is aliased to it (:func:`_blocks`
+shrinks the block until repeats align).  Each input doubles the register read
+so far into its partner two counts at a time and adds its bit, so the two
+alternate and no copy is needed.
 
-That is what fixes the per-row cost.  A row costs one ``INCR t(k);`` --
-Packlang writes by counting, so there is no shorter statement -- and ``k``
-is an offset inside the block, so its digits stop growing once the table
-passes one block.  A block holding more ones than zeros is filled by a loop
-and its zeros punched back out, so a constant table pays per *block*; an
-all-zero block paints nothing, and a block equal to an earlier one is aliased
-to it (:func:`_blocks` shrinks the block until repeats align).
+Size:
+    O(T) with a small constant for constant tables (per block, not per row);
+    n=8 and: 661 chars, n=10 and: 798 chars, n=10 random 1847: 6,679 chars.
 
-The answer prints ``48 ^ t``; the opposite polarity was dropped: it cost
-+3.19% (3-input total) and +2.60% (seeded 5-input sample).
-
-The index is counted too: each input doubles what has been read and adds
-its bit.  Doubling drains one register into its partner two counts at a
-time, so the two alternate and no copy is ever needed.
+Decisions:
+    The opposite answer polarity was dropped: +3.19% (3-input total) and
+    +2.60% (seeded 5-input sample).
 """
 
 import re

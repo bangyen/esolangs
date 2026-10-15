@@ -1,0 +1,9 @@
+{
+ "triggers": [
+  {
+   "table": "n=16 parity",
+   "expect": "ArgumentError",
+   "claim": "the literal's decimal form passes Python's 4300-digit integer-string limit (n=16)"
+  }
+ ]
+}

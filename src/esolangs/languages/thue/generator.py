@@ -1,19 +1,25 @@
-"""Thue boolean program builder: nineteen rules that halve one table.
+"""Thue Boolean program generator: nineteen rules that halve one table.
 
 The table is the starting state, one character an entry; reading a bit
 replaces each adjacent *pair* with one of the two, so the state halves per
-input and the last character is the answer, for ``T + 187`` characters.
-Entries are bit-reversed: pairs differ in the *least* significant index bit,
-inputs arrive most significant first, and no rewrite can select a half.
+input and the last character is the answer.  Entries are bit-reversed: pairs
+differ in the *least* significant index bit, inputs arrive most significant
+first, and no rewrite can select a half.
 
 Thue draws which rewrite to make; these rules leave nothing to draw (every
 state reached has one rule at one position), so the answer is reproducible
 unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 A constant half is stored once (:func:`_fold`, shorter from nine inputs) on
-every path; balanced n=9/10 -24%/-35%.  A named repeated block, expanded
-before lookup, saved 0% on random tables and at most 6% at n=14 on
-block-repeating ones, so it is gone.
+every path; balanced n=9/10 -24%/-35%.
+
+Size:
+    ``T + 187`` characters; n=4 random 1847: 203 chars, n=10 random 1847:
+    1,211 chars, n=10 and: 821 chars (constant half folded).
+
+Decisions:
+    A named repeated block, expanded before lookup, saved 0% on random tables
+    and at most 6% at n=14 on block-repeating ones, so it is gone.
 """
 
 from __future__ import annotations

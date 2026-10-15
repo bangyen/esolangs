@@ -1,6 +1,17 @@
-"""Boolean program generator for Modulous.
+"""Modulous Boolean program generator: the table is a pushed string literal.
 
-A string literal has no subtrees to fold or share.
+``PSH STR`` pushes the table so entry 0 is on top.  Each input is read and
+added into a counter at its weight (an ignored input is read and popped), then
+a ``JMP`` loop discards one entry per count and prints the entry left on top.
+
+Size:
+    T + a few dozen characters per input; one loop step per row index.
+    n=10 random 1847: 1,601 chars, n=12 random 1847: 4,777 chars.
+
+Decisions:
+    A string literal has no subtrees to fold or share.  Letting the first
+    read be the counter saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under
+    the 10% bar.
 """
 
 import re

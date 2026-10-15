@@ -1,69 +1,40 @@
-r"""Boolean-function generator for Circuit Diagram.
+"""Circuit Diagram Boolean program generator: a mux fold over a wire model.
 
-The generated ASCII gate network reads one bit per input wire, folds adjacent
-cofactors through muxes, and prints through ``:``.
+Each of ``n`` inputs arrives on its own line as a ``-`` input port (not one
+``-n-`` multi-wire, which would need a ``<`` splitter tree back to rails).
+A left-to-right binary-carry fold combines adjacent cofactors: equal ones
+share a signal, ``0/1`` is the selector itself, the rest use a one- or
+three-gate mux rule.  The answer prints through ``:``.  A constant table is
+one self-fed ``x`` or ``X`` gate, the wiki's constant-output shape.
 
-Layout
-------
+Wires are a *model* of segments rendered to characters afterwards, not
+painted in draw order.  Every signal owns a vertical bus column, every gate a
+three-row band: a gate at ``(c, r)`` reads ``.`` cells at ``(c - 1, r - 1)``
+and ``(c - 1, r + 1)`` and drives ``(c + 1, r)`` (the spec's AND sample).
+Shared selectors make the network non-planar, so crossings are intended:
+the spec's ``-=-`` carries a horizontal and a vertical wire independently
+(horizontal alone ``-``, vertical ``|``, both ``=``, endpoint ``.``).  A
+``.`` joins all eight neighbours, so diagonally adjacent junctions of
+different signals would silently merge; the renderer checks that, and two
+signals sharing a cell in one direction, and raises rather than emit a wrong
+circuit.  A ``:`` prints in every generation its wire carries a value and a
+wiring driven twice takes the XOR of its drivers, so each bus is written by
+one gate or port and a run prints one character.
 
-The language has no statements, only cells that have to line up, so the
-program is built as a *model* of wire segments and rendered to characters
-afterwards, not painted cell by cell in draw order.
+A repeated subtree is built once (:func:`_dag`, hash-consed on ``(level,
+zero, one)``); a shared output keeps its column group until its last read.
+At most one unfinished signal per input level is live.  Wide unconstrained
+builds compare natural order and two transposes moving the last three/four
+inputs first; physical ports retain read order.
 
-Every signal owns a vertical **bus column**; every gate owns a three-row
-**band**.  A gate at ``(c, r)`` reads its two inputs from ``.`` cells at
-``(c - 1, r - 1)`` and ``(c - 1, r + 1)`` and drives a ``.`` at
-``(c + 1, r)`` (the spec's AND sample), so each gate is fed by two
-horizontal segments from a bus column to its left-hand junctions, and its
-result leaves along a fresh bus.
+Size:
+    One pass over the table, fewer than three gates per entry; n=8 and:
+    1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 669,345 chars.
 
-**Crossings are the point, not a hazard.**  Shared selectors make the
-network non-planar.  The spec's crossover figure puts ``-=-`` between two
-horizontal wires and ``|`` above and below, with "opposite wires are
-connected", so one ``=`` carries a horizontal and a vertical wire past each
-other independently.  The renderer derives each cell from what covers it: a
-horizontal segment alone is ``-``, a vertical alone is ``|``, both is ``=``,
-and an endpoint is ``.``.
-
-Nothing may *merge* by accident.  A ``.`` connects to all eight neighbours,
-so junctions of different signals resting diagonally adjacent silently
-become one wiring.  The renderer checks that, and two segments of different
-signals sharing a cell in the same direction, and raises rather than emit a
-circuit wrong in a way only the truth table would reveal.
-
-Construction
-------------
-
-``truth_table`` is a binary string of length ``2**n`` indexed by the inputs
-most significant first, matching the other generators in this package.
-
-* ``n`` input bits arrive on ``n`` separate lines, each a ``-`` at the start
-  of its own line, which is what the spec makes an input port.  Separate
-  lines rather than one ``-n-`` multi-wire keep the network scalar: the
-  multi-wire path would need a ``<`` splitter tree back to rails.
-* each input and any complement the mux rules need is built once and shared;
-* a left-to-right binary-carry fold combines adjacent cofactors.  Equal
-  cofactors share one signal, ``0/1`` is the selector itself, and the other
-  cases use a fixed one- or three-gate mux rule;
-* a repeated subtree is built once (:func:`_dag`): the fold is hash-consed on
-  ``(level, zero, one)`` and its bus is read by every parent, a bus fanning
-  out freely.  A shared output keeps its column group until its last read.
-  Area, 20 seeded tables: tiled from two blocks 0.69 / 0.49 / 0.41 of the
-  unshared build at n=5 / 6 / 7, from four blocks 0.84 / 0.71 / 0.67, random
-  tables 0.95 / 0.94 / 0.88;
-* at most one unfinished signal per input level is live; the fold is one
-  pass over the table and emits fewer than three gates per entry.
-* wide unconstrained builds compare natural order and two fixed transposes
-  moving the last three/four inputs first; physical ports retain read order.
-
-**Constant tables need no muxes.**  Both are a single self-fed ``x`` or ``X``
-gate, the shape the wiki's own constant-output circuit uses.
-
-**Every wiring is driven exactly once.**  A ``:`` prints in *every*
-generation its wire carries a value, and a wiring driven twice takes the
-XOR of its drivers, corrupting both the value and the output length.  Each
-bus is written by one gate (or input port) and only read after that, so a
-run prints exactly one character.
+Decisions:
+    Sharing repeated subtrees, area vs the unshared build on 20 seeded
+    tables: tiled from two blocks 0.69 / 0.49 / 0.41 at n=5 / 6 / 7, from
+    four blocks 0.84 / 0.71 / 0.67, random tables 0.95 / 0.94 / 0.88.
 """
 
 from collections.abc import Iterator

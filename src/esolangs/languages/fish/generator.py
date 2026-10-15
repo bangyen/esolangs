@@ -1,16 +1,21 @@
-"""Fish boolean generator: the truth table is stored in the codebox.
+"""Fish Boolean program generator: the truth table sits in the codebox.
 
-The program reads each input character, turns it into a bit (``68*-``
-subtracts ASCII ``0``) and folds the bits into a row number, most
-significant first (``$2*+``).  The table sits in the codebox as digits, so
-``g`` fetches the answer by its coordinates and ``n`` prints it.  For n=2:
+Each input is read and turned into a bit (``68*-`` subtracts ASCII ``0``),
+folded into a row number most significant first (``$2*+``); ``g`` fetches the
+answer from the table's digits by coordinates and ``n`` prints it.  For n=2:
 
     0i68*-$2*+i68*-$2*+1g68*-n;
     0110
 
-Narrow widths fold the table into a block of columns, which the fish
-reaches by snaking down; a parity table needs no table at all.  A table
-has no subtrees to fold or share.
+Narrow widths fold the table into a block of columns, which the fish reaches
+by snaking down; at width 1 or 2 a parity table needs no table at all.
+
+Size:
+    O(T), independent of the table at default width; n=16 parity: 65,690 chars,
+    n=10 random 1847: 1,124 chars.
+
+Decisions:
+    A table has no subtrees to fold or share.
 """
 
 from math import isqrt

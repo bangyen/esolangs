@@ -1,4 +1,17 @@
-"""Boolean-function generator for EGL."""
+"""EGL Boolean program generator: a painted grid row indexed by weighted guards.
+
+Row 1 of a two-row grid holds the table, one cell an entry; each input's
+``(-...)`` guard runs once when the bit is 1 and walks right by its Horner
+weight, so the index accumulates with no branch per level.  A constant reads
+into a scratch cell and prints a literal cell.
+
+Size:
+    O(T) cells, one per entry.  n=10 parity: 3,091 chars, n=10 and: 2,580
+    chars, n=10 random 1847: 3,091 chars.
+
+Decisions:
+    An indexed row is a cell, with no subtrees to fold or share.
+"""
 
 from math import isqrt
 

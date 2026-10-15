@@ -1,4 +1,4 @@
-"""Unary boolean generator: a Brainfuck program, written as a count of zeros.
+"""Unary Boolean program generator: a Brainfuck program written as a count of zeros.
 
 A Unary program is N zeros.  N in binary is a 1, then three bits per
 Brainfuck command in ``><+-.,[]`` order, so the generator writes Brainfuck
@@ -7,10 +7,20 @@ answers 1.  The identity is ``,[]``: binary ``1 101 110 111``, 887 zeros,
 which halt on input 0 and loop on 255.
 
 Inputs are bytes 0 and 255. Complementing a read with + gives 1 and 0
-without an ASCII prelude. Each command multiplies the count by eight (n=2's
-``0001`` is 27,452,351 zeros, and ``0110`` is past the cap), so generation
-refuses past 256 Mi zeros. No repeated residual survives the admitted
-nine-command source budget.
+without an ASCII prelude.  Every path reads n inputs, so the source has at
+least n commands, at least ``8**n`` zeros; the generator takes at most nine
+inputs.
+
+Size:
+    Each command multiplies the count by eight, so growth is exponential
+    in the command count.  n=1 parity: 887 chars, n=2 and: 27,452,351
+    chars (n=2's ``0001``), n=2 random 1847: 109 chars.
+
+Raises:
+    GeneratorCapError: the zero count passes 256 Mi (n=2's ``0110``).
+
+Decisions:
+    No repeated residual survives the admitted nine-command source budget.
 """
 
 from esolangs.compressed import CompressedText, TextLimits

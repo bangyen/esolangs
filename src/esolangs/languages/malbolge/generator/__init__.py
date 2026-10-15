@@ -1,4 +1,4 @@
-"""Malbolge boolean program builder: one source stub per table row.
+"""Malbolge Boolean program generator: one source stub per table row.
 
 ``malbolge(truth_table)`` reads one ``0``/``1`` line per input and folds them
 through a fixed five-cell branch-free mixer into a distinct address ``h(row)``.
@@ -25,10 +25,17 @@ the answer stub read the thirteenth.  ``n == 14`` computes four copies'
 readouts in the main code, lets inputs twelve and thirteen pick a copy and
 the stub read the fourteenth, and resolves shared cells over three levels.
 ``n == 15`` and ``n == 16`` drop the hash for a collision-free positional
-address (:mod:`esolangs.languages.malbolge.generator.digits`); ``n > 16`` is refused.
+address (:mod:`esolangs.languages.malbolge.generator.digits`).
 
-The source is the fixed 59049-cell memory at every arity, so folding or
-sharing stubs cannot shrink it.
+Size:
+    Constant: the fixed 59049-cell memory at every arity; n=10 random 1847:
+    59,049 chars, n=16 and: 59,049 chars.
+
+Raises:
+    GeneratorCapError: more than sixteen inputs.
+
+Decisions:
+    Folding or sharing stubs cannot shrink the fixed store.
 """
 
 from __future__ import annotations

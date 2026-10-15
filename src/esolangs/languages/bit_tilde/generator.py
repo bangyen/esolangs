@@ -1,7 +1,11 @@
-"""Boolean generator for bit tilde.
+"""bit~ Boolean program generator: planted table entries addressed by Horner jumps.
 
 Entries are planted left to right, so a skip loop has no terminator ahead of
 it: a constant or repeated span costs a ``>`` per cell.
+
+Size:
+    O(T) cells, two per entry; n=10 random 1847: 4,863 chars, n=10 and: 4,352
+    chars.
 """
 
 from esolangs.generation.constant_projection import (

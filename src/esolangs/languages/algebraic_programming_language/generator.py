@@ -1,4 +1,22 @@
-"""Boolean-function generator for Algebraic Programming Language."""
+"""Algebraic Programming Language Boolean program generator: a reduced ``!x`` diagram.
+
+A zero-valued reads prefix names every input in order, since a variable is
+bound by appearing on an executed line; the rest is a reduced decision
+diagram selecting subtrees with ``x`` and ``!x``, so every value stays 0 or
+1.  Default compares inline text, repeated expressions and bounded shared
+frames; with ``width`` the tree splits into definitions, since APL cannot
+continue an expression across lines.
+
+Size:
+    O(T) chars.  n=10 parity: 254 chars, n=10 and: 120 chars, n=10 random
+    1847: 3,047 chars.
+
+Decisions:
+    A greedy input order saves 4.8% at n=8, under the 10% bar, so the order
+    stays the identity.  The inline tree stays a candidate beside the
+    reduced diagram since ``!`` sharing grew XOR-like n=3 tables by 1-3
+    characters.
+"""
 
 from collections.abc import Callable
 from string import ascii_uppercase

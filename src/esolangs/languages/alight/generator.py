@@ -1,12 +1,16 @@
-"""Boolean-function generator for Alight.
+"""Alight Boolean program generator: a Horner row index into a string literal.
 
 Derived, not transliterated (the page is unimplemented).  Alight's
 ``at{list, index}`` takes the index as an expression, so the table is a
 string literal and the input bits fold into its row by Horner's rule,
-``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset: O(n)
-commands over an O(2**n) literal, no branching.  That is why its
-``shape`` is ``LOOKUP``: a 0% fold is the construction working: a literal has
-no subtrees to fold or share.  The reads are unconditional and first.
+``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset.  The reads
+are unconditional and first.
+
+Size:
+    O(n) commands over an O(2**n) literal, no branching.
+    n=10 random 1847: 1,227 chars, n=16 random 1847: 65,837 chars.
+    A 0% fold is the construction working (``shape`` is ``LOOKUP``): a
+    literal has no subtrees to fold or share.
 """
 
 from collections.abc import Callable

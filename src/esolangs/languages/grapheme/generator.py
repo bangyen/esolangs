@@ -1,6 +1,14 @@
-"""Boolean program generator for Grapheme.
+"""Grapheme Boolean program generator: the table is one integer literal.
 
-The table is one integer literal, so it has no subtrees to fold or share.
+The literal (int mode, ~0.302 letters an entry) is indexed by Horner's rule
+run on the complemented input bits; it has no subtrees to fold or share.
+
+Size:
+    O(T) letters; n=10 random 1847: 481 chars, n=12 random 1847: 1,434 chars.
+
+Raises:
+    ArgumentError: the literal's decimal form passes Python's 4300-digit
+        integer-string limit (n=16).
 """
 
 from esolangs.generation.constant_projection import (

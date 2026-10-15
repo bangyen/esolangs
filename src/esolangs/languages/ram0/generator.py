@@ -1,4 +1,15 @@
-"""Boolean-function generator for RAM0."""
+"""RAM0 Boolean program generator: a shared decision tree over RAM cells.
+
+Each input is stored once in its own RAM cell; tree nodes load the level's
+bit with indirect ``L`` and branch with ``C`` and ``goto``.  Repeated
+subtrees are emitted once and jumped to, so the tree has one node per
+distinct subtable.  Width 1 through three inputs uses unary-address NAND
+circuits instead.
+
+Size:
+    O(T) tokens, O(n) executed steps; n=10 random 1847: 4,347 chars,
+    n=10 parity: 595 chars.
+"""
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,

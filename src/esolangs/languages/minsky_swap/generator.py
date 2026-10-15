@@ -1,4 +1,19 @@
-"""Boolean template for minsky swap; a row is one ``~``, so no span shrinks."""
+"""Minsky Swap Boolean program generator: weighted stages, then a ``~`` cascade.
+
+Each input is a run (``++`` or ``**``) then a stage ``~ ~ * +...+ *`` adding
+``2**(n-1-i)`` to ``reg[1]``; a ``*`` then points at ``reg[1]`` and ``2**n``
+``~``s route the index to one of two shared leaves.  A row is one ``~``, so
+no span shrinks.  A ``width`` the program exceeds switches to RMSN, one
+command per line.
+
+Size:
+    O(T): one ``~`` per row; n=8 random 1847: 1,460 chars, n=10 random 1847:
+    5,354 chars, n=12 random 1847: 20,766 chars.
+
+Decisions:
+    Every leaf target is the digit 2 or 3: a leaf per row was Theta(T log T)
+    of addresses.  A zero tail stays: trimming it failed 60/134.
+"""
 
 from collections.abc import Callable
 from typing import Any

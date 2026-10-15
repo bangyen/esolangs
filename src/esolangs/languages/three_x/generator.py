@@ -1,4 +1,22 @@
-"""Boolean generator for three x."""
+"""3x Boolean program generator: a last-wins decision tree over scaled bits.
+
+Each ``?`` reads one bit, scaled to 3 or 0 and stored under a key from
+``_constants``; the result variable carries the same encoding and the closing
+``x`` divides it back to a digit.  A node writes its ``bit == 0`` half
+unguarded and its ``bit == 1`` half inside ``( ... )``, so no branch tests a
+complement; a constant subtree, or one equal to a bit under it, is one write.
+3x has no call or goto, so a repeated block of at least ``_SHARE_MIN`` rows
+sets a flag in the tree and is written once after it, guarded by that flag.
+
+Size:
+    O(T) for dense tables, O(n) for parity and and; n=10 parity: 2,462 chars,
+    n=10 and: 472 chars, n=10 random 1847: 8,588 chars.
+
+Decisions:
+    At 4 rows a share pays in 46 of the 65,536 n=4 tables, by at most 5
+    characters; 2 rows pay in none.  A greedy input order saves 2.2% at n=8,
+    under the 10% bar.
+"""
 
 from collections import Counter
 from dataclasses import dataclass

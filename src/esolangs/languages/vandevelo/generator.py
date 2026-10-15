@@ -1,44 +1,44 @@
-"""Boolean-function generator for Vandevelo.
+"""Vandevelo Boolean program generator: one hang guard per affine cube.
 
-The program reads the inputs, then hangs -- ``loop -> loop?`` evaluated
-lazily never terminates -- exactly when the table entry is 1.  Every bindable
-value is affine in the inputs (``==``/``!=`` are XNOR/XOR over nil) and only
-``::`` chains evaluate conditionally, so a guard line hangs on an affine
-coset of inputs.  One guard line is emitted per coset of an affine cover of
-the 1-set; single cosets and their complements (every affine table) bypass
-the peel after geometric doubling checks.
+Reads the inputs, then hangs (``loop -> loop?`` never terminates lazily)
+exactly when the table entry is 1.  Every bindable value is affine in the
+inputs (``==``/``!=`` are XNOR/XOR over nil) and only ``::`` chains evaluate
+conditionally, so a guard line hangs on an affine coset.  One line is
+emitted per cube of an affine-cube peel cover of the 1-set (:mod:`._peel`);
+single cosets and their complements (every affine table) bypass the peel.
 
-A test for 0 is ``x? == Nil?``, eight characters and four steps over a bare
-``x?``, so guards avoid it: a register's last toggle takes whichever
-polarity the clause wants, an input mostly tested for 0 is read negated
-(``~!>``) when the rows reaching those tests agree, and a test every
-reaching row passes is dropped.  Ordering bare tests first saved 0.0% of
-characters and 8.8% of steps at n=7, and was retired.  Over the three-input
-tables: 26,438 characters to 23,425.
-
-The cover is an affine-cube peel; :mod:`._peel` documents it and its cost.
-
-A cube's guard needs one part per dual-space constraint.
-:func:`_constraints` builds them from short relations: all but at most
-``1 + 2**((dim + 1) / 2)`` are parities of at most four inputs, the rest
-come from reduced elimination at most ``dim + 1`` wide, so a clause weighs
-at most ``4 * n + (dim + 1) * (1 + 2**((dim + 1) / 2))`` inputs.
+A guard has one part per dual-space constraint (:func:`_constraints`): all
+but at most ``1 + 2**((dim + 1) / 2)`` are parities of at most four inputs,
+the rest come from reduced elimination at most ``dim + 1`` wide.
 Single-input constraints test the input directly; wider ones live in
-strict register bindings (``A ~> a?``, ``A ~> A? != b?``) that later
-clauses morph one toggle at a time; a morph costs strictly fewer lines than
-a fresh register, so upkeep never exceeds the total weight.  Over the peel
-that is ``4 * n + 36 * 2**n`` by the clause bound, the second term at most
-``4 * 2**n`` over the disjoint cubes, so register upkeep is O(T) lines --
-under ``40 * 2**n + 4 * n`` -- and measures under half the emitted text.
-The bank holds at most ``n**2`` registers (:func:`_bank_cap`), so a name is at most two
-input names long and a full bank respells its least recently used free register
-at fresh cost; a clause scans the :data:`_SCAN` most recently used, a
-constant per constraint.  The reduced-echelon basis alone would not bound
-the weight: on a cube whose columns spread over ``2**dim`` values it
-weighs ``n * dim / 2`` whatever the pivots, ``Theta(T log log T)`` at the
-``log2(n)`` dimensions the peel produces.  Identifier lengths are ``O(log
-n)``, so characters are ``O(T log n)``, not ``O(T)``; removing that factor
-is open.
+registers (``A ~> a?``, ``A ~> A? != b?``) that later clauses morph one
+toggle at a time, strictly cheaper than a fresh register.  The bank holds
+at most ``n**2`` registers (:func:`_bank_cap`), so a name is at most two
+input names long; a full bank respells its least recently used free
+register, and a clause scans the :data:`_SCAN` most recently used.  A test
+for 0 is ``x? == Nil?``, so guards avoid it: a register's last toggle takes
+the polarity the clause wants, an input mostly tested for 0 is read negated
+(``~!>``) when the rows reaching those tests agree, and a test every
+reaching row passes is dropped.
+
+Size:
+    O(T log n) chars (identifier length is O(log n); removing that factor
+    is open).  A clause weighs at most ``4 * n + (dim + 1) * (1 + 2**((dim +
+    1) / 2))`` inputs: over the peel ``4 * n + 36 * 2**n``, the second term
+    at most ``4 * 2**n`` over the disjoint cubes, so register upkeep is
+    under ``40 * 2**n + 4 * n`` lines and under half the emitted text.
+    Parity and and are linear; n=10 parity: 259 chars, n=10 and: 179 chars,
+    n=10 majority: 3,405 chars, n=10 random 1847: 8,352 chars.
+
+Decisions:
+    The reduced-echelon basis alone does not bound the weight: on a cube
+    whose columns spread over ``2**dim`` values it weighs ``n * dim / 2``
+    whatever the pivots, ``Theta(T log log T)`` at the ``log2(n)``
+    dimensions the peel produces.  Ordering bare tests first saved 0.0% of
+    characters and 8.8% of steps at n=7 and was retired.  Avoiding
+    ``x? == Nil?`` (eight characters, four steps over a bare ``x?``) took
+    the three-input tables from 26,438 to 23,425 characters.  A bank cap of
+    ``n`` or ``2 * n`` costs 40% and 23% at n=13 in forced respelling.
 """
 
 from __future__ import annotations

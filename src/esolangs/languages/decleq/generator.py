@@ -1,4 +1,12 @@
-"""Boolean generator for decleq."""
+"""Decleq Boolean program generator: a decision tree over a counter-indexed table.
+
+Branches on each essential input (48/49 made 1/2) until ``k`` levels remain,
+``2**k >= 2n``; a leaf subtracts low inputs' weights from a counter and prints
+that cell of a ``2**k`` table (a full tree: Theta(T log T) target digits).
+
+Size:
+    O(T) cells, O(n) steps, shared subtrees; n=10 random 1847: 9,165 chars.
+"""
 
 from esolangs.generation.helpers import (
     _ASCII_ONE,

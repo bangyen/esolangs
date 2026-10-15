@@ -1,4 +1,4 @@
-"""Boolean-function generator for Factor.
+"""Factor Boolean program generator: a Brainfuck decision tree as a prime product.
 
 Ascending primes encode Brainfuck instructions by residue modulo eleven
 and run length by exponent. A compact tree tests inputs in stream order
@@ -6,12 +6,17 @@ and puts the answer in the final input's unused flag. Multiplication loops
 build and subtract the ASCII offsets; only this tree is encoded.  Equal
 sibling halves merge; repeated residuals emit in depth order after the prefix,
 using one unused flag per level when the encoded integer is shorter and
-the unchanged command bound admits it.
+the command bound (265n + 230) admits it.
 Same-level banks use unused descendant flags, and the mixed-depth bank unions
 those with the one-per-depth picks so a block at any depth can defer; each
 admitted bank is encoded separately so decimal size, rather than decoded text
 length, selects it.
 An ignored cell is read but not dedented.
+
+Size:
+    Decimal digits of the integer: parity and random grow with T, the and
+    table merges to a short tree; n=10 parity: 73,801 chars, n=10 random 1847: 49,462
+    chars, n=16 and: 1,898 chars.
 """
 
 import heapq

@@ -1,4 +1,16 @@
-"""Boolean-function generator for Container."""
+"""Container Boolean program generator: a tick-timed tree, or a threshold sum.
+
+Up to six inputs, the empty container reads one bit per pulse and a pruned,
+shared tree of containers survives bit by bit to a leaf that adds its entry
+to ``OUT`` at tick ``2n`` (see :func:`_container_tree`).  Above six, each bit
+latches into its own container and one gate dip adds the binary weights to a
+row counter, so ``OUT`` is a prefix sum with one line per step in the table
+(:func:`_container_threshold`, halting in ``2n + 2`` ticks).
+
+Size:
+    Tree up to 2**n lines in the worst case, threshold one line per table
+    step; n=6 random 1847: 1,923 chars, n=10 parity: 7,593 chars.
+"""
 
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass

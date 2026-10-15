@@ -1,8 +1,12 @@
-"""Subleq shared residual DAG or packed-table decoder, both O(T) text.
+"""Subleq Boolean program generator: a shared residual DAG or a packed-table decoder.
 
 Hoisted reads normalize bytes before direct branches. Equal residuals share
 one entry; constant subtrees and ignored tests disappear. O(T/n) distinct
 residuals have O(n)-digit addresses. Packed chunks remain the source-size floor.
+
+Size:
+    O(T) text either way, the shorter of the two; n=10 random 1847: 2,000
+    chars, n=10 parity: 552 chars.
 """
 
 from typing import Any

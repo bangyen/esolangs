@@ -1,7 +1,12 @@
-"""Boolean-function generator for Taglate.
+"""Taglate Boolean program generator: fixed queue slots halved by strided reduces.
 
 Rows are fixed queue slots the strided reduces walk, two characters for a 0 or
 a 1, so a constant half or repeat has nothing to fold or share.
+
+Size:
+    O(T) slots, independent of the table's values; n=10 random 1847: 21,025
+    chars, n=10 parity: 21,025 chars.  A table ignoring inputs is built over
+    its essential inputs only.
 """
 
 from itertools import pairwise

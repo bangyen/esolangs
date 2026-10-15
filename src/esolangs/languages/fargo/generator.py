@@ -1,27 +1,26 @@
-"""Boolean-function generator for Fargo.
+"""Fargo Boolean program generator: the algebraic normal form, factored.
 
-``@ i`` returns the ``i``th bit of the input number, so no routing is
-needed and the construction is the **algebraic normal form**
-``f(x) = c0 XOR (c1 & x0) XOR (c2 & x1) XOR (c3 & x0 & x1) XOR ...``,
-coefficients from the Möbius transform (:func:`anf_coefficients`).
-The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
-coefficient appears at most once; identity order emits O(T) characters.
-A node keeps its 0-arm (Davio0) unless the 1-arm vanishes (1-arm kept) or is
-the constant one (``f0 | x``); the free choice among Davio0, Davio1 and
-monotone-OR arms (9.61% at n=8), rotated orders (0.25% at n=8) and
-indexed-selector cost splits (7.61% at n=5) fall under the 10% bar and are
-not built. The transform packs Theta(log T) coefficients per word, giving
-O(T) word-RAM build work.
+``@ i`` returns the ``i``th bit of the input number, so no routing is needed:
+``f(x) = c0 XOR (c1 & x0) XOR ...`` with coefficients from the Möbius
+transform (:func:`anf_coefficients`, Theta(log T) coefficients per word).
+Each variable is factored as ``p = p0 ^ (x & p1)``, so every coefficient
+appears at most once, in identity order (no reads, so order only renames the
+``@`` literals).  A node keeps its 0-arm (Davio0) unless the 1-arm vanishes
+(1-arm kept) or is the constant one (``f0 | x``).  The program is
+``% 0 <expression>`` then ``$``; a constant table emits the literal.  Input
+``i`` (most-significant-first) is bit ``n - 1 - i`` of the one line read
+before execution -- the only place the mapping appears.  Repeated nodes use
+shared definitions when shorter; the inline form stays a candidate on every
+fitting path.
 
-The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
-``1``; a constant table emits the literal.  The harness feeds one line
-holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
-``n - 1 - i`` of that number -- the only place the mapping appears.  The
-interpreter reads that line before execution, so every program consumes
-exactly one input line.  With no reads there is no read order: factoring
-order only renames the ``@`` literals, and :func:`fargo` uses the identity.
-Repeated expression nodes use shared definitions when shorter; the inline
-form stays a candidate on every fitting path.
+Size:
+    O(T) characters, O(T) word-RAM build work; n=10 parity: 80 chars,
+    n=10 random 1847: 3,728 chars.
+
+Decisions:
+    The free choice among Davio0, Davio1 and monotone-OR arms (9.61% at n=8),
+    rotated orders (0.25% at n=8) and indexed-selector cost splits (7.61% at
+    n=5) fall under the 10% bar and are not built.
 """
 
 from collections.abc import Callable

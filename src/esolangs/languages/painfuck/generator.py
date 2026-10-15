@@ -1,11 +1,17 @@
-"""Boolean-function generator for Painfuck.
+"""Painfuck Boolean program generator: a flag-dispatched decision tree.
 
 Uses Painfuck's own commands, not transliterated brainfuck: ``i`` reads and
 ``o`` prints a *number*, so the ASCII offset brainfuck pays twice per
 program (49% of its characters at ``n == 4``, 70% at ``n == 2``) vanishes.
 ``r`` moves two right, the cell layout's stride, and ``d`` resets the
 pointer, so returning to the reads costs one character instead of one per
-cell.
+cell.  Repeated residuals share through level flags or banks, admitted
+under a command bound; inline text stays a candidate.
+
+Size:
+    Shared residuals shrink dense tables: three seeded dense n=16 tables
+    average 831,265 -> 650,200 characters (-21.78%), five rows executed per
+    table; n=10 parity: 1,005 chars, n=10 random 1847: 10,160 chars.
 """
 
 from esolangs.generation.helpers import (
