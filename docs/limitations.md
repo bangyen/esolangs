@@ -574,6 +574,11 @@ its entry/termination brightness metric, face selection at ray-edge hits, and
 equal-distance teleport anchors are unspecified. Character I/O is explicit;
 generator feasibility remains unaudited pending routing clarification.
 
+The 2026-10-15 intake deferred [Semqain](https://esolangs.org/wiki/Semqain):
+single-thread semantics are fixed, but thread scheduling, `[+` on an empty
+message queue, and `[` sub-commands 4-15 are unspecified. A threadless build
+would be a restricted dialect.
+
 HuePrism, BitCode, PicCode, Brainloller, Braincopter, and the game-save
 languages remain rejected from the same image-source screen.
 
