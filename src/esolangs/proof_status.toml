@@ -248,6 +248,18 @@ workspace = "poly n: worst 13 + bl(lines) + bl(n) bits: two cells, a line cursor
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Caballo"
+labels = ["tree"]
+qualification = """\
+    the inputs are the initial stack; each node is the wiki's conditional, `d` dropping \
+    a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack \
+    survives; equal halves pop untested and constant subtables fold"""
+scaling = "linear: at most 14T characters, subtree_ids folding"
+execution = "poly n: worst n(n+1)/2 + 15n + 1 commands: empty groups skip whole"
+workspace = "poly n: at most 4n² + 16n·bl(L) + 96 bits: a sum frame's base a level"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Circlefuck"
 labels = ["linear lookup"]
 qualification = """\

@@ -20,6 +20,7 @@ Bitdeque = { backlinks = 5, route = "first implementation" }
 Boolfuck = { backlinks = 76, route = "fame" }
 brainfuck = { backlinks = 2031, route = "fame" }
 BrainIf = { backlinks = 5, route = "first implementation" }
+Caballo = { backlinks = 1, route = "first implementation" }
 Circlefuck = { backlinks = 5, route = "first implementation" }
 "Circuit Diagram" = { backlinks = 5, route = "first implementation" }
 Clockwise = { backlinks = 4, route = "first implementation" }

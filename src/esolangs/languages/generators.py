@@ -41,6 +41,8 @@ from esolangs.languages.brainfuck.generator import LANGUAGE as _BRAINFUCK_LANGUA
 from esolangs.languages.brainfuck.generator import brainfuck
 from esolangs.languages.brainif.generator import LANGUAGE as _BRAINIF_LANGUAGE
 from esolangs.languages.brainif.generator import brainif
+from esolangs.languages.caballo.generator import LANGUAGE as _CABALLO_LANGUAGE
+from esolangs.languages.caballo.generator import caballo
 from esolangs.languages.circlefuck.generator import LANGUAGE as _CIRCLEFUCK_LANGUAGE
 from esolangs.languages.circlefuck.generator import circlefuck
 from esolangs.languages.circuit_diagram.generator import (
@@ -187,6 +189,7 @@ _LANGUAGES = (
     _BOOLFUCK_LANGUAGE,
     _BRAINFUCK_LANGUAGE,
     _BRAINIF_LANGUAGE,
+    _CABALLO_LANGUAGE,
     _CIRCLEFUCK_LANGUAGE,
     _CIRCUIT_DIAGRAM_LANGUAGE,
     _CLOCKWISE_LANGUAGE,
@@ -267,6 +270,7 @@ __all__ = [
     "boolfuck",
     "brainfuck",
     "brainif",
+    "caballo",
     "circlefuck",
     "circuit_diagram",
     "clockwise",

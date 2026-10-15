@@ -161,6 +161,7 @@ Build language-specific stdin with `encode_inputs`:
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Caballo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
 | Collatz Multiverse | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Dig | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
