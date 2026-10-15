@@ -45,18 +45,6 @@ install-dev:
     # local check: lint, types, and pytest.
     git config core.hooksPath .githooks
 
-# The formatter is ruff-format, run via pre-commit (and so via `just test`);
-# `ruff check` here catches lint that formatting does not.
-# lint python
-lint-python:
-    {{PYTHON}} -m ruff check .
-    {{PYTHON}} -m ruff format --check .
-    {{PYTHON}} -m mypy
-
-# lint all code
-lint: lint-python
-    @echo "All lint checks completed!"
-
 # Scoped to the files this branch touched; widens to everything when the diff
 # is unreadable or shared machinery moved.  Use `just test-full` to force the
 # whole tree.  Pass --quiet to suppress successful step output.
@@ -161,8 +149,8 @@ proofs:
 # clean generated files
 clean:
     #!/usr/bin/env bash
-    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
+    find . \( -path ./.venv -o -path ./.claude \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
         | xargs -0 rm -rf
-    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o -name "*.pyc" -type f -delete
+    find . \( -path ./.venv -o -path ./.claude \) -prune -o -name "*.pyc" -type f -delete
     rm -rf build dist .coverage coverage.xml .mypy_cache .ruff_cache .pytest_cache
     find src tests -mindepth 1 -type d -empty -delete
