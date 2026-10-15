@@ -231,6 +231,8 @@ class _Machine:
         self.pos = (0, 0, 0)
         self._second_start = False
         self._dumped = False
+        #: No step yet: only then is the drawn heading still a branch point.
+        self._fresh = True
         #: Where the ``o`` marker sits, kept so a branching search can place
         #: the beam itself under each of the four headings.
         self.start = (0, 0)
@@ -304,15 +306,19 @@ class _Machine:
     # split behaviourally identical states, and input is declined below.
 
     def branching_snapshot(self) -> _BranchState:
-        """Return the pre-heading start state for a branching search.
+        """Return the current state as a branching search's starting point.
 
-        The initial heading is a draw, so ``None`` marks the beam unplaced
-        and :meth:`branching_successors` opens it into the four headings.  A
-        grid that never placed a laser reports its own empty beams instead,
-        so the ordinary emptiness test halts it.
+        Before the first step the initial heading is still a draw, so
+        ``None`` marks the beam unplaced and :meth:`branching_successors`
+        opens it into the four headings.  After it, the beams are the ones
+        the run drew.  A grid that never placed a laser, or stopped on a
+        second ``o``, reports empty beams, so the emptiness test halts it.
         """
-        unplaced = None if self.lsrs and not self._second_start else ()
-        return (self.tape, self.ptr, unplaced, self.ind, self.jmp)
+        if self._second_start or not self.lsrs:
+            beams: _Beams | None = ()
+        else:
+            beams = None if self._fresh else tuple(self.lsrs)
+        return (self.tape, self.ptr, beams, self.ind, self.jmp)
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has no live beam left.
@@ -410,6 +416,7 @@ class _Machine:
                 self.dump()
                 self._dumped = True
             return
+        self._fresh = False
         row, col, d = self.lsrs[self.ind]
         row, col = _move(row, col, d)
         self.pos = (row, col, d)

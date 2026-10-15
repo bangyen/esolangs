@@ -191,11 +191,39 @@ def _painted(painted: str, weights: list[int], *, runs: bool, block: int) -> str
     counted, low_index = _counter("i", "d", weights[cut:])
     body += counted
 
+    remaps, painting, filled = _paint_blocks(
+        painted, index, span, blocks, n - low, runs=runs
+    )
+    body += remaps + painting
+    body += [f"charPut({_ASCII_ZERO}^t({low_index}));", "0;"]
+
+    names = ["i", "d", "c"] + (["q"] if filled else [])
+    declarations = "".join(f"  Char {name};\n" for name in names)
+    if blocks > 1:
+        declarations += "".join(
+            f"  Integer(0,{blocks - 1},0,0) {name};\n" for name in "hg"
+        )
+    statements = "".join(f"  {line}\n" for line in _folded(body))
+    return (
+        "Package : IO {\n"
+        f"{declarations}"
+        f"  Array(Char,{span}) t;\n"
+        "  Integer main {\n"
+        f"{statements}"
+        "  }\n"
+        "} truthTable;\n"
+    )
+
+
+def _paint_blocks(
+    painted: str, index: str, span: int, blocks: int, depth: int, *, runs: bool
+) -> tuple[list[str], list[str], bool]:
+    """Return the alias lines, the block writes, and whether any uses ``q``."""
     filled = False
     # A block equal to an earlier one is remapped onto it: the index is
     # decremented to the first copy's number before any block tests it
     # (-38.5% at n=9, -62.0% at n=10 with two distinct blocks).
-    ids = subtree_ids(painted)[n - low] if blocks > 1 else []
+    ids = subtree_ids(painted)[depth] if blocks > 1 else []
     first: dict[int, int] = {}
     remaps: list[str] = []
     painting: list[str] = []
@@ -217,26 +245,7 @@ def _painted(painted: str, weights: list[int], *, runs: bool, block: int) -> str
                 continue
         filled = filled or fill
         painting += [test, *writes, "}"]
-    body += remaps + painting
-    body += [f"charPut({_ASCII_ZERO}^t({low_index}));", "0;"]
-
-    declarations = "".join(
-        f"  Char {name};\n" for name in ["i", "d", "c", *"q" * filled]
-    )
-    if blocks > 1:
-        declarations += "".join(
-            f"  Integer(0,{blocks - 1},0,0) {name};\n" for name in "hg"
-        )
-    statements = "".join(f"  {line}\n" for line in _folded(body))
-    return (
-        "Package : IO {\n"
-        f"{declarations}"
-        f"  Array(Char,{span}) t;\n"
-        "  Integer main {\n"
-        f"{statements}"
-        "  }\n"
-        "} truthTable;\n"
-    )
+    return remaps, painting, filled
 
 
 def _counter(first: str, second: str, weights: list[int]) -> tuple[list[str], str]:
@@ -323,7 +332,7 @@ def _dialect(literal_policy: str = "decimal") -> None:
 LANGUAGE = Language(
     "Packlang",
     "packlang",
-    category="other",
+    category="variable_based",
     boolean=packlang,
     dialect=_dialect,
     dialect_values={"literal_policy": LITERAL_POLICIES},

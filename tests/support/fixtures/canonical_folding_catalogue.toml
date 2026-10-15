@@ -6,7 +6,6 @@
 "Malbolge" = "fixed-size source; an extra input port adds no cells"
 
 [constant]
-"123" = "constant tables skip the separation geometry"
 "Alight" = "a constant table is a one-entry literal"
 "Malbolge" = "fixed-size source; a constant table is no smaller"
 "Qoibl" = "a constant table is a one-bit literal"
@@ -22,9 +21,9 @@
 [constant_local]
 "///" = "_CONSTANT" # delete inputs and print the literal answer
 "A Painter Ant" = "_program" # restore inputs and leave one answer cell
+"ABCDirection" = "_layout" # no essential input: one table cell, no select gadget
 "ArrowQueue" = "_program" # direct halt or circulating heading
 "B-tapemark" = "b_tapemark" # direct read-and-print constant
-"BIO" = "_bio" # no index saves for a zero-input projection
 "Befunge" = "input_weights" # one projected table cell
 "Bitwise Cyclic Tag" = "_program" # delete inputs and a literal bit
 "BrainIf" = "_brainif_dag" # constant residual output tail
@@ -42,7 +41,6 @@
 "INTERCAL" = "_diagram" # equal-child reduction to a constant id
 "Minsky Swap" = "input_weights" # zero projected index weights
 "Modulous" = "input_weights" # one projected table entry
-"NoComment" = "_nocomment_chain" # one projected answer group
 "Piet++" = "_operations" # literal products over essential inputs
 "ROTfuck" = "_program" # one-entry rotated lookup
 "SLOW ACV MAMMALIAN" = "_constant_read" # scratch reads and coprime answer array

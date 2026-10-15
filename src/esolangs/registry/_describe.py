@@ -1,7 +1,8 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
 import pathlib
-from typing import TypedDict
+import re
+from typing import TypedDict, get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.generation.wrap import takes_width as _takes_width
@@ -28,6 +29,11 @@ _STATE_MODELS = {
     "stack_based": "stack",
     "grid_based": "grid",
     "queue_based": "queue",
+    # The run's data is the program itself: rewritten text, instructions
+    # writing into each other, or code sharing one memory with data.
+    "program_based": "program",
+    # A store of named variables the program declares.
+    "variable_based": "variables",
     "other": "other",
 }
 
@@ -35,6 +41,11 @@ _STATE_MODELS = {
 #: the CLI's ``--state-model`` and ``--shape`` filters accept exactly these.
 STATE_MODELS: tuple[str, ...] = tuple(_STATE_MODELS.values())
 SHAPES: tuple[str, ...] = tuple(shape.value for shape in Shape)
+#: The ``input_shape`` and ``width_effect`` labels, for the CLI's filters.
+INPUT_SHAPES: tuple[str, ...] = get_args(InputShape.__value__)
+WIDTH_EFFECTS: tuple[str, ...] = get_args(WidthEffect.__value__)
+#: A Sphinx role; ``~`` keeps only the last dotted component.
+_ROLE = re.compile(r":(?:class|func|meth|mod|attr|exc|data|obj):`(~?)([^`]+)`")
 
 
 class LanguageInfo(TypedDict):
@@ -174,11 +185,13 @@ def _spec(language: str) -> str:
 
     The module docstring: the command table and where this implementation
     differs from the wiki -- the documentation for *writing* a program.
-    Raises under ``-OO``, which strips docstrings.
+    Sphinx roles print as literals.  Raises under ``-OO``, which strips
+    docstrings.
     """
     name = resolve(language)
     interpreter = interpreter_module(name)
     text = (interpreter.__doc__ or "").strip()
+    text = _ROLE.sub(lambda m: f"``{m[2].rsplit('.', 1)[-1] if m[1] else m[2]}``", text)
     if not text:
         # ``-OO`` strips docstrings, so this returned ``""`` for every one --
         # a silent wrong answer from the function whose whole promise is

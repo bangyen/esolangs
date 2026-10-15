@@ -33,35 +33,6 @@ Decisions for gaps in the wiki spec (documented):
 - a call that resolves to no function is an invalid operation
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
   :class:`ValueError`.
-
-The semantics are a pure transition.  :func:`_advance` maps an immutable
-``_State`` -- the explicit frame stack, the lexical scope store, the input
-bit buffer and the explicit input bytes a statement may read -- to a new
-state and the bytes it asks to print.  ``step`` is the shell: it reads the
-bytes the transition asks for and writes what it returns.  A statement can
-read any number of bits (a call may read in a loop), so the reads cannot be
-hoisted; each :data:`_NeedByte` reads one more byte and retries the
-deterministic transition.
-
-``_Machine`` runs on an explicit stack of :class:`_Frame` values (one per
-statement-position call in progress -- ``main`` initially, one more per
-nested call), each with a statement cursor and, while a ``for`` loop is
-active, its row iterator.  This makes ``step()`` interruptible between
-statements, between a ``for`` loop's rows, and between statement-position
-calls (``again 0;``, a call whose result is discarded) -- the granularity a
-hang can actually occur at, and the recursion pattern this language
-actually uses (there is no return-value-threading idiom across nested
-calls; ``return`` exits the whole function immediately).  A statement's own
-expression evaluation, and any *expression-position* call it contains
-(``x = f(y)``, where the assignment needs the result back synchronously),
-still runs to completion inside one ``step()``: expressions evaluate
-through ``_eval``/``_call``, and an expression-position call runs the same
-step core to completion via ``_run`` -- there is one statement
-implementation, shared by the resumable machine and direct execution.
-Forbin has no realistic program shape that recurses that way, so this
-narrower scope fixes the depth cap for the pattern the language is
-actually written in without the larger risk of converting expression
-evaluation itself into an explicit continuation stack.
 """
 
 from __future__ import annotations
@@ -162,7 +133,6 @@ class _Ctx(NamedTuple):
     """
 
     scopes: Mapping[int, _Scope]
-    next_scope: int
     bits: tuple[int, ...]
     reads: int
     input_pos: int
@@ -176,7 +146,6 @@ class _State:
 
     frames: tuple[_Frame, ...]
     scopes: Mapping[int, _Scope]
-    next_scope: int
     bits: tuple[int, ...]
     reads: int
 
@@ -186,12 +155,14 @@ def _new_scope(
     fn: _Function,
     parent: int | None,
     locals_: Mapping[str, object],
-    next_scope: int,
-) -> tuple[int, int, Mapping[int, _Scope]]:
-    """Add a scope node; return its id, the next id, and the new store."""
-    scope = next_scope
+) -> tuple[int, Mapping[int, _Scope]]:
+    """Add a scope node; return its id and the new store.
+
+    Scopes are only ever added, so the next id is the store's size.
+    """
+    scope = len(scopes)
     node = _Scope(fn, _frozen(locals_), parent)
-    return scope, next_scope + 1, MappingProxyType({**scopes, scope: node})
+    return scope, MappingProxyType({**scopes, scope: node})
 
 
 def _lookup(
@@ -306,20 +277,13 @@ def _enter(
     callee: _Closure,
     args: list[object],
     scopes: Mapping[int, _Scope],
-    next_scope: int,
-) -> tuple[_Frame, int, Mapping[int, _Scope]]:
+) -> tuple[_Frame, Mapping[int, _Scope]]:
     """Return a frame for calling ``callee``; unpassed parameters are 0."""
     locals_: dict[str, object] = dict.fromkeys(callee.fn.args, 0)
     for name, value in zip(callee.fn.args, args, strict=False):
         locals_[name] = value
-    scope, next_scope, scopes = _new_scope(
-        scopes, callee.fn, callee.scope, locals_, next_scope
-    )
-    return (
-        _Frame(callee.fn, scope),
-        next_scope,
-        scopes,
-    )
+    scope, scopes = _new_scope(scopes, callee.fn, callee.scope, locals_)
+    return _Frame(callee.fn, scope), scopes
 
 
 def _call(
@@ -330,8 +294,8 @@ def _call(
 ) -> tuple[object, _Ctx]:
     """Apply a callable, threading the context through any nested run."""
     if isinstance(callee, _Closure):
-        frame, next_scope, scopes = _enter(callee, args, ctx.scopes, ctx.next_scope)
-        ctx = ctx._replace(scopes=scopes, next_scope=next_scope)
+        frame, scopes = _enter(callee, args, ctx.scopes)
+        ctx = ctx._replace(scopes=scopes)
         result, ctx = _run(frame, globals_, ctx)
         return (result if result is not None else 0), ctx
     if isinstance(callee, str):
@@ -539,11 +503,19 @@ def _start_statement_call(
     if not isinstance(callee, _Closure):
         _value, ctx = _call(callee, args, globals_, ctx)
         return False, ctx
-    pushed, next_scope, scopes = _enter(callee, args, ctx.scopes, ctx.next_scope)
-    ctx = ctx._replace(scopes=scopes, next_scope=next_scope)
+    pushed, scopes = _enter(callee, args, ctx.scopes)
+    ctx = ctx._replace(scopes=scopes)
     return pushed, ctx
 
 
+# The semantics are a pure transition.  :func:`_advance` maps an immutable
+# ``_State`` -- the explicit frame stack, the lexical scope store, the input
+# bit buffer and the explicit input bytes a statement may read -- to a new
+# state and the bytes it asks to print.  ``step`` is the shell: it reads the
+# bytes the transition asks for and writes what it returns.  A statement can
+# read any number of bits (a call may read in a loop), so the reads cannot be
+# hoisted; each :data:`_NeedByte` reads one more byte and retries the
+# deterministic transition.
 def _advance(
     state: _State,
     globals_: Mapping[str, _Function],
@@ -558,7 +530,7 @@ def _advance(
     shell can flush output before reading or re-raising.
     """
     out: list[str] = []
-    ctx = _Ctx(state.scopes, state.next_scope, state.bits, state.reads, 0, out, inputs)
+    ctx = _Ctx(state.scopes, state.bits, state.reads, 0, out, inputs)
     try:
         frames, ctx, _returned = _step_frames(state.frames, globals_, ctx)
     except _NeedByte:
@@ -567,7 +539,7 @@ def _advance(
         raise
     except BaseException as exc:
         raise _Fault(tuple(out), exc) from None
-    return _State(frames, ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads), tuple(out)
+    return _State(frames, ctx.scopes, ctx.bits, ctx.reads), tuple(out)
 
 
 def _step_frames(
@@ -642,6 +614,25 @@ def _step_for_frames(
     )
 
 
+# ``_Machine`` runs on an explicit stack of :class:`_Frame` values (one per
+# statement-position call in progress -- ``main`` initially, one more per
+# nested call), each with a statement cursor and, while a ``for`` loop is
+# active, its row iterator.  This makes ``step()`` interruptible between
+# statements, between a ``for`` loop's rows, and between statement-position
+# calls (``again 0;``, a call whose result is discarded) -- the granularity a
+# hang can actually occur at, and the recursion pattern this language
+# actually uses (there is no return-value-threading idiom across nested
+# calls; ``return`` exits the whole function immediately).  A statement's own
+# expression evaluation, and any *expression-position* call it contains
+# (``x = f(y)``, where the assignment needs the result back synchronously),
+# still runs to completion inside one ``step()``: expressions evaluate
+# through ``_eval``/``_call``, and an expression-position call runs the same
+# step core to completion via ``_run`` -- there is one statement
+# implementation, shared by the resumable machine and direct execution.
+# Forbin has no realistic program shape that recurses that way, so this
+# narrower scope fixes the depth cap for the pattern the language is
+# actually written in without the larger risk of converting expression
+# evaluation itself into an explicit continuation stack.
 class _Machine:
     """One Forbin run: an explicit stack of resumable call frames.
 
@@ -656,15 +647,13 @@ class _Machine:
         # Where the source ends, kept because ``ip`` still has to report a
         # position once every frame has been popped.
         self._length = len(code)
-        # First-sight identity numbering: the counter hands out each
-        # serial, and the dict remembers which objects were already
-        # numbered, so a serial names one object for the whole run.
-        # The dict stores only ids, not the objects, so this is a
-        # convention, not a structural guarantee: callers must number
-        # only objects that stay reachable from the machine's state for
-        # the rest of the run, since a freed object's id could be
-        # recycled for a different object.
-        self._serials: dict[int, int] = {}
+        # First-sight numbering of functions and scopes, so a serial names
+        # one of them for the whole run.  A function is keyed by ``id``:
+        # parsed functions live as long as the machine.  A scope is keyed by
+        # its scope id, never by its locals' ``id``: a binding replaces the
+        # locals mapping, and the freed mapping's recycled id once gave one
+        # program two different snapshot sequences on two runs.
+        self._serials: dict[tuple[str, int], int] = {}
         self._next_serial = 0
         parser = _Parser(code)
         self.globals = parser.parse()
@@ -674,23 +663,21 @@ class _Machine:
                 "define a main function, for example main { return 0; }",
             )
         global_fn = _Function("$globals", [])
-        global_scope, next_scope, scopes = _new_scope(
-            MappingProxyType({}), global_fn, None, MappingProxyType({}), 0
+        global_scope, scopes = _new_scope(
+            MappingProxyType({}), global_fn, None, MappingProxyType({})
         )
         self._global_scope = global_scope
         global_frame = _Frame(global_fn, global_scope)
-        self.state = _State((), scopes, next_scope, (), 0)
+        self.state = _State((), scopes, (), 0)
         for initializer in parser.initializers:
             self._run_initializer(initializer, global_frame)
         main_fn = self.globals["main"]
         main_locals = dict.fromkeys(main_fn.args, 0)
-        main_scope, next_scope, scopes = _new_scope(
-            self.state.scopes, main_fn, global_scope, main_locals, self.state.next_scope
+        main_scope, scopes = _new_scope(
+            self.state.scopes, main_fn, global_scope, main_locals
         )
         main_frame = _Frame(main_fn, main_scope)
-        self.state = _State(
-            (main_frame,), scopes, next_scope, self.state.bits, self.state.reads
-        )
+        self.state = _State((main_frame,), scopes, self.state.bits, self.state.reads)
 
     def _run_initializer(self, initializer: _Statement, global_frame: _Frame) -> None:
         """Run one top-level initializer, preserving its output order.
@@ -706,7 +693,6 @@ class _Machine:
             out: list[str] = []
             ctx = _Ctx(
                 self.state.scopes,
-                self.state.next_scope,
                 self.state.bits,
                 self.state.reads,
                 0,
@@ -724,7 +710,7 @@ class _Machine:
                 raise
             break
         self._flush(out, flushed)
-        self.state = _State((), ctx.scopes, ctx.next_scope, ctx.bits, ctx.reads)
+        self.state = _State((), ctx.scopes, ctx.bits, ctx.reads)
 
     def _flush(self, effects: Sequence[str], flushed: int) -> int:
         """Print ``effects`` past ``flushed``; return the new flush count."""
@@ -821,7 +807,7 @@ class _Machine:
                     ),
                     f.for_ind if f.for_rows is not None else -1,
                     f.for_body_pos if f.for_rows is not None else -1,
-                    self._serial(f.fn),
+                    self._serial(("fn", id(f.fn))),
                     None
                     if f.for_rows is None
                     else tuple(tuple(row) for row in f.for_rows),
@@ -848,9 +834,7 @@ class _Machine:
 
         A closure keeps its defining scope after that frame returns, and a
         call through it can write there, so those locals are state too.  Each
-        scope is keyed by its locals' identity serial, the same numbering the
-        original snapshot used, so the resource ledger's exact formula still
-        holds.
+        scope is keyed by its serial.
         """
         seen: dict[int, int] = {}
         todo: list[int] = [f.scope for f in self.state.frames]
@@ -859,7 +843,7 @@ class _Machine:
             scope: int | None = todo.pop()
             while scope is not None:
                 node = self.state.scopes[scope]
-                key = self._serial(node.locals)
+                key = self._serial(("scope", scope))
                 if key in seen:
                     break
                 seen[key] = scope
@@ -880,9 +864,8 @@ class _Machine:
             for key in sorted(seen)
         )
 
-    def _serial(self, thing: object) -> int:
-        """Return ``thing``'s serial: its identity numbered by first sight."""
-        key = id(thing)
+    def _serial(self, key: tuple[str, int]) -> int:
+        """Return the serial of a function ``("fn", id)`` or ``("scope", id)``."""
         if key not in self._serials:
             self._serials[key] = self._next_serial
             self._next_serial += 1
@@ -891,12 +874,11 @@ class _Machine:
     def _render(self, value: object) -> str:
         """``repr(value)``, but a closure names its function and scope.
 
-        The scope is its defining scope's locals serial, matching the
-        original numbering so the ledger's exact workspace formula holds.
+        The scope is its defining scope's serial.
         """
         if isinstance(value, _Closure):
-            fn = self._serial(value.fn)
-            scope = self._serial(self.state.scopes[value.scope].locals)
+            fn = self._serial(("fn", id(value.fn)))
+            scope = self._serial(("scope", value.scope))
             return f"<{value.fn.name or 'literal'} {fn}@{scope}>"
         return repr(value)
 

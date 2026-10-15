@@ -5,6 +5,7 @@ import pytest
 from esolangs.languages.piet_plus_plus.interpreter import (
     _COMMANDS,
     _advance,
+    _Core,
     _Machine,
     _NeedInputError,
     run,
@@ -141,7 +142,9 @@ def test_a_fault_is_rethrown_as_its_cause() -> None:
     machine = _Machine(program, ScriptedIO(""))
     # An empty image is malformed; the traversal raises, and the shell must
     # surface that cause.
-    machine.state = ((0, 0), 0, -1, (), (), False, (), MappingProxyType({}))
+    machine.state = _Core(
+        (0, 0), 0, -1, (), (), halted=False, rows=(), writes=MappingProxyType({})
+    )
     with pytest.raises(IndexError):
         machine.step()
     with pytest.raises(_FaultError) as caught:

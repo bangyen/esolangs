@@ -10,9 +10,7 @@ rule applies to it too).  Non-blank lines are numbered from 1; the run halts
 when the pointer leaves.  var2/var3 and indices must be names (the wiki rejects
 ``var = 3 x + 1``); ``input`` raises :class:`EOFError` when exhausted; a
 malformed line, numeric literal or redefinition of ``input`` raises
-:class:`ValueError`.  :func:`_advance` is pure over an immutable
-``_State``; the shell pre-reads every ``input`` a line names, and
-:func:`_read` defaults a missing array to zero rather than creating it.
+:class:`ValueError`.
 
 Input numbers are whitespace-delimited integer tokens; the spec does not define
 delimiters.  Readings of sentences that admit two:
@@ -257,6 +255,9 @@ def _operand(state: _State, spec: _Operand, pending: list[int]) -> _Resolved:
     return _reg_get(state[1], name), idx
 
 
+# :func:`_advance` is pure over an immutable ``_State``; the shell pre-reads every
+# ``input`` a line names, and :func:`_read` defaults a missing array to zero rather
+# than creating it.
 def _advance(
     state: _State,
     line: _Line,

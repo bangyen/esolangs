@@ -138,7 +138,6 @@ of each scheme.
 - A Painter Ant also has construction-specific proofs.
 - ArrowQueue also has construction-specific proofs.
 - Container also has construction-specific proofs.
-- BIO also has construction-specific proofs.
 
 `python -m tests.proofs.deep <band>` selects declared cost bands: `verify`
 for the local gate, `ci` for the registry battery, `by-hand` for expensive
@@ -297,10 +296,6 @@ These generators keep no unconstrained tree route and have no subtree to fold:
   Its corridor stops at the trailing run of equal answers (36.4% saving).
   An ignored input costs a bare `SN` through `input_weights`.
 - Alight: Indexes a string literal.
-- BIO: Its telescope has one nested level per row whatever the table says. A
-  degenerate table only spares the flat edges’ adjustments, below the fold
-  threshold once doubling between input runs is included.
-  Parks its index while an ignored setter runs.
 - B-tapemark: Copies one mark per row onto the blank grid and walks the pointer
   to it.
 - bit~: Lands the pointer on one tape cell per entry and walks the bit home.
@@ -345,9 +340,6 @@ These generators keep no unconstrained tree route and have no subtree to fold:
   An ignored input costs a drained `~ ~` through `input_weights`.
 - Modulous: Pushes the whole table as a string literal and spends the row index
   popping down to the answer.
-- NoComment: Switches between two lookups at four inputs. Its lookup shrinks
-  degenerate tables; the fold discriminator in `test_schemes.py` records this
-  exception.
 - Packlang: Paints one array block and indexes it at every arity.
   An ignored input is read bare.
 - Qoibl: Divides one literal by the power of two its reads build.
@@ -405,8 +397,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
   what the band can step.
 - S*bleq's T-dependent work was hidden by parity.
 - 6-5's T-dependent work was hidden by parity.
-- NoComment's `T/32`-byte stack read x1.00 on the ratio behind a 32,768-bit
-  tape and x1.99 on the increments.
 - SLOW ACV MAMMALIAN read x1.43 on the increments.
 - Painfuck's `at most` formula is also proved for every n.
 
@@ -415,6 +405,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Generator | Proof | Qualification | Scaling | Execution | Workspace |
 | --- | --- | --- | --- | --- | --- |
 | A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike | linear: table walk; corridor weights sum to T | linear: worst 2L commands: one pass to the fixed point, one proving the repeat | T log T: worst 2(n+1)T + 4 + bl(L-1) bits: corridor, answers, ant, cursor |
+| ABCDirection | linear lookup | the write row puts the essential inputs' table on the tape, one cell an entry, then each essential input's gadget tests its dequeued bit and a 0 walks the tape pointer left by that bit's weight, leaving it beside the indexed entry; an ignored input is read and never enqueued | linear: five rows of about T + zeros + 9n columns | linear: at most 5T + 80n + 210 commands: the write row, each unary move out and back, the band | linear: at most T + 10n + 56 bits: the tape, one bit a cell |
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand | linear: T/n packed cells of O(n) digits, O(n) decoder | linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10 | linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed |
 | Algebraic Programming Language | tree | bounded shared frames; base-26 names are unbounded | linear: bounded dependency scan and canonical residual IDs | linear: at most max(21,ceil(65n/2)-21)+K+2min(K,3n+1) commands: definitions initialize once and execute at most once | poly n: at most 179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1) bits: frame/global state |
 | Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches | linear: one T-character literal, O(n) Horner reads | poly n: worst 2n + 5 commands, n Horner reads and one `at` | poly n: worst 72n + 762 + bl(6n+12) + bl(n) bits, n in 2..25 |
@@ -423,9 +414,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Back | parameterized tree | an ignored input's run lands on the cell the next load fills, and a `-` after it leaves the cell empty | linear: leaf moves sum geometrically, sparse row render | linear: worst max(R,6n-1) + R + 3n + 6 commands, R = 3T/4+1 rows: load column, then all-ones path | poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits |
 | Befunge | exception | six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables | linear: T table cells, one g at the index | unmeasured: worst 5n + 16 + 4⌈n/2⌉ steps to n=8, 5n + 29 to 10, 5n + 67 to 13 | poly n: at most six stack items; the grid is never written |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: 4T table cells, 4T walk appends, 5T + n steps | linear: worst 5T + n commands: input segments, then 3 per walk cell | linear: worst 16T + 8 + bl(8T+n-2) + bl(2T+n+1) bits: a data queue of 2T bits |
-| BF-PDA | parameterized tree | folded tree; residuals share through flags or priced binary stack words | linear: span walk, leaf drains sum geometrically | poly n: worst 10n + 2 commands, one path of n tests | poly n: worst 3n + 4 bits: 2n stack bits and an (n+4)-bit cursor |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T | poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7 | poly n: at most n + 7 + bl(n) + (d+1)bl(L) bits, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2: brackets |
-| BIO | finite lookup | nested loops telescope from `table[0]` to `table[index]` | linear: T - 1 loop pieces joined once | linear: at most 18T - 10n + 30 commands: Horner doubling 13T, decrement loops 5T | T log T: at most max(2n,8) + Σ_{j<T-1} bl(10n-8+3j) + bl(4T+10n+37) bits: T - 1 return indices |
 | bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear: bounded dependency scan and canonical residual IDs | linear: worst 7T + 17n + 92 commands past n = 1: row 0 walks the odd lane | linear: worst 2T + 49 + bl(2T+41) + bl(5T+18n+74) + bl(n) bits: 2T + 49 tape cells |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: shorter of the shared tree and the 2T-command discard lookup | linear: at most 3T + 9n - 3 commands past n=4: load 2T, stage walk; unreached, n=5 worst 47 | linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 1 bits; unreached |
 | brainfuck | tree | folded decision tree; residuals defer through level flags or binary words; affine tables stream | linear: decision_tree_program, span walk, leaf moves geometric | poly n: worst 69n + 44 commands, the AND table's all-ones row | poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits |
@@ -458,15 +447,13 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Home Row | parameterized tree | — | linear: bounded dependency scan and canonical residual IDs | linear: worst 10T + 10n + 88 commands: every guarded leaf run, one equal pair of rows | poly n: worst n + 32 + bl(27T/2+10n+6) bits: index cell and cursor |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T | poly n: worst 8n + 10 commands past n = 4, halving per level | linear: worst 24T + 516n + 169 + A bits for n = 5..16: the program text after n reads |
 | INTERCAL | parameterized tree | equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree | linear: reverse-depth numbering confines long names near the root | linear: at most 2n + 3 + Σ_{0<l<n} min(2^l, 2^(2^(n-l)) - 2) statements, one per named node | linear: at most 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits, S the Execution bound: one keyed bit per variable |
-| Jaune | finite lookup | a spatial table reached with two labels, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: two cells per row, unary weights sum T - 1 | poly n: at most 8n - 2 commands, one root-to-leaf path | poly n: at most n + 1 + bl(5·2^n+5n-4) + bl(n-1) + bl(2n-1) bits |
+| Interprogck8 | tree | a one-line compare read either flies its 1 child down a residue mod 82 through shared rungs or dismounts 85 lines onto its 0 child; a lane is any residue not in the air | linear: each node's scans and dismount span a bounded number of lines | linear: at most L commands: every jump lands past its rung | poly n: at most 8 + bl(L) + bl(n) bits: the accumulator, a line cursor, the input cursor |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T | linear: at most 18T + 56n + 5 commands past n = 4: one pass along the weighted row | linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells |
 | Line | tree | finite decision trees preserve totality; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: complete residual models and area-admitted rasters cost O(T) | poly n: worst 5n commands; complete folds retain this bound | poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4 |
 | Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
 | Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: shared tape text admitted within the positional mux budget | linear: at most L commands: straight-line, the cursor never moves back | linear: worst 6T + 30 + bl(6T+28) + bl(6T+30) + bl(L) bits past n = 4: a tape bit-integer |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`) | linear: cascade routes to two shared leaves, one-digit targets | linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down | poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
-| NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells | linear: bounded dependency scan and canonical residual IDs | linear: worst 12T + 50n + 79 commands for n = 4..6, then 3T + 3T/32 + 240n - 491 | linear: worst 32768 + T/4 + 30 + bl(L) bits past n = 4: byte tape and stack |
-| 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame | linear: worst 32T + 45n - 30 commands past n = 3: the all-ones row, a 2T kill, one shield | T log T: at most 9 + Σ_{c≤M} bl(c) + bl(L) + bl(M) bits past n = 3, M = 5T+3n-3 |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits | linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
 | Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
@@ -480,7 +467,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf | linear: per-node landing search sized in O(1), not an O(weight) dry build | poly n: n read nodes after a fixed dispatch and leaf | poly n: each command adds at most one byte; commands are poly n |
 | Smallfuck | parameterized tree | each level owns a bit, branch flag, and result cell; a child transfers its result three cells upward, so the depth-first pointer walk crosses each tree edge only a constant number of times | linear: six characters an input, approaching 48.5T characters | poly n: at most 9n^2 + 100n + 20 commands, one tree path | linear: worst L + bl(L) + bl(3n) bits: one tape bit per source character |
 | Smu | tree | a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros carry the repeated text, and a subtree two parents reach is one more when that is shorter | linear: at most 6T + 90 characters: five a node, one a leaf | poly n: worst 55n + 5 commands, one tree path of eight runs a level | linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables |
-| Sophie | tree | — | linear: canonical child IDs, shared states, one token join | linear: at most 5n + T/4 + 1 commands: forward only, one per skipped labelled block | poly n: at most bl(L) + bl(n) + 7 bits: cursor, accumulator, input count |
 | SStack | tree | each input byte is compared with stacked '1' and '0', then popped before descent; the empty test stack ends both one-shot loops; a constant subtree reads its remaining inputs and prints; repeated residuals use guarded labels | linear: 21 characters an internal node, three a leaf | poly n: at most 7n + 3 commands, six a tree node plus guarded dispatch | poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes |
 | Streetcode | linear lookup | the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry | linear: nine rows of street, ~1.8T columns | linear: worst 3T + 110n + 55 steps for n = 6, 7, then 4T + 14n + 599: one zero | T log T: worst nT + 2n + 25 + bl(2T+57+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3) |
 | Suffolk | linear lookup | workspace-limited NOR cofactors share computed values; otherwise a countdown counts rising and falling steps to recover the indexed entry | linear: residual interning, bounded NOR circuit, countdown fallback | linear: worst L + R commands, R the prefix through the first read: one pass, then EOF | poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: bounded NOR cells or eight countdown cells |
@@ -574,12 +560,6 @@ The remaining `cap` rows do have a uniform lift argument.
   so the program is linear; every row of every table at seven inputs and
   under has been executed, and the dispatch reaches the loop only past 35.
 
-- NoComment left when its rows stopped living on the tape: the index is pushed
-  as byte-sized stage amounts, a chain of uniform six-command groups pops and
-  skips its way to the row's group, and every group after it adds the
-  difference between its row and the next, so the landing cell telescopes to
-  `table[index]` on six cells at any arity.
-
 - Factor left when its digit budget was retired: the budget (4300, then
   16000, then 500000 digits) was a size policy pinned to the arity the
   suite swept, never a ceiling of the language's -- the generator renders
@@ -591,7 +571,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 78 theoretical totality arguments and
+Accordingly, this ledger records 74 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

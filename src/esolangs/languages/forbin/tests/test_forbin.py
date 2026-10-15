@@ -215,20 +215,25 @@ class TestSnapshotWithoutTheCycleDetector:
         read = "main {\n a,b,c,d,e,f,g,h = (in 0);\n}\n"
         assert at(read, 0, "HH") != at(read, 1, "HH")
 
-    def test_scope_keys_are_locals_identity_serials(self) -> None:
+    def test_scope_keys_are_first_sight_serials_that_survive_a_binding(self) -> None:
         """The scope keys count in the workspace formula, so numbering is fixed.
 
-        Each scope is keyed by its locals mapping's identity serial (the
-        global scope first), not by a scope id; the ledger's exact Forbin
-        workspace formula depends on that numbering.
+        Each scope is keyed by a first-sight serial of its scope id (the
+        global scope first).  Keyed by its locals' ``id`` instead, a binding
+        minted a new key, and a recycled ``id`` made 11 of 5,197 programs
+        snapshot differently on two runs.
         """
         from esolangs.languages.forbin.interpreter import _Machine
 
-        machine = _Machine("main { x = 1; }", ScriptedIO(""))
+        machine = _Machine("main { x = 1; x = 0; }", ScriptedIO(""))
         machine.step()
         scopes = machine.snapshot()[5]
         assert [key for key, _locals in scopes] == [1, 2]
         assert scopes[-1][1] == (("x", "1"),)
+        machine.step()
+        rebound = machine.snapshot()[5]
+        assert [key for key, _locals in rebound] == [1, 2]
+        assert rebound[-1][1] == (("x", "0"),)
 
     def test_an_anonymous_function_is_named_by_the_empty_string(self) -> None:
         """``""`` is a real value here, not a placeholder nobody reads."""

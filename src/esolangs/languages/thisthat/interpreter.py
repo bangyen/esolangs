@@ -32,13 +32,6 @@ Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
 hook, so callers may inject a reproducible source. A branch from another
 program is rejected with :class:`ValueError`.
-
-:func:`_advance` is a pure transition over an immutable :data:`_Core`.  It
-consumes input characters and ``◘`` draws from explicit tuples and returns the
-requested print effects; it never touches the ports.  When it runs out of an
-explicit input or draw it raises :class:`_NeedInputError`/:class:`_NeedDrawError`, and
-:meth:`_Machine.step` -- the shell -- supplies one more from the port or the
-draw source and retries.  A retry is sound because the transition is pure.
 """
 
 from __future__ import annotations
@@ -534,6 +527,12 @@ class _Step:
     }
 
 
+# :func:`_advance` is a pure transition over an immutable :data:`_Core`.  It consumes
+# input characters and ``◘`` draws from explicit tuples and returns the requested print
+# effects; it never touches the ports.  When it runs out of an explicit input or draw
+# it raises :class:`_NeedInputError`/:class:`_NeedDrawError`, and :meth:`_Machine.step`
+# -- the shell -- supplies one more from the port or the draw source and retries.  A
+# retry is sound because the transition is pure.
 def _advance(
     core: _Core,
     grid: tuple[str, ...],

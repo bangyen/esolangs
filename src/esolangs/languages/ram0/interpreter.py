@@ -1,11 +1,8 @@
 """RAM0 interpreter implementation.
 
 Two registers (z, n) and unbounded RAM; seven commands: Z, A, N, C, L,
-S, and goto.  :func:`_advance` is pure over an immutable ``_State``
-whose RAM is a tuple of ``(address, value)`` pairs in insertion order
-(the dump prints that order).  ``halted`` once the cursor runs off the token list, and
-the dump prints exactly once on that step -- the ``dumped`` flag is in
-the state because it records an effect.
+S, and goto.  The run halts when the cursor runs off the token list, and
+then dumps the RAM once, in the order its addresses were first written.
 
 Gotos are 1-based ("counting the first command as 1"), so ``0`` (or ``00``)
 names no command and raises :class:`~esolangs.exceptions.HaltError` when it
@@ -17,6 +14,7 @@ last command halts, as running off the end does.
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -42,10 +40,19 @@ type _Ram = Chunked[tuple[int, int]]
 #: stays right for every later state of the same run.
 type _Index = dict[int, int]
 
-#: ``(ind, z, n, ram, dumped)``: an immutable value, rebound per step.
-#: ``dumped`` is state because the dump happens after the cursor runs off
-#: the end; it stays out of ``snapshot``.  Tokens are a parameter, not a field.
-type _State = tuple[int, int, int, _Ram, bool]
+
+class _State(NamedTuple):
+    """An immutable value, rebound per step.
+
+    ``dumped`` is state because the dump happens after the cursor runs off
+    the end; it stays out of ``snapshot``.  Tokens are a parameter, not a field.
+    """
+
+    ind: int
+    z: int
+    n: int
+    ram: _Ram
+    dumped: bool
 
 
 def _stored(ram: _Ram, addr: int, value: int, index: _Index) -> _Ram:
@@ -82,24 +89,28 @@ def change(z: int, n: int, ram: _Ram, op: str, index: _Index) -> tuple[int, int,
     return z, n, ram
 
 
+# :func:`_advance` is pure over an immutable ``_State`` whose RAM is a tuple of
+# ``(address, value)`` pairs in insertion order.  ``halted`` once the cursor runs off
+# the token list, and the dump prints exactly once on that step -- the ``dumped`` flag
+# is in the state because it records an effect.
 def _advance(state: _State, op: str, index: _Index) -> _State:
     """Return the state after executing one token.
 
     ``C`` skips the next token when ``z`` is zero; a digit is a 1-based goto
     landing on ``int(op) - 2`` so the shared increment carries it.
     """
-    ind, z, n, ram, dumped = state
+    ind = state.ind
     if op.isdigit() and not int(op):
         raise HaltError(
             f"goto {op} at command {ind + 1}: commands count from 1",
             hint="jump to a command number of 1 or more",
         )
-    z, n, ram = change(z, n, ram, op, index)
+    z, n, ram = change(state.z, state.n, state.ram, op, index)
     if op == "C" and not z:
         ind += 1
     elif op.isdigit():
         ind = int(op) - 2
-    return (ind + 1, z, n, ram, dumped)
+    return state._replace(ind=ind + 1, z=z, n=n, ram=ram)
 
 
 class _Machine:
@@ -119,7 +130,7 @@ class _Machine:
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
-        self.state: _State = (0, 0, 0, (), False)
+        self.state = _State(0, 0, 0, (), dumped=False)
         self._index: _Index = {}
 
     # The language's own names.  They are views on the current state rather
@@ -127,25 +138,25 @@ class _Machine:
 
     @property
     def ind(self) -> int:
-        return self.state[0]
+        return self.state.ind
 
     @property
     def z(self) -> int:
-        return self.state[1]
+        return self.state.z
 
     @property
     def n(self) -> int:
-        return self.state[2]
+        return self.state.n
 
     @property
     def ram(self) -> dict[int, int]:
         """The RAM as a dict, which is how callers and the dump read it."""
-        return dict(flatten(self.state[3]))
+        return dict(flatten(self.state.ram))
 
     @property
     def dumped(self) -> bool:
         """Whether the once-per-run state dump has already been printed."""
-        return self.state[4]
+        return self.state.dumped
 
     @property
     def halted(self) -> bool:
@@ -153,14 +164,14 @@ class _Machine:
 
         A goto never lands negative: :func:`_advance` rejects goto ``0``.
         """
-        return self.state[0] >= self.size
+        return self.state.ind >= self.size
 
     # The VM's language-shaped view: two registers and a sparse RAM.
 
     @property
     def ip(self) -> int:
         """The token cursor."""
-        return self.state[0]
+        return self.state.ind
 
     @property
     def memory(self) -> list[int]:
@@ -198,7 +209,7 @@ class _Machine:
         if ind >= self.size:
             if not dumped:
                 self._dump(z, n, ram)
-                self.state = (ind, z, n, ram, True)
+                self.state = self.state._replace(dumped=True)
             return
         op = self.tokens[ind]
         self.state = _advance(self.state, op, self._index)

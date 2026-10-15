@@ -12,18 +12,6 @@ only ``i`` and ``2i``); any closer (2 or 6) closes the innermost opener,
 and the opener alone decides if or while.  No instruction cap: a
 growing register never repeats, and ``esolangs.run``'s ``timeout`` is
 the guard.
-
-Root recovery is exact: ``[a, b]`` is ``(x-a)^2 + p**(2*b)`` and ``[v]``
-is ``x - p**v``, so the Gaussian integer roots are recovered exactly and
-the values read off (a real root ``p**v`` passes 2**53 at ``p**8`` for
-``p >= 100``, where ``complex`` would round).  The recovery lives in
-:mod:`.roots`: past ``_NTT_MIN_DEGREE`` candidates come from
-roots modulo two small prime fields found by NTT; acceptance is exact
-division either way.  Whatever the peels leave, and every sparse source,
-goes through ``p``-adic lifting and a 2-D lattice behind the gap lemma,
-so a cold parse is polynomial in the source length for every source.
-:func:`_advance` is pure over ``(register,
-cursor)``; the instructions are factored once when the machine is built.
 """
 
 import functools
@@ -46,6 +34,17 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div, trunc_mod
 from esolangs.runtime.source_hints import syntax_error
+
+# Root recovery is exact: ``[a, b]`` is ``(x-a)^2 + p**(2*b)`` and ``[v]`` is
+# ``x - p**v``, so the Gaussian integer roots are recovered exactly and the values read
+# off (a real root ``p**v`` passes 2**53 at ``p**8`` for ``p >= 100``, where ``complex``
+# would round).  The recovery lives in :mod:`.roots`: past ``_NTT_MIN_DEGREE``
+# candidates come from roots modulo two small prime fields found by NTT; acceptance
+# is exact division either way.  Whatever the peels leave, and every sparse source,
+# goes through ``p``-adic lifting and a 2-D lattice behind the gap lemma, so a cold
+# parse is polynomial in the source length for every source.  :func:`_advance` is pure
+# over ``(register, cursor)``; the instructions are factored once when the machine is
+# built.
 
 
 def _bracket_pairs(string: list[list[int]]) -> dict[int, int]:

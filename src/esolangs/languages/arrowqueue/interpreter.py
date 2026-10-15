@@ -4,10 +4,8 @@ A 2D queue-based tarpit after Re:direction: ``*`` turns the IP clockwise,
 ``~`` pushes the current direction, ``+`` pops and points the IP that way;
 the program halts on an empty pop or off the grid.  Decisions: the IP
 starts top-left moving right; clockwise is right, down, left, up; the
-grid is padded to the longest line, and leaving it halts.  No I/O, so
-:func:`_advance` is pure and total; the halted flag is *in* the state
-(an empty pop stops the run with the IP still on the grid).  The one
-effect is the end-of-run queue dump in :func:`run`.
+grid is padded to the longest line, and leaving it halts.  There is no
+I/O: the queue is dumped when the run ends.
 """
 
 from __future__ import annotations
@@ -33,6 +31,9 @@ def _outside(row: int, col: int, grid: Sequence[str], width: int) -> bool:
     return not (0 <= col < width and 0 <= row < len(grid))
 
 
+# No I/O, so :func:`_advance` is pure and total; the halted flag is *in* the state
+# (an empty pop stops the run with the IP still on the grid).  The one effect is the
+# end-of-run queue dump in :func:`run`.
 def _advance(state: _State, grid: Sequence[str], width: int) -> _State:
     """Return the state after executing one grid cell.
 

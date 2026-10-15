@@ -6,15 +6,10 @@ wiki); a ``~`` with no jump number raises :class:`ValueError`.  Two
 choices the wiki leaves open: "The code line is split into characters,
 each character being a command", but a character that is no command is
 ignored rather than rejected; and a jump number ``0`` names no command,
-so that ``~`` falls through to the next command.  The wiki
-defines no I/O, so both registers are printed once at the end,
-space-separated with no trailing newline -- the repo's convention for
-interpreter-only languages, not the
-spec's; another spec pins newlines instead.
-
-:func:`_advance` is a pure transition over an immutable ``_State`` with no
-``io`` argument; :class:`_Machine` is the mutable shell that rebinds one
-state per ``step()`` and does the one dump on the halting step.
+so that ``~`` falls through to the next command.  The wiki defines no
+I/O, so both registers are printed once at the end, space-separated with
+no trailing newline -- the repo's convention for interpreter-only
+languages, not the spec's; another spec pins newlines instead.
 """
 
 from __future__ import annotations
@@ -43,6 +38,9 @@ from esolangs.runtime.source_hints import syntax_error
 type _State = tuple[int, int, tuple[int, int], bool]
 
 
+# :func:`_advance` is a pure transition over an immutable ``_State`` with no ``io``
+# argument; :class:`_Machine` is the mutable shell that rebinds one state per ``step()``
+# and does the one dump on the halting step.
 def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
     """Return the state after executing one command.
 

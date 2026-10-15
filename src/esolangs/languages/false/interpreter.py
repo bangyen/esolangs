@@ -268,44 +268,49 @@ def _advance(  # noqa: C901
         return state, None
     frame = frames[-1]
     char = code[frame.pc]
-    frames = (*frames[:-1], _at(frame, frame.pc + 1))
+
+    def go(
+        new_stack: tuple[_Value, ...],
+        pc: int | None = None,
+        *,
+        variables: tuple[_Value | None, ...] = variables,
+        push: tuple[_Frame, ...] = (),
+    ) -> _State:
+        """Return the state with this frame at ``pc`` (default next), ``push`` above."""
+        at = _at(frame, frame.pc + 1 if pc is None else pc)
+        return (new_stack, variables, (*frames[:-1], at, *push))
 
     if "0" <= char <= "9":
         value, stop = _literal(code, frame.pc, frame.end)
-        frames = (*frames[:-1], _at(frame, stop))
-        return ((*stack, value), variables, frames), None
+        return go((*stack, value), stop), None
     if char == "'":
-        frames = (*frames[:-1], _at(frame, frame.pc + 2))
-        return ((*stack, ord(code[frame.pc + 1])), variables, frames), None
+        return go((*stack, ord(code[frame.pc + 1])), frame.pc + 2), None
     if char == "{":
         stop = code.index("}", frame.pc) + 1
-        frames = (*frames[:-1], _at(frame, stop))
-        return (stack, variables, frames), None
+        return go(stack, stop), None
     if char == '"':
         stop = code.index('"', frame.pc + 1)
-        frames = (*frames[:-1], _at(frame, stop + 1))
-        return (stack, variables, frames), ("str", code[frame.pc + 1 : stop])
+        return go(stack, stop + 1), ("str", code[frame.pc + 1 : stop])
     if char == "[":
         stop = closers[frame.pc]
-        frames = (*frames[:-1], _at(frame, stop + 1))
-        return ((*stack, _Lambda(frame.pc + 1, stop)), variables, frames), None
+        return go((*stack, _Lambda(frame.pc + 1, stop)), stop + 1), None
     if char in _LETTERS:
-        return ((*stack, _LETTERS.index(char)), variables, frames), None
+        return go((*stack, _LETTERS.index(char))), None
     if char == "$":
         top, _rest = _pop(stack)
-        return ((*stack, top), variables, frames), None
+        return go((*stack, top)), None
     if char == "%":
         _top, rest = _pop(stack)
-        return (rest, variables, frames), None
+        return go(rest), None
     if char == "\\":
         two, rest = _pop(stack)
         one, rest = _pop(rest)
-        return ((*rest, two, one), variables, frames), None
+        return go((*rest, two, one)), None
     if char == "@":
         three, rest = _pop(stack)
         two, rest = _pop(rest)
         one, rest = _pop(rest)
-        return ((*rest, two, three, one), variables, frames), None
+        return go((*rest, two, three, one)), None
     if char in "øO":
         depth, rest = _pop(stack)
         index = _number(depth, "'ø'")
@@ -314,25 +319,23 @@ def _advance(  # noqa: C901
                 f"'ø' asks for stack entry {index}, which is not there",
                 hint="push enough values for the requested stack depth",
             )
-        return ((*rest, rest[len(rest) - 1 - index]), variables, frames), None
+        return go((*rest, rest[len(rest) - 1 - index])), None
     if char == "_":
         top, rest = _pop(stack)
-        return ((*rest, wrap_int32(-_number(top, "'_'"))), variables, frames), None
+        return go((*rest, wrap_int32(-_number(top, "'_'")))), None
     if char == "~":
         top, rest = _pop(stack)
-        return ((*rest, wrap_int32(~_number(top, "'~'"))), variables, frames), None
+        return go((*rest, wrap_int32(~_number(top, "'~'")))), None
     if char in "+-*/&|>=":
-        return (_binary(char, stack), variables, frames), None
+        return go(_binary(char, stack)), None
     if char == ":":
         reference, rest = _pop(stack)
         # Not ``value``: that name holds the integer literal above, and one
         # binding cannot be both an int and a lambda.
         stored, rest = _pop(rest)
         index = _variable(reference)
-        return (
-            rest,
-            (*variables[:index], stored, *variables[index + 1 :]),
-            frames,
+        return go(
+            rest, variables=(*variables[:index], stored, *variables[index + 1 :])
         ), None
     if char == ";":
         reference, rest = _pop(stack)
@@ -343,7 +346,7 @@ def _advance(  # noqa: C901
                 f"FALSE variable {_LETTERS[index]!r} was read before it was stored",
                 hint="store a value in the variable before reading it",
             )
-        return ((*rest, fetched), variables, frames), None
+        return go((*rest, fetched)), None
     if char == "!":
         body, rest = _pop(stack)
         if not isinstance(body, _Lambda):
@@ -351,7 +354,7 @@ def _advance(  # noqa: C901
                 "'!' runs a lambda, but the top of the stack is a number",
                 hint="push a lambda before invoking this operation",
             )
-        return (rest, variables, (*frames, _Frame(body.start, body.end))), None
+        return go(rest, push=(_Frame(body.start, body.end),)), None
     if char == "?":
         body, rest = _pop(stack)
         flag, rest = _pop(rest)
@@ -361,8 +364,8 @@ def _advance(  # noqa: C901
                 hint="push a lambda before invoking this operation",
             )
         if _number(flag, "'?'"):
-            return (rest, variables, (*frames, _Frame(body.start, body.end))), None
-        return (rest, variables, frames), None
+            return go(rest, push=(_Frame(body.start, body.end),)), None
+        return go(rest), None
     if char == "#":
         body, rest = _pop(stack)
         cond, rest = _pop(rest)
@@ -372,21 +375,21 @@ def _advance(  # noqa: C901
                 hint="push two lambdas for the loop condition and body",
             )
         loop = _Loop(cond.start, cond.end, cond, body)
-        return (rest, variables, (*frames, loop)), None
+        return go(rest, push=(loop,)), None
     if char == ".":
         top, rest = _pop(stack)
-        return (rest, variables, frames), ("num", _number(top, "'.'"))
+        return go(rest), ("num", _number(top, "'.'"))
     if char == ",":
         top, rest = _pop(stack)
-        return (rest, variables, frames), ("char", _number(top, "','") & 0xFF)
+        return go(rest), ("char", _number(top, "','") & 0xFF)
     if char == "^":
         # The read already happened in the shell.  ``None`` is end of input,
         # which the spec answers with -1.
         value = -1 if char_input is None else char_input
-        return ((*stack, value), variables, frames), None
+        return go((*stack, value)), None
     # ``ß``/``B`` flush a buffer this package does not have, and every other
     # character is ignored, as the reference's parser ignores whitespace.
-    return (stack, variables, frames), None
+    return go(stack), None
 
 
 class _Machine:

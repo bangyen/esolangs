@@ -36,13 +36,13 @@ Seventeen inputs would need 65,536 cells, more than the store.
 from __future__ import annotations
 
 from functools import cache
+from typing import NamedTuple
 
 from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
     _ANSWER,
     _CONSTS,
-    _ENTRY,
     _K_CELL,
     _T_HELPERS,
     _T_HUB_CELLS,
@@ -55,7 +55,7 @@ from .core import (
     _g,
     _main_planner,
     _merge_code,
-    _one_options,
+    _options_of,
     _pointers,
     _prime,
     _program,
@@ -66,7 +66,7 @@ from .core import (
     _t_jump,
     _table_char,
     _turn_hubs,
-    _valid_chars,
+    _walker,
 )
 
 #: The largest input count the generator builds.
@@ -101,6 +101,34 @@ _D_SEEDS = {
 _D_OPERANDS = {86: "rot K2", 101: "rot K2"}
 #: Stubs, hub characters and the navigation's data cells sit at or above this.
 _D_FLOOR = 6000
+
+#: Free pointer-region cells (``34..127`` clear of every label and operand).
+_D_POINTER_FREE = tuple(
+    a
+    for a in range(34, 128)
+    if _T_LABELS[a - 34] not in "01xn" and a not in _D_OPERANDS
+)
+
+#: Pointer cells built at run time, ``cell -> (value, chain)``.  A ``j`` on a
+#: cell worth ``v`` lands on ``v + 1``, so a low cell holding a working address
+#: lets the planner jump straight to it instead of walking the whole
+#: ``128..419`` region: each entry saves far more ``o`` cells than its chain
+#: costs.  The cells and values were searched; the chain runs
+#: through :func:`_emit_chain`'s ``rot``/``K0``/``K1``/``K2`` ops.
+_D_POINTERS: dict[int, tuple[int, str]] = {
+    68: (297, "rot rot rot rot rot rot rot rot K2"),
+    70: (221, "K2"),
+    74: (141, "rot rot rot rot rot rot rot rot rot"),
+    91: (163, "K2"),
+    116: (172, "K2"),
+    123: (216, "K2 K1"),
+}
+
+#: Placement override for the walked working cells, keyed by allocation order
+#: (helpers, the five gadget groups, ``s``/``z``, the two twos and to-48 cells,
+#: then the four label seeds).  A cell whose preferred address is taken falls
+#: back to the first free one, so the map only steers the layout.
+_D_LAYOUT: dict[int, int] = {4: 328, 7: 132, 20: 144, 21: 135}
 
 
 def _top_bit_held(n: int, group: int) -> bool:
@@ -146,21 +174,6 @@ def _readouts(n: int) -> tuple[int, ...]:
     return tuple(_crazy(s, 29524) for s in states)
 
 
-def _n_options(v: int, operand: dict[int, int]) -> list[dict[int, int]]:
-    """Return data for an ``n`` hub at ``v``: ``p``, ``p``, ``j`` to an operand."""
-    return [
-        {v + 3: a, v + 4: b, v + 5: q}
-        for q in _valid_chars(v + 5)
-        if q + 1 in operand
-        for a in _valid_chars(v + 3)
-        for b in _valid_chars(v + 4)
-        if all(
-            _crazy(_crazy(_crazy(48 + x, a), b), operand[q + 1]) & 0xFF == 49 - x
-            for x in (0, 1)
-        )
-    ]
-
-
 def _hubs(
     values: dict[int, int], label: dict[int, str], avoid: set[int]
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
@@ -172,24 +185,25 @@ def _hubs(
     """
     operand = {f: _chain(_g(f), ops) for f, ops in _D_OPERANDS.items()}
 
-    def options_of(v: int, lab: str) -> list[dict[int, int]]:
-        if lab == "1":
-            return _one_options(v)
-        return _n_options(v, operand) if lab == "n" else [{}]
-
     return _t_hubs(
         values,
         label,
         avoid,
         hub_cells=_T_HUB_CELLS,
-        options_of=options_of,
+        options_of=_options_of(operand),
         floor=_D_FLOOR,
         ceiling=_WORDS - 10,
         hub_floor=_D_FLOOR,
     )
 
 
-_Digits = tuple[dict[int, str], dict[int, int], tuple[int, ...], dict[int, str]]
+class _Digits(NamedTuple):
+    """Fifteen/sixteen inputs' build: code, data, table cell per prefix, labels."""
+
+    code: dict[int, str]
+    data: dict[int, int]
+    tables: tuple[int, ...]
+    labels: dict[int, str]
 
 
 @cache
@@ -207,14 +221,7 @@ def _digits(n: int) -> _Digits:
     label = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
     used = {*_T_LOW, *label, *_D_OPERANDS}
 
-    def walked(value: int | None = None) -> int:
-        address = next(
-            a
-            for a in range(128, _ENTRY)
-            if a not in used and (value is None or _g(a) == value)
-        )
-        used.add(address)
-        return address
+    walked = _walker(used, _D_LAYOUT)
 
     helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
     for name, value in _T_HELPERS.items():
@@ -235,6 +242,9 @@ def _digits(n: int) -> _Digits:
     _prime(
         main, helper, (helper["all1"], helper["all2"], s_cell, z_cell, *sorted(label))
     )
+    for f, (value, ops) in sorted(_D_POINTERS.items()):
+        _emit_chain(main, f, ops, helper)
+        main.mem[f] = value
     _seed_label_chains(
         main, helper, {lab: ops for lab, (_, ops) in _D_SEEDS.items()}, seeds, label
     )
@@ -280,7 +290,7 @@ def _digits(n: int) -> _Digits:
     code = _merge_code(
         (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
     )
-    return code, data, tables, {p - 1: lab for p, lab in label.items()}
+    return _Digits(code, data, tables, {p - 1: lab for p, lab in label.items()})
 
 
 @cache

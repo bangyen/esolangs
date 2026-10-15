@@ -84,19 +84,28 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     if width is None or width <= 0 or grid_width(program) <= width:
         return program
     if n <= 2 and width < 10:
-        # Essential: otherwise lines reach 10 columns.
-        # One bit contributes 1, the other 2: common inc plus decnz/inc
-        # adds 0/2 without branching. All leaves fit single-digit targets.
-        slot = TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])
-        lines = [slot] if n == 1 else [slot, "inc();", slot]
-        one = len(lines) + len(truth_table) + 1
-        for value in range(len(truth_table)):
-            # the chain adds the low bit as 2 and the high bit as 1: swap them
-            row = value if n == 1 else (value & 1) * 2 + (value >> 1)
-            lines.append(f"decnz({one if truth_table[row] == '1' else one + 1});")
-        return "\n".join([*lines, "swap();", "inc();"])
-    lines = []
-    jumps = iter(resolved)
+        return _rmsn_small(truth_table, n)
+    return _rmsn_expand(tokens, resolved)
+
+
+def _rmsn_small(truth_table: str, n: int) -> str:
+    """Decision-chain RMSN for ``n <= 2``, whose lines stay under 10 columns."""
+    # One bit contributes 1, the other 2: common inc plus decnz/inc
+    # adds 0/2 without branching. All leaves fit single-digit targets.
+    slot = TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])
+    lines = [slot] if n == 1 else [slot, "inc();", slot]
+    one = len(lines) + len(truth_table) + 1
+    for value in range(len(truth_table)):
+        # the chain adds the low bit as 2 and the high bit as 1: swap them
+        row = value if n == 1 else (value & 1) * 2 + (value >> 1)
+        lines.append(f"decnz({one if truth_table[row] == '1' else one + 1});")
+    return "\n".join([*lines, "swap();", "inc();"])
+
+
+def _rmsn_expand(tokens: list[str], jumps: list[int]) -> str:
+    """One RMSN command per line: short setters, ``~`` taking ``jumps`` in order."""
+    lines: list[str] = []
+    targets = iter(jumps)
     for token in tokens:
         if token.startswith(TEMPLATE_CHAR):
             # Both fills still execute two commands, preserving every target.
@@ -104,7 +113,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
         else:
             for command in token:
                 lines.append(
-                    f"decnz({next(jumps)});" if command == "~" else _RMSN[command]
+                    f"decnz({next(targets)});" if command == "~" else _RMSN[command]
                 )
     return "\n".join(lines)
 

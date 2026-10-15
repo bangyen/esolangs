@@ -334,29 +334,13 @@ def _is_template_for(
     return same_layout(template, plain, layout)
 
 
-def instantiate(
-    language: str,
+def _check_template_source(
+    name: str,
     template: Program,
-    bits: list[int] | tuple[int, ...],
-    *,
-    width: int | None = None,
-    truth_table: str | None = None,
-    settings: DialectSettings | None = None,
+    truth_table: str | None,
+    settings: DialectSettings | None,
 ) -> str:
-    """Fill a parameterized generator's template with ``bits``.
-
-    Substituting the runs by hand does not work: each language spells a
-    set-input its own way.  A language whose generator reads its inputs, or
-    a template from a different language, raises
-    :class:`~esolangs.exceptions.TemplateError`.  ``width`` applies here too.
-    A template :func:`generate` returned carries its setters; a plain string
-    has them recovered from the language's own. Retained dialect choices follow
-    the filled program; explicit settings overrides individual choices.
-    """
-    settings = effective_settings(language, template, settings)
-    dialect_options(language, settings)
-    check_width(width)
-    name = resolve(language)
+    """Return the setter character for ``template``, or refuse an unfillable one."""
     if isinstance(template, Raster):
         # Accepted by the annotation so ``instantiate(lang, generate(lang,
         # table), bits)`` type-checks; no raster generator emits a template.
@@ -419,6 +403,34 @@ def instantiate(
             ),
             "instantiate the template using the language that generated it",
         )
+    return char
+
+
+def instantiate(
+    language: str,
+    template: Program,
+    bits: list[int] | tuple[int, ...],
+    *,
+    width: int | None = None,
+    truth_table: str | None = None,
+    settings: DialectSettings | None = None,
+) -> str:
+    """Fill a parameterized generator's template with ``bits``.
+
+    Substituting the runs by hand does not work: each language spells a
+    set-input its own way.  A language whose generator reads its inputs, or
+    a template from a different language, raises
+    :class:`~esolangs.exceptions.TemplateError`.  ``width`` applies here too.
+    A template :func:`generate` returned carries its setters; a plain string
+    has them recovered from the language's own. Retained dialect choices follow
+    the filled program; explicit settings overrides individual choices.
+    """
+    settings = effective_settings(language, template, settings)
+    dialect_options(language, settings)
+    check_width(width)
+    name = resolve(language)
+    char = _check_template_source(name, template, truth_table, settings)
+    assert isinstance(template, str)  # the check refuses a Raster
     bits = check_bits(bits, "bits")
     tagged = (
         template
@@ -680,7 +692,7 @@ def run(
     :class:`~esolangs.exceptions.ProgramError`.
     """
     settings = effective_settings(language, program, settings)
-    dialect = dialect_options(language, settings)
+    dialect_options(language, settings)  # validate before any route
     check_scale_for(language, scale)
     check_seed(seed)
     check_timeout(timeout)

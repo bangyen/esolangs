@@ -135,17 +135,21 @@ class TestASeedMakesARunRepeat:
         assert "languages that draw" in str(esolangs.run.__doc__)
 
     def test_the_languages_that_terminate_are_the_ones_named(self) -> None:
-        """``run --timeout`` names every language whose answer is halting."""
+        """``read-answer`` names every language whose answer is halting.
+
+        Not ``run``: it takes any program, and the halt/diverge contract is a
+        generated program's.
+        """
         halting = [
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["answer_mode"] == "termination"
         ]
         assert halting
-        option = HELP["run"].split("\n  --timeout SECONDS", 1)[1]
-        timeout_help = " ".join(option.split("\n  --scale N", 1)[0].split())
+        text = " ".join(HELP["read-answer"].split())
         for name in halting:
-            assert name in timeout_help, f"run --help's --timeout omits {name}"
+            assert name in text, f"read-answer --help omits {name}"
+        assert not any(name in HELP["run"] for name in halting)
 
     def test_the_cli_takes_one(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path

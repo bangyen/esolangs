@@ -169,7 +169,7 @@ Build language-specific stdin with `encode_inputs`:
 | Forþ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
 | Inject | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| Jaune | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Interprogck8 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
@@ -181,7 +181,7 @@ Build language-specific stdin with `encode_inputs`:
 | Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
 The other 37 that read stdin take one `0`/`1` character per bit -- `'101'`.
-The remaining 21 embed their inputs and read no stdin: `instantiate` fills them.
+The remaining 17 embed their inputs and read no stdin: `instantiate` fills them.
 The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
 
@@ -294,7 +294,7 @@ assert len(debug.output) > 2
 
 `describe(language)` returns the language’s API metadata:
 `source_kind`, `state_model` (its category: register, tape, stack, grid,
-queue or other), `shape` (its generator’s construction growth: tree,
+queue, program, variables or other), `shape` (its generator’s construction growth: tree,
 reducing or lookup; None without a generator), `input_shape`,
 `input_encoding`, `answer_mode`, `answer_encoding`,
 `width_effect`, `parameterized`, `reads_input`, `random` (the interpreter draws

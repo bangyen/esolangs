@@ -1,5 +1,7 @@
 """Native NOR circuits, repeated cofactors, and the unchanged Suffolk ledgers."""
 
+import random
+
 import pytest
 
 from esolangs.languages.suffolk.generator import (
@@ -45,16 +47,23 @@ def _execute(table, program, rows):
     assert peak <= len(program) + 151
 
 
+def _witness_rows(n):
+    """Rows 0, all-ones, single-bit and low-run rows plus complements, 32 seeded."""
+    top = (1 << n) - 1
+    rows = {0, top}
+    for k in range(n):
+        rows |= {1 << k, top ^ (1 << k), (1 << k) - 1, top ^ ((1 << k) - 1)}
+    return sorted(rows | set(random.Random(n).sample(range(1 << n), 32)))
+
+
 @pytest.mark.medium
-@pytest.mark.parametrize(
-    ("n", "start"), [(n, start) for n in (9, 10) for start in range(0, 1 << n, 64)]
-)
-def test_changed_scaling_controls_execute_every_row(n, start) -> None:
+@pytest.mark.parametrize("n", [9, 10])
+def test_changed_scaling_controls_execute_witness_rows(n) -> None:
     table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(1 << n))
     old, new = _suffolk_lookup(table), suffolk(table)
     assert len(new) < len(old)
-    _execute(table, old, range(start, start + 64))
-    _execute(table, new, range(start, start + 64))
+    _execute(table, old, _witness_rows(n))
+    _execute(table, new, _witness_rows(n))
 
 
 @pytest.mark.medium

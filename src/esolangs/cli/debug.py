@@ -29,7 +29,6 @@ from esolangs.cli.io import (
     _read_program,
     _read_stdin,
     _resolve_target,
-    _termination_notice,
     _unbounded_notice,
 )
 from esolangs.debugger import make_debugger
@@ -132,8 +131,6 @@ def _debug(rest: list[str]) -> None:
     # as a bound here as much as ``--timeout`` does, so a run that has one
     # is not told to pass one.
     bounded = steps is not None or limit is not None
-    if facts["answer_mode"] == "termination" and not bounded:
-        _termination_notice(facts["name"], "--timeout SECONDS or --steps N")
     try:
         with _unbounded_notice("debug") if not bounded else nullcontext():
             reason = dbg.run(max_steps=steps, timeout=limit)

@@ -155,6 +155,15 @@ def _drop_entries(  # noqa: C901
 
     # A statement alone in its block cannot go without leaving it empty.
     parsed = ast.parse(source)
+    # ``_JAUNE_LANGUAGE`` in the ``_LANGUAGES`` tuple: an item that is only a
+    # name imported from a deleted module, which would otherwise keep its
+    # import alive.
+    imported = {
+        alias.asname or alias.name
+        for node in parsed.body
+        if isinstance(node, ast.ImportFrom) and _gone(node.module, modules)
+        for alias in node.names
+    }
     lonely = {
         id(block[0])
         for parent in ast.walk(parsed)
@@ -172,7 +181,11 @@ def _drop_entries(  # noqa: C901
                 first = (
                     item.args[0] if isinstance(item, ast.Call) and item.args else None
                 )
-                if named(item) or named(first):
+                if (
+                    named(item)
+                    or named(first)
+                    or (isinstance(item, ast.Name) and item.id in imported)
+                ):
                     own(item, item)
         elif (
             isinstance(node, ast.stmt)
@@ -201,12 +214,7 @@ def _drop_entries(  # noqa: C901
             spans.append((lo, node.end_lineno or node.lineno))
     # A top-level function or class using a name imported from a deleted
     # module goes too, and so, in turn, does whatever uses it.
-    dead = {
-        alias.asname or alias.name
-        for node in parsed.body
-        if isinstance(node, ast.ImportFrom) and _gone(node.module, modules)
-        for alias in node.names
-    } | {
+    dead = imported | {
         node.name
         for node in parsed.body
         if isinstance(node, ast.FunctionDef | ast.ClassDef)
@@ -744,28 +752,6 @@ def _names_used(tree: ast.AST) -> set[str]:
     return used
 
 
-def _name_items(
-    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
-) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
-    """Extract ``ast.Name`` items from a dict, list, or set."""
-    return _container_items(
-        node,
-        span,
-        lambda item: item.id if isinstance(item, ast.Name) else None,
-        (ast.List, ast.Set),
-    )
-
-
-def _drop_name_items(path: Path, names: set[str]) -> int:
-    """Cut each ``ast.Name`` element named in ``names`` from a container.
-
-    ``_MULTILINE_WRAPPERS = frozenset({_taglate, ...})`` and the
-    ``_token_patterns`` dict name wrappers directly, so the membership must go
-    before the definition reads as dead.
-    """
-    return _drop_matching_items(path, _name_items, names)
-
-
 def _drop_dead_code(path: Path, external: set[str]) -> int:
     """Cut top-level definitions and constants no surviving code names.
 
@@ -962,7 +948,17 @@ def remove(name: str) -> list[str]:
     # Dead code the language left in the shared modules: its wrapper in
     # ``wrap.py``.  The unused imports are gone, so a top-level name nothing
     # reads is dead.
-    wrapper = getattr(lang.wrap, "__name__", None) if lang.wrap else None
+    from esolangs.generation import wrap
+
+    # A token wrapper is an instance with no ``__name__``: name it by identity.
+    wrapper = (
+        next(
+            (n for n, v in vars(wrap).items() if v is lang.wrap),
+            getattr(lang.wrap, "__name__", None),
+        )
+        if lang.wrap
+        else None
+    )
     exclusive = False
     if wrapper is not None and not any(
         other is not lang and other.wrap is lang.wrap for other in LANGUAGES.values()
@@ -973,7 +969,6 @@ def remove(name: str) -> list[str]:
             if relative.startswith("src/")
             and relative != "src/esolangs/generation/wrap.py"
         )
-        _drop_name_items(ROOT / "src/esolangs/generation/wrap.py", {wrapper})
     for relative in shared:
         _drop_dead_code(ROOT / relative, external_for(relative))
     subprocess.run(

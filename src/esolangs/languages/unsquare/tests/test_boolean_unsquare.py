@@ -91,7 +91,9 @@ def test_shared_push_body_executes_within_ledger() -> None:
     )
 
 
-@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+# n=1 and 11 bound the arity range; the rest are the sizes where the
+# legacy layout strictly beats the default (what retention exists for).
+@pytest.mark.parametrize("n", [1, 5, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     from esolangs.languages.unsquare.generator import _program

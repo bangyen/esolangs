@@ -9,8 +9,6 @@ and ends the scripted run there.  ``self_halts`` is ``False``: it does not promi
 the run never ends -- a read that runs out of input ends it.  An empty
 program raises :class:`ValueError`.
 :func:`run` otherwise stops on a repeated state, never a pass count.
-The transition :func:`_advance` is pure over an immutable ``_State``
-(a tuple tape, so ``run`` can put states straight into a set).
 """
 
 from __future__ import annotations
@@ -24,6 +22,8 @@ from esolangs.runtime.source_hints import syntax_error
 type _State = tuple[int, int, int, tuple[int, ...]]
 
 
+# The transition :func:`_advance` is pure over an immutable ``_State`` (a tuple tape, so
+# ``run`` can put states straight into a set).
 def _advance(state: _State, code: str, byte: int | None = None) -> _State:
     """Return the state after executing one command.
 

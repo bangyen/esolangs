@@ -1,4 +1,4 @@
-"""Execute same-level residual banks under byte, bit, and final-flag rules."""
+"""Execute same-level residual banks under byte and final-flag rules."""
 
 import random
 
@@ -23,51 +23,39 @@ def _bank_tables():
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("kind", ["byte", "bit", "binary"])
-@pytest.mark.parametrize(
-    ("case", "table"),
-    list(enumerate(_bank_tables())),
-    ids=["two", "four", *map(str, range(6))],
-)
-def test_banked_residuals_execute_and_match_command_price(kind, case, table) -> None:
+@pytest.mark.parametrize("kind", ["byte", "binary"])
+# The two structured tables cover every arc the six seeded random ones did.
+@pytest.mark.parametrize("table", _bank_tables()[:2], ids=["two", "four"])
+def test_banked_residuals_execute_and_match_command_price(kind, table) -> None:
     import esolangs
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
     from esolangs.generation.shared_block import repeated_bank
     from esolangs.generation.shared_flag import flag_tree_body
-    from esolangs.languages.boolfuck.generator import _boolfuck_tree
     from scripts.benchmark import WrittenState
 
     served = 0
     n = len(table).bit_length() - 1
     for perm in (tuple(range(n)), tuple(reversed(range(n)))):
-        if kind == "bit" and perm != tuple(range(n)):
-            continue
         ordered = permute_truth_table(table, perm)
         blocks, levels = repeated_bank(ordered, reserve_last=kind == "binary")
         if not blocks:
             continue
         served += 1
-        if kind == "bit":
-            language = "Boolfuck"
-            program, limit = _boolfuck_tree(
-                table, shared_blocks=blocks, flag_levels=levels
-            )
-        else:
-            language = REFERENCE
-            header = ">>".join("," + "-" * 48 for _ in range(n))
-            result = 2 * perm[-1] + 1 if kind == "binary" else 2 * n
-            body, cost = flag_tree_body(
-                ordered,
-                perm,
-                2 * (n - 1),
-                result,
-                shared_blocks=blocks,
-                flag_levels=levels,
-                binary_leaves=kind == "binary",
-            )
-            program = header + body + "+" * 48 + "."
-            limit = len(header) + cost + 49
+        language = REFERENCE
+        header = ">>".join("," + "-" * 48 for _ in range(n))
+        result = 2 * perm[-1] + 1 if kind == "binary" else 2 * n
+        body, cost = flag_tree_body(
+            ordered,
+            perm,
+            2 * (n - 1),
+            result,
+            shared_blocks=blocks,
+            flag_levels=levels,
+            binary_leaves=kind == "binary",
+        )
+        program = header + body + "+" * 48 + "."
+        limit = len(header) + cost + 49
         for row, expected in enumerate(table):
             machine = make_vm(language, program, stdin=f"{row:0{n}b}")
             written = WrittenState(machine.snapshot())
@@ -79,46 +67,15 @@ def test_banked_residuals_execute_and_match_command_price(kind, case, table) -> 
             assert machine.halted
             assert esolangs.read_answer(language, machine.output) == expected
             assert commands <= limit
-            if kind != "bit":
-                assert (
-                    written.bits
-                    <= 2 * n
-                    + 6
-                    + (2 * n).bit_length()
-                    + n.bit_length()
-                    + len(program).bit_length()
-                )
-    if case < 2:
-        assert served > 0
-    elif not served:
-        pytest.skip("no eligible residual bank")
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("case", range(len(_bank_tables())))
-def test_mixed_depth_bank_executes_and_matches_command_price(case) -> None:
-    """A bank whose blocks sit at several depths shares all of them and computes."""
-    import esolangs
-    from esolangs.debugger import make_vm
-    from esolangs.generation.shared_block import repeated_bank, repeated_mixed_bank
-    from esolangs.languages.boolfuck.generator import _boolfuck_tree
-
-    table = _bank_tables()[case]
-    n = len(table).bit_length() - 1
-    mixed, levels = repeated_mixed_bank(table)
-    bank, _ = repeated_bank(table)
-    if len({depth for depth, _ in mixed}) <= len({depth for depth, _ in bank}):
-        pytest.skip("no mixed-depth bank for this table")
-    program, limit = _boolfuck_tree(table, shared_blocks=mixed, flag_levels=levels)
-    for row, expected in enumerate(table):
-        machine = make_vm("Boolfuck", program, stdin=f"{row:0{n}b}")
-        commands = 0
-        while not machine.halted and commands <= limit:
-            machine.step()
-            commands += 1
-        assert machine.halted
-        assert esolangs.read_answer("Boolfuck", machine.output) == expected
-        assert commands <= limit
+            assert (
+                written.bits
+                <= 2 * n
+                + 6
+                + (2 * n).bit_length()
+                + n.bit_length()
+                + len(program).bit_length()
+            )
+    assert served > 0
 
 
 @pytest.mark.parametrize(

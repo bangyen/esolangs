@@ -112,6 +112,11 @@ def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _T
     return _TreePlan(root_tests, nodes, parents, relays)
 
 
+def _birth_value(born: int, tests: int) -> int:
+    """Value a node is born with: 2, plus two per level it skips or has yet to test."""
+    return 2 + 2 * (tests - born)
+
+
 def _container_tree(
     truth_table: str, *, prune: bool = True, share: bool = False
 ) -> str:
@@ -216,7 +221,7 @@ def _container_tree(
     for i in order:
         born, tests = nodes[i].born, nodes[i].tests
         child = names[i]
-        value = 2 + 2 * (tests - born)
+        value = _birth_value(born, tests)
         lines.append(f"{child}:")
         # The paired parent rules fire only while the parent is exactly 1,
         # and one parent at most is alive: the others are off the path.
@@ -237,7 +242,7 @@ def _container_tree(
         # IN.  A leaf keeps its birth value, below the output gate's rest.
         if tests < n:
             lines.append(f"-1 {child}>=1")
-    peak = max(2 + 2 * (n - (nodes[i].born if i >= 0 else 0)) for i in leaves)
+    peak = max(_birth_value(nodes[i].born if i >= 0 else 0, n) for i in leaves)
     rest = peak + 1 if peak > 2 else 2
     # The gate is never restored: EXIT halts the tick after PRINT.
     lines.append(f"{output_gate}={rest}:")
@@ -472,7 +477,7 @@ def balance_container(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Container",
     "container",
-    category="other",
+    category="variable_based",
     boolean=container,
     split=True,
     contract=BooleanContract(

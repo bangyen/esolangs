@@ -1,6 +1,7 @@
 """Boolean-function generator for Forbin."""
 
 import re
+from collections import Counter
 from collections.abc import Callable, Iterator
 from itertools import count, islice
 from string import ascii_letters
@@ -162,14 +163,14 @@ def _tree(
     constant: Callable[[int, int], bool] = constant_span_test(truth_table)
     # A constant table is one entry, which has no levels to name.
     ids = subtree_ids(truth_table) if n else []
-    count: dict[int, int] = {}
+    count: Counter[int] = Counter()
 
     def tally(level: int, row: int) -> None:
         span = 2 ** (n - level)
         if constant(row, row + span):
             return
         key = ids[level][row // span]
-        count[key] = count.get(key, 0) + 1
+        count[key] += 1
         # A repeat's insides are one copy, wherever it ends up.
         if level < high and count[key] == 1:
             tally(level + 1, row)
@@ -179,28 +180,28 @@ def _tree(
     shared: dict[int, str] = {}
     defs: list[str] = []
 
-    def call(name: str) -> list[str]:
+    def call(name: str) -> str:
         # The 0 is the wiki's: "something has to be passed to call it".
-        return [f"{name} 0;" if narrow else f"return({name} 0)"]
+        return f"{name} 0;" if narrow else f"return({name} 0)"
 
     def emit(level: int, row: int) -> list[str]:
         span = 2 ** (n - level)
         if constant(row, row + span):
             name = names.one if truth_table[row] == "1" else names.zero
             used.add(name)
-            return call(name)
+            return [call(name)]
         key = ids[level][row // span]
         if key in shared:
-            return call(shared[key])
+            return [call(shared[key])]
         lines = build(level, row, span)
         if count[key] > 1:
             name = names.fresh()
             # Keep the function only where its calls cost less than the copies.
-            saved = (count[key] - 1) * (len("".join(lines)) - len(*call(name)))
+            saved = (count[key] - 1) * (len("".join(lines)) - len(call(name)))
             if saved > len(name) + 2:
                 shared[key] = name
                 defs.extend([f"{name}{{", *lines, "}"])
-                return call(name)
+                return [call(name)]
         return lines
 
     def build(level: int, row: int, span: int) -> list[str]:
@@ -251,7 +252,7 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "Forbin",
     "forbin",
-    category="other",
+    category="variable_based",
     boolean=forbin,
     # Not a tree: one painted call argument per entry, halved down to the first.
     shape=Shape.LOOKUP,

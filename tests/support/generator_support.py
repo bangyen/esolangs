@@ -144,13 +144,23 @@ def run_lines(run, program: str, bits: str) -> tuple[str, int]:
     return io.getvalue(), io.reads
 
 
-def assert_constant_balanced_shape(language, language_id, table, legacy):
-    """Check that a projected constant retains its legacy balanced shape."""
+def assert_constant_balanced_shape(language, language_id, table, legacy, pair=None):
+    """Check that a projected constant retains its legacy balanced shape.
+
+    ``pair`` marks a template's input runs before balancing, as
+    ``balance_legacy_walk`` does, so the runs wrap whole.
+    """
+    from esolangs.generation.helpers import mark_runs, unmark
     from esolangs.generation.wrap import balance_program, balance_score
 
-    assert balance_score(
-        esolangs.generate(language, table, balance=True)
-    ) <= balance_score(balance_program(legacy, language_id))
+    if pair is None:
+        old = balance_program(legacy, language_id)
+    else:
+        n = len(table).bit_length() - 1
+        marked = mark_runs(legacy, TEMPLATE_CHAR, (pair,) * n)
+        old = unmark(balance_program(marked, language_id), TEMPLATE_CHAR, n)
+    balanced = esolangs.generate(language, table, balance=True)
+    assert balance_score(balanced) <= balance_score(old)
 
 
 def assert_shared_program(

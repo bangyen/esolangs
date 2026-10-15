@@ -371,9 +371,7 @@ def _evaluate_function_body(
         if snapshot in seen:
             raise Hint.SETTLED_FUNCTION.error(f"function {gate.kind!r} does not settle")
         seen.add(snapshot)
-        emitted.extend(
-            _emitted((machine.values, machine.latches), machine.gates, machine.index)
-        )
+        emitted.extend(_emitted(machine.values, machine.topology))
         # Drive the atomic machine through the pure transition with the
         # clock the caller passed; its shell ``step`` would read wall time.
         machine._generate(machine.clock)  # noqa: SLF001 -- the function evaluation core

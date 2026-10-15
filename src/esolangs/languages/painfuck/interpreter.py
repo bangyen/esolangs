@@ -80,11 +80,6 @@ def _translate(code: str) -> str:
     return "".join(prog)
 
 
-def _half(n: int) -> int:
-    """Half of ``n``, rounded down per the author clarification."""
-    return n // 2
-
-
 #: ``(tape, loop, ptr, ind, rep, origin)``: cells, loop-entry stack,
 #: pointer, cursor, repeat counter, and the index of the starting cell
 #: (``d``'s target, which moves right as ``l`` grows the tape left).
@@ -187,16 +182,6 @@ def _skip_loop(prog: str, ind: int, n: int) -> int:
     return ind
 
 
-def _collapse_add(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
-    """Return the tape after ``rep`` ``p``s: ``+2`` each, as one closed form."""
-    return _set(tape, ptr, tape[ptr] + 2 * rep)
-
-
-def _collapse_sub(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
-    """Return the tape after ``rep`` ``s``s: ``-1`` each, as one closed form."""
-    return _set(tape, ptr, tape[ptr] - rep)
-
-
 def _collapse_right(
     tape: tuple[int, ...], ptr: int, rep: int
 ) -> tuple[tuple[int, ...], int]:
@@ -214,26 +199,6 @@ def _collapse_left(
     """
     grown = max(0, rep - ptr)
     return (0,) * grown + tape, ptr + grown - rep, origin + grown
-
-
-def _collapse_half(tape: tuple[int, ...], ptr: int, rep: int) -> tuple[int, ...]:
-    """Return the tape after ``rep`` ``h``s, as one closed form.
-
-    Repeated floor division by two is an arithmetic shift.  The author
-    specifies rounding negative odd values down.
-    """
-    return _set(tape, ptr, tape[ptr] >> rep)
-
-
-def _collapse_square_fixed(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
-    """Return the tape after collapsing ``k`` at a fixed point (``|x| <= 1``).
-
-    Squaring has a closed form -- ``x ** (2 ** rep)`` -- but for ``|x| > 1``
-    the *result* has 2**rep times the bits, so no rewrite makes it
-    affordable (measured at 1.0x); the loop is not the cost there.  At the
-    fixed points it collapses.
-    """
-    return _set(tape, ptr, tape[ptr] * tape[ptr])
 
 
 def _collapse_print(tape: tuple[int, ...], ptr: int, c: str, rep: int) -> _Print:
@@ -431,8 +396,8 @@ def _do_z(step: _Step) -> None:
 
 
 def _do_h(step: _Step) -> None:
-    """Halve the cell, rounding down."""
-    step.tape = _set(step.tape, step.ptr, _half(step.tape[step.ptr]))
+    """Halve the cell, rounding down per the author clarification."""
+    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] // 2)
 
 
 def _do_w(step: _Step) -> None:
@@ -524,7 +489,7 @@ _DISPATCH: dict[str, Callable[[_Step], _After | None]] = {
 
 
 #: Idempotent commands: a repeat of any length is one application.  ``h``
-#: is not one: :func:`_collapse_half` shifts it instead.
+#: is not one: its repeat is a shift.
 _IDEMPOTENT = frozenset("zwqd")
 
 
@@ -543,9 +508,9 @@ def _collapse_repeat(step: _Step) -> bool:
         return False
     cmd, rep = step.cmd, step.rep
     if cmd == "p":
-        step.tape = _collapse_add(step.tape, step.ptr, rep)
+        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] + 2 * rep)
     elif cmd == "s":
-        step.tape = _collapse_sub(step.tape, step.ptr, rep)
+        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] - rep)
     elif cmd == "r":
         step.tape, step.ptr = _collapse_right(step.tape, step.ptr, rep)
     elif cmd == "l":
@@ -553,9 +518,15 @@ def _collapse_repeat(step: _Step) -> bool:
             step.tape, step.ptr, step.origin, rep
         )
     elif cmd == "h":
-        step.tape = _collapse_half(step.tape, step.ptr, rep)
+        # Repeated floor division by two is an arithmetic shift; the author
+        # rounds negative odd values down.
+        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] >> rep)
     elif cmd == "k" and -1 <= step.tape[step.ptr] <= 1:
-        step.tape = _collapse_square_fixed(step.tape, step.ptr)
+        # Squaring has a closed form, ``x ** (2 ** rep)``, but for ``|x| > 1``
+        # the *result* has 2**rep times the bits, so no rewrite makes it
+        # affordable (measured at 1.0x); the loop is not the cost there.  At
+        # the fixed points (``|x| <= 1``) it collapses to one squaring.
+        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] ** 2)
     elif cmd in "ou":
         step.effects.append(_collapse_print(step.tape, step.ptr, cmd, rep))
     elif cmd in _IDEMPOTENT or cmd in "ab":

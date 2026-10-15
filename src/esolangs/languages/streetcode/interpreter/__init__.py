@@ -13,14 +13,6 @@ corner heads down the side road, not into the turn); a dead end turns the
 car across the street in two steps, and a ``U`` on the cell where that
 turn lands does not reverse it again.
 
-Movement is pure and lives in :mod:`.geometry`; the run itself is the pure
-:func:`_advance`, which takes the whole run and the one input value a step
-needs and returns the next run and any character to print.
-:class:`_Machine` is the shell that reads and writes.  :func:`_drive` is the
-whole of movement in one signature,
-``_drive(grid, state, arrival_cell, current_cell)``, which lets
-:func:`.validation.drive_states` enumerate the state space.
-
 Errors: a malformed program (:mod:`.validation`) raises :class:`ValueError` at
 construction (streets two wide, road enclosed, wall forms, no ``-`` beside ``|``, one
 network, exactly one ``C``); a ``U`` with no opposite lane raises
@@ -135,6 +127,12 @@ def _u_turn(grid: _Grid, state: _State, arrival_cell: int) -> _State:
     return turned
 
 
+# Movement is pure and lives in :mod:`.geometry`; the run itself is the pure
+# :func:`_advance`, which takes the whole run and the one input value a step needs and
+# returns the next run and any character to print.  :class:`_Machine` is the shell that
+# reads and writes.  :func:`_drive` is the whole of movement in one signature,
+# ``_drive(grid, state, arrival_cell, current_cell)``, which lets
+# :func:`.validation.drive_states` enumerate the state space.
 def _advance(
     run: _Run,
     grid: _Grid,

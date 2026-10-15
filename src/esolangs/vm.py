@@ -125,13 +125,35 @@ def _checked_unwrap(
     return _unwrap(machine, protocol, role, hint=hint)
 
 
+def _refuse_random(machine: object, proof: str) -> None:
+    """Raise when ``machine`` draws: ``proof`` assumes the next lap repeats.
+
+    Branching cannot stand in -- a growing state never repeats -- so a
+    random machine is refused rather than handed over.
+    """
+    inner = getattr(machine, "vm", machine)
+    inner = getattr(inner, "_machine", inner)
+    if isinstance(inner, _BranchingStepMachine) and not getattr(inner, "halted", True):
+        raise with_hint(
+            TypeError(
+                f"random machines: a {proof} proof assumes each lap repeats "
+                "the last, and a draw can change the next one"
+            ),
+            "bound the run instead; run_until_halt_or_all_branches_cycle "
+            "decides exact cycles over every draw",
+        )
+
+
 def run_until_halt_or_cycle(
     machine: _StepMachine | VM, limit: int | None = None
 ) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
-    Random machines require the all-branches detector.
-    A repeated deterministic snapshot *proves* a hang.  ``True`` on a halt, ``False``
+    A random language's machine is decided by branching instead (``limit``
+    then counts branching states, its default when ``None``): ``False`` when
+    every draw cycles, ``True`` when the program never drew and halts, and
+    :class:`TypeError` when this run's own draws decide it.  A repeated
+    deterministic snapshot *proves* a hang.  ``True`` on a halt, ``False``
     once a cycle is proven; unbounded growth never repeats and is
     :func:`run_until_halt_or_growth`'s.  Brent's algorithm: O(1)
     snapshots, up to ~2x past the cycle's start, so rely on the verdict,
@@ -155,12 +177,21 @@ def run_until_halt_or_cycle(
     # A Debugger wraps a VM (``vm``); a VM wraps interpreter state (``_machine``).
     underlying = getattr(machine, "vm", machine)
     underlying = getattr(underlying, "_machine", underlying)
-    # A seeded random program can repeat its visible state, then halt.
-    # Random choices are absent from snapshots; only branching proves a cycle.
+    # A seeded random program can repeat its visible state, then halt: the
+    # next draw is not in the snapshot, so a repeat proves nothing.  Branching
+    # keeps the verdicts that hold whatever this run draws.  It ignores the
+    # machine's own draw source, so "some path halts" after a fork is not
+    # this run's answer (a FirstDraw(0) coin loops where the other halts).
     if not machine.halted and isinstance(underlying, _BranchingStepMachine):
+        halts, forked = _branch_search(underlying, 10_000 if limit is None else limit)
+        if not halts or not forked:
+            return halts
         raise with_hint(
-            TypeError("random machines cannot prove cycles from repeated snapshots"),
-            "use run_until_halt_or_all_branches_cycle for random machines",
+            TypeError(
+                "random machines: some draws halt this program, so whether "
+                "this run halts depends on its own draws"
+            ),
+            "use run_until_halt_or_all_branches_cycle for the any-draw question",
         )
     tortoise = machine.snapshot()
     power = 1
@@ -215,8 +246,14 @@ def run_until_halt_or_all_branches_cycle(
             limit,
         ),
     )
+    return _branch_search(machine, limit)[0]
+
+
+def _branch_search(machine: _BranchingStepMachine, limit: int) -> tuple[bool, bool]:
+    """Return whether some path halts, and whether any state forked."""
     pending = [machine.branching_snapshot()]
     seen: set[Hashable] = set()
+    forked = False
     while pending:
         state = pending.pop()
         if state in seen:
@@ -236,7 +273,7 @@ def run_until_halt_or_all_branches_cycle(
             )
         seen.add(state)
         if machine.branching_halted(state):
-            return True
+            return True, forked
         successors = machine.branching_successors(state, limit - len(seen))
         if successors is None:
             raise with_hint(
@@ -249,8 +286,9 @@ def run_until_halt_or_all_branches_cycle(
                     "does not decide all random paths"
                 ),
             )
+        forked = forked or len(successors) > 1
         pending.extend(successors)
-    return False
+    return False, forked
 
 
 @runtime_checkable
@@ -281,8 +319,10 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     lap (``f(x - 1)`` over unbounded ints); O(depth) per push.  ``limit``
     bounds pushes examined -- a repeat shows within a few frames (three
     across the suite) -- and exhausting it raises
-    :class:`TimeoutError`.  No call stack raises :class:`TypeError`.
+    :class:`TimeoutError`.  No call stack, or a random machine, raises
+    :class:`TypeError`.
     """
+    _refuse_random(machine, "replayed-ancestor")
     machine = cast(
         _FramedMachine,
         _checked_unwrap(
@@ -406,8 +446,9 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     ``>+[[<]>[>]+]`` is out of reach (visits share a frozen prefix, and a
     machine counting its walk into ``ip`` could halt on a count the pair
     never saw).  ``limit`` is in steps and raises :class:`TimeoutError`;
-    no tape raises :class:`TypeError`.
+    no tape, or a random machine, raises :class:`TypeError`.
     """
+    _refuse_random(machine, "tape-growth")
     machine = cast(
         _TapeMachine,
         _checked_unwrap(
@@ -557,8 +598,10 @@ def run_until_halt_or_value_growth(
     is consistent with anything next.  ``limit`` is in steps; a step costs
     the whole tape, and 20_000 is the measured turn of that curve (~1.6s
     worst case, under a millisecond on the two programs this is for).
-    Bounded values raise :class:`TypeError`: a climbing byte wraps.
+    Bounded values raise :class:`TypeError`: a climbing byte wraps.  So does a
+    random machine.
     """
+    _refuse_random(machine, "value-growth")
     machine = cast(
         _AffineMachine,
         _checked_unwrap(

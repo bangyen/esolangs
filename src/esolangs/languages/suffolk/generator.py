@@ -1,5 +1,7 @@
 """Boolean generator for Suffolk: shared NOR cofactors or a countdown sweep."""
 
+from typing import NamedTuple
+
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -127,6 +129,32 @@ def _suffolk_lookup(truth_table: str) -> str:
     return "".join(out) + _read(_TWO) + _read(falls0) + "."
 
 
+#: The DAG route's cells: 0-2 are scratch, then the shared zero and one
+#: cells, then the inputs, then one cell per mux node.
+_ZERO_CELL, _ONE_CELL, _FIRST_INPUT_CELL = 3, 4, 5
+#: Writes that lift a cleared cell to ASCII ``0`` for the final print.
+_ASCII_OFFSET_WRITES = 47
+
+
+class _Mux(NamedTuple):
+    """The mux a distinct cofactor needs, over complemented child cells."""
+
+    depth: int
+    zero: int
+    one: int
+    target: int
+
+
+def _fits_workspace(count: int, nodes: int, inputs: int) -> bool:
+    """Whether the cell and pointer bits fit the lookup's tape cap."""
+    # Tape cells are binary except the shared byte/ASCII-offset cell
+    # (six bits). The accumulator also needs six bits.
+    # Pay any pointer growth above the lookup's three bits from its tape cap.
+    tape_bits = 10 + count + nodes
+    pointer_bits = (4 + count + nodes).bit_length()
+    return tape_bits + pointer_bits <= max(19, 4 * inputs - 1) + 3
+
+
 def _nor(target: int, *operands: int) -> str:
     """Write NOR of Boolean operands, cancelling the target's previous value."""
     return _read(target) + "".join(_read(cell) for cell in operands) + _write(target)
@@ -140,9 +168,8 @@ def shared_dag(table: str, inputs: int) -> str | None:
     ids = subtree_ids(read_at(table, used, inputs))
     count = len(used)
     # Store complemented cofactors: false/true use the shared one/zero cells.
-    slots = {0: 3, 1: 4}
-    # (depth, zero-slot, one-slot, target): the mux each distinct cofactor needs.
-    nodes: list[tuple[int, int, int, int]] = []
+    slots = {0: _ZERO_CELL, 1: _ONE_CELL}
+    nodes: list[_Mux] = []
     for depth in range(count - 1, -1, -1):
         for index, state in enumerate(ids[depth]):
             if state in slots:
@@ -151,43 +178,38 @@ def shared_dag(table: str, inputs: int) -> str | None:
             if zero == one:
                 slots[state] = slots[zero]
             else:
-                target = 5 + count + len(nodes)
+                target = _FIRST_INPUT_CELL + count + len(nodes)
                 slots[state] = target
-                nodes.append((depth, slots[zero], slots[one], target))
-    # Tape cells are binary except the shared byte/ASCII-offset cell
-    # (six bits). The accumulator also needs six bits.
-    # Pay any pointer growth above the lookup's three bits from its tape cap.
-    tape_bits = 10 + count + len(nodes)
-    pointer_bits = (4 + count + len(nodes)).bit_length()
-    if tape_bits + pointer_bits > max(19, 4 * inputs - 1) + 3:
+                nodes.append(_Mux(depth, slots[zero], slots[one], target))
+    if not _fits_workspace(count, len(nodes), inputs):
         return None
     # The ledger limits nodes to O(n): rendering costs O(n²), hence O(T).
     # Initial ! clears the previous print's accumulator on a repeated pass.
     # The first read is within 59 commands, preserving the L+151 EOF bound.
-    out = [_write(0), _one(3)]
+    out = [_write(0), _one(_ZERO_CELL)]
     positions = {original: i for i, original in enumerate(used)}
     for original in range(inputs):
         position = positions.get(original)
         if position is None:
             out.append(",!")
         else:
-            out.append(_one(0) + _write(0) * 47 + ",!")
-            out.append(_nor(1, 0) + _nor(5 + position, 1))
+            out.append(_one(0) + _write(0) * _ASCII_OFFSET_WRITES + ",!")
+            out.append(_nor(1, 0) + _nor(_FIRST_INPUT_CELL + position, 1))
     for depth, zero, one, target in nodes:
         # For complemented children g0/g1, complement of the mux is
         # NOR(NOR(b,g0), NOR(not-b,g1)). Scratch cells are reused per node.
         out.append(
-            _nor(0, 5 + depth)
+            _nor(0, _FIRST_INPUT_CELL + depth)
             + _nor(1, 0, zero)
-            + _nor(2, 5 + depth, one)
+            + _nor(2, _FIRST_INPUT_CELL + depth, one)
             + _nor(target, 1, 2)
         )
     out.append(
         _nor(1, slots[ids[0][0]])
         + _one(0)
-        + _write(0) * 47
+        + _write(0) * _ASCII_OFFSET_WRITES
         + _read(0)
-        + _read(3)
+        + _read(_ZERO_CELL)
         + _read(1)
         + "."
     )

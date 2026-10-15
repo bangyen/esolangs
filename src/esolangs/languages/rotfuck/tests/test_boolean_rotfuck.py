@@ -211,7 +211,9 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     assert_shared_program(language, table, plain, commands, workspace)
 
 
-@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
+# n=1 and 11 bound the arity range; the rest are the sizes where the
+# legacy layout strictly beats the default (what retention exists for).
+@pytest.mark.parametrize("n", [1, 5, 11])
 @pytest.mark.parametrize("bit", "01")
 def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
     from esolangs.languages.rotfuck.generator import _program

@@ -558,6 +558,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
-    # 7n/8n are two-character tokens; see :func:`_six_five`.
+    # 7n/8n are two-character tokens; see ``_SIX_FIVE_COMMAND``.
     wrap=_six_five,
 )

@@ -9,6 +9,7 @@ from esolangs.languages.dig.generator._leaf import (
     _DIG_OPAQUE,
     _DIG_SPAN,
     _DIG_TURNS,
+    _Box,
     _dig_constant_leaf,
     _dig_flat_leaf,
     _dig_flat_walk,
@@ -212,16 +213,16 @@ def _compact_point(
 
 
 def _merged_box(
-    left: tuple[int, int, int, int],
-    right: tuple[int, int, int, int],
+    left: _Box,
+    right: _Box,
     end: int,
-) -> tuple[int, int, int, int]:
+) -> _Box:
     """Merge two child bounds into the parent's, anchored at the block end."""
-    return (
-        min(0, end + left[2], end - right[3]),
-        max(end, end + left[3], end - right[2]),
-        min(-1, -(2 - left[0] + left[1])),
-        max(1, 2 - right[0] + right[1]),
+    return _Box(
+        min(0, end + left.min_y, end - right.max_y),
+        max(end, end + left.max_y, end - right.min_y),
+        min(-1, -(2 - left.min_x + left.max_x)),
+        max(1, 2 - right.min_x + right.max_x),
     )
 
 
@@ -285,7 +286,7 @@ class _AlternatingTree:
             self.consumed.append(self.consumed[-1] + 1 + skip)
         self.flat_box = _dig_flat_leaf(
             "0" * (len(self.truth_table) >> self.depth), self.high, self.low
-        )[4]
+        ).box
         # Bounds of a subtree, inclusive and local to its first ``$``:
         # (min_x, max_x, min_y, max_y), x along the heading.  A branch block
         # is four cells long and carries its operand one cell off to a side
@@ -294,7 +295,7 @@ class _AlternatingTree:
         # constant span is a row of reads, and the children differ, so each
         # is bounded on its own: the one turned left lies on the -y side,
         # the one turned right on the +y side.
-        self.boxes: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+        self.boxes: dict[tuple[int, int], _Box] = {}
         self.cells: dict[_Point, str] = {}
         self.protected: list[tuple[int, int]] = []
         self.branches: list[tuple[_Point, int, int, _Point]] = []
@@ -315,12 +316,12 @@ class _AlternatingTree:
             self.n - self.consumed[level], int(self.truth_table[lo])
         )
 
-    def box(self, level: int, lo: int, hi: int) -> tuple[int, int, int, int]:
+    def box(self, level: int, lo: int, hi: int) -> _Box:
         """Return the memoized bounds of the ``[lo, hi)`` subtree."""
         key = (level, lo)
         if key not in self.boxes:
             if self.constant(lo, hi):
-                self.boxes[key] = (0, len(self.short_leaf(level, lo)) - 1, 0, 0)
+                self.boxes[key] = _Box(0, len(self.short_leaf(level, lo)) - 1, 0, 0)
             elif level == self.depth:
                 self.boxes[key] = self.flat_box
             else:
@@ -502,7 +503,7 @@ class _AlternatingTree:
         own operand.  The spare cell is corridor the mole falls through.
         """
         child_heading = (heading + (1 if child_bit else -1)) % 4
-        distance = 2 - self.box(level + 1, *child_bounds)[0]
+        distance = 2 - self.box(level + 1, *child_bounds).min_x
         child = end.step(child_heading, distance)
         if paint:
             self.corridors.append((end, child_heading, distance))

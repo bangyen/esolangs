@@ -1,12 +1,17 @@
-"""Subleq with unbounded integer cells and direct branch addresses.
+"""Subleq, the one-instruction computer, with unbounded integer cells.
 
-The byte-I/O dialect uses -1 B C for input and A -1 C for output, advancing
-after either. EOF raises EOFError. Negative jumps halt; reads beyond loaded
-memory yield zero. A jump at or past the end of memory halts; writes past
-the end grow memory and reads do not, so only written cells move that end.
-Malformed source and negative data addresses raise ValueError. Incomplete
-instruction fetches raise HaltError. Writes are effects so a packed table is
-not copied at every arithmetic instruction.
+Memory is a list of integers and is also the program.  The three cells
+``A B C`` at ``pc`` mean: ``mem[B] -= mem[A]``, then jump to ``C`` if the
+result is not positive, else fall through to ``pc + 3``.  The byte-I/O
+dialect reads a byte into ``B`` for ``-1 B C`` and prints ``mem[A]`` for
+``A -1 C``, falling through after either.
+
+EOF raises EOFError. Negative jumps halt; reads beyond loaded memory yield
+zero. A jump at or past the end of memory halts; writes past the end grow
+memory and reads do not, so only written cells move that end. Malformed
+source and negative data addresses raise ValueError. Incomplete instruction
+fetches raise HaltError. Writes are effects so a packed table is not copied
+at every arithmetic instruction.
 """
 
 from esolangs.exceptions import HaltError
@@ -17,37 +22,22 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_int_memory
 from esolangs.runtime.source_hints import syntax_error
 
-type _State = tuple[int]
 
-
-def _advance(
-    state: _State, instruction: tuple[int, int, int], values: tuple[int, int]
-) -> tuple[_State, tuple[int, int] | None]:
-    """Return the next pointer and optional memory write."""
-    pc = state[0]
-    a, b, c = instruction
-    left, right = values
-    if a == -1:
-        return (pc + 3,), (b, left)
-    if b == -1:
-        return (pc + 3,), None
-    result = right - left
-    return (c if result <= 0 else pc + 3,), (b, result)
+def _advance(pc: int, jump: int, minuend: int, subtrahend: int) -> tuple[int, int]:
+    """Return the next pc and the difference: jump when it is not positive."""
+    result = minuend - subtrahend
+    return (jump if result <= 0 else pc + 3), result
 
 
 class _Machine:
-    """Self-modifying memory and direct instruction pointer."""
+    """Self-modifying memory and the address of the next instruction."""
 
     ip_shape = "opaque"
 
     def __init__(self, code: str, io: IO) -> None:
         self.cells = parse_int_memory(code)
-        self.state: _State = (0,)
+        self.pc = 0
         self.io = io
-
-    @property
-    def pc(self) -> int:
-        return self.state[0]
 
     @property
     def halted(self) -> bool:
@@ -68,9 +58,15 @@ class _Machine:
         if address < 0:
             raise syntax_error(
                 f"invalid Subleq data address {address}",
-                ("use a nonnegative data address; -1 is reserved for I/O"),
+                "use a nonnegative data address; -1 is reserved for I/O",
             )
         return self.cells[address] if address < len(self.cells) else 0
+
+    def _write(self, address: int, value: int) -> None:
+        check_address(address, "Subleq")
+        if address >= len(self.cells):
+            self.cells.extend([0] * (address + 1 - len(self.cells)))
+        self.cells[address] = value
 
     def step(self) -> None:
         if self.halted:
@@ -81,7 +77,7 @@ class _Machine:
                 hint="provide all three addresses for the fetched Subleq instruction",
             )
         a, b, c = self.cells[self.pc : self.pc + 3]
-        if a == -1:
+        if a == -1:  # input a byte into b
             if b < 0:
                 raise syntax_error(
                     "Subleq input requires a nonnegative destination",
@@ -91,20 +87,16 @@ class _Machine:
                     ),
                 )
             check_address(b, "Subleq")
-            values = (self.io.input_char() % 256, 0)
-        elif b == -1:
-            value = self._read(a)
-            self.io.print_char(chr(value % 256))
-            values = (value, 0)
-        else:
-            values = (self._read(a), self._read(b))
-        self.state, write = _advance(self.state, (a, b, c), values)
-        if write is not None:
-            address, value = write
-            check_address(address, "Subleq")
-            if address >= len(self.cells):
-                self.cells.extend([0] * (address + 1 - len(self.cells)))
-            self.cells[address] = value
+            byte = self.io.input_char() % 256  # EOF raises with pc unmoved
+            self.pc += 3
+            self._write(b, byte)
+        elif b == -1:  # output the byte at a
+            self.io.print_char(chr(self._read(a) % 256))
+            self.pc += 3
+        else:  # mem[b] -= mem[a]; jump to c if the result is not positive
+            subtrahend = self._read(a)
+            self.pc, result = _advance(self.pc, c, self._read(b), subtrahend)
+            self._write(b, result)
 
 
 def run(code: str, io: IO) -> None:

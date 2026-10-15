@@ -13,10 +13,6 @@ clean-room reading skips the whole literal; "the next instruction" allows
 both).  ``!`` on an integer is the invalid operation above, as a number
 is no "Eval code" (the clean-room reading runs its decimal digits).
 
-The execution model is a pure function over an immutable ``_Core``: the two
-stacks and the active index.  :func:`_iterate` maps a core and a command to
-the next core, and never mutates what it is given.
-
 ``!`` evaluates a string as a program.  That nested program runs on an
 explicit *frame stack* rather than through Python recursion: ``!`` pushes a
 frame and returns, and the next ``step()`` continues inside it.  Lamfunc's
@@ -106,6 +102,9 @@ def _popped(core: _Core) -> tuple[_Core, _Val]:
     return (ptr, (rest, stacks[1]) if ptr == 0 else (stacks[0], rest)), value
 
 
+# The execution model is a pure function over an immutable ``_Core``: the two
+# stacks and the active index.  :func:`_iterate` maps a core and a command to
+# the next core, and never mutates what it is given.
 def _iterate(
     core: _Core, sym: str, ind: int
 ) -> tuple[_Core, int, _Val | None, str | None]:

@@ -23,7 +23,6 @@ container = 6
 factor = 7  # Loading through n=12 costs 152s.
 line = 6  # Loading through n=12 costs 99s.
 flowchart = 8
-one_two_three = 8
 polynomial = 7
 
 [workspace]

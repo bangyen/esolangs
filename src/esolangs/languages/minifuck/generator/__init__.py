@@ -175,7 +175,7 @@ def _solve_reduced(reduced: _Reduced) -> str:
     return _INERT * first + inner + _MINIFUCK_INPUT * after
 
 
-def _balance_score(program: str, width: int) -> tuple[int, int]:
+def _overflow_score(program: str, width: int) -> tuple[int, int]:
     """Rank width-budgeted candidates: line overflow first, length second."""
     return max(0, grid_width(program) - width), len(program)
 
@@ -193,36 +193,36 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
-    legacy = _lookup_layout(truth_table, n, natural, width)
+    positional = _lookup_layout(truth_table, n, natural, width)
     mask = _affine_mask(truth_table)
     if mask is None:
-        return _race_states(truth_table, n, legacy, width)
+        return _race_states(truth_table, n, positional, width)
     shared = _parity_columns(n, int(truth_table[0]), mask=mask, paired=True)
     if width is None or width <= 0:
         return min(natural, shared, key=len)
     shared = _wrap_template(shared, n, width)
     if grid_width(shared) > width:
         shared = _parity_columns(n, int(truth_table[0]), mask=mask)
-    if len(shared) > len(legacy):
-        return legacy
-    return min(legacy, shared, key=partial(_balance_score, width=width))
+    if len(shared) > len(positional):
+        return positional
+    return min(positional, shared, key=partial(_overflow_score, width=width))
 
 
-def _race_states(truth_table: str, n: int, legacy: str, width: int | None) -> str:
+def _race_states(truth_table: str, n: int, positional: str, width: int | None) -> str:
     """Pick the best of the positional layout and the byte-state forms."""
     others = [
         candidate
-        for candidate in (two_state(truth_table), stored(truth_table, len(legacy)))
+        for candidate in (two_state(truth_table), stored(truth_table, len(positional)))
         if candidate is not None
     ]
     if width is None or width <= 0:
-        return min([legacy, *others], key=len)
-    candidates = [legacy] + [
+        return min([positional, *others], key=len)
+    candidates = [positional] + [
         wrapped
         for candidate in others
-        if len(wrapped := _wrap_template(candidate, n, width)) <= len(legacy)
+        if len(wrapped := _wrap_template(candidate, n, width)) <= len(positional)
     ]
-    return min(candidates, key=partial(_balance_score, width=width))
+    return min(candidates, key=partial(_overflow_score, width=width))
 
 
 @cache
@@ -391,35 +391,41 @@ def _square_tail(program: str) -> str:
     )
 
 
+def _shared_form(shared: str, n: int, *, sqrt_wrap: bool) -> str:
+    """Wrap a shared-residual template square-ish."""
+    tokens = _tokens(shared, n)
+    # A unary tape walk can contain O(T) tokens. A square-root wrap and
+    # inert tail give a square without enumerating token-fit widths.
+    width = (
+        max(isqrt(len(shared)) + 1, max(map(len, tokens)))
+        if sqrt_wrap
+        else balanced_token_width(tokens, minimum=max(map(len, tokens)))
+    )
+    return _wrap_template(shared, n, width)
+
+
 def _balance(table: str, default: str) -> str:
     """Compare byte accumulators with the positional balance floor."""
     n = len(table).bit_length() - 1
-    legacy = _lookup_balance(table, _solve(table))
+    positional = _lookup_balance(table, _solve(table))
     mask = _affine_mask(table)
+    forms: list[str] = []
     if mask is None:
-        forms = [(two_state(table), False), (stored(table, len(legacy)), True)]
+        if (two := two_state(table)) is not None:
+            forms.append(_shared_form(two, n, sqrt_wrap=False))
+        if (kept := stored(table, len(positional))) is not None:
+            forms.append(_shared_form(kept, n, sqrt_wrap=True))
     else:
         parity = _parity_columns(n, int(table[0]), mask=mask, paired=True)
-        forms = [(parity, False)]
-    candidates = [legacy]
-    if len(default) <= len(legacy):
+        forms.append(_shared_form(parity, n, sqrt_wrap=False))
+    candidates = [positional]
+    if len(default) <= len(positional):
         candidates.append(default)
-    for shared, tape in forms:
-        if shared is None:
-            continue
-        tokens = _tokens(shared, n)
-        # A unary tape walk can contain O(T) tokens. A square-root wrap and
-        # inert tail give a square without enumerating token-fit widths.
-        width = (
-            max(isqrt(len(shared)) + 1, max(map(len, tokens)))
-            if tape
-            else balanced_token_width(tokens, minimum=max(map(len, tokens)))
-        )
-        shared = _wrap_template(shared, n, width)
+    for shared in forms:
         candidates.extend(
             candidate
             for candidate in (shared, _square_tail(shared))
-            if len(candidate) <= len(legacy)
+            if len(candidate) <= len(positional)
         )
     return min(candidates, key=balance_score)
 

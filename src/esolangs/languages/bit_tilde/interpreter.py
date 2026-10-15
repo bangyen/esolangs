@@ -10,11 +10,8 @@ window ("the current bit and the next 7 bits"), ``{``/``}`` loop on the
 current bit.  Other characters are ignored.  ``)`` raises
 :class:`EOFError` on exhausted input (the cross-check exits 3) and reads
 newlines too; an unmatched bracket raises :class:`ValueError` when it
-would jump (the Ruby port looped).
-:func:`_advance` is pure over an immutable ``_State``; the shell reads,
-prints and resolves the jump via :func:`_match`, the one part that can
-fail.  A loop that keeps extending the pool never repeats; ``run()``'s
-backstop covers it.
+would jump (the Ruby port looped).  A loop that keeps extending the pool
+never repeats a state, so ``esolangs.run``'s ``timeout`` is the guard.
 """
 
 from __future__ import annotations
@@ -65,6 +62,8 @@ def _match(code: str, ind: int, step: int) -> int:
     return ind
 
 
+# :func:`_advance` is pure over an immutable ``_State``; the shell reads, prints and
+# resolves the jump via :func:`_match`, the one part that can fail.
 def _advance(
     state: _State,
     code: str,

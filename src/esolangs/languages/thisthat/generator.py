@@ -3,7 +3,7 @@
 from collections import defaultdict
 from itertools import pairwise
 from math import isqrt
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -108,47 +108,53 @@ class _Builder:
 def thisthat(truth_table: str, width: int | None = None) -> str:
     """Return a linear-area tree or a bounded DAG with shared residuals.
 
-    The DAG uses directed crossings within the preceding O(T) area envelope.
-    The old grid,
-    cycle bound and coordinate widths guard admission; narrow small arities
-    additionally compare folded strips and streaming trees.
+    The DAG uses directed crossings within the O(T) area of the plain tree;
+    `_admit_shared` guards admission.  Narrow small arities additionally
+    compare folded strips and streaming trees.
     """
     if width is not None and 0 < width < 3 and truth_table == "0110":
         # Equal-length paths merge both input transfers on native XOR.
         # Top-to-bottom update order reads the first input first; the result
         # returns along the lower wire to its input node, which now prints.
         return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
-    program = _tree(truth_table)
-    plain = program
+    plain = _tree(truth_table)
+    program = plain
 
     shared = shared_tree(truth_table)
     if shared is not None:
         candidate, cycles = shared
-        n = _validate_truth_table(truth_table)
-        bound = 32 * (1 << (n // 2)) - 29 if n % 2 == 0 else 48 * (1 << (n // 2)) - 29
-        old_rows, old_cols = len(program.splitlines()), grid_width(program)
-        rows, cols = len(candidate.splitlines()), grid_width(candidate)
-        # One pointer and the same bistack cells: keeping the sum of coordinate
-        # widths no larger preserves the existing written-state bound.
-        coordinates = (rows - 1).bit_length() + (cols - 1).bit_length()
-        old_coordinates = (old_rows - 1).bit_length() + (old_cols - 1).bit_length()
-        if (
-            rows * cols < old_rows * old_cols
-            and cycles <= bound
-            and coordinates <= old_coordinates
-        ):
+        if _admit_shared(plain, candidate, cycles, _validate_truth_table(truth_table)):
             program = candidate
     if width is None or width <= 0:
         return program
-    old = _narrow_tree(truth_table, plain, width)
+    narrow_plain = _narrow_tree(truth_table, plain, width)
     if program == plain:
-        return old
-    candidate = _narrow_tree(truth_table, program, width)
-    old_area = grid_area(old)
-    area = grid_area(candidate)
-    if grid_width(candidate) <= max(width, grid_width(old)) and area < old_area:
-        return candidate
-    return old
+        return narrow_plain
+    narrow_shared = _narrow_tree(truth_table, program, width)
+    if grid_width(narrow_shared) <= max(width, grid_width(narrow_plain)) and (
+        grid_area(narrow_shared) < grid_area(narrow_plain)
+    ):
+        return narrow_shared
+    return narrow_plain
+
+
+def _admit_shared(plain: str, shared: str, cycles: int, n: int) -> bool:
+    """Whether the shared DAG replaces the plain tree: smaller, bounded run.
+
+    The cycle bound is 32 * 2^(n/2) - 29 for even ``n`` and 48 * 2^(n//2) - 29
+    for odd.  The coordinate widths (one pointer, same bistack cells) must not
+    exceed the plain tree's.
+    """
+    bound = 32 * (1 << (n // 2)) - 29 if n % 2 == 0 else 48 * (1 << (n // 2)) - 29
+    old_rows, old_cols = len(plain.splitlines()), grid_width(plain)
+    rows, cols = len(shared.splitlines()), grid_width(shared)
+    coordinates = (rows - 1).bit_length() + (cols - 1).bit_length()
+    old_coordinates = (old_rows - 1).bit_length() + (old_cols - 1).bit_length()
+    return (
+        rows * cols < old_rows * old_cols
+        and cycles <= bound
+        and coordinates <= old_coordinates
+    )
 
 
 def _narrow_tree(truth_table: str, program: str, width: int) -> str:
@@ -307,14 +313,6 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
     return _layout(truth_table, n, essential, prune=prune)
 
 
-def _identity_plan(m: int) -> tuple[list[bool], list[bool]]:
-    """Return the deque plan that pops inputs ``0..m-1`` in order.
-
-    Every input goes to the tail and every level pops the head.
-    """
-    return [False] * m, [True] * m
-
-
 def _layout(
     truth_table: str,
     n: int,
@@ -323,7 +321,6 @@ def _layout(
     prune: bool = True,
 ) -> str:
     """Lay out the tree over ``truth_table``, whose level ``k`` pops input ``k``."""
-    head_push, head_pop = _identity_plan(len(essential))
     # No essential input: the table is one constant char, which subtree_ids
     # (table length 2**n) is not asked about.
     ids = subtree_ids(truth_table) if essential else [[int(truth_table[0])]]
@@ -350,7 +347,7 @@ def _layout(
             builder.node(output, "◇")
             builder.connect(_path(pop, output, _first_axis(incoming[0])), "double")
             return
-        builder.node(pop, "◧" if head_pop[level] else "◨")
+        builder.node(pop, "◧")
         router = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
         axis = axes[level % 2]
         mid = (lo + hi) // 2
@@ -386,7 +383,7 @@ def _layout(
     loader_y = min_y - 2
     # An ignored input's read sends its bit nowhere and goes straight on.
     start_x = min(min_x, root[0] - 2 * n - 2 * len(essential) - 2)
-    previous = _draw_loader(builder, (start_x, loader_y), n, essential, head_push)
+    previous = _draw_loader(builder, (start_x, loader_y), n, essential)
     entry = (root[0], root[1] - 1)
     route = _path(previous, (root[0], loader_y), "horizontal")
     route += _path((root[0], loader_y), entry, "vertical")[1:]
@@ -415,15 +412,15 @@ def _balance(truth_table: str, default: str) -> str:
 _MIN_NODE_BUDGET = 8
 
 
-def _build_dag(
-    ids: list[list[int]], m: int
-) -> tuple[
-    list[list[tuple[int, int]]],
-    dict[tuple[int, int], list[tuple[int, int]]],
-    set[tuple[int, int]],
-    dict[tuple[int, int], int],
-]:
-    """Return (layers, children, terminal, incoming) of the shared-subtree DAG."""
+class _Dag(NamedTuple):
+    layers: list[list[tuple[int, int]]]
+    children: dict[tuple[int, int], list[tuple[int, int]]]
+    terminal: set[tuple[int, int]]
+    incoming: dict[tuple[int, int], int]
+
+
+def _build_dag(ids: list[list[int]], m: int) -> _Dag:
+    """Return the shared-subtree DAG."""
     representatives = {(0, ids[0][0]): 0}
     pending = [[(0, ids[0][0])]] + [[] for _ in range(m - 1)]
     layers = []
@@ -453,7 +450,7 @@ def _build_dag(
                     incoming[child] += 1
                 kids.append(child)
             children[key] = kids
-    return layers, children, terminal, incoming
+    return _Dag(layers, children, terminal, incoming)
 
 
 def _draw_nodes(
@@ -462,7 +459,6 @@ def _draw_nodes(
     ys: dict[tuple[int, int], int],
     columns: dict[tuple[int, int], int],
     children: dict[tuple[int, int], list[tuple[int, int]]],
-    pop: list[bool],
 ) -> tuple[dict[tuple[int, int], int], dict[int, dict[int, int]]]:
     """Draw every node and its outgoing wires; return (costs, bus events)."""
     # Two column banks alternate with depth. A bank's old edges end before
@@ -484,8 +480,7 @@ def _draw_nodes(
             builder.node(router, "◇")
             costs[key] = 7
         else:
-            level = key[0]
-            builder.node(point, "◧" if pop[level] else "◨")
+            builder.node(point, "◧")
             zero, one = children[key]
             builder.node(router, "⬒" if zero == one else "◒")
             edges = [(1, one)] if zero == one else [(-1, zero), (1, one)]
@@ -537,12 +532,11 @@ def _draw_loader(
     start: tuple[int, int],
     n: int,
     essential: list[int],
-    push: list[bool],
 ) -> tuple[int, int]:
     """Draw the start node and one read per input, rightward; return the end.
 
-    An essential input's read is followed by its push; an ignored input's read
-    sends its bit nowhere and goes straight on.
+    An essential input's read is followed by its tail push (◨); an ignored
+    input's read sends its bit nowhere and goes straight on.
     """
     builder.node(start, "▣")
     previous = start
@@ -553,17 +547,15 @@ def _draw_loader(
         previous = diamond
         if i in essential:
             pushed = (diamond[0] + 2, start[1])
-            builder.node(pushed, "◧" if push[essential.index(i)] else "◨")
+            builder.node(pushed, "◨")
             builder.connect(_path(diamond, pushed, "horizontal"), "double")
             previous = pushed
     return previous
 
 
-def _draw_input_chain(
-    builder: _Builder, n: int, m: int, ess: list[int], push: list[bool]
-) -> None:
+def _draw_input_chain(builder: _Builder, n: int, m: int, ess: list[int]) -> None:
     """Draw the input-reading chain feeding the root entry."""
-    previous = _draw_loader(builder, (-(2 * n + 2 * m + 2), -6), n, ess, push)
+    previous = _draw_loader(builder, (-(2 * n + 2 * m + 2), -6), n, ess)
     builder.connect(
         _path(previous, (0, -6), "horizontal")
         + _path((0, -6), (0, -4), "vertical")[1:],
@@ -602,12 +594,11 @@ def shared_tree(table: str) -> tuple[str, int] | None:
         for key in nodes
     }
     ys = {key: 8 * i for i, key in enumerate(nodes)}
-    push, pop = _identity_plan(m)
     builder = _Builder()
-    costs, buses = _draw_nodes(builder, nodes, ys, columns, children, pop)
+    costs, buses = _draw_nodes(builder, nodes, ys, columns, children)
     _draw_buses(builder, buses)
     _hollow_crossings(builder)
-    _draw_input_chain(builder, n, m, ess, push)
+    _draw_input_chain(builder, n, m, ess)
     return builder.render(), 2 * n + 2 * m + 4 + costs[nodes[0]]
 
 

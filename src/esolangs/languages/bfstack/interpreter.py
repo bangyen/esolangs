@@ -5,13 +5,12 @@ adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
 ``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  An
 empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
 raises :class:`ValueError` when reached; exhausted input raises
-:class:`EOFError`.  :func:`_advance` is pure and total over an
-immutable ``_State``: ``_NEEDS_OPERAND`` lets the shell reject an
-empty-stack step first, and :func:`_forward_table` maps an unmatched
-``[`` to ``None`` for the shell to raise on.
+:class:`EOFError`.
 """
 
 from __future__ import annotations
+
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -19,19 +18,26 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
-#: One instant of a run: ``(ind, stk, lst)`` -- the code cursor, the data
-#: stack, and the loop stack.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and both stacks are
-#: tuples for the same reason.
-#:
-#: The loop stack is state, not a scratch register: a ``]`` reads the
-#: position a matching ``[`` pushed, so two runs sitting on the same
-#: command with different loop stacks will go different places next.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
-type _State = tuple[int, tuple[int, ...], tuple[int, ...]]
+
+class _State(NamedTuple):
+    """One instant of a run: the code cursor, the data stack, the loop stack.
+
+    A value, not a record: every transition below returns a new one rather
+    than editing one in place, and both stacks are tuples for the same reason.
+
+    The loop stack is state, not a scratch register: a ``]`` reads the
+    position a matching ``[`` pushed, so two runs sitting on the same
+    command with different loop stacks will go different places next.
+
+    The code is deliberately not in here.  It does not change during a run,
+    so carrying it would put constant data in every value the cycle detector
+    stores.  It is a parameter to the transition instead.
+    """
+
+    ind: int
+    stk: tuple[int, ...]
+    lst: tuple[int, ...]
+
 
 #: The commands that read the top of the data stack, and so cannot run on
 #: an empty one.  ``>`` pushes and ``,`` pushes, so neither needs an
@@ -57,6 +63,9 @@ def _forward_table(code: str) -> dict[int, int | None]:
     return table
 
 
+# :func:`_advance` is pure and total over an immutable ``_State``: ``_NEEDS_OPERAND``
+# lets the shell reject an empty-stack step first, and :func:`_forward_table` maps an
+# unmatched ``[`` to ``None`` for the shell to raise on.
 def _advance(
     state: _State, code: str, jumps: dict[int, int | None], byte: int | None = None
 ) -> _State:
@@ -87,7 +96,7 @@ def _advance(
             ind = target if target is not None else ind
     elif char == "]":
         ind, lst = lst[-1] - 1, lst[:-1]
-    return (ind + 1, stk, lst)
+    return _State(ind + 1, stk, lst)
 
 
 class _Machine:
@@ -101,27 +110,27 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
         self._jumps = _forward_table(code)
-        self.state: _State = (0, (), ())
+        self.state = _State(0, (), ())
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
-        return self.state[0]
+        return self.state.ind
 
     @property
     def stk(self) -> tuple[int, ...]:
-        return self.state[1]
+        return self.state.stk
 
     @property
     def lst(self) -> tuple[int, ...]:
-        return self.state[2]
+        return self.state.lst
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the code."""
-        return self.state[0] >= self.size
+        return self.state.ind >= self.size
 
     # The VM's language-shaped view.  BFStack's store *is* its data stack, so
     # ``stack`` carries it and ``memory`` is empty -- the loop stack is
@@ -130,7 +139,7 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The code cursor."""
-        return self.state[0]
+        return self.state.ind
 
     @property
     def stack(self) -> list[int]:
@@ -138,7 +147,7 @@ class _Machine:
         # A list, because that is the shape the VM's view is defined in.
         # It is a fresh one every time now, so a caller can no longer write
         # into a running machine -- the state's own tuple is unreachable.
-        return list(self.state[1])
+        return list(self.state.stk)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -171,7 +180,7 @@ class _Machine:
             # the bracket was unmatched, leaving the machine halted.  A
             # caller that catches the error still sees that, so the cursor
             # is moved here rather than left where the scan began.
-            self.state = (self.size, stk, lst)
+            self.state = _State(self.size, stk, lst)
             raise syntax_error("unmatched '['", "close the loop with ]")
         byte = None
         if char == ".":

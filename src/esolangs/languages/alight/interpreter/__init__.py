@@ -4,17 +4,9 @@ The language spec is the wiki page, https://esolangs.org/wiki/Alight; where
 its prose and its examples disagree this interpreter follows the examples
 (infix operators evaluated left to right, in-place three-argument ``at``),
 as recorded in ``docs/limitations.md`` under "Interpreter conventions".
+An in-place ``at`` is seen through every variable naming that list.
 ``inp`` at EOF reads ``eof``; invalid runtime operations raise
 :class:`~esolangs.exceptions.HaltError`.
-
-:func:`_advance` is the pure transition: it takes the whole state and the
-one input character a step needs -- raising :class:`_NeedInputError` when
-the shell has not read it yet -- and returns the next state and any
-character an ``out`` writes.  It edits nothing it is handed: the walker
-stack is copied, the innermost frame takes a private ``vars`` copy, and an
-in-place ``at`` rebuilds the list and rebinds every alias of it rather than
-writing through the shared reference.  :class:`_Machine` is the shell that
-reads the input and writes the output.
 """
 
 from fractions import Fraction
@@ -55,7 +47,6 @@ from esolangs.languages.alight.interpreter._walk import (
     _find,
     _find_func,
     _grid,
-    _Heading,
     _scan,
     _turned,
 )
@@ -83,6 +74,12 @@ class _Walker:
     the value a just-finished callee is handing back.  Both are what let a
     call inside an expression suspend: the command is re-entered once per
     call it contains, each time with one more resolved.
+
+    The grid is not here: no command writes to the program, so it is a
+    constant of the run.  ``vars`` is frozen to an alias-preserving graph by
+    :func:`_freeze` before a snapshot stores it, because lists can be
+    aliased and a live reference would let a later command mutate a
+    snapshot the cycle detector had already banked.
     """
 
     __slots__ = ("col", "heading", "pending", "returned", "row", "vars")
@@ -111,18 +108,6 @@ class _Walker:
             self.pending,
             self.returned,
         )
-
-
-#: One instant of a walk: ``(row, col, heading, vars)`` -- where the pointer
-#: is, which way it is going, and the frame it is going there with.  The grid
-#: is not in it: no command writes to the program, so it is a constant of the
-#: run rather than state, and holding it here would make every snapshot carry
-#: a copy of the source.
-#:
-#: ``vars`` is frozen to an alias-preserving graph by :func:`_freeze` before a snapshot
-#: stores it because lists can be aliased. A live reference would let a later
-#: command mutate a snapshot the cycle detector had already banked.
-type _State = tuple[int, int, _Heading, tuple[object, ...]]
 
 
 def _truth(value: _Value) -> bool:
@@ -294,7 +279,7 @@ class _Views:
         the wiki says is not a halt -- so a position without it is ambiguous.
         """
         core = self._core
-        return (core.row, core.col, *core.heading)
+        return (core.walker.row, core.walker.col, *core.walker.heading)
 
     @property
     def memory(self) -> list[int]:
@@ -834,30 +819,6 @@ class _Core:
         return self.walkers[-1]
 
     @property
-    def row(self) -> int:
-        return self.walker.row
-
-    @row.setter
-    def row(self, value: int) -> None:
-        self.walker.row = value
-
-    @property
-    def col(self) -> int:
-        return self.walker.col
-
-    @col.setter
-    def col(self, value: int) -> None:
-        self.walker.col = value
-
-    @property
-    def heading(self) -> tuple[int, int]:
-        return self.walker.heading
-
-    @heading.setter
-    def heading(self, value: tuple[int, int]) -> None:
-        self.walker.heading = value
-
-    @property
     def vars(self) -> dict[str, _Value]:
         """The innermost walk's namespace, which a call does not share."""
         return self.walker.vars
@@ -879,14 +840,16 @@ class _Core:
         self.handlers.output = None
         if self.halted:
             return None
-        text, row, col = _scan(self.grid, self.row, self.col, self.heading)
+        text, row, col = _scan(
+            self.grid, self.walker.row, self.walker.col, self.walker.heading
+        )
         word = _Parser(text, self.expression_syntax).word()
         if self.calls.resolve(text, word):
             return self.handlers.output
         if word == "end":
             self.calls.finish()
             return self.handlers.output
-        heading = self.heading
+        heading = self.walker.heading
         if word == "turn":
             guard = _truth(self.expressions.evaluate_rest())
             heading = _turned(heading, left=guard)
@@ -901,8 +864,9 @@ class _Core:
         drow, dcol = heading
         self.walker.pending = None
         self.walker.returned = None
-        self.row, self.col, self.heading = row + drow, col + dcol, heading
-        if not self._in_bounds(self.row, self.col):
+        walker = self.walker
+        walker.row, walker.col, walker.heading = row + drow, col + dcol, heading
+        if not self._in_bounds(walker.row, walker.col):
             raise Hint.GRID_PATH.halt("walked off the grid")
         return self.handlers.output
 
@@ -935,6 +899,13 @@ def _own(walker: _Walker) -> _Walker:
     return copy
 
 
+# :func:`_advance` is the pure transition: it takes the whole state and the one input
+# character a step needs -- raising :class:`_NeedInputError` when the shell has not
+# read it yet -- and returns the next state and any character an ``out`` writes.  It
+# edits nothing it is handed: the walker stack is copied, the innermost frame takes a
+# private ``vars`` copy, and an in-place ``at`` rebuilds the list and rebinds every
+# alias of it rather than writing through the shared reference.  :class:`_Machine` is
+# the shell that reads the input and writes the output.
 def _advance(
     core: _Core, value: _Value | object = _MISSING
 ) -> tuple[_Core, int | None]:

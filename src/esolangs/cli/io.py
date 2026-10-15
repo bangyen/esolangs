@@ -150,19 +150,6 @@ def _note(message: str) -> None:
     sys.stderr.write(f"{message}\n")
 
 
-def _termination_notice(name: str, bounds: str) -> None:
-    """Warn that a termination-mode language answers 1 by not halting.
-
-    ``bounds`` names how this command can bound the run, e.g.
-    ``"--timeout SECONDS"`` or ``"--timeout SECONDS or --steps N"``.
-    """
-    _note(
-        f"{name}: this language answers 1 by not terminating, so a "
-        f"program with that answer will run until you stop it; pass "
-        f"{bounds} to bound it"
-    )
-
-
 def _slurp_thread[SlurpT](
     work: Callable[[], SlurpT],
     timeout: float | None,

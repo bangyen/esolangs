@@ -26,18 +26,6 @@ ends at the next ``H`` even inside ``E...E``; ``Z`` on a non-function does
 nothing; ``V``'s count converts as ``J`` does; a literal still open at the
 end of the code is pushed.
 
-:class:`_Machine` has an explicit call stack (one frame per active call),
-so ``halted`` is true once no frame remains and a repeated
-:meth:`_Machine.snapshot` proves a loop; unbounded growth (``HKHKZ``)
-needs the wall-clock bound.  :func:`_advance` is pure over an immutable
-``_State`` (variables, tuple call stack) and returns *collected effects*
-``(pops, pushes, reverse)`` on the value stack, which stays a list in the
-shell: 200,000 commands of ``HKHKZ`` take 0.21s against a list and 445s
-against a rebuilt tuple.  The invariant that makes reporting sound:
-**every command pops before it pushes**, so operands are read at
-``stack[-1 - pops]``.  Finishing a frame (flush the mode buffer, pop, or
-rewind for ``Z``) is part of the transition, reading the *virtual* depth.
-
 Unbounded pushes are what ``esolangs.run``'s ``timeout`` catches, and
 ancestor replay is decided by
 :func:`esolangs.vm.run_until_halt_or_ancestor`.
@@ -482,6 +470,17 @@ _COMMANDS: Final[dict[str, _Handler]] = {
 }
 
 
+# :class:`_Machine` has an explicit call stack (one frame per active call),
+# so ``halted`` is true once no frame remains and a repeated
+# :meth:`_Machine.snapshot` proves a loop; unbounded growth (``HKHKZ``)
+# needs the wall-clock bound.  :func:`_advance` is pure over an immutable
+# ``_State`` (variables, tuple call stack) and returns *collected effects*
+# ``(pops, pushes, reverse)`` on the value stack, which stays a list in the
+# shell: 200,000 commands of ``HKHKZ`` take 0.21s against a list and 445s
+# against a rebuilt tuple.  The invariant that makes reporting sound:
+# **every command pops before it pushes**, so operands are read at
+# ``stack[-1 - pops]``.  Finishing a frame (flush the mode buffer, pop, or
+# rewind for ``Z``) is part of the transition, reading the *virtual* depth.
 def _advance(
     state: _State,
     view: _StackView,

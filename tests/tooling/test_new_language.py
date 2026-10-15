@@ -431,20 +431,6 @@ def test_drop_dead_code_keeps_live_and_cuts_dead(tmp_path: Path) -> None:
     assert "_GONE" not in text
 
 
-def test_drop_name_items_cuts_set_and_dict_keys(tmp_path: Path) -> None:
-    path = tmp_path / "mod.py"
-    path.write_text(
-        "def a() -> None: ...\n"
-        "def b() -> None: ...\n"
-        "S = frozenset({a, b})\n"
-        "D = {a: 1, b: 2}\n"
-    )
-    remove_language._drop_name_items(path, {"a"})  # noqa: SLF001
-    text = path.read_text()
-    assert "frozenset({b})" in text
-    assert "{b: 2}" in text
-
-
 @pytest.mark.usefixtures("root")
 def test_scaffold_reports_the_canonical_generator() -> None:
     new_language.scaffold("Tiny", "other")

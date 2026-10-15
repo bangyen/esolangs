@@ -3,15 +3,13 @@
 import pytest
 
 
-@pytest.mark.parametrize(
-    ("table", "shared"), [("01101001", (0, 0)), ("00000000", (1, 0))]
-)
-def test_dispatch_accounts_for_a_single_reachable_path_class(table, shared) -> None:
+@pytest.mark.parametrize("table", ["01101001", "00000000"])
+def test_program_stays_within_the_command_bound(table) -> None:
     import esolangs
     from esolangs.debugger import make_vm
-    from esolangs.languages.boolfuck.generator import _boolfuck_tree
+    from esolangs.languages.boolfuck.generator import _command_bound, boolfuck
 
-    program, bound = _boolfuck_tree(table, shared)
+    program, bound = boolfuck(table), _command_bound(3)
     for row, expected in enumerate(table):
         machine = make_vm("Boolfuck", program, stdin=f"{row:03b}")
         commands = 0
@@ -25,18 +23,17 @@ def test_dispatch_accounts_for_a_single_reachable_path_class(table, shared) -> N
 
 @pytest.mark.medium
 def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
-    from esolangs.generation.shared_block import repeated_block
     from esolangs.languages.boolfuck.generator import _boolfuck_tree
     from tests.support.generator_support import assert_shared_program
 
     n = 10
     residual = "".join(str(row.bit_count() & 1) for row in range(1 << (n - 4)))
     table = "0" * (15 * len(residual)) + residual
-    previous, _ = _boolfuck_tree(table, repeated_block(table))
+    plain, _ = _boolfuck_tree(table)
     assert_shared_program(
         "Boolfuck",
         table,
-        previous,
+        plain,
         2 * n * n + 27 * n + 8,
         lambda p: (
             (len(p) - 1).bit_length()

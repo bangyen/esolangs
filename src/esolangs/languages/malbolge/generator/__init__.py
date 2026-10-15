@@ -37,6 +37,7 @@ from collections import Counter
 from dataclasses import dataclass
 from functools import cache
 from itertools import product
+from typing import Literal, NamedTuple
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
@@ -80,8 +81,8 @@ from .core import (
     _main_planner,
     _merge_code,
     _n_hub_pass,
-    _one_options,
     _ops,
+    _options_of,
     _Planner,
     _pointers,
     _prime,
@@ -95,6 +96,7 @@ from .core import (
     _table_char,
     _turn_hubs,
     _valid_chars,
+    _walker,
     _wide,
     _wide_program,
 )
@@ -127,13 +129,15 @@ _THIRTEEN_N = 13
 _T_DECODER = 29525
 _T_DECODER_AVOID = range(_T_DECODER - 5, _T_DECODER + 275)
 
-_Layout = tuple[
-    dict[int, str],
-    dict[int, int],
-    tuple[tuple[int, ...], ...],
-    tuple[tuple[tuple[int, ...], ...], ...],
-    dict[int, str],
-]
+
+class _Layout(NamedTuple):
+    """Thirteen inputs' build: code, data, the core's ``level``/``tables``, labels."""
+
+    code: dict[int, str]
+    data: dict[int, int]
+    level: tuple[tuple[int, ...], ...]
+    tables: tuple[tuple[tuple[int, ...], ...], ...]
+    labels: dict[int, str]
 
 
 def _t_place(
@@ -143,26 +147,13 @@ def _t_place(
     hub_cells: dict[str, int | tuple[int, ...]] = _T_HUB_CELLS,
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
     """Place the hubs of thirteen and fourteen inputs (see :func:`_t_hubs`)."""
-
-    def options_of(v: int, lab: str) -> list[dict[int, int]]:
-        if lab == "1":
-            return _one_options(v)
-        if lab != "n":
-            return [{}]
-        return [
-            {v + 3: a, v + 4: b, v + 5: q}
-            for a in _valid_chars(v + 3)
-            for b in _valid_chars(v + 4)
-            for q in _valid_chars(v + 5)
-            if q + 1 in values
-            and all(
-                _crazy(_crazy(_crazy(48 + x, a), b), values[q + 1]) & 0xFF == 49 - x
-                for x in (0, 1)
-            )
-        ]
-
     return _t_hubs(
-        values, label, avoid, hub_cells=hub_cells, options_of=options_of, floor=_T_FLOOR
+        values,
+        label,
+        avoid,
+        hub_cells=hub_cells,
+        options_of=_options_of(values),
+        floor=_T_FLOOR,
     )
 
 
@@ -182,13 +173,7 @@ def _thirteen() -> _Layout:
     used = set(_T_LOW)
     helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
 
-    def walked(value: int) -> int:
-        address = next(
-            a for a in range(128, _ENTRY) if _g(a) == value and a not in used
-        )
-        used.add(address)
-        return address
-
+    walked = _walker(used)
     for name, value in _T_HELPERS.items():
         helper[name] = walked(value)
     select = [walked(_g(a)) for a in _W_SELECT]
@@ -247,7 +232,7 @@ def _thirteen() -> _Layout:
         (*parts, stubs), data, cells_of_tables, code_end, ceiling=_T_FLOOR
     )
     labels = {p - 1: lab for p, lab in label.items()}
-    return code, data, level, tables, labels
+    return _Layout(code, data, level, tables, labels)
 
 
 def _seed_values(
@@ -345,130 +330,41 @@ _F_EXTRA = (57, 75, 119)
 
 # ---------------------------------------------------------------------------
 # Readout op language: one typed op per step of the searched readout search.
-@dataclass(frozen=True)
-class _MixOp:
-    """One readout op: ``p`` (crazy) ``A`` with mixer state cell ``index``."""
-
-    index: int
+_Kind = Literal["mix", "rot", "const", "snap"]
 
 
-@dataclass(frozen=True)
-class _RotOp:
-    """One readout op: ``*`` (rotation) on mixer state cell ``index``."""
+class _SegmentOp(NamedTuple):
+    """One readout op.
 
-    index: int
-
-
-@dataclass(frozen=True)
-class _SetConstOp:
-    """One readout op: ``*`` on ``_CONSTS[index]``.
-
-    The constant is 0, all-1 or all-2; the op sets ``A`` to it.
+    ``mix``: ``p`` with mixer cell ``arg``; ``rot``: ``*`` on it; ``const``:
+    ``*`` on ``_CONSTS[arg]``, setting ``A``; ``snap``: snapshot ``A`` into
+    copy ``arg``'s readout at the segment's level.
     """
 
-    index: int
+    kind: _Kind
+    arg: int
 
 
-@dataclass(frozen=True)
-class _SnapshotOp:
-    """One readout op: snapshot ``A`` into copy ``index``'s readout.
-
-    The snapshot lands at this segment's level.
-    """
-
-    index: int
+_KINDS: dict[str, _Kind] = {"m": "mix", "r": "rot", "c": "const", "s": "snap"}
 
 
-_SegmentOp = _MixOp | _RotOp | _SetConstOp | _SnapshotOp
+def _segment(spec: str) -> tuple[_SegmentOp, ...]:
+    """Parse ``"s0 r6 m2"`` into ops: a kind letter, then ``arg``."""
+    return tuple(_SegmentOp(_KINDS[w[0]], int(w[1:])) for w in spec.split())
 
 
 #: The readout ops, in three segments run after the eleven-bit post-map.
-_F_SEGMENTS: tuple[tuple[_SegmentOp, ...], ...] = (
-    (
-        _SnapshotOp(0),
-        _RotOp(6),
-        _MixOp(2),
-        _MixOp(1),
-        _MixOp(6),
-        _MixOp(6),
-        _RotOp(7),
-        _SetConstOp(1),
-        _MixOp(7),
-        _RotOp(7),
-        _MixOp(2),
-        _RotOp(0),
-        _MixOp(2),
-        _MixOp(5),
-        _MixOp(6),
-        _MixOp(1),
-        _MixOp(3),
-        _MixOp(7),
-        _SetConstOp(0),
-        _MixOp(2),
-        _RotOp(1),
-        _MixOp(2),
-        _RotOp(7),
-        _RotOp(7),
-        _RotOp(7),
-        _RotOp(6),
-        _MixOp(2),
-        _RotOp(5),
-        _MixOp(7),
-        _MixOp(2),
-        _RotOp(0),
-        _MixOp(5),
-        _MixOp(2),
-        _MixOp(0),
-        _SnapshotOp(2),
-        _SnapshotOp(1),
-        _SnapshotOp(3),
-    ),
-    (
-        _SnapshotOp(0),
-        _MixOp(7),
-        _SnapshotOp(2),
-        _SnapshotOp(1),
-        _RotOp(6),
-        _MixOp(3),
-        _RotOp(6),
-        _SetConstOp(2),
-        _MixOp(2),
-        _RotOp(2),
-        _MixOp(3),
-        _RotOp(7),
-        _RotOp(3),
-        _RotOp(7),
-        _RotOp(6),
-        _MixOp(4),
-        _RotOp(7),
-        _RotOp(7),
-        _MixOp(4),
-        _SetConstOp(0),
-        _MixOp(5),
-        _MixOp(3),
-        _RotOp(6),
-        _MixOp(4),
-        _RotOp(5),
-        _MixOp(4),
-        _RotOp(4),
-        _MixOp(1),
-        _RotOp(3),
-        _MixOp(1),
-        _RotOp(1),
-        _RotOp(0),
-        _MixOp(1),
-        _SnapshotOp(3),
-    ),
-    (
-        _MixOp(5),
-        _SnapshotOp(0),
-        _RotOp(2),
-        _SnapshotOp(1),
-        _SnapshotOp(3),
-        _RotOp(2),
-        _RotOp(2),
-        _SnapshotOp(2),
-    ),
+_F_SEGMENTS = tuple(
+    map(
+        _segment,
+        (
+            "s0 r6 m2 m1 m6 m6 r7 c1 m7 r7 m2 r0 m2 m5 m6 m1 m3 m7 c0 m2 r1 m2 "
+            "r7 r7 r7 r6 m2 r5 m7 m2 r0 m5 m2 m0 s2 s1 s3",
+            "s0 m7 s2 s1 r6 m3 r6 c2 m2 r2 m3 r7 r3 r7 r6 m4 r7 r7 m4 c0 m5 m3 "
+            "r6 m4 r5 m4 r4 m1 r3 m1 r1 r0 m1 s3",
+            "m5 s0 r2 s1 s3 r2 r2 s2",
+        ),
+    )
 )
 #: Per copy, the ``o`` run before each level's table ``j``.
 _F_OFFSETS = ((3, 18, 18), (22, 19, 1), (14, 16, 15), (14, 24, 18))
@@ -569,18 +465,20 @@ def _f_tables() -> tuple[
         state = [*cells[:5], *_F_EXTRA]
         for lvl, segment in enumerate(_F_SEGMENTS):
             for op in segment:
-                if isinstance(op, _MixOp):
-                    a = state[op.index] = _crazy(a, state[op.index])
-                elif isinstance(op, _RotOp):
-                    a = state[op.index] = _rot(state[op.index])
-                elif isinstance(op, _SetConstOp):
-                    a = _CONSTS[op.index]
-                else:
+                if op.kind == "mix":
+                    a = state[op.arg] = _crazy(a, state[op.arg])
+                elif op.kind == "rot":
+                    a = state[op.arg] = _rot(state[op.arg])
+                elif op.kind == "const":
+                    a = _CONSTS[op.arg]
+                elif op.kind == "snap":
                     if lvl < 2:
-                        a = _crazy(a, prep[op.index][lvl])
+                        a = _crazy(a, prep[op.arg][lvl])
                     else:
                         a = _crazy(_crazy(a, _L3_CELL_A), _L3_CELL_B)
-                    tables[lvl][op.index][row] = a + 1 + _F_OFFSETS[op.index][lvl]
+                    tables[lvl][op.arg][row] = a + 1 + _F_OFFSETS[op.arg][lvl]
+                else:
+                    raise ValueError(op.kind)
     reach = [[1] * rows for _ in range(4)]
     count = Counter(tables[0][c][row] for c in range(4) for row in range(rows))
     changed = True
@@ -890,17 +788,20 @@ def _f_emit_segment(
 ) -> None:
     """Emit one readout segment's typed ops over the mixer and state cells."""
     for op in segment:
-        if isinstance(op, _MixOp):
-            main.op("p", cell[op.index])
-        elif isinstance(op, _RotOp):
-            main.op("*", cell[op.index])
-        elif isinstance(op, _SetConstOp):
-            main.op("*", konst[op.index])
-        elif lvl < 2:
-            main.op("p", readout[op.index, lvl])
+        if op.kind == "mix":
+            main.op("p", cell[op.arg])
+        elif op.kind == "rot":
+            main.op("*", cell[op.arg])
+        elif op.kind == "const":
+            main.op("*", konst[op.arg])
+        elif op.kind == "snap":
+            if lvl < 2:
+                main.op("p", readout[op.arg, lvl])
+            else:
+                main.op("p", triples[op.arg])
+                main.op("p", readout[op.arg, 2])
         else:
-            main.op("p", triples[op.index])
-            main.op("p", readout[op.index, 2])
+            raise ValueError(op.kind)
 
 
 def _f_emit_readouts(
@@ -984,7 +885,7 @@ def _fourteen() -> _Layout:
         (*parts, place.stubs), place.data, cells_of_tables, emitted.code_end
     )
     labels = {p - 1: lab for p, lab in alloc.label.items()}
-    return code, place.data, level, tables, labels
+    return _Layout(code, place.data, level, tables, labels)
 
 
 def _fourteen_program(truth_table: str) -> str:
@@ -1050,7 +951,7 @@ def malbolge(truth_table: str) -> str:
 LANGUAGE = Language(
     "Malbolge",
     "malbolge",
-    category="other",
+    category="program_based",
     # The program is the full 59049-cell store.
     # Every source loads into 59,049 cells, so every program -- this
     # generator's or any other -- is bounded by a constant.

@@ -45,9 +45,7 @@ Choices checked against the page's 4-bit prime tester over all sixteen inputs:
   both slots of a gate (the constant-output circuit), so ports count per cell.
 
 The page's prime tester omits five characters: two OR inputs are undriven.
-``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER``
-(repaired, replayed over sixteen inputs) and ``PRIME_TESTER_AS_DRAWN``
-(silence pinned).  The repair is derived and unique: the circuit is a
+The repair is derived and unique: the circuit is a
 product of sums ``(? | c)``, ``(? | ~a | ~b)``, ``(d | ~a)``,
 ``(~b | d)``; primality over 0-15 with ``a`` the MSB forces the unknowns
 to ``~c`` (inputs 13 and 15) and ``b`` (inputs 0, 1, 9).  The page
@@ -70,7 +68,7 @@ the spec leaves stdin framing unspecified.
 
 from datetime import UTC, datetime
 from functools import lru_cache
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.languages.circuit_diagram.interpreter._functions import (
     _BufferedClock,
@@ -96,23 +94,29 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
 from esolangs.runtime._drive import drive
 from esolangs.runtime.io import IO
 
+# ``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired, replayed over
+# sixteen inputs) and ``PRIME_TESTER_AS_DRAWN`` (silence pinned).
+
+
+class _Topology(NamedTuple):
+    """The validated, read-only diagram shared by public runs.
+
+    ``wire_index`` maps ``id(wiring)`` to its position; ``consumers`` lists, per
+    wiring, the ``(gate, slot)`` pairs it feeds, so a generation visits only
+    the gates downstream of a live wire.
+    """
+
+    grid: _Grid
+    wirings: list[_Wiring]
+    gates: list[_Gate]
+    wire_index: dict[int, int]
+    by_cell: dict[tuple[int, int], _Wiring]
+    consumers: tuple[tuple[tuple[int, int], ...], ...]
+
 
 @lru_cache(maxsize=16)
-def _compile(
-    code: tuple[str, ...],
-) -> tuple[
-    _Grid,
-    list[_Wiring],
-    list[_Gate],
-    dict[int, int],
-    dict[tuple[int, int], _Wiring],
-    tuple[tuple[tuple[int, int], ...], ...],
-]:
-    """Return the validated, read-only topology shared by public runs.
-
-    The last part lists, per wiring, the ``(gate, slot)`` pairs it feeds,
-    so a generation visits only the gates downstream of a live wire.
-    """
+def _compile(code: tuple[str, ...]) -> _Topology:
+    """Return the :class:`_Topology` of ``code``."""
     main, definitions = _split_definitions(list(code))
     grid = _Grid(main)
     parsed = _Parser(grid, definitions)
@@ -123,7 +127,7 @@ def _compile(
         if gate.kind not in (_OUTPUT, _ZERO, _ONE, _CLOCK):
             for slot, wiring in enumerate(gate.inputs):
                 fed[index[id(wiring)]].append((position, slot))
-    return (
+    return _Topology(
         grid,
         wirings,
         parsed.gates,
@@ -211,40 +215,22 @@ type _Latches = tuple[tuple[tuple[int, ...] | None, ...], ...]
 type _State = tuple[_Values, _Latches]
 
 
-def _emitted(state: _State, gates: list["_Gate"], index: dict[int, int]) -> list[str]:
+def _emitted(values: _Values, topology: _Topology) -> list[str]:
     """Return what each ``:`` gate writes this generation, in gate order."""
-    values, _ = state
     out = []
-    for gate in gates:
+    for gate in topology.gates:
         if gate.kind != _OUTPUT:
             continue
-        value = values[index[id(gate.inputs[0])]]
+        value = values[topology.wire_index[id(gate.inputs[0])]]
         if value is not None:
             out.append("".join(str(bit) for bit in value))
     return out
 
 
-def _generation(
-    state: _State,
-    gates: list["_Gate"],
-    index: dict[int, int],
-    consumers: tuple[tuple[tuple[int, int], ...], ...],
-    clock: tuple[int, ...],
-) -> tuple[_State, bool]:
-    """Return the state after one generation, and whether the run went quiet.
-
-    Pure.  The topology is a constant of the run and the clock arrives as
-    the explicit values the shell sampled; a generation that needs one more
-    raises :class:`_ClockNeededError` so the shell can supply it, rather
-    than reading wall time itself.  The state handed in is never edited.
-    """
-    return _run_generation(state, gates, index, consumers, _BufferedClock(clock))
-
-
 def _latch_arrivals(
     values: _Values,
     latches: _Latches,
-    consumers: tuple[tuple[tuple[int, int], ...], ...],
+    topology: _Topology,
 ) -> tuple[dict[int, list[tuple[int, ...] | None]], _Latches]:
     """Record this generation's arrivals in each downstream gate's latch slots.
 
@@ -254,7 +240,7 @@ def _latch_arrivals(
     arrivals: dict[int, list[tuple[int, ...] | None]] = {}
     for wire, value in enumerate(values):
         if value is not None:
-            for position, slot in consumers[wire]:
+            for position, slot in topology.consumers[wire]:
                 slots = arrivals.setdefault(position, list(latches[position]))
                 slots[slot] = value
     grown = tuple(
@@ -264,21 +250,18 @@ def _latch_arrivals(
     return arrivals, grown
 
 
-def _run_generation(
-    state: _State,
-    gates: list["_Gate"],
-    index: dict[int, int],
-    consumers: tuple[tuple[tuple[int, int], ...], ...],
-    clock: "_ClockStream",
+def _generation(
+    state: _State, topology: _Topology, clock: "_ClockStream"
 ) -> tuple[_State, bool]:
-    """One generation over an explicit clock source the caller owns.
+    """Return the state after one generation, and whether the run went quiet.
 
-    The worker behind :func:`_generation`; nested function evaluation uses
-    it directly so that every clock read is served from the one source the
-    shell provided.
+    Pure.  The topology is a constant of the run and every clock read is
+    served from the source the caller owns (the shell samples it; a
+    generation that needs one more raises :class:`_ClockNeededError`, so
+    wall time is never read here).  The state handed in is never edited.
     """
     values, latches = state
-    arrivals, grown = _latch_arrivals(values, latches, consumers)
+    arrivals, grown = _latch_arrivals(values, latches, topology)
     pending: dict[int, list[tuple[int, ...]]] = {}
     fired = False
     # Gate order, as before: clock reads and merges depend on it.
@@ -288,8 +271,8 @@ def _run_generation(
             continue
         fired = True
         inputs = [slot for slot in slots if slot is not None]
-        for wiring, value in _drive(gates[position], inputs, clock):
-            pending.setdefault(index[id(wiring)], []).append(value)
+        for wiring, value in _drive(topology.gates[position], inputs, clock):
+            pending.setdefault(topology.wire_index[id(wiring)], []).append(value)
 
     quiet = not fired and all(value is None for value in values)
     driven: list[tuple[int, ...] | None] = [None] * len(values)
@@ -328,14 +311,7 @@ class _Machine:
         """Parse ``code`` and read the input its ``-n-`` ports call for."""
         self.clock = clock if clock is not None else _ClockStream()
         self.io = io
-        (
-            self.grid,
-            self.wirings,
-            self.gates,
-            self.index,
-            self._by_cell,
-            self.consumers,
-        ) = _compile(tuple(code))
+        self.topology = _compile(tuple(code))
         self.halted = False
         # Static topology is shared; values and remembered gate inputs stay
         # per-machine tuples indexed by topology position.
@@ -345,6 +321,28 @@ class _Machine:
         )
         self._load_inputs()
         self._load_sources()
+
+    # Read-only views of the shared topology.
+
+    @property
+    def grid(self) -> _Grid:
+        """The parsed diagram grid."""
+        return self.topology.grid
+
+    @property
+    def wirings(self) -> list[_Wiring]:
+        """Every wiring, by position."""
+        return self.topology.wirings
+
+    @property
+    def gates(self) -> list[_Gate]:
+        """Every gate, by position."""
+        return self.topology.gates
+
+    @property
+    def index(self) -> dict[int, int]:
+        """``id(wiring)`` to its position."""
+        return self.topology.wire_index
 
     def _load_inputs(self) -> None:
         """Drive every input wiring with the bits read from stdin.
@@ -358,7 +356,7 @@ class _Machine:
             if not stripped.startswith("-"):
                 continue
             col = len(line) - len(stripped)
-            wiring = self._by_cell.get((row, col))
+            wiring = self.topology.by_cell.get((row, col))
             # Every leading dash belongs to a wiring. Connected input rows
             # still consume separate bundles before their drivers are XORed.
             if wiring is None:  # pragma: no cover - see above
@@ -435,12 +433,8 @@ class _Machine:
         :meth:`step`, so the clock is the explicit value source the caller
         passes and the shell's wall clock is never touched.
         """
-        (self.values, self.latches), halted = _run_generation(
-            (self.values, self.latches),
-            self.gates,
-            self.index,
-            self.consumers,
-            clock,
+        (self.values, self.latches), halted = _generation(
+            (self.values, self.latches), self.topology, clock
         )
         if halted:
             self.halted = True
@@ -453,14 +447,14 @@ class _Machine:
         gate order.  The clock is read here, one value per read the
         transition asks for; the transition itself never touches wall time.
         """
-        for text in _emitted((self.values, self.latches), self.gates, self.index):
+        for text in _emitted(self.values, self.topology):
             self.io.print_str(text)
         state = (self.values, self.latches)
         sampled: list[int] = []
         while True:
             try:
                 (self.values, self.latches), halted = _generation(
-                    state, self.gates, self.index, self.consumers, tuple(sampled)
+                    state, self.topology, _BufferedClock(tuple(sampled))
                 )
                 break
             except _ClockNeededError:

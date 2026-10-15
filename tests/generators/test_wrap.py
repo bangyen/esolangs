@@ -30,16 +30,6 @@ from tests.support.witness_tables import parity
 TABLE = "0110"
 
 
-# language-owners: ["Bitdeque", "Jaune", "RAM0"]
-# A third width, narrower than any a reader would ask for, because a broken
-# wrapper is not broken at every width.  Whether a break lands inside a
-# multi-character token depends on where the width happens to put it, so a
-# wrapper can be wrong and still pass at both conventional widths: Bitdeque
-# answered 1 instead of 0 at 12 and 13 while 11, 14, 40 and 80 were all
-# correct, and the three registered since (Lamfunc, RAM0, Jaune) each broke
-# under wrap_chars at some width between 10 and 50 while passing at 80.
-# Sweeping a dozen widths per language belongs in a scratch harness; one odd
-# width in the suite is what keeps the class from coming back.
 NARROW_WIDTH = 13
 
 # language-owners: ["Alight", "Line", "Super SNUSP"]

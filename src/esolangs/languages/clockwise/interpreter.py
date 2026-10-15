@@ -11,10 +11,6 @@ once in ``__init__`` and then rotated, so ``.`` consumes from a queue in
 the state; a program that reads with no bits at all raises
 :class:`EOFError`.
 
-:func:`_advance` is a pure transition over an immutable ``_State`` with
-no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``
-and flushes the byte.
-
 Input characters form the initial bit queue. This implementation preserves the
 complete supplied character stream rather than discarding later lines.
 """
@@ -32,11 +28,11 @@ from esolangs.runtime.source_hints import syntax_error
 #: How many parity bits make one printed byte.
 _BYTE_BITS = 7
 
-#: ``(row, col, r, acc, out, inp, done)``: position, heading, accumulator,
-#: unflushed parity bits, rotating input bits, ring closed.  ``done`` is
-#: state because returning to the origin ends the run except on a ``0``
-#: heading; it stays out of ``snapshot``.
-type _State = tuple[int, int, int, int, tuple[str, ...], tuple[str, ...], bool]
+#: ``(row, col, r, acc, out, inp)``: position, heading, accumulator,
+#: unflushed parity bits, rotating input bits.  The ring closing is not a
+#: field: the origin is re-entered only heading left or up, so being there
+#: with ``r != 0`` is the end, and ``r == 0`` there is the start.
+type _State = tuple[int, int, int, int, tuple[str, ...], tuple[str, ...]]
 
 COL = [1, 0, -1, 0]
 ROW = [0, 1, 0, -1]
@@ -48,7 +44,7 @@ def move(
     r: int,
     code: Sequence[str],
     acc: int,
-) -> tuple[int, int, int, str, int]:
+) -> tuple[int, int, int, str]:
     """Step the pointer one cell, returning position, direction, and the cell."""
     if not 0 <= row < len(code) or not 0 <= col < len(code[row]):
         raise syntax_error(
@@ -62,23 +58,21 @@ def move(
     c = (o == "R") or (o == "?" and acc != 0) or (o == "!" and acc == 0)
 
     r = (r + c) % 4
-    row += ROW[r]
-    col += COL[r]
-    b = col or row or not r
-
-    return row, col, r, o, b
+    return row + ROW[r], col + COL[r], r, o
 
 
+# :func:`_advance` is a pure transition over an immutable ``_State`` with no ``io``
+# argument; :class:`_Machine` rebinds one state per ``step()`` and flushes the byte.
 def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     """Return the state after one cell, and any byte that is ready to print.
 
     The move happens first: a cell's instruction is the one the pointer
     *left*.  A turn cell needs no case: no flush can fire on it, so it
-    falls through to the shared ``cont`` check.  ``.`` on an empty queue is
+    falls through to the shared flush check.  ``.`` on an empty queue is
     left for the shell to reject.
     """
-    row, col, r, acc, out, inp, _done = state
-    row, col, r, ins, cont = move(row, col, r, code, acc)
+    row, col, r, acc, out, inp = state
+    row, col, r, ins = move(row, col, r, code, acc)
 
     if ins == "+":
         acc += 1
@@ -102,7 +96,7 @@ def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     if len(out) == _BYTE_BITS:
         byte = int("".join(out), 2)
         out = ()
-    return (row, col, r, acc, out, inp, not cont), byte
+    return (row, col, r, acc, out, inp), byte
 
 
 class _Machine:
@@ -127,7 +121,7 @@ class _Machine:
         if any("." in line for line in self.code):
             for k in io.input_all():
                 bits += format(ord(k), f"0{_BYTE_BITS}b")
-        self.state: _State = (0, 0, 0, 0, (), tuple(bits), False)
+        self.state: _State = (0, 0, 0, 0, (), tuple(bits))
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -161,7 +155,8 @@ class _Machine:
     @property
     def halted(self) -> bool:
         """Whether the pointer has returned to the origin."""
-        return self.state[6]
+        row, col, r = self.state[:3]
+        return row == col == 0 and r != 0
 
     # The VM's language-shaped view: 2D ring; ip is the pointer's (row, col, heading),
     # memory the acc.
@@ -185,22 +180,19 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The six live fields plus the input cursor, in the order this
-        # returned before ``done`` joined the state.
-        row, col, r, acc, out, inp, _done = self.state
-        return (row, col, r, acc, out, inp, self.io.progress())
+        return (*self.state, self.io.progress())
 
     def step(self) -> None:
         """Move the pointer one cell and execute the instruction it left."""
-        if self.state[6]:
+        if self.halted:
             return
         # Bits are read up front, so an empty queue means the program was
         # given none: reading one is exhausted input, which this module
         # documents as EOFError.  The cell about to run is the one the
         # pointer leaves, so the check has to look ahead the same way.
         if not self.state[5]:
-            row, col, r, _acc, _out, _inp, _done = self.state
-            if move(row, col, r, self.code, self.state[3])[3] == ".":
+            row, col, r, acc, _out, _inp = self.state
+            if move(row, col, r, self.code, acc)[3] == ".":
                 # ``InputExhaustedError`` (an ``EOFError`` too), not the
                 # bare one: a sweep on ``except EsolangError`` crashed here.
                 # Bits, not lines: the input was read up front as

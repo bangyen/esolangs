@@ -31,13 +31,6 @@ That is the unbounded-growth case the detector documents itself as unable to
 catch, and only the wall-clock timeout stops it.  (The empty program is
 rejected outright, so the fuzz suite's empty-program invariant is unaffected.)
 
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the grid to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  The
-tape is a tuple, so a state is a value that can be stored, compared, and
-hashed as it stands.
-
 :class:`_Machine` is the mutable shell the interpreter protocol requires.
 It holds one ``_State`` and rebinds it each step, so the mutation lives in
 exactly one assignment and every rule about what Back *does* stays in the
@@ -64,6 +57,8 @@ from esolangs.runtime.source_hints import syntax_error
 type _State = tuple[int, int, int, int, tuple[int, ...], int, bool]
 
 
+# The tape is a tuple, so a state is a value that can be stored, compared, and
+# hashed as it stands.
 def _advance(state: _State, code: Sequence[str], size: int) -> _State:
     """Return the state after executing one grid cell.
 

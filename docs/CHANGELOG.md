@@ -5,6 +5,16 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 0.12.0
+
+- **Breaking:** `generate("Unary", ...)` returns a gzip-backed `CompressedText`
+  (new in `esolangs.__all__`) instead of `str`; `run` accepts it, gzip bytes
+  or plain source. CLI generation writes gzip; `--plain` writes source text.
+- Fix Piet++ sliding across white with the pre-search dp/cc after the exit
+  search turned them; it now follows Piet's rules.
+- Change Streetcode, Dig, Alight, 6-5 and Boolfuck generator constructions.
+- Simplify internals across generators and trim the test suite.
+
 ## 0.11.1
 
 - Fix release archive normalization in build environments without an installed package.

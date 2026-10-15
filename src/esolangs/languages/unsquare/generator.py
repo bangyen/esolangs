@@ -44,21 +44,38 @@ def _runs(bits: str) -> tuple[str, int]:
     return "".join(parts), commands
 
 
+def _twin_halves(bits: str) -> tuple[int, int] | None:
+    """Return ``(start, span)`` of the first aligned block of two identical halves.
+
+    Blocks need halves over 7 entries long; shallowest, then leftmost, first.
+    """
+    ids = subtree_ids(bits)
+    for depth, layer in enumerate(ids[:-1]):
+        span = 1 << (len(ids) - 1 - depth)
+        if span // 2 <= 7:
+            continue
+        for index, state in enumerate(layer):
+            if (
+                state >= 2
+                and ids[depth + 1][2 * index] == ids[depth + 1][2 * index + 1]
+            ):
+                return index * span, span
+    return None
+
+
+def _command_bound(n: int) -> int:
+    """Commands the shared form may execute: one pass of the plain lookup cost."""
+    return 4 * (1 << n) + 79 * n + 22
+
+
+def _lookup_cost(n: int, kept: int, size: int) -> int:
+    """Commands of the lookup, over a ``size``-entry table, outside the pushes."""
+    return 79 * kept + 2 * (n - kept) + size + 26
+
+
 def _shared_pushes(bits: str, n: int, kept: int) -> str | None:
     """Count two identical aligned halves before lookup overwrites the counter."""
-    ids = subtree_ids(bits)
-    chosen = next(
-        (
-            (index * span, span)
-            for depth, layer in enumerate(ids[:-1])
-            for span in [1 << (len(ids) - 1 - depth)]
-            for index, state in enumerate(layer)
-            if state >= 2
-            and span // 2 > 7
-            and ids[depth + 1][2 * index] == ids[depth + 1][2 * index + 1]
-        ),
-        None,
-    )
+    chosen = _twin_halves(bits)
     if chosen is None:
         return None
     start, span = chosen
@@ -67,10 +84,8 @@ def _shared_pushes(bits: str, n: int, kept: int) -> str | None:
     block = bits[start : start + span // 2].translate(str.maketrans("01", "OI"))
     # O/I preserve the accumulator; only the later addressing pops overwrite it.
     cells = before + "OA++>" + block + "-<" + after
-    commands = (
-        first_cost + last_cost + span + 10 + 79 * kept + 2 * (n - kept) + len(bits) + 26
-    )
-    return cells if commands <= 4 * (1 << n) + 79 * n + 22 else None
+    commands = first_cost + last_cost + span + 10 + _lookup_cost(n, kept, len(bits))
+    return cells if commands <= _command_bound(n) else None
 
 
 def unsquare(truth_table: str) -> str:

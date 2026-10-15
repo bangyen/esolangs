@@ -38,10 +38,6 @@ MAX_GROWTH = 2.15
 #: down, which is why a ``poly n`` cell also names its reason.
 POLY_GROWTH = 1.5
 
-# language-owners: ["NoComment", "SLOW ACV MAMMALIAN"]
-#: Most growth the increments of a ``poly n`` row's dense series may show
-#: (``_step_growth``).  ``n**3`` reads x1.25 at n=6..12 and a constant plus
-#: ``T`` x2; NoComment read x1.99 and SLOW ACV MAMMALIAN x1.43.
 STEP_GROWTH = 1.4
 
 #: Rungs needed after the last route change before a ratio means anything,
@@ -65,12 +61,6 @@ STEP_CAP = 2_000_000
 #: and their measured jumps are recorded beside the override rows.
 MAX_ARITY = 9
 
-# language-owners: ["Factor", "Line", "Sophie"]
-#: The dense pass of a ``poly n`` row climbs further: Sophie passed it at
-#: n <= 9 and only diverged past 10 (dense 81 -> 455 commands at n=10..16,
-#: parity 68 -> 115).  A poly n row is cheap by its own claim; n=10..12 cost
-#: ~6s over 23 rows.  ``ARITY_OVERRIDE`` still caps Factor, Line and Circuit
-#: Diagram, whose time is load, not commands (152s, 99s, 27s to n=12).
 DENSE_ARITY = 12
 ARITY_OVERRIDE = deep_arities("execution")
 

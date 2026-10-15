@@ -1,8 +1,23 @@
-"""Linear padding construction for Cyclic tag.
+"""Cyclic tag boolean generator: zeros in the queue count the row.
 
-One rule a row is the index step; dropping rows moves the walk, and a rule
-runs once a cycle, so none is shared.
-Constant roots use one empty production to delete the inputs and a literal answer.
+Each step deletes the queue's first bit and, if it was 1, appends the
+current production; the production pointer advances either way.  The queue
+here is the inputs, then a marker ``1``:
+
+- Production i belongs to input i: a 1 appends two ``0`` per unit of the
+  input's weight, so the queue gains 2 * row zeros.
+- The marker meets production n, ``1``, and re-appends itself behind them.
+- Each zero only advances the pointer, so the marker then meets its row's
+  production, which appends the answer bit.  The row's second production
+  is empty, so deleting that bit appends nothing and the queue runs dry:
+  the last deleted bit, which the interpreter prints, is the answer.
+
+``0110`` on inputs 1, 0 (row 2) is ``0000;00;1;0;;1;;1;;0;,101``.  Its queue
+goes 101, 010000, 10000, 00001, 0001, 001, 01, 1, then 1 again as row 2
+appends its answer, then empty: it prints 1.
+
+A rule runs once a cycle, so none is shared.  A constant table is one empty
+production: the inputs are deleted unread, then the literal answer.
 """
 
 from esolangs.generation.constant_projection import balance_legacy_walk
@@ -32,9 +47,9 @@ def _program(truth_table: str, *, keep_constant_walk: bool = False) -> str:
     # An ignored input's rule is empty: its symbol is deleted unread.
     weights, table = input_weights(truth_table, n)
     rules = ["0" * (2 * weight) for weight in weights]
-    rules.append("1")
+    rules.append("1")  # the marker re-appends itself behind the zeros
     for answer in table:
-        rules.extend((answer, ""))
+        rules.extend((answer, ""))  # the answer, then an empty rule to delete it
     return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
 
 

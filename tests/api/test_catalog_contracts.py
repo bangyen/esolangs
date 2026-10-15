@@ -1,11 +1,20 @@
 """Shared listing and specification contracts."""
 
+import re
+
 import pytest
 
 import esolangs
 from esolangs.runtime._execution import interpreter_module
 from tests.cli.test_cli import call_main
 from tests.support.reference import REFERENCE
+
+#: What a spec must not show: a private name, a raw Sphinx role, a repo path.
+_MAINTAINER = re.compile(
+    r"(?<![\w`.])`*_[a-z]\w*"
+    r"|:(?:class|func|meth|mod|attr|exc|data|obj):`"
+    r"|\b(?:src|tests)/[\w/.]+"
+)
 
 
 class TestMessagesNameTheThingThatIsWrong:
@@ -55,6 +64,32 @@ class TestTheSpecIsReachable:
         """The claim the feature rests on: there is something to show."""
         for name in esolangs.list_languages():
             assert len(esolangs.describe(name)["spec"]) > 200, name
+
+    def test_no_spec_shows_maintainer_detail(self) -> None:
+        """Implementation notes are comments beside the code they explain."""
+        leaks = {
+            name: _MAINTAINER.findall(esolangs.describe(name)["spec"])
+            for name in esolangs.list_languages()
+        }
+        leaks = {name: found for name, found in leaks.items() if found}
+        assert not leaks, (
+            f"move these into comments beside the code they explain "
+            f"(docs/CONTRIBUTING.md): {leaks}"
+        )
+
+    def test_roles_render_and_the_leak_check_fires(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Positive control: a public role renders; a private name is caught."""
+        module = interpreter_module(REFERENCE)
+        monkeypatch.setattr(
+            module,
+            "__doc__",
+            "Raises :class:`~esolangs.exceptions.HaltError`; :func:`_advance`.",
+        )
+        spec = esolangs.describe(REFERENCE)["spec"]
+        assert spec == "Raises ``HaltError``; ``_advance``."
+        assert _MAINTAINER.findall(spec) == ["``_advance"]
 
 
 class TestSpecAbortsRatherThanReturningNothing:

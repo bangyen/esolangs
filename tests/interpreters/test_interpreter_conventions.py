@@ -236,6 +236,8 @@ def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:
         issues.append("raises HaltError but does not document it")
     if "raise ValueError" in source and "ValueError" not in doc:
         issues.append("raises ValueError but does not document it")
+    if re.search(r"^Implementation:$", doc, re.MULTILINE):
+        issues.append("implementation notes belong in comments beside the code")
     return issues
 
 
@@ -261,6 +263,44 @@ def test_interpreter_docstrings_follow_the_template() -> None:
         for path in paths
     }
     assert {path: issues for path, issues in failures.items() if issues} == {}
+
+
+#: The modules an interpreter draws from; a generator's ``random`` is not one.
+_RANDOM_SOURCES = {"random", "esolangs.runtime.randomness"}
+
+
+def _draws_at_random(module: str) -> bool:
+    """Whether the interpreter's own files import a randomness source."""
+    path = pathlib.Path(
+        inspect.getfile(
+            importlib.import_module(f"esolangs.languages.{module}.interpreter")
+        )
+    )
+    files = sorted(path.parent.glob("*.py")) if path.name == "__init__.py" else [path]
+    for file in files:
+        for node in ast.walk(ast.parse(file.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import) and any(
+                alias.name in _RANDOM_SOURCES for alias in node.names
+            ):
+                return True
+            if isinstance(node, ast.ImportFrom) and node.module in _RANDOM_SOURCES:
+                return True
+    return False
+
+
+def test_the_random_flag_matches_the_interpreter() -> None:
+    """``random=`` is declared by hand; the interpreter's imports decide it."""
+    drawing = {
+        name
+        for name, lang in LANGUAGES.items()
+        if lang.interpreter and _draws_at_random(lang.interpreter)
+    }
+    flagged = {name for name, lang in LANGUAGES.items() if lang.random}
+    assert drawing  # the import scan fires, so an empty diff is not vacuous
+    assert {
+        "drawing but not random=True": sorted(drawing - flagged),
+        "random=True but never drawing": sorted(flagged - drawing),
+    } == {"drawing but not random=True": [], "random=True but never drawing": []}
 
 
 class TestEntryPointConventions:

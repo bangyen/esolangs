@@ -89,3 +89,70 @@ def test_invalid_limit_is_refused_before_machine_acquisition(detector, limit) ->
 
     with pytest.raises(ArgumentError, match="limit"):
         detector(object(), limit=limit)
+
+
+class _Climber:
+    """Never halts: each step walks onto a fresh cell, pushes a frame with
+    the same entry, and adds one to a value -- a hang all three proofs see."""
+
+    halted = False
+    ip = 0
+
+    def __init__(self) -> None:
+        self.n = 0
+
+    def step(self) -> None:
+        self.n += 1
+
+    @property
+    def ptr(self) -> int:
+        return self.n
+
+    @property
+    def tape(self) -> tuple[int, ...]:
+        return (1,) + (0,) * self.n
+
+    def input_position(self) -> int:
+        return 0
+
+    @property
+    def frames(self) -> list[int]:
+        return list(range(self.n + 1))
+
+    def frame_entry_key(self, _frame: object) -> int:
+        return 0
+
+    key = 0
+    clamp_slack = None
+
+    @property
+    def values(self) -> tuple[int, ...]:
+        return (self.n,)
+
+
+class _RandomClimber(_Climber):
+    """The same machine, declaring a draw it could branch on."""
+
+    def branching_snapshot(self) -> int:
+        return self.n
+
+    def branching_halted(self, _state: object) -> bool:
+        return False
+
+    def branching_successors(self, state: object, _limit: int) -> list[object]:
+        return [state]
+
+
+_PROOFS = [
+    run_until_halt_or_ancestor,
+    run_until_halt_or_growth,
+    run_until_halt_or_value_growth,
+]
+
+
+@pytest.mark.parametrize("detector", _PROOFS)
+def test_a_lap_proof_refuses_a_random_machine(detector) -> None:
+    """A draw can change the next lap, which every lap proof assumes away."""
+    assert detector(_Climber()) is False  # control: the deterministic hang is proved
+    with pytest.raises(TypeError, match="random machines"):
+        detector(_RandomClimber())

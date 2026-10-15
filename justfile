@@ -116,6 +116,22 @@ benchmark language table *args:
 sizes *args:
     {{PYTHON}} checks/check_generator_sizes.py {{args}}
 
+# A refactor's evidence: step traces against a git revision (default main)
+# over samples, wiki examples, generated rows and random programs.  Pass
+# --mutant <file> as the positive control, --ignore-views for renamed views,
+# --speed to fail a copy more than 10% slower.
+# diff an interpreter's step-by-step behaviour against another revision
+tracediff language *args:
+    {{PYTHON}} scripts/tracediff.py "{{language}}" {{args}}
+
+# A generator refactor's evidence: every table through n=3, at several widths
+# and balanced, byte-identical to a git revision (default main).  Pass
+# --mutant <file> as the positive control, --speed to fail a tree more than
+# 10% slower.
+# diff a generator's programs against another revision
+gendiff language *args:
+    {{PYTHON}} scripts/gendiff.py "{{language}}" {{args}}
+
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:
     {{PYTHON}} scripts/ci/shard.py refresh --serial-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}

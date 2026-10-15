@@ -27,19 +27,13 @@ Evaluation uses an explicit ``_Frame`` stack: recursion is Fargo's only
 loop, native recursion would hit Python's limit, and the growing stack is
 what :func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
 
-The semantics are a pure transition: :func:`_advance` maps an immutable
-``_State`` (the two numbers, the top-level cursor, the frame tuple) plus
-the parsed definitions to a new state and the number ``$`` asks to print.
-``step`` is the shell that performs that one write.  The input number is
-read once before the run, so no read reaches the transition.
-
 Its initial number is a whitespace-delimited integer token; the spec does not
 define text framing.
 """
 
 from __future__ import annotations
 
-from collections.abc import Hashable
+from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass, replace
 
 from esolangs.exceptions import HaltError
@@ -78,6 +72,10 @@ class _Func:
 # recursive; the ``type`` statement is lazily evaluated, which is what lets
 # it name itself.
 type _Value = int | tuple[_Value, ...] | _Func
+
+
+#: What one step leaves: the frame stack, the output bits, and a number to print.
+type _Outcome = tuple[tuple[_Frame, ...], int, int | None]
 
 
 class _Pending:
@@ -460,6 +458,11 @@ def _wants_raw(frame: _Frame) -> bool:
     return len(args) in fn.raw
 
 
+# The semantics are a pure transition: :func:`_advance` maps an immutable
+# ``_State`` (the two numbers, the top-level cursor, the frame tuple) plus
+# the parsed definitions to a new state and the number ``$`` asks to print.
+# ``step`` is the shell that performs that one write.  The input number is
+# read once before the run, so no read reaches the transition.
 def _advance(
     state: _State, defs: dict[str, _Def], calls: list[tuple[str, ...]]
 ) -> tuple[_State, int | None]:
@@ -489,7 +492,7 @@ def _consume(
     number: int,
     output: int,
     defs: dict[str, _Def],
-) -> tuple[tuple[_Frame, ...], int, int | None]:
+) -> _Outcome:
     """Handle one token: a literal, a raw function, or a call."""
     if _is_literal(token):
         return _supply(frames, int(token, 2), number, output, defs)
@@ -519,7 +522,7 @@ def _supply(
     number: int,
     output: int,
     defs: dict[str, _Def],
-) -> tuple[tuple[_Frame, ...], int, int | None]:
+) -> _Outcome:
     """Deliver ``value`` to whichever call is waiting for it.
 
     Replaces the top frame, so callers re-read the top afterwards.
@@ -553,7 +556,7 @@ def _invoke(
     number: int,
     output: int,
     defs: dict[str, _Def],
-) -> tuple[tuple[_Frame, ...], int, int | None]:
+) -> _Outcome:
     """Apply ``fn`` to ``args``, pushing a frame for a user function."""
     if fn.name in _BUILTINS and fn.name not in defs:
         result, frames, output, effect = _builtin(
@@ -581,7 +584,7 @@ def _invoke(
 
 def _finish(
     frames: tuple[_Frame, ...], number: int, output: int, defs: dict[str, _Def]
-) -> tuple[tuple[_Frame, ...], int, int | None]:
+) -> _Outcome:
     """Pop a finished frame, delivering its value to its caller.
 
     Definitions are checked again once parameter arities are bound.
@@ -608,6 +611,20 @@ def _number(value: _Value) -> int:
     )
 
 
+# Builtins that only map their arguments to a value; ``@``, ``%``, ``$`` and
+# ``:`` also touch the input or output and stay in ``_builtin``.
+_PURE: dict[str, Callable[[Sequence[_Value]], _Value]] = {
+    "<": lambda a: _number(a[0]) >> 1,
+    ">": lambda a: _number(a[0]) << 1,
+    "&": lambda a: _number(a[0]) & _number(a[1]),
+    "|": lambda a: _number(a[0]) | _number(a[1]),
+    "^": lambda a: _number(a[0]) ^ _number(a[1]),
+    "[]": lambda a: (a[0],),
+    "+[]": lambda a: _array(a[0]) + _array(a[1]),
+    "[?]": lambda a: _index(a[0], a[1]),
+}
+
+
 def _builtin(
     frames: tuple[_Frame, ...],
     fn: _Func,
@@ -618,22 +635,8 @@ def _builtin(
 ) -> tuple[_Value | _Pending, tuple[_Frame, ...], int, int | None]:
     """Apply one builtin to its finished arguments."""
     name = fn.name
-    if name == "<":
-        return _number(args[0]) >> 1, frames, output, None
-    if name == ">":
-        return _number(args[0]) << 1, frames, output, None
-    if name == "&":
-        return _number(args[0]) & _number(args[1]), frames, output, None
-    if name == "|":
-        return _number(args[0]) | _number(args[1]), frames, output, None
-    if name == "^":
-        return _number(args[0]) ^ _number(args[1]), frames, output, None
-    if name == "[]":
-        return (args[0],), frames, output, None
-    if name == "+[]":
-        return _array(args[0]) + _array(args[1]), frames, output, None
-    if name == "[?]":
-        return _index(args[0], args[1]), frames, output, None
+    if name in _PURE:
+        return _PURE[name](args), frames, output, None
     if name == "@":
         return _bit(number, args[0]), frames, output, None
     if name == "%":

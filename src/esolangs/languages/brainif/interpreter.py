@@ -11,8 +11,6 @@ tape a zero cell on the left: the spec says nothing about the left edge,
 and cells left of the start are allowed.  The guard reads the
 cell as it stands, so ``if 0 increment`` / ``if 1 increment`` both fire in
 one pass -- the language's behaviour, and a reorder was reverted.
-:func:`_advance` is pure over an immutable ``_State``; :func:`_parse`, the
-I/O and the malformed-line rejection are the shell's.
 """
 
 from __future__ import annotations
@@ -104,6 +102,8 @@ def _parse(line: str) -> _Line:
     )
 
 
+# :func:`_advance` is pure over an immutable ``_State``; :func:`_parse`, the I/O and
+# the malformed-line rejection are the shell's.
 def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
     """Return the state after executing one parsed line.
 

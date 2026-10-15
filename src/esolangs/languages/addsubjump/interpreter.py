@@ -336,11 +336,14 @@ def _program(code: str) -> list[int]:
         return _assembly(code)
 
 
-#: One instant of a run: ``(memory, ip, cf, zf, nf, vf, fum)`` -- the
-#: self-modifying store, the instruction pointer, the four flags, and the
-#: flag-update mode.  A value, not a record: every transition below returns
-#: a new one rather than editing one in place, and the memory is copied on
-#: write for the same reason.
+#: One instant of a run: ``(memory, ip, zf, nf, fum)`` -- the
+#: self-modifying store, the instruction pointer, the Zero and Negative
+#: flags, and the flag-update mode.  Carry and Overflow are not fields:
+#: unbounded cells never carry or overflow, so both read 0 forever.
+#:
+#: A value, not a record: every transition below returns a new one rather
+#: than editing one in place, and the memory is copied on write for the
+#: same reason.
 #:
 #: The memory is in the state rather than beside it because this language
 #: rewrites it as it runs *and* can extend it: a write past the end grows
@@ -355,7 +358,7 @@ def _program(code: str) -> list[int]:
 #: off the container.  A ``dict`` is unhashable, so :meth:`_Machine.snapshot`
 #: is what freezes it for the cycle detector.
 type _Cells = tuple[Mapping[int, int], int]
-type _State = tuple[_Cells, int, int, int, int, int, int]
+type _State = tuple[_Cells, int, int, int, int]
 
 
 def _pack(values: list[int]) -> _Cells:
@@ -385,19 +388,15 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
 
     ``byte`` is what the shell read from the port; out of range reads zero.
     """
-    (cells, length), _ip, cf, zf, nf, vf, fum = state
+    (cells, length), _ip, zf, nf, fum = state
     if addr >= 0:
         return cells.get(addr, 0) if addr < length else 0
     if addr == _IO:
         return byte if byte is not None else 0
-    if addr == _CF:
-        return cf
     if addr == _ZF:
         return zf
     if addr == _NF:
         return nf
-    if addr == _VF:
-        return vf
     if addr == _ONE:
         return 1
     if addr == _ZERO:
@@ -406,7 +405,7 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
         return -1
     if addr == _FUM:
         return fum
-    # Silent past -9: an unassigned special address reads 0.
+    # Carry, Overflow, and silent past -9: each reads 0.
     return 0
 
 
@@ -427,11 +426,11 @@ def _store(state: _State, addr: int, value: int) -> _State:
     999999 rebuilt a million-cell tuple at 4.6ms a step.  A zero deletes its
     key so written and never-written zeros hash alike.
     """
-    (cells, length), ip, cf, zf, nf, vf, fum = state
+    (cells, length), ip, zf, nf, fum = state
     if addr == _IO:
         return state
     if addr in _SPECIAL:
-        return (state[0], ip, cf, zf, nf, vf, value) if addr == _FUM else state
+        return (state[0], ip, zf, nf, value) if addr == _FUM else state
     if addr >= length:
         length = addr + 1
     # dict(proxy) walks keys; proxy.copy() retains the dict's native copy.
@@ -440,7 +439,7 @@ def _store(state: _State, addr: int, value: int) -> _State:
         new[addr] = value
     else:
         new.pop(addr, None)
-    return ((MappingProxyType(new), length), ip, cf, zf, nf, vf, fum)
+    return ((MappingProxyType(new), length), ip, zf, nf, fum)
 
 
 def _advance(
@@ -464,16 +463,15 @@ def _advance(
         value = va - vb if vd > 0 else va + vb
 
     after = _store(state, a, value)
-    memory, _ip, cf, zf, nf, vf, fum = after
+    memory, _ip, zf, nf, fum = after
     if fum:
         zf = 1 if value == 0 else 0
         nf = 1 if value < 0 else 0
-        cf = vf = 0
     # ``c`` is the literal destination, not a pointer to one: the wiki's
     # ``goto c``.  Its truth machine (``loop: IO A loop``) names its own
     # label as ``c``, and ``end: IO A -1`` halts on the special address --
     # both nonsense under a dereference, which would jump to ``*(-1) = 0``.
-    return value, (memory, c, cf, zf, nf, vf, fum)
+    return value, (memory, c, zf, nf, fum)
 
 
 class _Machine:
@@ -482,7 +480,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer and flags."""
         self.io = io
-        self.state: _State = (_pack(_program(code)), 0, 0, 0, 0, 0, 0)
+        self.state: _State = (_pack(_program(code)), 0, 0, 0, 0)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -500,25 +498,26 @@ class _Machine:
 
     @property
     def cf(self) -> int:
-        return self.state[2]
+        """The Carry flag (``CF``, address -2): always 0 on unbounded cells."""
+        return 0
 
     @property
     def zf(self) -> int:
-        return self.state[3]
+        return self.state[2]
 
     @property
     def nf(self) -> int:
-        return self.state[4]
+        return self.state[3]
 
     @property
     def vf(self) -> int:
-        """The Overflow flag (``VF``, address -5)."""
-        return self.state[5]
+        """The Overflow flag (``VF``, address -5): always 0 on unbounded cells."""
+        return 0
 
     @property
     def fum(self) -> int:
         """Whether the flags follow each instruction's result."""
-        return self.state[6]
+        return self.state[4]
 
     @property
     def halted(self) -> bool:

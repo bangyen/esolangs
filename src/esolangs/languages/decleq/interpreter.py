@@ -5,7 +5,6 @@ is ``<= 0``.  The source is whitespace-separated integers (``#``
 comments) forming self-modifying memory; ``x x next`` is the countdown
 idiom.  Unbounded cells; no instruction cap (a decrementing cell never
 repeats a state), so ``esolangs.run``'s ``timeout`` is the guard.
-:func:`_advance` is pure over an immutable ``_State``.
 
 The page is ten lines and names no halt, so these are choices
 ("Memory-mapped I/O: It is optional / -2 b c Outputs b / -1 b c Set b to
@@ -78,6 +77,7 @@ def _operands(state: _State) -> tuple[int, int, int]:
     return (memory[pc], _read(memory, pc + 1), _read(memory, pc + 2))
 
 
+# :func:`_advance` is pure over an immutable ``_State``.
 def _advance(state: _State, byte: int | None = None) -> _State:
     """Return the state after executing the instruction under the pointer.
 

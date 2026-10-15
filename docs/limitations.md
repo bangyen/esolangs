@@ -58,7 +58,6 @@ discarded, never left unread. Leaving a trailing ignored input unread would
 make input consumption depend on the table. The measured savings were 9-29%
 at n=7..8 across these generators:
 
-- Sophie was included in the trailing-input measurement.
 - Unlambda was included in the trailing-input measurement.
 - brainfuck was included in the trailing-input measurement.
 - Factor was included in the trailing-input measurement.
@@ -84,10 +83,7 @@ under a fixed template and fill mapping.
 - Dig must read in order.
 - Flowchart must read in order.
 - BrainIf must read in order.
-- Sophie must read in order.
 - SLOW ACV MAMMALIAN must read in order.
-- BF-PDA uses fixed stack order.
-- 123 has no derived instruction-only wire.
 - Minifuck has no derived instruction-only wire.
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
@@ -96,8 +92,6 @@ under a fixed template and fill mapping.
   8.48% of area at n=7, under the 10% bar. Width requests still try four.
 - Factor subtree dispatch loses 1.0% at three inputs and gains 3.4% at five.
 - brainfuck lacks a cheaper jump, call, or label.
-- 123 has one straight-line stream per row. Its table-dependent paint sweep is
-  fixed by the separation laws.
 
 - Malbolge:
   Malbolge's source-embedded generator covers sixteen inputs. Through ten, a
@@ -123,14 +117,15 @@ under a fixed template and fill mapping.
   missing value and moves that digit to the top. The three maps are disjoint, giving 49,152
   cells and leaving 9,897 (one cell wraps; reorder the top digit). That
   replaces the 8,377-10,449-cell address fold with two extra group-4 runs.
-  Navigation dominates code: sixteen's main line is 5,505 cells, of which
-  4,624 are `o`. Six run-time pointer cells cut it to about 4,040 with all
-  65,536 rows still correct (scratch, unshipped). Seven meanings per cell need
-  the address parity. Its trit-sum parity should follow from `p` with `A`
-  all-2 then all-1 (checked per trit), folding ten rotations into an all-1
-  accumulator (not executed).
-  The decoder, label layout and placement remain unbuilt; the estimate
-  (5-6k code cells against about 6.1k) is unmeasured.
+  Six run-time pointer cells (`_D_POINTERS`) cut sixteen's main line from
+  5,505 to 4,038 cells; all 65,536 rows stay correct. Seven meanings per
+  cell need the address parity: `p` with `A` all-2 then all-1, then ten
+  rotations folded into an all-1 cell, gives it in 240 cells, 0 of 59,049
+  words wrong (scratch, executed). Swaps `v` {0,3,4}, `u` {1,2} make the
+  third cell's parity equal the first's for every prefix (model).
+  Dispatch does not fit (2026-10-14, scratch, executed): the seven-class label
+  window plus 14 hubs alone takes 5,155 main-line cells, leaving the line near
+  7,200 against 6,562 before the third-cell fold and per-state transitions.
 
 
   Counting bounds each family independently of mixer quality:
@@ -222,8 +217,6 @@ requires a construction exemption rather than a sub-gate bound.
   subtables, below the two-unread-input depth a deferral needs. Its constructs
   reach size >= 4 repeats and save 4.8% of the plain tree
   (`tests/generators/test_boolean_sstack.py`).
-- BF-PDA has 34.1% repeated-node potential at n=5; its admission tests
-  support its construction exemption.
 - thisthat has 26.4% repeated-node potential at n=5; its admission tests
   support its construction exemption. Residual-duplicating fallbacks
   (`_strip_tree`, `_stream_tree`) are gated to at most three essential inputs
@@ -321,7 +314,6 @@ and I/O state are excluded. Sampled peaks are measurements, not language-wide
 space bounds; construction bounds are asserted by the removed screen and
 controlled by executed checks in each language's own tests.
 
-- Sophie has a sampled peak machine payload of 18 bits at eight inputs.
 - BFStack has a sampled peak machine payload of 756 bits at eight inputs.
 - Subleq has a sampled peak machine payload of 3,066 bits at eight inputs.
 
@@ -337,7 +329,7 @@ controlled by executed checks in each language's own tests.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 83 languages.
+The collection has 79 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -459,22 +451,14 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 <!-- CURATION-CENSUS:START -->
 
 The 2026-10-06 census (`tests/support/fixtures/curation.toml`) records each
-language's backlinks and route: 21 clear the fame gate,
-56 are first implementations and 6 are grandfathered.
+language's backlinks and route: 21 clear the fame gate
+and 58 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
-These languages were implemented elsewhere before the curation rule of 2026-09-27:
-
-- BIO: ais523's implementation.
-- BF-PDA: Madk's 2010 implementation.
-- 123: a 2012 VB.NET interpreter.
-- NoComment: its author's implementation.
-- Sophie: its author's implementation.
-- Jaune: two other implementations.
-
-Funge-98 (31, two dozen implementations) came after and was
-removed on 2026-10-06.
+Funge-98 (31, two dozen implementations) was removed on 2026-10-06. The six
+languages implemented elsewhere before the 2026-09-27 rule (123, BF-PDA, BIO,
+Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
 
 A route admits a language only when its specification fixes the core
 semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
@@ -483,6 +467,13 @@ does, so its interpreter invented the core, the invented semantics the
 大白话 deferral rules out. Transistor (2) was built and dropped on
 2026-10-07 for the same reason: its page gives no grammar and no I/O, and
 its one loop example calls an undefined `or`.
+
+Nor does a route admit a command-for-command substitution of a collected
+language: a fixed token map under which every program behaves the same adds
+no interpreter or generator, the ground that excludes Trivial brainfuck
+substitution as a family. Adopted 2026-10-14 for candidates; no collected
+language is one (Piet++ adds nested stacks, Painfuck +2/-1 steps, ROTfuck a
+rotating command set).
 
 - Piet++ (8) is a first implementation: the page is in the Unimplemented
   category, and the only other code is a partial C# executor (Esolang-NET/Piet)
@@ -644,9 +635,6 @@ languages remain rejected from the same image-source screen.
   Its storage range is `0..255`, but EXCRETE and PRONOUNCE say modulo 255;
   `cell_modulus` and `io_modulus` select 255 or 256; cells default to 256
   and I/O to the page's 255.
-- Jaune leaves unresolved markers, cell bounds, tape bounds and EOF unspecified.
-  Unresolved markers raise `HaltError`; cells are unbounded, the tape grows
-  in both directions, and EOF raises. `v` reads signed integer tokens.
 - Alight retains infix, left-to-right expressions for compatibility with
   existing programs and generators, despite the explicit postfix rule.
   Its cat examples use infix expressions; `expression_syntax="postfix"` follows
@@ -656,8 +644,6 @@ languages remain rejected from the same image-source screen.
 - CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
   It discards LF to run line-wrapped generated programs; this is a source-rule
   deviation, not a specification gap.
-- NoComment discards LF to run line-wrapped generated programs; this is a
-  source-rule deviation, not a specification gap.
 - Grapheme discards LF to run line-wrapped generated programs; this is a
   source-rule deviation, not a specification gap. It defaults to `integer_conversion="between_letters"`: `FAFY` prints
   1. `"after_each_letter"` includes the prose's final multiplication and prints

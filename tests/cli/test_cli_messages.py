@@ -301,7 +301,10 @@ _REFUSALS = {
         "debug --watch-cell -1 brainfuck prog:+++",
         "must not be negative",
     ),
-    "encode_refuses_a_language_that_reads_nothing": ("encode 123 01", "reads no stdin"),
+    "encode_refuses_a_language_that_reads_nothing": (
+        "encode ArrowQueue 01",
+        "reads no stdin",
+    ),
     "a_repeated_option_is_refused": (
         "generate --bits 10 --bits 01 brainfuck 0110",
         "more than once",

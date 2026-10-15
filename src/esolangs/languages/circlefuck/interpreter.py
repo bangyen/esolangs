@@ -8,12 +8,6 @@ Deleting the last cell halts with
 :class:`~esolangs.exceptions.HaltError`; EOF is a no-op.  Three digits
 past 255 (``\256``) are a malformed ``\NNN`` ("between 000 and 255"),
 not ``\2`` then ``56``: the page does not say which.
-
-:func:`_advance` is pure and *reports* one cell's edit and cursors,
-wrapping against the length its own edit produces.  :class:`_Machine`
-applies the edit in place on a list: returning a rewritten tape made
-``n`` writes O(n**2) (22x slower at 96 generated characters).  Every
-observer copies the list.
 """
 
 from __future__ import annotations
@@ -166,6 +160,10 @@ def find(code: Sequence[int], ind: int, ptr: int) -> int | None:
     return ind
 
 
+# :func:`_advance` is pure and *reports* one cell's edit and cursors, wrapping against
+# the length its own edit produces.  :class:`_Machine` applies the edit in place on a
+# list: returning a rewritten tape made ``n`` writes O(n**2) (22x slower at 96
+# generated characters).  Every observer copies the list.
 def _advance(
     cells: Sequence[int], ind: int, ptr: int, byte: int | None = None
 ) -> _Move:

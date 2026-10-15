@@ -48,7 +48,8 @@ def balanced_token_width(
     def clipped(width: int) -> int:
         return min(high, max(minimum, width))
 
-    def score(width: int) -> tuple[int, int, int]:
+    def wrap(width: int) -> tuple[int, int, int]:
+        """Greedy-wrap at ``width``: rows, widest trimmed row, characters trimmed."""
         row = widest = 0
         last_trim = trimmed = 0
         height = 1
@@ -64,28 +65,20 @@ def balanced_token_width(
             last_trim = trim
         widest = max(widest, row - last_trim)
         trimmed += last_trim
+        return height, widest, trimmed
+
+    def score(width: int) -> tuple[int, int, int]:
+        height, widest, trimmed = wrap(width)
         return abs(widest - height), total + (1 - gap) * height - 1 - trimmed, widest
 
     actual_longest = max(
         length - trim for length, trim in zip(lengths, trims, strict=True)
     )
-    if minimum <= actual_longest and actual_longest >= len(tokens) and not rstrip_rows:
+    # Every width retains the longest token and can only reduce the greedy
+    # row count.  Once width already exceeds height, widening cannot improve
+    # either difference or the tied emitted size.
+    if not rstrip_rows and minimum <= actual_longest >= wrap(minimum)[0]:
         return minimum
-    if minimum <= actual_longest and not rstrip_rows:
-        row = 0
-        height = 1
-        for length in lengths:
-            candidate = row + gap + length if row else length
-            if row and candidate > minimum:
-                height += 1
-                row = length
-            else:
-                row = candidate
-        # Every width retains the longest token and can only reduce this
-        # greedy row count. Once width already exceeds height, widening
-        # cannot improve either difference or the tied emitted size.
-        if actual_longest >= height:
-            return minimum
     choices = {minimum, high, clipped(isqrt(total))}
     if len(set(lengths)) == 1 and len(set(trims)) == 1:
         stride = longest + gap

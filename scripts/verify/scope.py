@@ -411,13 +411,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "scripts/benchmark.py",
         "tests/support/fixtures/generator_sizes.json",
     ),
-    # language-owners: ["ArrowQueue", "BIO"]
-    # The union of what the two proofs in this band read: ArrowQueue's lemmas
-    # import the generator and nothing else, and BIO's also parse the emitted
-    # program and instantiate it through the shipped fill.  The runner is in
-    # the scope too, since it decides which of them run at all.
     "deep proofs (verify band)": (
-        "src/esolangs/languages/bio/generator.py",
         "src/esolangs/languages/arrowqueue/generator.py",
         "src/esolangs/generation/examples.py",
         "tests/proofs/deep/",
@@ -486,10 +480,19 @@ def _is_collected(path: str) -> bool:
 INTERPRETER_CONTRACT_TESTS = (
     "tests/runtime/test_vm_protocol.py",
     "tests/runtime/test_stepping_parity.py",
+    "tests/runtime/test_run_bounded.py",
     "tests/api/test_api_contracts.py",
     "tests/interpreters/test_interpreter_conventions.py",
+    "tests/interpreters/test_interpreters_robustness.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
+    # A Cyclic tag rewrite passed the scoped gate yet failed these two: no
+    # pure `_advance`, and a regrouped snapshot one bit off its exact formula.
+    "tests/interpreters/test_transition_purity.py",
+    "tests/proofs/test_workspace_formulas.py",
+    "tests/proofs/test_execution_formulas.py",
+    "tests/generators/test_boolean_contract.py",
+    "tests/tooling/test_examples.py",
 )
 
 

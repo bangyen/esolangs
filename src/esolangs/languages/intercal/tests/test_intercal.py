@@ -446,6 +446,58 @@ def test_computed_abstain_needs_as_many_reinstates() -> None:
     assert out == ""
 
 
+def test_computed_abstain_is_undone_by_exactly_as_many_reinstates() -> None:
+    out = _program(
+        "PLEASE ABSTAIN #2 FROM (1)",
+        "DO REINSTATE (1)",
+        "DO REINSTATE (1)",
+        "(1) DO READ OUT #1",
+        "DO GIVE UP",
+    )
+    assert out == "I\n"
+
+
+def test_plain_abstain_does_not_stack() -> None:
+    """Manual s7.6: a plain ABSTAIN of an abstained statement changes nothing."""
+    out = _program(
+        "PLEASE ABSTAIN FROM (1)",
+        "DO ABSTAIN FROM (1)",
+        "DO REINSTATE (1)",
+        "(1) DO READ OUT #1",
+        "DO GIVE UP",
+    )
+    assert out == "I\n"
+
+
+@pytest.mark.parametrize("write", [",1 <- #3", ",1 SUB #1 <- #6"])
+def test_an_ignored_array_keeps_its_shape_and_elements(write: str) -> None:
+    out = _program(
+        "PLEASE ,1 <- #1",
+        "DO ,1 SUB #1 <- #5",
+        "DO IGNORE ,1",
+        f"DO {write}",
+        "PLEASE READ OUT ,1 SUB #1",
+        "DO GIVE UP",
+    )
+    assert out == "V\n"
+
+
+def test_write_in_reads_one_line_per_item() -> None:
+    out = _program(
+        "PLEASE WRITE IN .1 + .2", "DO READ OUT .2", "DO GIVE UP", stdin="ONE\nTWO\n"
+    )
+    assert out == "II\n"
+
+
+def test_only_a_tail_array_element_overflows_at_sixteen_bits() -> None:
+    """Manual s4.3: tail elements are 16-bit (E275), hybrid elements 32-bit."""
+    with pytest.raises(HaltError, match="E275"):
+        _program("PLEASE ,1 <- #1", "DO ,1 SUB #1 <- '#65535$#1'", "DO GIVE UP")
+    assert (
+        _program("PLEASE ;1 <- #1", "DO ;1 SUB #1 <- '#65535$#1'", "DO GIVE UP") == ""
+    )
+
+
 def test_retrieve_restores_an_array_but_not_an_ignored_scalar() -> None:
     """Manual s7.4: C-INTERCAL treats a retrieval like an assignment."""
     out = _program(

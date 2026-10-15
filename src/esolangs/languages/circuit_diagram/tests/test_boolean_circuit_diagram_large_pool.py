@@ -1,6 +1,8 @@
 """Native controls for bounded larger atoms and routing area floors."""
 
 import importlib
+import re
+from pathlib import Path
 
 import pytest
 
@@ -115,6 +117,23 @@ def test_large_atom_displaces_older_layout_after_exact_comparison(
     code = circuit_diagram(table)
     assert code == _large_pool_layout(table).render()
     _execute(table, code)
+
+
+def test_compete_binds_no_patched_name() -> None:
+    """compete is imported lazily: a name bound there misses later patches.
+
+    Its first import inside a patch also kept the patch: a zero pool floor
+    made every later build route the H pool, 2.3 s -> 6.2 s.
+    """
+    patched = {
+        name
+        for path in Path(__file__).parent.glob("test_*.py")
+        for name in re.findall(r'setattr\(\s*\w+,\s*"(\w+)"', path.read_text())
+    }
+    compete = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.compete"
+    )
+    assert not patched & set(vars(compete))
 
 
 @pytest.mark.slow

@@ -10,9 +10,6 @@ asks, the author never ruled); the end of the source halts; ``l`` pairs
 alternate by order (first with second, third with fourth), and a
 trailing unpaired ``l`` raises :class:`ValueError`; other characters
 are dropped before the run, so ``j`` skips the next command.
-:func:`_advance` is pure over an immutable ``_State``; ``k``'s print is the shell's, its
-clearing the transition's.  The 25-cell grid is cheap to rebuild, so no
-write buffer.
 """
 
 from __future__ import annotations
@@ -56,6 +53,9 @@ def _matches(code: str) -> dict[int, int]:
     return match
 
 
+# :func:`_advance` is pure over an immutable ``_State``; ``k``'s print is the shell's,
+# its clearing the transition's.  The 25-cell grid is cheap to rebuild, so no write
+# buffer.
 def _advance(
     state: _State,
     code: str,

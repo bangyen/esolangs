@@ -820,23 +820,52 @@ class _Planner:
     """Code emitter that navigates by shortest path over ``o`` and ``j``.
 
     ``mem`` maps walked addresses to their known values (``None`` once
-    written); ``data`` maps store addresses above the code to source
-    characters, which a ``j`` from there reads to come back below 128.
+    written to an unknown value); ``a`` is the accumulator ``A`` when the ops
+    so far have determined it, else ``None``; ``data`` maps store addresses
+    above the code to source characters, which a ``j`` from there reads to
+    come back below 128.  Knowing ``mem``/``a`` is only an optimisation: a
+    cell whose value is still known stays usable as a ``j`` target, so the
+    shortest-path search sees the shortcuts the run-time pointers provide.
     """
 
     def __init__(
-        self, start: int, d: int, mem: dict[int, int | None], data: dict[int, int]
+        self,
+        start: int,
+        d: int,
+        mem: dict[int, int | None],
+        data: dict[int, int],
+        a: int | None = None,
     ) -> None:
         self.code: dict[int, str] = {}
         self.c = start
         self.d = d
         self.mem = mem
         self.data = data
+        self.a = a
 
     def raw(self, op: str) -> None:
+        cell = self.d
         self.code[self.c] = op
         self.c += 1
         self.d += 1
+        if op in "p*":
+            self.mem[cell] = self._written(op, cell)
+        elif op == "/":
+            self.a = None
+
+    def _written(self, op: str, cell: int) -> int | None:
+        """Return the new value of ``cell`` after ``op``, or ``None`` if unknown."""
+        old = self.mem.get(cell)
+        if op == "*":
+            if isinstance(old, int):
+                self.a = _rot(old)
+            else:
+                self.a = None
+        elif isinstance(old, int) and isinstance(self.a, int):
+            self.a = _crazy(self.a, old)
+        else:
+            self.a = None
+        return self.a
 
     def goto(self, target: int) -> None:
         if self.d >= _ENTRY:
@@ -872,7 +901,6 @@ class _Planner:
     def op(self, op: str, target: int) -> None:
         self.goto(target)
         self.raw(op)
-        self.mem[target] = None
 
     def hub(self, pointer: int, value: int, offset: int = 1) -> None:
         """``j`` through ``pointer`` (holding ``value``) to ``value + offset``."""
@@ -886,7 +914,8 @@ class _Planner:
 def _main_planner(data: dict[int, int]) -> tuple[_Planner, dict[int, int | None]]:
     """Return the main-code planner (entry ``j`` placed) and its walked memory."""
     mem: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
-    main = _Planner(_ENTRY + 1, _START_D, mem, data)
+    # ``A`` is 0 when the entry ``j`` runs: the initial walk is all nops.
+    main = _Planner(_ENTRY + 1, _START_D, mem, data, a=0)
     main.code[_ENTRY] = "j"
     return main, mem
 
@@ -955,6 +984,56 @@ def _one_options(v: int) -> list[dict[int, int]]:
         for b in _valid_chars(v + 3)
         if _crazy(_crazy(48, a), b) & 0xFF == ord("1")
     ]
+
+
+def _n_options(v: int, operand: dict[int, int]) -> list[dict[int, int]]:
+    """Return data for an ``n`` hub at ``v``: ``p``, ``p``, ``j`` to an operand."""
+    return [
+        {v + 3: a, v + 4: b, v + 5: q}
+        for q in _valid_chars(v + 5)
+        if q + 1 in operand
+        for a in _valid_chars(v + 3)
+        for b in _valid_chars(v + 4)
+        if all(
+            _crazy(_crazy(_crazy(48 + x, a), b), operand[q + 1]) & 0xFF == 49 - x
+            for x in (0, 1)
+        )
+    ]
+
+
+def _options_of(operand: dict[int, int]) -> Callable[[int, str], list[dict[int, int]]]:
+    """Return the ``options_of`` of :func:`_t_hubs`: ``1`` and ``n`` hubs read data."""
+
+    def options_of(v: int, lab: str) -> list[dict[int, int]]:
+        if lab == "1":
+            return _one_options(v)
+        return _n_options(v, operand) if lab == "n" else [{}]
+
+    return options_of
+
+
+def _walker(used: set[int], layout: dict[int, int] | None = None) -> Callable[..., int]:
+    """Return an allocator of unused walked cells (``128..``) by ``g`` value.
+
+    ``layout`` maps the allocation index to a preferred address, taken when
+    free and of the right ``g`` value.
+    """
+    count = [0]
+
+    def walked(value: int | None = None) -> int:
+        key = count[0]
+        count[0] += 1
+        candidates = [
+            a
+            for a in range(128, _ENTRY)
+            if a not in used and (value is None or _g(a) == value)
+        ]
+        preferred = (layout or {}).get(key)
+        address = preferred if preferred in candidates else candidates[0]
+        used.add(address)
+        return address
+
+    return walked
 
 
 def _pointers(

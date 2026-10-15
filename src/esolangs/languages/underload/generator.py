@@ -1,7 +1,19 @@
-"""Underload boolean generator: equal-width selectors force a promise tree.
+"""Underload boolean generator: each input picks a half of a promise tree.
 
-A node ``(A)~(B)~^`` tucks its halves under the input block on top, and the
-input's ``^`` keeps one and runs it.  A repeated subtree ``X`` is pushed once
+The template opens with one seven-character slot per input, filled with a
+selector: ``(()!!^)`` for 0 or ``(~:!!^)`` for 1.  The rest pushes the
+decision tree as one string, runs it with ``^``, and ``S`` prints the bit
+it leaves.  ``0110`` (exclusive or) on inputs 1, 0 runs as
+
+    (~:!!^)(()!!^)((((0))~((1))~^)~(((1))~((0))~^)~^)^S
+
+and prints 1.  A node ``(A)~(B)~^`` tucks its halves under the input block
+on top, and the input's ``^`` keeps one and runs it: 0 runs ``!^`` (drop
+``B``, run ``A``) and 1 swaps first.  ``()!`` and ``:!`` are padding, so
+both selectors have one width and the template one shape per table.  A leaf
+pushes its bit, ``(0)`` or ``(1)``.
+
+A repeated subtree ``X`` is pushed once
 as ``(X)`` at a node above its copies and *carried*: kept on top, with the
 next input block right below it.  A carrying node opens with ``~`` to put
 that input back on top, and its selector leaves ``X`` on top again for the
@@ -26,16 +38,14 @@ from esolangs.generation.wrap import balance_score, wrap_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
-# ()! and :! are neutral, padding both selectors to _NODE space-free characters.
+# ()! and :! are neutral, padding both selectors to seven space-free characters.
 PAIR = ("(()!!^)", "(~:!!^)")
 _SHORT_PAIR = ("(!) ", "(~!)")
 _BIT_PAIR = (" ", "~")
 
 #: How many levels below a node a carried subtree may sit; bounds the
-#: candidates per node (``repeated_near``) so the build stays O(T).
+#: candidates per node (``repeated_near``) so the build visits O(T) nodes.
 _REACH = 4
-#: Characters in ``(A)~(B)~^`` less its halves.
-_NODE = 7
 #: Inert prefix that marks the narrow (``short``) layouts.
 _PREFIX = "()!"
 
@@ -57,70 +67,42 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
     diagram = SubtreeDiagram(reflected_table(truth_table, n))
     halves, level_of, reaches = diagram.halves, diagram.level, diagram.reaches
 
+    # Each candidate is built as text and the shortest kept, so the length
+    # chosen by is the program.  A half is copied into every enclosing node:
+    # O(T * n) characters, no slower than a cost model plus writer to n=18.
     @cache
-    def size(level: int, key: int, carry: int | None) -> int:
+    def tree(level: int, key: int, carry: int | None) -> str:
         if carry is not None and key == carry:
-            return 1
+            return "^"
         if carry is not None and not reaches(key, carry):
-            return 1 + size(level, key, None)
+            return "!" + tree(level, key, None)
         if key < 2:
-            return n - level + 3
+            return "!" * (n - level) + f"({key})"
         if carry is None:
-            return choice(level, key)[0]
+            return min((node(level, key, None), *carried(level, key)), key=len)
         return node(level, key, carry)
 
-    def node(level: int, key: int, carry: int | None) -> int:
+    def node(level: int, key: int, carry: int | None) -> str:
         zero, one = halves[key]
-        opening = carry is not None
+        opening = "" if carry is None else "~"
         if zero == one:
-            return 1 + opening + size(level + 1, zero, carry)
-        halves_size = size(level + 1, zero, carry) + size(level + 1, one, carry)
-        return opening + _NODE + short + halves_size
+            return opening + "!" + tree(level + 1, zero, carry)
+        closing = ")~^^" if short else ")~^"
+        zero_text, one_text = tree(level + 1, zero, carry), tree(level + 1, one, carry)
+        return opening + "(" + zero_text + ")~(" + one_text + closing
 
     @cache
-    def choice(level: int, key: int) -> tuple[int, int | None]:
-        best: tuple[int, int | None] = (node(level, key, None), None)
-        for name in diagram.repeated_near(key, _REACH):
-            pushed = size(level_of[name], name, None) + 2
-            carried = pushed + size(level, key, name)
-            if carried < best[0]:
-                best = (carried, name)
-        return best
+    def carried(level: int, key: int) -> list[str]:
+        """Return the shortest ``(X)`` push and carry over the ``X`` worth it."""
+        candidates = (
+            "(" + tree(level_of[name], name, None) + ")" + tree(level, key, name)
+            for name in diagram.repeated_near(key, _REACH)
+        )
+        return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
-    pieces: list[str] = []
-
-    def write(level: int, key: int, carry: int | None) -> None:
-        if carry is not None and key == carry:
-            pieces.append("^")
-            return
-        if carry is not None and not reaches(key, carry):
-            pieces.append("!")
-            carry = None
-        if key < 2:
-            pieces.append("!" * (n - level) + f"({key})")
-            return
-        if carry is None:
-            carry = choice(level, key)[1]
-            if carry is not None:
-                pieces.append("(")
-                write(level_of[carry], carry, None)
-                pieces.append(")")
-        zero, one = halves[key]
-        if carry is not None:
-            pieces.append("~")
-        if zero == one:
-            pieces.append("!")
-            write(level + 1, zero, carry)
-            return
-        pieces.append("(")
-        write(level + 1, zero, carry)
-        pieces.append(")~(")
-        write(level + 1, one, carry)
-        pieces.append(")~^^" if short else ")~^")
-
-    write(0, diagram.ids[0][0], None)
+    body = tree(0, diagram.ids[0][0], None)
     slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
-    return slots + "(" + "".join(pieces) + ")^S"
+    return slots + "(" + body + ")^S"
 
 
 def underload(truth_table: str, width: int | None = None) -> str:

@@ -10,7 +10,11 @@ from esolangs.languages.laserfuck.interpreter import _Machine as Laserfuck
 from esolangs.languages.laserfuck.interpreter import run
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
-from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
+from esolangs.vm import (
+    run_until_halt,
+    run_until_halt_or_all_branches_cycle,
+    run_until_halt_or_cycle,
+)
 from tests.interpreters.contract import SnapshotContract
 from tests.support.paths import ROOT
 
@@ -323,6 +327,20 @@ def test_laserfuck_one_halting_heading_refutes_an_all_branches_hang() -> None:
     assert run_until_halt(up, limit=1000) is True
     left = Laserfuck(code, ScriptedIO(), FirstDraw(2, rest=2))
     assert run_until_halt(left, limit=1000) is False
+
+
+def test_laserfuck_a_stepped_machine_branches_from_its_own_heading() -> None:
+    """Once stepped, the drawn heading is history, not a branch point.
+
+    The search restarted every heading from the current tape, so a beam
+    already bouncing left was credited with the up/down exits it never took.
+    """
+    left = Laserfuck(["}o{"], ScriptedIO(), FirstDraw(2, rest=2))
+    assert left.branching_snapshot()[2] is None  # fresh: still a draw
+    left.step()
+    assert left.branching_snapshot()[2] == tuple(left.lsrs)
+    assert run_until_halt_or_all_branches_cycle(left) is False
+    assert run_until_halt_or_cycle(left) is False
 
 
 def test_laserfuck_grid_without_a_start_marker_places_no_beam() -> None:

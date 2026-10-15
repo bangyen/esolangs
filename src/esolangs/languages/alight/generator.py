@@ -292,21 +292,13 @@ def alight(
     )
 
 
-class _Layout(NamedTuple):
-    """The dimensions selecting an Alight layout strategy.
-
-    ``expression_syntax`` is ``"infix"`` or ``"postfix"``; ``unbounded``
-    is ``width is None``; ``dropped`` marks tables with ignored inputs,
-    which are read and dropped while the rest index the lookup.
-    """
-
-    expression_syntax: str
-    unbounded: bool
-    dropped: bool
-
-
 class _Build(NamedTuple):
-    """Resolved inputs for one layout decision."""
+    """Resolved inputs for one layout decision.
+
+    ``dropped`` marks tables with ignored inputs, read and dropped while the
+    rest index the lookup; ``table`` and ``kept`` are then the projected table
+    and its essential inputs, else the raw table and ``None``.
+    """
 
     truth_table: str
     n: int
@@ -315,29 +307,31 @@ class _Build(NamedTuple):
     essential: list[bool]
     dropped: bool
 
+    @property
+    def table(self) -> str:
+        return self.projected if self.dropped else self.truth_table
+
+    @property
+    def kept(self) -> list[bool] | None:
+        return self.essential if self.dropped else None
+
 
 def _layout_flat_infix(build: _Build) -> str:
     """Return the unbounded infix layout: one straight lookup."""
-    if build.dropped:
-        return _alight_flat_compact(build.projected, build.n, build.essential)
-    return _alight_flat_compact(build.truth_table, build.n)
+    return _alight_flat_compact(build.table, build.n, build.kept)
 
 
 def _layout_flat_postfix(build: _Build) -> str:
     """Return the unbounded postfix layout: one straight lookup."""
-    if build.dropped:
-        return _flatten(
-            _postfix_units(
-                build.projected, build.n, len(build.projected), build.essential
-            )
-        )
-    return _flatten(_postfix_units(build.truth_table, build.n, len(build.truth_table)))
+    return _flatten(_postfix_units(build.table, build.n, len(build.table), build.kept))
 
 
 def _layout_bounded_infix(build: _Build) -> str:
-    """Return the bounded infix layout without dropped inputs."""
+    """Return the bounded infix layout, planned from the projection if inputs drop."""
     width = build.width
     assert width is not None
+    if build.dropped:
+        return _layout_bounded_dropped(build)
     return select_alight(build.truth_table, build.n, width)
 
 
@@ -409,15 +403,11 @@ def _constant_candidates(
     ]
 
 
-_STRATEGIES: dict[_Layout, Callable[[_Build], str]] = {
-    _Layout("infix", unbounded=True, dropped=False): _layout_flat_infix,
-    _Layout("infix", unbounded=True, dropped=True): _layout_flat_infix,
-    _Layout("postfix", unbounded=True, dropped=False): _layout_flat_postfix,
-    _Layout("postfix", unbounded=True, dropped=True): _layout_flat_postfix,
-    _Layout("infix", unbounded=False, dropped=False): _layout_bounded_infix,
-    _Layout("infix", unbounded=False, dropped=True): _layout_bounded_dropped,
-    _Layout("postfix", unbounded=False, dropped=False): _layout_bounded_postfix,
-    _Layout("postfix", unbounded=False, dropped=True): _layout_bounded_postfix,
+_STRATEGIES: dict[tuple[str, bool], Callable[[_Build], str]] = {
+    ("infix", True): _layout_flat_infix,
+    ("postfix", True): _layout_flat_postfix,
+    ("infix", False): _layout_bounded_infix,
+    ("postfix", False): _layout_bounded_postfix,
 }
 
 
@@ -447,9 +437,7 @@ def _program(
         essential=essential,
         dropped=dropped,
     )
-    return _STRATEGIES[
-        _Layout(expression_syntax, unbounded=width is None, dropped=dropped)
-    ](build)
+    return _STRATEGIES[expression_syntax, width is None](build)
 
 
 def _postfix_units(

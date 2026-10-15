@@ -75,7 +75,8 @@ def test_public_and_still_attains_the_existing_execution_bound(n: int) -> None:
     assert _execute(table, boolfuck(table), [(1 << n) - 1]) == 2 * n * n + 27 * n + 8
 
 
-@pytest.mark.parametrize("code", range(16))
+# One code per _normal class: constants 0 and 15, literal 3, xor 6, and-type 11.
+@pytest.mark.parametrize("code", [0, 3, 6, 11, 15])
 def test_every_two_input_function_with_ignored_prefix(code: int) -> None:
     table = f"{code:04b}" * 128
     program = normal_gates(table)

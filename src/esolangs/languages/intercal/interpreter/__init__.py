@@ -1,35 +1,38 @@
-r"""Interpreter for INTERCAL-72 with the C-INTERCAL extensions.
+r"""INTERCAL-72 with the C-INTERCAL extensions: a language built to be unlike any.
 
-Implements the C-INTERCAL manual's single-threaded language: onespot ``.`` and
-twospot ``:`` scalars, tail ``,`` and hybrid ``;`` arrays (``BY`` dimensions,
-``SUB`` subscripts), mingle ``$`` (also the currency signs), select ``~``, the
-unary ``&``/``V``/``?`` (infix, and prefix as in C-INTERCAL 0.26+), sparks and
-rabbit-ears with the wow ``!``; ``NEXT``/``RESUME``/``FORGET``, ``STASH``/
-``RETRIEVE``, ``IGNORE``/``REMEMBER``, ``ABSTAIN``/``REINSTATE`` by label, by
-gerund and computed, ``DO NOT`` and ``%n`` chances, ``ONCE``/``AGAIN``,
-``COME FROM`` and ``NEXT FROM`` by label, expression and gerund, ``TRY AGAIN``,
-``GIVE UP``, numeric I/O and Turing Tape array I/O. Not implemented: the system
-library, threads, backtracking, ``CREATE``, operand overloading, ``PIN``,
-CLC-INTERCAL I/O and wimpmode.
+A program is a list of statements, run top to bottom.  Each opens with ``DO``
+or ``PLEASE`` (one fifth to one third must say ``PLEASE``, else E079 or
+E099), optionally after a ``(label)``, and may add ``NOT`` (start abstained)
+and ``%n`` (run with n% chance), and end ``ONCE`` or ``AGAIN``.
+
+- Values are 16-bit onespot ``.1`` and 32-bit twospot ``:1`` scalars, and
+  tail ``,1`` and hybrid ``;1`` arrays, dimensioned ``,1 <- #3 BY #4`` and
+  indexed ``,1 SUB #2 #1``.  Constants are ``#n``, 0-65535.
+- The operators are mingle ``$`` (interleave two 16-bit values' bits),
+  select ``~`` (keep the left's bits where the right has ones, packed
+  right), and unary ``&`` ``V`` ``?`` (and, or, xor of each bit with its
+  neighbour, rotating).  Sparks ``'`` and rabbit-ears ``"`` group.
+- ``.1 <- expr`` assigns.  ``(n) NEXT`` calls label n, pushing a return;
+  ``RESUME #k`` returns k levels up, ``FORGET #k`` drops k returns without
+  going anywhere.  ``COME FROM (n)``
+  takes control whenever label n finishes.  ``ABSTAIN FROM`` and
+  ``REINSTATE`` switch statements off and on by label or by gerund
+  (``CALCULATING``); ``STASH``/``RETRIEVE`` save and restore variables,
+  ``IGNORE``/``REMEMBER`` make them read-only.  ``GIVE UP`` halts.
+- ``WRITE IN`` reads numbers spelt as digit words (``ONE TWO``); ``READ
+  OUT`` prints them in Roman numerals.  An array reads and writes the
+  Turing Tape: characters as differences, bits reversed.
+
+Also here: computed ``ABSTAIN``, ``COME FROM`` by expression and gerund,
+``NEXT FROM`` and ``TRY AGAIN``.  Not implemented: the system library,
+threads, backtracking, ``CREATE``, operand overloading, ``PIN``, CLC-INTERCAL
+I/O and wimpmode.
 
 Unparsable statements are E000 syntax errors raised only when executed. Errors
 raise ``HaltError`` naming their E-number; program-wide checks (labels,
 politeness, NEXT/ABSTAIN/COME FROM targets) raise at load. Numeric ``WRITE IN``
 at EOF raises ``EOFError``; Turing Tape input stores 256 at EOF. A ``%n`` draws
 from the ``rng`` hook (:mod:`esolangs.runtime.randomness`).
-
-The semantics are a pure transition.  :func:`_advance` maps an immutable
-``_State`` -- the statement cursor, the scalar and array stores, the ignore,
-stash and abstain bookkeeping, the NEXT stack, the two I/O deltas, plus the
-explicit draw values and input values a step may consume -- to a new state and
-the texts it asks to print.  ``step`` is the shell: it draws from the ``rng``
-hook and reads from ``io`` only when the transition asks, and writes what the
-transition returns.  A step can draw any number of times (a ``%`` qualifier and
-each candidate ``COME FROM``), so the draws cannot be hoisted; each
-:data:`_NeedDraw` draws one more value and retries, and each :data:`_NeedInput`
-reads one more input and retries.  :meth:`_Machine.branching_successors`
-replays the same transition over explicit draw prefixes, so the branch search
-never touches a port.
 
 Judgment calls where the manual or C-INTERCAL leave a gap:
 
@@ -58,9 +61,8 @@ Judgment calls where the manual or C-INTERCAL leave a gap:
 
 from __future__ import annotations
 
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from functools import partial
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
@@ -255,21 +257,11 @@ class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
         self.effects = effects
 
 
-def _frozen_scalars(scalars: Mapping[_Key, int]) -> Mapping[_Key, int]:
-    """Return ``scalars`` as an immutable mapping, sharing an existing freeze."""
+def _frozen[K, V](mapping: Mapping[K, V]) -> Mapping[K, V]:
+    """Return ``mapping`` as an immutable mapping, sharing an existing freeze."""
     return (
-        scalars if isinstance(scalars, MappingProxyType) else MappingProxyType(scalars)
+        mapping if isinstance(mapping, MappingProxyType) else MappingProxyType(mapping)
     )
-
-
-def _frozen_data(data: Mapping[int, int]) -> Mapping[int, int]:
-    """Return an array's data as an immutable mapping."""
-    return data if isinstance(data, MappingProxyType) else MappingProxyType(data)
-
-
-def _frozen_arrays(arrays: Mapping[_Key, _Array]) -> Mapping[_Key, _Array]:
-    """Return ``arrays`` as an immutable mapping, sharing an existing freeze."""
-    return arrays if isinstance(arrays, MappingProxyType) else MappingProxyType(arrays)
 
 
 class _Program(NamedTuple):
@@ -303,16 +295,14 @@ class _State:
     last_out: int
 
 
-def _link(
-    statements: Sequence[_Statement], labels: Mapping[int, int]
-) -> tuple[
-    Mapping[str, tuple[int, ...]],
-    Mapping[int, tuple[int, ...]],
-    Mapping[str, tuple[int, ...]],
-    tuple[int, ...],
-    tuple[bool, ...],
-]:
-    """Check every constant label target and index the COME FROMs."""
+def _link(statements: tuple[_Statement, ...]) -> _Program:
+    """Check every label and constant target, and index the COME FROMs."""
+    labels: dict[int, int] = {}
+    for i, statement in enumerate(statements):
+        if statement.label is not None:
+            if statement.label in labels:
+                raise _fail("E182", f"duplicate INTERCAL label: {statement.label}")
+            labels[statement.label] = i
     by_kind: dict[str, list[int]] = {}
     come_label: dict[int, list[int]] = {}
     come_kind: dict[str, list[int]] = {}
@@ -348,7 +338,9 @@ def _link(
     for i in by_kind.get("try again", ()):
         if i != last:
             raise _fail("E993", "TRY AGAIN must be the last statement")
-    return (
+    return _Program(
+        statements,
+        labels,
         {kind: tuple(indexes) for kind, indexes in by_kind.items()},
         {label: tuple(indexes) for label, indexes in come_label.items()},
         {kind: tuple(indexes) for kind, indexes in come_kind.items()},
@@ -406,29 +398,27 @@ def _reach(state: _State, i: int, program: _Program) -> tuple[_State, bool]:
 
 
 def _store(state: _State, target: _Node, value: int) -> _State:
-    """Return ``state`` with ``value`` stored at ``target``."""
-    if target.tag == "sub":
-        sigil = str(target.arg1)
-        dimensions, data = state.arrays.get(
-            (sigil, target.arg2), ((), MappingProxyType({}))
-        )
-        _unused, index = _element(target, state.scalars, state.arrays)
-    else:
-        sigil = str(target.tag)
-    if sigil in ".," and value > _ONESPOT_MAX:
+    """Return ``state`` with ``value`` stored at ``target``.
+
+    A bad subscript (E241) is raised before an overflow (E275), and both
+    even when the target is ignored.
+    """
+    if target.tag != "sub":
+        key = (str(target.tag), target.arg1)
+        if key[0] == "." and value > _ONESPOT_MAX:
+            raise _fail("E275", "INTERCAL onespot assignment overflow")
+        if key in state.ignored:
+            return state
+        return replace(state, scalars=_frozen({**state.scalars, key: value}))
+    key = (str(target.arg1), target.arg2)
+    data, index = _element(target, state.scalars, state.arrays)
+    if key[0] == "," and value > _ONESPOT_MAX:
         raise _fail("E275", "INTERCAL onespot assignment overflow")
-    key = (sigil, target.arg2) if target.tag == "sub" else (sigil, target.arg1)
     if key in state.ignored:
         return state
-    if target.tag == "sub":
-        arrays = _frozen_arrays(
-            {
-                **state.arrays,
-                key: (dimensions, _frozen_data({**data, index: value})),
-            }
-        )
-        return replace(state, arrays=arrays)
-    return replace(state, scalars=_frozen_scalars({**state.scalars, key: value}))
+    dimensions = state.arrays.get(key, ((), data))[0]
+    element = (dimensions, _frozen({**data, index: value}))
+    return replace(state, arrays=_frozen({**state.arrays, key: element}))
 
 
 def _array(state: _State, key: _Key) -> _Array:
@@ -478,10 +468,10 @@ def _write_in(
                 value = (int(character) - last_in) % 256
                 last_in = int(character)
             if key not in state.ignored:
-                data = _frozen_data({**data, index: value})
+                data = _frozen({**data, index: value})
         state = replace(
             state,
-            arrays=_frozen_arrays({**state.arrays, key: ((size,), data)}),
+            arrays=_frozen({**state.arrays, key: ((size,), data)}),
             last_in=last_in,
         )
         return state, pos
@@ -517,7 +507,7 @@ def _variable(state: _State, action: str, key: _Key) -> _State:
         value: int | _Array
         if key[0] in ",;":
             dimensions, data = state.arrays.get(key, ((), MappingProxyType({})))
-            value = (dimensions, _frozen_data(data))
+            value = (dimensions, _frozen(data))
         else:
             value = state.scalars.get(key, 0)
         stashes = MappingProxyType(
@@ -532,8 +522,8 @@ def _variable(state: _State, action: str, key: _Key) -> _State:
     if key in state.ignored:
         return state
     if isinstance(value, int):
-        return replace(state, scalars=_frozen_scalars({**state.scalars, key: value}))
-    return replace(state, arrays=_frozen_arrays({**state.arrays, key: value}))
+        return replace(state, scalars=_frozen({**state.scalars, key: value}))
+    return replace(state, arrays=_frozen({**state.arrays, key: value}))
 
 
 def _resume(
@@ -601,154 +591,35 @@ def _leave(
     return state, pos
 
 
-@dataclass
-class _Step:
-    """The working state of one ``_execute`` call, shared by its handlers."""
-
-    state: _State
-    i: int
-    statement: _Statement
-    program: _Program
-    draws: Sequence[int]
-    pos: int
-    inputs: Sequence[int | str | None]
-    input_pos: int
-    out: list[str]
-
-
-def _handle_calculate(step: _Step) -> bool:
-    """``.1 <- expr``: evaluate and store."""
-    command = step.statement.command
-    step.state = _store(step.state, command.arg1, _value(step.state, command.arg2))
-    return False
-
-
-def _handle_dimension(step: _Step) -> bool:
-    """``,1 SUB #1 <- #n BY #m``: dimension an array."""
-    command = step.statement.command
-    sizes = tuple(_value(step.state, size) for size in command.arg2)
+def _dimension(state: _State, key: _Key, sizes: tuple[int, ...]) -> _State:
+    """Return ``state`` with array ``key`` freshly dimensioned, all zeros."""
     if 0 in sizes:
         raise _fail("E240", "an INTERCAL array dimension must be positive")
-    if command.arg1 not in step.state.ignored:
-        step.state = replace(
-            step.state,
-            arrays=_frozen_arrays(
-                {**step.state.arrays, command.arg1: (sizes, MappingProxyType({}))}
-            ),
-        )
-    return False
-
-
-def _handle_next(step: _Step) -> bool:
-    """``NEXT``: push the return and jump to the label."""
-    step.state = _push(step.state, step.i + 1, step.i)
-    step.state = replace(
-        step.state, ind=step.program.labels[step.statement.command.arg1]
+    if key in state.ignored:
+        return state
+    return replace(
+        state, arrays=_frozen({**state.arrays, key: (sizes, MappingProxyType({}))})
     )
-    return True
 
 
-def _handle_forget(step: _Step) -> bool:
-    """``FORGET``: drop that many entries off the NEXT stack."""
-    nexts = step.state.nexts
-    count = _value(step.state, step.statement.command.arg1)
-    step.state = replace(step.state, nexts=nexts[: max(0, len(nexts) - count)])
-    return False
-
-
-def _handle_resume(step: _Step) -> bool:
-    """``RESUME``: pop the stack down to the ``count``th-from-top entry."""
-    count = _value(step.state, step.statement.command.arg1)
-    step.state, step.pos = _resume(
-        step.state, count, step.program, step.draws, step.pos
-    )
-    return True
-
-
-def _handle_variable_item(step: _Step, action: str) -> bool:
-    """One ``STASH``/``RETRIEVE``/``IGNORE``/``REMEMBER`` item."""
-    for key in step.statement.command.arg1:
-        step.state = _variable(step.state, action, key)
-    return False
-
-
-def _handle_abstain(step: _Step) -> bool:
-    """``ABSTAIN``: raise the targets' abstain counters."""
-    command = step.statement.command
-    amount = None if command.arg2 is None else _value(step.state, command.arg2)
-    for target in _targets(command.arg1, step.program):
+def _abstain(state: _State, targets: Sequence[int], amount: int | None) -> _State:
+    """Raise each target's abstain counter by ``amount``, or to at least 1."""
+    for target in targets:
+        count = state.abstained[target]
         if amount is not None:
-            step.state = _set_abstained(
-                step.state, target, step.state.abstained[target] + amount
-            )
-        elif not step.state.abstained[target]:
-            step.state = _set_abstained(step.state, target, 1)
-    return False
+            state = _set_abstained(state, target, count + amount)
+        elif not count:
+            state = _set_abstained(state, target, 1)
+    return state
 
 
-def _handle_reinstate(step: _Step) -> bool:
-    """``REINSTATE``: lower the targets' abstain counters."""
-    command = step.statement.command
-    for target in _targets(command.arg1, step.program):
-        if (
-            step.program.statements[target].kind is not None
-            and step.state.abstained[target]
-        ):
-            step.state = _set_abstained(
-                step.state, target, step.state.abstained[target] - 1
-            )
-    return False
-
-
-def _handle_read(step: _Step) -> bool:
-    """``READ OUT``: append each item's text to the output."""
-    for item in step.statement.command.arg1:
-        step.state, text = _read_out(step.state, item)
-        step.out.append(text)
-    return False
-
-
-def _handle_write(step: _Step) -> bool:
-    """``WRITE IN``: consume one input per item."""
-    for item in step.statement.command.arg1:
-        step.state, step.input_pos = _write_in(
-            step.state, item, step.inputs, step.input_pos
-        )
-    return False
-
-
-def _handle_give_up(step: _Step) -> bool:
-    """``GIVE UP``: run past the last statement."""
-    step.state = replace(step.state, ind=len(step.program.statements))
-    return True
-
-
-def _handle_try_again(step: _Step) -> bool:
-    """``TRY AGAIN``: restart at the first statement."""
-    step.state = replace(step.state, ind=0)
-    return True
-
-
-#: The command handlers, by action tag.  A handler returns ``True`` when the
-#: command already continued the run itself (``NEXT``/``RESUME`` finish the
-#: statement early); ``False`` means ``_execute`` still runs ``_leave``.
-_EXECUTE_HANDLERS: dict[str, Callable[[_Step], bool]] = {
-    "calculate": _handle_calculate,
-    "dimension": _handle_dimension,
-    "next": _handle_next,
-    "forget": _handle_forget,
-    "resume": _handle_resume,
-    **{
-        action: partial(_handle_variable_item, action=action)
-        for action in ("stash", "retrieve", "ignore", "remember")
-    },
-    "abstain": _handle_abstain,
-    "reinstate": _handle_reinstate,
-    "read": _handle_read,
-    "write": _handle_write,
-    "give up": _handle_give_up,
-    "try again": _handle_try_again,
-}
+def _reinstate(state: _State, targets: Sequence[int], program: _Program) -> _State:
+    """Lower each abstained target's counter; ``GIVE UP`` stays abstained."""
+    for target in targets:
+        count = state.abstained[target]
+        if program.statements[target].kind is not None and count:
+            state = _set_abstained(state, target, count - 1)
+    return state
 
 
 def _execute(
@@ -761,20 +632,62 @@ def _execute(
     inputs: Sequence[int | str | None],
     out: list[str],
 ) -> tuple[_State, int]:
-    """Run one statement's command, appending its output to ``out``."""
+    """Run one statement's command, appending its output to ``out``.
+
+    ``NEXT``, ``RESUME``, ``GIVE UP`` and ``TRY AGAIN`` move the cursor
+    themselves; every other command continues through :func:`_leave`, where
+    a ``COME FROM`` may take control.
+    """
     command = statement.command
-    handler = _EXECUTE_HANDLERS.get(command.tag)
-    if handler is None:
-        raise HaltError(
-            f"INTERCAL syntax error (E000) in {statement.text!r}: {command.arg1}",
-            hint="use statements supported by esolangs describe --spec INTERCAL",
-        )
-    step = _Step(state, i, statement, program, draws, pos, inputs, 0, out)
-    if handler(step):
-        return step.state, step.pos
-    return _leave(step.state, step.i, step.program, step.draws, step.pos)
+    match command.tag:
+        case "calculate":
+            state = _store(state, command.arg1, _value(state, command.arg2))
+        case "dimension":
+            sizes = tuple(_value(state, size) for size in command.arg2)
+            state = _dimension(state, command.arg1, sizes)
+        case "next":
+            state = _push(state, i + 1, i)
+            return replace(state, ind=program.labels[command.arg1]), pos
+        case "forget":
+            keep = max(0, len(state.nexts) - _value(state, command.arg1))
+            state = replace(state, nexts=state.nexts[:keep])
+        case "resume":
+            count = _value(state, command.arg1)
+            return _resume(state, count, program, draws, pos)
+        case "stash" | "retrieve" | "ignore" | "remember":
+            for key in command.arg1:
+                state = _variable(state, command.tag, key)
+        case "abstain":
+            amount = None if command.arg2 is None else _value(state, command.arg2)
+            state = _abstain(state, _targets(command.arg1, program), amount)
+        case "reinstate":
+            state = _reinstate(state, _targets(command.arg1, program), program)
+        case "read":
+            for item in command.arg1:
+                state, text = _read_out(state, item)
+                out.append(text)
+        case "write":
+            read = 0
+            for item in command.arg1:
+                state, read = _write_in(state, item, inputs, read)
+        case "give up":
+            return replace(state, ind=len(program.statements)), pos
+        case "try again":
+            return replace(state, ind=0), pos
+        case _:
+            raise HaltError(
+                f"INTERCAL syntax error (E000) in {statement.text!r}: {command.arg1}",
+                hint="use statements supported by esolangs describe --spec INTERCAL",
+            )
+    return _leave(state, i, program, draws, pos)
 
 
+# :func:`_advance` is the pure transition from one immutable ``_State`` to the next,
+# returning the texts to print.  A step can draw any number of times (a ``%`` qualifier
+# and each candidate ``COME FROM``) and read any number of inputs, so neither can be
+# hoisted: it raises :data:`_NeedDraw` or :data:`_NeedInput`, and ``step``, the shell,
+# supplies one more and retries.  :meth:`_Machine.branching_successors` replays it over
+# explicit draw prefixes.
 def _advance(
     state: _State,
     program: _Program,
@@ -839,7 +752,7 @@ def _thaw(value: Any) -> int | _Array:
     if isinstance(value, int):
         return value
     dimensions, data = value
-    return dimensions, _frozen_data(dict(data))
+    return dimensions, _frozen(dict(data))
 
 
 def _snapshot(state: _State) -> tuple[Any, ...]:
@@ -890,22 +803,7 @@ class _Machine:
                 "INTERCAL program is insufficiently or excessively polite",
                 hint="use PLEASE on one fifth to one third of the statements",
             )
-        labels: dict[int, int] = {}
-        for i, statement in enumerate(statements):
-            if statement.label is not None:
-                if statement.label in labels:
-                    raise _fail("E182", f"duplicate INTERCAL label: {statement.label}")
-                labels[statement.label] = i
-        by_kind, come_label, come_kind, come_computed, sucks = _link(statements, labels)
-        self._program = _Program(
-            statements,
-            labels,
-            by_kind,
-            come_label,
-            come_kind,
-            come_computed,
-            sucks,
-        )
+        self._program = _link(statements)
         self.state = _State(
             0,
             MappingProxyType({}),
@@ -961,10 +859,10 @@ class _Machine:
         ) = state[:9]
         return _State(
             ind=ind,
-            scalars=_frozen_scalars(dict(scalars)),
-            arrays=_frozen_arrays(
+            scalars=_frozen(dict(scalars)),
+            arrays=_frozen(
                 {
-                    key: (dimensions, _frozen_data(dict(data)))
+                    key: (dimensions, _frozen(dict(data)))
                     for key, dimensions, data in arrays
                 }
             ),

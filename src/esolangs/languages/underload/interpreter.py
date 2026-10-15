@@ -35,19 +35,16 @@ def _element(program: str, start: int) -> tuple[str, int]:
 
 
 def _advance(state: _State) -> tuple[_State, _Effect]:
-    """Execute one command and return immutable state plus optional output."""
-    program, at, packed = state
+    """Execute one command; return the next state and any string printed."""
+    program, at, stack = state
     if at >= len(program):
         return state, None
-    stack = list(packed)
     command = program[at]
-    effect = None
     if command.isspace():
-        return (program, at + 1, packed), None
+        return (program, at + 1, stack), None
     if command == "(":
-        value, at = _element(program, at)
-        stack.append(value)
-        return (program, at, tuple(stack)), None
+        value, after = _element(program, at)
+        return (program, after, (*stack, value)), None
     if command == ")":
         raise HaltError("unmatched Underload ')'", hint="open the string with '('")
     if command not in "~:!*a^S":
@@ -55,28 +52,30 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
             f"unknown Underload command {command!r}",
             hint="use () strings and ~ : ! * a ^ S commands",
         )
-    needed = 2 if command in "~*" else 1
-    if len(stack) < needed:
+    if len(stack) < (2 if command in "~*" else 1):
         raise HaltError(
             "Underload stack underflow",
             hint="leave enough stack entries for the operation to consume",
         )
-    if command == "~":
-        stack[-2:] = stack[-2:][::-1]
-    elif command == ":":
-        stack.append(stack[-1])
-    elif command == "!":
-        stack.pop()
-    elif command == "*":
-        right, left = stack.pop(), stack.pop()
-        stack.append(left + right)
-    elif command == "a":
-        stack[-1] = f"({stack[-1]})"
-    elif command == "^":
-        program = program[: at + 1] + stack.pop() + program[at + 1 :]
-    else:
-        effect = stack.pop()
-    return (program, at + 1, tuple(stack)), effect
+    *rest, top = stack
+    printed = None
+    match command:
+        case "~":  # swap
+            stack = (*rest[:-1], top, rest[-1])
+        case ":":  # duplicate
+            stack = (*stack, top)
+        case "!":  # drop
+            stack = tuple(rest)
+        case "*":  # concatenate, the lower string first
+            stack = (*rest[:-1], rest[-1] + top)
+        case "a":  # enclose in parentheses
+            stack = (*rest, f"({top})")
+        case "^":  # run: splice the string in right after this command
+            stack = tuple(rest)
+            program = program[: at + 1] + top + program[at + 1 :]
+        case _:  # "S": print
+            stack, printed = tuple(rest), top
+    return (program, at + 1, stack), printed
 
 
 class _Machine:

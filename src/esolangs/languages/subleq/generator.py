@@ -26,7 +26,7 @@ def subleq(truth_table: str) -> str:
 
 def _subleq_shared(table: str, perm: tuple[int, ...]) -> str:
     """Fold constants and equal halves; emit each residual once."""
-    return hoisted_tree(table, perm, share=True, direct=True)
+    return hoisted_tree(table, perm, direct=True)
 
 
 def _payload(state: Any) -> Payload:

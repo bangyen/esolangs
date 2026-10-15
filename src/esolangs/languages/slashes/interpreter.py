@@ -1,6 +1,12 @@
-"""/// (Slashalash): repeated leftmost literal substitutions.
+r"""/// (Slashalash): a program that rewrites itself until nothing is left.
 
-Backslash escapes one character in output, patterns, and replacements.
+The source is consumed from the left.  A plain character is printed, and
+``\x`` prints ``x``.  ``/pattern/replacement/`` is a rule: it is removed,
+then the leftmost ``pattern`` in the rest of the source is replaced by
+``replacement``, again and again until none is left, and reading resumes.
+Inside a rule ``\`` escapes one character too.  The run ends when the
+source is empty.
+
 An incomplete rule halts; an empty pattern diverges. No stdin is read, so
 EOFError does not arise. Source has no invalid characters or ValueError cases.
 """
@@ -9,11 +15,13 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 
-type _State = tuple[str, str | None, str]
+#: ``(source, rule)``: the unread program, and the ``(pattern, replacement)``
+#: being applied to it, or ``None`` while reading.
+type _State = tuple[str, tuple[str, str] | None]
 
 
 def _field(source: str) -> tuple[str, str] | None:
-    """Read one escaped, slash-terminated field."""
+    """Read one escaped, slash-terminated field; return it and the rest."""
     chars: list[str] = []
     at = 0
     while at < len(source):
@@ -30,49 +38,47 @@ def _field(source: str) -> tuple[str, str] | None:
     return None
 
 
+def _rule(source: str) -> _State:
+    """Parse the rule after a ``/``; an incomplete one empties the source."""
+    first = _field(source)
+    second = None if first is None else _field(first[1])
+    if first is None or second is None:
+        return "", None
+    return second[1], (first[0], second[0])
+
+
 def _advance(state: _State) -> tuple[_State, str]:
-    """Perform one rule parse, substitution, or output character."""
-    source, pattern, replacement = state
-    if pattern is not None:
+    """Return the state after one substitution or one read, and its output."""
+    source, rule = state
+    if rule is not None:
+        pattern, replacement = rule
         if not pattern:
-            return state, ""
+            return state, ""  # an empty pattern matches forever
         at = source.find(pattern)
         if at < 0:
-            return (source, None, ""), ""
-        return (
-            source[:at] + replacement + source[at + len(pattern) :],
-            pattern,
-            replacement,
-        ), ""
+            return (source, None), ""
+        return (source[:at] + replacement + source[at + len(pattern) :], rule), ""
     if not source:
         return state, ""
+    if source[0] == "/":
+        return _rule(source[1:]), ""
     if source[0] == "\\":
-        return (source[2:], None, ""), source[1:2]
-    if source[0] != "/":
-        return (source[1:], None, ""), source[0]
-    first = _field(source[1:])
-    if first is None:
-        return ("", None, ""), ""
-    pattern, rest = first
-    second = _field(rest)
-    if second is None:
-        return ("", None, ""), ""
-    replacement, rest = second
-    return (rest, pattern, replacement), ""
+        return (source[2:], None), source[1:2]
+    return (source[1:], None), source[0]
 
 
 class _Machine:
-    """Remaining source and active substitution."""
+    """The unread source and the rule being applied to it."""
 
     ip_shape = "opaque"
 
     def __init__(self, code: str, io: IO) -> None:
-        self.state: _State = (code, None, "")
+        self.state: _State = (code, None)
         self.io = io
 
     @property
     def halted(self) -> bool:
-        return not self.state[0] and self.state[1] is None
+        return self.state == ("", None)
 
     @property
     def ip(self) -> None:
@@ -83,7 +89,9 @@ class _Machine:
         return [ord(c) for c in self.state[0]]
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.progress())
+        # Flat, as the ledger's exact workspace bound measures it.
+        source, rule = self.state
+        return (source, *(rule or (None, "")), self.io.progress())
 
     def step(self) -> None:
         self.state, output = _advance(self.state)

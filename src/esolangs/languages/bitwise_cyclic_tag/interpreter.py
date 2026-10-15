@@ -19,10 +19,7 @@ already lives.  Nothing is printed when no ``0`` ever fires.
 A character outside ``01,`` and a second comma raise :class:`ValueError`; no
 operation can be invalid once a program parses, so no
 :class:`~esolangs.exceptions.HaltError` arises, and nothing is read so no
-``EOFError`` comes from here.  The data-string is not threaded through
-:func:`_advance`: a run appends ``Theta(T)`` bits and copying per append would
-cost ``Theta(T**2)`` for a program meant to be linear, so the append leaves as
-an effect (``grapheme.py``'s arrangement) and deletion is a cursor, not a slice.
+``EOFError`` comes from here.
 """
 
 from __future__ import annotations
@@ -32,10 +29,10 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
-#: ``(head, read, answer, printed)``: program position, leftmost live data-bit,
-#: the bit the last ``0`` took, and whether it is printed.  The program is fixed
-#: and the data-string is the store, so neither is in here.
-type _State = tuple[int, int, str | None, bool]
+#: ``(head, read)``: program position and leftmost live data-bit.  The program
+#: is fixed and the data-string is the store, so neither is in here; nor is the
+#: answer, which is the bit just before ``read`` since only ``0`` advances it.
+type _State = tuple[int, int]
 
 
 def _parse(code: str) -> tuple[str, str, tuple[int, ...]]:
@@ -67,18 +64,22 @@ def _parse(code: str) -> tuple[str, str, tuple[int, ...]]:
     return program, data, tuple(at for at, _c in kept[:split])
 
 
+# The data-string is not threaded through :func:`_advance`: a run appends ``Theta(T)``
+# bits and copying per append would cost ``Theta(T**2)`` for a program meant to be
+# linear, so the append leaves as an effect (``grapheme.py``'s arrangement) and
+# deletion is a cursor, not a slice.
 def _advance(state: _State, program: str, bit: str) -> tuple[_State, str | None]:
     """Return the state after one command, and the bit to append.
 
     Pure; ``bit`` is the leftmost live data-bit.  A ``1`` takes the program-bit
     after it as its operand, cyclically, so ``1`` alone is its own operand.
     """
-    head, read, answer, printed = state
+    head, read = state
     size = len(program)
     if program[head] == "0":
-        return ((head + 1) % size, read + 1, bit, printed), None
+        return ((head + 1) % size, read + 1), None
     operand = program[(head + 1) % size]
-    return ((head + 2) % size, read, answer, printed), operand if bit == "1" else None
+    return ((head + 2) % size, read), operand if bit == "1" else None
 
 
 class _Machine:
@@ -93,7 +94,8 @@ class _Machine:
         self.io = io
         self.program, data, self.offsets = _parse(code)
         self.data = list(data)
-        self.state: _State = (0, 0, None, False)
+        self.state: _State = (0, 0)
+        self.printed = False
 
     @property
     def head(self) -> int:
@@ -108,7 +110,8 @@ class _Machine:
     @property
     def answer(self) -> str | None:
         """The bit the last ``0`` consumed, if one has."""
-        return self.state[2]
+        read = self.state[1]
+        return self.data[read - 1] if read else None
 
     @property
     def live(self) -> str:
@@ -141,17 +144,17 @@ class _Machine:
         The *live* data-string, the unreachable deleted prefix dropped so two
         instants differing only there are one.  ``printed`` stays out.
         """
-        head, read, answer, _printed = self.state
-        return (self.program, head, self.live, answer, read, self.io.progress())
+        head, read = self.state
+        return (self.program, head, self.live, self.answer, read, self.io.progress())
 
     def step(self) -> None:
         """Execute one command, printing the answer once the data runs out."""
-        head, read, answer, printed = self.state
         if self.halted:
-            if not printed and answer is not None:
-                self.io.print_str(answer)
-            self.state = (head, read, answer, True)
+            if not self.printed and self.answer is not None:
+                self.io.print_str(self.answer)
+            self.printed = True
             return
+        read = self.state[1]
         self.state, append = _advance(self.state, self.program, self.data[read])
         if append is not None:
             self.data.append(append)

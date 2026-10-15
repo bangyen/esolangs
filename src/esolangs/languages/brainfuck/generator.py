@@ -447,6 +447,11 @@ def bf_tree(truth_table: str) -> str:
     return min((tree, affine), key=len) if affine is not None else tree
 
 
+def _command_budget(n: int) -> int:
+    """Return the command ceiling shared by the affine stream and shared body."""
+    return 69 * n + 44
+
+
 def _affine_stream(table: str) -> str | None:
     """Stream an admitted affine table through one bit and a toggle scratch."""
     n = _validate_truth_table(table)
@@ -469,7 +474,7 @@ def _affine_stream(table: str) -> str | None:
         else:
             parts.append(",")
             commands += 1
-    if commands > 69 * n + 44:
+    if commands > _command_budget(n):
         return None
     parts.append(">" + "+" * _ASCII_ZERO + ".")
     return "".join(parts)
@@ -509,8 +514,8 @@ def _bf_ordered(
     plain = "".join(cells)
     if not share:
         return plain
-    # The body's share of the 69n + 44 command ceiling.
-    budget = 69 * n + 44 - len(header) - _ASCII_ZERO - 1
+    # The body's share of `_command_budget`.
+    budget = _command_budget(n) - len(header) - _ASCII_ZERO - 1
     bodies = []
     shared = shared_flag_tree(
         truth_table,

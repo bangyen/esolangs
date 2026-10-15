@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from string import ascii_lowercase
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -38,6 +39,25 @@ _FLIPPED = "^'0=_"
 Key = tuple[int, int]  # (level, subtable id)
 
 
+class _Literal(NamedTuple):
+    """A node over two constants: its whole text."""
+
+    text: str
+
+
+class _Fold(NamedTuple):
+    """A node with equal halves: the one half, run bare."""
+
+    child: Key
+
+
+class _Split(NamedTuple):
+    """A node over two different halves."""
+
+    zero: Key
+    one: Key
+
+
 def false(truth_table: str, width: int | None = None) -> str:
     """Return a FALSE program computing ``truth_table``.
 
@@ -59,7 +79,7 @@ def false(truth_table: str, width: int | None = None) -> str:
 _OPEN, _BETWEEN, _CLOSE = _TEST_ONE[:-1], "?0=", "?"
 
 
-def _shared(truth_table: str, n: int) -> str:  # noqa: C901
+def _shared(truth_table: str, n: int) -> str:
     """Return the tree with repeated halves stored in variables and fetched.
 
     A half is a lambda either way, so ``[text]`` becomes ``x;`` wherever it
@@ -74,9 +94,7 @@ def _shared(truth_table: str, n: int) -> str:  # noqa: C901
     26 variables, handed out deepest first, cap the stores.
     """
     ids = subtree_ids(truth_table)
-    kids: dict[Key, tuple[Key, Key]] = {}
-    pairs: dict[Key, str] = {}
-    folds: dict[Key, Key] = {}
+    nodes: dict[Key, _Literal | _Fold | _Split] = {}
     uses: dict[Key, int] = {}
     inner: dict[Key, int] = {}  # of those uses, the ones that are a body
     found: list[list[Key]] = [[] for _ in range(n + 1)]
@@ -89,80 +107,54 @@ def _shared(truth_table: str, n: int) -> str:  # noqa: C901
     for depth in range(n):
         for place, node in enumerate(ids[depth]):
             key = (depth, node)
-            if node < 2 or key in kids or key in pairs or key in folds:
+            if node < 2 or key in nodes:
                 continue  # a leaf, or a node already seen at this level
             zero = (depth + 1, ids[depth + 1][2 * place])
             one = (depth + 1, ids[depth + 1][2 * place + 1])
             if zero[1] < 2 and one[1] < 2:  # a literal: no lambda halves
                 read = _SAME if one[1] == 1 else _FLIPPED
-                pairs[key] = read + _SKIP * (n - depth - 1) + "."
+                nodes[key] = _Literal(read + _SKIP * (n - depth - 1) + ".")
                 continue
             if zero == one:  # the test changes nothing: drop the bit, run it
-                folds[key] = zero
+                nodes[key] = _Fold(zero)
                 inner[zero] = inner.get(zero, 0) + 1
                 use(zero, depth + 1)
                 continue
-            kids[key] = (zero, one)
+            nodes[key] = _Split(zero, one)
             use(zero, depth + 1)
             use(one, depth + 1)
 
-    size: dict[Key, int] = {}
+    text: dict[Key, str] = {}
     names: dict[Key, str] = {}
     free = iter(ascii_lowercase)
-    # Deepest first, so a half's length already counts its stored children.
-    for key in (key for level in reversed(found) for key in level):
+
+    def half(key: Key) -> str:
+        return names[key] + ";" if key in names else "[" + text[key] + "]"
+
+    def render(key: Key) -> str:
         level, node = key
         if node < 2:
-            size[key] = 2 * (n - level) + 2
-        elif key in pairs:
-            size[key] = len(pairs[key])
-        elif key in folds:
-            child = folds[key]
-            size[key] = len(_SKIP) + (3 if child in names else size[child])
-        else:
-            halves = (2 if k in names else size[k] + 2 for k in kids[key])
-            size[key] = len(_OPEN + _BETWEEN + _CLOSE) + sum(halves)
+            return _SKIP * (n - level) + str(node) + "."
+        match nodes[key]:
+            case _Literal(literal):
+                return literal
+            case _Fold(child):
+                return _SKIP + (names[child] + ";!" if child in names else text[child])
+            case _Split(zero, one):
+                return _OPEN + half(one) + _BETWEEN + half(zero) + _CLOSE
+
+    # Deepest first, so a half's text already fetches its stored children.
+    for key in (key for level in reversed(found) for key in level):
+        text[key] = render(key)
+        size = len(text[key])
         # Each ``[text]`` use becomes ``x;`` (saves size - 2), a bare one
         # ``x;!`` (saves size - 3); the store ``[text]x:`` costs size + 4.
-        gain = uses[key] * size[key] - 3 * inner.get(key, 0) - size[key] - 4
+        gain = uses[key] * size - 3 * inner.get(key, 0) - size - 4
         if gain > 0 and (name := next(free, None)):
             names[key] = name
 
-    def body(key: Key, out: list[str]) -> None:
-        level, node = key
-        if node < 2:
-            out.append(_SKIP * (n - level) + str(node) + ".")
-        elif key in pairs:
-            out.append(pairs[key])
-        elif key in folds:
-            out.append(_SKIP)
-            if folds[key] in names:
-                out.append(names[folds[key]] + ";!")
-            else:
-                body(folds[key], out)
-        else:
-            zero, one = kids[key]
-            out.append(_OPEN)
-            half(one, out)
-            out.append(_BETWEEN)
-            half(zero, out)
-            out.append(_CLOSE)
-
-    def half(key: Key, out: list[str]) -> None:
-        if key in names:
-            out.append(names[key] + ";")
-            return
-        out.append("[")
-        body(key, out)
-        out.append("]")
-
-    out: list[str] = []
-    for key, name in names.items():
-        out.append("[")
-        body(key, out)
-        out.append("]" + name + ":")
-    body((0, ids[0][0]), out)
-    return "".join(out)
+    stores = "".join("[" + text[key] + "]" + name + ":" for key, name in names.items())
+    return stores + render((0, ids[0][0]))
 
 
 def _balance(table: str, default: str) -> str:

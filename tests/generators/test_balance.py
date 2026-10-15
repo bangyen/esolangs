@@ -8,6 +8,7 @@ from esolangs.generation.helpers import mark
 from esolangs.generation.wrap import (
     balance_program,
     balance_score,
+    wrap_chars,
     wrap_grid,
     wrap_program,
     wrap_space_delimited,
@@ -35,7 +36,7 @@ BALANCED = sorted(
             for lang in _TEXT
             if lang.balance is None
             and lang.wrap is not None
-            and lang.wrap.__name__ != "wrap_chars"
+            and lang.wrap is not wrap_chars
         ),
         next(
             lang.name

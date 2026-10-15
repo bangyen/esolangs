@@ -11,12 +11,6 @@ XOR and ``!`` is logical negation, so ``a ^ b`` is a not-equal test and
 ``!(a ^ b)`` an equality test -- the spelling every wiki example uses.  The
 built-in ``IO`` package provides ``charPut(value)`` and ``charGet(var)``.
 
-Programs are parsed into a flat statement list per function, so
-:class:`_Machine` steps one statement at a time and :func:`_advance` is a
-pure transition over an immutable state.  The variable store is a tuple of
-``(name, value)`` pairs, so :meth:`_Machine.snapshot` is hashable as it
-stands and a repeated state proves a loop.
-
 Every function is stepped, the entry one and its callees alike.  A call
 *pushes* a frame rather than running the callee inside the calling
 statement, so a statement holding calls is re-entered once per call: each
@@ -56,9 +50,9 @@ Further decisions for gaps the wiki leaves open:
 * **Invalid runtime operations** raise
   :class:`~esolangs.exceptions.HaltError`: an undefined variable or
   function, an array index outside its length, and one rule of this
-  interpreter's own -- **dependency visibility is enforced**
-  (:func:`_visible`).  A package calls its own functions and those of the
-  packages it depends on, and nothing else.  The wiki says a dependency
+  interpreter's own -- **dependency visibility is enforced**.  A package
+  calls its own functions and those of the packages it depends on, and
+  nothing else.  The wiki says a dependency
   may itself have dependencies, so the relation is followed transitively.
 * **IO inside a called function works.**  It was refused, on the
   rationale that a call was evaluated inside a statement and so gave the
@@ -525,6 +519,11 @@ def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
     )
 
 
+# Programs are parsed into a flat statement list per function, so :class:`_Machine`
+# steps one statement at a time and :func:`_advance` is a pure transition over an
+# immutable state.  The variable store is a tuple of ``(name, value)`` pairs, so
+# :meth:`_Machine.snapshot` is hashable as it stands and a repeated state proves a loop.
+# :func:`_visible` enforces dependency visibility.
 class _Machine:
     """The run state: a stack of call frames and the parsed program.
 

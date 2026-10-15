@@ -38,7 +38,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
+from collections.abc import Callable
 from itertools import pairwise
 from typing import cast
 
@@ -84,8 +86,14 @@ from esolangs.cli.io import _read_stdin
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
-from esolangs.registry import LANGUAGES, resolve
-from esolangs.registry._describe import SHAPES, STATE_MODELS
+from esolangs.registry import LANGUAGES, Language, resolve
+from esolangs.registry._describe import (
+    INPUT_SHAPES,
+    SHAPES,
+    STATE_MODELS,
+    WIDTH_EFFECTS,
+)
+from esolangs.runtime._program import Program
 
 
 def _encode(rest: list[str]) -> None:
@@ -101,48 +109,71 @@ def _encode(rest: list[str]) -> None:
         _fail(_shell_hint(_cli_error_text(exc), language))
 
 
+#: ``list``'s capability flags.  A template embeds its bits, so only a
+#: reading program has an input shape.
+_FLAG_FILTERS: dict[str, Callable[[Language], bool]] = {
+    "--generator": lambda lang: lang.boolean is not None,
+    "--interpreter-only": lambda lang: lang.boolean is None,
+    "--template": lambda lang: lang.parameterized,
+    "--reads-input": lambda lang: lang.boolean is not None and not lang.parameterized,
+    "--random": lambda lang: lang.random,
+}
+#: ``list``'s labelled options: the values each accepts and the language's
+#: own.  ``describe`` is reached only for the derived labels (0.28 s cold
+#: over the registry), so the default catalog stays cheap.
+_VALUE_FILTERS: dict[str, tuple[tuple[str, ...], Callable[[str], object]]] = {
+    "--source": (("text", "raster"), lambda name: LANGUAGES[name].source_kind.value),
+    "--answer": (
+        ("output", "dump", "termination"),
+        lambda name: LANGUAGES[name].contract.answer_mode,
+    ),
+    "--state-model": (STATE_MODELS, lambda name: describe(name)["state_model"]),
+    "--shape": (SHAPES, lambda name: describe(name)["shape"]),
+    "--input-shape": (INPUT_SHAPES, lambda name: LANGUAGES[name].contract.input_shape),
+    "--width-effect": (WIDTH_EFFECTS, lambda name: describe(name)["width_effect"]),
+}
+
+
 def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
     """Return candidates by declared capabilities, without generating a table."""
     if "--generator" in flags and "--interpreter-only" in flags:
         _fail("--generator and --interpreter-only cannot be combined")
     if "--inputs" in options and "--interpreter-only" in flags:
         _fail("--inputs requires a generator; omit --interpreter-only")
-    for option, choices in (
-        ("--source", ("text", "raster")),
-        ("--answer", ("output", "dump", "termination")),
-        ("--state-model", STATE_MODELS),
-        ("--shape", SHAPES),
-    ):
-        if option in options and options[option] not in choices:
-            _fail(f"{option} must be one of {', '.join(choices)}")
+    if "--template" in flags and "--reads-input" in flags:
+        _fail("--template and --reads-input cannot be combined")
+    if "--input-shape" in options and "--template" in flags:
+        _fail("--input-shape requires a reading program; omit --template")
+    labels = {}
+    for option, (choices, getter) in _VALUE_FILTERS.items():
+        if option in options:
+            if options[option] not in choices:
+                _fail(f"{option} must be one of {', '.join(choices)}")
+            labels[option] = getter
+    pattern = None
+    if "--grep" in options:
+        try:
+            pattern = re.compile(options["--grep"], re.IGNORECASE)
+        except re.error as exc:
+            _fail(f"--grep is not a valid regular expression: {exc}")
     inputs = None
     if "--inputs" in options:
         inputs = _integer(options["--inputs"], "--inputs", kind="a positive integer")
         if inputs < 1:
             _fail("--inputs must be a positive integer")
+    wanted = [_FLAG_FILTERS[flag] for flag in flags if flag in _FLAG_FILTERS]
+    if inputs is not None:
+        wanted.append(_FLAG_FILTERS["--generator"])
+    if "--input-shape" in options:
+        wanted.append(_FLAG_FILTERS["--reads-input"])
     names = []
     for name in list_languages():
         language = LANGUAGES[name]
-        generator = language.boolean is not None
-        if ("--generator" in flags or inputs is not None) and not generator:
+        if not all(test(language) for test in wanted):
             continue
-        if "--interpreter-only" in flags and generator:
+        if any(getter(name) != options[option] for option, getter in labels.items()):
             continue
-        if "--source" in options and language.source_kind.value != options["--source"]:
-            continue
-        if (
-            "--answer" in options
-            and language.contract.answer_mode != options["--answer"]
-        ):
-            continue
-        # ``describe`` is only reached for the two derived facts, so the
-        # default catalog stays as cheap as it was.
-        if (
-            "--state-model" in options
-            and describe(name)["state_model"] != options["--state-model"]
-        ):
-            continue
-        if "--shape" in options and describe(name)["shape"] != options["--shape"]:
+        if pattern is not None and not pattern.search(describe(name)["spec"]):
             continue
         limit = language.generator_max_inputs
         if inputs is not None and limit is not None and inputs > limit:
@@ -153,8 +184,16 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
 
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
-    value_options = {"--source", "--answer", "--inputs", "--state-model", "--shape"}
-    flag_options = {"--details", "--json", "--generator", "--interpreter-only"}
+    value_options = {*_VALUE_FILTERS, "--inputs", "--grep"}
+    flag_options = {
+        "--details",
+        "--json",
+        "--generator",
+        "--interpreter-only",
+        "--template",
+        "--reads-input",
+        "--random",
+    }
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
     rest = _split_positional(rest, set(), value_options | flag_options)
@@ -175,6 +214,11 @@ def _list(rest: list[str]) -> None:
                         "state_model": facts["state_model"],
                         "shape": facts["shape"],
                         "answer_mode": facts["answer_mode"],
+                        "input_shape": (
+                            facts["input_shape"] if facts["reads_input"] else None
+                        ),
+                        "random": facts["random"],
+                        "width_effect": facts["width_effect"],
                         # The three the marker column encodes, spelled out.
                         "boolean_generator": facts["boolean_generator"],
                         "parameterized": facts["parameterized"],
@@ -219,6 +263,42 @@ def _list(rest: list[str]) -> None:
         print(f"{name.ljust(width)}  {marks}{suffix}")
 
 
+def _eaten_width_note(before: list[str]) -> str:
+    """Note a truth table that a bare ``--width`` consumed as its value."""
+    # `--width` takes an *optional* N, so a truth table typed straight after
+    # it is consumed as the width and the report lands on the table being
+    # missing -- which is baffling when you did type one.
+    eaten = ""
+    for arg, value in pairwise(before):
+        if arg == "--width" and _looks_like_a_table(value):
+            eaten = (
+                f"\n\nnote: --width consumed {value!r}, which looks like a "
+                f"truth table; put the table after the language"
+            )
+    return eaten
+
+
+def _layout_ignored(language: str, *, balance: bool) -> bool:
+    """Whether ``--width``/``--balance`` cannot change ``language``'s layout."""
+    return describe(language)["width_effect"] == "none" and not (
+        balance and LANGUAGES[resolve(language)].balance is not None
+    )
+
+
+def _emit(program: Program, *, plain: bool) -> None:
+    """Write ``program`` to stdout in its native form."""
+    if isinstance(program, CompressedText):
+        if plain:
+            for chunk in program.plain_chunks():
+                sys.stdout.write(chunk)
+        else:
+            sys.stdout.buffer.write(program.to_gzip())
+    elif isinstance(program, Raster):
+        sys.stdout.buffer.write(program.to_png())
+    else:
+        print(program)
+
+
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     value_options = {"--bits", "--scale", "--settings"}
@@ -238,17 +318,7 @@ def _generate(rest: list[str]) -> None:
         set(),
         value_options | flag_options | {"--width", "--set", "--portable"},
     )
-    # `--width` takes an *optional* N, so a truth table typed straight after
-    # it is consumed as the width and the report lands on the table being
-    # missing -- which is baffling when you did type one.
-    eaten = ""
-    if width is not None and not bare:
-        for arg, value in pairwise(before):
-            if arg == "--width" and _looks_like_a_table(value):
-                eaten = (
-                    f"\n\nnote: --width consumed {value!r}, which looks like a "
-                    f"truth table; put the table after the language"
-                )
+    eaten = _eaten_width_note(before) if width is not None and not bare else ""
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     settings = _settings_of(options, set_pairs, language=rest[0])
     try:
@@ -280,26 +350,15 @@ def _generate(rest: list[str]) -> None:
             program = dump_program(rest[0], program)
     except EsolangError as exc:
         _fail(_generate_hint(exc, rest[0], rest[1]))
-    if (
-        (width is not None or bare or balance)
-        and describe(rest[0])["width_effect"] == "none"
-        and not (balance and LANGUAGES[resolve(rest[0])].balance is not None)
+    if (width is not None or bare or balance) and _layout_ignored(
+        rest[0], balance=balance
     ):
         sys.stderr.write(
             f"note: {'--balance' if balance else '--width'} has no effect on "
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
-    if isinstance(program, CompressedText):
-        if "--plain" in flags:
-            for chunk in program.plain_chunks():
-                sys.stdout.write(chunk)
-        else:
-            sys.stdout.buffer.write(program.to_gzip())
-    elif isinstance(program, Raster):
-        sys.stdout.buffer.write(program.to_png())
-    else:
-        print(program)
+    _emit(program, plain="--plain" in flags)
 
 
 def _answer_sentence(facts: LanguageInfo) -> str:

@@ -135,15 +135,14 @@ LANGUAGE = Language(
     boolean=grapheme,
     dialect=GraphemeDialect,
     dialect_values={"integer_conversion": INTEGER_CONVERSIONS},
+    # Each input line is normalized with ord(line[0]) - 65 and then zero is
+    # mapped to 1; the second step is what makes 'A' a 1 -- ord('A') - 65 is
+    # 0, so the subtraction alone says the opposite.
     contract=BooleanContract(
         alphabet=("%", "A"),
-        note="Grapheme's generator normalizes each input line with "
-        "ord(line[0]) - 65 and then maps zero to 1, so its input "
-        "bits are spelled % and A: 'A' is a 1 and every other "
-        "first character is a 0, which means a 0/1 line reads as 0 "
-        "and the program answers the all-zeros row. The second "
-        "step is not optional prose -- ord('A') - 65 is 0, so the "
-        "subtraction alone says the opposite",
+        note="input bits are spelled % and A: a line starting with A is a 1 "
+        "and any other line a 0, so a 0/1 line reads as 0 and the program "
+        "answers the all-zeros row; esolangs encode spells them",
     ),
     wrap=wrap_chars,
     balance=balance_grapheme,

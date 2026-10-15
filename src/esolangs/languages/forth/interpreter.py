@@ -31,6 +31,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from operator import add, mul, sub
 from types import MappingProxyType
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -56,20 +57,28 @@ class _Frame:
     loop: bool = False
 
 
-#: One instant of a run: ``(stack, table, frames, error)`` -- the shared
-#: operand stack, the scope table ``{`` fills and ``;`` calls, the frame
-#: stack, and whether the *top-level* scope aborted.
-#:
-#: The frames are the reason this is a stack rather than a cursor: ``;``
-#: and all three bracket forms push one, and a ``[`` body is re-pushed
-#: whenever it finishes with a nonzero top.  A frame carries its own code,
-#: because a called scope runs text that is not the program's.
-#:
-#: ``error`` is state and not an exception: an abort ends the innermost
-#: scope the way completing it would, and only at the top level does it
-#: mean the run failed.  ``run`` reads it after the loop.
 type _Frames = tuple[_Frame, ...]
-type _State = tuple[tuple[int, ...], Mapping[int, str], _Frames, bool]
+
+
+# The frames are the reason this is a stack rather than a cursor: ``;``
+# and all three bracket forms push one, and a ``[`` body is re-pushed
+# whenever it finishes with a nonzero top.  A frame carries its own code,
+# because a called scope runs text that is not the program's.
+#
+# ``error`` is state and not an exception: an abort ends the innermost
+# scope the way completing it would, and only at the top level does it
+# mean the run failed.  ``run`` reads it after the loop.
+class _State(NamedTuple):
+    """One instant of a run.
+
+    The shared operand stack, the scope table ``{`` fills and ``;`` calls,
+    the frame stack, and whether the *top-level* scope aborted.
+    """
+
+    stack: tuple[int, ...]
+    table: Mapping[int, str]
+    frames: _Frames
+    error: bool
 
 
 def _top(stack: tuple[int, ...]) -> int:
@@ -93,18 +102,15 @@ def _finalize(state: _State) -> _State:
     A fresh pass is finalized by a later step, so an empty body is a no-op
     step whose repeated snapshot proves a hang.
     """
-    stack, table, frames, error = state
+    frames = state.frames
     while frames and frames[-1].pc >= len(frames[-1].code):
         frame = frames[-1]
-        if frame.loop and _top(stack) != 0:
-            return (
-                stack,
-                table,
-                (*frames[:-1], _Frame(frame.code, 0, loop=True)),
-                error,
+        if frame.loop and _top(state.stack) != 0:
+            return state._replace(
+                frames=(*frames[:-1], _Frame(frame.code, 0, loop=True))
             )
         frames = frames[:-1]
-    return (stack, table, frames, error)
+    return state._replace(frames=frames)
 
 
 def _abort(state: _State) -> _State:
@@ -113,12 +119,11 @@ def _abort(state: _State) -> _State:
     Behaves like the scope completing; a top-level scope halts with
     ``error`` set.
     """
-    stack, table, frames, error = state
-    top_level = len(frames) == 1
+    frames = state.frames
     frame = frames[-1]
-    ended = (stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
-    stack, table, frames, error = _finalize(ended)
-    return (stack, table, frames, error or top_level)
+    ended = state._replace(frames=(*frames[:-1], _at(frame, len(frame.code))))
+    finalized = _finalize(ended)
+    return finalized._replace(error=finalized.error or len(frames) == 1)
 
 
 #: Each block opener's closer.
@@ -154,70 +159,71 @@ def _advance(state: _State, line: str | None = None) -> _State:  # noqa: C901
     scope's invalid operation is swallowed and a top-level one fails.
     """
     state = _finalize(state)
-    stack, table, frames, error = state
-    if not frames:
+    if not state.frames:
         return state
-    frame = frames[-1]
+    frame = state.frames[-1]
     if frame.pc >= len(frame.code):
         return state  # a finished pass (an empty loop body) is a no-op step
 
     char = frame.code[frame.pc]
-    frames = (*frames[:-1], _at(frame, frame.pc + 1))
-    frame = frames[-1]
-    state = (stack, table, frames, error)
+    frame = _at(frame, frame.pc + 1)
+    frames = (*state.frames[:-1], frame)
+    state = state._replace(frames=frames)
+    stack = state.stack
 
     if "0" <= char <= "9":
-        return ((*stack, ord(char) - 48), table, frames, error)
+        return state._replace(stack=(*stack, ord(char) - 48))
     if "A" <= char <= "F":
-        return ((*stack, ord(char) - 55), table, frames, error)
+        return state._replace(stack=(*stack, ord(char) - 55))
     if char == ":":
-        return ((*stack, _top(stack)), table, frames, error)
+        return state._replace(stack=(*stack, _top(stack)))
     if char == "~":
-        return ((*stack[:-1], ~_top(stack)), table, frames, error)
+        return state._replace(stack=(*stack[:-1], ~_top(stack)))
     if char == ".":
         # The print already happened in the shell; this only pops.
         _top(stack)
-        return (stack[:-1], table, frames, error)
+        return state._replace(stack=stack[:-1])
     if char == ",":
         read = tuple(ord(ch) for ch in (line or ""))
-        return ((*stack, *read), table, frames, error)
+        return state._replace(stack=(*stack, *read))
     if char == ";":
-        scope = table.get(_top(stack), "")
-        return (stack[:-1], table, (*frames, _Frame(scope)), error)
+        scope = state.table.get(_top(stack), "")
+        return state._replace(stack=stack[:-1], frames=(*frames, _Frame(scope)))
     if char == "o":
-        return (tuple(reversed(stack)), table, frames, error)
+        return state._replace(stack=tuple(reversed(stack)))
     if char == "c":
         if len(stack) < 3:
             return _abort(state)
-        return ((*stack[:-3], *stack[-2:], stack[-3]), table, frames, error)
+        return state._replace(stack=(*stack[:-3], *stack[-2:], stack[-3]))
     if char in "([{":
         found = _scan(frame, char, _CLOSER[char])
         if found is None:
             # The scan walked to the end without closing, and the original
             # left the cursor there before aborting.
-            ended = (stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
-            return _abort(ended)
+            ended = (*frames[:-1], _at(frame, len(frame.code)))
+            return _abort(state._replace(frames=ended))
         scope, pc = found
         frames = (*frames[:-1], _at(frame, pc))
-        state = (stack, table, frames, error)
+        state = state._replace(frames=frames)
         if char in "([":
             if _top(stack):
-                return (stack, table, (*frames, _Frame(scope, loop=char == "[")), error)
+                body = _Frame(scope, loop=char == "[")
+                return state._replace(frames=(*frames, body))
             return state
-        return (stack, MappingProxyType({**table, _top(stack): scope}), frames, error)
+        table = MappingProxyType({**state.table, _top(stack): scope})
+        return state._replace(table=table)
     if char in "+-*/%v":
         if len(stack) < 2:
             return _abort(state)
         two, one = stack[-1], stack[-2]
         rest = stack[:-2]
+        if char == "v":
+            return state._replace(stack=(*rest, two, one))
         # Both operands are consumed before the divisor is tested, so a
         # zero-divisor abort leaves the stack without them.
-        popped = (rest, table, frames, error)
-        if char == "v":
-            return ((*rest, two, one), table, frames, error)
         if char in "/%" and two == 0:
-            return _abort(popped)
-        return ((*rest, wrap_int32(_BINARY[char](one, two))), table, frames, error)
+            return _abort(state._replace(stack=rest))
+        return state._replace(stack=(*rest, wrap_int32(_BINARY[char](one, two))))
 
     return state
 
@@ -294,14 +300,11 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.stack, self.table, self.frames, self.error)
+        return _State(self.stack, self.table, self.frames, self.error)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
-        stack, table, frames, self.error = state
-        self.stack = stack
-        self.table = table
-        self.frames = frames
+        self.stack, self.table, self.frames, self.error = state
 
     def step(self) -> None:
         """Execute one command of the active frame.
@@ -312,7 +315,7 @@ class _Machine:
         if self.halted:
             return
         state = _finalize(self._state)
-        stack, table, frames, error = state
+        frames = state.frames
         char = ""
         # The cursor moves past the command before the command runs, and
         # the original had already written that when anything it did
@@ -329,14 +332,14 @@ class _Machine:
                 found = _scan(frame, char, _CLOSER[char])
                 frame = _at(frame, found[1] if found else len(frame.code))
             frames = (*frames[:-1], frame)
-        self._restore((stack, table, frames, error))
+        self._restore(state._replace(frames=frames))
 
         line = None
         if char == ",":
             line = self.io.input_str()
             self._input_reads += 1
-        elif char == "." and stack:
-            value = stack[-1]
+        elif char == "." and state.stack:
+            value = state.stack[-1]
             self.io.print_char(
                 chr(value)
                 if 0 <= value <= 0x10FFFF and not 0xD800 <= value <= 0xDFFF

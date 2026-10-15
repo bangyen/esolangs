@@ -7,7 +7,7 @@ variables and named where they recur (:func:`_intercal_shared`).
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -141,7 +141,7 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     negated = _negations(nodes, selectors)
     first = n + 2 + sum(name is not None for name in negated)
     readers = [0] * len(nodes)
-    for _level, zero, one in nodes[2:]:
+    for _level, zero, one in _interior(nodes):
         readers[zero] += 1
         readers[one] += 1
 
@@ -168,7 +168,7 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
             text[node] = inline
 
     exprs = [_ZERO, _ONE]
-    for level, zero, one in nodes[2:]:
+    for level, zero, one in _interior(nodes):
         low = _variable(names.get(zero)) or exprs[zero]
         high = _variable(names.get(one)) or exprs[one]
         exprs.append(_mux(selectors[level], low, high, _variable(negated[level])))
@@ -182,7 +182,20 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     return _program(n, assigned, exprs[root])
 
 
-def _diagram(truth_table: str, n: int) -> tuple[list[tuple[int, int, int]], int]:
+class _Node(NamedTuple):
+    """A diagram node: a selector level and the ids of its two halves."""
+
+    level: int
+    zero: int
+    one: int
+
+
+def _interior(nodes: list[_Node]) -> list[_Node]:
+    """Return the nodes after the two constants (ids 0 and 1)."""
+    return nodes[2:]
+
+
+def _diagram(truth_table: str, n: int) -> tuple[list[_Node], int]:
     """Return the table's reduced Shannon diagram and its root's id.
 
     Subtables are interned level by level, bottom-up, by the ids of their
@@ -192,15 +205,15 @@ def _diagram(truth_table: str, n: int) -> tuple[list[tuple[int, int, int]], int]
     id -- a constant span, or a node whose
     selector cannot change its value.
     """
-    nodes: list[tuple[int, int, int]] = [(n, 0, 0), (n, 1, 1)]
-    index: dict[tuple[int, int, int], int] = {}
+    nodes = [_Node(n, 0, 0), _Node(n, 1, 1)]
+    index: dict[_Node, int] = {}
     ids = [int(bit) for bit in truth_table]
     for level in range(n - 1, -1, -1):
         halves, ids = ids, []
         for at in range(0, len(halves), 2):
-            key = (level, halves[at], halves[at + 1])
-            if key[1] == key[2]:
-                ids.append(key[1])
+            key = _Node(level, halves[at], halves[at + 1])
+            if key.zero == key.one:
+                ids.append(key.zero)
                 continue
             if key not in index:
                 index[key] = len(nodes)
@@ -209,9 +222,7 @@ def _diagram(truth_table: str, n: int) -> tuple[list[tuple[int, int, int]], int]
     return nodes, ids[0]
 
 
-def _negations(
-    nodes: list[tuple[int, int, int]], selectors: list[_Expr]
-) -> list[int | None]:
+def _negations(nodes: list[_Node], selectors: list[_Expr]) -> list[int | None]:
     """Name each level's ``~selector`` variable, or ``None`` to inline it.
 
     Numbered from the bottom level up, from the first spare ``.{n + 2}``.
@@ -220,7 +231,7 @@ def _negations(
     """
     n = len(selectors)
     per_level = [0] * n
-    for level, _zero, _one in nodes[2:]:
+    for level, _zero, _one in _interior(nodes):
         per_level[level] += 1
     negated: list[int | None] = [None] * n
     name = n + 2
@@ -268,7 +279,7 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 LANGUAGE = Language(
     "INTERCAL",
     "intercal",
-    category="other",
+    category="variable_based",
     random=True,
     boolean=intercal,
     same_layout=_same_layout,

@@ -8,9 +8,6 @@ if not a code point), ``i`` pushes the next Unicode character code,
 0 or 1.  An empty pop, a swap or ``o`` without enough elements, an
 unmatched ``<`` or a ``>`` with no ``<`` raise :class:`HaltError` (the
 cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
-:func:`_advance` is pure and total over an immutable ``_State``:
-``_NEEDS`` lets the shell reject an underflow first and
-:func:`_forward` returns ``None`` for an unmatched ``>``.
 
 ``o`` outputs "the top of the stack", so the wiki's Hello, world
 (``OA++...o``, an empty stack at every ``o``) errors here; its ``+`` counts
@@ -65,6 +62,9 @@ def _forward(code: str, ind: int) -> int | None:
     return ind
 
 
+# :func:`_advance` is pure and total over an immutable ``_State``: ``_NEEDS`` lets the
+# shell reject an underflow first and :func:`_forward` returns ``None`` for an
+# unmatched ``>``.
 def _advance(
     state: _State,
     code: str,

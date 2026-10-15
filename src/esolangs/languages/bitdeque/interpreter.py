@@ -7,13 +7,13 @@ target past the last command ends the run and a taken GOTO 0 raises
 :class:`HaltError` (the wiki leaves both open).  The wiki has no I/O,
 so the deque is printed space-separated when the program ends -- the
 repo's convention.  A word that is not one of the six upper-case commands
-raises :class:`ValueError`.  :func:`_advance` is pure over an immutable
-``_State``; the dump is the shell's post-halt step.
+raises :class:`ValueError`.
 """
 
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -21,26 +21,36 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
-#: One instant of a run: ``(ind, reg, deq, rendered)`` -- the token cursor,
-#: the register, the deque, and whether the end-of-run dump has been
-#: printed.  A value, not a record: every transition below returns a new one
-#: rather than editing one in place, and the deque is a ``tuple`` for the
-#: same reason.
-#:
-#: ``rendered`` is state because the dump is a once-per-run effect that
-#: happens *after* the cursor has passed the last token, so the position
-#: alone cannot tell "about to print" from "already printed".  It stays out
-#: of ``snapshot``, which reports the fields it always reported.
-#:
-#: The tokens are deliberately not in the transition's view of the world,
-#: but they *are* in ``snapshot`` -- which is where they already were, and
-#: removing them would change every hash the cycle detector has stored.
-type _State = tuple[int, int, tuple[int, ...], bool]
+
+class _State(NamedTuple):
+    """One instant of a run.
+
+    A value, not a record: every transition below returns a new one rather
+    than editing one in place, and the deque is a ``tuple`` for the same
+    reason.
+
+    ``rendered`` is state because the dump is a once-per-run effect that
+    happens *after* the cursor has passed the last token, so the position
+    alone cannot tell "about to print" from "already printed".  It stays out
+    of ``snapshot``, which reports the fields it always reported.
+
+    The tokens are deliberately not in the transition's view of the world,
+    but they *are* in ``snapshot`` -- which is where they already were, and
+    removing them would change every hash the cycle detector has stored.
+    """
+
+    ind: int  # token cursor
+    reg: int
+    deq: tuple[int, ...]
+    rendered: bool  # the end-of-run dump has been printed
+
 
 _COMMANDS = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", "GOTO")
 _TOKEN = re.compile(r"(?<!\S)(INJECT|PUSH|EJECT|POP|INVERT|GOTO\s+\d+)(?!\S)")
 
 
+# :func:`_advance` is pure over an immutable ``_State``; the dump is the shell's
+# post-halt step.
 def _advance(state: _State, sym: str) -> _State:
     """Return the state after executing one token.
 
@@ -48,7 +58,7 @@ def _advance(state: _State, sym: str) -> _State:
     lands on index ``N - 2`` so the shared increment carries it to the Nth
     command; a taken ``GOTO 0`` names no command and raises.
     """
-    ind, reg, deq, rendered = state
+    ind, reg, deq = state.ind, state.reg, state.deq
     if sym == "PUSH":
         deq = (*deq, reg)
     elif sym == "INJECT":
@@ -66,7 +76,7 @@ def _advance(state: _State, sym: str) -> _State:
                 hint="GOTO 1 jumps to the first command",
             )
         ind = target - 2
-    return (ind + 1, reg, deq, rendered)
+    return state._replace(ind=ind + 1, reg=reg, deq=deq)
 
 
 def _reject_stray_text(code: str) -> None:
@@ -104,32 +114,32 @@ class _Machine:
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
-        self.state: _State = (0, 0, (), False)
+        self.state = _State(0, 0, (), rendered=False)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
-        return self.state[0]
+        return self.state.ind
 
     @property
     def reg(self) -> int:
-        return self.state[1]
+        return self.state.reg
 
     @property
     def deq(self) -> tuple[int, ...]:
-        return self.state[2]
+        return self.state.deq
 
     @property
     def rendered(self) -> bool:
         """Whether the end-of-run deque dump has already been printed."""
-        return self.state[3]
+        return self.state.rendered
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has passed the last token."""
-        return self.state[0] >= self.size
+        return self.state.ind >= self.size
 
     # The VM's language-shaped view: the deque is the store, and the one
     # register reads as a stack of one.
@@ -137,12 +147,12 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The deque, front first."""
-        return list(self.state[2])
+        return list(self.state.deq)
 
     @property
     def stack(self) -> list[object]:
         """The single register, as a one-element stack."""
-        return [self.state[1]]
+        return [self.state.reg]
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -157,17 +167,17 @@ class _Machine:
 
         The print is the post-halt step, as other dumps spell it.
         """
-        ind, reg, deq, rendered = self.state
+        ind, _reg, _deq, rendered = self.state
         if ind >= self.size:
             if not rendered:
                 self.render()
-                self.state = (ind, reg, deq, True)
+                self.state = self.state._replace(rendered=True)
             return
         self.state = _advance(self.state, self.tokens[ind])
 
     def render(self) -> None:
         """Print the deque contents, one value per space, no trailing newline."""
-        self.io.print_str(" ".join(map(str, self.state[2])))
+        self.io.print_str(" ".join(map(str, self.state.deq)))
 
 
 def run(code: str, io: IO) -> None:

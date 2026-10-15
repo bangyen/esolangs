@@ -300,7 +300,7 @@ class TestStepMachine:
     def test_transition_keeps_its_input_memory(self) -> None:
         from esolangs.languages.addsubjump.interpreter import _advance, _pack
 
-        state = (_pack([8, -1, -1, -1, 0, 0, 0, 0, 7]), 0, 0, 0, 0, 0, 0)
+        state = (_pack([8, -1, -1, -1, 0, 0, 0, 0, 7]), 0, 0, 0, 0)
         value, after = _advance(state, (1, 3))
         assert value == 4
         assert state[0][0][8] == 7
@@ -347,7 +347,7 @@ class TestStepMachine:
             _store,
         )
 
-        state = (_pack([5, 0, 0]), 0, 0, 0, 0, 0, 0)
+        state = (_pack([5, 0, 0]), 0, 0, 0, 0)
         # Write a non-zero and then zero it again: back to the start.
         written = _store(_store(state, 1, 7), 1, 0)
         assert written[0] == state[0], "a zeroed cell left a key behind"

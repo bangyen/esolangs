@@ -2,10 +2,10 @@ checked = "2026-10-06"
 
 [languages]
 "///" = { backlinks = 86, route = "fame" }
-123 = { backlinks = 10, route = "grandfathered" }
 3x = { backlinks = 5, route = "first implementation" }
 6-5 = { backlinks = 2, route = "first implementation" }
 "A Painter Ant" = { backlinks = 4, route = "first implementation" }
+ABCDirection = { backlinks = 3, route = "first implementation" }
 AddSubJump = { backlinks = 5, route = "first implementation" }
 "Algebraic Programming Language" = { backlinks = 3, route = "first implementation" }
 Alight = { backlinks = 6, route = "first implementation" }
@@ -13,9 +13,7 @@ ArrowQueue = { backlinks = 3, route = "first implementation" }
 B-tapemark = { backlinks = 2, route = "first implementation" }
 Back = { backlinks = 1, route = "first implementation" }
 Befunge = { backlinks = 382, route = "fame" }
-BF-PDA = { backlinks = 7, route = "grandfathered" }
 BFStack = { backlinks = 3, route = "first implementation" }
-BIO = { backlinks = 4, route = "grandfathered" }
 Bitdeque = { backlinks = 5, route = "first implementation" }
 "Bitwise Cyclic Tag" = { backlinks = 179, route = "fame" }
 "bit~" = { backlinks = 1, route = "first implementation" }
@@ -49,14 +47,13 @@ Grapheme = { backlinks = 3, route = "first implementation" }
 "HQ9+" = { backlinks = 134, route = "fame" }
 Inject = { backlinks = 4, route = "first implementation" }
 INTERCAL = { backlinks = 100, route = "fame" }
-Jaune = { backlinks = 4, route = "grandfathered" }
+Interprogck8 = { backlinks = 4, route = "first implementation" }
 LaserFuck = { backlinks = 1, route = "first implementation" }
 Line = { backlinks = 2, route = "first implementation" }
 Malbolge = { backlinks = 130, route = "fame" }
 Minifuck = { backlinks = 9, route = "first implementation" }
 "Minsky Swap" = { backlinks = 9, route = "first implementation" }
 Modulous = { backlinks = 6, route = "first implementation" }
-NoComment = { backlinks = 2, route = "grandfathered" }
 "Nope." = { backlinks = 128, route = "fame" }
 Packlang = { backlinks = 4, route = "first implementation" }
 Painfuck = { backlinks = 3, route = "first implementation" }
@@ -70,7 +67,6 @@ ROTfuck = { backlinks = 3, route = "first implementation" }
 "SLOW ACV MAMMALIAN" = { backlinks = 1, route = "first implementation" }
 Smallfuck = { backlinks = 66, route = "fame" }
 Smu = { backlinks = 4, route = "first implementation" }
-Sophie = { backlinks = 3, route = "grandfathered" }
 SStack = { backlinks = 4, route = "first implementation" }
 Streetcode = { backlinks = 2, route = "first implementation" }
 Subleq = { backlinks = 82, route = "fame" }

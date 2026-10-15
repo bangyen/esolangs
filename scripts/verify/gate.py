@@ -145,15 +145,6 @@ STEPS = [
             "checks",
         ],
     ),
-    # language-owners: ["ArrowQueue", "BIO"]
-    # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
-    # lemmas and BIO's telescoping lookup, each pinning finite facts their
-    # total-over-every-arity proofs rest on.  2.2s together.  Which proofs
-    # those are is not listed here -- each declares a band beside itself and
-    # `tests/proofs/test_bands.py` holds the band to a 5s budget, so this step
-    # cannot silently grow or shrink.  The registry-wide battery sits in the
-    # `ci` band instead: it touches every generator, so scoping it here would
-    # mean running its 12s on nearly every edit.
     (
         "deep proofs (verify band)",
         [*PY, "-m", "tests.proofs.deep", "verify"],
@@ -178,6 +169,34 @@ FIXES: dict[str, tuple[str, ...]] = {
         "(only if the size change is intended)",
     ),
 }
+
+
+def _cause(returncode: int) -> str:
+    """Return why a step failed, from the codes ``wait_with_heartbeat`` sets."""
+    if returncode == 124:
+        return "deadline exceeded"
+    if returncode == 125:
+        return "log overflow or write error"
+    return f"exit {returncode}"
+
+
+#: Failing tests listed in the closing summary before it says how many more.
+_SHOWN_FAILURES = 10
+
+
+def _located(output: str | None) -> list[str]:
+    """Return a failed step's log path and pytest's failing test ids.
+
+    The summary used to end at ``rerun``, and following it meant a second
+    full-tree pytest run to learn a name already in the log.
+    """
+    lines = (output or "").splitlines()
+    log = [f"  {line}" for line in lines if line.startswith("[log] ")]
+    tests = [line for line in lines if line.startswith(("FAILED ", "ERROR "))]
+    shown = [f"  {line}" for line in tests[:_SHOWN_FAILURES]]
+    if len(tests) > _SHOWN_FAILURES:
+        shown.append(f"  ... and {len(tests) - _SHOWN_FAILURES} more in the log")
+    return log + shown
 
 
 def _rerun_hint(name: str) -> list[str]:
@@ -340,7 +359,7 @@ def _run_steps(  # noqa: C901
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
     stream: bool,
-) -> tuple[int, list[tuple[str, float]], float]:
+) -> tuple[list[tuple[str, int, str | None]], list[tuple[str, float]], float]:
     """Run the planned steps, overlapping the long one with the cheap ones.
 
     ``pre-commit`` finishes before readers start. Captured runs overlap
@@ -351,10 +370,11 @@ def _run_steps(  # noqa: C901
     that is holding the terminal alone can stream it live instead; two can
     not, since concurrent writers interleave into nonsense.
 
-    Returns the failure count, per-step CPU timings, and the wall time, which
-    concurrency makes smaller than the timings' sum.
+    Returns the failed steps with their exit codes and captured output,
+    per-step CPU timings, and the wall time, which concurrency makes smaller
+    than the timings' sum.
     """
-    failed: list[str] = []
+    failed: list[tuple[str, int, str | None]] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.monotonic()
     clean_cache: VerifiedCache | None = None
@@ -363,7 +383,7 @@ def _run_steps(  # noqa: C901
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         timings.append((name, elapsed))
         if not _report(name, elapsed, returncode, output):
-            failed.append(name)
+            failed.append((name, returncode, output))
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
@@ -409,7 +429,7 @@ def _run_steps(  # noqa: C901
                 run_serial(name, cmd, step_env)
         for future in futures:
             future.result()
-    if MUTATES_TREE in failed:
+    if any(name == MUTATES_TREE for name, *_ in failed):
         clean_cache = None
         cache_keys.clear()
 
@@ -471,9 +491,7 @@ def _run_steps(  # noqa: C901
     if clean_cache is not None and not clean_cache.finish():
         record("verification inputs", 0.0, 1, "Inputs changed during verification")
 
-    for name in failed:
-        print(f"[FAIL] {name}", *_rerun_hint(name), sep="\n")
-    return len(failed), timings, time.monotonic() - wall_start
+    return failed, timings, time.monotonic() - wall_start
 
 
 def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
@@ -643,8 +661,16 @@ def main() -> int:  # noqa: C901
         print(f"{total:5.1f}s  TOTAL (sum of steps)")
         print(f"{wall:5.1f}s  WALL  (elapsed, steps overlap)")
     print("=" * 40)
+    # Last, below the timings: a failing run's tail is where the reader looks.
+    for name, returncode, output in failures:
+        print(
+            f"[FAIL] {name}: {_cause(returncode)}",
+            *_located(output),
+            *_rerun_hint(name),
+            sep="\n",
+        )
     if failures:
-        print(f"{failures} check(s) failed")
+        print(f"{len(failures)} check(s) failed")
         return 1
     if unavailable:
         print(

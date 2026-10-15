@@ -1,9 +1,11 @@
 """Cyclic tag interpreter.
 
-Productions are semicolon-separated, followed by a comma and the initial bit
-queue. Whitespace is ignored; empty productions are valid. The package prints
-the final deleted bit on halt. Invalid source raises ValueError; no stdin is
-read, so EOFError does not arise. Appends are effects to avoid copying the queue.
+Source is ``p0;p1;...;pk,queue``: bit-string productions, a comma, then the
+initial bit queue.  Whitespace is ignored and productions may be empty.  Each
+step deletes the queue's first bit and, if it was 1, appends the current
+production; either way the next production comes up.  The queue running dry
+halts the machine, which then prints the last deleted bit.  Invalid source
+raises ValueError; no stdin is read.
 """
 
 from __future__ import annotations
@@ -13,17 +15,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
-#: ``(head, read, answer, printed)``: program position, leftmost live data-bit,
-#: the final deleted bit, and whether it is printed.  The program is fixed
-#: and the data-string is the store, so neither is in here.
-type _State = tuple[int, int, str | None, bool]
 
-
-def _parse(code: str) -> tuple[tuple[str, ...], str, tuple[int, ...]]:
-    """Parse semicolon-separated productions and comma-separated initial data."""
-    kept = [(at, c) for at, c in enumerate(code) if not c.isspace()]
-    source = "".join(c for _, c in kept)
-    if any(c not in "01;," for c in source) or source.count(",") != 1:
+def _parse(code: str) -> tuple[tuple[str, ...], list[str], tuple[int, ...]]:
+    """Return the productions, the queue, and each production's source offset."""
+    positions = [at for at, c in enumerate(code) if not c.isspace()]
+    source = "".join(code[at] for at in positions)
+    if source.count(",") != 1 or not set(source) <= set("01;,"):
         raise syntax_error(
             "Cyclic tag requires productions,queue using bits and semicolons",
             (
@@ -31,37 +28,38 @@ def _parse(code: str) -> tuple[tuple[str, ...], str, tuple[int, ...]]:
                 "and bit queue; for example 1;0,1"
             ),
         )
-    rules, data = source.split(",")
-    if ";" in data:
+    rules, queue = source.split(",")
+    if ";" in queue:
         raise syntax_error(
             "Cyclic tag queue contains a semicolon",
             "put semicolons only before the comma; the queue is a bit string",
         )
-    productions = tuple(rules.split(";"))
-    offsets = [kept[0][0]]
-    offsets.extend(kept[i + 1][0] for i, (_at, c) in enumerate(kept) if c == ";")
-    return productions, data, tuple(offsets)
+    # A production starts the source or follows a semicolon, and the comma
+    # always comes later, so an empty production still has a character.
+    starts = [0, *(i + 1 for i, c in enumerate(source) if c == ";")]
+    return tuple(rules.split(";")), list(queue), tuple(positions[i] for i in starts)
 
 
-def _advance(
-    state: _State, program: tuple[str, ...], bit: str
-) -> tuple[_State, str | None]:
-    """Delete one queue bit, conditionally append, and advance the rule."""
-    head, read, _answer, printed = state
-    append = program[head] if bit == "1" else None
-    return ((head + 1) % len(program), read + 1, bit, printed), append
+def _advance(read: int, program: tuple[str, ...], bit: str) -> tuple[int, str]:
+    """Delete the front bit; a 1 returns the production to append."""
+    return read + 1, program[read % len(program)] if bit == "1" else ""
 
 
 class _Machine:
-    """Cyclic production pointer and append-only queue store."""
+    """An append-only queue and a count of the bits deleted from its front.
+
+    Every step deletes exactly one bit, so that count also picks the
+    production and names the last deleted bit: it is the whole control state.
+    """
 
     dumps_on_the_post_halt_step = True
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.program, initial, self.offsets = _parse(code)
-        self.data = list(initial)
-        self.state: _State = (0, 0, None, False)
+        self.program, self.data, self._starts = _parse(code)
+        # Deleting advances ``read`` rather than shifting ``data``: O(1) a step.
+        self.read = 0
+        self.printed = False
 
     @property
     def halted(self) -> bool:
@@ -69,11 +67,13 @@ class _Machine:
 
     @property
     def head(self) -> int:
-        return self.state[0]
+        """The index of the production the next step uses."""
+        return self.read % len(self.program)
 
     @property
-    def read(self) -> int:
-        return self.state[1]
+    def answer(self) -> str | None:
+        """The last deleted bit, or None before the first deletion."""
+        return self.data[self.read - 1] if self.read else None
 
     @property
     def live(self) -> str:
@@ -81,32 +81,30 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        return self.offsets[self.head]
+        return self._starts[self.head]
 
     @property
     def memory(self) -> list[int]:
         return [int(c) for c in self.live]
 
     def snapshot(self) -> tuple[object, ...]:
-        # Deleted prefixes cannot affect a later transition.
-        return (self.head, self.live, self.state[2:], self.io.progress())
+        # Deleted bits cannot affect a later step, except the answer.  It and
+        # its printed flag are one output latch: the workspace ledger's +1 bit.
+        latch = (self.answer, self.printed)
+        return (self.head, self.live, latch, self.io.progress())
 
     def step(self) -> None:
-        if self.halted:
-            position, cursor, answer, printed = self.state
-            if answer is not None and not printed:
-                self.io.print_str(answer)
-            self.state = (position, cursor, answer, True)
-        else:
-            self.state, append = _advance(
-                self.state, self.program, self.data[self.read]
-            )
-            if append:
-                self.data.extend(append)
+        if not self.halted:
+            # The append is an effect so the growing queue is never copied.
+            self.read, append = _advance(self.read, self.program, self.data[self.read])
+            self.data.extend(append)
+        elif self.answer is not None and not self.printed:
+            self.io.print_str(self.answer)
+            self.printed = True
 
 
 def run(code: str, io: IO) -> None:
-    """Print the final deleted queue bit."""
+    """Print the last bit deleted before the queue empties."""
     drive(_Machine(code, io))
 
 

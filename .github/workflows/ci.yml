@@ -63,12 +63,6 @@ jobs:
     - name: Check generator sizes against the baseline
       run: uv run python checks/check_generator_sizes.py
 
-    # language-owners: ["ArrowQueue", "BIO"]
-    # Every deep proof in the `ci` band and cheaper: the ArrowQueue and BIO
-    # lemmas, and the registry-wide battery. ~14s. Which proofs those are is
-    # not spelled out here -- each declares its own band, and
-    # tests/proofs/test_bands.py holds the bands to their cost budgets, so
-    # this step cannot quietly shrink.
     - name: Check the deep proofs that gate
       run: uv run python -m tests.proofs.deep ci
 

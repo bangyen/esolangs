@@ -28,8 +28,9 @@ fallback area ties; larger drawings retain the smaller fallback.
 from __future__ import annotations
 
 import re
-from functools import lru_cache
-from typing import cast
+from collections.abc import Callable
+from functools import lru_cache, partial
+from typing import NamedTuple, cast
 
 from esolangs.generation.helpers import (
     _residual_ids,
@@ -54,7 +55,11 @@ from esolangs.languages.line.generator.render import (
     correction,
     loader_reads,
 )
-from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
+from esolangs.languages.line.generator.shared import (
+    CanvasPlan,
+    shared_canvas,
+    shared_tree,
+)
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
@@ -186,48 +191,56 @@ def _shared_candidates(truth_table: str, n: int) -> list[Node]:
     return nodes
 
 
+class _Candidate(NamedTuple):
+    """Smallest layout so far; ``rows`` draws it only when the raster is read."""
+
+    node: Node
+    area: int
+    rows: Callable[[], Rows]
+    complete: bool = False
+
+
+def _planned_rows(plan: CanvasPlan) -> Rows:
+    """Run a deferred canvas plan into shared RGB rows."""
+    return _grey_rows(plan())
+
+
 @lru_cache(maxsize=8)
 def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     _check_unit(unit)
-    node = line_boolean(truth_table)
     n = _validate_truth_table(truth_table)
-    canvas = small_tree_canvas(node, unit=unit) if n <= _SMALL_MAX else None
 
-    def area(tree: Node, drawn: Canvas | None) -> int:
-        if drawn is not None:
-            return drawn.width * drawn.height
+    def candidate(tree: Node) -> _Candidate:
+        if n <= _SMALL_MAX and (drawn := small_tree_canvas(tree, unit=unit)):
+            return _Candidate(
+                tree, drawn.width * drawn.height, partial(_grey_rows, drawn)
+            )
         top, bottom, left, right = tree_extents(tree)[id(tree)]
-        return (bottom - top + 2) * (right - left + 2) * unit**2
+        return _Candidate(
+            tree,
+            (bottom - top + 2) * (right - left + 2) * unit**2,
+            partial(_render_node, tree, unit=unit),
+        )
 
-    smallest = area(node, canvas)
+    best = candidate(line_boolean(truth_table))
     projected = projected_boolean(truth_table)
     if projected is not None:
-        drawn = small_tree_canvas(projected, unit=unit) if n <= _SMALL_MAX else None
-        projected_area = area(projected, drawn)
-        if projected_area < smallest:
-            node, canvas, smallest = projected, drawn, projected_area
-    shared_nodes = _shared_candidates(truth_table, n)
-    selected_draw = None
-    for graph in shared_nodes:
-        draw = shared_canvas(graph, smallest, unit=unit)
+        other = candidate(projected)
+        if other.area < best.area:
+            best = other
+    for graph in _shared_candidates(truth_table, n):
+        draw = shared_canvas(graph, best.area, unit=unit)
         if draw is not None:
-            smallest = draw.area
-            selected_draw = draw
-            node = graph
-    complete_selected = False
+            best = _Candidate(graph, draw.area, partial(_planned_rows, draw))
     for build in (streaming_canvas, projected_streaming_canvas):
         # A complete fold wins a fallback tie; a later fold retains the first tie.
-        fold = build(truth_table, smallest + int(not complete_selected), unit=unit)
+        fold = build(truth_table, best.area + int(not best.complete), unit=unit)
         if fold is not None:
-            node, selected_draw = fold
-            smallest = selected_draw.area
-            complete_selected = True
-    if selected_draw is not None:
-        return lazy_raster(lambda: _grey_rows(selected_draw()), node)
-    if canvas is not None:
-        return lazy_raster(lambda: _grey_rows(canvas), node)
-    return lazy_raster(lambda: _render_node(node, unit=unit), node)
+            best = _Candidate(
+                fold[0], fold[1].area, partial(_planned_rows, fold[1]), complete=True
+            )
+    return lazy_raster(best.rows, best.node)
 
 
 def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Raster:
@@ -235,13 +248,26 @@ def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Rast
     return _generate(truth_table, unit).upscaled(scale)
 
 
-type _Choice = tuple[tuple[int, int, int], Node, Canvas | None, bool, bool]
+class _Score(NamedTuple):
+    """Orders layouts by imbalance, then area, then width (0 when small)."""
+
+    imbalance: int
+    area: int
+    tiebreak: int
+
+
+class _Choice(NamedTuple):
+    score: _Score
+    node: Node
+    canvas: Canvas | None
+    compact: bool
+    tight: bool
 
 
 def _best_choice(
     options: list[Node], *, compact: bool, tight: bool = True, small: bool, unit: int
 ) -> _Choice:
-    """Return ``(score, node, canvas, compact, tight)`` of the most balanced option."""
+    """Return the most balanced option."""
     choices = []
     for node in options:
         canvas = (
@@ -254,9 +280,9 @@ def _best_choice(
         else:
             y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
             width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
-        score = abs(width - height), width * height, 0 if small else width
-        choices.append((score, node, canvas, compact, tight))
-    return min(choices, key=lambda choice: choice[0])
+        score = _Score(abs(width - height), width * height, 0 if small else width)
+        choices.append(_Choice(score, node, canvas, compact, tight))
+    return min(choices, key=lambda choice: choice.score)
 
 
 def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
@@ -270,7 +296,9 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
     old = _best_choice(previous, compact=False, small=small, unit=unit)
 
     def within_old(choice: _Choice) -> bool:
-        return choice[0] <= old[0] and (not small or choice[0][1] <= old[0][1])
+        return choice.score <= old.score and (
+            not small or choice.score.area <= old.score.area
+        )
 
     preceding = _best_choice(nodes, compact=True, tight=False, small=small, unit=unit)
     if not within_old(preceding):
@@ -281,7 +309,7 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
     if not within_old(chosen):
         chosen = old
     # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
-    if chosen[0][1] > preceding[0][1]:
+    if chosen.score.area > preceding.score.area:
         chosen = preceding
     return chosen
 
@@ -293,15 +321,15 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     score, selected, canvas, compact, tight = _balanced_choice(
         truth_table, small=small, unit=unit
     )
-    width = canvas.width if canvas is not None else score[2]
+    width = canvas.width if canvas is not None else score.tiebreak
     if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
         height, shared_width = len(default.rows), len(default.rows[0])
         shared_area = shared_width * height
         if (abs(shared_width - height), shared_area, shared_width) <= (
-            score[0],
-            score[1],
+            score.imbalance,
+            score.area,
             width,
-        ) and shared_area <= score[1]:
+        ) and shared_area <= score.area:
             return default
     return lazy_raster(
         lambda: (

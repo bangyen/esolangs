@@ -1,9 +1,16 @@
-"""Build capped Unary programs; halt means zero, a fixed loop means one.
+"""Unary boolean generator: a Brainfuck program, written as a count of zeros.
+
+A Unary program is N zeros.  N in binary is a 1, then three bits per
+Brainfuck command in ``><+-.,[]`` order, so the generator writes Brainfuck
+and counts.  Halting answers 0; ``[]`` on a nonzero cell loops forever and
+answers 1.  The identity is ``,[]``: binary ``1 101 110 111``, 887 zeros,
+which halt on input 0 and loop on 255.
 
 Inputs are bytes 0 and 255. Complementing a read with + gives 1 and 0
-without an ASCII prelude. Source counts grow exponentially in decoded
-commands; refuse before allocating more than 256 Mi characters of zeros. No repeated
-residual survives the admitted nine-command source budget.
+without an ASCII prelude. Each command multiplies the count by eight (n=2's
+``0001`` is 27,452,351 zeros, and ``0110`` is past the cap), so generation
+refuses past 256 Mi zeros. No repeated residual survives the admitted
+nine-command source budget.
 """
 
 from esolangs.compressed import CompressedText, TextLimits
@@ -27,8 +34,10 @@ def _decoded(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     kept = essential_inputs(truth_table, n)
     if not kept:
+        # A constant: read the inputs, then halt or loop on a cell set to 1.
         return "," * n + (">+[]" if truth_table[0] == "1" else "")
     if len(kept) == 1:
+        # One input decides: loop on its cell, after + if the table negates it.
         index = kept[0]
         reads = "," * (index + 1)
         if index < n - 1:
@@ -51,14 +60,19 @@ def unary(truth_table: str) -> CompressedText:
     # Every path must read n inputs, so every encoding has at least n commands.
     if n > 9:
         raise GeneratorCapError("Unary needs at least 8**n zeros; max-inputs=9")
+    return CompressedText.repeated("0", _zeros(_decoded(truth_table)), limits=_LIMITS)
+
+
+def _zeros(brainfuck: str) -> int:
+    """Return the zero count: a binary 1, then each command's three bits."""
     count = 1
-    for command in _decoded(truth_table):
+    for command in brainfuck:
         count = 8 * count + "><+-.,[]".index(command)
         if count > _MAX_SOURCE:
             raise GeneratorCapError(
                 "Unary source exceeds the 256 Mi-character generation-work cap"
             )
-    return CompressedText.repeated("0", count, limits=_LIMITS)
+    return count
 
 
 LANGUAGE = Language(

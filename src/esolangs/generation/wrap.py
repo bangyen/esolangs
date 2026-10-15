@@ -18,6 +18,7 @@ lines. Language-owned wrappers preserve their own token and term boundaries;
 import inspect
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from math import isqrt
 from typing import TYPE_CHECKING, Any
 
@@ -176,25 +177,21 @@ _DIMENSIONAL_COMMAND = r"[<>$?!{]~?\d*|=[\s\S]{0,2}|:[\s\S]?|[\s\S]"
 
 # 6-5's ``7``/``8`` take the next character, whatever it is (the
 # interpreter's tokenizer merges the pair blind), so this matches any
-# character, not ``[0-9A-Z]``.  ``7n`` also swallows the instruction it
-# guards, operand included; see :func:`_six_five`.
+# character, not ``[0-9A-Z]`` (``_operand("7\n")`` is -45).  ``7n`` skips the
+# next *token*, a newline included (``706A`` leaves cell 0, ``70\n6A`` cell
+# 6), so it swallows the instruction it guards, operand included; ``8n``
+# counts ``4`` markers and needs no pairing.
 _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 
-# Literal-printing languages: the literal is one token (an over-wide one
-# gets its own line).  Sophie: numeric load and branch, then the
-# one-character forms, longest first (``#\$\d+,`` with the comma required
-# once tokenized ``#$1`` as ``#$`` + ``1``); ``}{`` is an if-close beside
-# an else-open, and a newline between loses the else.
-_SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 
 # Minifuck ``[`` skips the next character (``ind + 2``), so a newline
 # there is what gets skipped; consecutive ``[`` chain, so the whole run
 # stays with the character after it, or with the input run after it.
 _MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|[\s\S])|[\s\S]"
 
-# Jaune: operand before operator (``3?``, ``2+``, ``v?``) is the only
-# unbreakable unit. Splitting ``++4:`` makes its final plus a label sign.
-_JAUNE_COMMAND = r"[+-]{2,}|[+-]?\d+[-+:?!$@]|v[-+?!@:$]|."
+
+# A newline inside a bracketed literal prints; Eval also keeps each ``?x``
+# conditional whole.
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _EVAL_UNIT = r'"[^"]*"|\?.|.'
 
@@ -208,28 +205,25 @@ _FALSE_COMMAND = r"'[\s\S]|[\s\S]"
 _UNLAMBDA_COMMAND = r"[.?][\s\S]|[\s\S]"
 
 
-def _dimensional(program: str, width: int) -> str:
-    return wrap_tokens(program, width, _DIMENSIONAL_COMMAND)
+@dataclass(frozen=True)
+class _TokenWrapper:
+    """A wrapper that breaks only between matches of ``pattern``.
 
-
-def _six_five(program: str, width: int) -> str:
-    r"""Wrap 6-5, keeping each ``7n`` and the instruction it guards together.
-
-    ``7``/``8`` take the next character as operand (``num("\n")`` is -45),
-    and ``7n`` skips the next *token*, a newline included: ``706A`` leaves
-    cell 0, ``70\n6A`` cell 6.  So ``7n`` plus what follows is one token;
-    ``8n`` counts ``4`` markers and needs no pairing.
+    :func:`balance_program` fits the same tokens, reading ``pattern`` off it.
     """
-    return wrap_tokens(program, width, _SIX_FIVE_COMMAND)
+
+    pattern: str
+
+    def __call__(self, program: str, width: int) -> str:
+        return wrap_tokens(program, width, self.pattern)
 
 
-def _sophie(program: str, width: int) -> str:
-    """Wrap Sophie, keeping each ``#<char>,`` command whole.
-
-    A newline after ``#`` is printed in place of the character, same length:
-    ``Hello, World!`` came back ``Hello, Worll!``.
-    """
-    return wrap_tokens(program, width, _SOPHIE_COMMAND)
+_dimensional = _TokenWrapper(_DIMENSIONAL_COMMAND)
+_six_five = _TokenWrapper(_SIX_FIVE_COMMAND)
+_false = _TokenWrapper(_FALSE_COMMAND)
+_unlambda = _TokenWrapper(_UNLAMBDA_COMMAND)
+_bracket_literal = _TokenWrapper(_BRACKET_LITERAL)
+_quote_literal = _TokenWrapper(_EVAL_UNIT)
 
 
 def _minifuck(program: str, width: int) -> str:
@@ -243,38 +237,6 @@ def _minifuck(program: str, width: int) -> str:
     if "\n" in program and max(map(len, program.split("\n"))) <= max(width, floor):
         return program
     return _join_tokens(tokens, width, separator="")
-
-
-def _false(program: str, width: int) -> str:
-    """Wrap FALSE, keeping each ``'x`` character push whole."""
-    return wrap_tokens(program, width, _FALSE_COMMAND)
-
-
-def _unlambda(program: str, width: int) -> str:
-    """Wrap Unlambda, keeping each ``.x`` print and ``?x`` test whole."""
-    return wrap_tokens(program, width, _UNLAMBDA_COMMAND)
-
-
-def _jaune(program: str, width: int) -> str:
-    """Wrap Jaune, keeping each operand attached to the operator it feeds.
-
-    ``3?`` and ``12+`` put the operand first; a bare ``?`` is a load error,
-    and the failure is positional (10, 17, 25, 37, 50 fail; 40 and 80 pass).
-    """
-    return wrap_tokens(program, width, _JAUNE_COMMAND)
-
-
-def _bracket_literal(program: str, width: int) -> str:
-    """Wrap bracket literals, keeping a bracketed group whole.
-
-    A newline inside its bracketed literal prints.
-    """
-    return wrap_tokens(program, width, _BRACKET_LITERAL)
-
-
-def _quote_literal(program: str, width: int) -> str:
-    """Wrap Eval, keeping literals and conditional commands whole."""
-    return wrap_tokens(program, width, _EVAL_UNIT)
 
 
 def __getattr__(name: str) -> Any:
@@ -339,20 +301,6 @@ def balance_width(program: str) -> int:
     return isqrt(area - 1) + 1
 
 
-def _token_patterns() -> dict[Callable[[str, int], str], str]:
-    """Each token wrapper's token: it balances over what it breaks between."""
-    return {
-        _dimensional: _DIMENSIONAL_COMMAND,
-        _six_five: _SIX_FIVE_COMMAND,
-        _jaune: _JAUNE_COMMAND,
-        _false: _FALSE_COMMAND,
-        _unlambda: _UNLAMBDA_COMMAND,
-        _sophie: _SOPHIE_COMMAND,
-        _bracket_literal: _BRACKET_LITERAL,
-        _quote_literal: _EVAL_UNIT,
-    }
-
-
 def _token_fit(program: str, tokens: list[str], separator: str = "") -> str:
     """Return ``program`` or its tokens at their balanced width, the squarer."""
     width = balanced_token_width(tokens, separator)
@@ -379,9 +327,8 @@ def _balance_line(program: str, language_id: str) -> str | None:
     wrapper = lang.wrap
     if wrapper is wrap_space_delimited:
         return _token_fit(program, program.split(), " ")
-    pattern = _TOKEN_PATTERNS.get(wrapper) if wrapper is not None else None
-    if pattern is not None:
-        return _token_fit(program, _tokens(program, pattern))
+    if isinstance(wrapper, _TokenWrapper):
+        return _token_fit(program, _tokens(program, wrapper.pattern))
     if wrapper is wrap_chars and _MARK_PATTERN.search(program):
         return _token_fit(program, _tokens(program, r"[\s\S]"))
     if wrapper is wrap_grid:
@@ -404,6 +351,3 @@ def balance_score(program: str) -> tuple[int, int, int]:
     rows = program.split("\n")
     width = max(map(len, rows), default=0)
     return abs(width - len(rows)), len(program), width
-
-
-_TOKEN_PATTERNS = _token_patterns()

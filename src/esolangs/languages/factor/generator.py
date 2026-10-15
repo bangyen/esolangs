@@ -160,15 +160,15 @@ def _program(
     plain = prefix + body + move_text(pos, result, ">", "<") + "."
     if not forms:
         return plain
-    # Six offset-building trips and 48 dedent trips, with no opener retest.
-    prelude = 199 * n + 48 * len(perm) + 240
+    prelude = _prelude(n, perm)
+    bound = _command_bound(n)
     candidate = shared_flag_tree(
         table,
         perm,
         after_reads,
         result,
         binary_leaves=True,
-        command_budget=265 * n + 230 - prelude,
+        command_budget=bound - prelude,
         forms=forms,
     )
     if candidate is None:
@@ -176,10 +176,18 @@ def _program(
     body, commands = candidate
     program = prefix + body + "."
     return (
-        program
-        if prelude + commands + 1 <= 265 * n + 231 and len(program) <= len(plain)
-        else plain
+        program if prelude + commands <= bound and len(program) <= len(plain) else plain
     )
+
+
+def _prelude(n: int, perm: tuple[int, ...]) -> int:
+    """Commands of the build and dedent loops: six offset trips, 48 per dedent."""
+    return 199 * n + 48 * len(perm) + 240
+
+
+def _command_bound(n: int) -> int:
+    """Largest command count the shared-flag form may use."""
+    return 265 * n + 230
 
 
 def factor(truth_table: str) -> str:

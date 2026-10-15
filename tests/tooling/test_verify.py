@@ -172,7 +172,7 @@ def test_missing_tools_never_report_complete_verification(
 
     def run_steps(steps, **_kwargs):
         runs.extend(name for name, _, _ in steps)
-        return 0, [], 0.0
+        return [], [], 0.0
 
     monkeypatch.setattr(verify, "_run_steps", run_steps)
     assert verify.main() == (0 if allow else 1)
@@ -206,7 +206,7 @@ def test_shared_changes_keep_all_tests_without_local_coverage(
         "run_bounded",
         lambda *_a, **_kw: subprocess.CompletedProcess([], 0),
     )
-    with mock.patch.object(verify, "_run_steps", return_value=(0, [], 0.0)) as run:
+    with mock.patch.object(verify, "_run_steps", return_value=([], [], 0.0)) as run:
         assert verify.main() == 0
     runnable = run.call_args.args[0]
     cmd = next(cmd for name, cmd, _ in runnable if name == "pytest")
@@ -217,6 +217,55 @@ def test_shared_changes_keep_all_tests_without_local_coverage(
         "mypy (src + scripts)",
         "pytest",
     }
+
+
+def test_failures_close_the_run_with_their_cause(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    verify = load_script()
+    monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
+    monkeypatch.setattr(
+        verify, "_parse_only_skip", lambda: (None, None, True, True, False, False)
+    )
+    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
+    monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
+    monkeypatch.setattr(
+        verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
+    )
+    result = ([("pytest", 124, None), ("mypy", 1, None)], [("pytest", 9.0)], 9.0)
+    with mock.patch.object(verify, "_run_steps", return_value=result):
+        assert verify.main() == 1
+    tail = capsys.readouterr().out.split("WALL")[1]
+    assert "[FAIL] pytest: deadline exceeded" in tail
+    assert "[FAIL] mypy: exit 1" in tail
+    assert tail.rstrip().endswith("2 check(s) failed")
+
+
+def test_a_failure_names_its_log_and_failing_tests(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without these a reader reran a full-tree pytest to learn one test's name."""
+    verify = load_script()
+    monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
+    monkeypatch.setattr(
+        verify, "_parse_only_skip", lambda: (None, None, True, True, False, False)
+    )
+    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
+    monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
+    monkeypatch.setattr(
+        verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
+    )
+    many = "".join(f"FAILED tests/t.py::test_{i} - boom\n" for i in range(12))
+    output = "[log] notes/verification/pytest-x.log\nnoise\n" + many
+    result = ([("pytest", 1, output)], [("pytest", 9.0)], 9.0)
+    with mock.patch.object(verify, "_run_steps", return_value=result):
+        assert verify.main() == 1
+    summary = capsys.readouterr().out.split("[FAIL] pytest: exit 1")[1]
+    assert "  [log] notes/verification/pytest-x.log" in summary
+    assert "  FAILED tests/t.py::test_0 - boom" in summary
+    assert "test_10" not in summary
+    assert "... and 2 more in the log" in summary
+    assert "noise" not in summary
 
 
 @pytest.mark.medium
@@ -245,7 +294,7 @@ assert ready.exists(), 'producer stalled on captured output'
         ("shadow", [sys.executable, "-c", consumer], {}),
     ]
     failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
-    assert failures == int(returncode != 0)
+    assert len(failures) == int(returncode != 0)
     assert {name for name, _ in timings} == {"pytest", "shadow"}
     output = capsys.readouterr().out
     if returncode:
@@ -388,7 +437,7 @@ def test_leak_sweep_starts_before_pytest_finishes(tmp_path) -> None:
         ),
     ]
     failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
-    assert failures == 0
+    assert len(failures) == 0
     assert {name for name, _ in timings} == {"pytest", "exception leaks"}
 
 
@@ -421,7 +470,7 @@ def test_companion_checks_share_one_serial_lane(monkeypatch) -> None:
     )
     runnable = [(name, [name], {}) for name in ("pytest", "first", "second")]
     failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
-    assert failures == 0
+    assert len(failures) == 0
     assert {name for name, _ in timings} == {"pytest", "first", "second"}
 
 
@@ -452,7 +501,7 @@ while True:
         steps.append(("shadow", [sys.executable, "-c", "pass"], dict(os.environ)))
     start = time.monotonic()
     failures, _, _ = v._run_steps(steps, stream=stream)  # noqa: SLF001
-    assert failures == 1
+    assert len(failures) == 1
     assert time.monotonic() - start < 3
     value = marker.read_text()
     time.sleep(0.1)
@@ -488,7 +537,7 @@ print('late worker output', flush=True)
     failures, _, _ = verify._run_steps(  # noqa: SLF001
         [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=stream
     )
-    assert failures == 1
+    assert len(failures) == 1
     assert time.monotonic() - start < 0.9
     output = capsys.readouterr().out
     assert "leader exited" in output
@@ -514,7 +563,7 @@ def test_exited_leaders_worker_can_finish_within_the_deadline(
     failures, _, _ = verify._run_steps(  # noqa: SLF001
         [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=stream
     )
-    assert failures == 0
+    assert len(failures) == 0
     logs = list((tmp_path / "notes/verification").glob("*.log"))
     assert logs[0].read_text() == "worker finished\n"
     assert "deadline exceeded" not in capsys.readouterr().out
@@ -593,10 +642,36 @@ def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
     failures, _, _ = verify._run_steps(  # noqa: SLF001
         [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=False
     )
-    assert failures == 1
+    assert len(failures) == 1
     output = capsys.readouterr().out
     assert output.count("still running") >= 2
     assert "deadline exceeded (0.2s)" in output
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX")
+def test_a_zombie_group_counts_as_stopped_but_a_live_one_does_not(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Darwin's killpg says EPERM once the leader exits; that raced 1 run in 15."""
+    verify = load_script()
+    process = sys.modules[verify.start_logged.__module__]
+
+    def refuse(_pid: int, _signal: int) -> None:
+        raise PermissionError(errno.EPERM, "Operation not permitted")
+
+    monkeypatch.setattr(process.os, "killpg", refuse)
+    exited = subprocess.Popen([sys.executable, "-c", "pass"], start_new_session=True)
+    exited.wait()
+    process.stop_process_tree(exited)
+    live = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True
+    )
+    try:
+        with pytest.raises(PermissionError):
+            process.stop_process_tree(live)
+    finally:
+        live.kill()
+        live.wait()
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -627,7 +702,7 @@ def test_log_writer_errors_fail_the_check_and_stop_running_steps(
         [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=stream
     )
     assert injected == [True]
-    assert failures == 1
+    assert len(failures) == 1
     assert time.monotonic() - start < 0.9
     output = capsys.readouterr().out
     assert "partial log" in output
@@ -660,7 +735,7 @@ def test_unreadable_log_fails_with_a_diagnostic(
         [("probe", [sys.executable, "-c", script], dict(os.environ))],
         stream=stream,
     )
-    assert failures == 1
+    assert len(failures) == 1
     output = capsys.readouterr().out
     assert "log error" in output
     assert "injected unreadable log" in output
@@ -691,7 +766,7 @@ def test_broken_streamed_stdout_does_not_fail_complete_logs(
         stream=True,
     )
     assert injected == [True]
-    assert failures == 0
+    assert len(failures) == 0
     logs = list((tmp_path / "notes/verification").glob("*.log"))
     assert logs[0].read_text() == "tee output\n"
 
@@ -703,7 +778,7 @@ def test_step_logs_persist_for_streamed_and_captured_output(
     verify = load_script()
     verify.ROOT = tmp_path
     steps = [("probe", [sys.executable, "-c", "print('log marker')"], dict(os.environ))]
-    assert verify._run_steps(steps, stream=stream)[0] == 0  # noqa: SLF001
+    assert verify._run_steps(steps, stream=stream)[0] == []  # noqa: SLF001
     logs = list((tmp_path / "notes/verification").glob("*.log"))
     assert len(logs) == 1
     assert logs[0].read_text() == "log marker\n"
@@ -740,7 +815,7 @@ assert Path({str(marker)!r}).exists(), 'stream withheld a flushed short line'
         verify._run_steps(  # noqa: SLF001
             [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=True
         )[0]
-        == 0
+        == []
     )
 
 

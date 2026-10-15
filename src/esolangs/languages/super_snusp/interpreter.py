@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from operator import add, and_, mul, or_, sub, xor
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -31,7 +31,18 @@ _RULD = (3, 2, 1, 0)
 _LURD = (1, 0, 3, 2)
 type _Cursor = tuple[int, int, int]
 type _Tape = tuple[int, tuple[tuple[int, int], ...]]
-type _State = tuple[_Cursor, _Tape, tuple[int, ...], bool, bool]
+
+
+class _State(NamedTuple):
+    """The pure machine state that `_advance` maps to its successor."""
+
+    cursor: _Cursor
+    tape: _Tape
+    values: tuple[int, ...]
+    digit: bool  # the last command was a digit
+    done: bool  # the cursor has left the grid
+
+
 type _Effect = tuple[str, int] | None
 
 
@@ -143,7 +154,7 @@ def _advance(  # noqa: C901
         if command == "!":
             steps = 2
         elif command == "'":
-            return ((row, col, heading), (pointer, cells), values, False, True), None
+            return state._replace(done=True, digit=False), None
         elif command == "#":
             effect = ("num", value)
         elif command == "$":
@@ -228,7 +239,9 @@ def _advance(  # noqa: C901
     row += d_row * steps
     col += d_col * steps
     done = not (0 <= row < len(code) and 0 <= col < len(code[0]))
-    return ((row, col, heading), (pointer, cells), values, last_digit, done), effect
+    return _State(
+        (row, col, heading), (pointer, cells), values, last_digit, done
+    ), effect
 
 
 class _Machine:
@@ -254,11 +267,11 @@ class _Machine:
             lines = [r for r, line in enumerate(code) if line.strip()] or [0]
             starts = [(lines[-1], len(code[lines[-1]].rstrip()) - 1)]
         row, col, heading = (*starts[0], 0)
-        self.state: _State = ((row, col, heading), (0, ()), (), False, False)
+        self.state = _State((row, col, heading), (0, ()), (), digit=False, done=False)
 
     @property
     def halted(self) -> bool:
-        return self.state[4]
+        return self.state.done
 
     #: ``ip`` is a cell of the program's own rectangle: the first two
     #: parts are a row and a column, and the rest is a heading.  Without
@@ -268,19 +281,28 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        return None if self.halted else self.state[0]
+        return None if self.halted else self.state.cursor
 
     @property
     def memory(self) -> list[int]:
-        return [value for _, value in self.state[1][1]]
+        return [value for _, value in self.state.tape[1]]
 
     @property
     def stack(self) -> list[object]:
-        return list(self.state[2])
+        return list(self.state.values)
 
     def snapshot(self) -> tuple[object, ...]:
-        cursor, (pointer, cells), values, digit, done = self.state
-        return (*cursor, pointer, cells, values, digit, done, self.io.progress())
+        state = self.state
+        pointer, cells = state.tape
+        return (
+            *state.cursor,
+            pointer,
+            cells,
+            state.values,
+            state.digit,
+            state.done,
+            self.io.progress(),
+        )
 
     # The all-random-outcomes search.  ``_State`` is already the whole
     # machine -- ``done`` included -- so the branching state is that value
@@ -293,7 +315,7 @@ class _Machine:
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has left the grid."""
-        return cast(_State, state)[4]
+        return cast(_State, state).done
 
     def branching_successors(
         self, state: object, _limit: int
@@ -318,7 +340,9 @@ class _Machine:
         universal hang for a program that stops.
         """
         current = cast(_State, state)
-        (row, col, _heading), (pointer, cells), values, _digit, _done = current
+        row, col, _ = current.cursor
+        pointer, cells = current.tape
+        values = current.values
         command = self.code[row][col]
         if command in ",@":
             return None
@@ -346,7 +370,8 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        (row, col, _heading), (pointer, cells), values, _digit, _done = self.state
+        (row, col, _), (pointer, cells) = self.state.cursor, self.state.tape
+        values = self.state.values
         command = self.code[row][col]
         char_input = self.io.input_char() if command == "," else None
         number_input = self.io.input_num() if command == "@" else None

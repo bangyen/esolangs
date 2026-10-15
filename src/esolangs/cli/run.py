@@ -34,7 +34,6 @@ from esolangs.cli.io import (
     _read_program,
     _read_stdin,
     _resolve_target,
-    _termination_notice,
     _unbounded_notice,
     _write_output,
 )
@@ -96,14 +95,9 @@ def _run(rest: list[str]) -> None:
         if not portable:
             dialect_options(language, settings)
         facts = describe(language)
-        mode = facts["answer_mode"]
-        name = facts["name"]
-    if mode == "termination" and timeout is None:
-        # The default path for these is an unbounded run of a program
-        # written to loop forever, which is a hang with no output and no
-        # explanation.  Not refused -- a program whose answer is 0 halts,
-        # and running one unbounded is perfectly sensible -- but said aloud.
-        _termination_notice(name, "--timeout SECONDS")
+    # No Boolean-answer notes here: run takes any program, and the
+    # termination contract (halt 0, diverge 1) is a generated program's,
+    # stated by describe and read-answer.
     program = _read_program(
         path,
         timeout,
@@ -136,13 +130,6 @@ def _run(rest: list[str]) -> None:
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:
-        if mode == "termination":
-            # A slow halting run can also time out; this is not a verdict.
-            sys.stderr.write(
-                f"{exc}\nnote: {name} answers by termination, but a timeout "
-                f"does not establish divergence; the Boolean answer is undecided\n"
-            )
-            sys.exit(_TIMEOUT_EXIT)
         # Distinct from a program error's 1, following timeout(1), so a
         # script can tell "ran out of time" from "the program broke".  Those
         # shared exit 1, which made the termination languages'

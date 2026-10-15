@@ -1,4 +1,16 @@
-"""Linear /// construction: unary row selection by a fixed substitution sweep.
+"""/// boolean generator: rewrite rules turn the inputs into a row number.
+
+A ``/pattern/replacement/`` rule rewrites the rest of the program until the
+pattern is gone, so the program is a list of rules followed by its data:
+the inputs as ``a`` (0) and ``b`` (1), a cursor ``>``, and the table as
+``qA`` (0) and ``qB`` (1).  For ``0110`` on inputs 1, 0 the rules take the
+data from ``ba>qAqBqBqA`` through
+
+    a*a>qAqBqBqA     /b/a*/      a 1 becomes a and a star
+    aa**>qAqBqBqA    /*a/a**/    a star doubles as it passes an a
+    **>qAqBqBqA      /a//        the a's go: row 2 is two stars
+    >qBqA            sweeps      each star deletes the entry at the cursor
+    1                decode      the entry at the cursor is its digit
 
 The table is a literal with no subtrees to fold or share, and a trailing run
 cannot be trimmed: the cursor ``>`` is left undecoded (116 of 126 wrong).
@@ -13,21 +25,27 @@ from esolangs.generation.helpers import (
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
+#: Binary to unary, most significant bit first: the row as that many ``*``.
 _UNARY = "/b/a*//*a/a**//a//"
+#: One sweep: a star deletes a ``qA`` at the cursor, then one deletes a
+#: ``qB``.  The pattern's ``\>`` keeps this sweep from rewriting later ones:
+#: unescaped, they become ``/>/>/`` and every non-constant row through n=2
+#: hangs (60 of 72).
 _SWEEP = "/*\\>qA/>//*\\>qB/>/"
+#: Mark the entry at the cursor, delete the others, print the mark's digit.
 _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
 #: Deletes an ignored input's ``X``-marked bit before the unary sweep reads it.
 _IGNORE = "/Xa///Xb//"
+#: A constant table needs no row: delete the inputs, leave the answer.
 _CONSTANT = "/a///b//"
 
 
 def slashes(truth_table: str) -> str:
-    """Embed ordered bits; each sweep consumes at least one indexed table row.
+    """Return the rules, then the input slots, the cursor and the table.
 
-    Escaping the cursor in future patterns prevents earlier sweeps rewriting
-    those patterns. The binary-to-unary substitutions use disjoint alphabets
-    from the table and decoder. There are 2^m sweeps and 2^(m+1) table
-    characters for the m inputs the table depends on.
+    Each sweep deletes at least one entry while stars remain, so 2^m sweeps
+    reach any row of the 2^m entries for the m inputs the table depends on.
+    The unary rules use letters the table and decoder never contain.
     """
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
@@ -77,7 +95,7 @@ def _is_unfilled_template(code: str) -> bool:
 LANGUAGE = Language(
     "///",
     "slashes",
-    category="other",
+    category="program_based",
     id="slashes",
     aliases=("Slashalash",),
     path_like_source=True,

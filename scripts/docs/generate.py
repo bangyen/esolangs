@@ -46,7 +46,7 @@ CURATION = ROOT / "tests" / "support/fixtures" / "curation.toml"
 # category.  The list order is the classification priority (a language is
 # filed by its most distinctive data structure): grid (a beam/pointer moving
 # on a 2D surface) > stack > queue > tape > register (the imperative
-# default) > other.
+# default) > program > variables > other.
 _README_HEADINGS = [
     (
         "grid_based",
@@ -72,6 +72,16 @@ _README_HEADINGS = [
         "register_based",
         "Register-based Languages",
         "Languages that use registers to store and manipulate data.",
+    ),
+    (
+        "program_based",
+        "Self-modifying Languages",
+        "Languages whose data is the program itself, rewritten as it runs.",
+    ),
+    (
+        "variable_based",
+        "Variable-based Languages",
+        "Languages that store data in named variables the program declares.",
     ),
     (
         "other",
@@ -367,9 +377,8 @@ def render_curation_census_section() -> str:
             f"The {census['checked']} census (`tests/support/fixtures/curation.toml`)"
             " records each",
             f"language's backlinks and route: {routes.count('fame')} clear the"
-            " fame gate,",
-            f"{routes.count('first implementation')} are first implementations"
-            f" and {routes.count('grandfathered')} are grandfathered.",
+            " fame gate",
+            f"and {routes.count('first implementation')} are first implementations.",
         ]
     )
 

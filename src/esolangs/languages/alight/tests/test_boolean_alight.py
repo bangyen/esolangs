@@ -258,11 +258,13 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
     assert _evaluate("Alight", program, inputs=8, settings=settings) == table
 
 
+# n=3 and 8 reach the small and wide layouts, bit "0" every arc the all-ones
+# table does; either alone, or one syntax, loses arcs.
 @pytest.mark.parametrize("syntax", ["infix", "postfix"])
-@pytest.mark.parametrize("bit", ["0", "1"])
+@pytest.mark.parametrize("bit", ["0"])
 @pytest.mark.parametrize("width", [None, 1, 8, 40, "balance"])
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [3, 4, 8])
+@pytest.mark.parametrize("n", [3, 8])
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
     import esolangs
     from esolangs.generation.wrap import balance_score

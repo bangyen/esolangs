@@ -96,13 +96,13 @@ def _answer_column(cells: dict[tuple[int, int], str], middle: int, y: int) -> No
 def _folded_walk[C, R](
     rows: int,
     constant: Callable[[int, int], bool],
-    leaf: Callable[[int, int, int, C], R],
+    leaf: Callable[[int, int, C], R],
     branch: Callable[[int, int, int, C, Callable[[int, int, int, C], R]], R],
     cursor: C,
 ) -> R:
     """Walk the folded decision tree, painting it through callbacks.
 
-    ``leaf(lo, hi, depth, cursor)`` paints a constant span; ``branch(lo, hi,
+    ``leaf(lo, depth, cursor)`` paints a constant span; ``branch(lo, hi,
     depth, cursor, descend)`` paints a switch and calls ``descend(lo, hi,
     depth, cursor)`` for each half it draws, in whichever order its layout
     needs.  The traversal -- constant test, halving, recursion -- is shared;
@@ -113,7 +113,7 @@ def _folded_walk[C, R](
 
     def descend(lo: int, hi: int, depth: int, cursor: C) -> R:
         if constant(lo, hi):
-            return leaf(lo, hi, depth, cursor)
+            return leaf(lo, depth, cursor)
         return branch(lo, hi, depth, cursor, descend)
 
     return descend(0, rows, 0, cursor)
@@ -146,7 +146,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     # rows would have filled -- the drawing narrows rather than leaving a gap.
     middles: list[int] = []
 
-    def paint_leaf(lo: int, _hi: int, depth: int, _cursor: None) -> int:
+    def paint_leaf(lo: int, depth: int, _cursor: None) -> int:
         """Draw the leaf for ``truth_table[lo]``; return its middle column.
 
         Constant: no branch below here can change the answer, so this is a
@@ -262,7 +262,7 @@ def _occurrences(
     counts = [Counter(level) for level in ids]
     found: Counter[int] = Counter()
 
-    def on_leaf(_lo: int, _hi: int, _depth: int, _cursor: None) -> None:
+    def on_leaf(_lo: int, _depth: int, _cursor: None) -> None:
         """Constant spans are never shared, so there is nothing to count."""
 
     def on_branch(
@@ -325,7 +325,7 @@ class _Stacked:
             y += 2
         return y
 
-    def paint_leaf(self, lo: int, _hi: int, depth: int, cursor: _Cursor) -> _Cursor:
+    def paint_leaf(self, lo: int, depth: int, cursor: _Cursor) -> _Cursor:
         """Draw the leaf for ``truth_table[lo]``, entered at ``(spine, y)``.
 
         A folded leaf's owed reads stack above it.  Returns the row below
@@ -373,6 +373,12 @@ class _Stacked:
         below = self._one_branch(lo + half, hi, depth, y, descend, locked=locked)
         return self._zero_branch(lo, lo + half, depth, y, below, descend, locked=locked)
 
+    def _enter_from_east(self, y: int, corner: str) -> None:
+        """Paint the detour west from ``spine + 2`` onto the spine at row ``y``."""
+        self.cells[(self.spine + 2, y)] = corner
+        self.cells[(self.spine + 1, y)] = "─"
+        self.cells[(self.spine, y)] = "┌"
+
     def _one_branch(
         self,
         lo: int,
@@ -395,11 +401,9 @@ class _Stacked:
             cells[(spine + 2, y + 1)] = "└"
             self.jumps.append((y + 1, spine + 3, one))
             return y + 2
-        cells[(spine + 2, y + 1)] = "┴" if how is _Role.BODY else "┘"
+        self._enter_from_east(y + 1, "┴" if how is _Role.BODY else "┘")
         if one is not None and how is _Role.BODY:
             self.entries[one] = y + 1
-        cells[(spine + 1, y + 1)] = "─"
-        cells[(spine, y + 1)] = "┌"
         below, _ = descend(lo, hi, depth + 1, (y + 2, locked or one is not None))
         return below
 
@@ -439,9 +443,7 @@ class _Stacked:
             return descend(lo, hi, depth + 1, (below + 1, locked or zero is not None))
         # A repeated zero-branch is entered from the east like a one-branch.
         cells[(spine + 2, below)] = "┐"
-        cells[(spine + 2, below + 1)] = "┴"
-        cells[(spine + 1, below + 1)] = "─"
-        cells[(spine, below + 1)] = "┌"
+        self._enter_from_east(below + 1, "┴")
         assert zero is not None
         self.entries[zero] = below + 1
         return descend(lo, hi, depth + 1, (below + 2, True))

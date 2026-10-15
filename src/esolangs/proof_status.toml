@@ -13,6 +13,21 @@ workspace = "T log T: worst 2(n+1)T + 4 + bl(L-1) bits: corridor, answers, ant, 
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "ABCDirection"
+labels = ["linear lookup"]
+qualification = """\
+    the write row puts the essential inputs' table on the tape, one cell an entry, \
+    then each essential input's gadget tests its dequeued bit and a 0 walks the tape \
+    pointer left by that bit's weight, leaving it beside the indexed entry; an \
+    ignored input is read and never enqueued"""
+scaling = "linear: five rows of about T + zeros + 9n columns"
+execution = """\
+    linear: at most 5T + 80n + 210 commands: the write row, each unary move out and \
+    back, the band"""
+workspace = "linear: at most T + 10n + 56 bits: the tape, one bit a cell"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "AddSubJump"
 labels = ["finite lookup"]
 qualification = "packed `n`-bit cells selected by a self-modified operand"
@@ -121,15 +136,6 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
-generator = "BF-PDA"
-labels = ["parameterized tree"]
-qualification = "folded tree; residuals share through flags or priced binary stack words"
-scaling = "linear: span walk, leaf drains sum geometrically"
-execution = "poly n: worst 10n + 2 commands, one path of n tests"
-workspace = "poly n: worst 3n + 4 bits: 2n stack bits and an (n+4)-bit cursor"
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
 generator = "BFStack"
 labels = ["minterms"]
 qualification = "—"
@@ -138,18 +144,6 @@ execution = "poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7"
 workspace = """\
     poly n: at most n + 7 + bl(n) + (d+1)bl(L) bits, d = max(n-7,0) + \
     ⌊(3min(T,128)+1)/5⌋ + 2: brackets"""
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
-generator = "BIO"
-labels = ["finite lookup"]
-qualification = "nested loops telescope from `table[0]` to `table[index]`"
-scaling = "linear: T - 1 loop pieces joined once"
-execution = """\
-    linear: at most 18T - 10n + 30 commands: Horner doubling 13T, decrement loops 5T"""
-workspace = """\
-    T log T: at most max(2n,8) + Σ_{j<T-1} bl(10n-8+3j) + bl(4T+10n+37) bits: T - 1 \
-    return indices"""
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
@@ -599,14 +593,17 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
-generator = "Jaune"
-labels = ["finite lookup"]
+generator = "Interprogck8"
+labels = ["tree"]
 qualification = """\
-    a spatial table reached with two labels, against a hoisted tree that lays out \
-    each distinct subtable once and jumps to it"""
-scaling = "linear: two cells per row, unary weights sum T - 1"
-execution = "poly n: at most 8n - 2 commands, one root-to-leaf path"
-workspace = "poly n: at most n + 1 + bl(5·2^n+5n-4) + bl(n-1) + bl(2n-1) bits"
+    a one-line compare read either flies its 1 child down a residue mod 82 through \
+    shared rungs or dismounts 85 lines onto its 0 child; a lane is any residue not \
+    in the air"""
+scaling = "linear: each node's scans and dismount span a bounded number of lines"
+execution = "linear: at most L commands: every jump lands past its rung"
+workspace = """\
+    poly n: at most 8 + bl(L) + bl(n) bits: the accumulator, a line cursor, the input \
+    cursor"""
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
@@ -693,34 +690,6 @@ execution = "linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 pe
 workspace = """\
     linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the \
     stack"""
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
-generator = "NoComment"
-labels = ["finite lookup"]
-qualification = """\
-    from 4 inputs the index is a run of byte-sized skips on the stack and the rows \
-    are code: a chain of uniform groups lands on the row, and the rows after it \
-    telescope to `table[index]` on six tape cells"""
-scaling = "linear: bounded dependency scan and canonical residual IDs"
-execution = """\
-    linear: worst 12T + 50n + 79 commands for n = 4..6, then 3T + 3T/32 + 240n - 491"""
-workspace = """\
-    linear: worst 32768 + T/4 + 30 + bl(L) bits past n = 4: byte tape and stack"""
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
-generator = "123"
-labels = ["parameterized construction"]
-qualification = """\
-    table-independent separation plus verdict; failed tight geometry falls back to \
-    doubling geometry"""
-scaling = "linear: geometric paint per input, one-pass endgame"
-execution = """\
-    linear: worst 32T + 45n - 30 commands past n = 3: the all-ones row, a 2T kill, \
-    one shield"""
-workspace = """\
-    T log T: at most 9 + Σ_{c≤M} bl(c) + bl(L) + bl(M) bits past n = 3, M = 5T+3n-3"""
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
@@ -898,17 +867,6 @@ workspace = """\
     linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables"""
 evidence = "docs/proofs/index.md#generator-ledger"
 definitions = ["E = 95T - 80, the macro-expanded program with no constant subtree"]
-
-[[ledger]]
-generator = "Sophie"
-labels = ["tree"]
-qualification = "—"
-scaling = "linear: canonical child IDs, shared states, one token join"
-execution = """\
-    linear: at most 5n + T/4 + 1 commands: forward only, one per skipped labelled \
-    block"""
-workspace = "poly n: at most bl(L) + bl(n) + 7 bits: cursor, accumulator, input count"
-evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
 generator = "SStack"

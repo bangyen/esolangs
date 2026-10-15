@@ -390,7 +390,6 @@ def _integer(value: str, name: str, *, kind: str = "an integer") -> int:
         return int(value)
     except ValueError:
         _fail(f"{name} must be {kind}, got {value!r}")
-        raise  # pragma: no cover - _fail exits
 
 
 def _nonnegative(value: int, name: str, shown: object) -> None:
@@ -421,7 +420,6 @@ def _scale_of(options: dict[str, str]) -> int | None:
         )
     except ValueError:
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
-        raise  # pragma: no cover - _fail exits
 
 
 def _set_value(key: str, raw: str) -> int | str | None:
@@ -472,4 +470,3 @@ def _settings_of(
                 accepted = ", ".join(choices) if choices else "no dialect settings"
                 message += f"; {language} accepts: {accepted}"
         _fail(message)
-        raise  # pragma: no cover - _fail exits

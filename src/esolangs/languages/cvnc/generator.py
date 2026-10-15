@@ -48,6 +48,12 @@ __all__ = ["cvnc"]
 _VOWELS = frozenset("iəæou")
 _NASALS = frozenset("mnŋɲ")
 
+
+def _is_consonant(token: str) -> bool:
+    """Return whether ``token`` is neither a vowel nor a nasal."""
+    return token not in _VOWELS and token not in _NASALS
+
+
 # The two inert commands used as padding.  ``c`` clears the function, which
 # is empty throughout; ``u`` applies it, and an empty function does not
 # parse, which the interpreter turns into "leave the accumulator alone".
@@ -126,11 +132,11 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
     chars: list[str] = []
     cursor = index
     token = tokens[cursor]
-    if token in _VOWELS or token in _NASALS:
-        chars.append(_FILLER_ONSET)
-    else:
+    if _is_consonant(token):
         chars.append(token)
         cursor += 1
+    else:
+        chars.append(_FILLER_ONSET)
     if cursor < total and tokens[cursor] in _VOWELS:
         chars.append(tokens[cursor])
         cursor += 1
@@ -140,11 +146,7 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
         chars.append(tokens[cursor])
         cursor += 1
     options = [("".join(chars), cursor)]
-    if (
-        cursor < total
-        and tokens[cursor] not in _VOWELS
-        and tokens[cursor] not in _NASALS
-    ):
+    if cursor < total and _is_consonant(tokens[cursor]):
         options.append(("".join(chars) + tokens[cursor], cursor + 1))
     return options
 
