@@ -106,13 +106,6 @@ _D_OPERANDS = {86: "rot K2", 101: "rot K2"}
 #: Stubs, hub characters and the navigation's data cells sit at or above this.
 _D_FLOOR = 6000
 
-#: Free pointer-region cells (``34..127`` clear of every label and operand).
-_D_POINTER_FREE = tuple(
-    a
-    for a in range(34, 128)
-    if _T_LABELS[a - 34] not in "01xn" and a not in _D_OPERANDS
-)
-
 #: Pointer cells built at run time, ``cell -> (value, chain)``.  A ``j`` on a
 #: cell worth ``v`` lands on ``v + 1``, so a low cell holding a working address
 #: lets the planner jump straight to it instead of walking the whole
