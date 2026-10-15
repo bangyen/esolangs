@@ -104,6 +104,7 @@ don't edit by hand.
 | `unlambda/unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |
 | `unsquare/unsquare.txt` | Unsquare | `0001` | `01` | 01 | '0' |
 | `vandevelo/vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
+| `what/what!?.txt` | What!? | `0001` | `01` | 0 1 | '0' |
 
 ## Notes
 

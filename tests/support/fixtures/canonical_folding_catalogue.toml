@@ -5,6 +5,7 @@
 [ignored]
 "Ascenic" = "the Horner code reads every input; an ignored one still spaces the thresholds"
 "Malbolge" = "fixed-size source; an extra input port adds no cells"
+"What!?" = "the Horner index reads every input; an ignored one still spaces the change points"
 
 [constant]
 "Alight" = "a constant table is a one-entry literal"
@@ -14,6 +15,7 @@
 "Circuit Diagram" = "both constants are one self-fed gate"
 "Piet" = "literal products collapse a constant"
 "Polynomial" = "a constant table is the k=0 state machine"
+"What!?" = "a constant table has no change point: the 7n + 12 char Horner prefix"
 
 [ignored_local]
 "Fackward" = "_skip" # equal halves drop their bit unread by a swap

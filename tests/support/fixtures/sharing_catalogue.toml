@@ -26,3 +26,4 @@
 "Taglate" = "indexed table reduction, with no subtable branch"
 "Vandevelo" = "sum of affine-coset guards, with no subtable branch"
 "bit~" = "planted lookup entries, with no subtable branch"
+"What!?" = "threshold chain over the Horner index; no subtable is drawn"

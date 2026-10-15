@@ -796,6 +796,20 @@ workspace = "linear: at most 8L bits: the two stacks hold the program's tokens"
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "What!?"
+labels = ["linear lookup"]
+qualification = """\
+    Horner's rule reads each bit with `??` and doubles by `*`; the index \
+    counts down one `-` a row, so at change point `b` it wraps above `2^k` \
+    exactly when the row is below `b`, and `[2^k>` writes the answer slot; \
+    past 15 inputs `???` puts the high bits in the index slot's string, and \
+    a guard per `2^15`-row block reloads the index"""
+scaling = "linear: one `-` a row and one test a change point"
+execution = "linear: worst 6T + 6n + 5 commands: alternating answers, every conditional true"
+workspace = "poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: the 256-slot tape"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Codesick"
 labels = ["tree"]
 qualification = """\

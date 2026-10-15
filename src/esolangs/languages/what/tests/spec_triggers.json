@@ -1,0 +1,17 @@
+{
+ "triggers": [
+  {"program": "\"a", "stdin": "", "expect": "ProgramError", "claim": "an unterminated quote"},
+  {"program": "(", "stdin": "", "expect": "ProgramError", "claim": "an unmatched loop marker"},
+  {"program": "[1:", "stdin": "", "expect": "ProgramError", "claim": "a [ without a later ], a literal or an operator"},
+  {"program": "[1::]", "stdin": "", "expect": "ProgramError", "claim": "a repeated conditional operator"},
+  {"program": "65536", "stdin": "", "expect": "ProgramError", "claim": "a numeric literal over 65535"},
+  {"program": "\"\\t\"", "stdin": "", "expect": "ProgramError", "claim": "a \\ escape other than \\n"},
+  {"program": "??", "stdin": "x", "expect": "ArgumentError", "claim": "?? given a non-integer token"},
+  {"program": ",", "stdin": "", "expect": "HaltError", "claim": "moving off the tape"},
+  {"program": "+", "stdin": "", "expect": "HaltError", "claim": "arithmetic at slot 0"},
+  {"program": ".1/", "stdin": "", "expect": "HaltError", "claim": "/ by 0"},
+  {"program": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"", "stdin": "", "expect": "HaltError", "claim": "a string over 256 characters"},
+  {"program": "??", "stdin": "70000", "expect": "HaltError", "claim": "a read over 65535"},
+  {"program": "55296!", "stdin": "", "expect": "HaltError", "claim": "! of a surrogate"}
+ ]
+}
