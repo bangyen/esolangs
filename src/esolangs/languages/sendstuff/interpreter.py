@@ -11,34 +11,37 @@ already named.  A node's ``<`` targets come before its ``>`` ones, each
 in source order.  The only branch is a command sending nothing: Subtract
 below 0, a zero divisor, Input at EOF.
 
-Judgment calls the wiki leaves open:
+Input/output:
+    Input reads a character and InputNumber a whitespace-separated decimal;
+    at EOF either sends nothing and never raises.  Output prints the
+    character with that code; OutputNumber prints decimal with no separator.
 
-- Interleave puts the parameter's bits in the odd places and the received
-  number's in the even ones; LeftHalf returns the odd-place bits and
-  RightHalf the even, so they undo Interleave.
-- InputNumber reads a whitespace-separated decimal and, like Input, sends
-  nothing at EOF; OutputNumber prints decimal with no separator.
-- Output prints the character with that code; above 1114111 it raises
-  :class:`HaltError`.
-- A command and its parameter are separated by whitespace (the Extended
-  section exempts only ``/`` commands); a command takes a parameter even
-  where it ignores it.  Command names are exact: the talk page's ``Sub``
-  is refused, as Zzo38 said.
-- A reference names a node already opened, so a node may target itself.
-- A macro parameter is ``:...;`` or a run of characters other than
-  whitespace, parentheses and ``!``; it may be empty.  The wiki's rule
-  that a macro node named without ``$`` uses no ``$`` or ``%`` inside it
-  is enforced.  Definitions are
-  hoisted, so a macro may be invoked before it is defined.  ``$`` becomes
-  ``$k`` for the invocation's number ``k``, so it cannot meet a user name.
-- A finished node's frame is dropped before its last send, so a loop
-  through one chain of single sends revisits a state and is a cycle.
+Errors:
+    ProgramError: A malformed program: an unknown command (names are exact:
+        the talk page's ``Sub`` is refused, as Zzo38 said), a bad or
+        duplicate node or macro, a macro with no closing ``)``, a reference
+        to a node not yet opened.
+    ArgumentError: An InputNumber token that is not an integer.
+    HaltError: Output of a code above 1114111; a negative InputNumber.
 
-The extended language (``/`` commands, ``{}`` node sets, fragments,
-strings) is a separate version and is not implemented.
-
-A malformed program raises :class:`ValueError`.  Input never raises
-:class:`EOFError`: at EOF it sends nothing.
+Decisions:
+    * Interleave puts the parameter's bits in the odd places and the
+      received number's in the even ones; LeftHalf returns the odd-place
+      bits and RightHalf the even, so they undo Interleave.
+    * A command and its parameter are separated by whitespace (the Extended
+      section exempts only ``/`` commands); a command takes a parameter even
+      where it ignores it.
+    * A reference names a node already opened, so a node may target itself.
+    * A macro parameter is ``:...;`` or a run of characters other than
+      whitespace, parentheses and ``!``; it may be empty.  The wiki's rule
+      that a macro node named without ``$`` uses no ``$`` or ``%`` inside it
+      is enforced.  Definitions are hoisted, so a macro may be invoked
+      before it is defined.  ``$`` becomes ``$k`` for the invocation's
+      number ``k``, so it cannot meet a user name.
+    * A finished node's frame is dropped before its last send, so a loop
+      through one chain of single sends revisits a state and is a cycle.
+    * The extended language (``/`` commands, ``{}`` node sets, fragments,
+      strings) is a separate version and is not implemented.
 """
 
 from __future__ import annotations

@@ -1,0 +1,11 @@
+{
+ "triggers": [
+  {"program": "codesick a out c d;", "stdin": "", "expect": "ProgramError", "claim": "a bare out other than as A"},
+  {"program": "codesick codesick b c d;", "stdin": "", "expect": "ProgramError", "claim": "a bare codesick other than as the keyword"},
+  {"program": "a b c d;", "stdin": "", "expect": "ProgramError", "claim": "a wrong argument count"},
+  {"program": "l codesick a b c d;\nl codesick a b c d;", "stdin": "", "expect": "ProgramError", "claim": "a duplicate label"},
+  {"program": "codesick \"a b c d;", "stdin": "", "expect": "ProgramError", "claim": "an unterminated string"},
+  {"program": "codesick a b c d", "stdin": "", "expect": "ProgramError", "claim": "a missing ;"},
+  {"program": "codesick out in c d e;", "stdin": "", "expect": "output", "output": "", "claim": "an empty stdin is an empty string, never EOF"}
+ ]
+}

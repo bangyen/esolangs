@@ -10,29 +10,34 @@ local to the evaluation that stores it.  ``%%Ifpropersubset`` and
 the only loop.  The wiki's Hello world examples and Truth-machine run as
 stated.
 
-Judgment calls the wiki leaves open:
+Input/output:
+    ``%%Inputchar`` reads one character and raises at EOF.
 
-- ``%%Concatenateall`` joins its strings in code-point order (the wiki
-  makes the order the implementation's); a set inside raises
-  :class:`HaltError`, the wiki saying sets "should not be included".
-- Each ``%%Evaluate`` and each branch an ``%%If`` takes is a new call
-  stack entry with no locals; ``%%Evaluatereplace`` drops the top entry's
-  locals and remaining code.  An entry with no code left is replaced, not
-  kept, by the call that ends it: its locals are unreachable.
-- ``@@##Argv`` is not supported: ``@@##Argvsupport`` obtains ``{N}`` as
-  specified, and touching ``@@##Argv`` raises :class:`HaltError`.  The
-  ``%%Store``/``%%Delete`` messages are the wiki's code run literally, so
-  they keep its leading ``@@``.  Other ``##`` and ``^^`` names are
-  reserved and raise.
-- Empty words (``a??b``, a trailing ``?``) are skipped.
-- Missing operands, a value of the wrong type, ``%%Head``/``%%Tail`` of
-  an empty string, and obtaining or deleting an unset variable raise
-  :class:`HaltError`; the wiki gives none of them a result.
+Errors:
+    ProgramError: A word that is neither ``@@`` nor a command, including
+        ``%%Multithread`` (an extension the wiki lists apart, not
+        implemented) and any ``%%^^`` command.
+    InputExhaustedError: ``%%Inputchar`` at EOF.
+    HaltError: Missing operands; a value of the wrong type; ``%%Head`` or
+        ``%%Tail`` of an empty string; obtaining or deleting an unset
+        variable; storing or deleting ``@@[Whitespace]``; a set inside
+        ``%%Concatenateall``; ``@@##Argv`` or another reserved ``##``/``^^``
+        name; a bad word in code ``%%Evaluate`` or an ``%%If`` runs.
 
-``%%Multithread`` is an extension the wiki lists apart from the language
-and is not implemented; it and any ``%%^^`` command raise
-:class:`ValueError`, as does any other word that is not ``@@`` or a
-command.  ``%%Inputchar`` at EOF raises :class:`EOFError`.
+Decisions:
+    * ``%%Concatenateall`` joins its strings in code-point order (the wiki
+      makes the order the implementation's) and refuses a set, the wiki
+      saying sets "should not be included".
+    * Each ``%%Evaluate`` and each branch an ``%%If`` takes is a new call
+      stack entry with no locals; ``%%Evaluatereplace`` drops the top
+      entry's locals and remaining code.  An entry with no code left is
+      replaced, not kept, by the call that ends it: its locals are
+      unreachable.
+    * ``@@##Argv`` is not supported; ``@@##Argvsupport`` obtains ``{N}`` as
+      specified.  The ``%%Store``/``%%Delete`` messages are the wiki's code
+      run literally, so they keep its leading ``@@``.
+    * Empty words (``a??b``, a trailing ``?``) are skipped.
+    * The halting cases above get no result from the wiki.
 """
 
 from __future__ import annotations

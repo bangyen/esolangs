@@ -8,27 +8,31 @@ instruction labelled ``D``, else jumps to the one labelled ``E``.  A
 jump to a missing label halts.  Execution starts at the first
 instruction.  An argument is ``"..."`` (``\"`` is a quote) or a bare
 run without whitespace, ``;`` or ``"``; bare ``codesick``, ``in`` and
-``out`` are keywords.  Every ``in`` is replaced by the input before the
-run; an ``out`` A prints ``B`` instead of appending and fails the test.
-The wiki's Hello world, Cat, XKCD and Truth-machine run as stated.
+``out`` are keywords.  The wiki's Hello world, Cat, XKCD and
+Truth-machine run as stated.
 
-Judgment calls, the first two forced by the wiki's truth machine, whose
-first instruction sets ``*0`` to ``a`` on input ``0`` and ``*1`` to
-``1a`` on input ``1``:
+Input/output:
+    Every ``in`` is replaced by the input before the run, so an empty
+    stdin is an empty string, never EOF; an ``out`` A prints ``B`` instead
+    of appending and fails the test.
 
-- A jump goes to the label ``D`` or ``E`` as written, though the wiki's
-  prose says ``*D``/``*E``: ``1 codesick out 1 * 1;`` must loop.
-- ``out`` prints ``B`` as written (the prose's word), not ``*B``: its
-  lines must print ``0`` and ``1``.
-- With four arguments after ``codesick`` the omitted one is C (the wiki
-  makes only the dereference optional), which dereferences ``""``.
-- ``in`` is all of stdin, read once; every ``in`` gets the same string.
-- Instructions without a label are reachable only as the first one, so
-  the wiki's removal of them is unobservable and not modelled.
+Errors:
+    ProgramError: A bare ``out`` other than as A; a bare ``codesick`` other
+        than as the keyword; a wrong argument count; a duplicate label; an
+        unterminated string; a missing ``;``.
 
-A bare ``out`` other than as A, a bare ``codesick`` other than as the
-keyword, a wrong argument count, a duplicate label, an unterminated
-string or a missing ``;`` raises :class:`ValueError`.
+Decisions:
+    * A jump goes to the label ``D`` or ``E`` as written, though the wiki's
+      prose says ``*D``/``*E``: ``1 codesick out 1 * 1;`` must loop.
+      Forced, like the next, by the wiki's truth machine, whose first
+      instruction sets ``*0`` to ``a`` on ``0`` and ``*1`` to ``1a`` on ``1``.
+    * ``out`` prints ``B`` as written (the prose's word), not ``*B``: the
+      truth machine's lines must print ``0`` and ``1``.
+    * With four arguments after ``codesick`` the omitted one is C (the wiki
+      makes only the dereference optional), which dereferences ``""``.
+    * ``in`` is all of stdin, read once; every ``in`` gets the same string.
+    * Instructions without a label are reachable only as the first one, so
+      the wiki's removal of them is unobservable and not modelled.
 """
 
 from __future__ import annotations
