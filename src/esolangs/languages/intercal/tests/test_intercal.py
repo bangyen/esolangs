@@ -5,13 +5,12 @@ from functools import partial
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.intercal.interpreter import (
+from esolangs.languages.intercal.interpreter import _Machine, run
+from esolangs.languages.intercal.interpreter._expr import _expression
+from esolangs.languages.intercal.interpreter._semantics import (
     _advance,
-    _expression,
-    _Machine,
     _NeedDraw,
     _NeedInput,
-    run,
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
