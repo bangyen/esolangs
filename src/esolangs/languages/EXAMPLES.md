@@ -77,6 +77,7 @@ don't edit by hand.
 | `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
+| `parenthesys/parenthesys.txt` | Parenthesys | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
 | `piet_plus_plus/piet-plus-plus.png` | Piet++ | `0001` | `01` | 0 1 | '0' |
 | `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |

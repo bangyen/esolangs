@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 91 languages</summary>
+<summary>Show all 92 languages</summary>
 
 ### Grid-based Languages
 
@@ -133,6 +133,7 @@ Languages that don't fit into the above categories.
 - [HQ9+ with headers](https://esolangs.org/wiki/HQ9+_with_headers) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/hq9_with_headers/interpreter.py))
 - [Nope.](https://esolangs.org/wiki/Nope.) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/nope/interpreter.py)) *(interpreter-only)*
 - [Object disoriented](https://esolangs.org/wiki/Object_disoriented) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/object_disoriented/interpreter.py))
+- [Parenthesys](https://esolangs.org/wiki/Parenthesys) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/parenthesys/interpreter.py))
 - [SendStuff](https://esolangs.org/wiki/SendStuff) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sendstuff/interpreter.py))
 - [Unlambda](https://esolangs.org/wiki/Unlambda) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unlambda/interpreter.py))
 

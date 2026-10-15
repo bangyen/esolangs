@@ -1,0 +1,19 @@
+{
+ "triggers": [
+  {"program": "(ab", "stdin": "", "expect": "ProgramError", "claim": "an unmatched bracket"},
+  {"program": "(a|b)", "stdin": "", "expect": "ProgramError", "claim": "a | outside [] and {}"},
+  {"program": "[a|b|c|d|e]", "stdin": "", "expect": "ProgramError", "claim": "too many | in one bracket"},
+  {"program": "ab\\", "stdin": "", "expect": "ProgramError", "claim": "a trailing \\"},
+  {"program": "($)", "stdin": "", "expect": "InputExhaustedError", "claim": "$ at EOF"},
+  {"program": "([+|a|1])", "stdin": "", "expect": "HaltError", "claim": "TypeError: arithmetic on text that is no number"},
+  {"program": "({a})", "stdin": "", "expect": "HaltError", "claim": "TypeError: {x} on text that is no number"},
+  {"program": "([gt|a|1])", "stdin": "", "expect": "HaltError", "claim": "TypeError: a comparison on text that is no number"},
+  {"program": "([/|1|0])", "stdin": "", "expect": "HaltError", "claim": "ValueError: division by 0"},
+  {"program": "([%|1|0])", "stdin": "", "expect": "HaltError", "claim": "ValueError: % by 0"},
+  {"program": "([^|2|0.5])", "stdin": "", "expect": "HaltError", "claim": "ValueError: a fractional power"},
+  {"program": "([ind|3|abc])", "stdin": "", "expect": "HaltError", "claim": "ValueError: an index outside the string"},
+  {"program": "([chr|-1|])", "stdin": "", "expect": "HaltError", "claim": "ValueError: a chr that is no character"},
+  {"program": "([ord||])", "stdin": "", "expect": "HaltError", "claim": "ValueError: ord of empty text"},
+  {"program": "[+|x|y|[x]]", "stdin": "", "expect": "HaltError", "claim": "AccessError: defining a built-in"}
+ ]
+}

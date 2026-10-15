@@ -131,6 +131,8 @@ from esolangs.languages.packlang.generator import LANGUAGE as _PACKLANG_LANGUAGE
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
 from esolangs.languages.painfuck.generator import painfuck
+from esolangs.languages.parenthesys.generator import LANGUAGE as _PARENTHESYS_LANGUAGE
+from esolangs.languages.parenthesys.generator import parenthesys
 from esolangs.languages.piet.generator import LANGUAGE as _PIET_LANGUAGE
 from esolangs.languages.piet.generator import piet
 from esolangs.languages.piet_plus_plus.generator import (
@@ -256,6 +258,7 @@ _LANGUAGES = (
     _ONE_I_LANGUAGE,
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
+    _PARENTHESYS_LANGUAGE,
     _PIET_LANGUAGE,
     _PIET_PLUS_PLUS_LANGUAGE,
     _POINTLESS_LANGUAGE,
@@ -348,6 +351,7 @@ __all__ = [
     "one_i",
     "packlang",
     "painfuck",
+    "parenthesys",
     "piet",
     "piet_plus_plus",
     "pointless",

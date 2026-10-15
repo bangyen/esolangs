@@ -821,6 +821,17 @@ workspace = "linear: worst 3T + 5 + bl(4n+11) + bl(2n) bits: variables, op index
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Parenthesys"
+labels = ["linear lookup"]
+qualification = """\
+    the table is one string literal, and `ind` indexes it with a nested \
+    Horner expression over the reads"""
+scaling = "linear: one table string, one Horner level per input"
+execution = "poly n: worst 6n + 2 steps: six ops a later read, eight for the first and the answer"
+workspace = "linear: at most 8T + 8⌊n/3⌋ + 43 + bl(6n+2) + bl(2n) bits: the final call's stack"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Codesick"
 labels = ["tree"]
 qualification = """\

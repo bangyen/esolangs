@@ -348,6 +348,8 @@ These generators keep no unconstrained tree route and have no subtree to fold:
 - Modulous: Pushes the whole table as a string literal and spends the row index
   popping down to the answer.
 - Packlang: Paints one array block and indexes it at every arity.
+- Parenthesys: Indexes one string literal with a nested Horner expression
+  over its reads.
   An ignored input is read bare.
 - Qoibl: Divides one literal by the power of two its reads build.
 - SLOW ACV MAMMALIAN: Its read chain emits one fixed-width leaf slot per row
@@ -471,6 +473,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Fackward | tree | a level is a block whose quiet pass reads the bit; `/ c 49` makes it 0 or 1, that many `~` swap the two child blocks, `!` drops one and `)` runs the other; equal halves fold | linear: one block a node; a subtable repeated under two parents is copied | poly n: worst 40n + 4 steps: 40 a level, then print and halt | linear: at most 8L bits: the two stacks hold the program's tokens |
 | What!? | linear lookup | Horner's rule reads each bit with `??` and doubles by `*`; the index counts down one `-` a row, so at change point `b` it wraps above `2^k` exactly when the row is below `b`, and `[2^k>` writes the answer slot; past 15 inputs `???` puts the high bits in the index slot's string, and a guard per `2^15`-row block reloads the index | linear: one `-` a row and one test a change point | linear: worst 6T + 6n + 5 commands: alternating answers, every conditional true | poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: the 256-slot tape |
 | HQ9+ with headers | linear lookup | the table is one decimal literal, divided by the power of two the reads square up, and `[~::]` tests the quotient's parity | linear: one table literal, one read command per input | poly n: worst 4n + 10 steps: four ops a read, ten for startup and answer | linear: worst 3T + 5 + bl(4n+11) + bl(2n) bits: variables, op index and reads |
+| Parenthesys | linear lookup | the table is one string literal, and `ind` indexes it with a nested Horner expression over the reads | linear: one table string, one Horner level per input | poly n: worst 6n + 2 steps: six ops a later read, eight for the first and the answer | linear: at most 8T + 8⌊n/3⌋ + 43 + bl(6n+2) + bl(2n) bits: the final call's stack |
 | Codesick | tree | each distinct subtable is one labelled node; it appends its marker to the unread bits, and a substring test for `0` before the marker reads the last bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump | linear: O(T/n) nodes with O(n)-digit names | poly n: worst 3n + 1 steps: three a level, the leaf one | poly n: at most 24n + 16 bits: the unread bits and one marker |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits | linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
@@ -590,7 +593,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 86 theoretical totality arguments and
+Accordingly, this ledger records 87 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
