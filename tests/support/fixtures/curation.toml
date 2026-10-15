@@ -85,3 +85,4 @@ Rubic = { backlinks = 4, route = "first implementation" }
 "Object disoriented" = { backlinks = 6, route = "first implementation" }
 SendStuff = { backlinks = 3, route = "first implementation" }
 Quassaunt = { backlinks = 3, route = "first implementation" }
+Codesick = { backlinks = 2, route = "first implementation" }

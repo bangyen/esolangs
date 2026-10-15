@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 84 languages</summary>
+<summary>Show all 85 languages</summary>
 
 ### Grid-based Languages
 
@@ -123,6 +123,7 @@ Languages that store data in named variables the program declares.
 Languages that don't fit into the above categories.
 
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/cvnc/interpreter.py))
+- [Codesick](https://esolangs.org/wiki/Codesick) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/codesick/interpreter.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fargo/interpreter.py))
 - [Nope.](https://esolangs.org/wiki/Nope.) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/nope/interpreter.py)) *(interpreter-only)*
 - [Object disoriented](https://esolangs.org/wiki/Object_disoriented) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/object_disoriented/interpreter.py))

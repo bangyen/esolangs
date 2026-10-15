@@ -51,6 +51,8 @@ from esolangs.languages.circuit_diagram.generator import (
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
 from esolangs.languages.clockwise.generator import LANGUAGE as _CLOCKWISE_LANGUAGE
 from esolangs.languages.clockwise.generator import clockwise
+from esolangs.languages.codesick.generator import LANGUAGE as _CODESICK_LANGUAGE
+from esolangs.languages.codesick.generator import codesick
 from esolangs.languages.collatz_multiverse.generator import (
     LANGUAGE as _COLLATZ_MULTIVERSE_LANGUAGE,
 )
@@ -203,6 +205,7 @@ _LANGUAGES = (
     _CIRCLEFUCK_LANGUAGE,
     _CIRCUIT_DIAGRAM_LANGUAGE,
     _CLOCKWISE_LANGUAGE,
+    _CODESICK_LANGUAGE,
     _COLLATZ_MULTIVERSE_LANGUAGE,
     _CONTAINER_LANGUAGE,
     _CREMENT_LANGUAGE,
@@ -288,6 +291,7 @@ __all__ = [
     "circlefuck",
     "circuit_diagram",
     "clockwise",
+    "codesick",
     "collatz_multiverse",
     "container",
     "crement",

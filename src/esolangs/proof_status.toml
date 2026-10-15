@@ -747,6 +747,18 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Codesick"
+labels = ["tree"]
+qualification = """\
+    each distinct subtable is one labelled node; it appends its marker to the \
+    unread bits, and a substring test for `0` before the marker reads the last \
+    bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump"""
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "poly n: worst 3n + 1 steps: three a level, the leaf one"
+workspace = "poly n: at most 24n + 16 bits: the unread bits and one marker"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Packlang"
 labels = ["linear lookup"]
 qualification = "one 128-row array block, painted inside the `If` that selects it"

@@ -34,6 +34,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `circlefuck/circlefuck.txt` | Circlefuck | `0001` | `01` | 01 | '0' |
 | `circuit_diagram/circuit-diagram.txt` | Circuit Diagram | `0001` | `01` | 01 | '0' |
 | `clockwise/clockwise.txt` | Clockwise | `0001` | `01` | 01 | '0' |
+| `codesick/codesick.txt` | Codesick | `0001` | `01` | 01 | '0' |
 | `collatz_multiverse/collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
 | `container/container.txt` | Container | `0001` | `01` | 01 | '0' |
 | `crement/crement.txt` | Crement | `0001` | `01` | embedded 01 | (nothing) |
