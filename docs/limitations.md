@@ -415,6 +415,12 @@ recoloured) were removed. Painfuck shares brainfuck's flag tree but stays: its
 moves use `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
 admissions are exempt: Subleq re-spells S\*bleq.
 
+Nor does the first-implementation route admit a page the wiki categorizes as
+a Brainfuck derivative: the family already holds brainfuck and ten collected
+derivatives. Adopted 2026-10-15 for candidates; `curation.toml` records the
+category as `bf_derivative`. The seven derivative first implementations that
+predate it stay, each the wiki's only implementation of its page.
+
 ### Recognition sources
 
 Sources checked 2026-10-01 supply selections, not admission gates

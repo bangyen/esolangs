@@ -315,7 +315,8 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "tests/support/fixtures/curation.toml",
                 f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
                 'route = "fame" (60+) | "first implementation" } under '
-                "[languages] (see docs/limitations.md#curation); offline, "
+                "[languages], plus bf_derivative = true if the wiki tags it "
+                "Brainfuck derivatives (see docs/limitations.md#curation); offline, "
                 '{ route = "unassessed" } until the count is recorded',
             )
         )
