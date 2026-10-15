@@ -45,6 +45,14 @@ def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> 
         esolangs.instantiate("ArrowQueue", source, [0, 1], truth_table="1001")
 
 
+@pytest.mark.parametrize("width", [4, 5, 6])
+def test_a_narrow_template_fills_against_its_table(width: int) -> None:
+    """Width 5 shifts the setter column and was refused as a foreign template."""
+    template = esolangs.generate("ArrowQueue", "0110", width=width)
+    program = esolangs.instantiate("ArrowQueue", template, [0, 1], truth_table="0110")
+    assert diverges("ArrowQueue", program, "") is True
+
+
 @pytest.mark.parametrize("width", [1, 4, 5, 6])
 def test_arrowqueue_narrow_drops_ignored_inputs(width: int) -> None:
     """A narrow build with ignored inputs is smaller than the full cascade and runs."""

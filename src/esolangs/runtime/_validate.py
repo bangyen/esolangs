@@ -248,8 +248,14 @@ def check_provenance(language: object, settings: object) -> None:
     from esolangs.registry import resolve
     from esolangs.settings import DialectSettings
 
-    if language is not None:
-        resolve(cast("str", language))
+    name = None if language is None else resolve(cast("str", language))
     if settings is not None and not isinstance(settings, DialectSettings):
         got = _argument_repr(settings)
         raise ArgumentError(f"settings must be a DialectSettings or None, got {got}")
+    if settings is None:
+        return
+    if name is None:
+        # ``run`` reads retained settings only off a tagged program; untagged,
+        # they were silently ignored.
+        raise ArgumentError("settings need a language to apply to; pass language=")
+    settings.options(name)  # As ``from_png`` checks what it reads.

@@ -52,13 +52,13 @@ applied after layout; rendering more than 2^28 pixels raises `ArgumentError`.
 
 - Line compares forward and reverse input-test orders for balance. It
   constructs O(T) pixels for a truth table of length T and detects
-  enlargement. Its committed example occupies 680×800 native pixels.
+  enlargement. Its committed example occupies 177×341 native pixels.
 - Piet folds its path with stack-neutral turns for balance. It constructs
   O(T) pixels for a truth table of length T and detects enlargement by the
   largest uniform codel grid anchored at the origin. `run(..., scale=N)` or
   `--scale N` overrides detection; use `scale=1` for native images whose
   blocks also fit a larger grid. Its committed example uses 80-pixel codels
-  (960×560).
+  (480×240).
 
 ## Run XOR
 
@@ -188,7 +188,7 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 
 <!-- INPUT-SHAPES:END -->
 
-[`MANIFEST.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
+[`EXAMPLES.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
 input row and encoding.
 
 `esolangs run` warns about invalid stdin through the interpreter; pipe its
@@ -237,6 +237,8 @@ can grow faster than any timeout fires. Elsewhere, cap the process yourself.
 `run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
 `partial_output` when either bound expires. `max_steps` selects cooperative stepping.
+A language whose `describe()["steppable_to_answer"]` is false (A Painter
+Ant) answers only through `run` without `max_steps`; stepped, it never halts.
 It steps all languages on Windows and worker threads; deadlines are checked
 between steps, so loading and an individual step cannot be interrupted.
 Text and raster languages share the VM and debugger. `isolated` and `max_steps` are mutually

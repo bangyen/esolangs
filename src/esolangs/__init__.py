@@ -330,6 +330,11 @@ def _is_template_for(
     # unlike whitespace wrapping, so compare that template exactly too.
     if width_aware and template == layout(1):
         return True
+    # A layout built for its own widest line: ArrowQueue's ``width=5`` shifts
+    # the setter column, matching neither the default nor ``layout(1)``.
+    widest = max(map(len, template.splitlines()), default=0)
+    if width_aware and widest and template == layout(widest):
+        return True
     same_layout = LANGUAGES[name].same_layout or (
         lambda template, plain, _layout: same_up_to_wrapping(template, plain)
     )

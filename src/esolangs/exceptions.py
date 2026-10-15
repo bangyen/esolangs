@@ -65,12 +65,12 @@ class UnknownLanguageError(EsolangError, ValueError):
         self.language = language
         self.suggestions = suggestions
 
-    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+    def __reduce__(self) -> tuple[object, tuple[object, ...], dict[str, object]]:
         """Rebuild from the arguments, not from the rendered message.
 
         The default replays ``self.args`` -- the message -- and re-prefixed it per hop.
         """
-        return (type(self), (self.language, self.suggestions))
+        return (type(self), (self.language, self.suggestions), self.__dict__)
 
 
 class ArgumentError(EsolangError, ValueError):
@@ -136,12 +136,13 @@ class InputExhaustedError(EsolangError, EOFError):
         self.supplied = supplied
         self.unit = unit
 
-    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+    def __reduce__(self) -> tuple[object, tuple[object, ...], dict[str, object]]:
         """Rebuild from the arguments, not from the rendered message.
 
-        Unpicklable, it took a ``ProcessPoolExecutor`` down with ``BrokenProcessPool``.
+        Unpicklable, it took a ``ProcessPoolExecutor`` down with ``BrokenProcessPool``;
+        the state carries ``partial_output`` and ``__notes__``, which it dropped.
         """
-        return (type(self), (self.reads, self.supplied, self.unit))
+        return (type(self), (self.reads, self.supplied, self.unit), self.__dict__)
 
 
 class GeneratorCapError(EsolangError, ValueError):

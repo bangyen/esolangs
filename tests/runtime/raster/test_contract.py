@@ -256,10 +256,23 @@ def test_scaling_composes_retained_factors() -> None:
     assert Raster.from_png(source.upscaled(3).to_png()).scale == 6
 
 
-def test_png_settings_retain_large_integer_choices() -> None:
-    settings = esolangs.DialectSettings(**{integer_setting(): 1 << 20_000})
-    source = Raster((((1, 2, 3),),), settings=settings)
+def test_png_settings_retain_integer_choices() -> None:
+    """Integers travel as hex; a settings tag needs its language (1.0 audit)."""
+    key = integer_setting()
+    owner, choices = next(
+        (n, lang.dialect_values[key])
+        for n, lang in LANGUAGES.items()
+        if key in (lang.dialect_values or {})
+    )
+    settings = esolangs.DialectSettings(**{key: choices[-1]})
+    source = Raster((((1, 2, 3),),), language=owner, settings=settings)
     assert Raster.from_png(source.to_png()).settings == settings
+    with pytest.raises(esolangs.ArgumentError, match="invalid dialect"):
+        Raster(
+            (((1, 2, 3),),),
+            language=owner,
+            settings=esolangs.DialectSettings(**{key: 1 << 20_000}),
+        )
 
 
 def test_png_language_tag_refuses_cross_language_execution() -> None:

@@ -66,6 +66,9 @@ class TestErrorsSurviveAProcessBoundary:
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
         assert restored.supplied == caught.value.supplied
+        # Both were dropped: the constructor arguments alone were replayed.
+        assert restored.partial_output == caught.value.partial_output
+        assert restored.__notes__ == caught.value.__notes__
 
     def test_unknown_language_does_not_grow_its_message(self) -> None:
         """It re-applied its prefix on every hop: "unknown language: " twice."""

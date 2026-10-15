@@ -230,6 +230,11 @@ class Debugger:
             raise ArgumentError(
                 f"predicate must take one argument, the VM: {exc}"
             ) from exc
+        except ValueError as exc:
+            # No inspectable signature (``max``, ``int``): bare ValueError.
+            raise ArgumentError(
+                f"cannot check that predicate takes the VM ({exc}); wrap it in a lambda"
+            ) from exc
         self._breakpoints.append(predicate)
 
     def clear_breakpoints(self) -> None:
