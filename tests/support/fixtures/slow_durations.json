@@ -61,8 +61,6 @@
  "src/esolangs/languages/fractran/tests/proofs/test_fractran_order.py::test_stream_loading_sieve_and_wider_answers[14]": 0.5075059660000534,
  "src/esolangs/languages/fractran/tests/proofs/test_fractran_order.py::test_stream_loading_sieve_and_wider_answers[16]": 1.5049957649999897,
  "src/esolangs/languages/fractran/tests/proofs/test_fractran_order.py::test_stream_order_realizes_every_table[3-6-4379-265]": 10.961448823999987,
- "src/esolangs/languages/polynomial/tests/test_polynomial_negatives.py::TestIteratedEliminationThresholds::test_the_product_of_the_largest_primes_less_one[roots1-16-3-120-160]": 0.7437986250006361,
- "src/esolangs/languages/polynomial/tests/test_polynomial_negatives.py::TestIteratedEliminationThresholds::test_the_product_of_the_largest_primes_less_one[roots2-16-4-192-300]": 3.423760833000415,
  "tests/proofs/test_workspace_formulas.py::test_execution_and_workspace_formulas_hold[///-5]": 0.5628937439999788,
  "tests/proofs/test_workspace_formulas.py::test_execution_and_workspace_formulas_hold[3x-5]": 2.379837468999966,
  "tests/proofs/test_workspace_formulas.py::test_execution_and_workspace_formulas_hold[6-5-7]": 4.9,
