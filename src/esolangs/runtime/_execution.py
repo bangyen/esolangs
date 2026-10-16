@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import re
 import shlex
 import signal
 import threading
@@ -39,8 +40,21 @@ def interpreter_module(name: str) -> ModuleType:
     return importlib.import_module(INTERPRETERS[name])
 
 
-#: CPython's int/str digit-cap ValueError, an implementation limit.
-_DIGIT_CAP = "Exceeds the limit ("
+#: CPython's int/str digit-cap ValueError, an implementation limit.  Matched
+#: from the start: a parse error echoing source "Exceeds the limit (" is not.
+_DIGIT_CAP = re.compile(r"Exceeds the limit \(\d+ digits\) for integer string")
+
+
+def _hit_digit_cap(error: BaseException | None) -> bool:
+    """Whether CPython's digit cap raised ``error`` or anything it chains."""
+    seen: set[int] = set()
+    while error is not None and id(error) not in seen:
+        if isinstance(error, ValueError) and _DIGIT_CAP.match(str(error)):
+            return True
+        seen.add(id(error))
+        error = error.__cause__ or error.__context__
+    return False
+
 
 # Substrings of CPython's ValueError wording, mapped to the hint each
 # failure deserves.  The wording is CPython's, not ours, so these match
@@ -59,10 +73,6 @@ _VALUE_ERROR_HINTS = (
     (
         "bytes must be in range",
         "keep byte values between 0 and 255",
-    ),
-    (
-        _DIGIT_CAP,
-        "shorten the decimal literal or set PYTHONINTMAXSTRDIGITS to a larger limit",
     ),
 )
 
@@ -155,11 +165,18 @@ def interpreter_errors(
             error = InterpreterLimitError(
                 recursion_message, hint="reduce expression nesting or recursion depth"
             )
-        elif isinstance(original, OverflowError) or _DIGIT_CAP in str(original):
-            # Host limits, not malformed source: Fackward's ``$`` repeating
-            # past sys.maxsize escaped bare, and a valid Ascenic PRINT of a
-            # 4300-digit number was reported as a load error.
+        elif isinstance(original, OverflowError):
+            # A host limit: Fackward's ``$`` repeating past sys.maxsize
+            # escaped bare.
             error = InterpreterLimitError(str(original))
+        elif _hit_digit_cap(original):
+            # A valid Ascenic PRINT of a 4300-digit number was reported as a
+            # load error.
+            error = InterpreterLimitError(
+                str(original),
+                hint="shorten the decimal literal or set PYTHONINTMAXSTRDIGITS "
+                "to a larger limit",
+            )
         elif isinstance(original, MemoryError):
             # As isolated execution reports a worker that hit max_memory.
             error = InterpreterLimitError(

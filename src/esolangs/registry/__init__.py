@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import unicodedata
 from collections import Counter
 from functools import cache
 from typing import TYPE_CHECKING
@@ -232,8 +233,14 @@ def _symbols(*names: str) -> Counter[str]:
     """Count the characters a slug drops that are not separators."""
     counts: Counter[str] = Counter()
     for name in names:
-        counts |= Counter(c for c in name if not (c.isalnum() or c in " -_"))
+        counts |= Counter(c for c in name if not (c.isalnum() or _separator(c)))
     return counts
+
+
+def _separator(c: str) -> bool:
+    # Whitespace and every dash: ``'\tforth\n'``, ``'Super\xa0SNUSP'`` and
+    # ``'6\u20135'`` resolved before the symbol rule and must still.
+    return c.isspace() or c == "_" or unicodedata.category(c) == "Pd"
 
 
 def resolve(name: str) -> str:

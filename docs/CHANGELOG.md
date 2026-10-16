@@ -21,6 +21,8 @@ Releases before 0.10.0 are described on the
 - **Breaking:** CPython's 4300-digit int/str cap and `OverflowError` raise
   `InterpreterLimitError` (CLI exit 1).  The cap raised `ProgramError` (exit
   2) on valid programs; Fackward's `$` past `sys.maxsize` escaped bare.
+- **Breaking:** `CompressedText`'s optional arguments (`language`,
+  `settings`, `limits`) are keyword-only, as usage.md promises.
 - Fix: `balance=True` fits SendStuff, Pointless, Fackward and What!? by whole
   tokens, exactly; it estimated, and SendStuff `0010` missed a squarer width.
 

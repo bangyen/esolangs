@@ -547,7 +547,8 @@ Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
   zeros skip 2r productions, and the sentinel appends table[r]. The next empty
   production consumes the answer and halts.
 
-  Source is exactly 5T + 2n + 1 characters; execution takes n + 3 + 2r steps.
+  A non-constant table's source is exactly 5T + 2n + 1 characters and
+  execution takes n + 3 + 2r steps; a constant table's source is n + 2.
   Emission writes 2(T-1) padding zeros and 2T table productions without search:
   O(T) build work. Tests execute 309 tables and 3,352 rows, exhaustive through
   three inputs, then constants, parity and eight seeded random tables per arity
@@ -581,7 +582,7 @@ The 2026-10-01 fame audit covered eight census candidates:
   Escaped future patterns prevent earlier sweeps corrupting later rules.
   The selected entry becomes 0/1 and the suffix is deleted. Source is
   exactly 20*2^m + n + 53 characters, plus k + 10 for k = n - m > 0
-  ignored inputs; build work is O(T).
+  ignored inputs; a constant table is n + 9.  Build work is O(T).
 
 The constructions supply the bounds; dense size-difference ratios at
 n=8,10,12 are measurements. Each uses a 309-table, 3,352-row corpus.

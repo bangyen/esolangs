@@ -7,7 +7,7 @@ import gzip
 import io
 import zlib
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass, field, replace
+from dataclasses import KW_ONLY, dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -70,6 +70,7 @@ class CompressedText:
     """Validated UTF-8 gzip source; len counts expanded characters."""
 
     data: bytes
+    _: KW_ONLY
     language: str | None = None
     settings: DialectSettings | None = None
     limits: TextLimits | None = None

@@ -77,7 +77,8 @@ Two kinds of language need a different call:
 - a `Raster`, for images;
 - a `CompressedText` (Unary).
 
-`str()` of the last two is a summary, not source. `dump_program` and
+`str()` of a `Raster` is a summary, not source; of a `CompressedText`, the
+expanded text. `dump_program` and
 `load_program` round-trip all three as text.
 
 ## Work with one language
