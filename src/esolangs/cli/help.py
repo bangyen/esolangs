@@ -76,9 +76,6 @@ commands:
                                 the answer bit it carries
   Catalog:
     list [--details] [--json] [--generator | --interpreter-only]
-         [--source text|raster] [--answer output|dump|termination] [--inputs N]
-         [--state-model MODEL] [--shape SHAPE] [--template | --reads-input]
-         [--input-shape SHAPE] [--random] [--width-effect EFFECT]
          [--grep REGEX]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
@@ -128,13 +125,10 @@ example:
   esolangs encode brainfuck 10  # prints 10
 """,
     "list": """usage: esolangs list [--details] [--json]
-                     [--generator | --interpreter-only]
-                     [--source text|raster] [--answer output|dump|termination]
-                     [--inputs N] [--state-model MODEL] [--shape SHAPE]
-                     [--template | --reads-input] [--input-shape SHAPE]
-                     [--random] [--width-effect EFFECT] [--grep REGEX]
+                     [--generator | --interpreter-only] [--grep REGEX]
 
-List matching languages, one per line. Filters combine with AND.
+List matching languages, one per line. Filters combine with AND; filter on
+any other fact with `list --json --details | jq`.
 
 options:
   --details   add a marker column per language:
@@ -147,32 +141,13 @@ options:
   --json      print a JSON array: names, or capability records with --details
   --generator restrict to languages with a Boolean generator
   --interpreter-only restrict to languages without a Boolean generator
-  --source    select text or raster source
-  --answer    select by where the Boolean answer lands: output (printed),
-              dump (a fixed place in the final state), or termination
-              (halting is 0, diverging is 1)
-  --inputs N  select generators whose declared input cap admits positive N;
-              table-dependent restrictions still apply (shown by --details)
-  --state-model MODEL
-              select the language's category, from its interpreter family:
-              register, tape, stack, grid, queue, program, variables, other
-  --shape SHAPE
-              select generators by construction shape: tree, reducing, lookup
-  --template  restrict to generators that embed the inputs in the program
-  --reads-input restrict to generators whose programs read their inputs
-  --input-shape SHAPE
-              select reading programs by how the bits arrive: line_per_bit,
-              char_stream, char_stream_padded, char_stream_cyclic, row_index
-  --random    restrict to languages with instructions that draw at random
-  --width-effect EFFECT
-              select by what --width does: layout (builds a shape to fit),
-              wrap (reflows between tokens), none (newlines are semantic)
   --grep REGEX
               select languages whose spec (`describe --spec`) matches,
               case-insensitively
 
-example:
-  esolangs list --generator --source text --answer output --inputs 4 --details
+examples:
+  esolangs list --generator --details
+  esolangs list --json --details | jq -r '.[] | select(.shape == "lookup") | .name'
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]

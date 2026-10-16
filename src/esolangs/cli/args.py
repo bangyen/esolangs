@@ -49,9 +49,6 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
 #: short-option expansion skips the token after one of these: it is a value,
 #: even when it happens to spell ``-p``.
 _VALUE_OPTIONS = {
-    "--source",
-    "--answer",
-    "--inputs",
     "--bits",
     "--scale",
     "--settings",

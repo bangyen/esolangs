@@ -14,7 +14,7 @@ hides this using [`describe`](#describe) metadata.
 | `debug` | run under the breakpoint/watch VM |
 | `encode` | print the stdin that feeds a bit string |
 | `read-answer` | print the answer bit a program's output carries |
-| `list` | list the languages; `--details` adds the generator, template and example markers; `--state-model` and `--shape` filter by category and construction shape |
+| `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives every capability field to filter with `jq` |
 | `describe` | how one language reads input and where its answer lands |
 
 `encode` and `read-answer` wrap `run` for one input row:
@@ -59,7 +59,7 @@ Two kinds of language need a different call:
   ```
 
   `bits[0]` is the most significant input. Template languages are those with
-  `describe(name)["parameterized"]` (CLI: `list --template`).
+  `describe(name)["parameterized"]` (CLI: the `tmpl` mark of `list --details`).
 
 - Piet returns an image source:
 
