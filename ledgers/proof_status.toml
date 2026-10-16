@@ -649,7 +649,8 @@ labels = ["tree"]
 qualification = """\
     a node keeps its input bit in `t` and its negation in `a`, via an object that \
     is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; \
-    equal halves drop the bit untested and constant subtables fold"""
+    equal halves drop the bit untested, constant subtables fold, and a \
+    repeated branch is a class written once"""
 scaling = "linear: at most 39T + 21 characters: 35 a node, 4 a leaf"
 execution = "poly n: worst 67n + 34 commands: one tree path, 67 ops a level"
 workspace = """\
