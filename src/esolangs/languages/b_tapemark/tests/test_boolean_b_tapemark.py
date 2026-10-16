@@ -250,3 +250,20 @@ def test_balance_folds_a_random_table() -> None:
         < 130
         < balance_score(esolangs.generate("B-tapemark", table))[0]
     )
+
+
+@pytest.mark.parametrize("depth", range(4, 10))
+def test_fold_widths_match_the_swept_optimum(depth: int) -> None:
+    """The closed-form copy length is within 3% of every copy and run swept."""
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.b_tapemark.generator import _b_tapemark_folded, _balance
+
+    table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << depth))
+    copies = {round(2 ** (step / 4)) for step in range(4 * depth + 1)}
+    swept = min(
+        balance_score(_b_tapemark_folded(table, copy, run))[0]
+        for copy in copies
+        for run in {max(1, 3 * copy - 12), len(table)}
+    )
+    got = balance_score(_balance(table, tools.b_tapemark(table)))[0]
+    assert got <= 1.03 * swept

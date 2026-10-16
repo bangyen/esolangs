@@ -16,6 +16,7 @@ Size:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import isqrt
 
 from esolangs.generation.helpers import _validate_truth_table, grid_width, input_weights
 from esolangs.generation.wrap import balance_score
@@ -344,10 +345,14 @@ def _balance(table: str, default: str) -> str:
     # A run row as wide as a copy row (3 per entry, less the stage's 12
     # columns west of it) won at n=7..10 in a full grid; below that the
     # stages' 7 rows apiece floor the height and runs go unfolded.
-    copies = {round(2 ** (step / 4)) for step in range(4 * depth + 1)}
-    for copy in sorted(copies):
+    # Folded, the width is 3 * copy + 13 and the height 2T / copy + 9n + 2
+    # rows (measured n=6..10); the side is least where the width meets twice
+    # the height, 3c^2 + (9 - 18n)c - 4T = 0.
+    half = 18 * depth - 9
+    best = (half + isqrt(half * half + 48 * len(table))) // 6
+    for copy in {best, best * 17 // 20}:
         for run in {max(1, 3 * copy - 12), len(table)}:
-            candidates.append(_b_tapemark_folded(table, copy, run))
+            candidates.append(_b_tapemark_folded(table, max(1, copy), run))
     if len(input_weights(table, depth)[1]) <= depth:
         candidates.extend(
             [
