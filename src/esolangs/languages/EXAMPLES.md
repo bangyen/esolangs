@@ -34,6 +34,7 @@ don't edit by hand.
 | `bitdeque/bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
 | `bitwise_cyclic_tag/bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
 | `bit_tilde/bit~.txt` | bit~ | `0001` | `01` | 01 | '0' |
+| `blindfolded_arithmetic/blindfolded-arithmetic.txt` | Blindfolded Arithmetic | `0001` | `01` | 2 | '0' |
 | `boolfuck/boolfuck.txt` | Boolfuck | `0001` | `01` | 01 | '0' |
 | `brainfuck/brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif/brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
@@ -112,6 +113,7 @@ don't edit by hand.
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
 - **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
 - **bitwise-cyclic-tag** -- Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs are bits of the initial data-string, and the answer is the bit the last 0 deletes, which the interpreter prints alone -- so the output is the answer and there is no position to name
+- **blindfolded-arithmetic** -- the input must be a positive integer, so the committed input is the row index plus one
 - **caballo** -- Caballo reads its inputs as the initial stack, the first on top, and prints the surviving stack: [1] for one, [] for zero
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
 - **container** -- Container prints the answer; module.run returns the EXIT code.

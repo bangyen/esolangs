@@ -37,6 +37,10 @@ from esolangs.languages.bitwise_cyclic_tag.generator import (
     LANGUAGE as _BITWISE_CYCLIC_TAG_LANGUAGE,
 )
 from esolangs.languages.bitwise_cyclic_tag.generator import bitwise_cyclic_tag
+from esolangs.languages.blindfolded_arithmetic.generator import (
+    LANGUAGE as _BLINDFOLDED_ARITHMETIC_LANGUAGE,
+)
+from esolangs.languages.blindfolded_arithmetic.generator import blindfolded_arithmetic
 from esolangs.languages.boolfuck.generator import LANGUAGE as _BOOLFUCK_LANGUAGE
 from esolangs.languages.boolfuck.generator import boolfuck
 from esolangs.languages.brainfuck.generator import LANGUAGE as _BRAINFUCK_LANGUAGE
@@ -203,6 +207,7 @@ _LANGUAGES = (
     _BIT_TILDE_LANGUAGE,
     _BITDEQUE_LANGUAGE,
     _BITWISE_CYCLIC_TAG_LANGUAGE,
+    _BLINDFOLDED_ARITHMETIC_LANGUAGE,
     _BOOLFUCK_LANGUAGE,
     _BRAINFUCK_LANGUAGE,
     _BRAINIF_LANGUAGE,
@@ -292,6 +297,7 @@ __all__ = [
     "bit_tilde",
     "bitdeque",
     "bitwise_cyclic_tag",
+    "blindfolded_arithmetic",
     "boolfuck",
     "brainfuck",
     "brainif",

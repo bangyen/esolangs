@@ -408,6 +408,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | BFStack | minterms | — | linear: zero-row walk telescopes to T | poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7 | poly n: at most n + 7 + bl(n) + (d+1)bl(L) bits, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2: brackets |
 | bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear: bounded dependency scan and canonical residual IDs | linear: worst 7T + 17n + 92 commands past n = 1: row 0 walks the odd lane | linear: worst 2T + 49 + bl(2T+41) + bl(5T+18n+74) + bl(n) bits: 2T + 49 tape cells |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: shorter of the shared tree and the 2T-command discard lookup | linear: at most 3T + 9n - 3 commands past n=4: load 2T, stage walk; unreached, n=5 worst 47 | linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 1 bits; unreached |
+| Blindfolded Arithmetic | linear lookup | the table read at its essential inputs is one integer built by Horner's rule in base 8, and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer | linear: at most four instructions an octal digit, 10n of lookup | linear: worst T + ⌈(T-1)/3⌉ + 10n + 9 commands: all ones but the last row, run once | linear: at most 2T + n + 13 bits: the table, and Q in two registers |
 | brainfuck | tree | folded decision tree; residuals defer through level flags or binary words; affine tables stream | linear: decision_tree_program, span walk, leaf moves geometric | poly n: worst 69n + 44 commands, the AND table's all-ones row | poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits |
 | Boolfuck | tree | each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes; repeated residuals use level flags or normalized AND/XOR bodies, and affine tables stream through one accumulator | linear: geometric tree walk; affine tables use O(n) characters | poly n: worst 2n^2 + 27n + 8 commands; reads shuttle to scratch | poly n: at most bl(L-1) + max(12, bl(2n-2)+10) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n) bits |
 | Cyclic tag | parameterized lookup | weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it | linear: at most 5T + 2n + 1 characters, weighted padding | linear: worst 2T + n + 1 steps: n input rules, 2 per row, 3 closers | linear: worst 16T + 1 + bl(2T+n) bits: a queue of up to 2T - 1 bits |
@@ -562,7 +563,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 83 theoretical totality arguments and
+Accordingly, this ledger records 84 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

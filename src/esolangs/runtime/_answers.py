@@ -68,15 +68,17 @@ def encode_inputs(
                 f"but {len(bits)} bit{' was' if len(bits) == 1 else 's were'} "
                 f"given; a {name} program built from it reads {arity}"
             )
-    if contract.input_shape == "row_index":
+    if contract.input_shape in {"row_index", "row_number"}:
+        # A row number counts from one, for an input that must be positive.
         row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
+        row += contract.input_shape == "row_number"
         try:
             return f"{row}\n"
         except ValueError as exc:
             # CPython caps int->str at 4300 digits; a bare ValueError broke the
             # every-error-is-EsolangError promise (``[1] * 15000``).
             raise ArgumentError(
-                f"{name} reads a decimal row index, and {len(bits)} bits name "
+                f"{name} reads a decimal row, and {len(bits)} bits name "
                 f"an integer too large to render as one: {exc}"
             ) from exc
     zero, one = contract.alphabet

@@ -155,6 +155,8 @@ def _input_sentence(facts: LanguageInfo) -> str:
     example = f"{one}{zero}"
     if shape == "row_index":
         return 'one decimal row index, e.g. "2" for the bits 10'
+    if shape == "row_number":
+        return 'one decimal row index plus one, e.g. "3" for the bits 10'
     if shape in {"char_stream", "char_stream_cyclic"}:
         return f'adjacent bit characters, e.g. "{example}"'
     if shape == "char_stream_padded":

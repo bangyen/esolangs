@@ -73,6 +73,7 @@
 "ArrowQueue" = "_program" # direct halt or circulating heading
 "B-tapemark" = "b_tapemark" # direct read-and-print constant
 "Befunge" = "input_weights" # one projected table cell
+"Blindfolded Arithmetic" = "read_at" # one projected table bit, no lookup round
 "Bitwise Cyclic Tag" = "_program" # delete inputs and a literal bit
 "BrainIf" = "_brainif_dag" # constant residual output tail
 "Circlefuck" = "_program" # read into an executed cell and print the tail

@@ -157,6 +157,17 @@ execution = "linear: at most 3T + 9n - 3 commands past n=4: load 2T, stage walk;
 workspace = "linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 1 bits; unreached"
 
 [[ledger]]
+generator = "Blindfolded Arithmetic"
+labels = ["linear lookup"]
+qualification = """\
+    the table read at its essential inputs is one integer built by Horner's rule in \
+    base 8, and each essential bit of the row divides it by 1 or by 2^2^m, squared up \
+    from 2, so its low bit is the answer"""
+scaling = "linear: at most four instructions an octal digit, 10n of lookup"
+execution = "linear: worst T + ⌈(T-1)/3⌉ + 10n + 9 commands: all ones but the last row, run once"
+workspace = "linear: at most 2T + n + 13 bits: the table, and Q in two registers"
+
+[[ledger]]
 generator = "brainfuck"
 labels = ["tree"]
 qualification = "folded decision tree; residuals defer through level flags or binary words; affine tables stream"
