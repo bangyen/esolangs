@@ -215,7 +215,7 @@ wheels = [
 
 [[package]]
 name = "esolangs"
-version = "0.15.0"
+version = "1.0.0"
 source = { editable = "." }
 
 [package.optional-dependencies]

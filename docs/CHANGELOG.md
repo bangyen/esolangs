@@ -5,7 +5,7 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
-## Unreleased
+## 1.0.0
 
 - **Breaking:** `balance=True` picks the text layout fitting the smallest
   on-screen square, max(columns, 2 x rows), then the shortest.  It minimized

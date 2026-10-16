@@ -392,14 +392,11 @@ There are more fields beyond these.
 
 ## Compatibility
 
-The package is beta until 1.0: a 0.x minor release may still break the
-surface below, and [CHANGELOG.md](CHANGELOG.md) lists every break.
-
 The public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus
 the documented CLI. Every other module (`esolangs.vm`, `esolangs.registry`,
 `esolangs.generation`, `esolangs.runtime`, ...) is internal.
 
-From 1.0, within a major release, compatibility covers:
+Within a major release, compatibility covers:
 
 - public names, their signatures (required arguments positional, optional
   ones keyword-only), and deliberate `EsolangError` exceptions;
@@ -416,6 +413,7 @@ generated program text, debugger presentation, internal modules, and private
 `_` names may change without deprecation; generated programs retain
 behaviour, not spelling or size.
 
-A breaking public change requires a major release. Coexisting replacements
+A breaking public change requires a major release;
+[CHANGELOG.md](CHANGELOG.md) lists every break. Coexisting replacements
 are documented for at least one minor release.
 Security and correctness fixes may reject input accepted by mistake.
