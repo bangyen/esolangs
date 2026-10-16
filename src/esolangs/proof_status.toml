@@ -79,7 +79,7 @@ labels = ["parameterized lookup"]
 qualification = """\
     one stage per input doubles the queued markers and adds the bit (Horner), and the \
     count selects one of `2**n` constant-size cascade stages"""
-scaling = "linear: at most 6n + 3T rows, the constant tail folded"
+scaling = "linear: at most 2T + 6n + 7 rows, the constant tail folded"
 execution = "linear: worst 10T + 6n + 26 commands: Horner doubling 8 a marker, then at most 2 a row"
 workspace = "linear: worst T + 11 + bl(3T+6n+5) bits: a queue of T markers"
 evidence = "docs/proofs/index.md#generator-ledger"

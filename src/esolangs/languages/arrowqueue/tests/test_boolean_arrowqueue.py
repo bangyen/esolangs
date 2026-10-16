@@ -38,6 +38,28 @@ class TestParameterizedArrowQueue:
                     got = self.run_arrowqueue(self.instantiate(template, bits))
                     assert got == table[combo], f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("n", range(1, 7))
+    def test_rows_reach_but_never_pass_the_ledger_bound(self, n: int) -> None:
+        """At most 2T + 6n + 7 lines; a lone zero second to last reaches it.
+
+        Measured exhaustively through n=3, and to n=8 over these families.
+        """
+        from esolangs.languages import generators
+
+        width = 2**n
+        bound = 2 * width + 6 * n + 7
+        rng = random.Random(n)
+        tables = [
+            *("1" * i + "0" + "1" * (width - 1 - i) for i in range(width)),
+            *("0" * i + "1" + "0" * (width - 1 - i) for i in range(width)),
+            *("".join(rng.choice("01") for _ in range(width)) for _ in range(8)),
+        ]
+        for table in tables:
+            rows = generators.arrowqueue(table).count("\n") + 1
+            assert rows <= bound, f"{table}: {rows} > {bound}"
+        witness = "1" * (width - 2) + "01"
+        assert generators.arrowqueue(witness).count("\n") + 1 == bound
+
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
         """Both routes spell every input as one cell, ``.`` against ``~``."""
