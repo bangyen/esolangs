@@ -211,6 +211,41 @@ def _compact_point(
     return _Point(point.row, coordinates[point.col] - root)
 
 
+def _compaction_lines(
+    cells: dict[_Point, str],
+    reads: list[tuple[_Point, _Point, frozenset[_Point]]],
+    travel_axis: int,
+) -> list[int]:
+    """Return the travel-axis lines compaction keeps, sorted.
+
+    A line is dropped when it holds no cell, which moves the next stamp one
+    step from the line before.  Only an adjacency along the travel axis can
+    change, so a reader gains a new neighbour only across a dropped run.  An
+    empty line is kept beside a reader when that neighbour would be a digit
+    (``;`` included unless the read holds it pending), so no compaction
+    puts a digit beside a reader that was not already.  The kept line leaves
+    the pair two apart, as any dropped run of two or more did.
+    """
+    held = {point[travel_axis] for point in cells}
+    kept = set(held)
+    ordered = sorted(held)
+    for at, _, pending in reads:
+        line = at[travel_axis]
+        for sign in (-1, 1):
+            if line + sign in held:
+                continue
+            ahead = [o for o in ordered if (o - line) * sign > 0]
+            if not ahead:
+                continue
+            far = min(ahead, key=lambda o: abs(o - line))
+            across = _Point(far, at.col) if travel_axis == 0 else _Point(at.row, far)
+            if across in pending:
+                continue
+            if cells.get(across, " ") in _DIG_DIGITS:
+                kept.add(line + sign)
+    return sorted(kept)
+
+
 def _merged_box(
     left: _Box,
     right: _Box,
@@ -757,7 +792,9 @@ class _AlternatingTree:
         """
         coordinates = {
             at: i
-            for i, at in enumerate(sorted({p[self.travel_axis] for p in self.cells}))
+            for i, at in enumerate(
+                _compaction_lines(self.cells, self.reads, self.travel_axis)
+            )
         }
         root = coordinates[0]
 
@@ -767,7 +804,9 @@ class _AlternatingTree:
         self.cells = {compact(point): char for point, char in self.cells.items()}
         compact_reads = _remap_reads(self.reads, compact)
         compact_corridors = _remap_corridors(self.corridors, compact)
-        # Compaction can make a previously distant digit a reader's neighbour.
+        # Unreachable by `_compaction_lines` (no digit becomes a reader's
+        # neighbour, corridors and lane arrows cannot change); kept as the
+        # backstop.
         try:
             _dig_alt_clear(self.cells, compact_reads, compact_corridors)
         except AssertionError:
