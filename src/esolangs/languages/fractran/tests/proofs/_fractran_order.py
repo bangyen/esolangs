@@ -160,29 +160,6 @@ class _Assembler:
         self.code.append(("halt",))
         return self
 
-    def run(self, values: dict[str, int]) -> tuple[dict[str, int], int]:
-        values = values.copy()
-        pc = 0
-        steps = 0
-        while True:
-            op, *args = self.code[pc]
-            steps += 1
-            if op == "halt":
-                return values, steps
-            if op == "inc":
-                values[args[0]] = values.get(args[0], 0) + 1
-                pc += 1
-            elif op == "jump":
-                pc = self.labels[args[0]]
-            else:
-                r, zero = args
-                if values.get(r, 0):
-                    values[r] -= 1
-                    pc += 1
-                else:
-                    pc = pc + 1 if zero is None else self.labels[zero]
-            assert steps < 2000000
-
     def fractions(self, registers: dict[str, int]) -> list[str]:
         # Descending thresholds identify the active state. A separate bridge
         # prime prevents self-targets from cancelling their own guards.

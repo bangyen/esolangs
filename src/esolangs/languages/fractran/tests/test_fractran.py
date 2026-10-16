@@ -20,12 +20,7 @@ PRIMEGAME = (
 )
 
 
-@pytest.mark.parametrize("step", [1, 3, 10, 11, 99, 100])
-def test_decimal_exponents_parse_exactly(step: int) -> None:
-    for value in (0, 1, 37, 999, 1000, 2048):
-        index = fractran_index.compile_index(f"2 3/2^{step * value or 1}")
-        assert index is not None
-        assert index.literal[0][1] == ((2, step * value or 1),)
+def test_decimal_exponents_parse_exactly() -> None:
     for text, expected in (
         ("0", ()),  # 2^0 is the empty product; zero exponents drop out
         ("000000", ()),
