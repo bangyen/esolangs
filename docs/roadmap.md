@@ -52,6 +52,11 @@ oracle when it goes.
 - **Smallfuck:** `BAND = 3` is measured; band 5 is 6-10% smaller on random
   tables at n=8..11.
 - **3x:** `_gain`'s constants were fitted on 148 tables, not derived.
+- **Balance sweeps under the width contract:** `balance=True` must match
+  the best supported width (`test_balance_reaches_the_supported_minimum`).
+  Closed-form widths missed it on 90 sampled tables: INTERCAL 72, Alight 52
+  (with its fold-plan search, `_plans`), Qoibl 25, Fargo 30 (15 on the
+  sweep). Clockwise and Crement are unattempted.
 - **Retry loops:** Piet's colour-phase retry (`raster_lookup/packing.py`),
   Dig's build-then-reject (`_layout.py` `except AssertionError`), Thisthat's
-  three-step narrowing, and the Clockwise and Crement balance sweeps.
+  three-step narrowing.
