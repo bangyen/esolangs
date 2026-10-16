@@ -55,7 +55,7 @@ def decleq(truth_table: str) -> str:
     # with 3 or 4 essential inputs at n=7..8, 0% elsewhere; not raced.
     # All n inputs are read either way; only the essential ones pay the chain.
     reduced = read_at(truth_table, essential, n)
-    return _CodeBuilder(reduced, n, essential, essential).build()
+    return _CodeBuilder(reduced, n, essential).build()
 
 
 class _CodeBuilder:
@@ -69,12 +69,9 @@ class _CodeBuilder:
     never longer than the plain tree.
     """
 
-    def __init__(
-        self, truth_table: str, n: int, routes: list[int], normalized: list[int]
-    ) -> None:
+    def __init__(self, truth_table: str, n: int, routes: list[int]) -> None:
         self.truth_table = truth_table
         self.routes = routes
-        self.normalized = normalized
         self.m = len(routes)
         # The table depth: the fewest low inputs whose lookup pays for the
         # tree above it, ``2**k >= 2 n``, and never more inputs than there are.
@@ -118,15 +115,13 @@ class _CodeBuilder:
         # A read falls through and these decrements never reach 0: target 0.
         for rc in self.read_cells:
             self.emit(-1, rc, 0)
-        for i in self.normalized:
+        for i in self.routes:
             for _ in range(47):
                 self.emit(self.read_cells[i], self.read_cells[i], 0)
         # Index: the low ``k`` inputs, each one taking its weight off the
         # counter. A zero (1) decrements to 0 and jumps the run; a one (2)
         # falls into it.
         for j in range(self.m - self.k, self.m):
-            if self.routes[j] not in self.normalized:
-                continue
             rc = self.read_cells[self.routes[j]]
             weight = 2 ** (self.m - 1 - j)
             self.emit(rc, rc, self.pc() + 3 * (weight + 1))

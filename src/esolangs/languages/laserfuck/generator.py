@@ -775,22 +775,17 @@ def balance_laserfuck(table: str, default: str) -> str:
     """Compare reader fits, tree placements and startup-funnel fits."""
     n = _validate_truth_table(table)
     identity = tuple(range(n))
-    regimes = [(table, identity)]
     margin = MARGIN
     events = {1, 4}
-    for ordered, perm in regimes:
-        tree = _laserfuck_tree(ordered, n)
-        span = max(map(len, tree.upright))
-        for candidate in _laserfuck_reader_candidates(n, perm):
-            exit_column = candidate.reader.exit_col
-            events.update(
-                (margin + candidate.span + 2, margin + exit_column + span + 1)
-            )
+    span = max(map(len, _laserfuck_tree(table, n).upright))
+    for candidate in _laserfuck_reader_candidates(n, identity):
+        exit_column = candidate.reader.exit_col
+        events.update((margin + candidate.span + 2, margin + exit_column + span + 1))
     boundaries = sorted(events)
     widths = set(boundaries)
     for index, start in enumerate(boundaries):
         stop = boundaries[index + 1] if index + 1 < len(boundaries) else None
-        forms = [_laserfuck_build(ordered, perm, start) for ordered, perm in regimes]
+        forms = [_laserfuck_build(table, identity, start)]
         if len(table) <= 8:
             forms.append(_laserfuck_build(table, identity, start, vertical_tree=True))
         # Reader and tree geometry is fixed within this interval. Only the
