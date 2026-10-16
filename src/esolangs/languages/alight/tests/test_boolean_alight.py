@@ -1,12 +1,14 @@
 """Alight generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
+from esolangs.languages.alight.generator import _balance_postfix
 from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
@@ -19,10 +21,30 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
     assert_an_ignored_input_costs("Alight", 6, 6)
 
 
-def test_alight_named_layouts_execute_at_every_width() -> None:
-    for width in range(1, 120):
-        program = boolean.alight("0110", width)
-        assert max(map(len, program.splitlines())) <= width or width < 37
+def test_alight_affine_fold_comparisons_and_empty_turn_rows() -> None:
+    from esolangs.languages.alight.generator import (
+        _alight_folded,
+        _dimensions,
+        _fold_shape,
+    )
+
+    pieces = [(0, 6)] * 3 + [(0, 8), (1, 20), (1, 20), (0, 6), (0, 4)]
+    assert _fold_shape(pieces, (1, 90), 1, 31)[3] == 4
+    for size in range(1, 31):
+        units = [[command] for command in ("begin", "var r", "var i", "set i 0")]
+        units += [[f'set r at{{"{"0" * size}", i+0.5}}']] * 2
+        units += [["out r"], ["end"]]
+        program = _alight_folded(units, size + 90)
+        width, height, length, _ = _fold_shape(pieces, (1, 90), size, 31)
+        assert (*_dimensions(program), len(program)) == (width, height, length)
+        assert esolangs.run("Alight", program) == "0"
+
+
+def test_alight_planned_layouts_render_and_execute() -> None:
+    from esolangs.languages.alight.generator import _emit, _plans
+
+    for plan in _plans(2):
+        program = _emit("0110", 2, plan)
         assert _evaluate("Alight", program, inputs=2) == "0110"
 
 
@@ -39,10 +61,17 @@ def test_alight_balance_drops_ignored_inputs(syntax) -> None:
     assert len(program) < len(str(kept))
 
 
+def test_alight_model_drift_aborts(monkeypatch) -> None:
+    from esolangs.languages.alight import generator as module
+
+    monkeypatch.setattr(module, "_alight_folded", lambda *_args: "begin;end;")
+    with pytest.raises(AssertionError, match="fold model disagrees"):
+        esolangs.generate("Alight", "0110", balance=True)
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("inputs", [1, 4, 8])
-def test_alight_layouts_stay_near_the_exhaustive_column_scan(inputs) -> None:
-    """The replaced search: every fold column rendered, the least minimax kept."""
+def test_alight_native_minimax_records_match_rendered_columns(inputs) -> None:
     from esolangs.languages.alight.generator import (
         _alight_chunk,
         _alight_folded,
@@ -53,7 +82,7 @@ def test_alight_layouts_stay_near_the_exhaustive_column_scan(inputs) -> None:
     rng = random.Random(1025 + inputs)
     table = "".join(rng.choice("01") for _ in range(1 << inputs))
     flat = esolangs.generate("Alight", table)
-    # Render each column once: the oracle the named layouts are measured against.
+    # Render each column once; this retains the old selector's full candidate set.
     forms = [(1, 0, "\n".join(flat)), (len(flat), 1, flat)]
     for columns in range(1, len(flat) + 1):
         program = _alight_folded(
@@ -77,21 +106,17 @@ def test_alight_layouts_stay_near_the_exhaustive_column_scan(inputs) -> None:
                 program,
             )
         )
-    top = max(ready for ready, _, _ in ranked)
-    for width in range(1, top + 1, 1 + top // 80):
-        best = min((item for item in ranked if item[0] <= width), key=lambda i: i[1])
-        got = esolangs.generate("Alight", table, width=width)
-        side = max(_dimensions(got))
-        assert _dimensions(got)[0] <= width
-        # Measured worst over n=1..8 and every width: 1.13.
-        assert best[1][0] <= side <= 1.25 * best[1][0], (width, side, best[1][0])
+    for width in range(1, max(ready for ready, _, _ in ranked) + 1):
+        expected = min(
+            (item for item in ranked if item[0] <= width), key=lambda item: item[1]
+        )[2]
+        assert esolangs.generate("Alight", table, width=width) == expected
     balanced = esolangs.generate("Alight", table, balance=True)
     winners = [flat] + [
         min((item for item in ranked if item[0] <= width), key=lambda item: item[1])[2]
         for width in range(1, max(ready for ready, _, _ in ranked) + 1)
     ]
-    # Measured worst over n=1..8: 1.06.
-    assert balance_score(balanced)[0] <= 1.15 * min(map(balance_score, winners))[0]
+    assert balance_score(balanced) == min(map(balance_score, winners))
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
         output = esolangs.run(
@@ -161,15 +186,15 @@ class TestAlightWidth:
         [
             ("0001", 30, (1, 77)),
             ("0001", 40, (36, 43)),
-            ("0001", 80, (36, 43)),
-            ("01101001", 80, (40, 54)),
-            ("0110100110010110", 80, (48, 54)),
+            ("0001", 80, (43, 33)),
+            ("01101001", 80, (43, 43)),
+            ("0110100110010110", 80, (49, 43)),
         ],
     )
-    def test_the_named_layout_dimensions(
+    def test_the_longer_dimension_is_minimal(
         self, table: str, width: int, dimensions: tuple[int, int]
     ) -> None:
-        """Pin the named layouts at the vertical and folded transitions."""
+        """Pin each transition between the vertical and folded optima."""
         rows = boolean.alight(table, width).splitlines()
         assert (max(map(len, rows)), len(rows)) == dimensions
 
@@ -201,6 +226,18 @@ def test_postfix_settings_are_checked_and_do_not_leak() -> None:
     before = boolean.alight("0110")
     boolean.alight("0110", expression_syntax="postfix")
     assert boolean.alight("0110") == before
+
+
+def test_postfix_balance_model_checks_rendering() -> None:
+    with (
+        patch(
+            "esolangs.languages.alight.generator._alight_folded",
+            return_value="bad",
+        ),
+        pytest.raises(AssertionError, match="postfix fold model"),
+    ):
+        _balance_postfix("0110", 2, "x" * 100)
+    assert _balance_postfix("01", 1, "x") == "x"
 
 
 @pytest.mark.medium
