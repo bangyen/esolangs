@@ -87,7 +87,8 @@ class TestRotfuck:
             grown[size] = made
         assert set(_search_pads()) == set().union(*grown.values()) - {""}
 
-    @pytest.mark.medium
+    # 3.8 s alone, but 16-17 s under CI's -n load (3 of 5 runs, 2026-10-16).
+    @pytest.mark.slow
     def test_pads_match_the_search_they_replaced(self) -> None:
         """Same length and rotation as the Dijkstra over pads, on every state.
 
