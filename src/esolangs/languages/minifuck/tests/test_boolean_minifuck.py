@@ -7,11 +7,14 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, essential_inputs, runs
 from esolangs.languages.minifuck.generator.mux import (
+    _FOUND_POOL_CODE,
     _MUX_MIN_ARITY,
     _MUX_PRESERVE_RIGHT,
+    _SCULPT_LANDED,
     _SCULPT_POOL_CODE,
     _mux,
     _probe_frame,
+    _sculpt_pool_code,
 )
 from esolangs.languages.minifuck.generator.pool import _POOL_MASK
 from esolangs.languages.minifuck.generator.sim import PAIR, _runs, _Sim
@@ -148,6 +151,26 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     assert _probe_frame("[", byte) is None
     assert _probe_frame("[x" * 9, byte) is None
     assert _probe_frame(_SCULPT_POOL_CODE, byte) is not None
+
+
+def test_the_sculpted_pool_code_matches_the_found_string() -> None:
+    """The constructed code ends where the searched one did: same tape, pointer."""
+
+    def end(code: str) -> tuple[int, int, bool]:
+        sim = _Sim(32)
+        sim.tape = _POOL_MASK ^ 1
+        sim.apply(_runs(code))
+        return sim.tape, sim.ptr, sim.skip
+
+    assert end(_SCULPT_POOL_CODE) == end(_FOUND_POOL_CODE)
+    assert end(_SCULPT_POOL_CODE)[1] == _SCULPT_LANDED
+    byte = _POOL_MASK ^ 1
+    assert _probe_frame(_SCULPT_POOL_CODE, byte) == _probe_frame(_FOUND_POOL_CODE, byte)
+    for landed in (2, 3):
+        assert _probe_frame(_sculpt_pool_code(landed), byte) == (landed, 1)
+    for landed in (5, 6):
+        with pytest.raises(AssertionError, match="cannot be sculpted"):
+            _sculpt_pool_code(landed)
 
 
 def test_the_preserving_step_restores_arbitrary_tape() -> None:
