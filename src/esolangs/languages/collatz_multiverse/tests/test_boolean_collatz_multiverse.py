@@ -210,3 +210,55 @@ def test_cm_constants_print_the_right_value() -> None:
     for value in range(3, 256):
         program = _cm_constant_program(1, value)
         assert run_collatz_multiverse(program, ["0"]) == chr(value)
+
+
+def _swept_balance(table: str, default: str) -> str:
+    """The retired balance: select among the spellings at every fit threshold."""
+    from esolangs.generation.helpers import _validate_truth_table, grid_width
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.collatz_multiverse.generator import (
+        _cm_candidates,
+        _cm_layout_versions,
+        _cm_narrow_choice,
+        collatz_multiverse,
+    )
+
+    n = _validate_truth_table(table)
+    wide = collatz_multiverse(table, len(default))
+    narrow = _cm_candidates(table, n, narrow=True, expanded=True)
+    versions = [
+        [(grid_width(source), source) for source in _cm_layout_versions(program)]
+        for program in [wide, *narrow]
+    ]
+    thresholds = {1}
+    for spellings in versions:
+        for span, _source in spellings:
+            thresholds.update((span, max(1, span - 1)))
+
+    def fitted(spellings: list[tuple[int, str]], width: int) -> str:
+        return next(
+            (source for span, source in spellings if span <= width), spellings[-1][1]
+        )
+
+    candidates = [default]
+    for width in sorted(thresholds):
+        program = fitted(versions[0], width)
+        if grid_width(program) > width:
+            program = _cm_narrow_choice(
+                program, [fitted(item, width) for item in versions[1:]]
+            )
+        candidates.append(program)
+    return min(candidates, key=balance_score)
+
+
+def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
+    """Per table, 1..5 inputs: never worse than the retired threshold sweep."""
+    from esolangs.generation.wrap import balance_score
+
+    rng = random.Random(3)
+    for n in (1, 2, 3, 4, 5):
+        for _ in range(6):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            new = esolangs.generate("Collatz Multiverse", table, balance=True)
+            old = _swept_balance(table, esolangs.generate("Collatz Multiverse", table))
+            assert balance_score(new) <= balance_score(old), table

@@ -314,32 +314,15 @@ def _cm_layout_versions(program: str) -> tuple[str, ...]:
 
 
 def balance_collatz_multiverse(truth_table: str, default: str) -> str:
-    """Balance the finite statement-spelling regimes at their fit thresholds."""
+    """Return the best-balanced spelling of the wide and narrow builds."""
     n = _validate_truth_table(truth_table)
     wide = collatz_multiverse(truth_table, len(default))
     narrow = _cm_candidates(truth_table, n, narrow=True, expanded=True)
-    versions = [
-        [(grid_width(source), source) for source in _cm_layout_versions(program)]
-        for program in [wide, *narrow]
-    ]
-    thresholds = {1}
-    for spellings in versions:
-        for span, _source in spellings:
-            thresholds.update((span, max(1, span - 1)))
-
-    def fitted(spellings: list[tuple[int, str]], width: int) -> str:
-        return next(
-            (source for span, source in spellings if span <= width), spellings[-1][1]
-        )
-
+    # Each build's four spellings are the finite regimes the old sweep over
+    # fit thresholds selected among; scoring them directly needs no width.
     candidates = [default]
-    for width in sorted(thresholds):
-        program = fitted(versions[0], width)
-        if grid_width(program) > width:
-            program = _cm_narrow_choice(
-                program, [fitted(item, width) for item in versions[1:]]
-            )
-        candidates.append(program)
+    for program in [wide, *narrow]:
+        candidates.extend(_cm_layout_versions(program))
     return min(candidates, key=balance_score)
 
 
