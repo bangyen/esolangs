@@ -764,9 +764,11 @@ def _balance(table: str, _default: str) -> str:
 
     Candidates are the flat tree folded over 1, 3 or 5 columns per chain
     (``_snake``) and 1..6 for the answer; ``1, 1`` is the plain tall tree, so
-    nothing is worse than it.  The deque (2 rows), the stacked fallback and
-    the constant-input deque never beat the flat tree: 0 wins of ~1.5k tables
-    at n=1..12 (exhaustive to n=3).
+    nothing is worse than it.  Folding trades height for width, so it fades
+    from n=6, where the leaf row (~4.6 columns a leaf) is already the wider
+    side: mean side 272 vs 274 at n=6, 558 vs 559 at n=7.  The deque (2
+    rows), the stacked fallback and the constant-input deque never beat the
+    flat tree: 0 wins of ~1.5k tables at n=1..12 (exhaustive to n=3).
     """
     return min(
         (
