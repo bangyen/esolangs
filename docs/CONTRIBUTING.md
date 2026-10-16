@@ -299,7 +299,7 @@ asks for and every test file `tests/api/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it
 imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
-prose entries, regenerates, lowers `ledgers/coupling.toml`, and
+prose entries, regenerates, and
 lists the mentions left to edit by hand (display name and aliases, quoted
 ids, dotted module paths), each labelled with the edit it needs -- a
 runnable example, prose, or a comment. brainfuck is the reference language
@@ -309,9 +309,8 @@ shared tests, the examples and `scripts/docs/generate.py` spell out, so
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
 keys by a language's name (a list of names in a shared test, a branch on
-an id) is coupling, and `tests/api/test_language_coupling.py` holds each
-file's count of them to `ledgers/coupling.toml`, which only goes
-down. Put such a fact on `Language`, or the test in the language's own
+an id) is coupling, and `tests/api/test_language_coupling.py` allows
+none. Put such a fact on `Language`, or the test in the language's own
 test file under `src/esolangs/languages/<id>/tests/`: `test_<id>.py` for
 its interpreter, `test_boolean_<id>.py` for its generator, and
 `test_integration_<id>.py` for its API, CLI, VM and debugger checks. A shared file states a language's own facts, never a second

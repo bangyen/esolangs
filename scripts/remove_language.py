@@ -984,18 +984,6 @@ def remove(name: str) -> list[str]:
             check=True,
             stdout=subprocess.DEVNULL,
         )
-    # Other files now name fewer languages; the coupling ceiling follows.  A
-    # fresh process: this one's registry still holds the removed language.
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "from tests.api.test_language_coupling import lower_recorded; "
-            "lower_recorded()",
-        ],
-        cwd=ROOT,
-        check=True,
-    )
     # An import of a deleted module fails wherever it runs.
     broken = sorted(
         f"{user}: imports {imported}, which is gone"
