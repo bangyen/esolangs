@@ -220,3 +220,33 @@ def test_sparse_tapemark_columns_do_not_scan_the_coordinate_span() -> None:
     builder.put(10**9, 1, "y")
     assert builder.render() == "x\n y"
     assert builder.render(reflect=True) == " y\nx"
+
+
+@pytest.mark.parametrize(("copy", "run"), [(1, 1), (5, 3), (16, 40)])
+def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
+    from esolangs.languages.b_tapemark.generator import _b_tapemark_folded
+    from esolangs.runtime._evaluate import _evaluate
+
+    # The second input is ignored, so its stage crosses no run.
+    table = "".join(
+        str((i >> 4) ^ (i & 1) ^ (i >> 1) & (i >> 2) & 1) for i in range(32)
+    )
+    program = _b_tapemark_folded(table, copy, run)
+    assert _evaluate("B-tapemark", program, inputs=5) == table
+    # A positive control: flipping one copied digit flips some answer.
+    mutant = program.replace("|0*", "|1*", 1)
+    assert _evaluate("B-tapemark", mutant, inputs=5) != table
+
+
+def test_balance_folds_a_random_table() -> None:
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+
+    table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
+    balanced = esolangs.generate("B-tapemark", table, balance=True)
+    # 202 columns unfolded; the stages' seven rows apiece floor the height.
+    assert (
+        balance_score(balanced)[0]
+        < 130
+        < balance_score(esolangs.generate("B-tapemark", table))[0]
+    )
