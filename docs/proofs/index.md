@@ -52,18 +52,6 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Indexed execution and literal scanning have different costs.
   Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
   and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
-- brainfuck: <a id="brainfuck-behaviours"></a> the exponential growth rate
-  of distinct behaviours of programs of at most `C` characters remains open.
-  On the repository's bi-infinite wrapping-byte tape, over all inputs,
-  the `liminf B(C)**(1/C)` lower bound is 4.24200 with EOF error and 3.79003
-  with EOF keep; corresponding `limsup` upper bounds are 6.885 and 7.1949.
-  For every fixed nonempty finite input set, the lower bound is 3.36614.
-  Rewrite automata and rational Perron inequalities certify upper bounds;
-  distinguishable output and nested-loop families supply lower bounds.
-  The old 7.0341 and 7.0194 certificates excluded legal `[-[]]` and are invalid
-  behaviour bounds. Exact arithmetic cannot repair an unsound rewrite.
-  Controls: `src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_count.py`
-  checks contextual rewrites, independent automata and positive counterexamples.
 - Malbolge: <a id="malbolge-bound"></a> the shipped hashed cascade reaches
   fourteen inputs, positional addressing reaches fifteen and sixteen, and
   seventeen remains open. Finite source space excludes some eighteen-input

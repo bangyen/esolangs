@@ -122,7 +122,7 @@ gendiff language *args:
 
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:
-    {{PYTHON}} scripts/ci/shard.py refresh --serial-node src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
+    {{PYTHON}} scripts/ci/shard.py refresh {{args}}
 
 # create interpreter, generator and test stubs; pass e.g. --category tape_based
 new-language name *args:
