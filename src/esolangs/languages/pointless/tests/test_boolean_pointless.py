@@ -19,3 +19,23 @@ def test_every_row_prints_its_answer(table: str) -> None:
         got = esolangs.run("Pointless", program, stdin=stdin, timeout=5)
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Pointless", got) == table[row], (table, row)
+
+
+def test_a_function_called_once_is_pasted_in() -> None:
+    import random
+    import re
+
+    from esolangs.languages.pointless.generator import pointless
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = format(random.Random(1847).getrandbits(64), "064b")
+    program = pointless(table)
+    names = re.findall(r'"([^"]*)"(\{?)', program)
+    declared = [name for name, brace in names if brace]
+    calls = [name for name, brace in names if not brace]
+    assert declared
+    assert all(calls.count(name) > 1 for name in declared)
+    assert _evaluate("Pointless", program, inputs=6) == table
+    # A positive control: printing the other digit changes the answers.
+    mutant = program.replace("<.>", "<<.>>", 1)
+    assert _evaluate("Pointless", mutant, inputs=6) != table
