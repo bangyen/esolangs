@@ -24,7 +24,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.token_balance import CELL_ASPECT, aspect_gap, near_even_counts
+from esolangs.generation.token_balance import near_even_counts, rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.interpreter._dialect import (
     EXPRESSION_SYNTAXES,
@@ -664,8 +664,8 @@ def select_alight(table: str, n: int, width: int) -> str:
 
 
 def _squareness(width: int, height: int, length: int) -> tuple[int, int, int]:
-    """Rank a shape: imbalance, then length, then width (``balance_score``'s order)."""
-    return aspect_gap(width, height), length, width
+    """Rank a shape: rendered side, then length, then width, as ``balance_score``."""
+    return rendered_side(width, height), length, width
 
 
 def _balance_postfix(
@@ -682,15 +682,13 @@ def _balance_postfix(
     lower = max(length for _, length in pieces) + _EAST + 1
     upper = sum(length for _, length in pieces)
     while lower <= upper:
-        _, height, _, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
-        # Height is constant until the next row-fit transition; its nearest
-        # permitted width minimizes imbalance without a width sweep.
-        columns = min(max(CELL_ASPECT * height, lower), stop - 1)
-        width, height, length, _ = _fold_shape(pieces, (1, 0), columns, stop)
+        width, height, length, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
+        # Height is constant until the next row-fit transition and width
+        # never shrinks, so each transition's first width is its smallest side.
         score = _squareness(width, height, length)
         if score < best:
             best = score
-            selected = units, columns, (width, height, length)
+            selected = units, lower, (width, height, length)
         lower = stop
     if selected is None:
         return default

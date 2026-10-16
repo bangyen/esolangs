@@ -15,7 +15,6 @@ Decisions:
 """
 
 import re
-from itertools import pairwise
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -24,10 +23,9 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.token_balance import (
-    CELL_ASPECT,
-    aspect_gap,
     balanced_token_width,
     near_even_counts,
+    rendered_side,
     run_widths,
 )
 from esolangs.generation.wrap import (
@@ -133,9 +131,9 @@ def _best_chunked_columns(
     are visited: widths where a suffix token run exactly fills the column
     budget, and widths where the boundary window rewraps, for chunk counts
     near the divisors of ``size - 1``.  Each visited interval scores
-    ``(aspect_gap(columns, rows), size + 14 * count, columns)`` -- squareness first,
+    ``(rendered_side(columns, rows), size + 14 * count, columns)`` -- side first,
     then an estimated program length (table characters plus push syntax per
-    chunk), then width -- and the winning width is the squarest point of its
+    chunk), then width -- and the winning width is the first of its
     interval.
     """
     size = len(table)
@@ -165,7 +163,7 @@ def _best_chunked_columns(
             if lower < (point := (size + extra + count - 1) // count) <= upper
         )
         boundaries = sorted(events)
-        for start, stop in pairwise(boundaries):
+        for start in boundaries[:-1]:
             partial = size - (count - 1) * start
             # The boundary window with the partial chunk filled in.
             rows = (
@@ -177,10 +175,11 @@ def _best_chunked_columns(
                 - 3
                 + _height(suffix_lengths, start + _CHUNK_TOKEN_EXTRA)
             )
-            # Squarest width inside this event interval.
-            columns = min(max(CELL_ASPECT * rows, start + _CHUNK_TOKEN_EXTRA), stop + 2)
+            # Rows are fixed inside this event interval: its first width
+            # renders the smallest square.
+            columns = start + _CHUNK_TOKEN_EXTRA
             score = (
-                aspect_gap(columns, rows),
+                rendered_side(columns, rows),
                 size + _CHUNK_PUSH_OVERHEAD * count,
                 columns,
             )
@@ -194,7 +193,7 @@ def _balance(table: str, default: str) -> str:
 
     Renders ``modulous(table, width)`` at a family of candidate widths -- plus
     the unwrapped ``default`` -- and keeps the one minimizing ``balance_score``
-    (row/column imbalance, then program length, then width):
+    (rendered side, then program length, then width):
 
     * whole bracket atoms (``[PSH STR "…"]`` stays intact), at the optimal
       greedy width above the longest atom;

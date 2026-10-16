@@ -326,7 +326,7 @@ def _balanced(default: str) -> str:
         length = len(program.partition("\n")[2])
         # The seed adds one row: W=w, H=1+ceil(length/w). Widths on
         # either side of w*w-A*w=A*length (A=CELL_ASPECT) bracket the
-        # minimum imbalance.
+        # smallest side.
         crossing = (CELL_ASPECT + isqrt(CELL_ASPECT**2 + 4 * CELL_ASPECT * length)) // 2
         for width in (crossing, crossing + 1):
             candidates.append(

@@ -206,7 +206,7 @@ def balance_befunge(truth_table: str, default: str) -> str:
             continue
         side = isqrt(CELL_ASPECT * (count + bound) - 1) + 1
         # H >= (B+T)/W and H <= (B+T)/(W-2)+2. Only the
-        # crossing and its predecessor can minimize |W-A*H| in each range.
+        # crossing and its predecessor can minimize the side in each range.
         candidates.extend(
             befunge(truth_table, min(high, max(floor, width)))
             for width in range(side - 1, side + 2 * CELL_ASPECT + 1)

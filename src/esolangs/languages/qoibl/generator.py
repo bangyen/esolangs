@@ -23,8 +23,8 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import (
     CELL_ASPECT,
-    aspect_gap,
     near_even_counts,
+    rendered_side,
     run_widths,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
@@ -263,7 +263,7 @@ def _best_width(rows: list[_Affine], length: _Affine, lower: int, upper: int) ->
 
     def score(width: int) -> tuple[int, int, int]:
         span = max(slope * width + offset for slope, offset in envelope.items())
-        return aspect_gap(span, height), length[0] * width + length[1], span
+        return rendered_side(span, height), length[0] * width + length[1], span
 
     return min((min(max(point, lower), upper) for point in points), key=score)
 
@@ -299,7 +299,7 @@ def balance_qoibl(table: str, default: str) -> str:
             width = _best_width(rows, length, lower, stop - 1)
             span = max(slope * width + offset for slope, offset in rows)
             score = (
-                aspect_gap(span, len(rows)),
+                rendered_side(span, len(rows)),
                 length[0] * width + length[1],
                 span,
                 width,

@@ -209,11 +209,10 @@ options:
   --plain      export compressed text as ordinary source text.  Without it,
                compressed text is written as gzip and a raster as PNG --
                binary bytes, so redirect them to a file.
-  --balance    make the layout render square: text minimizes |columns - 2 *
-               rows| (a cell is about twice as tall as wide), a raster
-               |width - height|. Ties prefer shorter source, then smaller
-               width. Tokens and routing can prevent a square; excludes
-               --width.
+  --balance    pick the layout fitting the smallest on-screen square: text
+               minimizes max(columns, 2 * rows) (a cell is about twice as
+               tall as wide), a raster |width - height|. Ties prefer shorter
+               source, then smaller width; excludes --width.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
                `esolangs describe <language>` reports which of three

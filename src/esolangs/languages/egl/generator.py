@@ -13,11 +13,8 @@ Decisions:
     An indexed row is a cell, with no subtrees to fold or share.
 """
 
-from math import isqrt
-
 from esolangs.generation.helpers import _validate_truth_table, input_weights
-from esolangs.generation.token_balance import CELL_ASPECT
-from esolangs.generation.wrap import balance_score
+from esolangs.generation.wrap import balance_score, balance_width
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -78,16 +75,13 @@ def _balance(table: str, default: str) -> str:
 
 def _balanced(default: str) -> str:
     """Return the best character fold across the header-width regimes."""
-    header, _, body = default.partition(":")
+    header = default.partition(":")[0]
     floor = len(header) + 1
-    square = max(floor, isqrt(CELL_ASPECT * len(default) - 1) + 1)
-    # Below ``floor`` the header row is widest: floor = A*(1 + body/width).
-    crossing = CELL_ASPECT * len(body) // (floor - CELL_ASPECT)
-    widths = {
-        square,
-        min(max(1, crossing), floor - 1),
-        min(max(1, crossing + 1), floor - 1),
-    }
+    square = balance_width(default)
+    # Below ``floor`` the header row is widest, so the side only falls with
+    # rows: the widest such width, floor - 1, is that regime's best.
+    widths = {max(floor, width) for width in (square - 1, square, square + 1)}
+    widths.add(max(1, floor - 1))
     return min(default, *(_wrap(default, width) for width in widths), key=balance_score)
 
 

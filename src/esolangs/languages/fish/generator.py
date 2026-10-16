@@ -84,7 +84,7 @@ def _folded(reads: str, truth_table: str, width: int) -> str:
 
 
 def balance_fish(truth_table: str, default: str) -> str:
-    """Minimize imbalance over Fish's power-of-two folds and parity column.
+    """Minimize the rendered side over power-of-two folds and the parity column.
 
     Each padding height h gives W=c+2, H=h+T/c. Its W=CELL_ASPECT*H
     crossing is quadratic; padding boundaries lie within two powers of the

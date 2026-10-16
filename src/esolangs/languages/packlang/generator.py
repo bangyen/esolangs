@@ -22,7 +22,7 @@ Decisions:
 """
 
 import re
-from itertools import pairwise, product
+from itertools import product
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -32,9 +32,8 @@ from esolangs.generation.helpers import (
     same_ignoring_whitespace,
     subtree_ids,
 )
-from esolangs.generation.token_balance import CELL_ASPECT, run_widths
+from esolangs.generation.token_balance import run_widths
 from esolangs.generation.wrap import (
-    _join_tokens,
     balance_score,
     wrap_program,
 )
@@ -122,39 +121,21 @@ def _short_name(program: str) -> str:
 
 
 def _balance_form(program: str, minimum: int, maximum: int) -> str:
-    """Balance statement fits and the affine interval of reduced indentation."""
-    records = []
+    """Balance at statement fits and reduced-indentation transitions.
+
+    Height is fixed between them and only reduced indentation grows with
+    width, so each interval's first width renders its smallest square.
+    """
     events = {minimum, maximum + 1}
     for line in program.split("\n"):
         tokens = re.findall(_PACKLANG_LEXEME, line)
         indent = len(line) - len(line.lstrip())
         longest = max(map(len, tokens), default=0)
-        records.append((line, tokens, indent, longest))
         events.update((len(line), longest, indent + longest))
         for span in run_widths(list(map(len, tokens))):
             events.update((span, indent + span))
-    boundaries = sorted(point for point in events if minimum <= point <= maximum + 1)
-    candidates = []
-    for start, stop in pairwise(boundaries):
-        height = 0
-        offsets = []
-        for line, tokens, indent, longest in records:
-            if len(line) <= start:
-                height += 1
-                continue
-            padding = min(indent, max(0, start - longest))
-            rows = _join_tokens(tokens, max(1, start - padding), " ").split("\n")
-            height += len(rows)
-            span = max(map(len, rows))
-            if longest <= start < longest + indent:
-                offsets.append(span - longest)
-        candidates.append(start)
-        # Height is fixed between fits. Only reduced indentation grows with
-        # width, so its crossing of height is the other possible minimum.
-        if offsets:
-            target = CELL_ASPECT * height - max(offsets)
-            candidates.append(min(max(target, start), stop - 1))
-    return min((_packlang(program, width) for width in candidates), key=balance_score)
+    starts = sorted(point for point in events if minimum <= point <= maximum)
+    return min((_packlang(program, width) for width in starts), key=balance_score)
 
 
 def balance_packlang(_table: str, default: str) -> str:

@@ -375,34 +375,15 @@ def _lookup_balance(table: str, default: str) -> str:
         narrow = _tokens(_lookup_layout(table, n, default, lower), n)
         width = balanced_token_width(narrow, minimum=lower, maximum=floor - 1)
         candidates.append(_lookup_layout(table, n, default, width))
-    best = min(candidates, key=balance_score)
-    gaps = tuple(b - a - 1 for a, b in pairwise(essential_inputs(table, n)))
-    if gaps and (gaps[-1] or max(gaps) > 1):
-        # Dropping the penultimate selector gave 40x39 against the old square
-        # at n=6. Comments after the last instruction recover the square.
-        return min(best, _square_tail(best), key=balance_score)
-    return best
-
-
-def _square_tail(program: str) -> str:
-    """Square a layout with inert whitespace after its final instruction."""
-    rows = program.split("\n")
-    width = max(map(len, rows))
-    height = max(len(rows), -(-width // CELL_ASPECT))
-    if height > len(rows):
-        # The new last row is empty; pad it out only if the rows still fall
-        # short of CELL_ASPECT * height columns (an odd width).
-        target = CELL_ASPECT * height
-        pad = " " * target if target > width else ""
-        return program + "\n" * (height - len(rows)) + pad
-    return program + " " * (CELL_ASPECT * height - len(rows[-1]))
+    # No inert padding: it adds length and never shrinks the rendered side.
+    return min(candidates, key=balance_score)
 
 
 def _shared_form(shared: str, n: int, *, sqrt_wrap: bool) -> str:
     """Wrap a shared-residual template square-ish."""
     tokens = _tokens(shared, n)
-    # A unary tape walk can contain O(T) tokens. A square-root wrap and
-    # inert tail give a square without enumerating token-fit widths.
+    # A unary tape walk can contain O(T) tokens. A square-root wrap gives a
+    # square-ish fold without enumerating token-fit widths.
     width = (
         max(isqrt(CELL_ASPECT * len(shared)) + 1, max(map(len, tokens)))
         if sqrt_wrap
@@ -428,12 +409,7 @@ def _balance(table: str, default: str) -> str:
     candidates = [positional]
     if len(default) <= len(positional):
         candidates.append(default)
-    for shared in forms:
-        candidates.extend(
-            candidate
-            for candidate in (shared, _square_tail(shared))
-            if len(candidate) <= len(positional)
-        )
+    candidates.extend(shared for shared in forms if len(shared) <= len(positional))
     return min(candidates, key=balance_score)
 
 
