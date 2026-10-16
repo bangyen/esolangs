@@ -198,7 +198,7 @@ def _seed_curation(name: str) -> None:
         return
     key = name if re.fullmatch(r"[A-Za-z0-9_-]+", name) else json.dumps(name)
     text = path.read_text(encoding="utf-8").rstrip("\n")
-    path.write_text(f'{text}\n{key} = {{ route = "unassessed" }}\n', encoding="utf-8")
+    path.write_text(f"{text}\n{key} = {{ unassessed = true }}\n", encoding="utf-8")
 
 
 def _interpreter_stub(name: str) -> str:
@@ -313,11 +313,11 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         gaps.append(
             Gap(
                 "tests/support/fixtures/curation.toml",
-                f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
-                'route = "fame" (60+) | "first implementation" } under '
-                "[languages], plus bf_derivative = true if the wiki tags it "
+                f'add "{name}" = {{ backlinks = <wiki "What links here" count> }} '
+                "under [languages] (60+ is the fame route, fewer a first "
+                "implementation), plus bf_derivative = true if the wiki tags it "
                 "Brainfuck derivatives (see docs/limitations.md#curation); offline, "
-                '{ route = "unassessed" } until the count is recorded',
+                "{ unassessed = true } until the count is recorded",
             )
         )
     return gaps
@@ -558,7 +558,7 @@ def finish(name: str) -> int:
         _report(name, gaps)
         print("running the gate anyway, to list every other failure")
     gate = _gate()
-    if _curation(name).get("route") == "unassessed":
+    if _curation(name).get("unassessed"):
         print(f"{name}: curation unassessed; record its backlinks before merging")
     return 1 if gaps else gate
 

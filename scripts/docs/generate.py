@@ -368,19 +368,19 @@ def render_collection_size_section() -> str:
 def render_curation_census_section() -> str:
     """Render docs/limitations.md's census counts from the curation fixture.
 
-    The fixture records one route per registry language;
+    The fixture records backlinks per registry language, and the route
+    follows: fame at 60, else first implementation;
     ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
     census = tomllib.loads(CURATION.read_text(encoding="utf-8"))
-    routes = [entry["route"] for entry in census["languages"].values()]
+    fame = [entry["backlinks"] >= 60 for entry in census["languages"].values()]
     return "\n".join(
         [
             f"The {census['checked']} census (`tests/support/fixtures/curation.toml`)"
             " records each",
-            f"language's backlinks and route: {routes.count('fame')} clear the"
-            " fame gate",
-            f"and {routes.count('first implementation')} are first implementations.",
+            f"language's backlinks and route: {fame.count(True)} clear the fame gate",
+            f"and {fame.count(False)} are first implementations.",
         ]
     )
 

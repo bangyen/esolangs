@@ -255,7 +255,7 @@ Judge a module by what the language does not demand.
 1. `just new-language "Name" --category tape_based` (the matching category;
    `--interpreter-only` for a fame admission) writes the interpreter,
    generator and test stubs, and records the language as
-   `{ route = "unassessed" }` in `tests/support/fixtures/curation.toml`. Replace
+   `{ unassessed = true }` in `tests/support/fixtures/curation.toml`. Replace
    the placeholder semantics and tests.
 2. `just check-language "Name"` lists every integration step still missing,
    each with the file and entry to add: registry, exports, contract,

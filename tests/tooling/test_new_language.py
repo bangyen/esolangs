@@ -55,9 +55,9 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
 def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
     curation = root / "tests/support/fixtures/curation.toml"
     curation.parent.mkdir(parents=True)
-    curation.write_text('[languages]\nKept = { route = "fame" }\n')
+    curation.write_text("[languages]\nKept = { backlinks = 60 }\n")
     new_language.scaffold("Tiny Lang", "other", generator=False)
-    assert curation.read_text().endswith('"Tiny Lang" = { route = "unassessed" }\n')
+    assert curation.read_text().endswith('"Tiny Lang" = { unassessed = true }\n')
 
 
 def test_scaffold_refuses_overwrite(root: Path) -> None:
@@ -204,7 +204,7 @@ def test_finish_still_runs_the_gate_past_open_steps(
     fixtures = root / "tests/support/fixtures"
     fixtures.mkdir(parents=True)
     (fixtures / "curation.toml").write_text(
-        '[languages]\nTiny = { route = "unassessed" }\n'
+        "[languages]\nTiny = { unassessed = true }\n"
     )
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])

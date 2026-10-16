@@ -383,7 +383,7 @@ between requests.
 
 The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
 Record resolved title, date and count; missing data means unassessed
-(`route = "unassessed"`, which `finish` flags until the count is recorded). Low
+(`unassessed = true`, which `finish` flags until the count is recorded). Low
 backlinks count against only old languages; Wikipedia pageviews are not a
 gate.
 

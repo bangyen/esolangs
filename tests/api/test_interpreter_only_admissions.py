@@ -26,10 +26,10 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
     stale = sorted(set(_CENSUS) - set(LANGUAGES))
     assert not stale, f"remove {stale} from tests/support/fixtures/curation.toml"
     for name, row in _CENSUS.items():
-        if row["route"] == "unassessed":
+        if row.get("unassessed"):
             continue  # offline; `finish` asks for the count before merging
-        assert (row["route"] == "fame") == (row["backlinks"] >= 60), name
-        assert row["route"] in {"fame", "first implementation"}, name
+        # The route is derived: fame at 60 backlinks, else first implementation.
+        assert isinstance(row["backlinks"], int), name
 
 
 def test_no_new_brainfuck_derivative_is_a_first_implementation() -> None:
@@ -41,7 +41,7 @@ def test_no_new_brainfuck_derivative_is_a_first_implementation() -> None:
     derived = {
         name
         for name, row in _CENSUS.items()
-        if row.get("bf_derivative") and row["route"] == "first implementation"
+        if row.get("bf_derivative") and row["backlinks"] < 60
     }
     assert derived <= predating, sorted(derived - predating)
 
