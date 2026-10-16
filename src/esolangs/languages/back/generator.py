@@ -286,37 +286,51 @@ def _back_draw(
     return state.grid, state.where
 
 
-def _level_walk(
-    order: list[int],
+def _level_events(
+    events: list[int | None],
     level: int,
     block: int,
-    levels: int,
-    constant: Callable[[int, int], bool],
+    *,
     k: int,
+    levels: int,
+    n: int,
+    truth_table: str,
+    constant: Callable[[int, int], bool],
     shared: set[_Node],
+    vertical: bool,
 ) -> None:
-    """Walk the tree in text order, appending level ``k``'s blocks to ``order``.
+    """Append what column ``3k + 2`` meets, in text order, to ``events``.
 
-    One-subtrees of ``shared`` nodes are cut: their beam falls onto the next
-    node's mirror instead of drawing a child.
+    A level-``k`` node is its block number; ``None`` is a horizontal leaf
+    shallower than ``k`` whose finisher runs through the column (it ends at
+    column ``2 * level + n + 1 + bit``).  One-subtrees of ``shared`` nodes are
+    cut, and nothing deeper than ``k`` reaches the column.  Rows are numbered
+    in this order, so a beam falling down the column meets the events in it.
     """
     size = 2 ** (levels - level)
-    if level == levels or constant(block * size, (block + 1) * size):
+    low = block * size
+    if level == levels or constant(low, low + size):
+        if not vertical and 2 * level + n + 1 + int(truth_table[low]) >= 3 * k + 2:
+            events.append(None)
         return
     if level == k:
-        order.append(block)
-    _level_walk(order, level + 1, 2 * block, levels, constant, k, shared)
+        events.append(block)
+        return
+    walk = partial(
+        _level_events,
+        events,
+        level + 1,
+        k=k,
+        levels=levels,
+        n=n,
+        truth_table=truth_table,
+        constant=constant,
+        shared=shared,
+        vertical=vertical,
+    )
+    walk(2 * block)
     if (level, block) not in shared:
-        _level_walk(order, level + 1, 2 * block + 1, levels, constant, k, shared)
-
-
-def _back_level_order(
-    k: int, shared: set[_Node], levels: int, constant: Callable[[int, int], bool]
-) -> list[int]:
-    """Return level ``k``'s nodes in text order, one-subtrees of ``shared`` cut."""
-    order: list[int] = []
-    _level_walk(order, 0, 0, levels, constant, k, shared)
-    return order
+        walk(2 * block + 1)
 
 
 def _back_plan(
@@ -332,42 +346,38 @@ def _back_plan(
     """Pick the nodes whose one-edge can fall onto an equal zero-side subtree.
 
     Level by level: a node qualifies when the next node on its level (in
-    text order) has an equal zero subtree and that node's mirror is the
-    first cell below it in the column.
+    text order) has an equal zero subtree and its beam, falling down column
+    ``3k + 2``, meets that node's mirror before anything else.  That is
+    decided from the walk's order alone (``_level_events``), not by drawing.
     """
     shared: set[_Node] = set()
     for k in range(levels):
-        order = _back_level_order(k, shared, levels, constant)
+        events: list[int | None] = []
+        _level_events(
+            events,
+            0,
+            0,
+            k=k,
+            levels=levels,
+            n=n,
+            truth_table=truth_table,
+            constant=constant,
+            shared=shared,
+            vertical=vertical,
+        )
+        order = [event for event in events if event is not None]
         # The last node's beam falls off the bottom and wraps to the top,
         # where the level's first mirror is the first in the column.  Its
         # walk is about the rows it saves, but only from eight rows up:
         # below that it is a few cells saved for a whole column walked.
         ring = wrap and 2 ** (levels - k - 1) >= _WRAP_ROWS
         follower = dict(pairwise([*order, *order[:1]] if ring else order))
-        tried = {
+        landing = dict(pairwise([*events, *events[:1]] if ring else events))
+        shared.update(
             (k, a)
             for a, b in follower.items()
-            if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b]
-        }
-        if not tried:
-            continue
-        grid, where = _back_draw(
-            truth_table, levels, n, shared | tried, constant, vertical=vertical
+            if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b] and landing[a] == b
         )
-        height = _extent(grid)[0]
-        column = 3 * k + 2
-        owner = {cell: node for node, cell in where.items()}
-        for _, a in tried:
-            row = where[k, a][0] + 1
-            while row < height and (row, column) not in grid:
-                row += 1
-            if ring and row == height:
-                # Off the bottom the beam wraps to the top of the column.
-                row = 0
-                while (row, column) not in grid:
-                    row += 1
-            if owner.get((row, column)) == (k, follower[a]):
-                shared.add((k, a))
     return shared
 
 
