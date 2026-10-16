@@ -2,6 +2,7 @@
 
 import importlib
 import random
+from functools import partial
 
 import pytest
 
@@ -91,6 +92,32 @@ class TestCvnc:
             for combo in range(len(table)):
                 bits = bin(combo)[2:].zfill(n)
                 assert run_cvnc(program, bits) == table[combo], (table, bits)
+
+    def test_squarings_match_the_retry_search_it_replaced(self) -> None:
+        """The closed form never undershoots the old one-more-squaring loop.
+
+        It equals the search wherever the unshared body and the shared one
+        fall on one side of a reach; between them (n=14 at 20% ones: 61,808
+        chars against 57,660) it squares once more.
+        """
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
+        rng = random.Random(11)
+        for n, density in ((6, 0.5), (10, 0.5), (12, 0.1), (13, 0.5), (14, 0.2)):
+            table = "".join(
+                "1" if rng.random() < density else "0" for _ in range(1 << n)
+            )
+            squarings = _HALT_SQUARINGS
+            while True:  # the search, kept as the oracle
+                offset = module._prologue_syllables(squarings)  # noqa: SLF001
+                body = in_input_order(table, partial(_direct, offset=offset))
+                if len(_halt(squarings)) + len(body) < module._reach(squarings):  # noqa: SLF001
+                    break
+                squarings += 1
+            program = module.cvnc(table)
+            assert program.startswith(_halt(squarings)) or (n, density) == (14, 0.2)
+            assert program.startswith(_halt(squarings + 1)) == (
+                (n, density) == (14, 0.2)
+            )
 
     def test_an_extra_squaring_rebases_shared_jumps(
         self, monkeypatch: pytest.MonkeyPatch
