@@ -9,11 +9,11 @@ its *stop*.
   it, 81 flies stride 82 on the odd lines; 84 lands 85 below, an even
   line, which zeroes the accumulator and walks into the 0 subtree.  A rung
   under acc 0 is a fall-through, so walks cross live lanes freely.
-- **Lanes.**  A read takes the first even line whose rung residue mod 82
-  is not in the air.  The air holds one residue per ancestor whose 1 child
-  is still unplaced, so it never exceeds ``n - 1`` of the 41 odd residues;
-  the 1 child's stop is the first line on its residue past the 0 subtree.
-- **Leaves.**  ``nNnN`` (65) flies stride 66 to one of two printers past
+- **Lanes.**  A depth-``d`` read takes the first even line whose rung
+  residue mod 82 is ``2d + 1``, so no two reads in the air share a lane.
+  The air holds one residue per ancestor whose 1 child is still unplaced,
+  at most ``n - 1`` of the 41 odd residues; the 1 child's stop is the first
+  line on its residue past the 0 subtree.
   the tree; a tree stop stays off their two residues mod 66.
 - **Fill.**  A rung only where a flight hops or a walk crosses a live lane,
   ``x`` elsewhere: the wiki errors on blank lines, so none are emitted.
@@ -23,16 +23,16 @@ input, still consumes its digit: both arms converge, the 1 flight stopping
 on the line the zeroed 0 walk passes through, onto one child.
 
 Size:
-    O(T) at every arity: a node's read scan, dismount and stop scan span at
-    most 82, 85 and 3 * 82 lines, a leaf's scan 66, and no line exceeds the
-    65-character read; a dense table is 153 lines an entry from ``n = 8`` to
-    17.  Rungs on live lanes make characters per entry creep with ``n`` (511
-    at ``n = 8``, 586 at 17), under the corridor filling every odd line,
+    O(T) at every arity: a node's read gap, dismount and stop gap span at
+    most 82, 85 and 2 * 82 lines, a leaf's scan 66, and no line exceeds the
+    65-character read; a dense table is 210 lines an entry from ``n = 8`` to
+    17.  Rungs on live lanes make characters per entry creep with ``n`` (667
+    at ``n = 8``, 785 at 17), under the corridor filling every odd line,
     1,207 at both.  Each flight is laid once and a printer lane once from its
     earliest launch, so building is O(T); a run visits each line at most once,
     since every jump is forward.
-    n=10 random 1847: 532,117 chars, n=10 parity: 586,697 chars,
-    n=10 and: 26,904 chars.
+    n=10 random 1847: 644,960 chars, n=10 parity: 708,016 chars,
+    n=10 and: 28,774 chars.
 
 Raises:
     GeneratorCapError: more than forty inputs; 41 lanes bound the arity.
@@ -100,11 +100,15 @@ def _tree(table: str, n: int, layout: _Layout) -> int:
     ids = subtree_ids(table)
     air: set[int] = set()
 
-    def read(entry: int) -> int:
-        """Place a read at the first even line off every live lane; return its rung."""
+    def read(entry: int, depth: int) -> int:
+        """Place a depth-``depth`` read on its own lane; return its rung.
+
+        Lane ``2 * depth + 1`` is the depth's alone, and the air holds only
+        shallower ancestors' lanes, so it is free by construction.  Every
+        placed line lies before ``entry``, so the line is free too.
+        """
         line = entry + entry % 2
-        while (line + 1) % _STRIDE in air or {line, line + 1} & layout.ops.keys():
-            line += 2
+        line += (2 * depth - line) % _STRIDE
         layout.walk(entry, line, air)
         layout.put(line, _READ)
         return line + 1
@@ -112,8 +116,8 @@ def _tree(table: str, n: int, layout: _Layout) -> int:
     def stop(start: int, lane: int) -> int:
         """Place a stop on ``lane``'s first free line past ``start``, off printers."""
         line = start + (lane - start) % _STRIDE
-        while line % _PRINT_STRIDE in _PRINT_LANES or line in layout.ops:
-            line += _STRIDE
+        # 82 = 16 mod 66 and the printer residues differ by 32: one hop clears.
+        line += _STRIDE * (line % _PRINT_STRIDE in _PRINT_LANES)
         layout.put(line, "NnNn")
         return line
 
@@ -122,15 +126,12 @@ def _tree(table: str, n: int, layout: _Layout) -> int:
         if depth == n:
             value = ids[n][block]
             line = entry + entry % 2
-            while (line + 1) % _PRINT_STRIDE != _PRINT_LANE[
-                value
-            ] or line in layout.ops:
-                line += 2
+            line += (_PRINT_LANE[value] - 1 - line) % _PRINT_STRIDE
             layout.walk(entry, line, air)
             layout.put(line, "nNnN")
             layout.leaves.append((line + 1, value))
             return line + 2
-        launch = read(entry)
+        launch = read(entry, depth)
         lane = launch % _STRIDE
         arm = launch + _DISMOUNT
         layout.put(arm, "NnNn")
@@ -160,12 +161,8 @@ def _printers(layout: _Layout, start: int) -> tuple[int, dict[int, int]]:
     one_stop = start + (_PRINT_LANE[1] - start) % _PRINT_STRIDE
     layout.put(one_stop, "NnNn")
     one_code = ["@id"] * 4 + ["@nd"] * 9 + ["div", "NnNn"]
-    code = one_stop + 1
-    while any(
-        (code + i) % 2 and (code + i) % _PRINT_STRIDE == _PRINT_LANE[0]
-        for i in range(len(one_code) + 20)
-    ):
-        code += 1
+    # The 35-line window must start past the first odd 0-lane line.
+    code = one_stop + 1 + (_PRINT_LANE[0] - _PRINT_LANE[1]) % _PRINT_STRIDE
     layout.walk(one_stop + 1, code, set())
     for i, op in enumerate(one_code):
         layout.put(code + i, op)

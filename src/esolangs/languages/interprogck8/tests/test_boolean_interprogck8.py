@@ -38,3 +38,29 @@ def test_a_deep_path_keeps_its_lanes_apart(hot: int) -> None:
     program = esolangs.generate("Interprogck8", table)
     for row in (hot, hot ^ 1, hot ^ (1 << (n - 1)), 0):
         assert _answer(program, n, row) == table[row], row
+
+
+def test_closed_form_addresses_match_the_scans_they_replaced() -> None:
+    """The stop hop, leaf line and printer-code shift equal the old first-fit scans."""
+    stride, ps, lane0, lane1 = 82, 66, 33, 1
+    lanes = {lane0, lane1}
+    print_lane = {0: lane0, 1: lane1}
+    for start in range(400):
+        for lane in range(1, stride, 2):
+            scan = start + (lane - start) % stride
+            while scan % ps in lanes:
+                scan += stride
+            hop = start + (lane - start) % stride
+            hop += stride * (hop % ps in lanes)
+            assert hop == scan, (start, lane)
+        for value, plane in print_lane.items():
+            even = start + start % 2
+            scan = even
+            while (scan + 1) % ps != plane:
+                scan += 2
+            assert even + (plane - 1 - even) % ps == scan, (start, value)
+        one = start * ps + lane1
+        code = one + 1
+        while any((code + i) % 2 and (code + i) % ps == lane0 for i in range(15 + 20)):
+            code += 1
+        assert code == one + 1 + (lane0 - lane1) % ps
