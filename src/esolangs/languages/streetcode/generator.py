@@ -778,13 +778,26 @@ def _streetcode_fold(
 def _streetcode_folded(flat: str) -> str:
     """Return the indexed street folded to about square, east cuts first.
 
-    A strip's block is 6 rows plain, 11 with its room band (gap included).
-    Rooms crowd the east end, so most strips carry one; 9 rows a strip is the
-    constant that squares the result, measured at 0.99-1.00 of the best of 34
-    targets' ``balance_score`` at n=7-10 and 1.00 at n=6 (random tables).  The
-    width that squares ``rows`` rows is ``CELL_ASPECT * rows``.
+    A strip's block is ``_SILL - _KERB + 1 + _GAP`` rows plain, ``_SILL + 1 +
+    _GAP`` with its room band.  East cuts pack the room columns into the
+    fewest strips, so the share of strips with a band is the room columns'
+    share of the span, and a strip averages ``h`` rows between those.  With
+    ``span / target`` strips the height is ``span * h / target``; it squares
+    the width when ``target = CELL_ASPECT * span * h / target``.
     """
-    target = isqrt(9 * CELL_ASPECT * grid_width(flat))
+    rows = flat.splitlines()
+    span = grid_width(flat)
+    west = min(
+        (
+            col
+            for col in range(span)
+            if any(row[col : col + 1].strip() for row in rows[:_KERB])
+        ),
+        default=span,
+    )
+    plain = _SILL - _KERB + 1 + _GAP
+    # h = plain + _KERB * (span - west) / span, kept in integers.
+    target = isqrt(CELL_ASPECT * (plain * span + _KERB * (span - west)))
     return _streetcode_fold(flat, target, east=True)[0]
 
 
