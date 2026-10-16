@@ -387,9 +387,9 @@ def _ledger_gaps(name: str) -> list[Gap]:
             Gap(
                 "src/esolangs/proof_status.toml",
                 f'add a [[ledger]] block: generator = "{name}", labels = ["tree"], '
-                "qualification, scaling, execution, workspace and evidence = "
-                '"docs/proofs/index.md#generator-ledger"; copy a block with the '
-                "same construction and see Symbols in docs/proofs/index.md; "
+                "qualification, scaling, execution and workspace (evidence "
+                "defaults to docs/proofs/index.md#generator-ledger); copy a "
+                "block with the same construction and see Symbols in docs/proofs/index.md; "
                 'each cell is "<class>: <clause>", e.g. "linear: ..." or '
                 '"poly n: worst 7n + 3 commands ..."; '
                 "a clause after `worst`/`at most` takes at most "

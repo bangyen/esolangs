@@ -84,6 +84,15 @@ def test_ledger_evidence_can_name_a_whole_file() -> None:
     status.validate(data)
 
 
+def test_ledger_evidence_defaults_and_is_not_restated() -> None:
+    data = tomllib.loads(status.MANIFEST.read_text())
+    assert "evidence" not in data["ledger"][0]
+    assert status.validate(data)[0][0].evidence == status.LEDGER_EVIDENCE
+    data["ledger"][0]["evidence"] = status.LEDGER_EVIDENCE
+    with pytest.raises(ValueError, match="omit the default evidence"):
+        status.validate(data)
+
+
 def test_owned_evidence_anchor_is_required(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(status, "ROOT", tmp_path)
     document = tmp_path / "proof.md"
