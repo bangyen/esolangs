@@ -883,7 +883,7 @@ qualification = """\
     reads that sum as the leaf address; the five lightest weights are CONSUMEd from \
     planted cells, so they never read the sum and need not be multiples of 256, which \
     puts the stride at an eight-token leaf"""
-scaling = "linear: per-node landing search sized in O(1), not an O(weight) dry build"
+scaling = "linear: every address solved in closed form, the leaf table first"
 execution = "poly n: n read nodes after a fixed dispatch and leaf"
 workspace = "poly n: each command adds at most one byte; commands are poly n"
 

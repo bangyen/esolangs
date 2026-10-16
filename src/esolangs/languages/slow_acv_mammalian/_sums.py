@@ -8,7 +8,7 @@ tokens against this model and asserts it agrees with the token-level
 arithmetic, so a finished build is correct by construction.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 from esolangs.languages.slow_acv_mammalian.interpreter import _ARRAYS, MammalianModuli
 
@@ -40,6 +40,25 @@ def _aim(start: int) -> int:
         # Inside a class block; an odd ``start`` steps to the next even.
         return start % 2
     return 64 - offset
+
+
+def _seeds_onto(
+    head: int, step: int, targets: Iterable[int], modulus: int = _MODULUS
+) -> int:
+    """Fewest ``SEED``s stepping ``head`` by unit ``step`` onto one of ``targets``."""
+    inverse = pow(step, -1, modulus)
+    return min((target - head) * inverse % modulus for target in targets)
+
+
+def _read_seeds(head: int, total: int, modulus: int) -> int:
+    """Reach the earliest nonwrapping head whose two DIGEST sums XOR to 48.
+
+    At most 115: a head past 190 first steps through zero, under 66 SEEDs.
+    """
+    count = _aim(total + head)
+    if head + count > modulus - 17:
+        count = modulus - head + _aim(total)
+    return count
 
 
 class _Sums:
