@@ -53,10 +53,16 @@ oracle when it goes.
 - **Vandevelo:** `_peel.py` is a sampled greedy cover. A deterministic
   axis-cube merge is O(n T) but emits 2.1x the peel's text at n=8 (5.6x on
   n=10 majority).
-- **3x:** `_gain`'s constants were fitted on 148 tables, not derived.
+- **3x:** `_gain`'s constants were fitted on 148 tables. The exact saving has
+  no closed form: a key's length depends on its global use rank, and the body
+  cost on content (127 cost pairs over 2,000 random 16-row blocks). Exact means
+  trial emission, the retired greedy loop (1.4%).
 - **Piet:** `raster_lookup/packing.py` retries colour phases. A spacer row
   between lanes needs no retry but costs 32-64% area; choosing a start colour
   without it is itself a scan.
 - **Dig:** `_layout.py` builds a shared layout, then rejects it on an
-  `AssertionError`. The rejection never fired in 5,800 builds, but the check
-  scans the finished grid, so no predicate precedes it.
+  `AssertionError`. The rejection never fired in 8,704 builds and 170 n=8..10
+  sharing layouts, but no proof covers it: compaction can bring a foreign
+  digit beside a reader across a deleted row, and lane arrows can land on a
+  corridor. Mutants tried fail earlier in `place()`; a control reaching only
+  the scan comes first.
