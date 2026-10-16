@@ -3,9 +3,9 @@
 Each input is read into a cell as a byte and, if tested, hoisted to 0 or 4; a
 node adds that to its goto's own ``c`` operand to pick the zero or one
 trampoline.  Up to 16 rows the shorter of tree and shared residuals in input
-order, and 32 rows also try the shared residual tree; wider tables use the
-packed decoder over essential inputs (or a read-and-print constant root),
-which indexes ``m``-bit cells.
+order, and 32 rows (or 32 essential rows) also try the residual trees; wider
+tables use the packed decoder over essential inputs (or a read-and-print
+constant root), which indexes ``m``-bit cells.
 
 Size:
     Packed is O(T) cells over O(T/log T) words; n=4 parity: 614 chars,
@@ -113,6 +113,11 @@ def addsubjump(truth_table: str) -> str:
     if len(truth_table) == 32:
         shared = _addsubjump_ordered(truth_table, tuple(range(5)), shared=True)
         return min((packed, shared), key=len)
+    n = _validate_truth_table(truth_table)
+    if len(input_weights(truth_table, n)[1]) <= 32:
+        # Route by essential rows: the tree folds the ignored levels.
+        tree = _addsubjump_candidate(truth_table, tuple(range(n)))
+        return min((packed, tree), key=len)
     return packed
 
 
