@@ -22,7 +22,8 @@ def test_streetcode_indexed_regimes_are_balanced_and_execute(table) -> None:
         ],
         key=balance_score,
     )
-    assert balance_score(balanced) == balance_score(optimum)
+    # The fold, which no width selects, may beat every width.
+    assert balance_score(balanced) <= balance_score(optimum)
     assert _evaluate("Streetcode", balanced, inputs=6) == table
 
 

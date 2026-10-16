@@ -245,3 +245,30 @@ def test_quarter_turned_rendered_size_is_linear() -> None:
         len(boolean.streetcode("01101001" * (2 ** (n - 3)), 1)) for n in (5, 6, 7, 8)
     ]
     assert all(later < 2 * earlier for earlier, later in pairwise(sizes))
+
+
+@pytest.mark.parametrize("row", [0, 37, 63])
+def test_balance_folds_the_lookup_into_strips(row: int) -> None:
+    import esolangs
+
+    table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
+    program = str(esolangs.generate("Streetcode", table, balance=True))
+    rows = program.splitlines()
+    # 409x9 flat; the fold is about square.
+    assert max(map(len, rows)) < 2 * 2 * len(rows) < 409
+    assert run_streetcode(program, [str(bit) for bit in row_bits(row, 6)]) == table[row]
+
+
+def test_the_fold_certificate_rejects_a_bend_read_as_a_junction() -> None:
+    """A strip end flush with a bend frames a mouth the car turns into."""
+    from esolangs.runtime.io import ScriptedIO
+
+    generator = import_module("esolangs.languages.streetcode.generator")
+    run = import_module("esolangs.languages.streetcode.interpreter").run
+    table = "0" * 64 + "1" * 64
+    flat = generator._streetcode_flat(table, 7)  # noqa: SLF001
+    fold, origin = generator._streetcode_fold(flat, 30, east=True)  # noqa: SLF001
+    assert not generator._drives_alike(flat, fold, origin)  # noqa: SLF001
+    io = ScriptedIO("0" * 7)
+    with pytest.raises(Exception, match="read past the end of input"):
+        run(fold.splitlines(), io)
