@@ -63,3 +63,18 @@ def test_arrowqueue_narrow_drops_ignored_inputs(width: int) -> None:
     assert _evaluate("ArrowQueue", template, inputs=5) == table
     full = arrowqueue("".join(str(bin(i).count("1") % 2) for i in range(32)), width)
     assert template.count("\n") < full.count("\n")
+
+
+@pytest.mark.parametrize(
+    "table", ["0001", "0110", "10010110", "0110" * 4, "01" * 16, "0110100110010110"]
+)
+def test_balanced_fold_computes_every_row_and_is_squarer(table: str) -> None:
+    """The folded cascade beats the unfolded candidates and keeps the answer."""
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
+
+    program = str(esolangs.generate("ArrowQueue", table, balance=True))
+    inputs = len(table).bit_length() - 1
+    assert _evaluate("ArrowQueue", program, inputs=inputs) == table
+    flat = min((arrowqueue(table, w) for w in (None, 1, 5, 6)), key=balance_score)
+    assert balance_score(program)[0] < balance_score(flat)[0]

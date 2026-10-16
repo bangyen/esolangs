@@ -25,7 +25,7 @@ don't edit by hand.
 | `addsubjump/addsubjump.txt` | AddSubJump | `0001` | `01` | 01 | '0' |
 | `algebraic_programming_language/algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight/alight.txt` | Alight | `0001` | `01` | 01 | '0' |
-| `arrowqueue/arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '0 1 2 3' |
+| `arrowqueue/arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | (nothing) |
 | `ascenic/ascenic.txt` | Ascenic | `0001` | `01` | 0 1 | '0' |
 | `b_tapemark/b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back/back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
