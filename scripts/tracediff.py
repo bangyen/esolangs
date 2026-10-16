@@ -251,7 +251,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
     if sample is not None and isinstance(sample[0], str):
         programs.append((sample[0], sample[1]))
     tests = ROOT / "src/esolangs/languages" / language.id / "tests"
-    # A lone fixture sits in tests/, a language with several keeps them in
+    # Wiki examples sit in tests/ or, beside other fixtures or byte-exact,
     # tests/fixtures/; reading only the first skipped 16 languages' examples.
     for path in sorted(
         [*tests.glob("wiki_examples.toml"), *tests.glob("fixtures/wiki_examples.toml")]
