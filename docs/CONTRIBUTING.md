@@ -250,6 +250,9 @@ Judge a module by what the language does not demand.
   200,000 random single steps.
 - Validators and debugger views sit beside the step, not inside it
   (Streetcode's `interpreter/validation.py`).
+- A new CLI flag needs a shell workflow it serves; API parity is not one.
+  Ten `list` filters, `debug` and `--portable` went in 1.1.0 for lack of
+  one.
 
 ## Checklist
 

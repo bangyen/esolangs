@@ -375,6 +375,11 @@ There are more fields beyond these.
 
 ## Compatibility
 
+The CLI is a deliberate subset of the Python API, not a mirror of it:
+every command calls public functions, a capability lands in the API first,
+and the CLI gains a flag only for a shell workflow. Filtering, stepping and
+saving programs stay in Python.
+
 The public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus
 the documented CLI. Every other module (`esolangs.vm`, `esolangs.registry`,
 `esolangs.generation`, `esolangs.runtime`, ...) is internal.
