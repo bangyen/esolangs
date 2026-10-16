@@ -50,16 +50,12 @@ def decleq(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
     # Routing only the essential inputs drops an ignored one's level and the
-    # leaves it doubles, but it can move the leaf depth off a constant half
-    # the full routing exploits (0100010011111111: 1345 -> 1371), so both run.
-    # All n inputs are read either way; only the essential ones pay the chain,
-    # so an ignored input left routed is a level whose sides share a subtree.
+    # leaves it doubles.  Racing it against the full routing (which can keep a
+    # constant half: 0100010011111111 is 1345 vs 1371) saved 0.1-0.2% on tables
+    # with 3 or 4 essential inputs at n=7..8, 0% elsewhere; not raced.
+    # All n inputs are read either way; only the essential ones pay the chain.
     reduced = read_at(truth_table, essential, n)
-    return min(
-        _CodeBuilder(reduced, n, essential, essential).build(),
-        _CodeBuilder(truth_table, n, list(range(n)), essential).build(),
-        key=len,
-    )
+    return _CodeBuilder(reduced, n, essential, essential).build()
 
 
 class _CodeBuilder:
