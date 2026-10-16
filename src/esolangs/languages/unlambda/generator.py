@@ -105,6 +105,8 @@ def unlambda(truth_table: str) -> str:
             "`" + node(key, name) + _PROMISE + tree(level_of[name], name, None)
             for name in diagram.repeated_near(key, _REACH)
         )
+        # Race kept: first candidate only is 33% larger on majority (n=8,10), 14-20% on
+        # threshold-3, 15% on a 3-block pool (unlambda); random tables 2%.
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
     root = diagram.ids[0][0]
