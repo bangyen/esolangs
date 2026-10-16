@@ -53,7 +53,7 @@ LIMIT = 400
 RANDOM_PROGRAMS = 3000
 #: The slowdown a refactor may cost before ``--speed`` fails it.
 SLOWDOWN = 0.10
-_ADDRESS = re.compile(r" at 0x[0-9a-f]+")
+_ADDRESS = re.compile(r"<[\w.]+\.(\w+) object at 0x[0-9a-f]+>| at 0x[0-9a-f]+")
 
 #: ``(source, stdin)``; a generated source may be a raster or compressed.
 type Program = tuple[Any, str]
@@ -147,8 +147,59 @@ def _views(machine: object, ignored: frozenset[str]) -> Event:
 
 
 def _repr(value: object) -> str:
-    """``repr`` without memory addresses, which differ between module copies."""
-    return _ADDRESS.sub("", repr(value))
+    """``repr`` without memory addresses or module paths, which differ by copy."""
+    return _ADDRESS.sub(lambda m: f"<{m[1]} object>" if m[1] else "", repr(value))
+
+
+_SLOTS: dict[type, tuple[str, ...]] = {}
+
+
+def _slots(cls: type) -> tuple[str, ...]:
+    """Every ``__slots__`` name along ``cls``'s MRO."""
+    if cls not in _SLOTS:
+        _SLOTS[cls] = tuple(
+            name for base in cls.__mro__ for name in getattr(base, "__slots__", ())
+        )
+    return _SLOTS[cls]
+
+
+def _plain(value: object, memo: dict[int, object]) -> object:
+    """``value`` as builtins: an instance becomes its class name and fields.
+
+    A default ``repr`` names the module copy and hides the fields, so two
+    copies' equal continuations differed and unequal ones would not.  ``memo``
+    maps ``id`` to result: Unlambda's terms and continuations are shared from
+    step to step, and without it the walk ran its tracediff 6x slower.
+    """
+    if value is None or isinstance(value, int | float | str | bytes):
+        return value
+    key = id(value)
+    if key in memo:
+        return memo[key]
+    result: object
+    if isinstance(value, tuple | list):
+        result = tuple(_plain(item, memo) for item in value)
+    elif isinstance(value, dict):
+        result = tuple(sorted((_repr(k), _plain(v, memo)) for k, v in value.items()))
+    elif isinstance(value, set | frozenset):
+        result = tuple(sorted(map(_repr, value)))
+    else:
+        fields = {
+            name: getattr(value, name)
+            for name in _slots(type(value))
+            if hasattr(value, name)
+        }
+        fields.update(getattr(value, "__dict__", {}))
+        result = (
+            (
+                type(value).__name__,
+                tuple((k, _plain(v, memo)) for k, v in sorted(fields.items())),
+            )
+            if fields
+            else _repr(value)
+        )
+    memo[key] = result
+    return result
 
 
 def trace(
@@ -304,12 +355,23 @@ def differences(
     for program in programs:
         before = trace(old, program, ignored, split=split)
         after = trace(new, program, ignored, split=split)
-        if before != after:
-            padded = zip([*before, None], [*after, None], strict=False)
-            step = next(i for i, (a, b) in enumerate(padded) if a != b)
+        if before == after:
+            continue
+        # A snapshot holding instances (Unlambda's terms and continuations,
+        # FALSE's frames) never equals its twin from the other module copy:
+        # __eq__ wants the same class object.  Such traces compare by fields.
+        # Event by event, so a real difference stops at its first step.
+        memo: dict[int, object] = {}  # both traces stay alive, so ids stay unique
+        for step in range(max(len(before), len(after))):
             first = before[step] if step < len(before) else None
             second = after[step] if step < len(after) else None
-            found.append((program, step, first, second))
+            if first != second and (
+                first is None
+                or second is None
+                or _plain(first, memo) != _plain(second, memo)
+            ):
+                found.append((program, step, first, second))
+                break
     return found
 
 
