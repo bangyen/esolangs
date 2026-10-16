@@ -31,7 +31,7 @@ Size:
     1,207 at both.  Each flight is laid once and a printer lane once from its
     earliest launch, so building is O(T); a run visits each line at most once,
     since every jump is forward.
-    n=10 random 1847: 644,960 chars, n=10 parity: 708,016 chars,
+    n=10 random 1847: 640,940 chars, n=10 parity: 708,016 chars,
     n=10 and: 28,774 chars.
 
 Raises:

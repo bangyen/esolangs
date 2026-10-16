@@ -17,7 +17,7 @@ seek.
 
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
-    strides; n=10 random 1847: 4,061 chars, n=10 and: 1,756 chars.
+    strides; n=10 random 1847: 4,061 chars, n=10 and: 1,769 chars.
 
 Decisions:
     A repeated block is not shared: a brainfuck copy is at least 19 commands

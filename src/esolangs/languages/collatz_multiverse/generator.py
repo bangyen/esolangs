@@ -7,8 +7,8 @@ prints one constant.  The shortest build over the essential inputs wins.
 
 Size:
     O(T): one line per four-row cell plus four decoder lines per distinct
-    cell.  n=10 parity: 8,060 chars, n=10 and: 6,497 chars, n=10 random 1847:
-    11,744 chars.
+    cell.  n=10 parity: 8,247 chars, n=10 and: 6,684 chars, n=10 random 1847:
+    12,389 chars.
 
 Decisions:
     Cells of eight rows: more decoder lines than the ``T / 8`` they save
