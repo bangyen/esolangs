@@ -225,7 +225,8 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
             + bl(n)
         ),
         False,
-        (3, 6),
+        # Eight reaches the AND/XOR gates, admitted from six inputs.
+        (3, 6, 8),
     ),
     "Packlang": (
         lambda n, p: (
