@@ -11,7 +11,9 @@ Releases before 0.10.0 are described on the
   on-screen square, max(columns, 2 x rows), then the shortest.  It minimized
   |columns - rows| first, which rendered about twice as tall as wide and
   could pick a far longer program to shave one column.  Most balanced text
-  programs change shape.
+  programs change shape.  Rasters likewise rank by max(width, height) in
+  pixels, then area; Piet no longer returns a packed layout larger than its
+  default.
 
 ## 0.15.0
 

@@ -215,7 +215,7 @@ def generate(
         balance: Pick the supported layout fitting the smallest on-screen
             square: text minimizes max(columns, 2 * rows), a character cell
             being about twice as tall as wide, then source length, then
-            width.  A raster minimizes |width - height| in pixels, then
+            width.  A raster minimizes max(width, height) in pixels, then
             pixel area, then width.  Excludes ``width``.
         scale: Raster only; replicates pixels after layout (1: native output).
         settings: Dialect choices; see ``describe(language)["dialect_settings"]``.

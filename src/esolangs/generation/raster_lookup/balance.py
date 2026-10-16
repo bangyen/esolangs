@@ -48,7 +48,7 @@ class _Plan(NamedTuple):
 
 
 def _improves(candidate: tuple[int, int, int], ceiling: tuple[int, int, int]) -> bool:
-    """Return whether ``candidate`` is squarer without growing the area."""
+    """Return whether ``candidate`` scores better without growing the area."""
     return candidate[1] <= ceiling[1] and candidate < ceiling
 
 
@@ -214,24 +214,22 @@ def _balanced_plan(
     cells = sum(operation.size for operation in operations)
     pitch = 2 if dense else 3 if compact else 4
     target = max(_MIN_COLUMNS, isqrt(pitch * cells - 1) + (9 if dense else 7))
-    selected = (
-        _tight_plan(operations, target, target + 1)
-        if dense
-        else _plan(operations, target, target + 1, compact=compact)
-    )
-    gap = min(selected.score(), _raster_score(default))[0]
-    # Full rows hold W-10..W cells; width is W-1..W. The old height is
-    # 4*rows-1; compact height lies in 2*rows+1..3*rows+1. These quadratic
-    # bounds exclude widths that cannot improve the current aspect gap.
-    low, high = (8, 12) if compact else (16, 16)
-    lower = max(_MIN_COLUMNS, (isqrt((gap + 1) ** 2 + low * cells) - gap - 1) // 2)
-    upper = max(target, (gap + 15 + isqrt((gap - 5) ** 2 + high * cells)) // 2 + 2)
+
+    def fit(columns: int, stop: int) -> _Plan:
+        if dense:
+            return _tight_plan(operations, columns, stop)
+        return _plan(operations, columns, stop, compact=compact)
+
+    # One row is narrower than its columns, so the strip is its own choice.
+    strip = 4 * cells + 64
+    selected = min(fit(target, target + 1), fit(strip, strip + 1), key=_Plan.score)
+    side = min(selected.score(), _raster_score(default))[0]
+    # Past one row, width is at least W-1, so a tie needs W <= side+1.  A
+    # row holds at most W cells and is a pixel tall, so W >= cells/side.
+    lower = max(_MIN_COLUMNS, cells // side)
+    upper = max(target, side + 1)
     while lower <= upper:
-        plan = (
-            _tight_plan(operations, lower, upper + 1)
-            if dense
-            else _plan(operations, lower, upper + 1, compact=compact)
-        )
+        plan = fit(lower, upper + 1)
         if plan.score() < selected.score():
             selected = plan
         lower = plan.next_fit
@@ -256,6 +254,10 @@ def balance(table: str, default: Raster) -> Raster:
     ceiling = min(selected.score(), default_score)
     if _improves(dense.score(), ceiling):
         selected = dense
-    if default_score <= selected.score():
-        return pack(operations, default)
-    return pack(operations, _emit(operations, selected))
+    if default_score > selected.score():
+        packed = pack(operations, _emit(operations, selected))
+        # Packing minimizes area, not the shape: 00001000's 13x7 plan packs
+        # to 14x3, a larger square than the 10x3 default.
+        if _raster_score(packed) <= default_score:
+            return packed
+    return pack(operations, default)

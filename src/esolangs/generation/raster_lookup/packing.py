@@ -204,8 +204,8 @@ def _layout(
 
 
 def _shape_score(width: int, height: int) -> tuple[int, int, int]:
-    """Rank a layout: squarest first, then smallest area, then narrowest."""
-    return abs(width - height), width * height, width
+    """Rank a layout: least enclosing square, then smallest area, then narrowest."""
+    return max(width, height), width * height, width
 
 
 def _raster_score(image: Raster) -> tuple[int, int, int]:

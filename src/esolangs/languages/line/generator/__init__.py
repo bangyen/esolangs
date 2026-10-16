@@ -254,9 +254,9 @@ def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Rast
 
 
 class _Score(NamedTuple):
-    """Orders layouts by imbalance, then area, then width (0 when small)."""
+    """Orders layouts by enclosing side, then area, then width (0 when small)."""
 
-    imbalance: int
+    side: int
     area: int
     tiebreak: int
 
@@ -285,7 +285,7 @@ def _best_choice(
         else:
             y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
             width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
-        score = _Score(abs(width - height), width * height, 0 if small else width)
+        score = _Score(max(width, height), width * height, 0 if small else width)
         choices.append(_Choice(score, node, canvas, compact, tight))
     return min(choices, key=lambda choice: choice.score)
 
@@ -330,8 +330,8 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
         height, shared_width = len(default.rows), len(default.rows[0])
         shared_area = shared_width * height
-        if (abs(shared_width - height), shared_area, shared_width) <= (
-            score.imbalance,
+        if (max(shared_width, height), shared_area, shared_width) <= (
+            score.side,
             score.area,
             width,
         ) and shared_area <= score.area:

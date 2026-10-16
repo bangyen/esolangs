@@ -101,7 +101,7 @@ It also binds `instantiate`; use the package functions across languages.
 `balance=True` picks the supported layout that fits the smallest on-screen
 square: text minimizes max(columns, 2 x rows), since a character cell is
 about twice as tall as wide, so a shorter program can beat a squarer one.
-Image-based output minimizes |width - height| in pixels. Ties break by
+Image-based output minimizes max(width, height) in pixels. Ties break by
 source length (image-based: pixel area), then width. It excludes `width`.
 
 Image-based generators accept `scale=1` (CLI: `--scale N`), applied after

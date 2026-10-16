@@ -211,7 +211,7 @@ options:
                binary bytes, so redirect them to a file.
   --balance    pick the layout fitting the smallest on-screen square: text
                minimizes max(columns, 2 * rows) (a cell is about twice as
-               tall as wide), a raster |width - height|. Ties prefer shorter
+               tall as wide), a raster max(width, height). Ties prefer shorter
                source, then smaller width; excludes --width.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
