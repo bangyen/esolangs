@@ -168,7 +168,10 @@ def _gain(rows: int, uses: int) -> int:
     A row costs about 7 characters inline; a use costs a flag write, about
     10, and the flag's guarded copy of the block costs 80 more than one
     inline copy.  Fitted on the module's sample, mostly repeated-block
-    tables: the greedy loop saved 13.8%, this 12.6%.
+    tables: the greedy loop saved 13.8%, this 12.6%.  No closed form exists:
+    a key's length depends on its global use rank and a block's cost on its
+    content, so exact means trial emission.  Greedy substitution fixes the
+    reference cost the same way (Apostolico & Lonardi, Proc. IEEE 88(11), 2000).
     """
     return (uses - 1) * 7 * rows - 10 * uses - 80
 

@@ -53,10 +53,6 @@ oracle when it goes.
 - **Vandevelo:** `_peel.py` is a sampled greedy cover. A deterministic
   axis-cube merge is O(n T) but emits 2.1x the peel's text at n=8 (5.6x on
   n=10 majority).
-- **3x:** `_gain`'s constants were fitted on 148 tables. The exact saving has
-  no closed form: a key's length depends on its global use rank, and the body
-  cost on content (127 cost pairs over 2,000 random 16-row blocks). Exact means
-  trial emission, the retired greedy loop (1.4%).
 - **Piet:** `raster_lookup/packing.py` retries colour phases. A spacer row
   between lanes needs no retry but costs 32-64% area; choosing a start colour
   without it is itself a scan.
@@ -69,3 +65,8 @@ oracle when it goes.
   it: a digit beside a reader across a deleted row is unargued. Proved:
   compaction cannot break a corridor; lane arrows (not digits) cannot change
   a reader's operand.
+- **Unpriced races:** Underload, Unlambda and False pick a repeated-subtree
+  carry by trial emission (2060def83) with no saving cited. Sbleq, Subleq,
+  Home Row, EGL, Dimensional, Taglate, ArrowQueue, Flowchart and Alight still
+  race a `keep_constant_*` legacy build; the eleven removed in 43042910e
+  never won.
