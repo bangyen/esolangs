@@ -38,7 +38,7 @@ incoming multiplicities beyond the first. The no-joins exit therefore means
 there is no remaining merge to draw, not that a residual-count cap was hit.
 
 Default generation compares the streaming and projected streaming folds
-with the existing tree, projection and ancestor-return fallback. Neither
+with the existing tree and projection fallback. Neither
 has a node-count or sharing cutoff. No input-order search is performed. A
 joint ablation of the earlier seven-geometry race (forward, destination,
 streaming, centered, median, packed, projected) kept these two: on

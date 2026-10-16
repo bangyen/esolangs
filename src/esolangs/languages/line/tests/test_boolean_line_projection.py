@@ -98,40 +98,14 @@ def test_compact_loader_admits_a_shared_return_within_the_original_input_budget(
     None
 ):
     from esolangs.languages.line.generator.layout import _has_goto
-    from esolangs.languages.line.generator.shared import shared_tree
 
     rng = random.Random(73041)
     residual = "".join(str(rng.randrange(2)) for _ in range(64))
     core = residual * 3 + "0" * 64
     table = _lift(core, 16, tuple(range(8, 16)))
-    assert shared_tree(table) is None
     image = line(table)
     assert _has_goto(image._payload)  # noqa: SLF001 - physical sharing control
     _execute(table, image, [row | fill for row in range(256) for fill in (0, 255 << 8)])
-
-
-@pytest.mark.medium
-def test_multiple_returns_share_a_native_trunk_within_projected_ledger() -> None:
-    from esolangs.generation.helpers import permute_truth_table
-    from esolangs.languages.line.generator import _grey_rows, _project_loader
-    from esolangs.languages.line.generator.shared import shared_canvas, shared_tree
-    from esolangs.raster import Raster
-
-    rng = random.Random(15)
-    a, b, c = ["".join(rng.choice("01") for _ in range(16)) for _ in range(3)]
-    core = permute_truth_table(a * 4 + a + b + a + c, (1, 0, 2, 3, 4, 5, 6))
-    assert shared_tree(core, multiple=True) is None  # 41 commands exceed 5*7.
-    built = shared_tree(core, multiple=True, command_budget=71)
-    assert built is not None
-    graph, commands = built
-    assert commands == 41
-    kept = list(range(9, 16))
-    table = _lift(core, 16, kept)
-    draw = shared_canvas(_project_loader(16, kept, graph), 10**12)
-    assert draw is not None
-    image = Raster(_grey_rows(draw()))
-    rows = [row | fill for row in range(128) for fill in (0, 511 << 7)]
-    assert _execute(table, image, rows) <= commands + 9
 
 
 @pytest.mark.medium
