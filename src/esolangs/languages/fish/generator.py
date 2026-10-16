@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -85,8 +86,9 @@ def _folded(reads: str, truth_table: str, width: int) -> str:
 def balance_fish(truth_table: str, default: str) -> str:
     """Minimize imbalance over Fish's power-of-two folds and parity column.
 
-    Each padding height h gives W=c+2, H=h+T/c. Its crossing is quadratic;
-    padding boundaries lie within two powers of the header's constant part.
+    Each padding height h gives W=c+2, H=h+T/c. Its W=CELL_ASPECT*H
+    crossing is quadratic; padding boundaries lie within two powers of the
+    header's constant part.
     """
     n = _validate_truth_table(truth_table)
     size = len(truth_table)
@@ -97,7 +99,8 @@ def balance_fish(truth_table: str, default: str) -> str:
     exponents = {0, n}
     for power in range(6, maximum.bit_length()):
         height = 1 << power
-        root = (height - 2 + isqrt((height - 2) ** 2 + 4 * size)) // 2
+        lead = CELL_ASPECT * height - 2
+        root = (lead + isqrt(lead**2 + 4 * CELL_ASPECT * size)) // 2
         crossing = root.bit_length() - 1
         exponents.update((crossing, crossing + 1))
         for threshold in (height - 32, height // 2 - 32):

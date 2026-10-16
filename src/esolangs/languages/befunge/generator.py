@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._language import Example, Language, Shape
 from esolangs.runtime.source_hints import with_hint
@@ -187,8 +188,9 @@ def _literal(value: int) -> str:
 def balance_befunge(truth_table: str, default: str) -> str:
     """Return the best-balanced supported Befunge grid within its 80x25 torus.
 
-    Each fixed header bound B gives H=ceil(B/(W-2))+ceil(T/W).
-    Its W=H crossing lies between s and s+2 for s=ceil(sqrt(B+T)).
+    Each fixed header bound B gives H=ceil(B/(W-2))+ceil(T/W).  With
+    A=CELL_ASPECT, its W=A*H crossing lies between s and s+2A for
+    s=ceil(sqrt(A*(B+T))).
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
@@ -202,12 +204,12 @@ def balance_befunge(truth_table: str, default: str) -> str:
         floor = max(low, _min_columns(count, bound))
         if floor > high:
             continue
-        side = isqrt(count + bound - 1) + 1
+        side = isqrt(CELL_ASPECT * (count + bound) - 1) + 1
         # H >= (B+T)/W and H <= (B+T)/(W-2)+2. Only the
-        # crossing and its predecessor can minimize |W-H| in each range.
+        # crossing and its predecessor can minimize |W-A*H| in each range.
         candidates.extend(
             befunge(truth_table, min(high, max(floor, width)))
-            for width in (side - 1, side, side + 1, side + 2)
+            for width in range(side - 1, side + 2 * CELL_ASPECT + 1)
         )
     if n <= 10 and _parity_bias(truth_table) is not None:
         candidates.append(befunge(truth_table, 1))

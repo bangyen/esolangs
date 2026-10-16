@@ -32,7 +32,7 @@ from esolangs.generation.helpers import (
     same_ignoring_whitespace,
     subtree_ids,
 )
-from esolangs.generation.token_balance import run_widths
+from esolangs.generation.token_balance import CELL_ASPECT, run_widths
 from esolangs.generation.wrap import (
     _join_tokens,
     balance_score,
@@ -152,7 +152,8 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
         # Height is fixed between fits. Only reduced indentation grows with
         # width, so its crossing of height is the other possible minimum.
         if offsets:
-            candidates.append(min(max(height - max(offsets), start), stop - 1))
+            target = CELL_ASPECT * height - max(offsets)
+            candidates.append(min(max(target, start), stop - 1))
     return min((_packlang(program, width) for width in candidates), key=balance_score)
 
 

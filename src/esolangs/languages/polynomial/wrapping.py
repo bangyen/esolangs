@@ -5,6 +5,7 @@ from __future__ import annotations
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.generation.token_balance import CELL_ASPECT, aspect_gap
 from esolangs.generation.wrap import balance_score
 
 
@@ -66,8 +67,8 @@ def _balance_polynomial(program: str) -> str:
     choices: list[tuple[tuple[int, int, int], int]] = []
     for lower, stop in pairwise(sorted(events)):
         height += events[lower]
-        width = min(stop - 1, max(lower, height))
-        choices.append(((abs(width - height), total + height - 1, width), width))
+        width = min(stop - 1, max(lower, CELL_ASPECT * height))
+        choices.append(((aspect_gap(width, height), total + height - 1, width), width))
     _, width = min(choices)
     return min(program, _polynomial(program, width), key=balance_score)
 

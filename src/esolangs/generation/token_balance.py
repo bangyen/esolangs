@@ -5,6 +5,15 @@ from collections.abc import Iterator, Sequence
 from itertools import accumulate
 from math import isqrt
 
+#: Rows a rendered character cell is tall per column it is wide: balance
+#: targets ``width == CELL_ASPECT * height``.
+CELL_ASPECT = 1
+
+
+def aspect_gap(width: int, height: int) -> int:
+    """Return how far ``width`` x ``height`` cells render from square."""
+    return abs(width - CELL_ASPECT * height)
+
 
 def run_widths(lengths: Sequence[int]) -> Iterator[int]:
     """Yield the single-space joined width of every contiguous token run."""
@@ -69,7 +78,11 @@ def balanced_token_width(
 
     def score(width: int) -> tuple[int, int, int]:
         height, widest, trimmed = wrap(width)
-        return abs(widest - height), total + (1 - gap) * height - 1 - trimmed, widest
+        return (
+            aspect_gap(widest, height),
+            total + (1 - gap) * height - 1 - trimmed,
+            widest,
+        )
 
     actual_longest = max(
         length - trim for length, trim in zip(lengths, trims, strict=True)
@@ -77,17 +90,20 @@ def balanced_token_width(
     # Every width retains the longest token and can only reduce the greedy
     # row count.  Once width already exceeds height, widening cannot improve
     # either difference or the tied emitted size.
-    if not rstrip_rows and minimum <= actual_longest >= wrap(minimum)[0]:
+    if not rstrip_rows and minimum <= actual_longest >= CELL_ASPECT * wrap(minimum)[0]:
         return minimum
-    choices = {minimum, high, clipped(isqrt(total))}
+    choices = {minimum, high, clipped(isqrt(CELL_ASPECT * total))}
     if len(set(lengths)) == 1 and len(set(trims)) == 1:
         stride = longest + gap
         offset = gap + slack
-        columns = (offset + isqrt(offset * offset + 4 * stride * len(tokens))) // (
-            2 * stride
-        )
+        columns = (
+            offset + isqrt(offset * offset + 4 * CELL_ASPECT * stride * len(tokens))
+        ) // (2 * stride)
+        # The ceiling moves CELL_ASPECT*H by under CELL_ASPECT, so the sign
+        # change of W - CELL_ASPECT*H lies within CELL_ASPECT+1 of the root.
         choices.update(
-            clipped(stride * count - gap) for count in (columns, columns + 1)
+            clipped(stride * count - gap)
+            for count in range(columns, columns + CELL_ASPECT + 2)
         )
         return min(choices, key=lambda width: (score(width), width))
 
@@ -98,10 +114,10 @@ def balanced_token_width(
     # These bounds exclude shapes beyond the two quadratic roots, except
     # the single row already represented by the upper-bound choice.
     offset = difference - gap
-    root = (-offset + isqrt(offset * offset + 4 * total)) // 2 - gap
+    root = (-offset + isqrt(offset * offset + 4 * CELL_ASPECT * total)) // 2 - gap
     lower = clipped(root) if root > longest else minimum
-    offset = difference + gap + slack
-    root = (offset + isqrt(offset * offset + 4 * total)) // 2 + 1
+    offset = difference + gap + slack + CELL_ASPECT - 1
+    root = (offset + isqrt(offset * offset + 4 * CELL_ASPECT * total)) // 2 + 1
     upper = min(high, max(lower, longest + root))
     choices.add(lower)
     prefix = [0, *accumulate(length + gap for length in lengths)]

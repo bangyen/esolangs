@@ -35,7 +35,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     unmark,
 )
-from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import (
     _MINIFUCK_COMMAND,
     _RUN,
@@ -388,12 +388,12 @@ def _square_tail(program: str) -> str:
     """Square a layout with inert whitespace after its final instruction."""
     rows = program.split("\n")
     width = max(map(len, rows))
-    height = len(rows)
-    return (
-        program + "\n" * (width - height)
-        if height < width
-        else program + " " * (height - len(rows[-1]))
-    )
+    height = max(len(rows), -(-width // CELL_ASPECT))
+    if height > len(rows):
+        return (
+            program + "\n" * (height - len(rows)) + " " * (CELL_ASPECT * height - width)
+        )
+    return program + " " * (CELL_ASPECT * height - len(rows[-1]))
 
 
 def _shared_form(shared: str, n: int, *, sqrt_wrap: bool) -> str:
@@ -402,7 +402,7 @@ def _shared_form(shared: str, n: int, *, sqrt_wrap: bool) -> str:
     # A unary tape walk can contain O(T) tokens. A square-root wrap and
     # inert tail give a square without enumerating token-fit widths.
     width = (
-        max(isqrt(len(shared)) + 1, max(map(len, tokens)))
+        max(isqrt(CELL_ASPECT * len(shared)) + 1, max(map(len, tokens)))
         if sqrt_wrap
         else balanced_token_width(tokens, minimum=max(map(len, tokens)))
     )

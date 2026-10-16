@@ -23,7 +23,11 @@ from math import isqrt
 from typing import TYPE_CHECKING, Any
 
 from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
-from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.token_balance import (
+    CELL_ASPECT,
+    aspect_gap,
+    balanced_token_width,
+)
 
 if TYPE_CHECKING:
     from esolangs.registry import Language
@@ -298,7 +302,7 @@ def balance_width(program: str) -> int:
     """Return a square target width from the default rendered area."""
     rows = program.split("\n")
     area = max(1, sum(map(len, rows)))
-    return isqrt(area - 1) + 1
+    return isqrt(CELL_ASPECT * area - 1) + 1
 
 
 def _token_fit(program: str, tokens: list[str], separator: str = "") -> str:
@@ -350,4 +354,4 @@ def balance_score(program: str) -> tuple[int, int, int]:
     """Rank rendered shapes by imbalance, length, then width."""
     rows = program.split("\n")
     width = max(map(len, rows), default=0)
-    return abs(width - len(rows)), len(program), width
+    return aspect_gap(width, len(rows)), len(program), width

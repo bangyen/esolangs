@@ -24,7 +24,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.token_balance import near_even_counts
+from esolangs.generation.token_balance import CELL_ASPECT, aspect_gap, near_even_counts
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.interpreter._dialect import (
     EXPRESSION_SYNTAXES,
@@ -665,7 +665,7 @@ def select_alight(table: str, n: int, width: int) -> str:
 
 def _squareness(width: int, height: int, length: int) -> tuple[int, int, int]:
     """Rank a shape: imbalance, then length, then width (``balance_score``'s order)."""
-    return abs(width - height), length, width
+    return aspect_gap(width, height), length, width
 
 
 def _balance_postfix(
@@ -685,7 +685,7 @@ def _balance_postfix(
         _, height, _, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
         # Height is constant until the next row-fit transition; its nearest
         # permitted width minimizes imbalance without a width sweep.
-        columns = min(max(height, lower), stop - 1)
+        columns = min(max(CELL_ASPECT * height, lower), stop - 1)
         width, height, length, _ = _fold_shape(pieces, (1, 0), columns, stop)
         score = _squareness(width, height, length)
         if score < best:

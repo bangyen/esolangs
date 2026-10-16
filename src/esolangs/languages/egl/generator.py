@@ -16,6 +16,7 @@ Decisions:
 from math import isqrt
 
 from esolangs.generation.helpers import _validate_truth_table, input_weights
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -79,8 +80,9 @@ def _balanced(default: str) -> str:
     """Return the best character fold across the header-width regimes."""
     header, _, body = default.partition(":")
     floor = len(header) + 1
-    square = max(floor, isqrt(len(default) - 1) + 1)
-    crossing = len(body) // (floor - 1)
+    square = max(floor, isqrt(CELL_ASPECT * len(default) - 1) + 1)
+    # Below ``floor`` the header row is widest: floor = A*(1 + body/width).
+    crossing = CELL_ASPECT * len(body) // (floor - CELL_ASPECT)
     widths = {
         square,
         min(max(1, crossing), floor - 1),

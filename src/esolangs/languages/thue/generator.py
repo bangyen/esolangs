@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
     grid_width,
     read_at,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -324,7 +325,8 @@ def balance_thue(truth_table: str, default: str) -> str:
     """Balance chunk payloads at their quadratic crossing, plus the small tree.
 
     H=23+ceil(T/p). Above the rule floor, W=p+2d+3, plus at most one cell for d=1.
-    The ceiling and extra cell put the crossing within one payload of the root.
+    W=CELL_ASPECT*H is quadratic in p; the ceiling and extra cell put the
+    crossing within CELL_ASPECT payloads of its root.
     Each layout (see :func:`_tables`) is tuned at its own rule count.
     """
     plain = min(
@@ -336,15 +338,16 @@ def balance_thue(truth_table: str, default: str) -> str:
         size = len(table)
         digits = _marker_digits(size, len(_alphabet(rounds, extra)))
         base = _RULES if rounds is None else _QUEUED_RULES
-        offset = len(base.splitlines()) + len(extra) - 2 * digits
-        root = (offset + isqrt(offset * offset + 4 * size)) // 2
+        rules = len(base.splitlines()) + len(extra)
+        offset = CELL_ASPECT * rules - 2 * digits
+        root = (offset + isqrt(offset * offset + 4 * CELL_ASPECT * size)) // 2
         overhead = digits + max(digits, 2) + 3
         maximum = max(digits, cap - 1 - overhead)
         candidates.extend(
             _thue_layout(
                 table, rounds, extra, min(maximum, max(digits, payload)) + overhead
             )
-            for payload in (root - 1, root, root + 1, root + 2)
+            for payload in range(root - CELL_ASPECT, root + 2 * CELL_ASPECT + 1)
         )
     return min(candidates, key=balance_score)
 

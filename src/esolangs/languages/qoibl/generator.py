@@ -21,7 +21,12 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
-from esolangs.generation.token_balance import near_even_counts, run_widths
+from esolangs.generation.token_balance import (
+    CELL_ASPECT,
+    aspect_gap,
+    near_even_counts,
+    run_widths,
+)
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -250,7 +255,7 @@ def _best_width(rows: list[_Affine], length: _Affine, lower: int, upper: int) ->
     height = len(rows)
     for slope, offset in envelope.items():
         if slope:
-            root = (height - offset) // slope
+            root = (CELL_ASPECT * height - offset) // slope
             points.update((root, root + 1))
     for (left, left_offset), (right, right_offset) in combinations(envelope.items(), 2):
         crossing = (right_offset - left_offset) // (left - right)
@@ -258,7 +263,7 @@ def _best_width(rows: list[_Affine], length: _Affine, lower: int, upper: int) ->
 
     def score(width: int) -> tuple[int, int, int]:
         span = max(slope * width + offset for slope, offset in envelope.items())
-        return abs(span - height), length[0] * width + length[1], span
+        return aspect_gap(span, height), length[0] * width + length[1], span
 
     return min((min(max(point, lower), upper) for point in points), key=score)
 
@@ -293,7 +298,12 @@ def balance_qoibl(table: str, default: str) -> str:
             rows, stop = _row_fits(statements, lower, upper + 1)
             width = _best_width(rows, length, lower, stop - 1)
             span = max(slope * width + offset for slope, offset in rows)
-            score = (abs(span - len(rows)), length[0] * width + length[1], span, width)
+            score = (
+                aspect_gap(span, len(rows)),
+                length[0] * width + length[1],
+                span,
+                width,
+            )
             if best is None or score < best:
                 best = score
             lower = stop

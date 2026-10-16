@@ -24,6 +24,8 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.token_balance import (
+    CELL_ASPECT,
+    aspect_gap,
     balanced_token_width,
     near_even_counts,
     run_widths,
@@ -131,7 +133,7 @@ def _best_chunked_columns(
     are visited: widths where a suffix token run exactly fills the column
     budget, and widths where the boundary window rewraps, for chunk counts
     near the divisors of ``size - 1``.  Each visited interval scores
-    ``(|columns - rows|, size + 14 * count, columns)`` -- squareness first,
+    ``(aspect_gap(columns, rows), size + 14 * count, columns)`` -- squareness first,
     then an estimated program length (table characters plus push syntax per
     chunk), then width -- and the winning width is the squarest point of its
     interval.
@@ -176,9 +178,9 @@ def _best_chunked_columns(
                 + _height(suffix_lengths, start + _CHUNK_TOKEN_EXTRA)
             )
             # Squarest width inside this event interval.
-            columns = min(max(rows, start + _CHUNK_TOKEN_EXTRA), stop + 2)
+            columns = min(max(CELL_ASPECT * rows, start + _CHUNK_TOKEN_EXTRA), stop + 2)
             score = (
-                abs(columns - rows),
+                aspect_gap(columns, rows),
                 size + _CHUNK_PUSH_OVERHEAD * count,
                 columns,
             )

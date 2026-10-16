@@ -18,6 +18,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, wrap_program
 from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
 from esolangs.languages.taglate.proof_formulas import execution, workspace
@@ -324,8 +325,9 @@ def _balanced(default: str) -> str:
     for program, lower, upper in regimes:
         length = len(program.partition("\n")[2])
         # The seed adds one row: W=w, H=1+ceil(length/w). Widths on
-        # either side of w*w-w=length bracket the minimum imbalance.
-        crossing = (1 + isqrt(1 + 4 * length)) // 2
+        # either side of w*w-A*w=A*length (A=CELL_ASPECT) bracket the
+        # minimum imbalance.
+        crossing = (CELL_ASPECT + isqrt(CELL_ASPECT**2 + 4 * CELL_ASPECT * length)) // 2
         for width in (crossing, crossing + 1):
             candidates.append(
                 wrap_program(program, "taglate", min(upper, max(lower, width)))

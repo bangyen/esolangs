@@ -50,6 +50,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     unmark,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width(language)`` got False for
@@ -308,7 +309,7 @@ def _generate_balanced(
     lang = LANGUAGES[name]
     balancer = lang.balance
     if isinstance(default, CompressedText):
-        return default.wrapped(max(1, isqrt(len(default))))
+        return default.wrapped(max(1, isqrt(CELL_ASPECT * len(default))))
     if isinstance(default, Raster):
         if balancer is None:
             return default
