@@ -2,11 +2,7 @@
 
 import random
 
-from esolangs.generation.token_balance import (
-    near_even_counts,
-    rendered_side,
-    run_widths,
-)
+from esolangs.generation.token_balance import rendered_side, run_widths
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.modulous.generator import (
     _TABLE_PUSH_OVERHEAD,
@@ -14,6 +10,7 @@ from esolangs.languages.modulous.generator import (
     _chunked_columns,
     modulous,
 )
+from tests.support.generator_support import near_even_counts
 
 # The oracle: ``_balance`` once scored every chunk count near a divisor of
 # ``size - 1`` at each width where a greedy row count can change.

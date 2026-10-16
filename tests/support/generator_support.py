@@ -2,6 +2,7 @@
 
 import random
 from itertools import pairwise
+from math import isqrt
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
@@ -200,3 +201,14 @@ def assert_shared_program(
         assert esolangs.read_answer(language, machine.output) == expected
         assert commands <= command_bound
         assert written.bits <= workspace_bound(program)
+
+
+def near_even_counts(size: int) -> set[int]:
+    """Return ``size`` and the chunk counts near the divisors of ``size - 1``.
+
+    Those are every count that splits ``size`` items near-evenly: O(sqrt size).
+    """
+    counts = {size}
+    for divisor in range(1, isqrt(size - 1) + 1):
+        counts.update((divisor + 1, (size - 1) // divisor + 1))
+    return counts

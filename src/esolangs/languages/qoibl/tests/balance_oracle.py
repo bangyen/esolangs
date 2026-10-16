@@ -2,14 +2,10 @@
 
 from itertools import combinations
 
-from esolangs.generation.token_balance import (
-    CELL_ASPECT,
-    near_even_counts,
-    rendered_side,
-    run_widths,
-)
+from esolangs.generation.token_balance import CELL_ASPECT, rendered_side, run_widths
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.qoibl.generator import qoibl
+from tests.support.generator_support import near_even_counts
 
 _Affine = tuple[int, int]
 
