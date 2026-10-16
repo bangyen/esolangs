@@ -54,6 +54,12 @@
 "Polynomial" = "a constant table is the k=0 state machine"
 "What!?" = "a constant table has no change point: the 7n + 12 char Horner prefix"
 
+[folding.ignored_read]
+# Fold an ignored input's branch but keep a read that costs over half a real
+# input at n=8; measured by test_boolean_canonical_catalogue.py.
+"Codesick" = "a bit is exposed only by deleting the one read before it, so an ignored one costs a delete node per residual below it"
+"Interprogck8" = "a read is itself a branch: both arms converge on one child, so an ignored input costs a read node per path"
+
 [folding.ignored_local]
 "Fackward" = "_skip" # equal halves drop their bit unread by a swap
 "Fargo" = "_arm_expression" # zero ANF arms omit their variable

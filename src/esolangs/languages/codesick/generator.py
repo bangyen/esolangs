@@ -15,6 +15,10 @@ first takes its input in a test that misses.
 Size:
     O(T) size and build time, three instructions per diagram node, at most
     3n + 1 steps; n=10 parity: 1,631 chars, n=10 random 1847: 22,728 chars.
+
+Decisions:
+    An ignored input keeps a node per residual below it: the next bit is
+    exposed only once it is deleted.  It costs 0.52x a real input at n=8.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
