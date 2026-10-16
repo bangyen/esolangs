@@ -262,10 +262,10 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 56
-tree-shaped generators use a sharing helper: 37 reference a canonical
-helper (`subtree_ids`, `SubtreeDiagram`), 8 a declared local helper, and 11
-are exempt. Having a helper does not establish complete sharing.
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
+of 56 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 18 are
+exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
 

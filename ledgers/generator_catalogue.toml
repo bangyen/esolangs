@@ -1,8 +1,9 @@
 # Generators whose mechanism is not a canonical helper, and why.  Language
 # names live here so the tests enforcing them name none.
 
-# sharing: tree-shaped generators whose sharing is not the canonical
-# subtree_ids / SubtreeDiagram helper, or which share nothing.  Enforced by
+# sharing: tree-shaped generators whose sharing is a language-local
+# mechanism, or which share nothing.  Every tree generator not exempt must
+# shrink a repeated table, measured by
 # tests/generators/test_boolean_sharing_catalogue.py.
 [sharing.local]
 "Circuit Diagram" = "_dag"  # hash-consed mux fold
@@ -13,9 +14,15 @@
 "BrainIf" = "_brainif_dag" # residual states emitted once
 "Fargo" = "_definition_program" # intern expressions into definitions
 "INTERCAL" = "_intercal_shared" # named shared diagram variables
-"Streetcode" = "_streetcode_shared_half" # equal sibling cofactors drawn once
 
 [sharing.exempt]
+"1 + i" = "a deeper function literal needs a whole-stack roll to reuse"
+"Caballo" = "no names or jumps: code runs once per place it is written"
+"Interprogck8" = "a stop sits on one lane, so two parents cannot land on one child"
+"LaserFuck" = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixteen entries"
+"Rubic" = "no jump or call: code runs once per place it is written"
+"Streetcode" = "a tree only through five inputs, its nonadjacent repeats drawn apart; from six an indexed street with no subtable"
+"Unsquare" = "a stack lookup, one pushed entry per row, with no subtable branch"
 "Piet" = "a strip has no jump, so a repeated subtable cannot be shared"
 "ArrowQueue" = "Horner marker cascade; no subtable is drawn"
 "Ascenic" = "threshold scan over the Horner row code; no subtable is drawn"

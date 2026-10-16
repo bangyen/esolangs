@@ -385,10 +385,10 @@ def render_curation_census_section() -> str:
 
 
 def render_sharing_counts_section() -> str:
-    """Render docs/limitations.md's sharing-helper counts from the catalogue.
+    """Render docs/limitations.md's sharing counts from the catalogue.
 
-    ``test_boolean_sharing_catalogue.py`` holds every tree generator outside
-    ``[sharing]`` to a canonical helper, so the remainder is that count.
+    ``test_boolean_sharing_catalogue.py`` measures every tree generator outside
+    ``[sharing.exempt]``, so the remainder is that count.
     """
     sharing = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["sharing"]
     tree = sum(
@@ -399,12 +399,13 @@ def render_sharing_counts_section() -> str:
     return "\n".join(
         [
             "A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks"
-            f" that {tree}",
-            f"tree-shaped generators use a sharing helper: {tree - local - exempt}"
-            " reference a canonical",
-            f"helper (`subtree_ids`, `SubtreeDiagram`), {local} a declared local"
-            f" helper, and {exempt}",
-            "are exempt. Having a helper does not establish complete sharing.",
+            f" that {tree - exempt}",
+            f"of {tree} tree-shaped generators build parity or a repeated-block"
+            " table at most",
+            f"0.90x its dense or distinct-block twin ({local} by a local helper);"
+            f" {exempt} are",
+            "exempt with a reason. One shrinking probe does not establish"
+            " complete sharing.",
         ]
     )
 
