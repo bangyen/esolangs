@@ -40,23 +40,28 @@ oracle when it goes.
 
 - **Malbolge:** the mixer, label, readout and digit tables were found by
   annealing, CP-SAT and breadth-first search (`skeleton.py`, `cascade.py`,
-  `core.py`, `wide.py`, `segments.py`, `digits.py`); generation still
-  breadth-first navigates (`core.py` `goto`) and places first-fit.
-- **Vandevelo:** `_peel.py` is a sampled greedy cover.
+  `core.py`, `wide.py`, `segments.py`, `digits.py`). The mixers are chaotic:
+  random inits pass 2/300 under the shipped schedule, random schedules 0/300.
+  `_PAIRS` covers the eight op residues mod 94 with 17 pairs against a bound
+  of 12. Generation still breadth-first navigates (`core.py` `goto`: targets
+  above 127 need multi-hop pointer paths) and places handlers and hub stubs
+  first-fit; `digits.py`'s 16-op gadget is the likeliest table to derive.
+- **Vandevelo:** `_peel.py` is a sampled greedy cover. A deterministic
+  axis-cube merge is O(n T) but emits 2.1x the peel's text at n=8 (5.6x on
+  n=10 majority).
 - **Streetcode:** `_streetcode_folded` certifies the first of 34 folds by a
-  breadth-first drive check. No fixed fold is safe on every table; a safe-cut
-  rule needs a proof over the interpreter's junction detection.
-- **`balanced_token_width`:** scans every token-run boundary. A closed-form
-  width costs +4.0% side on 400 token lists, and four tests pin exact
-  optimality.
-- **Smallfuck:** `BAND = 3` is measured; band 5 is 6-10% smaller on random
-  tables at n=8..11.
+  breadth-first drive check; 54% of 2,542 candidate folds are unsound. A
+  folded strip's end wall can sit flush with a room stalk, which
+  `_road_mouth`'s 3x7 window reads as a mouth, and `_plus_dist` sees a
+  foreign `+` through walls. A sound fold needs bends redrawn with two blank
+  rows between strips.
 - **3x:** `_gain`'s constants were fitted on 148 tables, not derived.
-- **Balance sweeps under the width contract:** `balance=True` must match
-  the best supported width (`test_balance_reaches_the_supported_minimum`).
-  Closed-form widths missed it on 90 sampled tables: INTERCAL 72, Alight 52
-  (with its fold-plan search, `_plans`), Qoibl 25, Fargo 30 (15 on the
-  sweep). Clockwise and Crement are unattempted.
-- **Retry loops:** Piet's colour-phase retry (`raster_lookup/packing.py`),
-  Dig's build-then-reject (`_layout.py` `except AssertionError`), Thisthat's
-  three-step narrowing.
+- **Fargo balance:** a width sweep. Fixed multiples of the square width miss
+  the 5% balance contract on fresh tables; few n<=4 tables have more than
+  three good widths.
+- **Piet:** `raster_lookup/packing.py` retries colour phases. A spacer row
+  between lanes needs no retry but costs 32-64% area; choosing a start colour
+  without it is itself a scan.
+- **Dig:** `_layout.py` builds a shared layout, then rejects it on an
+  `AssertionError`. The rejection never fired in 5,800 builds, but the check
+  scans the finished grid, so no predicate precedes it.
