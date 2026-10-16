@@ -3,7 +3,6 @@
 import builtins
 import importlib
 import io
-import json
 import sys
 from contextlib import redirect_stdout
 
@@ -11,6 +10,7 @@ import pytest
 
 import esolangs
 from esolangs.languages.polynomial import interpreter as polynomial_module
+from esolangs.languages.polynomial.generator import _polynomial_assemble
 from esolangs.languages.polynomial.interpreter import (
     brackets,
     convert,
@@ -41,15 +41,25 @@ from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.support.paths import ROOT
 
-# Programs whose roots span orders of magnitude or repeat a wide delta -- the
-# cases where a float64 solver rounds a root and drops or corrupts a
-# character.  Kept as data because only the decode is under test.
-_PRECISION_PROGRAMS: dict[str, str] = json.loads(
-    (
-        ROOT
-        / "src/esolangs/languages/polynomial/tests/fixtures/polynomial_precision.json"
-    ).read_text()
-)
+
+def _printing(text: str) -> str:
+    """Return the program that prints ``text``: per character, add or
+    subtract the code point delta (``[d, 1]``/``[d, 2]``), then print
+    (``[0, 1]``), one prime per instruction.
+
+    Wide deltas make roots span orders of magnitude or repeat -- where a
+    float64 solver rounds a root and drops or corrupts a character.  The
+    output must equal ``text``, so only the decode is under test.
+    """
+    instructions: list[list[int]] = []
+    register = 0
+    for char in text:
+        delta = ord(char) - register
+        if delta:
+            instructions.append([delta, 1] if delta > 0 else [-delta, 2])
+        instructions.append([0, 1])
+        register = ord(char)
+    return _polynomial_assemble(instructions)
 
 
 def test_missing_math_extra_is_actionable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -745,10 +755,10 @@ class TestPolynomialHighPrecisionRoots:
     """
 
     def _decode(self, text: str) -> str:
-        """Run the fixture program for ``text`` and return what it printed."""
+        """Run the program printing ``text`` and return what it printed."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(_PRECISION_PROGRAMS[text], io=IO())
+            run(_printing(text), io=IO())
         return buffer.getvalue()
 
     @pytest.mark.parametrize("text", ["😀t", "a中", "1😀+", "a日a日", "A中B"])
