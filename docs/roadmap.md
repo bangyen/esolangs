@@ -45,7 +45,11 @@ oracle when it goes.
   `_PAIRS` covers the eight op residues mod 94 with 17 pairs against a bound
   of 12. Generation still breadth-first navigates (`core.py` `goto`: targets
   above 127 need multi-hop pointer paths) and places handlers and hub stubs
-  first-fit; `digits.py`'s 16-op gadget is the likeliest table to derive.
+  first-fit. `digits.py`'s 16-op gadget resists derivation: it is a
+  trit-0 program (`p` with `A=2` or a bit gives `2*not x`; the rest folds `z`
+  into cells 1, 2) whose 3-bit -> (u, v) map is an arbitrary injection into
+  nine values (missing `(2,2)`), so no rule picks this sequence over other
+  injective gadgets; it needs trit 0 of the three inits in {0, 1}.
 - **Vandevelo:** `_peel.py` is a sampled greedy cover. A deterministic
   axis-cube merge is O(n T) but emits 2.1x the peel's text at n=8 (5.6x on
   n=10 majority).
