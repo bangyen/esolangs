@@ -412,9 +412,8 @@ def _program(
     *,
     expression_syntax: str = "infix",
     list_update: str = "in_place",
-    keep_constant_input: bool = False,
 ) -> str:
-    """Lay out the lookup, optionally retaining constant-input indexing."""
+    """Lay out the lookup over the essential inputs."""
     n = _validate_truth_table(truth_table)
     _dialect(expression_syntax, list_update)
     if width is not None and width < 1:
@@ -423,7 +422,7 @@ def _program(
     essential = [bool(weight) for weight in weights]
     # An ignored input is read and dropped, and the table is indexed by the
     # rest, including the one-entry table of a constant.
-    dropped = not all(weights) and (any(weights) or not keep_constant_input)
+    dropped = not all(weights)
     build = _Build(
         truth_table=truth_table,
         n=n,
@@ -516,30 +515,12 @@ def balance_alight(
     default: str,
     *,
     expression_syntax: str = "infix",
-    keep_constant_input: bool = False,
 ) -> str:
     """Balance the layouts that can win the native minimax width selector."""
     n = _validate_truth_table(table)
     weights, projected = input_weights(table, n)
     # Constants have no index inputs; reads remain in stream order.
     essential = [bool(weight) for weight in weights]
-    if not any(essential) and not keep_constant_input:
-        legacy = _program(
-            table, expression_syntax=expression_syntax, keep_constant_input=True
-        )
-        return min(
-            _balance_projected(projected, n, default, essential, expression_syntax),
-            balance_alight(
-                table,
-                legacy,
-                expression_syntax=expression_syntax,
-                keep_constant_input=True,
-            ),
-            key=balance_score,
-        )
-    if not any(essential) or all(essential):
-        essential = [True] * n
-        projected = table
     return _balance_projected(projected, n, default, essential, expression_syntax)
 
 

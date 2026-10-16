@@ -214,19 +214,18 @@ def _full_layout(truth_table: str, n: int, *, ghost: bool) -> str:
     return result
 
 
-def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str:
+def _taglate_raw(truth_table: str) -> str:
     """Build a Taglate program computing the given truth table.
 
     A table that ignores some inputs is emitted as the smaller table over
     the inputs it uses, with the ignored ones read and discarded: a constant
     table goes from 451 characters to 21, ``11110000`` to 21 as well.  Odd
-    ``n`` above 1 feeds a leading ghost digit.  ``keep_constant_layout``
-    skips the constant shortcut (the balancer wants the full shape).
+    ``n`` above 1 feeds a leading ghost digit.
     """
     n = _validate_truth_table(truth_table)
 
     ghost = n % 2 == 1 and n > 1
-    if len(set(truth_table)) == 1 and not keep_constant_layout:
+    if len(set(truth_table)) == 1:
         return truth_table[0] + "\n" + "h" * (n + ghost) + "i"
     used = essential_inputs(truth_table, n)
     # A constant table reduces to a one-input constant, never the length-1
@@ -236,10 +235,7 @@ def _taglate_raw(truth_table: str, *, keep_constant_layout: bool = False) -> str
     used = _widen_even(used, n)
     # A single input needs no ghost, so odd size is fine there.
     if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
-        reduced = _taglate_raw(
-            read_at(truth_table, used, n),
-            keep_constant_layout=keep_constant_layout,
-        )
+        reduced = _taglate_raw(read_at(truth_table, used, n))
         return _with_discards(reduced, used, n, ghost=ghost)
     if n == 1:
         return _affine(truth_table)
@@ -302,18 +298,7 @@ def taglate(truth_table: str, width: int | None = None) -> str:
     return wrap_program(program, "taglate", width)
 
 
-def balance_taglate(table: str, default: str) -> str:
-    """Compare the square crossing for literal and bootstrapped queues."""
-    if len(set(table)) == 1:
-        return min(
-            _balanced(default),
-            _balanced(_taglate_raw(table, keep_constant_layout=True)),
-            key=balance_score,
-        )
-    return _balanced(default)
-
-
-def _balanced(default: str) -> str:
+def balance_taglate(_table: str, default: str) -> str:
     """Compare literal and bootstrapped folds of one queue construction."""
     seed, _, commands = default.partition("\n")
     candidates = [default]

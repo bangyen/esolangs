@@ -34,7 +34,6 @@ def test_constant_reads_into_scratch_and_prints_a_literal(n: int, bit: str) -> N
         assert program.startswith("2,1:")
         assert program.count("x") == n
         assert "(" not in program
-    # Balance may keep the legacy lookup when it is squarer (n=3: 20x10).
     for program in [*programs, _balance(table, default)]:
         for bits in itertools.product((0, 1), repeat=n):
             assert execute(program, bits) == (bit, n)

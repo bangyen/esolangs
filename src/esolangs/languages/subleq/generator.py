@@ -42,7 +42,9 @@ def _payload(state: Any) -> Payload:
 def _balance(table: str, default: str) -> str:
     """Retain the literal decoder when its grid is more balanced."""
     candidate = balance_program(default, "subleq")
-    legacy = packed_decoder(table, direct=True, keep_constant_layout=True)
+    if len(set(table)) == 1:
+        return candidate
+    legacy = packed_decoder(table, direct=True)
     return min(candidate, balance_program(legacy, "subleq"), key=balance_score)
 
 

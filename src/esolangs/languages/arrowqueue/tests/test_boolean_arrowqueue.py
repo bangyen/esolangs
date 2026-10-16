@@ -102,27 +102,15 @@ class TestParameterizedArrowQueue:
 def test_constant_balance_and_setters_off_path(bit: str) -> None:
     """Constant roots keep their setters off the halt/ring path, balanced."""
     import esolangs
-    from esolangs.generation.wrap import balance_score
-    from esolangs.languages.arrowqueue.generator import _program
     from esolangs.runtime._evaluate import _evaluate
 
     n = 8
     table = bit * (1 << n)
     template = esolangs.generate("ArrowQueue", table)
     assert template.count(TEMPLATE_CHAR) == n
-    assert len(template) < len(_program(table, keep_constant_cascade=True))
     for options in ({}, {"width": 1}, {"width": 5}, {"width": 6}, {"balance": True}):
         program = esolangs.generate("ArrowQueue", table, **options)
         assert _evaluate("ArrowQueue", program, inputs=n) == table
-        if options.get("balance"):
-            old = min(
-                (
-                    _program(table, width, keep_constant_cascade=True)
-                    for width in (None, 1, 5, 6)
-                ),
-                key=balance_score,
-            )
-            assert balance_score(program) <= balance_score(old)
 
 
 def test_ring_pops_rdlu_then_sustains() -> None:

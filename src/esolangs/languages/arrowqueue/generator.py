@@ -68,12 +68,10 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     return _program(truth_table, width)
 
 
-def _program(
-    truth_table: str, width: int | None = None, *, keep_constant_cascade: bool = False
-) -> str:
+def _program(truth_table: str, width: int | None = None) -> str:
     """Build the marker cascade, or a direct constant halt/ring."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_cascade:
+    if len(set(truth_table)) == 1:
         if truth_table[0] == "0":
             return "+" + ("\n" + TEMPLATE_CHAR) * n
         # The initial ~ supplies R to the top-left +. The ring's top ~
@@ -255,14 +253,7 @@ def _folds(table: str) -> list[str]:
 def _balance(table: str, default: str) -> str:
     """Compare the tree, cascades with one, five and six columns, and folds."""
     if len(set(table)) == 1:
-        return min(
-            default,
-            *(
-                _program(table, width, keep_constant_cascade=True)
-                for width in (None, 1, 5, 6)
-            ),
-            key=balance_score,
-        )
+        return default
     return min(
         default,
         arrowqueue(table, 1),

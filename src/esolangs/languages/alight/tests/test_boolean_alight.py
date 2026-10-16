@@ -196,15 +196,11 @@ def test_postfix_settings_are_checked_and_do_not_leak() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
     import esolangs
-    from esolangs.languages.alight.generator import _program
     from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
     program = esolangs.generate("Alight", table, settings=settings)
-    assert len(program) < len(
-        _program(table, expression_syntax=syntax, keep_constant_input=True)
-    )
     assert _evaluate("Alight", program, inputs=8, settings=settings) == table
 
 
@@ -217,8 +213,6 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
 @pytest.mark.parametrize("n", [3, 8])
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
     import esolangs
-    from esolangs.generation.wrap import balance_score
-    from esolangs.languages.alight.generator import _program, balance_alight
     from esolangs.runtime._evaluate import _evaluate
 
     table = bit * (1 << n)
@@ -230,18 +224,3 @@ def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
         **({"balance": True} if width == "balance" else {"width": width}),
     )
     assert _evaluate("Alight", program, inputs=n, settings=settings) == table
-    if width == "balance":
-        old = _program(table, expression_syntax=syntax, keep_constant_input=True)
-        legacy = balance_alight(
-            table, old, expression_syntax=syntax, keep_constant_input=True
-        )
-        assert balance_score(program) <= balance_score(legacy)
-
-    else:
-        legacy = _program(
-            table, width, expression_syntax=syntax, keep_constant_input=True
-        )
-        assert len(program) <= len(legacy)
-        assert len(program.splitlines()) * max(map(len, program.splitlines())) <= (
-            len(legacy.splitlines()) * max(map(len, legacy.splitlines()))
-        )

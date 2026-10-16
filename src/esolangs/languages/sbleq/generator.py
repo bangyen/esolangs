@@ -44,20 +44,11 @@ def sbleq(truth_table: str) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Retain the old constant tree/decoder when its grid is more balanced."""
+    """Race the input-order tree and packed decoder on large non-constant tables."""
     candidate = balance_program(default, "sbleq")
-    constant = len(set(table)) == 1
-    large = len(table) > _TREE_ROWS
-    if not constant and not large:
+    if len(set(table)) == 1 or len(table) <= _TREE_ROWS:
         return candidate
-    n = len(table).bit_length() - 1
-    legacy = [
-        _sbleq_hoisted(table, tuple(range(n)))
-        if constant
-        else in_input_order(table, _sbleq_hoisted)
-    ]
-    if large:
-        legacy.append(packed_decoder(table, keep_constant_layout=constant))
+    legacy = [in_input_order(table, _sbleq_hoisted), packed_decoder(table)]
     old = balance_program(min(legacy, key=len), "sbleq")
     return min(candidate, old, key=balance_score)
 

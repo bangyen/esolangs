@@ -228,7 +228,7 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
     assert_shared_program(
         "Flowchart",
         table,
-        _flowchart_deque(table, keep_constant_input=True),
+        None,
         3 * (1 << n) + 9 * n + 4,
         lambda program: (
             (7 * (1 << n) + 20 * n + 100) * (len(program).bit_length() + 4)
@@ -242,19 +242,6 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
             len(program.splitlines()) * max(map(len, program.splitlines()))
         ),
     )
-
-
-@pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
-@pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_lookup_retains_balanced_deque(n, bit) -> None:
-    import esolangs
-    from esolangs.generation.wrap import balance_score
-
-    table = bit * (1 << n)
-    legacy = _flowchart_deque(table, keep_constant_input=True)
-    assert balance_score(
-        esolangs.generate("Flowchart", table, balance=True)
-    ) <= balance_score(legacy)
 
 
 @pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])

@@ -69,7 +69,6 @@ def packed_decoder(
     truth_table: str,
     *,
     direct: bool = False,
-    keep_constant_layout: bool = False,
 ) -> str:
     """Emit a linear-size packed-table decoder for the variant.
 
@@ -81,7 +80,7 @@ def packed_decoder(
     won only parity at n=12 (direct), by 7.4%; it was removed.
     """
     total = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_layout:
+    if len(set(truth_table)) == 1:
         return _sbleq_constant(total, truth_table[0], direct=direct)
     weights, projected = input_weights(truth_table, total)
     if any(weights):
