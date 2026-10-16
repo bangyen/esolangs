@@ -7,7 +7,7 @@ blocks instead classifies its two prefix bits and branches once, so each
 block is written once.
 
 Size:
-    O(T) chars; parity and and are linear in n.  n=10 parity: 2,728 chars,
+    O(T) chars; parity and and are linear in n.  n=10 parity: 2,729 chars,
     n=10 and: 923 chars, n=10 random 1847: 6,983 chars.
 
 Decisions:
@@ -134,20 +134,20 @@ def bfstack(truth_table: str) -> str:
         kinds = sorted(set(slots))
         if len(kinds) != 2:
             return None
-        codes = []
-        for one, zero in (kinds, kinds[::-1]):
-            prefix = "".join("1" if slot == one else "0" for slot in slots)
-            at_one, at_zero = (lo + slots.index(k) * size for k in (one, zero))
-            codes.append(
-                ">+"
-                + _bfstack_class(prefix, 2)
-                + "[<-"
-                + build(level + 2, at_one, at_one + size)
-                + ">]<[<"
-                + build(level + 2, at_zero, at_zero + size)
-                + ">]<"
-            )
-        return min(codes, key=len)
+        # The other orientation (swap ``one``/``zero``) differs by 0.02% on
+        # 160 two-block tables at n=6..8; not kept.
+        one, zero = kinds
+        prefix = "".join("1" if slot == one else "0" for slot in slots)
+        at_one, at_zero = (lo + slots.index(k) * size for k in (one, zero))
+        return (
+            ">+"
+            + _bfstack_class(prefix, 2)
+            + "[<-"
+            + build(level + 2, at_one, at_one + size)
+            + ">]<[<"
+            + build(level + 2, at_zero, at_zero + size)
+            + ">]<"
+        )
 
     @cache
     def build(level: int, lo: int, hi: int) -> str:
