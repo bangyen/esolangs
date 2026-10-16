@@ -255,3 +255,16 @@ def test_constant_lookup_retains_balanced_deque(n, bit) -> None:
     assert balance_score(
         esolangs.generate("Flowchart", table, balance=True)
     ) <= balance_score(legacy)
+
+
+@pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])
+def test_balanced_tree_folds_and_still_computes(table: str) -> None:
+    """Snaking chains beats the tall tree's side by a third and keeps the table."""
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
+
+    program = esolangs.generate("Flowchart", table, balance=True)
+    tall = _flowchart_render(_flowchart_cells(table))
+    assert balance_score(program)[0] * 3 <= balance_score(tall)[0] * 2
+    assert _evaluate("Flowchart", program, inputs=len(table).bit_length() - 1) == table
