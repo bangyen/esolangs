@@ -111,3 +111,14 @@ def test_normalize_without_an_installed_package(tmp_path) -> None:
         stream = source.extractfile(normalized)
         assert stream is not None
         assert stream.read() == payload
+
+
+def test_every_source_path_checks_out_on_windows() -> None:
+    """``what!?.txt`` failed every Windows checkout; macOS and Linux accept it."""
+    src = Path(__file__).parents[2] / "src"
+    refused = sorted(
+        str(path.relative_to(src))
+        for path in src.rglob("*")
+        if set(path.name) & set('<>:"\\|?*') or path.name.endswith((" ", "."))
+    )
+    assert not refused, refused

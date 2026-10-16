@@ -300,10 +300,11 @@ BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
 def _stem(lang: Language) -> str:
     """Return the language's example stem: its dashed lowercase name.
 
-    A name a filename would garble uses its id.
+    A name a filename would garble uses its id, as does one Windows refuses:
+    ``what!?.txt`` failed every Windows checkout.
     """
     stem = lang.name.lower().replace(" ", "-")
-    return lang.id.replace("_", "-") if re.search(r"[/*()+]", stem) else stem
+    return lang.id.replace("_", "-") if re.search(r'[/*()+<>:"\\|?]', stem) else stem
 
 
 def _register() -> None:
