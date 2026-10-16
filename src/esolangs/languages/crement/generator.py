@@ -20,7 +20,7 @@ Decisions:
     (3.3%) and 200 seeded five-input tables from 114,791 to 83,070 (27.6%).
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from esolangs.generation.helpers import (
@@ -181,7 +181,22 @@ def _balance(table: str, default: str) -> str:
     short = crement(table, 1)
     width = balanced_token_width(short.split(), " ", maximum=5)
     candidates.append(crement(table, width))
+    candidates.extend(_packed(default, min(map(balance_score, candidates))[0]))
     return min(candidates, key=balance_score)
+
+
+def _packed(default: str, bound: int) -> Iterator[str]:
+    """``default`` with k whole instructions per line, k = 2, 3, ...
+
+    The parser groups whitespace tokens, so line breaks between instructions are
+    free.  Width grows with k, so stop once it reaches ``bound``, the best side.
+    """
+    lines = default.split("\n")
+    widest = max(map(len, lines))
+    for k in range(2, len(lines)):
+        if k * (widest + 1) - 1 >= bound + k:  # packed width >= bound can't win
+            return
+        yield "\n".join(" ".join(lines[i : i + k]) for i in range(0, len(lines), k))
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
@@ -207,6 +222,6 @@ LANGUAGE = Language(
         "end (halts, 0) or on a self-jump (diverges, 1)",
     ),
     balance=_balance,
-    no_wrap="each line is one instruction; jumps and patches name line numbers",
+    no_wrap="jumps and patches name instruction numbers, so lines stay whole",
     example=Example(setters=crement_setters, expected=""),
 )
