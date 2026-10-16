@@ -56,9 +56,6 @@ oracle when it goes.
   foreign `+` through walls. A sound fold needs bends redrawn with two blank
   rows between strips.
 - **3x:** `_gain`'s constants were fitted on 148 tables, not derived.
-- **Fargo balance:** a width sweep. Fixed multiples of the square width miss
-  the 5% balance contract on fresh tables; few n<=4 tables have more than
-  three good widths.
 - **Piet:** `raster_lookup/packing.py` retries colour phases. A spacer row
   between lanes needs no retry but costs 32-64% area; choosing a start colour
   without it is itself a scan.
