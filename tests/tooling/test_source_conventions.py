@@ -1,4 +1,4 @@
-"""Source conventions ruff and mypy cannot see on the local Python."""
+"""Source conventions ruff and mypy cannot see."""
 
 import ast
 import pathlib
@@ -128,3 +128,35 @@ def test_the_annotation_check_catches_each_eager_site() -> None:
     assert _unguarded(head + "x: T | None = None") == ["4: T"]
     assert _unguarded(head + "def f(x: 'T'):\n    y: T = x") == []
     assert _unguarded("from __future__ import annotations\n" + head + "x: T") == []
+
+
+def _control_replacements(text: str) -> list[int]:
+    """Return the line of each ``.sub``/``.subn`` replacement holding a control byte."""
+    return [
+        node.lineno
+        for node in ast.walk(ast.parse(text))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in {"sub", "subn"}
+        and len(node.args) > 1
+        and isinstance(node.args[1], ast.Constant)
+        and isinstance(node.args[1].value, str)
+        and any("\x01" <= char <= "\x08" for char in node.args[1].value)
+    ]
+
+
+def test_regex_replacements_spell_backreferences_raw() -> None:
+    """``"\\1"`` without the ``r`` prefix is chr(1), which ruff accepts."""
+    bad = {
+        path: hits
+        for path, text in _sources().items()
+        if ".sub" in text and (hits := _control_replacements(text))
+    }
+    assert not bad, f"{bad}: write the replacement as a raw string"
+
+
+def test_the_replacement_check_catches_an_octal_escape() -> None:
+    """Positive control: chr(1) fires; the raw spelling and a pattern do not."""
+    assert _control_replacements('re.sub("(a)", "\\1\\1", s)') == [1]
+    assert _control_replacements('re.sub("(a)", r"\\1", s)') == []
+    assert _control_replacements('re.sub("\\1", "x", s)') == []
