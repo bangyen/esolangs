@@ -268,3 +268,39 @@ def test_shared_unequal_bus_banks_execute_all_rows() -> None:
         io = ScriptedIO(f"{row:09b}")
         run(source.splitlines(), io)
         assert (io.getvalue(), io.reads) == (expected, 9)
+
+
+@pytest.mark.medium
+def test_balance_matches_the_old_one_column_narrowing_search() -> None:
+    """The named widths score as well as walking ``width - 1`` three times."""
+    from esolangs.generation.helpers import grid_width
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.thisthat.generator import _balance, _narrow_tree
+
+    def searched(table: str, default: str) -> str:
+        candidates = [default, _tree(table)]
+        for base, shared in ((default, True), (candidates[1], False)):
+            previous = base
+            for _ in range(3):
+                width = max(1, grid_width(previous) - 1)
+                previous = (
+                    thisthat(table, width)
+                    if shared
+                    else _narrow_tree(table, base, width)
+                )
+                candidates.append(previous)
+        candidates.append(thisthat(table, 1))
+        return min(candidates, key=balance_score)
+
+    rng = random.Random(7)
+    tables = [format(v, f"0{1 << n}b") for n in (1, 2, 3) for v in range(1 << (1 << n))]
+    tables += [format(rng.getrandbits(1 << n), f"0{1 << n}b") for n in (4, 5, 6, 7)]
+    for table in tables:
+        default = thisthat(table)
+        assert balance_score(_balance(table, default)) <= balance_score(
+            searched(table, default)
+        ), table
+    # Positive control: the search does beat default and inline somewhere.
+    assert balance_score(searched("0110", thisthat("0110"))) < balance_score(
+        _tree("0110")
+    )
