@@ -8,7 +8,7 @@ the exemptions.  This pins the presence proxy over every boolean generator --
 the shape test (``test_generator_shape_is_what_the_catalogue_says``) checks the
 behaviour for tree and reducing shapes, this catches a new generator that
 quietly drops the helper.  Exceptions live in
-``tests/support/fixtures/canonical_folding_catalogue.toml`` so this file names no
+``tests/support/fixtures/generator_catalogue.toml`` ``[folding]`` so this file names no
 language; the screens (``constant.py``, ``ignored_input.py``) bound the pieces.
 """
 
@@ -26,18 +26,16 @@ RESIDUALS = ("subtree_ids", "_residual_ids", "SubtreeDiagram")
 IGNORED = ("essential_inputs", "read_at", "constant_span_test", *RESIDUALS)
 CONSTANT = ("constant_span_test", *RESIDUALS)
 
-CATALOGUE = (
-    Path(__file__).parents[1] / "support/fixtures" / "canonical_folding_catalogue.toml"
-)
+CATALOGUE = Path(__file__).parents[1] / "support/fixtures" / "generator_catalogue.toml"
 
 
 def _catalogue() -> tuple[dict[str, str], dict[str, str]]:
-    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))
+    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["folding"]
     return data.get("ignored", {}), data.get("constant", {})
 
 
 def _native() -> tuple[dict[str, str], dict[str, str]]:
-    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))
+    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["folding"]
     return data.get("ignored_local", {}), data.get("constant_local", {})
 
 

@@ -1,13 +1,43 @@
-# Folding mechanisms not expressed by canonical span or residual helpers.
-# Local entries name reachable native constructors; exemptions state the
-# construction's limit. Enforced by test_boolean_canonical_catalogue.py.
+# Generators whose mechanism is not a canonical helper, and why.  Language
+# names live here so the tests enforcing them name none.
 
-[ignored]
+# sharing: tree-shaped generators whose sharing is not the canonical
+# subtree_ids / SubtreeDiagram helper, or which share nothing.  Enforced by
+# tests/generators/test_boolean_sharing_catalogue.py.
+[sharing.local]
+"Circuit Diagram" = "_dag"  # hash-consed mux fold
+"Dig" = "_dig_indexed_shared"  # indexed six-input leaf classes
+"Polynomial" = "_polynomial_states"  # ordered BDD over equal residuals
+
+"3x" = "_three_x_emit" # defer repeated blocks behind flags
+"BrainIf" = "_brainif_dag" # residual states emitted once
+"Fargo" = "_definition_program" # intern expressions into definitions
+"INTERCAL" = "_intercal_shared" # named shared diagram variables
+"Streetcode" = "_streetcode_shared_half" # equal sibling cofactors drawn once
+
+[sharing.exempt]
+"Piet" = "a strip has no jump, so a repeated subtable cannot be shared"
+"ArrowQueue" = "Horner marker cascade; no subtable is drawn"
+"Ascenic" = "threshold scan over the Horner row code; no subtable is drawn"
+"Collatz Multiverse" = "indexed packed cells, with no subtable branch"
+"Eval" = "one literal table halved by position"
+"Fackward" = "a block nests its subtrees, so a repeated subtable is copied"
+"Grapheme" = "one integer table literal"
+"Taglate" = "indexed table reduction, with no subtable branch"
+"Vandevelo" = "sum of affine-coset guards, with no subtable branch"
+"bit~" = "planted lookup entries, with no subtable branch"
+"What!?" = "threshold chain over the Horner index; no subtable is drawn"
+
+# folding: mechanisms not expressed by canonical span or residual helpers.
+# Local entries name reachable native constructors; exemptions state the
+# construction's limit.  Enforced by test_boolean_canonical_catalogue.py.
+
+[folding.ignored]
 "Ascenic" = "the Horner code reads every input; an ignored one still spaces the thresholds"
 "Malbolge" = "fixed-size source; an extra input port adds no cells"
 "What!?" = "the Horner index reads every input; an ignored one still spaces the change points"
 
-[constant]
+[folding.constant]
 "Alight" = "a constant table is a one-entry literal"
 "Ascenic" = "a constant table has no change point: the 6n + 13 line Horner prefix"
 "Malbolge" = "fixed-size source; a constant table is no smaller"
@@ -17,13 +47,13 @@
 "Polynomial" = "a constant table is the k=0 state machine"
 "What!?" = "a constant table has no change point: the 7n + 12 char Horner prefix"
 
-[ignored_local]
+[folding.ignored_local]
 "Fackward" = "_skip" # equal halves drop their bit unread by a swap
 "Fargo" = "_arm_expression" # zero ANF arms omit their variable
 "INTERCAL" = "_diagram" # equal children replace their selector
 "Vandevelo" = "_constraints" # affine guards retain independent tests
 
-[constant_local]
+[folding.constant_local]
 "///" = "_CONSTANT" # delete inputs and print the literal answer
 "A Painter Ant" = "_program" # restore inputs and leave one answer cell
 "ABCDirection" = "_layout" # no essential input: one table cell, no select gadget

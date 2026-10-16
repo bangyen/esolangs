@@ -1132,8 +1132,7 @@ def _prune_fixtures(name: str, names: set[str], paths: set[str]) -> None:
     for relative in (
         "tests/support/fixtures/curation.toml",
         "src/esolangs/proof_status.toml",
-        "tests/support/fixtures/sharing_catalogue.toml",
-        "tests/support/fixtures/canonical_folding_catalogue.toml",
+        "tests/support/fixtures/generator_catalogue.toml",
     ):
         _drop_toml(ROOT / relative, name)
 

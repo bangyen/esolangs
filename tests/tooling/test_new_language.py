@@ -474,8 +474,7 @@ def test_remove_cleans_language_package(
     for relative in (
         "tests/support/fixtures/curation.toml",
         "src/esolangs/proof_status.toml",
-        "tests/support/fixtures/sharing_catalogue.toml",
-        "tests/support/fixtures/canonical_folding_catalogue.toml",
+        "tests/support/fixtures/generator_catalogue.toml",
         "tests/support/fixtures/deep_arities.toml",
         "docs/limitations.md",
         "docs/proofs/index.md",
