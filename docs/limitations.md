@@ -174,6 +174,15 @@ Each missed the 10% bar:
 
   Navigation, not ops, is sixteen's cost: of 3,618 code cells, 427 are `p`,
   `*`, `/` or `i`, and 3,191 are `o` or `j` (`o` 2,558, `j` 633).
+  Sweeps cannot cut the label window's share (2026-10-16, model): every
+  sequence of up to five chained `p`/`*` sweeps over cells 34..127 leaves at
+  least 61 distinct values, so a class's pointers still need priming. Priming
+  is `p` twice per cell from `A` = all-1: the first leaves trits {0, 2}, the
+  second is `crazy(v, v)` = all-1, and it needs `A` equal to the cell's own
+  value, so the walk back (prime 799 cells for 72, seeds 554 for 68) stays.
+  Contiguous class runs would shorten seeding, but a run must be 22 cells
+  long to meet every table address's eight pointers, and seven classes need
+  154 > 94.
 
   Counting bounds each family independently of mixer quality:
 
