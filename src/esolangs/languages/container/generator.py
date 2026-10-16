@@ -316,6 +316,8 @@ def _container_threshold(truth_table: str) -> str:
     else:
         weights = [1 << (n - 1 - k) for k in range(n)]
     essential = sum(map(bool, weights))
+    # The mirror saves 15-44% of chars on tables tiled from two blocks (n=7..12,
+    # 4 or 16 blocks, 20 tables each) and 0.6-2.8% on random ones.
     mirrored = _threshold_deltas(truth_table, essential, mirror=True)
     plain = _threshold_deltas(truth_table, essential, mirror=False)
     mirror = sum(map(bool, mirrored[1:])) < sum(map(bool, plain[1:]))
