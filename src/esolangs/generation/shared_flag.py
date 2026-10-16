@@ -14,12 +14,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.shared_block import ContinuationCost as _Cost
-from esolangs.generation.shared_block import (
-    repeated_bank,
-    repeated_block,
-    repeated_blocks,
-    repeated_mixed_bank,
-)
+from esolangs.generation.shared_block import repeated_block, repeated_blocks
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,10 +43,6 @@ def _tape_dialect(*, flip: bool) -> FlagDialect:
     )
 
 
-#: Every residual form :func:`shared_flag_tree` can try.
-FLAG_FORMS = frozenset({"single", "multiple", "bank", "ranked_bank", "mixed_bank"})
-
-
 def shared_flag_tree(
     truth_table: str,
     perm: tuple[int, ...],
@@ -60,13 +51,13 @@ def shared_flag_tree(
     *,
     binary_leaves: bool = False,
     command_budget: int | None = None,
-    forms: frozenset[str] = FLAG_FORMS,
 ) -> tuple[str, int] | None:
-    """Return the shortest admitted body among ``forms``.
+    """Return the shorter admitted body of the single and multiple forms.
 
     ``single`` defers the one repeated block, ``multiple`` every repeated
-    block; ``bank`` gives blocks unused flags one per depth, ``ranked_bank``
-    by copy count, and ``mixed_bank`` unions the two.
+    block.  Brainfuck, 40 random tables: ``multiple`` over ``single`` alone
+    saves 1.9% at n=8 but 25.9% on majority (n=8), so it stays; the three
+    unused-flag banks added at most 1.65% at n=8 (majority 0%) and went.
     """
     shared = repeated_block(truth_table)
     if shared is None:
@@ -74,28 +65,10 @@ def shared_flag_tree(
     body = partial(
         flag_tree_body, truth_table, perm, start, result, binary_leaves=binary_leaves
     )
-    bodies = [body(shared=shared)] if "single" in forms else []
+    bodies = [body(shared=shared)]
     blocks = repeated_blocks(truth_table)
-    if "multiple" in forms and len(blocks) > 1:
+    if len(blocks) > 1:
         bodies.append(body(shared_blocks=blocks))
-    reserved = 2 * perm[-1] + 1 == result
-    banks = [
-        repeated_bank(truth_table, reserve_last=reserved, ranked=ranked)
-        for form, ranked in (("bank", False), ("ranked_bank", True))
-        if form in forms
-    ]
-    if "mixed_bank" in forms:
-        # The mixed bank unions the one-per-depth picks with the copy-ranked
-        # bank; built once because the ranking only picks which of the bank's
-        # blocks enter, and the union already holds the per-depth picks.
-        mixed = repeated_mixed_bank(truth_table, reserve_last=reserved, ranked=True)
-        if len(mixed[0]) > 1:
-            banks.append(mixed)
-    seen = set()
-    for banked, levels in banks:
-        if banked and banked not in seen:
-            seen.add(banked)
-            bodies.append(body(shared_blocks=banked, flag_levels=levels))
     admitted = [
         form for form in bodies if command_budget is None or form[1] <= command_budget
     ]

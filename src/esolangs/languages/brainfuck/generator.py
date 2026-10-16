@@ -45,7 +45,6 @@ from esolangs.generation.shared_block import (
     repeated_block,
 )
 from esolangs.generation.shared_flag import (
-    FLAG_FORMS,
     flag_tree_body,
     shared_flag_tree,
 )
@@ -529,7 +528,6 @@ def _bf_ordered(
         tree_start,
         2 * n,
         command_budget=budget,
-        forms=FLAG_FORMS if bank else frozenset({"single", "multiple"}),
     )
     if shared is not None and shared[1] <= budget:
         bodies.append(shared[0])
