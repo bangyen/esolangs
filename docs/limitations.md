@@ -593,8 +593,8 @@ The constructions supply the bounds; dense size-difference ratios at
 n=8,10,12 are measurements. Each uses a 309-table, 3,352-row corpus.
 
 - Cyclic tag has a dense size-difference ratio of 3.997.
-- Boolfuck has a dense size-difference ratio of 3.903.
-- Subleq has a dense size-difference ratio of 2.926.
+- Boolfuck has a dense size-difference ratio of 3.981.
+- Subleq has a dense size-difference ratio of 1.994.
 - /// has a dense size-difference ratio of 4.000.
 
 - [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.
