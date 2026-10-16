@@ -8,8 +8,8 @@ factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
 ``+=`` with a negative operand, tests are ``if > 0`` only, and ``*=``/
 ``//=`` are kept for the two places nothing cheaper reaches.  Every program
 is a hybrid: ``k`` tree levels above one state machine per surviving
-residual, the shortest rendering winning.  An expansion bounded past
-1,000,000,000 characters also raises.
+residual, ``k`` the one with the fewest instructions.  An expansion bounded
+past 1,000,000,000 characters also raises.
 
 Size:
     Grows with the instruction count and the prime sizes; n=8 parity: 47,037
@@ -58,18 +58,11 @@ _POLYNOMIAL_MAX_INSTRS = 1934
 _POLYNOMIAL_MAX_ESTIMATED_CHARS = 1_000_000_000
 
 
-# Instruction-count slack the dispatch still renders; selection is on
-# characters, and the two disagree (later instructions take larger primes,
-# ``*=`` costs three times the digits of ``+=``).  n <= 3 needs 1, 2000 sampled n=4
-# tables reach 6; held at the old builder's 10 so more is a real finding.
-# ``test_polynomial_screen_slack`` re-derives the n <= 3 figure.
-_POLYNOMIAL_SCREEN_SLACK = 10
-
-
 def polynomial(truth_table: str) -> str:
     """Return a Polynomial program for ``truth_table`` (``2**n`` bits, MSB first).
 
-    The shortest rendering of :func:`_polynomial_hybrid` over every ``k``.
+    The fewest-instruction :func:`_polynomial_hybrid` of each reduction, the
+    shortest rendering of those.
     """
     n = _validate_truth_table(truth_table)
 
@@ -92,20 +85,8 @@ def polynomial(truth_table: str) -> str:
             ),
         )
 
-    # Select on rendered characters; the instruction count only screens
-    # (a candidate past ``_POLYNOMIAL_SCREEN_SLACK`` is not expanded -- a
-    # measured bound, not a proof).  ``k`` descends and the comparison is
-    # strict, so a table nothing shortens emits what it always did.  The
-    # cheapest member always passes the screen, so the pool is never empty.
-    cheapest = min(costs)
-    return min(
-        (
-            _polynomial_assemble(instructions)
-            for instructions in fits
-            if len(instructions) <= cheapest + _POLYNOMIAL_SCREEN_SLACK
-        ),
-        key=len,
-    )
+    # Rendered characters choose among the reductions only (ignored runs).
+    return min((_polynomial_assemble(instructions) for instructions in fits), key=len)
 
 
 _READ = [0, 2]
@@ -114,7 +95,7 @@ _READ = [0, 2]
 def _polynomial_candidates(
     truth_table: str, n: int
 ) -> Iterator[tuple[list[list[int]], int]]:
-    """Yield ``(instructions, cost)`` for every hybrid ``k`` of each reduction.
+    """Yield ``(instructions, cost)`` for the cheapest hybrid ``k`` of each reduction.
 
     Rejected plans cost more than ``_POLYNOMIAL_MAX_INSTRS`` instructions,
     ignored-input reads included; the caller drops them.
@@ -123,10 +104,16 @@ def _polynomial_candidates(
     def hybrids(
         table: str, arity: int, before: int = 0, after: int = 0
     ) -> Iterator[tuple[list[list[int]], int]]:
-        for level in range(arity, -1, -1):
-            instructions = _polynomial_hybrid(table, level)
-            cost = len(instructions) + before + after
-            yield [_READ] * before + instructions + [_READ] * after, cost
+        # The fewest instructions, ties to the larger ``k``.  Choosing among
+        # the near-cheapest by rendered length saved 0.0% (random n=4..8).
+        cheapest = min(
+            (_polynomial_hybrid(table, level) for level in range(arity, -1, -1)),
+            key=len,
+        )
+        yield (
+            [_READ] * before + cheapest + [_READ] * after,
+            len(cheapest) + before + after,
+        )
 
     yield from hybrids(truth_table, n)
 

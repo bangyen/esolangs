@@ -155,30 +155,6 @@ class TestPolynomial:
                 else:
                     assert machine == _polynomial_dag(table), table
 
-    @pytest.mark.slow
-    def test_polynomial_screen_slack(self) -> None:
-        """The screen's slack is a measurement, and it is arity-dependent."""
-        from esolangs.languages.polynomial.generator import (
-            _POLYNOMIAL_SCREEN_SLACK,
-            _polynomial_assemble,
-            _polynomial_hybrid,
-        )
-
-        worst = 0
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                built = [_polynomial_hybrid(table, k) for k in range(n + 1)]
-                rendered = [
-                    (len(_polynomial_assemble(instrs)), len(instrs)) for instrs in built
-                ]
-                shortest = min(length for length, _ in rendered)
-                needed = min(cost for length, cost in rendered if length == shortest)
-                worst = max(worst, needed - min(map(len, built)))
-        # Pure-``k`` candidates only.
-        assert worst == 1
-        assert worst <= _POLYNOMIAL_SCREEN_SLACK
-
     @pytest.mark.parametrize(
         "table",
         ["00000101", "00001010", "01010000", "01011111", "10100000", "11111010"],
@@ -201,20 +177,6 @@ class TestPolynomial:
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
             got = run_polynomial(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
-
-    @pytest.mark.parametrize("table", ["00100000", "11011111", "00000010"])
-    def test_machine_losing_on_characters_does_not_ship(self, table: str) -> None:
-        """Fewer instructions is not fewer characters."""
-        from esolangs.languages.polynomial.generator import (
-            _polynomial_assemble,
-            _polynomial_hybrid,
-        )
-
-        machine = _polynomial_assemble(_polynomial_hybrid(table, 0))
-        tree = _polynomial_assemble(_polynomial_tree(table))
-        assert len(_polynomial_hybrid(table, 0)) < len(_polynomial_tree(table))
-        assert len(machine) > len(tree)
-        assert boolean.polynomial(table) == tree
 
     def test_every_path_reads_each_input_once(self) -> None:
         """Whichever construction wins, a run consumes exactly ``n`` inputs."""
