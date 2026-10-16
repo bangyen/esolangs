@@ -5,10 +5,24 @@ import pytest
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
+from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import wrap_program
 from esolangs.languages.slashes.generator import _is_unfilled_template
 from esolangs.runtime._evaluate import _evaluate
 from scripts.benchmark import WrittenState
+from tests.support.witness_tables import witnesses
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 4])
+def test_source_length_is_the_documented_formula(n: int) -> None:
+    """limitations.md: 20 * 2**m + n + 53, plus k + 10 for k ignored inputs."""
+    for table in witnesses(n):
+        m = len(essential_inputs(table, n))
+        k = n - m
+        size = 20 * 2**m + n + 53 + (k + 10 if k else 0)
+        if len(set(table)) == 1:
+            size = n + 9
+        assert len(esolangs.generate("///", table)) == size, table
 
 
 @pytest.mark.medium

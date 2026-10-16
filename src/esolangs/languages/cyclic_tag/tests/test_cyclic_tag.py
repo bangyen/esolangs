@@ -14,10 +14,11 @@ def test_all_three_input_tables() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
             template = cyclic_tag(table)
-            # Exact when every input matters; an ignored one's rule is empty.
-            bound = 5 * len(table) + 2 * n + 1
-            ignores = len(essential_inputs(table, n)) < n
-            assert len(template) < bound if ignores else len(template) == bound
+            # limitations.md: 5 * 2**m + 2n + 1 for m essential inputs, else
+            # n + 2 for a constant; an ignored input's rule is empty.
+            m = len(essential_inputs(table, n))
+            size = n + 2 if len(set(table)) == 1 else 5 * 2**m + 2 * n + 1
+            assert len(template) == size, table
             for row in range(1 << n):
                 bits = [int(c) for c in f"{row:0{n}b}"]
                 code = fill_runs(template, TEMPLATE_CHAR, (("0", "1"),) * n, bits)

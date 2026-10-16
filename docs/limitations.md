@@ -547,8 +547,9 @@ Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
   zeros skip 2r productions, and the sentinel appends table[r]. The next empty
   production consumes the answer and halts.
 
-  A non-constant table's source is exactly 5T + 2n + 1 characters and
-  execution takes n + 3 + 2r steps; a constant table's source is n + 2.
+  A non-constant table's source is exactly 5 * 2^m + 2n + 1 characters for
+  m essential inputs (5T + 2n + 1 when all are) and execution takes
+  n + 3 + 2r steps; a constant table's source is n + 2.
   Emission writes 2(T-1) padding zeros and 2T table productions without search:
   O(T) build work. Tests execute 309 tables and 3,352 rows, exhaustive through
   three inputs, then constants, parity and eight seeded random tables per arity
