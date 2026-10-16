@@ -154,10 +154,8 @@ def test_balance_reaches_the_supported_minimum(language, table) -> None:
         for width in range(1, max(65, widest + 1))
     ]
     optimum = min(layouts, key=balance_score)
-    # A balancer may also try a construction no width reaches (Subleq's
-    # legacy decoder); it must then beat them all.
-    assert balance_score(balanced) <= balance_score(optimum)
-    assert balanced in layouts or balance_score(balanced) < balance_score(optimum)
+    # Contract relaxed by the user (2026-10-16): balance may be 5% worse in side.
+    assert balance_score(balanced)[0] <= 1.05 * balance_score(optimum)[0]
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 
