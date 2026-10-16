@@ -111,3 +111,24 @@ def test_normalize_without_an_installed_package(tmp_path) -> None:
         stream = source.extractfile(normalized)
         assert stream is not None
         assert stream.read() == payload
+
+
+def test_release_notes_are_the_tag_changelog_section() -> None:
+    changelog = "# Changelog\n\n## 1.1.0\n\n- New.\n\n## 1.0.0\n\n- Old.\n"
+    assert smoke.notes("v1.1.0", changelog) == "- New.\n"
+    assert smoke.notes("1.0.0", changelog) == "- Old.\n"
+    with pytest.raises(SystemExit, match=r"no '## 1\.2\.0' section"):
+        smoke.notes("v1.2.0", changelog)
+    with pytest.raises(SystemExit, match="empty"):
+        smoke.notes("v1.1.0", "## 1.1.0\n\n## 1.0.0\n- Old.\n")
+
+
+def test_every_source_path_checks_out_on_windows() -> None:
+    """``what!?.txt`` failed every Windows checkout; macOS and Linux accept it."""
+    src = Path(__file__).parents[2] / "src"
+    refused = sorted(
+        str(path.relative_to(src))
+        for path in src.rglob("*")
+        if set(path.name) & set('<>:"\\|?*') or path.name.endswith((" ", "."))
+    )
+    assert not refused, refused

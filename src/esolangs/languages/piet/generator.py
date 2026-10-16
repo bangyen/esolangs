@@ -1,4 +1,12 @@
-"""Build raster truth-table programs."""
+"""Piet Boolean program generator: push the table, roll out the entry.
+
+Pushes one entry per row, reads the inputs into a row number, and ``roll``
+brings the entry to the top to print.  A one-hot or one-cold table is a
+product of literals instead; see :mod:`esolangs.generation.raster_lookup`.
+
+Size:
+    O(T) codels; n=10 parity: 7,884 codels, n=10 and: 66 codels.
+"""
 
 from functools import cache
 

@@ -132,13 +132,11 @@ class _Parser:
     def take(self) -> str:
         """Consume and return the next token.
 
-        Every call site has already established that a token is there:
-        the precedence levels and ``_unary`` peek before consuming,
-        ``_try_pattern`` returns None on a mismatch before taking, and
-        the loops in ``_atom`` and ``_arguments`` carry the end check in
-        their own conditions.  So there is no unreachable "ran out"
-        branch here -- ``_atom`` raises that message where it *can*
-        happen.
+        Every call site has already established a token is there: the
+        precedence levels and ``_unary`` peek first, ``_try_pattern`` returns
+        None on a mismatch before taking, and the loops in ``_atom`` and
+        ``_arguments`` check the end in their conditions.  ``_atom`` raises
+        the "ran out" message where it *can* happen.
         """
         word = self.tokens[self.ind]
         self.ind += 1

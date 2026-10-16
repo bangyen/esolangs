@@ -11,6 +11,13 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.registry import LANGUAGES
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.vm import machine_traits
+from tests.interpreters.spec_sections import (
+    PUBLIC_ERRORS,
+    SECTIONS,
+    error_entries,
+    headers,
+)
 
 # The interpreter tree, anchored to this file rather than the working
 # directory, so the sweep finds the same modules wherever pytest was
@@ -234,11 +241,103 @@ def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:
         issues.append("reads input but does not document EOF")
     if "raise HaltError" in source and "HaltError" not in doc:
         issues.append("raises HaltError but does not document it")
-    if "raise ValueError" in source and "ValueError" not in doc:
+    # The public name: the runtime turns an interpreter's ValueError into
+    # ProgramError, which is what a caller catches.
+    if "raise ValueError" in source and not {"ValueError", "ProgramError"} & set(
+        re.findall(r"\w+", doc)
+    ):
         issues.append("raises ValueError but does not document it")
     if re.search(r"^Implementation:$", doc, re.MULTILINE):
         issues.append("implementation notes belong in comments beside the code")
+    if language is not None:
+        files = (
+            sorted(path.parent.glob("*.py")) if path.name == "__init__.py" else [path]
+        )
+        package = "\n".join(f.read_text(encoding="utf-8") for f in files)
+        # A read at EOF raises unless the language supplies a value there or
+        # (Suffolk) catches EOFError to halt.
+        eof_raises = (
+            re.search(r"\.input_(char|str|num)\b", package) is not None
+            and not machine_traits(language)["eof_is_a_value"]
+            and "except EOFError" not in package
+        )
+        issues += _spec_issues(doc, package, eof_raises=eof_raises)
     return issues
+
+
+def _spec_issues(doc: str, package: str, *, eof_raises: bool = False) -> list[str]:
+    """Return violations of the spec template (``runtime/_template.py``).
+
+    ``package`` is the source of every module in the interpreter's package.
+    """
+    issues = []
+    found = headers(doc)
+    names = [name for _, name in found]
+    if unknown := [name for name in names if name not in SECTIONS]:
+        issues.append(f"sections outside the template: {unknown}")
+    known = [name for name in names if name in SECTIONS]
+    if known != sorted(set(known), key=SECTIONS.index):
+        issues.append(f"sections out of order or repeated: {known}")
+    lines = doc.splitlines()
+    for i, name in found:
+        if i + 1 >= len(lines) or not lines[i + 1].startswith("    "):
+            issues.append(f"{name}: body is not indented")
+    entries = error_entries(doc)
+    if entries - PUBLIC_ERRORS:
+        issues.append(f"Errors: names non-public {sorted(entries - PUBLIC_ERRORS)}")
+    if "raise HaltError" in package and "HaltError" not in entries:
+        issues.append("raises HaltError but Errors: does not list it")
+    # A ValueError surfaces as ProgramError, or as ArgumentError when it
+    # rejects a dialect setting (run() validates those first).
+    if (
+        "raise ValueError" in package
+        and not {"ProgramError", "ArgumentError"} & entries
+    ):
+        issues.append("raises ValueError but Errors: does not list ProgramError")
+    if eof_raises and "InputExhaustedError" not in entries:
+        issues.append("a read at EOF raises but Errors: omits InputExhaustedError")
+    if ".input_num" in package and "ArgumentError" not in entries:
+        issues.append("reads numbers but Errors: omits ArgumentError")
+    return issues
+
+
+@pytest.mark.parametrize(
+    ("doc", "package", "expected"),
+    [
+        ("A.\n\nNotes:\n    x", "", "outside the template"),
+        ("A.\n\nErrors:\n    HaltError: x\n\nCommands:\n    x", "", "out of order"),
+        ("A.\n\nErrors:\nHaltError: x", "", "not indented"),
+        ("A.\n\nErrors:\n    ValueError: x", "", "non-public"),
+        ("A.\n\nHaltError in prose.", "raise HaltError(x)", "HaltError but"),
+        ("A.\n\nErrors:\n    HaltError: x", "raise ValueError(x)", "ProgramError"),
+        (
+            "A.\n\nErrors:\n    InputExhaustedError: x",
+            "io.input_num()",
+            "ArgumentError",
+        ),
+    ],
+)
+def test_the_spec_check_catches_each_violation(
+    doc: str, package: str, expected: str
+) -> None:
+    """Positive control: each rule fires on a docstring that breaks it."""
+    assert any(expected in issue for issue in _spec_issues(doc, package))
+
+
+def test_the_spec_check_requires_input_exhausted_where_eof_raises() -> None:
+    """Positive control for the EOF rule, which the caller decides."""
+    issues = _spec_issues("A.\n\nEOF raises.", "", eof_raises=True)
+    assert any("InputExhaustedError" in issue for issue in issues)
+
+
+def test_the_spec_check_passes_the_template_shape() -> None:
+    """Negative control: a conforming spec raises nothing."""
+    doc = (
+        "A.\n\nInput/output:\n    EOF reads 0.\n\nErrors:\n"
+        "    ProgramError: x\n    HaltError: y\n    ArgumentError: z"
+    )
+    package = "raise ValueError\nraise HaltError\nio.input_num()"
+    assert _spec_issues(doc, package) == []
 
 
 def test_interpreter_docstrings_follow_the_template() -> None:

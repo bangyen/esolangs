@@ -1,7 +1,6 @@
-"""Boolean program generator for Interprogck8.
+"""Interprogck8 Boolean program generator: a decision tree on ``DownAccLines`` flights.
 
-A decision tree whose long edges ride ``DownAccLines`` *flights*: a rung
-jumps ``1 + acc`` lines and leaves the accumulator alone, so a flight
+A rung jumps ``1 + acc`` lines and leaves the accumulator alone, so a flight
 hops a fixed stride through rungs to the first other line on its residue,
 its *stop*.
 
@@ -19,21 +18,28 @@ its *stop*.
 - **Fill.**  A rung only where a flight hops or a walk crosses a live lane,
   ``x`` elsewhere: the wiki errors on blank lines, so none are emitted.
 
-Size is O(T) at every arity: a node's read scan, dismount and stop scan
-span at most 82, 85 and 3 * 82 lines, a leaf's scan 66, and no line
-exceeds the 65-character read; a dense table measures 153 lines an entry
-from ``n = 8`` to 17.  Rungs on live lanes make the characters per entry
-creep with ``n`` (511 at ``n = 8``, 586 at 17), under the corridor that
-fills every odd line, 1,207 at both.  Each flight is laid once and a
-printer lane once from its earliest launch, so building is O(T); a run
-visits each line at most once, since every jump is forward.
-
 A read whose halves are equal (``subtree_ids``), a constant or an ignored
 input, still consumes its digit: both arms converge, the 1 flight stopping
-on the line the zeroed 0 walk passes through, onto one child.  Other repeats
-are not shared: a stop sits on one lane, so two parents cannot land on one
-child.  Forty-one lanes bound the arity at forty-one; past forty inputs the
-table alone is a terabyte.
+on the line the zeroed 0 walk passes through, onto one child.
+
+Size:
+    O(T) at every arity: a node's read scan, dismount and stop scan span at
+    most 82, 85 and 3 * 82 lines, a leaf's scan 66, and no line exceeds the
+    65-character read; a dense table is 153 lines an entry from ``n = 8`` to
+    17.  Rungs on live lanes make characters per entry creep with ``n`` (511
+    at ``n = 8``, 586 at 17), under the corridor filling every odd line,
+    1,207 at both.  Each flight is laid once and a printer lane once from its
+    earliest launch, so building is O(T); a run visits each line at most once,
+    since every jump is forward.
+    n=10 random 1847: 532,117 chars, n=10 parity: 586,697 chars,
+    n=10 and: 26,904 chars.
+
+Raises:
+    GeneratorCapError: more than forty inputs; 41 lanes bound the arity.
+
+Decisions:
+    Other repeated subtrees are not shared: a stop sits on one lane, so two
+    parents cannot land on one child.
 """
 
 from esolangs.exceptions import GeneratorCapError

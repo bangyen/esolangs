@@ -1,9 +1,14 @@
 r"""Interpreter for Smallfuck.
 
 The tape starts at zero and has one cell per source character. ``*`` flips a
-bit, ``<>`` move, and ``[]`` loop. Moving beyond either end halts. Smallfuck
-does not define I/O, so this implementation prints cell 2 at halt (zero when
-the source is too short to allocate it).
+bit, ``<>`` move, and ``[]`` loop. Moving beyond either end halts.
+
+Input/output:
+    No input.  Smallfuck does not define I/O, so this implementation prints
+    cell 2 at halt (zero when the source is too short to allocate it).
+
+Errors:
+    ProgramError: Unbalanced brackets.
 """
 
 from __future__ import annotations

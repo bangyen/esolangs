@@ -7,7 +7,9 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.alight.generator import alight
-from esolangs.languages.alight.interpreter import _Machine, _replace_first, run
+from esolangs.languages.alight.interpreter import run
+from esolangs.languages.alight.interpreter._machine import _Machine
+from esolangs.languages.alight.interpreter._parse import _replace_first
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
@@ -548,7 +550,7 @@ class TestFunctionDefinitionEdges:
 
     def test_a_malformed_number_literal_is_refused(self) -> None:
         """Two decimal points is not a number."""
-        from esolangs.languages.alight.interpreter import _parse_number, _Parser
+        from esolangs.languages.alight.interpreter._parse import _parse_number, _Parser
 
         with pytest.raises(ValueError, match="bad number literal"):
             _parse_number(_Parser("1.2.3"))
@@ -650,7 +652,7 @@ class TestPureTransition:
     """``_advance`` is the semantics; the machine is only its shell."""
 
     def test_advance_leaves_its_input_and_makes_no_effects(self) -> None:
-        from esolangs.languages.alight.interpreter import _advance
+        from esolangs.languages.alight.interpreter._machine import _advance
         from esolangs.languages.alight.interpreter._state import _freeze
 
         machine = _Machine(["begin;var l;set l 1;end;"], ScriptedIO())
@@ -670,7 +672,7 @@ class TestPureTransition:
         assert first != _freeze(tuple(w.key() for w in core.walkers))
 
     def test_advance_returns_output_as_an_effect_not_a_write(self) -> None:
-        from esolangs.languages.alight.interpreter import _advance
+        from esolangs.languages.alight.interpreter._machine import _advance
 
         machine = _Machine(
             ["begin;var l;set l 65;out l;end;"],
@@ -688,7 +690,7 @@ class TestPureTransition:
         assert machine.snapshot() == before
 
     def test_an_in_place_list_write_does_not_edit_the_state_handed_in(self) -> None:
-        from esolangs.languages.alight.interpreter import _advance
+        from esolangs.languages.alight.interpreter._machine import _advance
         from esolangs.languages.alight.interpreter._state import _freeze
 
         machine = _Machine(

@@ -1,4 +1,17 @@
-"""Boolean program generator for Forþ."""
+"""Forþ Boolean program generator: a heap of numbered scopes dispatched by index.
+
+Scope ``m`` (children ``2m+1``, ``2m+2``) is a ``{...}`` labelled a step past
+the previous one (definitions advance by ``1+``); ``{scope}`` stores its
+unpopped key and ``;`` pops and calls.  Internal scopes share one dispatch,
+``2*1++:;``, which consumes a bit and an index, keeps the callee's key and
+calls the child; leaves push ``48+result`` for ``.``.
+Constant subtrees collapse to a leaf; a same-level twin is called by distance
+(``{}-:;``) when that beats inlining.  An ignored input is read and dropped.
+
+Size:
+    O(T) dense, near-linear in n for parity and and; n=10 parity: 444 chars,
+    n=10 and: 292 chars, n=10 random 1847: 5,141 chars.
+"""
 
 from collections import deque
 
@@ -22,25 +35,19 @@ def _forth_const(value: int) -> str:
 
 
 def forth(truth_table: str) -> str:
-    """Build a Forþ program computing the given truth table.
-
-    Binary ``2**n`` entries, MSB first; prints ``'0'``/``'1'``. Reads use
-    ``,68*-``; ``{scope}`` stores its unpopped key; ``;`` pops and calls.
-    Heap children of ``m`` are ``2m+1``/``2m+2``; definitions advance by ``1+``.
-    The linear tree tests the last bit first; ``2*1++:;`` keeps the callee's key.
-    Leaves push ``48+result`` for ``.``; same-level twins use ``_FORTH_SHARE``.
-    The tree tests the essential inputs; an ignored one is read and dropped.
-    """
+    """Build a Forþ program printing ``'0'``/``'1'``; ``2**n`` entries, MSB first."""
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     if len(table) == 1:
         # A constant already folds to one scope; it keeps every input.
         weights, table = [1] * n, truth_table
+    # The linear tree tests the last bit first; same-level twins use _FORTH_SHARE.
     natural = tuple(reversed(range(len(table).bit_length() - 1)))
     reads = "".join(_FORTH_READ if weight else _FORTH_DROP for weight in weights)
     return _forth_ordered(permute_truth_table(table, natural), reads, share=True)
 
 
+#: Read a bit: ``,`` then subtract 48 (``68*``).
 _FORTH_READ = ",68*-"
 #: The read that drops an ignored input: zero it and add it to the value
 #: below, a bit or, under the first read, the last scope's label.

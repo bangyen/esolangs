@@ -1,7 +1,17 @@
-"""Boolean-function generator for Super SNUSP.
+"""Super SNUSP Boolean program generator: a packed-integer lookup.
 
-Tables use a linear packed-integer lookup, and never the language's random
-``=`` opcode.  A packed integer has no subtrees to fold or share.
+Horner's rule folds the inputs into a row in cell 0; cell 1 builds the table
+as one binary integer, shifts it by the row and takes the low bit.  The
+random ``=`` opcode is never used.  At n=2 five tables use a fixed short form.
+
+Size:
+    One ``*`` per entry plus one ``)`` per one entry, so T to 2T chars;
+    n=2 parity: 16 chars, n=16 and: 65,863 chars, n=16 parity: 98,630 chars.
+
+Decisions:
+    A packed integer has no subtrees to fold or share.  A bounded ANF
+    evaluator beat the lookup by only 1.92% at its n=4 cap (polarity pass
+    1.59%), under the 10% bar.
 """
 
 import re
@@ -11,6 +21,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -60,9 +71,7 @@ def _emit_lookup(truth_table: str) -> str:
 def _super_snusp_flat(truth_table: str) -> str:
     """Emit the straight-line program: the lookup, or a fixed form at n=2.
 
-    A bounded ANF evaluator beat the lookup by only 1.92% at its n=4 cap
-    (polarity pass 1.59%), under the 10% bar.  Every path consumes exactly
-    ``n`` input lines.
+    Every path consumes exactly ``n`` input lines.
     """
     n = _validate_truth_table(truth_table)
     if n == 2 and truth_table in _TWO_INPUT_SHORT:
@@ -132,15 +141,9 @@ def _super_snusp_folded(program: str, width: int) -> str:
 
 
 def super_snusp(truth_table: str, width: int | None = None) -> str:
-    """Build a deterministic Super SNUSP program for ``truth_table``.
+    """Build a Super SNUSP program; ``width`` folds it (:func:`_super_snusp_folded`).
 
-    The integer lookup emits one or two commands per table entry and O(n)
-    setup while consuming every input.
-
-    ``width`` asks for a column count, and the straight line folds into a
-    boustrophedon to meet one -- see :func:`_super_snusp_folded`, where the
-    mirrors turn a row round in one row and one column.  A width under the
-    floor returns the narrowest program rather than refusing.
+    A width under the floor returns the narrowest program rather than refusing.
     """
     return _super_snusp_layout(_super_snusp_flat(truth_table), width)
 
@@ -168,21 +171,24 @@ def _super_snusp_layout(flat: str, width: int | None) -> str:
 def balance_super_snusp(flat: str) -> str:
     """Return the best-balanced supported layout of a generated straight line.
 
-    Tokens must have at most two cells. For s=ceil(sqrt(L)), the normal
-    fold's W=H crossing lies at s+1 or s+2; s covers the preceding width.
-    Row count decreases with width, so only crossing neighbors can win.
+    Tokens must have at most two cells. For A=CELL_ASPECT and
+    s=ceil(sqrt(A*L)), the normal fold's W=A*H crossing and its predecessor
+    lie in [s-1, s+(4+A)//2].  Row count decreases with width, so only
+    crossing neighbors can win.
     """
     if any(len(token) > 2 for token in _super_snusp_tokens(flat)):
         raise ValueError("Super SNUSP balancing requires tokens of at most two cells")
-    side = isqrt(len(flat) - 1) + 1
-    # W rows hold at most (W-1)^2 cells and at least W*(W-3)+1:
-    # first-row room is W-1, later room W-2, and each row wastes at most one.
-    lower = _super_snusp_layout(flat, max(4, side))
-    middle = _super_snusp_layout(flat, max(4, side + 1))
-    upper = _super_snusp_layout(flat, max(4, side + 2))
+    side = isqrt(CELL_ASPECT * len(flat) - 1) + 1
+    # H rows hold at most (W-1)+(H-1)(W-2) cells and at least
+    # (W-2)+(H-2)(W-3)+1: first-row room is W-1, later room W-2, and each
+    # row wastes at most one.  So H >= (L-1)/(W-2) and H <= (L+W-5)/(W-3).
+    folds = [
+        _super_snusp_layout(flat, max(4, width))
+        for width in range(side - 1, side + (4 + CELL_ASPECT) // 2 + 1)
+    ]
     vertical = _super_snusp_layout(flat, 1)
     narrow = _super_snusp_layout(flat, 3)
-    return min((flat, lower, middle, upper, vertical, narrow), key=balance_score)
+    return min((flat, *folds, vertical, narrow), key=balance_score)
 
 
 def _balance(_table: str, default: str) -> str:

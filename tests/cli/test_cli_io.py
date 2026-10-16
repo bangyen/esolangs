@@ -19,9 +19,7 @@ from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
-_SPELLED = one_where(
-    lambda d: d["input_encoding"] != ("0", "1"), boolean_generator=True
-)
+_SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=True)
 
 
 class TestTheStdinReaderInProcess:
@@ -205,6 +203,122 @@ class TestAClosedPipeIsNotAnError:
         first.wait(timeout=30)
         assert first.stderr is not None
         assert "BrokenPipeError" not in first.stderr.read()
+
+    def test_a_closed_stdout_exits_120(self) -> None:
+        """``esolangs list >&-`` reported an internal error, exit 70."""
+        import subprocess
+
+        # Closed before Python starts, so ``sys.stdout`` is None.
+        closed = subprocess.run(
+            ["sh", "-c", f"'{sys.executable}' -m esolangs list >&-"],
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert closed.returncode == 120, closed.stderr
+        both = subprocess.run(
+            ["sh", "-c", f"'{sys.executable}' -m esolangs list >&- 2>&-"],
+            timeout=30,
+            check=False,
+        )
+        assert both.returncode == 120  # It wrote to a None stderr: exit 1.
+
+    def test_a_closed_stderr_still_runs(self, tmp_path: Path) -> None:
+        """``2>&-``: every note wrote to None, so `run` printed nothing, exit 1."""
+        import subprocess
+
+        path = tmp_path / "p.txt"
+        path.write_text("+.")
+        closed = subprocess.run(
+            [
+                "sh",
+                "-c",
+                f"'{sys.executable}' -m esolangs run {REFERENCE} '{path}' 2>&-",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            timeout=30,
+            check=False,
+        )
+        assert (closed.returncode, closed.stdout) == (0, b"\x01")
+
+    def test_an_ascii_stdout_escapes_instead_of_crashing(self) -> None:
+        """``PYTHONIOENCODING=ascii esolangs list`` died mid-line, exit 70."""
+        import os
+        import subprocess
+
+        listed = subprocess.run(
+            [sys.executable, "-m", "esolangs", "list"],
+            env={**os.environ, "PYTHONIOENCODING": "ascii"},
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        assert listed.returncode == 0, listed.stderr
+        assert b"For\\xfe" in listed.stdout
+
+    @pytest.mark.slow
+    def test_an_isolated_worker_dies_with_its_parent(self, tmp_path: Path) -> None:
+        """SIGTERM to the parent skipped its reap; the worker looped for hours."""
+        import signal
+        import subprocess
+        import time
+
+        path = tmp_path / "loop.txt"
+        path.write_text("+[]")
+        parent = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "esolangs",
+                "run",
+                "--isolated",
+                "--timeout",
+                "60",
+                REFERENCE,
+                str(path),
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        time.sleep(3)
+        workers = subprocess.run(
+            ["pgrep", "-P", str(parent.pid)],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.split()
+        parent.send_signal(signal.SIGTERM)
+        parent.wait()
+        time.sleep(2)
+        alive = [
+            pid
+            for pid in workers
+            if subprocess.run(
+                ["ps", "-p", pid], capture_output=True, check=False
+            ).returncode
+            == 0
+        ]
+        for pid in alive:
+            subprocess.run(["kill", pid], check=False)
+        assert workers
+        assert not alive
+
+    def test_a_closed_stdin_reads_as_empty(self) -> None:
+        """``read-answer <&-`` reported an internal error, exit 70."""
+        import subprocess
+
+        closed = subprocess.run(
+            ["sh", "-c", f"'{sys.executable}' -m esolangs read-answer {REFERENCE} <&-"],
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert closed.returncode == 2, closed.stderr
+        assert "nothing on stdin" in closed.stderr
 
 
 class TestProgramFilesLoad:

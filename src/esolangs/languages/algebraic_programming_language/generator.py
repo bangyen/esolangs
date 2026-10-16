@@ -1,4 +1,22 @@
-"""Boolean-function generator for Algebraic Programming Language."""
+"""Algebraic Programming Language Boolean program generator: a reduced ``!x`` diagram.
+
+A zero-valued reads prefix names every input in order, since a variable is
+bound by appearing on an executed line; the rest is a reduced decision
+diagram selecting subtrees with ``x`` and ``!x``, so every value stays 0 or
+1.  Default compares inline text, repeated expressions and bounded shared
+frames; with ``width`` the tree splits into definitions, since APL cannot
+continue an expression across lines.
+
+Size:
+    O(T) chars.  n=10 parity: 254 chars, n=10 and: 120 chars, n=10 random
+    1847: 3,047 chars.
+
+Decisions:
+    A greedy input order saves 4.8% at n=8, under the 10% bar, so the order
+    stays the identity.  The inline tree stays a candidate beside the
+    reduced diagram since ``!`` sharing grew XOR-like n=3 tables by 1-3
+    characters.
+"""
 
 from collections.abc import Callable
 from string import ascii_uppercase
@@ -35,16 +53,9 @@ def _reads(n: int, sep: str) -> str:
 
 
 def algebraic_programming_language(truth_table: str, width: int | None = None) -> str:
-    """Build an APL program computing the given truth table.
+    """Return an APL program for ``truth_table`` (``2**n`` bits, MSB first).
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
-    variable is read from stdin by appearing on an executed line, and the
-    line's result is printed.  A folded decision tree selects subtrees with
-    ``!x`` and ``x``; the harness feeds 0 or 1, so every value stays 0 or 1.
-    A zero-valued prefix names every input first, preserving binding under
-    folds; O(T) size.  With ``width``, the tree splits into definitions,
-    since APL cannot continue an expression across lines. Default compares
-    profitable repeated expressions and bounded shared frames with inline text.
+    ``width`` splits the tree into definitions; the harness feeds 0 or 1.
     """
     if width is not None:
         return in_input_order(
@@ -539,11 +550,7 @@ def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
 
 
 def balance_apl(table: str, default: str) -> str:
-    """Compare reachable frame-budget and short-definition fit transitions.
-
-    Input order stays the identity (a greedy order saves 4.8% at n=8, under
-    the 10% bar).
-    """
+    """Compare reachable frame-budget and short-definition fit transitions."""
     perm = tuple(range(len(table).bit_length() - 1))
     candidates = [default]
     width: int | None = 1

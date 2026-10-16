@@ -13,16 +13,26 @@ corner heads down the side road, not into the turn); a dead end turns the
 car across the street in two steps, and a ``U`` on the cell where that
 turn lands does not reverse it again.
 
-Errors: a malformed program (:mod:`.validation`) raises :class:`ValueError` at
-construction (streets two wide, road enclosed, wall forms, no ``-`` beside ``|``, one
-network, exactly one ``C``); a ``U`` with no opposite lane raises
-:class:`~esolangs.exceptions.HaltError`.  ``_`` at cell 0 raises ``HaltError``:
-the wiki says "The CP is unsigned and right-unbounded", so no cell lies
-left of 0, and an abort beats a wrong answer.  ``O`` on a non-code-point
-raises ``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; a
-newline stores character code 10.  ``I``/``O``'s "Nth register" is the
-CPth cell.  The wiki's Turing-completeness sentence names ``<`` and ``>``;
-the command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
+Input/output:
+    ``I`` reads a character, a newline storing code 10; ``O`` writes the
+    cell.
+
+Errors:
+    ProgramError: Empty program; not exactly one ``C``; where walls are drawn
+        (:mod:`.validation`), streets not two wide, road not enclosed, bad
+        wall forms, ``-`` beside ``|``, more than one network (a wall-free
+        grid or an isolated ``C`` is no street, driven as written).
+    InputExhaustedError: ``I`` at EOF.
+    HaltError: A ``U`` with no opposite lane; ``_`` at cell 0; ``O`` on a
+        non-code-point.
+
+Decisions:
+    * ``_`` at cell 0 aborts: the wiki says "The CP is unsigned and
+      right-unbounded", so no cell lies left of 0, and an abort beats a
+      wrong answer.
+    * ``I``/``O``'s "Nth register" is the CPth cell.
+    * The wiki's Turing-completeness sentence names ``<`` and ``>``; the
+      command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
 """
 
 import functools

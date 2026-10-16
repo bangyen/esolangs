@@ -12,13 +12,8 @@ from esolangs.generation.helpers import (
     read_at,
 )
 
-from .render import (
-    _UNIT,
-    Node,
-    _Cursor,
-    chain,
-    chain_onto,
-)
+from .layout import Node, _Cursor, chain, chain_onto
+from .render import _UNIT
 from .shared import CanvasPlan, stroke_plan
 
 type State = tuple[int, int]

@@ -17,37 +17,42 @@ is 3, so a literal is ``2*colons + dots``.  The wiki's truth-machine writes
 encoding that character counting cannot supply.  ``tests`` pins both the
 verbatim example and the pip-corrected one.
 
-Decisions for gaps in the wiki spec:
+Input/output:
+    ``u`` and ``$py`` read one input line each.  ``$ay`` of 0 prints the empty
+    string: no dice literal has zero pips.
 
-- ``{values...}``'s "at least 2 are different" means "not all equal": the
-  truth-machine compares the input with itself twice and a literal, so a
-  reading needing three distinct values could never fire its ``IFQ``.
-- ``DownAccLines`` lands on ``ip + 1 + acc``, so an accumulator of 0 is a
-  plain fall-through; landing past the last line is the spec's EOFError and
-  raises :class:`~esolangs.exceptions.HaltError`.
-- ``<`` encountered in ordinary execution *captures* the lines up to its
-  ``>`` into the slot and jumps past them; the wiki's cat example only
-  echoes rather than running its body twice under that reading.  A ``<``
-  with no ``>`` after it, or one reached while the slot is executing (the
-  wiki forbids nesting), raises ``HaltError``.
-- ``EXE``/``IFT``/``IFQ`` with an empty slot raise ``HaltError``.
-- A blank or unrecognised line raises ``HaltError`` when *executed* rather
-  than at parse time -- ``DownAccLines`` and ``z`` make lines legally
-  unreachable, so rejecting them upfront would refuse working programs.  An
-  empty program has no line to run and halts at once.
-- ``u`` on an empty input line is the spec's EmptyInputError and raises
-  ``HaltError``; reading past the end of the input raises
-  :class:`EOFError`, the repo-wide convention.  ``$py`` fed anything but a
-  dice literal raises ``HaltError``.
-- ``$ay`` of 0 prints the empty string: no dice literal has zero pips.
-- ``z`` deletes itself and the line before it and restarts with the
-  accumulator cleared and the slot dropped ("restarts the interpretation").
-  Each ``z`` shortens the program by two lines, so restarts are bounded.
-  A ``z`` inside the slot has no unambiguous "previous line" and raises
-  ``HaltError``.
-- ``[a b]`` and ``~`` draw through :mod:`esolangs.runtime.randomness`, so a
-  caller can pin them; ``developer`` prints a fixed string rather than this
-  file.
+Errors:
+    InputExhaustedError: reading past the end of the input (the repo-wide
+    convention).
+    HaltError: ``u`` on an empty input line (the spec's EmptyInputError);
+    ``$py`` fed anything but a dice literal; ``DownAccLines`` landing past the
+    last line (the spec's EOFError); ``<`` with no ``>`` after it, or reached
+    while the slot is executing; ``EXE``/``IFT``/``IFQ`` with an empty slot; a
+    blank or unrecognised line when executed; a ``z`` on the first line or
+    inside the slot.
+
+Decisions:
+    * ``{values...}``'s "at least 2 are different" means "not all equal": the
+      truth-machine compares the input with itself twice and a literal, so a
+      reading needing three distinct values could never fire its ``IFQ``.
+    * ``DownAccLines`` lands on ``ip + 1 + acc``, so an accumulator of 0 is a
+      plain fall-through.
+    * ``<`` encountered in ordinary execution *captures* the lines up to its
+      ``>`` into the slot and jumps past them; the wiki's cat example only
+      echoes rather than running its body twice under that reading.  The
+      wiki forbids nesting.
+    * A blank or unrecognised line raises when *executed* rather than at
+      parse time -- ``DownAccLines`` and ``z`` make lines legally
+      unreachable, so rejecting them upfront would refuse working programs.
+      An empty program has no line to run and halts at once.
+    * ``z`` deletes itself and the line before it and restarts with the
+      accumulator cleared and the slot dropped ("restarts the
+      interpretation").  Each ``z`` shortens the program by two lines, so
+      restarts are bounded.  Inside the slot it has no unambiguous "previous
+      line".
+    * ``[a b]`` and ``~`` draw through :mod:`esolangs.runtime.randomness`, so
+      a caller can pin them; ``developer`` prints a fixed string rather than
+      this file.
 """
 
 from __future__ import annotations

@@ -1,0 +1,16 @@
+{
+ "triggers": [
+  {
+   "program": "dmain.fizrzzz",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "Input at EOF raises."
+  },
+  {
+   "program": "dfoo.rzzz",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "no main class."
+  }
+ ]
+}

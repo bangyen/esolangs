@@ -3,11 +3,17 @@
 Count zero digits, remove the leading binary 1, and decode 3-bit commands
 in > < + - . , [ ] order. Whitespace is ignored, as in the wiki's formatted
 example. Empty source halts, though no program encodes to it ("the most
-significant bit is always 1"); one zero encodes empty Brainfuck. Other symbols,
-incomplete triples and unmatched brackets raise ValueError. The unspecified
-Brainfuck dialect follows this repo: 8-bit wrapping cells, a tape growing in
-both directions. Exhausted character input stores zero, as in the
-wiki's cat example.
+significant bit is always 1"); one zero encodes empty Brainfuck. The
+unspecified Brainfuck dialect follows this repo: 8-bit wrapping cells, a tape
+growing in both directions.
+
+Input/output:
+    Character I/O as Brainfuck.  ``,`` at EOF stores zero, as in the wiki's
+    cat example.
+
+Errors:
+    ProgramError: a symbol other than zero or whitespace; an incomplete
+        3-bit triple; unmatched brackets.
 """
 
 from esolangs.compressed import CompressedText
@@ -65,6 +71,10 @@ def decode(code: str | CompressedText) -> str:
 
 class _Machine(_BFMachine):
     """Decode Unary, then run it as Brainfuck with zero-valued EOF."""
+
+    #: The zero is a value: an underfed run finishes on another row.  The
+    #: census missed it because a termination answer has no output to read.
+    eof_is_a_value = True
 
     def __init__(self, code: str | CompressedText, io: IO) -> None:
         super().__init__(decode(code), io)

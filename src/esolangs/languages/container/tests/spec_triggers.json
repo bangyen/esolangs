@@ -1,0 +1,28 @@
+{
+ "triggers": [
+  {
+   "program": "A:\n 1 A<=B",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "<= against a non-constant"
+  },
+  {
+   "program": "A:\n 1 B>=0",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a condition on an undeclared container"
+  },
+  {
+   "program": "A = -1:",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a negative initial value"
+  },
+  {
+   "program": " 1 0>=0",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a rule before any declaration"
+  }
+ ]
+}

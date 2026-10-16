@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+import re
+from typing import cast
+
+#: The address a default ``repr`` embeds, matched only where it closes the
+#: repr's ``>``: quoted text ("['x at 0xdead']", b" at 0xab") is the caller's.
+_ADDRESS = re.compile(r" at 0x[0-9a-fA-F]+(?=>)")
+
 _INFINITE = (float("inf"), float("-inf"))
 
 #: The shortest wall-clock bound the ``SIGALRM`` guard can service.  See
@@ -16,7 +23,7 @@ _TIMEOUT_CEILING = 2_592_000.0
 def _argument_repr(value: object) -> str:
     """Describe rejected values even beyond CPython's decimal rendering cap."""
     try:
-        return repr(value)
+        shown = repr(value)
     except ValueError:
         if isinstance(value, int):
             sign = "negative " if value < 0 else ""
@@ -24,6 +31,13 @@ def _argument_repr(value: object) -> str:
         if isinstance(value, list):
             return "[" + ", ".join(_argument_repr(item) for item in value) + "]"
         return f"<{type(value).__name__}>"
+    except Exception:  # A caller's ``__repr__`` that raises (RuntimeError).
+        return f"<{type(value).__name__}>"
+    if isinstance(value, str):
+        return shown  # The caller's own text, even one reading " at 0x".
+    # A default repr carries an address ("<object object at 0x10...>") that
+    # differs per run; strip it, keeping the rest ("[<object object>]").
+    return _ADDRESS.sub("", shown)
 
 
 def check_whole(value: object, name: str) -> int:
@@ -224,3 +238,39 @@ def check_scale(scale: object) -> int:
             ),
         )
     return scale
+
+
+def check_flag(value: object, name: str) -> bool:
+    """Return ``value`` if it is a bool; ``isolated="no"`` read as True."""
+    from esolangs.exceptions import ArgumentError
+
+    if not isinstance(value, bool):
+        raise ArgumentError(
+            f"{name} must be True or False, got {_argument_repr(value)}"
+        )
+    return value
+
+
+def check_provenance(language: object, settings: object) -> str | None:
+    """Return the tag's canonical name; refuse no language or wrong settings.
+
+    ``Raster(...).tagged("nonesuch")`` and ``.tagged(5)`` were kept as given,
+    and an alias (``"rotfuck"``) was stored as typed, so ``run`` refused the
+    program under every spelling.
+    """
+    from esolangs.exceptions import ArgumentError
+    from esolangs.registry import resolve
+    from esolangs.settings import DialectSettings
+
+    name = None if language is None else resolve(cast("str", language))
+    if settings is not None and not isinstance(settings, DialectSettings):
+        got = _argument_repr(settings)
+        raise ArgumentError(f"settings must be a DialectSettings or None, got {got}")
+    if settings is None:
+        return name
+    if name is None:
+        # ``run`` reads retained settings only off a tagged program; untagged,
+        # they were silently ignored.
+        raise ArgumentError("settings need a language to apply to; pass language=")
+    settings.options(name)  # As ``from_png`` checks what it reads.
+    return name

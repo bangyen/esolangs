@@ -1,0 +1,16 @@
+{
+ "triggers": [
+  {
+   "program": ",",
+   "expect": "InputExhaustedError",
+   "claim": ", at EOF",
+   "stdin": ""
+  },
+  {
+   "program": "[",
+   "expect": "ProgramError",
+   "claim": "unbalanced brackets",
+   "stdin": ""
+  }
+ ]
+}

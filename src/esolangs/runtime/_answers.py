@@ -28,8 +28,20 @@ def encode_inputs(
     Character readers take adjacent digits; numeric readers take tokens;
     each language spells its bits per its registered ``input_encoding`` and
     ``input_shape``, so the obvious guess is often a wrong bit.
-    ``truth_table`` is needed only where the encoding depends on arity.  A
-    language that embeds its inputs is refused; use :func:`instantiate`.
+
+    Args:
+        bits: One integer 0 or 1 per input.
+        truth_table: Needed only where the encoding depends on arity; when
+            given, ``bits`` must match its input count.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: The language reads no stdin (it embeds its inputs, so
+            use :func:`instantiate`, or has no input instruction), a bit is
+            not an integer 0 or 1, or ``bits`` does not match
+            ``truth_table``'s input count.
+        TruthTableError: ``truth_table`` is not a binary string of length
+            ``2**n``.
     """
     name = resolve(language)
     lang = LANGUAGES[name]
@@ -40,10 +52,12 @@ def encode_inputs(
             f"there is nothing to encode; pass the bits to instantiate() "
             f"instead"
         )
-    # Checked for the same reason ``instantiate`` checks it: a 2 or a "1"
-    # is not caught downstream.  It encodes as a 1 and the program answers
-    # a different row of the table, which is the wrong answer arriving with
-    # no sign that anything went astray.
+    if lang.boolean is None:
+        # Deadfish, HQ9+ and Nope. have no input instruction; the registry's
+        # default contract encoded ``"1\n0\n"`` for them all the same.
+        raise ArgumentError(f"{name} reads no stdin, so there is nothing to encode")
+    # As in ``instantiate``: a 2 or a "1" is not caught downstream; it
+    # encodes as a 1 and the program silently answers another row.
     bits = check_bits(bits, "bits")
     if truth_table is not None and lang.boolean is not None:
         check_table_text(truth_table)
@@ -59,10 +73,8 @@ def encode_inputs(
         try:
             return f"{row}\n"
         except ValueError as exc:
-            # CPython caps int->str at 4300 digits, and a row index that wide
-            # names a row no program could read.  It escaped as a bare
-            # ValueError past the "every deliberate error is an EsolangError"
-            # promise (``encode_inputs(name, [1] * 15000)``).
+            # CPython caps int->str at 4300 digits; a bare ValueError broke the
+            # every-error-is-EsolangError promise (``[1] * 15000``).
             raise ArgumentError(
                 f"{name} reads a decimal row index, and {len(bits)} bits name "
                 f"an integer too large to render as one: {exc}"
@@ -77,14 +89,18 @@ def encode_inputs(
 
 
 def read_answer(language: str, output: str) -> str:
-    """Return the answer bit a ``language`` program's ``output`` carries.
+    """Return the answer bit, ``"0"`` or ``"1"``, a program's ``output`` carries.
 
     Most print it (last non-whitespace character); some dump their state.
     ``describe(language)["answer_pattern"]`` and ``answer_mode`` are the
     same facts as data (a verifier that hardcoded two dumps and forgot a
-    third reported a passing language as broken).  A termination-answer
-    language raises :class:`~esolangs.exceptions.ArgumentError`: its answer
-    is whether it halts, not anything printed.
+    third reported a passing language as broken).
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: The language answers by terminating: its answer is
+            whether it halts, not anything printed.
+        ProgramError: ``output`` holds no readable answer, or is not a string.
     """
     name = resolve(language)
     if not isinstance(output, str):
@@ -104,16 +120,10 @@ def read_answer(language: str, output: str) -> str:
         return "1"
     if raw == zero:
         return "0"
-    # For a pattern language the regex used to be the *whole* explanation,
-    # which is the right thing to hand a maintainer and nothing at all to
-    # hand a reader wondering where the answer was supposed to be.  The note
-    # is the plain-language half and already exists; the pattern follows it
-    # in parentheses, so neither reader loses.
+    # The note says in plain words where the answer lives, for every language
+    # that has one: "as the last character" names the mechanism, not the
+    # place, for a state dump.  The regex follows for maintainers.
     where = "in its final state" if contract.answer_pattern else "as the last character"
-    # The note whenever there is one, not just for the pattern languages:
-    # a state-dumping language read by last character makes "as the last
-    # character" a true account of the mechanism and no account at all of
-    # where the answer lives.
     detail = f" -- {contract.note}" if contract.note else ""
     if contract.answer_pattern:
         detail += f" (matched with {contract.answer_pattern!r})"

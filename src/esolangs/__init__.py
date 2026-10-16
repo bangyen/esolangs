@@ -50,6 +50,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     unmark,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width(language)`` got False for
@@ -96,6 +97,7 @@ from esolangs.runtime._source import (
 )
 from esolangs.runtime._validate import (
     check_bits,
+    check_flag,
     check_scale,
     check_seed,
     check_timeout,
@@ -124,6 +126,24 @@ def __getattr__(name: str) -> str:
         version = "0.0.0+unknown"
     globals()["__version__"] = version
     return version
+
+
+def _bind_annotation_names() -> None:
+    """Let ``typing.get_type_hints`` resolve the public classes' annotations.
+
+    ``compressed``, ``raster`` and ``tagged`` name ``DialectSettings`` only
+    under ``TYPE_CHECKING`` (``settings`` imports the registry, which imports
+    them), so ``get_type_hints(Raster)`` raised NameError on 3.12 to 3.14.
+    """
+    import esolangs.compressed
+    import esolangs.raster
+    import esolangs.tagged
+
+    for module in (esolangs.compressed, esolangs.raster, esolangs.tagged):
+        module.DialectSettings = DialectSettings  # type: ignore[attr-defined]
+
+
+_bind_annotation_names()
 
 
 #: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,
@@ -180,26 +200,41 @@ def generate(
 ) -> Program:
     """Return a program in ``language`` computing ``truth_table``.
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
-    length implies ``n``.  Some languages embed their inputs in the
-    program text; for those this returns a *template* with each input as a
-    run of one character (``$`` unless the language declares another), one
-    run per input, exactly as long as the code :func:`instantiate` fills it
-    with.  ``describe(language)["parameterized"]`` says which you have; a
-    template handed to :func:`run` is refused.
+    Languages that embed inputs in the program text return a *template*: one
+    run of one character per input (``$`` unless the language declares
+    another), as long as the code :func:`instantiate` fills it with.
+    ``describe(language)["parameterized"]`` says which you have; :func:`run`
+    refuses a template.  Tagged results retain ``settings`` for execution.
 
-    ``width`` is a request, not a bound (``describe(language)["width_effect"]``):
-    it does nothing where newlines are semantic, and a single token longer
-    than the width still overruns it.  A template wraps with each run kept
-    whole, so every row breaks in the same places.
-    ``balance`` minimizes the rendered width/height difference across supported
-    layouts, breaking ties by source length (raster pixel area), then width.
-    Token and routing constraints can prevent a square layout.
-    Raster ``scale`` replicates pixels after layout; 1 preserves native output.
-    Tagged results retain ``settings`` for execution.
+    Args:
+        truth_table: Binary string of length ``2**n``, MSB first.
+        width: A request, not a bound (``describe(language)["width_effect"]``):
+            it does nothing where newlines are semantic, and a token longer
+            than the width still overruns it.  A template wraps with each run
+            kept whole, so every row breaks in the same places.
+        balance: Pick the supported layout fitting the smallest on-screen
+            square: text minimizes max(columns, 2 * rows), a character cell
+            being about twice as tall as wide, then source length, then
+            width.  A raster minimizes max(width, height) in pixels, then
+            pixel area, then width.  Excludes ``width``.
+        scale: Raster only; replicates pixels after layout (1: native output).
+        settings: Dialect choices; see ``describe(language)["dialect_settings"]``.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        TruthTableError: ``truth_table`` is not a binary string of length
+            ``2**n``.
+        ArgumentError: The language has no Boolean generator (``esolangs list
+            --details`` marks it ``int``), or an option is invalid or combined
+            with one it excludes (``balance`` with ``width``, ``scale`` for a
+            text language).
+        GeneratorCapError: The table exceeds the generator's cap
+            (``describe(language)["generator_max_inputs"]`` and
+            ``["generator_restrictions"]``).
     """
     options = dialect_options(language, settings)
     check_scale(scale)
+    check_flag(balance, "balance")
     if scale != 1:
         if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
             raise with_hint(
@@ -275,7 +310,7 @@ def _generate_balanced(
     lang = LANGUAGES[name]
     balancer = lang.balance
     if isinstance(default, CompressedText):
-        return default.wrapped(max(1, isqrt(len(default))))
+        return default.wrapped(max(1, isqrt(CELL_ASPECT * len(default))))
     if isinstance(default, Raster):
         if balancer is None:
             return default
@@ -327,6 +362,11 @@ def _is_template_for(
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.
     if width_aware and template == layout(1):
+        return True
+    # A layout built for its own widest line: ArrowQueue's ``width=5`` shifts
+    # the setter column, matching neither the default nor ``layout(1)``.
+    widest = max(map(len, template.splitlines()), default=0)
+    if width_aware and widest and template == layout(widest):
         return True
     same_layout = LANGUAGES[name].same_layout or (
         lambda template, plain, _layout: same_up_to_wrapping(template, plain)
@@ -417,13 +457,25 @@ def instantiate(
 ) -> str:
     """Fill a parameterized generator's template with ``bits``.
 
-    Substituting the runs by hand does not work: each language spells a
-    set-input its own way.  A language whose generator reads its inputs, or
-    a template from a different language, raises
-    :class:`~esolangs.exceptions.TemplateError`.  ``width`` applies here too.
-    A template :func:`generate` returned carries its setters; a plain string
-    has them recovered from the language's own. Retained dialect choices follow
-    the filled program; explicit settings overrides individual choices.
+    Hand substitution fails: each language spells a set-input its own way.  A
+    template from :func:`generate` carries its setters; a plain string has them
+    recovered from the language's own.  Retained dialect choices follow the
+    filled program; explicit ``settings`` override individual ones.
+
+    Args:
+        template: :func:`generate`'s result, or the same text as a plain string.
+        bits: One integer 0 or 1 per input.
+        width: As for :func:`generate`.
+        truth_table: The table ``template`` was generated from; when given,
+            a template :func:`generate` would not return for it is refused.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        TemplateError: Nothing to fill: the language reads its inputs, the
+            template came from another language or table, is a raster, is
+            already filled, or has a different input count than ``bits``.
+        ArgumentError: A bit is not an integer 0 or 1, or an option is
+            invalid.
     """
     settings = effective_settings(language, template, settings)
     dialect_options(language, settings)
@@ -629,8 +681,14 @@ def _run_bounded(
         exc.partial_output = debugger.output
         raise
     if reason != "halted":
-        error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
+        # One wording per bound: a timeout reads as it does unstepped.
+        error = ExecutionTimeoutError(
+            f"execution exceeded the {timeout}-second timeout"
+            if reason == "timeout"
+            else f"execution stopped at the {reason} bound"
+        )
         error.partial_output = debugger.output
+        error.bound = reason
         raise error
     return debugger.output
 
@@ -651,51 +709,64 @@ def run(
 ) -> str:
     """Execute ``program`` and return its output.
 
-    Raster scale is detected unless ``scale`` supplies an explicit factor.
-    Tagged source retains dialect choices; explicit ``settings`` overrides
-    individual retained choices. Plain source uses the supplied settings.
-    ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
-    filename is refused.  A Path and its text are
-    not quite the same argument: a file loses one trailing newline, a
-    string keeps it.
+    Args:
+        program: Source or a :class:`~pathlib.Path`; a string shaped like a
+            filename is refused.  A file loses one trailing newline and has
+            CRLF and lone CR read as LF; a string keeps both.  Bytes hold UTF-8
+            text or PNG; a readable stream is consumed from its current
+            position and left open.
+        stdin: Consumed verbatim in the language's input unit, without
+            Boolean validation; binary is decoded as UTF-8.  Build a
+            Boolean-generated program's stdin with :func:`encode_inputs`,
+            which validates the bits.
+        timeout: Wall-clock seconds (None: unbounded), via ``SIGALRM``, so it
+            needs a Unix main thread; off it, use ``isolated`` or
+            ``max_steps``.
+        seed: Integer fixing the languages that draw
+            (``describe(language)["random"]``); the rest refuse it.
+        isolated: Run in a subprocess whose deadline covers startup and
+            loading (``timeout``, or 30 seconds when None); works on Windows
+            and in worker threads.  Excludes ``max_steps``.
+        max_steps: Cooperative stepping bound, for text and raster programs;
+            ``timeout`` then excludes loading and cannot interrupt a single
+            step.  Excludes ``seed``.
+        scale: Raster scale factor; detected when None.
+        max_output: Isolated output cap in Unicode characters (zero allowed);
+            the prefix is kept.
+        max_memory: Linux worker virtual address space cap in bytes, including
+            Python overhead; other platforms refuse it.  Loading in the
+            parent is not capped.
+        settings: Dialect choices.  Tagged source retains its own; these
+            override individual ones.  Plain source uses these.
 
-    Bytes contain UTF-8 text or PNG source, as accepted by the interpreter.
-    Readable streams are consumed from their current position and left open.
-    Binary stdin is decoded as UTF-8, preserving the same character stream
-    as text stdin.
-
-    ``isolated=True`` uses a subprocess deadline, including startup and loading
-    (``timeout``, or 30 seconds when it is None). It works on Windows and
-    worker threads.
-    ``max_steps`` uses cooperative stepping; its optional timeout excludes loading
-    and cannot interrupt a single step. Text and raster programs support stepping.
-    Isolation and step bounds cannot be combined; stepping does not support seed.
-    ``max_output`` bounds isolated output in Unicode characters, retaining the
-    prefix and raising ``InterpreterLimitError`` when exceeded; zero is allowed.
-    ``max_memory`` caps Linux worker virtual address space in bytes, including
-    Python overhead; other platforms refuse it. Loading in the parent is not capped.
-
-    ``stdin`` is consumed verbatim using the language's input unit, without
-    Boolean validation. Reading past
-    the end usually raises :class:`~esolangs.exceptions.InputExhaustedError`;
-    ``describe(language)["eof_is_a_value"]`` marks languages supplying a value.
-    Some halt instead. Build a Boolean-generated program's stdin with
-    :func:`encode_inputs`, which validates the bits.
-
-    ``timeout`` is wall-clock seconds (None: unbounded) and raises
-    :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
-    :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
-    it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
-    :meth:`Debugger.run` bounds by stepping.  ``seed``, an integer, fixes the
-    languages that draw (``describe(language)["random"]``) and is refused by
-    the rest.  An unloadable program raises
-    :class:`~esolangs.exceptions.ProgramError`.
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: An option is invalid or combined with one it excludes
+            (``isolated`` with ``max_steps``, ``seed`` for a deterministic
+            language).
+        ProgramNotFoundError: ``program`` is a Path that does not exist.
+        ProgramError: The program does not load (base of the above).
+        TemplateError: ``program`` is an unfilled template; see
+            :func:`instantiate`.
+        InputExhaustedError: A read past the end of ``stdin``.  Languages with
+            ``describe(language)["eof_is_a_value"]`` supply a value instead,
+            and some halt.
+        ExecutionTimeoutError: ``timeout`` elapsed or ``max_steps`` ran out.
+            Also a :class:`TimeoutError` and a ``HaltError``; catch it, not the
+            base.
+        InterpreterLimitError: ``max_output`` was exceeded, or the interpreter
+            hit another implementation limit.
+        HaltError: The program halted on an invalid operation (base of the two
+            above).
+        MissingDependencyError: The language needs an uninstalled extra
+            (``esolangs[image]`` for PNG, ``esolangs[math]`` for Polynomial).
     """
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)  # validate before any route
     check_scale_for(language, scale)
     check_seed(seed)
     check_timeout(timeout)
+    check_flag(isolated, "isolated")
     check_limits(max_output, max_memory, isolated=isolated)
     if isolated:
         if max_steps is not None:
@@ -742,7 +813,8 @@ def run(
     check_signal_timeout(
         timeout,
         "the timeout guard uses SIGALRM and needs a Unix main thread; "
-        "off it, either bound the run cooperatively with "
+        "off it, either pass isolated=True, which times a subprocess, or "
+        "bound the run cooperatively with "
         "esolangs.debugger.make_debugger(language, program, stdin)"
         ".run(timeout=...), "
         "which steps and so needs no signal",

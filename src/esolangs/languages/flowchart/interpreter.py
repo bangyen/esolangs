@@ -8,118 +8,102 @@ are shared by every pointer.  Execution starts on the left-most, top-most
 ``( )`` node travelling right, and the program halts once every pointer has
 stopped on an ``(( ))``.
 
-The nodes, all of which the wiki (https://esolangs.org/wiki/Flowchart)
-tabulates explicitly:
+A vertical path enters a node at the node's middle.  The wiki says "vertical
+paths connecting into a node are expected to connect to the middle of the
+node", and all three worked examples (truth machine, cat, Kolakoski) obey it
+-- 32 vertical attachments, every one centred.  Those same examples enter
+nodes *horizontally* at their end cells 47 times (the Kolakoski program's top
+row is one long horizontal chain), but the two are not in tension: a node is a
+contiguous run of cells on one row, so a horizontal neighbour is always at
+``col0 - 1`` or ``col0 + len`` and the cell it enters is always an end cell.
+Horizontal entry cannot be drawn any other way, so the spec constrains only
+the case a program can get wrong.  Vertical entry off the middle is
+malformed.  This checks *entry*, not movement: a pointer already inside a
+node still leaves through whichever cell of the box its exit sits on, and a
+rail may still pass a node by without touching it.
 
-===========  ==================================================
-``( )``      start / fork / no-op; the only node that splits
-``(( ))``    end; a pointer that reaches it stops
-``[ ]``      toggle the register (empty becomes 1)
-``{ ]``      set the register to 0
-``[ }``      set the register to 1
-``{ }``      clear the register, making it empty
-``< >``      switch: 1 turns left, 0 turns right, empty goes on
-``/ /``      read one bit of input into the register
-``\ \``      output the register's bit (zero when it is empty)
-``\[ ]/``    push the register onto the top of the deque
-``/[ ]\``    push the register onto the bottom of the deque
-``\{ }/``    pop the deque's top into the register
-``/{ }\``    pop the deque's bottom into the register
-``< ]``      select the previous deque
-``[ >``      select the next deque
-===========  ==================================================
+Commands:
+    The nodes, all of which the wiki (https://esolangs.org/wiki/Flowchart)
+    tabulates explicitly.
+    ``( )``: start / fork / no-op; the only node that splits.
+    ``(( ))``: end; a pointer that reaches it stops.
+    ``[ ]``: toggle the register (empty becomes 1).
+    ``{ ]``: set the register to 0.
+    ``[ }``: set the register to 1.
+    ``{ }``: clear the register, making it empty.
+    ``< >``: switch: 1 turns left, 0 turns right, empty goes on.
+    ``/ /``: read one bit of input into the register.
+    ``\ \``: output the register's bit (zero when it is empty).
+    ``\[ ]/``: push the register onto the top of the deque.
+    ``/[ ]\``: push the register onto the bottom of the deque.
+    ``\{ }/``: pop the deque's top into the register.
+    ``/{ }\``: pop the deque's bottom into the register.
+    ``< ]``: select the previous deque.
+    ``[ >``: select the next deque.
 
-The spec leaves five things unstated that a running interpreter has to
-settle.  Each is resolved below against the wiki's own worked examples
-rather than invented, and every one of the three examples on the page
-(truth machine, cat, Kolakoski) is exercised by the test suite:
+Input/output:
+    I/O is byte-oriented, low bit first, as the spec says.  ``/ /`` takes the
+    next bit of the current input byte and ``\ \`` buffers one bit of an
+    output byte; a partial byte is zero-padded and written at halt.  Both
+    wiki Hello Worlds then print ``Hello, world!`` itself, and the truth
+    machine given ``0`` prints one zero bit, padded to a NUL byte.  Unicode
+    input is reduced modulo 256.
+    At EOF a ``/ /`` read leaves the register **empty** rather than raising
+    (the spec's "empty if there are no more bits to read"), the state
+    ``{ }`` clears it to; ``\ \`` then prints zero for it and a push puts it
+    on the deque as an empty cell.  A program reading past EOF keeps running
+    without a HaltError.  The wiki's cat pushes that empty and pops it last,
+    so it echoes its input plus one zero bit, which pads to a trailing NUL.
 
-* **A switch's left and right are relative to the pointer's heading**,
-  not absolute compass directions.  The truth machine's ``< >`` is entered
-  travelling *downward*: register 1 has to reach the ``\ \`` that loops
-  back (drawn to the grid-east) and register 0 has to reach the ``\ \``
-  and ``(( ))`` that halt (drawn to the grid-west).  Heading-relative
-  left/right is the only reading that puts 1 on the looping branch, so the
-  example pins the orientation down even though the prose does not.
+Errors:
+    ProgramError: Nodes touching side by side, an unknown node, a vertical
+    path meeting a node off its middle, no ``( )`` to start from, a start
+    node with no exit path, or a non-end node with no onward path.
 
-* **I/O is byte-oriented, low bit first, as the spec says.**  ``/ /``
-  takes the next bit of the current input byte and ``\ \`` buffers one
-  bit of an output byte; a partial byte is zero-padded and written at
-  halt. Both wiki
-  Hello Worlds then print ``Hello, world!`` itself, and the truth machine
-  given ``0`` prints one zero bit, padded to a NUL byte.  EOF leaves the
-  register empty rather than raising -- the spec's "empty if there are no
-  more bits to read" -- supplying zeros; ``\ \`` then prints
-  zero.  The wiki's cat pushes that empty and pops it last, so it echoes
-  its input plus one zero bit, which pads to a trailing NUL.
-
-* **Re-entry memory disambiguates paths; it never suppresses a node.**
-  The spec says a pointer re-entering a node or path it has already
-  travelled "will go in the direction that it had previously travelled
-  unless it were to turn it 180deg".  Read as a rule about *node semantics*
-  it would break the wiki's own cat program, whose ``< >`` nodes sit inside
-  a loop and must be free to decide differently on each lap -- if the first
-  decision were replayed forever the loop could never exit.  So a node's
-  own semantics always run, and the remembered direction only settles
-  genuine ambiguity: which way to leave a junction (a ``T``-shaped fork in
-  the line) or a node whose semantics do not name an exit.  The 180deg
-  clause then means the remembered direction is declined whenever taking
-  it would reverse the pointer.
-
-* **Empty is a value: it outputs zero and it is pushed like a bit.**  The
-  spec says "bits in a register and deque are also able to be an 'empty'
-  value" and "outputting empty is the same as outputting zero", so a push
-  of an empty register puts an empty on the deque and popping it empties
-  the register again.  No wiki example forces the other reading (a push of
-  empty being a no-op): the truth machine, cat and both Hello Worlds never
-  touch a deque, and the Kolakoski program prints the Kolakoski sequence
-  either way.  An earlier revision of the wiki's cat popped an exhausted
-  deque before its last output and so appended a zero (``101`` in,
-  ``1010`` out); the explicit output rule takes precedence over that.
-
-* **A step runs one node per pointer; paths take no time.**  The spec
-  orders pointers "from the top-most left-most node, traveling right, then
-  down, then finally oldest-to-newest", so each step every pointer rides its
-  path to the next node and the pointers then execute in that order.  The
-  spec never says what a path cell costs, but the wiki's eight-pointer Hello
-  World settles it: its rows start at different distances from the fork,
-  and only node-counted time lines their output bits up.  The same program
-  fixes the start as the *left-most*, then top-most, ``( )`` -- the
-  spec's "left-most top-most" -- since a higher ``( )`` sits to its right.
-  A forking pointer keeps its forward-first exit (the spec's rule for any
-  node but ``< >``); new pointers take the others in reading order, an
-  order the spec leaves open.  A pointer's deque cursor is unspecified;
-  it is kept per-pointer here, alongside the register the spec does make per-pointer.
-
-One further rule the spec does state, and this interpreter enforces:
-
-* **A vertical path enters a node at the node's middle.**  The wiki says
-  "vertical paths connecting into a node are expected to connect to the
-  middle of the node", and all three worked examples obey it -- 32 vertical
-  attachments, every one centred.  It is tempting to read the sentence as a
-  drawing convention rather than a law, because those same examples enter
-  nodes *horizontally* at their end cells 47 times (the Kolakoski program's
-  top row is one long horizontal chain).  But the two are not in tension: a
-  node is a contiguous run of cells on a single row, so a horizontal
-  neighbour is always at ``col0 - 1`` or ``col0 + len`` and the cell it enters
-  is always an end cell.  Horizontal entry cannot be drawn any other way,
-  so the spec has nothing to say about it and constrains the one case a
-  program can actually get wrong.  Vertical entry off the middle is
-  therefore malformed, and :meth:`_Machine._check_alignment` rejects it.
-
-  Note this is a check on *entry*, not on movement: a pointer already
-  inside a node still leaves through whichever cell of the box its exit
-  sits on, and a rail may still pass a node by without touching it.
-
-Malformed programs (nodes touching side by side, an unknown node, a vertical
-path meeting a node off its middle, no ``( )`` to start from, or a non-end
-node with no onward path) raise :class:`ValueError`.
-
-At EOF a ``/ /`` read leaves the register **empty** rather than raising,
-which is the same state ``{ }`` clears it to. Output prints zero for that
-state, and a push puts it on the deque as an empty cell. A program reading
-past EOF keeps running without a :class:`HaltError`.  Unicode input is
-reduced modulo 256.
+Decisions:
+    The spec leaves five things unstated that a running interpreter has to
+    settle.  Each is resolved against the wiki's own worked examples, and all
+    three (truth machine, cat, Kolakoski) are exercised by the test suite.
+    * A switch's left and right are relative to the pointer's heading, not
+      compass directions.  The truth machine's ``< >`` is entered travelling
+      *downward*: register 1 has to reach the ``\ \`` that loops back (drawn
+      grid-east) and register 0 the ``\ \`` and ``(( ))`` that halt (drawn
+      grid-west).  Only heading-relative left/right puts 1 on the looping
+      branch.
+    * Re-entry memory disambiguates paths; it never suppresses a node.  The
+      spec says a pointer re-entering a node or path it has already
+      travelled "will go in the direction that it had previously travelled
+      unless it were to turn it 180deg".  Read as a rule about *node
+      semantics* it would break the wiki's cat program, whose ``< >`` nodes
+      sit inside a loop and must decide differently on each lap, or the loop
+      could never exit.  So a node's own semantics always run, and the
+      remembered direction only settles genuine ambiguity: which way to
+      leave a junction (a ``T``-shaped fork) or a node whose semantics do
+      not name an exit.  The 180deg clause means the remembered direction is
+      declined whenever taking it would reverse the pointer.
+    * Empty is a value: it outputs zero and it is pushed like a bit.  The
+      spec says "bits in a register and deque are also able to be an 'empty'
+      value" and "outputting empty is the same as outputting zero", so a
+      push of an empty register puts an empty on the deque and popping it
+      empties the register again.  No wiki example forces the other reading
+      (a push of empty being a no-op): the truth machine, cat and both Hello
+      Worlds never touch a deque, and the Kolakoski program prints the
+      Kolakoski sequence either way.  An earlier revision of the wiki's cat
+      popped an exhausted deque before its last output and so appended a zero
+      (``101`` in, ``1010`` out); the explicit output rule takes precedence.
+    * A step runs one node per pointer; paths take no time.  The spec orders
+      pointers "from the top-most left-most node, traveling right, then
+      down, then finally oldest-to-newest", so each step every pointer rides
+      its path to the next node and the pointers then execute in that order.
+      The spec never says what a path cell costs, but the wiki's
+      eight-pointer Hello World settles it: its rows start at different
+      distances from the fork, and only node-counted time lines their output
+      bits up.  The same program fixes the start as the *left-most*, then
+      top-most, ``( )``, since a higher ``( )`` sits to its right.  A forking
+      pointer keeps its forward-first exit (the spec's rule for any node but
+      ``< >``); new pointers take the others in reading order, which the spec
+      leaves open.  A pointer's deque cursor is unspecified; it is kept
+      per-pointer, like the register.
 """
 
 from bisect import bisect_left
@@ -217,19 +201,16 @@ def _turn_right(d: tuple[int, int]) -> tuple[int, int]:
 class _Memory:
     """Where a pointer last left each cell it has been through.
 
-    A map, and it was spelled as a tuple of pairs: reading one cell scanned
-    it and recording one rebuilt it, both in Python, so a pointer that had
-    been through Theta(T) cells paid Theta(T) per step.
+    A map, not a tuple of pairs: a tuple scanned on read and rebuilt on
+    record, both in Python, so a pointer through Theta(T) cells paid
+    Theta(T) per step.
 
-    Still a value.  Nothing here mutates after construction, so a fork may
-    share one freely; a record returns a new memory, which is what lets two
-    generations be compared and a loop be proved.  The copy is a ``dict``
-    copy done in C, where the rebuild was a comprehension.
-
-    The pointer's own hashability is not what the pairs were buying -- it is
-    never hashed; :meth:`_Pointer.state` builds the hashable view the cycle
-    detector compares, and did so already.  This is hashable anyway, since
-    that is cheap to keep and a value ought to be.
+    Still a value.  Nothing mutates after construction, so a fork may share
+    one freely; a record returns a new memory (a ``dict`` copy done in C),
+    which lets two generations be compared and a loop be proved.  The
+    pointer is never hashed; :meth:`_Pointer.state` builds the hashable view
+    the cycle detector compares.  This is hashable anyway, since that is
+    cheap and a value ought to be.
     """
 
     __slots__ = ("_digest", "_exits", "_sorted")
@@ -285,10 +266,9 @@ class _Pointer:
     empty), and ``deque`` its index into the shared tape of deques.  A
     pointer that has reached an ``(( ))`` is ``done``.
 
-    Frozen: a step returns the pointers that follow rather than editing the
-    ones it was handed, so a pointer is a value.  ``replace`` builds the
-    changed copy, and ``memory`` is a :class:`_Memory` -- itself a value, so
-    a fork shares one rather than copying it.
+    Frozen: a step returns the pointers that follow rather than editing its
+    arguments.  ``replace`` builds the changed copy; ``memory`` is a
+    :class:`_Memory`, itself a value, so a fork shares one.
     """
 
     row: int
@@ -347,15 +327,14 @@ class _Run:
 class _Machine:
     r"""Per-run Flowchart shell: the grid, its pointers, and the deques.
 
-    ``step()`` is the shell: it reads the input bits its ``/ /`` nodes need
-    and writes the bytes its ``\\ \\`` nodes gather, while the pure
-    :func:`_advance` owns the pointers and deques and returns the next run
-    plus the bytes to write.  ``halted`` is true once each pointer has
-    stopped on an ``(( ))``.  The run is deterministic and its
-    :meth:`snapshot` is bounded whenever the deques are, so
-    ``esolangs.vm.run_until_halt_or_cycle`` can prove a hang on it;
-    a program that grows a deque without bound falls into the same
-    undetectable class as an ever-growing brainfuck tape.
+    ``step()`` reads the input bits its ``/ /`` nodes need and writes the
+    bytes its ``\\ \\`` nodes gather; the pure :func:`_advance` owns the
+    pointers and deques and returns the next run plus the bytes to write.
+    ``halted`` is true once each pointer has stopped on an ``(( ))``.  The
+    run is deterministic and its :meth:`snapshot` is bounded whenever the
+    deques are, so ``esolangs.vm.run_until_halt_or_cycle`` can prove a hang
+    on it; a program that grows a deque without bound is as undetectable as
+    an ever-growing brainfuck tape.
     """
 
     #: Whether a read past the end of the input yields a *value* here
@@ -549,18 +528,16 @@ class _Machine:
     def step(self) -> None:
         r"""Run one node per live pointer, in the spec's pointer order.
 
-        The shell: it hands the run, the grid and the bits it has to the
-        pure :func:`_advance` and stores what comes back.  A command that
-        still needs a bit raises :class:`_NeedBitError` carrying the output
-        bytes emitted so far; the shell flushes that prefix *before* it
-        reads, retries, and flushes each later prefix exactly once.  A
-        fault carries the same prefix, flushed before the fault surfaces,
-        so a byte an earlier pointer finished is written even when a later
-        pointer then fails -- the ordering the mutable shell had.  Paths
-        take no time: every pointer first rides its path to the next node,
-        then the pointers execute ordered by that node -- top-most, then
-        left-most, then oldest first.  Pointers a fork creates join on the
-        next step.
+        Hands the run, grid and bits to the pure :func:`_advance` and stores
+        the result.  A command that still needs a bit raises
+        :class:`_NeedBitError` carrying the bytes emitted so far; the shell
+        flushes that prefix *before* it reads, retries, and flushes each
+        later prefix once.  A fault carries the same prefix, flushed before
+        it surfaces, so a byte an earlier pointer finished is written even
+        when a later pointer fails.  Paths take no time: every pointer first
+        rides its path to the next node, then the pointers execute ordered
+        by that node -- top-most, then left-most, then oldest first.
+        Pointers a fork creates join on the next step.
         """
         if self.halted:
             return
@@ -774,14 +751,11 @@ def _advance(
 ) -> tuple[_Run, tuple[int, ...]]:
     """Run one node per live pointer, returning the next run and output bytes.
 
-    Pure.  The grid, nodes and width are constants of the run; the input
-    bits arrive as ``bits`` and output is returned rather than written.
-    The one input the transition cannot supply itself -- a bit a ``/ /``
-    node still needs -- is raised as :class:`_NeedBitError` for the shell to
-    answer, carrying the bytes written before the read; any other fault
-    carries the same prefix on its ``printed`` attribute, so the shell can
-    flush it before the read or the rethrow.  The run handed in is never
-    edited.
+    Pure: input arrives as ``bits`` and output is returned, not written.  A
+    bit a ``/ /`` node still needs is raised as :class:`_NeedBitError` for
+    the shell to answer, carrying the bytes written before the read; any
+    other fault carries the same prefix on its ``printed`` attribute, so the
+    shell can flush it before the read or the rethrow.
     """
     printed: list[int] = []
     try:

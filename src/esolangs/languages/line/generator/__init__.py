@@ -1,28 +1,35 @@
-"""Build a Line program computing a given boolean truth table directly.
+"""Line Boolean program generator: a ``?`` tree over inputs read into cells.
 
-No brainfuck intermediate: Line's ``i`` reads a whole number and ``o``
-prints one, so 0/1 is exactly what ``IO`` hands over and no ASCII offset
-enters.  The program reads each input into its own cell, then walks a ``?``
-tree that tests only the inputs its subtree depends on: a level whose
-halves agree is skipped, so a constant is one leaf and an ignored input
-is read but never tested.  A leaf prints the cell it just tested, after
-one ``+`` or ``-`` when the entry differs from that bit; a constant has no
-test and prints the unread cell ``n``.  ``truth_table`` is a binary string of
-length ``2**n``, MSB first. Arms use measured subtree extents with one cell
-of clearance for forward-only subtrees, two otherwise. A bounded ancestor
-return shares a repeated nonconstant residual when it saves area within
-5n commands: clear a consumed input
-and re-enter its zero arm. Reads and the tape footprint stay unchanged.
-Projected loaders store only essential inputs: ignored reads overwrite the
-next kept slot, or one spare slot after the last kept input. Projected trees
-and ancestor returns compete by emitted area, including balanced layouts.
-Complete ordered residual folds share forward joins: the saved loader rewind
-pays for join transitions, and their measured area must beat the tree.
-Shared destination moves allow narrower nonterminal forks. Input-order streaming
-also shares reads on stems, overwriting cell zero and draining constant tails;
-its fresh output cell stays within the original tape. Projected streaming drains
-ignored inputs on essential stems, avoiding test-free layers. Complete folds win
-fallback area ties; larger drawings retain the smaller fallback.
+Line's ``i`` reads a whole number and ``o`` prints one, so 0/1 is what ``IO``
+hands over and no ASCII offset enters.  Reads each input into its own cell,
+then walks a ``?`` tree testing only the inputs its subtree depends on: a
+level whose halves agree is skipped, so a constant is one leaf and an ignored
+input is read but never tested.  A leaf prints the cell it just tested, after
+one ``+`` or ``-`` when the entry differs from that bit; a constant prints the
+unread cell ``n``.  Arms use measured subtree extents with one cell of
+clearance for forward-only subtrees, two otherwise.
+
+Candidates compete by emitted area; the smallest wins:
+
+- Ancestor return: shares a repeated nonconstant residual when it saves area
+  within 5n commands, clearing a consumed input and re-entering its zero arm.
+  Reads and tape footprint stay unchanged.
+- Projected loader: stores only essential inputs; ignored reads overwrite the
+  next kept slot, or one spare slot after the last kept input.
+- Ordered residual folds: share forward joins; the saved loader rewind pays
+  for join transitions, and measured area must beat the tree.  Shared
+  destination moves allow narrower nonterminal forks.
+- Input-order streaming: shares reads on stems, overwriting cell zero and
+  draining constant tails; its fresh output cell stays within the original
+  tape.  The projected form drains ignored inputs on essential stems,
+  avoiding test-free layers.
+
+Complete folds win fallback area ties; larger drawings retain the smaller
+fallback.
+
+Size:
+    Parity and and grow linearly in n, random in T; n=10 parity: 1,892,800
+    codels, n=10 and: 1,691,200 codels, n=8 random 1847: 19,359,600 codels.
 """
 
 from __future__ import annotations
@@ -43,11 +50,8 @@ from esolangs.languages.line.generator.forward import (
     projected_streaming_canvas,
     streaming_canvas,
 )
-from esolangs.languages.line.generator.render import (
-    _UNIT,
-    Canvas,
+from esolangs.languages.line.generator.layout import (
     Node,
-    _check_unit,
     _has_goto,
     _moved,
     chain,
@@ -55,6 +59,7 @@ from esolangs.languages.line.generator.render import (
     correction,
     loader_reads,
 )
+from esolangs.languages.line.generator.render import _UNIT, Canvas, _check_unit
 from esolangs.languages.line.generator.shared import (
     CanvasPlan,
     shared_canvas,
@@ -69,7 +74,7 @@ from esolangs.registry._language import Language, SourceKind
 def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     """Build a Line program computing ``truth_table`` (see module docstring).
 
-    Returns a :class:`render.Node` graph for :func:`render.render`; Line has no text.
+    Returns a :class:`layout.Node` graph for :func:`render.render`; Line has no text.
     """
     n = _validate_truth_table(truth_table)
     order = tuple(range(n - 1, -1, -1)) if reverse else tuple(range(n))
@@ -249,9 +254,9 @@ def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Rast
 
 
 class _Score(NamedTuple):
-    """Orders layouts by imbalance, then area, then width (0 when small)."""
+    """Orders layouts by enclosing side, then area, then width (0 when small)."""
 
-    imbalance: int
+    side: int
     area: int
     tiebreak: int
 
@@ -280,7 +285,7 @@ def _best_choice(
         else:
             y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
             width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
-        score = _Score(abs(width - height), width * height, 0 if small else width)
+        score = _Score(max(width, height), width * height, 0 if small else width)
         choices.append(_Choice(score, node, canvas, compact, tight))
     return min(choices, key=lambda choice: choice.score)
 
@@ -325,8 +330,8 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     if _has_goto(cast("Node | None", default._payload)):  # noqa: SLF001 - generator-owned graph
         height, shared_width = len(default.rows), len(default.rows[0])
         shared_area = shared_width * height
-        if (abs(shared_width - height), shared_area, shared_width) <= (
-            score.imbalance,
+        if (max(shared_width, height), shared_area, shared_width) <= (
+            score.side,
             score.area,
             width,
         ) and shared_area <= score.area:

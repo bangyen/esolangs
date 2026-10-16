@@ -9,6 +9,30 @@ from tests.interpreters.test_input_convention import assert_echoes_a_newline
 from tests.support.reference import REFERENCE
 
 
+def test_cli_echoes_a_surrogate_to_a_text_stdout(tmp_path: Any) -> None:
+    """An in-process StringIO took "\\ud800" escaped after round 9.
+
+    Compared as bytes: a surrogate in a failure report crashes xdist.
+    """
+    import io
+    import sys
+    from unittest.mock import patch
+
+    from esolangs.cli import main
+    from tests.support.cli_support import _FakeStdin
+
+    path = tmp_path / "p.txt"
+    path.write_text(",.")
+    out = io.StringIO()
+    with (
+        patch.object(sys, "argv", ["esolangs", "run", "BFStack", str(path)]),
+        patch.object(sys, "stdin", _FakeStdin("\ud800")),
+        patch.object(sys, "stdout", out),
+    ):
+        main()
+    assert out.getvalue().encode("utf-8", "surrogatepass") == b"\xed\xa0\x80"
+
+
 class TestEdges:
     """The bounds and the slot arithmetic, pinned where they turn over."""
 

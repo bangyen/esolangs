@@ -1,4 +1,19 @@
-"""Boolean-function generator for Clockwise."""
+"""Clockwise Boolean program generator: a flat indexed lookup on a ring.
+
+One ``!`` per entry in a row of ``!``/``-`` pairs, a Horner-rule index (MSB
+first) in the accumulator, and one doubling gadget per input (widths double
+upward).  An ignored input's seven reads run just before the next indexed
+input's, which overwrite the bit they leave; inputs past the last essential
+one are read on the return rail after printing.  A literal row has no
+subtrees to fold or share.  Constants read a full input rotation, clear the
+accumulator and emit the seven answer bits on a closed two-column ring.  A
+``width`` exceeded rotates the program counterclockwise (two columns for
+n <= 2, else ``2*n + 5``).
+
+Size:
+    O(T) cells; n=8 random 1847: 5,048 chars, n=10 random 1847: 17,740 chars,
+    n=12 random 1847: 67,368 chars.
+"""
 
 from math import ceil
 from typing import NamedTuple
@@ -9,6 +24,7 @@ from esolangs.generation.helpers import (
     grid_width,
     read_at,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -35,19 +51,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     """Build a Clockwise program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    program prints ``'0'`` or ``'1'``.  With ``width`` set and exceeded, the
-    program rotates counterclockwise (two columns for n <= 2, else
-    ``2*n + 5``).
-
-    A flat indexed lookup: one ``!`` per entry in a row of ``!``/``-``
-    pairs, a Horner-rule index (MSB first) in the accumulator, and one
-    doubling gadget per input (widths double upward, so ``O(T)``).  An
-    ignored input's seven reads run just before the next indexed input's,
-    which overwrite the bit they leave; inputs past the last essential one
-    are read on the return rail after printing.  A
-    literal row has no subtrees to fold or share.
-    Constants read a full input rotation, clear the accumulator and emit the
-    seven answer bits on a closed two-column ring.
+    program prints ``'0'`` or ``'1'``.
     """
     total = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
@@ -330,7 +334,8 @@ def _balance(table: str, default: str) -> str:
     used = essential_inputs(table, inputs)
     if len(used) <= 1:
         commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)
-        width = max(2, ceil((commands + 7) / 4))
+        # The ring's 2W+2H-7 free cells fix W+H; W=A*H splits them.
+        width = max(2, ceil(CELL_ASPECT * (commands + 7) / (2 * CELL_ASPECT + 2)))
         square = (
             _coordinate_ring(inputs, used[0], table[0], width)
             if used

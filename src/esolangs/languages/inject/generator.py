@@ -1,28 +1,27 @@
-"""Boolean-function generator for Inject.
+"""Inject Boolean program generator: a decision tree of ``skipq`` tests.
 
-The only state is the program's label-blocks and the only test is
-``skipq X Y`` (textual equality), so a table is a decision tree of
-string comparisons against a constant block.  Three facts, checked
-against the interpreter: the only forward jump is ``skip``'s first
-clause (a bare ``skip`` inside a block loops back), so every escape is
-"``skip``-family command, then a label that opens a block"; a guarded
-block is entered by drifting into it, so a taken branch falls out the
-bottom and each leaf must jump clear; and the clause-1 landing line
-executes, so a leaf jumps over an escape block spanning every remaining
-executable line into the inert tail.  Blocks may overlap, so each leaf
-has its own escape label, all closing consecutively in the tail.
+The only state is label-blocks and the only test is ``skipq X Y`` (textual
+equality).  Each bit is read up front (one ``readto``); at depth ``d`` the node
+tests ``perm[d]`` (identity and greedy compete) with ``skipq INPUT ZERO``, which
+skips the ``1``-subtree block when the bit is ``0``.  A leaf sends the zero or
+one block and escapes.  The only forward jump is ``skip``'s first clause (a
+bare ``skip`` inside a block loops back), so every escape is a ``skip``-family
+command then a label opening a block.  A guarded block is entered by drifting
+in, so each leaf jumps over an escape block spanning every remaining
+executable line (the clause-1 landing line executes) into the inert tail;
+blocks may overlap, so each leaf has its own escape label.  Above n=4 it
+halves one table string with ``inject`` regexes instead (linear regex text).
 
-The bits are read up front (one ``readto`` each) so every path reads
-``n`` times.  At depth ``d`` the node tests ``perm[d]`` (identity and
-greedy compete) with ``skipq INPUT ZERO``, which fires when the bit is
-``0`` and skips the ``1``-subtree block.  A leaf sends the zero or one
-block and escapes; the two constants serve as operands and answers.
+Size:
+    O(T) at n<=4 tree, O(T) halving above; n=4 random 1847: 235 chars,
+    n=10 random 1847: 3,809 chars, n=12 random 1847: 13,167 chars.
 
-A subtree repeated at its level is written once, at its last occurrence, and
-each earlier one is a ``skip`` over a block closing just before it (jumps run
-forward only): n=4, all 65,536 tables, -27.1%, none longer; at n=5 the shared tree is
-1.04x the halving lookup, so the n<=4 crossover stays.  A node whose halves
-agree is passed over.
+Decisions:
+    A subtree repeated at its level is written once, at its last occurrence,
+    and each earlier one is a ``skip`` over a block closing just before it
+    (jumps run forward only): n=4, all 65,536 tables, -27.1%, none longer.
+    At n=5 the shared tree is 1.04x the halving lookup, so the n<=4
+    crossover stays.  A node whose halves agree is passed over.
 """
 
 import string

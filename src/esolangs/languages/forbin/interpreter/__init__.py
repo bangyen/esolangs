@@ -1,617 +1,72 @@
 """Interpreter for Forbin.
 
-An imperative language whose only datatypes are functions and bits:
-functions with bit arguments and nested definitions, iteration and range
-for-loops (a range loop ``for i:1..0`` doubles as an if-statement), the NOT
-operator, and the ``in``/``out`` builtins that read one bit and write one
-byte as eight bit arguments (most significant first).
+An imperative language whose only datatypes are functions and bits: functions
+with bit arguments and nested definitions, iteration and range for-loops (a
+range loop ``for i:1..0`` doubles as an if-statement), the NOT operator, and
+the ``in``/``out`` builtins that read one bit and write one byte as eight bit
+arguments (most significant first).
 
-Decisions for gaps in the wiki spec (documented):
-- the entry point is the function ``main``, called with a single dummy
-  argument 0 (the examples always call ``main 0``);
-- extra call arguments are discarded (``main 0`` passes a dummy), and
-  unpassed parameters are set to 0;
-- ``in`` reads the next bit and raises :class:`EOFError` when the input is
-  exhausted (as the Brainfuck interpreter does); the wiki's cat example is
-  not reproduced because its range-loop "while" (``for _:0..1`` runs twice)
-  doubles every byte — it was never run, Forbin being unimplemented;
-- statements may omit the trailing ``;`` before a closing ``}`` (the wiki's
-  cat example writes ``shouldLoop = 1`` with no semicolon);
-- a trailing statement semicolon is otherwise optional, matching the wiki's
-  loose examples;
-- scoping is lexical ("local to a function (and its children...)"): a
-  frame's scope node's ``parent`` is where its function was written, and an
-  assignment updates the nearest scope holding the name, since ``{code} 0;``
-  must be "the same" as ``code``;
-- an iteration list's values are evaluated once, before the first pass;
-- ``return`` needs a value ("default is 0" is read as falling off the
-  end) and ``out`` exactly eight; uneven multiple assignments pair by
-  position, and a loop variable that "must first be defined" is bound
-  even if it is not;
-- ``f;`` and ``(f)`` call with no arguments, though the wiki says
-  "something has to be passed to call it" (generated code passes ``0``);
-- a call that resolves to no function is an invalid operation
-  (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
-  :class:`ValueError`.
+Input/output:
+    ``in`` reads the next bit and raises at EOF (as the Brainfuck interpreter
+    does); the wiki's cat example is not reproduced because its range-loop
+    "while" (``for _:0..1`` runs twice) doubles every byte -- it was never
+    run, Forbin being unimplemented.
+
+Errors:
+    ProgramError: Malformed syntax; no ``main`` function.
+    InputExhaustedError: ``in`` when the input is exhausted.
+    HaltError: A call that resolves to no function (an invalid operation), an
+    undeclared identifier, ``!`` of a non-bit, ``out`` without exactly eight
+    bit arguments, a ``for`` bound that is not a number, expression-position
+    recursion past the host's depth limit.
+
+Decisions:
+    * The entry point is the function ``main``, called with a single dummy
+      argument 0 (the examples always call ``main 0``).
+    * Extra call arguments are discarded (``main 0`` passes a dummy), and
+      unpassed parameters are set to 0.
+    * Statements may omit the trailing ``;`` before a closing ``}`` (the
+      wiki's cat example writes ``shouldLoop = 1`` with no semicolon).
+    * A trailing statement semicolon is otherwise optional, matching the
+      wiki's loose examples.
+    * Scoping is lexical ("local to a function (and its children..."): a
+      frame's scope node's ``parent`` is where its function was written, and
+      an assignment updates the nearest scope holding the name, since
+      ``{code} 0;`` must be "the same" as ``code``.
+    * An iteration list's values are evaluated once, before the first pass.
+    * ``return`` needs a value ("default is 0" is read as falling off the
+      end) and ``out`` exactly eight; uneven multiple assignments pair by
+      position, and a loop variable that "must first be defined" is bound
+      even if it is not.
+    * ``f;``, and ``(f)`` inside an expression, call with no arguments (as a
+      statement, ``(f);`` calls ``f``'s result), though the wiki says
+      "something has to be passed to call it" (generated code passes ``0``).
 """
 
 from __future__ import annotations
 
-import sys
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, replace
-from itertools import product
+from collections.abc import Sequence
 from types import MappingProxyType
-from typing import Literal, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.forbin.interpreter._parse import (
-    _ForSpec,
     _Function,
     _Parser,
     _Statement,
-    _ValueNode,
 )
+from esolangs.languages.forbin.interpreter._scope import (
+    _Closure,
+    _Ctx,
+    _Frame,
+    _NeedByte,
+    _new_scope,
+    _State,
+)
+from esolangs.languages.forbin.interpreter._step import _advance, _run_block
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
-
-
-class _NeedByte(Exception):  # noqa: N818 - an internal resumption signal
-    """Signals that a statement needs one more input byte than supplied.
-
-    Raised by the pure reader when ``in`` finds the explicit input tuple
-    exhausted.  ``effects`` is the output already computed before the read,
-    so the shell can flush it before reading.  The shell reads one more byte
-    and calls :func:`_advance` again; the transition is deterministic, so the
-    retry reaches the same point with the new value.
-    """
-
-    def __init__(self, effects: tuple[str, ...] = ()) -> None:
-        super().__init__()
-        self.effects = effects
-
-
-def _frozen(locals_: Mapping[str, object]) -> Mapping[str, object]:
-    """Return ``locals_`` as an immutable mapping, sharing an existing freeze."""
-    return (
-        locals_ if isinstance(locals_, MappingProxyType) else MappingProxyType(locals_)
-    )
-
-
-@dataclass(frozen=True)
-class _Scope:
-    """One lexical scope: its function, its locals, and its parent's id."""
-
-    fn: _Function
-    locals: Mapping[str, object]
-    parent: int | None
-
-
-@dataclass(frozen=True)
-class _Frame:
-    """One function invocation: its function, scope, and cursors.
-
-    ``pos`` is the statement cursor into ``fn.body``; ``for_rows`` and its
-    companions track a ``for`` loop in progress at that cursor, one row
-    resumed per step, and ``for_body_pos`` is the cursor into the *current*
-    row's body -- a nested resumable sequence sharing this frame's scope, not
-    a pushed frame, since loop-variable/outer-variable writes land in the
-    same scope.  The body itself is read from ``fn.body[pos]`` rather than
-    stored, so the frame holds no parsed statements.
-    """
-
-    fn: _Function
-    scope: int
-    pos: int = 0
-    for_rows: tuple[tuple[object, ...], ...] | None = None
-    for_names: tuple[str, ...] = ()
-    for_ind: int = 0
-    for_started: bool = False
-    for_body_pos: int = 0
-
-
-@dataclass(frozen=True)
-class _Closure:
-    """A function value: its definition and the scope it was written in."""
-
-    fn: _Function
-    scope: int
-
-    def __repr__(self) -> str:
-        """Name the function and its scope id."""
-        return f"<{self.fn.name or 'literal'}@{self.scope}>"
-
-
-class _Ctx(NamedTuple):
-    """The threaded state of one pure transition attempt.
-
-    ``out`` is the effect accumulator of the single attempt: it is owned by
-    :func:`_advance`, never part of the run state, and its contents are
-    returned as an immutable tuple.
-    """
-
-    scopes: Mapping[int, _Scope]
-    bits: tuple[int, ...]
-    reads: int
-    input_pos: int
-    out: list[str]
-    inputs: tuple[int, ...]
-
-
-@dataclass(frozen=True)
-class _State:
-    """Every changing value in a Forbin run."""
-
-    frames: tuple[_Frame, ...]
-    scopes: Mapping[int, _Scope]
-    bits: tuple[int, ...]
-    reads: int
-
-
-def _new_scope(
-    scopes: Mapping[int, _Scope],
-    fn: _Function,
-    parent: int | None,
-    locals_: Mapping[str, object],
-) -> tuple[int, Mapping[int, _Scope]]:
-    """Add a scope node; return its id and the new store.
-
-    Scopes are only ever added, so the next id is the store's size.
-    """
-    scope = len(scopes)
-    node = _Scope(fn, _frozen(locals_), parent)
-    return scope, MappingProxyType({**scopes, scope: node})
-
-
-def _lookup(
-    frame: _Frame,
-    name: str,
-    globals_: Mapping[str, _Function],
-    scopes: Mapping[int, _Scope],
-) -> object:
-    """Resolve a variable, builtin, or function name from ``frame`` outward.
-
-    The chain is lexical: a scope's ``parent`` is the scope its function
-    was defined in, so a top-level function sees globals, not its caller.
-    """
-    scope: int | None = frame.scope
-    root = frame.scope
-    while scope is not None:
-        node = scopes[scope]
-        if name in node.locals:
-            return node.locals[name]
-        if name in node.fn.nested:
-            return _Closure(node.fn.nested[name], scope)
-        root = scope
-        scope = node.parent
-    if name in ("in", "out"):
-        return name
-    if name in globals_:
-        return _Closure(globals_[name], root)
-    raise HaltError(
-        f"undeclared identifier {name!r}",
-        hint="declare the identifier before using it; check its spelling",
-    )
-
-
-def _bind(
-    frame: _Frame, name: str, value: object, scopes: Mapping[int, _Scope]
-) -> Mapping[int, _Scope]:
-    """Return the store with ``name`` assigned where it lives.
-
-    The wiki makes ``{code} 0;`` the same as ``code``, so a write inside a
-    literal (or a nested function) reaches the enclosing variable.
-    """
-    scope: int | None = frame.scope
-    while scope is not None:
-        node = scopes[scope]
-        if name in node.locals:
-            updated = replace(node, locals=_frozen({**node.locals, name: value}))
-            return MappingProxyType({**scopes, scope: updated})
-        scope = node.parent
-    node = scopes[frame.scope]
-    updated = replace(node, locals=_frozen({**node.locals, name: value}))
-    return MappingProxyType({**scopes, frame.scope: updated})
-
-
-def _read_bit(ctx: _Ctx) -> tuple[int, _Ctx]:
-    """Return the next input bit, most significant first, and the new context.
-
-    Refills from the next explicit input byte when the buffer empties;
-    running out raises :data:`_NeedByte`.
-    """
-    bits = ctx.bits
-    if not bits:
-        if ctx.input_pos >= len(ctx.inputs):
-            raise _NeedByte
-        byte = ctx.inputs[ctx.input_pos]
-        bits = tuple((byte >> k) & 1 for k in range(7, -1, -1))
-        ctx = ctx._replace(input_pos=ctx.input_pos + 1)
-    return bits[0], ctx._replace(bits=bits[1:], reads=ctx.reads + 1)
-
-
-def _eval(
-    node: _ValueNode,
-    frame: _Frame,
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[object, _Ctx]:
-    """Return a value expression's result and the threaded context."""
-    if node[0] == "lit":
-        return node[1], ctx
-    if node[0] == "not":
-        value, ctx = _eval(node[1], frame, globals_, ctx)
-        if value in (0, 1):
-            return 1 - value, ctx
-        raise HaltError("! needs a bit", hint="use 0 or 1 as the operand")
-    if node[0] == "var":
-        return _lookup(frame, node[1], globals_, ctx.scopes), ctx
-    if node[0] == "fnlit":
-        return _Closure(node[1], frame.scope), ctx
-    callee, ctx = _eval(node[1], frame, globals_, ctx)
-    args: list[object] = []
-    for argument in node[2]:
-        value, ctx = _eval(argument, frame, globals_, ctx)
-        args.append(value)
-    return _call(callee, args, globals_, ctx)
-
-
-def _bound(value: object, which: str) -> int:
-    """Return a ``for`` range bound, halting if it is not a number.
-
-    ``_eval`` yields any Forbin value, so a bound can be a function; the
-    language gives no meaning to counting from one, and comparing it would
-    otherwise raise Python's own TypeError instead of halting.
-    """
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise HaltError(
-            f"for {which} bound must be a number, got {value!r}",
-            hint="use numeric values for both loop bounds",
-        )
-    return value
-
-
-def _enter(
-    callee: _Closure,
-    args: list[object],
-    scopes: Mapping[int, _Scope],
-) -> tuple[_Frame, Mapping[int, _Scope]]:
-    """Return a frame for calling ``callee``; unpassed parameters are 0."""
-    locals_: dict[str, object] = dict.fromkeys(callee.fn.args, 0)
-    for name, value in zip(callee.fn.args, args, strict=False):
-        locals_[name] = value
-    scope, scopes = _new_scope(scopes, callee.fn, callee.scope, locals_)
-    return _Frame(callee.fn, scope), scopes
-
-
-def _call(
-    callee: object,
-    args: list[object],
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[object, _Ctx]:
-    """Apply a callable, threading the context through any nested run."""
-    if isinstance(callee, _Closure):
-        frame, scopes = _enter(callee, args, ctx.scopes)
-        ctx = ctx._replace(scopes=scopes)
-        result, ctx = _run(frame, globals_, ctx)
-        return (result if result is not None else 0), ctx
-    if isinstance(callee, str):
-        if callee == "in":
-            return _read_bit(ctx)
-        # A name only evaluates to a string for the two builtins -- see the
-        # ``("in", "out")`` test in ``_lookup`` -- so the remaining one is
-        # ``out`` and needs no test of its own.
-        if len(args) != 8:
-            raise HaltError(
-                "out needs exactly 8 bit arguments",
-                hint="give out eight arguments, each equal to 0 or 1",
-            )
-        byte = 0
-        for bit in args:
-            # Same rule as ``!`` above: a bit is 0 or 1, and anything
-            # else has no byte to contribute.
-            if bit == 0:
-                byte *= 2
-            elif bit == 1:
-                byte = byte * 2 + 1
-            else:
-                raise HaltError(
-                    "out needs bit arguments", hint="give out arguments equal to 0 or 1"
-                )
-        ctx.out.append(chr(byte))
-        return 0, ctx
-    raise HaltError(
-        "called value is not a function",
-        hint="call a function value rather than a scalar or list",
-    )
-
-
-#: Marks "no frame returned a value" from the step core.  A fresh object
-#: is never a Forbin value, so ``is``/``is not`` comparisons are exact.
-_NO_RETURN = object()
-
-
-def _run(
-    frame: _Frame,
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[object | None, _Ctx]:
-    """Run ``frame``'s body to completion through the step core.
-
-    Only reached for expression-position calls (``x = f(y)``), whose own
-    recursion depth is bounded by Python's default recursion limit -- a
-    statement-position call (``f(y);``) pushes onto the explicit frame
-    stack instead of recursing, so that pattern is not depth-limited at
-    all.  The stack still cannot grow without bound here: past the host's
-    own recursion limit a runaway raises :class:`RecursionError`, which
-    the ``step()`` shell reports as a halt, exactly as the old recursive
-    executor did.
-    """
-    frames: tuple[_Frame, ...] = (frame,)
-    result: object | None = None
-    while frames:
-        if len(frames) > sys.getrecursionlimit():
-            raise RecursionError(
-                "statement-position calls nested past the host's depth limit"
-            )
-        frames, ctx, returned = _step_frames(frames, globals_, ctx)
-        if returned is not _NO_RETURN and not frames:
-            # Only the outermost frame's own return value is this run's
-            # result.  A return from an inner frame (e.g. a nested
-            # statement-position call evaluated through the step core)
-            # just pops that frame; recording it would leak the inner
-            # value to the enclosing expression-position call.
-            result = returned
-    return result, ctx
-
-
-def _run_block(
-    stmts: list[_Statement],
-    frame: _Frame,
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[object | None, _Ctx]:
-    """Run ``stmts`` to completion in ``frame``'s scope; the return value or None.
-
-    Drives the step core on a synthetic frame sharing ``frame``'s scope,
-    so direct execution and the resumable machine share one statement
-    implementation.
-    """
-    block_fn = _Function("$block", [])
-    block_fn.body = stmts
-    block_frame = _Frame(block_fn, frame.scope)
-    return _run(block_frame, globals_, ctx)
-
-
-def _advance_pos(frame: _Frame) -> _Frame:
-    """Return ``frame`` with its statement cursor moved past one statement."""
-    return replace(frame, pos=frame.pos + 1)
-
-
-def _advance_body_pos(frame: _Frame) -> _Frame:
-    """Return ``frame`` with its for-body cursor moved past one statement."""
-    return replace(frame, for_body_pos=frame.for_body_pos + 1)
-
-
-def _step_stmt(
-    stmt: _Statement,
-    frame: _Frame,
-    frames: tuple[_Frame, ...],
-    advance: Callable[[_Frame], _Frame],
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[tuple[_Frame, ...], _Ctx, object]:
-    """Execute one statement as a single step of the core.
-
-    ``advance`` moves the cursor the statement was read from -- the
-    statement cursor, or the for-body cursor while stepping a loop body.
-    Returns the new frame stack, the context, and the statement's return
-    value, or :data:`_NO_RETURN` when the statement did not return.  A
-    ``for`` nested in a loop body runs atomically, since the frame's
-    ``for_*`` fields already track the outer loop.
-    """
-    if stmt[0] == "for":
-        rows, names, ctx = _for_rows(stmt[1], frame, globals_, ctx)
-        returned: object = _NO_RETURN
-        for row in rows:
-            for name, value in zip(names, row, strict=False):
-                if name != "_":
-                    ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
-            got, ctx = _run_block(stmt[2], frame, globals_, ctx)
-            if got is not None:
-                returned = got
-                break
-        if returned is not _NO_RETURN:
-            return frames[:-1], ctx, returned
-        return (*frames[:-1], advance(frame)), ctx, _NO_RETURN
-    pushed, ctx = _start_statement_call(stmt, frame, globals_, ctx)
-    if isinstance(pushed, _Frame):
-        return (*frames[:-1], advance(frame), pushed), ctx, _NO_RETURN
-    if pushed is False:
-        return (*frames[:-1], advance(frame)), ctx, _NO_RETURN
-    if stmt[0] == "return":
-        value, ctx = _eval(stmt[1], frame, globals_, ctx)
-        return frames[:-1], ctx, value
-    if stmt[0] != "assign":
-        raise AssertionError(f"unexpected statement kind: {stmt[0]}")
-    targets, rhs = stmt[1], stmt[2]
-    bindings: list[tuple[str, object]] = []
-    # One right-hand side is evaluated afresh for every target.
-    nodes = rhs * len(targets) if len(rhs) == 1 else rhs
-    for name, node in zip(targets, nodes, strict=False):
-        if name != "_":
-            value, ctx = _eval(node, frame, globals_, ctx)
-            bindings.append((name, value))
-    for name, value in bindings:
-        ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
-    return (*frames[:-1], advance(frame)), ctx, _NO_RETURN
-
-
-def _for_rows(
-    spec: _ForSpec,
-    frame: _Frame,
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[list[list[object]], list[str], _Ctx]:
-    """Compute a ``for`` statement's iteration rows and bound variable names."""
-    if spec[0] == "range":
-        _, name, start_node, end_node = spec
-        start, ctx = _eval(start_node, frame, globals_, ctx)
-        end, ctx = _eval(end_node, frame, globals_, ctx)
-        lo, hi = _bound(start, "start"), _bound(end, "end")
-        range_rows: list[list[object]] = (
-            [[v] for v in range(lo, hi + 1)] if lo <= hi else []
-        )
-        return range_rows, [name], ctx
-    _, names, patterns = spec
-    rows: list[list[object]] = []
-    for pat in patterns:
-        items = pat[1] if pat[0] == "group" else [pat]
-        wilds = sum(p[0] == "*" for p in items)
-        # No wildcard is one empty combination: one row of values.
-        for combo in product((0, 1), repeat=wilds):
-            row: list[object] = []
-            w = 0
-            for p in items:
-                if p[0] == "*":
-                    row.append(combo[w])
-                    w += 1
-                else:
-                    value, ctx = _eval(p[1], frame, globals_, ctx)
-                    row.append(value)
-            rows.append(row)
-    return rows, names, ctx
-
-
-def _start_statement_call(
-    stmt: _Statement,
-    frame: _Frame,
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[_Frame | Literal[False] | None, _Ctx]:
-    """Return a pushed frame, False for a completed call, or None for a noncall."""
-    if stmt[0] != "call":
-        return None, ctx
-    callee, ctx = _eval(stmt[1], frame, globals_, ctx)
-    args: list[object] = []
-    for argument in stmt[2]:
-        value, ctx = _eval(argument, frame, globals_, ctx)
-        args.append(value)
-    if not isinstance(callee, _Closure):
-        _value, ctx = _call(callee, args, globals_, ctx)
-        return False, ctx
-    pushed, scopes = _enter(callee, args, ctx.scopes)
-    ctx = ctx._replace(scopes=scopes)
-    return pushed, ctx
-
-
-# The semantics are a pure transition.  :func:`_advance` maps an immutable
-# ``_State`` -- the explicit frame stack, the lexical scope store, the input
-# bit buffer and the explicit input bytes a statement may read -- to a new
-# state and the bytes it asks to print.  ``step`` is the shell: it reads the
-# bytes the transition asks for and writes what it returns.  A statement can
-# read any number of bits (a call may read in a loop), so the reads cannot be
-# hoisted; each :data:`_NeedByte` reads one more byte and retries the
-# deterministic transition.
-def _advance(
-    state: _State,
-    globals_: Mapping[str, _Function],
-    inputs: tuple[int, ...] = (),
-) -> tuple[_State, tuple[str, ...]]:
-    """Return the state after one statement, row, or call, and output bytes.
-
-    Pure: ``globals_`` and ``inputs`` are parameters, and ``out``'s write
-    leaves as the returned effects instead of reaching a port.  A read that
-    runs out raises :data:`_NeedByte` with the output prefix computed before
-    it; any other fault raises :data:`_Fault` with the same prefix, so the
-    shell can flush output before reading or re-raising.
-    """
-    out: list[str] = []
-    ctx = _Ctx(state.scopes, state.bits, state.reads, 0, out, inputs)
-    try:
-        frames, ctx, _returned = _step_frames(state.frames, globals_, ctx)
-    except _NeedByte:
-        raise _NeedByte(tuple(out)) from None
-    except _Fault:
-        raise
-    except BaseException as exc:
-        raise _Fault(tuple(out), exc) from None
-    return _State(frames, ctx.scopes, ctx.bits, ctx.reads), tuple(out)
-
-
-def _step_frames(
-    frames: tuple[_Frame, ...],
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[tuple[_Frame, ...], _Ctx, object]:
-    """Advance one statement, row, or call: the single stepping core.
-
-    Returns the new frame stack, the context, and the value of a frame
-    that returned on this step, or :data:`_NO_RETURN` when none did.
-    Output accumulates in ``ctx.out``; a read that runs out raises
-    :data:`_NeedByte`.
-    """
-    frame = frames[-1]
-    if frame.for_rows is not None:
-        return _step_for_frames(frames, frame, globals_, ctx)
-    if frame.pos >= len(frame.fn.body):
-        return frames[:-1], ctx, _NO_RETURN
-    stmt = frame.fn.body[frame.pos]
-    if stmt[0] == "for":
-        rows, names, ctx = _for_rows(stmt[1], frame, globals_, ctx)
-        frame = replace(
-            frame,
-            for_rows=tuple(tuple(row) for row in rows),
-            for_names=tuple(names),
-            for_ind=0,
-            for_started=False,
-        )
-        return (*frames[:-1], frame), ctx, _NO_RETURN
-    return _step_stmt(stmt, frame, frames, _advance_pos, globals_, ctx)
-
-
-def _step_for_frames(
-    frames: tuple[_Frame, ...],
-    frame: _Frame,
-    globals_: Mapping[str, _Function],
-    ctx: _Ctx,
-) -> tuple[tuple[_Frame, ...], _Ctx, object]:
-    """Advance a ``for`` loop already in progress: the core's loop half.
-
-    One row-body statement, one new row, or the loop's own completion.
-    The body is read from ``fn.body[pos]`` rather than stored on the
-    frame, so the frame holds no parsed statements.
-    """
-    # This function only runs while the cursor sits on the ``for`` whose
-    # rows it is walking, so the statement under it is that ``for``.
-    # The tag is checked rather than tested-and-skipped: narrowing the
-    # union is what lets ``current[2]`` be read at all, and a plain
-    # ``if`` would make a broken invariant skip the body assignment
-    # silently instead of saying so.  Raising rather than asserting
-    # keeps the check under ``python -O``.
-    current = frame.fn.body[frame.pos]
-    if current[0] != "for":
-        raise AssertionError(f"cursor left the for statement: {current[0]}")
-    body = current[2]
-    if frame.for_started and frame.for_body_pos < len(body):
-        stmt = body[frame.for_body_pos]
-        return _step_stmt(stmt, frame, frames, _advance_body_pos, globals_, ctx)
-    if frame.for_ind >= len(frame.for_rows or ()):
-        frame = replace(frame, for_rows=None, pos=frame.pos + 1)
-        return (*frames[:-1], frame), ctx, _NO_RETURN
-    row = frame.for_rows[frame.for_ind] if frame.for_rows is not None else ()
-    frame = replace(frame, for_ind=frame.for_ind + 1)
-    for name, value in zip(frame.for_names, row, strict=False):
-        if name != "_":
-            ctx = ctx._replace(scopes=_bind(frame, name, value, ctx.scopes))
-    return (
-        (*frames[:-1], replace(frame, for_started=True, for_body_pos=0)),
-        ctx,
-        _NO_RETURN,
-    )
 
 
 # ``_Machine`` runs on an explicit stack of :class:`_Frame` values (one per
@@ -787,12 +242,11 @@ class _Machine:
 
         Locals are captured via :meth:`_render` (``repr`` with closure
         scope ids, so a snapshot is the same on every run) since a function
-        value is not meaningfully hashable -- sufficient for the
-        state-cycle detector's purpose, since a genuine hang re-executes
-        the same cursor with the same bindings on every lap.  A call that
-        never returns pushes one new frame per step and none is ever
-        popped, so this cannot mistake unbounded recursion for a repeat:
-        the frame tuple's length strictly grows.
+        value is not meaningfully hashable; that suffices because a genuine
+        hang re-executes the same cursor with the same bindings every lap.
+        A call that never returns pushes a frame per step and none is
+        popped, so unbounded recursion is never mistaken for a repeat: the
+        frame tuple's length strictly grows.
         """
         return (
             tuple(
@@ -885,14 +339,12 @@ class _Machine:
     def step(self) -> None:
         """Execute one statement, one ``for``-loop row, or advance a call.
 
-        The shell: it reads the bytes the statement asks for and writes
-        what the transition returns.  An *expression-position* call
-        (``x = (f y);``) still recurses natively through ``_eval``, so a
-        deep enough one exhausts Python's own stack.  That is a valid
-        Forbin operation the host cannot afford rather than the invalid
-        one :class:`HaltError` names, but the alternative is leaking the
-        interpreter's implementation strategy to the caller as a raw
-        traceback, so it halts here and says which limit it hit.
+        The shell: reads the bytes the statement asks for, writes what the
+        transition returns.  An *expression-position* call (``x = (f y);``)
+        recurses natively through ``_eval``, so a deep enough one exhausts
+        Python's stack.  That is a valid Forbin operation the host cannot
+        afford, not the invalid one :class:`HaltError` names; it halts here
+        and says which limit it hit rather than leaking a raw traceback.
         """
         if self.halted:
             return

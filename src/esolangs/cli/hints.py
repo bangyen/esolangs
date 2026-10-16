@@ -25,7 +25,7 @@ _TIMEOUT_EXIT = 124
 def _exit_code(exc: EsolangError) -> int:
     """Return the exit code ``exc`` should leave behind.
 
-    ``run --help`` documents 124 for a bound running out, and three of the
+    ``run --help`` documents 124 for the timeout running out, and three of the
     five commands exited 1 on it.  ``ValueError`` is misuse, 2; else 1.
     """
     if isinstance(exc, ExecutionTimeoutError):
@@ -152,12 +152,20 @@ def _stdin_hint(facts: LanguageInfo) -> str:
             f"; {facts['name']}'s generated programs embed their inputs and "
             f"read no stdin, so there is probably nothing to send -- close it"
         )
+    if not facts["boolean_generator"]:
+        # ``encode`` refuses these (Deadfish, HQ9+, Nope.): no input command.
+        return f"; {facts['name']} reads no stdin -- close it"
     return "; try: esolangs encode <language> <bits> | ..."
 
 
 def _input_sentence(facts: LanguageInfo) -> str:
     """Describe this language's stdin in one line, with an example."""
-    zero, one = facts["input_encoding"]
+    if facts["input_encoding"] is None:
+        return "none"
+    # Escaped: Unary's zero is NUL, written raw into the terminal.
+    zero, one = (
+        c if c.isprintable() else repr(c)[1:-1] for c in facts["input_encoding"]
+    )
     shape = str(facts["input_shape"])
     example = f"{one}{zero}"
     if shape == "row_index":

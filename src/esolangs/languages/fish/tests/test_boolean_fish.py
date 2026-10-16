@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.fish.generator import balance_fish, fish
+from esolangs.languages.fish.generator import _folded, balance_fish, fish
 from esolangs.languages.fish.interpreter import run
 from esolangs.runtime._evaluate import _evaluate
 from tests.support.generator_support import run_lines
@@ -42,8 +42,11 @@ def test_source_growth_is_linear_in_the_table() -> None:
 def test_fish_balance_matches_all_power_of_two_folds(table) -> None:
     default = fish(table)
     balanced = balance_fish(table, default)
+    header, reduced = default.split("\n")
+    # Folds run past the table's width: it then sits in one row.
     layouts = [default, fish(table, 1)] + [
-        fish(table, (1 << exponent) + 2) for exponent in range(len(table).bit_length())
+        _folded(header[1:-8], reduced, 1 << exponent)
+        for exponent in range(len(default).bit_length())
     ]
     optimum = min(layouts, key=balance_score)
     assert balance_score(balanced) == balance_score(optimum)

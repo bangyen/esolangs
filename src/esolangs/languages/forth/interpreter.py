@@ -8,23 +8,28 @@ under the number atop the stack, ``;`` calls it, ``o`` reverses, ``c``
 rotates three, ``v`` swaps two; anything else is ignored.
 
 Arithmetic wraps to signed 32-bit and ``/``/``%`` truncate toward zero
-(C++11).  An empty-stack pop halts with :class:`HaltError`; the other
-invalid operations (binary op under two values, ``c`` under three,
-division by zero, unterminated bracket) abort only the innermost scope,
-as the cross-check's discarded status did.  ``,`` raises
-:class:`EOFError` at end of input (the cross-check exits 3) and pushes
-Unicode code points; ``.`` prints Unicode scalars. Values outside that range
-retain the reference's byte fallback.  ``;`` on a key no ``{`` stored
-calls an empty scope.  The spec says nothing on errors or EOF; a
-clean-room reading exits on the first invalid operation instead.
+(C++11).  ``;`` on a key no ``{`` stored calls an empty scope.  The machine
+has an explicit call stack (one frame per scope); ``halted`` is true once no
+frame remains and a repeated ``snapshot`` proves a loop.  A top-level abort
+sets the machine's ``error`` so ``run`` raises HaltError.
 
-:class:`_Machine` has an explicit call stack (one frame per scope);
-``halted`` is true once no frame remains and a repeated
-:meth:`_Machine.snapshot` proves a loop.  A top-level abort sets
-``_Machine.error`` so :func:`run` raises :class:`HaltError`.
+Input/output:
+    ``,`` reads a line, excluding its newline, and pushes its Unicode code
+    points; it raises at EOF (the cross-check exits 3).  ``.`` prints Unicode
+    scalars.  Values outside that range retain the reference's byte fallback.
 
-The spec asks for a string without defining its delimiter; comma reads one
-line, excluding its newline, and pushes its Unicode code points.
+Errors:
+    InputExhaustedError: ``,`` at EOF.
+    HaltError: An empty-stack pop; in the top-level scope, the other invalid
+    operations (binary op under two values, ``c`` under three, division by
+    zero, unterminated bracket).  In a called scope those abort only the
+    innermost scope, as the cross-check's discarded status did.
+
+Decisions:
+    * The spec says nothing on errors or EOF; a clean-room reading exits on
+      the first invalid operation instead.
+    * The spec asks for a string without defining its delimiter; comma reads
+      one line, excluding its newline, and pushes its Unicode code points.
 """
 
 from collections.abc import Callable, Mapping

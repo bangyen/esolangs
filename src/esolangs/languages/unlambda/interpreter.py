@@ -14,21 +14,24 @@ The delay is dynamic, as the spec has it: evaluating an application whose
 forcing the promise evaluates it then applies the result.  So the evaluator
 here is an explicit continuation machine rather than a recursive walk --
 ``c`` needs the continuation as a value, and one step of the machine is one
-step of the language.
+step of the language.  Every value is applicable, so nothing at run time is
+invalid and no HaltError arises.
 
-An empty source, a source with a second expression after the first, a
-backtick with nothing after it, a ``.`` or ``?`` at the end, and any
-character that is not a command raise :class:`ValueError`.  Every value is
-applicable, so nothing at run time is invalid and no
-:class:`~esolangs.exceptions.HaltError` arises.
+Input/output:
+    ``@`` consumes the next Unicode character, including newlines.  At EOF
+    it hands its argument ``v`` and clears the current character.
 
-``@`` consumes the next Unicode character, including newlines. The spec
-does not define character encoding. Both input branches are live.  At end of
-input ``@`` hands its argument ``v``, which the
-shell reaches by catching the ``EOFError`` the port raises, as other
-interpreters here catch it and carry on with their language's value; letting
-it escape would make ``@``'s failure branch unreachable and every
-read-until-EOF program a crash.  A read at EOF clears the current character.
+Errors:
+    ProgramError: an empty source; a second expression after the first; a
+        backtick with nothing after it; a ``.`` or ``?`` at the end; any
+        character that is not a command.
+
+Decisions:
+    * The spec does not define character encoding.
+    * Both input branches are live: at EOF ``@`` hands its argument ``v``,
+      which the shell reaches by catching the port's ``EOFError`` (as other
+      interpreters here do); letting it escape would make ``@``'s failure
+      branch unreachable and every read-until-EOF program a crash.
 """
 
 from __future__ import annotations

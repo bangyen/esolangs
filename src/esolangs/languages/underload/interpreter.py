@@ -2,10 +2,15 @@ r"""Interpreter for Underload.
 
 Parentheses push their contents, ``~:!*a`` transform stack strings, ``^``
 splices the top string immediately after itself, and ``S`` outputs one.
-Unknown non-whitespace commands, unbalanced parentheses, and stack underflow raise
-:class:`~esolangs.exceptions.HaltError`. An empty program is valid.
-The spec's ``"`` quoting of ``[]<>"`` is not implemented: the wiki notes
-that no known interpreter, the reference included, implements it.
+An empty program is valid.
+
+Errors:
+    HaltError: an unknown non-whitespace command; unbalanced parentheses;
+        stack underflow.
+
+Decisions:
+    * The spec's ``"`` quoting of ``[]<>"`` is not implemented: the wiki
+      notes that no known interpreter, the reference included, implements it.
 """
 
 from __future__ import annotations

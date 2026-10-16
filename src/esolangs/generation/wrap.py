@@ -23,7 +23,11 @@ from math import isqrt
 from typing import TYPE_CHECKING, Any
 
 from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
-from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.token_balance import (
+    CELL_ASPECT,
+    balanced_token_width,
+    rendered_side,
+)
 
 if TYPE_CHECKING:
     from esolangs.registry import Language
@@ -295,10 +299,17 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
 
 
 def balance_width(program: str) -> int:
-    """Return a square target width from the default rendered area."""
+    """Return the best character-fold width for the default rendered area.
+
+    The least side S with CELL_ASPECT * ceil(area/S) <= S, then the fewest
+    columns keeping its ceil(area/S) rows: exact for a pure character fold.
+    """
     rows = program.split("\n")
     area = max(1, sum(map(len, rows)))
-    return isqrt(area - 1) + 1
+    side = isqrt(CELL_ASPECT * area - 1) + 1
+    while CELL_ASPECT * -(-area // side) > side:
+        side += 1
+    return -(-area // -(-area // side))
 
 
 def _token_fit(program: str, tokens: list[str], separator: str = "") -> str:
@@ -313,8 +324,15 @@ def balance_program(program: str, language_id: str) -> str:
         balanced = _balance_line(program, language_id)
         if balanced is not None:
             return balanced
-    candidate = wrap_program(program, language_id, balance_width(program))
-    return min((program, candidate), key=balance_score)
+    # Token wrappers break before the width, so a neighbour can tie the side
+    # with one row fewer or one column narrower.
+    width = balance_width(program)
+    candidates = [
+        wrap_program(program, language_id, candidate)
+        for candidate in (width - 1, width, width + 1)
+        if candidate > 0
+    ]
+    return min((program, *candidates), key=balance_score)
 
 
 def _balance_line(program: str, language_id: str) -> str | None:
@@ -347,7 +365,7 @@ def _balance_line(program: str, language_id: str) -> str | None:
 
 
 def balance_score(program: str) -> tuple[int, int, int]:
-    """Rank rendered shapes by imbalance, length, then width."""
+    """Rank rendered shapes by the side of their least square, length, then width."""
     rows = program.split("\n")
     width = max(map(len, rows), default=0)
-    return abs(width - len(rows)), len(program), width
+    return rendered_side(width, len(rows)), len(program), width

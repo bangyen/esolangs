@@ -1,4 +1,20 @@
-"""Boolean-function generator for AddSubJump."""
+"""AddSubJump Boolean program generator: self-modifying jumps over a residual tree.
+
+Each input is read into a cell as a byte and, if tested, hoisted to 0 or 4; a
+node adds that to its goto's own ``c`` operand to pick the zero or one
+trampoline.  Up to 16 rows the shorter of tree and shared residuals in input
+order, and 32 rows also try the shared residual tree; wider tables use the
+packed decoder over essential inputs (or a read-and-print constant root),
+which indexes ``m``-bit cells.
+
+Size:
+    Packed is O(T) cells over O(T/log T) words; n=4 parity: 614 chars,
+    n=10 random 1847: 2,043 chars, n=10 and: 1,847 chars.
+
+Decisions:
+    Interning equal packed cells saves 0.00% at n=8: a running operand reads
+    them, so equal cells cannot share a word and a constant run costs a cell each.
+"""
 
 from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
@@ -90,18 +106,7 @@ def _memory(
 
 
 def addsubjump(truth_table: str) -> str:
-    """Build an AddSubJump program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Up to 16 rows, the shorter of tree and shared residuals in input order; 32 rows
-    also try the shared residual tree; wider tables use the linear packed
-    decoder over essential inputs, or a read-and-print constant root.
-    Packed cells (``m``-bit cells, size ``O(T)``) are read by a
-    running operand, so equal cells cannot share a word (interning saves 0.00%
-    at n=8) and a constant run costs a cell each.
-    """
+    """Build an AddSubJump program for ``truth_table`` (length ``2**n``, MSB first)."""
     if len(truth_table) <= 16:
         return in_input_order(truth_table, _addsubjump_candidate)
     packed = _addsubjump_packed(truth_table)
@@ -289,14 +294,13 @@ def _addsubjump_ordered(
 ) -> str:
     """Emit one input order's AddSubJump program; see :func:`addsubjump`.
 
-    ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame; ``perm`` surfaces only where a node names the *stream*
-    input whose cell it tests.
+    ``truth_table`` is already permuted, so row indices are in the permuted
+    frame; ``perm`` surfaces only where a node names the *stream* input
+    whose cell it tests.
 
     Cells are named by the input they hold (``B{i}`` for stream input ``i``),
-    not by the instruction index that allocated them.  The node-read build
-    keyed its names off ``len(instructions)``, which a reorder shifts; naming
-    by input keeps every reference stable however the tree comes out.
+    not by the allocating instruction index: the node-read build keyed names
+    off ``len(instructions)``, which a reorder shifts.
     """
     n = _validate_truth_table(truth_table)
 

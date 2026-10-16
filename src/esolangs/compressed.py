@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
+from esolangs.runtime._validate import check_provenance
 
 if TYPE_CHECKING:
     from esolangs.settings import DialectSettings
@@ -57,6 +58,13 @@ class TextLimits:
 _BLOCK = 65536
 
 
+def _check_limits(limits: object) -> None:
+    """Refuse a ``limits`` that is not a TextLimits or None."""
+    if limits is not None and not isinstance(limits, TextLimits):
+        # ``limits=5`` raised a bare AttributeError from ``check_gzip``.
+        raise ArgumentError("limits must be a TextLimits or None")
+
+
 @dataclass(frozen=True)
 class CompressedText:
     """Validated UTF-8 gzip source; len counts expanded characters."""
@@ -71,6 +79,11 @@ class CompressedText:
         """Validate the stream and measure its expanded characters."""
         if not isinstance(self.data, bytes):
             raise ProgramError("gzip source must be bytes")
+        # Canonical, so an alias tag compares equal to the name ``run`` checks.
+        object.__setattr__(
+            self, "language", check_provenance(self.language, self.settings)
+        )
+        _check_limits(self.limits)
         if self.limits is not None:
             self.limits.check_gzip(len(self.data))
         object.__setattr__(self, "_size", sum(len(chunk) for chunk in self.chunks()))
@@ -93,10 +106,18 @@ class CompressedText:
         cls, chunks: Iterable[str], *, limits: TextLimits | None = None
     ) -> CompressedText:
         """Compress text deterministically without collecting expanded source."""
+        _check_limits(limits)
+        if not isinstance(chunks, Iterable):
+            raise ArgumentError("chunks must be an iterable of strings")
         output = io.BytesIO()
         count = 0
         with gzip.GzipFile(fileobj=output, mode="wb", filename="", mtime=0) as stream:
             for chunk in chunks:
+                if not isinstance(chunk, str):
+                    # ``[b"x"]`` raised AttributeError from ``.encode``.
+                    raise ArgumentError(
+                        f"chunks must be strings, got {type(chunk).__name__}"
+                    )
                 count += len(chunk)
                 if limits is not None:
                     limits.check_work(count)
@@ -110,7 +131,13 @@ class CompressedText:
         cls, character: str, count: int, *, limits: TextLimits | None = None
     ) -> CompressedText:
         """Compress count copies of one character using bounded chunks."""
-        if len(character) != 1 or type(count) is not int or count < 0:
+        _check_limits(limits)
+        if (
+            not isinstance(character, str)
+            or len(character) != 1
+            or type(count) is not int
+            or count < 0
+        ):
             raise ArgumentError(
                 "repeated source needs one character and a nonnegative count"
             )

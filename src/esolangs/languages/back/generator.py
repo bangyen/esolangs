@@ -1,4 +1,34 @@
-"""Boolean-function generator for Back."""
+r"""Back Boolean program generator: a decision tree over a loaded tape.
+
+A load column embeds each input once into its tape cell (a primer ``-``
+plus the input's run, two rows for either bit, so the height cannot leak an
+input); cells ``0..n-1`` hold the inputs, cell ``n`` the answer.  Each tree
+node ``+\>`` tests the current cell (``+`` skips the ``\`` when it is 0,
+``\`` reflects the beam down when it is 1, ``>`` advances); both branches
+advance once, so a leaf at depth ``d`` has the pointer at cell ``d``.  It
+walks to cell ``n``, flips it with ``-`` for a 1 and halts; the halt dump
+prints the cell's value, not the head position.  Fall-through sharing reuses
+an equal zero-side subtree, and ``width`` selects a descending layout (loader
+above the tree, two entry columns fewer) or, for an unfitting parity table, a
+one-column accumulator in cell ``n`` (earlier cells stay scratch).
+
+Size:
+    O(T) cells; n=8 random 1847: 2,443 chars, n=10 random 1847: 7,807 chars.
+
+Decisions:
+    A node whose one-subtree equals the zero-subtree of the next node on its
+    level draws none: the beam falls down the column onto that node's mirror
+    and turns east into the zero side.  Straight-fall area (rows x longest
+    row), n=6/7: random -21.9% / -23.6%, tiled from two random blocks -17.5% /
+    -35.8%, constant half 0% / -13.1%; n <= 5 is unchanged, the load column
+    setting the height.  The column wraps, so the level's last node reaches
+    its first from eight rows up; over the next-node fall alone, n=9 (200
+    tables each): random and constant half 0%, eight blocks drawn from two
+    random ones -10.2% of characters (-15.6% of area), from two 32-row blocks
+    -2.9%.  A bend of the first nonadjacent repeat through column 1 was
+    retired: it saved at most 2.7% of characters on average at n=7..10 (best
+    single table 14.7%).
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -51,6 +81,12 @@ def _render(rows: list[dict[int, str]]) -> str:
 
 def _place_load(grid: _Grid, units: list[str], height: int) -> None:
     """Put the origin ``/`` and the load column, bottom up, into ``grid``."""
+    # The load runs down column 0 and the tree starts at column 1, so no row
+    # carries the load's width as indent.  The beam starts heading right; the
+    # ``/`` sends it up and off the top edge onto the bottom row, it runs the
+    # load upward back to the origin, and the ``/`` turns it right into the
+    # tree.  The drawing is reflected for output, so the tree grows left and
+    # its triangular padding lands at line ends where it is stripped.
     grid[(0, 0)] = "/"
     for k, unit in enumerate(units):
         grid[(height - 1 - k, 0)] = unit
@@ -108,57 +144,7 @@ def _back_parity(truth_table: str, n: int) -> str | None:
 
 
 def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> str:
-    r"""Build a Back template for the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-    Width puts the loader above the tree, removing two entry columns.
-    Unfitting parity tables use a one-column accumulator in answer cell n;
-    earlier cells remain scratch rather than carrying the inputs.
-
-    Back is a no-input grid language: a beam travels the grid and ``-`` flips
-    the current tape bit, ``+`` steps the beam forward when the current bit
-    is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
-    and ``*`` halts printing the tape.  Each input is embedded once by
-    filling its tape cell over two load rows: a constant ``-`` primes the
-    cell to 1 for either bit, then the input's run finishes it -- ``+`` (inert on
-    a set cell) for a one, ``-`` (flipping it back) for a zero.  So cells
-    ``0..n-1`` hold the inputs and cell ``n`` is the answer cell.  Both
-    bits cost the same two rows, so the height cannot leak an input.
-
-    A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
-    the beam straight past the ``\`` when it is 0) and ``\`` reflects the
-    beam down when it is 1, while ``>`` advances the tape pointer to the next
-    input.  Both branches advance the pointer once, so a leaf at depth ``d``
-    has the pointer at cell ``d``.  A leaf walks to cell ``n``, flips it with
-    ``-`` when its value is 1, and halts.
-
-    The load runs *down column 0* and the tree starts at column 1, so no row
-    carries the load's width as indent.  A ``/`` at the origin does both
-    turns: the beam starts heading right, the ``/`` sends it up and off the
-    top edge onto the bottom row, it runs the load upward back to the origin,
-    and the ``/`` -- now taking a beam heading up -- turns it right into the
-    tree.  The load is written bottom-to-top, and the drawing is reflected
-    for output, so the tree grows left and its triangular padding lands at
-    line ends where it is stripped.  A two-row outer route converts Back's
-    fixed eastward start into the westward entry the reflected root needs.
-
-    The answer is the *value* of cell ``n``, which the halt dump prints;
-    the head's position is not printed.
-
-    A node whose one-subtree equals the zero-subtree of the next node on its
-    level draws none: the beam falls down the column onto that node's mirror,
-    the first cell below, and turns east into the zero side.  The column
-    wraps, so the level's last node reaches its first the same way, from eight
-    rows up.  Straight-fall area (rows x longest row), n=6/7: random -21.9% /
-    -23.6%, tiled from two random blocks -17.5% / -35.8%, constant half
-    0% / -13.1%; n <= 5 is unchanged, the load column setting the height.
-    The wrap, over the next-node fall alone, n=9 (200 tables each): random
-    and constant half 0%, eight blocks drawn from two random ones -10.2% of
-    characters (-15.6% of area), from two 32-row blocks -2.9%.  A bend of the
-    first nonadjacent repeat through column 1 was retired: it saved at most
-    2.7% of characters on average at n=7..10 (best single table 14.7%).
-    """
+    """Build a Back template; ``truth_table`` has length ``2**n``, MSB first."""
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     if len(table) == 1:

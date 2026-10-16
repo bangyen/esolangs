@@ -38,15 +38,37 @@ CASES = [
 ]
 
 
-def _invalid() -> list[tuple[str, DialectSettings]]:
+def _out_of_range() -> list[tuple[str, str, int | str]]:
     """A choice outside each dialect setting of every language."""
     cases = []
     for name in esolangs.list_languages():
         for key, item in esolangs.describe(name)["dialect_settings"].items():
             choice = item["choices"][-1]
-            bad = choice + 1 if isinstance(choice, int) else "bogus"
-            cases.append((name, DialectSettings(**{key: bad})))
+            cases.append(
+                (name, key, choice + 1 if isinstance(choice, int) else "bogus")
+            )
     return cases
+
+
+def _invalid() -> list[tuple[str, DialectSettings]]:
+    """Out-of-range settings forged past the constructor, as an old pickle is.
+
+    The constructor refuses them, so use must still re-validate.
+    """
+    cases = []
+    for name, key, bad in _out_of_range():
+        forged = DialectSettings()
+        object.__setattr__(forged, "_items", ((key, bad),))
+        cases.append((name, forged))
+    return cases
+
+
+@pytest.mark.parametrize(("key", "bad"), [case[1:] for case in _out_of_range()])
+def test_constructor_refuses_a_value_outside_the_choices(key, bad) -> None:
+    with pytest.raises(esolangs.ArgumentError, match="choices: "):
+        DialectSettings(**{key: bad})
+    with pytest.raises(esolangs.ArgumentError, match="choices: "):
+        DialectSettings(**{key: None})
 
 
 def test_every_dialect_declares_its_values() -> None:

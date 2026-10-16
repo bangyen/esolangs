@@ -4,16 +4,23 @@ B-tapemark has two unbounded sparse grids, one direction shared by their
 position markers, and commands that can swap which grid is executing.  Quoted
 comments and the unique direction marker become blank cells when loaded.
 
-Invalid source symbols raise :class:`ValueError`, as the wiki requires.
-Missing or repeated starts and unmatched quotes also raise :class:`ValueError`.
-An input symbol that is no command runs as a blank once a swap puts it
-on the first grid: the wiki rejects other symbols only "when the program
-is loaded".
 Source rows use LF, CRLF or CR; other characters occupy a column.
-Exhausted input raises :class:`EOFError`, following the package convention.
 
-Input symbols are consecutive Unicode characters, including newlines; the spec
-does not define their encoding or framing.
+Input/output:
+    ``-`` on a blank data cell reads one symbol.  Input symbols are
+    consecutive Unicode characters, including newlines; the spec does not
+    define their encoding or framing.
+
+Errors:
+    ProgramError: an invalid source symbol outside quotes (as the wiki
+    requires), a missing or repeated start marker, an unmatched quote.
+    InputExhaustedError: ``-`` on a blank data cell at EOF, following the
+    package convention.
+
+Decisions:
+    * An input symbol that is no command runs as a blank once a swap puts it
+      on the first grid: the wiki rejects other symbols only "when the
+      program is loaded".
 """
 
 from __future__ import annotations
@@ -31,16 +38,13 @@ type _Point = tuple[int, int]
 class _Grid:
     """The marks on one grid, keyed by the point each sits on.
 
-    A grid is a *map* from point to symbol, and it used to be spelled as a
-    set of ``(x, y, char)`` triples.  Every read then scanned the whole set
-    looking for one point -- and a B-tapemark program's data grid runs to
-    hundreds of thousands of marks, so reading a single cell walked all of
-    them.  Keying by point makes that a lookup.
+    A map from point to symbol, not a set of ``(x, y, char)`` triples: a data
+    grid runs to hundreds of thousands of marks, and a triple set scanned all
+    of them to read one cell.
 
-    Immutable, like the set it replaces: a write returns a new grid rather
-    than editing this one, which is what lets a state be compared with an
-    earlier one and a hang be proved.  The copy is a ``dict`` copy, done in
-    C, where the old rebuild was a comprehension in Python.
+    Immutable: a write returns a new grid, so a state can be compared with an
+    earlier one and a hang proved.  The copy is a C-level ``dict`` copy, not
+    a Python comprehension.
     """
 
     __slots__ = ("_cells", "_digest")

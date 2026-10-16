@@ -1,80 +1,73 @@
 """Interpreter for Algebraic Programming Language.
 
-An algebra-shaped language with no input command and no output command.
-A program is a series of lines: a line *containing* ``=`` is a definition
-(a variable, a function ``F(x) = ...``, or a custom operator ``a ~ b =
-...``), and a line without one is *executed*, its result printed to
-STDOUT.  Every lowercase variable appearing on an executed line is read
-from user input, so reading is a side effect of naming a variable and
-printing is a side effect of having a line to evaluate.  The only data
-type is a number.
+An algebra-shaped language with no input or output command.  A line
+*containing* ``=`` is a definition (a variable, a function ``F(x) = ...``,
+or a custom operator ``a ~ b = ...``); any other line is *executed* and its
+result printed to STDOUT.  Every lowercase variable on an executed line is
+read from user input, so naming a variable reads and having a line to
+evaluate prints.  The only data type is a number.
 
 Branching is short-circuit evaluation.  ``&`` and ``|`` skip their
 right-hand side, and ``$`` (return) may *be* that side, so ``x & $0``
-returns 0 exactly when ``x`` is truthy -- the wiki's own spelling of
-"not", and the only conditional the language has.  Looping is the same
-mechanism recursing: the wiki's truth machine is ``x? = x & x?``.
+returns 0 exactly when ``x`` is truthy -- the wiki's spelling of "not" and
+the only conditional.  Looping is the same mechanism recursing: the wiki's
+truth machine is ``x? = x & x?``.
 
-Decisions for gaps in the wiki spec (documented):
-
-- **Input binding is a pre-scan.**  The spec says variables are "set
-  initially to user input in the order they first appear in the line",
-  so this interpreter binds every unbound lowercase variable on an
-  executed line *before* evaluating it, in left-to-right order of first
-  appearance.  Evaluating lazily would let a short-circuit skip a read
-  and consume input in an order the spec's own worked example (``a + b +
-  d`` then ``c + e + b`` asking for ``a, b, d, c, e``) contradicts.
-  Bindings persist across lines, which is what makes that example ask
-  for ``b`` once.  Only executed lines read: an assignment's right side
-  naming an unbound variable is an error ("that variable won't be input"
-  says nothing of the others).
-- **``$`` binds like unary ``-``**, so ``$y * 2`` is ``($y) * 2``: the
-  wiki's own ``CEIL`` writes ``$(n - n % 1 + 1)``.
-- **Truthiness and the value of a short-circuit.**  The wiki pins only
-  the false case ("false -> 0 or 0.0").  Zero is false and every other
-  number is true; ``&`` returns its right operand when the left is
-  truthy and ``0`` otherwise, and ``|`` returns its left operand when
-  that is truthy and its right otherwise.  This is the reading that
-  makes the wiki's ``WHILE`` example terminate.
-- **Printing.**  An executed line prints its result followed by a
-  newline; an integral value prints without a trailing ``.0`` (so the
-  Hello-World example prints ``72``, not ``72.0``).  A line whose
-  evaluation returns via a top-level ``$`` still prints.
-- **Numbers.**  Values are Python ``int`` where a computation stays
-  integral and ``float`` once division or a fractional literal makes it
-  otherwise, so the unbounded integers the wiki's Turing-completeness
-  argument relies on are unbounded here.
-- **EOF** while binding a variable raises :class:`EOFError`, as the
-  Brainfuck interpreter does; a line that is not a number raises
-  :class:`~esolangs.exceptions.HaltError`.
-- Malformed programs raise :class:`ValueError`: an unparsable
-  expression, an unknown name, an unbalanced ``()`` or ``{}``, a
-  definition whose left-hand side is not a variable, call, or operator
-  pattern, a call with the wrong argument count, and the wiki's own
-  ``1(2)`` (bracket multiplication is invalid syntax).
-- Division or modulo by zero, and ``0 ** -1``, raise
-  :class:`~esolangs.exceptions.HaltError`.
-- **An uppercase name defined without parentheses** (``F = 7``) is a
-  nullary function, called as ``F()``.  The wiki only writes ``F() =
-  123``, but its own rule that a bare-variable left-hand side is an
-  assignment is restricted to *lowercase* names, so this is the reading
-  that leaves the uppercase case meaning something.  Printing a function
-  rather than calling it is an invalid operation
-  (:class:`~esolangs.exceptions.HaltError`), since the only printable
-  values are numbers.
-
-``_Machine`` evaluates on an explicit stack of :class:`_Frame` objects
-rather than by Python recursion, because in this language recursion *is*
-the loop.  A ``step()`` that evaluated a whole line would never return on
-``n?``, the frame stack would never be observed growing, and
-:func:`~esolangs.vm.run_until_halt_or_ancestor` would have nothing to
-step between.  Each frame holds one call's expression and a cursor into
-its sub-evaluations, so ``step()`` advances exactly one node and a
+Evaluation runs on an explicit stack of call frames, not Python recursion,
+because recursion *is* the loop.  A ``step()`` that
+evaluated a whole line would never return on ``n?``, the frame stack would
+never be seen growing, and :func:`~esolangs.vm.run_until_halt_or_ancestor`
+would have nothing to step between.  Each frame holds one call's expression
+and a cursor into its sub-evaluations, so ``step()`` advances one node and
 recursion pushes one frame per lap -- the granularity the ancestor check
 needs to prove ``x? = x & x?`` hangs.
 
-Input numbers are whitespace-delimited tokens; the spec does not define their
-text framing.
+Input/output:
+    Input numbers are whitespace-delimited tokens; the spec does not define
+    their text framing.  Each executed line prints its result.  EOF while
+    binding a variable raises, as the Brainfuck interpreter does.
+
+Errors:
+    ProgramError: an unparsable expression, an unknown name, an unbalanced
+    ``()`` or ``{}``, a definition whose left-hand side is not a variable,
+    call, or operator pattern, a call with the wrong argument count, the
+    wiki's ``1(2)`` (bracket multiplication is invalid syntax), a bad or
+    repeated parameter, a malformed function header, an empty function body.
+    InputExhaustedError: EOF while binding a variable.
+    HaltError: an input line that is not a number; division or modulo by
+    zero; ``0 ** -1``; printing a function rather than calling it (only
+    numbers are printable); a nonfinite result; one line's evaluation
+    exceeding 2**20 nodes.
+
+Decisions:
+    * Input binding is a pre-scan.  The spec says variables are "set
+      initially to user input in the order they first appear in the line", so
+      every unbound lowercase variable on an executed line is bound *before*
+      evaluating it, in left-to-right order of first appearance.  Lazy
+      evaluation would let a short-circuit skip a read and consume input in an
+      order the spec's worked example (``a + b + d`` then ``c + e + b`` asking
+      for ``a, b, d, c, e``) contradicts.  Bindings persist across lines, so
+      that example asks for ``b`` once.  Only executed lines read: an
+      assignment's right side naming an unbound variable is an error ("that
+      variable won't be input" says nothing of the others).
+    * ``$`` binds like unary ``-``, so ``$y * 2`` is ``($y) * 2``: the
+      wiki's ``CEIL`` writes ``$(n - n % 1 + 1)``.
+    * Truthiness and the value of a short-circuit.  The wiki pins only the
+      false case ("false -> 0 or 0.0").  Zero is false, every other number
+      true; ``&`` returns its right operand when the left is truthy and ``0``
+      otherwise, ``|`` its left operand when truthy and its right otherwise.
+      This makes the wiki's ``WHILE`` example terminate.
+    * Printing.  An executed line prints its result and a newline; an
+      integral value prints without ``.0`` (Hello-World prints ``72``, not
+      ``72.0``).  A line returning via a top-level ``$`` still prints.
+    * Numbers.  Python ``int`` while a computation stays integral,
+      ``float`` once division or a fractional literal intervenes, so the
+      unbounded integers the wiki's Turing-completeness argument needs are
+      unbounded here.
+    * An uppercase name defined without parentheses (``F = 7``) is a
+      nullary function, called as ``F()``.  The wiki only writes
+      ``F() = 123``, but its bare-variable-assignment rule is restricted to
+      *lowercase* names, so this reading gives the uppercase case a meaning.
 """
 
 from __future__ import annotations
@@ -112,19 +105,17 @@ class _Frame:
     """One call in progress: its body, its bindings, and its cursor.
 
     ``work`` is an explicit stack of ``(node, resolved operands)`` pairs
-    standing in for what Python recursion would keep on its own stack, so
-    a single ``step()`` resolves one node and returns.  ``stmt`` indexes
-    the definition's body, since a multiline function prints every
-    statement but its last.
+    replacing Python's recursion stack, so one ``step()`` resolves one node.
+    ``stmt`` indexes the definition's body; a multiline function prints
+    every statement but its last.
 
     ``printing`` marks the synthetic frame wrapping an *executed line*,
     whose result goes to STDOUT; ``assign`` names the variable an
     assignment line binds instead.  Both are false/None for an ordinary
-    call, whose value simply returns to its caller.
+    call, whose value returns to its caller.
 
-    Frozen with tuple collections, so a step returns new frames rather
-    than editing the ones it was handed -- the old state a caller holds
-    stays intact.
+    Frozen with tuple collections, so a step returns new frames and the
+    caller's old state stays intact.
     """
 
     fn: _Definition
@@ -256,14 +247,12 @@ class _Machine:
         name-only keys incorrectly reported that finite call as a cycle.
         The input cursor distinguishes calls that keep reading.
 
-        The work stack is captured *by content*, not by depth.  Recording
-        only its length made two genuinely different states compare equal
-        -- one operand of ``1 + 1`` resolved versus both -- and the cycle
-        detector called a halting program a hang.  A node is identified
-        by identity, which is stable because the parse tree is built once
-        and never rewritten.  Identities are reported as first-seen
-        serials rather than raw ``id``s, so a snapshot is small and the
-        same on every run.
+        The work stack is captured *by content*, not depth: length alone made
+        different states compare equal (one operand of ``1 + 1`` resolved
+        versus both) and the cycle detector called a halting program a hang.
+        A node is identified by identity, stable because the parse tree is
+        never rewritten, reported as first-seen serials rather than raw
+        ``id``s so a snapshot is small and the same on every run.
         """
         return (
             self.line,

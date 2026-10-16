@@ -11,20 +11,8 @@ from esolangs.generation.helpers import (
     permute_truth_table,
 )
 
-from .render import (
-    _UNIT,
-    Canvas,
-    Node,
-    _arrowhead,
-    _check_unit,
-    _Cursor,
-    _layout,
-    _moved,
-    _Plan,
-    chain,
-    chain_onto,
-    correction,
-)
+from .layout import Node, _Cursor, _layout, _moved, _Plan, chain, chain_onto, correction
+from .render import _UNIT, Canvas, _arrowhead, _check_unit
 from .tree_layout import tree_extents
 
 

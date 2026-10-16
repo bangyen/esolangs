@@ -326,7 +326,6 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
 #: shallow for the construction.
 _ARITIES: dict[str, tuple[int, ...]] = {
     "Minsky Swap": (3, 6),
-    "Factor": (4,),
     "Clockwise": (3, 6),
     "Back": (3, 6),
     "FALSE": (3, 5),

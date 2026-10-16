@@ -1,18 +1,24 @@
-"""Qoibl (Qwerty oriented impractical bicharacter language) interpreter.
+"""Interpreter for Qoibl (Qwerty oriented impractical bicharacter language).
 
 Eight instructions and a 256-variable list over ``e r t w q y``: seven
 dispatched commands (:data:`INSTRUCTIONS`) plus ``[ey]+`` binary
 literals, and the four :data:`OPERATORS` (``ee``, ``ey``, ``ye``, ``yy``)
 reading as ``= > < !=`` after ``yr`` and ``+ - * /`` after ``ry``.
 Other characters are ignored, so the statement, not the line, is the
-unit and :func:`tokenize` recovers boundaries.  The wiki fixes no
-precedence: a chain splits at its first ``yr`` (else ``ry``) and the
-right side is evaluated whole.  "``rr x rr y rr``" is read literally, a
-loop body being one statement.  The variable list is an
-unbounded dict.  Division by zero raises
-:class:`~esolangs.exceptions.HaltError`; an unrecognized operator raises
-:class:`ValueError`; exhausted input raises :class:`EOFError`.  Output
-printed before a failed read or a halt is kept.
+unit and :func:`tokenize` recovers boundaries.
+
+Input/output:
+    Output printed before a failed read or a halt is kept.
+
+Errors:
+    ProgramError: Unrecognized operator, or a malformed expression.
+    InputExhaustedError: A read at EOF.
+    HaltError: A variable index outside 0..255; division by zero.
+
+Decisions:
+    * The wiki fixes no precedence: a chain splits at its first ``yr``
+      (else ``ry``) and the right side is evaluated whole.
+    * "``rr x rr y rr``" is read literally, a loop body being one statement.
 """
 
 import functools

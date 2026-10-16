@@ -1,4 +1,22 @@
-"""The LaserFuck boolean generator."""
+"""LaserFuck Boolean program generator: a reader ring, then a decision tree.
+
+The reader normalizes the input characters into cells 1..n; the tree tests
+them with ``>#v)`` nodes, one row per *one* edge, and each leaf retires the
+cells and adds ``+`` for a one.  Subtrees that agree become leaves, but equal
+subtrees are never shared: a leaf retires by the bits on its path (``-`` x
+bit+1), so they differ under different parents.  The input order that emits
+the shortest program wins.  Above sixteen entries (without a width) the
+weighted linear-space lookup replaces the tree.
+
+Size:
+    About 23T chars from n=5 (weighted lookup); n=4 random 1847: 482 chars,
+    n=10 random 1847: 24,605 chars, n=16 and: 1,443,471 chars.
+
+Decisions:
+    The narrowest-reader (width=1) layout is 21.3% shorter by length at n=4
+    but doubles the area (-106.7%), so it is not tried.  The greedy order
+    saves 12.3% of area at n=4.
+"""
 
 from functools import cache
 from typing import NamedTuple
@@ -91,16 +109,15 @@ def _laserfuck_weighted(truth_table: str) -> str:
 def _laserfuck_reads(perm: tuple[int, ...]) -> str:
     """Spell the reader's read section, placing the inputs in ``perm`` order.
 
-    ``multiply`` ends on cell 1, so that is where the pointer starts; the
-    section ends back on cell 0, the counter the second ring spends.  Under
-    the identity order this is the plain ``,>,>,<<<`` the reader always
-    emitted -- each read steps one cell on -- and a permuted order only
+    ``multiply`` ends on cell 1, where the pointer starts; the section ends
+    on cell 0, the counter the second ring spends.  The identity order is the
+    plain ``,>,>,<<<`` (each read steps one cell on); a permuted order only
     changes the walks between the ``,``.
 
-    Nothing here is conditional.  The read section sits between the two
-    rings, past ``multiply``'s ``)`` and before ``retire``'s ``}``, so it is
-    a straight run the beam crosses once: a walk cannot steer it, which
-    frees the placement of the steering hazards a ring body would carry.
+    Nothing here is conditional: the section sits between the two rings, past
+    ``multiply``'s ``)`` and before ``retire``'s ``}``, a straight run the
+    beam crosses once.  A walk cannot steer it, which frees the placement of
+    the steering hazards a ring body would carry.
     """
     # A node ``>#v)`` steps the pointer, then tests: level k tests cell k + 1.
     cells = level_cells(perm)
@@ -118,29 +135,28 @@ def _laserfuck_ring_reader(n: int, perm: tuple[int, ...] | None = None) -> list[
     Returns the reader's rows; the beam leaves them moving right, with the
     pointer on cell 0.
 
-    The tape is laid out as *cell 0 = counter and answer*, cells 1..n =
-    inputs.  Cell 0 earns that double duty: the counter ends the reader at
-    zero and *touched*, which is exactly the state a ``0`` answer needs to
-    print, so a leaf writes nothing for a zero and a single ``+`` for a one.
+    The tape is *cell 0 = counter and answer*, cells 1..n = inputs.  The
+    counter ends the reader at zero and *touched*, the state a ``0`` answer
+    needs to print, so a leaf writes nothing for a zero and a single ``+``
+    for a one.
 
     Two loops run left to right, each a ring: a ``}`` faces the beam right
     along the body, ``#`` skips the deflector so ``)`` can test the cell
     under the pointer, and a nonzero cell turns the beam back to the ``/``,
     which drops it onto the return row where ``{`` sends it left to the
     ``^`` under the ring's own ``}``.  A zero cell lets the beam through the
-    ``)`` and on to whatever follows on the row.
+    ``)`` and on along the row.
 
     The first ring multiplies: cell 1 is preloaded with ``_LASER_OUTER`` and
     each pass adds ``_LASER_INNER`` to cell 0, leaving the 48 the inputs
-    need.  The reads then happen -- cell 1's preload is spent by now, so the
-    inputs may use it -- and the second ring subtracts one from cell 0 and
-    from every input per pass, running until the counter is spent.
+    need.  The reads then happen (cell 1's preload is spent, so inputs may
+    use it); the second ring subtracts one from cell 0 and from every input
+    per pass, until the counter is spent.
 
     A ring body cannot be folded: the return leg re-enters at the ``}`` and
     re-runs the *whole* body, so a body split across rows would re-execute
-    only its tail.  Both bodies therefore live on one row -- and when a
-    width cannot hold that row, :func:`_laserfuck_rotate` stands the whole
-    block on end rather than breaking it.
+    only its tail.  Both bodies live on one row; when a width cannot hold
+    it, :func:`_laserfuck_rotate` stands the whole block on end.
     """
     preload = ">" + "+" * _LASER_OUTER
     multiply = "<" + "+" * _LASER_INNER + ">" + "-#/)"
@@ -187,15 +203,14 @@ _LASER_ROTATE = str.maketrans(
 def _laserfuck_rotate(rows: list[str]) -> list[str]:
     r"""Turn ``rows`` a quarter turn, so a rightward block becomes downward.
 
-    The cells move as any rotation moves them -- the last row becomes the
-    first column -- and each is then substituted, since a mirror or a
-    heading-setter means something different once the beam runs the other
-    way.  ``,``, ``+``, ``-``, ``<``, ``>``, ``#`` and ``x`` are unchanged:
-    they act on the tape, not on the beam.
+    Cells move as in any rotation (the last row becomes the first column)
+    and are then substituted, since a mirror or heading-setter means
+    something different once the beam runs the other way.  ``,``, ``+``,
+    ``-``, ``<``, ``>``, ``#`` and ``x`` are unchanged: they act on the tape,
+    not the beam.
 
-    A reader is forty-odd columns and two rows laid flat; rotated it is two
-    columns and forty-odd rows, which is what lets a narrow width still be
-    met.
+    A reader laid flat is forty-odd columns by two rows; rotated, two columns
+    by forty-odd rows, which meets a narrow width.
     """
     height = len(rows)
     width = max(len(line) for line in rows)
@@ -247,11 +262,10 @@ class _LaserBlock(NamedTuple):
 
     The beam arrives and leaves travelling *right*.  ``rows`` are the
     block's cells, laid ``top`` rows below the origin; ``connectors`` are
-    extra ``(row, col, char)`` cells that steer the beam in and out;
-    ``exit_row``/``exit_col`` are the offsets from the origin to the cell
-    the next block starts from.  A flat block needs no connectors; a rotated
-    one is entered from above and left from below, so it sits one row down
-    with two connectors.
+    extra ``(row, col, char)`` cells steering the beam in and out;
+    ``exit_row``/``exit_col`` are origin offsets to the cell the next block
+    starts from.  A flat block needs no connectors; a rotated one is entered
+    from above and left from below, so it sits one row down with two.
     """
 
     rows: list[str]
@@ -654,35 +668,11 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-    :func:`_laserfuck_build` is the construction and its docstring is the
-    account of it; this is the search over input orders around it.
-
-    The tree splits on its inputs in whichever order emits the shortest
-    program, so more subtrees fold.  That is a *placement*: a node is
-    ``>#v)``, which steps the pointer and tests the cell under it, so level
-    ``k`` tests cell ``k + 1`` whatever is in it, and moving which cell an
-    input is read into changes what every node tests.  Only the reader's
-    read section changes (see :func:`_laserfuck_reads`); the tree, the fold,
-    the leaf sweeps and the retire ring are untouched, and the reads stay in
-    stream order -- one ``,`` per input, left to right.
-
-    The identity order is built first and ties keep it, so a table no
-    reorder improves emits exactly what it emitted before.
-
-    Without a width, the natural layout is built; the narrowest-reader
-    (``width=1``) layout is 21.3% shorter by length at n=4 but doubles the
-    area (-106.7%), so it is not tried.  The greedy order saves 12.3% of
-    area at n=4.
-
-    A constant span is one leaf and a node whose halves agree is passed over.
-    A leaf retires the cells it consumed by the bits on its path (``-`` x
-    bit+1), so equal subtrees are different code under different parents:
-    none is shared.
-
-    A width is applied to every candidate rather than to the winner: the
-    reader's orientations and the tree's placement already trade rows
-    against columns, so the narrowest program is often not the shortest,
-    and the choice has to be made over the whole pool.
+    :func:`_laserfuck_build` is the construction; this is the search over
+    input orders around it (:func:`_laserfuck_pool`).  A width is applied to
+    every candidate, not the winner: the reader's orientations and the tree's
+    placement already trade rows against columns, so the narrowest program is
+    often not the shortest.
     """
     _validate_truth_table(truth_table)
     if width is None and len(truth_table) > 16:
@@ -691,7 +681,15 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
 
 
 def _laserfuck_pool(truth_table: str, width: int | None) -> str:
-    """Return the best candidate over input orders and tree placements."""
+    """Return the best candidate over input orders and tree placements.
+
+    Order is a *placement*: a node is ``>#v)``, which steps the pointer and
+    tests the cell under it, so level ``k`` tests cell ``k + 1`` whatever is
+    in it, and moving which cell an input is read into changes what every
+    node tests.  Only the reader's read section changes (see
+    :func:`_laserfuck_reads`), and the reads stay in stream order.  The
+    identity order is built first and ties keep it.
+    """
     orders = input_orders(truth_table)
     identity = orders[0]
 

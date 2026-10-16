@@ -10,12 +10,21 @@ import pytest
 from esolangs import generate
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages import generators as boolean
-from esolangs.languages.malbolge.generator.core import _cascade
+from esolangs.languages.malbolge.generator.cascade import (
+    _cascade,
+)
 from esolangs.languages.malbolge.interpreter import _XLAT1, _load, run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense, parity, row_bits
 
-_module = importlib.import_module("esolangs.languages.malbolge.generator")
+_cascade_mod = importlib.import_module("esolangs.languages.malbolge.generator.cascade")
+_segments_mod = importlib.import_module(
+    "esolangs.languages.malbolge.generator.segments"
+)
+_thirteen_mod = importlib.import_module(
+    "esolangs.languages.malbolge.generator.thirteen"
+)
+_wide_mod = importlib.import_module("esolangs.languages.malbolge.generator.wide")
 
 
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
@@ -92,7 +101,7 @@ def test_eleven_inputs_sampled(shape: object) -> None:
 
 
 def _wide_second_level_rows() -> list[int]:
-    _, level, _, _ = _module._wide()  # noqa: SLF001
+    _, level, _, _ = _wide_mod._wide()  # noqa: SLF001
     return [2 * row + x for x in (0, 1) for row, lvl in enumerate(level[x]) if lvl]
 
 
@@ -113,7 +122,7 @@ def test_twelve_inputs_sampled(shape: object) -> None:
 
 
 def _thirteen_second_level_rows() -> list[int]:
-    _, _, level, _, _ = _module._thirteen()  # noqa: SLF001
+    _, _, level, _, _ = _thirteen_mod._thirteen()  # noqa: SLF001
     return [
         4 * row + 2 * x + last
         for x in (0, 1)
@@ -125,12 +134,12 @@ def _thirteen_second_level_rows() -> list[int]:
 
 def test_thirteen_inputs_label_every_residue() -> None:
     """Each table cell's residue admits all five single-cell labels."""
-    _, _, level, tables, labels = _module._thirteen()  # noqa: SLF001
+    _, _, level, tables, labels = _thirteen_mod._thirteen()  # noqa: SLF001
     for x in (0, 1):
         for row, h in enumerate(tables[0][x]):
             wanted = "N01xn" if level[x][row] else "01xn"
             for label in wanted:
-                _module._table_char(h, label, labels)  # noqa: SLF001
+                _cascade_mod._table_char(h, label, labels)  # noqa: SLF001
 
 
 @pytest.mark.weekly
@@ -147,7 +156,7 @@ def test_thirteen_inputs_sampled(shape: object) -> None:
 
 def _fourteen_rows(levels: set[int]) -> list[int]:
     """Rows of the fourteen-input table whose copy resolves at one of ``levels``."""
-    _, _, level, _, _ = _module._fourteen()  # noqa: SLF001
+    _, _, level, _, _ = _segments_mod._fourteen()  # noqa: SLF001
     return [
         8 * row + 2 * copy + last
         for copy in range(4)
@@ -159,14 +168,14 @@ def _fourteen_rows(levels: set[int]) -> list[int]:
 
 def test_fourteen_inputs_resolve_in_three_levels() -> None:
     """7,427 copies own their level-1 cell; 685 resolve at level 2, 80 at 3."""
-    _, _, level, _, _ = _module._fourteen()  # noqa: SLF001
+    _, _, level, _, _ = _segments_mod._fourteen()  # noqa: SLF001
     counts = [sum(lvl == k for per_copy in level for lvl in per_copy) for k in range(3)]
     assert counts == [7427, 685, 80]
 
 
 def test_fourteen_inputs_level_three_has_its_own_region() -> None:
     """Level-3 cells sit in 13122..19682; levels 1 and 2 at 19683 or above."""
-    _, _, level, tables, _ = _module._fourteen()  # noqa: SLF001
+    _, _, level, tables, _ = _segments_mod._fourteen()  # noqa: SLF001
     for copy in range(4):
         for row, k in enumerate(level[copy]):
             for lvl in range(k + 1):
@@ -176,21 +185,21 @@ def test_fourteen_inputs_level_three_has_its_own_region() -> None:
 
 def test_fourteen_inputs_label_every_residue() -> None:
     """Each cell a copy reads admits N and the four single-cell answers."""
-    _, _, level, tables, labels = _module._fourteen()  # noqa: SLF001
+    _, _, level, tables, labels = _segments_mod._fourteen()  # noqa: SLF001
     for copy in range(4):
         for row, k in enumerate(level[copy]):
             for lvl in range(k + 1):
                 h = tables[lvl][copy][row]
                 for label in "N01xn":
-                    _module._table_char(h, label, labels)  # noqa: SLF001
+                    _cascade_mod._table_char(h, label, labels)  # noqa: SLF001
 
 
 def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
     """The decoder's cells, once run, decode to nops and then an ``i``."""
-    start = _module._F_DECODER  # noqa: SLF001
+    start = _segments_mod._F_DECODER  # noqa: SLF001
     cells = ((start, "j"), (start + 1, "j"))
-    second = [_module._second_pass(op, a) for a, op in cells]  # noqa: SLF001
-    second += [_module._second_pass("o", start + 2 + k) for k in range(8)]  # noqa: SLF001
+    second = [_segments_mod._second_pass(op, a) for a, op in cells]  # noqa: SLF001
+    second += [_segments_mod._second_pass("o", start + 2 + k) for k in range(8)]  # noqa: SLF001
     assert second == ["o"] * 9 + ["i"]
 
 
@@ -242,7 +251,7 @@ def test_digit_builds_label_every_cell(n: int) -> None:
     _, _, tables, labels = _digits._digits(n)  # noqa: SLF001
     for h in tables:
         for label in "01xn":
-            _module._table_char(h, label, labels)  # noqa: SLF001
+            _cascade_mod._table_char(h, label, labels)  # noqa: SLF001
 
 
 @pytest.mark.weekly
@@ -287,7 +296,7 @@ def test_public_high_arity_routes_execute_boundary_rows(n: int) -> None:
 def test_fourteen_rejects_colliding_final_level(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(_module, "_L3_CELL_A", 0)
-    monkeypatch.setattr(_module, "_L3_CELL_B", 0)
+    monkeypatch.setattr(_segments_mod, "_L3_CELL_A", 0)
+    monkeypatch.setattr(_segments_mod, "_L3_CELL_B", 0)
     with pytest.raises(AssertionError, match="a row never resolves"):
-        _module._f_tables.__wrapped__()  # noqa: SLF001
+        _segments_mod._f_tables.__wrapped__()  # noqa: SLF001

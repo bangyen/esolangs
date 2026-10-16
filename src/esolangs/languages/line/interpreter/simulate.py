@@ -39,7 +39,7 @@ from esolangs.runtime.source_hints import syntax_error
 from .extract import OpCall, Stroke, Vertex, classify_ops
 
 if TYPE_CHECKING:
-    from esolangs.languages.line.generator.render import Node
+    from esolangs.languages.line.generator.layout import Node
 
 
 @dataclass

@@ -7,8 +7,8 @@ then the leftmost ``pattern`` in the rest of the source is replaced by
 Inside a rule ``\`` escapes one character too.  The run ends when the
 source is empty.
 
-An incomplete rule halts; an empty pattern diverges. No stdin is read, so
-EOFError does not arise. Source has no invalid characters or ValueError cases.
+An incomplete rule halts; an empty pattern diverges.  No stdin is read, so
+EOF does not arise, and no source is invalid, so no ProgramError arises.
 """
 
 from esolangs.runtime._drive import drive

@@ -1,6 +1,16 @@
 """Unary through the shared API and generator contract."""
 
+import pytest
+
 import esolangs
+from tests.cli.test_cli import call_main
+
+
+def test_describe_writes_no_raw_nul(capsys: pytest.CaptureFixture[str]) -> None:
+    """Its zero bit is NUL; ``describe`` wrote it raw into the input line."""
+    out = call_main(["describe", "Unary"], capsys)
+    assert "\x00" not in out
+    assert "\\x00" in out.splitlines()[1]
 
 
 def test_unary_generator_declares_byte_inputs_and_termination_answers() -> None:

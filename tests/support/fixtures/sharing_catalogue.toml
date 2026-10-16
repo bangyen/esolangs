@@ -17,10 +17,12 @@
 [exempt]
 "Piet" = "a strip has no jump, so a repeated subtable cannot be shared"
 "ArrowQueue" = "Horner marker cascade; no subtable is drawn"
+"Ascenic" = "threshold scan over the Horner row code; no subtable is drawn"
 "Collatz Multiverse" = "indexed packed cells, with no subtable branch"
 "Eval" = "one literal table halved by position"
+"Fackward" = "a block nests its subtrees, so a repeated subtable is copied"
 "Grapheme" = "one integer table literal"
-"Piet++" = "lookup strip has no subtable calls"
 "Taglate" = "indexed table reduction, with no subtable branch"
 "Vandevelo" = "sum of affine-coset guards, with no subtable branch"
 "bit~" = "planted lookup entries, with no subtable branch"
+"What!?" = "threshold chain over the Horner index; no subtable is drawn"

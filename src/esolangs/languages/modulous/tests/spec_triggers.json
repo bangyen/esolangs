@@ -1,0 +1,64 @@
+{
+ "triggers": [
+  {
+   "program": "[POP]",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "An operation on an empty stack."
+  },
+  {
+   "program": "[RND 0]",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "RND with a bound below 1."
+  },
+  {
+   "program": "[PSH INT 1][SWP]",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "SWP with fewer than two values."
+  },
+  {
+   "program": "[PRT VAR9]",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "an undefined variable (any name but VAR1-VAR4)."
+  },
+  {
+   "program": "[INP INT]",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "INP at EOF."
+  },
+  {
+   "program": "[PSH STR hello]",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "PSH STR with no quoted string."
+  },
+  {
+   "program": "x[END]",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "Text outside any [command]."
+  },
+  {
+   "program": "[PSH INT 99999999][PRT]",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a PRT character out of range."
+  },
+  {
+   "program": "[PSH INT]",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a missing required argument."
+  },
+  {
+   "program": "[PRTINT]",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "an unknown command."
+  }
+ ]
+}

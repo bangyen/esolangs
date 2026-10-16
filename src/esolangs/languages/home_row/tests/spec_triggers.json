@@ -1,0 +1,10 @@
+{
+ "triggers": [
+  {
+   "program": "l",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a trailing unpaired l"
+  }
+ ]
+}

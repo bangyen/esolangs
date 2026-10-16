@@ -72,7 +72,8 @@ def _debug(rest: list[str]) -> None:
     if cell is not None:
         _nonnegative(cell[0], "--break-on-cell index", cell[0])
     for name, number in numbers.items():
-        _nonnegative(number, name, options[name])
+        if name != "--break-at":  # Subleq and AddSubJump halt at -1 and -8.
+            _nonnegative(number, name, options[name])
     settings = _settings_of(options, set_pairs, language=language)
     with _errors():
         if not portable:
@@ -105,6 +106,12 @@ def _debug(rest: list[str]) -> None:
         _fail(exc)
     except ValueError as exc:
         _fail(f"{language}: {exc}")
+    if not dbg.vm.steppable_to_answer:
+        # A Painter Ant: `run` prints its grid, `debug` showed '' unexplained.
+        sys.stderr.write(
+            f"note: {language} answers only through `esolangs run`; stepped, "
+            f"it never halts\n"
+        )
     breakpoints_set = False
     if "--break-on-output" in options:
         if not options["--break-on-output"]:
@@ -112,7 +119,10 @@ def _debug(rest: list[str]) -> None:
         dbg.break_on_output(options["--break-on-output"])
         breakpoints_set = True
     if "--break-at" in numbers:
-        dbg.break_at(numbers["--break-at"])
+        try:
+            dbg.break_at(numbers["--break-at"])
+        except EsolangError as exc:  # A coordinate ip: exit 70, not 2.
+            _fail(exc)
         breakpoints_set = True
     if cell is not None:
         dbg.break_on_cell(*cell)

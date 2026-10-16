@@ -40,33 +40,37 @@ from typing import NamedTuple
 
 from esolangs.languages.malbolge.interpreter import _crazy
 
+from .cascade import (
+    _build_constants,
+    _table_char,
+)
 from .core import (
     _ANSWER,
-    _CONSTS,
     _K_CELL,
     _T_HELPERS,
     _T_HUB_CELLS,
     _T_LABELS,
     _T_LOW,
-    _WORDS,
-    _build_constants,
     _chain,
     _emit_chain,
-    _g,
     _main_planner,
     _merge_code,
     _options_of,
     _pointers,
     _prime,
-    _program,
-    _render,
-    _rot,
     _seed_label_chains,
     _t_hubs,
     _t_jump,
-    _table_char,
     _turn_hubs,
     _walker,
+)
+from .isa import (
+    _CONSTS,
+    _WORDS,
+    _g,
+    _program,
+    _render,
+    _rot,
 )
 
 #: The largest input count the generator builds.
@@ -101,13 +105,6 @@ _D_SEEDS = {
 _D_OPERANDS = {86: "rot K2", 101: "rot K2"}
 #: Stubs, hub characters and the navigation's data cells sit at or above this.
 _D_FLOOR = 6000
-
-#: Free pointer-region cells (``34..127`` clear of every label and operand).
-_D_POINTER_FREE = tuple(
-    a
-    for a in range(34, 128)
-    if _T_LABELS[a - 34] not in "01xn" and a not in _D_OPERANDS
-)
 
 #: Pointer cells built at run time, ``cell -> (value, chain)``.  A ``j`` on a
 #: cell worth ``v`` lands on ``v + 1``, so a low cell holding a working address

@@ -35,8 +35,8 @@ def _capability_examples() -> tuple[str, str]:
                 )
                 setting = shlex.quote(f"{key}={values[-1]}")
                 dialects = (
-                    f"  esolangs generate --portable --settings {settings} "
-                    f"{quoted} 0110 > p.json\n"
+                    f"  esolangs generate --portable --settings {settings} \\\n"
+                    f"    {quoted} 0110 > p.json\n"
                     f"  esolangs generate --set {setting} {quoted} 0110"
                 )
                 break
@@ -55,7 +55,7 @@ USAGE = f"""usage: esolangs <command> [...]
 commands:
   Generator-made (the API invents source from a truth table):
     generate [--width [N] | --balance] [--bits BITS] [--scale N]
-             [--settings JSON] [--set KEY=VALUE] [--portable]
+             [--settings JSON] [--set KEY=VALUE] [--portable] [--plain]
              <language> <truth-table>
                                 print a program computing a truth table
                                 (--width wraps it; --bits fills a template)
@@ -92,7 +92,7 @@ one command in full; `--version` prints the version.  Short forms: -p is
 most significant first; its length sets the input count (0110 is two-input XOR).
 
 exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal
-error (a bug in esolangs), 120 stdout closed early, 124 a bound ran out,
+error (a bug in esolangs), 120 stdout closed early, 124 the timeout ran out,
 130 interrupted.
 
 examples:
@@ -176,7 +176,7 @@ example:
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
-                         [--portable] <language> <truth-table>
+                         [--portable] [--plain] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -197,15 +197,22 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  -p, --portable   write JSON retaining source, dialect choices, and template setters.
+  -p, --portable
+               write JSON retaining source, dialect choices, and template
+               setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
-  -s, --settings JSON  dialect overrides; describe lists supported settings.
-  --set KEY=VALUE  one dialect override without JSON, repeatable and applied
+  -s, --settings JSON
+               dialect overrides; describe lists supported settings.
+  --set KEY=VALUE
+               one dialect override without JSON, repeatable and applied
                after --settings.
-  --plain            export compressed text as ordinary source text.
-  --balance    minimize the rendered width/height difference across supported
-               layouts. Ties prefer shorter source, then smaller width. Tokens
-               and routing can prevent a square; excludes --width.
+  --plain      export compressed text as ordinary source text.  Without it,
+               compressed text is written as gzip and a raster as PNG --
+               binary bytes, so redirect them to a file.
+  --balance    pick the layout fitting the smallest on-screen square: text
+               minimizes max(columns, 2 * rows) (a cell is about twice as
+               tall as wide), a raster max(width, height). Ties prefer shorter
+               source, then smaller width; excludes --width.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
                `esolangs describe <language>` reports which of three
@@ -245,7 +252,7 @@ printed before a failure is written too, then the error on stderr.
 
 exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
 (unknown language, malformed program, unreadable file), 70 internal error (a
-bug in esolangs), 120 stdout closed early, 124 the bound ran out,
+bug in esolangs), 120 stdout closed early, 124 the timeout ran out,
 130 interrupted.
 
 options:
@@ -269,7 +276,7 @@ examples:
   printf '10' | esolangs run brainfuck prog.txt
   printf '10' | esolangs run --timeout 5 brainfuck prog.txt
   esolangs generate --portable brainfuck 0110 > p.json
-  esolangs encode brainfuck 10 | esolangs run --portable brainfuck p.json \
+  esolangs encode brainfuck 10 | esolangs run --portable brainfuck p.json \\
     | esolangs read-answer brainfuck
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>
@@ -290,10 +297,11 @@ options:
               wiki page.  Every language carries one, they run to a
               few thousand characters, and they are the best documentation
               here for *writing* a program rather than generating one.
+              With --json, the spec as one JSON string.
   --json      print `esolangs.describe` verbatim as JSON: every key the
-              Python API returns, including the interpreter path, the full
-              spec text, proof metadata, and example paths that the default
-              layout summarizes or omits.
+              Python API returns, including the full spec text, dialect
+              settings and example paths that the default layout
+              summarizes or omits.
 
 examples:
   esolangs describe brainfuck

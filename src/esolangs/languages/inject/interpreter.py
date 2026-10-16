@@ -7,27 +7,38 @@ the only control flow -- skip the block a next-line label begins, else
 jump to the innermost enclosing block's start, else exit.  ``skipif X``
 (at least one line) and ``skipq X Y`` (equal) are conditional skips.
 
-Decisions: blocks are lists of lines and ``send`` terminates each with a
-newline (the cat program needs it).  ``readto`` stores the line it reads
-as one line, even an empty one, and at EOF empties the block: the wiki
-cat loops while ``skipif`` sees "at least one line", so EOF is its only
-clean exit, and it copies blank lines.  A label, blank line or
-non-command line is a no-op (the truth machine falls through a bare
-``0``).  Block structure is
-fixed at parse; a written-in ``foo;`` is inert.  The innermost block is
-the shortest span.  ``inject`` uses :mod:`re` line by line ("Replaces the
-label-block ... according to the regex" names no text form), so an emptied
-line stays a line, and ``R`` is a ``re`` template; a malformed regex, or a
-resize that would delete another block's delimiter, raises
-:class:`~esolangs.exceptions.HaltError`.  A label written a third time,
-left open, unknown, or unparsable raises :class:`ValueError`; invalid
-runtime operations raise ``HaltError``.  A rewrite that changes a block's
-line count moves every later line, the executing one included.  Running
-off the end halts.
+Running off the end halts.  A rewrite that changes a block's line count moves
+every later line, the executing one included.
 
-The wiki's truth machine has its cases exchanged under its own prose
-(``skipq data 0`` fires on ``0`` and clause 2 loops); the prose is kept
-because the cat example depends on the same "only executes if" wording.
+Input/output:
+    ``readto`` stores the line it reads as one line, even an empty one, and
+    at EOF empties the block instead of raising.
+
+Errors:
+    ProgramError: a label written a third time, left open, or unknown;
+    ``inject`` without ``=`` or without ``/``; ``skip`` with an argument;
+    ``skipq`` without two labels.
+    HaltError: a malformed ``inject`` regex or replacement; a resize that
+    would delete another block's delimiter; a rewrite that would move the
+    pointer before the program.
+
+Decisions:
+    * Blocks are lists of lines and ``send`` terminates each with a newline
+      (the cat program needs it).
+    * ``readto`` empties the block at EOF: the wiki cat loops while
+      ``skipif`` sees "at least one line", so EOF is its only clean exit, and
+      it copies blank lines.
+    * A label, blank line or non-command line is a no-op (the truth machine
+      falls through a bare ``0``).
+    * Block structure is fixed at parse; a written-in ``foo;`` is inert.  The
+      innermost block is the shortest span.
+    * ``inject`` uses :mod:`re` line by line ("Replaces the label-block ...
+      according to the regex" names no text form), so an emptied line stays
+      a line, and ``R`` is a ``re`` template.
+    * The wiki's truth machine has its cases exchanged under its own prose
+      (``skipq data 0`` fires on ``0`` and clause 2 loops); the prose is kept
+      because the cat example depends on the same "only executes if"
+      wording.
 """
 
 import re

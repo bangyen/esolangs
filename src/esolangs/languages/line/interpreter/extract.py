@@ -267,14 +267,13 @@ def find_cursor(mask: Mask) -> Cursor:
     """Isolate the whole arrowhead shape via erosion + growth.
 
     The arrowhead is the only multi-pixel-thick region, so :meth:`Mask.erode`
-    finds its interior (the largest one, so a stray artifact is not
-    mistaken for the cursor).  ``blob`` then grows outward from that
-    interior, admitting a pixel only while it is itself blob-like
-    (``_BLOB_NEIGHBOR_MIN``): a plain flood fill would keep going where the
-    tip touches the path and swallow the drawing, while a fixed radius
-    would leave the 1px outline and the tips behind.  Exactly one
-    arrowhead-shaped blob is required: none raises the shape error, two or
-    more the ambiguity error.
+    finds its interior (the largest, so a stray artifact is not taken for the
+    cursor).  ``blob`` grows outward from it, admitting a pixel only while it
+    is itself blob-like (``_BLOB_NEIGHBOR_MIN``): a plain flood fill would
+    swallow the drawing where the tip touches the path, a fixed radius would
+    leave the 1px outline and the tips behind.  Exactly one arrowhead-shaped
+    blob is required: none raises the shape error, two or more the ambiguity
+    error.
     """
     thick = mask.erode()
     if not thick.any():
@@ -376,11 +375,11 @@ def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
 
 
 # Each opcode's kink as (relative_turn, unit_length) pairs (+1/-1 diagonal
-# jog, +2/-2 sideways).  Mirrors render.py's `_OPS` exactly.
+# jog, +2/-2 sideways).  Mirrors layout.py's `_OPS` exactly.
 # Unit length matters, not just sign: `i`'s middle run is 2 units, which is
 # what separates it from `>` `>` back to back with no gap; both start
 # `(+1, -2)`.  `+`/`-` are the only entries whose leg length is not fixed
-# -- it is the repeat count (see :data:`DEFAULT_UNIT` and render.py's
+# -- it is the repeat count (see :data:`DEFAULT_UNIT` and layout.py's
 # `_op_segments`).
 _FIXED_SIGNATURES: dict[tuple[tuple[int, int], ...], str] = {
     ((1, 1), (-2, 1)): ">",
@@ -457,7 +456,7 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
     if not runs:
         return []
 
-    # ``heading`` updates at ordinary corners, as render.py's cursor does
+    # ``heading`` updates at ordinary corners, as layout.py's cursor does
     # between opcodes.  Only a run tested as a kink leg is unit-checked; a
     # run that rounds to 0 (noise) or matches no template updates heading.
     heading = runs[0][0]

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.languages.line.generator import render as render_module
+from esolangs.languages.line.generator import layout as layout_module
 from esolangs.languages.line.generator.render import render
 from esolangs.languages.line.interpreter.extract import extract
 from esolangs.languages.line.interpreter.simulate import IO, run
@@ -73,7 +73,7 @@ class TestNestedLoops:
 def _max_between_stroke_adjacency(program: str) -> int:
     """Most cells of one stroke sitting flush against a *different* stroke."""
     captured: list[list[tuple[int, int]]] = []
-    original = render_module._Cursor.finish  # noqa: SLF001 - see docstring
+    original = layout_module._Cursor.finish  # noqa: SLF001 - see docstring
 
     def spy(self) -> None:
         before = len(self.strokes)
@@ -87,11 +87,11 @@ def _max_between_stroke_adjacency(program: str) -> int:
         if self.occupied is not None:
             captured.extend(self.strokes[before:])
 
-    render_module._Cursor.finish = spy  # noqa: SLF001 - deliberate stroke spy
+    layout_module._Cursor.finish = spy  # noqa: SLF001 - deliberate stroke spy
     try:
         render(bf_to_line(program))
     finally:
-        render_module._Cursor.finish = original  # noqa: SLF001 - restore the spy
+        layout_module._Cursor.finish = original  # noqa: SLF001 - restore the spy
 
     worst = 0
     for i, first in enumerate(captured):
@@ -161,7 +161,7 @@ class TestNestingDepth:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A drawing that cannot complete fails loudly, never misdraws."""
-        monkeypatch.setattr(render_module, "_loop_return_legs", lambda *_a: None)
+        monkeypatch.setattr(layout_module, "_loop_return_legs", lambda *_a: None)
         with pytest.raises(ValueError, match="could not be constructed"):
             _run_bf("+++[-].", tmp_path / "unconstructible.png")
 

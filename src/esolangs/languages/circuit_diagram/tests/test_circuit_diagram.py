@@ -1,17 +1,22 @@
 r"""Unit tests for the Circuit Diagram interpreter."""
 
+# Deferred: ``_lru_cache_wrapper[...]`` is not subscriptable before 3.13.
+from __future__ import annotations
+
 import time
 from collections import OrderedDict
-from functools import partial
+from functools import _lru_cache_wrapper, lru_cache, partial
 
 import pytest
 
+from esolangs.languages.circuit_diagram import interpreter
 from esolangs.languages.circuit_diagram.interpreter import (
     _compile,
     _functions,
     _Machine,
     _merge,
     _seconds_since_2000,
+    _Topology,
     run,
 )
 from esolangs.languages.circuit_diagram.interpreter._functions import _remember_width
@@ -55,6 +60,19 @@ def bits_of(value: int) -> str:
     return "\n".join(format(value, "04b")) + "\n"
 
 
+@pytest.fixture
+def cold_compile(monkeypatch: pytest.MonkeyPatch) -> _lru_cache_wrapper[_Topology]:
+    """Return a fresh ``_compile`` cache swapped in for the test.
+
+    ``_compile.cache_clear()`` frees whatever the worker cached: 0.28 s
+    locally after 16 generated 11-input circuits, 3.19 s on CI for a test
+    whose own work is 1 ms.
+    """
+    fresh = lru_cache(maxsize=16)(_compile.__wrapped__)
+    monkeypatch.setattr(interpreter, "_compile", fresh)
+    return fresh
+
+
 class TestPrimeTester:
     """The page's only worked example, replayed over its whole input space."""
 
@@ -63,14 +81,16 @@ class TestPrimeTester:
         detected = {n for n in range(16) if output_for(PRIME_TESTER, bits_of(n)) == "1"}
         assert detected == PRIMES
 
-    def test_cached_topology_keeps_run_state_isolated(self) -> None:
-        _compile.cache_clear()
+    def test_cached_topology_keeps_run_state_isolated(
+        self, cold_compile: _lru_cache_wrapper[_Topology]
+    ) -> None:
         assert output_for(PRIME_TESTER, bits_of(2)) == "1"
         assert output_for(PRIME_TESTER, bits_of(4)) == "0"
-        assert _compile.cache_info().hits == 1
+        assert cold_compile.cache_info().hits == 1
 
-    def test_cached_topology_keeps_debugger_state_isolated(self) -> None:
-        _compile.cache_clear()
+    def test_cached_topology_keeps_debugger_state_isolated(
+        self, cold_compile: _lru_cache_wrapper[_Topology]
+    ) -> None:
         first = _Machine(PRIME_TESTER, ScriptedIO(bits_of(2)))
         second = _Machine(PRIME_TESTER, ScriptedIO(bits_of(4)))
         initial = second.snapshot()
@@ -79,7 +99,7 @@ class TestPrimeTester:
         assert run_until_halt_or_cycle(second) is True
         assert first.io.getvalue() == "1"
         assert second.io.getvalue() == "0"
-        assert _compile.cache_info().hits == 1
+        assert cold_compile.cache_info().hits == 1
 
     def test_it_halts_rather_than_looping(self) -> None:
         machine = _Machine(PRIME_TESTER, ScriptedIO(bits_of(7)))

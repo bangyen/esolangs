@@ -8,23 +8,26 @@ from typing import Literal
 # Owner of a reserved result anchor; no real signal may route through it.
 _HOLD = -1
 
+# ``down`` runs along the source's column then the target's row, ``across``
+# the source's row then the target's column, ``under`` the source's column to
+# two rows past the target, across, and back up into it -- feeding a gate's
+# lower input when a sibling wire already corners on the target's row.
 _Shape = Literal["down", "across", "under"]
 
 
 class _Layout:
     """Wire segments and glyphs, rendered to characters only at the end.
 
-    Segments are recorded with the signal they carry so the renderer can
-    tell a legitimate crossing (two different signals, drawn ``=``) from a
-    collision (two segments of different signals running the same way
-    through one cell, which would merge them).
+    Segments carry their signal so the renderer can tell a crossing (two
+    different signals, drawn ``=``) from a collision (two segments of
+    different signals running the same way through one cell, which would
+    merge them).
 
-    A run is stored as one interval: unrestricted shared folds can make
-    per-cell tables cost quadratic time and memory -- n=9 held ~20M dict
-    entries and n=10 would not fit. H builders use separate cell guards
-    with a linear wire-length bound, then seal to these intervals. The collision
-    checks compare intervals instead, and the renderer paints them with
-    slice assignment.
+    A run is stored as one interval: unrestricted shared folds make per-cell
+    tables quadratic in time and memory (n=9 held ~20M dict entries; n=10
+    would not fit).  H builders use separate cell guards with a linear
+    wire-length bound, then seal to these intervals.  Collision checks
+    compare intervals and the renderer paints them by slice assignment.
     """
 
     def __init__(self) -> None:
@@ -210,13 +213,10 @@ class _Layout:
     def render(self) -> str:
         """Return the layout as text, deriving each cell from its coverage.
 
-        Cell priority is glyph, then junction ``.``, then the wires: a
-        horizontal and a vertical sharing a cell is a crossover ``=`` (the
-        spec connects "opposite wires" across it), either alone is ``-`` or
-        ``|``.  Rows are painted into byte buffers -- horizontal runs by
-        slice, everything else point by point -- and cut at their last
-        occupied cell, which is what per-cell ``rstrip`` did: every covered
-        cell renders non-space.
+        Cell priority is glyph, junction ``.``, then wires: a horizontal and
+        a vertical sharing a cell is a crossover ``=`` (the spec connects
+        "opposite wires" across it), either alone is ``-`` or ``|``.  Rows
+        are cut at their last occupied cell.
         """
         self._check_junction_spacing()
 
@@ -374,13 +374,8 @@ class _RoutingLayout(_Layout):
     ) -> None:
         """Lay one wire in the given shape; the caller has chosen its lane.
 
-        ``down`` runs along the source's column and then the target's row,
-        ``across`` along the source's row and then the target's column, and
-        ``under`` along the source's column to two rows past the target,
-        across, and back up into it -- the shape that feeds a gate's lower
-        input when a sibling wire already corners on the target's row.  The
-        collision check is a guard on the layout's spacing rules, not a
-        search: a wire that does not fit is a spacing bug.
+        The collision check guards the spacing rules, not a search: a wire
+        that does not fit is a spacing bug.
         """
         sx, sy = source
         tx, ty = target

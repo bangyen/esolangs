@@ -6,36 +6,51 @@ contains an ``(n-1)``-slot, and a ``1``-slot holds an unsigned byte.  The
 value is the byte reached by following the chain of pointers from the
 selected axis down to level 2.  ``$AXIS`` picks which pointer the move and
 loop commands act on; moving a higher pointer selects a fresh lower slot, so
-moving away and back to the origin restores the previous tape.
+moving away and back to the origin restores the previous tape.  Cells wrap
+at 8 bits (unsigned bytes), ``:CHAR`` above 255 included.
 
-The v3.0 wiki leaves some details open; this interpreter resolves them as
-follows (documented choices, not part of any written spec):
+Commands:
+    ``>d`` / ``<d``: move the axis pointer along dimension ``d`` (bare
+        ``>`` / ``<`` use the value as the dimension).
+    ``+`` / ``-``: adjust the value.
+    ``:CH`` / ``=HEX``: set the value from the source.
+    ``.``: print the value.
+    ``,`` / ``d`` / ``x``: read the value from input.
+    ``[`` / ``]``: loop on the value.
+    ``{d`` / ``}``: loop on the axis pointer's dimension-``d`` coordinate.
+    ``?d`` / ``!d``: read / clear that coordinate.
+    ``$AXIS``: select the pointer.
+    ``*``: toggle comment mode.
 
-* The pointer axis defaults to 2 (the innermost pointer, which addresses
-  bytes directly), so ``>0``/``<0`` with no ``$AXIS`` is a linear byte tape.
-* ``d`` and ``x`` read a decimal/hexadecimal number from input (like ``,``
-  reads a character).
-* ``$AXIS`` values below 2 are clamped to 2 (there is no 1-pointer).
-* A ``:`` or ``=`` at the end of a program, or a malformed ``=`` literal, is
-  a :class:`ValueError` before the run starts; unmatched ``[``/``]`` or
-  ``{``/``}`` brackets are rejected, matching the package's other tape
-  interpreters.  The two pairs nest independently, so ``[{]}`` is accepted.
-* Cells wrap at 8 bits (unsigned bytes), ``:CHAR`` above 255 included.
-* The table writes ``{DIMENSION``, ``?DIMENSION``, ``!DIMENSION`` and
-  ``$AXIS`` with an operand; without one, the dimension is 0 and the axis 2
-  (a clean-room reading rejects the program instead).
-* ``d`` and ``x`` ("Accepts a number written in decimal") read one
-  whitespace-delimited token and leave the delimiter, so a following ``,``
-  reads it; reading the whole line is the other reading.
+Input/output:
+    ``,`` reads a character, ``d`` a decimal number and ``x`` a hexadecimal
+    one.  Exhausted input raises (the repo-wide convention).
 
-Commands: ``>d``/``<d`` move the axis pointer along dimension ``d`` (bare
-``>``/``<`` use the value as the dimension), ``+``/``-`` adjust the value,
-``:CH``/``=HEX`` set it from the source, ``.`` prints it, ``,``/``d``/``x``
-read it from input, ``[``/``]`` loop on it, ``{d``/``}`` loop on the axis
-pointer's dimension-``d`` coordinate, ``?d``/``!d`` read/clear it, ``$AXIS``
-selects the pointer, and ``*`` toggles comment mode.
+Errors:
+    ProgramError: A ``:`` or ``=`` at the end of a program, or a malformed
+        ``=`` literal, before the run starts; unmatched ``[``/``]`` or
+        ``{``/``}``; an ``x`` read of a token that is not hexadecimal.
+    InputExhaustedError: ``,``, ``d`` or ``x`` at EOF.
+    ArgumentError: A ``d`` token that is not an integer.
 
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
+Decisions:
+    The v3.0 wiki leaves some details open; these are documented choices, not
+    part of any written spec.
+    * The pointer axis defaults to 2 (the innermost pointer, which addresses
+      bytes directly), so ``>0``/``<0`` with no ``$AXIS`` is a linear byte
+      tape.
+    * ``d`` and ``x`` read a decimal/hexadecimal number from input (like
+      ``,`` reads a character).
+    * ``$AXIS`` values below 2 are clamped to 2 (there is no 1-pointer).
+    * Unmatched brackets are rejected, matching the package's other tape
+      interpreters.  The two pairs nest independently, so ``[{]}`` is
+      accepted.
+    * The table writes ``{DIMENSION``, ``?DIMENSION``, ``!DIMENSION`` and
+      ``$AXIS`` with an operand; without one, the dimension is 0 and the axis
+      2 (a clean-room reading rejects the program instead).
+    * ``d`` and ``x`` ("Accepts a number written in decimal") read one
+      whitespace-delimited token and leave the delimiter, so a following
+      ``,`` reads it; reading the whole line is the other reading.
 """
 
 from collections.abc import Callable, Mapping
@@ -272,15 +287,14 @@ def _advance(  # noqa: C901
 ) -> tuple[_State, _Effect | None]:
     """Return the state after one command, and what it wants done.
 
-    Pure in the sense the series means: it reads its arguments and returns
-    a description.  The tape is reached only through ``value`` and
-    ``coord``, which the two loop forms need to decide where the cursor
-    goes, and the three reading commands arrive as ``port``.
+    Pure: it reads its arguments and returns a description.  The tape is
+    reached only through ``value`` and ``coord``, which the two loop forms
+    need to place the cursor; the three reading commands arrive as ``port``.
 
-    The cursor is already past the command.  Its advance is the caller's,
-    because several commands can reject their operand -- a ``:`` with
-    nothing after it, a ``=`` without two hex digits -- and the original
-    had moved the cursor before it looked.
+    The cursor is already past the command; the caller advances it, since
+    several commands can reject their operand (a ``:`` with nothing after
+    it, a ``=`` without two hex digits) and the original had moved the
+    cursor before looking.
     """
     ind, comment, axis = state
     c = code[ind - 1]
@@ -424,14 +438,13 @@ class _Machine:
     def step(self) -> None:
         """Execute one command (or comment character), advancing the position.
 
-        The ports live here rather than in the transition: this is the
-        shell.  ``.`` prints the addressed byte, and ``,``/``d``/``x`` read
-        one -- as a character, a decimal number, and a hex number.
+        The ports live here, not in the transition.  ``.`` prints the
+        addressed byte; ``,``/``d``/``x`` read one as a character, a decimal
+        number, and a hex number.
 
-        The cursor is advanced before the command runs, because several
-        commands reject their operand after the original had already moved
-        it: a ``:`` at the end of the code, a ``=`` without two hex digits,
-        and any of the three reads at EOF.
+        The cursor advances before the command runs, since the original had
+        moved it before rejecting a ``:`` at the end of the code, a ``=``
+        without two hex digits, or any of the three reads at EOF.
         """
         if self.halted:
             return

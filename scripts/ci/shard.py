@@ -281,8 +281,12 @@ def refresh_main(argv: list[str] | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Dispatch one CI subcommand."""
     argv = sys.argv[1:] if argv is None else argv
+    usage = "usage: scripts/ci/shard.py {shard|refresh} ..."
+    if argv[:1] in (["-h"], ["--help"]):
+        print(f"{usage}\n\n{__doc__}")
+        return 0
     if not argv:
-        raise SystemExit("usage: scripts/ci/shard.py {shard|refresh} ...")
+        raise SystemExit(usage)
     command, rest = argv[0], argv[1:]
     if command == "shard":
         return shard_main(rest)

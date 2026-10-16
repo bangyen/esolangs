@@ -1,0 +1,10 @@
+{
+ "triggers": [
+  {
+   "program": ".<.",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": ". reads at EOF."
+  }
+ ]
+}

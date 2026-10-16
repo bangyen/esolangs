@@ -1,0 +1,53 @@
+{
+ "triggers": [
+  {
+   "program": "1 0/.",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "dividing by zero is a HaltError"
+  },
+  {
+   "program": ".",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "popping an empty stack is a HaltError"
+  },
+  {
+   "program": "a;.",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "reading an unset variable is a HaltError"
+  },
+  {
+   "program": "1!",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "running a number as a lambda is a HaltError"
+  },
+  {
+   "program": "'",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a ' at the end of the source is a ProgramError"
+  },
+  {
+   "program": "\"abc",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "unterminated \" is a ProgramError"
+  },
+  {
+   "program": "[",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "unterminated [ is a ProgramError"
+  },
+  {
+   "program": "^.",
+   "stdin": "",
+   "expect": "output",
+   "output": "-1",
+   "claim": "^ at end of input yields -1"
+  }
+ ]
+}

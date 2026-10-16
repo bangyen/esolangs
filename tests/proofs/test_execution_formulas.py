@@ -62,7 +62,6 @@ _HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
         False,
         (3, 6),
     ),
-    "Factor": (lambda n, _: 265 * n + 231, True, (4,)),
     # At n=8 the large pool is one atom: no prefix/footer tick; parity reaches 17.
     "Circuit Diagram": (lambda n, _: 2 * n + 1 + (n > 8), True, (3, 8)),
     "FALSE": (lambda n, _: min(12 * n + 69, 10 * n + 99), False, (3, 6)),

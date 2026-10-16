@@ -6,8 +6,21 @@ T-junction branches on the current cell.  The filled arrowhead chooses the
 entry point and initial direction.  Source must be a lossless PNG because
 anti-aliasing changes the path geometry.
 
-Input numbers are whitespace-delimited integer tokens; the spec does not define
-text framing. EOF raises EOFError.  Outputs are decimal, unseparated.
+Input/output:
+    Input numbers are whitespace-delimited integer tokens.  Outputs are
+    decimal, unseparated.  An input read at EOF raises.
+
+Errors:
+    ProgramError: a JPEG or unreadable PNG; an image with no ink; no
+    cursor, more than one arrowhead-shaped region, or a largest thick region
+    that is not arrowhead-shaped; no path beyond the cursor; a scale that is
+    not uniform Line pixel squares; a unit that is not a positive integer;
+    ink left unaccounted for after extraction (corrupt or over-compressed).
+    InputExhaustedError: an input read at EOF.
+    ArgumentError: an input token that is not an integer.
+
+Decisions:
+    * The spec does not define input text framing.
 """
 
 from __future__ import annotations
@@ -33,7 +46,7 @@ from .simulate import run_compiled as _run_compiled
 from .simulate import run_node as _run_node
 
 if TYPE_CHECKING:
-    from esolangs.languages.line.generator.render import Node
+    from esolangs.languages.line.generator.layout import Node
 
     from .simulate import _Compiled
 

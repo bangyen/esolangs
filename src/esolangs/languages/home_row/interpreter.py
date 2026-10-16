@@ -3,13 +3,19 @@
 BF-like over a 5x5 wrapping grid of unbounded cells: ``a``/``s`` add and
 subtract 1, ``d``/``f`` move down/right mod 5, ``j`` skips the next
 instruction on a zero cell, ``k`` prints the cell as a byte and zeroes
-it, a pair of ``l``s is a while-nonzero loop, ``;`` ends the program.
-Decisions: cells are unbounded (the wiki's Minsky construction needs
-it), so ``k`` prints the low byte and ``s`` on 0 gives -1 (the talk page
-asks, the author never ruled); the end of the source halts; ``l`` pairs
-alternate by order (first with second, third with fourth), and a
-trailing unpaired ``l`` raises :class:`ValueError`; other characters
-are dropped before the run, so ``j`` skips the next command.
+it, a pair of ``l``s is a while-nonzero loop, ``;`` ends the program.  The
+end of the source halts.
+
+Errors:
+    ProgramError: a trailing unpaired ``l``.
+
+Decisions:
+    * Cells are unbounded (the wiki's Minsky construction needs it), so ``k``
+      prints the low byte and ``s`` on 0 gives -1 (the talk page asks, the
+      author never ruled).
+    * ``l`` pairs alternate by order (first with second, third with fourth).
+    * Other characters are dropped before the run, so ``j`` skips the next
+      command.
 """
 
 from __future__ import annotations
@@ -19,17 +25,10 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 
-#: One instant of a run: ``(ind, ptr, grid)`` -- the code cursor, the
-#: pointer, and the 25 cells.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the grid is a
-#: ``tuple`` for the same reason.
-#:
-#: This is exactly what ``snapshot`` returns, so the state and its
-#: hashable view are the same tuple.
-#:
-#: The code and its loop pairing are deliberately not in here.  Neither
-#: changes during a run, so carrying them would put constant data in every
-#: value the cycle detector stores.  They are parameters to the transition.
+#: ``(ind, ptr, grid)``: code cursor, pointer, 25 cells; an immutable value
+#: (grid a ``tuple``) that is exactly what ``snapshot`` returns.  Code and loop
+#: pairing never change, so they are transition parameters, not constant data
+#: in every state the cycle detector stores.
 type _State = tuple[int, int, tuple[int, ...]]
 
 

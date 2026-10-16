@@ -41,7 +41,8 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     monkeypatch.setattr(help_module, "LANGUAGES", languages)
     template, dialect = help_module._capability_examples()  # noqa: SLF001
     assert shlex.split(template)[-2:] == ["Template Choice", "0110"]
-    assert shlex.split(dialect.splitlines()[1])[3] == "mode=with spaces"
+    commands = dialect.replace("\\\n", "").splitlines()  # Shell-joined.
+    assert shlex.split(commands[1])[3] == "mode=with spaces"
     del languages["Template Choice"]
     assert help_module._capability_examples()[0] == ""  # noqa: SLF001
     # A cap below two inputs is not a runnable example, and a dialect with no

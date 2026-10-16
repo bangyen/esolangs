@@ -188,7 +188,7 @@ SIGNATURES = {
     "Raster.tagged": "(self, language: 'str', *, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'Raster'",  # noqa: E501
     "Raster.to_png": "(self) -> 'bytes'",
     "Raster.upscaled": "(self, scale: 'int') -> 'Raster'",
-    "DialectSettings.__init__": "(self, **choices: int | str | None) -> None",
+    "DialectSettings.__init__": "(self, **choices: int | str) -> None",
     "DialectSettings.options": "(self, language: str) -> dict[str, typing.Any]",
     "Debugger.__init__": "(self, vm: 'VM') -> 'None'",
     "Debugger.break_at": "(self, ip: 'int | tuple[int, ...]') -> 'None'",
@@ -236,6 +236,7 @@ PUBLIC_MEMBERS = {
         "break_when",
         "clear_breakpoints",
         "dumps_on_the_post_halt_step",
+        "eof_is_a_value",
         "halted",
         "ip",
         "ip_shape",

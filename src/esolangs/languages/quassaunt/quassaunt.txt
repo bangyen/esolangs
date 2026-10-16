@@ -1,0 +1,25 @@
+@@[3]
+@@@@?@@?@@[2]?%%Obtain?@@?%%Concatenateall?@@2?
+@@%%Inputchar?%%Empty?%%Makecontain?%%Makecontain?
+%%Concatenate
+@@@@?@@?@@[z1]?%%Obtain?@@?%%Concatenateall?@@1?
+%%Concatenate
+@@%%Empty?%%Makecontain?%%Ifpropersubset
+%%Concatenate %%Empty %%Makecontain %%Store
+@@[z1]
+@@@@d?%%Inputchar?%%Empty?%%Makecontain?%%Store?
+@@@@?@@?@@[z2]?%%Obtain?@@?%%Concatenateall?
+%%Concatenate @@%%Evaluatereplace %%Concatenate
+%%Empty %%Makecontain %%Store @@[2]
+@@@@?@@?@@[o2]?%%Obtain?@@?%%Concatenateall?@@2?
+@@%%Inputchar?%%Empty?%%Makecontain?%%Makecontain?
+%%Concatenate
+@@@@?@@?@@[z2]?%%Obtain?@@?%%Concatenateall?@@1?
+%%Concatenate
+@@%%Empty?%%Makecontain?%%Ifpropersubset
+%%Concatenate %%Empty %%Makecontain %%Store
+@@[z2] @@@@0?%%Printtoconsole %%Empty
+%%Makecontain %%Store @@[o2]
+@@@@1?%%Printtoconsole %%Empty %%Makecontain
+%%Store @@ @@ @@[3] %%Obtain @@
+%%Concatenateall %%Evaluate

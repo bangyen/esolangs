@@ -236,19 +236,28 @@ class TestWhatHappensWhenAProgramIsUnderfed:
     """``run`` promised an exception for every language.  Most give it."""
 
     TABLE = "10010110"  # n = 3
+    #: More than one: on XOR alone Piet's and Fish's underfed output was
+    #: unreadable, so they passed undeclared; ``10000000`` fed ``01`` reads 1.
+    PROBES = (("10010110", (1, 0)), ("10000000", (0, 1)))
 
-    def _underfed(self, name: str) -> tuple[str, str | None]:
+    def _underfed(
+        self, name: str, probe: tuple[str, tuple[int, ...]] = (TABLE, (1, 0))
+    ) -> tuple[str, str | None]:
         """Return ``(outcome, answer)`` for ``name`` fed one bit too few."""
-        table = probe_table(name, self.TABLE)
+        table = probe_table(name, probe[0])
         program = esolangs.generate(name, table)
         n = len(table).bit_length() - 1
-        short = esolangs.encode_inputs(name, [1, 0][: n - 1]) if n > 1 else ""
+        short = esolangs.encode_inputs(name, list(probe[1][: n - 1])) if n > 1 else ""
         try:
             output = esolangs.run(name, program, stdin=short, timeout=10)
         except esolangs.InputExhaustedError:
             return "raised", None
         except esolangs.EsolangError:
             return "language error", None
+        if esolangs.describe(name)["answer_mode"] == "termination":
+            # A halt is the answer, with no output to read: Unary's EOF zero
+            # passed as "unreadable" while it answered another row.
+            return "answered", "0"
         try:
             return "answered", esolangs.read_answer(name, output)
         except esolangs.EsolangError:
@@ -270,12 +279,13 @@ class TestWhatHappensWhenAProgramIsUnderfed:
                 # declare and nothing that could detect it.  Exempted by
                 # its shape rather than by its name.
                 continue
-            outcome, _answer = self._underfed(name)
             declared = bool(facts["eof_is_a_value"])
-            if outcome == "answered" and not declared:
-                mismatched.append(f"{name}: answered but does not declare it")
-            if outcome == "raised" and declared:
-                mismatched.append(f"{name}: declares eof_is_a_value but raised")
+            for probe in self.PROBES:
+                outcome, _answer = self._underfed(name, probe)
+                if outcome == "answered" and not declared:
+                    mismatched.append(f"{name}: answered but does not declare it")
+                if outcome == "raised" and declared:
+                    mismatched.append(f"{name}: declares eof_is_a_value but raised")
         assert not mismatched, "\n".join(mismatched)
 
     def test_the_trait_is_reported_by_describe(self) -> None:

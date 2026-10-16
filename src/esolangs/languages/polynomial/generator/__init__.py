@@ -1,4 +1,4 @@
-"""Boolean-function generator for Polynomial.
+"""Polynomial Boolean program generator: instructions as polynomial roots.
 
 :mod:`esolangs.languages.polynomial.generator.algebra` is the algebra; this decides the
 instructions.  Every instruction is priced by opcode: ``[a, b]`` is the
@@ -6,8 +6,22 @@ factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
 ``+=`` at ``b == 1``, ``-=`` 2, ``*=`` 3, ``//=`` 4 and ``if > 0`` at
 ``v == 1``, ``endif`` 2, ``if < 0`` 3, ``if == 0`` 4.  So subtraction is
 ``+=`` with a negative operand, tests are ``if > 0`` only, and ``*=``/
-``//=`` are kept for the two places nothing cheaper reaches: dense n == 6
-renders 1.9x shorter than the ``-= 1; if == 0`` builder, n == 7 2.1x.
+``//=`` are kept for the two places nothing cheaper reaches.  Every program
+is a hybrid: ``k`` tree levels above one state machine per surviving
+residual, the shortest rendering winning.  An expansion bounded past
+1,000,000,000 characters also raises.
+
+Size:
+    Grows with the instruction count and the prime sizes; n=8 parity: 47,037
+    chars, n=8 random 1847: 1,600,593 chars, n=16 and: 234,362 chars.
+
+Raises:
+    GeneratorCapError: the cheapest construction needs more than 1934
+    instructions (dense n=11 needs 2447).
+
+Decisions:
+    Dense n == 6 renders 1.9x shorter with ``*=``/``//=`` than with the
+    ``-= 1; if == 0`` builder, n == 7 2.1x.
 """
 
 from collections.abc import Iterator
@@ -53,18 +67,9 @@ _POLYNOMIAL_SCREEN_SLACK = 10
 
 
 def polynomial(truth_table: str) -> str:
-    """Build a Polynomial program computing the given truth table.
+    """Return a Polynomial program for ``truth_table`` (``2**n`` bits, MSB first).
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.
-    Programs are polynomials whose roots are instructions.  Every
-    construction is :func:`_polynomial_hybrid` at some ``k``: ``k == n`` a
-    folded tree, ``k == 0`` one state machine (an ordered BDD merging equal
-    residuals: parity needs two states per level, 11 instructions per
-    input), the interior a machine per residual.  A leading ignored run is drained
-    to bare reads.
-    Reordering is unreachable (a read assigns the single register).
-    Selection is on rendered characters.
-    More than ``_POLYNOMIAL_MAX_INSTRS`` raises :class:`ValueError`.
+    The shortest rendering of :func:`_polynomial_hybrid` over every ``k``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -128,6 +133,7 @@ def _polynomial_candidates(
     # An ignored input still costs a level of branching, so drain a
     # *leading* ignored run before building (a later one drained out of
     # turn branched on the wrong bit: 92 wrong rows over 26 tables).
+    # Reordering inputs is unreachable: a read assigns the single register.
     essential = essential_inputs(truth_table, n) or [0]
     # A *trailing* ignored run is cut from the table and its reads appended
     # at the very end, which every path reaches parked below zero, so they
@@ -243,7 +249,7 @@ def _polynomial_labels(levels: list[list[str]], n: int) -> list[dict[str, int]]:
 
 
 def _polynomial_dag(truth_table: str, park: int | None = None) -> list[list[int]]:
-    """Emit the state-machine instructions; see :func:`polynomial`.
+    """Emit the state-machine instructions; see :func:`_polynomial_hybrid`.
 
     State is *which branch is running*: a level is a chain of blocks, one
     per state, entered at ``-i``; each does ``+= 1; if > 0``, so block ``i``
@@ -320,13 +326,14 @@ def _polynomial_hybrid(
 ) -> list[list[int]]:
     """Emit ``k`` tree levels above a state machine per surviving residual.
 
-    The whole family: ``k == n`` is the plain tree, ``k == 0`` one machine,
-    the interior serves tables whose residuals merge within a top split but
-    not across it.  A tree node reads, subtracts 48, branches ``if > 0``
-    into the one-arm; every arm leaves the register at or below
-    ``-(n + 2)``, so ``+= 1; if > 0`` fires for the zero bit (``p`` and
-    ``p**2`` vs ``if == 0``'s ``p**4``).  The machine's root opens with a
-    read, so no splice is needed.
+    The whole family: ``k == n`` is the plain tree, ``k == 0`` one machine
+    (an ordered BDD merging equal residuals; parity needs two states per
+    level, 11 instructions per input), the interior serves tables whose
+    residuals merge within a top split but not across it.  A tree node reads,
+    subtracts 48, branches ``if > 0`` into the one-arm; every arm leaves the
+    register at or below ``-(n + 2)``, so ``+= 1; if > 0`` fires for the zero
+    bit (``p`` and ``p**2`` vs ``if == 0``'s ``p**4``).  The machine's root
+    opens with a read, so no splice is needed.
     """
     n = _validate_truth_table(truth_table)
     instrs: list[list[int]] = []

@@ -1,0 +1,35 @@
+{
+ "triggers": [
+  {
+   "program": "1",
+   "stdin": "a",
+   "expect": "HaltError",
+   "claim": "an input token that is not a natural"
+  },
+  {
+   "program": "p)",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": ") with no opener"
+  },
+  {
+   "program": "x",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a character that is not a command"
+  },
+  {
+   "program": "(p",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "an unclosed ("
+  },
+  {
+   "program": "1",
+   "stdin": "",
+   "expect": "output",
+   "output": "[]",
+   "claim": "empty input is the empty stack"
+  }
+ ]
+}

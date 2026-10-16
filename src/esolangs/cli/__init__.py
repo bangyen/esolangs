@@ -15,23 +15,18 @@ Subcommands:
 Every subcommand takes ``--help``.  For anything else, invoke the module
 directly with ``python -m``.
 
-``describe`` and ``read-answer`` are here because the two facts that decided
-every wrong answer this tool ever handed out -- how a language wants its
-input bits, and where in the output its answer sits -- were readable from
-Python and from nowhere else.  A shell user could run every one of the
-languages that do not simply print their answer, and could not judge one of
-them: some languages' answer is a mark on one cell of a grid.
+``describe`` and ``read-answer`` expose the two facts behind every wrong
+answer this tool handed out -- how a language wants its input bits, and where
+its answer sits in the output (for some, a mark on one cell of a grid) --
+which were otherwise readable only from Python.
 
-Exit codes separate the failures a caller handles differently: **2** is a
-usage error (an unknown command, option, or language -- nothing ran), **1**
-is the program's own failure (it read past its input, halted on an invalid
-operation, was a template), and **124** is a run stopped by ``--timeout``,
-after timeout(1) -- from every command that takes one, not only ``run`` and
-``debug``.  That last one used to be 1 as well, which left the three
-languages whose answer *is* a timeout indistinguishable from a crash.
-Only
-an unexpected error still reaches the terminal as a traceback, which is what
-a traceback should mean.
+Exit codes: **2** is a usage error (unknown command, option, or language;
+nothing ran), **1** is the program's own failure (read past its input, halted
+on an invalid operation, was a template), and **124** is a run stopped by
+``--timeout``, after timeout(1), from every command that takes one.  124 is
+distinct from 1 so the three languages whose answer *is* a timeout are not
+confused with a crash.  Only an unexpected error reaches the terminal as a
+traceback.
 """
 
 from __future__ import annotations
@@ -41,6 +36,7 @@ import os
 import re
 import sys
 from collections.abc import Callable
+from contextlib import suppress
 from itertools import pairwise
 from typing import cast
 
@@ -129,7 +125,7 @@ _VALUE_FILTERS: dict[str, tuple[tuple[str, ...], Callable[[str], object]]] = {
     ),
     "--state-model": (STATE_MODELS, lambda name: describe(name)["state_model"]),
     "--shape": (SHAPES, lambda name: describe(name)["shape"]),
-    "--input-shape": (INPUT_SHAPES, lambda name: LANGUAGES[name].contract.input_shape),
+    "--input-shape": (INPUT_SHAPES, lambda name: describe(name)["input_shape"]),
     "--width-effect": (WIDTH_EFFECTS, lambda name: describe(name)["width_effect"]),
 }
 
@@ -214,9 +210,7 @@ def _list(rest: list[str]) -> None:
                         "state_model": facts["state_model"],
                         "shape": facts["shape"],
                         "answer_mode": facts["answer_mode"],
-                        "input_shape": (
-                            facts["input_shape"] if facts["reads_input"] else None
-                        ),
+                        "input_shape": facts["input_shape"],
                         "random": facts["random"],
                         "width_effect": facts["width_effect"],
                         # The three the marker column encodes, spelled out.
@@ -358,12 +352,33 @@ def _generate(rest: list[str]) -> None:
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
-    _emit(program, plain="--plain" in flags)
+    binary = isinstance(program, Raster) or (
+        isinstance(program, CompressedText) and "--plain" not in flags
+    )
+    if binary and sys.stdout.isatty():
+        # Unary's gzip once landed on a terminal unannounced.
+        _fail(
+            f"{describe(rest[0])['name']} generates "
+            f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
+            f"redirect stdout to a file"
+            + ("" if isinstance(program, Raster) else " or pass --plain")
+        )
+    with _errors():  # A raster renders here, and may exceed the pixel limit.
+        _emit(program, plain="--plain" in flags)
+
+
+def _printable(value: object) -> str:
+    """Return ``value`` as text that stays on one line.
+
+    INTERCAL's zero answer ends in a newline; printed raw it split its line.
+    """
+    text = str(value)
+    return text if text.isprintable() else repr(text)[1:-1]
 
 
 def _answer_sentence(facts: LanguageInfo) -> str:
     """State where the answer bit lives, in the terms a shell user needs."""
-    zero, one = facts["answer_encoding"]
+    zero, one = map(_printable, facts["answer_encoding"])
     mode = facts["answer_mode"]
     if mode == "termination":
         text = f"termination ({zero} for 0, {one} for 1)"
@@ -442,7 +457,8 @@ def _describe(rest: list[str]) -> None:
     with _errors():
         facts = describe(rest[0])
     if as_spec:
-        print(json.dumps(facts, indent=2) if as_json else facts["spec"])
+        # ``--json`` encodes the spec; it printed every fact, ignoring --spec.
+        print(json.dumps(facts["spec"]) if as_json else facts["spec"])
         return
     if as_json:
         # Verbatim, including the keys the reading layout hides: a caller
@@ -453,15 +469,15 @@ def _describe(rest: list[str]) -> None:
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
-    embeds_bits = not facts["reads_input"] and facts["parameterized"]
-    hidden = {"input_shape", "input_encoding"} if embeds_bits else set()
     name = str(facts["name"])
     print(name)
-    if embeds_bits:
+    if facts["parameterized"]:
         print(
             "input: none -- this generator embeds the bits in the program: "
             f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
         )
+    elif not facts["reads_input"]:
+        print("input: none -- this language reads no stdin")
     else:
         print(f"input: {_input_sentence(facts)}")
     print(f"answer: {_answer_sentence(facts)}")
@@ -477,9 +493,13 @@ def _describe(rest: list[str]) -> None:
     details = [(key, shown_facts[key]) for key in _DETAIL_KEYS]
     width = max(len(key) for key, _value in details)
     for key, value in details:
-        if value is None or value == "" or key in hidden:
+        if value is None or value == "":
             continue
-        shown = " ".join(str(v) for v in value) if isinstance(value, tuple) else value
+        shown = (
+            " ".join(map(_printable, value))
+            if isinstance(value, tuple)
+            else _printable(value)
+        )
         print(f"  {key.ljust(width)}  {shown}")
 
 
@@ -512,22 +532,44 @@ def _read_answer(rest: list[str]) -> None:
 def main() -> None:
     """Dispatch the ``esolangs`` subcommands, and handle an interrupt.
 
-    ``KeyboardInterrupt`` is caught here because this tool *invites* it:
-    on a language that answers by not terminating it prints "will run until
-    you stop it", and then dumped a traceback when the reader did. 130 is
-    the shell convention for a command killed by SIGINT.
+    ``KeyboardInterrupt`` is caught because a language that answers by not
+    terminating prints "will run until you stop it", inviting the interrupt;
+    exit 130 is the shell convention for SIGINT.
 
-    ``BrokenPipeError`` likewise: ``esolangs generate ... | head`` is an
-    ordinary thing to type, and closing the pipe before the first write
-    left ``Exception ignored while flushing sys.stdout`` on the terminal
-    and exit 120.
+    ``BrokenPipeError`` likewise: ``esolangs generate ... | head`` closes the
+    pipe before the first write, which otherwise left ``Exception ignored
+    while flushing sys.stdout`` on the terminal and exit 120.
 
-    Anything else is a bug in this package rather than in the program
-    being run, and exits 70 with a one-line report instead of a
-    traceback.
+    Anything else is a bug in this package, not the program being run, and
+    exits 70 with a one-line report instead of a traceback.
     """
+    for stream in (sys.stdout, sys.stderr):
+        # An ASCII locale (or PYTHONIOENCODING=ascii) cannot encode Forþ:
+        # `list` died mid-line with exit 70.  Escape instead.
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            # A closed stream refuses; the write that follows reports it.
+            with suppress(ValueError, OSError):
+                reconfigure(errors="backslashreplace")
+    if sys.stderr is None or getattr(sys.stderr, "closed", False):
+        # Started with fd 2 closed (``2>&-``): every note and error wrote to
+        # None, so even a successful `run` printed nothing and exited 1.
+        sys.stderr = open(os.devnull, "w")  # noqa: SIM115 - lives for the run
+    if sys.stdout is None or getattr(sys.stdout, "closed", False):
+        # A closed stream object, in process, is the same case: it exited 70.
+        # Started with fd 1 closed (``esolangs list >&-``): ``print`` drops
+        # silently and the flush below raised AttributeError, exit 70.  The
+        # same outcome as a pipe closed early, so the same exit.
+        sys.stderr.write("stdout is closed; nothing was written\n")
+        sys.exit(120)
     try:
-        _dispatch()
+        try:
+            _dispatch()
+        except SystemExit:
+            # An early exit flushes here too: `debug`'s exit 1 into a closed
+            # pipe printed "Exception ignored while flushing sys.stdout".
+            sys.stdout.flush()
+            raise
         # Flushed here, where the failure is catchable.  Python flushes
         # stdout again during interpreter shutdown, and a pipe closed
         # before the first write made *that* print "Exception ignored
@@ -571,7 +613,10 @@ def _dispatch() -> None:
         print(f"esolangs {__version__}")
         sys.exit(0)
     if cmd in ("--help", "-h", "help"):
-        sys.stdout.write(HELP[rest[0]] if rest and rest[0] in HELP else USAGE)
+        if rest and rest[0] not in HELP:
+            # `help nope` printed the usage and exited 0.
+            _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(HELP))}")
+        sys.stdout.write(HELP[rest[0]] if rest else USAGE)
         sys.exit(0)
     if cmd not in HELP:
         # Languages and options both suggest a near miss; the subcommands

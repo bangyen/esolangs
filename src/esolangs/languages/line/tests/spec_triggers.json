@@ -1,0 +1,22 @@
+{
+ "triggers": [
+  {
+   "generate": "01",
+   "stdin": "x",
+   "expect": "ArgumentError",
+   "claim": "an input token that is not an integer"
+  },
+  {
+   "generate": "01",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "an input read at EOF"
+  },
+  {
+   "program_hex": "ffd8ffe03030303030303030303030303030303030303030",
+   "expect": "ProgramError",
+   "claim": "a JPEG or unreadable PNG",
+   "stdin": ""
+  }
+ ]
+}

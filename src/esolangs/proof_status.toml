@@ -248,6 +248,18 @@ workspace = "poly n: worst 13 + bl(lines) + bl(n) bits: two cells, a line cursor
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Caballo"
+labels = ["tree"]
+qualification = """\
+    the inputs are the initial stack; each node is the wiki's conditional, `d` dropping \
+    a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack \
+    survives; equal halves pop untested and constant subtables fold"""
+scaling = "linear: at most 14T characters, subtree_ids folding"
+execution = "poly n: worst n(n+1)/2 + 15n + 1 commands: empty groups skip whole"
+workspace = "poly n: at most 4n² + 16n·bl(L) + 96 bits: a sum frame's base a level"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Circlefuck"
 labels = ["linear lookup"]
 qualification = """\
@@ -429,19 +441,6 @@ execution = """\
     linear: worst 2T + 13n + 1 commands: one per program character, then the final \
     frame pop"""
 workspace = "linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a stack"
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
-generator = "Factor"
-labels = ["tree"]
-qualification = """\
-    Brainfuck tree over the essential inputs followed by a total arbitrary-precision \
-    segmented-sieve encoding; fixed-modulus short intervals bound its adaptive \
-    residue sequence; unused level flags defer repeated residuals in depth order"""
-scaling = """\
-    lower bound: tight language and generated Theta(T log T) ([summary](#factor-bound))"""
-execution = "poly n: worst 265n + 231 commands; the prelude is at most 247n + 240 past n=1"
-workspace = "poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits"
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
@@ -693,6 +692,123 @@ workspace = """\
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
+generator = "Object disoriented"
+labels = ["tree"]
+qualification = """\
+    a node keeps its input bit in `t` and its negation in `a`, via an object that \
+    is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; \
+    equal halves drop the bit untested and constant subtables fold"""
+scaling = "linear: at most 39T + 21 characters: 35 a node, 4 a leaf"
+execution = "poly n: worst 67n + 34 commands: one tree path, 67 ops a level"
+workspace = """\
+    poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3) + \
+    2bl(L)+bl(6n+8)+bl(6n+9)+bl(n)+19 bits: two frames and six cells a level"""
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "SendStuff"
+labels = ["tree"]
+qualification = """\
+    each distinct subtable is one named node reached by reference; an Input node \
+    sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; \
+    equal halves and constant chains read their bits unbranched"""
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "poly n: worst 4n + 2 steps: four sends a level, root and leaf one each"
+workspace = """\
+    poly n: at most (n+1)(bl(L)+10) + bl(n) bits: a pending frame for each 1 \
+    taken, one sending frame"""
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "Quassaunt"
+labels = ["tree"]
+qualification = """\
+    each distinct subtable's code is stored once in a global and run by name; a \
+    node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; \
+    equal halves and constant chains read their bits unbranched"""
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "linear: at most 5⌊L/57⌋ + 21n + 9 steps: five a stored node, 21 a level"
+workspace = """\
+    linear: at most 24L bits: the running code, the stored code and the stack, \
+    each within the source"""
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "1 + i"
+labels = ["tree"]
+qualification = """\
+    a node pushes its two children as function literals, reads its bit with `B` \
+    and `?` invokes one; constant subtables read their remaining bits unbranched"""
+scaling = "linear: at most 10.5T - 10 characters, ten a node"
+execution = "poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b"
+workspace = "poly n: at most 4bl(L) + 40 bits: two functions, a decider and a frame"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "Pointless"
+labels = ["tree"]
+qualification = """\
+    each distinct subtable is one function; `,=` maps a character to its bit \
+    through the cells 48 and 49, and `[` tests the bit's cell; the one `!` \
+    seeds the 1s that make `+` an increment"""
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "poly n: worst 26n + 311 steps: setup, then 26 a level"
+workspace = "poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "Ascenic"
+labels = ["tree"]
+qualification = """\
+    Horner's rule by built `-2` constants makes each row's code `base + 2r`; \
+    `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the \
+    parity answers; straight-line code, no jump"""
+scaling = """\
+    lower bound: tight language and generated Theta(T**2) \
+    ([summary](#ascenic-bound))"""
+execution = "linear: worst 2T + 7n + 3 - 2⌊n/2⌋ commands: alternating answers, two lines a change"
+workspace = "poly n: at most 3n + bl(n) + 15 bits: line index, scale times code, input cursor"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "Fackward"
+labels = ["tree"]
+qualification = """\
+    a level is a block whose quiet pass reads the bit; `/ c 49` makes it 0 \
+    or 1, that many `~` swap the two child blocks, `!` drops one and `)` \
+    runs the other; equal halves fold"""
+scaling = "linear: one block a node; a subtable repeated under two parents is copied"
+execution = "poly n: worst 40n + 4 steps: 40 a level, then print and halt"
+workspace = "linear: at most 8L bits: the two stacks hold the program's tokens"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "What!?"
+labels = ["linear lookup"]
+qualification = """\
+    Horner's rule reads each bit with `??` and doubles by `*`; the index \
+    counts down one `-` a row, so at change point `b` it wraps above `2^k` \
+    exactly when the row is below `b`, and `[2^k>` writes the answer slot; \
+    past 15 inputs `???` puts the high bits in the index slot's string, and \
+    a guard per `2^15`-row block reloads the index"""
+scaling = "linear: one `-` a row and one test a change point"
+execution = "linear: worst 6T + 6n + 5 commands: alternating answers, every conditional true"
+workspace = "poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: the 256-slot tape"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "Codesick"
+labels = ["tree"]
+qualification = """\
+    each distinct subtable is one labelled node; it appends its marker to the \
+    unread bits, and a substring test for `0` before the marker reads the last \
+    bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump"""
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "poly n: worst 3n + 1 steps: three a level, the leaf one"
+workspace = "poly n: at most 24n + 16 bits: the unread bits and one marker"
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
 generator = "Packlang"
 labels = ["linear lookup"]
 qualification = "one 128-row array block, painted inside the `If` that selects it"
@@ -723,20 +839,6 @@ labels = ["finite lookup"]
 qualification = """\
     each table entry is pushed and an input index selects its output; literal \
     products replace conjunction tables"""
-scaling = "linear: one bounded-width strip with O(T) codels"
-execution = """\
-    linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation"""
-workspace = """\
-    linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the \
-    stack"""
-evidence = "docs/proofs/index.md#generator-ledger"
-
-[[ledger]]
-generator = "Piet++"
-labels = ["finite lookup"]
-qualification = """\
-    Piet's lookup recoloured into Piet++ deltas: each table entry is pushed and an \
-    input index rolls its output up; literal products replace conjunction tables"""
 scaling = "linear: one bounded-width strip with O(T) codels"
 execution = """\
     linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation"""
@@ -800,6 +902,18 @@ execution = """\
 workspace = """\
     linear: at most 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n) bits: 2T + 7 \
     cells"""
+evidence = "docs/proofs/index.md#generator-ledger"
+
+[[ledger]]
+generator = "Rubic"
+labels = ["tree"]
+qualification = """\
+    every subtree undoes its `r2` store, so the cube is one of two states and each \
+    table expression is checked on both; equal halves read untested and constant \
+    subtables fold"""
+scaling = "linear: at most 94T characters, subtree_ids folding"
+execution = "poly n: at most 20n + 7 commands: a node runs 20 at most"
+workspace = "poly n: at most (3n+4)·bl(L) + 3n + 175 bits: n+1 loop frames, the cube"
 evidence = "docs/proofs/index.md#generator-ledger"
 
 [[ledger]]
@@ -1051,11 +1165,11 @@ output_size = "Linear"
 evidence = "docs/proofs/index.md#exceptions-and-walls"
 
 [[audit]]
-generator = "Factor"
+generator = "Ascenic"
 totality = "Total"
 generation_time = "Language lower bound"
 output_size = "Language lower bound"
-evidence = "docs/proofs/index.md#factor-bound"
+evidence = "docs/proofs/index.md#ascenic-bound"
 
 [[audit]]
 generator = "Malbolge"

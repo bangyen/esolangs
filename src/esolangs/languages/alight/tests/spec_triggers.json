@@ -1,0 +1,30 @@
+{
+ "triggers": [
+  {
+   "program": "begin;out c;end;",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: unknown name at runtime"
+  },
+  {
+   "program": "var a;end;",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: no begin"
+  },
+  {
+   "program": "begin;var c;inp c;end;",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "inp at EOF reads eof without raising"
+  },
+  {
+   "program": "begin;var c;set c 65;out c;end;",
+   "stdin": "",
+   "expect": "output",
+   "output": "A",
+   "claim": "program runs to end"
+  }
+ ]
+}

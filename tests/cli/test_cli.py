@@ -1,5 +1,6 @@
 """Unit tests for the esolangs command-line interface."""
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -9,11 +10,13 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
+from esolangs.registry import LANGUAGES
 from tests.support.cli_support import _FakeStdin, _program, _refused
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
 _RASTER = first(source_kind="raster", boolean_generator=True)
+_GZIP = next(n for n, lang in LANGUAGES.items() if lang.compressed_source)
 
 RASTER = first(source_kind="raster", boolean_generator=True)
 TEMPLATED = first(parameterized=True)
@@ -62,6 +65,87 @@ class TestInProcess:
             esolangs.read_answer(_RASTER, esolangs.run(_RASTER, image, stdin=stdin))
             == "1"
         )
+
+    def test_an_oversized_scale_is_a_usage_error(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It rendered outside the error handler: internal error, exit 70."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "--scale", "999999999", _RASTER, "0110"], capsys)
+        assert exc.value.code == 2
+        assert "pixel limit" in capsys.readouterr().err
+
+    def test_break_at_on_a_coordinate_ip_is_a_usage_error(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A grid language's refusal surfaced as an internal error, exit 70."""
+        grid = first(state_model="grid", source_kind="text")
+        path = tmp_path / "p.txt"
+        path.write_text("@")
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "--break-at", "3", grid, str(path)], capsys)
+        assert exc.value.code == 2
+
+    @pytest.mark.parametrize("closed_streams", ["stdout", "both"])
+    def test_a_closed_stdout_object_exits_120(self, closed_streams: str) -> None:
+        """A closed stream object exited 70 (or raised, stderr closed too)."""
+        import io
+
+        closed = io.TextIOWrapper(io.BytesIO())
+        closed.close()
+        with (
+            patch.object(sys, "argv", ["esolangs", "list"]),
+            patch.object(sys, "stdout", closed),
+            patch.object(
+                sys, "stderr", closed if closed_streams == "both" else io.StringIO()
+            ),
+            pytest.raises(SystemExit) as exc,
+        ):
+            main()
+        assert exc.value.code == 120
+
+    def test_break_at_takes_a_negative_position(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Subleq and AddSubJump halt at -1 and -8; the flag refused them."""
+        path = tmp_path / "p.txt"
+        path.write_text("+")
+        assert "stopped" in call_main(
+            ["debug", "--break-at", "-1", REFERENCE, str(path)], capsys
+        )
+
+    def test_help_for_an_unknown_command_fails(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`help zzz` printed the usage and exited 0."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["help", "zzz"], capsys)
+        assert exc.value.code == 2
+        assert "unknown command: zzz" in capsys.readouterr().err
+
+    def test_partial_output_on_a_pipe_is_byte_exact(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A failed run added "\\n" to a pipe, against `run --help`."""
+        path = tmp_path / "p.txt"
+        path.write_text("+.,")
+        with pytest.raises(SystemExit):
+            call_main(["run", REFERENCE, str(path)], capsys)
+        assert capsys.readouterr().out == "\x01"
+
+    def test_max_memory_names_the_flags(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        path = tmp_path / "p.txt"
+        path.write_text("+")
+        with pytest.raises(SystemExit):
+            call_main(["run", "--max-memory", "1000", REFERENCE, str(path)], capsys)
+        assert "--max-memory requires --isolated" in capsys.readouterr().err
+
+    def test_spec_json_is_the_spec(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """``--spec --json`` printed every fact, ignoring ``--spec``."""
+        out = call_main(["describe", "--spec", "--json", REFERENCE], capsys)
+        assert json.loads(out) == esolangs.describe(REFERENCE)["spec"]
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -274,6 +358,17 @@ class TestOutputAndAbridging:
             assert call_main(["run", REFERENCE, str(program)], capsys) == "\x01\n"
         assert call_main(["run", REFERENCE, str(program)], capsys) == "\x01"
 
+    def test_binary_programs_refuse_a_terminal(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """PNG and gzip bytes went to the terminal unannounced."""
+        with patch.object(sys.stdout, "isatty", lambda: True):
+            for args in (["generate", _RASTER, "0110"], ["generate", _GZIP, "01"]):
+                with pytest.raises(SystemExit) as exit_:
+                    call_main(args, capsys)
+                assert exit_.value.code == 2
+                assert "redirect stdout" in capsys.readouterr().err
+
     def test_a_long_watch_history_is_abridged(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -406,10 +501,6 @@ _REFUSALS = {
     "a_negative_step_bound_is_refused": (
         "debug --steps -1 brainfuck prog:+",
         "must not be negative",
-    ),
-    "a_negative_break_at_is_refused": (
-        "debug --break-at -1 brainfuck prog:+",
-        "--break-at must not be negative",
     ),
     "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
 }

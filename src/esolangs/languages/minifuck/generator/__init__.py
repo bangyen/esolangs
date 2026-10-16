@@ -1,8 +1,19 @@
-"""Build Minifuck Boolean templates by input substitution.
+"""Minifuck Boolean program generator: input substitution into a positional template.
 
-Affine and two-residual candidates keep their state in output bit 7; ignored
-setters write beyond the output byte. A positional strip supplies the size floor.
+Races the positional decoder against byte-accumulator forms.  Affine and
+two-residual candidates keep their state in output bit 7; ignored setters
+write beyond the output byte.  A positional strip supplies the size floor.
 The simulator laws are pinned differentially against the interpreter.
+
+Size:
+    Parity is O(n) through the affine column, other tables O(T).
+    n=16 parity: 489 chars, n=10 random 1847: 40,581 chars.
+
+Decisions:
+    Seeded n=16 affine: 552.8 characters against 30,849.8 positional.
+    :func:`two_state` allows at most two residuals per level, :func:`stored`
+    each residual once within the positional length; each wins up to ~90% on
+    tables it fits (stored from n=12).
 """
 
 import re
@@ -24,7 +35,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     unmark,
 )
-from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import (
     _MINIFUCK_COMMAND,
     _RUN,
@@ -181,14 +192,8 @@ def _overflow_score(program: str, width: int) -> tuple[int, int]:
 
 
 def minifuck(truth_table: str, width: int | None = None) -> str:
-    """Build a Minifuck template for the given truth table.
+    """Build a Minifuck template; ``width`` set: least overflow, then smallest.
 
-    Races the positional decoder against byte-accumulator forms and keeps the
-    smallest (``width`` set: least overflow, then smallest).  An affine table
-    uses the parity column (seeded n=16: 552.8 characters against 30,849.8
-    positional).  Other tables try :func:`two_state` (at most two residuals
-    per level) and :func:`stored` (each residual once, within the positional
-    length); each wins up to ~90% on tables it fits (stored from n=12).
     Defaults retain ``(xx, [<)`` setters; narrow columns use ``(x, [)``.
     """
     n = _validate_truth_table(truth_table)
@@ -370,34 +375,17 @@ def _lookup_balance(table: str, default: str) -> str:
         narrow = _tokens(_lookup_layout(table, n, default, lower), n)
         width = balanced_token_width(narrow, minimum=lower, maximum=floor - 1)
         candidates.append(_lookup_layout(table, n, default, width))
-    best = min(candidates, key=balance_score)
-    gaps = tuple(b - a - 1 for a, b in pairwise(essential_inputs(table, n)))
-    if gaps and (gaps[-1] or max(gaps) > 1):
-        # Dropping the penultimate selector gave 40x39 against the old square
-        # at n=6. Comments after the last instruction recover the square.
-        return min(best, _square_tail(best), key=balance_score)
-    return best
-
-
-def _square_tail(program: str) -> str:
-    """Square a layout with inert whitespace after its final instruction."""
-    rows = program.split("\n")
-    width = max(map(len, rows))
-    height = len(rows)
-    return (
-        program + "\n" * (width - height)
-        if height < width
-        else program + " " * (height - len(rows[-1]))
-    )
+    # No inert padding: it adds length and never shrinks the rendered side.
+    return min(candidates, key=balance_score)
 
 
 def _shared_form(shared: str, n: int, *, sqrt_wrap: bool) -> str:
     """Wrap a shared-residual template square-ish."""
     tokens = _tokens(shared, n)
-    # A unary tape walk can contain O(T) tokens. A square-root wrap and
-    # inert tail give a square without enumerating token-fit widths.
+    # A unary tape walk can contain O(T) tokens. A square-root wrap gives a
+    # square-ish fold without enumerating token-fit widths.
     width = (
-        max(isqrt(len(shared)) + 1, max(map(len, tokens)))
+        max(isqrt(CELL_ASPECT * len(shared)) + 1, max(map(len, tokens)))
         if sqrt_wrap
         else balanced_token_width(tokens, minimum=max(map(len, tokens)))
     )
@@ -421,12 +409,7 @@ def _balance(table: str, default: str) -> str:
     candidates = [positional]
     if len(default) <= len(positional):
         candidates.append(default)
-    for shared in forms:
-        candidates.extend(
-            candidate
-            for candidate in (shared, _square_tail(shared))
-            if len(candidate) <= len(positional)
-        )
+    candidates.extend(shared for shared in forms if len(shared) <= len(positional))
     return min(candidates, key=balance_score)
 
 

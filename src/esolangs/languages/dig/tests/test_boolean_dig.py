@@ -703,15 +703,21 @@ def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
         assert (io.getvalue(), io.reads) == (expected, n)
 
 
-def test_balance_keeps_the_square_discard_wrapper() -> None:
-    table = "01100110"
-    default = boolean.dig(table).splitlines()
+def test_balance_considers_the_discard_wrapper() -> None:
+    from esolangs.generation.helpers import essential_inputs
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.dig.generator import _dig_discarded
+
+    # The first input is ignored, so the discard column applies: 21x13 against
+    # the default's 22x8, which renders the smaller square.
+    table = "0000011100000111"
+    wrapped = _dig_discarded(table, 4, essential_inputs(table, 4))
+    assert wrapped is not None
     program = esolangs.generate("Dig", table, balance=True)
-    balanced = program.splitlines()
-    assert (len(default), max(map(len, default))) == (7, 17)
-    assert (len(balanced), max(map(len, balanced))) == (12, 12)
-    for row, expected in enumerate(table):
-        assert run_dig(program, list(format(row, "03b"))) == expected
+    assert balance_score(program) <= balance_score(wrapped)
+    for candidate in (wrapped, program):
+        for row, expected in enumerate(table):
+            assert run_dig(candidate, list(format(row, "04b"))) == expected
 
 
 @pytest.mark.parametrize("n", range(1, 9))

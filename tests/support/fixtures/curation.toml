@@ -1,4 +1,5 @@
 checked = "2026-10-06"
+bf_derivatives_checked = "2026-10-15"
 
 [languages]
 "///" = { backlinks = 86, route = "fame" }
@@ -13,14 +14,15 @@ ArrowQueue = { backlinks = 3, route = "first implementation" }
 B-tapemark = { backlinks = 2, route = "first implementation" }
 Back = { backlinks = 1, route = "first implementation" }
 Befunge = { backlinks = 382, route = "fame" }
-BFStack = { backlinks = 3, route = "first implementation" }
+BFStack = { backlinks = 3, route = "first implementation", bf_derivative = true }
 Bitdeque = { backlinks = 5, route = "first implementation" }
 "Bitwise Cyclic Tag" = { backlinks = 179, route = "fame" }
 "bit~" = { backlinks = 1, route = "first implementation" }
-Boolfuck = { backlinks = 76, route = "fame" }
+Boolfuck = { backlinks = 76, route = "fame", bf_derivative = true }
 brainfuck = { backlinks = 2031, route = "fame" }
-BrainIf = { backlinks = 5, route = "first implementation" }
-Circlefuck = { backlinks = 5, route = "first implementation" }
+BrainIf = { backlinks = 5, route = "first implementation", bf_derivative = true }
+Caballo = { backlinks = 1, route = "first implementation" }
+Circlefuck = { backlinks = 5, route = "first implementation", bf_derivative = true }
 "Circuit Diagram" = { backlinks = 5, route = "first implementation" }
 Clockwise = { backlinks = 4, route = "first implementation" }
 "Collatz Multiverse" = { backlinks = 2, route = "first implementation" }
@@ -34,7 +36,6 @@ Dig = { backlinks = 11, route = "first implementation" }
 Dimensional = { backlinks = 9, route = "first implementation" }
 EGL = { backlinks = 2, route = "first implementation" }
 Eval = { backlinks = 3, route = "first implementation" }
-Factor = { backlinks = 13, route = "first implementation" }
 FALSE = { backlinks = 90, route = "fame" }
 Fargo = { backlinks = 3, route = "first implementation" }
 Fish = { backlinks = 91, route = "fame" }
@@ -48,24 +49,23 @@ Grapheme = { backlinks = 3, route = "first implementation" }
 Inject = { backlinks = 4, route = "first implementation" }
 INTERCAL = { backlinks = 100, route = "fame" }
 Interprogck8 = { backlinks = 4, route = "first implementation" }
-LaserFuck = { backlinks = 1, route = "first implementation" }
+LaserFuck = { backlinks = 1, route = "first implementation", bf_derivative = true }
 Line = { backlinks = 2, route = "first implementation" }
 Malbolge = { backlinks = 130, route = "fame" }
-Minifuck = { backlinks = 9, route = "first implementation" }
+Minifuck = { backlinks = 9, route = "first implementation", bf_derivative = true }
 "Minsky Swap" = { backlinks = 9, route = "first implementation" }
 Modulous = { backlinks = 6, route = "first implementation" }
 "Nope." = { backlinks = 128, route = "fame" }
 Packlang = { backlinks = 4, route = "first implementation" }
-Painfuck = { backlinks = 3, route = "first implementation" }
+Painfuck = { backlinks = 3, route = "first implementation", bf_derivative = true }
 Piet = { backlinks = 65, route = "fame" }
-"Piet++" = { backlinks = 8, route = "first implementation" }
 Polynomial = { backlinks = 6, route = "first implementation" }
 Qoibl = { backlinks = 3, route = "first implementation" }
 RAM0 = { backlinks = 6, route = "first implementation" }
-ROTfuck = { backlinks = 3, route = "first implementation" }
+ROTfuck = { backlinks = 3, route = "first implementation", bf_derivative = true }
 "S*bleq" = { backlinks = 4, route = "first implementation" }
 "SLOW ACV MAMMALIAN" = { backlinks = 1, route = "first implementation" }
-Smallfuck = { backlinks = 66, route = "fame" }
+Smallfuck = { backlinks = 66, route = "fame", bf_derivative = true }
 Smu = { backlinks = 4, route = "first implementation" }
 SStack = { backlinks = 4, route = "first implementation" }
 Streetcode = { backlinks = 2, route = "first implementation" }
@@ -75,8 +75,18 @@ Suffolk = { backlinks = 5, route = "first implementation" }
 Taglate = { backlinks = 3, route = "first implementation" }
 thisthat = { backlinks = 6, route = "first implementation" }
 Thue = { backlinks = 158, route = "fame" }
-Unary = { backlinks = 63, route = "fame" }
+Unary = { backlinks = 63, route = "fame", bf_derivative = true }
 Underload = { backlinks = 167, route = "fame" }
 Unlambda = { backlinks = 89, route = "fame" }
 Unsquare = { backlinks = 4, route = "first implementation" }
 Vandevelo = { backlinks = 3, route = "first implementation" }
+Rubic = { backlinks = 4, route = "first implementation" }
+"Object disoriented" = { backlinks = 6, route = "first implementation" }
+SendStuff = { backlinks = 3, route = "first implementation" }
+Quassaunt = { backlinks = 3, route = "first implementation" }
+Codesick = { backlinks = 2, route = "first implementation" }
+"1 + i" = { backlinks = 1, route = "first implementation" }
+Pointless = { backlinks = 0, route = "first implementation" }
+Ascenic = { backlinks = 0, route = "first implementation" }
+Fackward = { backlinks = 0, route = "first implementation" }
+"What!?" = { backlinks = 0, route = "first implementation" }

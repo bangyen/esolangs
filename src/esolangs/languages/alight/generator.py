@@ -1,12 +1,16 @@
-"""Boolean-function generator for Alight.
+"""Alight Boolean program generator: a Horner row index into a string literal.
 
 Derived, not transliterated (the page is unimplemented).  Alight's
 ``at{list, index}`` takes the index as an expression, so the table is a
 string literal and the input bits fold into its row by Horner's rule,
-``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset: O(n)
-commands over an O(2**n) literal, no branching.  That is why its
-``shape`` is ``LOOKUP``: a 0% fold is the construction working: a literal has
-no subtrees to fold or share.  The reads are unconditional and first.
+``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset.  The reads
+are unconditional and first.
+
+Size:
+    O(n) commands over an O(2**n) literal, no branching.
+    n=10 random 1847: 1,227 chars, n=16 random 1847: 65,837 chars.
+    A zero fold is the construction working (``shape`` is ``LOOKUP``): a
+    literal has no subtrees to fold or share.
 """
 
 from collections.abc import Callable
@@ -20,7 +24,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.token_balance import near_even_counts
+from esolangs.generation.token_balance import near_even_counts, rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.interpreter._dialect import (
     EXPRESSION_SYNTAXES,
@@ -280,12 +284,10 @@ def alight(
 ) -> str:
     """Return an Alight program printing ``truth_table``'s entry for its input.
 
-    Reads ``n`` characters, folds them into the row by Horner, prints the
-    table character: a branch-free single line, ``O(2**n)`` literal plus
-    ``O(n)`` reads.  ``width`` is a hard bound; the layout minimizing
-    ``max(width, height)`` wins for infix, ties preferring less area.
-    Postfix folds commands or rotates them into one column.  Only
-    two-argument ``at`` is emitted, so every ``list_update`` runs it.
+    ``width`` is a hard bound; infix takes the layout minimizing
+    ``max(width, height)``, ties by area; postfix folds or rotates into one
+    column.  Only two-argument ``at`` is emitted, so every ``list_update``
+    runs it.
     """
     return _program(
         truth_table, width, expression_syntax=expression_syntax, list_update=list_update
@@ -662,8 +664,8 @@ def select_alight(table: str, n: int, width: int) -> str:
 
 
 def _squareness(width: int, height: int, length: int) -> tuple[int, int, int]:
-    """Rank a shape: imbalance, then length, then width (``balance_score``'s order)."""
-    return abs(width - height), length, width
+    """Rank a shape: rendered side, then length, then width, as ``balance_score``."""
+    return rendered_side(width, height), length, width
 
 
 def _balance_postfix(
@@ -680,15 +682,13 @@ def _balance_postfix(
     lower = max(length for _, length in pieces) + _EAST + 1
     upper = sum(length for _, length in pieces)
     while lower <= upper:
-        _, height, _, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
-        # Height is constant until the next row-fit transition; its nearest
-        # permitted width minimizes imbalance without a width sweep.
-        columns = min(max(height, lower), stop - 1)
-        width, height, length, _ = _fold_shape(pieces, (1, 0), columns, stop)
+        width, height, length, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
+        # Height is constant until the next row-fit transition and width
+        # never shrinks, so each transition's first width is its smallest side.
         score = _squareness(width, height, length)
         if score < best:
             best = score
-            selected = units, columns, (width, height, length)
+            selected = units, lower, (width, height, length)
         lower = stop
     if selected is None:
         return default

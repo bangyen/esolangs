@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.languages.line.generator.render import Node, chain, render
+from esolangs.languages.line.generator.layout import Node, chain
+from esolangs.languages.line.generator.render import render
 from esolangs.languages.line.interpreter import lattice
 from esolangs.languages.line.interpreter.extract import (
     crop_to_content,

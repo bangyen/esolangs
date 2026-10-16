@@ -2,12 +2,20 @@
 
 PUSH/INJECT append the register to the deque, POP/EJECT pop it (0 when
 empty), INVERT flips the register, GOTO N jumps to the Nth command,
-counting from 1 as "the Nth operation" reads, when it is nonzero; a
-target past the last command ends the run and a taken GOTO 0 raises
-:class:`HaltError` (the wiki leaves both open).  The wiki has no I/O,
-so the deque is printed space-separated when the program ends -- the
-repo's convention.  A word that is not one of the six upper-case commands
-raises :class:`ValueError`.
+counting from 1 as "the Nth operation" reads, when it is nonzero.
+
+Input/output:
+    No input.  The deque is printed space-separated when the program ends.
+
+Errors:
+    ProgramError: a word that is not one of the six upper-case commands.
+    HaltError: a taken ``GOTO 0``.
+
+Decisions:
+    * A target past the last command ends the run and a taken GOTO 0 raises
+      HaltError (the wiki leaves both open).
+    * The wiki has no I/O, so the deque is printed at the end -- the repo's
+      convention.
 """
 
 from __future__ import annotations
@@ -23,20 +31,14 @@ from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 
 class _State(NamedTuple):
-    """One instant of a run.
+    """One instant of a run; a value, so each transition returns a new one.
 
-    A value, not a record: every transition below returns a new one rather
-    than editing one in place, and the deque is a ``tuple`` for the same
-    reason.
-
-    ``rendered`` is state because the dump is a once-per-run effect that
-    happens *after* the cursor has passed the last token, so the position
-    alone cannot tell "about to print" from "already printed".  It stays out
-    of ``snapshot``, which reports the fields it always reported.
-
-    The tokens are deliberately not in the transition's view of the world,
-    but they *are* in ``snapshot`` -- which is where they already were, and
-    removing them would change every hash the cycle detector has stored.
+    The deque is a ``tuple`` for the same reason.  ``rendered`` is state
+    because the dump happens once, *after* the cursor passes the last token,
+    so position alone cannot tell "about to print" from "already printed";
+    it stays out of ``snapshot``.  The tokens are not in the transition's
+    view but are in ``snapshot``; removing them would change every hash the
+    cycle detector has stored.
     """
 
     ind: int  # token cursor

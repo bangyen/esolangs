@@ -274,12 +274,11 @@ def walls_violation(grid: _Grid, reachable: set[_ReachableCell]) -> str | None:
     """Name a cell whose wall neighbourhood matches no legal form.
 
     Width misses a one-cell hole (``-- --``); each reachable cell's 3x3
-    must match ``_WALL_FORMS`` up to rotation.  The forms let a wall
-    simply stop and admit any wall character at a corner -- whether a
-    divider must end in ``+`` is unsettled, and
-    the hello fixture leaves its ends bare.
-    Must run after the enclosure check: :func:`block` does not
-    bounds-check.  Returns ``None`` when every cell is fine.
+    must match ``_WALL_FORMS`` up to rotation.  The forms let a wall simply
+    stop and admit any wall character at a corner -- whether a divider must
+    end in ``+`` is unsettled, and the hello fixture leaves its ends bare.
+    Must run after the enclosure check: :func:`block` does not bounds-check.
+    Returns ``None`` when every cell is fine.
     """
     for cell in reachable:
         r, c = cell

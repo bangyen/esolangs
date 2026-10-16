@@ -45,18 +45,6 @@ install-dev:
     # local check: lint, types, and pytest.
     git config core.hooksPath .githooks
 
-# The formatter is ruff-format, run via pre-commit (and so via `just test`);
-# `ruff check` here catches lint that formatting does not.
-# lint python
-lint-python:
-    {{PYTHON}} -m ruff check .
-    {{PYTHON}} -m ruff format --check .
-    {{PYTHON}} -m mypy
-
-# lint all code
-lint: lint-python
-    @echo "All lint checks completed!"
-
 # Scoped to the files this branch touched; widens to everything when the diff
 # is unreadable or shared machinery moved.  Use `just test-full` to force the
 # whole tree.  Pass --quiet to suppress successful step output.
@@ -134,7 +122,7 @@ gendiff language *args:
 
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:
-    {{PYTHON}} scripts/ci/shard.py refresh --serial-node tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
+    {{PYTHON}} scripts/ci/shard.py refresh --serial-node src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
 
 # create interpreter, generator and test stubs; pass e.g. --category tape_based
 new-language name *args:
@@ -158,17 +146,11 @@ proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
 
-# language-owners: ["A Painter Ant"]
-# Not in `just test` or CI; run it when A Painter Ant's generator changes.
-# re-check the A Painter Ant uniform-in-n proof
-apa-proof:
-    {{PYTHON}} tests/proofs/deep/a_painter_ant.py
-
 # clean generated files
 clean:
     #!/usr/bin/env bash
-    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
+    find . \( -path ./.venv -o -path ./.claude \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
         | xargs -0 rm -rf
-    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o -name "*.pyc" -type f -delete
+    find . \( -path ./.venv -o -path ./.claude \) -prune -o -name "*.pyc" -type f -delete
     rm -rf build dist .coverage coverage.xml .mypy_cache .ruff_cache .pytest_cache
     find src tests -mindepth 1 -type d -empty -delete

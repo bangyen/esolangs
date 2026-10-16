@@ -3,35 +3,43 @@
 Single-line wires carry execution pointers; double-line wires carry a zero,
 one, or empty transfer. Every pointer advances once per cycle, ordered by node
 priority and grid position. Coincident pointers implement merges, logic, and
-barriers. Readings the page leaves open, each forced by a wiki example:
+barriers. The run halts at ``◉`` (end of its cycle) or when no pointer is
+left. ``◘`` uses the shared randomness hook, so callers may inject a
+reproducible source.
 
-- A node that sends data in execution mode (``◇□■▦◧⬓◨⬒◹◺``) also goes on
-  down its other execution wires (Kolakoski's ``▣─□─■─◹─■─◺`` chain, the
-  truth machine's ``■`` loop).
-- An arrow never sends a pointer back the way it came, so it is a diode;
-  without that the truth machine's ``1`` loop multiplies its pointers.  A
-  white arrow passes perpendicular flow straight through (the Cat's ``▽``
-  lets its end-of-input transfer by).
-- Only wires connect; touching nodes do not (Kolakoski's stacked ``⬒⬒``).
-- ``◉`` halts at the end of its cycle, so the truth machine's ``0``, reaching
-  its ``◇`` in the same cycle, still prints.
-- The bistack is the quadrant of cells ``(column, row)`` from 0.  The cursor
-  ``k`` sits on the diagonal and selects row ``k`` and column ``k``, each
-  beginning at the axis, so they share cell ``(k, k)``.  ``◹`` always moves
-  up; ``◺`` fails only at ``k = 0``.  The Cat pushes one bit per column, walks
-  down until that fails, then pops row 0 in input order.
+Input/output:
+    Input is newline-separated sets of 0 or 1 characters, other whitespace
+    ignored.  A read past the end of the current set, or at EOF, sends an
+    empty transfer and the run goes on.  An empty transfer into a data-mode
+    ``◇`` prints nothing; it is the page's "flag", which skips the rest of the
+    set and moves reads to the next.
 
-- Input is newline-separated sets of 0 or 1 characters, other whitespace
-  ignored.  A read past the end of the current set, or at EOF, sends an
-  empty transfer.  An empty transfer into a data-mode ``◇`` prints nothing; it
-  is the page's "flag", which skips the rest of the set and moves reads to the
-  next.  The page says "switching to the next set of input" but not how sets
-  are separated; the shared example needs two (program, data).
+Errors:
+    ProgramError: a branch state from another program (exhaustive
+        random-merge search only).
+    HaltError: no ``▣`` start node; a cell outside the wire and node
+        alphabets; an input character that is not 0 or 1.
 
-Malformed input, connections, or source
-raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
-hook, so callers may inject a reproducible source. A branch from another
-program is rejected with :class:`ValueError`.
+Decisions:
+    Readings the page leaves open, each forced by a wiki example:
+
+    * A node that sends data in execution mode (``◇□■▦◧⬓◨⬒◹◺``) also goes on
+      down its other execution wires (Kolakoski's ``▣─□─■─◹─■─◺`` chain, the
+      truth machine's ``■`` loop).
+    * An arrow never sends a pointer back the way it came, so it is a diode;
+      without that the truth machine's ``1`` loop multiplies its pointers.  A
+      white arrow passes perpendicular flow straight through (the Cat's ``▽``
+      lets its end-of-input transfer by).
+    * Only wires connect; touching nodes do not (Kolakoski's stacked ``⬒⬒``).
+    * ``◉`` halts at the end of its cycle, so the truth machine's ``0``,
+      reaching its ``◇`` in the same cycle, still prints.
+    * The bistack is the quadrant of cells ``(column, row)`` from 0.  The
+      cursor ``k`` sits on the diagonal and selects row ``k`` and column ``k``,
+      each beginning at the axis, so they share cell ``(k, k)``.  ``◹`` always
+      moves up; ``◺`` fails only at ``k = 0``.  The Cat pushes one bit per
+      column, walks down until that fails, then pops row 0 in input order.
+    * Sets are separated by newlines: the page says "switching to the next set
+      of input" but not how; the shared example needs two (program, data).
 """
 
 from __future__ import annotations
@@ -591,6 +599,8 @@ class _Machine:
     """thisthat shell: one immutable :data:`_Core`, rebound per cycle."""
 
     ip_shape = "grid"
+    #: A read at EOF sends an empty transfer and the run goes on.
+    eof_is_a_value = True
 
     def __init__(
         self, code: list[str], io: IO | None = None, rng: Randomness | None = None

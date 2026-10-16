@@ -1,4 +1,21 @@
-"""Boolean generator for collatz multiverse."""
+"""Collatz Multiverse Boolean program generator: a coded cell table and a decoder.
+
+Each input is read into a register; the essential ones are summed into an
+address that indexes an array ``A`` of four-row cells, and the last two inputs
+select a bit inside the decoded cell.  A constant table reads every input and
+prints one constant.  The shortest build over the essential inputs wins.
+
+Size:
+    O(T): one line per four-row cell plus four decoder lines per distinct
+    cell.  n=10 parity: 8,060 chars, n=10 and: 6,497 chars, n=10 random 1847:
+    11,744 chars.
+
+Decisions:
+    Cells of eight rows: more decoder lines than the ``T / 8`` they save
+    below fourteen inputs.  A decoder indexed by cell value rather than
+    code, and the empty cell on top code, lose or fall under the 10% bar
+    (:func:`_cm_codes`).
+"""
 
 import re
 from collections import Counter
@@ -19,8 +36,7 @@ __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 
 #: Table rows a Collatz Multiverse cell carries, and so its decoder's stride.
 #: A cell costs one line whatever its width and the decoder ``c`` lines per
-#: distinct cell: at most 64 for four, but up to 2048 for eight, more than
-#: the ``T / 8`` lines eight saves below fourteen inputs.
+#: distinct cell: at most 64 for four, but up to 2048 for eight.
 _CM_CHUNK = 4
 
 #: Cell-constant names: one character, and none a register spelled elsewhere.
@@ -40,9 +56,12 @@ def _cm_cells(
 ) -> None:
     """Append a block placing ``values`` at consecutive cells of ``array``.
 
-    ``capture`` takes the address one below the first cell -- a line rather
-    than a built constant, padded odd so the reader can sum even weights into
-    it.  A ``None`` value is left at its default, free in a trailing run.
+    An array subscript may name ``lineNumber``, so ``A[lineNumber] = z x + v``
+    drops ``v`` into the cell the writing line's own number addresses: one
+    line a cell, no pointer to advance.  ``capture`` takes the address one
+    below the first cell -- a line rather than a built constant, padded odd so
+    the reader can sum even weights into it.  A ``None`` value is left at its
+    default, free in a trailing run.
     """
     if (len(lines) + 1) % 2 == 0:
         lines.append(_CM_PAD)
@@ -113,8 +132,9 @@ def _cm_build(
     ``order`` names the inputs the address is built from, most significant
     first; its last two select a row within a cell and the rest index the
     cells.  An input it leaves out is still read, and never added.
-    ``numbered`` False stores each cell's own value as its code, the build
-    before :func:`_cm_codes` numbered cells.
+    A cell's code ``c`` has constant ``4 c`` (:func:`_cm_codes`); the decoder
+    holds its bit ``j`` at ``4 c + j``.  ``numbered`` False stores each cell's
+    own value as its code, the build before :func:`_cm_codes` numbered cells.
     ``narrow`` uses odd indices ``3 + 2 i`` and doubles address offsets.
     """
     address_scale = 2 if narrow else 1
@@ -164,7 +184,9 @@ def _cm_build(
     for i in range(n):
         lines.append(f"w{i}=zx+input,NOT PRINT.")
     # ``s`` sits one below the first cell, so the address wants the missing
-    # one -- folded into the only odd weight, which has to be added last.
+    # one -- folded into the only odd weight, which has to be added last:
+    # ``d = A x + B`` is ``d := B + d*A`` for a destination holding zero and
+    # ``d := d // 2`` for an even one, so nothing may halve the address.
     cells, select = order[:high], order[high:]
     for k, i in enumerate(cells[:-1]):
         lines.append(f"w{i}=k{address_scale * 2 ** (high - 1 - k)}x+z,NOT PRINT.")
@@ -263,25 +285,9 @@ def _cm_candidates(
 
 
 def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
-    """Build a Collatz Multiverse program computing the given truth table.
+    """Return a Collatz Multiverse program for ``truth_table`` (MSB first).
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
     ``width`` selects complete statements with fixed odd-index cells when needed.
-
-    The table is placed in cells and indexed, not walked.  An array subscript
-    may name ``lineNumber``, so ``A[lineNumber] = z x + v`` drops ``v`` into
-    the cell the writing line's own number addresses: such a block lays the
-    table out at consecutive addresses for one line a cell, no pointer to
-    advance.  Four rows ride in each cell, stored as a *code* ``c`` whose
-    constant is ``4 c`` (:func:`_cm_codes`), and the last two inputs select
-    within it through a decoder holding the cell's bit ``j`` at ``4 c + j``.
-    ``d = A x + B`` is ``d := B + d*A`` for a destination holding zero and
-    ``d := d // 2`` for an even one, so an address takes its odd weight last:
-    nothing halves it.
-
-    The shortest build over the essential inputs wins; an ignored input is
-    read and never added.
     """
     n = _validate_truth_table(truth_table)
     program = min(
@@ -382,10 +388,9 @@ def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
     ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
     :func:`_extend_plans`'s two-line trick.  Only referenced constants are built.
 
-    ``zero`` names the never-written register the language reads as 0.  It is
-    a parameter because the name is free -- any register never assigned reads
-    as 0 -- and a caller that spells zero on most of its lines wants the
-    shortest spelling.
+    ``zero`` names the never-written register the language reads as 0; the
+    name is free (any never-assigned register reads as 0), so a caller that
+    spells zero on most lines can pick the shortest.
     """
     need = sorted(n for n in set(needed) if n > 2)
     lines = [

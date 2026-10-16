@@ -1,0 +1,18 @@
+{
+ "triggers": [
+  {
+   "program": "Hi",
+   "stdin": "",
+   "expect": "output",
+   "output": "Hi",
+   "claim": "plain characters print; no stdin read"
+  },
+  {
+   "program": "/a/b/aaa",
+   "stdin": "",
+   "expect": "output",
+   "output": "bbb",
+   "claim": "rule replaces pattern repeatedly in the rest of the source"
+  }
+ ]
+}

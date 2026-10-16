@@ -178,8 +178,8 @@ class TestOutputSurvivesAFailure:
     ("language", "source", "hint", "code", "output"),
     [
         (REFERENCE, "[", "close this '[' with ']'", 2, ""),
-        ("Modulous", "[PSH INT 65][PRT][SWP]", "push two values before SWP", 1, "A\n"),
-        (REFERENCE, "+.,", "at least 1 input character", 1, "\x01\n"),
+        ("Modulous", "[PSH INT 65][PRT][SWP]", "push two values before SWP", 1, "A"),
+        (REFERENCE, "+.,", "at least 1 input character", 1, "\x01"),
     ],
 )
 def test_isolated_cli_preserves_error_hint_and_partial_output(

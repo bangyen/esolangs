@@ -1,10 +1,20 @@
-"""Boolean program generator for Modulous.
+"""Modulous Boolean program generator: the table is a pushed string literal.
 
-A string literal has no subtrees to fold or share.
+``PSH STR`` pushes the table so entry 0 is on top.  Each input is read and
+added into a counter at its weight (an ignored input is read and popped), then
+a ``JMP`` loop discards one entry per count and prints the entry left on top.
+
+Size:
+    T + a few dozen characters per input; one loop step per row index.
+    n=10 random 1847: 1,601 chars, n=12 random 1847: 4,777 chars.
+
+Decisions:
+    A string literal has no subtrees to fold or share.  Letting the first
+    read be the counter saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under
+    the 10% bar.
 """
 
 import re
-from itertools import pairwise
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -15,6 +25,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.token_balance import (
     balanced_token_width,
     near_even_counts,
+    rendered_side,
     run_widths,
 )
 from esolangs.generation.wrap import (
@@ -61,8 +72,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # top and discarding ``index`` of them uncovers ``truth_table[index]`` --
     # the row index read MSB first, which is what the weights below build.  A
     # pushed zero is the counter; an ignored input is read and popped, and the
-    # table is indexed by the rest.  Letting the first read be the counter
-    # saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under the 10% bar.
+    # table is indexed by the rest.
     weights, truth_table = input_weights(truth_table, n)
     reads = ["[PSH INT 0]"]
     for weight in weights:
@@ -121,9 +131,9 @@ def _best_chunked_columns(
     are visited: widths where a suffix token run exactly fills the column
     budget, and widths where the boundary window rewraps, for chunk counts
     near the divisors of ``size - 1``.  Each visited interval scores
-    ``(|columns - rows|, size + 14 * count, columns)`` -- squareness first,
+    ``(rendered_side(columns, rows), size + 14 * count, columns)`` -- side first,
     then an estimated program length (table characters plus push syntax per
-    chunk), then width -- and the winning width is the squarest point of its
+    chunk), then width -- and the winning width is the first of its
     interval.
     """
     size = len(table)
@@ -153,7 +163,7 @@ def _best_chunked_columns(
             if lower < (point := (size + extra + count - 1) // count) <= upper
         )
         boundaries = sorted(events)
-        for start, stop in pairwise(boundaries):
+        for start in boundaries[:-1]:
             partial = size - (count - 1) * start
             # The boundary window with the partial chunk filled in.
             rows = (
@@ -165,10 +175,11 @@ def _best_chunked_columns(
                 - 3
                 + _height(suffix_lengths, start + _CHUNK_TOKEN_EXTRA)
             )
-            # Squarest width inside this event interval.
-            columns = min(max(rows, start + _CHUNK_TOKEN_EXTRA), stop + 2)
+            # Rows are fixed inside this event interval: its first width
+            # renders the smallest square.
+            columns = start + _CHUNK_TOKEN_EXTRA
             score = (
-                abs(columns - rows),
+                rendered_side(columns, rows),
                 size + _CHUNK_PUSH_OVERHEAD * count,
                 columns,
             )
@@ -182,7 +193,7 @@ def _balance(table: str, default: str) -> str:
 
     Renders ``modulous(table, width)`` at a family of candidate widths -- plus
     the unwrapped ``default`` -- and keeps the one minimizing ``balance_score``
-    (row/column imbalance, then program length, then width):
+    (rendered side, then program length, then width):
 
     * whole bracket atoms (``[PSH STR "…"]`` stays intact), at the optimal
       greedy width above the longest atom;

@@ -3,17 +3,22 @@
 # construction's limit. Enforced by test_boolean_canonical_catalogue.py.
 
 [ignored]
+"Ascenic" = "the Horner code reads every input; an ignored one still spaces the thresholds"
 "Malbolge" = "fixed-size source; an extra input port adds no cells"
+"What!?" = "the Horner index reads every input; an ignored one still spaces the change points"
 
 [constant]
 "Alight" = "a constant table is a one-entry literal"
+"Ascenic" = "a constant table has no change point: the 6n + 13 line Horner prefix"
 "Malbolge" = "fixed-size source; a constant table is no smaller"
 "Qoibl" = "a constant table is a one-bit literal"
 "Circuit Diagram" = "both constants are one self-fed gate"
 "Piet" = "literal products collapse a constant"
 "Polynomial" = "a constant table is the k=0 state machine"
+"What!?" = "a constant table has no change point: the 7n + 12 char Horner prefix"
 
 [ignored_local]
+"Fackward" = "_skip" # equal halves drop their bit unread by a swap
 "Fargo" = "_arm_expression" # zero ANF arms omit their variable
 "INTERCAL" = "_diagram" # equal children replace their selector
 "Vandevelo" = "_constraints" # affine guards retain independent tests
@@ -34,6 +39,7 @@
 "Dimensional" = "_program" # reads and literal output
 "EGL" = "_program" # scratch reads beside a literal answer cell
 "Eval" = "_eval_ordered" # one projected table entry
+"Fackward" = "_skip" # n bit-dropping levels, then a literal leaf
 "Fargo" = "_arm_expression" # literal zero or one ANF coefficient
 "Fish" = "input_weights" # one projected grid cell
 "Grapheme" = "_program" # one-entry integer lookup
@@ -41,7 +47,6 @@
 "INTERCAL" = "_diagram" # equal-child reduction to a constant id
 "Minsky Swap" = "input_weights" # zero projected index weights
 "Modulous" = "input_weights" # one projected table entry
-"Piet++" = "_operations" # literal products over essential inputs
 "ROTfuck" = "_program" # one-entry rotated lookup
 "SLOW ACV MAMMALIAN" = "_constant_read" # scratch reads and coprime answer array
 "Super SNUSP" = "_emit_lookup" # projected literal table

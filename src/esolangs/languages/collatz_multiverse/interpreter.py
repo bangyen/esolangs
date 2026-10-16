@@ -4,27 +4,29 @@ Every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.``: an odd or
 zero var1 becomes ``var1 * var2 + var3``, an even one is halved, and
 ``DO`` prints the low byte.  Variables start at 0; ``arr[var]`` indexes
 (bare ``arr`` is ``arr[0]``); ``negativeOne`` starts at -1; ``input``
-reads an integer and cannot be a target; ``lineNumber`` is the 1-based
-current line; assigning it sets the pointer, which then advances (the Collatz
-rule applies to it too).  Non-blank lines are numbered from 1; the run halts
-when the pointer leaves.  var2/var3 and indices must be names (the wiki rejects
-``var = 3 x + 1``); ``input`` raises :class:`EOFError` when exhausted; a
-malformed line, numeric literal or redefinition of ``input`` raises
-:class:`ValueError`.
+reads a whitespace-delimited integer (the spec defines no delimiters) and
+cannot be a target; ``lineNumber`` is the 1-based current line; assigning
+it sets the pointer, which then advances (the Collatz rule applies to it
+too).  Non-blank lines are numbered from 1; the run halts when the pointer
+leaves.  var2/var3 and indices must be names (the wiki rejects
+``var = 3 x + 1``).
 
-Input numbers are whitespace-delimited integer tokens; the spec does not define
-delimiters.  Readings of sentences that admit two:
+Errors:
+    ProgramError: A malformed line, numeric literal or ``input`` redefined.
+    InputExhaustedError: ``input`` at EOF.
+    ArgumentError: An ``input`` token that is not an integer.
 
-- "input || Takes input, and uses that as a variable": an integer token,
-  not a byte, and every ``input`` a line names is read, even on the even
-  branch that ignores var2 and var3.
-- "if var1s value is 110, and the Boolean says DO, an A will be printed":
-  no code maps 110 to ``A``; ``DO`` prints the new value's low byte, so a
-  value outside 0..255 wraps rather than failing.
-- "changing it moves it to that line number, but doesn't execute it": the
-  pointer moves to N and then advances as usual, so line N is skipped and
-  N = 0 resumes at line 1; only this reading gives "doesn't execute it"
-  meaning.  Blank lines are not numbered.
+Decisions:
+    * "input || Takes input, and uses that as a variable": an integer token,
+      not a byte, and every ``input`` a line names is read, even on the even
+      branch that ignores var2 and var3.
+    * "if var1s value is 110, and the Boolean says DO, an A will be printed":
+      no code maps 110 to ``A``; ``DO`` prints the new value's low byte, so a
+      value outside 0..255 wraps rather than failing.
+    * "changing it moves it to that line number, but doesn't execute it": the
+      pointer moves to N and then advances as usual, so line N is skipped and
+      N = 0 resumes at line 1; only this reading gives "doesn't execute it"
+      meaning.  Blank lines are not numbered.
 """
 
 from __future__ import annotations

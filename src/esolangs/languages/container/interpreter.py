@@ -3,13 +3,18 @@
 Headers declare containers (``name = initial:`` or a bare ``name:``);
 following indented lines attach conditional deltas (``n cond``) to the
 most recent container.  Each tick updates every container from the *old*
-values; PRINT outputs OUT as a byte when it turns on, the empty-named
-container reads a character into IN when it fires, and EXIT halts.  A rule
-before any declaration, or a condition on an undeclared container (the
-page gives undeclared names no value), raises :class:`ValueError`; an
-empty program halts
-at once; EOF supplies zero.  :func:`run` returns
-the EXIT code (``None`` if EXIT never fired) rather than exiting.
+values; PRINT outputs OUT mod 128 (an ASCII character) when it turns on, the
+empty-named container reads a character into IN when it fires, and EXIT
+halts.  An empty program halts at once.  ``run`` returns the EXIT code
+(``None`` if EXIT never fired) rather than exiting.
+
+Input/output:
+    A read at EOF supplies zero.
+
+Errors:
+    ProgramError: A rule before any declaration; a condition on an
+    undeclared container (the page gives undeclared names no value); a
+    negative initial value; ``<=`` against a non-constant.
 """
 
 from __future__ import annotations

@@ -78,10 +78,18 @@ def _slug(name: str) -> str:
 #: Left in a stub's docstring until it is written; ``check`` looks for it.
 PLACEHOLDER = "<describe"
 
-_GENERATOR = '''"""Boolean program generator for {name}.
+_GENERATOR = '''"""{name} Boolean program generator: <describe the construction>.
 
-<describe the construction: how a node reads its input, branches, and
-answers, and the size and build bound (O(T) for a decision tree)>
+<describe how the program reads its inputs, branches, and answers>
+
+Size:
+    <describe the growth in T or n>; n=4 parity: <count> chars
+
+Raises:
+    GeneratorCapError: <describe the cap; drop this section without one>
+
+Decisions:
+    <describe a rejected alternative and the measurement that rejected it>
 """
 
 from esolangs.registry._language import Language
@@ -194,16 +202,10 @@ def _seed_curation(name: str) -> None:
 
 
 def _interpreter_stub(name: str) -> str:
+    """Return ``_template.py`` named for ``name``, its maintainer comment dropped."""
     template = (ROOT / "src/esolangs/runtime/_template.py").read_text()
-    body = template.split('"""', 2)[2]
-    return (
-        f'"""Interpreter for {name}.\n\n{PLACEHOLDER} the machine from the wiki '
-        "page: memory, pointer, commands>\n\nA malformed program raises "
-        ":class:`ValueError`;\nexhausted input raises :class:`EOFError` <or, if the "
-        "spec gives EOF a value, say what a read returns and set eof= on "
-        "its LANGUAGE>.\n"
-        '"""' + body
-    )
+    _, doc, body = template.split('"""', 2)
+    return '"""' + doc.replace("<Language>", name) + '"""' + body
 
 
 @dataclass(frozen=True)
@@ -313,7 +315,8 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "tests/support/fixtures/curation.toml",
                 f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
                 'route = "fame" (60+) | "first implementation" } under '
-                "[languages] (see docs/limitations.md#curation); offline, "
+                "[languages], plus bf_derivative = true if the wiki tags it "
+                "Brainfuck derivatives (see docs/limitations.md#curation); offline, "
                 '{ route = "unassessed" } until the count is recorded',
             )
         )

@@ -1,4 +1,19 @@
-"""Boolean-function generator for Forbin."""
+"""Forbin Boolean program generator: painted blocks behind a branch tree.
+
+One multi-assignment reads all ``8n`` input bits and keeps each low bit.  The
+last seven inputs address a block of literal entries through a shift
+register in ``table``; the rest pick the block with range-loop ifs, and a
+constant span collapses to a call to a printer.  Repeated blocks or subtrees
+become one function nested in ``main``.
+
+Size:
+    Two characters per painted entry, O(T); n=10 random 1847: 3,472 chars,
+    n=12 random 1847: 10,230 chars.
+
+Decisions:
+    Sharing a repeated block or subtree: tables tiled from two random
+    128-entry blocks shrink n=9 -20.5%, n=10 -42.8%; random tables unchanged.
+"""
 
 import re
 from collections import Counter
@@ -77,27 +92,6 @@ def forbin(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-
-    Forbin's ``in`` reads one bit (most significant first), so each input
-    byte contributes 8 reads and only the last bit (the LSB, which is what
-    distinguishes ``'0'`` from ``'1'``) is used.  One assignment collects
-    all ``8n`` of them: a single right-hand side is re-evaluated once per
-    target, so ``a,a,a,a,a,a,a,b=(in 0)`` drops seven bits into a scratch
-    name and keeps the eighth.
-
-    The table is *painted*, not walked.  Its last :data:`_BLOCK_BITS`
-    inputs address a block of ``2 ** _BLOCK_BITS`` entries, and each block
-    is handed to ``table`` as a literal argument list -- two characters an
-    entry.  ``table``'s parameters are a shift register: for each of those
-    inputs in turn, one multi-assignment slides the upper half of the live
-    window down over the lower half when the bit is 1, so the first
-    parameter ends up holding the addressed entry, which is printed.  The
-    remaining ``n - _BLOCK_BITS`` inputs pick the block with a range-loop
-    if (``for _:1..b`` runs once when ``b`` is 1 and not at all when it is
-    0, and every leaf returns), and a constant span anywhere in that tree
-    collapses to a call to one of the two printers.  A repeated block or
-    subtree is one function nested in ``main`` (seeded tables tiled from two
-    random 128-entry blocks: n=9 -20.5%, n=10 -42.8%; random tables unchanged).
     """
     if width is not None:
         natural = forbin(truth_table)
@@ -137,6 +131,10 @@ def _reads(weights: list[int], names: _Names) -> str:
     """Return the one assignment that reads every input's low bit.
 
     An input of weight 0 is ignored: its low bit goes to the scratch name.
+    ``in`` reads one bit, most significant first, so each input byte is 8
+    reads and only the last (the LSB, which tells ``'0'`` from ``'1'``) is
+    kept.  A single right-hand side is re-evaluated once per target, so
+    ``a,a,a,a,a,a,a,b=(in 0)`` drops seven bits into a scratch name.
     """
     targets: list[str] = []
     bits = iter(names.bits)
@@ -158,7 +156,10 @@ def _tree(
     """Return the shared functions and the block-selecting branch tree.
 
     A subtree repeated at its level becomes one function, called from each
-    place; the functions nest in ``main``, which holds the input bits.
+    place; the functions nest in ``main``, which holds the input bits.  The
+    high inputs pick the block with a range-loop if (``for _:1..b`` runs
+    once when ``b`` is 1, not at all when 0; every leaf returns), and a
+    constant span collapses to a call to one of the two printers.
     """
     constant: Callable[[int, int], bool] = constant_span_test(truth_table)
     # A constant table is one entry, which has no levels to name.
@@ -229,7 +230,12 @@ def _tree(
 
 
 def _register(names: _Names, block: int, high: int, n: int) -> str:
-    """Return the ``table`` function: a shift register over one block."""
+    """Return the ``table`` function: a shift register over one block.
+
+    For each low input in turn, one multi-assignment slides the upper half
+    of the live window over the lower half when the bit is 1, so the first
+    parameter ends up holding the addressed entry, which is printed.
+    """
     cells = names.cells
     body: list[str] = []
     live = block

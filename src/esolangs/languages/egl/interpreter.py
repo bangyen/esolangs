@@ -5,19 +5,29 @@ moves between cells; ``x`` reads a character code and ``=`` prints a decimal int
 Parenthesized bodies repeat while the cell on which their opening parenthesis
 was executed is nonzero.
 
-The wiki does not define malformed dimensions, unmatched loops, or movement
-outside the grid; this interpreter raises :class:`ValueError` for all three.
-Exhausted input raises :class:`EOFError` (the repo-wide convention).  EGL has
-no specified invalid runtime operation requiring :class:`HaltError`.
-
-The spec does not define input representation; x reads the next Unicode
-character code, including newlines.
-
 A reflection negates a coordinate modulo the grid (``_`` row ``r`` to
-``-r % height``), so row 0 is fixed.  The page's stated output for
-``10,10:v>>_++#`` puts the 2 on the tenth line, third column; the
-mirror ``height - 1 - r`` puts it on the ninth, which only the prose
-("row 9, column 3", one-indexed) fits; the stated output wins.
+``-r % height``), so row 0 is fixed.
+
+Input/output:
+    ``x`` reads a character code.  Exhausted input raises (the repo-wide
+    convention).
+
+Errors:
+    ProgramError: Malformed dimensions (no leading ``width,height:``, or a
+        dimension below 1); an unmatched parenthesis; a pointer move outside
+        the grid.
+    InputExhaustedError: ``x`` at EOF.
+
+Decisions:
+    * The wiki does not define malformed dimensions, unmatched loops, or
+      movement outside the grid; all three are a ProgramError.  EGL has no
+      specified invalid runtime operation requiring HaltError.
+    * The spec does not define input representation; ``x`` reads the next
+      Unicode character code, including newlines.
+    * The page's stated output for ``10,10:v>>_++#`` puts the 2 on the tenth
+      line, third column; the mirror ``height - 1 - r`` puts it on the ninth,
+      which only the prose ("row 9, column 3", one-indexed) fits; the stated
+      output wins.
 """
 
 from __future__ import annotations

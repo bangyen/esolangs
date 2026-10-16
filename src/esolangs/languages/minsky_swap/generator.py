@@ -1,4 +1,19 @@
-"""Boolean template for minsky swap; a row is one ``~``, so no span shrinks."""
+"""Minsky Swap Boolean program generator: weighted stages, then a ``~`` cascade.
+
+Each input is a run (``++`` or ``**``) then a stage ``~ ~ * +...+ *`` adding
+``2**(n-1-i)`` to ``reg[1]``; a ``*`` then points at ``reg[1]`` and ``2**n``
+``~``s route the index to one of two shared leaves.  A row is one ``~``, so
+no span shrinks.  A ``width`` the program exceeds switches to RMSN, one
+command per line.
+
+Size:
+    O(T): one ``~`` per row; n=8 random 1847: 1,460 chars, n=10 random 1847:
+    5,354 chars, n=12 random 1847: 20,766 chars.
+
+Decisions:
+    Every leaf target is the digit 2 or 3: a leaf per row was Theta(T log T)
+    of addresses.  A zero tail stays: trimming it failed 60/134.
+"""
 
 from collections.abc import Callable
 from typing import Any
@@ -19,6 +34,7 @@ __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
 MINSKY_SWAP_PAIR = ("**", "++")
 
+# Setters eight wide sharing an increment.
 _MINSKY_SHORT_RMSN_PAIR = ("decnz();", "inc();  ")
 
 _MINSKY_SMALL_RMSN_PAIR = ("decnz(2);", "inc();   ")
@@ -27,36 +43,29 @@ _RMSN = {"+": "inc();", "*": "swap();"}
 
 
 def minsky_swap(truth_table: str, width: int | None = None) -> str:
-    """Build a Minsky Swap template for the given truth table.
+    """Return a Minsky Swap template for ``truth_table`` (MSB first).
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
-    run is ``++`` (``reg[0] = 2``) or ``**`` (swap away and back), and each
-    is followed by a stage ``~ ~ * +...+ *`` adding ``2**(n-1-i)`` to
-    ``reg[1]``: both ``~`` target the command after the stage, so a one
-    falls through to the ``+`` block and a zero jumps it, and either way
-    ``reg[0]`` is zero with the pointer on it.  A ``*`` then puts the
-    pointer on ``reg[1]`` and ``2**n`` ``~``s route value ``v`` to one of
-    two shared leaves behind a line-1 ``~`` that jumps over them at start:
-    line 2 halts (a ``~`` targeting one past the end), lines 3-5
-    (``+ * ~``) set ``reg[1]`` first.  Every target is the digit 2 or 3 (a
-    leaf per row was ``Theta(T log T)`` of addresses), every table of one
-    arity whose inputs all matter is one length (an ignored input's stage is
-    just ``~ ~`` draining its run), and the dump reads ``0 {answer}``.  A ``width`` the
-    program exceeds switches to RMSN, one command per line, setters eight
-    wide sharing an increment; below 10 with ``n <= 2`` a decision chain
-    (nine commands at ``n = 2``) uses the first register as scratch, the
-    answer staying in the second.  A zero tail stays: trimming it failed 60/134.
+    A ``width`` the program exceeds switches to RMSN.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
 
+    # Two shared leaves sit behind a line-1 ``~`` that jumps over them at
+    # start: line 2 halts (a ``~`` targeting one past the end), lines 3-5
+    # (``+ * ~``) set ``reg[1]`` first.
     zero_leaf, one_leaf = 2, 3
     tokens: list[str] = ["~", "~", "+", "*", "~"]
     targets: list[int | None] = [6, None, None]  # None: one past the end
     pos = 5  # instantiated command index of the next command
 
     # load: one stage per input, MSB first; the run is read off the setters
-    # themselves, so the offsets count exactly the text the fill emits.
+    # themselves, so the offsets count exactly the text the fill emits.  A run
+    # is ``++`` (``reg[0] = 2``) or ``**`` (swap away and back); the stage
+    # ``~ ~ * +...+ *`` has both ``~`` target the command after it, so a one
+    # falls through to the ``+`` block and a zero jumps it, and either way
+    # ``reg[0]`` is zero with the pointer on it.  An ignored input's stage is
+    # just ``~ ~``, so every table of one arity whose inputs all matter is
+    # one length.
     run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
     for weight in weights:
         if not weight:
@@ -72,7 +81,8 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
         targets += [skip, skip]
         pos = skip - 1
 
-    tokens.append("*")  # pointer onto reg[1], which holds the index
+    # pointer onto reg[1], which holds the index; the ``~``s route it to a leaf
+    tokens.append("*")
     pos += 1
     tokens += ["~"] * len(table)
     targets += [one_leaf if bit == "1" else zero_leaf for bit in table]
@@ -89,7 +99,11 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
 
 
 def _rmsn_small(truth_table: str, n: int) -> str:
-    """Decision-chain RMSN for ``n <= 2``, whose lines stay under 10 columns."""
+    """Decision-chain RMSN for ``n <= 2``, whose lines stay under 10 columns.
+
+    Nine commands at ``n = 2``; the first register is scratch, the answer
+    stays in the second.
+    """
     # One bit contributes 1, the other 2: common inc plus decnz/inc
     # adds 0/2 without branching. All leaves fit single-digit targets.
     slot = TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])

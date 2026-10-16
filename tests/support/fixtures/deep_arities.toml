@@ -7,7 +7,6 @@
 # MIN_RUNGS past its last route change.
 # Default H routing starts at eight: three rungs per parity need thirteen (6.8s).
 circuit_diagram = 13
-factor = 11
 # Normalized gates start at nine; both three-rung parity windows need fourteen.
 boolfuck = 14
 polynomial = 9
@@ -20,7 +19,6 @@ addsubjump = 10  # n=6 jumps 39 -> 965 commands; keep MIN_RUNGS above it.
 b_tapemark = 7
 circuit_diagram = 7  # Loading through n=12 costs 27s.
 container = 6
-factor = 7  # Loading through n=12 costs 152s.
 line = 6  # Loading through n=12 costs 99s.
 flowchart = 8
 polynomial = 7
@@ -38,7 +36,6 @@ circlefuck = 6
 # the 9T + 3n - 12 bound holds at n=8 on all ten formula tables.
 circuit_diagram = 7
 dimensional = 7
-factor = 8
 false = 9
 laserfuck = 9
 flowchart = 7

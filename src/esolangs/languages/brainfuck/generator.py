@@ -1,4 +1,28 @@
-"""Build brainfuck Boolean programs with folded trees or affine streams."""
+"""brainfuck Boolean program generator: a flag-guarded tree or an affine stream.
+
+Input bits sit at cells ``2i`` with flags at ``2i+1``; branches clear both and
+one final print reads the result.  Equal sibling halves merge; repeated
+residuals use one unused flag per level and emit once in depth order within
+the command bound.  A bank uses several unused descendant flags: a same-level
+bank, or the union of the one-per-depth picks with the greatest bank, so
+blocks at several depths defer.  Two-input banks use four-bit labels with a
+retired input holding the high bit, consumed before the shared bodies
+execute.  Affine tables stream through three cells instead, at most 66
+commands per selected input.  An ignored input before the last kept one is
+read bare into the next kept cell, whose read overwrites it.
+
+Size:
+    O(T) for dense tables, O(n) for affine ones; n=10 parity: 760 chars,
+    n=12 parity: 902 chars, n=10 random 1847: 10,792 chars.
+
+Decisions:
+    Flags cut n=10 sparse from 2,646 to 754 chars; folding and shared output
+    cut n=10 XOR from 77,939 to 18,495; the affine stream cut n=16 parity
+    from 672,691 to 1,186.  An ignored input read bare into the next kept
+    cell is 1.9% smaller at n=8 with one ignored, 6.7% with two; a trailing
+    one keeps its subtract, as ASCII 48/49 breaks the Workspace bound and
+    ``,[-]`` the execution bound (289 > 251 steps).
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -423,25 +447,7 @@ _RIGHT, _LEFT = ">", "<"
 
 
 def bf_tree(truth_table: str) -> str:
-    """Return a compact program, consuming every input unconditionally.
-
-    Tree bits use cells 2i, flags 2i+1; branches clear both, and one final print
-    reads the result. Flags cut n=10 sparse from 2,646 to 754 chars;
-    folding and shared output cut n=10 XOR from 77,939 to 18,495.  Equal
-    sibling halves merge; repeated residuals use one unused flag per level
-    and emit once in depth order, within the existing command bound.
-    A bank can use several unused descendant flags instead: a same-level bank,
-    or the union of the one-per-depth picks with the greatest bank, so blocks
-    at several depths defer.
-    Two-input banks also use four-bit labels, with a retired input holding
-    the high bit; labels are consumed before their shared bodies execute.
-    Affine tables also stream through three cells: n=16 parity falls from
-    672,691 to 1,186 chars, with at most 66 commands per selected input.
-    An ignored input before the last kept one is read bare into the next
-    kept cell, whose read overwrites it: 1.9% smaller at n=8 with one ignored,
-    6.7% with two. A trailing one keeps its subtract; left at 48/49 it breaks
-    the Workspace bound, and ``,[-]`` the execution bound (289 > 251 steps).
-    """
+    """Return a compact program, consuming every input unconditionally."""
     tree = in_input_order(truth_table, _bf_ordered)
     affine = _affine_stream(truth_table)
     return min((tree, affine), key=len) if affine is not None else tree

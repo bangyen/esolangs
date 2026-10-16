@@ -1,0 +1,10 @@
+{
+ "triggers": [
+  {
+   "program": "x",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: character outside nsew NSEW pP"
+  }
+ ]
+}

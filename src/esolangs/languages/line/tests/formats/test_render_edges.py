@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.languages.line.generator import render as render_module
-from esolangs.languages.line.generator.render import chain
+from esolangs.languages.line.generator import layout as layout_module
+from esolangs.languages.line.generator.layout import chain
 
 
 class TestChain:
@@ -29,16 +29,16 @@ class TestMeasuringNothing:
     """An absent subtree and an absent arm both have defined answers."""
 
     def test_an_absent_subtree_has_no_extent(self) -> None:
-        plan = render_module._Plan()  # noqa: SLF001
-        assert render_module._subtree_extent(None, plan) == (0, 0, 0, 0)  # noqa: SLF001
+        plan = layout_module._Plan()  # noqa: SLF001
+        assert layout_module._subtree_extent(None, plan) == (0, 0, 0, 0)  # noqa: SLF001
 
     def test_an_absent_arm_takes_the_base_spacing(self) -> None:
         """No arm means no goto corridor to reserve."""
-        plan = render_module._Plan()  # noqa: SLF001
-        assert render_module._arm_spacing(None, plan) == render_module._BRANCH_SPACING  # noqa: SLF001
+        plan = layout_module._Plan()  # noqa: SLF001
+        assert layout_module._arm_spacing(None, plan) == layout_module._BRANCH_SPACING  # noqa: SLF001
 
     def test_a_real_arm_is_measured(self) -> None:
         """The positive control: a populated arm is not the base spacing."""
         arm = chain("+", "+", "+")
-        plan = render_module._Plan()  # noqa: SLF001
-        assert render_module._arm_spacing(arm, plan) >= render_module._BRANCH_SPACING  # noqa: SLF001
+        plan = layout_module._Plan()  # noqa: SLF001
+        assert layout_module._arm_spacing(arm, plan) >= layout_module._BRANCH_SPACING  # noqa: SLF001

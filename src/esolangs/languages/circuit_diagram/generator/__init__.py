@@ -1,75 +1,40 @@
-r"""Boolean-function generator for Circuit Diagram.
+"""Circuit Diagram Boolean program generator: a mux fold over a wire model.
 
-Circuit Diagram is a language for drawing boolean circuits, so a truth
-table is its native idiom.  The generated ASCII gate network reads one bit
-per input wire, folds adjacent cofactors through muxes, and prints through
-``:``.
+Each of ``n`` inputs arrives on its own line as a ``-`` input port (not one
+``-n-`` multi-wire, which would need a ``<`` splitter tree back to rails).
+A left-to-right binary-carry fold combines adjacent cofactors: equal ones
+share a signal, ``0/1`` is the selector itself, the rest use a one- or
+three-gate mux rule.  The answer prints through ``:``.  A constant table is
+one self-fed ``x`` or ``X`` gate, the wiki's constant-output shape.
 
-Layout
-------
+Wires are a *model* of segments rendered to characters afterwards, not
+painted in draw order.  Every signal owns a vertical bus column, every gate a
+three-row band: a gate at ``(c, r)`` reads ``.`` cells at ``(c - 1, r - 1)``
+and ``(c - 1, r + 1)`` and drives ``(c + 1, r)`` (the spec's AND sample).
+Shared selectors make the network non-planar, so crossings are intended:
+the spec's ``-=-`` carries a horizontal and a vertical wire independently
+(horizontal alone ``-``, vertical ``|``, both ``=``, endpoint ``.``).  A
+``.`` joins all eight neighbours, so diagonally adjacent junctions of
+different signals would silently merge; the renderer checks that, and two
+signals sharing a cell in one direction, and raises rather than emit a wrong
+circuit.  A ``:`` prints in every generation its wire carries a value and a
+wiring driven twice takes the XOR of its drivers, so each bus is written by
+one gate or port and a run prints one character.
 
-The geometry controls the program -- the language has no statements to
-sequence, only cells that have to line up -- so the program is built as a
-*model* of wire segments first and rendered to characters afterwards,
-rather than painted cell by cell in draw order.
+A repeated subtree is built once (:func:`_dag`, hash-consed on ``(level,
+zero, one)``); a shared output keeps its column group until its last read.
+At most one unfinished signal per input level is live.  Wide unconstrained
+builds compare natural order and two transposes moving the last three/four
+inputs first; physical ports retain read order.
 
-Every signal owns a vertical **bus column**; every gate owns a three-row
-**band**.  A gate at ``(c, r)`` reads its two inputs from ``.`` cells at
-``(c - 1, r - 1)`` and ``(c - 1, r + 1)`` and drives a ``.`` at
-``(c + 1, r)`` -- the spec's own AND sample -- so each gate is fed by two
-horizontal segments running from a bus column to its left-hand junctions,
-and its result leaves along a fresh bus.
+Size:
+    One pass over the table, fewer than three gates per entry; n=8 and:
+    1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 669,345 chars.
 
-**Crossings are the point, not a hazard.**  Shared selectors make the
-network non-planar, so wires must cross.  The spec's crossover figure puts ``-=-``
-between two horizontal wires and ``|`` above and below, with "opposite
-wires are connected", so one ``=`` carries a horizontal and a vertical wire
-past each other independently.  The renderer therefore derives each cell
-from what covers it: a horizontal segment alone is ``-``, a vertical
-segment alone is ``|``, both together is ``=``, and an endpoint is ``.``.
-
-What the layout must still guarantee is that nothing *merges* by accident.
-A ``.`` connects to all eight of its neighbours, so two junctions belonging
-to different signals that come to rest diagonally adjacent silently become
-one wiring.  The renderer checks that mechanically -- along with two
-segments of different signals sharing a cell in the same direction -- and
-raises rather than emitting a circuit that is wrong in a way only the truth
-table would reveal.
-
-Construction
-------------
-
-``truth_table`` is a binary string of length ``2**n`` indexed by the inputs
-most significant first, matching the other generators in this package.
-
-* ``n`` input bits arrive on ``n`` separate lines, each a ``-`` at the start
-  of its own line, which is what the spec makes an input port.  Separate
-  lines rather than one ``-n-`` multi-wire keep the network scalar: the
-  multi-wire path would need a ``<`` splitter tree back to rails.
-* each input and any complement the mux rules need is built once and shared;
-* a left-to-right binary-carry fold combines adjacent cofactors.  Equal
-  cofactors share one signal, ``0/1`` is the selector itself, and the other
-  cases use a fixed one- or three-gate mux rule;
-* a repeated subtree is built once (:func:`_dag`): the fold is hash-consed on
-  ``(level, zero, one)`` and its bus is read by every parent, a bus fanning
-  out freely.  A shared output keeps its column group until its last read.
-  Area, 20 seeded tables: tiled from two blocks 0.69 / 0.49 / 0.41 of the
-  unshared build at n=5 / 6 / 7, from four blocks 0.84 / 0.71 / 0.67, random
-  tables 0.95 / 0.94 / 0.88;
-* at most one unfinished signal per input level is live; the fold is one
-  pass over the table and emits fewer than three gates per entry.
-* wide unconstrained builds compare natural order and two fixed transposes
-  moving the last three/four inputs first; physical ports retain read order.
-
-**Constant tables need no muxes.**  Both are a single self-fed ``x`` or ``X``
-gate, the shape the wiki's own constant-output circuit uses.
-
-**Every wiring is driven exactly once.**  A ``:`` prints in *every*
-generation its wire carries a value, and a wiring driven twice takes the
-XOR of its drivers, so a second driver would corrupt both the value and the
-output length.  Each bus here is written by exactly one gate (or one input
-port) and only ever read after that, which is why the tests can assert that
-a run prints exactly one character.
+Decisions:
+    Sharing repeated subtrees, area vs the unshared build on 20 seeded
+    tables: tiled from two blocks 0.69 / 0.49 / 0.41 at n=5 / 6 / 7, from
+    four blocks 0.84 / 0.71 / 0.67, random tables 0.95 / 0.94 / 0.88.
 """
 
 from collections.abc import Iterator
@@ -110,7 +75,7 @@ _ROW_STEP = 2
 
 # Layout competition only starts at eight inputs: below that, the
 # fixed-order folds and shared banks cannot beat the direct mux build
-# (see the ``circuit_diagram`` docstring).
+# (see :func:`_competing_model_circuit`).
 _COMPETING_MODEL_MIN_INPUTS = 8
 # Columns the output dash and colon add past the final gate group, so
 # banding rebuilds this much narrower when the first attempt is too wide.
@@ -194,21 +159,21 @@ class _Builder:
     def _band(self) -> None:
         """Start a fresh band of columns, carrying the live signals back left.
 
-        Gates march right because one has to sit right of every bus it
-        reads, so a column group freed behind the drawing can never be
-        handed out again -- which is what makes the width grow with the
-        network's depth.  A band breaks that: every signal still live is
-        *moved* to a column near the left, and the columns behind it all
-        become free again.
+        A gate must sit right of every bus it reads, so a group freed behind
+        the drawing can never be handed out again, and width grows with the
+        network's depth.  A band *moves* every live signal to a column near
+        the left and frees all the columns behind it.  A mux layout's floor
+        is what a band cannot reclaim -- the rails and complements, live for
+        the whole drawing -- plus the carried signals and one gate group:
+        about ``8 * n`` columns, growing with the inputs rather than the table.
 
-        Moving a bus needs no new primitive: :meth:`_tap` runs it down and
-        then left, one wiring with one driver, crossing the rails with ``=``.
-        Each carried signal takes its own row, since two signals' horizontal
-        runs on one row would collide.
+        :meth:`_tap` does the move (down then left, one wiring with one
+        driver, crossing the rails with ``=``).  Each carried signal takes
+        its own row, since two horizontal runs on one row would collide.
 
-        Resetting the column counter is safe for the reason group reuse is:
-        the drawing only ever moves down, so a column re-used in this band
-        is entered below everything the last band left in it.
+        Resetting the column counter is safe as group reuse is: the drawing
+        only moves down, so a re-used column is entered below everything the
+        last band left in it.
         """
         for offset, signal in enumerate(self.live):
             column = self.band_start + offset * _COL_STEP
@@ -268,14 +233,11 @@ class _Builder:
     def input_bus(self) -> int:
         """Draw one input line and return the signal its bit arrives on.
 
-        The spec makes a ``-`` at the start of a line an input port, so each
-        input owns a row of its own; the rows are taken in order, which is
-        the order the interpreter reads the bits in.
-
-        One bus column is enough: an input port has no glyph, no inputs and
-        no output column, and a gate's three columns left two empty columns
-        per input for every later wire to cross.
+        Each input owns a row, in the order the interpreter reads the bits.
         """
+        # One bus column is enough: a port has no glyph, inputs or output
+        # column, and a gate's three columns left two empty columns per input
+        # for later wires to cross.
         signal = self._new_signal()
         column = self._new_column()
         row = self.next_row
@@ -319,16 +281,11 @@ class _Builder:
     def gate(self, kind: _GateGlyph, left: int, right: int) -> int:
         """Place a two-input ``kind`` gate and return its output signal.
 
-        The group is taken before the inputs are read and the inputs are
-        released after, so a gate can never be handed the very group it is
-        about to read out of.
-
-        When a width was asked for and this gate would take the drawing past
-        it, :meth:`_band` carries the live signals back to the left first --
-        so the check happens here, before the group is chosen, and the
-        inputs' columns are re-read afterwards because the band has moved
-        them.
+        The group is taken before the inputs are read and they are released
+        after, so a gate is never handed the group it reads out of.
         """
+        # Past a requested width, _band carries the live signals left before
+        # the group is chosen, so the inputs' columns are re-read after it.
         if not self._room(max(self.buses[left][0], self.buses[right][0])):
             self._band()
         first, column = self._gate_columns(
@@ -376,14 +333,11 @@ class _Builder:
     def output(self, source: int) -> None:
         """Draw the ``:`` that prints ``source``'s value.
 
-        ``:`` reads only a ``-`` directly to its left, so the signal is
-        handed one cell along from the junction its bus already ends on.
-
-        No band or gate columns are reserved: the bus it reads is the last
-        one built, so its row is free to the right.  A fresh band put the
-        output three rows below its gate -- the staircase small circuits
-        used to end on.
+        ``:`` reads only a ``-`` directly to its left, so the signal moves one
+        cell along from the junction its bus ends on.
         """
+        # No band is reserved: the bus is the last one built, so its row is
+        # free to the right; a fresh band would stair-step small circuits.
         column, row = self.buses[source]
         self.layout.glyph(column + 1, row, "-")
         self.layout.glyph(column + 2, row, ":")
@@ -663,8 +617,10 @@ def _box_area(points: list[tuple[int, int]]) -> int:
 def _competing_model_circuit(truth_table: str, inputs: int) -> str:
     """Return the smallest emitted-character circuit among the n>=8 layouts.
 
-    Fixed-order folds compete by area against prefix H-layouts and shared
-    class banks; sharing wins character ties.
+    Three complete fixed-order folds compete by area against prefix
+    H-layouts and shared class banks; sharing wins character ties.  Interval
+    models count characters before rendering, so a node cap cannot hide a
+    smaller complete fold.
     """
     from .compete import select_competing_model  # cycle: candidates import this module
     from .source_size import layout_source_size
@@ -687,19 +643,9 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
     See :func:`_circuit_diagram_model` for the construction.  ``width`` asks
-    for a column count: the drawing is built once without one, and again
-    inside the width if that came out too wide.
-
-    From eight inputs, three complete fixed-order folds compete by emitted
-    characters against prefix H-layouts and shared class banks. Interval
-    models count characters before rendering, so a node cap cannot hide a
-    smaller complete fold. Sharing wins character ties.
-
-    What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
-    floor is what a band cannot reclaim -- the rails and complements, live
-    for the whole drawing -- plus the carried signals and one gate group:
-    about ``8 * n`` columns, growing with the inputs rather than the table.
-    Below that floor, affine tables use native XOR/XNOR chains.
+    for a column count: built once without one, again inside it if too wide
+    (:meth:`_Builder._band`); below the banding floor, affine tables use
+    native XOR/XNOR chains.
     """
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1

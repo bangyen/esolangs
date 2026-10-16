@@ -1,0 +1,41 @@
+{
+ "triggers": [
+  {
+   "program": "< x",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "an undefined name is a HaltError"
+  },
+  {
+   "program": "[?] [] 1 10",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "bad array indexing is a HaltError"
+  },
+  {
+   "program": "< [] 1",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "shifting an array is a HaltError"
+  },
+  {
+   "program": "<",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a call left wanting arguments is a ProgramError"
+  },
+  {
+   "program": "f 1",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "a definition whose code is a bare literal is a ProgramError"
+  },
+  {
+   "program": "$",
+   "stdin": "",
+   "expect": "output",
+   "output": "0",
+   "claim": "empty input is 0, so there is no EOF"
+  }
+ ]
+}

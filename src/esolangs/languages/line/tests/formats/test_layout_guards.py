@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.languages.line.generator import render
+from esolangs.languages.line.generator import layout, render
 from esolangs.languages.line.interpreter import extract
 from esolangs.languages.line.interpreter.mask import Mask
 from esolangs.languages.line.tests.formats.bf_to_line import bf_to_line
@@ -44,12 +44,12 @@ def test_trailing_noise_does_not_complete_a_kink() -> None:
     [(5, 1, False), (20, 0, False), (20, 1, True), (20, -1, True)],
 )
 def test_return_bay_clearance_and_body_axis(spacing, x, possible, monkeypatch) -> None:
-    target = render.Node("?", nonzero=render.Node("o"))
-    monkeypatch.setattr(render, "_subtree_extent", lambda _node, _plan: (0, 10, -2, 2))
-    monkeypatch.setattr(render, "_arm_spacing", lambda _node, _plan: spacing)
-    plan = render._Plan()  # noqa: SLF001
+    target = layout.Node("?", nonzero=layout.Node("o"))
+    monkeypatch.setattr(layout, "_subtree_extent", lambda _node, _plan: (0, 10, -2, 2))
+    monkeypatch.setattr(layout, "_arm_spacing", lambda _node, _plan: spacing)
+    plan = layout._Plan()  # noqa: SLF001
     # In the body's frame this is the near edge (y=0), strictly between its sides.
-    legs = render._loop_return_legs(  # noqa: SLF001 - routing premises under test
+    legs = layout._loop_return_legs(  # noqa: SLF001 - routing premises under test
         (-x, spacing), target, {id(target): ((0, 0), (1, 0))}, plan
     )
     assert (legs is not None) is possible
@@ -57,7 +57,7 @@ def test_return_bay_clearance_and_body_axis(spacing, x, possible, monkeypatch) -
 
 def test_return_that_crosses_body_ink_is_refused(monkeypatch) -> None:
     # The body's final stroke heads west: an eastward return retraces its ink.
-    monkeypatch.setattr(render, "_loop_return_legs", lambda *_args: [((0, 1), 2)])
+    monkeypatch.setattr(layout, "_loop_return_legs", lambda *_args: [((0, 1), 2)])
     with pytest.raises(ValueError, match="could not be constructed"):
         render.render(bf_to_line("+[.-]"))
 

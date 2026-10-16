@@ -35,6 +35,11 @@ class ExecutionTimeoutError(HaltError, TimeoutError):
     Not a plain :class:`HaltError`: some languages answer by terminating.
     """
 
+    #: Which bound ended the run: ``"timeout"`` or ``"max_steps"``.  Both
+    #: raise this class, so a caller passing both could tell them apart only
+    #: by the message.
+    bound: str = "timeout"
+
     def __init__(self, *args: object) -> None:
         """Keep the timeout diagnostic and suggest checking termination first."""
         super().__init__(
@@ -65,12 +70,12 @@ class UnknownLanguageError(EsolangError, ValueError):
         self.language = language
         self.suggestions = suggestions
 
-    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+    def __reduce__(self) -> tuple[object, tuple[object, ...], dict[str, object]]:
         """Rebuild from the arguments, not from the rendered message.
 
         The default replays ``self.args`` -- the message -- and re-prefixed it per hop.
         """
-        return (type(self), (self.language, self.suggestions))
+        return (type(self), (self.language, self.suggestions), self.__dict__)
 
 
 class ArgumentError(EsolangError, ValueError):
@@ -136,19 +141,22 @@ class InputExhaustedError(EsolangError, EOFError):
         self.supplied = supplied
         self.unit = unit
 
-    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+    def __reduce__(self) -> tuple[object, tuple[object, ...], dict[str, object]]:
         """Rebuild from the arguments, not from the rendered message.
 
-        Unpicklable, it took a ``ProcessPoolExecutor`` down with ``BrokenProcessPool``.
+        Unpicklable, it took a ``ProcessPoolExecutor`` down with ``BrokenProcessPool``;
+        the state carries ``partial_output`` and ``__notes__``, which it dropped.
         """
-        return (type(self), (self.reads, self.supplied, self.unit))
+        return (type(self), (self.reads, self.supplied, self.unit), self.__dict__)
 
 
 class GeneratorCapError(EsolangError, ValueError):
     """A boolean generator, such as a prime-based one, refusing too big a table.
 
-    Still a :class:`ValueError`.  The caps are not arity-bounded, which is why
-    ``describe`` carries no maximum arity.
+    Still a :class:`ValueError`.  Some caps depend on the table, not only its
+    arity, so ``describe()["generator_max_inputs"]`` is the arity bound and
+    ``generator_restrictions`` names the rest (Unary: at most 9 inputs, and
+    a work cap that refuses some 2-input tables).
     """
 
 

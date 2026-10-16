@@ -7,25 +7,14 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 79 esoteric languages: 76 text and 3 raster.
+Interpreters and Boolean generators for 88 esoteric languages: 86 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
-`generate` builds a truth-table program; `run` executes it on one input row.
+Give it a truth table and a language; it writes a program in that language
+that computes the table, and runs it for you.
 
-## Concepts
-
-The task is uniform across languages: compute a Boolean function from its
-*truth table*, then verify the answer by running the generated program.
-`generate` turns a table into a program; `encode_inputs` builds the stdin one
-input row needs; `run` executes it; `read_answer` returns the `0`/`1` bit.
-`describe` reports how a language takes its input and where its answer lands.
-Languages that embed their inputs in the source return a template to fill with
-`instantiate` instead.
-
-## Quickstart
-
-A table lists outputs for inputs `00, 01, 10, 11` in order, so `0110` is XOR:
+## Try it
 
 ```bash
 pip install esolangs
@@ -37,38 +26,37 @@ for i in 00 01 10 11; do printf $i | esolangs run --timeout 5 brainfuck xor.bf; 
 # 0 <- 11
 ```
 
-Start with the [CLI](#command-line) or [Python API](#python-api).
-The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
-covers inputs, templates, answers, and debugging.
-[Limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)
-records contracts; the [roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md)
-tracks open work.
+`0110` is a *truth table*: the outputs for inputs `00, 01, 10, 11`, in that
+order. This one is XOR. `generate` wrote a brainfuck program for it, and
+`run` fed it one input row at a time.
+
+## Install
+
+| You want | Install |
+|---|---|
+| Everything except the two below | `pip install esolangs` |
+| Polynomial | `pip install 'esolangs[math]'` |
+| Load or save PNG programs (image-based languages) | `pip install 'esolangs[image]'` |
+
+Image-based programs built in memory need neither extra.
 
 ## Command line
 
 ```bash
-python -m pip install esolangs
-
 esolangs --help
 esolangs list
-esolangs generate brainfuck 0110 > bf.txt
-printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
+esolangs generate Suffolk 0110 > program.txt
+printf '01' | esolangs run Suffolk program.txt
+printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck xor.bf
 ```
 
-- Suffolk:
+- `list` shows every language; `list --details` marks which have a
+  generator (`gen`), a template (`tmpl`) and committed examples (`ex`).
+- `debug` steps through a program and watches memory.
+- Run a program under its own language. Suffolk programs look like
+  brainfuck, but brainfuck rejects or misreads them.
 
-  ```bash
-  esolangs generate Suffolk 0110 > program.txt
-  printf '01' | esolangs run Suffolk program.txt
-  ```
-
-- Polynomial needs the optional mathematics extra:
-  `pip install 'esolangs[math]'`.
-
-PNG loading and saving need
-`pip install 'esolangs[image]'`; in-memory raster programs need neither extra.
-
-## Python API
+## Python
 
 ```python
 import esolangs
@@ -79,15 +67,25 @@ output = esolangs.run("brainfuck", program, stdin=stdin, max_steps=10_000)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
-Use `max_steps` to bound commands, or `timeout` to bound wall time.
-On Windows or worker threads, use `isolated=True, timeout=5`; isolation also
-supports `max_output` and Linux-only `max_memory` limits.
+| Call | Does |
+|---|---|
+| `generate` | Turns a truth table into a program. |
+| `encode_inputs` | Builds the stdin for one input row; each language reads input its own way. |
+| `run` | Runs a program. |
+| `read_answer` | Pulls the `0`/`1` answer out of the output. |
+| `describe` | Says how a language takes input and where its answer lands. |
+| `instantiate` | Fills a template: some languages put inputs in the source, so `generate` returns a template instead. |
 
-- Suffolk source may run as brainfuck with a wrong answer.
+Bound a run with:
 
-Use
-[`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
-to build stdin.
+- `max_steps`: a command count.
+- `timeout`: wall time. On Windows or in a worker thread, pass
+  `isolated=True, timeout=5`.
+- `max_output`, and `max_memory` on Linux: need `isolated=True`.
+
+The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
+covers [input](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program),
+templates, answers, debugging and benchmarking.
 
 ## Examples
 
@@ -106,42 +104,39 @@ Feeding it the two adjacent input characters prints their XOR.
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 76
+Ready-to-run programs for each of the 85
 languages with a boolean generator live in
 each language's [directory](https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).
 
 <!-- EXAMPLES:END -->
 
-## Implemented languages
+## Languages
 
-Familiar languages include:
-
-- [brainfuck](https://esolangs.org/wiki/brainfuck)
-- [Befunge](https://esolangs.org/wiki/Befunge)
-- [Piet](https://esolangs.org/wiki/Piet)
-- [INTERCAL](https://esolangs.org/wiki/INTERCAL)
-- [Malbolge](https://esolangs.org/wiki/Malbolge)
-
-See the [complete language catalog](https://github.com/bangyen/esolangs/blob/main/docs/languages.md).
-
-## Generators
+Familiar ones include
+[brainfuck](https://esolangs.org/wiki/brainfuck),
+[Befunge](https://esolangs.org/wiki/Befunge),
+[Piet](https://esolangs.org/wiki/Piet),
+[INTERCAL](https://esolangs.org/wiki/INTERCAL) and
+[Malbolge](https://esolangs.org/wiki/Malbolge).
+The [catalog](https://github.com/bangyen/esolangs/blob/main/docs/languages.md)
+lists all of them.
 
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  76 of the
+first; its length implies `n`, so it isn't passed separately.  85 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 
 <!-- BOOLEAN-COUNT:END -->
 
-`esolangs list --details` marks generators (`gen`), templates (`tmpl`),
-and committed examples (`ex`). See the
-[usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
-for input conventions and benchmarking.
+[Limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)
+lists those subsets and other known limits; the
+[roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md)
+tracks open work.
 
 ## Contributing
 
-See [contributing](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
-for setup, verification and the execution path.
-The project is GPL v3; see [LICENSE](https://github.com/bangyen/esolangs/blob/main/LICENSE).
+See [CONTRIBUTING](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
+for setup and checks. Licensed GPL v3; see
+[LICENSE](https://github.com/bangyen/esolangs/blob/main/LICENSE).

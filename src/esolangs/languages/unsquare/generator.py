@@ -1,4 +1,18 @@
-"""Boolean program generator for Unsquare."""
+"""Unsquare Boolean program generator: a stack lookup popped by input weight.
+
+Entries are pushed reversed as ``O``/``I`` so row ``r`` sits at depth ``r``;
+each input read pops its bit's weight, leaving the addressed entry on top.
+Runs of equal cells use a counted loop when shorter, and two identical
+aligned halves share one counted push body before lookup overwrites the
+accumulator, when shorter within the command bound.
+
+Size:
+    Two bytes per row, O(T), against 32.5 for a decision tree; n=10 and:
+    1,176 chars, n=10 random 1847: 2,173 chars.
+
+Decisions:
+    Run loops: -15% at n=7, -10% at n=6 (12 seeded tables).
+"""
 
 from itertools import groupby
 
@@ -91,15 +105,8 @@ def _shared_pushes(bits: str, n: int, kept: int) -> str | None:
 def unsquare(truth_table: str) -> str:
     """Build an Unsquare program for a binary ``2**n``-entry table, MSB first.
 
-    Reversed ``O``/``I`` entries put row ``r`` at depth ``r``; each read pops
-    its bit's weight: two bytes per row, against 32.5 for a decision tree.
-    ``>-<`` subtracts 2 to reach the input character's parity; ``x`` doubles
-    it, ``>`` pops only for 1, ``OA`` zeroes it for the returning ``<``.
-    Index ``2**m - 1`` against ``2**m`` cells prevents underflow.  A run of
-    equal cells is pushed by a loop when shorter, so a constant half costs
-    about log of its length (:func:`_run`; -15% at n=7, -10% at n=6, 12 seeded
-    tables). Two identical aligned halves share one counted push body before
-    lookup overwrites the accumulator, when shorter within the command bound.
+    Index ``2**m - 1`` against ``2**m`` cells prevents underflow.  A constant
+    half costs about log of its length (:func:`_run`).
     """
     return _program(truth_table, share=True)
 
@@ -120,6 +127,8 @@ def _program(
     for index in range(n):
         if index in used:
             weight = 1 << (len(used) - 1 - used.index(index))
+            # ``>-<`` subtracts 2 to reach the input character's parity; ``x``
+            # doubles it, ``>`` pops only for 1, ``OA`` zeroes it for the ``<``.
             blocks.append("iA>-<x>" + "A" * weight + "OA<")
         else:
             blocks.append("iA")  # consume the line, leave the stack alone

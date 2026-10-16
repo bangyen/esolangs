@@ -54,7 +54,9 @@ repos:
       - id: check-comment-density
         name: Check prose density (>= 2 code lines per comment or docstring-body line)
         entry: python3 checks/check_comment_density.py
-        exclude: ^src/esolangs/languages/[^/]+/tests/
+        # _template.py is the spec skeleton every new interpreter copies:
+        # its prose is placeholders, not commentary on its code.
+        exclude: ^(src/esolangs/languages/[^/]+/tests/|src/esolangs/runtime/_template\.py$)
         language: system
         files: ^src/esolangs/.*\.py$
         pass_filenames: true

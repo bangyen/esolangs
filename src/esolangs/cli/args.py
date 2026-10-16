@@ -145,19 +145,15 @@ def _split_positional(
 ) -> list[str]:
     """Return ``rest``'s positionals, refusing any unrecognized option.
 
-    ``vocabulary`` is only for the did-you-mean: the value-taking options
-    have already been consumed by the time this runs, so ``known`` no
-    longer contains them and a misspelling of one had nothing to match
-    against -- ``--wdith`` was a flat "unknown option" while ``Brainfck``
-    got a suggestion.  The caller names its full option set here.
+    ``vocabulary`` is only for the did-you-mean: value-taking options are
+    already consumed, so ``known`` lacks them and a misspelling (``--wdith``)
+    would have nothing to match.  The caller names its full option set.
 
-    An unknown ``--option`` used to be kept as a positional, on the reasoning
-    that a program file named ``--x`` should stay reachable.  It did, but a
-    mistyped option went the same way: ``debug --frobnicate brainfuck p.txt``
-    reported ``cannot read brainfuck``, blaming the language name for a typo
-    three words earlier.  The file is still reachable, now by the convention
-    that says so -- everything after a bare ``--`` is positional whatever it
-    looks like.
+    An unknown ``--option`` is refused rather than kept as a positional:
+    ``debug --frobnicate brainfuck p.txt`` once reported ``cannot read
+    brainfuck``, blaming the language for a typo.  A program file named
+    ``--x`` stays reachable after a bare ``--``, after which everything is
+    positional.
     """
     args: list[str] = []
     for i, arg in enumerate(rest):
@@ -186,13 +182,10 @@ def _check_count(
 ) -> None:
     """Refuse a call with the wrong number of positional arguments.
 
-    Extra arguments used to be dropped in silence, which turned a wrong
-    command into a confident wrong answer.  It also made the bare-``--width``
-    rule unreadable: ``generate --width abc brainfuck 0110`` consumed nothing as
-    a width, read ``abc`` as the language, and reported *that* as unknown --
-    a message pointing at the wrong word entirely.  Saying which argument was
-    unexpected, and why the count came out that way, is what turns it back
-    into a fixable mistake.
+    Extra arguments are named, not dropped, since silence turned a wrong
+    command into a confident wrong answer.  ``generate --width abc brainfuck
+    0110`` consumes no width and reads ``abc`` as the language, so the message
+    says why the count came out that way (``bare_width``).
     """
     if len(args) < wanted:
         # The whole synopsis, not its first line: ``generate``'s wraps onto
@@ -233,13 +226,11 @@ def _check_count(
 def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
     """Split a ``--width N`` (or ``--width=N``) option out of ``rest``.
 
-    Returns the remaining arguments, the width (``None`` when the option is
-    absent -- which leaves the program on one line, the output ``generate``
-    has always produced), and whether a bare ``--width`` was taken.  A bare
-    ``--width`` uses the conventional :data:`DEFAULT_WIDTH`, so the common
-    case needs no number; an explicit value must be an integer, since
-    silently reading the language name as a width would generate the wrong
-    thing.
+    Returns the remaining arguments, the width (``None`` when absent, leaving
+    the program on one line), and whether a bare ``--width`` was taken.  A
+    bare ``--width`` uses :data:`DEFAULT_WIDTH`; an explicit value must be an
+    integer, since reading the language name as a width would generate the
+    wrong thing.
     """
     args: list[str] = []
     width: int | None = None
@@ -445,8 +436,8 @@ def _settings_of(
     if "--settings" in options:
         try:
             parsed = json.loads(options["--settings"])
-        except ValueError:
-            _fail("--settings must be a JSON object")
+        except ValueError as exc:
+            _fail(f"--settings is not valid JSON ({exc}); pass a JSON object")
         if not isinstance(parsed, dict):
             _fail("--settings must be a JSON object")
         values.update(parsed)

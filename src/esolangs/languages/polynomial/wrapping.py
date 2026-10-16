@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from itertools import pairwise
 from math import isqrt
 
+from esolangs.generation.token_balance import rendered_side
 from esolangs.generation.wrap import balance_score
 
 
@@ -64,10 +64,12 @@ def _balance_polynomial(program: str) -> str:
                 events[boundary] = events.get(boundary, 0) + change
     height = total
     choices: list[tuple[tuple[int, int, int], int]] = []
-    for lower, stop in pairwise(sorted(events)):
-        height += events[lower]
-        width = min(stop - 1, max(lower, height))
-        choices.append(((abs(width - height), total + height - 1, width), width))
+    # Height is fixed between events: each one's first width is its smallest side.
+    for width in sorted(events)[:-1]:
+        height += events[width]
+        choices.append(
+            ((rendered_side(width, height), total + height - 1, width), width)
+        )
     _, width = min(choices)
     return min(program, _polynomial(program, width), key=balance_score)
 

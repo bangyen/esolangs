@@ -1,18 +1,25 @@
-r"""Boolean program generator for SStack: a decision tree of one-shot ifs.
+r"""SStack Boolean program generator: a decision tree of one-shot ifs.
 
 Stacks ``b`` and ``c`` hold ``ord("1")`` and ``ord("0")``.  A node reads
 its input onto empty ``a`` and runs ``[a\b/~a~ one][a\c/~a~ zero]``.
 Popping before the child leaves ``a`` empty at its entry and exit; zero
 differs from both ASCII constants, so the loop and other arm cannot run.
 A leaf prints ``:b:`` or ``:c:``; a constant subtree reads its remaining inputs
-onto ``d`` and prints once.  21 characters a node: O(T) size and build.
-Repeated residuals defer through labels on stack e, then run once after
-the prefix unwinds. Six-bit labels preserve workspace; inline text and
-7n + 3 commands guard admission. Popping before descent reduces three dense
-n=16 tables from mean 1,345,047 to 955,490 characters (-28.96%); both builds
-executed five rows per table within the command and workspace bounds.
-Binary banks price every level before emitting one; a 64-state n=16 control
-shrinks 23,897 -> 20,360 characters (-14.80%), with 8,192 old/new native rows.
+onto ``d`` and prints once.  Repeated residuals defer through labels on stack
+``e``, then run once after the prefix unwinds.  Six-bit labels preserve
+workspace; inline text and 7n + 3 commands guard admission.  Binary banks
+price every level before emitting one.
+
+Size:
+    21 characters a node: O(T) size and build; n=10 random 1847: 16,158
+    chars, n=12 random 1847: 61,217 chars, n=16 parity: 18,921 chars.
+
+Decisions:
+    Popping before descent reduces three dense n=16 tables from mean
+    1,345,047 to 955,490 characters (-28.96%); both builds executed five rows
+    per table within the command and workspace bounds.  Binary banks: a
+    64-state n=16 control shrinks 23,897 -> 20,360 characters (-14.80%), with
+    8,192 old/new native rows.
 """
 
 from itertools import pairwise

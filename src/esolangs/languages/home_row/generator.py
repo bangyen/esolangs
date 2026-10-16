@@ -1,4 +1,22 @@
-"""Boolean template generator for home row."""
+"""Home Row Boolean program generator: a weighted index counted down a leaf chain.
+
+Each input adds its binary weight to an index cell; guarded leaves then count
+the index down onto a zero cell, printing at the selected row and skipping the
+rest.  Setters clear or preserve a fresh one; position-stable l/s/l gates add
+binary weights without nested loops.  Ignored inputs keep a zero-weight gate; a
+constant table discards all setters and prints a literal.  No goto and ``l``
+re-runs only its own block: leaves run once down a linear chain, so a
+non-adjacent repeat is never reached twice.
+
+Size:
+    Up to 2**n leaves in a linear chain; n=10 and: 3,209 chars, n=10 random
+    1847: 8,711 chars, n=10 parity: 10,359 chars.
+
+Decisions:
+    Sharing runs of equal rows through ``js`` clamped decrements saves, at n=7,
+    33.3% on random, 39.8% on tiled, 29.7% with one half constant and 57.4%
+    with constant blocks.
+"""
 
 from itertools import groupby
 
@@ -31,14 +49,8 @@ def _runs(rows: str) -> list[tuple[int, str]]:
 def home_row(truth_table: str) -> str:
     """Return a Home Row template for a binary, MSB-first ``2**n`` truth table.
 
-    Setters clear or preserve a fresh one; position-stable l/s/l gates add
-    binary weights without nested loops. Guarded leaves count the index down
-    onto a zero cell, printing at the selected row and skipping the rest.
-    Rows agreeing with the final answer share its unguarded leaf, and any
-    other run of equal rows is one leaf behind ``js`` clamped decrements (n=7
-    random -33.3%, tiled -39.8%, one half constant -29.7%, constant blocks
-    -57.4%).  No goto and ``l`` re-runs only its own block: leaves run once
-    down a linear chain, so a non-adjacent repeat is never reached twice.
+    Rows agreeing with the final answer share its unguarded leaf; any other
+    run of equal rows is one leaf behind ``js`` clamped decrements.
     """
     return _program(truth_table)
 

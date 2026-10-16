@@ -1,9 +1,7 @@
-"""Boolean-function generator for SLOW ACV MAMMALIAN.
+"""SLOW ACV MAMMALIAN Boolean program generator: a weighted chain to a flat leaf table.
 
-The default modulo-256 construction chains one read node per input and
-dispatches into a flat leaf table: O(T) size and build (the tree it
-replaced was super-linear, ``S(d) >= (2 + 1/255) S(d-1)``).  Each bit's
-whole effect is banked on array 16's non-head sum as a weight -- the
+The default modulo-256 construction chains one read node per input.  Each
+bit's whole effect is banked on array 16's non-head sum as a weight -- the
 four lightest are banked blind, without ever reading the sum -- and the
 dispatch jump lands on the non-head sum, so the banked total names the
 leaf slot directly.  A leaf clears the accumulator, SPRINTs to a print
@@ -14,8 +12,16 @@ the bounded fixed-point searches raise instead of hanging.
 Three identities carry the control flow, each proved where it is used:
 ``landing = start - 15`` (:func:`_node`), ``target = nonhead + b``
 (:func:`_trampoline`), ``leaf = nonhead of array 16`` (:func:`_weights`).
-Executed evidence: every table through ``n == 3``, plus sampled rows of
-dense tables through ``n == 12``.
+
+Size:
+    O(T) size and build.
+    n=10 random 1847: 144,685 chars, n=12 random 1847: 339,503 chars.
+    Executed evidence: every table through ``n == 3``, plus sampled rows of
+    dense tables through ``n == 12``.
+
+Decisions:
+    The tree it replaced was super-linear, ``S(d) >= (2 + 1/m) S(d-1)`` for
+    modulus ``m`` (see ``_CHAIN_MIN_INPUTS`` for where the tree still wins).
 """
 
 from collections.abc import Sequence
@@ -101,7 +107,8 @@ _FREE = len(_POOLS) + 1
 _CHAIN_MIN_INPUTS = {255: 3, 256: 2}
 
 #: Leaf slot of the I/O-255 chain above :data:`_FREE` inputs: the longest
-#: leaf is seven tokens, and its weights step by 255 instead of 256.
+#: leaf is seven tokens, and its weights step by 255 instead of 256, so 32
+#: seven-token leaves pack into each 255-token block.
 _COMPACT_UNIT = 7
 
 #: Bound on the leaf-base fixed point and the arm-slot widening below; both
@@ -473,13 +480,12 @@ def _jump(st: _Sums, target: int) -> list[str]:
 def _weights(n: int, *, stride: int = _MODULUS, unit: int = _LEAF_UNIT) -> list[int]:
     """Return the weight each read node banks, in read order.
 
-    The last ``_FREE`` bits carry the weights under 256 -- the one a
-    :func:`_w_raise` arm banks first, then one per pool -- and the bits
-    before them carry ``256 * 2**k``.  Any weight a later arm's solve
-    would see has to be a multiple of 256, so the order is forced: a
-    ``_w_raise`` arm reads array 16's sum, and the pool arms never do.
-    The whole set is ``_LEAF_UNIT`` times the powers of two, so the banked
-    total is a leaf slot times the row.
+    The last ``_FREE`` bits carry the weights under 256 (the one a
+    :func:`_w_raise` arm banks first, then one per pool); earlier bits
+    carry ``256 * 2**k``.  Any weight a later arm's solve sees must be a
+    multiple of 256, which forces the order: a ``_w_raise`` arm reads array
+    16's sum, pool arms never do.  The set is ``_LEAF_UNIT`` times the
+    powers of two, so the banked total is a leaf slot times the row.
     """
     free = min(n, _FREE)
     fixed = n - free
@@ -671,17 +677,16 @@ def _settle(
 ) -> tuple[list[str], _Sums, int]:
     """Build the arm and let its own length name the merge address.
 
-    Both branches have to leave through one address, and the arm sits at
-    the landing, so the merge is ``landing + len(arm)`` -- a self
-    reference, since the arm's closing trampoline is what reaches it.
-    The search walks that reference instead of reserving a bound: a bound
-    wide enough for the worst tuning chunk and the worst trampoline is
-    twice what a level actually spends, and the difference was emitted as
-    dead SEEDs on every level.  Re-aiming at the unpadded length ("tight")
-    returned the same program on 40 random tables, n=3..12: 0.00%.
-    Aiming too close is what fails, since a
-    trampoline can only reach *past* array 0's running sum, so a failed
-    build widens the slot and the narrowest arm that fits is kept.
+    Both branches leave through one address and the arm sits at the
+    landing, so the merge is ``landing + len(arm)``: a self reference, since
+    the arm's closing trampoline reaches it.  The search walks that
+    reference instead of reserving a bound, because a bound wide enough for
+    the worst tuning chunk and trampoline is twice what a level spends and
+    the difference was emitted as dead SEEDs.  Re-aiming at the unpadded
+    length ("tight") returned the same program on 40 random tables, n=3..12:
+    0.00%.  Aiming too close fails, since a trampoline can only reach
+    *past* array 0's running sum, so a failed build widens the slot and the
+    narrowest arm that fits is kept.
     """
     slot = _arm_core_len(one, weight, pool) + _SLOT_HEADROOM
     for _ in range(_SLOT_PASSES):
@@ -773,13 +778,7 @@ def slow_acv_mammalian(
 ) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
-    Constants read into array zero and print from a separate coprime array.
-    Otherwise, one read node per input (``ACCEPT``), one dispatch jump, one
-    leaf slot per entry: O(T) text. Above five inputs, modulo-255 I/O
-    packs 32 seven-token leaves into each 255-token block.
-    Cell modulus 255 uses coprime-array chains above two inputs with
-    I/O modulus 255, or above one with 256; smaller tables use a tree.
-    Essential-input chains compete with the original layout by text length.
+    Cell modulus 256 is the weighted chain; 255 dispatches in :func:`_program_255`.
     """
     return _program(truth_table, cell_modulus=cell_modulus, io_modulus=io_modulus)
 

@@ -6,12 +6,18 @@ result is not positive, else fall through to ``pc + 3``.  The byte-I/O
 dialect reads a byte into ``B`` for ``-1 B C`` and prints ``mem[A]`` for
 ``A -1 C``, falling through after either.
 
-EOF raises EOFError. Negative jumps halt; reads beyond loaded memory yield
-zero. A jump at or past the end of memory halts; writes past the end grow
-memory and reads do not, so only written cells move that end. Malformed
-source and negative data addresses raise ValueError. Incomplete instruction
-fetches raise HaltError. Writes are effects so a packed table is not copied
-at every arithmetic instruction.
+Negative jumps halt; reads beyond loaded memory yield zero. A jump at or past
+the end of memory halts; writes past the end grow memory and reads do not, so
+only written cells move that end. Writes are effects so a packed table is not
+copied at every arithmetic instruction.
+
+Input/output:
+    Byte I/O as above; EOF on a read raises.
+
+Errors:
+    ProgramError: Malformed source; a negative data address.
+    InputExhaustedError: A read at EOF.
+    HaltError: An incomplete instruction fetch.
 """
 
 from esolangs.exceptions import HaltError

@@ -16,58 +16,58 @@ Every function is stepped, the entry one and its callees alike.  A call
 statement, so a statement holding calls is re-entered once per call: each
 step runs the leftmost-innermost one that has not returned, and its value
 comes back rewritten into the statement's expression as a literal.  So
-one command of whichever function is innermost is one ``step()``, every
-intermediate state reaches :meth:`_Machine.snapshot`, and a loop inside a
-called function is provable by
-:func:`esolangs.vm.run_until_halt_or_cycle` rather than hanging where
-nothing can observe it.  The transition still performs no IO itself: it
-*requests* a read by returning a flag and the shell takes the byte, which
-is now reachable from a callee as well.
+one command of the innermost function is one ``step()``, every
+intermediate state reaches ``snapshot``, and a loop inside a
+called function is provable by :func:`esolangs.vm.run_until_halt_or_cycle`
+instead of hanging unobserved.  The transition performs no IO itself: it
+*requests* a read by returning a flag and the shell takes the byte, also
+from a callee.  IO inside a called function works: callees are framed, so
+the same shell performs their ``charPut``/``charGet`` in call order.
 
-There is therefore no recursion ceiling.  A program that recurses forever
-grows the frame list rather than Python's stack; that class revisits no
-state, so it is what ``esolangs.run``'s wall-clock ``timeout`` is for,
-exactly as ``grapheme.py`` records.
+There is no recursion ceiling.  A program that recurses forever grows the
+frame list, not Python's stack; that class revisits no state, so
+``esolangs.run``'s wall-clock ``timeout`` handles it, as ``grapheme.py``
+records.
 
 Numeric literals default to decimal. ``literal_policy="binary_digits"`` reads
 all-0/1 digit strings as binary and every other number as decimal; this makes
 the dependency example's ``110000`` mean 48. Generation uses the same policy
 for expression literals, type bounds and array lengths.
 
-Further decisions for gaps the wiki leaves open:
+Input/output:
+    ``charGet`` consumes the next character, including newlines.  EOF yields
+    newline byte 10, as specified; the wiki cat's ``c ^ 10`` terminator
+    therefore remains reachable.
 
-* **Entry point.**  The wiki never says what runs.  This interpreter calls
-  the parameterless function named ``main``, else the sole parameterless
-  function of the last-declared package -- which is what makes
-  PlusOrMinus runnable, its ``Integer plusOrMinus : code`` naming a
-  package variable rather than taking an argument.  A program with no
-  such function raises :class:`ValueError`, as does an unbalanced or
-  empty program, a malformed declaration, or a call with the wrong
-  argument count.
-* **EOF.** ``charGet`` consumes the next character, including newlines.
-  Exhausted input yields newline byte 10, as specified; the wiki cat's
-  ``c ^ 10`` terminator therefore remains reachable.
-* **Invalid runtime operations** raise
-  :class:`~esolangs.exceptions.HaltError`: an undefined variable or
-  function, an array index outside its length, and one rule of this
-  interpreter's own -- **dependency visibility is enforced**.  A package
-  calls its own functions and those of the packages it depends on, and
-  nothing else.  The wiki says a dependency
-  may itself have dependencies, so the relation is followed transitively.
-* **IO inside a called function works.**  It was refused, on the
-  rationale that a call was evaluated inside a statement and so gave the
-  shell no point at which to perform its ports.  Framing calls removed
-  that rationale: a callee's statements are stepped like any other, so
-  the same shell performs its ``charPut``/``charGet`` in call order.
-* **Bounds.**  A plain ``Integer`` and a ``Char`` are bytes, 0..255 and
-  wrapping both ways, matching ``charPut``'s byte output (the wiki gives
-  ``Integer`` no range, and charPut prints ``v % 256``);
-  ``Integer(min, max, under, over)`` wraps to the named values instead.
-  ``INIT`` sets a variable to its type's minimum, and an ``Array`` to a
-  row of them, which is what the cat example's ``INIT input`` relies on.
-* **A function's value** is its last evaluated expression statement (the
-  trailing ``0;`` in every wiki example); a function that evaluates none
-  returns 0.
+Errors:
+    ProgramError: No parameterless entry function; an unbalanced or empty
+    program; characters that are no token; a malformed declaration; an unknown
+    datatype; an ``Integer`` minimum above its maximum; a duplicate function in
+    a package; several parameterless ``main``; ``charPut`` or ``charGet``
+    called with the wrong argument count.
+    HaltError: An undefined variable or function; an array index outside its
+    length; a call to a function whose package is not a dependency; a user
+    function called with the wrong argument count.
+
+Decisions:
+    * Entry point: the wiki never says what runs.  This interpreter calls the
+      parameterless function named ``main``, else the sole parameterless
+      function of the last-declared package, which makes PlusOrMinus runnable
+      (its ``Integer plusOrMinus : code`` names a package variable rather
+      than taking an argument).
+    * Dependency visibility is enforced, a rule of this interpreter's own.  A
+      package calls its own functions and those of the packages it depends on,
+      and nothing else.  The wiki says a dependency may itself have
+      dependencies, so the relation is followed transitively.
+    * A plain ``Integer`` and a ``Char`` are bytes, 0..255 and wrapping both
+      ways, matching ``charPut``'s byte output (the wiki gives ``Integer`` no
+      range, and charPut prints ``v % 256``); ``Integer(min, max, under,
+      over)`` wraps to the named values instead.  ``INIT`` sets a variable to
+      its type's minimum, and an ``Array`` to a row of them, which is what the
+      cat example's ``INIT input`` relies on.
+    * A function's value is its last evaluated expression statement (the
+      trailing ``0;`` in every wiki example); a function that evaluates none
+      returns 0.
 """
 
 from collections.abc import Callable
@@ -489,12 +489,11 @@ def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
     """Return the parsed program as a hashable, order-canonical key.
 
     :meth:`_Machine.snapshot` carries this so a repeated state proves a
-    loop; the key identifies the whole program -- every function with its
+    loop.  It identifies the whole program -- every function with its
     package, parameters, body, callees, and local types, plus the
-    dependency graph and the globals -- while saying nothing about how
-    the run has proceeded.  Every mapping is sorted by name before it is
-    packed, so the key is canonical: the same program always yields the
-    same key regardless of declaration order.
+    dependency graph and the globals -- and nothing about the run's
+    progress.  Every mapping is sorted by name before packing, so the same
+    program yields the same key regardless of declaration order.
     """
     return (
         tuple(
@@ -605,15 +604,14 @@ class _Machine:
     def step(self) -> None:
         """Advance the innermost frame, owning the two ports.
 
-        A statement holding calls takes more than one step: each step
-        pushes a frame for the leftmost-innermost call that has not
-        returned, and the value comes back rewritten into ``pending`` as a
-        literal.  The statement itself runs on the step where none is
-        left.
+        A statement holding calls takes several steps: each pushes a frame
+        for the leftmost-innermost call not yet returned, and the value
+        comes back rewritten into ``pending`` as a literal.  The statement
+        itself runs on the step where none is left.
 
-        Stepping a halted machine is a no-op rather than an
-        ``IndexError``: ``run_until_halt_or_cycle`` steps once more after
-        the halt to prove it stayed there.
+        Stepping a halted machine is a no-op, not an ``IndexError``:
+        ``run_until_halt_or_cycle`` steps once more after the halt to prove
+        it stayed there.
         """
         frames, out, wants_read = _advance(self.frames, self.program)
         if wants_read:

@@ -1,4 +1,19 @@
-"""thisthat boolean generator: a bistack-routed planar decision tree."""
+"""thisthat Boolean program generator: a bistack-routed planar decision tree.
+
+A loader reads each input and pushes essential bits to the bistack; each node
+pops one and routes by a ``◒``/``◑`` router, ignored inputs only read, and a
+node with equal halves pops its bit onto the column stack and takes one half.
+A bounded DAG replaces the tree when smaller; narrow widths try rotation,
+strips and streaming trees.
+
+Size:
+    Linear area in T for the plain tree; n=8 parity: 6,379 chars, n=10 and:
+    113,005 chars, n=10 random 1847: 238,413 chars.
+
+Decisions:
+    Greedy input order saves 0.2% at n=8 and swapping the root's arms 0.5%,
+    both under the 10% bar.
+"""
 
 from collections import defaultdict
 from itertools import pairwise
@@ -303,8 +318,7 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
 
     Ignored inputs are read and dropped.  A node whose halves agree pops its
     bit onto the unpopped column stack.  Kept inputs are tested in input
-    order (a greedy order saves 0.2% at n=8, under the 10% bar); the root's arms
-    are not swapped (swapping saves 0.5% at n=8, under the 10% bar).
+    order; the root's arms are not swapped.
     """
     n = _validate_truth_table(truth_table)
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))

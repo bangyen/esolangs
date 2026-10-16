@@ -2,10 +2,18 @@
 
 Brainfuck commands on a stack: ``>`` pushes 0, ``<`` pops, ``+``/``-``
 adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
-``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  An
-empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
-raises :class:`ValueError` when reached; exhausted input raises
-:class:`EOFError`.
+``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  A ``[`` needs
+no partner while entered, as in the original's forward scan (``>+[`` runs
+and halts).
+
+Input/output:
+    ``,`` reads one byte and ``.`` writes one.
+
+Errors:
+    ProgramError: an unmatched ``[`` when skipped (top zero).
+    InputExhaustedError: ``,`` at EOF.
+    HaltError: ``<``, ``+``, ``-``, ``.`` or ``[`` on an empty stack (pop or
+    output); ``]`` with no open loop.
 """
 
 from __future__ import annotations
@@ -22,16 +30,14 @@ from esolangs.runtime.source_hints import syntax_error
 class _State(NamedTuple):
     """One instant of a run: the code cursor, the data stack, the loop stack.
 
-    A value, not a record: every transition below returns a new one rather
-    than editing one in place, and both stacks are tuples for the same reason.
+    A value: every transition returns a new one, and both stacks are tuples.
 
-    The loop stack is state, not a scratch register: a ``]`` reads the
-    position a matching ``[`` pushed, so two runs sitting on the same
-    command with different loop stacks will go different places next.
+    The loop stack is state, not scratch: ``]`` reads the position its ``[``
+    pushed, so two runs on the same command with different loop stacks go
+    different places next.
 
-    The code is deliberately not in here.  It does not change during a run,
-    so carrying it would put constant data in every value the cycle detector
-    stores.  It is a parameter to the transition instead.
+    The code is a transition parameter, not a field: it is constant, and
+    carrying it would put it in every value the cycle detector stores.
     """
 
     ind: int

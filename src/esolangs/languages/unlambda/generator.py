@@ -1,23 +1,20 @@
-r"""Unlambda boolean program builder: a decision tree of promises.
+"""Unlambda Boolean program generator: a decision tree of promises.
 
-Each half of a node is a ``d`` promise, forced by the ``?`` test that selects
-it: Unlambda evaluates an argument before applying it, so a half spelled
-inline would read twice a level and print both answers.  ``?c`` hands its
-argument the spec's ``i`` on a match and ``v`` otherwise.  The ``?1`` flag is
-computed *before* the zero half runs, since that half's read replaces the
-character ``?`` looks at -- testing it afterwards asked about a deeper
-level's character and fired both halves on ``0`` then ``1``.
+A node, ``` `@`d`k``s``?0i`dZ``?1i`dO ```, reads, takes both ``?`` flags at
+once (the zero half's read would replace the character tested), and returns
+``s`` over its halves' ``d`` promises; ``?c`` gives ``i`` on a match, else
+``v``.  A repeated subtree ``X`` is bound once, ``` `N`dX ```; a half that is
+``X`` is ``i`` first under ``s``, so ``X`` is forced, and reads, once.
+Subtrees are named by :class:`~esolangs.generation.helpers.SubtreeDiagram`;
+each node binds the one within ``_REACH`` levels that shortens it most, if
+any does, and a bound node's subtree sees only its own share.
 
-Each node is a function of one argument, the *share*:
-``` `@`d`k``s``?0i`dZ``?1i`dO ``` reads, takes both flags at once, and returns
-``s`` over the two selected promises, so applying it to a share runs the
-matching half on that same share.  A repeated subtree ``X`` is bound once,
-``` `N`dX ``` runs node ``N`` on the promise of ``X``, and a half that is ``X``
-is just ``i`` put first under ``s``: its ``i`` flag returns the share
-unforced, and the other half's ``v`` forces it.  ``X`` itself is a ``d``
-promise, so it reads only when one path forces it, once.  A ``λ``-bound ``X``
-would not do: bracket abstraction through a ``d`` forces the promise the
-moment the variable is supplied.
+Size:
+    ~4x per two inputs, ``and`` ~n**2; n=10 random 1847: 16,977 chars.
+
+Decisions:
+    Inline halves read twice a level (arguments evaluate first); ``?1``
+    tested after the zero half fired both; a ``λ``-bound ``X`` forces on supply.
 """
 
 from __future__ import annotations
@@ -66,15 +63,7 @@ def _leaf(n: int, level: int, bit: str) -> str:
 
 
 def unlambda(truth_table: str) -> str:
-    """Return an Unlambda program computing ``truth_table``.
-
-    Reads ``n`` characters, one ``0``/``1`` per input in table order, and
-    prints the answer digit.  The tree is of share-taking nodes; subtrees are
-    named by :class:`~esolangs.generation.helpers.SubtreeDiagram`.
-    A node whose halves agree reads and runs the half, and each node binds
-    the one subtree within :data:`_REACH` levels that shortens it most, if
-    any does; a bound node's subtree sees only its own share.
-    """
+    """Return an Unlambda program: ``n`` ``0``/``1`` characters in, the answer out."""
     n = _validate_truth_table(truth_table)
     diagram = SubtreeDiagram(truth_table)
     halves, level_of, reaches = diagram.halves, diagram.level, diagram.reaches
@@ -96,6 +85,7 @@ def unlambda(truth_table: str) -> str:
         zero, one = halves[key]
         level = level_of[key] + 1
         if zero == one:
+            # Halves agree: read, then run the one half.
             return _OPEN + (_FORCE_BOUND if zero == share else tree(level, zero, share))
         order = [("1", one), ("0", zero)] if one == share else [("0", zero), ("1", one)]
         return (

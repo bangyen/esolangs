@@ -5,15 +5,24 @@ accumulator, ``S`` swaps the top two, ``+``/``-``/``x`` add 2, subtract
 2, double, ``P`` pushes it, ``o`` prints the top as a character (decimal
 if not a code point), ``i`` pushes the next Unicode character code,
 ``>``/``<`` loop unless the accumulator is
-0 or 1.  An empty pop, a swap or ``o`` without enough elements, an
-unmatched ``<`` or a ``>`` with no ``<`` raise :class:`HaltError` (the
-cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
+0 or 1.
 
-``o`` outputs "the top of the stack", so the wiki's Hello, world
-(``OA++...o``, an empty stack at every ``o``) errors here; its ``+`` counts
-miss under any reading (printing the accumulator spells "Heffi, world").
-The spec leaves input representation unspecified; i reads the next Unicode
-character code, including whitespace.
+Input/output:
+    ``i`` reads the next Unicode character code, including whitespace.  ``i``
+    at EOF raises.
+
+Errors:
+    InputExhaustedError: ``i`` at EOF.
+    HaltError: an empty pop; a swap or ``o`` without enough elements; an
+        unmatched ``<`` or a ``>`` with no ``<`` (the cross-check exits 3).
+
+Decisions:
+    * ``o`` outputs "the top of the stack", so the wiki's Hello, world
+      (``OA++...o``, an empty stack at every ``o``) errors here; its ``+``
+      counts miss under any reading (printing the accumulator spells
+      "Heffi, world").
+    * The spec leaves input representation unspecified; ``i`` reads the next
+      Unicode character code.
 """
 
 from __future__ import annotations

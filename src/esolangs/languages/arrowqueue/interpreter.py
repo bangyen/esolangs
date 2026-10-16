@@ -2,10 +2,13 @@
 
 A 2D queue-based tarpit after Re:direction: ``*`` turns the IP clockwise,
 ``~`` pushes the current direction, ``+`` pops and points the IP that way;
-the program halts on an empty pop or off the grid.  Decisions: the IP
-starts top-left moving right; clockwise is right, down, left, up; the
-grid is padded to the longest line, and leaving it halts.  There is no
-I/O: the queue is dumped when the run ends.
+the program halts on an empty pop or off the grid.  There is no input; the
+queue is dumped when the run ends.
+
+Decisions:
+    * The IP starts top-left moving right.
+    * Clockwise is right, down, left, up.
+    * The grid is padded to the longest line, and leaving it halts.
 """
 
 from __future__ import annotations

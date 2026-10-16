@@ -1,4 +1,24 @@
-"""Boolean template generator for bitdeque."""
+"""Bitdeque Boolean template generator: a deque load, then a pop-and-GOTO tree.
+
+The load pushes every input bit as the fixed pair ``PUSH INVERT`` / ``INVERT
+PUSH`` (``2n`` commands, no absolute ``GOTO``); each node pops one bit and
+``GOTO``s its one-subtree, and a leaf drains the deque, pushes the answer and
+halts through a low-address trampoline.  The split order is the shortest
+found by ``best_input_order``; rotations happen inside the tree, so the load
+is byte-identical under every order.  Constant subtrees are one leaf and a
+repeated subtree at its level is reached by ``GOTO``.  Past n=4 the shorter of
+the tree and a linear discard lookup wins.
+
+Size:
+    O(n) for parity and and, O(T) for dense tables; n=10 parity: 682 chars,
+    n=10 and: 479 chars, n=10 random 1847: 5,470 chars.
+
+Decisions:
+    A deque's ``EJECT``/``INJECT`` work the head, so any bit reaches an end at
+    two commands per position: measured, not modelled.  Sharing: n=4, all
+    65,536 tables, -49.3%, none longer.  The linear lookup: tree 0.48x to
+    0.29x at n=5..10, random tables; never longer.
+"""
 
 import re
 from collections.abc import Callable
@@ -31,27 +51,9 @@ _SHORT_BLOCK = 15
 
 
 def bitdeque(truth_table: str, width: int | None = None) -> str:
-    """Build a Bitdeque template for the given truth table.
+    """Build a Bitdeque template for ``truth_table`` (length ``2**n``, MSB first).
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
-    bit is the fixed pair ``PUSH INVERT`` (zero) / ``INVERT PUSH`` (one),
-    so the load is always ``2n`` commands and no absolute ``GOTO`` moves;
-    the register flips after every block, so odd positions push complemented,
-    which the table absorbs (:func:`_bitdeque_ordered`).  Bits are pushed in
-    reverse so ``POP`` yields the MSB first.  A node pops and ``GOTO``s to
-    the one-subtree; a leaf drains with ``n+1`` ``POP``s, pushes the answer,
-    restores the register with ``INVERT``, and uses a low-address halt
-    trampoline.  The split order is whichever is shortest
-    (:func:`~esolangs.generation.helpers.best_input_order`): a deque's
-    ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
-    at two commands per position, measured not modelled.  Rotations happen
-    inside the tree; the load is byte-identical under every order.
-    A constant subtree is one leaf, and a subtree repeated at its level is
-    emitted once and reached by ``GOTO`` (n=4, all 65,536 tables: -49.3%, none
-    longer).  Past n=4 the shorter of that tree and the linear discard lookup
-    is kept (tree 0.48x to 0.29x at n=5..10, random tables; never longer).
-    Width < 11 with n <= 4 loads each input via POP/EJECT on fresh zero/one
-    endpoints (15 commands each); otherwise the load is the linear ``2n``.
+    ``width`` wraps the program; below 11 with n <= 4 it uses the short load.
     """
     small = len(truth_table) <= 16
     short = small and width is not None and width < len(BITDEQUE_PAIR[0])
@@ -67,7 +69,10 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
 
 
 def _bitdeque_short_load(n: int) -> list[str]:
-    """Bracket stored inputs with head one/tail zero before each setter."""
+    """Bracket stored inputs with head one/tail zero before each setter.
+
+    Loads each input via POP/EJECT on fresh zero/one endpoints, 15 commands each.
+    """
     tokens: list[str] = []
     for i in range(n):
         # The block's first command, counted from 1 as ``GOTO`` counts.
@@ -172,7 +177,9 @@ def _bitdeque_ordered(
 
     ``perm`` is spent on the rotations before a node consumes its bit, a
     function of the level alone, so a node's width is well-defined.  The
-    identity order emits no rotation.  Odd load positions push complemented;
+    identity order emits no rotation.  Bits are pushed in reverse so ``POP``
+    yields the MSB first; the register flips after every load block, so
+    odd load positions push complemented;
     the tree reads the table with those inputs complemented back
     (``row ^ mask``), a relabelling that folds as the table did.
     """
@@ -187,6 +194,8 @@ def _bitdeque_ordered(
     seen = "".join(truth_table[row ^ mask] for row in range(2**n))
 
     def leaf(answer: str) -> list[str]:
+        # Drain n+1 POPs, push the answer, INVERT restores the register, and
+        # GOTO 1 halts through the low-address trampoline.
         out = ["POP"] * (n + 1)
         if answer == "1":
             out.append("INVERT")

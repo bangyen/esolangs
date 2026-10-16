@@ -7,7 +7,6 @@
 from esolangs.languages.inject.tests.test_inject import INJECT_TRUTH_MACHINE
 from esolangs.languages.line.generator import line as _line_sample
 from esolangs.languages.piet.generator import piet as _piet_sample
-from esolangs.languages.piet_plus_plus.generator import piet_plus_plus as _pp_sample
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._program import Program
@@ -191,7 +190,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Dimensional": ("+.+.+.", ""),
     "EGL": ("1,1:+=", ""),
     "Eval": ("0+.", ""),
-    "Factor": ("15", ""),
     "FALSE": ("'A,", ""),
     "Fargo": ("$", "0\n"),
     "Flowchart": (FLOWCHART_TRUTH_MACHINE, "0\n"),
@@ -242,7 +240,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
 # Raster samples are decoded, so VM checks exercise pixel extraction.
 
 SAMPLES["Line"] = (Raster.from_png(_line_sample("01").to_png()), "1\n")
-SAMPLES["Piet++"] = (Raster.from_png(_pp_sample("01").to_png()), "1\n")
 SAMPLES["Piet"] = (Raster.from_png(_piet_sample("01").to_png()), "1\n")
 
 

@@ -1,7 +1,13 @@
-"""Boolean-function generator for B-tapemark.
+"""B-tapemark Boolean program generator: a copied table walked by weighted stages.
 
-One copied cell a row is the indexed walk's target. Constant roots read all
-inputs into disposable marks and print a literal answer without that walk.
+The table is copied onto the blank grid, one cell per row; each input's stage
+walks the mark pointer by its weight when the bit is 0, and ``+`` prints the
+mark it ends on.  Constant roots read all inputs into disposable marks and
+print a literal answer without that walk.
+
+Size:
+    O(T) source and construction in both layouts; the narrow XOR2 needs
+    nine columns.  n=10 parity: 6,809 chars, n=10 random 1847: 6,809 chars.
 """
 
 from __future__ import annotations
@@ -92,15 +98,9 @@ class _Builder:
         self.put(turn, y + 4, "/")
 
     def render(self, *, reflect: bool = False) -> str:
-        """Render after removing wholly blank rows and columns.
+        """Render without wholly blank rows and columns.
 
-        Each row is drawn from its own cells, only as long as its last
-        one, so the cost is the output's size rather than its bounding box.
-        Dropping an empty row or column cannot move a beam: a blank cell is
-        a no-op wherever it sits.  ``reflect`` mirrors the grid top to
-        bottom, mirrors included, which leaves every row's length alone; a
-        horizontal mirror is as faithful and is not offered, because it
-        moves every ragged edge to the left, where it is rendered.
+        ``reflect`` mirrors the grid top to bottom, mirrors included.
         """
 
         def axis(values: set[int], *, reverse: bool = False) -> list[int]:
@@ -114,13 +114,20 @@ class _Builder:
             order = range(hi, lo - 1, -1) if reverse else range(lo, hi + 1)
             return [v for v in order if v in values]
 
+        # Dropping an empty row or column cannot move a beam: a blank cell is
+        # a no-op anywhere.
         xs = axis({x for x, _ in self.cells})
         ys = axis({y for _, y in self.cells}, reverse=reflect)
         column = {x: i for i, x in enumerate(xs)}
+        # Reflecting leaves every row's length alone.  A horizontal mirror is
+        # as faithful but not offered: it moves every ragged edge to the left,
+        # where it is rendered.
         symbols = {"/": "\\", "\\": "/"} if reflect else {}
         rows: dict[int, dict[int, str]] = {y: {} for y in ys}
         for (x, y), char in self.cells.items():
             rows[y][column[x]] = symbols.get(char, char)
+        # Each row is drawn only as far as its last cell, so cost is the
+        # output's size, not its bounding box.
         lines = []
         for y in ys:
             cells = rows[y]

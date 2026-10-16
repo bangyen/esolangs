@@ -1,0 +1,32 @@
+{
+ "triggers": [
+  {
+   "program": "▣─X",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "cell outside the alphabets"
+  },
+  {
+   "program": "▣─◇",
+   "stdin": "2",
+   "expect": "HaltError",
+   "claim": "input character not 0 or 1"
+  },
+  {
+   "program": "─",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "no start node"
+  },
+  {
+   "program": "▣─◇",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "a read at EOF sends an empty transfer and the run goes on"
+  }
+ ],
+ "untriggerable": {
+  "ProgramError": "raised only by branching_successors"
+ }
+}

@@ -1,4 +1,17 @@
-"""Boolean generator for decleq."""
+"""Decleq Boolean program generator: a decision tree over a counter-indexed table.
+
+Branches on each essential input (48/49 made 1/2 by decrement-and-branch in 47
+steps; zero decrements to 0 and jumps, one falls through) until ``k`` levels
+remain, ``2**k >= 2n``; a leaf subtracts low inputs' weights from a counter
+(starting at ``2**k``, via ``2**k-1`` unrolled decrements) and prints that cell
+of a ``2**k`` table (a full tree: Theta(T log T) target digits, from T-1
+distinct absolute targets).  All n inputs are read; only essential ones pay the
+normalization.
+
+Size:
+    O(T) cells, O(n) steps, shared subtrees: T three-character table cells
+    plus at most T/(2n) O(n)-digit branches; n=10 random 1847: 9,165 chars.
+"""
 
 from esolangs.generation.helpers import (
     _ASCII_ONE,
@@ -20,7 +33,8 @@ __all__ = ["decleq"]
 # every unconditional decrement targets cell 0, whose value never triggers a
 # branch. Cells 3-14 hold two print gadgets, each a ``-2 K 0`` decrement pair
 # followed by a ``0 0 END`` terminator; a leaf reaches a gadget by jumping to
-# its address. Cells 15-17 hold the print constants and the table-index
+# its address; constant subtrees share them (11110000 needs one branch).
+# Cells 15-17 hold the print constants and the table-index
 # counter; cells 18 onward hold the per-input read cells.
 _OUT_ZERO = 3  # print-"0" gadget: ``-2 k48 0``
 _HALT = 6  # halt: ``0 0 END`` of the first gadget, jumping one past memory
@@ -32,27 +46,7 @@ _READ_BASE = 18  # input i is read at ``_READ_BASE + i``
 
 
 def decleq(truth_table: str) -> str:
-    """Return a Decleq program for a binary, MSB-first ``2**n`` truth table.
-
-    Decrement-and-branch normalizes bytes 48/49 to 1/2 in 47 steps; zero
-    then decrements to 0 and jumps, while one falls through. All n inputs
-    are read, but only essential inputs pay that normalization cost.
-
-    A full tree's T-1 distinct absolute targets cost Theta(T log T) digits.
-    Stop k levels short, 2**k >= 2n: each leaf indexes a 2**k-cell table.
-    A counter starts at 2**k; low one-bits subtract their weights using
-    2**k-1 unrolled decrements. A leaf adjusts its output address by that
-    counter and prints the selected 48/49. T three-character table cells
-    plus at most T/(2n) O(n)-digit branches give O(T) size, O(n) execution.
-    Constant subtrees use shared print gadgets; 11110000 needs one branch.
-    A subtree that repeats an earlier one at its level is not emitted again:
-    a zero side branches to the copy, a one side jumps to it in one
-    instruction, so the program is never longer than the plain tree.
-
-    Cell 0 jumps over two ``-2 K 0; 0 0 END`` gadgets, constants 48/49,
-    the counter and read cells. Code starts at the next multiple of three;
-    cell 0 supplies every unconditional decrement and END is one past memory.
-    """
+    """Return a Decleq program for a binary, MSB-first ``2**n`` truth table."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
     # Routing only the essential inputs drops an ignored one's level and the
@@ -73,7 +67,10 @@ class _CodeBuilder:
 
     Owns the cell list and every piece of state the recursive tree emission
     mutates: the routing plan, the dedup map for repeated subtrees, and the
-    END operands backpatched once emission finishes.
+    END operands backpatched once emission finishes.  A subtree repeating an
+    earlier one at its level is not emitted again: a zero side branches to
+    the copy, a one side jumps to it in one instruction, so the program is
+    never longer than the plain tree.
     """
 
     def __init__(

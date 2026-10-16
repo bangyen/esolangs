@@ -1,6 +1,16 @@
-"""Boolean generator for qoibl.
+"""Qoibl Boolean program generator: one packed binary literal, divided down.
 
-A packed literal has no subtrees to fold or share.
+The whole table is a literal, bit ``k`` holding row ``k``; each input read
+squares and multiplies ``power`` so it ends as ``2**index`` (the row index
+accumulates in the exponent by Horner's rule), and the printed character is
+``'0'`` plus the low bit of ``literal // power``.
+
+Size:
+    O(T) characters for the literal, O(n) statements;
+    n=10 parity: 1,728 chars, n=16 random 1847: 66,624 chars.
+
+Decisions:
+    A packed literal has no subtrees to fold or share.
 """
 
 from itertools import combinations
@@ -11,7 +21,12 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
-from esolangs.generation.token_balance import near_even_counts, run_widths
+from esolangs.generation.token_balance import (
+    CELL_ASPECT,
+    near_even_counts,
+    rendered_side,
+    run_widths,
+)
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -53,15 +68,7 @@ def _print(expr: str) -> str:
 
 
 def qoibl(truth_table: str, width: int | None = None) -> str:
-    """Build a Qoibl program computing the given truth table.
-
-    ``truth_table`` has length ``2**n``, most significant input first.  The
-    whole table rides in one binary literal, bit ``k`` holding row ``k``.
-    Each essential input read multiplies ``2**bit`` into ``power``, so after
-    the reads ``power`` is ``2**index`` -- the row index accumulates in the
-    exponent by Horner's rule.  ``packed // power`` then shifts the table
-    down to the row, and the printed character is ``'0'`` plus its low bit.
-    """
+    """Build a Qoibl program; ``truth_table`` has length ``2**n``, MSB first."""
     n = _validate_truth_table(truth_table)
     # An ignored input is read into ``p`` until the first essential read sets
     # it, then into ``row``, which the packed literal overwrites: it costs no
@@ -248,7 +255,7 @@ def _best_width(rows: list[_Affine], length: _Affine, lower: int, upper: int) ->
     height = len(rows)
     for slope, offset in envelope.items():
         if slope:
-            root = (height - offset) // slope
+            root = (CELL_ASPECT * height - offset) // slope
             points.update((root, root + 1))
     for (left, left_offset), (right, right_offset) in combinations(envelope.items(), 2):
         crossing = (right_offset - left_offset) // (left - right)
@@ -256,7 +263,7 @@ def _best_width(rows: list[_Affine], length: _Affine, lower: int, upper: int) ->
 
     def score(width: int) -> tuple[int, int, int]:
         span = max(slope * width + offset for slope, offset in envelope.items())
-        return abs(span - height), length[0] * width + length[1], span
+        return rendered_side(span, height), length[0] * width + length[1], span
 
     return min((min(max(point, lower), upper) for point in points), key=score)
 
@@ -291,7 +298,12 @@ def balance_qoibl(table: str, default: str) -> str:
             rows, stop = _row_fits(statements, lower, upper + 1)
             width = _best_width(rows, length, lower, stop - 1)
             span = max(slope * width + offset for slope, offset in rows)
-            score = (abs(span - len(rows)), length[0] * width + length[1], span, width)
+            score = (
+                rendered_side(span, len(rows)),
+                length[0] * width + length[1],
+                span,
+                width,
+            )
             if best is None or score < best:
                 best = score
             lower = stop

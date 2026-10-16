@@ -189,10 +189,10 @@ class TestDebugMirrorsRunsExitCodes:
     ("source", "options", "code", "output", "error"),
     [
         (",.", [], 0, "A", ""),
-        (",[.]", ["--max-output", "3"], 1, "AAA\n", "output limit exceeded"),
+        (",[.]", ["--max-output", "3"], 1, "AAA", "output limit exceeded"),
         (",[.]", ["--max-output", "0"], 1, "", "output limit exceeded"),
         # Includes worker startup; 0.5s lost output in two full-suite runs.
-        (",.+[]", ["--timeout", "2"], 124, "A\n", "deadline"),
+        (",.+[]", ["--timeout", "2"], 124, "A", "2.0-second timeout"),
         (",.", [], 0, "1", ""),
     ],
 )

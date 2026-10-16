@@ -5,29 +5,37 @@ separator is a rule ``lhs::=rhs``; everything after it, newlines included, is
 the starting state.  A step replaces one occurrence of some rule's ``lhs``
 with its ``rhs``, and the program ends when no ``lhs`` occurs.  ``:::`` as a
 right-hand side substitutes a line of input; a ``~`` prefix prints the rest.
-
-Which occurrence of which rule is the spec's choice, and it is random, so this
-interpreter *draws* it through the shared
-:mod:`~esolangs.runtime.randomness` hook rather than pinning a tie-break:
-pinned, overlapping rules would compute whatever this file preferred.  ``rng``
-fixes the draw for reproducibility, and the branching protocol below lets the
-hang proof search *every* draw, as a random-branch language does.  A program whose
-rewrites never collide has one in every state, so no draw can change it --
-how the generated programs stay reproducible, asserted by their suite.
+A state no rule matches is the normal end; nothing at runtime is invalid, so
+no HaltError arises.
 
 The separator is the first ``::=`` line with nothing but whitespace on either
 side, and a ``~`` rule whose text is empty prints a newline and nothing else;
-both are the spec's, the second Vogel's convention that the wiki carries.  A
-rule line with no ``::=`` is refused (the spec is silent on comments; a loud
-rejection beats guessing), but a blank one is skipped, as wiki examples use.
-A whitespace left side before a nonblank right one (the spec leaves it open;
-the original ends the rules there) is a rule that rewrites that whitespace.
+both are the spec's, the second Vogel's convention that the wiki carries.
 
-A source with no separator line, a rule line without ``::=``, and a rule with
-an empty left-hand side (it would match everywhere, so no run could make
-progress past it) raise :class:`ValueError`.  Nothing at runtime is invalid,
-so no :class:`~esolangs.exceptions.HaltError` arises: a state no rule matches
-is the normal end.  A ``:::`` rule with no input left propagates ``EOFError``.
+Input/output:
+    A ``:::`` rule reads a line; ``~`` prints its text.
+
+Errors:
+    ProgramError: no separator line; a rule line without ``::=``; a rule with
+        an empty left-hand side (it would match everywhere, so no run could
+        make progress past it).
+    InputExhaustedError: a ``:::`` rule with no input left (EOF).
+
+Decisions:
+    * The spec picks the occurrence and rule at random, so this interpreter
+      *draws* through the shared :mod:`~esolangs.runtime.randomness` hook
+      rather than pinning a tie-break (pinned, overlapping rules would
+      compute whatever this file preferred).  ``rng`` fixes the draw, and the
+      branching protocol lets the hang proof search *every* draw.  A program
+      whose rewrites never collide has one choice per state, so no draw
+      changes it; that keeps generated programs reproducible (asserted by
+      their suite).
+    * A rule line with no ``::=`` is refused (the spec is silent on comments;
+      a loud rejection beats guessing), but a blank one is skipped, as wiki
+      examples use.
+    * A whitespace left side before a nonblank right one (the spec leaves it
+      open; the original ends the rules there) is a rule that rewrites that
+      whitespace.
 """
 
 from __future__ import annotations

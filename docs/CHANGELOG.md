@@ -5,6 +5,78 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## Unreleased
+
+- **Breaking:** `balance=True` picks the text layout fitting the smallest
+  on-screen square, max(columns, 2 x rows), then the shortest.  It minimized
+  |columns - rows| first, which rendered about twice as tall as wide and
+  could pick a far longer program to shave one column.  Most balanced text
+  programs change shape.  Rasters likewise rank by max(width, height) in
+  pixels, then area; Piet no longer returns a packed layout larger than its
+  default.
+
+## 0.15.0
+
+- **Breaking:** Remove Factor and Piet++; their names no longer resolve.
+  Their generators re-spelled brainfuck's and Piet's.
+- **Breaking:** `DialectSettings` refuses a value outside its key's choices
+  (`None` included) when constructed; it was accepted until first use.
+- **Breaking (CLI):** `generate` refuses to write PNG or gzip to a terminal
+  (exit 2); redirect, or pass `--plain` for gzip.
+- `ExecutionTimeoutError.bound` names the bound that fired: `"timeout"` or
+  `"max_steps"`.
+- Add SendStuff, Quassaunt, Codesick, Object disoriented, 1 + i, Pointless,
+  Ascenic, Fackward and What!? (88 languages).
+
+## 0.14.0
+
+- **Breaking:** `describe()["input_shape"]` and `["input_encoding"]` are
+  `None` unless `reads_input` (templates and Deadfish, HQ9+, Nope.); the CLI
+  list filters agree.  `encode_inputs` refuses Deadfish, HQ9+ and Nope.
+- **Breaking:** `run(isolated=)` and `generate(balance=)` must be `bool`.
+- **Breaking:** a program object's language tag must name a registered
+  language and is stored canonically; its settings need a language and must
+  be valid for it.  Generated programs are immutable.  `Raster` and
+  `CompressedText` refuse bad arguments with `ProgramError`/`ArgumentError`
+  (they raised `TypeError`, `AttributeError` or bare `ValueError`).
+- **Breaking:** `eof_is_a_value` is true for Fish, thisthat, Piet, Piet++ and
+  Unary; `VM.memory` is integer cells only (`[]` for Caballo, Crement and
+  B-tapemark).
+- **Breaking:** numeric input reads ASCII decimal only (`1_0` and `٣` were
+  accepted).  An upscaled raster over 2^28 pixels raises `ArgumentError`.
+- **Breaking (CLI):** `help <unknown>` exits 2; a failed run's partial
+  output gets no added newline on a pipe; `describe --spec --json` prints the
+  spec as a JSON string.
+- Add `Debugger.eof_is_a_value`; `Debugger.break_at` and `--break-at` take
+  negative positions.
+- Fix: an isolated worker exits when its parent is killed (SIGTERM/SIGHUP
+  left it running); the CLI with closed stdin, stdout or stderr, or an ASCII
+  locale, no longer exits 70; `instantiate(truth_table=)` accepts every
+  width-aware template; scaled rasters, `InputExhaustedError` and
+  `UnknownLanguageError` pickle intact; `typing.get_type_hints` resolves on
+  `Raster` and `CompressedText`; isolated and stepped timeouts share one
+  message; bit~ reads input as a byte; Piet and Piet++ drop surrogates.
+- Docs: corrected example sizes, counts, and the spec text of 13 languages
+  against their behaviour; a dialect-settings section in usage.md.
+
+## 0.13.0
+
+- **Breaking:** Remove 123, BF-PDA, BIO, Jaune, NoComment and Sophie; their
+  names no longer resolve.
+- **Breaking:** `describe()["state_model"]` adds `program` and `variables`:
+  ///, Crement, Inject, Malbolge and Thue report `program`; Algebraic
+  Programming Language, Container, Forbin, INTERCAL, Packlang and Vandevelo
+  report `variables`; FRACTRAN reports `register`.
+- Add ABCDirection, Interprogck8, Caballo and Rubic (81 languages).
+- Add `list` filters `--template`, `--reads-input`, `--input-shape`,
+  `--random`, `--width-effect` and `--grep`, with matching
+  `list --json --details` fields.
+- Remove the termination-answer notes from `run` and `debug`; a timeout is a
+  plain timeout (exit status unchanged).
+- Fix hang detection for random languages: a program that never draws is now
+  proven to hang (Befunge `>v`/`^<` raised `TypeError`).
+- Simplify internals; split large interpreters into modules.
+
 ## 0.12.0
 
 - **Breaking:** `generate("Unary", ...)` returns a gzip-backed `CompressedText`

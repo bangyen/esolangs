@@ -1,17 +1,29 @@
 """Interpreter for SLOW ACV MAMMALIAN.
 
-SEED/CONFLAGRATE operate on all 23 arrays, EXCRETE/CONSUME/FISSION/DIGEST
-on the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads
-a byte, PRONOUNCE prints the accumulator as a byte.  SPRINT with a
-too-large ``x`` is a NOP (per the wiki).  Readings of what the page leaves
-open: LEAPFROG "jump[s] to the (x - first value in array)th instruction"
-counting from 1 and resumes after it, so a count of 0 or past the end
-halts; SEED skips an empty array and CONSUME, FISSION and LEAPFROG ignore
-one; a CONFLAGRATE pair with a zero divisor is left alone.  Exhausted input
-raises :class:`EOFError`.  Cell operations and I/O each accept modulus 255
-or 256.  Cells default to 256 ("any value from 0-255"), I/O to 255 (the
-page says EXCRETE and PRONOUNCE are "modulo 255"). Invalid moduli raise
-:class:`ValueError`.
+Whitespace-delimited uppercase commands over 23 arrays, a pointer picking the
+current one, and an accumulator.  SEED/CONFLAGRATE operate on all 23 arrays,
+EXCRETE/CONSUME/FISSION/DIGEST on the current one, SPRINT moves the pointer,
+LEAPFROG jumps, ACCEPT reads a byte, PRONOUNCE prints the accumulator as a
+byte.  SPRINT with a too-large ``x`` is a NOP (per the wiki).  Cell
+operations and I/O each accept modulus 255 or 256.
+
+Input/output:
+    ACCEPT reads one byte; PRONOUNCE writes the accumulator as a byte.
+
+Errors:
+    ProgramError: Unknown command word.
+    InputExhaustedError: ACCEPT at EOF.
+    ArgumentError: A ``cell_modulus`` or ``io_modulus`` setting other than
+        255 or 256.
+
+Decisions:
+    * LEAPFROG "jump[s] to the (x - first value in array)th instruction"
+      counting from 1 and resumes after it, so a count of 0 or past the end
+      halts.
+    * SEED skips an empty array and CONSUME, FISSION and LEAPFROG ignore one.
+    * A CONFLAGRATE pair with a zero divisor is left alone.
+    * Cells default to modulus 256 ("any value from 0-255"), I/O to 255 (the
+      page says EXCRETE and PRONOUNCE are "modulo 255").
 """
 
 import functools

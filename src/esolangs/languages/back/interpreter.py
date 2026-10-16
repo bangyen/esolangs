@@ -1,43 +1,44 @@
 r"""Interpreter for Back.
 
-A beam bounces across a grid at right angles: \\ and / reflect its direction,
-< and > move the tape pointer, - flips the current bit, + steps the beam
-forward when the current bit is 0, and * halts, printing the tape.
+A beam starts top-left heading right and bounces across a grid at right
+angles: ``\`` and ``/`` reflect its direction, ``<`` and ``>`` move the tape
+pointer, ``-`` flips the current bit, ``+`` steps the beam forward when the
+current bit is 0, and ``*`` halts, printing the tape.  The grid is padded to
+a rectangle and the beam wraps both axes.  ``+`` skips a cell: a step on a
+zero bit, then the shared move.
 
-The wiki says only "Halt the program" of ``*`` and defines no output at all,
-so the dump follows the repo convention for interpreter-only languages
-(a sibling interpreter prints its registers): the cells space-separated on one line,
-with no trailing newline.  Both the choice to print and the separator are
-this interpreter's.  (another dump uses line breaks between values instead, but
-that is not a divergence from this convention -- its spec asks for them by
-name.)
-
-The tape is unbounded both ways: ``<`` at the leftmost cell adds a zero cell
-on the left (the dump prints it).  The spec says nothing about the left
-edge, and cells left of the start are allowed.
-
-The interpreter runs on a :class:`_Machine` (the beam's position and
-direction, the bit tape, and the tape pointer), so it is step-capable:
+The machine holds the beam's position and direction, the bit tape and the
+tape pointer, rebound as one state each step, so mutation lives in one
+assignment and every rule about what Back *does* stays in the pure layer.
 ``step()`` executes one cell, setting ``halted`` when the beam reaches a
 ``*`` and printing the tape on the step after that -- the post-halt dump
-the other interpreter-only languages here share.
-
-A program with no ``*`` bounces the beam forever.  The beam itself lives in
-a finite grid, so a loop that never grows the tape revisits a snapshot and
-``esolangs.vm.run_until_halt_or_cycle`` proves it.  A loop that grows it --
-``>`` past the right end, or ``<`` at the left -- does not: the snapshot is
-new every lap and no repeat exists to find.
-That is the unbounded-growth case the detector documents itself as unable to
-catch, and only the wall-clock timeout stops it.  (The empty program is
-rejected outright, so the fuzz suite's empty-program invariant is unaffected.)
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Back *does* stays in the
-pure layer.  The one effect the language has -- ``*`` printing the tape --
+the other interpreter-only languages here share; the dump, the one effect,
 is done by ``step`` before it calls the pure transition.
 
-Malformed programs raise :class:`ValueError`.
+A program with no ``*`` bounces the beam forever.  The grid is finite, so a
+loop that never grows the tape revisits a snapshot and
+``esolangs.vm.run_until_halt_or_cycle`` proves it.  A loop that grows it --
+``>`` past the right end, or ``<`` at the left -- yields a new snapshot every
+lap, the unbounded-growth case the detector cannot catch; only the wall-clock
+timeout stops it.
+
+Input/output:
+    No input.  The wiki says only "Halt the program" of ``*`` and defines no
+    output, so the dump follows the repo convention for interpreter-only
+    languages (a sibling interpreter prints its registers): the cells
+    space-separated on one line, no trailing newline.  Both the choice to
+    print and the separator are this interpreter's.  (Another dump uses line
+    breaks between values; that is no divergence -- its spec asks for them
+    by name.)
+
+Errors:
+    ProgramError: an empty program (no lines, or only blank ones), rejected
+    outright so the fuzz suite's empty-program invariant is unaffected.
+
+Decisions:
+    * The tape is unbounded both ways: ``<`` at the leftmost cell adds a zero
+      cell on the left (the dump prints it).  The spec is silent on the left
+      edge, and cells left of the start are allowed.
 """
 
 from __future__ import annotations
@@ -60,19 +61,12 @@ type _State = tuple[int, int, int, int, tuple[int, ...], int, bool]
 # The tape is a tuple, so a state is a value that can be stored, compared, and
 # hashed as it stands.
 def _advance(state: _State, code: Sequence[str], size: int) -> _State:
-    """Return the state after executing one grid cell.
+    """Return the state after one grid cell; pure, takes no ``io``.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so ``*``'s tape dump is necessarily the caller's business --
-    this function only records, through ``done``, that the beam stopped.
-
-    ``+`` is the one cell that moves the beam twice: it steps forward when
-    the current bit is zero, and then takes the shared move below like
-    every other cell.  That is what makes it a skip rather than a jump.
-
-    The shared move wraps in both axes, so the beam never leaves the grid
-    -- which is why a program with no ``*`` bounces forever rather than
-    running off the edge.
+    ``*`` only sets ``done``; the caller dumps the tape.  ``+`` moves the
+    beam twice -- a step on a zero bit, then the shared move -- so it skips
+    rather than jumps.  The shared move wraps both axes, so a program with
+    no ``*`` bounces forever instead of leaving the grid.
     """
     row, col, a, b, tape, cell, _done = state
     char = code[row][col]
@@ -205,16 +199,13 @@ class _Machine:
     def step(self) -> None:
         """Execute one cell, or dump the tape on the post-halt step.
 
-        The dump is here rather than in the transition: this is the shell,
-        so it is where an effect belongs.  ``*`` is Back's halt command and
-        nothing else sets ``halted``, so the halt is the guard -- the
-        character that caused it does not have to be read back off the
-        grid.
+        The dump lives here, not in the transition: the shell owns effects.
+        Only ``*`` sets ``halted``, so the halt is the guard and the causing
+        character need not be read back off the grid.
 
-        It fires on the step *after* the halt, as several other languages do:
-        a caller who drives the machine itself then sees the same output as
-        from ``run``, rather than holding Back's tape and none of the
-        others'.  ``dumped`` keeps it to one dump however many times a halted
+        It fires on the step *after* the halt, as in several other languages,
+        so a caller driving the machine itself sees the same output as from
+        ``run``.  ``dumped`` keeps it to one dump however many times a halted
         machine is stepped.
         """
         if self.halted:

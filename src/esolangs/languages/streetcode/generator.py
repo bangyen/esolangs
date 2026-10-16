@@ -1,4 +1,4 @@
-"""Boolean-function generator for Streetcode.
+"""Streetcode Boolean program generator: a decision tree, then a flat indexed street.
 
 Through five inputs, a decision tree from labelled loop strips
 (:func:`_streetcode_strip`), per-level blocks joined side by side.  Each
@@ -11,6 +11,19 @@ entry and the inputs address it (:func:`_streetcode_flat`), which is nine
 rows of street however many entries there are. The tree folds constant
 subtrees and draws equal nonconstant sibling cofactors once, advancing CP
 past their selector. Nonadjacent repeats still have separate drawings.
+
+Size:
+    O(T) from six inputs, nine rows; n=4 parity: 3,391 chars, n=10 random
+    1847: 20,962 chars, n=10 parity: 20,962 chars.
+
+Decisions:
+    A half-turn rotation only strips trailing blanks (0.0% by area at n=2-8,
+    worse at n=5), so it is not tried.  When no shape fits ``width``, a
+    clockwise turn of the indexed street gives a nine-column floor, seven with
+    its room floors shared with the kerb.  Being one cell per entry, it has no
+    constant halves or repeats to fold or share; ignored inputs still drop.  A
+    tree one column past ``width`` falls to it (11x38 -> 258x9 at
+    ``width=40``): a shape switch, not a missing piece.
 """
 
 from collections.abc import Callable
@@ -671,20 +684,9 @@ def _tree_shapes(
 
 
 def streetcode(truth_table: str, width: int | None = None) -> str:
-    """Build a Streetcode program computing the given truth table.
+    """Build a Streetcode program; the shortest shape wins.
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  From
-    six inputs the table is one cell per entry, addressed by the inputs
-    (:func:`_streetcode_flat`); below that, a populate phase plus a decision
-    tree.  The shortest shape wins.  A 180-degree rotation only strips
-    trailing blanks (0.0% by area at n=2-8, worse at n=5), so it is not tried.
-    ``width`` chooses among the shapes rather than reflowing (rows are
-    streets); when none fit, a clockwise turn of the indexed street gives a
-    nine-column floor, seven with its room floors shared with the kerb.
-    That floor is the indexed street, one cell per entry addressed by position,
-    so constant halves and repeats have no subtree to fold or share; ignored
-    inputs still drop.  A tree one column past ``width`` falls to it (11x38
-    -> 258x9 at ``width=40``), which is a shape switch, not a missing piece.
+    ``width`` chooses among the shapes rather than reflowing (rows are streets).
     """
     n = _validate_truth_table(truth_table)
     if n >= _FLAT_FROM:

@@ -1,0 +1,48 @@
+{
+ "triggers": [
+  {
+   "program": ".",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a . at the end"
+  },
+  {
+   "program": "`i",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a backtick with nothing after it"
+  },
+  {
+   "program": "x",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a character that is not a command"
+  },
+  {
+   "program": "ii",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: a second expression after the first"
+  },
+  {
+   "program": "",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: an empty source"
+  },
+  {
+   "program": "```@i.ai",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "@ at EOF hands its argument v (failure branch, nothing printed)"
+  },
+  {
+   "program": "```@i.ai",
+   "stdin": "x",
+   "expect": "output",
+   "output": "a",
+   "claim": "@ with a character hands its argument i (success branch)"
+  }
+ ]
+}

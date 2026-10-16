@@ -151,9 +151,25 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 - B-tapemark receives whole source.
 - EGL receives whole source.
 
-`tests/test_interpreter_conventions.py` checks the module docstring names
-the language and mentions `EOF`, `HaltError` or `ValueError` wherever the
-interpreter reads input or raises them.
+The module docstring is the language's spec (`describe()["spec"]`); its
+shape (prose, then `Commands:`, `Input/output:`, `Errors:`, `Decisions:`) is
+`_template.py`'s own docstring, which `just new-language` copies.  `Errors:`
+names the public exception a caller catches, not the builtin the interpreter
+raises. `tests/interpreters/test_interpreter_conventions.py` checks the shape
+and that `Errors:` lists what the source raises; every entry needs a trigger
+in the language's own `tests/spec_triggers.json` (a program and the exception
+`run` gives), which `tests/interpreters/test_spec_triggers.py` runs. The exported API's Google
+`Raises:` sections are held to the same standard by
+`tests/api/test_public_docstrings.py`.
+
+A generator's module docstring follows the `just new-language` stub: prose,
+then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor,
+`n=10 random 1847: 1,118 chars`, which
+`tests/generators/test_generator_docstrings.py` regenerates, so a size change
+updates it.  `Raises:` lists `GeneratorCapError` wherever the generator can
+refuse a table, with a trigger in `tests/generator_triggers.json`.  A figure
+in `Size:` or `Decisions:` appears nowhere else in the generator: a figure
+about one helper lives beside it instead.
 
 ## What makes a generator optimization worth shipping
 

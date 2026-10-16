@@ -1,0 +1,28 @@
+{
+ "triggers": [
+  {
+   "program": "20000000 -7 4 -7",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: write to an address too large to allocate"
+  },
+  {
+   "program": "0 -1 4 -7",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "InputExhaustedError: reading -1 at EOF"
+  },
+  {
+   "program": "foo",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: instruction without 2 to 4 operands"
+  },
+  {
+   "program": "ASJ nolabel 0 0 0",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "ProgramError: undefined label"
+  }
+ ]
+}

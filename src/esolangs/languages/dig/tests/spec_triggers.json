@@ -1,0 +1,47 @@
+{
+ "triggers": [
+  {
+   "program": "$+\n1",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "a work command with no adjacent digit"
+  },
+  {
+   "program": "$/\n10",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "division by an adjacent zero"
+  },
+  {
+   "program": "$=\n1",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "= at EOF"
+  },
+  {
+   "program": "$~\n1",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "~ at EOF"
+  },
+  {
+   "program": "$~\n1",
+   "stdin": "x",
+   "expect": "ProgramError",
+   "claim": "a ~ token that is not an integer"
+  },
+  {
+   "program": " ",
+   "stdin": "",
+   "expect": "ProgramError",
+   "claim": "an empty program"
+  },
+  {
+   "program": ">",
+   "stdin": "",
+   "expect": "output",
+   "output": "",
+   "claim": "walking off the grid stops cleanly"
+  }
+ ]
+}

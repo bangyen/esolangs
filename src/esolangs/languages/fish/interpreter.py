@@ -1,39 +1,58 @@
 r"""Fish (``><>``): a fish swims a codebox, with a stack of stacks.
 
 The fish starts top left swimming right and wraps at the edges of the box.
-Each cell it swims through is a command:
+Each cell it swims through is a command.  This is the current non-threaded
+language.  Cells hold raw Unicode codepoints; counts and coordinates must be
+integral.  ``p`` may grow the box's positive bounds and use negative
+coordinates as storage.  Division is Python's true division, matching the
+spec's floating result.  ``o`` needs an integral codepoint.  Only a space and
+an empty cell are no-ops: a tab, or a control character ``p`` writes, is an
+invalid instruction.
 
-- ``> < ^ v`` set the heading; ``/ \ | _ #`` are mirrors it bounces off.
-  ``x`` turns at random.  ``!`` skips the next cell, ``?`` pops and skips
-  it on zero, ``.`` pops ``y``, ``x`` and jumps there.
-- ``0``-``9`` and ``a``-``f`` push a hex digit.  ``+ - * , %`` pop ``a``,
-  then ``b``, and push ``b op a`` (``,`` divides); ``= ( )`` push ``b == a``,
-  ``b < a``, ``b > a`` as 1 or 0.
-- ``'`` or ``"`` starts string mode, which pushes each cell's codepoint
-  until the same quote ends it.
-- ``:`` duplicates, ``~`` drops, ``$`` swaps the top two, ``@`` moves the
-  top under the next two.  ``}`` and ``{`` rotate the whole stack right and
-  left, ``r`` reverses it, ``l`` pushes its length.
-- ``[`` pops ``n`` and moves the top ``n`` values onto a new stack; ``]``
-  pours the current stack back into the one below (or empties the last).
-  ``&`` moves the top into the stack's register, or the register back.
-- ``g`` pops ``y``, ``x`` and pushes that cell; ``p`` pops ``y``, ``x``,
-  ``v`` and writes ``v`` there.  ``i`` reads a character (-1 at EOF), ``o``
-  prints one, ``n`` prints a number.  ``;`` halts.  A space does nothing.
+Commands:
+    ``> < ^ v``: set the heading.
+    ``/ \ | _ #``: mirrors the fish bounces off.
+    ``x``: turns at random.
+    ``!``: skips the next cell.
+    ``?``: pops and skips the next cell on zero.
+    ``.``: pops ``y``, ``x`` and jumps there.
+    ``0``-``9``, ``a``-``f``: push a hex digit.
+    ``+ - * , %``: pop ``a``, then ``b``, and push ``b op a`` (``,`` divides).
+    ``= ( )``: push ``b == a``, ``b < a``, ``b > a`` as 1 or 0.
+    ``'`` or ``"``: start string mode, pushing each cell's codepoint until
+    the same quote ends it.
+    ``:``: duplicates.
+    ``~``: drops.
+    ``$``: swaps the top two.
+    ``@``: moves the top under the next two.
+    ``}`` and ``{``: rotate the whole stack right and left.
+    ``r``: reverses the stack.
+    ``l``: pushes the stack's length.
+    ``[``: pops ``n`` and moves the top ``n`` values onto a new stack.
+    ``]``: pours the current stack back into the one below (or empties the
+    last).
+    ``&``: moves the top into the stack's register, or the register back.
+    ``g``: pops ``y``, ``x`` and pushes that cell.
+    ``p``: pops ``y``, ``x``, ``v`` and writes ``v`` there.
+    ``i``: reads a character (-1 at EOF).
+    ``o``: prints a character.
+    ``n``: prints a number.
+    ``;``: halts.
+    space: does nothing.
 
-This is the current non-threaded language.  Cells hold raw Unicode
-codepoints; counts and coordinates must be integral.  ``p`` may grow the
-box's positive bounds and use negative coordinates as storage.  An IP that
-``.`` sends past the box re-enters it modulo the box's size; the spec leaves
-this open, and fish.py instead walks the empty cells to the edge.  Division
-is Python's true division, matching the spec's floating result.  ``o``
-needs an integral codepoint.  Only a space and an empty cell are no-ops: a
-tab, or a control character ``p`` writes, is an invalid instruction.  A
-string pushes an empty cell (past a short row) as 0, its ``g`` value;
-fish.py pushes a space, as it stores spaces as 0.  Invalid instructions,
-stack underflow, and division by zero raise
-:class:`~esolangs.exceptions.HaltError`; an empty program raises
-:class:`ValueError`.
+Input/output:
+    ``i`` pushes -1 at EOF and the run goes on.
+
+Errors:
+    ProgramError: An empty program.
+    HaltError: Invalid instructions, stack underflow, and division by zero.
+
+Decisions:
+    * An IP that ``.`` sends past the box re-enters it modulo the box's size;
+      the spec leaves this open, and fish.py instead walks the empty cells to
+      the edge.
+    * A string pushes an empty cell (past a short row) as 0, its ``g`` value;
+      fish.py pushes a space, as it stores spaces as 0.
 """
 
 from __future__ import annotations
@@ -387,6 +406,8 @@ class _Machine:
 
     reproducible_seed = 0
     ip_shape = "grid"
+    #: ``i`` pushes -1 at EOF and the run goes on (underfed XOR printed -48).
+    eof_is_a_value = True
 
     def __init__(
         self, code: Sequence[str], io: IO, rng: Randomness | None = None

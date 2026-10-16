@@ -1,17 +1,18 @@
 """Interpreter for bit~.
 
-An 8-cell bit pool with a pointer: ``~`` flips, ``>``/``<`` move (``>``
-extends the pool when the window would run past the end; ``<`` at cell 0
-prepends a zero cell, as the wiki's bare "move ... to the left" reads
-for every tape here), ``)`` reads a byte and XORs it, MSB first, into the
-8-bit window -- the spec says it "flip[s] the current bit and the next 7
-bits ... according to the ASCII character code" -- ``(`` prints that
-window ("the current bit and the next 7 bits"), ``{``/``}`` loop on the
-current bit.  Other characters are ignored.  ``)`` raises
-:class:`EOFError` on exhausted input (the cross-check exits 3) and reads
-newlines too; an unmatched bracket raises :class:`ValueError` when it
-would jump (the Ruby port looped).  A loop that keeps extending the pool
-never repeats a state, so ``esolangs.run``'s ``timeout`` is the guard.
+An 8-cell bit pool with a pointer: ``~`` flips, ``>``/``<`` move (``>`` extends the
+pool when the window would run past the end; ``<`` at cell 0 prepends a zero cell,
+as the wiki's bare "move ... to the left" reads for every tape here), ``)`` reads a
+byte and XORs it, MSB first, into the 8-bit window -- the spec says it "flip[s] the
+current bit and the next 7 bits ... according to the ASCII character code" -- ``(``
+prints that window ("the current bit and the next 7 bits"), ``{``/``}`` loop on the
+current bit.  Other characters are ignored.  ``)`` reads newlines too.  A loop that
+keeps extending the pool never repeats a state, so ``esolangs.run``'s ``timeout`` is
+the guard.
+
+Errors:
+    ProgramError: an unmatched bracket, when it would jump (the Ruby port looped).
+    InputExhaustedError: ``)`` at EOF (the cross-check exits 3).
 """
 
 from __future__ import annotations
@@ -157,7 +158,7 @@ class _Machine:
         char = self.code[ind]
         byte = target = None
         if char == ")":
-            byte = self.io.input_char()
+            byte = self.io.input_char() % 256  # As Boolfuck: a byte, not U+0100.
         elif char == "(":
             val = tape[cell : cell + 8]
             self.io.print_char(chr(int("".join(map(str, val)), 2)))

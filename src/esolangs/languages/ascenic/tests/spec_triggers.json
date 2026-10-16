@@ -1,0 +1,11 @@
+{
+ "triggers": [
+  {"program": "AsB", "stdin": "", "expect": "ProgramError", "claim": "a line that is not A*s+"},
+  {"program": "AAAAAAAAAAAAAAAAAAAAs", "stdin": "", "expect": "ProgramError", "claim": "an opcode above 19"},
+  {"program": "As\nAs", "stdin": "", "expect": "ProgramError", "claim": "an argument no greater than the line before's"},
+  {"program": "AAs", "stdin": "", "expect": "InputExhaustedError", "claim": "INPUT at EOF"},
+  {"program": "AAs", "stdin": "x", "expect": "ArgumentError", "claim": "an odd-argument INPUT given a non-integer token"},
+  {"program": "AAAs\nAAAAAAAAAAAss", "stdin": "", "expect": "HaltError", "claim": "a taken JMPB"},
+  {"program": "AAAAAs\nAss", "stdin": "", "expect": "HaltError", "claim": "PRINT as a character of a value that is no code point"}
+ ]
+}

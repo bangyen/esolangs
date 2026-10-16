@@ -2,20 +2,29 @@
 
 Vandevelo has only nil and not-nil values. Assignments may be lazy or strict,
 comparisons test the two values, and ``::`` stops evaluating a statement when
-its left operand is nil. ``Inp`` reads a line; empty input, ``0``, and one
-space are nil, while every other line is not nil.
+its left operand is nil.
 
-Input exhaustion raises :class:`EOFError`. Malformed programs raise
-:class:`ValueError`; the language has no invalid runtime operation requiring
-:class:`~esolangs.exceptions.HaltError`.
+The execution model is a pure function over an immutable state. The
+mutable VM shell performs input and replaces that state once per step.  The
+language has no invalid runtime operation requiring HaltError.
 
-The execution model is a pure function over an immutable ``_State``. The
-mutable VM shell performs input and replaces that state once per step.
+Input/output:
+    ``Inp`` reads a line; empty input, ``0``, and one space are nil, while
+    every other line is not nil.  ``Inp`` at EOF raises.
 
-The spec does not delimit input values; Inp reads one line, excluding its newline.
-``x :: y`` takes expressions only, and ``a :: b :: c`` stops at the first nil.
-The Comments example ``2? -> 2? --Infinite loop`` writes its target with a
-``?``, which the table and the truth-machine never do; it is malformed here.
+Errors:
+    ProgramError: a malformed program, including an invalid expression, a
+        read of an undefined variable, and the Comments example's ``?`` target.
+    InputExhaustedError: ``Inp`` at EOF.
+
+Decisions:
+    * The spec does not delimit input values; ``Inp`` reads one line,
+      excluding its newline.
+    * ``x :: y`` takes expressions only, and ``a :: b :: c`` stops at the
+      first nil.
+    * The Comments example ``2? -> 2? --Infinite loop`` writes its target
+      with a ``?``, which the table and the truth-machine never do; it is
+      malformed here.
 """
 
 from __future__ import annotations

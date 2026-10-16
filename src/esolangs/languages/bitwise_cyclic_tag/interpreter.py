@@ -5,21 +5,23 @@ to the right.  ``0`` deletes the leftmost data-bit; ``1x`` is a composite pair
 appending ``x`` to the right end when that leftmost bit is 1, deleting nothing.
 Execution starts at the leftmost program-bit and halts when the data-string
 empties; an initially empty program or data-string halts at once, per the
-wiki's first sentence.
+wiki's first sentence.  No parsed operation is invalid (no HaltError).
 
-Two spec gaps are decided here, the wiki writing a system as prose ("program
-0011, data 1") and never fixing a file format.  The source carries both strings
-separated by a comma, program first, all whitespace ignored so a long program
-may be broken across lines; with no comma it is a program and no data.  And the
-answer is the bit the last ``0`` consumes, printed once the run ends: BCT has no
-I/O vocabulary, and the wiki puts a simulated machine's "input and output" in
-"the sequence of deleted data-bits", so the last deletion is where a result
-already lives.  Nothing is printed when no ``0`` ever fires.
+Input/output:
+    Nothing is read; the bit the last ``0`` consumes prints at the end, if any.
 
-A character outside ``01,`` and a second comma raise :class:`ValueError`; no
-operation can be invalid once a program parses, so no
-:class:`~esolangs.exceptions.HaltError` arises, and nothing is read so no
-``EOFError`` comes from here.
+Errors:
+    ProgramError: a character outside ``01,`` (whitespace is ignored); a
+    second comma.
+
+Decisions:
+    * The wiki writes a system as prose ("program 0011, data 1") and fixes
+      no file format, so the source carries both strings separated by a
+      comma, program first, whitespace ignored (long programs may span
+      lines); with no comma it is a program and no data.
+    * BCT has no I/O vocabulary, and the wiki puts a simulated machine's
+      "input and output" in "the sequence of deleted data-bits", so the
+      answer is the bit the last ``0`` consumes.
 """
 
 from __future__ import annotations

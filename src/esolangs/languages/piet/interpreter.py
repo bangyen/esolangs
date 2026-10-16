@@ -1,4 +1,4 @@
-"""Piet: the program is a picture, and colour changes are the commands.
+"""Interpreter for Piet: the program is a picture, and colour changes are the commands.
 
 Spec: https://www.dangermouse.net/esoteric/piet.html.  An image is a grid
 of codels in 18 colours (six hues, three lightnesses) plus white and black.
@@ -7,34 +7,47 @@ block and leaves it along the direction pointer (dp: right, down, left,
 up), picking the far edge's left or right corner by the codel chooser (cc).
 Blocked by black or the image edge, it flips cc, then turns dp, and halts
 after eight failed tries.  White is crossed in a straight slide and runs
-nothing.
+nothing.  A colour outside the 18 standard ones is treated as white.
 
 Entering a new coloured block runs a command chosen by how far the hue and
-lightness stepped, cyclically, from the old block to the new one:
-
-    hue, lightness:   +0          +1           +2
-    +0                            push         pop
-    +1                add         subtract     multiply
-    +2                divide      mod          not
-    +3                greater     pointer      switch
-    +4                duplicate   roll         in(number)
-    +5                in(char)    out(number)  out(char)
-
+lightness stepped, cyclically, from the old block to the new one.
 ``push`` pushes the size of the block left; ``pointer`` turns dp clockwise
 by the popped value and ``switch`` flips cc that many times; ``roll`` pops
 a depth and a count and rotates that many of the values beneath.
 
-A colour outside the 18 standard ones is treated as white. Input commands
-share a cursor: character reads preserve newlines; numeric reads consume
-whitespace-delimited integers. Input commands at EOF are ignored.
+Commands:
+    push: hue +0, lightness +1
+    pop: hue +0, lightness +2
+    add: hue +1, lightness +0
+    subtract: hue +1, lightness +1
+    multiply: hue +1, lightness +2
+    divide: hue +2, lightness +0
+    mod: hue +2, lightness +1
+    not: hue +2, lightness +2
+    greater: hue +3, lightness +0
+    pointer: hue +3, lightness +1
+    switch: hue +3, lightness +2
+    duplicate: hue +4, lightness +0
+    roll: hue +4, lightness +1
+    in(number): hue +4, lightness +2
+    in(char): hue +5, lightness +0
+    out(number): hue +5, lightness +1
+    out(char): hue +5, lightness +2
 
-Spec gaps, decided here: a command that cannot be performed (too few values,
-division by zero, a negative or too-deep roll) leaves the stack untouched;
-npiet pops a failed roll's two values.  A roll of depth 0 is not a failure:
-it pops both and moves nothing.  An output char outside Unicode is popped and
-not printed.  Division floors, as the spec's mod does (npiet truncates).  A
-numeric read consumes a token that is not an integer and ignores it; npiet's
-scanf leaves it unread.
+Input/output:
+    Input commands share a cursor: character reads preserve newlines;
+    numeric reads consume whitespace-delimited integers.  Input commands at
+    EOF are ignored.
+
+Decisions:
+    * A command that cannot be performed (too few values, division by zero,
+      a negative or too-deep roll) leaves the stack untouched; npiet pops a
+      failed roll's two values.
+    * A roll of depth 0 is not a failure: it pops both and moves nothing.
+    * An output char outside Unicode is popped and not printed.
+    * Division floors, as the spec's mod does (npiet truncates).
+    * A numeric read consumes a token that is not an integer and ignores it;
+      npiet's scanf leaves it unread.
 """
 
 from __future__ import annotations
@@ -207,6 +220,9 @@ class _Machine:
     """A Piet run: one immutable state rebound after each pure transition."""
 
     ip_shape = "grid"
+    #: An input command at EOF is ignored and the run goes on, so an
+    #: underfed program answers another row (``10000000`` fed ``01``: 1).
+    eof_is_a_value = True
 
     @staticmethod
     def perform_io(
@@ -241,7 +257,7 @@ class _Machine:
                 return (*stack, value)
         elif action == "write_num":
             io.print_num(value)
-        else:
+        elif not 0xD800 <= value <= 0xDFFF:  # A surrogate is no character either.
             with suppress(ValueError):
                 io.print_char(chr(value))
         return stack

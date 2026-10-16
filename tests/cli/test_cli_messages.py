@@ -16,9 +16,7 @@ from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
-_SPELLED = one_where(
-    lambda d: d["input_encoding"] != ("0", "1"), boolean_generator=True
-)
+_SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=True)
 _PADDED = one(input_shape="char_stream_padded")
 
 

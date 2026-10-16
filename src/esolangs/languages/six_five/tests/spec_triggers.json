@@ -1,0 +1,16 @@
+{
+ "triggers": [
+  {
+   "program": "2A",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: A prints a cell outside the character range"
+  },
+  {
+   "program": "B",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "InputExhaustedError: B at EOF"
+  }
+ ]
+}

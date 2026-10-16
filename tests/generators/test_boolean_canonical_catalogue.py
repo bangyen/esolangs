@@ -17,6 +17,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from esolangs.registry import LANGUAGES
 from tests.generators.source_support import generator_symbols as _source
 
@@ -51,6 +53,8 @@ def _lacking(helpers: tuple[str, ...]) -> set[str]:
     }
 
 
+# Reads every generator's source: ~0.97s alone, past the fast band under load.
+@pytest.mark.medium
 def test_the_catalogue_covers_exactly_the_exceptions() -> None:
     """The only generators without a helper are the declared ones."""
     ignored, constant = _catalogue()

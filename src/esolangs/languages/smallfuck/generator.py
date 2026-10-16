@@ -1,4 +1,24 @@
-"""Smallfuck boolean generator: a decision tree with banded result cells."""
+"""Smallfuck Boolean program generator: a decision tree with banded result cells.
+
+Input ``i`` is stored in cell ``3 i``; each level splits on its bit with a
+flag cell, XORing the answer into one result cell per band of three levels,
+which transfers to the parent band.  Cell 2 holds the answer.  Repeated
+residuals are deferred behind level flags or same-level banks and run after
+the band transfers, and repeated two-input functions share a decoder
+(complements share a three-bit code; a retired zero-arm input holds its high
+bit).
+
+Size:
+    O(T) for dense tables, about n**2 for parity and linear in n for ``and``;
+    n=10 random 1847: 12,363 chars, n=10 parity: 2,424 chars, n=10 and: 224
+    chars.
+
+Decisions:
+    Splits stay in input order: a greedy order saves 1.1% at n=8, under the
+    10% bar.  A tiled n=16 table shrinks 1,743 -> 802 characters (-54%)
+    against the plain tree; the test executes it on 128 rows.  Inline text and
+    the existing command bound guard the admission of deferred residuals.
+"""
 
 import re
 from collections.abc import Callable
@@ -87,17 +107,7 @@ class _Builder:
 
 
 def smallfuck(truth_table: str, width: int | None = None) -> str:
-    """Return a Smallfuck template whose final tape cell 2 is the answer.
-
-    Input ``i`` is stored in cell ``3 i`` before the tree runs, so a level
-    may test any of them; splits stay in input order (a greedy order saves
-    1.1% at n=8, under the 10% bar). Repeated residuals defer through level
-    flags or same-level banks and run after the band transfers; inline text
-    and the existing command bound guard admission. Two-input complements
-    share a three-bit code; a retired zero-arm input holds its high bit.
-    A tiled n=16 table shrinks 1,743 -> 802 characters (-54%) against the
-    plain tree; the test executes it on 128 rows.
-    """
+    """Return a Smallfuck template whose final tape cell 2 is the answer."""
     natural = in_input_order(truth_table, _smallfuck_ordered)
     if width is None or width <= 0:
         return natural
@@ -159,13 +169,12 @@ def _paired_roots(table: str) -> tuple[tuple[int, int], ...]:
 class _Tree:
     """Emitter state and engines for one Smallfuck decision tree.
 
-    Holds everything the tree's mutually recursive engines share: the
-    table and split order, the constant-span test and subtree ids, the
-    output builder, the deferred-block definitions, and the paired-roots
-    decoder state.  The former closures ``split``, ``clear_prefix``,
-    ``transfer``, ``arm``, ``tree``, and ``emit_paired_roots`` are methods
-    here, so the recursion no longer threads through closure scope and the
-    decoder phase needs no ``nonlocal`` mutation.
+    Holds what the mutually recursive engines share: the table and split
+    order, the constant-span test and subtree ids, the output builder, the
+    deferred-block definitions, and the paired-roots decoder state.
+    ``split``, ``clear_prefix``, ``transfer``, ``arm``, ``tree``, and
+    ``emit_paired_roots`` are methods, so the decoder phase needs no
+    ``nonlocal`` mutation.
     """
 
     def __init__(
@@ -375,15 +384,10 @@ class _Tree:
     def emit_paired_roots(self, prefix: _Cost[int]) -> tuple[str, int]:
         """Emit the paired-roots decoder and price every pair tail.
 
-        Paired roots share one emitted body per repeated two-input
-        function (complements share a three-bit code): the tree above
-        retires the last two levels and marks each used code's cells,
-        and this decoder replays the matching body into the answer cell.
-        ``decode`` builds a decision tree over the three code bits and
-        prices each leaf with its body; ``price`` then folds those leaf
-        costs into the per-code tail table the prefix cost evaluates
-        against.  Emission and pricing stay together here because the
-        decoder's leaf prices are this function's own second engine.
+        The tree above retires the last two levels and marks each used code's
+        cells; the decoder replays the matching body into the answer cell.
+        Emission and pricing stay together because the decoder's leaf prices
+        are this function's own second engine.
         """
         # decode needs real subtrees here, not the pair shortcut.
         self.pair_phase = False

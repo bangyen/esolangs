@@ -7,11 +7,13 @@ import json
 import os
 import subprocess  # fixed Python worker; source travels over stdin.
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import lru_cache
 from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
 from threading import Event, Thread
-from time import monotonic
+from time import monotonic, sleep
 from typing import Any, TextIO, cast
 
 from esolangs import exceptions
@@ -229,7 +231,20 @@ def run_isolated(
     request = box[0]
     if isinstance(request, BaseException):
         raise request
-    return _launch(request, remaining, max_output=max_output)
+    with _timeout_named(timeout):
+        return _launch(request, remaining, max_output=max_output)
+
+
+@contextmanager
+def _timeout_named(timeout: float) -> Iterator[None]:
+    """Word a deadline as an in-process run does, naming the caller's timeout."""
+    try:
+        yield
+    except exceptions.ExecutionTimeoutError as error:
+        # It said "isolated execution exceeded its deadline", a second
+        # wording of one error for the same ``timeout=``.
+        error.args = (f"execution exceeded the {timeout}-second timeout",)
+        raise
 
 
 def _launch(request: str, timeout: float, *, max_output: int | None = None) -> str:
@@ -370,28 +385,55 @@ def termination_isolated(
     """Prove halt or cycle in a child; deadline never means divergence."""
     check_memory(max_memory, isolated=True)
     choices = dialect_options(name, settings)
-    return _launch(
-        json.dumps(
-            {
-                "language": name,
-                **_source_transport(source),
-                "stdin": stdin,
-                "max_memory": max_memory,
-                "termination": [halts, diverges],
-                "settings": choices,
-                "max_output": hex(max_output) if max_output is not None else None,
-                "integer_max_output": max_output is not None,
-            }
-        ),
-        timeout,
-        max_output=max_output,
+    request = json.dumps(
+        {
+            "language": name,
+            **_source_transport(source),
+            "stdin": stdin,
+            "max_memory": max_memory,
+            "termination": [halts, diverges],
+            "settings": choices,
+            "max_output": hex(max_output) if max_output is not None else None,
+            "integer_max_output": max_output is not None,
+        }
     )
+    with _timeout_named(timeout):
+        return _launch(request, timeout, max_output=max_output)
+
+
+def _exit_with_parent() -> None:
+    """End this worker once its parent is gone.
+
+    A SIGTERM or SIGHUP to the parent skips its kill-and-reap, and the
+    orphan (reparented to 1) ran a looping program for hours.
+    """
+    parent = os.getppid()
+    if sys.platform == "linux":
+        # The kernel delivers it, with no thread: a watcher's stack counted
+        # against max_memory's RLIMIT_AS and tight budgets failed in CI.
+        import ctypes
+        import signal
+
+        libc = ctypes.CDLL(None, use_errno=True)
+        if libc.prctl(1, signal.SIGKILL, 0, 0, 0) == 0:  # PR_SET_PDEATHSIG
+            if os.getppid() != parent:  # Died before the request took.
+                os._exit(1)
+            return
+
+    def watch() -> None:
+        while os.getppid() == parent:
+            sleep(0.25)
+        os._exit(1)
+
+    Thread(target=watch, daemon=True).start()
 
 
 def _worker() -> None:
     """Stream output and a structured verdict to the parent."""
     import esolangs
     from esolangs.runtime.io import ScriptedIO
+
+    _exit_with_parent()
 
     def send(message: dict[str, Any]) -> None:
         print(json.dumps(message), flush=True)

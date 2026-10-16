@@ -1,30 +1,23 @@
-"""Boolean-function generator for CV(N)(C).
+"""CV(N)(C) Boolean program generator: a decision tree on one accumulator.
 
-One accumulator, one input at a time, so a table is a decision tree.  The
-read is ``s``; the branch is ``ɰ`` ... ``ʋ``, since ``ɰ`` jumps past ``ʋ``
-on nonzero -- one codepoint, where the voiceless ``ɰ̊`` the prologue still
-needs is two.  A leaf prints its answer with ``θ`` -- the *number* print, whose
-output is the digit itself, so nothing has to climb to ASCII -- leaves the
-accumulator at 1, and jumps with ``j`` to syllable 1, where a single shared
-gadget squares its way past the end of the program and halts.  A constant
-subtree folds to one leaf but keeps its reads, the last of which is floored
-by ``ə``.
+One read ``s`` and one ``ɰ`` ... ``ʋ`` branch per input (``ɰ`` jumps past ``ʋ``
+on nonzero; one codepoint where the prologue's voiceless ``ɰ̊`` is two).  A leaf
+prints with ``θ`` (the number print, so the output is the digit), leaves the
+accumulator at 1 and ``j``-jumps to syllable 1, where one shared gadget squares
+past the end of the program and halts.  A constant subtree folds to one leaf but
+keeps its reads, the last floored by ``ə``.  :func:`_render` spells commands as
+the fewest syllables: a consonant takes the next syllable's coda or opens it.
+Fillers ``c`` and ``u`` are inert (empty function cleared or applied).  ``j``
+also shares a repeated subtree (:class:`_Stream`): a later copy climbs to the
+first copy's syllable with ``i``, ``æ``, ``ə`` and jumps, where shorter.
 
-Commands are spelled by :func:`_render`, which is the size story: CV(N)(C)
-admits a nasal and a coda after a syllable's vowel, so a consonant command
-needs no vowel of its own when the next command can host it.  Per syllable
-it takes the cheaper of closing with the next consonant as a coda or
-letting it open the next syllable.  Its fillers, ``c`` and ``u``, are inert
-because no command here builds a function: ``c`` clears an already-empty
-one and ``u`` applies it, which leaves the accumulator alone.
+Size:
+    O(T) for dense tables, near-linear in n for parity; n=10 parity: 317
+    chars, n=10 random 1847: 5,215 chars, n=12 random 1847: 22,086 chars.
 
-A second construction, hoisting the reads into the deque to test in any
-order, saves 4.87% at n=8, under the 10% bar, and is not built.
-
-``j`` is also how a repeated subtree is shared (:class:`_Stream`): the
-accumulator names a syllable, so a later copy climbs to the first copy's
-syllable with ``i``, ``æ`` and ``ə`` and jumps into it, where that is
-shorter. Its leaves halt, so nothing returns.
+Decisions:
+    Hoisting the reads into the deque to test in any order saves 4.87% at n=8,
+    under the 10% bar, and is not built.
 """
 
 import math
@@ -92,12 +85,11 @@ def _halt(squarings: int) -> str:
     """Return the prologue: skip the gadget, then the gadget itself.
 
     Syllable 0 is ``ɰ̊u``, which on the initial zero accumulator jumps past
-    the ``ʋ`` that closes the prologue and so never runs the gadget.
-    Syllable 1 opens the gadget, which is where every leaf's ``j`` lands: it
-    climbs to :data:`_HALT_BASE`, squares, and ``ɹ`` jumps to an offset past
-    the end of the program, which halts.  The ``ʋ`` is the coda of the
-    gadget's last syllable, which is sound because a body always opens with
-    a consonant.
+    the closing ``ʋ``, so the gadget never runs in-line.  Syllable 1 opens
+    the gadget, where every leaf's ``j`` lands: it climbs to
+    :data:`_HALT_BASE`, squares, and ``ɹ`` jumps past the end of the program,
+    which halts.  The ``ʋ`` is the coda of the gadget's last syllable, sound
+    because a body always opens with a consonant.
     """
     climb = _FILLER_ONSET + _INCREMENT
     return (
@@ -120,13 +112,11 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
     """Return the ways to spell one syllable starting at ``tokens[index]``.
 
     Each option is the characters to emit and the token index left over.
-    The onset and the vowel are forced -- a syllable needs a consonant then
-    a vowel, and a filler stands in when the next command is the wrong
-    class -- and so is the nasal, which the parser always takes when one is
-    there.  The *coda* is the choice: a following consonant either closes
-    this syllable or opens the next one, and either reading is stable,
-    since what follows a coda is always an onset (a consonant) and what
-    follows a declined coda is always its own vowel.
+    The onset, vowel (a filler stands in when the next command is the wrong
+    class) and nasal (the parser always takes one) are forced.  The *coda*
+    is the choice: a following consonant either closes this syllable or
+    opens the next, and either reading is stable, since an onset follows a
+    coda and a vowel follows a declined coda.
     """
     total = len(tokens)
     chars: list[str] = []
@@ -204,14 +194,13 @@ def _climb(start: int, target: int) -> list[tuple[str, int]]:
 class _Stream:
     """Commands in written order, cut where a repeated subtree is entered.
 
-    Without ``offset`` it only collects commands.  With it -- the syllable
-    the body starts on, after the prologue -- the first copy of a subtable
-    that recurs at its depth opens a new segment, rendered there and then,
-    so its syllable is known; a later copy climbs to that syllable and
-    ``j``-jumps into it where that is shorter.  A subtree's copies run the
-    same commands from the same deque whichever arm entered them, and each
-    opens with a read or a pop, so the accumulator it is entered with is
-    never used.
+    Without ``offset`` it only collects commands.  With it (the syllable the
+    body starts on, after the prologue) the first copy of a subtable that
+    recurs at its depth opens a new segment, rendered at once so its syllable
+    is known; a later copy climbs to that syllable and ``j``-jumps into it
+    where that is shorter.  Copies run the same commands from the same deque
+    whichever arm entered them, and each opens with a read or a pop, so the
+    accumulator it is entered with is never used.
     """
 
     def __init__(self, table: str, offset: int | None = None) -> None:
@@ -375,17 +364,7 @@ def _prologue_syllables(squarings: int) -> int:
 
 
 def cvnc(truth_table: str) -> str:
-    """Build a CV(N)(C) program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    program reads ``n`` lines and prints ``0`` or ``1``.  One read and one
-    ``ɰ``/``ʋ`` branch per level, every leaf printing with ``θ`` and
-    jumping to the one shared halt gadget. Splits stay in input order.
-    A program not shorter
-    than the gadget's reach gets one more squaring, repeated until it
-    fits; changing the prologue rebases the shared body before its
-    reach is checked again.
-    """
+    """Build a CV(N)(C) program; it reads ``n`` lines, splits in input order."""
     # A tree over the inputs that matter, its ignored reads bare, against the
     # full tree, whose sharing is sometimes the shorter; a tie keeps the full.
     n = _validate_truth_table(truth_table)
@@ -393,6 +372,9 @@ def cvnc(truth_table: str) -> str:
     shapes = [(truth_table, [1] * n)]
     if 1 < len(table) < len(truth_table):
         shapes.append((table, weights))
+    # A program not shorter than the gadget's reach gets one more squaring,
+    # repeated until it fits; each prologue change rebases the shared body
+    # before the reach is checked again.
     squarings = _HALT_SQUARINGS
     while True:
         offset = _prologue_syllables(squarings)

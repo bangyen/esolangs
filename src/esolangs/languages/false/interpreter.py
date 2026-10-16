@@ -11,30 +11,33 @@ character, ``"..."`` a string, ``^`` reads one, ``B`` (``ß``) flushes and
 
 Integers wrap to signed 32 bits, the width the specification gives ("all
 variables (and also stack-items) are 32bits"), and ``/`` truncates toward
-zero, as C and the 68000 the language was written on do.  ``O`` is accepted
-as an ASCII spelling of ``ø``, which the spec's table does not list: the
-command is a non-ASCII character, and a source that cannot carry one has no
-other way to write it.  An unterminated ``[``, ``"`` or ``{``, and a ``'``
-at the end of the source, raise :class:`ValueError`.  Popping an
-empty stack, dividing by zero, running a number as a lambda, computing on
-a lambda, and reading an unset variable raise
-:class:`~esolangs.exceptions.HaltError`.
+zero, as C and the 68000 the language was written on do.  A lambda is a span
+into the source rather than a copied string, so ``ip`` stays a real offset
+even inside one.  Values left on the stack at the end are not an error, as in
+the 68000 compiler (Wouter's portable interpreter reports them).
 
-``^`` consumes the next Unicode character, including newlines; end of input
-is the spec's ``-1``, which the shell reaches by catching the
-port's ``EOFError``.  Raising instead would make the reference's own cat
-loop -- which tests ``^`` against ``-1`` -- a crash.
+Input/output:
+    ``^`` consumes the next Unicode character, including newlines; end of
+    input is the spec's ``-1``, which the shell reaches by catching the
+    port's ``EOFError``.  Raising instead would crash the reference's own cat
+    loop, which tests ``^`` against ``-1``.
 
-Three points the specification leaves open are decided here.  ``ø`` counts
-from zero, so ``0ø`` is ``$``: the description ("dup the nth stack item")
-does not say where the count starts.  A variable read before it is stored
-raises rather than inventing a value, since the spec gives no initial one.
-And a character that is no command is ignored, the way whitespace is --
-the spec says only that whitespace is ignored and is silent about the rest.
-Values left on the stack at the end are not an error, as in the 68000
-compiler (Wouter's portable interpreter reports them).
-A lambda is a span into the source rather than a copied string, which is
-why ``ip`` stays a real offset even inside one.
+Errors:
+    ProgramError: An unterminated ``[``, ``"`` or ``{``, and a ``'`` at the
+    end of the source.
+    HaltError: Popping an empty stack, dividing by zero, running a number as
+    a lambda, computing on a lambda, and reading an unset variable.
+
+Decisions:
+    * ``O`` is accepted as an ASCII spelling of ``ø``, which the spec's table
+      does not list: the command is non-ASCII, and a source that cannot
+      carry one has no other way to write it.
+    * ``ø`` counts from zero, so ``0ø`` is ``$``: the description ("dup the
+      nth stack item") does not say where the count starts.
+    * A variable read before it is stored raises, since the spec gives no
+      initial value.
+    * A character that is no command is ignored like whitespace; the spec is
+      silent about the rest.
 """
 
 from __future__ import annotations

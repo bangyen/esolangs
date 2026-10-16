@@ -9,7 +9,7 @@ arm is what follows (``_layout`` never follows a ``?``'s ``.next``).
 
 from __future__ import annotations
 
-from esolangs.languages.line.generator.render import Node
+from esolangs.languages.line.generator.layout import Node
 
 _BF_TO_LINE = {"+": "+", "-": "-", "<": "<", ">": ">", ",": "i", ".": "o"}
 
@@ -82,7 +82,7 @@ def _parse(program: str, pos: int) -> tuple[Node | None, int]:
 
 
 def bf_to_line(program: str) -> Node:
-    """Compile a brainfuck ``program`` into a Line :class:`render.Node` graph.
+    """Compile a brainfuck ``program`` into a Line :class:`layout.Node` graph.
 
     Raises :class:`ValueError` on unbalanced brackets or a program with no
     recognized commands.

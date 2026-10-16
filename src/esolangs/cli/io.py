@@ -6,6 +6,7 @@ carries a size and a deadline, and two notices say why nothing happened.
 
 from __future__ import annotations
 
+import codecs
 import json
 import sys
 import threading
@@ -254,7 +255,8 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
     thread rather than :func:`select.select` because tests supply an
     object with no ``fileno``.
     """
-    if sys.stdin.isatty():
+    # None: fd 0 was closed at startup (``<&-``), an internal error, exit 70.
+    if sys.stdin is None or sys.stdin.isatty():
         return ""
 
     def _read_text() -> str:
@@ -282,23 +284,34 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
 def _write_output(text: str) -> None:
     """Write program output to stdout, whatever bytes it turned out to be.
 
-    A program can legitimately print a lone surrogate (a print command emits
-    the accumulator as a character with no bound), on which
-    ``sys.stdout.write`` raised a nineteen-line traceback.  Written through
-    the byte stream with ``surrogatepass`` when the text stream refuses,
-    keeping ``run --help``'s verbatim promise; a stream with no ``buffer``
-    falls back to an escaped form.
+    A program can print a lone surrogate (a print command emits the
+    accumulator as an unbounded character), which made ``sys.stdout.write``
+    raise a nineteen-line traceback.  When the text stream refuses, write
+    through the byte stream with ``surrogatepass``, keeping ``run --help``'s
+    verbatim promise; a stream with no ``buffer`` gets an escaped form.  A
+    stream that cannot encode a character at all (an ASCII locale) gets it
+    backslash-escaped, since ``surrogatepass`` raised again there (exit 70).
     """
-    try:
-        sys.stdout.write(text)
-    except UnicodeEncodeError:
-        stream = getattr(sys.stdout, "buffer", None)
-        if stream is None:
+    stream = getattr(sys.stdout, "buffer", None)
+    if stream is None:
+        # A text-only stream (an in-process StringIO) takes any str verbatim.
+        try:
+            sys.stdout.write(text)
+        except UnicodeEncodeError:
             sys.stdout.write(text.encode("utf-8", "backslashreplace").decode("utf-8"))
-            return
+        return
+    encoding = sys.stdout.encoding or "utf-8"
+    try:
+        text.encode(encoding)  # Strict: ``main`` made the stream itself lenient.
+    except UnicodeEncodeError:
+        utf8 = codecs.lookup(encoding).name == "utf-8"
         sys.stdout.flush()
-        stream.write(text.encode(sys.stdout.encoding or "utf-8", "surrogatepass"))
+        stream.write(
+            text.encode(encoding, "surrogatepass" if utf8 else "backslashreplace")
+        )
         stream.flush()
+        return
+    sys.stdout.write(text)
 
 
 def _emit_partial(exc: EsolangError) -> None:
@@ -311,6 +324,8 @@ def _emit_partial(exc: EsolangError) -> None:
     if not exc.partial_output:
         return
     _write_output(exc.partial_output)
-    if not exc.partial_output.endswith("\n"):
+    # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
+    # --max-output 3 cap 4 bytes.
+    if not exc.partial_output.endswith("\n") and sys.stdout.isatty():
         sys.stdout.write("\n")
     sys.stdout.flush()

@@ -1,29 +1,28 @@
-"""Linear Boolean-function generator for Packlang.
+"""Packlang Boolean program generator: a painted 128-row array, read by index.
 
-Packlang's ``Array`` starts every element at the element type's minimum, so
-a truth table is a *painted array* rather than a decision tree.  One array
-of 128 rows is enough: the inputs above the block index are read into a
-block number, each block paints the array inside the ``If`` that selects
-it, and the answer is a single index into it.
+``Array`` starts every element at the type's minimum, so a table is painted
+rather than branched.  Inputs above the block index are read into a block
+number; each block paints the array inside the ``If`` that selects it; the
+answer prints ``48 ^ t`` at the counted index.  A row costs one ``INCR t(k);``
+(writes count, so nothing is shorter) with ``k`` an offset inside the block,
+so digits stop growing past one block.  A block holding more ones than zeros
+is filled by a loop and its zeros punched out; an all-zero block paints
+nothing; a block equal to an earlier one is aliased to it (:func:`_blocks`
+shrinks the block until repeats align).  Each input doubles the register read
+so far into its partner two counts at a time and adds its bit, so the two
+alternate and no copy is needed.
 
-That is what fixes the per-row cost.  A row costs one ``INCR t(k);`` --
-Packlang writes by counting, so there is no shorter statement -- and ``k``
-is an offset inside the block, so its digits stop growing once the table
-passes one block.  A block holding more ones than zeros is filled by a loop
-and its zeros punched back out, so a constant table pays per *block*; an
-all-zero block paints nothing, and a block equal to an earlier one is aliased
-to it (:func:`_blocks` shrinks the block until repeats align).
+Size:
+    O(T) with a small constant for constant tables (per block, not per row);
+    n=8 and: 661 chars, n=10 and: 798 chars, n=10 random 1847: 6,679 chars.
 
-The answer prints ``48 ^ t``; the opposite polarity was dropped: it cost
-+3.19% (3-input total) and +2.60% (seeded 5-input sample).
-
-The index is counted too: each input doubles what has been read and adds
-its bit.  Doubling drains one register into its partner two counts at a
-time, so the two alternate and no copy is ever needed.
+Decisions:
+    The opposite answer polarity was dropped: +3.19% (3-input total) and
+    +2.60% (seeded 5-input sample).
 """
 
 import re
-from itertools import pairwise, product
+from itertools import product
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -35,7 +34,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import run_widths
 from esolangs.generation.wrap import (
-    _join_tokens,
     balance_score,
     wrap_program,
 )
@@ -123,38 +121,21 @@ def _short_name(program: str) -> str:
 
 
 def _balance_form(program: str, minimum: int, maximum: int) -> str:
-    """Balance statement fits and the affine interval of reduced indentation."""
-    records = []
+    """Balance at statement fits and reduced-indentation transitions.
+
+    Height is fixed between them and only reduced indentation grows with
+    width, so each interval's first width renders its smallest square.
+    """
     events = {minimum, maximum + 1}
     for line in program.split("\n"):
         tokens = re.findall(_PACKLANG_LEXEME, line)
         indent = len(line) - len(line.lstrip())
         longest = max(map(len, tokens), default=0)
-        records.append((line, tokens, indent, longest))
         events.update((len(line), longest, indent + longest))
         for span in run_widths(list(map(len, tokens))):
             events.update((span, indent + span))
-    boundaries = sorted(point for point in events if minimum <= point <= maximum + 1)
-    candidates = []
-    for start, stop in pairwise(boundaries):
-        height = 0
-        offsets = []
-        for line, tokens, indent, longest in records:
-            if len(line) <= start:
-                height += 1
-                continue
-            padding = min(indent, max(0, start - longest))
-            rows = _join_tokens(tokens, max(1, start - padding), " ").split("\n")
-            height += len(rows)
-            span = max(map(len, rows))
-            if longest <= start < longest + indent:
-                offsets.append(span - longest)
-        candidates.append(start)
-        # Height is fixed between fits. Only reduced indentation grows with
-        # width, so its crossing of height is the other possible minimum.
-        if offsets:
-            candidates.append(min(max(height - max(offsets), start), stop - 1))
-    return min((_packlang(program, width) for width in candidates), key=balance_score)
+    starts = sorted(point for point in events if minimum <= point <= maximum)
+    return min((_packlang(program, width) for width in starts), key=balance_score)
 
 
 def balance_packlang(_table: str, default: str) -> str:

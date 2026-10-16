@@ -1,12 +1,21 @@
-"""Boolean-function generator for Painfuck.
+"""Painfuck Boolean program generator: a flag-dispatched decision tree.
 
-Painfuck's own commands, not brainfuck's transliterated: ``i`` reads a
-line as a *number* and ``o`` prints one, so the ASCII offset the
-brainfuck family pays twice per program -- 49% of its characters at
-``n == 4``, 70% at ``n == 2`` -- is not paid at all.  ``r`` moves two
-right, which is exactly the cell layout's stride, and ``d`` resets the
-pointer, so returning to the reads costs one character instead of one
-per cell.
+Uses Painfuck's own commands, not transliterated brainfuck: ``i`` reads and
+``o`` prints a *number*, so the ASCII offset brainfuck pays twice per
+program (49% of its characters at ``n == 4``, 70% at ``n == 2``) vanishes.
+``r`` moves two right, the cell layout's stride, and ``d`` resets the
+pointer, so returning to the reads costs one character instead of one per
+cell.  Bit ``k`` sits in cell ``2k``, its flag in ``2k + 1``: a node sets the
+flag, tests the bit and clears the flag inside, then tests the flag for the
+zero side, so exactly one side fires and both cells end zero.  The answer
+accumulates in cell ``2n``, printed once.  Repeated residuals share through
+level flags or banks, admitted under a command bound; inline text stays a
+candidate.
+
+Size:
+    Shared residuals shrink dense tables: three seeded dense n=16 tables
+    average 831,265 -> 650,200 characters (-21.78%), five rows executed per
+    table; n=10 parity: 1,005 chars, n=10 random 1847: 10,160 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -72,26 +81,16 @@ def _move(start: int, target: int) -> str:
 
 
 def painfuck(truth_table: str) -> str:
-    """Build a Painfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  Bit ``k`` is read as a number into
-    cell ``2k`` with its flag at ``2k + 1``; a node sets the flag, tests
-    the bit and clears the flag inside, then tests the flag for the zero
-    side, so exactly one side fires and both cells are left zero.  The
-    answer accumulates in cell ``2n`` and is printed once, as a number.
-    Repeated residuals use level flags or a bank -- same-level or the mixed
-    union of the one-per-depth picks with the greatest bank -- as deferred
-    entries.
-    Inline text remains a candidate and the existing command bound gates
-    admission. Three seeded dense n=16 tables average 831,265 -> 650,200
-    characters (-21.78%); both builds executed five rows per table.
-    """
+    """Return a Painfuck program for an MSB-first ``2**n`` truth table."""
     return in_input_order(truth_table, _painfuck_ordered)
 
 
 def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
-    """Compare inline text, one residual, levels and same-level banks."""
+    """Return the shortest of inline text, one residual, levels and banks.
+
+    Banks are same-level, or the mixed union of one-per-depth picks with the
+    greatest bank; all stay under a command bound.
+    """
     plain, _ = _painfuck_tree(table, perm)
     shared = repeated_block(table)
     if shared is None:

@@ -1,35 +1,29 @@
-"""Native Boolfuck Boolean generator over single-bit cells.
+"""Boolfuck Boolean program generator: a decision tree over flip-only bit cells.
 
-Tape layout (head starts on cell 0, all cells start 0):
+Cells ``2i`` / ``2i+1`` hold input bit ``x_i`` and its level flag; cell ``2n``
+is the result R, cell ``-1`` scratch.  Bytes stream little-endian, so the first
+bit read is the value bit; it lands on the byte's cell and the other seven go to
+scratch (bytes consumed whole).  Node ``i`` sets ``flag_i``; ``[+`` on the bit
+clears it and runs the one-side (which clears the flag); ``[+`` on the flag runs
+the zero-side only if the flag survived.  Every flag is 0 again on return.
+Constant subtrees fold to a leaf as in ``helpers.decision_tree_body``; a ``"1"``
+leaf flips R, and one leaf executes, so R flips at most once.  Repeated
+residuals defer to unused level flags, emitted once in depth order after the
+prefix tree, only when text shrinks within the command bound.  At n>=9,
+two-input cofactors normalize to shared AND/XOR gates; input flips and output
+bias distinguish their functions without extra flags.  Affine tables stream
+through two data cells, toggling the accumulator once per selected bit.  R
+prints as bit 0 of the answer byte; bits 1..3 print from a cleared flag cell,
+4..5 after flipping it, 6..7 cleared again: ``'0'``/``'1'`` in exactly 8 prints.
 
-- cells ``2i`` / ``2i+1``: input bit ``x_i`` and its per-level flag
-  (interleaved, so tests move the head only a couple of cells)
-- cell ``2n``: result bit R; cell ``-1``: read scratch for the 7
-  non-value bits of each input byte
+Size:
+    Affine tables are O(n), other tables O(T); n=10 parity: 175 chars,
+    n=10 random 1847: 7,353 chars, n=16 random 1847: 462,301 chars.
 
-Reads: under the Boolean input contract each input byte is ``'0'`` or
-``'1'``, and the interpreter streams bytes little-endian, so the first
-bit read is the value bit; it lands on the byte's own cell and the
-other seven are read into scratch and forgotten (bytes consumed whole).
-
-Tree: a decision tree re-choreographed for flip-only bit cells. Node
-``i`` sets ``flag_i``, then ``[+`` on the bit cell clears a set bit and
-runs the one-side (which clears the flag); ``[+`` on the flag then runs
-the zero-side only when the flag survived (the bit was 0). Both sides
-clear what they test, so every flag is 0 again when the node returns.
-Constant subtrees fold to a leaf, exactly as in
-``helpers.decision_tree_body``; a ``"1"`` leaf flips R, and only one
-leaf ever executes, so R flips at most once. Repeated residuals defer
-to unused level flags and emit once in depth order after the prefix tree,
-only when text shrinks and the unchanged command bound admits it.
-At n>=9, two-input cofactors also normalize to shared AND/XOR gates;
-input flips and output bias distinguish their functions without extra flags.
-Affine tables stream through two data cells, toggling the accumulator once
-per selected bit; ignored bytes are still consumed whole.
-
-Print: R prints as bit 0 of the answer byte; bits 1..3 print from a
-cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
-again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
+Decisions:
+    Dropping the single-block, bank and mixed-bank candidates costs at most
+    6.2% over 200 tables per class at n=9 and n=12 (jointly); dropping the
+    per-level blocks form loses 19.8% (noisy affine), so it stays.
 """
 
 from typing import Literal
@@ -296,9 +290,6 @@ def normal_gates(table: str) -> str | None:
 
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
-    # Dropping the single-block, bank and mixed-bank candidates costs at most
-    # 6.2% over 200 tables per class at n=9 and n=12 (repeat tables, jointly);
-    # the per-level blocks form is kept: dropping it loses 19.8% (noisy affine).
     programs = [_boolfuck_tree(truth_table)[0]]
     for candidate in (affine_stream(truth_table), normal_gates(truth_table)):
         if candidate is not None:

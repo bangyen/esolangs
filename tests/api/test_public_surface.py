@@ -3,6 +3,7 @@
 import ast
 import inspect
 import re
+from importlib.resources import files
 
 import pytest
 
@@ -227,3 +228,169 @@ class TestBitsAreBits:
     def test_a_non_string_template_is_refused(self) -> None:
         with pytest.raises(esolangs.TemplateError, match="template must be"):
             esolangs.instantiate(TEMPLATE_LANGUAGE, None, [1, 0])
+
+
+class TestProgramObjectsRefuseMisuse:
+    """1.0 audit, round 2: each slipped past ``except EsolangError``."""
+
+    def test_fill_refuses_the_wrong_bit_count(self) -> None:
+        template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+        with pytest.raises(esolangs.TemplateError):
+            template.fill([0])  # type: ignore[union-attr]
+
+    def test_a_generated_programs_tag_is_read_only(self) -> None:
+        program = esolangs.generate(REFERENCE, "0110")
+        with pytest.raises(AttributeError, match="immutable"):
+            program.language = TEMPLATE_LANGUAGE  # type: ignore[union-attr]
+
+    @pytest.mark.parametrize("language", ["nonesuch", 5])
+    def test_a_tag_must_name_a_language(self, language: object) -> None:
+        with pytest.raises(esolangs.UnknownLanguageError):
+            esolangs.Raster((((0, 0, 0),),)).tagged(language)  # type: ignore[arg-type]
+
+    def test_compressed_limits_are_typed(self) -> None:
+        import gzip
+
+        with pytest.raises(esolangs.ArgumentError, match="limits"):
+            esolangs.CompressedText(gzip.compress(b"x"), limits=5)  # type: ignore[arg-type]
+
+    def test_an_alias_tag_is_stored_canonically(self) -> None:
+        """Stored as typed, ``run`` refused it under every spelling."""
+        tagged = esolangs.CompressedText.from_chunks(iter(["+."])).tagged(
+            REFERENCE.upper()
+        )
+        assert tagged.language == REFERENCE
+        assert esolangs.run(REFERENCE, tagged) == "\x01"
+
+    def test_public_annotations_resolve_at_runtime(self) -> None:
+        """``DialectSettings`` was a TYPE_CHECKING-only name: NameError."""
+        import typing
+
+        for cls in (esolangs.Raster, esolangs.CompressedText):
+            typing.get_type_hints(cls)
+            typing.get_type_hints(cls.tagged)
+
+    def test_a_scaled_raster_pickles(self) -> None:
+        """Its renderer was a local closure: PicklingError."""
+        import pickle
+
+        raster = esolangs.Raster((((0, 0, 0),),)).upscaled(2)
+        restored = pickle.loads(pickle.dumps(raster))
+        assert restored == raster
+        assert restored.scale == 2
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda: esolangs.CompressedText.repeated("a", 3, limits=5),
+            lambda: esolangs.CompressedText.repeated(b"x", 3),
+            lambda: esolangs.CompressedText.from_chunks(None),
+            lambda: esolangs.CompressedText.from_chunks([b"x"]),
+        ],
+    )
+    def test_compressed_builders_refuse_bad_types(self, call: object) -> None:
+        with pytest.raises(esolangs.ArgumentError):
+            call()  # type: ignore[operator]
+
+    def test_a_refused_object_is_named_without_its_address(self) -> None:
+        debugger = debugger_api.make_debugger(REFERENCE, "+")
+        with pytest.raises(esolangs.ArgumentError) as caught:
+            debugger.watch_cell(object())  # type: ignore[arg-type]
+        assert " at 0x" not in str(caught.value)
+
+    def test_a_refused_value_keeps_the_callers_text(self) -> None:
+        """Round 5's address stripping swallowed strings; a raising repr leaked."""
+
+        class Raises:
+            def __repr__(self) -> str:
+                raise RuntimeError("boom")
+
+        with pytest.raises(esolangs.ArgumentError, match="'x at 0xdead'"):
+            esolangs.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
+        with pytest.raises(esolangs.ArgumentError, match="<Raises>"):
+            esolangs.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
+
+    def test_quoted_text_in_a_container_is_kept(self) -> None:
+        with pytest.raises(esolangs.ArgumentError, match=r"\['x at 0xdead'\]"):
+            esolangs.encode_inputs(REFERENCE, ["x at 0xdead"])  # type: ignore[list-item]
+
+    def test_memory_is_integer_cells_or_empty(self) -> None:
+        """Three languages exposed tuples and instructions as ``list[int]``."""
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if not facts["examples"]:
+                continue
+            source = (files("esolangs") / facts["examples"][0]).read_bytes()
+            try:
+                vm = debugger_api.make_vm(name, source.decode())
+            except (UnicodeDecodeError, esolangs.EsolangError):
+                continue
+            assert all(type(cell) is int for cell in vm.memory), name
+
+    def test_a_portable_surrogate_is_refused_like_a_file(self) -> None:
+        document = esolangs.dump_program(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
+        with pytest.raises(esolangs.ProgramError, match="surrogates"):
+            esolangs.load_program(REFERENCE, document)
+
+    def test_a_debugger_needs_a_vm(self) -> None:
+        vm = debugger_api.make_vm(REFERENCE, "+")
+        for junk in (None, type(vm)):  # A VM *class* built, then broke on .run.
+            with pytest.raises(esolangs.ArgumentError, match="must be a VM"):
+                debugger_api.Debugger(junk)  # type: ignore[arg-type]
+
+        class Proxy:
+            def __getattr__(self, name: str) -> object:
+                return getattr(vm, name)
+
+        assert debugger_api.Debugger(Proxy()).run() == "halted"  # type: ignore[arg-type]
+
+    def test_a_portable_setter_surrogate_is_refused(self) -> None:
+        import json
+
+        document = json.loads(
+            esolangs.dump_program(
+                TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+            )
+        )
+        document["setters"] = [["\ud800", "\udfff"]] * len(document["setters"])
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.load_program(TEMPLATE_LANGUAGE, json.dumps(document))
+
+    def test_break_at_takes_a_negative_position(self) -> None:
+        """AddSubJump and Subleq halt at -8 and -1; break_at refused them."""
+        debugger_api.make_debugger(REFERENCE, "+").break_at(-1)
+
+    def test_the_debugger_mirrors_every_vm_trait(self) -> None:
+        debugger = debugger_api.make_debugger(REFERENCE, "+")
+        assert debugger.eof_is_a_value is debugger.vm.eof_is_a_value
+
+    def test_a_stepped_timeout_reads_as_an_unstepped_one(self) -> None:
+        with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.2-second"):
+            esolangs.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)
+
+    def test_settings_need_a_language(self) -> None:
+        """Untagged, ``run`` ignored them silently."""
+        with pytest.raises(esolangs.ArgumentError, match="need a language"):
+            esolangs.Raster((((0, 0, 0),),), settings=esolangs.DialectSettings())
+
+    def test_an_uninspectable_predicate_is_refused(self) -> None:
+        """``break_when(max)`` leaked inspect's bare ValueError."""
+        debugger = debugger_api.make_debugger(REFERENCE, "+.")
+        with pytest.raises(esolangs.ArgumentError, match="lambda"):
+            debugger.break_when(max)  # type: ignore[arg-type]
+
+    def test_flags_must_be_bools(self) -> None:
+        """A truthy ``isolated="no"`` switched the sandbox on."""
+        with pytest.raises(esolangs.ArgumentError, match="isolated"):
+            esolangs.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
+        with pytest.raises(esolangs.ArgumentError, match="balance"):
+            esolangs.generate(REFERENCE, "0110", balance="no")  # type: ignore[arg-type]
+
+    @pytest.mark.medium
+    def test_both_routes_word_a_timeout_alike(self) -> None:
+        messages = set()
+        for isolated in (False, True):
+            with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+                esolangs.run(REFERENCE, "+[]", timeout=0.5, isolated=isolated)
+            messages.add(str(caught.value))
+        assert messages == {"execution exceeded the 0.5-second timeout"}

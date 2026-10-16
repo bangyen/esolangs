@@ -1,8 +1,13 @@
-"""Boolean-function generator for Eval.
+"""Eval Boolean program generator: a literal table halved once per input.
 
-Named ``eval_lang`` so the module does not read as the builtin ``eval``.
+The table's bits are pushed on one stack and each input halves it (a zero
+discards the top half; a one reverses, discards, reverses back).  The halves
+are `;` runs totalling T/2 + T/4 + ... < T, shared by both branches by
+duplicating the input.
 
-The table is a literal halved by position: no subtrees to fold or share.
+Size:
+    About 2T chars, no subtrees to fold or share; n=10 random 1847: 2,178
+    chars, n=16 and: 131,280 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -32,12 +37,8 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     Inputs index the table most significant first; the program prints
     ``'0'`` or ``'1'``.
 
-    Each placeholder stages one equal-width bit on the input stack; the
-    table's bits are pushed on the other stack and each input halves it (a
-    zero discards the top half; a one reverses, discards, reverses back).
-    Duplicating the input lets both branches share one semicolon run,
-    totalling ``T/2 + T/4 + ... < T``; ignored inputs are drained after one
-    bottom-up dependency pass.
+    Each placeholder stages one equal-width bit on the input stack; ignored
+    inputs are drained.
     """
     n = _validate_truth_table(truth_table)
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))

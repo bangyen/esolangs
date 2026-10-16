@@ -25,6 +25,13 @@ def dump_program(
 
     Raster pixels are embedded as base64 PNG. Integer choices use hexadecimal
     strings, including values beyond Python's decimal conversion limit.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: ``settings`` is invalid for the language.
+        ProgramNotFoundError: ``program`` is a Path that does not exist.
+        ProgramError: ``program`` cannot be read (base of the above).
+        MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
     from esolangs import _read_source
 
@@ -164,7 +171,15 @@ _LOADERS = {
 
 
 def load_program(language: str, document: str) -> Program:
-    """Restore version-1 JSON as tagged source for the requested language."""
+    """Restore version-1 JSON as tagged source for the requested language.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: ``document`` is not a string.
+        ProgramError: ``document`` is not a valid version-1 program for
+            ``language``, including invalid settings.
+        MissingDependencyError: A PNG source needs ``esolangs[image]``.
+    """
     from esolangs import _read_source
 
     name = resolve(language)
@@ -192,6 +207,9 @@ def load_program(language: str, document: str) -> Program:
             raise ValueError(f"program language must be {name}")
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")
+        # Strict UTF-8 everywhere, as a program file is read: a JSON
+        # "\ud800" escape in the source or a setter loaded a lone surrogate.
+        json.dumps(value, ensure_ascii=False).encode("utf-8")
         settings = _settings(value["settings"], name)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")

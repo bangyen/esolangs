@@ -5,7 +5,10 @@ from collections import Counter
 import pytest
 import sympy as sp
 
-from esolangs.languages.polynomial.interpreter.roots import _factor_roots, _Root
+from esolangs.languages.polynomial.interpreter.roots import (
+    _factor_roots,
+    _Root,
+)
 from esolangs.languages.polynomial.tests.test_polynomial import (
     TestPeelPrimePowerRoots as _PeelTests,
 )

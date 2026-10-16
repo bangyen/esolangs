@@ -1,7 +1,19 @@
-"""INTERCAL boolean generator: a fully grouped Shannon expression.
+"""INTERCAL Boolean program generator: a fully grouped Shannon expression.
 
-Subexpressions the expression would repeat are assigned once to spare
-variables and named where they recur (:func:`_intercal_shared`).
+Inputs are read into ``.1``..``.n`` by a polite ``@@`` template, tested in
+input order, and the result is printed with ``READ OUT``.  Subexpressions the
+expression would repeat are assigned once to spare variables and named where
+they recur (:func:`_intercal_shared`).
+
+Size:
+    O(n) for structured tables, O(T) for random; n=10 parity: 1,262 chars,
+    n=10 random 1847: 8,947 chars.
+
+Decisions:
+    Greedy input order costs +2.14% on three inputs and +1.68% on the
+    five-input sample.  Narrower rebuilds (unsimplified, per-operation names,
+    split mingles) were retired: at n=7..10 wrapping the natural program is
+    smaller at every width from 1 to 259, by 26.2% (n=7) to 32.3% (n=10).
 """
 
 import re
@@ -57,12 +69,8 @@ _STATEMENT_OVERHEAD = 2
 def intercal(truth_table: str, width: int | None = None) -> str:
     """Return a polite C-INTERCAL template computing ``truth_table``.
 
-    Inputs are tested in input order (the greedy order costs +2.14% on three
-    inputs, +1.68% on the five-input sample).  A ``width`` breaks over-wide
-    statements between tokens.  Narrower rebuilds (unsimplified, per-operation
-    names, split mingles) were retired: at n=7..10 wrapping the natural
-    program is smaller at every width from 1 to 259, by 26.2% (n=7) to
-    32.3% (n=10).
+    Inputs are tested in input order.  A ``width`` breaks over-wide
+    statements between tokens.
     """
     natural = in_input_order(truth_table, _intercal_shared)
     if width is None or width <= 0:
@@ -125,15 +133,14 @@ def _mux(
 def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's template with repeated subexpressions assigned once.
 
-    The Shannon tree is reduced to a diagram (:func:`_diagram`), and a node
-    read by two or more parents is given a spare variable, ``.k <- expr``,
-    and named by it wherever it recurs, when that is shorter: the rule
-    weighs the node's inlined text against one statement and a name per
-    reader, so it is local to the node.  A level's ``~selector`` recurs in
-    every node of the level and is assigned once by the same rule.
-    Variables are numbered from ``.{n + 2}``: the complements, then the
-    nodes bottom-up, so the short names go to the deep nodes, which are
-    the most numerous and the most often read.
+    The Shannon tree is reduced to a diagram (:func:`_diagram`); a node read
+    by two or more parents gets a spare variable, ``.k <- expr``, named
+    wherever it recurs, when that is shorter.  The rule weighs the node's
+    inlined text against one statement plus a name per reader, so it is local
+    to the node.  A level's ``~selector`` recurs in every node of the level
+    and is assigned once by the same rule.  Variables are numbered from
+    ``.{n + 2}``: the complements, then the nodes bottom-up, so the short
+    names go to the deep nodes, the most numerous and most often read.
     """
     n = _validate_truth_table(truth_table)
     nodes, root = _diagram(truth_table, n)

@@ -8,6 +8,7 @@ from typing import Any, TypedDict, cast
 
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.runtime._validate import _argument_repr
 
 #: Every setting a language's ``dialect=`` may take, and its values.
 _CHOICES: dict[str, tuple[int | str, ...]] = {
@@ -21,11 +22,15 @@ _CHOICES: dict[str, tuple[int | str, ...]] = {
 class DialectSettings:
     """Explicit overrides; omitted choices retain each language's defaults."""
 
-    _items: tuple[tuple[str, int | str | None], ...]
+    _items: tuple[tuple[str, int | str], ...]
 
-    def __init__(self, **choices: int | str | None) -> None:
-        """Copy typed overrides; language-specific validation precedes use."""
-        integer = {key for key, values in _CHOICES.items() if type(values[0]) is int}
+    def __init__(self, **choices: int | str) -> None:
+        """Copy overrides, each one of its key's enumerated values.
+
+        Each key belongs to one language, so a value outside its choices fails
+        here rather than at first use (``rotation="sideways"`` once reached
+        ``generate``).  Unsupported keys still fail only at use.
+        """
         for key, value in choices.items():
             if key not in _CHOICES:
                 known = sorted(_CHOICES)
@@ -35,13 +40,14 @@ class DialectSettings:
                     f"unknown dialect setting: {key}{suggestion}; "
                     f"known settings: {', '.join(known)}"
                 )
-            valid = (
-                (type(value) is int or value is None)
-                if key in integer
-                else isinstance(value, str)
-            )
-            if not valid:
-                raise ArgumentError(f"invalid value for dialect setting {key}")
+            values = _CHOICES[key]
+            # ``type`` rather than ``==`` alone: True == 1 and 256.0 == 256.
+            if type(value) is not type(values[0]) or value not in values:
+                raise ArgumentError(
+                    f"invalid value for dialect setting {key}: "
+                    f"{_argument_repr(value)}; "
+                    f"choices: {', '.join(map(str, values))}"
+                )
         object.__setattr__(self, "_items", tuple(sorted(choices.items())))
 
     def options(self, language: str) -> dict[str, Any]:
@@ -80,7 +86,9 @@ def dialect_options(language: str, settings: DialectSettings | None) -> dict[str
     if settings is None:
         return {}
     if not isinstance(settings, DialectSettings):
-        raise ArgumentError("settings must be a DialectSettings object")
+        raise ArgumentError(
+            f"settings must be a DialectSettings object, got {type(settings).__name__}"
+        )
     return settings.options(language)
 
 
@@ -93,7 +101,9 @@ def effective_settings(
     from esolangs.tagged import _Tagged
 
     if settings is not None and not isinstance(settings, DialectSettings):
-        raise ArgumentError("settings must be a DialectSettings object")
+        raise ArgumentError(
+            f"settings must be a DialectSettings object, got {type(settings).__name__}"
+        )
     if not isinstance(
         program, (_Tagged, Raster, CompressedText)
     ) or program.language != resolve(language):

@@ -1,4 +1,16 @@
-"""Boolean-function generator for Circlefuck."""
+"""Circlefuck Boolean program generator: the table is deleted down to the answer.
+
+Horner's rule folds the essential bits into base-128 index cells that delete
+the entries before the named one; ``.`` prints the rest, or a constant's tail.
+One character an entry.
+
+Size:
+    O(T) chars; n=10 parity: 1,704 chars, n=16 and: 66,823 chars.
+
+Decisions:
+    No entry can drop without clamping the index, and a literal deleted into
+    by index has no subtrees to share.
+"""
 
 from itertools import pairwise
 
@@ -29,19 +41,7 @@ _READ = ",>[-]++++++[<-------->-]<[[-]>+<]>[-<+>]"
 
 
 def circlefuck(truth_table: str) -> str:
-    """Build a Circlefuck program computing the given truth table.
-
-    Horner's rule folds the essential bits into an index, which is spent
-    deleting the entries before the one it names; ``.`` prints what is left
-    under the pointer.  One character an entry.
-
-    The tape is the program: the table is its tail, backwards past the ``@``,
-    so entry 0 abuts the index cells, which ``<`` reaches from cell 0 (the
-    tape is a ring).  Only the table grows.  A literal deleted into by index:
-    no entry can drop without clamping the index, and it has no subtrees to
-    share.
-    Constants read into an already executed cell, then print the literal tail.
-    """
+    """Return a Circlefuck program computing ``truth_table`` (MSB first)."""
     return _program(truth_table)
 
 
@@ -75,6 +75,9 @@ def _program(truth_table: str, *, keep_constant_index: bool = False) -> str:
     prog.append("<" * (at + cells))
     prog.append(">".join(_deleter(digit) for digit in range(cells)))
     prog.append("<" * cells + ".@")
+    # The tape is the program: the table is its tail, backwards past the
+    # ``@``, so entry 0 abuts the index cells, which ``<`` reaches from cell 0
+    # (the tape is a ring).  Only the table grows.
     prog.append(read_at(truth_table, essential, n)[::-1])
     prog.append("0" * cells)  # the index cells, cleared by the leading `[-]`s
     return "".join(prog)

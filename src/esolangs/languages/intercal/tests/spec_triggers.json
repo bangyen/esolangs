@@ -1,0 +1,16 @@
+{
+ "triggers": [
+  {
+   "program": "DO .1 <- #1",
+   "stdin": "",
+   "expect": "HaltError",
+   "claim": "HaltError: politeness E079 at load"
+  },
+  {
+   "program": "DO .1 <- #1\nDO .1 <- #1\nPLEASE WRITE IN .1\nDO .1 <- #1",
+   "stdin": "",
+   "expect": "InputExhaustedError",
+   "claim": "InputExhaustedError: numeric WRITE IN at EOF"
+  }
+ ]
+}

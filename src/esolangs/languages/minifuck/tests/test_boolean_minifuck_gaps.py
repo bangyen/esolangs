@@ -88,18 +88,19 @@ def test_extended_pads_compute_every_small_table(
 
 
 @pytest.mark.parametrize(
-    ("table", "characters", "width"),
-    [("1010101001010000", 570, 24), ("01" * 16 + "10" * 16, 474, 22)],
+    ("table", "floor"),
+    # (rendered side, characters, width)
+    [("1010101001010000", (32, 510, 32)), ("01" * 16 + "10" * 16, (22, 237, 21))],
 )
 def test_balanced_reduced_lookups_keep_their_floor(
-    table: str, characters: int, width: int
+    table: str, floor: tuple[int, int, int]
 ) -> None:
     from esolangs import generate
     from esolangs.generation.wrap import balance_score
     from esolangs.runtime._evaluate import _evaluate
 
     template = generate("Minifuck", table, balance=True)
-    assert balance_score(template) <= (0, characters, width)
+    assert balance_score(template) <= floor
     assert _evaluate("Minifuck", template, inputs=len(table).bit_length() - 1) == table
 
 

@@ -1,11 +1,18 @@
-"""Befunge boolean program builder: the grid is the lookup table.
+"""Befunge Boolean program generator: the grid is the lookup table.
 
-``befunge(truth_table)`` reads one ``0``/``1`` integer token per input, folds them
-into a row index with Horner's rule, and reads the answer out of a grid the
-generator wrote, one cell per entry through ten inputs and six bits per cell
-above that. ``g`` addresses data the instruction pointer never walks: O(T)
-cells of source and O(n) executed commands, no branch and no loop; a grid
-has no subtrees to fold or share.
+Reads one ``0``/``1`` integer token per input, folds them into a row index
+with Horner's rule, and ``g`` fetches the answer from a table the instruction
+pointer never walks: one cell per entry through ten inputs, six per cell above.
+
+Size:
+    O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 64
+    chars, n=10 random 1847: 1,118 chars, n=13 random 1847: 1,545 chars.
+
+Raises:
+    GeneratorCapError: more than thirteen inputs, past the 80x25 grid.
+
+Decisions:
+    A grid has no subtrees, so nothing folds or is shared.
 """
 
 from __future__ import annotations
@@ -18,6 +25,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._language import Example, Language, Shape
 from esolangs.runtime.source_hints import with_hint
@@ -76,15 +84,7 @@ def _header(reads: str, width: str, offset: str) -> str:
 
 
 def befunge(truth_table: str, width: int | None = None) -> str:
-    """Return a Befunge grid computing ``truth_table``.
-
-    The natural grid has a straight header and a power-of-two table width
-    near ``sqrt(T)``.  An over-wide header folds along alternating rows;
-    ``g`` addresses the table below them.  Above ten inputs, printable ASCII
-    cells pack six answers each; above ``MAX_INPUTS`` raises
-    ``GeneratorCapError``.  A parity table with ``width < 4`` uses one vertical
-    column of sums modulo two instead.
-    """
+    """Return a Befunge grid computing ``truth_table``, at most ``width`` wide."""
     n = _validate_truth_table(truth_table)
     _check_cap(n)
     # An ignored input is read and popped; the table indexes the rest.
@@ -95,10 +95,13 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     if width is not None and 0 < width < 4:
         bias = _parity_bias(truth_table)
         if bias is not None:
-            # At most 25 commands even at n=10, within the native torus.
+            # One vertical column of sums modulo two: at most 25 commands even
+            # at n=10, within the native torus.
             header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
             return "\n".join(header)
     count = len(table)
+    # The natural grid: a straight header over a power-of-two table width near
+    # ``sqrt(T)``; an over-wide header folds (:func:`_fold_header`).
     shift = count.bit_length() // 2
     table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
@@ -185,8 +188,9 @@ def _literal(value: int) -> str:
 def balance_befunge(truth_table: str, default: str) -> str:
     """Return the best-balanced supported Befunge grid within its 80x25 torus.
 
-    Each fixed header bound B gives H=ceil(B/(W-2))+ceil(T/W).
-    Its W=H crossing lies between s and s+2 for s=ceil(sqrt(B+T)).
+    Each fixed header bound B gives H=ceil(B/(W-2))+ceil(T/W).  With
+    A=CELL_ASPECT, its W=A*H crossing lies between s and s+2A for
+    s=ceil(sqrt(A*(B+T))).
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
@@ -200,12 +204,12 @@ def balance_befunge(truth_table: str, default: str) -> str:
         floor = max(low, _min_columns(count, bound))
         if floor > high:
             continue
-        side = isqrt(count + bound - 1) + 1
+        side = isqrt(CELL_ASPECT * (count + bound) - 1) + 1
         # H >= (B+T)/W and H <= (B+T)/(W-2)+2. Only the
-        # crossing and its predecessor can minimize |W-H| in each range.
+        # crossing and its predecessor can minimize the side in each range.
         candidates.extend(
             befunge(truth_table, min(high, max(floor, width)))
-            for width in (side - 1, side, side + 1, side + 2)
+            for width in range(side - 1, side + 2 * CELL_ASPECT + 1)
         )
     if n <= 10 and _parity_bias(truth_table) is not None:
         candidates.append(befunge(truth_table, 1))

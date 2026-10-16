@@ -1,4 +1,13 @@
-"""Boolean-function generator for s*bleq."""
+"""S*bleq Boolean program generator: a shared branch tree, or a packed decoder.
+
+Reads every input once; tables up to 16 rows use the hoisted shared tree,
+larger ones also build the packed decoder and keep the shorter.  A constant
+consumes all inputs before printing.
+
+Size:
+    n=10 random 1847: 2,976 chars, n=10 parity: 487 chars,
+    n=10 and: 383 chars.
+"""
 
 from esolangs.generation.branch_decoder import hoisted_tree as _sbleq_hoisted
 from esolangs.generation.helpers import (

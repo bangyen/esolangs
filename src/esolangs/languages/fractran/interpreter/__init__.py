@@ -3,27 +3,28 @@
 John Conway's 1987 language: a program is an ordered list of positive
 fractions and a starting value.  A step multiplies the value by the first
 fraction that leaves an integer, and the run ends when none does.  The
-value is the whole machine -- there are no registers, no instruction
-pointer and no I/O -- so data lives in the exponents of its prime
-factorization.
+value is the whole machine -- no registers, instruction pointer or I/O --
+so data lives in the exponents of its prime factorization.
 
 The source is whitespace- or comma-separated tokens: the first is the
-starting value, the rest are the fractions in priority order.  Any of them
-may be written as a product of prime powers (``2^3*5`` is 40), which is
-notation only -- the machine still starts from one integer -- and is how a
-generated program spells a value with thousands of digits without spelling
-the digits.  Because FRACTRAN has no output vocabulary either, the final
+starting value, the rest are the fractions in priority order.  Any may be
+written as a product of prime powers (``2^3*5`` is 40), notation only,
+which lets a generated program spell a value with thousands of digits
+without spelling the digits.  With no output vocabulary, the final
 value *is* the result, and this interpreter prints it. Small-base sources
 retain exact prime exponents and indexed guards; other sources use the literal
 integer scan. Debug values are materialized on request.
 
-An empty source, a token that is not a fraction or a product of powers, a
-zero or negative value, and a zero denominator raise :class:`ValueError`.
-No operation can be invalid once a program parses -- every step is a
-multiplication that was already checked to divide -- so no
-:class:`~esolangs.exceptions.HaltError` arises and a value no fraction
-divides is the normal end.  Nothing is read, so no ``EOFError`` can come
-from here: a program's inputs are in its starting value.
+No operation is invalid once a program parses (every step is a
+multiplication already checked to divide), so no HaltError arises and a value
+no fraction divides is the normal end.
+
+Input/output:
+    Nothing is read, so no EOF: a program's inputs are in its starting value.
+
+Errors:
+    ProgramError: An empty source, a token that is not a fraction or a product
+    of powers, a zero or negative value, and a zero denominator.
 """
 
 from __future__ import annotations

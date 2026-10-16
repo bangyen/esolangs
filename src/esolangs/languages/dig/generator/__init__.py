@@ -1,4 +1,33 @@
-"""Boolean-function generator for Dig."""
+"""Dig Boolean program generator: a mole walks a decision tree.
+
+Each tree level is a ``$3~;#`` block that reads a bit, stores it and turns on
+it; leaves print the answer.  Up to four inputs the tree is laid out in one
+band or two that turn round, and at four it races the alternating layout;
+above, that flat-leaf layout, its shared variants and the indexed leaf
+decoder compete by length and grid area.
+
+Size:
+    Area O(T) past four inputs; n=10 parity: 614 chars, n=10 random 1847:
+    7,097 chars.
+
+Decisions:
+    Above four inputs the alternating layout beat plain trees on every random
+    table measured, 1.9-5.1x smaller at n=5..8.
+
+    A constant span at any level is a row of reads and a print, its box sized
+    alone (seeded n=7/8/9 area, one half constant: -14.7% / -20.0% / -25.4%;
+    constant 64-entry blocks -12.3% / -34.2% / -24.3%; random unchanged).
+    Aligned repeated leaves join along spare rows or columns, retaining the
+    last copy and compacting unused external space.  Paths must fit the
+    execution ledger (n=8 A B B A: 1,155 cells, 208 commands); groups whose
+    corridors collide or exceed it remain unshared.  Two parallel lanes admit
+    interleaved classes (n=10: 5,175 cells, 292 commands), stretching branch
+    counters around their gutter.  A prefix lookup can instead index up to
+    seven shared leaf classes at n=8..12, adding eight rows per class to one
+    six-input body; full-input parity uses 720 cells and 227 commands at n=9,
+    four-class n=10 controls 1,152 cells and 291 commands.  Narrow widths can
+    use the indexed leaf decoder.
+"""
 
 from typing import cast
 
@@ -45,8 +74,8 @@ _DIG_BAND = _DIG_STRIDE + 1
 
 
 # Largest n built as plain decision trees; above it the alternating layout
-# (flat leaves) beats the trees on every random table measured (1.9-5.1x smaller,
-# n=5..8), at it the two race, and below it the layout cannot be built (n=2, 3).
+# (flat leaves) wins, at it the two race, and below it the layout cannot be
+# built (n=2, 3).
 _DIG_TREE_MAX = 4
 
 
@@ -372,21 +401,6 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     two-band layouts (:func:`_dig_columns`); widths below the floor return
     the narrowest candidate; two-input XOR below width eight uses a
     four-column polynomial stencil.
-
-    A constant span at any level is a row of reads and a print, its box sized
-    alone (seeded n=7/8/9 area, one half constant: -14.7% / -20.0% / -25.4%;
-    constant 64-entry blocks -12.3% / -34.2% / -24.3%; random unchanged).
-    Aligned repeated leaves join along spare rows or columns, retaining the
-    last copy and compacting unused external space. Paths must fit the execution
-    ledger (n=8 A B B A: 1,155 cells, 208 commands). Narrow width paths can
-    use the indexed leaf decoder.
-    Two parallel lanes admit interleaved classes (n=10: 5,175 cells,
-    292 commands), stretching branch counters around their gutter.
-    A prefix lookup can instead index up to seven shared leaf classes at
-    n=8..12, adding eight rows per class to one six-input body. Full-input
-    parity uses 720 cells and 227 commands at n=9; four-class n=10 controls
-    use 1,152 cells and 291 commands. Candidates must fit the same ledger.
-    Groups whose corridors collide or exceed the bound remain unshared.
     """
     n = _validate_truth_table(truth_table)
     built = _dig_build(truth_table, n, width, share=share)

@@ -165,3 +165,10 @@ def test_super_snusp_balance_rejects_long_literals() -> None:
 def test_xor_has_one_column() -> None:
     xor = esolangs.generate("Super SNUSP", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
+
+
+@pytest.mark.parametrize("token", ["1_0", "٣"])
+def test_a_number_read_is_ascii_decimal(token: str) -> None:
+    """``@`` took Python's int() spellings: "1_0" read 10, "٣" read 3."""
+    with pytest.raises(esolangs.ArgumentError, match="must be an integer"):
+        esolangs.run("Super SNUSP", '"@#', stdin=token)

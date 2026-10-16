@@ -2,33 +2,10 @@
 
 A pointer walks a rectangular grid of ``A``/``B``/``C``/``D`` cells,
 starting at the top-left cell headed down; after each command it steps one
-cell in its heading.  ``A`` turns the pointer right (clockwise), ``B`` is a
-no-op, and ``C`` and ``D`` dispatch on the heading:
-
-- ``C`` right: move the tape pointer left.
-- ``C`` left: move the tape pointer right and flip the bit there.
-- ``C`` up: if the bit is 1, turn left; otherwise go straight.
-- ``C`` down: output the bit.
-- ``D`` right: enqueue the bit.
-- ``D`` left: dequeue into the bit.
-- ``D`` up: input into the bit.
-- ``D`` down: a 1 bit goes straight on; otherwise dequeue, and a 1 turns
-  up; otherwise dequeue again, and a 0 turns left, a 1 right.
-
-The tape is an unbounded bit tape and the queue a FIFO of bits.  I/O is
-bitwise: bytes leave and arrive eight bits at a time, least significant
-first, and EOF supplies zero bits.  The file reader stops after the first
-line containing ``DDDDDD``; that line is read whole, so the grid is every
-line up to it, which must form a rectangle of ``A``/``B``/``C``/``D``
-(:class:`ValueError`, exit 2, otherwise).  Later lines are comments.
-
-The wiki leaves four gaps and suggests each assumption taken here, in its
-"Computational class" section: the edges wrap (a donut, without which a
-program never leaves the leftmost column), the tape starts at zero, and an
-empty queue dequeues zeros.  A ``D`` down dequeues the bit it tests ("the
-front of the queue" read as the value just dequeued): under a peek
-reading its second dequeue would always take a 0, and "dequeued is 1,
-turn right" could never fire.
+cell in its heading.  The tape is an unbounded bit tape and the queue a
+FIFO of bits.  The file reader stops after the first line containing
+``DDDDDD``; that line is read whole, so the grid is every line up to it.
+Later lines are comments.
 
 No command halts, so the machine halts itself once its state provably
 repeats with no output, input, or memory write in between: from there it
@@ -37,6 +14,37 @@ O(1) key (pointer, heading, tape position, write count), restarted at
 every write, finds that repeat a few steps into the loop.  A program that
 keeps printing, or keeps writing new state, runs until the caller's
 budget stops it.
+
+Commands:
+    ``A``: turn the pointer right (clockwise).
+    ``B``: no-op.
+    ``C`` right: move the tape pointer left.
+    ``C`` left: move the tape pointer right and flip the bit there.
+    ``C`` up: if the bit is 1, turn left; otherwise go straight.
+    ``C`` down: output the bit.
+    ``D`` right: enqueue the bit.
+    ``D`` left: dequeue into the bit.
+    ``D`` up: input into the bit.
+    ``D`` down: a 1 bit goes straight on; otherwise dequeue, and a 1 turns
+    up; otherwise dequeue again, and a 0 turns left, a 1 right.
+
+Input/output:
+    Bitwise: bytes leave and arrive eight bits at a time, least significant
+    first, and EOF supplies zero bits.
+
+Errors:
+    ProgramError: the grid before the ``DDDDDD`` line is not a rectangle of
+    ``A``/``B``/``C``/``D``, or no line contains ``DDDDDD`` (exit 2).
+
+Decisions:
+    * The wiki leaves four gaps and suggests each assumption taken here, in
+      its "Computational class" section: the edges wrap (a donut, without
+      which a program never leaves the leftmost column), the tape starts at
+      zero, and an empty queue dequeues zeros.
+    * A ``D`` down dequeues the bit it tests ("the front of the queue" read
+      as the value just dequeued): under a peek reading its second dequeue
+      would always take a 0, and "dequeued is 1, turn right" could never
+      fire.
 """
 
 from collections import deque

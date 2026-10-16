@@ -1,4 +1,4 @@
-"""Bitwise Cyclic Tag boolean program builder: the table as a forward walk.
+"""Bitwise Cyclic Tag Boolean program generator: the table as a forward walk.
 
 BCT has no branch, so all an input can change is how much data is appended, and
 so how far the pointer has moved when a later bit is read.  Input ``i`` appends
@@ -8,6 +8,11 @@ walk arrives at cell ``index`` and fires it, and no indexed row can drop.
 Constants delete the embedded inputs and a literal answer with a cyclic ``0``.
 Emission is ``program,data``; the count and why a cell needs four bits:
 ``docs/proofs/index.md``.
+
+Size:
+    Theta(T) chars, four per row plus the input runs, independent of the
+    table's values; n=10 random 1847: 8,213 chars, n=12 random 1847: 32,793
+    chars.
 """
 
 from __future__ import annotations

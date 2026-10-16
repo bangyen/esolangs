@@ -3,7 +3,7 @@
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 79 languages</summary>
+<summary>Show all 88 languages</summary>
 
 ### Grid-based Languages
 
@@ -30,15 +30,19 @@ Languages that move a pointer or beam across a 2D grid.
 
 Languages that use a stack for data manipulation.
 
+- [1 + i](https://esolangs.org/wiki/1_+_i) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/one_i/interpreter.py))
 - [3x](https://esolangs.org/wiki/3x) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/three_x/interpreter.py))
+- [Ascenic](https://esolangs.org/wiki/Ascenic) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/ascenic/interpreter.py))
 - [BFStack](https://esolangs.org/wiki/BFStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bfstack/interpreter.py))
+- [Caballo](https://esolangs.org/wiki/Caballo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/caballo/interpreter.py))
 - [Eval](https://esolangs.org/wiki/Eval) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/eval/interpreter.py))
 - [FALSE](https://esolangs.org/wiki/FALSE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/false/interpreter.py))
+- [Fackward](https://esolangs.org/wiki/Fackward) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fackward/interpreter.py))
 - [Forþ](https://esolangs.org/wiki/For%C3%BE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/forth/interpreter.py))
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/grapheme/interpreter.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/modulous/interpreter.py))
 - [Piet](https://esolangs.org/wiki/Piet) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/piet/interpreter.py))
-- [Piet++](https://esolangs.org/wiki/Piet++) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/piet_plus_plus/interpreter.py))
+- [Quassaunt](https://esolangs.org/wiki/Quassaunt) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/quassaunt/interpreter.py))
 - [SStack](https://esolangs.org/wiki/SStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sstack/interpreter.py))
 - [Smu](https://esolangs.org/wiki/Smu) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/smu/interpreter.py))
 - [Underload](https://esolangs.org/wiki/Underload) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/underload/interpreter.py))
@@ -63,11 +67,11 @@ Languages that operate on a tape (similar to Turing machines).
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/brainif/interpreter.py))
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/circlefuck/interpreter.py))
 - [Dimensional](https://esolangs.org/wiki/Dimensional) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/dimensional/interpreter.py))
-- [Factor](https://esolangs.org/wiki/Factor) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/factor/interpreter.py))
 - [Home Row](https://esolangs.org/wiki/Home_Row) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/home_row/interpreter.py))
 - [Line](https://esolangs.org/wiki/Line) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/line/interpreter/__init__.py))
 - [Minifuck](https://esolangs.org/wiki/Minifuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/minifuck/interpreter.py))
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/painfuck/interpreter.py))
+- [Pointless](https://esolangs.org/wiki/Pointless) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/pointless/interpreter.py))
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/rotfuck/interpreter.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sbleq/interpreter.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/slow_acv_mammalian/interpreter.py))
@@ -75,6 +79,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Subleq](https://esolangs.org/wiki/Subleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/subleq/interpreter.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/suffolk/interpreter.py))
 - [Unary](https://esolangs.org/wiki/Unary) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unary/interpreter.py))
+- [What!?](https://esolangs.org/wiki/What!%3F) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/what/interpreter.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bit_tilde/interpreter.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/brainfuck/interpreter.py))
 
@@ -93,6 +98,7 @@ Languages that use registers to store and manipulate data.
 - [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/polynomial/interpreter/__init__.py))
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/qoibl/interpreter.py))
 - [RAM0](https://esolangs.org/wiki/RAM0) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/ram0/interpreter.py))
+- [Rubic](https://esolangs.org/wiki/Rubic) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/rubic/interpreter.py))
 
 ### Self-modifying Languages
 
@@ -120,8 +126,11 @@ Languages that store data in named variables the program declares.
 Languages that don't fit into the above categories.
 
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/cvnc/interpreter.py))
+- [Codesick](https://esolangs.org/wiki/Codesick) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/codesick/interpreter.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fargo/interpreter.py))
 - [Nope.](https://esolangs.org/wiki/Nope.) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/nope/interpreter.py)) *(interpreter-only)*
+- [Object disoriented](https://esolangs.org/wiki/Object_disoriented) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/object_disoriented/interpreter.py))
+- [SendStuff](https://esolangs.org/wiki/SendStuff) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sendstuff/interpreter.py))
 - [Unlambda](https://esolangs.org/wiki/Unlambda) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unlambda/interpreter.py))
 
 <!-- IMPLEMENTED:END -->

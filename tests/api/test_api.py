@@ -124,6 +124,20 @@ def test_run_timeout_requires_main_thread() -> None:
     thread.join(5)
     assert isinstance(out[0], ValueError)
     assert "SIGALRM" in str(out[0])
+    assert "isolated=True" in str(out[0])
+
+
+def test_a_timeout_names_the_bound_that_fired() -> None:
+    """Both bounds raise one class; ``bound`` separates them, pickled too."""
+    import pickle
+
+    with pytest.raises(esolangs.ExecutionTimeoutError) as stepped:
+        esolangs.run(REFERENCE, "+[]", max_steps=100, timeout=30)
+    with pytest.raises(esolangs.ExecutionTimeoutError) as timed:
+        esolangs.run(REFERENCE, "+[]", timeout=0.05)
+    for caught, bound in ((stepped, "max_steps"), (timed, "timeout")):
+        assert caught.value.bound == bound
+        assert pickle.loads(pickle.dumps(caught.value)).bound == bound
 
 
 def test_describe_structured_summary() -> None:
@@ -138,6 +152,18 @@ def test_describe_structured_summary() -> None:
 def test_describe_covers_state_models() -> None:
     models = {esolangs.describe(n)["state_model"] for n in esolangs.list_languages()}
     assert {"stack", "register", "grid", "tape"} <= models
+
+
+def test_input_fields_exist_only_where_stdin_is_read() -> None:
+    """Templates and interpreter-only languages reported ``line_per_bit``."""
+    for name in esolangs.list_languages():
+        facts = esolangs.describe(name)
+        has_input = facts["input_shape"] is not None
+        assert has_input is facts["reads_input"], name
+        assert (facts["input_encoding"] is not None) is has_input, name
+        if not facts["boolean_generator"]:
+            with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
+                esolangs.encode_inputs(name, [1])
 
 
 def test_shape_is_the_generator_axis() -> None:

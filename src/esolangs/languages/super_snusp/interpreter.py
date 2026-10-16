@@ -1,16 +1,24 @@
 r"""Interpreter for Super SNUSP.
 
 Super SNUSP is a grid language with a signed sparse tape and value stack.
-``\"`` starts rightward.  Absent one, the page says "Starts at bottom
+``"`` starts rightward.  Absent one, the page says "Starts at bottom
 right": the IP starts rightward on the last line's last non-space character,
 the one reading under which the wiki's Cat (no ``\"``) copies its input.
-EOF propagates.  ``@`` ("Input decimal number") reads a whitespace-delimited
-token and refuses one that is not an integer. Invalid stack/arithmetic operations raise
-:class:`~esolangs.exceptions.HaltError`; an empty program raises
-:class:`ValueError`.
 
-The execution model is a pure transition over immutable ``_State``. The shell
+The execution model is a pure transition over immutable state. The shell
 alone handles I/O and random draws, then rebinds the returned state.
+
+Input/output:
+    ``,`` reads a character; ``@`` ("Input decimal number") reads a
+    whitespace-delimited token and refuses one that is not an integer.  EOF
+    propagates.
+
+Errors:
+    ProgramError: Empty program.
+    InputExhaustedError: ``,`` or ``@`` at EOF.
+    ArgumentError: An ``@`` token that is not an integer.
+    HaltError: Invalid stack/arithmetic operations (an empty stack read,
+        zero divisor, negative shift, bad root, ``.`` on a non-code-point).
 """
 
 from __future__ import annotations
@@ -322,22 +330,19 @@ class _Machine:
     ) -> tuple[_State, ...] | None:
         """Return the state for every value ``=`` could store.
 
-        Mirrors :meth:`step`'s draw *condition*, not just its command: an
-        ``=`` with nothing on the stack draws nothing and raises inside the
-        transition, so it is left to the single deterministic call rather
-        than forked over an empty range.
+        Mirrors :meth:`step`'s draw *condition*: an ``=`` with nothing on the
+        stack draws nothing and raises inside the transition, so it is left
+        to the single deterministic call rather than forked over an empty
+        range.
 
         The range is the inclusive span between the current cell and the
-        stack top, so unlike a coin or a heading it is unbounded in
-        principle -- a program can make one command fan out as wide as it
-        likes.  That is charged against ``limit`` here rather than
-        materialized first.
+        stack top, unbounded in principle (unlike a coin or a heading), so
+        it is charged against ``limit`` here rather than materialized first.
 
-        A :class:`~esolangs.exceptions.HaltError` from the transition is
-        left to propagate, exactly as it does out of :meth:`step`.  It says
-        the program halted on an invalid operation, so catching it here
-        would hide a *terminating* branch and let the search report a
-        universal hang for a program that stops.
+        A :class:`~esolangs.exceptions.HaltError` from the transition
+        propagates, as out of :meth:`step`: it means the program halted on an
+        invalid operation, and catching it would hide a *terminating* branch
+        and let the search report a universal hang for a program that stops.
         """
         current = cast(_State, state)
         row, col, _ = current.cursor

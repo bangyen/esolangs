@@ -125,15 +125,7 @@ class _Sim:
             self.skip = False
 
     def run_walk(self, pairs: int) -> None:
-        """Apply ``"[x" * pairs``: the walk law, in closed form.
-
-        Each pair advances and flips a cell; a flip to zero cascades into the
-        next cell and sets the skip, which the ``x`` eats.  The cascade is a
-        carry (checked on 5000 random states), so over a ``k``-cell window each
-        bit becomes the complement of the prefix XOR up to it and the cell above
-        takes the window's parity: ``O(log k)`` big-int doublings.  Without the
-        cascade the model disagreed on 877 of 3000 states; this agrees on 4000 of 4000.
-        """
+        """Apply ``"[x" * pairs``: the walk law, in ``O(log k)`` big-int doublings."""
         if self.dead or pairs <= 0:
             return
         if self.skip:
@@ -145,6 +137,12 @@ class _Sim:
         tape, ptr = self.tape, self.ptr
         low = ptr + 1
         mask = (1 << pairs) - 1
+        # Each pair advances and flips a cell; a flip to zero cascades into the
+        # next cell and sets the skip, which the ``x`` eats.  The cascade is a
+        # carry (checked on 5000 random states), so over a ``k``-cell window each
+        # bit becomes the complement of the prefix XOR up to it and the cell above
+        # takes the window's parity.  Without the cascade the model disagreed on
+        # 877 of 3000 states; this agrees on 4000 of 4000.
         # Prefix XOR of the window by doubling: after each step every bit
         # holds the XOR of itself and the ``span`` bits below it, so the
         # spans compose to cover the whole prefix in ``log2(pairs)`` steps.
@@ -162,20 +160,7 @@ class _Sim:
         self.length = max(self.length, ptr + 2)
 
     def run_brackets(self, count: int) -> None:
-        """Apply ``"[" * count``: the bracket law.
-
-        Crossing cell *j* sees ``e_j = c_1 XOR ... XOR c_j`` and leaves
-        ``NOT e_j``; a cascade's skip eats the next ``[``, so a cell with
-        ``e_j == 1`` costs two, and the extent is the largest ``m`` with
-        ``T(m) = m + sum(e_1..e_m) <= count``.  Remainder 1 means the next
-        crossing has ``e == 1`` and its ``[`` fires with the skip left pending --
-        the one way a run ends mid-cell.  The last cascade's carry lands above
-        the window iff the window's parity is 1.  Inverted by binary search over
-        popcounts, ``O(log k)``.  The single bracket (112877 of 182177 runs in a
-        three-slice build) is spelled out: complement the crossed cell, and if it
-        held 1 carry above and leave the skip pending (checked against the
-        general arm over 23072 states).
-        """
+        """Apply ``"[" * count``: the bracket law, in ``O(log k)``."""
         if self.dead or count <= 0:
             return
         if self.skip:
@@ -183,6 +168,10 @@ class _Sim:
             count -= 1
             if count == 0:
                 return
+        # The single bracket (112877 of 182177 runs in a three-slice build) is
+        # spelled out: complement the crossed cell, and if it held 1 carry above
+        # and leave the skip pending (checked against the general arm over 23072
+        # states).
         if count == 1:
             ptr = self.ptr + 1
             bit = 1 << ptr
@@ -199,8 +188,12 @@ class _Sim:
             return
         tape, ptr = self.tape, self.ptr
         low = ptr + 1
-        # e_j for j = 1..count: a run of k brackets crosses at most k cells,
-        # so the window never needs to be wider than the run.
+        # Crossing cell j sees e_j = c_1 XOR ... XOR c_j and leaves NOT e_j; a
+        # cascade's skip eats the next ``[``, so a cell with e_j == 1 costs two,
+        # and the extent is the largest m with T(m) = m + sum(e_1..e_m) <= count.
+        # The last cascade's carry lands above the window iff its parity is 1.
+        # A run of k brackets crosses at most k cells, so the window never
+        # needs to be wider than the run.
         mask = (1 << count) - 1
         effective = (tape >> low) & mask
         span = 1
@@ -218,8 +211,8 @@ class _Sim:
                 hi = mid - 1
         crossed = lo
         if crossed + (effective & ((1 << crossed) - 1)).bit_count() < count:
-            # Remainder 1: the next crossing starts, cascades, and leaves
-            # its skip pending for the instruction after the run.
+            # Remainder 1: the next crossing has e == 1 and its ``[`` fires
+            # with the skip left pending -- the one way a run ends mid-cell.
             crossed += 1
             skip_out = True
         else:

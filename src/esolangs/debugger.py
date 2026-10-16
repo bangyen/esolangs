@@ -61,6 +61,10 @@ class Debugger:
 
     def __init__(self, vm: VM) -> None:
         """Wrap ``vm`` with an empty breakpoint and watch set."""
+        if isinstance(vm, type) or not callable(getattr(vm, "step", None)):
+            # ``Debugger(None)`` built, then ``.halted`` raised AttributeError.
+            # Duck-typed, so a delegating proxy passes; a VM class does not.
+            raise ArgumentError(f"vm must be a VM, got {_argument_repr(vm)}")
         self.vm = vm
         self._breakpoints: list[Callable[[VM], bool]] = []
         self._cell_history: dict[int, list[int | None]] = {}
@@ -127,7 +131,7 @@ class Debugger:
         """Whether the output lands on the step *after* ``halted`` goes true.
 
         A :meth:`run` returning ``"halted"`` has taken it; one returning
-        ``"breakpoint"`` may not have, so on these seven the stop reason, not
+        ``"breakpoint"`` may not have, so where this is true the stop reason, not
         ``halted``, says whether the answer is written.
         """
         return self.vm.dumps_on_the_post_halt_step
@@ -140,11 +144,20 @@ class Debugger:
         """
         return self.vm.steppable_to_answer
 
+    @property
+    def eof_is_a_value(self) -> bool:
+        """Whether a read past the end of the input yields a value here.
+
+        See :attr:`~esolangs.vm.VM.eof_is_a_value`; the one trait not mirrored.
+        """
+        return self.vm.eof_is_a_value
+
     def snapshot(self) -> object:
         """Return the wrapped machine's complete *internal* state, hashable.
 
-        ``output`` is excluded (equal internal state means the same future), so
-        two snapshots compare equal across the post-halt dump.  A repeated
+        ``output`` is excluded, so equal internal state means the same future
+        computation; see :meth:`~esolangs.vm.VM.snapshot` for the post-halt
+        dump.  A repeated
         snapshot proves a loop, which settles the four termination languages in
         microseconds.
         """
@@ -157,19 +170,19 @@ class Debugger:
         wrong kind for this language, is refused rather than stored as a
         breakpoint that never fires.  Kind only, not arity (not constant within
         a run; see :attr:`~esolangs.vm.VM.ip`).  ``None`` is refused although
-        five languages reach it: use ``break_when(lambda vm: vm.ip is None)``.
+        some languages reach it (``///`` from its first step): use
+        ``break_when(lambda vm: vm.ip is None)``.
         A position never reached is accepted (the protocol has no ``len``).
         """
         if isinstance(ip, int) and not isinstance(ip, bool):
-            check_whole(ip, "ip")
+            pass  # Any int: AddSubJump and Subleq halt at -8 and -1.
         elif not (
             isinstance(ip, tuple)
             and ip
             and all(isinstance(part, int) and not isinstance(part, bool) for part in ip)
         ):
             raise ArgumentError(
-                "ip must be a non-negative integer or a tuple of them, "
-                f"got {_argument_repr(ip)}"
+                f"ip must be an integer or a tuple of them, got {_argument_repr(ip)}"
             )
         here = self.vm.ip
         if here is not None and here != ():
@@ -184,7 +197,7 @@ class Debugger:
     def break_on_cell(self, index: int, value: int) -> None:
         """Stop when ``memory[index]`` holds ``value``.
 
-        ``value`` must be an ``int``, or it never fires.
+        A non-``int`` ``value`` raises ``ArgumentError``.
         """
         check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
@@ -228,7 +241,13 @@ class Debugger:
             signature(predicate).bind(self.vm)
         except TypeError as exc:
             raise ArgumentError(
-                f"predicate must take one argument, the VM: {exc}"
+                f"predicate must take one argument, the VM; "
+                f"{_argument_repr(predicate)} does not: {exc}"
+            ) from exc
+        except ValueError as exc:
+            # No inspectable signature (``max``, ``int``): bare ValueError.
+            raise ArgumentError(
+                f"cannot check that predicate takes the VM ({exc}); wrap it in a lambda"
             ) from exc
         self._breakpoints.append(predicate)
 
@@ -259,12 +278,16 @@ class Debugger:
         return _watch(self._stack_history, slot, "slot")
 
     def _record(self) -> None:
-        memory = self.vm.memory
-        for index, cell_history in self._cell_history.items():
-            cell_history.append(_value_at(memory, index))
-        stack = self.vm.stack
-        for slot, stack_history in self._stack_history.items():
-            stack_history.append(_value_at(stack, slot, from_top=True))
+        # Read only when watched: ``vm.memory`` copies the tape, so reading it
+        # unconditionally made every step O(tape) (``+[>+]``: 80k steps 8.3 s).
+        if self._cell_history:
+            memory = self.vm.memory
+            for index, cell_history in self._cell_history.items():
+                cell_history.append(_value_at(memory, index))
+        if self._stack_history:
+            stack = self.vm.stack
+            for slot, stack_history in self._stack_history.items():
+                stack_history.append(_value_at(stack, slot, from_top=True))
 
     def step(self) -> None:
         """Execute one command, recording any watches.

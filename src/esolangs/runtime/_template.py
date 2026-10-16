@@ -1,13 +1,33 @@
-"""Template for a new esolang interpreter.
+# Template for a new esolang interpreter; `just new-language` copies it to
+# src/esolangs/languages/<name>/interpreter.py with <Language> filled in.
+# The conventions -- run(code, io), ValueError for a malformed program,
+# HaltError for an invalid operation, EOFError on exhausted input (unless the
+# spec gives EOF a value: then eof= on its LANGUAGE), a _Machine with
+# step/halted/snapshot, a pure _advance -- are under "Interpreter conventions"
+# in docs/CONTRIBUTING.md.  The docstring below is the spec's shape
+# (describe()["spec"]): fill each <describe ...> or delete its section;
+# `scripts/new_language.py check` flags any left.  Errors: names the public
+# exception a caller catches; give each entry a trigger in the language's
+# tests/spec_triggers.json (tests/interpreters/test_spec_triggers.py).
+"""Interpreter for <Language>.
 
-Copy to ``src/esolangs/languages/<name>/interpreter.py`` and fill in the
-dispatch.  The conventions every interpreter follows -- ``run(code, io)``,
-:class:`ValueError` for a malformed program, :class:`~esolangs.exceptions.HaltError`
-for an invalid operation, ``EOFError`` on exhausted input (unless the spec
-gives EOF a value: then ``eof=`` on its ``LANGUAGE``), a ``_Machine``
-with ``step``/``halted``/``snapshot``, a pure :func:`_advance`, and the
-module docstring shape ``tests/interpreters/test_interpreter_conventions.py`` checks --
-are listed under "Interpreter conventions" in ``docs/CONTRIBUTING.md``.
+<describe the source syntax, state, one step, halt and output, in prose>
+
+Commands:
+    <describe each command on one line, only where a table helps>
+
+Input/output:
+    <describe the input unit and output, and what a read at EOF does>
+
+Errors:
+    ProgramError: <describe a malformed program; raised as ValueError>
+    InputExhaustedError: <describe a read at EOF; raised as EOFError>
+    ArgumentError: <describe a numeric read given a non-integer token>
+    HaltError: <describe each invalid runtime operation>
+    InterpreterLimitError: <describe recursion or memory exhaustion>
+
+Decisions:
+    * <describe each spec gap and the reading chosen, with its evidence>
 """
 
 from esolangs.runtime._drive import drive

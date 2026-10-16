@@ -32,6 +32,20 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
         assert row["route"] in {"fame", "first implementation"}, name
 
 
+def test_no_new_brainfuck_derivative_is_a_first_implementation() -> None:
+    """The exclusion holds for candidates from 2026-10-15; these seven predate it."""
+    predating = {
+        "BFStack", "BrainIf", "Circlefuck", "LaserFuck", "Minifuck", "Painfuck",
+        "ROTfuck",
+    }  # fmt: skip
+    derived = {
+        name
+        for name, row in _CENSUS.items()
+        if row.get("bf_derivative") and row["route"] == "first implementation"
+    }
+    assert derived <= predating, sorted(derived - predating)
+
+
 @pytest.mark.parametrize("language", languages(boolean_generator=False))
 def test_api_and_vm(language: str) -> None:
     code, stdin = SAMPLES[language]

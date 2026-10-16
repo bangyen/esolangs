@@ -70,8 +70,8 @@ class LanguageInfo(TypedDict):
     reads_input: bool
     width_aware: bool
     width_effect: WidthEffect
-    input_encoding: tuple[str, str]
-    input_shape: InputShape
+    input_encoding: tuple[str, str] | None
+    input_shape: InputShape | None
     answer_mode: AnswerMode
     answer_pattern: str | None
     answer_encoding: tuple[str, str]
@@ -89,44 +89,51 @@ class LanguageInfo(TypedDict):
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
-    ``spec`` contains the interpreter docstring; missing docstrings raise.
-    ``dialect_settings`` gives runtime defaults and choices.
-    Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the language's
-    category, recorded by the registry), ``wiki_url``.
-    Generation: ``generator_max_inputs`` is an explicit arity cap (None means
-    none declared, or no generator); ``generator_restrictions`` names additional
-    table-dependent budgets, None when there are none.  ``boolean_generator``;
-    ``shape`` is the generator's construction growth class -- ``"tree"``,
-    ``"reducing"`` or ``"lookup"`` -- and None without a generator;
-    ``parameterized`` (a template, filled by :func:`instantiate`,
-    ``reads_input`` false).  Width: ``width_effect`` is
-    ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
-    tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
-    narrower ``== "layout"``.  Input: ``input_shape`` and ``input_encoding``,
-    the ``(zero, one)`` pair -- the wrong
-    alphabet is a wrong answer.  Answer: ``answer_mode`` is ``"output"``
-    (last non-whitespace character), ``"dump"`` (a fixed place in the final
-    state) or ``"termination"`` (a proven halt or divergence);
-    ``answer_pattern`` is the regex whose first group holds it (None: no regex);
-    ``answer_encoding`` the ``(zero, one)`` or ``("halts", "diverges")``;
-    ``answer_convention`` prose or None.  These describe raw output (a mark's
-    ``("o", "@")`` is a grid mark); :func:`read_answer` returns ``"0"``/``"1"``.
-    Machine traits (``self_halts``, ``dumps_on_the_post_halt_step``,
-    ``steppable_to_answer``, ``eof_is_a_value``) are documented on
-    :func:`~esolangs.vm.machine_traits`.  ``random``: the interpreter has
-    instructions that draw at random (``run(seed=...)`` fixes them).
-    ``examples`` lists the committed programs as POSIX paths relative to
-    the package
-    (``importlib.resources.files("esolangs") / path``);
-    ``languages/EXAMPLES.md`` says what each computes.
+    Returns:
+        A :class:`LanguageInfo` dict with these keys:
+
+        - Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the
+          registry's category), ``wiki_url``, ``spec`` (the interpreter
+          docstring), ``dialect_settings`` (runtime defaults and choices).
+        - Generation: ``boolean_generator``; ``generator_max_inputs``, an
+          explicit arity cap (None: none declared, or no generator);
+          ``generator_restrictions``, further table-dependent budgets (None:
+          none); ``shape``, the construction growth class ``"tree"``,
+          ``"reducing"`` or ``"lookup"`` (None without a generator);
+          ``parameterized``, a template filled by :func:`instantiate`
+          (``reads_input`` false).
+        - Width: ``width_effect`` is ``"layout"`` (a shape built to fit; a
+          hint), ``"wrap"`` (reflowed between tokens) or ``"none"`` (newlines
+          are semantic); ``width_aware`` is the narrower ``== "layout"``.
+        - Input: ``reads_input``; ``input_shape`` and ``input_encoding``, the
+          ``(zero, one)`` pair (the wrong alphabet is a wrong answer), both
+          None unless ``reads_input``.
+        - Answer: ``answer_mode`` is ``"output"`` (last non-whitespace
+          character), ``"dump"`` (a fixed place in the final state) or
+          ``"termination"`` (a proven halt or divergence); ``answer_pattern``,
+          the regex whose first group holds it (None: no regex);
+          ``answer_encoding``, ``(zero, one)`` or ``("halts", "diverges")``;
+          ``answer_convention``, prose or None.  These describe raw output (a
+          mark's ``("o", "@")`` is a grid mark); :func:`read_answer` returns
+          ``"0"``/``"1"``.
+        - Machine traits (:func:`~esolangs.vm.machine_traits`): ``self_halts``,
+          ``dumps_on_the_post_halt_step``, ``steppable_to_answer``,
+          ``eof_is_a_value``; ``random`` (fixed by ``run(seed=...)``).
+        - ``examples``: the committed programs as POSIX paths relative to the
+          package (``importlib.resources.files("esolangs") / path``);
+          ``languages/EXAMPLES.md`` says what each computes.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ProgramError: The interpreter has no docstring for ``spec`` (Python
+            run with ``-OO``).
     """
     name = resolve(language)
     lang = LANGUAGES[name]
     family = lang.category if lang.interpreter else None
     stem = example_stems().get(lang.id, lang.id)
-    # Package-relative: repository-relative paths broke a ``chdir`` away and
-    # under any install, and absolute ones froze the install location into
-    # the public output.  ``importlib.resources.files("esolangs")`` resolves.
+    # Package-relative: repository-relative paths broke after a ``chdir`` and
+    # when installed; absolute ones froze the install location into output.
     examples = sorted(
         f"languages/{lang.id}/{p.name}"
         for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
@@ -135,6 +142,8 @@ def describe(language: str) -> LanguageInfo:
     parameterized = lang.parameterized
     contract = lang.contract
     width_effect = _width_effect(lang)
+    generates = lang.boolean is not None
+    reads_input = generates and not parameterized
     return {
         "name": name,
         "dialect_settings": dialect_choices(name),
@@ -142,26 +151,25 @@ def describe(language: str) -> LanguageInfo:
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
-        "shape": lang.shape.value if lang.boolean is not None else None,
-        "boolean_generator": lang.boolean is not None,
+        "shape": lang.shape.value if generates else None,
+        "boolean_generator": generates,
         "generator_max_inputs": lang.generator_max_inputs,
         "generator_restrictions": lang.generator_restrictions or None,
         "parameterized": parameterized,
-        "reads_input": (lang.boolean is not None) and not parameterized,
+        "reads_input": reads_input,
         # Computed once so the two cannot drift into disagreeing.
         "width_aware": width_effect == "layout",
         "width_effect": width_effect,
-        "input_encoding": contract.alphabet,
-        "input_shape": contract.input_shape,
+        # Defaults leaked here as facts: Deadfish "read" ``line_per_bit``.
+        "input_encoding": contract.alphabet if reads_input else None,
+        "input_shape": contract.input_shape if reads_input else None,
         "answer_mode": contract.answer_mode,
         "answer_pattern": contract.answer_pattern or None,
         "answer_encoding": contract.answer_values,
         "answer_convention": contract.note or None,
-        # Spelled out rather than ``**machine_traits(name)``: that returns
-        # a ``dict[str, bool]``, which a TypedDict cannot verify a
-        # ``**``-expansion of, so the merge would have silently accepted a
-        # renamed or dropped trait.  ``test_describe_agrees_with_the_machine``
-        # keeps the four in step with what the VM reports.
+        # Not ``**machine_traits(name)``: a TypedDict cannot check a
+        # ``dict[str, bool]`` expansion, so a renamed trait would pass.
+        # ``test_describe_agrees_with_the_machine`` keeps the four in step.
         "self_halts": traits["self_halts"],
         "dumps_on_the_post_halt_step": traits["dumps_on_the_post_halt_step"],
         "steppable_to_answer": traits["steppable_to_answer"],
@@ -193,10 +201,8 @@ def _spec(language: str) -> str:
     text = (interpreter.__doc__ or "").strip()
     text = _ROLE.sub(lambda m: f"``{m[2].rsplit('.', 1)[-1] if m[1] else m[2]}``", text)
     if not text:
-        # ``-OO`` strips docstrings, so this returned ``""`` for every one --
-        # a silent wrong answer from the function whose whole promise is
-        # "read rather than stored, so it cannot drift".  Nothing to say is
-        # worth an abort, not an empty string that looks like an answer.
+        # Abort: under ``-OO`` an empty string would look like an answer from
+        # a function promising "read rather than stored, so it cannot drift".
         raise ProgramError(
             f"{name}'s spec is its interpreter's docstring, and this "
             f"interpreter has none -- Python was started with -OO (or "

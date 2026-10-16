@@ -19,6 +19,8 @@ from esolangs.languages.alight.generator import LANGUAGE as _ALIGHT_LANGUAGE
 from esolangs.languages.alight.generator import alight
 from esolangs.languages.arrowqueue.generator import LANGUAGE as _ARROWQUEUE_LANGUAGE
 from esolangs.languages.arrowqueue.generator import arrowqueue
+from esolangs.languages.ascenic.generator import LANGUAGE as _ASCENIC_LANGUAGE
+from esolangs.languages.ascenic.generator import ascenic
 from esolangs.languages.b_tapemark.generator import LANGUAGE as _B_TAPEMARK_LANGUAGE
 from esolangs.languages.b_tapemark.generator import b_tapemark
 from esolangs.languages.back.generator import LANGUAGE as _BACK_LANGUAGE
@@ -41,6 +43,8 @@ from esolangs.languages.brainfuck.generator import LANGUAGE as _BRAINFUCK_LANGUA
 from esolangs.languages.brainfuck.generator import brainfuck
 from esolangs.languages.brainif.generator import LANGUAGE as _BRAINIF_LANGUAGE
 from esolangs.languages.brainif.generator import brainif
+from esolangs.languages.caballo.generator import LANGUAGE as _CABALLO_LANGUAGE
+from esolangs.languages.caballo.generator import caballo
 from esolangs.languages.circlefuck.generator import LANGUAGE as _CIRCLEFUCK_LANGUAGE
 from esolangs.languages.circlefuck.generator import circlefuck
 from esolangs.languages.circuit_diagram.generator import (
@@ -49,6 +53,8 @@ from esolangs.languages.circuit_diagram.generator import (
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
 from esolangs.languages.clockwise.generator import LANGUAGE as _CLOCKWISE_LANGUAGE
 from esolangs.languages.clockwise.generator import clockwise
+from esolangs.languages.codesick.generator import LANGUAGE as _CODESICK_LANGUAGE
+from esolangs.languages.codesick.generator import codesick
 from esolangs.languages.collatz_multiverse.generator import (
     LANGUAGE as _COLLATZ_MULTIVERSE_LANGUAGE,
 )
@@ -71,8 +77,8 @@ from esolangs.languages.egl.generator import LANGUAGE as _EGL_LANGUAGE
 from esolangs.languages.egl.generator import egl
 from esolangs.languages.eval.generator import LANGUAGE as _EVAL_LANGUAGE
 from esolangs.languages.eval.generator import eval  # noqa: A004 - the language's name
-from esolangs.languages.factor.generator import LANGUAGE as _FACTOR_LANGUAGE
-from esolangs.languages.factor.generator import factor
+from esolangs.languages.fackward.generator import LANGUAGE as _FACKWARD_LANGUAGE
+from esolangs.languages.fackward.generator import fackward
 from esolangs.languages.false.generator import LANGUAGE as _FALSE_LANGUAGE
 from esolangs.languages.false.generator import false
 from esolangs.languages.fargo.generator import LANGUAGE as _FARGO_LANGUAGE
@@ -109,26 +115,36 @@ from esolangs.languages.minsky_swap.generator import LANGUAGE as _MINSKY_SWAP_LA
 from esolangs.languages.minsky_swap.generator import minsky_swap
 from esolangs.languages.modulous.generator import LANGUAGE as _MODULOUS_LANGUAGE
 from esolangs.languages.modulous.generator import modulous
+from esolangs.languages.object_disoriented.generator import (
+    LANGUAGE as _OBJECT_DISORIENTED_LANGUAGE,
+)
+from esolangs.languages.object_disoriented.generator import object_disoriented
+from esolangs.languages.one_i.generator import LANGUAGE as _ONE_I_LANGUAGE
+from esolangs.languages.one_i.generator import one_i
 from esolangs.languages.packlang.generator import LANGUAGE as _PACKLANG_LANGUAGE
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
 from esolangs.languages.painfuck.generator import painfuck
 from esolangs.languages.piet.generator import LANGUAGE as _PIET_LANGUAGE
 from esolangs.languages.piet.generator import piet
-from esolangs.languages.piet_plus_plus.generator import (
-    LANGUAGE as _PIET_PLUS_PLUS_LANGUAGE,
-)
-from esolangs.languages.piet_plus_plus.generator import piet_plus_plus
+from esolangs.languages.pointless.generator import LANGUAGE as _POINTLESS_LANGUAGE
+from esolangs.languages.pointless.generator import pointless
 from esolangs.languages.polynomial.generator import LANGUAGE as _POLYNOMIAL_LANGUAGE
 from esolangs.languages.polynomial.generator import polynomial
 from esolangs.languages.qoibl.generator import LANGUAGE as _QOIBL_LANGUAGE
 from esolangs.languages.qoibl.generator import qoibl
+from esolangs.languages.quassaunt.generator import LANGUAGE as _QUASSAUNT_LANGUAGE
+from esolangs.languages.quassaunt.generator import quassaunt
 from esolangs.languages.ram0.generator import LANGUAGE as _RAM0_LANGUAGE
 from esolangs.languages.ram0.generator import ram0
 from esolangs.languages.rotfuck.generator import LANGUAGE as _ROTFUCK_LANGUAGE
 from esolangs.languages.rotfuck.generator import rotfuck
+from esolangs.languages.rubic.generator import LANGUAGE as _RUBIC_LANGUAGE
+from esolangs.languages.rubic.generator import rubic
 from esolangs.languages.sbleq.generator import LANGUAGE as _SBLEQ_LANGUAGE
 from esolangs.languages.sbleq.generator import sbleq
+from esolangs.languages.sendstuff.generator import LANGUAGE as _SENDSTUFF_LANGUAGE
+from esolangs.languages.sendstuff.generator import sendstuff
 from esolangs.languages.six_five.generator import LANGUAGE as _SIX_FIVE_LANGUAGE
 from esolangs.languages.six_five.generator import six_five
 from esolangs.languages.slashes.generator import LANGUAGE as _SLASHES_LANGUAGE
@@ -169,6 +185,8 @@ from esolangs.languages.unsquare.generator import LANGUAGE as _UNSQUARE_LANGUAGE
 from esolangs.languages.unsquare.generator import unsquare
 from esolangs.languages.vandevelo.generator import LANGUAGE as _VANDEVELO_LANGUAGE
 from esolangs.languages.vandevelo.generator import vandevelo
+from esolangs.languages.what.generator import LANGUAGE as _WHAT_LANGUAGE
+from esolangs.languages.what.generator import what
 
 _LANGUAGES = (
     _A_PAINTER_ANT_LANGUAGE,
@@ -177,6 +195,7 @@ _LANGUAGES = (
     _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
     _ALIGHT_LANGUAGE,
     _ARROWQUEUE_LANGUAGE,
+    _ASCENIC_LANGUAGE,
     _B_TAPEMARK_LANGUAGE,
     _BACK_LANGUAGE,
     _BEFUNGE_LANGUAGE,
@@ -187,9 +206,11 @@ _LANGUAGES = (
     _BOOLFUCK_LANGUAGE,
     _BRAINFUCK_LANGUAGE,
     _BRAINIF_LANGUAGE,
+    _CABALLO_LANGUAGE,
     _CIRCLEFUCK_LANGUAGE,
     _CIRCUIT_DIAGRAM_LANGUAGE,
     _CLOCKWISE_LANGUAGE,
+    _CODESICK_LANGUAGE,
     _COLLATZ_MULTIVERSE_LANGUAGE,
     _CONTAINER_LANGUAGE,
     _CREMENT_LANGUAGE,
@@ -200,7 +221,7 @@ _LANGUAGES = (
     _DIMENSIONAL_LANGUAGE,
     _EGL_LANGUAGE,
     _EVAL_LANGUAGE,
-    _FACTOR_LANGUAGE,
+    _FACKWARD_LANGUAGE,
     _FALSE_LANGUAGE,
     _FARGO_LANGUAGE,
     _FISH_LANGUAGE,
@@ -219,15 +240,20 @@ _LANGUAGES = (
     _MINIFUCK_LANGUAGE,
     _MINSKY_SWAP_LANGUAGE,
     _MODULOUS_LANGUAGE,
+    _OBJECT_DISORIENTED_LANGUAGE,
+    _ONE_I_LANGUAGE,
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
     _PIET_LANGUAGE,
-    _PIET_PLUS_PLUS_LANGUAGE,
+    _POINTLESS_LANGUAGE,
     _POLYNOMIAL_LANGUAGE,
     _QOIBL_LANGUAGE,
+    _QUASSAUNT_LANGUAGE,
     _RAM0_LANGUAGE,
     _ROTFUCK_LANGUAGE,
+    _RUBIC_LANGUAGE,
     _SBLEQ_LANGUAGE,
+    _SENDSTUFF_LANGUAGE,
     _SIX_FIVE_LANGUAGE,
     _SLASHES_LANGUAGE,
     _SLOW_ACV_MAMMALIAN_LANGUAGE,
@@ -247,6 +273,7 @@ _LANGUAGES = (
     _UNLAMBDA_LANGUAGE,
     _UNSQUARE_LANGUAGE,
     _VANDEVELO_LANGUAGE,
+    _WHAT_LANGUAGE,
 )
 
 __all__ = [
@@ -257,6 +284,7 @@ __all__ = [
     "algebraic_programming_language",
     "alight",
     "arrowqueue",
+    "ascenic",
     "b_tapemark",
     "back",
     "befunge",
@@ -267,9 +295,11 @@ __all__ = [
     "boolfuck",
     "brainfuck",
     "brainif",
+    "caballo",
     "circlefuck",
     "circuit_diagram",
     "clockwise",
+    "codesick",
     "collatz_multiverse",
     "container",
     "crement",
@@ -280,7 +310,7 @@ __all__ = [
     "dimensional",
     "egl",
     "eval",
-    "factor",
+    "fackward",
     "false",
     "fargo",
     "fish",
@@ -299,15 +329,20 @@ __all__ = [
     "minifuck",
     "minsky_swap",
     "modulous",
+    "object_disoriented",
+    "one_i",
     "packlang",
     "painfuck",
     "piet",
-    "piet_plus_plus",
+    "pointless",
     "polynomial",
     "qoibl",
+    "quassaunt",
     "ram0",
     "rotfuck",
+    "rubic",
     "sbleq",
+    "sendstuff",
     "six_five",
     "slashes",
     "slow_acv_mammalian",
@@ -327,6 +362,7 @@ __all__ = [
     "unlambda",
     "unsquare",
     "vandevelo",
+    "what",
 ]
 # END GENERATED EXPORTS
 

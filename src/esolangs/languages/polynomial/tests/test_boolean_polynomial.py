@@ -252,7 +252,9 @@ def test_polynomial_balanced_folds_compute_the_table(table) -> None:
 @pytest.mark.parametrize("options", [{}, {"balance": True}])
 def test_dense_polynomial_eight_executes_every_row(options) -> None:
     from esolangs.languages.polynomial.interpreter import _parse_program
-    from esolangs.languages.polynomial.interpreter.roots import _factor_roots
+    from esolangs.languages.polynomial.interpreter.roots import (
+        _factor_roots,
+    )
 
     _parse_program.cache_clear()
     _factor_roots.cache_clear()

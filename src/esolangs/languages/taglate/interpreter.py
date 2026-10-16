@@ -3,20 +3,27 @@
 The first line seeds a queue of integers (0-65535, wrapping); the rest
 hold commands: arithmetic ``a``-``d``, rotate/discard ``e``/``f``, loops
 ``gy``/``gz``, char I/O ``h``/``i``, ``j`` toggle-counter, and ``t``,
-which replaces the queue with a Google Translate URL of its text.
+which replaces the queue with a Google Translate URL of its text.  A
+non-command character (and a lone ``g``) is **skipped**, so ``qqq`` runs
+cleanly where a word-command queue language would reject it.  An entered
+``gy`` needs no partner.  ``t`` keeps the RFC 3986 unreserved set and
+``%XX``-encodes the rest (uppercase hex, wider above 255), narrower than
+the real page's ``!$'()*,/:;?@`` and ``+`` but within the spec.
 
-Gaps decided: division by zero and popping an empty queue halt with
-:class:`~esolangs.exceptions.HaltError`; an empty queue reads as 0 for
-loop conditions -- the wiki's two empty-seed examples disagree here: its
-URL example (``tgyigz``) needs ``gy`` to exit on an empty queue, while its
-cat (``gyhigz``) only works if ``gy`` enters on one.  Reading empty as 0
-follows the URL example, so the cat prints nothing.  Unmatched
-``gy``/``gz`` raise :class:`ValueError`; a non-command character (and a
-lone ``g``) is **skipped** -- so ``qqq`` runs cleanly, where a
-word-command queue language would reject it.  ``t`` keeps the RFC
-3986 unreserved set and ``%XX``-encodes the rest (uppercase hex, wider above 255),
-narrower than the real page's ``!$'()*,/:;?@`` and ``+`` but within the
-spec.  Exhausted input raises :class:`EOFError`.
+Input/output:
+    ``h`` reads a character and ``i`` prints one.  ``h`` at EOF raises.
+
+Errors:
+    ProgramError: ``gy``/``gz`` with no partner, when it would jump.
+    InputExhaustedError: ``h`` at EOF.
+    HaltError: division by zero; popping an empty queue.
+
+Decisions:
+    * An empty queue reads as 0 for loop conditions: the wiki's two
+      empty-seed examples disagree -- its URL example (``tgyigz``) needs
+      ``gy`` to exit on an empty queue, while its cat (``gyhigz``) only
+      works if ``gy`` enters on one.  Reading empty as 0 follows the URL
+      example, so the cat prints nothing.
 """
 
 from collections.abc import Iterable

@@ -1,17 +1,24 @@
-"""Polynomial interpreter implementation.
+"""Interpreter for Polynomial.
 
-Polynomial programs are polynomial functions ``f(x) = ...``; real zeroes
-are control flow and complex zeroes register operations on a single
-integer register, in ascending-prime order. Division and remainder
-truncate toward zero; output ignores negatives and EOF stores -1; ``^``
-of a zero register by a negative power raises
-:class:`~esolangs.exceptions.HaltError`.
-Malformed programs raise :class:`ValueError`.  Spec gaps, decided here:
-an imaginary zero ``3i``..``6i`` reads input like ``2i`` (the wiki names
-only ``i`` and ``2i``); any closer (2 or 6) closes the innermost opener,
-and the opener alone decides if or while.  No instruction cap: a
-growing register never repeats, and ``esolangs.run``'s ``timeout`` is
-the guard.
+Programs are polynomial functions ``f(x) = ...``; real zeroes are control
+flow and complex zeroes register operations on a single integer register,
+in ascending-prime order.  Division and remainder truncate toward zero.
+No instruction cap: a growing register never repeats, and ``esolangs.run``'s
+``timeout`` is the guard.
+
+Input/output:
+    Output ignores negatives; a read at EOF stores -1.
+
+Errors:
+    ProgramError: Source does not start with ``f(x) =``; an unmatched
+    opener, only when it would jump (on a zero register it is entered).
+    HaltError: ``^`` of a zero register by a negative power.
+
+Decisions:
+    * An imaginary zero ``3i``..``6i`` reads input like ``2i`` (the wiki
+      names only ``i`` and ``2i``).
+    * Any closer (2 or 6) closes the innermost opener, and the opener alone
+      decides if or while.
 """
 
 import functools
@@ -20,12 +27,16 @@ from collections.abc import Callable, Sequence
 from typing import cast
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.polynomial.interpreter.roots import (
+from esolangs.languages.polynomial.interpreter.peel import (
     _PEEL_MAX_EXPONENT,
     _PEEL_MAX_IMAGINARY_EXPONENT,
-    _find_roots,
+)
+from esolangs.languages.polynomial.interpreter.primality import (
     _prime_power,
     _require_sympy,
+)
+from esolangs.languages.polynomial.interpreter.roots import (
+    _find_roots,
     _Root,
     _sparse_roots,
 )
@@ -99,10 +110,9 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
     A real root ``p**v`` (``1 <= v <= 8``) is ``[v]``; a root ``a + p**b i``
     (``1 <= b <= 6``) is ``[a, b]``; anything else is dropped.  The codes
     come out grouped by ascending ``p`` and, within one prime, in
-    ``(imag, real)`` order -- what scanning every integer up to the largest
-    root did, but with each root recognised by its integer ``v``-th roots and
-    a proven primality test, so the cost is polynomial in the roots' bits
-    rather than in their values.
+    ``(imag, real)`` order, as scanning every integer up to the largest root
+    would give.  Roots are recognised by integer ``v``-th roots and a proven
+    primality test, so cost is polynomial in the roots' bits, not values.
     """
     keyed: list[tuple[int, int, int, list[int]]] = []
     for root in pre:

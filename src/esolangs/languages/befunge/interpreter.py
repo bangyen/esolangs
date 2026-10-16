@@ -1,28 +1,54 @@
 r"""Befunge-93: the program is a grid, and a pointer walks it.
 
 The pointer starts top left heading right, carries one stack, and wraps at
-the edges of an 80x25 torus.  Each cell it lands on is a command:
+the edges of an 80x25 torus.  Each cell it lands on is a command.
 
-- ``0``-``9`` push a digit.  ``+ - * / %`` pop ``a``, then ``b``, and push
-  ``b op a``; ``!`` pushes ``not a``, and `` ` `` pushes ``b > a``.
-- ``:`` duplicates the top, ``\`` swaps the top two, ``$`` drops one.
-- ``> v < ^`` set the heading and ``?`` picks one at random.  ``_`` pops
-  and heads right on zero, else left; ``|`` heads down on zero, else up.
-  ``#`` jumps over the next cell.
-- ``"`` toggles string mode, which pushes every cell it crosses as a byte.
-- ``g`` pops ``y``, ``x`` and pushes that cell; ``p`` pops ``y``, ``x``,
-  ``v`` and writes ``v`` there, so a program can rewrite itself.
-- ``.`` prints a number and a space, ``,`` a character; ``&`` reads a
-  number, ``~`` a character.  ``@`` halts.  Any other byte does nothing.
+Commands:
+    0-9      push a digit
+    + - * / %  pop ``a``, then ``b``, and push ``b op a``
+    !        push ``not a``
+    `        push ``b > a``
+    :        duplicate the top
+    \        swap the top two
+    $        drop one
+    > v < ^  set the heading
+    ?        pick a heading at random
+    _        pop; head right on zero, else left
+    |        pop; head down on zero, else up
+    #        jump over the next cell
+    "        toggle string mode, which pushes every cell it crosses as a byte
+    g        pop ``y``, ``x`` and push that cell
+    p        pop ``y``, ``x``, ``v`` and write ``v`` there, so a program can
+             rewrite itself
+    .        print a number and a space
+    ,        print a character
+    &        read a number
+    ~        read a character
+    @        halt
+    other    nothing
 
-Where the spec is silent this follows the C reference interpreter: division
-truncates toward zero (the wiki says "rounded down", but -7 / 2 is -3), and
-a zero divisor reads the result from the user, raising
-:class:`~esolangs.exceptions.HaltError` if none is left.  A pop off the
-empty stack yields 0, ``g`` outside the grid pushes 0, ``p`` outside is
-ignored.  Values must fit a C signed long, else HaltError.  Cells are
-bytes.  EOF on ``&`` or ``~`` propagates.  An empty or oversized program
-raises :class:`ValueError` (spaces past column 80 are dropped, not counted).
+Input/output:
+    ``&`` reads a number and ``~`` a character; EOF on either propagates.
+
+Errors:
+    ProgramError: an empty program; one wider than 80 columns or taller than
+    25 rows (spaces past column 80 are dropped, not counted); a cell above
+    one byte.
+    InputExhaustedError: ``&`` or ``~`` at EOF.
+    ArgumentError: an ``&`` token that is not an integer.
+    HaltError: a zero divisor with no input left to read the result from; a
+    value outside a C signed long.
+
+Decisions:
+    * Where the spec is silent this follows the C reference interpreter.
+    * Division truncates toward zero: the wiki says "rounded down", but
+      -7 / 2 is -3.
+    * A zero divisor reads the result from the user.
+    * A pop off the empty stack yields 0, ``g`` outside the grid pushes 0,
+      ``p`` outside is ignored.
+    * Values must fit a C signed long.  Cells are bytes.
+    * Spaces past column 80 are no content: the wiki's FizzBuzz and short 99
+      Bottles carry such padding.
 """
 
 from __future__ import annotations

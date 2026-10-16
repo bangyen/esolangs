@@ -19,51 +19,59 @@ point at each other ("connected both ways"), so ``-|`` and ``.|`` are
 non-connections; ``.`` connects to all eight neighbours; ``=`` is a
 crossover that chains (the prime tester's ``.===.``).
 
-Choices checked against the page's 4-bit prime tester over all sixteen inputs:
-
-* **Values are events, and gates latch them.**  Sticky wirings are
-  falsified by the page's flip-flop, which outputs ``1N1N1N...``; so a
-  value lasts one generation (XOR of what fired into it, else Null).
-  Per "the gate waits until the other input comes", each gate keeps a
-  latch per input slot, overwritten by each non-null arrival, and fires
-  when every slot is filled *and* one input is live -- which stops a
-  filled latch re-firing forever.  ``:`` prints whenever its wire
-  carries a value; a program halts on a quiescent generation.  Feedback
-  circuits are bounded by :func:`esolangs.vm.run_until_halt_or_cycle`
-  (the flip-flop is period 2), and latches are part of
-  :meth:`_Machine.snapshot`.
-* **Wire 1 is the first bit read and the MSB**: the only ordering under
-  which the example's formula is primality.
-* **Input format**: consecutive ``0``/``1`` characters, ignoring whitespace.
-* **Gate ports are direction-sets.**  The prime tester feeds ``<`` from
-  the upper-left ``/`` on one line and the lower-left ``\`` on another,
-  so a gate accepts any of its three left neighbours and drives any of
-  its three right ones, under the spec's rule that **one wiring may not
-  touch both a gate's inputs and its output**.  ``<`` drives only its two
-  right diagonals ("from the upper right or lower right"), ``~`` takes
-  the level cell when other wirings pass diagonally. One wiring may feed
-  both slots of a gate (the constant-output circuit), so ports count per cell.
-
-The page's prime tester omits five characters: two OR inputs are undriven.
-The repair is derived and unique: the circuit is a
-product of sums ``(? | c)``, ``(? | ~a | ~b)``, ``(d | ~a)``,
-``(~b | d)``; primality over 0-15 with ``a`` the MSB forces the unknowns
-to ``~c`` (inputs 13 and 15) and ``b`` (inputs 0, 1, 9).  The page
-already draws the ``=`` crossovers where ``~c``'s diagonal would cross
-and omits only the ``/`` between them; ``b``'s horizontal run stops four
-columns short.
-
 Named ``{function ... }`` blocks are removed from the main grid and called
 as atomic custom gates.  Their input rows bind symbolic widths at each call;
 their output ports are concatenated into the call's output multi-wire.
-Malformed programs (unknown character, wrong input count, a wiring
-feeding and fed by one gate, an inconsistent width label) raise
-:class:`ValueError`.  At EOF a read yields a **zero bit** rather than
-raising, since every gate is live at once and the automaton needs a
-value to settle on; no :class:`HaltError` is raised.
 
-External bits are consecutive 0/1 characters, ignoring whitespace;
-the spec leaves stdin framing unspecified.
+Input/output:
+    External bits are consecutive 0/1 characters, ignoring whitespace; the
+    spec leaves stdin framing unspecified.  At EOF a read yields a **zero
+    bit** rather than raising, since every gate is live at once and the
+    automaton needs a value to settle on; no :class:`HaltError` is raised.
+
+Errors:
+    ProgramError: An unknown or out-of-scope character; an unknown function
+    or wire label; a wire label that annotates no wire or is not positive;
+    inconsistent or unsettled wire widths; a gate with the wrong input or
+    output count; a wiring feeding and fed by one gate; ``:`` without ``-``
+    directly to its left; a split of a one-wire bundle; ``%`` removing every
+    wire; a function block that is unterminated, unmatched, duplicated or
+    reserved; a function call with a wrong input width or label, that
+    recurses, does not settle, or returns no bits.
+
+Decisions:
+    Checked against the page's 4-bit prime tester over all sixteen inputs.
+
+    * **Values are events, and gates latch them.**  Sticky wirings are
+      falsified by the page's flip-flop, which outputs ``1N1N1N...``; so a
+      value lasts one generation (XOR of what fired into it, else Null).
+      Per "the gate waits until the other input comes", each gate keeps a
+      latch per input slot, overwritten by each non-null arrival, and fires
+      when every slot is filled *and* one input is live -- which stops a
+      filled latch re-firing forever.  ``:`` prints whenever its wire
+      carries a value; a program halts on a quiescent generation.  Feedback
+      circuits are bounded by :func:`esolangs.vm.run_until_halt_or_cycle`
+      (the flip-flop is period 2), and latches are part of the machine's
+      snapshot.
+    * **Wire 1 is the first bit read and the MSB**: the only ordering under
+      which the example's formula is primality.
+    * **Gate ports are direction-sets.**  The prime tester feeds ``<`` from
+      the upper-left ``/`` on one line and the lower-left ``\`` on another,
+      so a gate accepts any of its three left neighbours and drives any of
+      its three right ones, under the spec's rule that **one wiring may not
+      touch both a gate's inputs and its output**.  ``<`` drives only its
+      two right diagonals ("from the upper right or lower right"), ``~``
+      takes the level cell when other wirings pass diagonally.  One wiring
+      may feed both slots of a gate (the constant-output circuit), so ports
+      count per cell.
+    * The page's prime tester omits five characters: two OR inputs are
+      undriven.  The repair is derived and unique: the circuit is a product
+      of sums ``(? | c)``, ``(? | ~a | ~b)``, ``(d | ~a)``, ``(~b | d)``;
+      primality over 0-15 with ``a`` the MSB forces the unknowns to ``~c``
+      (inputs 13 and 15) and ``b`` (inputs 0, 1, 9).  The page already
+      draws the ``=`` crossovers where ``~c``'s diagonal would cross and
+      omits only the ``/`` between them; ``b``'s horizontal run stops four
+      columns short.
 """
 
 from datetime import UTC, datetime

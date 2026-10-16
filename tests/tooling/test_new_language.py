@@ -13,7 +13,8 @@ from tests.support.reference import REFERENCE
 def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     template = tmp_path / "src/esolangs/runtime/_template.py"
     template.parent.mkdir(parents=True)
-    template.write_text('"""Template for a new esolang interpreter.\n"""\n')
+    real = Path(__file__).parents[2] / "src/esolangs/runtime/_template.py"
+    template.write_text(real.read_text())
     monkeypatch.setattr(new_language, "ROOT", tmp_path)
     return tmp_path
 
@@ -35,7 +36,10 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
         "test_tiny_lang.py",
         "test_boolean_tiny_lang.py",
     )
-    assert "Interpreter for Tiny Lang." in source.read_text()
+    stub = source.read_text()
+    assert stub.startswith('"""Interpreter for Tiny Lang.')
+    assert "<Language>" not in stub
+    assert new_language.PLACEHOLDER in stub
     assert "def tiny_lang(truth_table: str) -> str:" in generator.read_text()
 
 

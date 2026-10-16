@@ -1,24 +1,26 @@
-"""Boolean-function generator for ROTfuck, in either rotation direction.
+"""ROTfuck Boolean program generator: a tape lookup spelled against the rotation.
 
 ROTfuck turns every command one step around its cycle after each executed
-command, so what a character *means* depends on how many commands have run.
-The generator writes a brainfuck program and :class:`_Builder` spells each
-command against the cycle in force -- backward by default, forward when asked.
+command, so a character's meaning depends on how many commands have run.
+The generator writes brainfuck and :class:`_Builder` spells each command
+against the cycle in force, backward by default or forward by ``rotation``.
+The two cycles read the eight commands in opposite directions, each keeping
+``[`` and ``]`` adjacent, so the phase arithmetic is the same for both.
 
-``rotation`` selects the cycle, and that is the builder's only parameter: the
-two cycles are the eight commands read in opposite directions, so each holds
-``[`` and ``]`` adjacent and the phase arithmetic below is the same for both.  A
-command that reads as a bracket to a seek depends on the cycle, which
-:func:`_shows` resolves, and the builder spells the intended command through
-the same cycle it will execute under.
+A bracket seeks its partner before rotating, so a loop is sound when its ``[``
+and ``]`` execute at the same rotation modulo eight (the *phase*) and nothing
+between them reads as a bracket there (:func:`_shows`).  Then every trip
+leaves the rotation where it found it, and a skip, an exit and a jump back all
+resume one past the phase.  A body is padded to seven modulo eight with
+no-op runs (:data:`_PADS`), each command placed to hide from every open seek.
 
-Loops are where that bites.  A bracket seeks its partner before rotating, so
-a loop is sound when its ``[`` and ``]`` execute at the same rotation modulo
-eight -- the *phase* -- and nothing between them reads as a bracket there.
-Then every trip leaves the rotation where it found it, and a skip, an exit
-and a jump back all resume one past the phase.  So a body is padded to
-seven modulo eight with runs that change nothing (:data:`_PADS`), and every
-command in it is placed at a rotation that hides it from each open seek.
+Size:
+    O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
+    strides; n=10 random 1847: 4,061 chars, n=10 and: 1,756 chars.
+
+Decisions:
+    A repeated block is not shared: a brainfuck copy is at least 19 commands
+    a cell against 2.5 for an entry.
 """
 
 import heapq
@@ -241,7 +243,8 @@ def _skip(distance: int, *, fresh: bool) -> str:
 
     Plain ``>`` steps, or a count carried ``stride`` cells a step.  The count
     sits on the current cell when it is ``fresh`` (zero), else one cell on, and
-    must land on a zero cell before the destination.
+    must land on a zero cell before the destination.  A zero upper half
+    shrinks the program 3%/7.5%/14% at n=7/8/9 (12 seeded tables).
     """
     best = ">" * distance
     start = "" if fresh else ">"
@@ -259,7 +262,12 @@ def _skip(distance: int, *, fresh: bool) -> str:
 
 
 def _strip(table: str, *, skips: bool) -> str:
-    """Brainfuck writing the table's ones two cells apart, ending past the last slot."""
+    """Brainfuck writing the table's ones two cells apart, ending past the last slot.
+
+    Entry ``e`` sits at cell ``2 * (size - 1 - e)`` with a zero carrier above
+    it; the pointer starts on entry 0's carrier.  A run of zero entries is
+    crossed by a carried count instead (:func:`_skip`).
+    """
     size = len(table)
     out = []
     at = 0  # the cell the pointer stands on
@@ -282,7 +290,8 @@ def _select(n: int, used: list[int], groups: list[int]) -> str:
     carrier under the pointer with the carrier above as scratch; each
     digit's walk runs before the next is read, so the reads need no pointer
     arithmetic.  An ignored input lands on the entry cell just above, which
-    the pointer has passed for good.
+    the pointer has passed for good.  The walks step ``2 * index`` cells down
+    in total; the caller's one ``<`` reads the entry.
     """
     chosen = set(used)
     digit = "-" * _ASCII_ZERO
@@ -306,22 +315,7 @@ def _select(n: int, used: list[int], groups: list[int]) -> str:
 
 
 def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
-    """Build a ROTfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  The
-    program targets the chosen ``rotation``.
-
-    A tape lookup: entry ``e`` sits at cell ``2 * (size - 1 - e)``, each
-    with a zero carrier above it, and the pointer starts on entry 0's
-    carrier.  The digits' walks step ``2 * index`` cells down in total, and
-    one ``<`` reads the entry.  The table costs two ``>`` and half a ``+``
-    per entry; the rest is O(n) plus the walks' strides.  A run of zero entries
-    is crossed by a carried count instead (:func:`_skip`; zero upper half
-    -3%/-7.5%/-14% at n=7/8/9, 12 seeded tables).  A repeated block is not
-    shared: a brainfuck copy is at least 19 commands a cell against 2.5 for
-    an entry.
-    """
+    """Return a ROTfuck program for ``truth_table`` (MSB first) in ``rotation``."""
     return _program(truth_table, rotation=rotation)
 
 

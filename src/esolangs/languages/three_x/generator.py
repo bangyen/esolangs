@@ -1,4 +1,22 @@
-"""Boolean generator for three x."""
+"""3x Boolean program generator: a last-wins decision tree over scaled bits.
+
+Each ``?`` reads one bit, scaled to 3 or 0 and stored under a key from
+``_constants``; the result variable carries the same encoding and the closing
+``x`` divides it back to a digit.  A node writes its ``bit == 0`` half
+unguarded and its ``bit == 1`` half inside ``( ... )``, so no branch tests a
+complement; a constant subtree, or one equal to a bit under it, is one write.
+3x has no call or goto, so a repeated block of at least ``_SHARE_MIN`` rows
+sets a flag in the tree and is written once after it, guarded by that flag.
+
+Size:
+    O(T) for dense tables, O(n) for parity and and; n=10 parity: 2,462 chars,
+    n=10 and: 472 chars, n=10 random 1847: 8,588 chars.
+
+Decisions:
+    At 4 rows a share pays in 46 of the 65,536 n=4 tables, by at most 5
+    characters; 2 rows pay in none.  A greedy input order saves 2.2% at n=8,
+    under the 10% bar.
+"""
 
 from collections import Counter
 from dataclasses import dataclass
@@ -124,7 +142,8 @@ class _Top(Enum):
     ``(`` does not pop its condition, and a nested guard's two exits both
     leave a zero; a write leaves the top alone, so it is always known -- and
     it is what closing the guard costs, nothing or ``33x``, against ``333x``
-    from a clean stack.
+    from a clean stack.  Nothing is popped: every snippet pushes its own
+    operands, so the left-over junk is never read.
     """
 
     CLEAN = auto()  # program start: nothing known is on top
@@ -140,27 +159,7 @@ def three_x(truth_table: str) -> str:
     """Build a 3x program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).
-
-    Each ``?`` reads one bit, scaled to 3 or 0 and stored under a key from
-    :func:`_constants`; the result variable carries the same 3-or-0 encoding
-    and the closing ``x`` divides it back to a digit.  A decision tree writes
-    it last-wins: a node emits its ``bit == 0`` half unguarded and its
-    ``bit == 1`` half inside ``( ... )``, which overwrites -- so no branch
-    ever tests a complement, and a subtree that is constant, or that *is* one
-    of the bits still under it, collapses to a single write.  Nothing is
-    popped off the stack: the interpreter leaves a tested condition where it
-    is, and every snippet pushes its own operands, so the junk is never read.
-
-    3x has no call or goto, so a repeated block is deferred instead: the tree
-    sets the block's flag where it would sit and the block is written once
-    after the tree, guarded by that flag; a node whose halves are equal is
-    its first half.  Greedy over aligned blocks of at least ``_SHARE_MIN``
-    rows, kept only where the program shrinks.  At 4 rows a share pays in
-    46 of the 65,536 n=4 tables, by at most 5 characters; 2 rows pay in none.
-
-    The tree splits in input order (a greedy order saves 2.2% at n=8,
-    under the 10% bar).
+    inputs (most significant first).  The tree splits in input order.
     """
     return in_input_order(truth_table, _three_x_ordered)
 
@@ -289,7 +288,8 @@ class _Emitter:
         """Emit rows ``[lo, hi)``; return the result's and flags' values after.
 
         ``""`` means a value depends on bits below, which only costs the
-        caller's next sibling its skipped writes.
+        caller's next sibling its skipped writes.  A node whose halves are
+        equal is its first half.
         """
         table = self.table
         if self.flag_of:

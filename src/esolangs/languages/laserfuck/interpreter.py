@@ -1,22 +1,29 @@
 r"""Interpreter for LaserFuck.
 
 A laser starts at ``o`` with a random heading.  ``>``/``<``/``+``/``-``/
-``,`` work a brainfuck tape, ``\`` and ``/`` reflect, ``_``/``|`` and
-``(``/``)`` reflect when the cell is nonzero (or always), ``^v{}`` set the
+``,`` work a brainfuck tape, ``\`` and ``/`` reflect, ``_``/``|`` reflect
+always and ``(``/``)`` only when the cell is nonzero, ``^v{}`` set the
 heading, ``#`` skips, ``x`` deletes the laser, ``*`` splits it
 perpendicular at random.  When no lasers remain the tape is printed:
 decimal by default, byte mode (no separators) when the first grid cell is
-``\xff``; negative cells are excluded.  Readings of gaps: "used cells" are
-the cells a command wrote; ragged rows pad with spaces to a rectangle; a
-second ``o`` halts the run at once (every example has one start).  Cells
-are signed 32-bit values, so writes wrap in two's-complement order.
+``\xff``; negative cells are excluded.  Cells are signed 32-bit values.  The
+initial heading and every ``*`` split are drawn from ``rng``, so one argument
+makes a run reproducible; ``None`` draws for real, as the cross-check does.
 
-The initial heading and every ``*`` split are drawn from ``rng``, so one
-argument makes a run reproducible; ``None`` draws for real, as the
-cross-check does.  Exhausted input raises :class:`EOFError`.
+Input/output:
+    ``,`` reads the next Unicode character code, including newlines, and
+    raises at EOF.
 
-The spec leaves input representation unspecified; comma reads the next Unicode
-character code, including newlines.
+Errors:
+    InputExhaustedError: ``,`` at EOF.
+
+Decisions:
+    * "Used cells" are the cells a command wrote.
+    * Ragged rows pad with spaces to a rectangle.
+    * A second ``o`` halts the run at once (every example has one start).
+    * Writes wrap in two's-complement order.
+    * The spec leaves input representation unspecified; ``,`` reads a
+      Unicode character code.
 """
 
 from typing import cast

@@ -232,7 +232,8 @@ def test_compact_folds_execute_without_growing() -> None:
             )
             if inputs == 3:
                 total += score(image)[1]
-    assert total == 40_868
+    # 40,868 under |width - height| first; max(width, height) first: 40,574.
+    assert total == 40_574
 
 
 @pytest.mark.parametrize("width", [13, 19, 30])

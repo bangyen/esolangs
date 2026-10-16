@@ -5,6 +5,19 @@ from collections.abc import Iterator, Sequence
 from itertools import accumulate
 from math import isqrt
 
+#: Columns per row that render square: a monospace cell is about twice as
+#: tall as it is wide, so balance targets ``width == CELL_ASPECT * height``.
+CELL_ASPECT = 2
+
+
+def rendered_side(width: int, height: int) -> int:
+    """Return the side, in columns, of the least square ``width`` x ``height`` fits.
+
+    Ranking by it trades squareness against size: a squarer layout of a
+    longer program loses to a compact one that fits a smaller square.
+    """
+    return max(width, CELL_ASPECT * height)
+
 
 def run_widths(lengths: Sequence[int]) -> Iterator[int]:
     """Yield the single-space joined width of every contiguous token run."""
@@ -69,40 +82,39 @@ def balanced_token_width(
 
     def score(width: int) -> tuple[int, int, int]:
         height, widest, trimmed = wrap(width)
-        return abs(widest - height), total + (1 - gap) * height - 1 - trimmed, widest
+        return (
+            rendered_side(widest, height),
+            total + (1 - gap) * height - 1 - trimmed,
+            widest,
+        )
 
-    actual_longest = max(
-        length - trim for length, trim in zip(lengths, trims, strict=True)
-    )
-    # Every width retains the longest token and can only reduce the greedy
-    # row count.  Once width already exceeds height, widening cannot improve
-    # either difference or the tied emitted size.
-    if not rstrip_rows and minimum <= actual_longest >= wrap(minimum)[0]:
-        return minimum
-    choices = {minimum, high, clipped(isqrt(total))}
+    choices = {minimum, high, clipped(isqrt(CELL_ASPECT * total))}
     if len(set(lengths)) == 1 and len(set(trims)) == 1:
         stride = longest + gap
         offset = gap + slack
-        columns = (offset + isqrt(offset * offset + 4 * stride * len(tokens))) // (
-            2 * stride
-        )
-        choices.update(
-            clipped(stride * count - gap) for count in (columns, columns + 1)
-        )
+        columns = (
+            offset + isqrt(offset * offset + 4 * CELL_ASPECT * stride * len(tokens))
+        ) // (2 * stride)
+        # The ceiling moves CELL_ASPECT*H by under CELL_ASPECT, so the sign
+        # change of W - CELL_ASPECT*H lies within CELL_ASPECT+1 of the root.
+        # Left of it the side is CELL_ASPECT*H, tied across a row count's
+        # column counts; the fewest columns reaching that count win the tie.
+        size = len(tokens)
+        for count in range(max(1, columns), columns + CELL_ASPECT + 2):
+            width = clipped(stride * count - gap)
+            rows = -(-size // max(1, (width + gap) // stride))
+            choices.update((width, clipped(stride * -(-size // rows) - gap)))
         return min(choices, key=lambda width: (score(width), width))
 
-    difference = min(score(width)[0] for width in choices)
+    side = min(score(width)[0] for width in choices)
     # Charged rows include their trailing gap: P=sum(length+gap), C=w+gap.
-    # H>=ceil(P/C); every completed row has charge > C-(longest+gap).
-    # Trimming loses at most slack per row, shifting the upper root.
-    # These bounds exclude shapes beyond the two quadratic roots, except
-    # the single row already represented by the upper-bound choice.
-    offset = difference - gap
-    root = (-offset + isqrt(offset * offset + 4 * total)) // 2 - gap
-    lower = clipped(root) if root > longest else minimum
-    offset = difference + gap + slack
-    root = (offset + isqrt(offset * offset + 4 * total)) // 2 + 1
-    upper = min(high, max(lower, longest + root))
+    # A tie needs CELL_ASPECT*H <= side with H >= P/C, so C >= A*P/side;
+    # H >= P/C needs every token to fit, so that holds only past ``longest``.
+    # Greedy wraps identically at w and at its longest untrimmed row, at
+    # most widest + slack <= side + slack: no narrowest optimum lies beyond.
+    bound = -(-CELL_ASPECT * total // side) - gap
+    lower = clipped(bound) if bound > longest else minimum
+    upper = min(high, max(lower, side + slack))
     choices.add(lower)
     prefix = [0, *accumulate(length + gap for length in lengths)]
     for start, position in enumerate(prefix[:-1]):

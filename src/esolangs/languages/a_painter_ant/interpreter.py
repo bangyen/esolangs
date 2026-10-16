@@ -2,15 +2,20 @@
 
 An ant on an infinite black grid: ``n``/``e``/``s``/``w`` move onto a
 black cell, ``N``/``E``/``S``/``W`` onto a white one, ``p``/``P`` paint;
-the program loops.  No I/O, so :func:`run` steps whole passes until the
-state repeats at a pass start, then :meth:`_Machine.interrupt` makes the
-next ``step`` print the visited box: ``#`` white, ``.`` black, the ant
-``@``/``o`` (where it rests is the boolean answer).  Whitespace is
-ignored; any other character is malformed (:class:`ValueError`, exit 2).
-A whole pass is the unit: a 10,000-instruction budget once cut AND2
-mid-pass at 95.24 passes.  Every generated program is a pass-stable fixed
-point (verified to ten passes); a divergent one is stepped until Brent's
-proves it.
+the program loops.  Whitespace is ignored.  A whole pass is the unit: a
+10,000-instruction budget once cut AND2 mid-pass at 95.24 passes.  Every
+generated program is a pass-stable fixed point (verified to ten passes); a
+divergent one is stepped until Brent's proves it.
+
+Input/output:
+    No input.  :func:`run` steps whole passes until the state repeats at a
+    pass start, then interrupts the machine so the next ``step`` prints the
+    visited box: ``#`` white, ``.`` black, the ant ``@``/``o`` (where it
+    rests is the boolean answer).
+
+Errors:
+    ProgramError: any character but ``nsew``, ``NSEW``, ``pP`` and
+    whitespace (exit 2).
 """
 
 from collections.abc import Mapping
