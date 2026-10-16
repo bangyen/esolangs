@@ -1,11 +1,14 @@
 """Covers :mod:`esolangs.languages.streetcode.generator`."""
 
+import itertools
+import random
 from importlib import import_module
 
 import pytest
 
 from esolangs.generation.wrap import shortest
 from esolangs.languages import generators as boolean
+from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
 
@@ -231,16 +234,87 @@ def test_balance_folds_the_lookup_into_strips(row: int) -> None:
     assert run_streetcode(program, [str(bit) for bit in row_bits(row, 6)]) == table[row]
 
 
-def test_the_fold_certificate_rejects_a_bend_read_as_a_junction() -> None:
-    """A strip end flush with a bend frames a mouth the car turns into."""
+def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:
+    """Positive control: the shared-sill fold's strip end frames a mouth."""
+    from esolangs.languages.streetcode.tests.fold_oracle import (
+        drives_alike,
+        shared_sill_fold,
+    )
     from esolangs.runtime.io import ScriptedIO
 
     generator = import_module("esolangs.languages.streetcode.generator")
     run = import_module("esolangs.languages.streetcode.interpreter").run
     table = "0" * 64 + "1" * 64
     flat = generator._streetcode_flat(table, 7)  # noqa: SLF001
-    fold, origin = generator._streetcode_fold(flat, 30, east=True)  # noqa: SLF001
-    assert not generator._drives_alike(flat, fold, origin)  # noqa: SLF001
+    fold, origin = shared_sill_fold(flat, 30, east=True)
+    assert not drives_alike(flat, fold, origin)
     io = ScriptedIO("0" * 7)
     with pytest.raises(Exception, match="read past the end of input"):
         run(fold.splitlines(), io)
+    # The same target, folded with a gap and wide margins, drives alike.
+    sound, origin = generator._streetcode_fold(flat, 30, east=True)  # noqa: SLF001
+    assert drives_alike(flat, sound, origin)
+
+
+def _random_table(rng: random.Random, n: int) -> str:
+    return "".join(rng.choice("01") for _ in range(1 << n))
+
+
+def _assert_every_fold_drives_alike(n: int, tables: int, step: int) -> None:
+    """Every ``step``-th target, both cut directions, random tables."""
+    from esolangs.languages.streetcode.tests.fold_oracle import drives_alike
+
+    generator = import_module("esolangs.languages.streetcode.generator")
+    rng = random.Random(n)
+    for _ in range(tables):
+        flat = generator._streetcode_flat(_random_table(rng, n), n)  # noqa: SLF001
+        span = max(map(len, flat.splitlines()))
+        for target in range(8, span + 1, step):
+            for east in (False, True):
+                fold, origin = generator._streetcode_fold(flat, target, east=east)  # noqa: SLF001
+                assert drives_alike(flat, fold, origin), (n, target, east)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "step"), [(3, 9), (4, 23), (5, 43)])
+def test_folds_drive_like_the_flat_street(n: int, step: int) -> None:
+    """Folds are sound by construction; the drive check is only the oracle."""
+    _assert_every_fold_drives_alike(n, 1, step)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(("n", "step"), [(6, 29), (7, 41), (8, 61)])
+def test_folds_drive_like_the_flat_street_at_scale(n: int, step: int) -> None:
+    _assert_every_fold_drives_alike(n, 3, step)
+
+
+@pytest.mark.parametrize(
+    "n",
+    [
+        pytest.param(1, marks=pytest.mark.medium),
+        pytest.param(2, marks=pytest.mark.medium),
+        pytest.param(3, marks=pytest.mark.slow),
+    ],
+)
+def test_the_folded_street_computes_every_table(n: int) -> None:
+    generator = import_module("esolangs.languages.streetcode.generator")
+    for bits in itertools.product("01", repeat=1 << n):
+        table = "".join(bits)
+        fold = generator._streetcode_folded(generator._streetcode_flat(table, n))  # noqa: SLF001
+        assert _evaluate("Streetcode", fold, inputs=n) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "count"), [(4, 4), (5, 4), (6, 2), (7, 1)])
+def test_the_folded_street_computes_random_tables(n: int, count: int) -> None:
+    import esolangs
+
+    generator = import_module("esolangs.languages.streetcode.generator")
+    rng = random.Random(100 + n)
+    for _ in range(count):
+        table = _random_table(rng, n)
+        fold = generator._streetcode_folded(generator._streetcode_flat(table, n))  # noqa: SLF001
+        assert len(fold.splitlines()) > 9
+        assert _evaluate("Streetcode", fold, inputs=n) == table
+        balanced = esolangs.generate("Streetcode", table, balance=True)
+        assert _evaluate("Streetcode", balanced, inputs=n) == table

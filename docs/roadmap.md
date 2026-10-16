@@ -49,12 +49,6 @@ oracle when it goes.
 - **Vandevelo:** `_peel.py` is a sampled greedy cover. A deterministic
   axis-cube merge is O(n T) but emits 2.1x the peel's text at n=8 (5.6x on
   n=10 majority).
-- **Streetcode:** `_streetcode_folded` certifies the first of 34 folds by a
-  breadth-first drive check; 54% of 2,542 candidate folds are unsound. A
-  folded strip's end wall can sit flush with a room stalk, which
-  `_road_mouth`'s 3x7 window reads as a mouth, and `_plus_dist` sees a
-  foreign `+` through walls. A sound fold needs bends redrawn with two blank
-  rows between strips.
 - **3x:** `_gain`'s constants were fitted on 148 tables, not derived.
 - **Piet:** `raster_lookup/packing.py` retries colour phases. A spacer row
   between lanes needs no retry but costs 32-64% area; choosing a start colour

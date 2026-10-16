@@ -27,11 +27,14 @@ Decisions:
     tree one column past ``width`` falls to it (11x38 -> 258x9 at
     ``width=40``): a shape switch, not a missing piece.
 
-    ``balance`` snakes the indexed street into strips (409x9 -> 88x38 at
-    n=6 random), certified move for move against the flat street: a bend
-    flush with another strip's corner reads as a junction.  From n=9 the
-    rooms chain into one uncuttable block about ``T/2`` wide (n=11: 1017
-    columns), which caps the gain near 4x.
+    ``balance`` snakes the indexed street into strips (409x9 -> 88x48 at
+    n=6 random).  Blocks stand two blank rows apart and cuts keep four clear
+    columns each side, so no foreign wall is within a car's three-cell
+    reading; that keeps the fold sound without a drive check (the
+    oracle is in the tests).  The gaps cost area against the old shared-sill
+    fold: 38x88 -> 48x88 at n=6, 47x96 -> 54x105 at n=7, 59x112 -> 66x134
+    at n=8.  From n=9 the rooms chain into one uncuttable block about ``T/2``
+    wide (n=11: 1017 columns), which caps the gain near 4x.
 """
 
 from collections.abc import Callable, Iterator
@@ -48,13 +51,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, shortest
-from esolangs.languages.streetcode.interpreter.geometry import (
-    _NO_LATCHES,
-    _drive,
-    _Grid,
-    _initial_heading,
-    _State,
-)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -653,19 +649,28 @@ def _streetcode_narrow(flat: str, width: int) -> str:
 
 _WALLS = frozenset("-|+")
 
+# Blank rows between two blocks (a strip with its room band), and clear
+# columns each side of a cut.  A car reads walls three cells to a side
+# (:func:`_road_mouth`, :func:`_plus_dist`), and a lane's nearest outer wall
+# is one or two cells out, so two blank rows put every other block's wall at
+# least four rows from any road cell.  Four columns put a room's wall at least
+# four from the end column, hence beyond what a bend's road cells can read.
+_GAP = 2
+_MARGIN = 4
+
 
 def _streetcode_cuts(rows: list[str]) -> list[bool]:
-    """Return where the indexed street may be cut: plain road, no room above.
-
-    Two columns of margin each side keep a bend off a stalk's wall.
-    """
+    """Return where the indexed street may be cut: plain road, no room near."""
     span = len(rows[0])
     clear = [
         all(row[col] == " " for row in rows[:_KERB])
         and rows[_KERB][col] == rows[_SILL][col] == "-"
         for col in range(span)
     ]
-    return [2 < col < span - 2 and all(clear[col - 2 : col + 2]) for col in range(span)]
+    return [
+        _MARGIN <= col <= span - _MARGIN and all(clear[col - _MARGIN : col + _MARGIN])
+        for col in range(span)
+    ]
 
 
 def _streetcode_bounds(rows: list[str], target: int, *, east: bool) -> list[int]:
@@ -698,12 +703,13 @@ def _streetcode_fold(
 ) -> tuple[str, dict[tuple[int, int], tuple[int, int]]]:
     """Snake the indexed street into strips of at most ``target`` columns.
 
-    Each odd strip is turned a half turn, which keeps right-hand driving, and
-    runs back under the one before; the pair share a sill.  A cut falls only
-    on plain road (:func:`_streetcode_cuts`), so a room wider than a strip
-    widens it.  Rooms hang above an even strip's kerb and below an odd one's,
-    each in a band of its own.  Also returns each strip cell's flat cell;
-    the bends have none.
+    Odd strips are turned a half turn, which keeps right-hand driving, and
+    run back under the one before.  A block is a strip with its room band
+    (rooms hang above an even strip's kerb, below an odd one's); blocks are
+    stacked ``_GAP`` blank rows apart, each walled on its own.  A bend is a
+    U of road two cells wide: an inner bar closing the gap between the two
+    strips' inner walls, an outer wall from one outer wall to the other.
+    Also returns each strip cell's flat cell; the bends have none.
     """
     rows = flat.splitlines()
     span = max(map(len, rows))
@@ -720,10 +726,6 @@ def _streetcode_fold(
             char = "+"
         canvas[row, col] = char
 
-    def wall(row: int, cols: range, char: str = "-") -> None:
-        for col in cols:
-            put(row, col, char)
-
     def column(col: int, top: int, bottom: int) -> None:
         put(top, col, "+")
         for row in range(top + 1, bottom):
@@ -732,133 +734,58 @@ def _streetcode_fold(
 
     segments = [[row[a:b] for row in rows] for a, b in pairwise(bounds)]
     rooms = [any(row.strip() for row in segment[:_KERB]) for segment in segments]
-    kerb = _KERB if rooms[0] else 0
-    end = 0  # the column the next strip's joint lies on
+    # Odd blocks are the flat turned over: row r is at 8 - r.
+    top = 0
+    start = 0  # the column the strip's first flat column lies on
     for i, segment in enumerate(segments):
-        length = len(segment[0])
+        first = 0 if rooms[i] else _KERB
+        height = _SILL - first + 1
         even = i % 2 == 0
-        sill = kerb + _SILL - _KERB if even else kerb - 3
-        for row, text in enumerate(segment):
-            if row < _KERB and not rooms[i]:
-                continue  # blank rooms would overlie another strip's lane
-            # A half turn maps row r to sill + 8 - r and runs columns west.
-            at_row = kerb - _KERB + row if even else sill + _SILL - row
-            for col, char in enumerate(text):
-                at = at_row, end + col if even else end - col
+        step = 1 if even else -1
+        for row in range(first, _SILL + 1):
+            at_row = top + row - first if even else top + _SILL - row
+            for col, char in enumerate(segment[row]):
+                at = at_row, start + step * col
                 origin[at] = row, bounds[i] + col
                 if char != " ":
                     put(*at, char)
-        if even:
-            end += length - 1
-            if i + 1 == len(segments):
-                break
-            # East bend: down past the shared sill, under it.
-            put(sill, end, "+")
-            canvas[sill, end + 1] = canvas[sill, end + 2] = " "
-            wall(kerb, range(end + 1, end + 3))
-            wall(sill + 3, range(end + 1, end + 3))
-            column(end + 3, kerb, sill + 3)
-            kerb = sill + 3
-        else:
-            end -= length - 1
-            if i + 1 == len(segments):
-                break
-            # West bend: down through both strips' room bands.
-            band = rooms[i] + rooms[i + 1]
-            below = kerb + 5 * band + (band > 0)
-            for row in range(kerb, below + 1):
-                canvas[row, end - 1] = canvas[row, end - 2] = " "
-            column(end, kerb, below)
-            wall(sill, range(end - 2, end))
-            wall(below + 3, range(end - 2, end))
-            column(end - 3, sill, below + 3)
-            kerb = below
-    top = min(row for row, _ in canvas)
-    left = min(col for _, col in canvas)
-    height = max(row for row, _ in canvas) - top + 1
-    width = max(col for _, col in canvas) - left + 1
+        north = top + _KERB - first if even else top
+        if i + 1 == len(segments):
+            break
+        # The far end of this strip is where the next one begins.
+        far = start + step * (len(segment[0]) - 1)
+        later = top + height + _GAP
+        north_next = later if even else later + _KERB - (0 if rooms[i + 1] else _KERB)
+        # Inner bar from this strip's south wall to the next one's north wall;
+        # the outer wall from this north wall to the next one's south wall.
+        column(far, north + 3, north_next)
+        column(far + 3 * step, north, north_next + 3)
+        for col in (far + step, far + 2 * step):
+            put(north, col, "-")
+            put(north_next + 3, col, "-")
+        top, start = later, far
+    ymin = min(row for row, _ in canvas)
+    xmin = min(col for _, col in canvas)
+    height = max(row for row, _ in canvas) - ymin + 1
+    width = max(col for _, col in canvas) - xmin + 1
     grid = [[" "] * width for _ in range(height)]
     for (row, col), char in canvas.items():
-        grid[row - top][col - left] = char
+        grid[row - ymin][col - xmin] = char
     program = "\n".join("".join(row).rstrip() for row in grid)
-    return program, {(row - top, col - left): at for (row, col), at in origin.items()}
+    return program, {(row - ymin, col - xmin): at for (row, col), at in origin.items()}
 
 
-_BITS = ((0, 0), (0, 1), (1, 0), (1, 1))
+def _streetcode_folded(flat: str) -> str:
+    """Return the indexed street folded to about square, east cuts first.
 
-
-def _car(rows: list[str]) -> tuple[_Grid, _State]:
-    """Return the street's grid and the car's first state."""
-    grid = _Grid(rows)
-    start = next((r, row.index("C")) for r, row in enumerate(rows) if "C" in row)
-    return grid, _State(*start, _initial_heading(grid, start), _NO_LATCHES)
-
-
-def _drives_alike(
-    flat: str, fold: str, origin: dict[tuple[int, int], tuple[int, int]]
-) -> bool:
-    """Whether the fold's car makes the flat car's every move, bends aside.
-
-    Steering reads the tape only as two zero tests, so pairing the states
-    reached under all four answers is exhaustive: when each step lands on
-    the strip cell of the flat car's landing, and a bend passes the car
-    through whatever the tape holds, both run the same ops on any input.
-    A bend corner can line up with another strip's ``+`` and read as a
-    junction (a crossing mouth at n=7, first input only), so it is needed.
+    A strip's block is 6 rows plain, 11 with its room band (gap included).
+    Rooms crowd the east end, so most strips carry one; 9 rows a strip is the
+    constant that squares the result, measured at 0.99-1.00 of the best of 34
+    targets' ``balance_score`` at n=7-10 and 1.00 at n=6 (random tables).  The
+    width that squares ``rows`` rows is ``CELL_ASPECT * rows``.
     """
-    flat_grid, flat_car = _car(flat.splitlines())
-    fold_grid, fold_car = _car(fold.splitlines())
-    if origin.get((fold_car.row, fold_car.col)) != (flat_car.row, flat_car.col):
-        return False
-    seen = {(flat_car, fold_car)}
-    pending = [(flat_car, fold_car)]
-    while pending:
-        flat_state, fold_state = pending.pop()
-        for bits in _BITS:
-            want = _drive(flat_grid, flat_state, *bits)
-            got = _drive(fold_grid, fold_state, *bits)
-            # A bend is at most a few dozen cells; its steering ignores bits.
-            for _ in range(64):
-                if not isinstance(got, _State) or (got.row, got.col) in origin:
-                    break
-                moves = {_drive(fold_grid, got, *other) for other in _BITS}
-                if len(moves) > 1:
-                    return False
-                (got,) = moves
-            if not isinstance(want, _State) or not isinstance(got, _State):
-                if want != got:
-                    return False
-            elif origin.get((got.row, got.col)) != (want.row, want.col):
-                return False
-            elif (want, got) not in seen:
-                seen.add((want, got))
-                pending.append((want, got))
-    return True
-
-
-def _streetcode_folded(flat: str) -> str | None:
-    """Return the squarest fold :func:`_drives_alike` certifies, if any.
-
-    A strip is three rows, so width ``sqrt(3 * CELL_ASPECT * span)`` balances
-    plain road.  Room bands make strips taller, and from about nine inputs
-    the rooms chain into one block no cut crosses: the strip holding it
-    widens alone, so narrower targets win.  Widths step by 2 ** (1/4).
-    Certifying costs about one run's street validation, so folds are
-    certified best first rather than all 34.
-    """
-    square = isqrt(3 * CELL_ASPECT * grid_width(flat))
-    targets = {max(8, round(square * 2 ** (1 - step / 4))) for step in range(17)}
-    folds = sorted(
-        (
-            _streetcode_fold(flat, target, east=east)
-            for target in targets
-            for east in (False, True)
-        ),
-        key=lambda fold: balance_score(fold[0]),
-    )
-    return next(
-        (fold for fold, origin in folds if _drives_alike(flat, fold, origin)), None
-    )
+    target = isqrt(9 * CELL_ASPECT * grid_width(flat))
+    return _streetcode_fold(flat, target, east=True)[0]
 
 
 # Arity from which the flat lookup is the only shape.  Random tables at n=5
@@ -926,9 +853,7 @@ def _balance(table: str, default: str) -> str:
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]
     candidates.extend(streetcode(table, grid_width(shape)) for shape in shapes)
-    folded = _streetcode_folded(_streetcode_flat(table, n))
-    if folded is not None:
-        candidates.append(folded)
+    candidates.append(_streetcode_folded(_streetcode_flat(table, n)))
     return min(candidates, key=balance_score)
 
 
