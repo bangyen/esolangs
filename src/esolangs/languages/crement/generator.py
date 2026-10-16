@@ -189,12 +189,14 @@ def _packed(default: str, bound: int) -> Iterator[str]:
     """``default`` with k whole instructions per line, k = 2, 3, ...
 
     The parser groups whitespace tokens, so line breaks between instructions are
-    free.  Width grows with k, so stop once it reaches ``bound``, the best side.
+    free.  The widest row is at least the mean row, which grows with k; stop
+    once it reaches ``bound``, the best side, since the side is at least that.
     """
     lines = default.split("\n")
-    widest = max(map(len, lines))
+    total = sum(map(len, lines)) + len(lines)  # each instruction plus one space
     for k in range(2, len(lines)):
-        if k * (widest + 1) - 1 >= bound + k:  # packed width >= bound can't win
+        rows = -(-len(lines) // k)
+        if total - rows >= bound * rows:  # mean row width >= bound
             return
         yield "\n".join(" ".join(lines[i : i + k]) for i in range(0, len(lines), k))
 
