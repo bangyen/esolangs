@@ -10,7 +10,9 @@ From six inputs the tree goes away: the table is written one cell per
 entry and the inputs address it (:func:`_streetcode_flat`), which is nine
 rows of street however many entries there are. The tree folds constant
 subtrees and draws equal nonconstant sibling cofactors once, advancing CP
-past their selector. Nonadjacent repeats still have separate drawings.
+past their selector. Nonadjacent repeats still have separate drawings: they
+hold 2.4% of tree nodes at n=4 and 5.1% at n=5 (200 random tables), an
+upper bound on sharing before the routing that would merge two paths.
 
 Size:
     O(T) from six inputs, nine rows; n=4 parity: 3,391 chars, n=10 random
