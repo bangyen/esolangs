@@ -294,6 +294,8 @@ requires a construction exemption rather than a sub-gate bound.
   classes mixed with constant leaves). A per-class gutter line removes the
   rejection but shares no more (26 to 24 lane layouts) and grows shared
   layouts ~5%: a crossed leaf or constant read row kills the gutter.
+  Recovery would save nothing: at n=12 the indexed leaf decoder emits 11-22x
+  less area than every shared layout, which `generate` never picks there.
 - Boolfuck has sub-gate repeated-node potential: 2.3% of emitted size at n=5,
   pinned in `tests/generators/test_boolean_boolfuck.py`.
 - Home Row is a lookup that names no decision-tree node.
