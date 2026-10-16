@@ -254,7 +254,7 @@ qualification = """\
     the inputs are the initial stack; each node is the wiki's conditional, `d` dropping \
     a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack \
     survives; equal halves pop untested and constant subtables fold"""
-scaling = "linear: at most 14T characters, subtree_ids folding"
+scaling = "linear: at most 15T - 14 characters, subtree_ids folding"
 execution = "poly n: worst n(n+1)/2 + 15n + 1 commands: empty groups skip whole"
 workspace = "poly n: at most 4n² + 16n·bl(L) + 96 bits: a sum frame's base a level"
 evidence = "docs/proofs/index.md#generator-ledger"
@@ -739,7 +739,7 @@ labels = ["tree"]
 qualification = """\
     a node pushes its two children as function literals, reads its bit with `B` \
     and `?` invokes one; constant subtables read their remaining bits unbranched"""
-scaling = "linear: at most 10.5T - 10 characters, ten a node"
+scaling = "linear: at most 21T/2 - 10 characters, ten a node"
 execution = "poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b"
 workspace = "poly n: at most 4bl(L) + 40 bits: two functions, a decider and a frame"
 evidence = "docs/proofs/index.md#generator-ledger"
@@ -1096,7 +1096,7 @@ qualification = """\
     branches as strings and the selector evaluates exactly one, while a constant leaf \
     discards the unused selectors; a repeated subtree is pushed once and carried \
     above the next selector, and the plain tree stays a candidate"""
-scaling = "linear: 7n input characters plus at most 11T - 4 tree characters"
+scaling = "linear: at most 7n + 11T - 4 characters: 7 an input"
 execution = "poly n: at most 14n - 1 commands, one path of n selections"
 workspace = """\
     linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, \

@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from tests.proofs._ledger import Row as LedgerRow
 
 #: The words a bound ends on: its unit.
-_UNITS = r"(?:commands|steps|rewrites|nodes|instructions|lines|bits)"
+_UNITS = r"(?:commands|steps|rewrites|nodes|instructions|lines|rows|characters|bits)"
 _BOUND = re.compile(rf"^(worst|at most) (.+?) {_UNITS}\b(.*)$")
 #: ``past n = k``: the bound holds from k + 1 inputs.
 _PAST = re.compile(r"^,? past n ?= ?(\d+)(?=$|[:;,])")
