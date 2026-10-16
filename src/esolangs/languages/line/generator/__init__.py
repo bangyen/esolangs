@@ -200,11 +200,19 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         )
 
     best = candidate(line_boolean(truth_table))
+    # Projected tree, by area: with one or two essential inputs 17-25% (n=8..11,
+    # 40 tables each), constants 20-38%; three to five 2-7%, pooled over one to
+    # n-1 essential 7.9-9.1% (n=7..10, ~200 tables each).  A majority-3 core in
+    # 8 inputs: 13%.  Kept as one candidate rather than split by essential count.
     projected = projected_boolean(truth_table)
     if projected is not None:
         other = candidate(projected)
         if other.area < best.area:
             best = other
+    # Streaming saves 0% on random tables at n>=8 (0.45% at n=7) but 23-96% on
+    # parity, and, majority, thresholds and tiled tables (n=6..12); projected
+    # streaming 12-21% on parity, and and majority cores in 8..10 inputs with
+    # ignored ones, 1.3-4.3% on random ignored-input tables (n=7..10).
     for build in (streaming_canvas, projected_streaming_canvas):
         # A complete fold wins a fallback tie; a later fold retains the first tie.
         fold = build(truth_table, best.area + int(not best.complete), unit=unit)

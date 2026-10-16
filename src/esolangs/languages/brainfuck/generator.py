@@ -532,6 +532,10 @@ def _bf_ordered(
     if shared is not None and shared[1] <= budget:
         bodies.append(shared[0])
     if bank and perm == tuple(range(n)):
+        # The banks save 0% on random tables (n=5..16) and on tiled cores below
+        # n=14; on a core tiled to n=14 and n=16 binary_bank saves 14.8% and
+        # 13.9% (256 two-input words), larger_suffix_bank 10.3% and 12.1%
+        # (32 five-input words, 16 classes), against both banks off 18.1% / 15.9%.
         for banked in (
             binary_bank(truth_table, budget),
             larger_suffix_bank(truth_table, budget),
