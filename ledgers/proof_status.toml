@@ -1038,6 +1038,16 @@ workspace = """\
     stack"""
 
 [[ledger]]
+generator = "Hot"
+labels = ["tree"]
+qualification = """\
+    the table is a tree of Church pairs, equal halves folded to `K`, applied to the \
+    bits that one fixed reader stage an input takes from `A`"""
+scaling = "linear: 14 characters a pair, 75 a reader stage"
+execution = "poly n: worst 35n + 45 rewrites: a pair a level, then the answer stage"
+workspace = "linear: at most 24L bits: at most three live copies of the term, 8 bits a combinator"
+
+[[ledger]]
 generator = "Unlambda"
 labels = ["tree"]
 qualification = """\

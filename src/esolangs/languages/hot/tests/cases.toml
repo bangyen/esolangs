@@ -1,0 +1,114 @@
+language = "Hot"
+oldid = 101037
+
+[[examples]]
+id = "truth-machine-0"
+note = "the page's truth machine; its trace outputs 100 and halts"
+source = "S(S(K(S(K(S(S(SKK)(KK))))(S(S(KS)K)(S(S(KS)K)(K(S(S(K(SS)))(S(K(SS)))(S(SKK)(SKK))))))))(S(SKK)(K(SK))))(S(SKK)(KK))"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+note = "the page's trace for input 1 outputs 1s and never halts"
+source = "S(S(K(S(K(S(S(SKK)(KK))))(S(S(KS)K)(S(S(KS)K)(K(S(S(K(SS)))(S(K(SS)))(S(SKK)(SKK))))))))(S(SKK)(K(SK))))(S(SKK)(KK))"
+stdin = "1"
+stop = "steps"
+max_steps = 300
+expected = "11111"
+
+[[examples]]
+id = "overview-k"
+note = "the overview's K: F F appended, then D D C C; the C at position 2 halts"
+source = "K"
+stdin = ""
+expected = "1"
+
+[[examples]]
+id = "overview-head-only"
+note = "the overview's 0 (C K) (D K) reduces only the head, to D K"
+source = "0 (C K) (D K)"
+stdin = ""
+expected = "10"
+
+# Z = S(S(SKK)(K(D(DC))))(K(D(CC))) takes a bit b to b (D(DC)) (D(CC)),
+# which prints b.
+[[spec_triggers]]
+program = "A(S(S(SKK)(K(D(DC))))(K(D(CC))))"
+stdin = ""
+expect = "output"
+output = "0"
+claim = "past the input string the stream is 0"
+
+[[spec_triggers]]
+program = "A(S(S(SKK)(K(D(DC))))(K(D(CC))))"
+stdin = "0"
+expect = "output"
+output = "1"
+claim = "each input bit is preceded by a 1"
+
+[[spec_triggers]]
+program = "A(A(S(S(SKK)(K(D(DC))))(K(D(CC)))))"
+stdin = "1"
+expect = "output"
+output = "1"
+claim = "the input bit follows its marker"
+
+[[spec_triggers]]
+program = "A(A(A(S(S(SKK)(K(D(DC))))(K(D(CC))))))"
+stdin = "1\n1"
+expect = "output"
+output = "0"
+claim = "a newline ends the input string"
+
+[[spec_triggers]]
+program = "D(C(D(C(C K))))"
+stdin = ""
+expect = "output"
+output = "00"
+claim = "odd positions are printed and a 0 at an even position halts"
+
+[[spec_triggers]]
+program = "1(D(DC))(D(CC))"
+stdin = ""
+expect = "output"
+output = "1"
+claim = "1 rewrites to K"
+
+[[spec_triggers]]
+program = "0(D(DC))(D(CC))"
+stdin = ""
+expect = "output"
+output = "0"
+claim = "0 x y rewrites to y"
+
+[[spec_triggers]]
+program = "SK(D(CC))(D(DC))"
+stdin = ""
+expect = "output"
+output = "1"
+claim = "S x y z rewrites to x z (y z)"
+
+[[spec_triggers]]
+program = "KX"
+stdin = ""
+expect = "ProgramError"
+claim = "a character that is not a combinator is a ProgramError"
+
+[[spec_triggers]]
+program = "(K"
+stdin = ""
+expect = "ProgramError"
+claim = "an unclosed parenthesis is a ProgramError"
+
+[[spec_triggers]]
+program = "K()"
+stdin = ""
+expect = "ProgramError"
+claim = "empty parentheses are a ProgramError"
+
+[[spec_triggers]]
+program = "A(S(S(SKK)(K(D(DC))))(K(D(CC))))"
+stdin = "2"
+expect = "ArgumentError"
+claim = "an input character other than 0, 1 or a newline is an ArgumentError"

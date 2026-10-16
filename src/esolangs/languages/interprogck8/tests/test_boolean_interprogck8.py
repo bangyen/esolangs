@@ -25,8 +25,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("hot", [1, 1071414])
-def test_a_deep_path_keeps_its_lanes_apart(hot: int) -> None:
+@pytest.mark.parametrize("one", [1, 1071414])
+def test_a_deep_path_keeps_its_lanes_apart(one: int) -> None:
     """A one-hot table keeps an ancestor's lane in the air at every depth.
 
     Lanes along a path advance 4 a 0 step and 2 a 1 step mod 82, so two
@@ -34,9 +34,9 @@ def test_a_deep_path_keeps_its_lanes_apart(hot: int) -> None:
     these two at ``n = 22`` into a flight hitting another lane's stop.
     """
     n = 22
-    table = "0" * hot + "1" + "0" * ((1 << n) - hot - 1)
+    table = "0" * one + "1" + "0" * ((1 << n) - one - 1)
     program = esolangs.generate("Interprogck8", table)
-    for row in (hot, hot ^ 1, hot ^ (1 << (n - 1)), 0):
+    for row in (one, one ^ 1, one ^ (1 << (n - 1)), 0):
         assert _answer(program, n, row) == table[row], row
 
 

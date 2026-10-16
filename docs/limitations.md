@@ -306,8 +306,8 @@ requires a construction exemption rather than a sub-gate bound.
 <!-- SHARING-COUNTS:START -->
 
 A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
-of 56 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 18 are
+of 57 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 19 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -402,7 +402,7 @@ controlled by executed checks in each language's own tests.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 89 languages.
+The collection has 90 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -563,7 +563,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`ledgers/curation.toml`) records each
 language's backlinks and route: 21 clear the fame gate
-and 68 are first implementations.
+and 69 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

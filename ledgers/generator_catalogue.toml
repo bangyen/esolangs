@@ -19,6 +19,7 @@
 "1 + i" = "a deeper function literal needs a whole-stack roll to reuse"
 "Caballo" = "no names or jumps: code runs once per place it is written"
 "Interprogck8" = "a stop sits on one lane, so two parents cannot land on one child"
+"Hot" = "no names: binding a repeated subtree by abstraction adds S and K to every pair above it"
 "LaserFuck" = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixteen entries"
 "Rubic" = "no jump or call: code runs once per place it is written"
 "Streetcode" = "a tree only through five inputs, where repeats hold at most 5.1% of nodes (n=5) before merge routing; from six an indexed street with no subtable"
@@ -63,6 +64,7 @@
 [folding.ignored_local]
 "Fackward" = "_skip" # equal halves drop their bit unread by a swap
 "Fargo" = "_arm_expression" # zero ANF arms omit their variable
+"Hot" = "_tree" # equal halves fold to K of one half
 "INTERCAL" = "_diagram" # equal children replace their selector
 "Vandevelo" = "_constraints" # affine guards retain independent tests
 
@@ -71,6 +73,7 @@
 "A Painter Ant" = "_program" # restore inputs and leave one answer cell
 "ABCDirection" = "_layout" # no essential input: one table cell, no select gadget
 "ArrowQueue" = "_program" # direct halt or circulating heading
+"Hot" = "_tree" # a constant table folds to K chains over one leaf
 "B-tapemark" = "b_tapemark" # direct read-and-print constant
 "Befunge" = "input_weights" # one projected table cell
 "Blindfolded Arithmetic" = "read_at" # one projected table bit, no lookup round

@@ -101,6 +101,8 @@ from esolangs.languages.grapheme.generator import LANGUAGE as _GRAPHEME_LANGUAGE
 from esolangs.languages.grapheme.generator import grapheme
 from esolangs.languages.home_row.generator import LANGUAGE as _HOME_ROW_LANGUAGE
 from esolangs.languages.home_row.generator import home_row
+from esolangs.languages.hot.generator import LANGUAGE as _HOT_LANGUAGE
+from esolangs.languages.hot.generator import hot
 from esolangs.languages.inject.generator import LANGUAGE as _INJECT_LANGUAGE
 from esolangs.languages.inject.generator import inject
 from esolangs.languages.intercal.generator import LANGUAGE as _INTERCAL_LANGUAGE
@@ -236,6 +238,7 @@ _LANGUAGES = (
     _FRACTRAN_LANGUAGE,
     _GRAPHEME_LANGUAGE,
     _HOME_ROW_LANGUAGE,
+    _HOT_LANGUAGE,
     _INJECT_LANGUAGE,
     _INTERCAL_LANGUAGE,
     _INTERPROGCK8_LANGUAGE,
@@ -326,6 +329,7 @@ __all__ = [
     "fractran",
     "grapheme",
     "home_row",
+    "hot",
     "inject",
     "intercal",
     "interprogck8",

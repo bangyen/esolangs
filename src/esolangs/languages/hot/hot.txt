@@ -1,0 +1,12 @@
+S(KK)(S(K(S(0K)))(S(KK)
+(S(KK)(S(K(S(0K)))(S(K(
+S(0K)))(S(KK)(S(K(S(KK)
+(S(K(S(0K)))(S(KK)(S(KK
+)(S(K(S(0K)))(S(K(S(0K)
+))(S(KK)(S(K(S(KK)(S(K(
+S(0K)))(S(KK)(S(K(S(KK)
+))(S(K(S(0K)))(S(KK)(S(
+K(S(S(KS)K)))(S(S(KS)(S
+(KS)))(K(K(0K))))))))))
+))))))))))))))))))(S(S(
+0K)(K(0K)))(K(K0)))
