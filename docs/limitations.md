@@ -260,10 +260,14 @@ requires a construction exemption rather than a sub-gate bound.
 - Dimensional is a lookup that names no decision-tree node.
 - LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 49
-tree-shaped generators use a sharing helper: 32 reference a canonical helper
-(`subtree_ids`, `SubtreeDiagram`), eight a declared local helper, and nine are
-exempt. Having a helper does not establish complete sharing.
+<!-- SHARING-COUNTS:START -->
+
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 56
+tree-shaped generators use a sharing helper: 37 reference a canonical
+helper (`subtree_ids`, `SubtreeDiagram`), 8 a declared local helper, and 11
+are exempt. Having a helper does not establish complete sharing.
+
+<!-- SHARING-COUNTS:END -->
 
 - Underload references a canonical sharing helper.
 - Unlambda references a canonical sharing helper.
