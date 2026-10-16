@@ -36,8 +36,7 @@ from esolangs.registry._language import Language, Shape
 # (10 chars) and ``"]`` closes the literal (2 chars).
 _TABLE_PUSH_OVERHEAD = len('[PSH STR ""]')
 
-# Narrowest chunk width: ``[ PSH STR`` is 9 characters and needs a row of its
-# own, so narrower chunks cannot use the two-rows-per-push layout.
+# Narrowest chunk width: ``[ PSH STR`` (9 characters) needs its own row.
 _MIN_CHUNK_WIDTH = 6
 
 # A bracketed string literal with its closer, a mnemonic, a number or a glyph.
@@ -88,13 +87,9 @@ def modulous(truth_table: str, width: int | None = None) -> str:
 
 
 def _chunked_columns(size: int, suffix_lengths: list[int]) -> int:
-    """The column width where the chunked table renders square.
+    """Square width ``w^2 = 4 size + 2 S`` of the chunked table, suffix ``S``.
 
-    ``size`` table characters in chunks of ``w - 3`` take ``2 * size / w``
-    rows of two pushes, the instruction suffix of ``S`` characters ``S / w``
-    more; the side is least at ``w == 2 * rows``, i.e. ``w^2 = 4 size + 2 S``.
-    Within 1.5% of the swept optimum in rendered side at n=2..12 (test
-    oracle).
+    Within 1.5% of the swept side at n=2..12 (test oracle).
     """
     suffix = sum(suffix_lengths) + len(suffix_lengths)
     return max(_MIN_CHUNK_WIDTH + 3, isqrt(4 * size + 2 * suffix) + 1)
