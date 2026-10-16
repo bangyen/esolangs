@@ -22,6 +22,8 @@ Decisions:
     ignored inputs.
 """
 
+from math import isqrt
+
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -230,24 +232,20 @@ def _render_strips(strips: list[list[_Block]]) -> str:
 
 
 def _folds(table: str) -> list[str]:
-    """Folds by height from the middle's 10 rows, until height alone loses.
+    """Folds at four heights around where the strips' width meets twice the height.
 
-    Greedy packing closes a strip only when the next block (<= 7 lines)
-    overflows, so a fold capped at ``h`` is at least ``h - 6`` rows tall.
+    A fold is ``F`` lines (``6n + 7 +`` one a table entry) cut into strips of
+    ``h - 3`` rows, each about 6 columns wide: ``2h = 6F / (h - 3)``, so
+    ``h = (3 + sqrt(9 + 12F)) / 2``.  That lands within one row of the best
+    height at n=3..10 (4 random tables each; e.g. 59 vs 58-60 at n=10).
     """
     n = _validate_truth_table(table)
-    limit = 6 * n + len(table) + 12  # one strip holds everything
-    folds: list[str] = []
-    best = None
-    for height in range(10, limit):
-        if best is not None and 2 * (height - 6) > best:
-            break
-        fold = _folded(table, height)
-        if fold is not None:
-            folds.append(fold)
-            side = balance_score(fold)[0]
-            best = side if best is None else min(best, side)
-    return folds
+    lines = 6 * n + 7 + len(table)
+    centre = (3 + isqrt(9 + 12 * lines)) // 2
+    folds = (
+        _folded(table, max(10, height)) for height in range(centre - 1, centre + 3)
+    )
+    return [fold for fold in folds if fold is not None]
 
 
 def _balance(table: str, default: str) -> str:
