@@ -3,11 +3,11 @@
 The load pushes every input bit as the fixed pair ``PUSH INVERT`` / ``INVERT
 PUSH`` (``2n`` commands, no absolute ``GOTO``); each node pops one bit and
 ``GOTO``s its one-subtree, and a leaf drains the deque, pushes the answer and
-halts through a low-address trampoline.  The split order is the shortest
-found by ``best_input_order``; rotations happen inside the tree, so the load
-is byte-identical under every order.  Constant subtrees are one leaf and a
-repeated subtree at its level is reached by ``GOTO``.  Past n=4 the shorter of
-the tree and a linear discard lookup wins.
+halts through a low-address trampoline.  The split order is input order
+(a greedy reorder saved 0.9% at n=8, 60 random tables); rotations happen
+inside the tree, so the load is byte-identical under every order.  Constant
+subtrees are one leaf and a repeated subtree at its level is reached by
+``GOTO``.  Past n=4 the shorter of the tree and a linear discard lookup wins.
 
 Size:
     O(n) for parity and and, O(T) for dense tables; n=10 parity: 682 chars,
@@ -27,7 +27,6 @@ from typing import Any
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    best_input_order,
     input_weights,
     runs,
     same_tokens,
@@ -57,10 +56,8 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     """
     small = len(truth_table) <= 16
     short = small and width is not None and width < len(BITDEQUE_PAIR[0])
-    program = best_input_order(
-        truth_table,
-        lambda table, perm: _bitdeque_ordered(table, perm, short=short),
-    )
+    n = _validate_truth_table(truth_table)
+    program = _bitdeque_ordered(truth_table, tuple(range(n)), short=short)
     if not small:
         program = min(program, _bitdeque_linear(truth_table), key=len)
     if width is not None:

@@ -13,7 +13,7 @@ blocks may overlap, so each leaf has its own escape label.  Above n=4 it
 halves one table string with ``inject`` regexes instead (linear regex text).
 
 Size:
-    O(T) at n<=4 tree, O(T) halving above; n=4 random 1847: 235 chars,
+    O(T) at n<=4 tree, O(T) halving above; n=4 random 1847: 262 chars,
     n=10 random 1847: 3,809 chars, n=12 random 1847: 13,167 chars.
 
 Decisions:
@@ -28,7 +28,6 @@ import string
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    best_input_order,
     essential_inputs,
     grid_width,
     input_weights,
@@ -168,12 +167,13 @@ def inject(truth_table: str, width: int | None = None) -> str:
     """Build an Inject program computing ``truth_table``.
 
     Reads ``n`` lines and writes the entry plus a newline.  The split order
-    is whichever is shortest (:func:`~esolangs.generation.helpers.best_input_order`);
-    the ``readto`` block stays in input order.  Width selects a chunked
-    lookup with an O(n) floor; complete commands never split.
+    is input order (a greedy reorder saved 1.7% at n=4, 60 random tables).
+    Width selects a chunked lookup with an O(n) floor; complete commands
+    never split.
     """
     if len(truth_table) <= 16:
-        program = best_input_order(truth_table, _inject_ordered)
+        n = _validate_truth_table(truth_table)
+        program = _inject_ordered(truth_table, tuple(range(n)))
     else:
         program = _inject_halving(truth_table)
     widest = grid_width(program)

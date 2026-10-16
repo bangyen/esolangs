@@ -7,7 +7,6 @@ import pytest
 
 import esolangs
 from esolangs import generate
-from esolangs.generation.helpers import best_input_order
 from esolangs.languages import generators as boolean
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -210,10 +209,9 @@ class TestAlgebraicProgrammingLanguageShapes:
             assert program.endswith(f"(a & b & 0) | {expression}")
             self._check(table, 2)
         total = sum(
-            len(best_input_order(f"{value:08b}", _apl_tree_ordered))
-            for value in range(256)
+            len(_apl_tree_ordered(f"{value:08b}", (0, 1, 2))) for value in range(256)
         )
-        assert total == 16303
+        assert total == 18201
 
     def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
         """The fixed-order reduced diagram stays within the retirement budget."""
@@ -229,10 +227,13 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 16303, 16527),
-            (five_input_sample(), 42875, 35147),
+            (three, 18201, 16527),
+            (five_input_sample(), 47399, 35147),
         ):
-            inline = [len(best_input_order(t, _apl_tree_ordered)) for t in tables]
+            inline = [
+                len(_apl_tree_ordered(t, tuple(range(len(t).bit_length() - 1))))
+                for t in tables
+            ]
             reduced = [len(boolean.algebraic_programming_language(t)) for t in tables]
             assert (sum(inline), sum(reduced)) == (before, after)
             previous = 16067 if len(tables) == 256 else 40684

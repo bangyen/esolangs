@@ -4,10 +4,8 @@ import itertools
 
 import pytest
 
-from esolangs.languages import generators as boolean
 from esolangs.languages.bitdeque.generator import _bitdeque_ordered
 from tests.proofs.test_conventions import _embedding, _tables
-from tests.support.source_support import source_units
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -129,7 +127,7 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
             len(esolangs.generate("Bitdeque", format(value, "08b"), width=1))
             for value in range(256)
         )
-        == 117472
+        == 118538
     )
 
 
@@ -164,23 +162,6 @@ def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
     template = str(esolangs.generate("Bitdeque", "0110", width=9))
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
-
-
-def test_reordering_never_grows_and_shrinks_where_it_should() -> None:
-    """Choosing the input order can only shrink the emitted program."""
-    for n in (1, 2, 3):
-        for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
-            baseline = _bitdeque_ordered(table, tuple(range(n)))
-            # An order the search cannot place has no baseline to beat.
-            if not baseline:
-                continue
-            assert source_units(boolean.bitdeque(table)) <= len(baseline), table
-    # A table only one input order folds well is emitted from that order.
-    table = "10101010"
-    assert source_units(boolean.bitdeque(table)) < len(
-        _bitdeque_ordered(table, (0, 1, 2))
-    )
 
 
 def test_bitdeque_linear_route_is_one_width() -> None:
