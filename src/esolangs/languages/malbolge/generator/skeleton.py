@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import cache
 from typing import NamedTuple
 
-from .isa import _OPS, _addr_of, _apply, _g
+from .isa import _OPS, _addr_of, _apply, _first_free, _g
 
 #: The mixer's five cells and the operation schedule applied once per input
 #: bit.  Cells are ``(kind, index)`` pairs (0 = ``p``, 1 = ``*``); the schedule
@@ -109,11 +109,7 @@ class _Skeleton:
         # character at ``S`` must be ``X - 2`` and decipher to ``j``.  ``S`` is
         # set past every navigation cell so the initial walk sets their ``g``
         # values before the mixer reads them.
-        self.s = next(
-            candidate
-            for candidate in range(222, 800)
-            if candidate % 94 == (42 - layout.x) % 94
-        )
+        self.s = 222 + (42 - layout.x - 222) % 94
         self.code: dict[int, str] = dict.fromkeys(range(self.s), "o")
         self.code[self.s] = "j"
         self.c = self.s + 1
@@ -124,9 +120,7 @@ class _Skeleton:
         """Emit ``o``s and a ``j`` so that ``d`` becomes ``target``."""
         if self.d == target:
             return
-        address = _addr_of(target - 1, ())
-        while address < self.d or address in self.modified or address >= self.s:
-            address += 94
+        address = _first_free(target - 1, max(self.d, 34), self.s, self.modified)
         while self.d < address:
             self.code[self.c] = "o"
             self.c += 1

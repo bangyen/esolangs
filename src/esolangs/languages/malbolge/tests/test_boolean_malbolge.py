@@ -300,3 +300,21 @@ def test_fourteen_rejects_colliding_final_level(
     monkeypatch.setattr(_segments_mod, "_L3_CELL_B", 0)
     with pytest.raises(AssertionError, match="a row never resolves"):
         _segments_mod._f_tables.__wrapped__()  # noqa: SLF001
+
+
+def test_first_free_matches_the_cell_scan() -> None:
+    """The arithmetic progression equals the old first-fit scan over cells."""
+    from esolangs.languages.malbolge.generator.isa import _first_free, _g
+
+    for value in range(33, 127):
+        for lo, hi in ((34, 128), (128, 420), (150, 420)):
+            for blocked in (frozenset(), frozenset(range(lo, lo + 94))):
+                scan = next(
+                    (a for a in range(lo, hi) if _g(a) == value and a not in blocked),
+                    None,
+                )
+                if scan is None:
+                    with pytest.raises(AssertionError):
+                        _first_free(value, lo, hi, blocked)
+                else:
+                    assert _first_free(value, lo, hi, blocked) == scan

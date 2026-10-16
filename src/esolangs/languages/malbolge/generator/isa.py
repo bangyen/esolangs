@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Container
+
 from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2, _crazy
 
 _WORDS = 3**10
@@ -50,6 +52,23 @@ def _render(program: dict[int, int]) -> str:
     return "".join(chr(program.get(a, _char_for("o", a))) for a in range(_WORDS))
 
 
+def _progression(value: int, lo: int, hi: int) -> range:
+    """Return the addresses in ``lo <= a < hi`` with ``g(a) == value``.
+
+    ``g`` has period 94, so they are ``lo + (r - lo) % 94`` and every 94th
+    after it, ``r`` being the value's first address.
+    """
+    return range(lo + (_G_ADDRESSES[value][0] - lo) % 94, hi, 94)
+
+
+def _first_free(value: int, lo: int, hi: int, blocked: Container[int] = ()) -> int:
+    """Return the least unblocked address of :func:`_progression`."""
+    for address in _progression(value, lo, hi):
+        if address not in blocked:
+            return address
+    raise AssertionError(f"no address for value {value}")
+
+
 def _addr_of(value: int, avoid: tuple[int, ...], low: int = 34) -> int:
     """Return an address whose ``g`` value is ``value``, clear of ``avoid``.
 
@@ -57,20 +76,7 @@ def _addr_of(value: int, avoid: tuple[int, ...], low: int = 34) -> int:
     source character too, so the address the navigation reaches must exceed
     the value it names.
     """
-    candidates = [
-        address
-        for address in _G_ADDRESSES.get(value, ())
-        if low <= address <= 126 and address not in avoid
-    ]
-    if not candidates:  # pragma: no cover - the first pass always finds one
-        candidates = [
-            address
-            for address in _G_ADDRESSES.get(value, ())
-            if address + 94 <= 126 and address + 94 not in avoid
-        ]
-    if not candidates:  # pragma: no cover - the layout always has one
-        raise AssertionError(f"no address for value {value}")
-    return candidates[0]
+    return _first_free(value, low, 127, avoid)
 
 
 def _rot(value: int) -> int:

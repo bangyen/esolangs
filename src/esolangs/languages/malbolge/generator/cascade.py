@@ -8,7 +8,17 @@ from typing import Protocol
 
 from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2
 
-from .isa import _ACTIVE, _ALL2, _CONSTS, _OPS, _apply, _char_for, _g, _program, _render
+from .isa import (
+    _ACTIVE,
+    _ALL2,
+    _CONSTS,
+    _OPS,
+    _apply,
+    _char_for,
+    _first_free,
+    _program,
+    _render,
+)
 
 # ---------------------------------------------------------------------------
 # Eleven inputs: a two-level pointer cascade.
@@ -87,11 +97,7 @@ class _Walker:
         """Walk ``d`` up to a cell whose value is ``target - 1``, then ``j``."""
         if self.d == target:
             return
-        address = next(
-            a
-            for a in range(self.d, _ENTRY)
-            if _g(a) == target - 1 and a not in self.modified
-        )
+        address = _first_free(target - 1, self.d, _ENTRY, self.modified)
         while self.d < address:
             self.raw("o")
         self.raw("j")
@@ -160,9 +166,7 @@ def _head(
     modified: set[int] = set(extra)
 
     def place(value: int) -> int:
-        address = next(
-            a for a in range(34, 128) if _g(a) == value and a not in modified
-        )
+        address = _first_free(value, 34, 128, modified)
         modified.add(address)
         return address
 
