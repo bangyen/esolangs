@@ -9,12 +9,14 @@ its *stop*.
   it, 81 flies stride 82 on the odd lines; 84 lands 85 below, an even
   line, which zeroes the accumulator and walks into the 0 subtree.  A rung
   under acc 0 is a fall-through, so walks cross live lanes freely.
-- **Lanes.**  A depth-``d`` read takes the first even line whose rung
-  residue mod 82 is ``2d + 1``, so no two reads in the air share a lane.
-  The air holds one residue per ancestor whose 1 child is still unplaced,
-  at most ``n - 1`` of the 41 odd residues; the 1 child's stop is the first
-  line on its residue past the 0 subtree.
-  the tree; a tree stop stays off their two residues mod 66.
+- **Lanes.**  Up to 15 inputs a read sits on the first even line after its
+  entry: a 0 child's lane is its parent's + 6, a 1 child's + 2 (mod 82),
+  which never meets an in-air ancestor's lane (see ``_ENTRY_LANES``).
+  Beyond, a depth-``d`` read takes the first even line whose rung residue
+  mod 82 is ``2d + 1``, so no two reads in the air share a lane (the air
+  holds at most ``n - 1`` of the 41 odd residues).  The 1 child's stop is
+  the first line on its residue past the 0 subtree and stays off the two
+  printer residues mod 66.
 - **Fill.**  A rung only where a flight hops or a walk crosses a live lane,
   ``x`` elsewhere: the wiki errors on blank lines, so none are emitted.
 
@@ -26,13 +28,13 @@ Size:
     O(T) at every arity: a node's read gap, dismount and stop gap span at
     most 82, 85 and 2 * 82 lines, a leaf's scan 66, and no line exceeds the
     65-character read; a dense table is 210 lines an entry from ``n = 8`` to
-    17.  Rungs on live lanes make characters per entry creep with ``n`` (667
+    17.  Rungs on live lanes make characters per entry creep with ``n`` (550
     at ``n = 8``, 785 at 17), under the corridor filling every odd line,
     1,207 at both.  Each flight is laid once and a printer lane once from its
     earliest launch, so building is O(T); a run visits each line at most once,
     since every jump is forward.
-    n=10 random 1847: 640,940 chars, n=10 parity: 708,016 chars,
-    n=10 and: 28,774 chars.
+    n=10 random 1847: 532,117 chars, n=10 parity: 586,697 chars,
+    n=10 and: 26,904 chars.
 
 Raises:
     GeneratorCapError: more than forty inputs; 41 lanes bound the arity.
@@ -60,6 +62,12 @@ _READ = "{values/=u/=" + _PIPS_49 + "/=" + _PIPS_49 + "}"
 _PRINT_STRIDE = 66
 _PRINT_LANE = {0: 33, 1: 1}
 _PRINT_LANES = frozenset(_PRINT_LANE.values())
+
+#: Up to this many inputs a read stays on the first even line after its
+#: entry: a 0 child's lane is its parent's + 6, a 1 child's + 2 (mod 82), so
+#: an in-air ancestor ``k`` levels up collides only when ``3a + b = 41 m``
+#: with ``a + b = k``, ``a >= 1``, first at ``k = 15``, i.e. ``n = 16``.
+_ENTRY_LANES = 15
 
 #: The deepest read clears ``n - 1`` lanes in the air.
 _MAX_INPUTS = 40
@@ -108,7 +116,8 @@ def _tree(table: str, n: int, layout: _Layout) -> int:
         placed line lies before ``entry``, so the line is free too.
         """
         line = entry + entry % 2
-        line += (2 * depth - line) % _STRIDE
+        if n > _ENTRY_LANES:
+            line += (2 * depth - line) % _STRIDE
         layout.walk(entry, line, air)
         layout.put(line, _READ)
         return line + 1

@@ -64,3 +64,21 @@ def test_closed_form_addresses_match_the_scans_they_replaced() -> None:
         while any((code + i) % 2 and (code + i) % ps == lane0 for i in range(15 + 20)):
             code += 1
         assert code == one + 1 + (lane0 - lane1) % ps
+
+
+def test_entry_lanes_equal_the_first_fit_read_they_replace() -> None:
+    """Sizes the first-fit read emitted (n=10 ``and``, n=8 parity), frozen.
+
+    The entry-line read through 15 inputs is byte-identical to that scan;
+    the 2d+1 rule that follows is only larger.
+    """
+    assert len(esolangs.generate("Interprogck8", "0" * 1023 + "1")) == 26904
+    parity = "".join(str(bin(i).count("1") % 2) for i in range(256))
+    assert len(esolangs.generate("Interprogck8", parity)) == 140771
+
+
+@pytest.mark.parametrize("n", [15, 16])
+def test_the_entry_rule_hands_over_to_depth_lanes_at_sixteen(n: int) -> None:
+    """A one-hot table of ``n`` inputs builds on either side of the cutover."""
+    table = "0" * 12345 + "1" + "0" * ((1 << n) - 12346)
+    assert esolangs.generate("Interprogck8", table)
