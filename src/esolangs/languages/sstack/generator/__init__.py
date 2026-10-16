@@ -43,7 +43,6 @@ from esolangs.generation.shared_block import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_bank
-from esolangs.languages.sstack.generator._ternary import best_ternary_bank
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -77,10 +76,7 @@ def sstack(truth_table: str) -> str:
                 forms.append(result)
     admitted = min((program for program, cost in forms if cost <= 7 * n + 3), key=len)
     bank = best_binary_bank(truth_table, _sstack_tree, 7 * n + 3, len(admitted))
-    if bank is not None:
-        admitted = bank[0]
-    ternary = best_ternary_bank(truth_table, _sstack_tree, 7 * n + 3, len(admitted))
-    return admitted if ternary is None else ternary[0]
+    return admitted if bank is None else bank[0]
 
 
 def _sstack_shared(
