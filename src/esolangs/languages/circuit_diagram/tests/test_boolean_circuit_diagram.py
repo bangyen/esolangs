@@ -726,3 +726,29 @@ def test_h_side_closed_form() -> None:
         assert _h_size(2 * k + 1) == _LATTICE * (14 * 2**k - 4 * k - 12)
         assert _h_size(2 * k) ** 2 < 144 * _LATTICE**2 * 2 ** (2 * k)
         assert _h_size(2 * k + 1) ** 2 < 144 * _LATTICE**2 * 2 ** (2 * k + 1)
+
+
+def test_balance_matches_the_every_width_sweep() -> None:
+    """Per table, 2..4 inputs: no width in 1..flat span beats the balanced drawing.
+
+    The retired balance visited the widths where a decision flips; this
+    visits every width (``_drawn_at`` per width).
+    """
+    from esolangs.generation.helpers import grid_width
+    from esolangs.languages.circuit_diagram.generator import _circuit_diagram_at
+    from esolangs.languages.circuit_diagram.generator.balance import _drawn_at
+
+    rng = random.Random(2)
+    for n in (2, 3, 4):
+        for _ in range(8):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            flat = _circuit_diagram_at(table, None)
+            best = min(
+                (_drawn_at(table, flat, w) for w in range(1, grid_width(flat))),
+                key=balance_score,
+                default=flat,
+            )
+            balanced = esolangs.generate("Circuit Diagram", table, balance=True)
+            assert balance_score(balanced) <= min(
+                balance_score(best), balance_score(flat)
+            ), table

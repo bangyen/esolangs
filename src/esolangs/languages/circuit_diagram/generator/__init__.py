@@ -112,7 +112,6 @@ class _Builder:
         # signal not yet read by its consumer, in creation order -- what a
         # band carries.  Rails and complements are never reclaimed.
         self.limit: int | None = None
-        self.next_limit: int | None = None
         self.band_start = 0
         self.live: list[int] = []
         # Reads a shared gate output still awaits; it is released on the last.
@@ -193,13 +192,7 @@ class _Builder:
             return True
         if self.free_strides.first_after(after - _COL_STEP) is not None:
             return True
-        boundary = self.next_column + self.gate_stride
-        if boundary > self.limit:
-            self.next_limit = (
-                boundary if self.next_limit is None else min(self.next_limit, boundary)
-            )
-            return False
-        return True
+        return self.next_column + self.gate_stride <= self.limit
 
     def _release(self, signal: int) -> None:
         """Give back ``signal``'s column group, if it owns one to give.
@@ -499,21 +492,15 @@ def _essential_table(truth_table: str, n: int) -> tuple[list[int], str]:
     return used, truth_table if len(used) == n else read_at(truth_table, used, n)
 
 
-def _circuit_diagram_at(
-    truth_table: str,
-    limit: int | None,
-    *,
-    _events: list[int] | None = None,
-) -> str:
+def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
     """Render the folded circuit inside an optional gate-column limit."""
-    return _circuit_diagram_model(truth_table, limit, _events=_events).render()
+    return _circuit_diagram_model(truth_table, limit).render()
 
 
 def _circuit_diagram_model(
     truth_table: str,
     limit: int | None,
     *,
-    _events: list[int] | None = None,
     input_order: list[int] | None = None,
     port_inputs: int | None = None,
 ) -> _Layout:
@@ -552,8 +539,6 @@ def _circuit_diagram_model(
     builder.limit = limit
 
     _finish_fold(builder, selectors, dag)
-    if _events is not None and builder.next_limit is not None:
-        _events.append(builder.next_limit)
     return builder.layout
 
 
