@@ -21,6 +21,7 @@ Decisions:
 """
 
 from collections.abc import Callable, Iterator
+from math import isqrt
 from typing import Any
 
 from esolangs.generation.helpers import (
@@ -181,23 +182,21 @@ def _balance(table: str, default: str) -> str:
     short = crement(table, 1)
     width = balanced_token_width(short.split(), " ", maximum=5)
     candidates.append(crement(table, width))
-    candidates.extend(_packed(default, min(map(balance_score, candidates))[0]))
+    candidates.extend(_packed(default))
     return min(candidates, key=balance_score)
 
 
-def _packed(default: str, bound: int) -> Iterator[str]:
-    """``default`` with k whole instructions per line, k = 2, 3, ...
+def _packed(default: str) -> Iterator[str]:
+    """``default`` with k whole instructions per line, k near the square root.
 
     The parser groups whitespace tokens, so line breaks between instructions are
-    free.  The widest row is at least the mean row, which grows with k; stop
-    once it reaches ``bound``, the best side, since the side is at least that.
+    free.  With L lines and ``total`` characters the best k tracks
+    isqrt(2*L*L // total) within 1 (measured on n=1..8).
     """
     lines = default.split("\n")
     total = sum(map(len, lines)) + len(lines)  # each instruction plus one space
-    for k in range(2, len(lines)):
-        rows = -(-len(lines) // k)
-        if total - rows >= bound * rows:  # mean row width >= bound
-            return
+    k0 = isqrt(2 * len(lines) ** 2 // total)
+    for k in range(max(2, k0 - 1), min(k0 + 2, len(lines))):
         yield "\n".join(" ".join(lines[i : i + k]) for i in range(0, len(lines), k))
 
 

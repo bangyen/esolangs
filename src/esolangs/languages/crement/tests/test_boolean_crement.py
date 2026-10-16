@@ -182,3 +182,23 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
 # The shared verifier's timeout floor was measured across 123, ArrowQueue,
 # Crement and Vandevelo on 0110, 0001, 10010110 and 00010111: 0.000s,
 # every halting row sub-millisecond; its 1s bound has 1000x headroom.
+
+
+def test_packed_rule_matches_the_k_scan() -> None:
+    """Oracle: k0-1..k0+1 lines per row reach the best side of the full scan."""
+    import random
+
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.crement.generator import _packed, crement
+
+    rng = random.Random(3)
+    for n in range(1, 9):
+        default = crement(format(rng.getrandbits(1 << n), f"0{1 << n}b"))
+        lines = default.split("\n")
+        scan = (
+            "\n".join(" ".join(lines[i : i + k]) for i in range(0, len(lines), k))
+            for k in range(2, len(lines))
+        )
+        best = min(map(balance_score, scan), default=(0,))[0]
+        rule = min(map(balance_score, _packed(default)), default=(0,))[0]
+        assert rule <= best
