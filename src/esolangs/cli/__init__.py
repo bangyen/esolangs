@@ -10,7 +10,6 @@ Subcommands:
     esolangs run <language> <file>        run a program through its interpreter
     esolangs read-answer <language>       print the answer bit in a program's
                                           output, read from stdin
-    esolangs debug <language> <file>      run under the breakpoint/watch VM
 
 Every subcommand takes ``--help``.  For anything else, invoke the module
 directly with ``python -m``.
@@ -45,7 +44,6 @@ from esolangs import (
     Raster,
     __version__,
     describe,
-    dump_program,
     encode_inputs,
     generate,
     instantiate,
@@ -59,14 +57,12 @@ from esolangs.cli.args import (
     _fail,
     _pop_flags,
     _pop_options,
-    _pop_portable,
     _pop_set_pairs,
     _pop_width,
     _scale_of,
     _settings_of,
     _split_positional,
 )
-from esolangs.cli.debug import _debug
 from esolangs.cli.help import HELP, USAGE
 from esolangs.cli.hints import (
     _as_argument,
@@ -237,7 +233,6 @@ def _generate(rest: list[str]) -> None:
     flag_options = {"--balance", "--plain"}
     rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, value_options)
-    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, flag_options)
     balance = "--balance" in flags
     scale = _scale_of(options)
@@ -248,7 +243,7 @@ def _generate(rest: list[str]) -> None:
     rest = _split_positional(
         rest,
         set(),
-        value_options | flag_options | {"--width", "--set", "--portable"},
+        value_options | flag_options | {"--width", "--set"},
     )
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
@@ -276,10 +271,8 @@ def _generate(rest: list[str]) -> None:
             program = instantiate(
                 rest[0], program, [int(b) for b in bits], width=width, settings=settings
             )
-        if isinstance(program, CompressedText) and "--plain" in flags and not portable:
+        if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
-        if portable:
-            program = dump_program(rest[0], program)
     except EsolangError as exc:
         _fail(_generate_hint(exc, rest[0], rest[1]))
     if (width is not None or bare or balance) and _layout_ignored(
@@ -573,5 +566,4 @@ def _dispatch() -> None:
         "generate": _generate,
         "run": _run,
         "read-answer": _read_answer,
-        "debug": _debug,
     }[cmd](rest)

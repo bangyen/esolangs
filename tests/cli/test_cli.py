@@ -75,17 +75,6 @@ class TestInProcess:
         assert exc.value.code == 2
         assert "pixel limit" in capsys.readouterr().err
 
-    def test_break_at_on_a_coordinate_ip_is_a_usage_error(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A grid language's refusal surfaced as an internal error, exit 70."""
-        grid = first(state_model="grid", source_kind="text")
-        path = tmp_path / "p.txt"
-        path.write_text("@")
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "--break-at", "3", grid, str(path)], capsys)
-        assert exc.value.code == 2
-
     @pytest.mark.parametrize("closed_streams", ["stdout", "both"])
     def test_a_closed_stdout_object_exits_120(self, closed_streams: str) -> None:
         """A closed stream object exited 70 (or raised, stderr closed too)."""
@@ -103,16 +92,6 @@ class TestInProcess:
         ):
             main()
         assert exc.value.code == 120
-
-    def test_break_at_takes_a_negative_position(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Subleq and AddSubJump halt at -1 and -8; the flag refused them."""
-        path = tmp_path / "p.txt"
-        path.write_text("+")
-        assert "stopped" in call_main(
-            ["debug", "--break-at", "-1", REFERENCE, str(path)], capsys
-        )
 
     def test_help_for_an_unknown_command_fails(
         self, capsys: pytest.CaptureFixture[str]
@@ -213,78 +192,6 @@ def test_width_option(
         assert esolangs.run(REFERENCE, out, stdin="011") == "0"
 
 
-# ``+.+.+.`` after an 8x8 loop prints A, B, C -- three separate writes, so a
-# break on the second one has a run to stop in the middle of.
-_ABC = "++++++++[>++++++++<-]>+.+.+."
-
-
-@pytest.mark.parametrize(
-    ("flags", "program", "expected"),
-    [
-        pytest.param([], _ABC, ["halted: yes", "output: 'ABC'"], id="runs_to_halt"),
-        # A step budget stops the run short, which is the point of it.
-        pytest.param(["--steps", "5"], _ABC, ["halted: no", "output: ''"], id="steps"),
-        pytest.param(["--steps=5"], _ABC, ["halted: no"], id="steps_inline"),
-        # The watch history is what the debugger adds over plain stepping.
-        pytest.param(
-            ["--steps", "3", "--watch-cell", "0"],
-            _ABC,
-            ["cell 0: [1, 2, 3]"],
-            id="watch_cell",
-        ),
-        # A breakpoint is checked *before* a step, so ``B`` is the last byte.
-        pytest.param(
-            ["--break-on-output", "B"],
-            _ABC,
-            ["halted: no", "output: 'AB'"],
-            id="break_on_output",
-        ),
-        pytest.param(
-            ["--break-at", "3"], "+++++", ["ip: 3", "halted: no"], id="break_at"
-        ),
-        pytest.param(
-            ["--break-on-cell", "0=3", "--watch-cell", "0"],
-            "+++++",
-            ["cell 0: [1, 2, 3]"],
-            id="break_on_cell",
-        ),
-        # A short watch history is printed whole.
-        pytest.param(
-            ["--watch-cell", "0"], "+++", ["cell 0: [1, 2, 3]"], id="short_watch"
-        ),
-    ],
-)
-def test_debug_report(
-    flags: list[str],
-    program: str,
-    expected: list[str],
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """``esolangs debug`` exposes the breakpoint/watch VM on the CLI."""
-    out = call_main(["debug", *flags, REFERENCE, _program(tmp_path, program)], capsys)
-    for line in expected:
-        assert line in out
-
-
-class TestDebugCommand:
-    def test_a_raise_is_reported_rather_than_propagated(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A debugged program is one the caller is already unsure of."""
-        # Reported, not propagated -- the whole report is printed -- and
-        # *then* exit 1, matching what `run` has always called a program's
-        # own failure.  `debug` used to exit 0 for every outcome alike, so
-        # a script could not tell a crash from a clean halt.
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", REFERENCE, _program(tmp_path, ",.")], capsys)
-        assert exc.value.code == 1
-        out = capsys.readouterr().out
-        assert "raised: InputExhaustedError" in out
-        assert "0 characters supplied" in out
-        assert "halted: no" in out
-
-
 class TestHelp:
     """Every command documents itself, because `--help` is what gets typed."""
 
@@ -298,26 +205,17 @@ class TestHelp:
         assert exc.value.code == 0
         assert "usage: esolangs <command>" in capsys.readouterr().out
 
-    @pytest.mark.parametrize("command", ["list", "generate", "run", "debug"])
+    @pytest.mark.parametrize("command", ["list", "generate", "run"])
     def test_each_command_expands_its_own_options(
         self, command: str, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """``debug --help`` used to print its usage line and stop there."""
+        """A ``--help`` used to print its usage line and stop there."""
         with pytest.raises(SystemExit) as exc:
             call_main([command, "--help"], capsys)
         assert exc.value.code == 0
         out = capsys.readouterr().out
         assert f"usage: esolangs {command}" in out
         assert len(out.splitlines()) > 3, "a usage line alone is not help"
-
-    def test_debug_help_names_every_option_it_takes(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit):
-            call_main(["debug", "--help"], capsys)
-        out = capsys.readouterr().out
-        for option in ("--steps", "--watch-cell", "--break-on-output"):
-            assert option in out
 
 
 # Each case generates a program and runs it through a real subprocess --
@@ -369,15 +267,6 @@ class TestOutputAndAbridging:
                 assert exit_.value.code == 2
                 assert "redirect stdout" in capsys.readouterr().err
 
-    def test_a_long_watch_history_is_abridged(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It was one line of 486 values, which buries the ends."""
-        program = _program(tmp_path, "+" * 200)
-        out = call_main(["debug", "--watch-cell", "0", REFERENCE, str(program)], capsys)
-        assert "more ..." in out
-        assert len(out.splitlines()[-1]) < 400
-
 
 class TestGenerateArgumentTypes:
     """``generate``'s own arguments are checked before a generator runs."""
@@ -406,43 +295,15 @@ _REFUSALS = {
         f"generate brainfuck {TABLE3} --width 0",
         "must be positive",
     ),
-    "unknown_language": ("debug NoSuchLanguage prog:+", "unknown language"),
-    "missing_file": ("debug brainfuck /no/such/file", "cannot read"),
-    "missing_args": ("debug brainfuck", "usage: esolangs debug"),
-    "a_non_integer_option_is_refused---steps": (
-        "debug --steps x brainfuck prog:+",
-        "must be an integer",
-    ),
-    "a_non_integer_option_is_refused---watch-cell": (
-        "debug --watch-cell x brainfuck prog:+",
-        "must be an integer",
-    ),
+    "unknown_language": ("run NoSuchLanguage prog:+", "unknown language"),
+    "missing_args": ("run brainfuck", "usage: esolangs run"),
     "an_option_with_no_value_is_refused": (
-        "debug brainfuck prog.b --steps",
-        "--steps needs a value",
+        "run brainfuck prog.b --timeout",
+        "--timeout needs a value",
     ),
-    "a_malformed_cell_breakpoint_is_refused-x=1": (
-        "debug --break-on-cell=x=1 brainfuck prog:+",
-        "INDEX=VALUE",
-    ),
-    "a_malformed_cell_breakpoint_is_refused-0=y": (
-        "debug --break-on-cell=0=y brainfuck prog:+",
-        "INDEX=VALUE",
-    ),
-    "a_non_integer_break_at_is_refused": (
-        "debug --break-at x brainfuck prog:+",
-        "must be an integer",
-    ),
-    "a_negative_cell_breakpoint_index_is_refused": (
-        "debug --break-on-cell=-1=3 brainfuck prog:+",
-        "index must not be negative",
-    ),
-    "removed_tui_is_refused": (
-        "debug --tui brainfuck prog:+",
-        "unknown option: --tui",
-    ),
+    "removed_debug_is_refused": ("debug brainfuck prog:+", "unknown command"),
     "an_unknown_option_is_named": (
-        "debug --frobnicate brainfuck prog:+",
+        "run --frobnicate brainfuck prog:+",
         "unknown option: --frobnicate",
     ),
     "an_extra_argument_is_refused": (
@@ -477,10 +338,6 @@ _REFUSALS = {
         "unexpected argument",
     ),
     "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
-    "a_negative_watch_cell_is_refused": (
-        "debug --watch-cell -1 brainfuck prog:+++",
-        "must not be negative",
-    ),
     "encode_refuses_a_language_that_reads_nothing": (
         f"encode {TEMPLATED!r} 01",
         "reads no stdin",
@@ -490,17 +347,9 @@ _REFUSALS = {
         "more than once",
     ),
     "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
-    "an_empty_break_on_output_is_refused": (
-        "debug --break-on-output '' brainfuck prog:+++",
-        "needs some text",
-    ),
     "read_answer_says_so_when_given_nothing": (
         "read-answer brainfuck",
         "nothing on stdin",
-    ),
-    "a_negative_step_bound_is_refused": (
-        "debug --steps -1 brainfuck prog:+",
-        "must not be negative",
     ),
     "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
 }

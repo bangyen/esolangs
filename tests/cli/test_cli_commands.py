@@ -173,22 +173,6 @@ class TestTheWidthFlagDoesNotEatTheTable:
         assert out.strip()
 
 
-class TestDebugReportsALoadFailure:
-    """The clause between the template refusal and the interpreter's own."""
-
-    def test_a_program_that_is_really_a_path_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """`run` has refused this for rounds; `debug` shares the check."""
-        example = esolangs.describe(REFERENCE)["examples"][0]
-        path = tmp_path / "p.txt"
-        path.write_text(str(example))
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", REFERENCE, str(path)], capsys, stdin="1\n0\n")
-        assert exc.value.code == 2
-        assert "looks like a path" in capsys.readouterr().err
-
-
 def test_run_reports_an_interpreter_warning_once(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -204,27 +188,3 @@ def test_run_reports_an_interpreter_warning_once(
     )
     assert out == "result"
     assert err.count("interpreter notice") == 1
-
-
-def _portable(tmp_path, language=REFERENCE, table="0110", settings=None):
-    program = esolangs.generate(language, table, settings=settings)
-    path = tmp_path / "program.json"
-    path.write_text(
-        esolangs.dump_program(language, program, settings=settings), encoding="utf-8"
-    )
-    return path
-
-
-@pytest.mark.parametrize("command", ["run", "debug"])
-def test_portable_language_can_be_omitted(command, capsys, tmp_path) -> None:
-    path = _portable(tmp_path)
-    stdin = esolangs.encode_inputs(REFERENCE, [1, 0], truth_table="0110")
-    if command == "run":
-        args = ["run", "--portable", str(path)]
-        expected = "1"
-    else:
-        args = ["debug", "--portable", "--steps", "100000", str(path)]
-        expected = "halted: yes"
-    output, error = call_both(args, capsys, stdin)
-    assert expected in output
-    assert error == ""

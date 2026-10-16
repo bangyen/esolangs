@@ -47,12 +47,10 @@ esolangs --help
 esolangs list
 esolangs generate Suffolk 0110 > program.txt
 printf '01' | esolangs run Suffolk program.txt
-printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck xor.bf
 ```
 
 - `list` shows every language; `list --details` marks which have a
   generator (`gen`), a template (`tmpl`) and committed examples (`ex`).
-- `debug` steps through a program and watches memory.
 - Run a program under its own language. Suffolk programs look like
   brainfuck, but brainfuck rejects or misreads them.
 

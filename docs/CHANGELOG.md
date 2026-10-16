@@ -5,6 +5,17 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## Unreleased
+
+- **Breaking:** Remove `esolangs debug`. The stepping API,
+  `esolangs.debugger`, is unchanged.
+- **Breaking:** Remove `--portable` and `-p` from `generate` and `run`.
+  `dump_program` and `load_program` still save and restore dialect choices
+  and template setters.
+- **Breaking:** `list` keeps `--generator`, `--interpreter-only` and
+  `--grep`; filter on every other capability with `list --json --details`.
+- Until 2.0, a minor release may remove CLI options and commands.
+
 ## 1.0.0
 
 - **Breaking:** `balance=True` picks the text layout fitting the smallest

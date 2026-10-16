@@ -177,7 +177,7 @@ def test_an_unfilled_template_is_refused(
     path = tmp_path / "t.txt"
     path.write_text(esolangs.generate("Minifuck", "0110"))
     with pytest.raises(SystemExit) as exc:
-        call_main(["debug", "Minifuck", str(path)], capsys)
+        call_main(["run", "Minifuck", str(path)], capsys)
     assert exc.value.code == 2
     assert "unfilled runs of '$'" in capsys.readouterr().err
 

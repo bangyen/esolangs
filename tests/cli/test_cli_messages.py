@@ -10,7 +10,7 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from esolangs.cli.io import _write_output
-from tests.cli.test_cli import _FakeStdin, _program, call_main
+from tests.cli.test_cli import _FakeStdin, call_main
 from tests.support.cli_support import _failure, _refused, call_both
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
@@ -47,20 +47,6 @@ class TestSmallerReportsFromRoundFifteen:
         """So a long table does not have to be diffed by eye."""
         with pytest.raises(esolangs.TruthTableError, match="at position 2"):
             esolangs.generate(REFERENCE, "01x1")
-
-    def test_a_never_written_cell_reports_a_verdict_not_a_wall(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Four hundred Nones with the answer at the far right of the line."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate(REFERENCE, "0110"))
-        out = call_main(
-            ["debug", "--steps", "40", "--watch-cell", "999", REFERENCE, str(path)],
-            capsys,
-            stdin="1\n0\n",
-        )
-        assert "never written in 40 step(s)" in out
-        assert "None" not in out
 
     @pytest.mark.parametrize(
         ("name", "phrase"),
@@ -118,20 +104,6 @@ class TestRoundSixQol:
             call_main(["list", "--version"], capsys)
         assert exc.value.code == 0
         assert esolangs.__version__ in capsys.readouterr().out
-
-    def test_debug_always_prints_its_stopped_field(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It vanished on a raise, the one case a script most wants to read."""
-        # Exits 1 now -- a raise is the program's own failure, which is what
-        # `run` has always called exit 1 -- but the report is still printed
-        # first, which is the property under test.
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", REFERENCE, _program(tmp_path, ",.")], capsys)
-        assert exc.value.code == 1
-        out = capsys.readouterr().out
-        assert "stopped: raised" in out
-        assert "raised: InputExhaustedError" in out
 
     def test_a_program_that_prints_nothing_says_so_on_a_terminal(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -295,10 +267,6 @@ _REFUSALS = {
     ),
     "removed_suggest_is_refused": ("suggest", "unknown command: suggest"),
     "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
-    "a_negative_watch_cell_is_refused": (
-        "debug --watch-cell -1 brainfuck prog:+++",
-        "must not be negative",
-    ),
     "encode_refuses_a_language_that_reads_nothing": (
         "encode ArrowQueue 01",
         "reads no stdin",
@@ -308,10 +276,6 @@ _REFUSALS = {
         "more than once",
     ),
     "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
-    "an_empty_break_on_output_is_refused": (
-        "debug --break-on-output '' brainfuck prog:+++",
-        "needs some text",
-    ),
 }
 
 

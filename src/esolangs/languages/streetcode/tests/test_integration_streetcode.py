@@ -90,19 +90,6 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         _out, err = call_both(["run", REFERENCE, str(path)], capsys, stdin="0\n0\n")
         assert "is empty" in err
 
-    def test_a_mixed_none_watch_history_is_legended(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The all-None case was annotated; the mixed one needed it more."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("Streetcode", "0110"))
-        out, _err = call_both(
-            ["debug", "--steps", "30", "--watch-cell", "0", "Streetcode", str(path)],
-            capsys,
-            stdin="0\n1\n",
-        )
-        assert "did not exist yet" in out
-
 
 def test_width_floor_matches_its_source_and_overrun_count() -> None:
     """Warnings follow actual rendered widths, including narrower constructions."""

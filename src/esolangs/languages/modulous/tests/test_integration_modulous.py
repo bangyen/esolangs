@@ -41,11 +41,10 @@ def test_vm_runtime_error_keeps_its_hint() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "debug"])
-def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys) -> None:
+def test_cli_prints_runtime_hints(tmp_path: Path, capsys) -> None:
     source = tmp_path / "bad.mod"
     source.write_text("[JMP F]", encoding="utf-8")
-    args = [command, "--timeout", "1", "Modulous", str(source)]
+    args = ["run", "--timeout", "1", "Modulous", str(source)]
     with pytest.raises(SystemExit):
         call_both(args, capsys)
     streams = capsys.readouterr()

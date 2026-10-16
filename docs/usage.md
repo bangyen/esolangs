@@ -11,7 +11,6 @@ hides this using [`describe`](#describe) metadata.
 | --- | --- |
 | `generate` | print a program computing a truth table |
 | `run` | run a program through its interpreter |
-| `debug` | run under the breakpoint/watch VM |
 | `encode` | print the stdin that feeds a bit string |
 | `read-answer` | print the answer bit a program's output carries |
 | `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives every capability field to filter with `jq` |
@@ -224,7 +223,7 @@ defaults. Pass `settings=DialectSettings(expression_syntax="postfix")` to
 `generate`, `run` or `make_debugger`. On the CLI, use `--settings JSON` or the repeatable `--set KEY=VALUE`.
 
 A generated program retains its settings. Plain text saved to a file does
-not, so `run` needs them again; `--portable` keeps them.
+not, so `run` needs them again; `dump_program` keeps them.
 
 ## Bounded execution
 
@@ -286,21 +285,7 @@ returns output on halt. When either bound expires it raises
 
 ## Debugging
 
-`esolangs debug` runs a program under the breakpoint/watch VM and reports
-where it stopped:
-
-```bash
-esolangs generate brainfuck 0110 > bf.txt
-printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
-```
-
-| Flag | Does |
-| --- | --- |
-| `--steps` | bounds the run |
-| `--watch-cell` | prints one value per step |
-| `--break-at`, `--break-on-cell I=V`, `--break-on-output` | each stops with its condition still true |
-
-From Python, the stepping API lives in `esolangs.debugger`: `VM`,
+The stepping API lives in `esolangs.debugger`: `VM`,
 `Debugger`, `make_vm`, `make_debugger`, `StopReason`, and `STOP_REASONS`.
 
 To step a text program and inspect its state:
@@ -320,7 +305,7 @@ print(vm.ip, vm.memory, vm.output)
 
 `make_debugger(...).run()` returns one of `STOP_REASONS`:
 `"halted"`, `"breakpoint"`, `"max_steps"`, or `"timeout"`. Program faults raise
-an exception instead; the CLI catches it and prints `stopped: raised`.
+an exception instead.
 
 Every language steps under the debugger.
 
@@ -330,8 +315,6 @@ Every language steps under the debugger.
 | Watches | `watch_cell(index)`, `watch_stack(slot)`: both return per-step histories |
 | Inspect | `ip` (shaped by `ip_shape`), `memory`, `ptr`, `stack`, `views` |
 
-- The CLI has only `--watch-cell`, so a stack language reports the cell as
-  never written.
 - A cell the machine has not reached reads `None`, so `break_on_cell(i, 0)`
   fires only once the pointer gets there.
 - `break_on_output(text)` stops once output contains `text`. After a hit,
@@ -413,7 +396,8 @@ generated program text, debugger presentation, internal modules, and private
 `_` names may change without deprecation; generated programs retain
 behaviour, not spelling or size.
 
-A breaking public change requires a major release;
+A breaking public change requires a major release, except that until 2.0 a
+minor release may remove CLI options and commands;
 [CHANGELOG.md](CHANGELOG.md) lists every break. Coexisting replacements
 are documented for at least one minor release.
 Security and correctness fixes may reject input accepted by mistake.

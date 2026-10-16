@@ -7,20 +7,17 @@ carries a size and a deadline, and two notices say why nothing happened.
 from __future__ import annotations
 
 import codecs
-import json
 import sys
 import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 
-from esolangs import _read_source, load_program
-from esolangs.cli.args import _check_count, _errors, _fail
+from esolangs import _read_source
+from esolangs.cli.args import _fail
 from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
-from esolangs.exceptions import EsolangError, ProgramError
-from esolangs.registry import resolve
+from esolangs.exceptions import EsolangError
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 #: How long a blocking stdin read waits before it says that it is waiting.
 #: Shorter than the run notice: a read that has not finished is far more
@@ -83,67 +80,13 @@ def _waiting_notice(hint: str = "") -> _DelayedNotice:
     )
 
 
-def _read_program(
-    path: str,
-    timeout: float | None = None,
-    *,
-    language: str,
-    portable: bool = False,
-    settings: DialectSettings | None = None,
-    content: bytes | None = None,
-) -> Program:
-    """Read bounded source or portable JSON; validate overrides before stdin."""
-    if content is None:
-        content = _bounded_read(path, timeout)
+def _read_program(path: str, timeout: float | None = None, *, language: str) -> Program:
+    """Read bounded source, refusing a non-text or oversized file."""
     try:
-        if portable:
-            program = load_program(language, _portable_text(content))
-            dialect_options(language, effective_settings(language, program, settings))
-            return program
-        return _read_source(language, _FileSource(path, content))
+        return _read_source(language, _FileSource(path, _bounded_read(path, timeout)))
     except EsolangError as exc:
         _fail(exc)
         raise  # pragma: no cover - _fail exits
-
-
-def _portable_text(content: bytes) -> str:
-    """Decode a portable document, which must be UTF-8."""
-    try:
-        return content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ProgramError("portable program must be UTF-8 JSON") from exc
-
-
-def _portable_language(path: str, timeout: float | None = None) -> tuple[str, bytes]:
-    """Return the language and acquired bytes of a portable document."""
-    content = _bounded_read(path, timeout)
-    try:
-        value = json.loads(_portable_text(content))
-    except ValueError as exc:
-        raise ProgramError(f"invalid portable program: {exc}") from exc
-    if not isinstance(value, dict) or not isinstance(value.get("language"), str):
-        raise ProgramError("invalid portable program: language must be a string")
-    return resolve(value["language"]), content
-
-
-def _resolve_target(
-    command: str, rest: list[str], timeout: float | None, *, portable: bool
-) -> tuple[str, str, bytes | None]:
-    """Split positionals into ``(language, path, content)``.
-
-    With ``--portable`` and a single positional, that positional is a
-    document carrying its own language; otherwise the positionals are
-    the language and the program path.
-    """
-    if portable and len(rest) == 1:
-        path = rest[0]
-        with _errors():
-            language, content = _portable_language(path, timeout)
-    else:
-        _check_count(command, rest, 2)
-        language, path = rest[0], rest[1]
-        content = None
-    return language, path, content
 
 
 def _note(message: str) -> None:
