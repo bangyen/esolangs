@@ -211,3 +211,27 @@ def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(partial(boolean.brainif, width=1000), range(8, 12))
+
+
+def test_loop_depth_rule_is_the_measured_best(monkeypatch) -> None:
+    """``_top_level`` is the argmin of the sweep that once picked a fixed cap.
+
+    Checked at the arities where the rule and the old cap of 4 differ or
+    agree on a seeded random table: n=6, 8, 10 (rule 1, 2, 3).
+    """
+    import random
+
+    import esolangs.languages.brainif.generator as generator
+    from esolangs.languages.brainif.generator import _brainif_tree, _top_level
+
+    rng = random.Random(11)
+    for n in (6, 8, 10):
+        table = "".join(rng.choice("01") for _ in range(1 << n))
+        sizes = []
+        for top in range(5):
+            monkeypatch.setattr(
+                generator, "_top_level", lambda m, top=top: min(top, (m - 2) // 2)
+            )
+            sizes.append(len(_brainif_tree(table, None)))
+        monkeypatch.undo()
+        assert _top_level(n) == sizes.index(min(sizes)), (n, sizes)

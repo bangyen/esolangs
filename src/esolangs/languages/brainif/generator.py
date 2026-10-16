@@ -11,8 +11,8 @@ Size:
 
 Decisions:
     The residual DAG cuts the three-input total from 319,576 to 291,524
-    characters and steps from 134,984 to 74,440.  Looping four levels bottoms
-    out the per-entry constant over n=8..12.
+    characters and steps from 134,984 to 74,440.  The looped levels follow
+    a cost model (:func:`_top_level`), not a fixed count.
 """
 
 from itertools import count, pairwise
@@ -314,23 +314,28 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
     return _resolve(entries, width)
 
 
-#: Levels whose walk becomes a marker-terminated ``goto`` loop instead of
-#: ``2**(n-i)`` emitted ``left`` lines.  Measured over n=8..12: four is where
-#: the per-entry constant bottoms out at 25.4 (three reads 25.8, five 25.5).
-_LOOP_LEVELS = 4
-
-
 def _top_level(n: int) -> int:
-    """Return the deepest level that may loop, for an ``n``-input table.
+    """Return the deepest level that loops, for an ``n``-input table.
 
-    Levels ``i < j`` share a marker position exactly when ``j - i ==
-    2**(n-1-j)``, and ``m_i = 2**(n-1-i)`` must be even for a two-cell loop
-    iteration.  Halving the arity clears both at once: ``top <= (n-2)/2``
-    leaves ``2**(n-1-top) >= 2**(n/2)``, which outgrows ``top``.  ``n`` counts
-    the essential inputs; :class:`_Strip` re-checks the pairs once ignored ones
-    sit between the levels.
+    Cost model, in lines: adding level ``K`` (``K`` levels already looped)
+    saves its walk, ``2**(n-K)`` guarded ``left`` lines, and costs a loop of
+    about ``19 + 5K`` lines plus ``5 * 2**K - 2`` more marker-climb lines
+    (rank ``r`` has ``2**r`` markers climbing ``3 + 2(K-1-r)`` extra each,
+    summing to ``5 * 2**K - 2K - 5``).  Dropping the linear terms, it pays
+    while ``2**(n-K) > 5 * 2**K``, i.e. ``K < (n - log2 5) / 2``, so the
+    looped levels number ``(n - 1) // 2`` and the deepest is ``(n - 3) // 2``.
+    Measured on seeded random tables the best top level is that at n=6, 8,
+    10..14 (n=5, 7, 9 are one lower, 0.9% to 3.6% smaller); the old fixed cap
+    of 4 was 2.3% to 7.6% larger at n=6, 8, 10 and 0.2% to 0.8% at n=13, 14.
+
+    The cap also clears the pair condition: levels ``i < j`` share a marker
+    position exactly when ``j - i == 2**(n-1-j)``, and ``m_i = 2**(n-1-i)``
+    must be even for a two-cell loop iteration.  ``top <= (n-2)/2`` leaves
+    ``2**(n-1-top) >= 2**(n/2)``, which outgrows ``top``, and ``(n-3)//2``
+    stays under it.  ``n`` counts the essential inputs; :class:`_Strip`
+    re-checks the pairs once ignored ones sit between the levels.
     """
-    return min(_LOOP_LEVELS, (n - 2) // 2)
+    return max(0, (n - 3) // 2)
 
 
 class _Strip:
@@ -427,7 +432,7 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     residue class stops the loop exactly there: the class has period
     ``2*m_i`` and the window is ``m_i`` long, so the window holds one.  That
     trades ``2*m_i`` ``left`` lines for ``2**i`` marker climbs, which only the
-    widest levels are worth (:data:`_LOOP_LEVELS`) -- level 0 alone is half
+    widest levels are worth (:func:`_top_level`) -- level 0 alone is half
     the crossings and costs one marker.  Commands take the short spellings
     the interpreter matches by substring.
 
