@@ -59,9 +59,11 @@ def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
 
     One ``$`` arms the whole forward leg: ``~ * ;`` per leading bit, then a
     bare ``~`` for the last, whose weight is one.  An ignored input weighs 0
-    and is a bare ``~`` the next read overwrites, so it may not be last; at
-    least one leading weight is nonzero.  The partial products stay in the
-    grid where ``;`` wrote them, and the return leg one cell to the side adds
+    and is a bare ``~`` the next read overwrites.  Trailing ignored inputs
+    store the last bit too (``~ ;``, weight one) and are read on the return
+    leg, which has its own count, before a ``*`` beside a ``0`` zeroes the
+    mole.  At least one leading weight is nonzero.  The partial products stay
+    in the grid where ``;`` wrote them, and the return leg one cell to the side adds
     them back: a ``+`` under a ``;`` is the only placement that puts a stored
     operand where the mole can reach it, since a work command reads its
     neighbours, never its own cell.
@@ -79,14 +81,18 @@ def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
     reads: _Reads = []
     stores: list[int] = []
     spot = 1
-    for weight in weights[:-1]:
+    trailing = 0
+    while not weights[-1 - trailing]:
+        trailing += 1
+    for weight in weights[: len(weights) - trailing] if trailing else weights[:-1]:
         chars[0, spot] = "~"
         spot += 1
         if not weight:
             continue
-        chars[0, spot], chars[-1, spot] = "*", str(weight)
-        reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
-        spot += 1
+        if weight > 1:
+            chars[0, spot], chars[-1, spot] = "*", str(weight)
+            reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
+            spot += 1
         if bonus and not stores:
             chars[0, spot], chars[-1, spot] = "+", str(bonus)
             reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
@@ -94,12 +100,24 @@ def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
         chars[0, spot] = ";"
         stores.append(spot)
         spot += 1
-    chars[0, spot] = "~"  # the last bit, whose weight is one
+    if trailing:
+        spot -= 1
+        # The return leg runs west from ``hold``: the ignored reads, then a
+        # ``*`` under a ``0`` past the forward leg's armed run.
+        zero = spot + 1
+        hold = zero + trailing + 1
+        chars[0, zero], chars[1, zero] = "0", "*"
+        reads.append(((1, zero), (0, zero), frozenset()))
+        for cell in range(zero + 1, hold):
+            chars[1, cell] = "~"
+    else:
+        chars[0, spot] = "~"  # the last bit, whose weight is one
+        # The return leg's count sits one past the armed run, so the mole
+        # walks over it with the counter spent and it stays a plain digit.
+        hold = spot + 1
     chars[-1, 0], chars[0, 0] = str(spot), "$"
     reads.insert(0, ((0, 0), (-1, 0), frozenset[tuple[int, int]]()))
-    # The return leg's count sits one past the armed run, so the mole walks
-    # over it with the counter spent and it stays a plain digit.
-    hold, first = spot + 1, stores[0]
+    first = stores[0]
     chars[0, hold], chars[1, hold] = str(hold - first), "$"
     reads.append(((1, hold), (0, hold), frozenset()))
     for store in stores:
@@ -107,6 +125,13 @@ def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
         reads.append(((1, store), (0, store), frozenset()))
     turns = {(0, hold + 1): _DIG_SIDE, (1, hold + 1): _DIG_BACK}
     return _Stamp(chars, turns, reads, (1, first - 1), _Box(0, hold + 1, -1, 1))
+
+
+def _dig_adder_fits(weights: list[int], bonus: int) -> bool:
+    """Whether both legs' counts are one digit."""
+    stamp = _dig_adder(weights, bonus)
+    hold = stamp.box.max_x - 1
+    return len(stamp.cells[-1, 0]) == 1 and len(stamp.cells[0, hold]) == 1
 
 
 def _dig_flat_leaf(
