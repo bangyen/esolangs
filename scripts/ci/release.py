@@ -1,4 +1,4 @@
-"""Release helpers: normalize an sdist and smoke an installed distribution."""
+"""Release helpers: normalize an sdist, smoke a distribution, print notes."""
 
 from __future__ import annotations
 
@@ -55,6 +55,27 @@ def normalize_main(argv: list[str]) -> int:
     for name in argv:
         normalize(Path(name), epoch)
     return 0
+
+
+def notes(version: str, changelog: str) -> str:
+    """Return the ``## version`` section of ``changelog``, heading dropped.
+
+    A missing or empty section raises: a release without notes is a tag that
+    skipped the changelog step.
+    """
+    heading = f"## {version.removeprefix('v')}"
+    lines = changelog.splitlines()
+    if heading not in lines:
+        raise SystemExit(f"docs/CHANGELOG.md has no {heading!r} section")
+    start = lines.index(heading) + 1
+    end = next(
+        (i for i in range(start, len(lines)) if lines[i].startswith("## ")),
+        len(lines),
+    )
+    body = "\n".join(lines[start:end]).strip()
+    if not body:
+        raise SystemExit(f"docs/CHANGELOG.md's {heading!r} section is empty")
+    return body + "\n"
 
 
 def _cli(args: list[str], stdin: str = "") -> str:
@@ -397,7 +418,7 @@ def smoke_main(argv: list[str] | None = None) -> None:
 def main(argv: list[str] | None = None) -> int:
     """Dispatch one release subcommand."""
     argv = sys.argv[1:] if argv is None else argv
-    usage = "usage: release.py {normalize|smoke} ..."
+    usage = "usage: release.py {normalize|smoke|notes} ..."
     if argv[:1] in (["-h"], ["--help"]):
         print(f"{usage}\n\n{__doc__}")
         return 0
@@ -408,6 +429,12 @@ def main(argv: list[str] | None = None) -> int:
         return normalize_main(rest)
     if command == "smoke":
         smoke_main(rest)
+        return 0
+    if command == "notes":
+        if len(rest) != 1:
+            raise SystemExit("usage: release.py notes <version>")
+        changelog = (ROOT / "docs/CHANGELOG.md").read_text(encoding="utf-8")
+        sys.stdout.write(notes(rest[0], changelog))
         return 0
     raise SystemExit(f"unknown subcommand {command!r}")
 
