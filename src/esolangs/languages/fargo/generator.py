@@ -9,13 +9,17 @@ appears at most once, in identity order (no reads, so order only renames the
 (1-arm kept) or is the constant one (``f0 | x``).  The program is
 ``% 0 <expression>`` then ``$``; a constant table emits the literal.  Input
 ``i`` (most-significant-first) is bit ``n - 1 - i`` of the one line read
-before execution -- the only place the mapping appears.  Repeated nodes use
-shared definitions when shorter; the inline form stays a candidate on every
-fitting path.
+before execution -- the only place the mapping appears.  A repeated node gets a
+shared definition where that is shorter (:func:`_packed_program`); the inline
+form stays a candidate on every fitting path.
 
 Size:
     O(T) characters, O(T) word-RAM build work; n=10 parity: 80 chars,
-    n=10 random 1847: 3,728 chars.
+    n=10 random 1847: 1,810 chars.  Naming only the nodes whose sharing
+    shortens halved it (from 3,728) and runs 8-14% fewer steps from n=8;
+    at n=4 to 6, where the inline form was shortest, it trades 17-39% more
+    steps (each name is a call) for 9-30% fewer characters.  ``balance``
+    packs the same nodes into lines of a chosen width.
 
 Decisions:
     The free choice among Davio0, Davio1 and monotone-OR arms (9.61% at n=8),
@@ -230,9 +234,15 @@ def _expression(truth_table: str, n: int) -> str:
     return _arm_expression(truth_table, coeffs, n, tuple(range(n)))
 
 
-def _definition_program(expression: str, n: int) -> str:
-    """Return shared definitions with deterministic linear-time prefix interning."""
-    symbols = "@&|^"
+_SYMBOLS = "@&|^"
+
+
+def _intern(expression: str, n: int) -> tuple[list[tuple[int, tuple[int, ...]]], int]:
+    """Return the expression's distinct nodes, children first, and its root.
+
+    A reference below ``max(n, 2)`` is the literal of that value; reference
+    ``lits + k`` is node ``k``.  Deterministic linear-time prefix interning.
+    """
     arities = {"@": 1, "&": 2, "|": 2, "^": 2}
     lits = max(n, 2)  # literal 1 is a node even with one input
     nodes: list[tuple[int, tuple[int, ...]]] = []
@@ -242,7 +252,7 @@ def _definition_program(expression: str, n: int) -> str:
         if token in arities:
             children = tuple(stack.pop() for _ in range(arities[token]))
             stack.append(lits + len(nodes))
-            nodes.append((symbols.index(token), children))
+            nodes.append((_SYMBOLS.index(token), children))
             heights.append(1 + max(heights[child] for child in children))
         else:
             stack.append(int(token, 2))
@@ -295,14 +305,85 @@ def _definition_program(expression: str, n: int) -> str:
                 named = lits + len(unique) - 1
                 previous = key
             canonical[node] = named
-    references = [f"{value:b}" for value in range(lits)]
+    return unique, canonical[stack[0]]
+
+
+def _definition_program(expression: str, n: int) -> str:
+    """Return shared definitions, one distinct node per line."""
+    unique, root = _intern(expression, n)
+    references = [f"{value:b}" for value in range(max(n, 2))]
     lines: list[str] = []
     for tag, children in unique:
         name = short_name(len(lines), ascii_lowercase)
         arguments = " ".join(references[child] for child in children)
-        lines.append(f"{name} {symbols[tag]} {arguments}")
+        lines.append(f"{name} {_SYMBOLS[tag]} {arguments}")
         references.append(name)
-    return "\n".join([*lines, f"% 0 {references[canonical[stack[0]]]}", "$", ""])
+    return "\n".join([*lines, f"% 0 {references[root]}", "$", ""])
+
+
+def _packed_program(expression: str, n: int, width: int) -> str:
+    """Return definitions that inline unshared nodes up to ``width`` columns.
+
+    Children first, a node is named when sharing it is shorter or when
+    inlining it would widen its parent's line past ``width``; the widest
+    children go first.
+    Lengths, not texts, decide, so the build stays linear.
+    """
+    unique, root = _intern(expression, n)
+    lits = max(n, 2)
+    uses = [0] * len(unique)
+    for _, children in unique:
+        for child in children:
+            if child >= lits:
+                uses[child - lits] += 1
+    if root >= lits:
+        uses[root - lits] += 1
+    named = [False] * len(unique)
+    names: dict[int, str] = {}
+    inline = [0] * len(unique)  # length of a node's text inlined
+
+    def size(child: int) -> int:
+        if child < lits:
+            return len(f"{child:b}")
+        k = child - lits
+        return len(names[k]) if named[k] else inline[k]
+
+    def name(k: int) -> None:
+        named[k] = True
+        names[k] = short_name(len(names), ascii_lowercase)
+
+    for k, (_, children) in enumerate(unique):
+        # Room for the name (or ``% 0``) this text may yet head a line under.
+        budget = width - len(short_name(len(names) + 2, ascii_lowercase)) - 2
+        for child in sorted(children, key=size, reverse=True):
+            if 1 + sum(1 + size(c) for c in children) <= budget:
+                break
+            if child >= lits and not named[child - lits]:
+                name(child - lits)
+        inline[k] = 1 + sum(1 + size(c) for c in children)
+        # A shared node is named only where that is shorter: each use of a
+        # name is a call, so naming costs steps too (an n=4 table took 66
+        # commands for one character fewer than its 44-command inline).
+        label = len(short_name(len(names), ascii_lowercase))
+        if uses[k] * inline[k] > label + inline[k] + 2 + uses[k] * label:
+            name(k)
+
+    def text(reference: int) -> str:
+        if reference < lits:
+            return f"{reference:b}"
+        k = reference - lits
+        tag, children = unique[k]
+        return " ".join([_SYMBOLS[tag], *(argument(c) for c in children)])
+
+    def argument(reference: int) -> str:
+        k = reference - lits
+        return names[k] if reference >= lits and named[k] else text(reference)
+
+    # Lettered in line order; a decision only needed each name's length.
+    order = [k for k in range(len(unique)) if named[k]]
+    names = {k: short_name(i, ascii_lowercase) for i, k in enumerate(order)}
+    lines = [f"{names[k]} {text(k + lits)}" for k in order]
+    return "\n".join([*lines, f"% 0 {argument(root)}", "$", ""])
 
 
 def fargo(truth_table: str, width: int | None = None) -> str:
@@ -317,20 +398,29 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     expression = _expression(truth_table, n)
     compact = f"% 0 {expression}\n$\n"
     shared = _definition_program(expression, n)
+    # Naming only the nodes sharing shortens: 50.5% under the shorter of
+    # the two at n=10 (20 random tables), equal on parity.
+    packed = _packed_program(expression, n, len(compact))
     if width is None:
-        return min(compact, shared, key=len)
-    if grid_width(compact) <= width:
-        return min(
-            (program for program in (compact, shared) if grid_width(program) <= width),
-            key=len,
-        )
-    return shared
+        return min(compact, shared, packed, key=len)
+    fitting = [
+        program
+        for program in (compact, shared, packed, _packed_program(expression, n, width))
+        if grid_width(program) <= width
+    ]
+    return min(fitting, key=len) if fitting else shared
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the default, the default-width fit and the width-one fit."""
+    """Compare the default, its width fits and packings at 2 ** (1/4) steps."""
+    n = _validate_truth_table(table)
     wide = fargo(table, len(default))
-    return min(default, wide, fargo(table, 1), key=balance_score)
+    expression = _expression(table, n)
+    widths = {
+        round(2 ** (step / 4)) for step in range(8, 4 * len(default).bit_length())
+    }
+    packed = (_packed_program(expression, n, width) for width in sorted(widths))
+    return min(default, wide, fargo(table, 1), *packed, key=balance_score)
 
 
 def anf_coefficients(truth_table: str) -> list[int]:
