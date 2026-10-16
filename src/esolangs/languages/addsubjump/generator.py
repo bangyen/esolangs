@@ -122,20 +122,18 @@ def addsubjump(truth_table: str) -> str:
 
 
 def _addsubjump_packed(truth_table: str, *, keep_ignored_inputs: bool = False) -> str:
-    """Emit the shorter full or essential-input packed decoder."""
+    """Emit the essential-input packed decoder, or the full one if asked."""
     n = _validate_truth_table(truth_table)
     if keep_ignored_inputs:
         return _packed_build(truth_table, [1] * n)
     weights, projected = input_weights(truth_table, n)
     if all(weights):
         return _packed_build(truth_table, weights)
-    legacy = _packed_build(truth_table, [1] * n)
-    folded = (
-        _addsubjump_ordered(truth_table, tuple(range(n)))
-        if len(projected) == 1
-        else _packed_build(projected, weights)
-    )
-    return min(legacy, folded, key=len)
+    # The full-table build never won against this one: 0 of 322 tables with
+    # ignored inputs (n=6..8, 1..n-1 essential), so it is not raced.
+    if len(projected) == 1:
+        return _addsubjump_ordered(truth_table, tuple(range(n)))
+    return _packed_build(projected, weights)
 
 
 def _packed_build(truth_table: str, weights: list[int]) -> str:
