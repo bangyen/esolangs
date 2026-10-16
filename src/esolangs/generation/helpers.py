@@ -501,18 +501,6 @@ def in_input_order(
     return build(truth_table, tuple(range(n)))
 
 
-def input_orders(
-    truth_table: str, *, max_arity: int | None = None
-) -> list[tuple[int, ...]]:
-    """Return identity then distinct greedy order, capped only when requested."""
-    n = _validate_truth_table(truth_table)
-    identity = tuple(range(n))
-    if max_arity is not None and n > max_arity:
-        return [identity]
-    greedy = _greedy_input_order(truth_table, n)
-    return [identity] if greedy == identity else [identity, greedy]
-
-
 def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     """Pick an input order one level at a time.
 
