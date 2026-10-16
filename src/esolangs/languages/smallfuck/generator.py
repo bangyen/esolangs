@@ -50,7 +50,14 @@ from esolangs.registry._language import Example, Language
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
 
-#: Levels sharing one result cell; measured best of 2 to 5 at n = 3 to 10.
+#: Levels sharing one result cell.  No closed form picks it: a leaf node's
+#: result flip travels ~3 BAND cells while band transfers fall as 1/(2**BAND-1)
+#: an entry, an interior optimum near 3, but the sharing of deferred residuals
+#: removes leaf flips at n >= 8 and the argmin then depends on the class.
+#: Measured chars an entry over 1..6: random n=3..7 best 3; random n=8..11
+#: best 5 (6.0, 10.2, 10.2, 10.0% under 3); parity n=8, 10, tiled n=10 and
+#: sparse n=10 best 3, and majority n=8 best 3 but n=10 best 4.  Kept at 3, the
+#: arity-uniform choice; a min over {3, 5} would be a contest of two named builds.
 BAND = 3
 
 #: Cells per level: input ``3 i``, flag ``3 k + 1``, band result ``3 k + 2``.
