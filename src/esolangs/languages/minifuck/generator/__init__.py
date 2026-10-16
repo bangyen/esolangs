@@ -390,9 +390,11 @@ def _square_tail(program: str) -> str:
     width = max(map(len, rows))
     height = max(len(rows), -(-width // CELL_ASPECT))
     if height > len(rows):
-        return (
-            program + "\n" * (height - len(rows)) + " " * (CELL_ASPECT * height - width)
-        )
+        # The new last row is empty; pad it out only if the rows still fall
+        # short of CELL_ASPECT * height columns (an odd width).
+        target = CELL_ASPECT * height
+        pad = " " * target if target > width else ""
+        return program + "\n" * (height - len(rows)) + pad
     return program + " " * (CELL_ASPECT * height - len(rows[-1]))
 
 

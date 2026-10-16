@@ -90,10 +90,14 @@ def test_balance_rejects_width() -> None:
 
 
 def test_character_balance() -> None:
-    assert balance_program("+" * 100, REFERENCE) == "\n".join(["+" * 10] * 10)
+    # 15 columns x 7 rows: |15 - 2*7| = 1; no width reaches 0.
+    assert balance_program("+" * 100, REFERENCE) == "\n".join(
+        ["+" * 15] * 6 + ["+" * 10]
+    )
     marker = mark(0) * 100
+    # The 100-wide marker row fixes W: two per row gives |100 - 2*51| = 2.
     assert balance_program(marker + "+" * 100, REFERENCE) == marker + "\n" + "\n".join(
-        "+" * 100
+        ["++"] * 50
     )
 
 

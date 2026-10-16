@@ -704,14 +704,15 @@ def test_ignored_prefix_keeps_the_smallest_shared_grid(ignored: int) -> None:
 
 
 def test_balance_keeps_the_square_discard_wrapper() -> None:
-    table = "01100110"
+    # The first input is ignored; 21x13 renders squarer than 22x8.
+    table = "0000011100000111"
     default = boolean.dig(table).splitlines()
     program = esolangs.generate("Dig", table, balance=True)
     balanced = program.splitlines()
-    assert (len(default), max(map(len, default))) == (7, 17)
-    assert (len(balanced), max(map(len, balanced))) == (12, 12)
+    assert (len(default), max(map(len, default))) == (8, 22)
+    assert (len(balanced), max(map(len, balanced))) == (13, 21)
     for row, expected in enumerate(table):
-        assert run_dig(program, list(format(row, "03b"))) == expected
+        assert run_dig(program, list(format(row, "04b"))) == expected
 
 
 @pytest.mark.parametrize("n", range(1, 9))

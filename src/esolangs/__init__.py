@@ -212,10 +212,12 @@ def generate(
             it does nothing where newlines are semantic, and a token longer
             than the width still overruns it.  A template wraps with each run
             kept whole, so every row breaks in the same places.
-        balance: Minimize the rendered width/height difference across
-            supported layouts, breaking ties by source length (raster pixel
-            area), then width; token and routing constraints can prevent a
-            square layout.  Excludes ``width``.
+        balance: Make the layout render square across supported layouts:
+            text minimizes |columns - 2 * rows|, a character cell being about
+            twice as tall as wide; a raster, |width - height| in pixels.
+            Ties break by source length (raster pixel area), then width;
+            token and routing constraints can prevent a square layout.
+            Excludes ``width``.
         scale: Raster only; replicates pixels after layout (1: native output).
         settings: Dialect choices; see ``describe(language)["dialect_settings"]``.
 

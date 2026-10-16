@@ -169,7 +169,7 @@ def test_fractran_parity_representation_omits_empty_width_regimes() -> None:
     parity = esolangs.generate("FRACTRAN", "0110", width=4)
     balanced = _fractran("0110", parity)
     assert balanced in [
-        esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 8)
+        esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 6, 8)
     ]
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
 

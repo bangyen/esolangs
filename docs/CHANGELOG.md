@@ -5,6 +5,12 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## Unreleased
+
+- **Breaking:** `balance=True` targets text with twice as many columns as
+  rows, which renders square; it targeted equal counts, which render about
+  twice as tall as wide.  Most balanced text programs change shape.
+
 ## 0.15.0
 
 - **Breaking:** Remove Factor and Piet++; their names no longer resolve.

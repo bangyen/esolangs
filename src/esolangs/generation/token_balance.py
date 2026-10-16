@@ -5,9 +5,9 @@ from collections.abc import Iterator, Sequence
 from itertools import accumulate
 from math import isqrt
 
-#: Rows a rendered character cell is tall per column it is wide: balance
-#: targets ``width == CELL_ASPECT * height``.
-CELL_ASPECT = 1
+#: Columns per row that render square: a monospace cell is about twice as
+#: tall as it is wide, so balance targets ``width == CELL_ASPECT * height``.
+CELL_ASPECT = 2
 
 
 def aspect_gap(width: int, height: int) -> int:

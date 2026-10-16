@@ -24,6 +24,7 @@ from esolangs.generation.helpers import (
     grid_width,
     read_at,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -333,7 +334,8 @@ def _balance(table: str, default: str) -> str:
     used = essential_inputs(table, inputs)
     if len(used) <= 1:
         commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)
-        width = max(2, ceil((commands + 7) / 4))
+        # The ring's 2W+2H-7 free cells fix W+H; W=A*H splits them.
+        width = max(2, ceil(CELL_ASPECT * (commands + 7) / (2 * CELL_ASPECT + 2)))
         square = (
             _coordinate_ring(inputs, used[0], table[0], width)
             if used
