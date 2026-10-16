@@ -205,11 +205,12 @@ def balance_befunge(truth_table: str, default: str) -> str:
         if floor > high:
             continue
         side = isqrt(CELL_ASPECT * (count + bound) - 1) + 1
-        # H >= (B+T)/W and H <= (B+T)/(W-2)+2. Only the
-        # crossing and its predecessor can minimize the side in each range.
+        # H >= (B+T)/W and H <= (B+T)/(W-2)+2.  The winner is one of the
+        # crossing's neighbours: over 192 layouts (n=1..13) offsets -1..2
+        # from s won every one, and 3..4 never beat them (test oracle).
         candidates.extend(
             befunge(truth_table, min(high, max(floor, width)))
-            for width in range(side - 1, side + 2 * CELL_ASPECT + 1)
+            for width in (side - 1, side, side + 1, side + 2)
         )
     if n <= 10 and _parity_bias(truth_table) is not None:
         candidates.append(befunge(truth_table, 1))

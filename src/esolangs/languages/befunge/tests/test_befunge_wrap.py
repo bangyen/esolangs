@@ -1,11 +1,21 @@
 """Befunge's folded header addresses the table below its steering rows."""
 
+import math
 import random
 
 import pytest
 
 import esolangs
-from esolangs.languages.befunge.generator import balance_befunge, befunge
+from esolangs.generation.token_balance import CELL_ASPECT
+from esolangs.generation.wrap import balance_score
+from esolangs.languages.befunge.generator import (
+    _BOUND_NARROW,
+    _BOUND_PACKED,
+    _BOUND_WIDE,
+    _min_columns,
+    balance_befunge,
+    befunge,
+)
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])
@@ -95,3 +105,28 @@ def test_befunge_balance_rejects_oversized_table() -> None:
 def test_xor_has_one_column() -> None:
     xor = esolangs.generate("Befunge", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
+
+
+@pytest.mark.parametrize("inputs", range(2, 14))
+def test_balance_crossing_neighbours_match_the_wider_sweep(inputs: int) -> None:
+    """Offsets -1..2 from the crossing tie the old -1..4 window on every layout."""
+    table = "".join(random.Random(inputs).choice("01") for _ in range(1 << inputs))
+    count = 1 << inputs
+    layouts = [(5 * inputs + _BOUND_NARROW, 4, 9), (5 * inputs + _BOUND_WIDE, 10, 80)]
+    if inputs > 10:
+        count = (count + 5) // 6
+        layouts = [(5 * inputs + _BOUND_PACKED, 10, 80)]
+    for bound, low, high in layouts:
+        floor = max(low, _min_columns(count, bound))
+        if floor > high:
+            continue
+        side = math.isqrt(CELL_ASPECT * (count + bound) - 1) + 1
+
+        found = [
+            [
+                balance_score(befunge(table, min(high, max(floor, side + off))))
+                for off in offsets
+            ]
+            for offsets in (range(-1, 3), range(-1, 2 * CELL_ASPECT + 1))
+        ]
+        assert min(found[0]) == min(found[1])
