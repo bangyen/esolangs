@@ -41,10 +41,9 @@ class TestProjection:
         rows = _measured()["records"][REFERENCE][TABLES[0]]
         assert rows == {"source_units": 205, "commands": 179}
 
-    def test_the_header_carries_the_corpus(self) -> None:
-        measured = _measured()
-        assert measured["schema"] == SCHEMA
-        assert measured["tables"] == list(TABLES)
+    def test_the_header_carries_only_the_schema_and_cap(self) -> None:
+        """The corpus is the record keys; a header copy of it could disagree."""
+        assert set(_measured()) == {"schema", "step_cap", "records"}
 
 
 class TestDifferences:
@@ -90,10 +89,11 @@ class TestDifferences:
 
     def test_a_changed_corpus_short_circuits(self) -> None:
         """Comparing across corpora would read as a whole-registry change."""
-        stale = {**_measured(), "tables": ["0110"]}
-        lines = differences(stale, _measured())
-        assert len(lines) == 1
-        assert lines[0].startswith("baseline tables")
+        measured = _measured()
+        stale = {**measured, "records": {REFERENCE: {"1001": {"source_units": 1}}}}
+        assert differences(stale, measured) == [
+            f"baseline corpus changed for {REFERENCE}; re-record it"
+        ]
 
 
 class TestCommittedBaseline:
@@ -102,7 +102,6 @@ class TestCommittedBaseline:
     def test_it_covers_every_language_and_table(self) -> None:
         recorded = json.loads(BASELINE.read_text(encoding="utf-8"))
         assert recorded["schema"] == SCHEMA
-        assert recorded["tables"] == list(TABLES)
         assert recorded["records"]
         for name, rows in recorded["records"].items():
             assert sorted(rows) == sorted(
@@ -152,8 +151,10 @@ def test_boundary_rows_are_pinned_and_corpus_drift_fails() -> None:
         "0": 2,
         "1": 3,
     }
-    stale = {**measured, "boundaries": {}}
-    assert differences(stale, measured) == ["baseline boundary corpus changed"]
+    stale = {**measured, "records": {name: {}}}
+    assert differences(stale, measured) == [
+        f"baseline corpus changed for {name}; re-record it"
+    ]
 
 
 def test_sweep_checks_and_pins_every_small_table_row(monkeypatch) -> None:
