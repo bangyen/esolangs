@@ -106,8 +106,8 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
             "(" + tree(level_of[name], name, None) + ")" + tree(level, key, name)
             for name in diagram.repeated_near(key, _REACH)
         )
-        # Race kept: first candidate only is 33% larger on majority (n=8,10), 14-20% on
-        # threshold-3, 15% on a 3-block pool (unlambda); random tables 2%.
+        # Race kept: against the first candidate only it saves 33% on majority
+        # (n=8,10), 11-15% on threshold-3, 2% on random tables.
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
     body = tree(0, diagram.ids[0][0], None)

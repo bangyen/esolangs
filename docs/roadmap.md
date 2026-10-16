@@ -58,16 +58,14 @@ oracle when it goes.
   between lanes needs no retry but costs 32-64% area; choosing a start colour
   without it is itself a scan.
 - **Dig:** `_layout.py` rejects a finished sharing layout on an
-  `AssertionError`. After `bridge_entries` the rejection is live: at n=12
-  (random 64-bit leaf classes mixed with constant leaves) it fired in 55 of
-  ~300 layouts, a `_chain_lanes` corridor crossing another class's lane arrow
-  or a branch `$`; nothing bounds a chain's line against foreign cells.
-  Compaction's check never fired (n<=12, ~5,600 layouts) but no proof covers
-  it: a digit beside a reader across a deleted row is unargued. Proved:
-  compaction cannot break a corridor; lane arrows (not digits) cannot change
-  a reader's operand.
-- **Unpriced races:** Underload, Unlambda and False pick a repeated-subtree
-  carry by trial emission (2060def83) with no saving cited. Sbleq, Subleq,
-  Home Row, EGL, Dimensional, Taglate, ArrowQueue, Flowchart and Alight still
-  race a `keep_constant_*` legacy build; the eleven removed in 43042910e
-  never won.
+  `AssertionError`. After `bridge_entries` the rejection is live: at n=12 (300
+  tables of random 64-bit leaf classes mixed with constant leaves, plus the
+  repro) it fired in 131 of 602 lane and parallel layouts, a `_chain_lanes`
+  corridor crossing another class's lane arrow or a branch `$`. A per-class
+  gutter line (2026-10-16, unmerged) closes it by construction (0 fires; a
+  no-gutter mutant re-fires 136) but recovers no sharing (26 to 24 lane
+  layouts) and grows shared ones ~5%: a gutter spans the grid, so a crossed
+  leaf or constant read row kills the layout. Compaction's check never fired
+  (n<=12, ~5,600 layouts) but no proof covers it: a digit beside a reader
+  across a deleted row is unargued. Proved: compaction cannot break a
+  corridor; lane arrows (not digits) cannot change a reader's operand.
