@@ -89,7 +89,9 @@ def _cut(word: str, limit: int) -> list[str]:
     return out
 
 
-#: Piece limits tried; a node body cannot wrap, so it bounds the side.
+#: Piece limits tried; a node body cannot wrap, so it bounds the side.  Every
+#: limit from 3 up gives a side 2.2% smaller on average (5.4% at most) over 50
+#: tables at n=2..6, at 29x the time.
 _LIMITS = (16, 24, 32, 48, 64, 96)
 
 
