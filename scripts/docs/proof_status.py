@@ -12,7 +12,7 @@ from .anchors import anchors
 ROOT = Path(__file__).resolve().parents[2]
 
 
-MANIFEST = ROOT / "src" / "esolangs" / "proof_status.toml"
+MANIFEST = ROOT / "ledgers" / "proof_status.toml"
 
 
 @dataclass(frozen=True)

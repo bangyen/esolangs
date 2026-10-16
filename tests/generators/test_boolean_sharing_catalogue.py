@@ -6,7 +6,7 @@ are exempt and why.  That record was prose checked by hand, so a new or
 changed tree-shaped generator could drop its sharing silently.  This pins the
 presence proxy: a tree-shaped boolean generator references a canonical sharing
 helper, a declared language-local one, or is exempt with a stated reason.  The
-exceptions live in ``tests/support/fixtures/generator_catalogue.toml``
+exceptions live in ``ledgers/generator_catalogue.toml``
 ``[sharing]`` so this file names no language; the measured bounds are pinned
 by the generators' own tests.
 """
@@ -23,7 +23,7 @@ from tests.generators.source_support import generator_symbols as _source
 #: The canonical helper a generator's module references to share subtrees.
 CANONICAL = ("subtree_ids", "_residual_ids", "SubtreeDiagram")
 
-CATALOGUE = Path(__file__).parents[1] / "support/fixtures" / "generator_catalogue.toml"
+CATALOGUE = Path(__file__).parents[2] / "ledgers" / "generator_catalogue.toml"
 
 
 def _catalogue() -> tuple[dict[str, str], dict[str, str]]:

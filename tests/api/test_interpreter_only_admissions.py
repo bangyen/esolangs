@@ -13,9 +13,7 @@ from tests.support.pick import languages
 from tests.support.samples import SAMPLES
 
 _CENSUS = tomllib.loads(
-    (Path(__file__).parents[1] / "support/fixtures/curation.toml").read_text(
-        encoding="utf-8"
-    )
+    (Path(__file__).parents[2] / "ledgers/curation.toml").read_text(encoding="utf-8")
 )["languages"]
 
 
@@ -24,7 +22,7 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
     unrecorded = sorted(set(LANGUAGES) - set(_CENSUS))
     assert not unrecorded, f"no admission record for {unrecorded}; {CHECK}"
     stale = sorted(set(_CENSUS) - set(LANGUAGES))
-    assert not stale, f"remove {stale} from tests/support/fixtures/curation.toml"
+    assert not stale, f"remove {stale} from ledgers/curation.toml"
     for name, row in _CENSUS.items():
         if row.get("unassessed"):
             continue  # offline; `finish` asks for the count before merging

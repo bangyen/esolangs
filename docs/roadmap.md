@@ -12,7 +12,7 @@ scaling alone does not prove linearity. Preserve totality, execution, and
 workspace contracts.
 
 The [scaling status](proofs/index.md#scaling-status) records current verdicts.
-Edit `src/esolangs/proof_status.toml` and run
+Edit `ledgers/proof_status.toml` and run
 `python scripts/docs/generate.py docs` to update it. Proved limits remain
 evidence, not optimization tasks.
 

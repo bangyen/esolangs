@@ -248,7 +248,7 @@ def refresh_main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("tests/support/fixtures/slow_durations.json"),
+        default=Path("ledgers/slow_durations.json"),
     )
     parser.add_argument("--marker", default="slow and not weekly")
     parser.add_argument("--shards", type=int, default=4)

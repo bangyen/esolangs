@@ -518,7 +518,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 <!-- CURATION-CENSUS:START -->
 
-The 2026-10-06 census (`tests/support/fixtures/curation.toml`) records each
+The 2026-10-06 census (`ledgers/curation.toml`) records each
 language's backlinks and route: 21 clear the fame gate
 and 67 are first implementations.
 

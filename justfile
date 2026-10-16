@@ -98,7 +98,7 @@ benchmark language table *args:
     {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
 
 # Every language on 2-, 3- and 4-input tables, compared exactly against
-# tests/support/fixtures/generator_sizes.json.  Pass --update to re-record a change
+# ledgers/generator_sizes.json.  Pass --update to re-record a change
 # so the diff carries it.  Also checked in CI.
 # check emitted sizes and step counts against the committed baseline
 sizes *args:

@@ -67,6 +67,7 @@ axes never remove a language; a stalled row stays open on the
 | `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures and examples |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | shared contracts, infrastructure and proof runners |
+| `ledgers/` | cross-language records: proof status, curation, catalogues, size and timing baselines |
 
 The registry connects the API and CLI to generators and interpreters:
 
@@ -255,7 +256,7 @@ Judge a module by what the language does not demand.
 1. `just new-language "Name" --category tape_based` (the matching category;
    `--interpreter-only` for a fame admission) writes the interpreter,
    generator and test stubs, and records the language as
-   `{ unassessed = true }` in `tests/support/fixtures/curation.toml`. Replace
+   `{ unassessed = true }` in `ledgers/curation.toml`. Replace
    the placeholder semantics and tests.
 2. `just check-language "Name"` lists every integration step still missing,
    each with the file and entry to add: registry, exports, contract,
@@ -298,7 +299,7 @@ asks for and every test file `tests/api/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it
 imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
-prose entries, regenerates, lowers `tests/support/fixtures/coupling.toml`, and
+prose entries, regenerates, lowers `ledgers/coupling.toml`, and
 lists the mentions left to edit by hand (display name and aliases, quoted
 ids, dotted module paths), each labelled with the edit it needs -- a
 runnable example, prose, or a comment. brainfuck is the reference language
@@ -309,7 +310,7 @@ A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
 keys by a language's name (a list of names in a shared test, a branch on
 an id) is coupling, and `tests/api/test_language_coupling.py` holds each
-file's count of them to `tests/support/fixtures/coupling.toml`, which only goes
+file's count of them to `ledgers/coupling.toml`, which only goes
 down. Put such a fact on `Language`, or the test in the language's own
 test file under `src/esolangs/languages/<id>/tests/`: `test_<id>.py` for
 its interpreter, `test_boolean_<id>.py` for its generator, and

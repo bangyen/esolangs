@@ -4,7 +4,7 @@ A language should be removable by deleting its files.  Each mention of it
 elsewhere -- a string equal to its name or id, an import of its modules, an
 attribute named after them, a docstring or comment that cites it as an
 example -- is coupling that ``remove`` has to chase, so
-``tests/support/fixtures/coupling.toml`` records how many each file holds.  The
+``ledgers/coupling.toml`` records how many each file holds.  The
 counts only go down: a new per-language table belongs on the language's
 ``LANGUAGE`` or in its own test file, and a file that sheds mentions
 lowers its count.
@@ -26,7 +26,7 @@ from esolangs.registry import LANGUAGES, Language
 from tests.support.reference import REFERENCE
 
 ROOT = Path(__file__).resolve().parents[2]
-ALLOWED = ROOT / "tests/support/fixtures/coupling.toml"
+ALLOWED = ROOT / "ledgers/coupling.toml"
 #: The language shared tests use as their example: naming it is not coupling.
 TREES = ("src/", "tests/", "scripts/")
 #: Files ``new_language.py remove`` edits, or its own test, which names
@@ -270,7 +270,9 @@ def lower_recorded() -> None:
         path: min(count, now[path]) for path, count in allowed.items() if path in now
     }
     body = [f'"{path}" = {count}' for path, count in sorted(kept.items())]
-    ALLOWED.write_text("\n".join([*header, "", *body]) + "\n", encoding="utf-8")
+    # No blank separator without a body: end-of-file-fixer would strip it.
+    lines = [*header, "", *body] if body else header
+    ALLOWED.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 @pytest.mark.medium
@@ -298,5 +300,5 @@ def test_the_recorded_counts_only_go_down() -> None:
     }
     assert not shrunk, (
         "fewer mentions than recorded (now, recorded): lower them in "
-        f"tests/support/fixtures/coupling.toml: {shrunk}"
+        f"ledgers/coupling.toml: {shrunk}"
     )

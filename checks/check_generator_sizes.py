@@ -41,7 +41,7 @@ from benchmark import evidence_session, measure  # noqa: E402
 import esolangs  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
 
-BASELINE = REPO_ROOT / "tests/support/fixtures/generator_sizes.json"
+BASELINE = REPO_ROOT / "ledgers/generator_sizes.json"
 
 
 def benchmark_tables() -> tuple[str, ...]:

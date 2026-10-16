@@ -456,7 +456,7 @@ _LANGUAGE_SUPERLINEAR_SCALING = {
     # ``tests/proofs`` to parse it with.
     row["generator"]
     for row in tomllib.loads(
-        (Path(esolangs.__file__).parent / "proof_status.toml").read_text("utf-8")
+        (Path(__file__).parents[2] / "ledgers/proof_status.toml").read_text("utf-8")
     )["ledger"]
     if row["scaling"].startswith("lower bound:")
 }

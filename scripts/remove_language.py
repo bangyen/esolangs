@@ -504,7 +504,7 @@ def _declaring_module(lang: Language) -> str | None:
 
 def _owned_evidence(name: str) -> set[Path]:
     """Return standalone proof documents cited exclusively by this language."""
-    manifest = ROOT / "src/esolangs/proof_status.toml"
+    manifest = ROOT / "ledgers/proof_status.toml"
     if not manifest.is_file():
         return set()
     data = tomllib.loads(manifest.read_text(encoding="utf-8"))
@@ -922,7 +922,7 @@ def remove(name: str) -> list[str]:
         if path.is_file() and path.name != "CHANGELOG.md":
             _drop_doc_entries(path, name)
     _drop_from_series(ROOT / "docs/proofs/index.md", name, "keeps? no tree route")
-    tuning = ROOT / "tests/support/fixtures/deep_arities.toml"
+    tuning = ROOT / "ledgers/deep_arities.toml"
     tuning.write_text(
         "".join(
             line
@@ -1113,10 +1113,10 @@ def _prune_fixtures(name: str, names: set[str], paths: set[str]) -> None:
             ]
         return node
 
-    _drop_json(ROOT / "tests/support/fixtures/generator_sizes.json", prune)
+    _drop_json(ROOT / "ledgers/generator_sizes.json", prune)
     # Timing snapshots keep one entry per pytest node ID; drop the removed
     # language's parametrized rows and its own deleted test files.
-    timings = ROOT / "tests/support/fixtures/slow_durations.json"
+    timings = ROOT / "ledgers/slow_durations.json"
 
     def drop_timings(node: object) -> object:
         if not isinstance(node, dict):
@@ -1130,9 +1130,9 @@ def _prune_fixtures(name: str, names: set[str], paths: set[str]) -> None:
     if timings.is_file():
         _drop_json(timings, drop_timings)
     for relative in (
-        "tests/support/fixtures/curation.toml",
-        "src/esolangs/proof_status.toml",
-        "tests/support/fixtures/generator_catalogue.toml",
+        "ledgers/curation.toml",
+        "ledgers/proof_status.toml",
+        "ledgers/generator_catalogue.toml",
     ):
         _drop_toml(ROOT / relative, name)
 

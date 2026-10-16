@@ -40,8 +40,8 @@ def main() -> int:
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-CURATION = ROOT / "tests" / "support/fixtures" / "curation.toml"
-CATALOGUE = ROOT / "tests" / "support/fixtures" / "generator_catalogue.toml"
+CURATION = ROOT / "ledgers" / "curation.toml"
+CATALOGUE = ROOT / "ledgers" / "generator_catalogue.toml"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -377,8 +377,7 @@ def render_curation_census_section() -> str:
     fame = [entry["backlinks"] >= 60 for entry in census["languages"].values()]
     return "\n".join(
         [
-            f"The {census['checked']} census (`tests/support/fixtures/curation.toml`)"
-            " records each",
+            f"The {census['checked']} census (`ledgers/curation.toml`) records each",
             f"language's backlinks and route: {fame.count(True)} clear the fame gate",
             f"and {fame.count(False)} are first implementations.",
         ]
