@@ -145,9 +145,11 @@ def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     """
     n = len(perm)
     forms = []
+    # The bank: random 0%, majority +14.1% at n=10; per-level: parity +40-130%.
     plans = dict.fromkeys(
         [(repeated_blocks(table), ()), repeated_bank(table, ranked=False)]
     )
+    # Paired roots: random +15.9/+20.5/+23.2% at n=9/10/11 (12 tables), 0% below 8.
     paired = _paired_roots(table)
     for band in BANDS if n >= WIDE_FROM else BANDS[:1]:
         forms.append(_smallfuck_tree(table, perm, band=band))
