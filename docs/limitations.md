@@ -153,6 +153,28 @@ Each missed the 10% bar:
   window plus 14 hubs alone takes 5,155 main-line cells, leaving the line near
   7,200 against 6,562 before the third-cell fold and per-state transitions.
 
+  Decoder limits (2026-10-16, CP-SAT, scratch):
+
+  - No decoder reads only the `b` cell and the shared cell. Seven blocks of
+    seven cannot cover every pair of the 16 two-input leaves: `C(16,7,2) > 7`
+    (infeasible; 8 is feasible).
+  - Eight meanings per cell are infeasible for odd-address read offsets
+    1-11, 13, 15, 17, 21, 25, 31 and 47, so cells cap at seven.
+  - A three-read decoder exists. After the address, read the next input `c`.
+    For `c = 0` the label (`0 1 x n`) is a 7x7 table of (own cell, shared
+    cell). For `c = 1`, (own, shared) picks one of six contexts, and the other
+    cell's meaning picks the label. All 256 targets are covered; corrupting one
+    entry leaves 246. That is 22 dispatch blocks.
+  - A concrete third map: inputs 13-14 pick a low digit `j`, which is set to
+    its missing value, and group `j` moves to the top digit as one of 1..8.
+    For `j = 1`, swapping 1 and 2 in trit 0 of digit 0 stops one prefix
+    wrapping to cell 0. It gives 49,152 cells, no collision and 9,897 free
+    (model). The third cell's parity varies with the moved digit, while the
+    two `b` cells always have opposite parity.
+
+  Navigation, not ops, is sixteen's cost: of 3,618 code cells, 427 are `p`,
+  `*`, `/` or `i`, and 3,191 are `o` or `j` (`o` 2,558, `j` 633).
+
   Counting bounds each family independently of mixer quality:
 
   - stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;

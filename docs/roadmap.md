@@ -22,8 +22,9 @@ evidence, not optimization tasks.
 
 - **Malbolge:** settle generation at seventeen inputs and the first
   unreachable arity. Fixed-address native capture has passed scratch controls;
-  a cheaper sixteen-readout layout is checked but unbuilt, and label dispatch
-  is the cost to cut ([limitations](limitations.md)); see
+  a cheaper sixteen-readout layout and a three-read decoder are checked but
+  unbuilt, and navigation in label dispatch is the cost to cut
+  ([limitations](limitations.md)); see
   [the construction summary](proofs/index.md#malbolge-bound).
 - **Vandevelo:** settle generation time and structural output scaling via
   the `O(log n)` DNF-of-parities gap; see [the audit](proofs/index.md#vandevelo-identifier-and-fallback-audit).
