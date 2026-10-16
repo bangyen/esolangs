@@ -16,13 +16,10 @@ Decisions:
 
 from itertools import groupby
 
-from esolangs.generation.constant_projection import (
-    balanced_projection,
-    projected_inputs,
-)
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    essential_inputs,
     read_at,
     subtree_ids,
 )
@@ -111,12 +108,10 @@ def unsquare(truth_table: str) -> str:
     return _program(truth_table, share=True)
 
 
-def _program(
-    truth_table: str, *, share: bool, keep_constant_input: bool = False
-) -> str:
+def _program(truth_table: str, *, share: bool) -> str:
     """Return the lookup, optionally sharing its push initializer."""
     n = _validate_truth_table(truth_table)
-    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
+    used = essential_inputs(truth_table, n)
     reduced = read_at(truth_table, used, n)
     bits = reduced[::-1]
     cells, _ = _runs(bits)
@@ -135,15 +130,6 @@ def _program(
     return cells + "".join(blocks) + "A" + "+" * (_ASCII_ZERO // 2) + "Po"
 
 
-def balance_unsquare(truth_table: str, default: str) -> str:
-    """Retain the unshared initializer when its wrapped shape is better."""
-    return balanced_projection(
-        default,
-        _program(truth_table, share=False, keep_constant_input=True),
-        "unsquare",
-    )
-
-
 LANGUAGE = Language(
     "Unsquare",
     "unsquare",
@@ -153,5 +139,4 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    balance=balance_unsquare,
 )

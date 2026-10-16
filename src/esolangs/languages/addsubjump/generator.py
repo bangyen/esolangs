@@ -16,7 +16,6 @@ Decisions:
     them, so equal cells cannot share a word and a constant run costs a cell each.
 """
 
-from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -27,7 +26,7 @@ from esolangs.generation.helpers import (
     input_weights,
     stored_inputs,
 )
-from esolangs.generation.wrap import balance_program, wrap_grid
+from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -275,14 +274,22 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
 
 def balance_addsubjump(table: str, default: str) -> str:
     """Keep the former full packed layout among the balanced candidates."""
-    if len(table) <= 16 or all(input_weights(table, _validate_truth_table(table))[0]):
+    if (
+        len(table) <= 16
+        or len(set(table)) == 1
+        or all(input_weights(table, _validate_truth_table(table))[0])
+    ):
         return balance_program(default, "addsubjump")
     legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
     if len(table) == 32:
         legacy = min(
             legacy, _addsubjump_ordered(table, tuple(range(5)), shared=True), key=len
         )
-    return balanced_projection(default, legacy, "addsubjump")
+    return min(
+        balance_program(default, "addsubjump"),
+        balance_program(legacy, "addsubjump"),
+        key=balance_score,
+    )
 
 
 def _addsubjump_candidate(truth_table: str, perm: tuple[int, ...]) -> str:

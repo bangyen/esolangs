@@ -88,16 +88,3 @@ def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
         assert (machine.read, machine.answer, machine.program) == (n + 1, bit, "0")
         machine.step()
         assert io.getvalue() == bit
-
-
-# n=2 is the smallest constant where the old walk balances strictly better.
-@pytest.mark.parametrize("bit", "01")
-def test_balancing_retains_legacy_constant_walk(bit: str) -> None:
-    from esolangs.languages.bitwise_cyclic_tag.generator import PAIR, _program
-    from tests.support.generator_support import assert_constant_balanced_shape
-
-    table = bit * 4
-    legacy = _program(table, keep_constant_walk=True)
-    assert_constant_balanced_shape(
-        "Bitwise Cyclic Tag", "bitwise_cyclic_tag", table, legacy, PAIR
-    )

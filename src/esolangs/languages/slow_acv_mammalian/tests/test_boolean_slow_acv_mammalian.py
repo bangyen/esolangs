@@ -62,7 +62,7 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
 ) -> None:
     import esolangs
     from esolangs.generation.wrap import balance_program, balance_score
-    from esolangs.languages.slow_acv_mammalian.generator import _program
+    from esolangs.languages.slow_acv_mammalian.generator import _unprojected_255
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
     from esolangs.vm import run_until_halt_or_cycle
@@ -73,9 +73,7 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
         for row in range(1 << inputs)
     )
     settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
-    legacy = _program(
-        table, cell_modulus=255, io_modulus=io_modulus, keep_ignored_inputs=True
-    )
+    legacy = _unprojected_255(table, inputs, io_modulus)
     program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
     assert len(program) <= len(legacy)
     if inputs >= 3 or io_modulus == 256:
@@ -274,11 +272,7 @@ class TestSlowAcvMammalian:
         """The table's stride is a leaf, and a leaf does not read the sum."""
         from esolangs.languages.slow_acv_mammalian.generator import _program
 
-        # Constants bypass this dispatch; compare its two leaf digits directly.
-        sizes = {
-            len(_program(table, keep_constant_input=True))
-            for table in ("0000", "1111", "0110", "1001", "0111")
-        }
+        sizes = {len(_program(table)) for table in ("0110", "1001", "0111")}
         assert len(sizes) == 1
 
 
@@ -897,15 +891,11 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> None:
     import esolangs
-    from esolangs.languages.slow_acv_mammalian.generator import _program
     from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
     program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
-    assert len(program) < len(
-        _program(table, cell_modulus=cell, io_modulus=io, keep_constant_input=True)
-    )
     assert program.split().count("ACCEPT") == 8
     assert "LEAPFROG" not in program
     assert (

@@ -26,29 +26,13 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
-    from esolangs.languages.bit_tilde.generator import _program
     from tests.support.generator_support import assert_shared_program
 
     language = "bit~"
     table = bit * 256
-    plain = _program(table, keep_constant_input=True)
     commands = 7 * 256 + 17 * 8 + 92
 
     def workspace(_p):
         return 2 * 256 + 49 + (553).bit_length() + (1498).bit_length() + 4
 
-    assert_shared_program(language, table, plain, commands, workspace)
-
-
-# n=1 and 11 bound the arity range; the rest are the sizes where the
-# legacy layout strictly beats the default (what retention exists for).
-@pytest.mark.parametrize("n", [1, 3, 11])
-@pytest.mark.parametrize("bit", "01")
-def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
-    from esolangs.languages.bit_tilde.generator import _program
-    from tests.support.generator_support import assert_constant_balanced_shape
-
-    table = bit * (1 << n)
-    assert_constant_balanced_shape(
-        "bit~", "bit_tilde", table, _program(table, keep_constant_input=True)
-    )
+    assert_shared_program(language, table, None, commands, workspace)

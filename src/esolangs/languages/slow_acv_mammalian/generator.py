@@ -29,14 +29,12 @@ Decisions:
 
 from collections.abc import Sequence
 
-from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     same_token_layout,
 )
-from esolangs.generation.wrap import balance_program
 from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 from esolangs.languages.slow_acv_mammalian._sums import (
@@ -673,36 +671,34 @@ def _program(
     *,
     cell_modulus: int = DEFAULT_MODULI.cell_modulus,
     io_modulus: int = DEFAULT_MODULI.io_modulus,
-    keep_constant_input: bool = False,
-    keep_ignored_inputs: bool = False,
 ) -> str:
     """Build the dispatch, optionally retaining constant-input weights."""
     moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
-    if not keep_constant_input and len(set(truth_table)) == 1:
+    if len(set(truth_table)) == 1:
         return _constant_read(truth_table[0], n, moduli.cell_modulus)
     if moduli.cell_modulus == 255:
-        return _program_255(
-            truth_table, n, moduli.io_modulus, keep_ignored_inputs=keep_ignored_inputs
-        )
+        return _program_255(truth_table, n, moduli.io_modulus)
     return _program_256(truth_table, n, moduli.io_modulus)
 
 
-def _program_255(
-    truth_table: str, n: int, io_modulus: int, *, keep_ignored_inputs: bool
-) -> str:
+def _unprojected_255(truth_table: str, n: int, io_modulus: int) -> str:
+    """Cell modulus 255 over every input: the chain, or a tree below break-even."""
+    if n >= _CHAIN_MIN_INPUTS[io_modulus]:
+        return compact_chain(truth_table, n, modulus=255, io_modulus=io_modulus)
+    return decision_tree(truth_table, n, io_modulus=io_modulus)
+
+
+def _program_255(truth_table: str, n: int, io_modulus: int) -> str:
     """Cell modulus 255: a coprime-array chain, or a tree below its break-even.
 
     A table with ignored inputs also races the chain projected onto its
     essential inputs, keeping the shorter; one ignored input saves 4.6% at
     n=8 and 11.6% at n=10 (I/O 255).
     """
-    if n >= _CHAIN_MIN_INPUTS[io_modulus]:
-        legacy = compact_chain(truth_table, n, modulus=255, io_modulus=io_modulus)
-    else:
-        legacy = decision_tree(truth_table, n, io_modulus=io_modulus)
+    legacy = _unprojected_255(truth_table, n, io_modulus)
     used = essential_inputs(truth_table, n)
-    if keep_ignored_inputs or not used or len(used) == n:
+    if not used or len(used) == n:
         return legacy
     projected = compact_chain(
         truth_table, n, modulus=255, io_modulus=io_modulus, project_inputs=True
@@ -808,45 +804,11 @@ def _constant_read(bit: str, inputs: int, modulus: int) -> str:
     )
 
 
-def balance_slow_acv_mammalian(
-    truth_table: str,
-    default: str,
-    *,
-    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
-    io_modulus: int = DEFAULT_MODULI.io_modulus,
-) -> str:
-    """Retain the legacy weighted dispatch when its layout balances better."""
-    if len(set(truth_table)) > 1:
-        if cell_modulus == 255:
-            return balanced_projection(
-                default,
-                _program(
-                    truth_table,
-                    cell_modulus=cell_modulus,
-                    io_modulus=io_modulus,
-                    keep_ignored_inputs=True,
-                ),
-                "slow_acv_mammalian",
-            )
-        return balance_program(default, "slow_acv_mammalian")
-    return balanced_projection(
-        default,
-        _program(
-            truth_table,
-            cell_modulus=cell_modulus,
-            io_modulus=io_modulus,
-            keep_constant_input=True,
-        ),
-        "slow_acv_mammalian",
-    )
-
-
 LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
     "slow_acv_mammalian",
     category="tape_based",
     boolean=slow_acv_mammalian,
-    balance=balance_slow_acv_mammalian,
     dialect=MammalianModuli,
     dialect_values={"cell_modulus": MODULI, "io_modulus": MODULI},
     # Not a tree: a branch-free chain into a flat leaf table.

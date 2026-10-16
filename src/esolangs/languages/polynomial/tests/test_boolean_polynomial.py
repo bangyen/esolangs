@@ -146,7 +146,6 @@ class TestPolynomial:
                 table = format(value, f"0{1 << n}b")
                 tree = _polynomial_tree(table)
                 if len(set(table)) == 1:
-                    assert _polynomial_hybrid(table, n, keep_root_park=True) == tree
                     tree = tree[:-1]  # no ancestor tests a constant root's park
                 assert _polynomial_hybrid(table, n) == tree, table
                 machine = _polynomial_hybrid(table, 0)
@@ -311,40 +310,13 @@ def test_generator_restrictions_name_both_budgets() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_ends_after_consuming_the_inputs(bit) -> None:
-    from esolangs.languages.polynomial.generator import (
-        _polynomial_assemble,
-        _polynomial_hybrid,
-    )
     from tests.support.generator_support import assert_shared_program
 
     n = 8
     table = bit * (1 << n)
-    legacy = _polynomial_assemble(
-        _polynomial_hybrid(bit * 2, 1, keep_root_park=True) + [[0, 2]] * (n - 1)
-    )
     states = max(min(2**k, 2 ** (2 ** (n - k))) for k in range(n + 1))
     bound = (min(10 * (1 << n) - 7, 1934) + 10).bit_length() + 1
     bound += (
         max((n + 3).bit_length(), (49 * (states - 1)).bit_length()) + 2 * n.bit_length()
     )
-    assert_shared_program("Polynomial", table, legacy, n + 2, lambda _program: bound)
-
-
-@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
-@pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_retains_the_previous_balanced_polynomial(n, bit) -> None:
-    from esolangs.languages.polynomial.generator import (
-        _polynomial_assemble,
-        _polynomial_hybrid,
-    )
-    from tests.support.generator_support import assert_constant_balanced_shape
-
-    table = bit * (1 << n)
-    legacy = min(
-        _polynomial_assemble(_polynomial_hybrid(table, n, keep_root_park=True)),
-        _polynomial_assemble(
-            _polynomial_hybrid(bit * 2, 1, keep_root_park=True) + [[0, 2]] * (n - 1)
-        ),
-        key=len,
-    )
-    assert_constant_balanced_shape("Polynomial", "polynomial", table, legacy)
+    assert_shared_program("Polynomial", table, None, n + 2, lambda _program: bound)

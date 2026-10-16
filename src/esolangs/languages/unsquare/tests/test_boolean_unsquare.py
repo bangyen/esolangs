@@ -89,20 +89,3 @@ def test_shared_push_body_executes_within_ledger() -> None:
         4 * 256 + 79 * 8 + 22,
         lambda p: 256 + 12 + len(p).bit_length() + (len(p) - 33).bit_length() + 8,
     )
-
-
-# n=1 and 11 bound the arity range; the rest are the sizes where the
-# legacy layout strictly beats the default (what retention exists for).
-@pytest.mark.parametrize("n", [1, 5, 11])
-@pytest.mark.parametrize("bit", "01")
-def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
-    from esolangs.languages.unsquare.generator import _program
-    from tests.support.generator_support import assert_constant_balanced_shape
-
-    table = bit * (1 << n)
-    assert_constant_balanced_shape(
-        "Unsquare",
-        "unsquare",
-        table,
-        _program(table, share=True, keep_constant_input=True),
-    )

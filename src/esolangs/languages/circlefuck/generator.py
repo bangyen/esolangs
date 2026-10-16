@@ -14,13 +14,12 @@ Decisions:
 
 from itertools import pairwise
 
-from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
-from esolangs.generation.wrap import balance_program, wrap_chars
+from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -45,11 +44,11 @@ def circlefuck(truth_table: str) -> str:
     return _program(truth_table)
 
 
-def _program(truth_table: str, *, keep_constant_index: bool = False) -> str:
+def _program(truth_table: str) -> str:
     """Build the deleting index or a read-and-print literal constant."""
     _validate_truth_table(truth_table)
     n = len(truth_table).bit_length() - 1
-    if len(set(truth_table)) == 1 and not keep_constant_index:
+    if len(set(truth_table)) == 1:
         # Reads rewrite cell zero after its instruction has run. The final
         # < wraps to the literal after @, clear of every rewritten cell.
         return "," * n + "<.@" + truth_table[0]
@@ -66,7 +65,6 @@ def _program(truth_table: str, *, keep_constant_index: bool = False) -> str:
             continue
         prog.append("<" * (at - places[0]))
         for below, here in pairwise(places):
-            # Horner: double the bank onto the next bit's cell.
             gap = here - below
             prog.append(f"[-{'>' * gap}++{'<' * gap}]{'>' * gap}")
         at = places[-1]
@@ -79,17 +77,8 @@ def _program(truth_table: str, *, keep_constant_index: bool = False) -> str:
     # ``@``, so entry 0 abuts the index cells, which ``<`` reaches from cell 0
     # (the tape is a ring).  Only the table grows.
     prog.append(read_at(truth_table, essential, n)[::-1])
-    prog.append("0" * cells)  # the index cells, cleared by the leading `[-]`s
+    prog.append("0" * cells)
     return "".join(prog)
-
-
-def balance_circlefuck(table: str, default: str) -> str:
-    """Keep the former constant index when it gives a better wrapped shape."""
-    if len(set(table)) > 1:
-        return balance_program(default, "circlefuck")
-    return balanced_projection(
-        default, _program(table, keep_constant_index=True), "circlefuck"
-    )
 
 
 def _deleter(digit: int) -> str:
@@ -109,7 +98,6 @@ LANGUAGE = Language(
     "circlefuck",
     category="tape_based",
     boolean=circlefuck,
-    balance=balance_circlefuck,
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(

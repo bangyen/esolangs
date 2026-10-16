@@ -27,7 +27,6 @@ Decisions:
 from collections.abc import Iterator
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -308,9 +307,7 @@ def _polynomial_dag(truth_table: str, park: int | None = None) -> list[list[int]
     return instrs
 
 
-def _polynomial_hybrid(
-    truth_table: str, k: int, *, keep_root_park: bool = False
-) -> list[list[int]]:
+def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
     """Emit ``k`` tree levels above a state machine per surviving residual.
 
     The whole family: ``k == n`` is the plain tree, ``k == 0`` one machine
@@ -341,7 +338,7 @@ def _polynomial_hybrid(
                 instrs.append([0, 2])
             # Only an ancestor tests the parked value. Removing the root
             # store saves 13.5% on both eight-input constants (750 -> 649 chars).
-            if bit or keep_root_park:
+            if bit:
                 instrs.append([-(_ASCII_ZERO + 1 + park), 1])
             return
         if bit == k:
@@ -362,24 +359,6 @@ def _polynomial_hybrid(
     return instrs
 
 
-def balance_polynomial(table: str, default: str) -> str:
-    """Retain the old root parking store when its polynomial balances better."""
-    if len(set(table)) > 1:
-        return balance_program(default, "polynomial")
-    n = _validate_truth_table(table)
-    # Constants previously chose between the full root and a one-input root
-    # followed by the trailing reads; every hybrid depth gives the same leaf.
-    legacy = min(
-        _polynomial_assemble(_polynomial_hybrid(table, n, keep_root_park=True)),
-        _polynomial_assemble(
-            _polynomial_hybrid(table[0] * 2, 1, keep_root_park=True)
-            + [[0, 2]] * (n - 1)
-        ),
-        key=len,
-    )
-    return balanced_projection(default, legacy, "polynomial")
-
-
 LANGUAGE = Language(
     "Polynomial",
     "polynomial",
@@ -390,7 +369,6 @@ LANGUAGE = Language(
     "table dependent",
     boolean=polynomial,
     documented_sizes=(1_745_528, 5_458_693, 3.1),
-    balance=balance_polynomial,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

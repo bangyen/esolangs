@@ -24,8 +24,6 @@ def _rows(program: str, table: str, n: int) -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> None:
     import esolangs
-    from esolangs.generation.wrap import balance_program, balance_score
-    from esolangs.languages.circlefuck.generator import _program
     from esolangs.languages.circlefuck.interpreter import _Machine
     from esolangs.runtime._evaluate import _evaluate
     from esolangs.runtime.io import ScriptedIO
@@ -34,15 +32,9 @@ def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> Non
     program = esolangs.generate("Circlefuck", table)
     assert program == "," * n + "<.@" + bit
     assert len(program) == n + 4
-    legacy = _program(table, keep_constant_index=True)
-    assert len(program) < len(legacy)
     for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
         wrapped = esolangs.generate("Circlefuck", table, **options)
         assert _evaluate("Circlefuck", wrapped, inputs=n) == table
-        if options.get("balance"):
-            assert balance_score(wrapped) <= balance_score(
-                balance_program(legacy, "circlefuck")
-            )
     for row in range(1 << n):
         io = ScriptedIO(format(row, f"0{n}b") + "0")
         machine = _Machine(program, io)
