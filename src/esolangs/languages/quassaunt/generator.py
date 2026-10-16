@@ -17,7 +17,8 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -67,6 +68,49 @@ def quassaunt(truth_table: str) -> str:
     return " ".join([*nodes.values(), start])
 
 
+def _cut(word: str, limit: int) -> list[str]:
+    """Cut a ``@@`` word at ``?`` into ``%%Concatenate``-joined pieces."""
+    if not word.startswith("@@") or len(word) <= limit:
+        return [word]
+    parts = word[2:].split("?")
+    pieces: list[str] = []
+    here = ""
+    for i, part in enumerate(parts):
+        piece = part + "?" * (i < len(parts) - 1)
+        if here and len(here) + len(piece) > limit:
+            pieces.append(here)
+            here = piece
+        else:
+            here += piece
+    pieces.append(here)
+    out = ["@@" + pieces[0]]
+    for piece in pieces[1:]:
+        out += ["@@" + piece, "%%Concatenate"]
+    return out
+
+
+#: Piece limits tried; a node body cannot wrap, so it bounds the side.
+_LIMITS = (16, 24, 32, 48, 64, 96)
+
+
+def _balance(_table: str, default: str) -> str:
+    """The squarest of the whole-word wrap and the cut-body wraps."""
+    words = default.split()
+
+    def laid(tokens: list[str]) -> str:
+        width = balanced_token_width(tokens, " ")
+        return wrap_space_delimited(" ".join(tokens), width)
+
+    best = laid(words)
+    longest = max(map(len, words))
+    for limit in _LIMITS:
+        if limit < longest:
+            candidate = laid([t for w in words for t in _cut(w, limit)])
+            if balance_score(candidate) < balance_score(best):
+                best = candidate
+    return best
+
+
 LANGUAGE = Language(
     "Quassaunt",
     "quassaunt",
@@ -75,4 +119,5 @@ LANGUAGE = Language(
     contract=BooleanContract(input_shape="char_stream"),
     # Whitespace separates words and a word holds none, so break only there.
     wrap=wrap_space_delimited,
+    balance=_balance,
 )
