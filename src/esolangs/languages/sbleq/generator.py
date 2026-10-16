@@ -15,7 +15,6 @@ from esolangs.generation.helpers import (
     in_input_order,
 )
 from esolangs.generation.packed_decoder import (
-    _packed_build,
     _sbleq_constant,
     packed_decoder,
 )
@@ -58,7 +57,7 @@ def _balance(table: str, default: str) -> str:
         else in_input_order(table, _sbleq_hoisted)
     ]
     if large:
-        legacy.append(_packed_build(table, keep_constant_layout=constant))
+        legacy.append(packed_decoder(table, keep_constant_layout=constant))
     old = balance_program(min(legacy, key=len), "sbleq")
     return min(candidate, old, key=balance_score)
 
