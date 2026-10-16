@@ -291,3 +291,67 @@ def test_threshold_proof_executes_wide_inputs() -> None:
     from esolangs.languages.container.tests.proof_container import check_l4
 
     check_l4((7,))
+
+
+def _swept_balance(table: str, default: str) -> str:
+    """The retired balance: narrow at every rule-fit and decimal-budget threshold."""
+    from itertools import pairwise
+
+    from esolangs.generation.helpers import _validate_truth_table, grid_width
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.container.generator import (
+        _TREE_MAX_N,
+        _container_threshold,
+        _narrow_rule_parts,
+        _narrow_rules,
+    )
+
+    n = _validate_truth_table(table)
+    span = grid_width(default)
+    programs = [default]
+    if n <= _TREE_MAX_N:
+        programs.append(_container_threshold(table))
+    thresholds = {1}
+    for program in programs:
+        boundaries = {1, span}
+        boundaries.update(
+            len(str(int(delta))) + 1 + len(condition)
+            for line in program.splitlines()
+            if not line.endswith(":")
+            for delta, condition in [line.split()]
+        )
+        boundaries = {value for value in boundaries if value <= span}
+        for lower, stop in pairwise(sorted(boundaries)):
+            thresholds.add(lower)
+            for part in _narrow_rule_parts(program, lower):
+                if isinstance(part, str):
+                    continue
+                delta, condition = part
+                overhead = len(condition) + 1 + (delta < 0)
+                thresholds.update(
+                    overhead + digits
+                    for digits in range(2, len(str(abs(delta))) + 1)
+                    if lower < overhead + digits < stop
+                )
+    candidates = [default]
+    for width in thresholds:
+        candidates.append(
+            min(
+                (_narrow_rules(program, width) for program in programs),
+                key=lambda text: (grid_width(text), len(text)),
+            )
+        )
+    return min(candidates, key=balance_score)
+
+
+def test_balance_closed_form_is_never_worse_than_the_swept_one() -> None:
+    """Per table, 1..6 inputs: the square-width narrowing scores at most the sweep's."""
+    from esolangs.generation.wrap import balance_score
+
+    rng = random.Random(9)
+    for n in (2, 3, 4, 5, 6):
+        for _ in range(6):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            new = esolangs.generate("Container", table, balance=True)
+            old = _swept_balance(table, esolangs.generate("Container", table))
+            assert balance_score(new) <= balance_score(old), table
