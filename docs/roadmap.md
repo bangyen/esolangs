@@ -54,21 +54,3 @@ oracle when it goes.
 - **Vandevelo:** `_peel.py` is a sampled greedy cover. A deterministic
   axis-cube merge is O(n T) but emits 2.1x the peel's text at n=8 (5.6x on
   n=10 majority).
-- **Piet:** `raster_lookup/packing.py` retries colour phases. A spacer row
-  between lanes needs no retry but costs 32-64% area; choosing a start colour
-  without it is itself a scan. No lane-level rule exists: the winner is the
-  least phase no aligned column forbids (n=2 `0110` and `1001` win 1 and 3 at
-  the same lane, end colour and direction); duplicate lanes average 1.9 tries.
-- **Dig:** `_layout.py` rejects a finished sharing layout on an
-  `AssertionError`. After `bridge_entries` the rejection is live: at n=12 (300
-  tables of random 64-bit leaf classes mixed with constant leaves, plus the
-  repro) it fired in 131 of 602 lane and parallel layouts, a `_chain_lanes`
-  corridor crossing another class's lane arrow or a branch `$`. A per-class
-  gutter line (2026-10-16, unmerged) closes it by construction (0 fires; a
-  no-gutter mutant re-fires 136) but recovers no sharing (26 to 24 lane
-  layouts) and grows shared ones ~5%: a gutter spans the grid, so a crossed
-  leaf or constant read row kills the layout. Compaction is sound by
-  construction: `_compaction_lines` keeps an empty line where a dropped run
-  would seat a digit beside a reader (a mutant without it fires on 54 of 169
-  layouts), and it was already proved unable to break a corridor or let a lane
-  arrow change an operand.

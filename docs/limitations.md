@@ -54,7 +54,12 @@ Text and image-based languages share the same VM and step rules; `RUNNERS`
 describes text bundling only.
 
 - Line retains its graph for repeated generated rows; stepping parses pixels.
-- Piet emits and executes pixels.
+- Piet emits and executes pixels. Its packer tries up to 9 start-colour
+  phases per lane (18 for duplicate lanes), averaging 1.9 tries on duplicates;
+  no lane-level rule picks the phase. The winner is the least phase no aligned
+  column forbids: n=2 `0110` and `1001` win phases 1 and 3 at lane 2 of 6, the
+  same end colour and direction. A spacer row needs no retry but costs 32-64%
+  area.
 
 ## Source positions
 
@@ -283,7 +288,12 @@ requires a construction exemption rather than a sub-gate bound.
 - Dig has 10.9% repeated-node potential at n=5; its admission tests support
   its construction exemption. Its shared pool is 2..10 unique 64-row classes
   indexed by one decimal digit over 2..6 prefix bits; a larger pool needs a
-  multi-digit index.
+  multi-digit index. A finished sharing layout whose `_chain_lanes` corridor
+  crosses another class's lane arrow or branch `$` is rejected and falls back
+  unshared: 131 of 602 lane and parallel layouts at n=12 (random 64-bit leaf
+  classes mixed with constant leaves). A per-class gutter line removes the
+  rejection but shares no more (26 to 24 lane layouts) and grows shared
+  layouts ~5%: a crossed leaf or constant read row kills the gutter.
 - Boolfuck has sub-gate repeated-node potential: 2.3% of emitted size at n=5,
   pinned in `tests/generators/test_boolean_boolfuck.py`.
 - Home Row is a lookup that names no decision-tree node.
