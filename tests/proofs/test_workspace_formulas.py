@@ -225,8 +225,8 @@ _HAND: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
             + bl(n)
         ),
         False,
-        # Eight reaches the AND/XOR gates, admitted from six inputs.
-        (3, 6, 8),
+        # Six to eight reach the AND/XOR gates (docs/proofs/boolfuck-gates.md).
+        (3, 6, 7, 8),
     ),
     "Packlang": (
         lambda n, p: (

@@ -125,12 +125,8 @@ class _GateTree:
         self.ids = subtree_ids(table)
         self.constant = constant_span_test(table)
 
-    # Let M be the sum of the original input-address widths and b=bl(2n).
-    # Read scratch and transient flags need at most M+2 bits. After the
-    # prefix, four gate cells need at most 4b<=M+2 for n>=6. Constant exits
-    # clear x/y before setting R/carrier, adding at most two address bits.
-    # State and input cursor need bl(L)+max(12,b+11)+bl(n), so the total
-    # fits the existing workspace formula, including power-of-two lengths.
+    # Workspace: docs/proofs/boolfuck-gates.md.  After the prefix only x, y,
+    # R and one pending flag can be 1, within the tree's tape bits from n=4.
     def leaf(self, value: int) -> None:
         e = self.e
         e.clear(self.x)
@@ -263,9 +259,9 @@ def normal_gates(table: str) -> str | None:
     # Prefix forks cost at most 15 commands per input. The AND/XOR tails
     # give 2*n*n + 25*n + 26, at most the existing bound exactly when n>=9;
     # below it each table's count is checked.  Native extreme paths attain it
-    # at n=9 (413) and n=16 (938).  The gate cells' 4*bl(2n) bits fit the
-    # cleared input cells' sum of bl(2i) plus 2 from n=6 (16 <= 18), not at
-    # n=5 (16 > 14).  Gates save 9.6%, 13.1% and 23.3% at n=6, 7, 8 (40 tables).
+    # at n=9 (413) and n=16 (938).  Workspace holds from n=4
+    # (docs/proofs/boolfuck-gates.md); gates save 6.6% at n=5, under the 10%
+    # bar, and 9.6%, 13.1%, 23.3% at n=6, 7, 8 (40 tables).
     if n < 6:
         return None
     x = 2 * (n - 2)
