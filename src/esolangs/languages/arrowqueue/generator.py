@@ -49,9 +49,13 @@ _IGNORED = [" " * 5 + TEMPLATE_CHAR]
 #: The same setter one column in, for the narrow paths.
 _IGNORED_NARROW = [" " * 4 + TEMPLATE_CHAR]
 
-#: The cascade's row per table entry: a ring right of the ``+``, or none.  Two
-#: lines per ``1`` and one per ``0``: after the sentinel pop the queue is always
-#: ``R D L U``, which a two-line ring never leaves (brute-forced over the cells).
+#: The cascade's row per table entry.  The IP enters down column 1; each ``+``
+#: there pops a marker D, and the sentinel pop (heading R) leaves the queue
+#: ``R D L U``.  A ``0`` row then exits right off the grid and halts.  A ``1``
+#: row is a 2x3 loop of four ``+`` corners entered heading right: the first
+#: lap pops R, D, L, U at its corners in order while the two ``~`` push R and
+#: L back, after which the top pair bounces forever.  Tested in
+#: ``test_ring_pops_rdlu_then_sustains``.
 _ROWS = {"0": [" +"], "1": [" + +~+", "   +~+"]}
 
 #: A folded tail of ``1`` rows: every marker left laps the ``*`` square back

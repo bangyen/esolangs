@@ -123,3 +123,37 @@ def test_constant_balance_and_setters_off_path(bit: str) -> None:
                 key=balance_score,
             )
             assert balance_score(program) <= balance_score(old)
+
+
+def test_ring_pops_rdlu_then_sustains() -> None:
+    """A ``1`` row pops R, D, L, U at its corners then sustains; a ``0`` row exits."""
+    from esolangs.languages.arrowqueue.generator import _ROWS
+    from esolangs.languages.arrowqueue.interpreter import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    right, down, left, up = range(4)
+
+    def verdict(rows: list[str], queue: tuple[int, ...]) -> str:
+        machine = _Machine(rows)
+        machine.state = (0, 1, down, queue, False)
+        return "0" if run_until_halt_or_cycle(machine) else "1"
+
+    # Entered down column 1 with the sentinel R: the queue is then R D L U.
+    entry = (right, right, down, left, up)
+    machine = _Machine(_ROWS["1"])
+    machine.state = (0, 1, down, entry, False)
+    pops = []
+    for _ in range(12):
+        row, col, _d, queue, _done = machine.state
+        if machine.grid[row][col] == "+":
+            pops.append(((row, col), queue[0]))
+        machine.step()
+    assert pops[:5] == [
+        ((0, 1), right),
+        ((0, 3), right),
+        ((0, 5), down),
+        ((1, 5), left),
+        ((1, 3), up),
+    ]
+    assert verdict(_ROWS["1"], entry) == "1"
+    assert verdict(_ROWS["0"], entry) == "0"
