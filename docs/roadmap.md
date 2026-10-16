@@ -60,9 +60,12 @@ oracle when it goes.
 - **Piet:** `raster_lookup/packing.py` retries colour phases. A spacer row
   between lanes needs no retry but costs 32-64% area; choosing a start colour
   without it is itself a scan.
-- **Dig:** `_layout.py` builds a shared layout, then rejects it on an
-  `AssertionError`. The rejection never fired in 8,704 builds and 170 n=8..10
-  sharing layouts, but no proof covers it: compaction can bring a foreign
-  digit beside a reader across a deleted row, and lane arrows can land on a
-  corridor. Mutants tried fail earlier in `place()`; a control reaching only
-  the scan comes first.
+- **Dig:** `_layout.py` rejects a finished sharing layout on an
+  `AssertionError`. After `bridge_entries` the rejection is live: at n=12
+  (random 64-bit leaf classes mixed with constant leaves) it fired in 55 of
+  ~300 layouts, a `_chain_lanes` corridor crossing another class's lane arrow
+  or a branch `$`; nothing bounds a chain's line against foreign cells.
+  Compaction's check never fired (n<=12, ~5,600 layouts) but no proof covers
+  it: a digit beside a reader across a deleted row is unargued. Proved:
+  compaction cannot break a corridor; lane arrows (not digits) cannot change
+  a reader's operand.
