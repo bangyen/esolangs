@@ -8,10 +8,9 @@ from esolangs.languages.polynomial.tests.polynomial_support import _polynomial_t
 from esolangs.runtime.io import ScriptedIO
 
 
-@pytest.mark.parametrize("oracle", ["polynomial_tree"])
 # A constant, XOR, and majority (an if-block beside an else-block).
 @pytest.mark.parametrize("table", ["11", "0110", "00010111"])
-def test_retired_oracle_executes_every_row(oracle: str, table: str) -> None:
+def test_retired_oracle_executes_every_row(table: str) -> None:
     n = len(table).bit_length() - 1
     code = _polynomial_assemble(_polynomial_tree(table))
     machine_type = Polynomial
@@ -23,6 +22,6 @@ def test_retired_oracle_executes_every_row(oracle: str, table: str) -> None:
             if machine.halted:
                 break
             machine.step()
-        assert machine.halted, (oracle, table, bits)
-        assert io.getvalue() == expected, (oracle, table, bits)
-        assert io.input_str() == "Z", (oracle, table, bits, "input count")
+        assert machine.halted, (table, bits)
+        assert io.getvalue() == expected, (table, bits)
+        assert io.input_str() == "Z", (table, bits, "input count")
