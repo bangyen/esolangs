@@ -96,7 +96,10 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   `L_n >= (T/2**51)*floor(log_66(n/4))`. Writing the source also forces
   super-linear character work. This does not bound every legal program,
   executed command count, or a construction with a growing candidate limit;
-  universal linear source and generation remain open. The finite odd-prefix
+  universal linear source and generation remain open. A read inside a guard
+  multiplexes later reads: `a ~> Inp?`, `a? :: Inp?`, `b ~> Inp?` binds
+  `b = a ? x3 : x2`, so values need not be affine and coset-cover arguments
+  bound only programs without such reads. The finite odd-prefix
   controls at eight and nine inputs executed 768 rows, using five/nine ones,
   cube dimensions `(2,0)`/`(3,0)` and 204/221 characters. Those measurements
   check the route, not the asymptotic bound. Controls remain in
