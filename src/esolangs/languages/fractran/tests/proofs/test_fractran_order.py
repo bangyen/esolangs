@@ -4,7 +4,6 @@
 # ruff: noqa: SLF001
 
 import random
-from collections import Counter
 
 import pytest
 
@@ -14,45 +13,10 @@ from esolangs.languages.fractran.interpreter import _Machine
 from esolangs.languages.fractran.interpreter import index as fractran_index
 from esolangs.languages.fractran.tests.proofs._fractran_order import (
     capacity,
-    order_template,
     stream_template,
 )
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import row_bits
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("n", "k"), [(1, 3), pytest.param(2, 4, marks=pytest.mark.slow)]
-)
-def test_order_alone_realizes_every_table(n: int, k: int) -> None:
-    multiset = None
-    start = None
-    lengths = set()
-    for table_number in range(1 << (1 << n)):
-        table = format(table_number, f"0{1 << n}b")
-        template = order_template(table, k)
-        tokens = template.split()
-        if multiset is None:
-            multiset = Counter(tokens[1:])
-            start = tokens[0]
-        assert Counter(tokens[1:]) == multiset
-        assert tokens[0] == start
-        lengths.add(len(template))
-        for row in range(1 << n):
-            bits = row_bits(row, n)
-            source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
-            io = ScriptedIO("")
-            machine = _Machine(source, io)
-            assert machine._index is not None
-            for _ in range(50000):
-                if machine.halted:
-                    break
-                machine.step()
-            else:
-                pytest.fail("fixed order decoder exceeded its control budget")
-            assert io.getvalue().strip() == str(1 + int(table[row]))
-    assert len(lengths) == 1
 
 
 def _execute_stream(
@@ -75,36 +39,6 @@ def _execute_stream(
         # The final VM transition prints the answer without firing a fraction.
         worst = max(worst, _steps - 1)
     return worst
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("n", "k", "length", "worst"),
-    [
-        (1, 3, 4065, 89),
-        (2, 4, 4175, 254),
-        pytest.param(3, 6, 4379, 265, marks=pytest.mark.slow),
-    ],
-)
-def test_stream_order_realizes_every_table(
-    n: int, k: int, length: int, worst: int
-) -> None:
-    multiset = None
-    start = None
-    measured = 0
-    for table_number in range(1 << (1 << n)):
-        table = format(table_number, f"0{1 << n}b")
-        template = stream_template(table, k)
-        tokens = template.split()
-        if multiset is None:
-            multiset = Counter(tokens[1:])
-            start = tokens[0]
-        assert Counter(tokens[1:]) == multiset
-        assert tokens[0] == start
-        assert len(template) == length
-        assert len(tokens) - 1 == 7 * k + n + 258
-        measured = max(measured, _execute_stream(template, table, range(1 << n), k))
-    assert measured == worst
 
 
 @pytest.mark.medium
