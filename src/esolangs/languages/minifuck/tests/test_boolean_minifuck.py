@@ -7,7 +7,6 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, essential_inputs, runs
 from esolangs.languages.minifuck.generator.mux import (
-    _FOUND_POOL_CODE,
     _MUX_MIN_ARITY,
     _MUX_PRESERVE_RIGHT,
     _SCULPT_LANDED,
@@ -151,6 +150,11 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     assert _probe_frame("[", byte) is None
     assert _probe_frame("[x" * 9, byte) is None
     assert _probe_frame(_SCULPT_POOL_CODE, byte) is not None
+
+
+#: The pool code the generator once shipped, found by search: a fixture the
+#: constructed :func:`_sculpt_pool_code` must keep landing on.
+_FOUND_POOL_CODE = "[<[<[<<[[[<[[<<<"
 
 
 def test_the_sculpted_pool_code_matches_the_found_string() -> None:

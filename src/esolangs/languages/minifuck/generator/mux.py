@@ -79,10 +79,6 @@ def _mux_start(n: int) -> int:
 #: 2..4 construct; 5 and 6 cannot, cell 7 only ever gets a carry.
 _SCULPT_LANDED = 4
 
-#: The pool code the shipped generator once used, found by search: a fixture
-#: that must keep landing on the same frame as :func:`_sculpt_pool_code`.
-_FOUND_POOL_CODE = "[<[<[<<[[[<[[<<<"
-
 
 def _sculpt_pool_code(landed: int = _SCULPT_LANDED) -> str:
     """Return the code taking the canonical pool state to its frame at ``landed``.
