@@ -28,6 +28,7 @@ Decisions:
 """
 
 from collections.abc import Callable
+from math import isqrt
 from string import ascii_lowercase
 
 from esolangs.generation.helpers import (
@@ -36,6 +37,7 @@ from esolangs.generation.helpers import (
     grid_width,
     short_name,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -412,15 +414,17 @@ def fargo(truth_table: str, width: int | None = None) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the default, its width fits and packings at 2 ** (1/4) steps."""
+    """Compare the default, its width fits and the packing at the square width."""
     n = _validate_truth_table(table)
     wide = fargo(table, len(default))
+    narrow = fargo(table, 1)
+    # Packing at w shrinks toward the one-line program as w grows, so the
+    # square side is a multiple of isqrt(CELL_ASPECT * its length); 1, 3/2
+    # and 2 times it cost 1.7% of the old 2**(1/4)-step sweep's side total.
     expression = _expression(table, n)
-    widths = {
-        round(2 ** (step / 4)) for step in range(8, 4 * len(default).bit_length())
-    }
-    packed = (_packed_program(expression, n, width) for width in sorted(widths))
-    return min(default, wide, fargo(table, 1), *packed, key=balance_score)
+    side = isqrt(CELL_ASPECT * len(f"% 0 {expression}\n$\n"))
+    packed = (_packed_program(expression, n, side * scale // 2) for scale in (2, 3, 4))
+    return min(default, wide, narrow, *packed, key=balance_score)
 
 
 def anf_coefficients(truth_table: str) -> list[int]:

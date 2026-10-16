@@ -150,3 +150,36 @@ def test_packed_lines_name_shared_or_overlong_nodes(width: int) -> None:
     # A positive control: flipping the first input read flips some answer.
     mutant = program.replace("@ 0", "@ 1", 1)
     assert _evaluate("Fargo", mutant, inputs=6) != table
+
+
+def _swept_balance(table: str, default: str) -> str:
+    """The retired balance: packings at 2 ** (1/4) width steps."""
+    from esolangs.generation.helpers import _validate_truth_table
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.fargo.generator import _expression, _packed_program, fargo
+
+    n = _validate_truth_table(table)
+    wide = fargo(table, len(default))
+    expression = _expression(table, n)
+    widths = {
+        round(2 ** (step / 4)) for step in range(8, 4 * len(default).bit_length())
+    }
+    packed = (_packed_program(expression, n, width) for width in sorted(widths))
+    return min(default, wide, fargo(table, 1), *packed, key=balance_score)
+
+
+def test_balance_closed_form_stays_near_the_swept_optimum() -> None:
+    """Over 2..6 inputs the three square-width packings lose under 5% side."""
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+
+    rng = random.Random(4)
+    new = old = 0
+    for n in (2, 3, 4, 5, 6):
+        for _ in range(12):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            new += balance_score(esolangs.generate("Fargo", table, balance=True))[0]
+            old += balance_score(
+                _swept_balance(table, esolangs.generate("Fargo", table))
+            )[0]
+    assert old <= new < 1.05 * old
