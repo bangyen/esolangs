@@ -498,7 +498,7 @@ def test_remove_cleans_language_package(
     history = root / "docs/CHANGELOG.md"
     history.write_text("- Tiny was added.\n")
     for relative in (
-        "src/esolangs/languages/tiny/tests/fixtures/wiki_examples.toml",
+        "src/esolangs/languages/tiny/tests/cases.toml",
         "src/esolangs/languages/tiny/tests/proofs/helper.py",
         "src/esolangs/languages/tiny/tiny.txt",
     ):

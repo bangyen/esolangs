@@ -1,0 +1,22 @@
+language = "Suffolk"
+oldid = 189093
+
+[[examples]]
+id = "hello"
+source_file = "fixtures/suffolk_hello.txt"
+expected = "Hello, world! Hello, world! "
+stop = "steps"
+max_steps = 5000
+
+[[spec_triggers]]
+program = ""
+stdin = ""
+expect = "ProgramError"
+claim = "Empty program"
+
+[[spec_triggers]]
+program = ","
+stdin = ""
+expect = "output"
+output = ""
+claim = "At EOF , ends the scripted run, never raising"

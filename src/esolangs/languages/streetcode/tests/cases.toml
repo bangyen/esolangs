@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "C~O;"
+expect = "HaltError"
+claim = "O on a cell that is not a code point"
+stdin = ""
+
+[[spec_triggers]]
+program = "CI;"
+expect = "InputExhaustedError"
+claim = "I at EOF"
+stdin = ""
+
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "not exactly one C"

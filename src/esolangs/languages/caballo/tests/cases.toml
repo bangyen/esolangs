@@ -1,0 +1,30 @@
+[[spec_triggers]]
+program = "1"
+stdin = "a"
+expect = "HaltError"
+claim = "an input token that is not a natural"
+
+[[spec_triggers]]
+program = "p)"
+stdin = ""
+expect = "ProgramError"
+claim = ") with no opener"
+
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "a character that is not a command"
+
+[[spec_triggers]]
+program = "(p"
+stdin = ""
+expect = "ProgramError"
+claim = "an unclosed ("
+
+[[spec_triggers]]
+program = "1"
+stdin = ""
+expect = "output"
+output = "[]"
+claim = "empty input is the empty stack"

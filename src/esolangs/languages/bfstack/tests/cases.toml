@@ -1,0 +1,30 @@
+[[spec_triggers]]
+program = "<"
+stdin = ""
+expect = "HaltError"
+claim = "< on an empty stack"
+
+[[spec_triggers]]
+program = "]"
+stdin = ""
+expect = "HaltError"
+claim = "] with no open loop"
+
+[[spec_triggers]]
+program = ","
+stdin = ""
+expect = "InputExhaustedError"
+claim = ", at EOF"
+
+[[spec_triggers]]
+program = ">["
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched [ when skipped (top zero)"
+
+[[spec_triggers]]
+program = ">+["
+stdin = ""
+expect = "output"
+output = ""
+claim = "an unmatched [ entered needs no partner (>+[ runs and halts)"

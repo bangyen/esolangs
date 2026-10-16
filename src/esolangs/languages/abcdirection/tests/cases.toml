@@ -1,0 +1,24 @@
+[[spec_triggers]]
+program = "XXXXXX\nDDDDDD"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: character other than A/B/C/D"
+
+[[spec_triggers]]
+program = "AB\nDDDDDD"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: grid is not a rectangle"
+
+[[spec_triggers]]
+program = "ABC"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: no line contains DDDDDD"
+
+[[spec_triggers]]
+program = "AAAAAA\nDDDDDD"
+stdin = ""
+expect = "output"
+output = ""
+claim = "EOF supplies zero bits: D up reads at EOF without raising"

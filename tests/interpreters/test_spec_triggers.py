@@ -1,15 +1,14 @@
 """Every interpreter spec's ``Errors:`` entry is shown by running a program.
 
-Each language keeps its triggers in ``languages/<id>/tests/spec_triggers.json``
-(so they leave with it): a program (source, hex bytes, or a generated table),
-stdin, optional dialect settings, and the exception -- or exact output --
-``esolangs.run`` must produce.  ``untriggerable`` maps an entry no ``run``
-call reaches to the reason.
+Each language keeps its triggers as ``[[spec_triggers]]`` in
+``languages/<id>/tests/cases.toml`` (so they leave with it): a program
+(source, hex bytes, or a generated table), stdin, optional dialect settings,
+and the exception -- or exact output -- ``esolangs.run`` must produce.
+``[spec_untriggerable]`` maps an entry no ``run`` call reaches to the reason.
 """
 
 import ast
 import inspect
-import json
 import pathlib
 
 import pytest
@@ -19,10 +18,9 @@ from esolangs import DialectSettings, exceptions
 from esolangs.registry import LANGUAGES
 from esolangs.registry._describe import interpreter_module
 from tests.interpreters.spec_sections import error_entries
+from tests.support.cases import cases
 
 pytestmark = pytest.mark.medium
-
-_LANGUAGES_DIR = pathlib.Path(esolangs.__file__).parent / "languages"
 
 
 def _interpreted() -> list[str]:
@@ -31,12 +29,12 @@ def _interpreted() -> list[str]:
 
 
 def triggers_of(name: str) -> dict[str, object]:
-    """Return ``name``'s trigger file, or an empty one."""
-    path = _LANGUAGES_DIR / LANGUAGES[name].id / "tests/spec_triggers.json"
-    if not path.exists():
-        return {"triggers": []}
-    data: dict[str, object] = json.loads(path.read_text(encoding="utf-8"))
-    return data
+    """Return ``name``'s triggers and untriggerable entries."""
+    data = cases(LANGUAGES[name].id)
+    return {
+        "triggers": data.get("spec_triggers", []),
+        "untriggerable": data.get("spec_untriggerable", {}),
+    }
 
 
 def all_triggers() -> list[tuple[str, dict[str, object]]]:

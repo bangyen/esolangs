@@ -1,0 +1,77 @@
+[[spec_triggers]]
+program = "\"a"
+stdin = ""
+expect = "ProgramError"
+claim = "an unterminated quote"
+
+[[spec_triggers]]
+program = "("
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched loop marker"
+
+[[spec_triggers]]
+program = "[1:"
+stdin = ""
+expect = "ProgramError"
+claim = "a [ without a later ], a literal or an operator"
+
+[[spec_triggers]]
+program = "[1::]"
+stdin = ""
+expect = "ProgramError"
+claim = "a repeated conditional operator"
+
+[[spec_triggers]]
+program = "65536"
+stdin = ""
+expect = "ProgramError"
+claim = "a numeric literal over 65535"
+
+[[spec_triggers]]
+program = "\"\\t\""
+stdin = ""
+expect = "ProgramError"
+claim = "a \\ escape other than \\n"
+
+[[spec_triggers]]
+program = "??"
+stdin = "x"
+expect = "ArgumentError"
+claim = "?? given a non-integer token"
+
+[[spec_triggers]]
+program = ","
+stdin = ""
+expect = "HaltError"
+claim = "moving off the tape"
+
+[[spec_triggers]]
+program = "+"
+stdin = ""
+expect = "HaltError"
+claim = "arithmetic at slot 0"
+
+[[spec_triggers]]
+program = ".1/"
+stdin = ""
+expect = "HaltError"
+claim = "/ by 0"
+
+[[spec_triggers]]
+program = "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
+stdin = ""
+expect = "HaltError"
+claim = "a string over 256 characters"
+
+[[spec_triggers]]
+program = "??"
+stdin = "70000"
+expect = "HaltError"
+claim = "a read over 65535"
+
+[[spec_triggers]]
+program = "55296!"
+stdin = ""
+expect = "HaltError"
+claim = "! of a surrogate"

@@ -1,0 +1,51 @@
+language = "B-tapemark"
+oldid = 170177
+
+[[examples]]
+id = "hello"
+source = ">HELLO+WORLD!"
+expected = "HELLO WORLD"
+note = "+ outputs the blank second-grid cell, a space"
+
+[[examples]]
+id = "cat"
+source = '''
+/>-+|\
+\    /'''
+stdin = '''
+ab
+'''
+expected = '''
+ab
+'''
+stop = "eof"
+
+[[spec_triggers]]
+program = ">-"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "- on a blank data cell at EOF"
+
+[[spec_triggers]]
+program = "+"
+stdin = ""
+expect = "ProgramError"
+claim = "a missing start marker"
+
+[[spec_triggers]]
+program = ">>"
+stdin = ""
+expect = "ProgramError"
+claim = "a repeated start marker"
+
+[[spec_triggers]]
+program = ">@"
+stdin = ""
+expect = "ProgramError"
+claim = "an invalid source symbol outside quotes"
+
+[[spec_triggers]]
+program = ">\"unterminated"
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched quote"

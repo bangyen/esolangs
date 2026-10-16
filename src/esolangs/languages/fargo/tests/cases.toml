@@ -1,0 +1,62 @@
+language = "Fargo"
+oldid = 194505
+
+[[examples]]
+id = "truth-0"
+note = "the page's zero-width spaces kept"
+source = '''
+one ​^ $ one
+​% 0 @ 0
+: @ 0 one
+$'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = '''
+one ​^ $ one
+​% 0 @ 0
+: @ 0 one
+$'''
+stdin = "1"
+stop = "steps"
+max_steps = 200
+expected = "1111"
+
+[[spec_triggers]]
+program = "< x"
+stdin = ""
+expect = "HaltError"
+claim = "an undefined name is a HaltError"
+
+[[spec_triggers]]
+program = "[?] [] 1 10"
+stdin = ""
+expect = "HaltError"
+claim = "bad array indexing is a HaltError"
+
+[[spec_triggers]]
+program = "< [] 1"
+stdin = ""
+expect = "HaltError"
+claim = "shifting an array is a HaltError"
+
+[[spec_triggers]]
+program = "<"
+stdin = ""
+expect = "ProgramError"
+claim = "a call left wanting arguments is a ProgramError"
+
+[[spec_triggers]]
+program = "f 1"
+stdin = ""
+expect = "ProgramError"
+claim = "a definition whose code is a bare literal is a ProgramError"
+
+[[spec_triggers]]
+program = "$"
+stdin = ""
+expect = "output"
+output = "0"
+claim = "empty input is 0, so there is no EOF"

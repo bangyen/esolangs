@@ -302,11 +302,8 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
     if sample is not None and isinstance(sample[0], str):
         programs.append((sample[0], sample[1]))
     tests = ROOT / "src/esolangs/languages" / language.id / "tests"
-    # Wiki examples sit in tests/ or, beside other fixtures or byte-exact,
-    # tests/fixtures/; reading only the first skipped 16 languages' examples.
-    for path in sorted(
-        [*tests.glob("wiki_examples.toml"), *tests.glob("fixtures/wiki_examples.toml")]
-    ):
+    path = tests / "cases.toml"
+    if path.is_file():
         for example in tomllib.loads(path.read_text()).get("examples", []):
             programs.append(
                 (

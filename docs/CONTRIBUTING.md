@@ -158,8 +158,8 @@ shape (prose, then `Commands:`, `Input/output:`, `Errors:`, `Decisions:`) is
 names the public exception a caller catches, not the builtin the interpreter
 raises. `tests/interpreters/test_interpreter_conventions.py` checks the shape
 and that `Errors:` lists what the source raises; every entry needs a trigger
-in the language's own `tests/spec_triggers.json` (a program and the exception
-`run` gives), which `tests/interpreters/test_spec_triggers.py` runs. The exported API's Google
+in the language's own `tests/cases.toml` (`[[spec_triggers]]`: a program and
+the exception `run` gives), which `tests/interpreters/test_spec_triggers.py` runs. The exported API's Google
 `Raises:` sections are held to the same standard by
 `tests/api/test_public_docstrings.py`.
 
@@ -168,7 +168,7 @@ then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor,
 `n=10 random 1847: 1,118 chars`, which
 `tests/generators/test_generator_docstrings.py` regenerates, so a size change
 updates it.  `Raises:` lists `GeneratorCapError` wherever the generator can
-refuse a table, with a trigger in `tests/generator_triggers.json`.  A figure
+refuse a table, with a `[[generator_triggers]]` entry in `tests/cases.toml`.  A figure
 in `Size:` or `Decisions:` appears nowhere else in the generator: a figure
 about one helper lives beside it instead.
 
@@ -269,8 +269,8 @@ Judge a module by what the language does not demand.
    word limits and fold measure, and its formula rows. It lists the generated
    files it refreshed.
    Optional: the wiki page's own examples, with their stated output, go in
-   `src/esolangs/languages/<id>/tests/fixtures/wiki_examples.toml` (schema in
-   `tests/interpreters/test_published_programs.py`).
+   `src/esolangs/languages/<id>/tests/cases.toml` as `[[examples]]` (schema
+   in `tests/interpreters/test_published_programs.py`).
    To try a program that may loop, bound it:
    `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
    `timeout=5`, never a bare `run`.

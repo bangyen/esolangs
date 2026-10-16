@@ -1,0 +1,15 @@
+language = "Home Row"
+oldid = 189085
+
+[[examples]]
+id = "hello"
+source_file = "fixtures/home_row_hello.txt"
+expected = '''
+Hello, World!
+'''
+
+[[spec_triggers]]
+program = "l"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a trailing unpaired l"

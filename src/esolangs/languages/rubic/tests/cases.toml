@@ -1,0 +1,36 @@
+[[spec_triggers]]
+program = "-ww ( ! )"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: a backwards ! at EOF."
+
+[[spec_triggers]]
+program = ".w"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a colour pair that is not two colours."
+
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unknown token."
+
+[[spec_triggers]]
+program = ")"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unmatched parenthesis (close)."
+
+[[spec_triggers]]
+program = "("
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unmatched parenthesis (open)."
+
+[[spec_triggers]]
+program = "-ww ( ! )"
+stdin = "AAAAAAAA"
+expect = "output"
+output = ""
+claim = "Positive control (8 passes, 8 reads): a backwards ! reads a character without printing."

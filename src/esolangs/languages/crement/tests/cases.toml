@@ -1,0 +1,41 @@
+[[spec_triggers]]
+program = "+J -1 1"
+stdin = ""
+expect = "HaltError"
+claim = "jumping to a negative address"
+
+[[spec_triggers]]
+program = "+A -1 0"
+stdin = ""
+expect = "HaltError"
+claim = "writing to a negative address"
+
+[[spec_triggers]]
+program = ":a +J a 0\n:a +J a 0"
+stdin = ""
+expect = "ProgramError"
+claim = "a duplicate label"
+
+[[spec_triggers]]
+program = "+J 1"
+stdin = ""
+expect = "ProgramError"
+claim = "a line without three fields"
+
+[[spec_triggers]]
+program = "+J 1+ 0"
+stdin = ""
+expect = "ProgramError"
+claim = "a number that is not a signed sum"
+
+[[spec_triggers]]
+program = "+X 0 0"
+stdin = ""
+expect = "ProgramError"
+claim = "an opcode other than +A -A +D -D +J -J"
+
+[[spec_triggers]]
+program = "+J nowhere 0"
+stdin = ""
+expect = "ProgramError"
+claim = "an undefined label"

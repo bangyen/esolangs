@@ -1,0 +1,48 @@
+[[spec_triggers]]
+program = ">(Sub 1)"
+stdin = ""
+expect = "ProgramError"
+claim = "an unknown command (names are exact)"
+
+[[spec_triggers]]
+program = "@m(>(Add 1)"
+stdin = ""
+expect = "ProgramError"
+claim = "a macro with no closing )"
+
+[[spec_triggers]]
+program = "@m(>(Add 1))@m(>(Add 1))"
+stdin = ""
+expect = "ProgramError"
+claim = "a duplicate macro"
+
+[[spec_triggers]]
+program = ">x"
+stdin = ""
+expect = "ProgramError"
+claim = "a reference to a node not yet opened"
+
+[[spec_triggers]]
+program = ">r(InputNumber >(Multiply 2 >(OutputNumber)) >r)"
+stdin = "x"
+expect = "ArgumentError"
+claim = "an InputNumber token that is not an integer"
+
+[[spec_triggers]]
+program = ">r(InputNumber >(Multiply 2 >(OutputNumber)) >r)"
+stdin = "-3"
+expect = "HaltError"
+claim = "a negative InputNumber"
+
+[[spec_triggers]]
+program = ">(Constant 1114112 >(Output))"
+stdin = ""
+expect = "HaltError"
+claim = "Output of a code above 1114111"
+
+[[spec_triggers]]
+program = ">r(InputNumber >(Multiply 2 >(OutputNumber)) >r)"
+stdin = "21 4\n"
+expect = "output"
+output = "428"
+claim = "InputNumber sends nothing at EOF"

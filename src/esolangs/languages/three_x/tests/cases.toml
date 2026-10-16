@@ -1,0 +1,64 @@
+language = "3x"
+oldid = 189070
+
+[[examples]]
+id = "hello"
+source = "[Hello, world!]"
+expected = "Hello, world!"
+
+[[examples]]
+id = "truth-machine-0"
+source = "?([1])[0]"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+source = "?([1])[0]"
+stdin = "1"
+expected = "1111111111"
+stop = "steps"
+max_steps = 100
+
+[[spec_triggers]]
+program = "333x33x"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: division by zero"
+
+[[spec_triggers]]
+program = "3)"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: stray )"
+
+[[spec_triggers]]
+program = "!"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: underflow"
+
+[[spec_triggers]]
+program = "3("
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: unmatched ("
+
+[[spec_triggers]]
+program = "?"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: ? at EOF"
+
+[[spec_triggers]]
+program = "?"
+stdin = "abc"
+expect = "ProgramError"
+claim = "ProgramError: ? reads anything but an integer or fraction"
+
+[[spec_triggers]]
+program = "[abc"
+stdin = ""
+expect = "output"
+output = ""
+claim = "[ with no ] prints nothing"

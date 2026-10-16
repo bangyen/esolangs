@@ -1,0 +1,20 @@
+[[spec_triggers]]
+program = "EXE"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: EXE with an empty slot"
+
+[[spec_triggers]]
+program = "foo"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: an unrecognised line when executed"
+
+[[spec_triggers]]
+program = "u"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: reading past the end of the input"
+
+[generator_untriggerable]
+GeneratorCapError = "forty-one inputs need a 2**41-entry table, a terabyte no generate() call can pass"

@@ -1,0 +1,6 @@
+[[spec_triggers]]
+generate = "01"
+stdin = ""
+expect = "output"
+output = ""
+claim = "input at EOF is ignored"

@@ -1,0 +1,85 @@
+language = "CV(N)(C)"
+oldid = 194504
+
+[[examples]]
+id = "hi"
+source = "didididædədædidididididididifif"
+expected = "HI"
+
+[[examples]]
+id = "hello-as-written"
+note = """\
+    wiki bug: 14 f commands for 13 characters, 'd' printed twice; no single-symbol \
+    repair keeps the syllables valid"""
+source = """\
+    cicidigæducədəcədəcədəcədəcəfodigiducificiʔiciʔicidifufiʡiʡifocədəgəduqəʔəcədəgəfoduʡəʡəʡəcəfodogiducidigædəbəfodubifiditifoducədəfogæfodufoboʔidiʡuʔiʔicif"""
+expected = "Hello, worldd!"
+
+[[examples]]
+id = "cat"
+source = "ʒuɰ̊fuʒʋu"
+stdin = "abc"
+stop = "eof"
+expected = "abc"
+
+[[examples]]
+id = "truth-0"
+source = "soθɰ̊oθʋi"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = "soθɰ̊oθʋi"
+stdin = "1"
+stop = "steps"
+max_steps = 200
+expected = "1111"
+
+[[spec_triggers]]
+program = "dəqədəθu"
+stdin = ""
+expect = "HaltError"
+claim = "division by zero in the function"
+
+[[spec_triggers]]
+program = "pi"
+stdin = ""
+expect = "HaltError"
+claim = "popping an empty deque"
+
+[[spec_triggers]]
+program = "si"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "s at EOF"
+
+[[spec_triggers]]
+program = "ʒi"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "ʒ at EOF"
+
+[[spec_triggers]]
+program = "xyz"
+stdin = ""
+expect = "ProgramError"
+claim = "a character that is not a command"
+
+[[spec_triggers]]
+program = "si "
+stdin = ""
+expect = "ProgramError"
+claim = "a source that does not syllabify (space is invalid)"
+
+[[spec_triggers]]
+program = ""
+stdin = ""
+expect = "ProgramError"
+claim = "an empty program"
+
+[[spec_triggers]]
+program = "ʋi"
+stdin = ""
+expect = "ProgramError"
+claim = "unbalanced loops"

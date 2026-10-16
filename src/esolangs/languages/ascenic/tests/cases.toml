@@ -1,0 +1,41 @@
+[[spec_triggers]]
+program = "AsB"
+stdin = ""
+expect = "ProgramError"
+claim = "a line that is not A*s+"
+
+[[spec_triggers]]
+program = "AAAAAAAAAAAAAAAAAAAAs"
+stdin = ""
+expect = "ProgramError"
+claim = "an opcode above 19"
+
+[[spec_triggers]]
+program = "As\nAs"
+stdin = ""
+expect = "ProgramError"
+claim = "an argument no greater than the line before's"
+
+[[spec_triggers]]
+program = "AAs"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "INPUT at EOF"
+
+[[spec_triggers]]
+program = "AAs"
+stdin = "x"
+expect = "ArgumentError"
+claim = "an odd-argument INPUT given a non-integer token"
+
+[[spec_triggers]]
+program = "AAAs\nAAAAAAAAAAAss"
+stdin = ""
+expect = "HaltError"
+claim = "a taken JMPB"
+
+[[spec_triggers]]
+program = "AAAAAs\nAss"
+stdin = ""
+expect = "HaltError"
+claim = "PRINT as a character of a value that is no code point"

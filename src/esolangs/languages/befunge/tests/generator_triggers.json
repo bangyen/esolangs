@@ -1,9 +1,0 @@
-{
- "triggers": [
-  {
-   "table": "n=14 zero",
-   "expect": "GeneratorCapError",
-   "claim": "more than thirteen inputs"
-  }
- ]
-}

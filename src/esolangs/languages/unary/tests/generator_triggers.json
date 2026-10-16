@@ -1,9 +1,0 @@
-{
- "triggers": [
-  {
-   "table": "n=2 parity",
-   "expect": "GeneratorCapError",
-   "claim": "the zero count passes 256 Mi"
-  }
- ]
-}

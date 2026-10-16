@@ -1,0 +1,40 @@
+language = "Malbolge"
+oldid = 195070
+
+[[examples]]
+id = "cat"
+note = "Does not stop on EOF: input reads 59048 there, so it prints byte 168 forever."
+source = '''
+(=BA#9"=<;:3y7x54-21q/p-,+*)"!h%B0/.
+~P<
+<:(8&
+66#"!~}|{zyxwvu
+gJ%'''
+stdin = '''
+Hello, cat!
+line2
+'''
+stop = "steps"
+max_steps = 1000
+expected = '''
+Hello, cat!
+line2
+'''
+
+[[spec_triggers]]
+program = "!"
+stdin = ""
+expect = "ProgramError"
+claim = "A source character that does not decipher to an instruction."
+
+[[spec_triggers]]
+program = "ubO"
+stdin = ""
+expect = "output"
+output = "¨"
+claim = "EOF is the value 59048, not an error (prints 59048 & 0xFF = 168)."
+
+[[generator_triggers]]
+table = "n=17 zero"
+expect = "GeneratorCapError"
+claim = "more than sixteen inputs"

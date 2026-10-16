@@ -1,0 +1,41 @@
+language = "SLOW ACV MAMMALIAN"
+oldid = 197094
+
+[[examples]]
+id = "h"
+source = '''
+SEED
+SPRINT
+SPRINT
+SPRINT
+SEED
+SEED
+SEED
+SEED
+SEED
+SEED
+SEED
+SEED
+DIGEST
+PRONOUNCE
+'''
+expected = "H"
+
+[[spec_triggers]]
+program = "SEED"
+settings = { cell_modulus = 254 }
+expect = "ArgumentError"
+claim = "a cell_modulus setting other than 255 or 256"
+stdin = ""
+
+[[spec_triggers]]
+program = "ACCEPT"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "ACCEPT at EOF"
+
+[[spec_triggers]]
+program = "FOO"
+stdin = ""
+expect = "ProgramError"
+claim = "Unknown command word"

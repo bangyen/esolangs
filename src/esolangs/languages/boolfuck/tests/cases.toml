@@ -1,0 +1,50 @@
+language = "Boolfuck"
+oldid = 134484
+
+[[examples]]
+id = "hello"
+source = '''
+;;;+;+;;+;+;
++;+;+;+;;+;;+;
+;;+;;+;+;;+;
+;;+;;+;+;;+;
++;;;;+;+;;+;
+;;+;;+;+;+;;
+;;;;;+;+;;
++;;;+;+;;;+;
++;;;;+;+;;+;
+;+;+;;+;;;+;
+;;+;;+;+;;+;
+;;+;+;;+;;+;
++;+;;;;+;+;;
+;+;+;+;
+'''
+expected = '''
+Hello, world!
+'''
+note = "the page says it prints Hello, world!; its last byte is a newline"
+
+[[examples]]
+id = "print-one"
+source = "+;+;;;+;;+;;"
+expected = "1"
+
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "ProgramError"
+claim = "unmatched brackets"
+
+[[spec_triggers]]
+program = ",;"
+stdin = ""
+expect = "output"
+output = "\u0000"
+claim = "EOF supplies zero bits; a partial output byte is padded at halt"
+
+[[spec_triggers]]
+program = ",;,;,;,;,;,;,;,;"
+stdin = "A"
+expect = "output"
+output = "A"
+claim = "bits move least-significant first, eight to a byte"

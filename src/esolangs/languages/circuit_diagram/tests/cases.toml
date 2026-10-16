@@ -1,0 +1,18 @@
+[[spec_triggers]]
+program = "a"
+stdin = ""
+expect = "ProgramError"
+claim = "a gate with the wrong input count"
+
+[[spec_triggers]]
+program = "@"
+stdin = ""
+expect = "ProgramError"
+claim = "an unknown or out-of-scope character"
+
+[[spec_triggers]]
+program = "-:"
+stdin = ""
+expect = "output"
+output = "0"
+claim = "at EOF a read yields a zero bit"

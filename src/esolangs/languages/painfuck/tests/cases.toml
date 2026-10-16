@@ -1,0 +1,47 @@
+language = "Painfuck"
+oldid = 189090
+
+[[examples]]
+id = "hello"
+source = '''
+crwydvoeprqddkveuwbldtveprsyjulephwzjtvsprwahkaeouztjkuypriihi
+bbcrtyjklaswwzjlleprqjldteprwzyyuyhrazoqoosyyuyhoppiozjtveprwi'''
+expected = "Hello, world!"
+
+[[examples]]
+id = "cat"
+source = "jhdec"
+stdin = "abc"
+expected = "abc"
+stop = "eof"
+
+[[examples]]
+id = "looping-counter"
+source = "pticjdy"
+expected = "12345678910"
+stop = "steps"
+max_steps = 300
+
+[[spec_triggers]]
+program = "b"
+stdin = ""
+expect = "HaltError"
+claim = "b with no open loop."
+
+[[spec_triggers]]
+program = "i"
+stdin = "x"
+expect = "HaltError"
+claim = "i on a non-integer line."
+
+[[spec_triggers]]
+program = "i"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "i reads at EOF."
+
+[[spec_triggers]]
+program = "j"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "j reads at EOF."

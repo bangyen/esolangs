@@ -8,7 +8,7 @@
 # (describe()["spec"]): fill each <describe ...> or delete its section;
 # `scripts/new_language.py check` flags any left.  Errors: names the public
 # exception a caller catches; give each entry a trigger in the language's
-# tests/spec_triggers.json (tests/interpreters/test_spec_triggers.py).
+# tests/cases.toml (tests/interpreters/test_spec_triggers.py).
 """Interpreter for <Language>.
 
 <describe the source syntax, state, one step, halt and output, in prose>

@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = "0 -5 0"
+stdin = ""
+expect = "HaltError"
+claim = "a write past the left end of the store"
+
+[[spec_triggers]]
+program = "-1 0 0"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "a = -1 at EOF"
+
+[[spec_triggers]]
+program = "0 16777216 0"
+stdin = ""
+expect = "InterpreterLimitError"
+claim = "a write past 2**24 cells"
+
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "a source token that is not an integer"

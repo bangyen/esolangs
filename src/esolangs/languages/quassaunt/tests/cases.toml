@@ -1,0 +1,47 @@
+[[spec_triggers]]
+program = "bogus"
+stdin = ""
+expect = "ProgramError"
+claim = "a word that is neither @@ nor a command"
+
+[[spec_triggers]]
+program = "%%Multithread"
+stdin = ""
+expect = "ProgramError"
+claim = "%%Multithread is not implemented"
+
+[[spec_triggers]]
+program = "%%Inputchar"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "%%Inputchar at EOF"
+
+[[spec_triggers]]
+program = "%%Head"
+stdin = ""
+expect = "HaltError"
+claim = "missing operands"
+
+[[spec_triggers]]
+program = "@@ %%Head"
+stdin = ""
+expect = "HaltError"
+claim = "%%Head of an empty string"
+
+[[spec_triggers]]
+program = "@@v %%Obtain"
+stdin = ""
+expect = "HaltError"
+claim = "obtaining an unset variable"
+
+[[spec_triggers]]
+program = "@@##Argv %%Obtain"
+stdin = ""
+expect = "HaltError"
+claim = "@@##Argv is reserved"
+
+[[spec_triggers]]
+program = "@@bogus %%Evaluate"
+stdin = ""
+expect = "HaltError"
+claim = "a bad word in code %%Evaluate runs"
