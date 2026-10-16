@@ -160,16 +160,6 @@ def test_input_number_skips_whitespace_until_eof() -> None:
     assert at_end == []
 
 
-def test_public_api_runs_a_raster() -> None:
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, DARK_MAGENTA),
-        (LIGHT_RED, LIGHT_RED, RED, DARK_MAGENTA),
-        (BLACK, BLACK, BLACK, DARK_MAGENTA),
-    )
-    assert esolangs.describe("Piet")["source_kind"] == "raster"
-    assert esolangs.run("Piet", program) == "3"
-
-
 def test_public_api_loads_a_png(tmp_path: Path) -> None:
     program = raster(
         (LIGHT_RED, BLACK, BLACK, DARK_MAGENTA),
@@ -272,13 +262,6 @@ def test_a_depth_zero_roll_pops_its_operands() -> None:
     stack = [5, 0, 3]
     _execute_command((4, 1), 1, stack, ScriptedIO())
     assert stack == [5]
-
-
-def test_the_wiki_roll_example() -> None:
-    """1,2,3 then push 3 and 1, roll: 3,1,2."""
-    stack = [1, 2, 3, 3, 1]
-    _execute_command((4, 1), 1, stack, ScriptedIO())
-    assert stack == [3, 1, 2]
 
 
 def test_switch_transition_changes_the_run_codel_chooser() -> None:

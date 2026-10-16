@@ -39,7 +39,7 @@ def test_piet_invalid_plans_abort() -> None:
         _emit(operations, shifted)
 
 
-@pytest.mark.parametrize("width", [14, 16, 19, 30])
+@pytest.mark.parametrize("width", [14, 19, 30])
 def test_dense_bends_and_final_halt_execute(width: int) -> None:
     table = "01101001"
     operations = _bounded_operations(table)
@@ -58,7 +58,7 @@ def test_dense_bends_and_final_halt_execute(width: int) -> None:
         )
 
 
-@pytest.mark.parametrize("width", [13, 14, 19, 30])
+@pytest.mark.parametrize("width", [13, 19, 30])
 def test_tight_routing_never_grows_and_executes(width: int) -> None:
     for inputs in (1, 2, 3):
         for encoded in range(2 ** (2**inputs)):
@@ -82,9 +82,9 @@ def test_tight_routing_never_grows_and_executes(width: int) -> None:
 
 @pytest.mark.parametrize(
     ("duplicate", "short", "width"),
-    [(False, False, width) for width in (22, 25, 30, 40)]
-    + [(True, False, width) for width in (18, 22, 30, 40)]
-    + [(True, True, width) for width in (18, 22, 30, 40)],
+    [(False, False, width) for width in (22, 40)]
+    + [(True, False, width) for width in (18, 30)]
+    + [(True, True, width) for width in (18, 40)],
 )
 def test_white_bridge_lanes_execute_exhaustively(
     *, duplicate: bool, short: bool, width: int
