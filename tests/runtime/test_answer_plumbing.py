@@ -263,7 +263,7 @@ class TestWhatHappensWhenAProgramIsUnderfed:
         except esolangs.EsolangError:
             return "unreadable", None
 
-    @pytest.mark.slow
+    @pytest.mark.medium
     def test_only_the_declared_languages_answer_an_underfed_program(self) -> None:
         """The census, as a sweep: the flag and the behaviour must agree."""
         mismatched = []
@@ -278,6 +278,10 @@ class TestWhatHappensWhenAProgramIsUnderfed:
                 # string*, not a read past an end, so there is no EOF to
                 # declare and nothing that could detect it.  Exempted by
                 # its shape rather than by its name.
+                continue
+            if facts["input_shape"] == "row_number":
+                # The row is one integer: ``1 0`` encodes as row 2's ``3``,
+                # a whole token, so the read never reaches EOF.
                 continue
             declared = bool(facts["eof_is_a_value"])
             for probe in self.PROBES:
