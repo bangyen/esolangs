@@ -125,3 +125,12 @@ def test_every_run_halts_within_its_line_count() -> None:
             machine.step()
             steps += 1
         assert steps <= 12
+
+
+def test_a_number_past_the_host_digit_cap_is_a_limit() -> None:
+    """Reported as ProgramError (a load error) though the program is valid."""
+    import esolangs
+    from esolangs.exceptions import InterpreterLimitError
+
+    with pytest.raises(InterpreterLimitError, match="4300"):
+        esolangs.run("Ascenic", "AAsss\nAsssss", stdin="9" * 5000 + "\n")

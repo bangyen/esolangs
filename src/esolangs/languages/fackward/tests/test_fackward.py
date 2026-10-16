@@ -68,3 +68,12 @@ def test_errors() -> None:
         _run("[")
     with pytest.raises(ValueError, match="is not Fackward"):
         _run("x")
+
+
+def test_a_count_past_sys_maxsize_is_a_limit() -> None:
+    """``[x] * count`` raised a bare OverflowError (CLI exit 70)."""
+    import esolangs
+    from esolangs.exceptions import InterpreterLimitError
+
+    with pytest.raises(InterpreterLimitError, match="index-sized"):
+        esolangs.run("Fackward", "$ 99999999999999999999 1", timeout=2)

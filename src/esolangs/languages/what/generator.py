@@ -19,7 +19,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.wrap import wrap_tokens
+from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._language import Language
 
 #: Wrapped values stay at or above 65536 - 2^15, valid ones below 2^15.
@@ -55,9 +55,8 @@ def what(truth_table: str) -> str:
     return "".join(parts)
 
 
-def _wrap(program: str, width: int) -> str:
-    """Break between tokens, never inside a literal, a ``?`` run or a test."""
-    return wrap_tokens(program, width, r'\[(?:\d+>|"[01]+":)|\d+|\?+|[\s\S]')
+#: Break between tokens, never inside a literal, a ``?`` run or a test.
+_wrap = TokenWrapper(r'\[(?:\d+>|"[01]+":)|\d+|\?+|[\s\S]')
 
 
 LANGUAGE = Language(

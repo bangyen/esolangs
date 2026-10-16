@@ -17,7 +17,7 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_tokens
+from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -43,9 +43,8 @@ def _setup(n: int) -> str:
     )
 
 
-def _wrap(program: str, width: int) -> str:
-    """Break anywhere but inside a quoted name, which a newline would rename."""
-    return wrap_tokens(program, width, r'"[^"]*"|[\s\S]')
+#: Break anywhere but inside a quoted name, which a newline would rename.
+_wrap = TokenWrapper(r'"[^"]*"|[\s\S]')
 
 
 def pointless(truth_table: str) -> str:

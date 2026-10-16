@@ -39,6 +39,9 @@ def interpreter_module(name: str) -> ModuleType:
     return importlib.import_module(INTERPRETERS[name])
 
 
+#: CPython's int/str digit-cap ValueError, an implementation limit.
+_DIGIT_CAP = "Exceeds the limit ("
+
 # Substrings of CPython's ValueError wording, mapped to the hint each
 # failure deserves.  The wording is CPython's, not ours, so these match
 # loosely on fragments rather than parsing structured data out of the
@@ -58,7 +61,7 @@ _VALUE_ERROR_HINTS = (
         "keep byte values between 0 and 255",
     ),
     (
-        "Exceeds the limit (",
+        _DIGIT_CAP,
         "shorten the decimal literal or set PYTHONINTMAXSTRDIGITS to a larger limit",
     ),
 )
@@ -140,12 +143,23 @@ def interpreter_errors(
     """Translate interpreter failures, preserving public errors and prior output."""
     try:
         yield
-    except (RecursionError, MemoryError, EsolangError, ValueError) as original:
+    except (
+        RecursionError,
+        MemoryError,
+        OverflowError,
+        EsolangError,
+        ValueError,
+    ) as original:
         error: EsolangError
         if isinstance(original, RecursionError):
             error = InterpreterLimitError(
                 recursion_message, hint="reduce expression nesting or recursion depth"
             )
+        elif isinstance(original, OverflowError) or _DIGIT_CAP in str(original):
+            # Host limits, not malformed source: Fackward's ``$`` repeating
+            # past sys.maxsize escaped bare, and a valid Ascenic PRINT of a
+            # 4300-digit number was reported as a load error.
+            error = InterpreterLimitError(str(original))
         elif isinstance(original, MemoryError):
             # As isolated execution reports a worker that hit max_memory.
             error = InterpreterLimitError(

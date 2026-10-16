@@ -14,6 +14,15 @@ Releases before 0.10.0 are described on the
   programs change shape.  Rasters likewise rank by max(width, height) in
   pixels, then area; Piet no longer returns a packed layout larger than its
   default.
+- **Breaking:** A name resolves punctuation-insensitively only by dropping
+  punctuation the language's own name has.  `Piet++`, `Brainfuck++` and
+  `hq9++` ran Piet, brainfuck and HQ9+; they now raise
+  `UnknownLanguageError`, which 0.15.0 claimed for Piet++.
+- **Breaking:** CPython's 4300-digit int/str cap and `OverflowError` raise
+  `InterpreterLimitError` (CLI exit 1).  The cap raised `ProgramError` (exit
+  2) on valid programs; Fackward's `$` past `sys.maxsize` escaped bare.
+- Fix: `balance=True` fits SendStuff, Pointless, Fackward and What!? by whole
+  tokens, exactly; it estimated, and SendStuff `0010` missed a squarer width.
 
 ## 0.15.0
 

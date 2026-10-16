@@ -211,7 +211,8 @@ A timeout on a termination language remains undecided. Their
 
 ## Width
 
-`generate` and CLI `--width` bound columns through layout.
+`generate` and CLI `--width` request a column count, not a bound: a token
+longer than the width overruns it (a Quassaunt node body reaches 180).
 `describe(language)["width_effect"]` identifies the three behaviours,
 including the languages it does not affect (`"none"`).
 
