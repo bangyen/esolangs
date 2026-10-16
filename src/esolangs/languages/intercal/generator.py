@@ -19,15 +19,16 @@ Decisions:
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from math import isqrt
 from typing import Any, NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    grid_width,
     in_input_order,
     layout_width,
     same_up_to_wrapping,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import _join_tokens, balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -87,23 +88,14 @@ def _intercal_tokens(program: str) -> list[str]:
 
 
 def balance_intercal(_table: str, default: str) -> str:
-    """Return the lowest-``balance_score`` wrap of ``default`` over fit widths."""
-    maximum = grid_width(default) - 1
-    widths = {1}
-    for line in default.splitlines():
-        if len(line) <= maximum:
-            widths.add(len(line))
-        tokens = _intercal_tokens(line)
-        for start in range(len(tokens)):
-            used = 0
-            for token in tokens[start:]:
-                used = used + 1 + len(token) if used else len(token)
-                if used > maximum:
-                    break
-                widths.add(used)
-    # A row changes only when a whole token run fits or the original
-    # statement starts fitting and retains its punctuation.
-    candidates = [default, *(_wrap_intercal(default, width) for width in widths)]
+    """Return the better of ``default`` and its wrap at the square width."""
+    # Wrapping at w leaves about lines + chars / w rows, so the square
+    # w = CELL_ASPECT * rows solves w^2 - CELL_ASPECT * lines * w
+    # - CELL_ASPECT * chars = 0.
+    lines = default.count("\n") + 1
+    half = CELL_ASPECT * lines // 2
+    side = half + isqrt(half * half + CELL_ASPECT * len(default))
+    candidates = [default, _wrap_intercal(default, side)]
     return min(candidates, key=balance_score)
 
 
