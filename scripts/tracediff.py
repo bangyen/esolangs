@@ -236,6 +236,13 @@ def _random_programs(
     return programs
 
 
+def _example_text(page: Path, example: dict[str, str], key: str) -> str:
+    """Return a wiki example's ``key``, inline or from its ``<key>_file``."""
+    if f"{key}_file" in example:
+        return (page.parent / example[f"{key}_file"]).read_text(encoding="utf-8")
+    return example.get(key, "")
+
+
 def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Program]:
     """Return the sample, wiki examples, generated rows and random programs."""
     language = LANGUAGES[name]
@@ -244,9 +251,18 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
     if sample is not None and isinstance(sample[0], str):
         programs.append((sample[0], sample[1]))
     tests = ROOT / "src/esolangs/languages" / language.id / "tests"
-    for path in sorted(tests.glob("*.toml")):
+    # A lone fixture sits in tests/, a language with several keeps them in
+    # tests/fixtures/; reading only the first skipped 16 languages' examples.
+    for path in sorted(
+        [*tests.glob("wiki_examples.toml"), *tests.glob("fixtures/wiki_examples.toml")]
+    ):
         for example in tomllib.loads(path.read_text()).get("examples", []):
-            programs.append((example["source"], example.get("input", "")))
+            programs.append(
+                (
+                    _example_text(path, example, "source"),
+                    _example_text(path, example, "input"),
+                )
+            )
     if language.boolean is not None:
         parameterized = esolangs.describe(name)["parameterized"]
         for n in range(1, max_n + 1):
