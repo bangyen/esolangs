@@ -212,3 +212,27 @@ def test_balance_bands_a_random_table() -> None:
         < 120
         < balance_score(esolangs.generate("Clockwise", table))[0]
     )
+
+
+@pytest.mark.medium
+def test_balance_split_rule_matches_the_split_search() -> None:
+    """Oracle: the {k//3, k//3+1} contest is no wider than scanning every split."""
+    import random
+
+    from esolangs.generation.helpers import essential_inputs
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.clockwise.generator import (
+        _balance,
+        _clockwise_banded,
+        clockwise,
+    )
+
+    rng = random.Random(5)
+    for n in (4, 5, 6, 7, 8):
+        table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+        k = len(essential_inputs(table, n))
+        searched = min(
+            (_clockwise_banded(table, s) for s in range(1, k)), key=balance_score
+        )
+        rule = _balance(table, clockwise(table))
+        assert balance_score(rule)[0] <= balance_score(searched)[0]

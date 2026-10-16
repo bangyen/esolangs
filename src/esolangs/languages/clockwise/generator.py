@@ -445,17 +445,18 @@ def _balance(table: str, default: str) -> str:
         )
     rotated = clockwise(table, max(1, grid_width(default) - 1))
     lean = clockwise(table, max(1, grid_width(rotated) - 1))
-    best = min(default, rotated, lean, clockwise(table, 1), key=balance_score)
-    # The side falls and then rises with the split (best near n/3); every
-    # split past the turn renders a taller, wider box, so stop there.
-    for split in range(1, len(used)):
-        banded = _clockwise_banded(table, split)
-        if balance_score(banded) >= balance_score(best):
-            if split > 1:
-                break
-            continue
-        best = banded
-    return best
+    # Measured on random tables n=3..9: side against split is minimal at
+    # k//3 (k essential inputs), k//3+1 guards the rounding.
+    k = len(used)
+    splits = {min(max(s, 1), k - 1) for s in (k // 3, k // 3 + 1)}
+    return min(
+        default,
+        rotated,
+        lean,
+        clockwise(table, 1),
+        *(_clockwise_banded(table, s) for s in sorted(splits)),
+        key=balance_score,
+    )
 
 
 LANGUAGE = Language(
