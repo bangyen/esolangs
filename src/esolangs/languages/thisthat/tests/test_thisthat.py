@@ -469,3 +469,68 @@ def test_cursor_moves_before_a_bistack_read_in_the_same_cycle() -> None:
         machine.step()
     assert machine.io.getvalue() == "1"
     assert machine.cells == {(0, 0): 0}
+
+
+def test_or_merge_of_two_ones_is_one() -> None:
+    """``■`` is 1 when every input is 1, not only when some input is 0."""
+    machine = _Machine(["▣═■═◇"], ScriptedIO(""))
+    machine.pointers = tuple(_Pointer((2, 0), (1, 0), "data", 1) for _ in range(2))
+    while not machine.halted:
+        machine.step()
+    assert machine.io.getvalue() == "1"
+
+
+def test_only_a_random_merge_draws() -> None:
+    """A ``◘`` with one pointer, or a logic node with two, needs no draw."""
+    single = _Machine(["▣─◘─◉"], ScriptedIO(""))
+    single.pointers = (_Pointer((2, 0), (1, 0)),)
+    assert len(single.branching_successors(single.branching_snapshot(), 10) or ()) == 1
+    logic = _Machine(["▣═■═◇"], ScriptedIO(""))
+    logic.pointers = (
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((2, 0), (3, 0), "data", 1),
+    )
+    assert len(logic.branching_successors(logic.branching_snapshot(), 10) or ()) == 1
+
+
+def test_a_random_merge_branches_each_channel_by_its_own_count() -> None:
+    """Two execution and three data pointers on one ``◘``: 2 * 3 outcomes."""
+    machine = _Machine(["▣║ ", "─◘═", " │ "], ScriptedIO(""))
+    machine.pointers = (
+        _Pointer((1, 1), (0, 1)),
+        _Pointer((1, 1), (1, 2)),
+        _Pointer((1, 1), (1, 0), "data", 1),
+        _Pointer((1, 1), (2, 1), "data", 1),
+        _Pointer((1, 1), (5, 5), "data", 1),
+    )
+    successors = machine.branching_successors(machine.branching_snapshot(), 100)
+    assert len(set(successors or ())) == 6
+
+
+def test_pushing_shifts_the_stack_one_place_away_from_the_head() -> None:
+    machine = _Machine(["▣"], ScriptedIO(""))
+    machine._head("row", 0)
+    machine._head("row", 1)
+    assert machine.cells == {(0, 0): 1, (1, 0): 0}
+    assert machine._head("row", None) == 1
+    assert machine._head("row", None) == 0
+
+
+def test_the_stack_is_ordered_by_position_not_insertion() -> None:
+    """A pop shifts a stack held in any dict order; so does a push."""
+    machine = _Machine(["▣"], ScriptedIO(""))
+    machine.cells = {(2, 0): 5, (1, 0): 4}
+    machine._head("row", None)
+    assert machine.cells == {(0, 0): 4, (1, 0): 5}
+    machine.cells = {(1, 0): 4, (0, 0): 3}
+    machine._head("row", 9)
+    assert machine.cells == {(0, 0): 9, (1, 0): 3, (2, 0): 4}
+
+
+def test_setting_the_pointers_keeps_the_cursor() -> None:
+    machine = _Machine(["▣─◹"], ScriptedIO(""))
+    for _ in range(3):
+        machine.step()
+    assert machine.cursor == 1
+    machine.pointers = ()
+    assert machine.cursor == 1
