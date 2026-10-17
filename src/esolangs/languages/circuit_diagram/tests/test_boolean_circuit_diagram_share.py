@@ -16,7 +16,7 @@ from esolangs.languages.circuit_diagram.generator.hlayout import (
     _h_minterm_sites,
     _h_term_layout,
 )
-from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
+from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
 from esolangs.languages.circuit_diagram.interpreter import _Machine
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
@@ -61,8 +61,8 @@ class TestCircuitDiagramShareScope:
         table = _dense(8)
         code = circuit_diagram(table)
         lines = code.splitlines()
-        assert len(lines) * max(map(len, lines)) <= _area(_h_pool_layout(table))
-        assert _area(_h_pool_layout(table)) < _area(_h_term_layout(table))
+        assert len(lines) * max(map(len, lines)) <= _area(_large_pool_layout(table))
+        assert _area(_large_pool_layout(table)) < _area(_h_term_layout(table))
         _execute(table, code)
 
     def test_shared_fold_growth_exceeds_the_linear_contract(self) -> None:

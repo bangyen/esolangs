@@ -18,10 +18,6 @@ from .hlayout import (
 )
 from .layout import _Layout, _resolve_order, _Shape
 
-# The shared H pool only pays off with six or more essential inputs; with
-# fewer, the H-term layout is already minimal.
-_H_POOL_MIN_INPUTS = 6
-
 
 @dataclass(frozen=True)
 class _FooterPlan(_HTermPlan):
@@ -98,18 +94,6 @@ def _h_pool_area_floor(inputs: int, ports: int) -> int:
     )
 
 
-def _h_pool_layout(
-    table: str, *, input_order: list[int] | None = None, port_inputs: int | None = None
-) -> _Layout:
-    """Route fixed-size cofactor pools through a prefix H tree in O(T) area."""
-    return _pool_layout(
-        table,
-        _pool_tail(len(table).bit_length() - 1),
-        input_order=input_order,
-        port_inputs=port_inputs,
-    )
-
-
 def _large_pool_layout(
     table: str,
     *,
@@ -167,29 +151,25 @@ def _pool_atoms(table: str, k: int, p: int) -> dict[str, _Layout]:
 
 @dataclass(frozen=True)
 class _PoolGeometry:
-    leaf_width: int
     leaf_height: int
     prefix_x: int
     bank_y: int
     dimensions: dict[int, tuple[int, int]]
 
 
-def _pool_geometry(k: int, p: int, atoms: dict[str, _Layout]) -> _PoolGeometry:
+def _pool_geometry(k: int, p: int) -> _PoolGeometry:
     """Leaf rectangle plus the block size at every even prefix depth."""
-    if k >= 7:
-        leaf_height = _large_leaf_height(k)
-        atom_width = max((atom.bounds()[1] for atom in atoms.values()), default=0)
-        leaf_width = max(leaf_height, 8 * ((atom_width + 8 * k + 55) // 8))
-        prefix_x, bank_y = leaf_width - 16, 8 * k + 8
-    else:
-        leaf_width = leaf_height = _pool_leaf(k)
-        prefix_x, bank_y = leaf_width - _pool_inset(k), 40
-    dimensions = {0: (leaf_width, leaf_height)}
+    # Every atom is at most 375 (k=7) / 587 (k=8) wide, inside the leaf's
+    # 584 / 976 square, whatever the table: the stride lemma bounds an atom's
+    # strides by 2**(k-2) + 3k + 7 at six columns each (``_check_fits``).
+    leaf = _large_leaf_height(k)
+    prefix_x, bank_y = leaf - 16, 8 * k + 8
+    dimensions = {0: (leaf, leaf)}
     for remaining in range(2, p + 1, 2):
         width, height = dimensions[remaining - 2]
         band = 16 * (remaining + k) + 8
         dimensions[remaining] = 2 * width + band, 2 * height + band
-    return _PoolGeometry(leaf_width, leaf_height, prefix_x, bank_y, dimensions)
+    return _PoolGeometry(leaf, prefix_x, bank_y, dimensions)
 
 
 def _descend(
@@ -248,8 +228,7 @@ class _PoolBuild:
         self.atoms = atoms
         self.n = len(table).bit_length() - 1
         self.p = self.n - k
-        self.large = k >= 7
-        self.geometry = _pool_geometry(k, self.p, atoms)
+        self.geometry = _pool_geometry(k, self.p)
         width, height = self.geometry.dimensions[self.p]
         self.blocks = {1: _Block(0, 0, width, height)}
         raw: dict[int, tuple[int, int]] = {}
@@ -269,29 +248,16 @@ class _PoolBuild:
         }
         literal_start = len(self.signals)
         self.serial = _Serial(literal_start + 2 * self.n)
-        self.plan: _HTermPlan = (
-            _FooterPlan(
-                self.p,
-                self.sites,
-                self.signals,
-                literal_start,
-                {},
-                set(),
-                0,
-                self.levels,
-                self.geometry.leaf_height,
-            )
-            if self.large
-            else _HTermPlan(
-                self.p,
-                self.sites,
-                self.signals,
-                literal_start,
-                {},
-                set(),
-                0,
-                self.levels,
-            )
+        self.plan = _FooterPlan(
+            self.p,
+            self.sites,
+            self.signals,
+            literal_start,
+            {},
+            set(),
+            0,
+            self.levels,
+            self.geometry.leaf_height,
         )
         self.layout = _HCellLayout(self.margin + width + 64)
         self.anchors = _h_reserve_terms(self.layout, self.plan)
@@ -320,16 +286,10 @@ class _PoolBuild:
 
     def _check_fits(self, atom: _Layout) -> None:
         h, w = atom.bounds()
-        k, geometry = self.k, self.geometry
-        # Three/four-input bounds retain the original leaf geometry.
-        # Larger atoms reserve their proven height and measured width.
-        too_large = (
-            w + 8 * k + 48 > geometry.leaf_width
-            or h + 8 * k + 48 > geometry.leaf_height
-            if self.large
-            else w > (80 if k == 3 else 168) or h > (56 if k == 3 else 132)
-        )
-        if too_large:
+        k, leaf = self.k, self.geometry.leaf_height
+        # The leaf reserves the atom's proven height and width, plus the
+        # suffix bank and footer.
+        if w + 8 * k + 48 > leaf or h + 8 * k + 48 > leaf:
             raise AssertionError(f"cofactor pool exceeded its rectangle: {w}x{h}")
 
     def _place_atom(self, prefix: int, atom: _Layout) -> None:
@@ -380,14 +340,7 @@ class _PoolBuild:
         self.atom_routes.append(((x + 1, y), (gx - 1, gy - 1), signals[prefix], "down"))
         # A footer's lower input must be approached from below: descending
         # along its input column would cross the upper prefix port.
-        self.atom_routes.append(
-            (
-                output_point,
-                (gx - 1, gy + 1),
-                atom_signal,
-                "under" if self.large else "across",
-            )
-        )
+        self.atom_routes.append((output_point, (gx - 1, gy + 1), atom_signal, "under"))
 
     def merge_results(self) -> set[int]:
         """OR sibling values up the tree; return the prefixes that get a gate."""
@@ -464,7 +417,7 @@ def _pool_layout(
     from . import _circuit_diagram_model
 
     n, order, ports = _pool_inputs(table, input_order, port_inputs)
-    if k >= 7 and n <= k:
+    if n <= k:
         return _circuit_diagram_model(table, None, input_order=order, port_inputs=ports)
     build = _PoolBuild(table, k, order, ports, _pool_atoms(table, k, n - k))
     build.place_leaves()

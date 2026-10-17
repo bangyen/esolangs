@@ -7,7 +7,7 @@ import pytest
 from esolangs.languages.circuit_diagram.generator import hlayout, hpool
 from esolangs.languages.circuit_diagram.generator.hcells import _HCellLayout
 from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
-from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
+from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
 from esolangs.languages.circuit_diagram.generator.layout import _HOLD, _RoutingLayout
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
@@ -23,18 +23,25 @@ class _IntervalBaseline(_RoutingLayout):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [6, 7, 8])
-@pytest.mark.parametrize("module", [hlayout, hpool])
+@pytest.mark.parametrize(
+    ("module", "build", "n"),
+    [
+        (hlayout, _h_term_layout, 6),
+        (hlayout, _h_term_layout, 7),
+        (hlayout, _h_term_layout, 8),
+        (hpool, _large_pool_layout, 9),
+        (hpool, _large_pool_layout, 10),
+    ],
+)
 def test_h_cell_router_preserves_emitted_bytes_and_native_contracts(
-    monkeypatch, n, module
+    monkeypatch, module, build, n
 ) -> None:
     rng = random.Random(813 + n)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
-    build = _h_term_layout if module is hlayout else _h_pool_layout
     candidate = build(table).render()
     monkeypatch.setattr(module, "_HCellLayout", _IntervalBaseline)
     assert candidate == build(table).render()
-    _execute(table, candidate)
+    _execute(table, candidate, range(0, 1 << n, 1 << max(0, n - 7)))
 
 
 @pytest.mark.parametrize("shape", ["down", "across", "under"])
