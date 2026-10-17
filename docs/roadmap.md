@@ -61,5 +61,5 @@ First implementations from the 2026-10-17 screen of Category:Unimplemented
 - **Stisp:** S-expression rewriting with an exact step rule. It has no IO:
   inputs are embedded in the program, and the result is the final
   expression.
-- **Freestajlo:** a FALSE-like language over an array of stacks. Admit it
+- **Freestajlo:** a postfix stack language over an array of stacks. Admit it
   only if its generator does not re-spell `false`'s.
