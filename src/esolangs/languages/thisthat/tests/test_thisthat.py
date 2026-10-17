@@ -8,13 +8,38 @@ from esolangs.languages.thisthat.generator import thisthat
 from esolangs.languages.thisthat.interpreter import (
     _advance,
     _Machine,
+    _NeedDrawError,
     _NeedInputError,
     _Pointer,
     run,
 )
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw
+from esolangs.runtime.randomness import FirstDraw, draw
 from tests.support.paths import ROOT
+
+
+def _advance_one(
+    machine: _Machine, pointer: _Pointer, following: list[_Pointer]
+) -> None:
+    """Run one cell's handler for ``pointer``, as a tick does."""
+    machine._workspace(following).advance(pointer)
+
+
+def _merge(
+    machine: _Machine, cell: str, arrived: list[_Pointer], following: list[_Pointer]
+) -> None:
+    """Merge ``arrived`` on ``cell``, drawing as a tick does."""
+    saved = list(following)
+    draws: tuple[int, ...] = ()
+    while True:
+        following[:] = saved
+        step = machine._workspace(following)
+        step.draws = draws
+        try:
+            step.merge(cell, arrived)
+            return
+        except _NeedDrawError as need:
+            draws = (*draws, draw(machine.rng, need.upper))
 
 
 class _EventIO(ScriptedIO):
@@ -219,10 +244,10 @@ def test_barrier_waits_for_a_second_pointer() -> None:
     machine = _Machine(["▣"], ScriptedIO(""))
     pointer = _Pointer((0, 0), None)
     following: list[_Pointer] = []
-    machine._merge("◈", [pointer], following)
+    _merge(machine, "◈", [pointer], following)
     assert following == [pointer]
     following = []
-    machine._merge("◈", [pointer, pointer], following)
+    _merge(machine, "◈", [pointer, pointer], following)
     assert following == []
 
 
@@ -346,12 +371,13 @@ def test_router_execution_and_empty_transfer_routes() -> None:
 def test_execution_merge_and_constant_gate() -> None:
     gate = _Machine(["▣═□═◇"], ScriptedIO(""))
     following: list[_Pointer] = []
-    gate._merge("□", [_Pointer((2, 0), (1, 0))], following)
+    _merge(gate, "□", [_Pointer((2, 0), (1, 0))], following)
     assert following == [_Pointer((3, 0), (2, 0), "data", 0)]
 
     merge = _Machine(["▣─◘─◉"], ScriptedIO(""), FirstDraw(1))
     following = []
-    merge._merge(
+    _merge(
+        merge,
         "◘",
         [_Pointer((2, 0), (1, 0)), _Pointer((2, 0), (3, 0))],
         following,
@@ -363,27 +389,27 @@ def test_execution_merge_and_constant_gate() -> None:
 def test_arrows_noop_and_cursor_data_behaviors() -> None:
     machine = _Machine(["▣▶─"], ScriptedIO(""))
     following: list[_Pointer] = []
-    machine._advance_one(_Pointer((1, 0), (0, 0)), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0)), following)
     assert following[0].position == (2, 0)
 
     machine = _Machine([" │", "▣▷─", " │"], ScriptedIO(""))
     following = []
-    machine._advance_one(_Pointer((1, 1), (1, 0)), following)
+    _advance_one(machine, _Pointer((1, 1), (1, 0)), following)
     assert [p.position for p in following] == [(1, 2)]
     following = []
-    machine._advance_one(_Pointer((1, 1), (2, 1)), following)
+    _advance_one(machine, _Pointer((1, 1), (2, 1)), following)
     assert following == []
 
     machine = _Machine(["▣◯─"], ScriptedIO(""))
     following = []
-    machine._advance_one(_Pointer((1, 0), (0, 0)), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0)), following)
     assert following[0].position == (2, 0)
 
     machine = _Machine(["▣◹─"], ScriptedIO(""))
     following = []
-    machine._advance_one(_Pointer((1, 0), (0, 0), "data", 0), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0), "data", 0), following)
     assert following == []
-    machine._advance_one(_Pointer((1, 0), (0, 0), "data", 1), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0), "data", 1), following)
     assert following[0].channel == "execution"
 
 
@@ -396,7 +422,7 @@ def test_unreachable_bad_cell_still_aborts() -> None:
     machine = _Machine(["▣─"], ScriptedIO(""))
     machine.grid = ("▣x",)
     with pytest.raises(HaltError, match="unsupported thisthat cell"):
-        machine._advance_one(_Pointer((1, 0), (0, 0)), [])
+        _advance_one(machine, _Pointer((1, 0), (0, 0)), [])
 
 
 def test_popping_an_empty_head_shifts_the_stack_back() -> None:
