@@ -132,6 +132,15 @@ def test_output_past_the_last_code_point_halts() -> None:
         _run(">(Constant 1114112 >(Output))")
 
 
+def test_output_accepts_the_last_code_point() -> None:
+    assert _run(">(Constant 1114111 >(Output))") == chr(1114111)
+
+
+def test_a_fixed_node_closes_before_the_macro_uses_dollar() -> None:
+    code = "@m(|x(OutputNumber) >c$(Constant 2 >x)) >(Constant 1 !m 0)"
+    assert _run(code) == "2"
+
+
 def test_macros_fill_their_parameter_and_number_each_call() -> None:
     assert _run(SNZ + ">(Constant 3 !SNZ >o >(Constant 0 !SNZ :>(Add 7 >o);))") == "3"
     cell = "@cell(|c$(Constant %>(OutputNumber)) >c$)"
@@ -159,6 +168,7 @@ def test_macros_fill_their_parameter_and_number_each_call() -> None:
         (">(Add !q 1)", "macro 'q' is not defined"),
         (">(Add !m :x)@m(>(Add))", "has no ';'"),
         ("@m(>(Add)", "no closing"),
+        ("@m", "needs @name"),
         (">(Add $)", "'\\$' appears outside a macro"),
     ],
 )

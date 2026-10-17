@@ -119,6 +119,14 @@ def test_the_pointer_stays_a_source_offset_inside_a_lambda() -> None:
     assert 2 in seen  # the body's '2', reached through '!'
 
 
+def test_a_number_literal_may_end_the_program() -> None:
+    assert run_program(run, "5") == ""
+
+
+def test_a_comment_is_skipped_whole() -> None:
+    assert run_program(run, "{.}1.") == "1"
+
+
 def test_only_ascii_digits_make_a_literal() -> None:
     """``²`` and ``٣`` pass ``str.isdigit`` but are unknown, so ignored."""
     assert run_program(run, "1\u00b2.") == "1"
