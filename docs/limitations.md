@@ -390,6 +390,21 @@ controlled by executed checks in each language's own tests.
 - BFStack has a sampled peak machine payload of 756 bits at eight inputs.
 - Subleq has a sampled peak machine payload of 3,066 bits at eight inputs.
 
+`T log T` workspace (eight ledger rows) is a store key or a shared reference,
+which `state_bits` (`scripts/benchmark.py`) counts in full each time; the
+counting rule stands. Dense tables, n=8 to 9 unless stated:
+
+- A Painter Ant, B-tapemark, Collatz Multiverse, Dimensional, Flowchart and
+  Streetcode key a sparse store by address: bits per entry rise one per input
+  (A Painter Ant 9.0 to 10.0 a painted cell, Streetcode 8.0 to 8.9).
+- Unlambda's frames share subterms, each counted at every reference:
+  14,752 to 28,384 continuation bits.
+- Forþ keys every scope by heap index, but twin calls hold the count near
+  `4.6T/n` (`S·n/T` 4.75, 4.86, 4.42 at n=8, 10, 12), so keys cost about
+  `4.6T` bits. The log factor needs a twin 50,625 or more scopes back, whose
+  20-character call misses `_FORTH_SUBTREE_FLOOR` (17): at least 20 inputs,
+  derived, not executed.
+
 - Malbolge:
   `test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
   and every second-level cascade row. Both are needed: at eleven inputs,
