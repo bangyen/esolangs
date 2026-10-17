@@ -6,10 +6,10 @@ from esolangs.generation.helpers import permute_truth_table
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _dag,
-    _linear_shared_layout,
     circuit_diagram,
 )
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _best_linear_fold,
     _execute,
 )
 
@@ -63,8 +63,7 @@ def test_named_orders_avoid_literal_expander_routing_within_existing_bounds(
     n = len(table).bit_length() - 1
     if log_side >= 2:
         assert len(_dag(table, n)[0]) ** 2 > 4 * len(table)
-    model = _linear_shared_layout(table, n)
-    assert model is not None
+    model = _best_linear_fold(table, n)
     code = circuit_diagram(table)
     assert code == model.render()
     assert len(code) == {1: 10_114, 2: 91_312, 3: 443_276}[log_side]
@@ -80,8 +79,7 @@ def test_rotated_projection_preserves_original_read_order() -> None:
         core[sum(((row >> (11 - at)) & 1) << (8 - i) for i, at in enumerate(kept))]
         for row in range(4096)
     )
-    model = _linear_shared_layout(table, 12)
-    assert model is not None
+    model = _best_linear_fold(table, 12)
     assert circuit_diagram(table) == model.render()
     _execute(table, model.render())
 

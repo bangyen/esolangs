@@ -5,13 +5,13 @@ import importlib
 import pytest
 
 from esolangs.languages.circuit_diagram.generator import (
-    _linear_shared_layout,
     circuit_diagram,
 )
 from esolangs.languages.circuit_diagram.generator.banks import (
     _residual_class_bank_candidate,
 )
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
+    _best_linear_fold,
     _execute,
 )
 from tests.support.witness_tables import dense
@@ -60,8 +60,7 @@ def test_public_abba_class_bank_executes_every_row() -> None:
 @pytest.mark.medium
 def test_classes_cross_distinct_banks_beyond_all_fold_orders() -> None:
     table = _eight_classes(13)
-    complete = _linear_shared_layout(table, 13)
-    assert complete is not None
+    complete = _best_linear_fold(table, 13)
     chunks = [table[start : start + 1024] for start in range(0, len(table), 1024)]
     assert len(set(chunks)) == 8
     code = circuit_diagram(table)

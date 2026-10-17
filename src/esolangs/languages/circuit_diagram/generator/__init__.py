@@ -48,14 +48,8 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
-from esolangs.languages.circuit_diagram.generator.hlayout import (
-    _h_minterm_sites,
-    _h_term_area_floor,
-    _h_term_layout,
-)
 from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,
-    _layout_area,
     _resolve_order,
 )
 from esolangs.registry._contracts import BooleanContract
@@ -542,16 +536,8 @@ def _circuit_diagram_model(
     return builder.layout
 
 
-def _linear_shared_layout(
-    table: str, inputs: int, _models: list[_Layout] | None = None
-) -> _Layout | None:
-    """Return a complete fixed-order fold below the H fallback area floors.
-
-    Record every model in ``_models`` for final character comparison.
-    Ordered interval work is O(M log M), with M=O(T/log T) residuals.
-    """
-    from .hpool import _H_POOL_MIN_INPUTS, _h_pool_area_floor
-
+def _linear_shared_layout(table: str, inputs: int, models: list[_Layout]) -> None:
+    """Append the complete fixed-order folds to ``models`` for the race."""
     used, projected = _essential_table(table, inputs)
     candidates = [(projected, used)]
     for tail in (3, 4):
@@ -560,31 +546,12 @@ def _linear_shared_layout(
             # without changing port reads or searching selector orders.
             rotated = "".join(projected[i :: 1 << tail] for i in range(1 << tail))
             candidates.append((rotated, used[-tail:] + used[:-tail]))
-    sites = [
-        point
-        for prefix, point in _h_minterm_sites(inputs).items()
-        if prefix.bit_length() - 1 >= 2
-    ]
-    floor = _box_area(sites)
-    if len(used) >= _H_POOL_MIN_INPUTS:
-        # Early admission must not suppress a smaller pooled fallback.
-        floor = min(
-            floor,
-            _h_term_area_floor(len(used), inputs),
-            _h_pool_area_floor(len(used), inputs),
-        )
-    selected = None
     for candidate, order in candidates:
-        model = _circuit_diagram_model(
-            candidate, None, input_order=order, port_inputs=inputs
+        models.append(
+            _circuit_diagram_model(
+                candidate, None, input_order=order, port_inputs=inputs
+            )
         )
-        if _models is not None:
-            _models.append(model)
-        area = _layout_area(model)
-        if area < floor or (area == floor and selected is None):
-            floor = area
-            selected = model
-    return selected
 
 
 def _narrowest_present(*forms: str | None) -> str:
@@ -592,20 +559,11 @@ def _narrowest_present(*forms: str | None) -> str:
     return narrowest_grid(*(form for form in forms if form is not None))
 
 
-def _box_area(points: list[tuple[int, int]]) -> int:
-    """Return the area of the smallest box holding every point."""
-    xs = [x for x, _ in points]
-    ys = [y for _, y in points]
-    return (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1)
-
-
 def _competing_model_circuit(truth_table: str, inputs: int) -> str:
     """Return the smallest emitted-character circuit among the n>=8 layouts.
 
     Three complete fixed-order folds compete by area against prefix
-    H-layouts and shared class banks; sharing wins character ties.  Interval
-    models count characters before rendering, so a node cap cannot hide a
-    smaller complete fold.
+    H-layouts and shared class banks; sharing wins character ties.
     """
     from .compete import select_competing_model  # cycle: candidates import this module
     from .source_size import layout_source_size

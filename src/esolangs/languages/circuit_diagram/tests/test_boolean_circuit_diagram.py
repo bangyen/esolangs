@@ -654,8 +654,9 @@ def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs) -> None:
     from esolangs.runtime._evaluate import _evaluate
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
-    model = _linear_shared_layout(table, inputs)
-    assert model is not None
+    models: list = []
+    _linear_shared_layout(table, inputs, models)
+    model = min(models, key=lambda m: m.bounds()[0] * m.bounds()[1])
     program = boolean.circuit_diagram(table)
     lines = program.splitlines()
     assert len(lines) * max(map(len, lines)) <= model.bounds()[0] * model.bounds()[1]
@@ -669,7 +670,6 @@ def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs) -> None:
 
 @pytest.mark.medium
 def test_complete_wide_projection_retains_nonadjacent_ports() -> None:
-    from esolangs.languages.circuit_diagram.generator import _linear_shared_layout
     from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
     from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
     from esolangs.runtime._evaluate import _evaluate
@@ -678,7 +678,6 @@ def test_complete_wide_projection_retains_nonadjacent_ports() -> None:
     residual = "".join(rng.choice("01") for _ in range(128))
     # Input six is ignored; the last input keeps its original eighth port.
     table = "".join(residual[((row >> 2) << 1) | (row & 1)] for row in range(256))
-    assert _linear_shared_layout(table, 8) is not None
     model = _h_pool_layout(residual, input_order=[0, 1, 2, 3, 4, 5, 7], port_inputs=8)
     program = boolean.circuit_diagram(table)
     height, width = model.bounds()
