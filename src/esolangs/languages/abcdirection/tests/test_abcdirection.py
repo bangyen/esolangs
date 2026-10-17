@@ -109,9 +109,11 @@ def test_a_step_after_the_halt_changes_nothing() -> None:
 
 
 def test_memory_spans_the_highest_one() -> None:
-    machine = _Machine("DDDDDD", ScriptedIO())
-    machine.ones.add(3)
-    assert machine.memory == [0, 0, 0, 1]
+    """``A`` heads the pointer left onto the wrapped ``C``, which sets cell 1."""
+    machine = _Machine("ABBBBC\nDDDDDD", ScriptedIO())
+    machine.step()
+    machine.step()
+    assert machine.memory == [0, 1]
 
 
 def test_snapshots_tell_tapes_apart_down_to_the_last_one() -> None:
