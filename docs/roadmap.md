@@ -49,3 +49,17 @@ oracle when it goes.
   (`test_digit_inits.py`); which init values spell them is a placement
   tie-break. Smallest trits exhaust a `g` value's walked addresses; first-fit
   over completing values builds and executes but takes 17.6 s.
+
+## Language intake
+
+First implementations from the 2026-10-17 screen of Category:Unimplemented
+(pages with five or fewer backlinks); none built yet.
+
+- **Bleh:** bitstring pattern matching with full stdin/stdout. The generator
+  can match the input bits against patterns. How laziness interacts with
+  `{}` blocks is unstated.
+- **Stisp:** S-expression rewriting with an exact step rule. It has no IO:
+  inputs are embedded in the program, and the result is the final
+  expression.
+- **Freestajlo:** a FALSE-like language over an array of stacks. Admit it
+  only if its generator does not re-spell `false`'s.
