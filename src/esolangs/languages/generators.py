@@ -91,10 +91,10 @@ from esolangs.languages.fish.generator import LANGUAGE as _FISH_LANGUAGE
 from esolangs.languages.fish.generator import fish
 from esolangs.languages.flowchart.generator import LANGUAGE as _FLOWCHART_LANGUAGE
 from esolangs.languages.flowchart.generator import flowchart
+from esolangs.languages.for_thorn.generator import LANGUAGE as _FOR_THORN_LANGUAGE
+from esolangs.languages.for_thorn.generator import for_thorn
 from esolangs.languages.forbin.generator import LANGUAGE as _FORBIN_LANGUAGE
 from esolangs.languages.forbin.generator import forbin
-from esolangs.languages.forth.generator import LANGUAGE as _FORTH_LANGUAGE
-from esolangs.languages.forth.generator import forth
 from esolangs.languages.fractran.generator import LANGUAGE as _FRACTRAN_LANGUAGE
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.grapheme.generator import LANGUAGE as _GRAPHEME_LANGUAGE
@@ -233,8 +233,8 @@ _LANGUAGES = (
     _FARGO_LANGUAGE,
     _FISH_LANGUAGE,
     _FLOWCHART_LANGUAGE,
+    _FOR_THORN_LANGUAGE,
     _FORBIN_LANGUAGE,
-    _FORTH_LANGUAGE,
     _FRACTRAN_LANGUAGE,
     _GRAPHEME_LANGUAGE,
     _HOME_ROW_LANGUAGE,
@@ -324,8 +324,8 @@ __all__ = [
     "fargo",
     "fish",
     "flowchart",
+    "for_thorn",
     "forbin",
-    "forth",
     "fractran",
     "grapheme",
     "home_row",

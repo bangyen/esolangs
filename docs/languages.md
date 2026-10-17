@@ -38,7 +38,7 @@ Languages that use a stack for data manipulation.
 - [Eval](https://esolangs.org/wiki/Eval) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/eval/interpreter.py))
 - [FALSE](https://esolangs.org/wiki/FALSE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/false/interpreter.py))
 - [Fackward](https://esolangs.org/wiki/Fackward) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fackward/interpreter.py))
-- [Forþ](https://esolangs.org/wiki/For%C3%BE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/forth/interpreter.py))
+- [Forþ](https://esolangs.org/wiki/For%C3%BE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/for_thorn/interpreter.py))
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/grapheme/interpreter.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/modulous/interpreter.py))
 - [Piet](https://esolangs.org/wiki/Piet) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/piet/interpreter.py))

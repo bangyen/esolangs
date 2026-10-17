@@ -59,7 +59,7 @@ don't edit by hand.
 | `fish/fish.txt` | Fish | `0001` | `01` | 01 | '0' |
 | `flowchart/flowchart.txt` | Flowchart | `0001` | `01` | 01 | '0' |
 | `forbin/forbin.txt` | Forbin | `0001` | `01` | 01 | '0' |
-| `forth/forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
+| `for_thorn/forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
 | `fractran/fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |

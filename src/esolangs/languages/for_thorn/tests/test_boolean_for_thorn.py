@@ -1,4 +1,4 @@
-"""forth generator tests."""
+"""for_thorn generator tests."""
 
 import random
 
@@ -15,10 +15,10 @@ from tests.support.generator_support import (
 
 def _forth_scope_keys(table: str) -> set[int]:
     """The heap indices a Forþ program's definitions actually reach."""
-    from esolangs.languages.forth.interpreter import _Machine
+    from esolangs.languages.for_thorn.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
-    machine = _Machine(boolean.forth(table).split(",")[0], ScriptedIO(""))
+    machine = _Machine(boolean.for_thorn(table).split(",")[0], ScriptedIO(""))
     while not machine.halted:
         machine.step()
     return set(machine.table)
@@ -26,7 +26,7 @@ def _forth_scope_keys(table: str) -> set[int]:
 
 def _forth_plain(table: str) -> str:
     """Forþ's build with no subtree shared: the fold alone, in natural order."""
-    from esolangs.languages.forth.generator import _forth_ordered
+    from esolangs.languages.for_thorn.generator import _forth_ordered
 
     n = len(table).bit_length() - 1
     natural = tuple(reversed(range(n)))
@@ -36,7 +36,7 @@ def _forth_plain(table: str) -> str:
 class TestForth:
     def test_leaf_results_are_the_byte(self) -> None:
         """Each leaf pushes 48 + its table entry."""
-        program = boolean.forth("0001")
+        program = boolean.for_thorn("0001")
         assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3
         assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
 
@@ -47,7 +47,7 @@ class TestForth:
         assert _forth_plain(parity).count("{") == 2 ** (5 + 1) - 2
         # Sharing keeps two dispatching nodes a level (parity and its
         # complement) and two calls to them: 2 + 4 * 3 + 4 leaves.
-        program = boolean.forth(parity)
+        program = boolean.for_thorn(parity)
         assert program.count("{") == 18
         assert program.count(",68*-") == 5
 
@@ -77,9 +77,11 @@ class TestForth:
             table = format(value, "08b")
             plain = _forth_plain(table)
             if len(essential_inputs(table, 3)) == 3:
-                assert boolean.forth(table) == min(plain, boolean.forth(table), key=len)
+                assert boolean.for_thorn(table) == min(
+                    plain, boolean.for_thorn(table), key=len
+                )
             else:  # an ignored input is read and dropped, never a level
-                assert len(boolean.forth(table)) <= len(plain)
+                assert len(boolean.for_thorn(table)) <= len(plain)
 
     def test_sharing_totals(self) -> None:
         """Calling a repeated subtree's twin cuts the totals, growing none."""
@@ -89,7 +91,7 @@ class TestForth:
             (five_input_sample(), 93764, 63240),
         ):
             plain = [len(_forth_plain(table)) for table in tables]
-            shared = [len(boolean.forth(table)) for table in tables]
+            shared = [len(boolean.for_thorn(table)) for table in tables]
             assert (sum(plain), sum(shared)) == (before, after)
             assert all(s <= p for s, p in zip(shared, plain, strict=True))
 
@@ -117,14 +119,14 @@ class TestForth:
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
-        from esolangs.languages.forth.generator import _forth_const
+        from esolangs.languages.for_thorn.generator import _forth_const
 
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
 
     def test_const_is_base_fifteen(self) -> None:
         """Digits are ``0-E`` and the radix is 15, not 16."""
-        from esolangs.languages.forth.generator import _forth_const
+        from esolangs.languages.for_thorn.generator import _forth_const
 
         assert _forth_const(14) == "E"
         assert _forth_const(15) == "1F*0+"
@@ -135,7 +137,9 @@ class TestForth:
     def test_the_program_is_only_forth_commands(self) -> None:
         """Only the characters Forþ reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.forth(table)) <= set("*+,-.:123456789;ABCDEFcv{}"), table
+            assert set(boolean.for_thorn(table)) <= set("*+,-.:123456789;ABCDEFcv{}"), (
+                table
+            )
 
 
 @pytest.mark.medium

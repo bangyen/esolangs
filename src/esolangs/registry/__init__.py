@@ -238,7 +238,7 @@ def _symbols(*names: str) -> Counter[str]:
 
 
 def _separator(c: str) -> bool:
-    # Whitespace and every dash: ``'\tforth\n'``, ``'Super\xa0SNUSP'`` and
+    # Whitespace and every dash: ``'\tfor_thorn\n'``, ``'Super\xa0SNUSP'`` and
     # ``'6\u20135'`` resolved before the symbol rule and must still.
     return c.isspace() or c == "_" or unicodedata.category(c) == "Pd"
 

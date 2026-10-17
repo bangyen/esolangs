@@ -34,7 +34,7 @@ def _forth_const(value: int) -> str:
     return _forth_const(high) + "F*" + digit + "+" if high else digit
 
 
-def forth(truth_table: str) -> str:
+def for_thorn(truth_table: str) -> str:
     """Build a Forþ program printing ``'0'``/``'1'``; ``2**n`` entries, MSB first."""
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -122,8 +122,8 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
 
 LANGUAGE = Language(
     "Forþ",
-    "forth",
+    "for_thorn",
     category="stack_based",
-    boolean=forth,
+    boolean=for_thorn,
     wrap=wrap_chars,
 )
