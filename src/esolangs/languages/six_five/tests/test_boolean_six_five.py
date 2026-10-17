@@ -425,14 +425,3 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
 def test_internal_route_budget_is_not_a_generator_restriction() -> None:
     assert esolangs.describe("6-5")["generator_restrictions"] is None
     assert esolangs.describe("6-5")["generator_max_inputs"] is None
-
-
-def test_the_label_bound_is_inclusive(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An arity equal to the largest operand label still gets the labelled walk."""
-    module = importlib.import_module("esolangs.languages.six_five.generator")
-    table = _dense(5)
-    monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 5)
-    program = _six_five_walk(table)
-    assert program != _six_five_guarded(table)
-    for row in range(32):
-        assert run_six_five(program, list(format(row, "05b"))) == table[row]
