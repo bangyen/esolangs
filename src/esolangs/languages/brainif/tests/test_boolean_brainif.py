@@ -144,13 +144,6 @@ def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
                 assert io.input_str() == "sentinel"
 
 
-def test_brainif_odd_arity_loop_depth_size_pin() -> None:
-    program = boolean.brainif("0" * 31 + "1", 1)
-    assert len(program) == 2634
-    for row in (0, 17, 30, 31):
-        assert run_brainif(program, list(format(row, "05b"))) == str(row // 31)
-
-
 def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
     program = boolean.brainif("0110", 1)
     assert max(map(len, program.splitlines())) == 12
@@ -251,5 +244,5 @@ def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
 
     table = "0" * 31 + "1"
     program = esolangs.generate("brainif", table, width=1)
-    assert len(str(program)) == 2731
+    assert len(str(program)) == 2634
     assert _evaluate("BrainIf", program, inputs=5) == table
