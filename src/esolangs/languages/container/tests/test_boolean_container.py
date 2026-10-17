@@ -63,6 +63,10 @@ class TestContainer:
             assert before.var == {key: after.var[key] for key in before.var}
             assert before.halted == after.halted
 
+    def test_width_zero_asks_for_no_narrowing(self) -> None:
+        for table in witnesses(3):
+            assert boolean.container(table, 0) == boolean.container(table)
+
     @pytest.mark.parametrize("width", [1, 7, 8])
     def test_narrow_rules_execute_the_three_input_witnesses(self, width: int) -> None:
         for table in witnesses(3):
