@@ -422,26 +422,10 @@ def _balance(table: str, default: str) -> str:
         commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)
         # The ring's 2W+2H-7 free cells fix W+H; W=A*H splits them.
         width = max(2, ceil(CELL_ASPECT * (commands + 7) / (2 * CELL_ASPECT + 2)))
-        square = (
+        return (
             _coordinate_ring(inputs, used[0], table[0], width)
             if used
             else _constant_ring(inputs, table[0], width)
-        )
-        legacy = _clockwise_program(table, keep_trailing=True)
-        rotated = _clockwise_program(
-            table, max(1, grid_width(legacy) - 1), keep_trailing=True
-        )
-        lean = _clockwise_program(
-            table, max(1, grid_width(rotated) - 1), keep_trailing=True
-        )
-        return min(
-            default,
-            square,
-            legacy,
-            rotated,
-            lean,
-            _clockwise_program(table, 1, keep_trailing=True),
-            key=balance_score,
         )
     rotated = clockwise(table, max(1, grid_width(default) - 1))
     lean = clockwise(table, max(1, grid_width(rotated) - 1))
