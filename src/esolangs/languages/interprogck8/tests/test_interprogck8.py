@@ -346,12 +346,11 @@ class TestBranchingSearch:
         assert successors is not None
         assert len(successors) == 1
 
-    def test_a_range_missing_its_closer_still_draws_once(self) -> None:
-        """Only a ``[...]`` line has 256 outcomes; ``[. :`` is read as ``[. :]``."""
-        machine = _Machine("[. :\ndiv", ScriptedIO(""))
-        successors = machine.branching_successors(machine.branching_snapshot(), 100)
-        assert successors is not None
-        assert len(successors) == 1
+    @pytest.mark.parametrize("line", ["[. :", "[. :x"])
+    def test_a_range_missing_its_closer_is_refused(self, line: str) -> None:
+        """An unclosed ``[`` is no range: its last character is not a bracket."""
+        with pytest.raises(HaltError, match="unknown instruction"):
+            go(line)
 
     def test_a_reading_line_declines_to_fork(self) -> None:
         """Siblings cannot share one input cursor, so the search declines."""
