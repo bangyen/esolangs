@@ -44,18 +44,8 @@ oracle when it goes.
   of 12. Generation still breadth-first navigates (`core.py` `goto`: targets
   above 127 need multi-hop pointer paths) and places handlers and hub stubs
   first-fit. `digits.py`'s 16-op gadget is the unique minimum (closed form;
-  `test_gadget_suffix.py`). `_D_INITS` inverts a fixed 94-permutation of walked
-  values with a tie-break: no closed form in the literature (Scheffer; Ando et
-  al. IEICE SS2012-37 find gadgets by SAT); a lookahead-1 greedy reproduces
-  groups 0, 2, 3, 4 but changes group 1.
-- **Vandevelo:** `_peel.py` is a greedy popular-difference cover over a
-  nearest-difference candidate pool. A deterministic axis-cube merge is
-  O(n T) but emits 2.1x the peel's text at n=8 (5.6x on n=10 majority).
-  Exact Walsh autocorrelation (top 8 directions per node, lowest weight
-  first) instead of the pool: 0.977x/0.988x text on 200 random tables at
-  n=7/8, but generation grows 2.6x per input at n=11..12 (pure-Python FWHT).
-  The axis merge loses on cube count, not guard cost (rand8: 63 clauses,
-  mean dimension 0.8, vs 23 at 2.0). An affine Quine--McCluskey merge, each
-  span group taking its most popular direction among window-4 successor
-  differences, is 1.060x on 200 random n=8 tables and 1.09-1.12x at
-  n=10..12, ~20x faster, but carries no clause bound.
+  `test_gadget_suffix.py`). `_D_INITS`'s gadget outputs are a rule, the
+  lexicographically first of 2,464 completing sequences
+  (`test_digit_inits.py`); which init values spell them is a placement
+  tie-break. Smallest trits exhaust a `g` value's walked addresses; first-fit
+  over completing values builds and executes but takes 17.6 s.
