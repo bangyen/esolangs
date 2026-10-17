@@ -528,10 +528,9 @@ def _emit_loop(lines: list[str], strip: _Strip, level: int, size: int) -> None:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the DAG, full tree, short spellings and small zero-jump tree."""
+    """Compare the DAG, full tree and small zero-jump tree."""
     wide = _brainif_tree(table, None)
-    short = brainif(table, max(1, grid_width(wide) - 1))
-    return min(default, wide, short, brainif(table, 1), key=balance_score)
+    return min(default, wide, brainif(table, 1), key=balance_score)
 
 
 LANGUAGE = Language(
