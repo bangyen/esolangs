@@ -304,3 +304,17 @@ def test_balance_matches_the_old_one_column_narrowing_search() -> None:
     assert balance_score(searched("0110", thisthat("0110"))) < balance_score(
         _tree("0110")
     )
+
+
+def test_a_nonpositive_width_is_no_request() -> None:
+    """The public API rejects it; the generator itself leaves the layout alone."""
+    for table in witnesses(3):
+        assert thisthat(table, 0) == thisthat(table)
+
+
+def test_a_dag_over_the_cycle_bound_is_refused() -> None:
+    """The shared form is smaller here but runs past 32 * 2^(n/2) - 29 cycles."""
+    table = "0000111011101111"
+    source = esolangs.generate("thisthat", table)
+    assert len(source) == 2053
+    assert evaluate_generated("thisthat", table) == table
