@@ -367,3 +367,14 @@ def test_default_reuses_emitted_frames() -> None:
         execute("Algebraic Programming Language", program, table, {}, all_rows=True)
         == 256
     )
+
+
+def test_a_wide_table_keeps_its_one_line_tail_under_the_frame_floor() -> None:
+    """Seven inputs raise the frame floor with n, so the short tail stays inline."""
+    lang = "Algebraic Programming Language"
+    table = "10" * 64  # NOT of the last input; the other six are ignored
+    program = generate(lang, table, width=1)
+    assert len(program) == 35
+    for combo in (0, 1, 2, 127):
+        stdin = "\n".join(format(combo, "07b")) + "\n"
+        assert esolangs.run(lang, program, stdin=stdin) == table[combo] + "\n"
