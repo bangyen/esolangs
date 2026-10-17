@@ -1,5 +1,7 @@
 """Execution tests for the Befunge classic."""
 
+from ctypes import c_long, sizeof
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -216,13 +218,16 @@ def test_a_value_past_signed_long_aborts() -> None:
         run_befunge("99*:*:*:*:*.@")
 
 
-_MIN_LONG = "2:*:*:*:*:*:2/0\\-*"  # -(2**31) * 2**32 = -2**63, every push in range
+_LONG_BITS = sizeof(c_long) * 8  # 64, or 32 on Windows
+# 2 squared to 2**(bits/2), times -(2**(bits/2 - 1)): -2**(bits-1), every push in range.
+_MIN_LONG = "2" + ":*" * ((_LONG_BITS // 2).bit_length() - 1) + ":2/0\\-*"
 
 
 def test_the_signed_long_range_is_inclusive_at_both_ends() -> None:
-    """-2**63 and 2**63 - 1 are valid; 2**63 is not, and 65536 is no 16-bit wrap."""
-    assert run_befunge(_MIN_LONG + ".@") == "-9223372036854775808 "
-    assert run_befunge(_MIN_LONG + "1+0\\-.@") == "9223372036854775807 "
+    """A C long's two ends are valid, one past the top is not, and 2**16 is no wrap."""
+    low = -(1 << (_LONG_BITS - 1))
+    assert run_befunge(_MIN_LONG + ".@") == f"{low} "
+    assert run_befunge(_MIN_LONG + "1+0\\-.@") == f"{-low - 1} "
     with pytest.raises(HaltError, match="signed-long"):
         run_befunge(_MIN_LONG + "0\\-.@")
     assert run_befunge("99*:*:*.@") == "43046721 "
