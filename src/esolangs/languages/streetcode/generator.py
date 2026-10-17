@@ -844,15 +844,16 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Return the folded indexed street from six inputs, else compare the tree fits.
+    """Compare the default with the fold from six inputs, else also the tree fits.
 
     From six inputs the fold beat every other layout (default, the one- and
     nine-column fits, the indexed street and its half-turn) on every table
-    measured, so it is the only one built.
+    measured; the free default stays so balance never scores worse than it.
     """
     n = _validate_truth_table(table)
     if n >= _FLAT_FROM:
-        return _streetcode_folded(_streetcode_flat(table, n))
+        folded = _streetcode_folded(_streetcode_flat(table, n))
+        return min([default, folded], key=balance_score)
     shapes = _tree_shapes(table, n, _streetcode_tree(table), hallway=True)
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
