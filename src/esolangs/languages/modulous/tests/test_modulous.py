@@ -431,6 +431,48 @@ def test_modulous_declines_input_and_caps_a_wide_draw() -> None:
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
 
 
+def test_branching_search_sees_a_cursor_past_the_last_token_as_halted() -> None:
+    """Running off the end halts; the search must not read a token there."""
+    assert run_until_halt_or_all_branches_cycle(Modulous("[RND 2]", ScriptedIO()))
+
+
+class _Scripted:
+    """A draw source that replays fixed values."""
+
+    def __init__(self, *values: int) -> None:
+        self._values = iter(values)
+
+    def randbelow(self, _upper: int) -> int:
+        return next(self._values)
+
+
+def test_rnd_one_still_consumes_a_draw() -> None:
+    """``RND 1`` is a draw like any other: the next ``RND`` sees the next value."""
+    io = ScriptedIO()
+    run("[RND 1][RND 100][PRT INT]", io, _Scripted(0, 7))
+    assert io.getvalue() == "7"
+
+
+def test_a_variable_change_moves_the_snapshot_at_the_same_cursor() -> None:
+    """A counting loop returns to token 0 with an empty stack but is not a cycle."""
+    machine = Modulous("[VAR1+1][RST]", ScriptedIO())
+    start = machine.snapshot()
+    machine.step()
+    machine.step()
+    assert machine.ind == 0
+    assert machine.snapshot() != start
+
+
+def test_a_draw_moves_the_snapshot_at_the_same_cursor() -> None:
+    """Draw, discard, rewind: only the draw count tells this from the start."""
+    machine = Modulous("[RND 2][POP][RST]", ScriptedIO(), _Scripted(1))
+    start = machine.snapshot()
+    for _ in range(3):
+        machine.step()
+    assert (machine.ind, machine.stk) == (0, ())
+    assert machine.snapshot() != start
+
+
 class TestContract(SnapshotContract):
     machine = staticmethod(lambda code: Modulous(code, IO()))
     stepping_program = "[PSH INT 5][PRT INT][END]"
