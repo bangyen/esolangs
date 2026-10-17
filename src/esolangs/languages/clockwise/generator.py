@@ -152,14 +152,12 @@ class _Layout(NamedTuple):
     return_gap: int
 
 
-def _clockwise_program(
-    truth_table: str, width: int | None = None, *, keep_trailing: bool = False
-) -> str:
+def _clockwise_program(truth_table: str, width: int | None = None) -> str:
     """Build the indexed lookup, retaining the previous constant layout."""
     total = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, total)
-    if keep_trailing or not used:
-        used += range(used[-1] + 1 if used else 0, total)
+    if not used:
+        used += range(total)
     trailing = total - used[-1] - 1
     indexed = read_at(truth_table, used, total)
     reads = _head_widths(total, used)
@@ -422,11 +420,12 @@ def _balance(table: str, default: str) -> str:
         commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)
         # The ring's 2W+2H-7 free cells fix W+H; W=A*H splits them.
         width = max(2, ceil(CELL_ASPECT * (commands + 7) / (2 * CELL_ASPECT + 2)))
-        return (
+        ring = (
             _coordinate_ring(inputs, used[0], table[0], width)
             if used
             else _constant_ring(inputs, table[0], width)
         )
+        return min(default, ring, key=balance_score)
     rotated = clockwise(table, max(1, grid_width(default) - 1))
     lean = clockwise(table, max(1, grid_width(rotated) - 1))
     # Measured on random tables n=3..9: side against split is minimal at
