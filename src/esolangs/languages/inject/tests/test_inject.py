@@ -347,3 +347,14 @@ def test_rewrite_transition_keeps_old_lines_and_spans_immutable() -> None:
     with pytest.raises(TypeError):
         moved[1]["data"] = (0, 1)
     assert _advance(before, "new") == (moved, output)
+
+
+def test_memory_is_each_block_s_interior_line_count() -> None:
+    """The count is ``end - begin - 1``, so a block not at line 0 still reads 1."""
+    assert _machine("\nd;\nx\nd;\ne;\ne;").memory == [1, 0]
+
+
+def test_a_rewrite_landing_on_the_first_line_is_legal() -> None:
+    """A pointer that moves to line 0 or 1 is inside the program."""
+    assert _run("a;\nreadto a\na;", "") == ""
+    assert _run("a;\nreadto a\nx\na;", "") == ""
