@@ -314,18 +314,20 @@ class TestProgramObjectsRefuseMisuse:
         with pytest.raises(esolangs.ArgumentError, match=r"\['x at 0xdead'\]"):
             esolangs.encode_inputs(REFERENCE, ["x at 0xdead"])  # type: ignore[list-item]
 
-    def test_memory_is_integer_cells_or_empty(self) -> None:
+    # One case per language: as a single loop it crossed the 3 s CI fast band
+    # under coverage (3.24 s, runs 38923305854 and 38987549506).
+    @pytest.mark.parametrize("name", esolangs.list_languages())
+    def test_memory_is_integer_cells_or_empty(self, name: str) -> None:
         """Three languages exposed tuples and instructions as ``list[int]``."""
-        for name in esolangs.list_languages():
-            facts = esolangs.describe(name)
-            if not facts["examples"]:
-                continue
-            source = (files("esolangs") / facts["examples"][0]).read_bytes()
-            try:
-                vm = debugger_api.make_vm(name, source.decode())
-            except (UnicodeDecodeError, esolangs.EsolangError):
-                continue
-            assert all(type(cell) is int for cell in vm.memory), name
+        facts = esolangs.describe(name)
+        if not facts["examples"]:
+            return
+        source = (files("esolangs") / facts["examples"][0]).read_bytes()
+        try:
+            vm = debugger_api.make_vm(name, source.decode())
+        except (UnicodeDecodeError, esolangs.EsolangError):
+            return
+        assert all(type(cell) is int for cell in vm.memory), name
 
     def test_a_portable_surrogate_is_refused_like_a_file(self) -> None:
         document = esolangs.dump_program(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
