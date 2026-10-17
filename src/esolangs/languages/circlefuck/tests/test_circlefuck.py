@@ -57,6 +57,12 @@ class TestCirclefuck:
                 "\\0[.].[.]@", "\x00", id="a_skipped_loop_scans_forward_for_its_partner"
             ),
             pytest.param("\\n.@", "\n", id="newline_escape"),
+            pytest.param("\\t.@", "\t", id="tab_escape"),
+            pytest.param("\\b.@", "\b", id="backspace_escape"),
+            # 255 is the largest decimal byte; the bound is inclusive.
+            pytest.param("\\255.@", "\xff", id="decimal_escape_max_byte"),
+            # ``}`` on its own cell leaves the cursor so ``.`` is skipped.
+            pytest.param("}.@", "", id="self_delete_steps_past_the_next_cell"),
         ],
     )
     def test_result(self, code, expected) -> None:

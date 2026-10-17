@@ -79,6 +79,36 @@ def test_the_output_is_drawn_by_weight() -> None:
     assert _run("(1+qi+qi)", "", 3) == _run("(1+qi+qi)", "", 3)
 
 
+class _Fixed:
+    """A draw source that always answers ``value``."""
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def randbelow(self, upper: int) -> int:
+        assert self.value < upper
+        return self.value
+
+
+def test_a_ticket_equal_to_the_first_weight_picks_the_second_stack() -> None:
+    """Weights 1 and 2 cover tickets 0 | 1, 2; ticket 1 belongs to ``[1]``."""
+    outputs = []
+    for ticket in range(3):
+        io = ScriptedIO("")
+        run("(1+qi+qi)", io, _Fixed(ticket))
+        outputs.append(io.getvalue())
+    assert outputs == ["[]", "[1]", "[1]"]
+
+
+def test_the_branching_halt_flag_is_the_done_flag() -> None:
+    """With no input read, ``done`` is True while the progress count is 0."""
+    machine = _machine("1")
+    assert not machine.branching_halted(machine.snapshot())
+    while not machine.halted:
+        machine.step()
+    assert machine.branching_halted(machine.snapshot())
+
+
 def test_input_must_be_naturals() -> None:
     with pytest.raises(HaltError, match="not a natural number"):
         _run("1", "-1")
