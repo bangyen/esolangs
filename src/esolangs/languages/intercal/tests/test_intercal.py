@@ -156,6 +156,23 @@ def test_numbers_may_span_whitespace_as_in_the_c_lexer(statement: str) -> None:
     assert _run(f"PLEASE {statement}\nDO GIVE UP\nDO GIVE UP") == "XII\n"
 
 
+@pytest.mark.parametrize(
+    ("source", "code"),
+    [
+        ("DO GIVE UP", "E079"),
+        ("PLEASE GIVE UP\nPLEASE GIVE UP", "E099"),
+    ],
+)
+def test_politeness_error_code_names_the_direction(source: str, code: str) -> None:
+    with pytest.raises(HaltError, match=code):
+        _run(source)
+
+
+def test_subscript_list_stops_at_the_closing_group_mark() -> None:
+    source = "PLEASE ,1 <- #1\nDO ,1 SUB #1 <- #5\nDO READ OUT ',1 SUB #1'\nDO GIVE UP"
+    assert _run(source) == "V\n"
+
+
 def test_empty_lines_do_not_count_toward_politeness() -> None:
     assert _run("\nPLEASE\n\nREAD OUT #1\n\nDO GIVE UP\nDO GIVE UP\n") == "I\n"
 
