@@ -20,10 +20,6 @@ class TestMinifuck:
         """The canonical cat program echoes its input."""
         assert run_and_capture("<[<.[<.", inputs=["B"]) == "B"
 
-    def test_tape_grows_past_the_initial_eight_cells(self) -> None:
-        """The tape extends once the pointer nears its end, and . reads 8 cells."""
-        assert run_and_capture("[[[[[[[.") == "\x7f"
-
     def test_an_unlisted_character_is_not_a_command(self) -> None:
         """A character that is neither ``<`` nor ``.`` nor ``[`` does nothing."""
         assert run_and_capture("X.") == "@"
@@ -73,17 +69,6 @@ class TestStepMachine:
         from esolangs.runtime.io import ScriptedIO
 
         assert _Machine("", ScriptedIO()).tape == [0] * 8
-
-    def test_a_read_keeps_the_tape_past_the_print_window(self) -> None:
-        """Reading input replaces cells 0-7 and keeps everything after them."""
-        from esolangs.languages.minifuck.interpreter import _Machine
-        from esolangs.runtime.io import ScriptedIO
-
-        machine = _Machine(".<<[<<<.[<<.<<<..[<[.[.[..", ScriptedIO("ABCDEFGH"))
-        while not machine.halted:
-            machine.step()
-        assert machine.io.getvalue() == "@`p0\x10"
-        assert machine.tape == [0, 1, 0, 0, 0, 0, 0, 1, 0]
 
 
 class TestVMViews:

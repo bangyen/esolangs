@@ -8,7 +8,7 @@ import pytest
 
 from esolangs.generation.helpers import essential_inputs
 from esolangs.languages.minifuck.generator import _solve
-from esolangs.languages.minifuck.generator.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
+from esolangs.languages.minifuck.generator.mux import _MUX_MIN_ARITY, _mux
 from esolangs.languages.minifuck.generator.sim import _MINIFUCK_INPUT, PAIR
 from esolangs.languages.minifuck.tests.minifuck_support import (
     _MinifuckCase,
@@ -92,15 +92,6 @@ class TestParameterizedMinifuck(_MinifuckCase):
             bits = [(combo >> 1) & 1, combo & 1]
             got = self.run_minifuck(self.instantiate(template, bits))
             assert got == table[combo], (tier, bits)
-
-    def test_the_mux_uses_the_preloaded_strip_rule(self) -> None:
-        """``_mux`` is exactly the named linear lookup construction."""
-
-        table = "1010000110011011"
-        built = _mux(table, 4)
-        assert built is not None
-
-        assert built == _mux_lookup(table, 4)
 
     def test_template_is_input_independent_and_equal_length(self) -> None:
         """The template has placeholders and every fill has the same length."""

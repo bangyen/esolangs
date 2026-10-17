@@ -104,12 +104,6 @@ def test_minifuck_builds_five_input_xor() -> None:
     assert len(widths) == 1, widths
 
 
-# 5.8s: builds the five-input spans and replays the enumeration through them.
-# This is the guard on a *soundness* claim, so it checks the whole population
-# rather than a sample -- a screen that declines one reachable table is a
-# silent coverage regression, which no sampled test would catch.
-
-
 def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
     """``flips`` is a live derivation coordinate, not dead weight."""
 
@@ -127,12 +121,6 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
             for i, (_start, end) in enumerate(runs(flipped, TEMPLATE_CHAR, pairs)):
                 follows = flipped[end : end + len(_FLIP)] == _FLIP
                 assert follows == bool((mask >> i) & 1), (mask, i)
-
-
-# 3.7s standalone: the target-set derivation is the cost.  It is free when the
-# XOR5 build above has already run in this process and warmed the cache, but
-# a -k selection or a shuffled order can pick this one alone, so it is marked
-# for what it costs on its own rather than for the lucky case.
 
 
 def test_mux_refuses_below_its_minimum_arity() -> None:
