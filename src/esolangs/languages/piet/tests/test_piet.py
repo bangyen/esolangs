@@ -116,6 +116,9 @@ def test_enclosed_white_terminates() -> None:
 
 def test_black_start_terminates() -> None:
     assert execute(raster((BLACK,))) == ""
+    # Beside a block that would push and print, the start still halts.
+    machine = _Machine(raster((BLACK, RED, DARK_MAGENTA)), ScriptedIO(""))
+    assert machine.halted
 
 
 def test_white_start_with_no_exit_terminates() -> None:
@@ -206,6 +209,7 @@ def test_codel_chooser_selects_the_documented_edge(
         ((2, 2), [9], [0]),
         ((2, 2), [0], [1]),
         ((3, 0), [8, 3], [1]),
+        ((3, 0), [3, 3], [0]),  # greater is strict
         ((4, 0), [8], [8, 8]),
         ((4, 1), [1, 2, 3, 3, 1], [3, 1, 2]),
     ],
@@ -312,6 +316,17 @@ def test_halted_transition_preserves_state() -> None:
 
     state = ((0, 0), 0, -1, (3, 5), True)
     assert _advance(state, ((BLACK,),)) == (state, None)
+    # A lone black codel halts either way; red -> dark red would push.
+    assert _advance(state, ((RED, DARK_RED),)) == (state, None)
+
+
+def test_switch_flips_the_codel_chooser_by_parity() -> None:
+    from esolangs.languages.piet.interpreter import _advance
+
+    rows = ((RED, LIGHT_CYAN),)  # hue +3, lightness +2: switch
+    for top, cc in ((1, 1), (2, -1), (3, 1)):
+        state, _effect = _advance(((0, 0), 0, -1, (top,), False), rows)
+        assert state[2:4] == (cc, ())
 
 
 def test_numeric_and_character_commands_share_the_input_cursor() -> None:

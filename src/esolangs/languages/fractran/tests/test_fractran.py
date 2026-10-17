@@ -204,6 +204,13 @@ def test_indexed_transitions_do_not_materialize_factor_snapshots(
     assert machine._cursor.factor_updates == 120
 
 
+def test_a_base_at_the_index_limit_is_indexed() -> None:
+    # A short source's limit is SMALL_BASE; it is inclusive.
+    base = fractran_index.SMALL_BASE
+    assert fractran_index.compile_index(f"{base} 1/2") is not None
+    assert fractran_index.compile_index(f"{base + 1} 1/2") is None
+
+
 def test_least_prime_sieve_factors_match_literal_arithmetic() -> None:
     for value in range(1, 513):
         # Unit factors admit bases through 512 without changing the integer.

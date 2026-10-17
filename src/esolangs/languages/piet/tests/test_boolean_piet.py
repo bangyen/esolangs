@@ -27,6 +27,15 @@ def test_every_row_executes(truth_table: str) -> None:
         assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
 
 
+def test_the_generator_scale_upscales_and_executes() -> None:
+    plain, scaled = generate("0110"), generate("0110", scale=3)
+    assert len(scaled.rows) == 3 * len(plain.rows)
+    assert len(scaled.rows[0]) == 3 * len(plain.rows[0])
+    for row, bits in enumerate(product((0, 1), repeat=2)):
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        assert esolangs.run("Piet", scaled, stdin=stdin) == "0110"[row]
+
+
 @pytest.mark.parametrize("balanced", [False, True])
 def test_and_uses_two_reads_multiply_and_output(*, balanced: bool) -> None:
     program = esolangs.generate("Piet", "0001", balance=balanced)
