@@ -321,6 +321,31 @@ def test_tighter_lattice_balance_keeps_the_area_ceiling() -> None:
 
 
 @pytest.mark.medium
+@pytest.mark.parametrize(
+    ("table", "size"),
+    [
+        (
+            "1000011001001001101000011011100100110111011111110100011111011101",
+            (2060, 1940),
+        ),
+        (
+            "0010000000000001001000000000000100100000000000010010000000000001",
+            (840, 1620),
+        ),
+    ],
+)
+def test_balanced_choice_scores_the_drawn_extent(
+    table: str, size: tuple[int, int]
+) -> None:
+    """A balanced non-small tree is picked on its true width by height."""
+    image = esolangs.generate("Line", table, balance=True)
+    assert (len(image.rows[0]), len(image.rows)) == size
+    for row in (0, 5, 33, 63):
+        stdin = "\n".join(f"{row:06b}") + "\n"
+        assert esolangs.run("Line", image, stdin=stdin) == table[row]
+
+
+@pytest.mark.medium
 @pytest.mark.parametrize("unit", [8, 12, 16, 20])
 @pytest.mark.parametrize("scale", [1, 2, 3])
 def test_generated_unit_survives_plain_png(unit: int, scale: int) -> None:

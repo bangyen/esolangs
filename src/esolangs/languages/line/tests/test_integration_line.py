@@ -114,6 +114,31 @@ def test_line_detection_has_no_sixteen_fold_ceiling() -> None:
     assert detect_scale(mask) == 17
 
 
+def test_a_one_pixel_path_below_a_stair_stepped_arrowhead_keeps_scale_one() -> None:
+    # Only the last row is one pixel thick, so only it shows the scale is 1.
+    art = [
+        "....##........",
+        "....##........",
+        "..######......",
+        "..######......",
+        "##########....",
+        "##############",
+    ]
+    ink, blank = (0, 0, 0), (255, 255, 255)
+    image = Raster(tuple(tuple(ink if c == "#" else blank for c in r) for r in art))
+    assert esolangs.run("Line", image) == ""
+
+
+def test_a_two_pixel_speck_nearer_than_the_path_is_not_the_path() -> None:
+    # Extraction tolerates two stray pixels; they must not be read as the path.
+    rows = [list(row) for row in esolangs.generate("Line", "01").rows]
+    for y in (1, 2):
+        rows[y][51] = (0, 0, 0)
+    image = Raster(tuple(map(tuple, rows)))
+    assert esolangs.run("Line", image, stdin="0\n") == "0"
+    assert esolangs.run("Line", image, stdin="1\n") == "1"
+
+
 def test_explicit_line_scale_checks_ink_blocks() -> None:
     with pytest.raises(ValueError, match="uniform"):
         normalize_scale(Mask(3, 2, [3, 3, 3]), 2)
