@@ -10,7 +10,6 @@ Subcommands:
     esolangs run <language> <file>        run a program through its interpreter
     esolangs read-answer <language>       print the answer bit in a program's
                                           output, read from stdin
-    esolangs debug <language> <file>      run under the breakpoint/watch VM
 
 Every subcommand takes ``--help``.  For anything else, invoke the module
 directly with ``python -m``.
@@ -45,7 +44,6 @@ from esolangs import (
     Raster,
     __version__,
     describe,
-    dump_program,
     encode_inputs,
     generate,
     instantiate,
@@ -57,17 +55,14 @@ from esolangs.cli.args import (
     _errors,
     _expand_short_options,
     _fail,
-    _integer,
     _pop_flags,
     _pop_options,
-    _pop_portable,
     _pop_set_pairs,
     _pop_width,
     _scale_of,
     _settings_of,
     _split_positional,
 )
-from esolangs.cli.debug import _debug
 from esolangs.cli.help import HELP, USAGE
 from esolangs.cli.hints import (
     _as_argument,
@@ -83,12 +78,6 @@ from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES, Language, resolve
-from esolangs.registry._describe import (
-    INPUT_SHAPES,
-    SHAPES,
-    STATE_MODELS,
-    WIDTH_EFFECTS,
-)
 from esolangs.runtime._program import Program
 
 
@@ -105,28 +94,10 @@ def _encode(rest: list[str]) -> None:
         _fail(_shell_hint(_cli_error_text(exc), language))
 
 
-#: ``list``'s capability flags.  A template embeds its bits, so only a
-#: reading program has an input shape.
+#: ``list``'s filters; every other fact is in ``list --json --details``.
 _FLAG_FILTERS: dict[str, Callable[[Language], bool]] = {
     "--generator": lambda lang: lang.boolean is not None,
     "--interpreter-only": lambda lang: lang.boolean is None,
-    "--template": lambda lang: lang.parameterized,
-    "--reads-input": lambda lang: lang.boolean is not None and not lang.parameterized,
-    "--random": lambda lang: lang.random,
-}
-#: ``list``'s labelled options: the values each accepts and the language's
-#: own.  ``describe`` is reached only for the derived labels (0.28 s cold
-#: over the registry), so the default catalog stays cheap.
-_VALUE_FILTERS: dict[str, tuple[tuple[str, ...], Callable[[str], object]]] = {
-    "--source": (("text", "raster"), lambda name: LANGUAGES[name].source_kind.value),
-    "--answer": (
-        ("output", "dump", "termination"),
-        lambda name: LANGUAGES[name].contract.answer_mode,
-    ),
-    "--state-model": (STATE_MODELS, lambda name: describe(name)["state_model"]),
-    "--shape": (SHAPES, lambda name: describe(name)["shape"]),
-    "--input-shape": (INPUT_SHAPES, lambda name: describe(name)["input_shape"]),
-    "--width-effect": (WIDTH_EFFECTS, lambda name: describe(name)["width_effect"]),
 }
 
 
@@ -134,62 +105,25 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
     """Return candidates by declared capabilities, without generating a table."""
     if "--generator" in flags and "--interpreter-only" in flags:
         _fail("--generator and --interpreter-only cannot be combined")
-    if "--inputs" in options and "--interpreter-only" in flags:
-        _fail("--inputs requires a generator; omit --interpreter-only")
-    if "--template" in flags and "--reads-input" in flags:
-        _fail("--template and --reads-input cannot be combined")
-    if "--input-shape" in options and "--template" in flags:
-        _fail("--input-shape requires a reading program; omit --template")
-    labels = {}
-    for option, (choices, getter) in _VALUE_FILTERS.items():
-        if option in options:
-            if options[option] not in choices:
-                _fail(f"{option} must be one of {', '.join(choices)}")
-            labels[option] = getter
     pattern = None
     if "--grep" in options:
         try:
             pattern = re.compile(options["--grep"], re.IGNORECASE)
         except re.error as exc:
             _fail(f"--grep is not a valid regular expression: {exc}")
-    inputs = None
-    if "--inputs" in options:
-        inputs = _integer(options["--inputs"], "--inputs", kind="a positive integer")
-        if inputs < 1:
-            _fail("--inputs must be a positive integer")
     wanted = [_FLAG_FILTERS[flag] for flag in flags if flag in _FLAG_FILTERS]
-    if inputs is not None:
-        wanted.append(_FLAG_FILTERS["--generator"])
-    if "--input-shape" in options:
-        wanted.append(_FLAG_FILTERS["--reads-input"])
-    names = []
-    for name in list_languages():
-        language = LANGUAGES[name]
-        if not all(test(language) for test in wanted):
-            continue
-        if any(getter(name) != options[option] for option, getter in labels.items()):
-            continue
-        if pattern is not None and not pattern.search(describe(name)["spec"]):
-            continue
-        limit = language.generator_max_inputs
-        if inputs is not None and limit is not None and inputs > limit:
-            continue
-        names.append(name)
-    return names
+    return [
+        name
+        for name in list_languages()
+        if all(test(LANGUAGES[name]) for test in wanted)
+        and (pattern is None or pattern.search(describe(name)["spec"]))
+    ]
 
 
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
-    value_options = {*_VALUE_FILTERS, "--inputs", "--grep"}
-    flag_options = {
-        "--details",
-        "--json",
-        "--generator",
-        "--interpreter-only",
-        "--template",
-        "--reads-input",
-        "--random",
-    }
+    value_options = {"--grep"}
+    flag_options = {"--details", "--json", *_FLAG_FILTERS}
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
     rest = _split_positional(rest, set(), value_options | flag_options)
@@ -299,7 +233,6 @@ def _generate(rest: list[str]) -> None:
     flag_options = {"--balance", "--plain"}
     rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, value_options)
-    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, flag_options)
     balance = "--balance" in flags
     scale = _scale_of(options)
@@ -310,7 +243,7 @@ def _generate(rest: list[str]) -> None:
     rest = _split_positional(
         rest,
         set(),
-        value_options | flag_options | {"--width", "--set", "--portable"},
+        value_options | flag_options | {"--width", "--set"},
     )
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
@@ -338,10 +271,8 @@ def _generate(rest: list[str]) -> None:
             program = instantiate(
                 rest[0], program, [int(b) for b in bits], width=width, settings=settings
             )
-        if isinstance(program, CompressedText) and "--plain" in flags and not portable:
+        if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
-        if portable:
-            program = dump_program(rest[0], program)
     except EsolangError as exc:
         _fail(_generate_hint(exc, rest[0], rest[1]))
     if (width is not None or bare or balance) and _layout_ignored(
@@ -635,5 +566,4 @@ def _dispatch() -> None:
         "generate": _generate,
         "run": _run,
         "read-answer": _read_answer,
-        "debug": _debug,
     }[cmd](rest)

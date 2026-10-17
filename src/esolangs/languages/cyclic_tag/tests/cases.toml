@@ -1,0 +1,24 @@
+[[spec_triggers]]
+program = "1;2,1"
+stdin = ""
+expect = "ProgramError"
+claim = "a character outside 01;,"
+
+[[spec_triggers]]
+program = "1,1;0"
+stdin = ""
+expect = "ProgramError"
+claim = "a semicolon in the queue"
+
+[[spec_triggers]]
+program = "1;0"
+stdin = ""
+expect = "ProgramError"
+claim = "not exactly one comma"
+
+[[spec_triggers]]
+program = "0,1"
+stdin = ""
+expect = "output"
+output = "0"
+claim = "the output is the last deleted bit"

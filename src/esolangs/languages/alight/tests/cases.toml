@@ -1,0 +1,25 @@
+[[spec_triggers]]
+program = "begin;out c;end;"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: unknown name at runtime"
+
+[[spec_triggers]]
+program = "var a;end;"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: no begin"
+
+[[spec_triggers]]
+program = "begin;var c;inp c;end;"
+stdin = ""
+expect = "output"
+output = ""
+claim = "inp at EOF reads eof without raising"
+
+[[spec_triggers]]
+program = "begin;var c;set c 65;out c;end;"
+stdin = ""
+expect = "output"
+output = "A"
+claim = "program runs to end"

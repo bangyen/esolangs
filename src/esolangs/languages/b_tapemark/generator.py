@@ -8,11 +8,15 @@ print a literal answer without that walk.
 Size:
     O(T) source and construction in both layouts; the narrow XOR2 needs
     nine columns.  n=10 parity: 6,809 chars, n=10 random 1847: 6,809 chars.
+    ``balance`` snakes the copy and the weight runs into strips
+    (:func:`_b_tapemark_folded`): n=6 random 202 -> 118 on a side, n=10
+    3086 -> 243; the stages' seven rows apiece floor the height.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import isqrt
 
 from esolangs.generation.helpers import _validate_truth_table, grid_width, input_weights
 from esolangs.generation.wrap import balance_score
@@ -256,6 +260,70 @@ def _b_tapemark_program(
     return _b_tapemark_narrow(painted, depth, weights)
 
 
+def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
+    """Build the copied-table walk with its long rows snaked into strips.
+
+    The copy and the weight runs each act in one direction only (``|``
+    moves the pointer with the beam), so ``copy`` entries go per westward
+    row and at most ``run`` ``|`` per eastward row, each pair joined by a
+    blank row back: the data table stays one row and the stages' arithmetic
+    is unchanged.  A stage's runs take its rows 1 and 3, then blank rows
+    inserted after row 3, which every beam crosses straight down.
+    """
+    depth = _validate_truth_table(truth_table)
+    weights, painted = input_weights(truth_table, depth)
+    if not any(weights):
+        painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
+    builder = _Builder()
+
+    # Strip k holds entries k*copy.. on row 2k, read westward from x_east;
+    # an eastward blank row 2k+1 joins it to the next via column 1.
+    east = 2 + 3 * copy
+    strips = -(-len(painted) // copy)
+    for index, bit in enumerate(painted):
+        strip, slot = divmod(index, copy)
+        builder.row(east - 3 - 3 * slot, 2 * strip, f"|{bit}*")
+    builder.put(east, 0, "<")
+    for strip in range(strips - 1):
+        row = 2 * strip
+        builder.put(1, row, "/")
+        builder.put(1, row + 1, "\\")
+        builder.put(east, row + 1, "\\")
+        builder.put(east, row + 2, "/")
+    last = 2 * (strips - 1)
+    builder.put(0, last, "\\")
+    for step in range(1, 2 * depth + 1):
+        builder.put(0, -step, "|")
+    builder.put(0, -2 * depth - 1, "\\")
+    builder.put(-1, -2 * depth - 1, "/")
+
+    top = last + 1
+    for weight in weights:
+        rows = [run] * (weight // run) + ([weight % run] if weight % run else [])
+        rows = rows or [0]
+        inserted = max(0, 2 * len(rows) - 4)
+        for offset, line in enumerate(_STAGE):
+            builder.row(-1, top + offset + (inserted if offset >= 4 else 0), line)
+        start, link = -1 + _RUN_COLUMN + 1, -1 + _RUN_COLUMN
+        for fold, length in enumerate(rows):
+            row = top + 1 + 2 * fold
+            for col in range(start, start + length):
+                builder.put(col, row, "|")
+            builder.put(start + length, row, "\\")
+            if fold + 1 < len(rows):
+                builder.put(start + length, row + 1, "/")
+                builder.put(link, row + 1, "/")
+                builder.put(link, row + 2, "\\")
+            else:
+                builder.put(start + length, top + 4 + inserted, "/")
+        top += _STAGE_ROWS + inserted
+
+    builder.put(-1, top, "/")
+    builder.row(-depth - 1, top, "+" + "|" * (depth - 1))
+    builder.put(-depth - 2, top, "!")
+    return builder.render()
+
+
 def _balance(table: str, default: str) -> str:
     """Compare the original grid, its reflection and the narrow staircase."""
     if len(set(table)) == 1:
@@ -274,6 +342,17 @@ def _balance(table: str, default: str) -> str:
         b_tapemark(table, 1),
     ]
     depth = len(table).bit_length() - 1
+    # A run row as wide as a copy row (3 per entry, less the stage's 12
+    # columns west of it) won at n=7..10 in a full grid; below that the
+    # stages' 7 rows apiece floor the height and runs go unfolded.
+    # Folded, the width is 3 * copy + 13 and the height 2T / copy + 9n + 2
+    # rows (measured n=6..10); the side is least where the width meets twice
+    # the height, 3c^2 + (9 - 18n)c - 4T = 0.
+    half = 18 * depth - 9
+    best = (half + isqrt(half * half + 48 * len(table))) // 6
+    for copy in {best, best * 17 // 20}:
+        for run in {max(1, 3 * copy - 12), len(table)}:
+            candidates.append(_b_tapemark_folded(table, max(1, copy), run))
     if len(input_weights(table, depth)[1]) <= depth:
         candidates.extend(
             [

@@ -1,6 +1,5 @@
 """Alight through the shared API, CLI and machinery."""
 
-import json
 from pathlib import Path
 
 import pytest
@@ -98,29 +97,14 @@ def test_foreign_language_guard_precedes_retained_choices() -> None:
         esolangs.run("Brainfuck", source)
 
 
-def test_short_settings_and_portable_flags(capsys, tmp_path) -> None:
-    output, error = call_both(
-        [
-            "generate",
-            "-p",
-            "-s",
-            '{"expression_syntax":"postfix"}',
-            "Alight",
-            "0110",
-        ],
-        capsys,
+def test_short_settings_flag(capsys) -> None:
+    settings = '{"expression_syntax":"postfix"}'
+    output, error = call_both(["generate", "-s", settings, "Alight", "0110"], capsys)
+    assert error == ""
+    expected = esolangs.generate(
+        "Alight", "0110", settings=DialectSettings(expression_syntax="postfix")
     )
-    assert error == ""
-    assert json.loads(output)["language"] == "Alight"
-    path = tmp_path / "program.json"
-    path.write_text(output, encoding="utf-8")
-    output, error = call_both(["generate", "-p", REFERENCE, "0110"], capsys)
-    assert error == ""
-    path.write_text(output, encoding="utf-8")
-    stdin = esolangs.encode_inputs(REFERENCE, [1, 0], truth_table="0110")
-    output, error = call_both(["run", "-p", str(path)], capsys, stdin)
-    assert output.strip() == "1"
-    assert error == ""
+    assert output.rstrip("\n") == expected
 
 
 class TestBreakAtChecksTheKindOfPosition:

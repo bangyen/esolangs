@@ -10,6 +10,7 @@ from esolangs.languages.dig.generator._leaf import (
     _DIG_SPAN,
     _DIG_TURNS,
     _Box,
+    _dig_adder_fits,
     _dig_constant_leaf,
     _dig_flat_leaf,
     _dig_flat_walk,
@@ -133,8 +134,9 @@ def _dig_leaf_inputs(
     An ignored input weighs 0, a bare ``~`` rather than a tree level; the
     table is read at the tree's inputs and the leaf's essential ones.  The
     adders split after the first's last essential input, so neither ends on
-    an ignored one.  Fewer than four essential inputs, a trailing ignored
-    one, or a forward leg past the digit keeps every leaf input.
+    an ignored one, though the second may end on trailing ignored ones.
+    Fewer than four essential inputs, or a forward leg past the digit, keeps
+    every leaf input.
 
     Above the leaf, an ignored input is a bare ``~`` in the next level's
     block (:func:`_dig_alternating`), so a level's skips count the ignored
@@ -151,10 +153,7 @@ def _dig_leaf_inputs(
         ]
 
     def fits(group: range, bonus: int) -> bool:
-        # ``~ * ;`` per leading essential input, ``~`` per ignored one, the
-        # bonus and the last ``~``: the run one digit arms.
-        leading = weigh(group)[:-1]
-        return sum(3 if w else 1 for w in leading) + bonus + 1 <= _DIG_SPAN
+        return _dig_adder_fits(weigh(group), 2 * bonus)
 
     def levels(depth: int) -> tuple[list[int], list[int]]:
         last = max((i for i in essential if i < depth), default=-1)
@@ -171,7 +170,7 @@ def _dig_leaf_inputs(
                 pending += 1
         return kept, skips
 
-    if len(leaf) >= 4 and leaf[-1] == n - 1:
+    if len(leaf) >= 4:
         split = leaf[len(leaf) - len(leaf) // 2 - 1] + 1
         depth = leaf[0]
         while depth and depth - 1 not in essential and fits(range(depth - 1, split), 1):
@@ -210,6 +209,41 @@ def _compact_point(
     if travel_axis == 0:
         return _Point(coordinates[point.row] - root, point.col)
     return _Point(point.row, coordinates[point.col] - root)
+
+
+def _compaction_lines(
+    cells: dict[_Point, str],
+    reads: list[tuple[_Point, _Point, frozenset[_Point]]],
+    travel_axis: int,
+) -> list[int]:
+    """Return the travel-axis lines compaction keeps, sorted.
+
+    A line is dropped when it holds no cell, which moves the next stamp one
+    step from the line before.  Only an adjacency along the travel axis can
+    change, so a reader gains a new neighbour only across a dropped run.  An
+    empty line is kept beside a reader when that neighbour would be a digit
+    (``;`` included unless the read holds it pending), so no compaction
+    puts a digit beside a reader that was not already.  The kept line leaves
+    the pair two apart, as any dropped run of two or more did.
+    """
+    held = {point[travel_axis] for point in cells}
+    kept = set(held)
+    ordered = sorted(held)
+    for at, _, pending in reads:
+        line = at[travel_axis]
+        for sign in (-1, 1):
+            if line + sign in held:
+                continue
+            ahead = [o for o in ordered if (o - line) * sign > 0]
+            if not ahead:
+                continue
+            far = min(ahead, key=lambda o: abs(o - line))
+            across = _Point(far, at.col) if travel_axis == 0 else _Point(at.row, far)
+            if across in pending:
+                continue
+            if cells.get(across, " ") in _DIG_DIGITS:
+                kept.add(line + sign)
+    return sorted(kept)
 
 
 def _merged_box(
@@ -758,7 +792,9 @@ class _AlternatingTree:
         """
         coordinates = {
             at: i
-            for i, at in enumerate(sorted({p[self.travel_axis] for p in self.cells}))
+            for i, at in enumerate(
+                _compaction_lines(self.cells, self.reads, self.travel_axis)
+            )
         }
         root = coordinates[0]
 
@@ -768,7 +804,9 @@ class _AlternatingTree:
         self.cells = {compact(point): char for point, char in self.cells.items()}
         compact_reads = _remap_reads(self.reads, compact)
         compact_corridors = _remap_corridors(self.corridors, compact)
-        # Compaction can make a previously distant digit a reader's neighbour.
+        # Unreachable by `_compaction_lines` (no digit becomes a reader's
+        # neighbour, corridors and lane arrows cannot change); kept as the
+        # backstop.
         try:
             _dig_alt_clear(self.cells, compact_reads, compact_corridors)
         except AssertionError:

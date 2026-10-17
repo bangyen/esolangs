@@ -1,6 +1,9 @@
 """Circuit Diagram affine chains and exact width transitions."""
 
+from math import isqrt
+
 from esolangs.generation.helpers import _validate_truth_table, grid_width
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.circuit_diagram.generator import (
     _OUTPUT_GLYPH_COLUMNS,
@@ -15,9 +18,7 @@ from esolangs.languages.circuit_diagram.generator.layout import _Layout
 _XOR2_FLAT_WIDTH = 6
 
 
-def affine_circuit(
-    table: str, width: int, *, _events: list[int] | None = None
-) -> str | None:
+def affine_circuit(table: str, width: int) -> str | None:
     """Return a direct XOR chain if binary-carry parity verifies the table."""
     n = _validate_truth_table(table)
     constant = int(table[0])
@@ -37,8 +38,6 @@ def affine_circuit(
             parity ^= coefficients[bit]
     if n == 2 and all(coefficients):
         if width < _XOR2_FLAT_WIDTH:
-            if _events is not None:
-                _events.append(_XOR2_FLAT_WIDTH)
             # Return the output below both inputs, then left. Two rows
             # isolate its final junction from the colon's diagonal pin.
             gate = "X" if constant else "x"
@@ -68,37 +67,33 @@ def affine_circuit(
         for rail in selected[2:]:
             result = builder.gate("x", result, rail)
     builder.output(result)
-    if _events is not None and builder.next_limit is not None:
-        _events.append(builder.next_limit + _OUTPUT_GLYPH_COLUMNS)
     return builder.layout.render()
 
 
+def _drawn_at(table: str, flat: str, width: int) -> str:
+    """Return the drawing fitted to ``width``, narrowed by band and XOR chain."""
+    primary = _circuit_diagram_at(table, width)
+    if grid_width(primary) <= width:
+        return primary
+    banded = _circuit_diagram_at(table, max(1, width - _OUTPUT_GLYPH_COLUMNS))
+    return _narrowest_present(flat, banded, affine_circuit(table, width))
+
+
 def balance_circuit_diagram(table: str, default: str) -> str:
-    """Compare reachable gate-column thresholds and band-fit transitions."""
+    """Compare the default, the flat drawing and drawings at the square widths."""
     flat = _circuit_diagram_at(table, None)
-    floor = grid_width(flat)
     candidates = [default, flat]
     # Folding can shrink a wide default while increasing its imbalance.
     # Retain the former H candidate until a folded layout beats its score.
     if len(table) >= 256 and "1" in table:
         candidates.append(_h_term_layout(table).render())
-    width = 1
-    while width < floor:
-        events = [floor]
-        primary = _circuit_diagram_at(table, width, _events=events)
-        span = grid_width(primary)
-        if span <= width:
-            candidates.append(primary)
-        else:
-            events.append(span)
-            shifted: list[int] = []
-            banded = _circuit_diagram_at(
-                table, max(1, width - _OUTPUT_GLYPH_COLUMNS), _events=shifted
-            )
-            events.extend(point + _OUTPUT_GLYPH_COLUMNS for point in shifted)
-            affine = affine_circuit(table, width, _events=events)
-            candidates.append(_narrowest_present(flat, banded, affine))
-        # Until a failed column comparison becomes true, the drawing and its
-        # band decisions stay fixed. A drawing's own span can also start fitting.
-        width = min(events)
+    # A drawing's area is about that of the flat one whatever its width, so
+    # the square side is isqrt(CELL_ASPECT * area).
+    area = grid_width(flat) * (flat.count("\n") + 1)
+    for width in (1, isqrt(CELL_ASPECT * area), isqrt(CELL_ASPECT * len(flat))):
+        candidates.append(_drawn_at(table, flat, width))
+        # A parity chain also wins unbanded, where the band logic skips it.
+        chain = affine_circuit(table, width)
+        if chain is not None:
+            candidates.append(chain)
     return min(candidates, key=balance_score)

@@ -1,4 +1,4 @@
-"""Shared packed subtract-and-branch decoder with constant and payload folding."""
+"""Shared packed subtract-and-branch decoder with constant folding."""
 
 from typing import NamedTuple
 
@@ -20,25 +20,10 @@ def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
     return " ".join(map(str, cells))
 
 
-def packed_decoder(
-    truth_table: str, *, direct: bool = False, keep_constant_layout: bool = False
-) -> str:
-    """Return the shortest literal or banked decoder, folding constant roots."""
-    literal = _packed_build(
-        truth_table, direct=direct, keep_constant_layout=keep_constant_layout
-    )
-    if len(set(truth_table)) == 1:
-        return literal
-    banked = _packed_build(truth_table, direct=direct, share_chunks=True)
-    return min(literal, banked, key=len)
-
-
 class _Loads(NamedTuple):
     """Instruction indices whose operands are patched once addresses are known."""
 
     increment: int
-    clear: int
-    reference: int
     chunk: int
 
 
@@ -80,22 +65,22 @@ class _Assembler:
         self.jump(positive)
 
 
-def _packed_build(
+def packed_decoder(
     truth_table: str,
     *,
     direct: bool = False,
-    keep_constant_layout: bool = False,
-    share_chunks: bool = False,
 ) -> str:
     """Emit a linear-size packed-table decoder for the variant.
 
     An ignored input is read into ``TMP``, which the next read overwrites,
     and never joins the index; the table is packed over the rest, so its
     chunks hold one bit per essential input. Constants read and print a literal.
-    A bank stores each equal payload once; two instructions resolve its reference.
+    A bank storing each equal payload once (two instructions resolve a
+    reference) never won on 30 random tables per n=2..12, either variant, and
+    won only parity at n=12 (direct), by 7.4%; it was removed.
     """
     total = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_layout:
+    if len(set(truth_table)) == 1:
         return _sbleq_constant(total, truth_table[0], direct=direct)
     weights, projected = input_weights(truth_table, total)
     if any(weights):
@@ -109,31 +94,16 @@ def _packed_build(
     ]
     asm = _Assembler()
     _emit_reads(asm, weights, direct=direct)
-    loads = _emit_decode(asm, direct=direct, share_chunks=share_chunks)
+    loads = _emit_decode(asm, direct=direct)
     values = _cell_values(n, direct=direct)
-    unique = list(dict.fromkeys(chunks))
-    data_names = (
-        [
-            *(f"REF{i}" for i in range(len(chunks))),
-            *(f"BANK{i}" for i in range(len(unique))),
-        ]
-        if share_chunks
-        else [f"CHUNK{i}" for i in range(len(chunks))]
-    )
+    data_names = [f"CHUNK{i}" for i in range(len(chunks))]
     layout = _direct_layout if direct else _indirect_layout
     memory, address = layout(asm, [*values], data_names)
     for name, value in values.items():
         memory[address[name]] = value
-    if share_chunks:
-        slot_of = {value: i for i, value in enumerate(unique)}
-        for i, value in enumerate(unique):
-            memory[address[f"BANK{i}"]] = value
-        for i, value in enumerate(chunks):
-            memory[address[f"REF{i}"]] = -address[f"BANK{slot_of[value]}"]
-    else:
-        for i, value in enumerate(chunks):
-            memory[address[f"CHUNK{i}"]] = value
-    _patch_loads(memory, loads, direct=direct, share_chunks=share_chunks)
+    for i, value in enumerate(chunks):
+        memory[address[f"CHUNK{i}"]] = value
+    _patch_loads(memory, loads, direct=direct)
     return " ".join(map(str, memory))
 
 
@@ -188,7 +158,7 @@ def _emit_reads(asm: _Assembler, weights: list[int], *, direct: bool) -> None:
         asm.add("INDEX", "BIT")
 
 
-def _emit_decode(asm: _Assembler, *, direct: bool, share_chunks: bool) -> _Loads:
+def _emit_decode(asm: _Assembler, *, direct: bool) -> _Loads:
     """Select ``INDEX``'s chunk, shift out its bit, print it; return the patch sites."""
     asm.mark("select_test")
     asm.branch_positive("INDEX", "select_step", "selected")
@@ -205,13 +175,7 @@ def _emit_decode(asm: _Assembler, *, direct: bool, share_chunks: bool) -> _Loads
 
     asm.mark("selected")
     asm.clear("TABLE")
-    clear = reference = -1
-    if share_chunks:
-        # Clear the upcoming load's source operand, then load a bank address
-        # by subtracting its negative reference. Only this operand is patched.
-        clear = asm.emit(0, 0)
-        reference = asm.emit(0, "REF0")
-    chunk = asm.emit("TABLE", 0 if share_chunks else "CHUNK0")
+    chunk = asm.emit("TABLE", "CHUNK0")
     asm.copy("SHIFT", "OFFSET")
     asm.increment("SHIFT")
 
@@ -242,7 +206,7 @@ def _emit_decode(asm: _Assembler, *, direct: bool, share_chunks: bool) -> _Loads
     asm.add("OUT", "R")
     asm.emit("OUTPUT" if direct else -3, "OUT")
     asm.jump("halt" if direct else "@HALT")
-    return _Loads(increment, clear, reference, chunk)
+    return _Loads(increment, chunk)
 
 
 def _direct_layout(
@@ -296,16 +260,8 @@ def _indirect_layout(
     return memory, address
 
 
-def _patch_loads(
-    memory: list[int], loads: _Loads, *, direct: bool, share_chunks: bool
-) -> None:
-    """Point the self-modifying load at the first chunk, or its bank reference."""
+def _patch_loads(memory: list[int], loads: _Loads, *, direct: bool) -> None:
+    """Point the self-modifying load at the first chunk."""
     source = 0 if direct else 1
     destination = 1 - source
-    load = loads.reference if share_chunks else loads.chunk
-    memory[3 * loads.increment + destination] = 3 * load + source
-    if share_chunks:
-        field = 3 * loads.chunk + source
-        memory[3 * loads.clear] = field
-        memory[3 * loads.clear + 1] = field
-        memory[3 * loads.reference + destination] = field
+    memory[3 * loads.increment + destination] = 3 * loads.chunk + source

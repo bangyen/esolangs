@@ -3,8 +3,8 @@
 A zero-valued reads prefix names every input in order, since a variable is
 bound by appearing on an executed line; the rest is a reduced decision
 diagram selecting subtrees with ``x`` and ``!x``, so every value stays 0 or
-1.  Default compares inline text, repeated expressions and bounded shared
-frames; with ``width`` the tree splits into definitions, since APL cannot
+1.  Default compares the diagram with its repeated expressions named once;
+with ``width`` the tree splits into definitions, since APL cannot
 continue an expression across lines.
 
 Size:
@@ -65,10 +65,14 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
 
 
 def _apl_shared_ordered(table: str, perm: tuple[int, ...]) -> str:
-    """Compare inline text, repeated expressions and bounded shared frames."""
+    """Compare the reduced diagram with its repeated expressions named once.
+
+    Repeated expressions save 32-33% of chars at n=7..9 (40 random tables).
+    Bounded shared frames, a third candidate, were strictly best on 0 of 3,785
+    tables (n=2..10; random, ignored, tiled, sparse, threshold, named): retired.
+    """
     plain = _apl_reduced_ordered(table, perm)
-    shared, _ = _apl_split(table, perm, 40, _apl_reduced_ordered, require_share=True)
-    return min(plain, shared, _apl_repeated_expressions(plain), key=len)
+    return min(plain, _apl_repeated_expressions(plain), key=len)
 
 
 def _render_dag(
@@ -341,18 +345,12 @@ class _Splitter:
         )
         self._definitions: list[str] = []
         self._made: dict[str, str] = {}
-        self._reused = False
         self._events: set[int] = set()
         # A frame's pieces carry their fresh source-character count;
         # references carry zero. Every definition consumes at least one
         # call-width of fresh text, so O(T / n) names of O(n) characters
         # keep total source O(T).
         self._frames: list[list[tuple[_Rope, int, int]]] = [[]]
-
-    @property
-    def reused(self) -> bool:
-        """Whether any emitted body was shared by more than one caller."""
-        return self._reused
 
     def render(self, node: _Rope) -> str:
         """Flatten a rope of nested tuples into its source text."""
@@ -370,7 +368,6 @@ class _Splitter:
         """Name a frame piece, returning its call site: zero fresh text."""
         body = self.render(part[0])
         if body in self._made:
-            self._reused = True
             call = self._made[body]
         else:
             name = short_name(len(self._definitions), ascii_uppercase)
@@ -419,14 +416,9 @@ def _apl_split(
     perm: tuple[int, ...],
     width: int,
     build: Callable[[str, tuple[int, ...]], str],
-    *,
-    require_share: bool = False,
 ) -> tuple[str, int | None]:
     """Split ``build``'s tree into definitions under the frame budget."""
-    splitter = _Splitter(table, perm, width, build)
-    program, events = splitter.split()
-    if require_share and not splitter.reused:
-        return build(table, perm), None
+    program, events = _Splitter(table, perm, width, build).split()
     return program, min(events, default=None)
 
 

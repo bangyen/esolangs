@@ -20,12 +20,7 @@ PRIMEGAME = (
 )
 
 
-@pytest.mark.parametrize("step", [1, 3, 10, 11, 99, 100])
-def test_decimal_exponents_parse_exactly(step: int) -> None:
-    for value in (0, 1, 37, 999, 1000, 2048):
-        index = fractran_index.compile_index(f"2 3/2^{step * value or 1}")
-        assert index is not None
-        assert index.literal[0][1] == ((2, step * value or 1),)
+def test_decimal_exponents_parse_exactly() -> None:
     for text, expected in (
         ("0", ()),  # 2^0 is the empty product; zero exponents drop out
         ("000000", ()),
@@ -207,6 +202,13 @@ def test_indexed_transitions_do_not_materialize_factor_snapshots(
         machine.step()
     assert machine.value == 1
     assert machine._cursor.factor_updates == 120
+
+
+def test_a_base_at_the_index_limit_is_indexed() -> None:
+    # A short source's limit is SMALL_BASE; it is inclusive.
+    base = fractran_index.SMALL_BASE
+    assert fractran_index.compile_index(f"{base} 1/2") is not None
+    assert fractran_index.compile_index(f"{base + 1} 1/2") is None
 
 
 def test_least_prime_sieve_factors_match_literal_arithmetic() -> None:

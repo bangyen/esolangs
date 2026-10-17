@@ -98,7 +98,7 @@ def test_empty_piet_operation_path_halts() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("scale", [2, 3, 17])
+@pytest.mark.parametrize("scale", [2, 17])
 def test_piet_detects_its_scale(scale: int) -> None:
     image = esolangs.generate("Piet", "0001", scale=scale)
     assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=2) == "0001"

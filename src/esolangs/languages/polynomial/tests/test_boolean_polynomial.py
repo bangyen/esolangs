@@ -146,7 +146,6 @@ class TestPolynomial:
                 table = format(value, f"0{1 << n}b")
                 tree = _polynomial_tree(table)
                 if len(set(table)) == 1:
-                    assert _polynomial_hybrid(table, n, keep_root_park=True) == tree
                     tree = tree[:-1]  # no ancestor tests a constant root's park
                 assert _polynomial_hybrid(table, n) == tree, table
                 machine = _polynomial_hybrid(table, 0)
@@ -154,30 +153,6 @@ class TestPolynomial:
                     assert len(machine) < len(_polynomial_dag(table)), table
                 else:
                     assert machine == _polynomial_dag(table), table
-
-    @pytest.mark.slow
-    def test_polynomial_screen_slack(self) -> None:
-        """The screen's slack is a measurement, and it is arity-dependent."""
-        from esolangs.languages.polynomial.generator import (
-            _POLYNOMIAL_SCREEN_SLACK,
-            _polynomial_assemble,
-            _polynomial_hybrid,
-        )
-
-        worst = 0
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                built = [_polynomial_hybrid(table, k) for k in range(n + 1)]
-                rendered = [
-                    (len(_polynomial_assemble(instrs)), len(instrs)) for instrs in built
-                ]
-                shortest = min(length for length, _ in rendered)
-                needed = min(cost for length, cost in rendered if length == shortest)
-                worst = max(worst, needed - min(map(len, built)))
-        # Pure-``k`` candidates only.
-        assert worst == 1
-        assert worst <= _POLYNOMIAL_SCREEN_SLACK
 
     @pytest.mark.parametrize(
         "table",
@@ -201,20 +176,6 @@ class TestPolynomial:
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
             got = run_polynomial(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
-
-    @pytest.mark.parametrize("table", ["00100000", "11011111", "00000010"])
-    def test_machine_losing_on_characters_does_not_ship(self, table: str) -> None:
-        """Fewer instructions is not fewer characters."""
-        from esolangs.languages.polynomial.generator import (
-            _polynomial_assemble,
-            _polynomial_hybrid,
-        )
-
-        machine = _polynomial_assemble(_polynomial_hybrid(table, 0))
-        tree = _polynomial_assemble(_polynomial_tree(table))
-        assert len(_polynomial_hybrid(table, 0)) < len(_polynomial_tree(table))
-        assert len(machine) > len(tree)
-        assert boolean.polynomial(table) == tree
 
     def test_every_path_reads_each_input_once(self) -> None:
         """Whichever construction wins, a run consumes exactly ``n`` inputs."""
@@ -340,6 +301,12 @@ def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
     assert _polynomial("1", 10) == "1"
 
 
+def test_polynomial_header_without_a_term_stays_split() -> None:
+    """``f(x)`` alone, or ``f(x) =`` with no term, has no leading term to join."""
+    assert _polynomial("f(x)", 80) == "f(x)"
+    assert _polynomial("f(x) =", 80) == "f(x)\n="
+
+
 def test_generator_restrictions_name_both_budgets() -> None:
     restrictions = esolangs.describe("Polynomial")["generator_restrictions"]
     assert "1934 instructions" in restrictions
@@ -349,40 +316,13 @@ def test_generator_restrictions_name_both_budgets() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_root_ends_after_consuming_the_inputs(bit) -> None:
-    from esolangs.languages.polynomial.generator import (
-        _polynomial_assemble,
-        _polynomial_hybrid,
-    )
     from tests.support.generator_support import assert_shared_program
 
     n = 8
     table = bit * (1 << n)
-    legacy = _polynomial_assemble(
-        _polynomial_hybrid(bit * 2, 1, keep_root_park=True) + [[0, 2]] * (n - 1)
-    )
     states = max(min(2**k, 2 ** (2 ** (n - k))) for k in range(n + 1))
     bound = (min(10 * (1 << n) - 7, 1934) + 10).bit_length() + 1
     bound += (
         max((n + 3).bit_length(), (49 * (states - 1)).bit_length()) + 2 * n.bit_length()
     )
-    assert_shared_program("Polynomial", table, legacy, n + 2, lambda _program: bound)
-
-
-@pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 11])
-@pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_retains_the_previous_balanced_polynomial(n, bit) -> None:
-    from esolangs.languages.polynomial.generator import (
-        _polynomial_assemble,
-        _polynomial_hybrid,
-    )
-    from tests.support.generator_support import assert_constant_balanced_shape
-
-    table = bit * (1 << n)
-    legacy = min(
-        _polynomial_assemble(_polynomial_hybrid(table, n, keep_root_park=True)),
-        _polynomial_assemble(
-            _polynomial_hybrid(bit * 2, 1, keep_root_park=True) + [[0, 2]] * (n - 1)
-        ),
-        key=len,
-    )
-    assert_constant_balanced_shape("Polynomial", "polynomial", table, legacy)
+    assert_shared_program("Polynomial", table, None, n + 2, lambda _program: bound)

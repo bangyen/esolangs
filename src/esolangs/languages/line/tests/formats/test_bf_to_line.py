@@ -45,6 +45,11 @@ class TestSingleLoop:
         """`[-]` decrements until the cell reads zero, then falls through."""
         assert _run_bf("+++[-].", tmp_path / "clear.png") == [0]
 
+    def test_the_loop_return_bay_sets_the_canvas_size(self) -> None:
+        """The goto corridor is 3 cells wide: `+[-].` draws 520 by 360."""
+        canvas = render(bf_to_line("+[-]."))
+        assert (canvas.width, canvas.height) == (520, 360)
+
     def test_move_loop_transfers_cell(self, tmp_path: Path) -> None:
         """`[>+<-]` moves a cell's value one place right."""
         assert _run_bf("+++[>+<-]>.", tmp_path / "move_loop.png") == [3]

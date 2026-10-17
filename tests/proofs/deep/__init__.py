@@ -3,7 +3,7 @@
 import tomllib
 from pathlib import Path
 
-_TUNING = Path(__file__).resolve().parents[2] / "support/fixtures" / "deep_arities.toml"
+_TUNING = Path(__file__).resolve().parents[3] / "ledgers" / "deep_arities.toml"
 
 
 def deep_arities(section: str) -> dict[str, object]:

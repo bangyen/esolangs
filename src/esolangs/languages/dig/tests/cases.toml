@@ -1,0 +1,154 @@
+language = "Dig"
+oldid = 189083
+
+[[examples]]
+id = "hello"
+source = '''
+>$H:e:l:l:$o:%:W:o:$r:l:d:!:@
+ 8        8  0     8'''
+expected = "Hello World!"
+
+[[examples]]
+id = "cat"
+source = '''
+>$=:'
+^2  <'''
+stdin = '''
+ab
+'''
+expected = '''
+ab
+'''
+stop = "eof"
+
+[[examples]]
+id = "truth-0"
+source = '''
+'   @
+    :
+    $1
+>$~;#
+ 2  >$+:'
+    ^21 <'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1-as-written"
+source = '''
+'   @
+    :
+    $1
+>$~;#
+ 2  >$+:'
+    ^21 <'''
+stdin = "1"
+expected = "2111111111111111111111111111111"
+stop = "steps"
+max_steps = 3000
+note = """\
+    wiki bug: + adds the 1 below it to the mole's 1 on the first pass, so it prints 2 \
+    before the 1s; DeybisMelendez's Dig.lua does the same"""
+
+[[examples]]
+id = "nand-00"
+source = '''
+'2  > $~ >$ 1:@
+>$~;#@2   3
+    > $~;#@2
+         > $0:@'''
+stdin = '''
+0
+0
+'''
+expected = "1"
+
+[[examples]]
+id = "nand-11"
+source = '''
+'2  > $~ >$ 1:@
+>$~;#@2   3
+    > $~;#@2
+         > $0:@'''
+stdin = '''
+1
+1
+'''
+expected = "0"
+
+[[examples]]
+id = "convert-xor-01"
+source = '''
+'           >  $30:@
+     >  2$~;#@
+            >  $31:@
+>2$~;#@       
+            >  $31:@
+     >  2$~;#@
+            >  $30:@
+'''
+stdin = '''
+0
+1
+'''
+expected = "1"
+
+[[examples]]
+id = "convert-xor-11"
+source = '''
+'           >  $30:@
+     >  2$~;#@
+            >  $31:@
+>2$~;#@       
+            >  $31:@
+     >  2$~;#@
+            >  $30:@
+'''
+stdin = '''
+1
+1
+'''
+expected = "0"
+
+[[spec_triggers]]
+program = "$+\n1"
+stdin = ""
+expect = "HaltError"
+claim = "a work command with no adjacent digit"
+
+[[spec_triggers]]
+program = "$/\n10"
+stdin = ""
+expect = "HaltError"
+claim = "division by an adjacent zero"
+
+[[spec_triggers]]
+program = "$=\n1"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "= at EOF"
+
+[[spec_triggers]]
+program = "$~\n1"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "~ at EOF"
+
+[[spec_triggers]]
+program = "$~\n1"
+stdin = "x"
+expect = "ProgramError"
+claim = "a ~ token that is not an integer"
+
+[[spec_triggers]]
+program = " "
+stdin = ""
+expect = "ProgramError"
+claim = "an empty program"
+
+[[spec_triggers]]
+program = ">"
+stdin = ""
+expect = "output"
+output = ""
+claim = "walking off the grid stops cleanly"

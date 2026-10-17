@@ -11,9 +11,6 @@ clearance for forward-only subtrees, two otherwise.
 
 Candidates compete by emitted area; the smallest wins:
 
-- Ancestor return: shares a repeated nonconstant residual when it saves area
-  within 5n commands, clearing a consumed input and re-entering its zero arm.
-  Reads and tape footprint stay unchanged.
 - Projected loader: stores only essential inputs; ignored reads overwrite the
   next kept slot, or one spare slot after the last kept input.
 - Ordered residual folds: share forward joins; the saved loader rewind pays
@@ -60,11 +57,7 @@ from esolangs.languages.line.generator.layout import (
     loader_reads,
 )
 from esolangs.languages.line.generator.render import _UNIT, Canvas, _check_unit
-from esolangs.languages.line.generator.shared import (
-    CanvasPlan,
-    shared_canvas,
-    shared_tree,
-)
+from esolangs.languages.line.generator.shared import CanvasPlan
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
@@ -174,28 +167,6 @@ def _grey_rows(canvas: Canvas) -> Rows:
     return tuple(rows)
 
 
-def _shared_candidates(truth_table: str, n: int) -> list[Node]:
-    """Ancestor-return graphs: full tables, then projected ones within budget."""
-    nodes = []
-    for multiple in (False, True):
-        shared = shared_tree(truth_table, multiple=multiple)
-        if shared is not None:
-            nodes.append(shared[0])
-    kept = essential_inputs(truth_table, n)
-    if 0 < len(kept) < n:
-        # Replace 2k-1 loader operations by n+k-1, plus two operations for
-        # trailing ignored inputs. Budget the complete original-n program.
-        extra_reads = n - len(kept) + 2 * (kept[-1] < n - 1)
-        reduced = read_at(truth_table, kept, n)
-        for multiple in (False, True):
-            compact_shared = shared_tree(
-                reduced, command_budget=5 * n - extra_reads, multiple=multiple
-            )
-            if compact_shared is not None:
-                nodes.append(_project_loader(n, kept, compact_shared[0]))
-    return nodes
-
-
 class _Candidate(NamedTuple):
     """Smallest layout so far; ``rows`` draws it only when the raster is read."""
 
@@ -229,15 +200,19 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         )
 
     best = candidate(line_boolean(truth_table))
+    # Projected tree, by area: with one or two essential inputs 17-25% (n=8..11,
+    # 40 tables each), constants 20-38%; three to five 2-7%, pooled over one to
+    # n-1 essential 7.9-9.1% (n=7..10, ~200 tables each).  A majority-3 core in
+    # 8 inputs: 13%.  Kept as one candidate rather than split by essential count.
     projected = projected_boolean(truth_table)
     if projected is not None:
         other = candidate(projected)
         if other.area < best.area:
             best = other
-    for graph in _shared_candidates(truth_table, n):
-        draw = shared_canvas(graph, best.area, unit=unit)
-        if draw is not None:
-            best = _Candidate(graph, draw.area, partial(_planned_rows, draw))
+    # Streaming saves 0% on random tables at n>=8 (0.45% at n=7) but 23-96% on
+    # parity, and, majority, thresholds and tiled tables (n=6..12); projected
+    # streaming 12-21% on parity, and and majority cores in 8..10 inputs with
+    # ignored ones, 1.3-4.3% on random ignored-input tables (n=7..10).
     for build in (streaming_canvas, projected_streaming_canvas):
         # A complete fold wins a fallback tie; a later fold retains the first tie.
         fold = build(truth_table, best.area + int(not best.complete), unit=unit)

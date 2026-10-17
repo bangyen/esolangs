@@ -52,7 +52,10 @@ def _h_fallback(target: _Target, large_area: int | None) -> _Layout | None:
 
     _, inputs, used, projected = target
     selected: _Layout | None = None
-    if large_area is None or large_area >= _h_term_area_floor(len(used), inputs):
+    # One essential input has no depth-2 minterm site to wire a term to.
+    if len(used) >= 2 and (
+        large_area is None or large_area >= _h_term_area_floor(len(used), inputs)
+    ):
         selected = _h_term_layout(projected, input_order=used, port_inputs=inputs)
     if len(used) >= _H_POOL_MIN_INPUTS and (
         large_area is None or large_area >= _h_pool_area_floor(len(used), inputs)
@@ -89,6 +92,10 @@ def _residual(target: _Target, ceiling: int | None) -> _Layout | None:
     return _residual_class_bank_candidate(target.table, ceiling)
 
 
+# Measured by area, leave-one-out, n=8..14 (3-30 tables per class): folded and
+# sparse never produced a model; residual saves 20.7% (14.7% of chars) on
+# tables tiled from two blocks at n=10, 0% elsewhere; bundled saves 12.5% of
+# chars on random tables at n=10 (area +7%) and 60% of area at n=14.
 # Order is the tie-break: an earlier candidate keeps an equal-area win.  The
 # interval models count characters before rendering, so a node cap cannot
 # hide a smaller complete fold.

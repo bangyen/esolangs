@@ -18,7 +18,6 @@ Decisions:
     folds or is shared.
 """
 
-from esolangs.generation.constant_projection import balance_legacy_walk
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -39,10 +38,10 @@ def a_painter_ant(truth_table: str) -> str:
     return _program(truth_table)
 
 
-def _program(truth_table: str, *, keep_constant_walk: bool = False) -> str:
+def _program(truth_table: str) -> str:
     """Build the indexed corridor or a constant origin with input resets."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_walk:
+    if len(set(truth_table)) == 1:
         # n enters black north; N stays put. S returns to the white origin
         # in both cases, so the next setter sees the same two neighbours.
         return "P" + (TEMPLATE_CHAR + "S") * n + ("p" if truth_table[0] == "0" else "")
@@ -68,23 +67,11 @@ def _program(truth_table: str, *, keep_constant_walk: bool = False) -> str:
     return "".join(out)
 
 
-def balance_a_painter_ant(table: str, default: str) -> str:
-    """Retain the old constant corridor when its wrapped shape balances better."""
-    return balance_legacy_walk(
-        table,
-        default,
-        "a_painter_ant",
-        PAIR,
-        lambda t: _program(t, keep_constant_walk=True),
-    )
-
-
 LANGUAGE = Language(
     "A Painter Ant",
     "a_painter_ant",
     category="grid_based",
     boolean=a_painter_ant,
-    balance=balance_a_painter_ant,
     # Not a tree: one corridor cell per row, walked by the inputs' weights.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

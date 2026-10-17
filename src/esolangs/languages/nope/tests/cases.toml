@@ -1,0 +1,19 @@
+language = "Nope."
+oldid = 193999
+
+[[examples]]
+id = "quine"
+source = "Nope."
+expected = "Nope."
+
+[[examples]]
+id = "anything-else"
+source = "Hello, world!"
+expected = "Nope."
+
+[[spec_triggers]]
+program = "anything"
+stdin = ""
+expect = "output"
+output = "Nope."
+claim = "Every source prints exactly Nope. with no newline."

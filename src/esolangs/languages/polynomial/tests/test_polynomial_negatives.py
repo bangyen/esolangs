@@ -28,9 +28,6 @@ from esolangs.runtime.io import ScriptedIO
 class TestFactoredProgramsAreMisread:
     """``f(x) = (x-2)(x-3)`` parses, and parses *wrong*."""
 
-    def test_the_expanded_form_is_read_as_written(self) -> None:
-        assert sanitize("f(x) = x^2-5x^1+6") == [1, -5, 6]
-
     def test_only_the_last_term_of_each_degree_survives(self) -> None:
         # Accepted, not rejected, and read as the last term of each degree:
         # ``_sanitize`` sums ``c*x^d`` monomials and never multiplies out.

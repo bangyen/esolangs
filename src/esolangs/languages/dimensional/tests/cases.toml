@@ -1,0 +1,59 @@
+[[spec_triggers]]
+program = "d"
+stdin = "x"
+expect = "ArgumentError"
+claim = "ArgumentError: d reads a non-integer token"
+
+[[spec_triggers]]
+program = ","
+stdin = ""
+expect = "InputExhaustedError"
+claim = ", at EOF"
+
+[[spec_triggers]]
+program = "d"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "d at EOF"
+
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "x at EOF"
+
+[[spec_triggers]]
+program = ":"
+stdin = ""
+expect = "ProgramError"
+claim = "a : at the end of a program"
+
+[[spec_triggers]]
+program = "="
+stdin = ""
+expect = "ProgramError"
+claim = "a = at the end of a program"
+
+[[spec_triggers]]
+program = "=zz"
+stdin = ""
+expect = "ProgramError"
+claim = "a malformed = literal"
+
+[[spec_triggers]]
+program = "x"
+stdin = "zz"
+expect = "ProgramError"
+claim = "an x read of a token that is not hexadecimal"
+
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "ProgramError"
+claim = "unmatched ["
+
+[[spec_triggers]]
+program = "}"
+stdin = ""
+expect = "ProgramError"
+claim = "unmatched }"

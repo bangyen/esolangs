@@ -29,11 +29,17 @@ SUGGESTION_CUTOFF = 0.65
 def canonical_id(name: str) -> str:
     """Return a display name's slug; a language whose slug collides sets ``id=``."""
     name = name.strip()
-    # Lowercased before the transliterations, which name lowercase chars:
-    # otherwise ``FORÞ`` kept its uppercase thorn and came out ``for``.
-    s = name.lower().replace("~", "_tilde").replace("þ", "th").replace("*", "")
+    s = name.lower().replace("~", "_tilde")
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
+    # A non-ASCII letter that survives decomposition is named, not dropped:
+    # ``Forþ`` is ``for_thorn``, which leaves ``forth`` to Forth.
+    s = "".join(
+        f"_{unicodedata.name(c, '').rsplit(' ', 1)[-1].lower()}_"
+        if c.isalnum() and not c.isascii()
+        else c
+        for c in s
+    )
     s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
     if s and s[0].isdigit():
         s = "".join("_" + _DIGIT_WORDS[c] + "_" if c.isdigit() else c for c in s)

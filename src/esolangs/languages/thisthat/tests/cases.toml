@@ -1,0 +1,74 @@
+language = "thisthat"
+oldid = 177564
+
+[[examples]]
+id = "truth-machine-0"
+source_file = "fixtures/thisthat_truth.txt"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+source_file = "fixtures/thisthat_truth.txt"
+stdin = "1"
+stop = "steps"
+max_steps = 100
+expected = "1111111111"
+
+[[examples]]
+id = "cat"
+source_file = "fixtures/thisthat_cat.txt"
+stdin = "1101001110"
+expected = "1101001110"
+
+[[examples]]
+id = "cat-empty"
+source_file = "fixtures/thisthat_cat.txt"
+expected = ""
+
+[[examples]]
+id = "bct-halts"
+source_file = "fixtures/thisthat_bct.txt"
+stdin = '''
+01
+101'''
+expected = ""
+
+[[examples]]
+id = "bct-runs-on"
+band = "medium"
+source_file = "fixtures/thisthat_bct.txt"
+stdin = '''
+1
+1'''
+stop = "steps"
+max_steps = 20000
+expected = ""
+
+[[spec_triggers]]
+program = "▣─X"
+stdin = ""
+expect = "HaltError"
+claim = "cell outside the alphabets"
+
+[[spec_triggers]]
+program = "▣─◇"
+stdin = "2"
+expect = "HaltError"
+claim = "input character not 0 or 1"
+
+[[spec_triggers]]
+program = "─"
+stdin = ""
+expect = "HaltError"
+claim = "no start node"
+
+[[spec_triggers]]
+program = "▣─◇"
+stdin = ""
+expect = "output"
+output = ""
+claim = "a read at EOF sends an empty transfer and the run goes on"
+
+[spec_untriggerable]
+ProgramError = "raised only by branching_successors"

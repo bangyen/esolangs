@@ -75,12 +75,8 @@ jobs:
     # has no merge base, so the gate would skip and print nothing useful.
     # Per-PR CI reports it with `--partial`; the blocking form is the local
     # command that report prints.
-    # Preserve the native construction cap without competing xdist workers.
-    - name: Check the preserving certificate without competing workers
-      run: uv run python -m pytest src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate -n 0 -p scripts.ci.shard --duration-output notes/ci/certificate-durations.json
-
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run python -m pytest -n auto -k "not test_preserving_certificate" -p scripts.ci.shard --duration-output notes/ci/test-durations.json
+      run: uv run python -m pytest -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
     - name: Retain measured test durations
       if: always()
@@ -89,7 +85,6 @@ jobs:
         name: test-durations-${{ matrix.python-version }}
         path: |
           notes/ci/test-durations*.json*
-          notes/ci/certificate-durations*.json*
 
     - name: Retain worker and verification logs
       if: always()

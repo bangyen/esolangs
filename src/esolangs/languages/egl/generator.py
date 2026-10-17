@@ -24,12 +24,10 @@ def egl(truth_table: str, width: int | None = None) -> str:
     return _program(truth_table, width)
 
 
-def _program(
-    truth_table: str, width: int | None = None, *, keep_constant_table: bool = False
-) -> str:
+def _program(truth_table: str, width: int | None = None) -> str:
     """Build the indexed grid or a two-cell read-and-print constant."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_table:
+    if len(set(truth_table)) == 1:
         return _wrap("2,1:" + "x" * n + ">" + "+" * int(truth_table[0]) + "=", width)
     weights, projected = input_weights(truth_table, n)
     if any(weights):
@@ -65,15 +63,7 @@ def _wrap(program: str, width: int | None) -> str:
     return "\n".join(rows)
 
 
-def _balance(table: str, default: str) -> str:
-    """Balance character folds above the header and its fixed-width regime."""
-    if len(set(table)) == 1:
-        legacy = _program(table, keep_constant_table=True)
-        return min(_balanced(default), _balanced(legacy), key=balance_score)
-    return _balanced(default)
-
-
-def _balanced(default: str) -> str:
+def _balance(_table: str, default: str) -> str:
     """Return the best character fold across the header-width regimes."""
     header = default.partition(":")[0]
     floor = len(header) + 1

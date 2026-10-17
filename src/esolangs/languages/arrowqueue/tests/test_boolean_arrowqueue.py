@@ -38,6 +38,28 @@ class TestParameterizedArrowQueue:
                     got = self.run_arrowqueue(self.instantiate(template, bits))
                     assert got == table[combo], f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("n", range(1, 7))
+    def test_rows_reach_but_never_pass_the_ledger_bound(self, n: int) -> None:
+        """At most 2T + 6n + 7 lines; a lone zero second to last reaches it.
+
+        Measured exhaustively through n=3, and to n=8 over these families.
+        """
+        from esolangs.languages import generators
+
+        width = 2**n
+        bound = 2 * width + 6 * n + 7
+        rng = random.Random(n)
+        tables = [
+            *("1" * i + "0" + "1" * (width - 1 - i) for i in range(width)),
+            *("0" * i + "1" + "0" * (width - 1 - i) for i in range(width)),
+            *("".join(rng.choice("01") for _ in range(width)) for _ in range(8)),
+        ]
+        for table in tables:
+            rows = generators.arrowqueue(table).count("\n") + 1
+            assert rows <= bound, f"{table}: {rows} > {bound}"
+        witness = "1" * (width - 2) + "01"
+        assert generators.arrowqueue(witness).count("\n") + 1 == bound
+
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
         """Both routes spell every input as one cell, ``.`` against ``~``."""
@@ -80,24 +102,46 @@ class TestParameterizedArrowQueue:
 def test_constant_balance_and_setters_off_path(bit: str) -> None:
     """Constant roots keep their setters off the halt/ring path, balanced."""
     import esolangs
-    from esolangs.generation.wrap import balance_score
-    from esolangs.languages.arrowqueue.generator import _program
     from esolangs.runtime._evaluate import _evaluate
 
     n = 8
     table = bit * (1 << n)
     template = esolangs.generate("ArrowQueue", table)
     assert template.count(TEMPLATE_CHAR) == n
-    assert len(template) < len(_program(table, keep_constant_cascade=True))
     for options in ({}, {"width": 1}, {"width": 5}, {"width": 6}, {"balance": True}):
         program = esolangs.generate("ArrowQueue", table, **options)
         assert _evaluate("ArrowQueue", program, inputs=n) == table
-        if options.get("balance"):
-            old = min(
-                (
-                    _program(table, width, keep_constant_cascade=True)
-                    for width in (None, 1, 5, 6)
-                ),
-                key=balance_score,
-            )
-            assert balance_score(program) <= balance_score(old)
+
+
+def test_ring_pops_rdlu_then_sustains() -> None:
+    """A ``1`` row pops R, D, L, U at its corners then sustains; a ``0`` row exits."""
+    from esolangs.languages.arrowqueue.generator import _ROWS
+    from esolangs.languages.arrowqueue.interpreter import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    right, down, left, up = range(4)
+
+    def verdict(rows: list[str], queue: tuple[int, ...]) -> str:
+        machine = _Machine(rows)
+        machine.state = (0, 1, down, queue, False)
+        return "0" if run_until_halt_or_cycle(machine) else "1"
+
+    # Entered down column 1 with the sentinel R: the queue is then R D L U.
+    entry = (right, right, down, left, up)
+    machine = _Machine(_ROWS["1"])
+    machine.state = (0, 1, down, entry, False)
+    pops = []
+    for _ in range(12):
+        row, col, _d, queue, _done = machine.state
+        if machine.grid[row][col] == "+":
+            pops.append(((row, col), queue[0]))
+        machine.step()
+    assert pops[:5] == [
+        ((0, 1), right),
+        ((0, 3), right),
+        ((0, 5), down),
+        ((1, 5), left),
+        ((1, 3), up),
+    ]
+    assert verdict(_ROWS["1"], entry) == "1"
+    assert verdict(_ROWS["0"], entry) == "0"

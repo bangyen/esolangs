@@ -13,7 +13,10 @@ from esolangs.languages.minifuck.generator.states import _emit
 # Two double flips preserve the crossed cell and cancel both neighbor carries.
 _RIGHT = "[x<[x<[x<[x"
 _FIRST = 12
-_STRIDE = 5
+# Every gadget flips only cells c..c+3 of a logical cell c (checked over all
+# contents of three adjacent windows, scratch included; travel is transparent),
+# so stride 4 keeps the windows disjoint.
+_STRIDE = 4
 
 
 class _Plan:
@@ -59,7 +62,7 @@ class _Plan:
             self.copy(left, target)
             return
         # Clear left+1: an inactive right must read a known-zero guard.
-        # Three scratch cells contain every carry; the next logical cell is +5.
+        # Three scratch cells contain every carry; the next logical cell is +4.
         self.seek(left)
         self.write(_READS[1] + PAIR[1])
         self.write("<", left + 3)
@@ -70,7 +73,8 @@ class _Plan:
         # Offsets are 0 for two ones, 1 for left=0/right=1, 2 for right=0.
         self.shift(target - left)
         self.write(PAIR[1])
-        self.write("<", target + 3)
+        # The cursor ends at most at target+2 (offsets 0..2), so +2 reaches 0; +1 fails.
+        self.write("<", target + 2)
 
     def render(self, budget: int | None) -> str | None:
         if budget is not None and self.size > budget:

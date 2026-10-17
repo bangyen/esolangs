@@ -19,6 +19,7 @@ import esolangs
 from docs.proof_status import splice, update_docs
 from esolangs.languages.generators import BOOLEAN
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
+from esolangs.registry._language import Shape
 
 
 def main() -> int:
@@ -39,7 +40,8 @@ def main() -> int:
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-CURATION = ROOT / "tests" / "support/fixtures" / "curation.toml"
+CURATION = ROOT / "ledgers" / "curation.toml"
+CATALOGUE = ROOT / "ledgers" / "generator_catalogue.toml"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -366,19 +368,44 @@ def render_collection_size_section() -> str:
 def render_curation_census_section() -> str:
     """Render docs/limitations.md's census counts from the curation fixture.
 
-    The fixture records one route per registry language;
+    The fixture records backlinks per registry language, and the route
+    follows: fame at 60, else first implementation;
     ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
     census = tomllib.loads(CURATION.read_text(encoding="utf-8"))
-    routes = [entry["route"] for entry in census["languages"].values()]
+    fame = [entry["backlinks"] >= 60 for entry in census["languages"].values()]
     return "\n".join(
         [
-            f"The {census['checked']} census (`tests/support/fixtures/curation.toml`)"
-            " records each",
-            f"language's backlinks and route: {routes.count('fame')} clear the"
-            " fame gate",
-            f"and {routes.count('first implementation')} are first implementations.",
+            f"The {census['checked']} census (`ledgers/curation.toml`) records each",
+            f"language's backlinks and route: {fame.count(True)} clear the fame gate",
+            f"and {fame.count(False)} are first implementations.",
+        ]
+    )
+
+
+def render_sharing_counts_section() -> str:
+    """Render docs/limitations.md's sharing counts from the catalogue.
+
+    ``test_boolean_sharing_catalogue.py`` measures every tree generator outside
+    ``[sharing.exempt]``, so the remainder is that count.
+    """
+    sharing = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["sharing"]
+    tree = sum(
+        lang.boolean is not None and lang.shape is Shape.TREE
+        for lang in LANGUAGES.values()
+    )
+    local, exempt = len(sharing["local"]), len(sharing["exempt"])
+    return "\n".join(
+        [
+            "A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks"
+            f" that {tree - exempt}",
+            f"of {tree} tree-shaped generators build parity or a repeated-block"
+            " table at most",
+            f"0.90x its dense or distinct-block twin ({local} by a local helper);"
+            f" {exempt} are",
+            "exempt with a reason. One shrinking probe does not establish"
+            " complete sharing.",
         ]
     )
 
@@ -400,6 +427,7 @@ def update_limitations(root: pathlib.Path = ROOT) -> None:
         ("RASTER-SOURCES", render_raster_section),
         ("COLLECTION-SIZE", render_collection_size_section),
         ("CURATION-CENSUS", render_curation_census_section),
+        ("SHARING-COUNTS", render_sharing_counts_section),
     ):
         text = splice(text, name, render())
     path.write_text(text)

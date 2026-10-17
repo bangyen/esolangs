@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 88 esoteric languages: 86 text and 2 raster.
+Interpreters and Boolean generators for 90 esoteric languages: 88 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -47,12 +47,10 @@ esolangs --help
 esolangs list
 esolangs generate Suffolk 0110 > program.txt
 printf '01' | esolangs run Suffolk program.txt
-printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck xor.bf
 ```
 
 - `list` shows every language; `list --details` marks which have a
   generator (`gen`), a template (`tmpl`) and committed examples (`ex`).
-- `debug` steps through a program and watches memory.
 - Run a program under its own language. Suffolk programs look like
   brainfuck, but brainfuck rejects or misreads them.
 
@@ -104,7 +102,7 @@ Feeding it the two adjacent input characters prints their XOR.
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 85
+Ready-to-run programs for each of the 87
 languages with a boolean generator live in
 each language's [directory](https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).
 
@@ -124,7 +122,7 @@ lists all of them.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  85 of the
+first; its length implies `n`, so it isn't passed separately.  87 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

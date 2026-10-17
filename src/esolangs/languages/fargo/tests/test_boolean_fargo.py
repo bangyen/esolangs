@@ -84,7 +84,7 @@ class TestFargo:
         assert sizes[1] < 2 * sizes[0] + 16
 
     def test_choosing_arms_shrinks_the_corpus(self) -> None:
-        """Tables to two inputs never grow; the three-input corpus shrinks 11%."""
+        """Tables to two inputs never grow; the three-input corpus shrinks 12%."""
         from esolangs.languages.fargo.generator import anf_coefficients
         from esolangs.languages.fargo.tests.fargo_oracle import _anf_expression
 
@@ -101,7 +101,7 @@ class TestFargo:
                 else:
                     before += old
                     after += built
-        assert (before, after) == (9556, 8468)
+        assert (before, after) == (9556, 8400)
 
     @pytest.mark.parametrize(
         ("table", "expression"),
@@ -128,7 +128,25 @@ def test_default_compares_shared_definitions() -> None:
 
     table = corpus(8)["tiled"]
     program = boolean.fargo(table)
-    assert len(program) == 441
-    assert program == boolean.fargo(table, width=1)
+    # 441 when every node was named; now only the ones sharing shortens.
+    assert len(program) == 253
+    # Width 1 fits nothing, so it falls back to naming every node.
+    assert len(program) < len(boolean.fargo(table, width=1))
     for row, answer in enumerate(table):
         assert run_fargo(program, list(format(row, "08b"))) == answer
+
+
+@pytest.mark.parametrize("width", [1, 12, 40, 10**6])
+def test_packed_lines_name_shared_or_overlong_nodes(width: int) -> None:
+    from esolangs.languages.fargo.generator import _expression, _packed_program
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = format(random.Random(1847).getrandbits(64), "064b")
+    program = _packed_program(_expression(table, 6), 6, width)
+    assert _evaluate("Fargo", program, inputs=6) == table
+    if width >= 12:
+        # Up to a name's length past the width, from lettering in line order.
+        assert max(map(len, program.splitlines())) <= width + 2
+    # A positive control: flipping the first input read flips some answer.
+    mutant = program.replace("@ 0", "@ 1", 1)
+    assert _evaluate("Fargo", mutant, inputs=6) != table

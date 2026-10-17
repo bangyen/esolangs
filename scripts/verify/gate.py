@@ -533,7 +533,7 @@ def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
                 "--duration-output",
                 str(output),
                 "--duration-input",
-                str(ROOT / "tests/support/fixtures/slow_durations.json"),
+                str(ROOT / "ledgers/slow_durations.json"),
             ]
         )
     if not full and not verify_full():

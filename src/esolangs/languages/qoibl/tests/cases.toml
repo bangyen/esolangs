@@ -1,0 +1,88 @@
+language = "Qoibl"
+oldid = 84835
+
+[[examples]]
+id = "hello"
+source = '''
+tt yeeyeee tt
+tt yyeeyey tt
+tt yyeyyee tt
+tt yyeyyee tt
+tt yyeyyyy tt
+tt yeyyee tt
+tt yeeeee tt
+tt yyyeyyy tt
+tt yyeyyyy tt
+tt yyyeeye tt
+tt yyeyyee tt
+tt yyeeyee tt
+tt yeeeey tt
+tt yeye tt'''
+expected = '''
+Hello, world!
+'''
+
+[[examples]]
+id = "adder-4-5"
+source = '''
+we e we yyeeee we
+we y we et ry ey ry qe e qe we
+we ye we et ry ey ry qe e qe we
+we y we qe y qe ry ee ry qe ye qe we
+we y we qe y qe ry ee ry qe e qe we
+tt qe y qe tt'''
+stdin = "45"
+expected = "9"
+
+[[examples]]
+id = "truth-machine-0"
+source = '''
+we e we et we
+rr qe e qe yr ee yr yyeeey rr tt yyeeey tt rr
+tt yyeeee tt'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "cat"
+source = "rr e yr ee yr e rr tt et tt rr"
+stdin = "abc"
+expected = "abc"
+stop = "eof"
+
+[[spec_triggers]]
+program = "we yeeeeeeee we e we"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a variable index outside 0..255 (256)."
+
+[[spec_triggers]]
+program = "tt yy ry yy ry e tt"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: division by zero."
+
+[[spec_triggers]]
+program = "tt et tt"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: input exhausted when a read is needed."
+
+[[spec_triggers]]
+program = "tt"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a malformed expression."
+
+[[spec_triggers]]
+program = "tt e ry e ry e tt"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: unrecognized operator."
+
+[[spec_triggers]]
+program = "tt et tt"
+stdin = "A"
+expect = "output"
+output = "A"
+claim = "Positive control: et reads a character and tt prints it."

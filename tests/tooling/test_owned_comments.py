@@ -85,7 +85,7 @@ def test_proof_ownership_preserves_shared_index_and_evidence(
     proofs.mkdir(parents=True)
     for name in ("index.md", "private.md", "shared.md"):
         (proofs / name).write_text("Proof evidence.\n")
-    manifest = tmp_path / "src/esolangs/proof_status.toml"
+    manifest = tmp_path / "ledgers/proof_status.toml"
     manifest.parent.mkdir(parents=True)
     manifest.write_text(
         '[[ledger]]\ngenerator="Tiny"\nevidence="docs/proofs/private.md#bound"\n'

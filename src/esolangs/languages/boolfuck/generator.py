@@ -9,7 +9,7 @@ the zero-side only if the flag survived.  Every flag is 0 again on return.
 Constant subtrees fold to a leaf as in ``helpers.decision_tree_body``; a ``"1"``
 leaf flips R, and one leaf executes, so R flips at most once.  Repeated
 residuals defer to unused level flags, emitted once in depth order after the
-prefix tree, only when text shrinks within the command bound.  At n>=9,
+prefix tree, only when text shrinks within the command bound.  At n>=6,
 two-input cofactors normalize to shared AND/XOR gates; input flips and output
 bias distinguish their functions without extra flags.  Affine tables stream
 through two data cells, toggling the accumulator once per selected bit.  R
@@ -24,6 +24,9 @@ Decisions:
     Dropping the single-block, bank and mixed-bank candidates costs at most
     6.2% over 200 tables per class at n=9 and n=12 (jointly); dropping the
     per-level blocks form loses 19.8% (noisy affine), so it stays.
+    Shared blocks past the 2n^2 + 27n + 8 command bound are refused: on
+    B C C B tables (8 seeds) that costs 22.9% at n=7 and 9.8% at n=8, so a
+    repeated table can build larger than a distinct one.
 """
 
 from typing import Literal
@@ -122,12 +125,8 @@ class _GateTree:
         self.ids = subtree_ids(table)
         self.constant = constant_span_test(table)
 
-    # Let M be the sum of the original input-address widths and b=bl(2n).
-    # Read scratch and transient flags need at most M+2 bits. After the
-    # prefix, four gate cells need at most 4b<=M+2 for n>=9. Constant exits
-    # clear x/y before setting R/carrier, adding at most two address bits.
-    # State and input cursor need bl(L)+max(12,b+11)+bl(n), so the total
-    # fits the existing workspace formula, including power-of-two lengths.
+    # Workspace: docs/proofs/boolfuck-gates.md.  After the prefix only x, y,
+    # R and one pending flag can be 1, within the tree's tape bits from n=4.
     def leaf(self, value: int) -> None:
         e = self.e
         e.clear(self.x)
@@ -258,9 +257,12 @@ def normal_gates(table: str) -> str | None:
     """Return shared normalized gates where both existing ledgers admit them."""
     n = _validate_truth_table(table)
     # Prefix forks cost at most 15 commands per input. The AND/XOR tails
-    # give 2*n*n + 25*n + 26, at most the existing bound exactly when n>=9.
-    # Native extreme paths attain it at n=9 (413) and n=16 (938).
-    if n < 9:
+    # give 2*n*n + 25*n + 26, at most the existing bound exactly when n>=9;
+    # below it each table's count is checked.  Native extreme paths attain it
+    # at n=9 (413) and n=16 (938).  Workspace holds from n=4
+    # (docs/proofs/boolfuck-gates.md); gates save 6.6% at n=5, under the 10%
+    # bar, and 9.6%, 13.1%, 23.3% at n=6, 7, 8 (40 tables).
+    if n < 6:
         return None
     x = 2 * (n - 2)
     kinds = {_normal(table[row : row + 4])[0] for row in range(0, len(table), 4)} - {
@@ -291,6 +293,7 @@ def normal_gates(table: str) -> str | None:
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
     programs = [_boolfuck_tree(truth_table)[0]]
+    # normal_gates saves 9.2% of chars at n=7 and 21.2% at n=8 (40 random tables).
     for candidate in (affine_stream(truth_table), normal_gates(truth_table)):
         if candidate is not None:
             programs.append(candidate)

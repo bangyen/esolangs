@@ -26,12 +26,9 @@ _BAD_TIMEOUTS = [
 ]
 
 
-@pytest.mark.parametrize("command", ["run", "debug"])
 @pytest.mark.parametrize(("args", "message"), _BAD_TIMEOUTS)
-def test_a_bad_timeout_is_refused_with_exit_2(
-    command, args, message, tmp_path, capsys
-) -> None:
-    refused = _refused(f"{command} {args} prog:,.", tmp_path, capsys, "1\n")
+def test_a_bad_timeout_is_refused_with_exit_2(args, message, tmp_path, capsys) -> None:
+    refused = _refused(f"run {args} prog:,.", tmp_path, capsys, "1\n")
     assert message in refused
 
 
@@ -157,31 +154,6 @@ class TestTheDocumentedExitCodesAreTheRealOnes:
         for code in ("0 ran", "124", "130"):
             assert code in text
         assert "distinct from a program error's 1" not in text
-
-
-class TestDebugMirrorsRunsExitCodes:
-    """It exited 0 for a clean halt, a timeout and a crash alike."""
-
-    def test_a_raise_exits_one(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The program failed, which is `run`'s exit 1."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate(REFERENCE, "0110"))
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", REFERENCE, str(path)], capsys, stdin="")
-        assert exc.value.code == 1
-
-    @pytest.mark.medium
-    def test_a_timeout_exits_124(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Matching `run`, and distinct from the program having broken."""
-        path = tmp_path / "p.txt"
-        path.write_text("+[]")
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "--timeout", _LOOPS, REFERENCE, str(path)], capsys)
-        assert exc.value.code == 124
 
 
 @pytest.mark.medium

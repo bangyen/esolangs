@@ -98,7 +98,7 @@ benchmark language table *args:
     {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
 
 # Every language on 2-, 3- and 4-input tables, compared exactly against
-# tests/support/fixtures/generator_sizes.json.  Pass --update to re-record a change
+# ledgers/generator_sizes.json.  Pass --update to re-record a change
 # so the diff carries it.  Also checked in CI.
 # check emitted sizes and step counts against the committed baseline
 sizes *args:
@@ -122,7 +122,7 @@ gendiff language *args:
 
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:
-    {{PYTHON}} scripts/ci/shard.py refresh --serial-node src/esolangs/languages/brainfuck/tests/proofs/test_brainfuck_preserving.py::test_preserving_certificate {{args}}
+    {{PYTHON}} scripts/ci/shard.py refresh {{args}}
 
 # create interpreter, generator and test stubs; pass e.g. --category tape_based
 new-language name *args:

@@ -7,11 +7,7 @@ Size:
     O(T) letters; n=10 random 1847: 481 chars, n=16 random 1847: 19,985 chars.
 """
 
-from esolangs.generation.constant_projection import (
-    balanced_projection,
-    projected_inputs,
-)
-from esolangs.generation.helpers import _validate_truth_table, read_at
+from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.grapheme.interpreter import (
     DEFAULT_GRAPHEME,
@@ -86,12 +82,11 @@ def _program(
     truth_table: str,
     *,
     integer_conversion: str = "between_letters",
-    keep_constant_input: bool = False,
 ) -> str:
     """Build the integer lookup, including a one-entry constant table."""
     dialect = GraphemeDialect(integer_conversion)
     n = _validate_truth_table(truth_table)
-    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
+    used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     reading = set(used)
 
@@ -118,21 +113,6 @@ def _program(
     return "".join(pieces)
 
 
-def balance_grapheme(
-    truth_table: str, default: str, *, integer_conversion: str = "between_letters"
-) -> str:
-    """Retain the legacy constant layout when it balances better."""
-    return balanced_projection(
-        default,
-        _program(
-            truth_table,
-            integer_conversion=integer_conversion,
-            keep_constant_input=True,
-        ),
-        "grapheme",
-    )
-
-
 LANGUAGE = Language(
     "Grapheme",
     "grapheme",
@@ -150,5 +130,4 @@ LANGUAGE = Language(
         "answers the all-zeros row; esolangs encode spells them",
     ),
     wrap=wrap_chars,
-    balance=balance_grapheme,
 )

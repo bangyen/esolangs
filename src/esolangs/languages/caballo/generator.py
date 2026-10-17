@@ -10,6 +10,10 @@ one stack survives at weight 1 and the output is never drawn at random.
 Size:
     T-1 nodes at most, appended into one buffer: size and build time O(T);
     n=10 and: 187 chars, n=10 random 1847: 10,170 chars.
+
+Decisions:
+    Repeated subtrees are not shared: Caballo has no names or jumps, so code
+    runs once per place it is written.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids

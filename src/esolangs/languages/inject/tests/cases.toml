@@ -1,0 +1,104 @@
+language = "Inject"
+oldid = 194509
+
+[[examples]]
+id = "hello"
+source = '''
+send data
+skip
+data;
+Hello, world!
+data;
+'''
+expected = '''
+Hello, world!
+'''
+
+[[examples]]
+id = "truth-0-as-written"
+note = """\
+    wiki bug: skipq loops when data equals 0, so the page's truth machine is \
+    inverted; the repair is not unique"""
+source = '''
+readto data
+loop;
+send data
+skipq data 0
+loop;
+skip
+data;
+data;
+0;
+0
+0;
+'''
+stdin = "0"
+stop = "steps"
+max_steps = 200
+expected = '''
+0
+0
+0
+'''
+
+[[examples]]
+id = "truth-1-as-written"
+source = '''
+readto data
+loop;
+send data
+skipq data 0
+loop;
+skip
+data;
+data;
+0;
+0
+0;
+'''
+stdin = "1"
+expected = '''
+1
+'''
+
+[[examples]]
+id = "cat"
+note = "a blank line is copied; EOF ends it"
+source = '''
+loop;
+readto data
+send data
+skipif data
+loop;
+data;
+data;
+'''
+stdin = '''
+abc
+
+def
+'''
+expected = '''
+abc
+
+def
+'''
+
+[[spec_triggers]]
+program = "d;\nd;\ninject d=(/x"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a malformed inject regex"
+
+[[spec_triggers]]
+program = "a;\na;\na;"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a label written a third time"
+
+[[spec_triggers]]
+program = "data;\nx\ndata;\nreadto data\nsend data"
+stdin = ""
+expect = "output"
+output = ""
+claim = "readto at EOF empties the block instead of raising"

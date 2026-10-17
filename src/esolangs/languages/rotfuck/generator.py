@@ -12,28 +12,25 @@ and ``]`` execute at the same rotation modulo eight (the *phase*) and nothing
 between them reads as a bracket there (:func:`_shows`).  Then every trip
 leaves the rotation where it found it, and a skip, an exit and a jump back all
 resume one past the phase.  A body is padded to seven modulo eight with
-no-op runs (:data:`_PADS`), each command placed to hide from every open seek.
+no-op runs (:meth:`_Builder._pad`), each command placed to hide from every open
+seek.
 
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
-    strides; n=10 random 1847: 4,061 chars, n=10 and: 1,756 chars.
+    strides; n=10 random 1847: 4,061 chars, n=10 and: 1,769 chars.
 
 Decisions:
     A repeated block is not shared: a brainfuck copy is at least 19 commands
     a cell against 2.5 for an entry.
 """
 
-import heapq
+import math
 from collections.abc import Callable
-from itertools import product
 
-from esolangs.generation.constant_projection import (
-    balanced_projection,
-    projected_inputs,
-)
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    essential_inputs,
     read_at,
 )
 from esolangs.generation.wrap import wrap_chars
@@ -50,8 +47,13 @@ __all__ = ["rotfuck"]
 #: The default (backward) cycle: ``+ -> ] -> [ -> . -> , -> < -> > -> - -> +``.
 _ROTFUCK_CHAIN = ROTFUCK_CYCLES["backward"]
 
-# Pads are even-length; an 8-run is a full-cycle rotation no-op, so 6 is the cap.
-_MAX_PAD = 6
+#: Net-zero pairs, tried in this order.  Every pad is a chain of these, a pair
+#: wrapped in its own inverse move or cell step, so a pad is net zero by
+#: construction.
+_UNITS = ("+-", "-+", "<>", "><")
+
+#: What undoes a pad command.
+_INVERSE = {"+": "-", "-": "+", "<": ">", ">": "<"}
 
 #: Bits per digit of the index.  A digit's walk takes ``count**2 / 2`` moves,
 #: so wider digits trade shorter walk text for quadratic run time.
@@ -74,28 +76,6 @@ def _shows(cmd: str, seek: int, rot: int, cycle: str = _ROTFUCK_CHAIN) -> bool:
     executes ``d`` steps after it shows there as ``rot^-d`` of itself.
     """
     return _rotfuck_rot(cmd, seek - rot, cycle) in "[]"
-
-
-def _pads() -> tuple[str, ...]:
-    """Command runs that change neither the tape nor the pointer.
-
-    Shortest first, since padding is pure cost.  A run may step left of
-    cell zero: the tape grows a zero cell there, and the program is relative.
-    """
-    out = []
-    for length in range(2, _MAX_PAD + 1, 2):
-        for run in product("+-><", repeat=length):
-            cells: dict[int, int] = {}
-            at = 0
-            for char in run:
-                at += (char == ">") - (char == "<")
-                cells[at] = cells.get(at, 0) + (char == "+") - (char == "-")
-            if at == 0 and not any(cells.values()):
-                out.append("".join(run))
-    return tuple(out)
-
-
-_PADS = _pads()
 
 
 class _UnplaceableError(Exception):
@@ -135,30 +115,67 @@ class _Builder:
         self.src.append(_rotfuck_rot(cmd, -self.rot, self.cycle))
         self.rot = (self.rot + 1) % 8
 
+    def _unit(self, rot: int) -> str | None:
+        """The first net-zero pair hidden at ``rot`` and ``rot + 1``, if any."""
+        return next(
+            (
+                unit
+                for unit in _UNITS
+                if self._hidden(unit[0], rot) and self._hidden(unit[1], rot + 1)
+            ),
+            None,
+        )
+
+    def _wrapped(self, rot: int) -> str | None:
+        """A pair at ``rot + 1`` inside a step and its inverse, hidden, if any."""
+        inner = self._unit(rot + 1)
+        return next(
+            (
+                step + inner + _INVERSE[step]
+                for step in "+-<>"
+                if inner
+                and self._hidden(step, rot)
+                and self._hidden(_INVERSE[step], rot + 3)
+            ),
+            None,
+        )
+
+    def _pad(self, length: int) -> str:
+        """Return a hidden net-zero run of ``length`` commands from here.
+
+        A chain of pairs.  A pair no unit fits (a start of one residue per
+        two-seek set, see :meth:`_pad_until`) is wrapped: its four commands
+        are a step, a pair at the odd alignment, which has no such start, and
+        the inverse step; ``length - 4`` when the dead pair is the last one.
+        """
+        wraps = {
+            min(at, length - 4)
+            for at in range(0, length, 2)
+            if self._unit(self.rot + at) is None
+        }
+        out = ""
+        while len(out) < length:
+            at = self.rot + len(out)
+            wrap = len(out) in wraps
+            piece = self._wrapped(at) if wrap else self._unit(at)
+            if piece is None:
+                raise _UnplaceableError("no neutral pad is hidden from every open seek")
+            out += piece
+        return out
+
     def _pad_until(self, done: Callable[[int], bool]) -> None:
         """Emit the shortest hidden padding after which ``done(rot)`` holds.
 
-        Eight residues and a fixed pad list: Dijkstra on pad length.
+        Pads are even, and of every even length except one case: a pair start
+        where no unit is hidden (two seeks an odd distance apart, one residue
+        of eight) cannot take two, and takes ten for what two would reach.
         """
-        queue = [(0, self.rot, "")]
-        seen: set[int] = set()
-        while queue:
-            cost, rot, path = heapq.heappop(queue)
-            if done(rot):
-                for char in path:
-                    self._put(char)
-                return
-            if rot in seen:
-                continue
-            seen.add(rot)
-            for run in _PADS:
-                if all(self._hidden(c, rot + i) for i, c in enumerate(run)):
-                    heapq.heappush(
-                        queue, (cost + len(run), (rot + len(run)) % 8, path + run)
-                    )
-        raise _UnplaceableError(  # pragma: no cover - a pad always fits
-            "no neutral pad is hidden from every open seek"
-        )
+        lengths = (0, 2, 4, 6) if self._unit(self.rot) else (0, 4, 6, 10)
+        length = next((n for n in lengths if done((self.rot + n) % 8)), None)
+        if length is None:
+            raise _UnplaceableError("no neutral pad reaches the target rotation")
+        for char in self._pad(length):
+            self._put(char)
 
     def _command(self, cmd: str) -> None:
         """Emit ``cmd``, padded past rotations at which it shows as a bracket."""
@@ -239,9 +256,9 @@ def _walk(stride: int) -> str:
 
 
 def _skip(distance: int, *, fresh: bool) -> str:
-    """Brainfuck moving ``distance`` cells right across zeros, shortest of two.
+    """Brainfuck moving ``distance`` cells right across zeros, shorter of two.
 
-    Plain ``>`` steps, or a count carried ``stride`` cells a step.  The count
+    Plain ``>`` steps, or a count carried ``isqrt(room / 3)`` cells a step.  The count
     sits on the current cell when it is ``fresh`` (zero), else one cell on, and
     must land on a zero cell before the destination.  A zero upper half
     shrinks the program 3%/7.5%/14% at n=7/8/9 (12 seeded tables).
@@ -249,16 +266,17 @@ def _skip(distance: int, *, fresh: bool) -> str:
     best = ">" * distance
     start = "" if fresh else ">"
     room = distance - 1 if fresh else distance - 2
-    for stride in range(2, room + 1):
-        count = room // stride
-        if count < 2:
-            break
-        walk = f"[[-{'>' * stride}+{'<' * stride}]{'>' * stride}-]"
-        left = distance - len(start) - stride * count
-        candidate = start + "+" * count + walk + ">" * left
-        if len(candidate) < len(best):
-            best = candidate
-    return best
+    # A walk costs 3 * stride + room // stride - room, nearly: minimal near
+    # sqrt(room / 3).  The exact scan over strides gained 0.08% (94,060 vs
+    # 94,134 chars, 40 random n=7..10 tables), under the 10% bar.
+    stride = math.isqrt(max(room, 0) // 3)
+    if stride < 2 or room // stride < 2:
+        return best
+    count = room // stride
+    walk = f"[[-{'>' * stride}+{'<' * stride}]{'>' * stride}-]"
+    left = distance - len(start) - stride * count
+    candidate = start + "+" * count + walk + ">" * left
+    return min(best, candidate, key=len)
 
 
 def _strip(table: str, *, skips: bool) -> str:
@@ -319,15 +337,13 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
     return _program(truth_table, rotation=rotation)
 
 
-def _program(
-    truth_table: str, *, rotation: str = "backward", keep_constant_input: bool = False
-) -> str:
+def _program(truth_table: str, *, rotation: str = "backward") -> str:
     """Build the rotated lookup, including a one-entry constant table."""
     cycle = ROTFUCK_CYCLES[validate_rotation(rotation)]
     n = _validate_truth_table(truth_table)
 
     # Ignored inputs are still read but do not enter the index.
-    used = projected_inputs(truth_table, n, keep_constant_input=keep_constant_input)
+    used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     strips = [_strip(table, skips=False)]
     if (skipped := _strip(table, skips=True)) != strips[0]:
@@ -341,17 +357,6 @@ def _program(
         out.emit(_parse(bf))
         texts.append(out.text())
     return min(texts, key=len)
-
-
-def balance_rotfuck(
-    truth_table: str, default: str, *, rotation: str = "backward"
-) -> str:
-    """Retain the legacy constant layout when it balances better."""
-    return balanced_projection(
-        default,
-        _program(truth_table, rotation=rotation, keep_constant_input=True),
-        "rotfuck",
-    )
 
 
 def _dialect(rotation: str = "backward") -> None:
@@ -372,5 +377,4 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
-    balance=balance_rotfuck,
 )

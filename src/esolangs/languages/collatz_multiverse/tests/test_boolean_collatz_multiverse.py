@@ -59,7 +59,7 @@ class TestCollatzMultiverse:
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (450156, 232942)
+        assert (plain, built) == (494847, 265454)
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
@@ -168,3 +168,97 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     assert len(lines) == 4
     assert all(line.endswith("NOT PRINT.") for line in lines)
     assert _cm_constants([]) == lines
+
+
+def _minimal_plan_sizes(maxval: int) -> dict[int, int]:
+    """Oracle: the retired exhaustive search, fewest constants building each ``m``."""
+    need: dict[int, frozenset[int]] = {1: frozenset(), 2: frozenset()}
+    for m in range(3, maxval + 1):
+        need[m] = min(
+            (
+                frozenset({m})
+                | need[b]
+                | need[a]
+                | (need[m - b * a] if m - b * a > 2 else frozenset())
+                for b in range(1, m, 2)
+                for a in range(1, min(m // b + 1, m))
+            ),
+            key=len,
+        )
+    return {m: len(s) for m, s in need.items()}
+
+
+def test_cm_plan_chain_is_valid_and_near_minimal() -> None:
+    """The rule builds each constant from smaller ones, within 3 of the minimum."""
+    from esolangs.languages.collatz_multiverse.generator import _cm_chain
+
+    oracle = _minimal_plan_sizes(150)
+    for m in range(3, 151):
+        plan = _cm_chain([m])
+        for n, (b, c) in plan.items():
+            assert b % 2 == 1
+            assert 2 * b + c == n
+            assert 0 <= c <= 3
+            assert all(v <= 2 or v in plan for v in (b, c))
+        assert len(plan) <= oracle[m] + 3
+
+
+def test_cm_constants_print_the_right_value() -> None:
+    """A constant program prints chr(value) for every byte value above 2."""
+    from esolangs.languages.collatz_multiverse.generator import _cm_constant_program
+
+    for value in range(3, 256):
+        program = _cm_constant_program(1, value)
+        assert run_collatz_multiverse(program, ["0"]) == chr(value)
+
+
+def _swept_balance(table: str, default: str) -> str:
+    """The retired balance: select among the spellings at every fit threshold."""
+    from esolangs.generation.helpers import _validate_truth_table, grid_width
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.collatz_multiverse.generator import (
+        _cm_candidates,
+        _cm_layout_versions,
+        _cm_narrow_choice,
+        collatz_multiverse,
+    )
+
+    n = _validate_truth_table(table)
+    wide = collatz_multiverse(table, len(default))
+    narrow = _cm_candidates(table, n, narrow=True, expanded=True)
+    versions = [
+        [(grid_width(source), source) for source in _cm_layout_versions(program)]
+        for program in [wide, *narrow]
+    ]
+    thresholds = {1}
+    for spellings in versions:
+        for span, _source in spellings:
+            thresholds.update((span, max(1, span - 1)))
+
+    def fitted(spellings: list[tuple[int, str]], width: int) -> str:
+        return next(
+            (source for span, source in spellings if span <= width), spellings[-1][1]
+        )
+
+    candidates = [default]
+    for width in sorted(thresholds):
+        program = fitted(versions[0], width)
+        if grid_width(program) > width:
+            program = _cm_narrow_choice(
+                program, [fitted(item, width) for item in versions[1:]]
+            )
+        candidates.append(program)
+    return min(candidates, key=balance_score)
+
+
+def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
+    """Per table, 1..5 inputs: never worse than the retired threshold sweep."""
+    from esolangs.generation.wrap import balance_score
+
+    rng = random.Random(3)
+    for n in (1, 2, 3, 4, 5):
+        for _ in range(6):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            new = esolangs.generate("Collatz Multiverse", table, balance=True)
+            old = _swept_balance(table, esolangs.generate("Collatz Multiverse", table))
+            assert balance_score(new) <= balance_score(old), table

@@ -11,13 +11,19 @@ distinct subtable (``subtree_ids``) is one function entered and left at its
 ``X``; equal halves skip the branch, and a constant subtable reads its
 remaining characters and prints from cell 50 or 51.
 
+A function stays declared only where that is shorter than pasting its body
+at each call (:func:`_inlined`).
+
 Size:
-    O(T) size and build time, 26n + 311 steps at most; n=10 parity: 1,090
-    chars, n=10 random 1847: 8,558 chars.
+    O(T) size and build time, 26n + 311 steps at most; n=10 parity: 1,060
+    chars, n=10 random 1847: 6,388 chars (8,558 declaring every function;
+    26% less over five random tables at n=10, 11% at n=3, no added steps).
 """
 
+import re
+
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_tokens
+from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -43,9 +49,8 @@ def _setup(n: int) -> str:
     )
 
 
-def _wrap(program: str, width: int) -> str:
-    """Break anywhere but inside a quoted name, which a newline would rename."""
-    return wrap_tokens(program, width, r'"[^"]*"|[\s\S]')
+#: Break anywhere but inside a quoted name, which a newline would rename.
+_wrap = TokenWrapper(r'"[^"]*"|[\s\S]')
 
 
 def pointless(truth_table: str) -> str:
@@ -80,8 +85,57 @@ def pointless(truth_table: str) -> str:
         return str(sub)
 
     root = child(0, 0)
-    declarations = "".join(f'"{key}"{{{body}}}' for key, body in functions.items())
-    return f'{_setup(n)}"{root}"{declarations}'
+    return _setup(n) + _inlined(functions, root)
+
+
+def _inlined(functions: dict[str, str], root: str) -> str:
+    """Return the root's call then the declarations, inlining where shorter.
+
+    A call runs the body and returns, so pasting the body in its place is
+    equivalent.  Callees first, a function stays declared only when its
+    uses times its length beat the declaration plus the uses of its call.
+    """
+    calls = {key: _CALL.findall(body) for key, body in functions.items()}
+    uses = dict.fromkeys(functions, 0)
+    uses[root] = 1
+    for names in calls.values():
+        for name in names:
+            uses[name] += 1
+    size: dict[str, int] = {}
+    declared: set[str] = set()
+    # Callees first: a callee shared by two callers can be declared between
+    # them, so declaration order is not enough.  Depth is at most n + 1.
+    order: list[str] = []
+
+    def visit(key: str) -> None:
+        if key not in size:
+            size[key] = 0
+            for name in calls[key]:
+                visit(name)
+            order.append(key)
+
+    visit(root)
+    for key in order:
+        size[key] = len(functions[key]) + sum(
+            size[name] - len(name) - 2 for name in calls[key] if name not in declared
+        )
+        call = len(key) + 2
+        if uses[key] * size[key] > call + 2 + size[key] + uses[key] * call:
+            declared.add(key)
+
+    def text(key: str) -> str:
+        return _CALL.sub(
+            lambda m: m[0] if m[1] in declared else text(m[1]), functions[key]
+        )
+
+    main = f'"{root}"' if root in declared else text(root)
+    return main + "".join(
+        f'"{key}"{{{text(key)}}}' for key in functions if key in declared
+    )
+
+
+#: A call in a body, ``"name"``; names hold no quote.
+_CALL = re.compile(r'"([^"]*)"')
 
 
 LANGUAGE = Language(

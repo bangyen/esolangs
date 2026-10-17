@@ -51,9 +51,10 @@ class TestCircuitDiagramShareScope:
         nodes = len(_dag(table, 8)[0])
         assert nodes**2 > 4 * len(table)  # over the admission cutoff
         assert _area(_circuit_diagram_model(table, None)) < _area(_h_term_layout(table))
-        model = _linear_shared_layout(table, 8)
-        assert model is not None
-        _execute(table, model.render())
+        models: list = []
+        _linear_shared_layout(table, 8, models)
+        assert models
+        _execute(table, min(models, key=_area).render())
 
     @pytest.mark.medium
     def test_the_public_build_admits_smaller_cofactor_candidates(self) -> None:

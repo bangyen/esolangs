@@ -204,6 +204,16 @@ class TestFlowchart:
             assert run_flowchart(once, bits) == table[row], row
 
 
+def test_a_shared_drawing_has_an_exact_size() -> None:
+    """Repeated 8-row blocks drawn once and jumped to: size and rows."""
+    table = "00010110" * 2 + "00111110" + "01111100"
+    program = boolean.flowchart(table, 60)
+    assert len(program) == 5751
+    for row in range(32):
+        bits = [str((row >> (4 - i)) & 1) for i in range(5)]
+        assert run_flowchart(program, bits) == table[row], row
+
+
 @pytest.mark.parametrize("width", [1, 40])
 def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
     """Ignored inputs cost their reads, not a switch: f(c, d) of four inputs."""
@@ -228,7 +238,7 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
     assert_shared_program(
         "Flowchart",
         table,
-        _flowchart_deque(table, keep_constant_input=True),
+        None,
         3 * (1 << n) + 9 * n + 4,
         lambda program: (
             (7 * (1 << n) + 20 * n + 100) * (len(program).bit_length() + 4)
@@ -242,19 +252,6 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
             len(program.splitlines()) * max(map(len, program.splitlines()))
         ),
     )
-
-
-@pytest.mark.parametrize("n", [1, 2, 3, 5, 8])
-@pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_lookup_retains_balanced_deque(n, bit) -> None:
-    import esolangs
-    from esolangs.generation.wrap import balance_score
-
-    table = bit * (1 << n)
-    legacy = _flowchart_deque(table, keep_constant_input=True)
-    assert balance_score(
-        esolangs.generate("Flowchart", table, balance=True)
-    ) <= balance_score(legacy)
 
 
 @pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])

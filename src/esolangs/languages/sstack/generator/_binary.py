@@ -60,8 +60,6 @@ def _decoder(
     width: int,
     bodies: tuple[_Metric, ...],
     emit: _Emit | None = None,
-    *,
-    radix: int = 2,
 ) -> tuple[int, dict[int, int]]:
     def visit(bit: int, labels: tuple[int, ...]) -> tuple[int, dict[int, int]]:
         if bit < 0:
@@ -69,13 +67,9 @@ def _decoder(
             if emit is not None:
                 emit(target)
             return bodies[target].chars, {target: bodies[target].commands}
-        divisor = radix**bit
         arms = [
-            (
-                value,
-                tuple(label for label in labels if label // divisor % radix == value),
-            )
-            for value in range(radix - 1, -1, -1)
+            (value, tuple(label for label in labels if label >> bit & 1 == value))
+            for value in (1, 0)
         ]
         arms = [(value, group) for value, group in arms if group]
         # Only an active parent reaches a fixed digit. Pop it without a test;
@@ -109,8 +103,6 @@ def _prefix(
     width: int,
     tails: dict[int, int],
     *,
-    radix: int = 2,
-    inactive: int = 2,
     stop_depth: int | None = None,
     emit: _Emit | None = None,
 ) -> _Metric:
@@ -122,7 +114,7 @@ def _prefix(
             target = selected[level, key]
             if emit is not None:
                 for bit in range(width):
-                    emit(f'"{1 + (target // radix**bit % radix)}/e"')
+                    emit(f'"{1 + (target >> bit & 1)}/e"')
             return _Metric(5 * width, width + tails[target])
         if level == stop_depth or key < 2:
             if emit is not None:
@@ -131,7 +123,7 @@ def _prefix(
                 else:
                     emit(";d;" * (n - level) + (":b:" if key else ":c:"))
             value = metrics[level][key]
-            return _Metric(value.chars, value.commands + inactive)
+            return _Metric(value.chars, value.commands + 2)
         zero, one = ids[level + 1][2 * block : 2 * block + 2]
         if zero == one:
             if emit is not None:

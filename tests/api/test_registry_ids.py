@@ -5,6 +5,7 @@ import importlib
 import pytest
 
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._slug import canonical_id
 
 
 def test_language_names_keep_their_package_namespace() -> None:
@@ -31,6 +32,22 @@ def test_every_name_id_and_alias_resolves_to_its_language() -> None:
     for name, lang in LANGUAGES.items():
         for spelling in (name, name.casefold(), lang.id, *lang.aliases):
             assert resolve(spelling) == name, spelling
+
+
+def test_a_slug_drops_only_punctuation_the_language_has() -> None:
+    """``Piet++`` is another wiki language; slugged onto Piet, it ran Piet."""
+    from esolangs.exceptions import UnknownLanguageError
+
+    for name, lang in LANGUAGES.items():
+        bare = "".join(c if c.isalnum() else " " for c in name)
+        if canonical_id(bare) == lang.id:
+            assert resolve(bare) == name, bare
+        if "+" not in name + "".join(lang.aliases):
+            with pytest.raises(UnknownLanguageError):
+                resolve(name + "++")
+        # Whitespace and dashes are separators, not symbols to own.
+        assert resolve(f"\t{lang.id}\n") == name, lang.id
+        assert resolve(name.replace(" ", "\xa0").replace("-", "\u2013")) == name
 
 
 def test_id_matches_the_interpreter_module() -> None:

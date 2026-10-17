@@ -1,0 +1,30 @@
+[[spec_triggers]]
+program = "(())"
+stdin = ""
+expect = "HaltError"
+claim = "output string holding ( or )"
+
+[[spec_triggers]]
+program = "a"
+stdin = ""
+expect = "ProgramError"
+claim = "definition left open"
+
+[[spec_triggers]]
+program = "ab"
+stdin = ""
+expect = "ProgramError"
+claim = "second macro name inside a definition"
+
+[[spec_triggers]]
+program = "("
+stdin = ""
+expect = "ProgramError"
+claim = "unbalanced parentheses in source"
+
+[[spec_triggers]]
+program = "()"
+stdin = ""
+expect = "output"
+output = ""
+claim = "EOF is a value, never an error"

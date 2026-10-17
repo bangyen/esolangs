@@ -14,8 +14,6 @@ Size:
 """
 
 from collections.abc import Callable
-from functools import cache
-from itertools import pairwise
 from math import isqrt, prod
 from typing import NamedTuple
 
@@ -24,7 +22,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.token_balance import near_even_counts, rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.interpreter._dialect import (
     EXPRESSION_SYNTAXES,
@@ -284,7 +281,7 @@ def alight(
 ) -> str:
     """Return an Alight program printing ``truth_table``'s entry for its input.
 
-    ``width`` is a hard bound; infix takes the layout minimizing
+    ``width`` is a hard bound; infix takes the squarest of a few layouts, by
     ``max(width, height)``, ties by area; postfix folds or rotates into one
     column.  Only two-argument ``at`` is emitted, so every ``list_update``
     runs it.
@@ -361,18 +358,14 @@ def _layout_bounded_postfix(build: _Build) -> str:
 def _layout_bounded_dropped(build: _Build) -> str:
     """Return the bounded infix layout with dropped inputs.
 
-    ``select_alight`` models ``n`` reads, so the dropped build is rendered
-    from the model's plan for the projected table.  32.6% by chars at n=8,
-    1 ignored, width 80 (audit).
+    The projected table is laid out over the essential reads, with the
+    ignored ones read and dropped.  32.6% by chars at n=8, 1 ignored,
+    width 80 (audit).
     """
     width = build.width
     assert width is not None
     essential = build.essential
-    plan = min(
-        (p for p in _plans(build.n, tuple(essential)) if p.ready() <= width),
-        key=_Plan.score,
-    )
-    planned = _emit(build.projected, build.n, plan, essential)
+    planned = select_alight(build.projected, build.n, width, essential)
     if any(essential):
         return planned
     program = select_alight(build.truth_table, build.n, width)
@@ -419,9 +412,8 @@ def _program(
     *,
     expression_syntax: str = "infix",
     list_update: str = "in_place",
-    keep_constant_input: bool = False,
 ) -> str:
-    """Lay out the lookup, optionally retaining constant-input indexing."""
+    """Lay out the lookup over the essential inputs."""
     n = _validate_truth_table(truth_table)
     _dialect(expression_syntax, list_update)
     if width is not None and width < 1:
@@ -430,7 +422,7 @@ def _program(
     essential = [bool(weight) for weight in weights]
     # An ignored input is read and dropped, and the table is indexed by the
     # rest, including the one-entry table of a constant.
-    dropped = not all(weights) and (any(weights) or not keep_constant_input)
+    dropped = not all(weights)
     build = _Build(
         truth_table=truth_table,
         n=n,
@@ -455,248 +447,67 @@ def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") ->
     validate_list_update(list_update)
 
 
-_Affine = tuple[int, int]
-_EAST = len(_ALIGHT_EAST_TURN)
-_WEST = len(_ALIGHT_WEST_TURN)
-#: ``_Plan.kind``, also a score tiebreak, so the order is load-bearing.
-_COLUMN, _ROW, _FOLD = 0, 1, 2
+#: ``2 * size / scale`` is the squared chunk count at which a fold's width
+#: (a chunk plus its guard, about ``size / count + 41``) meets its height (about
+#: 11 rows per chunk, doubled when ranked by ``balance_score``).  Fitted on
+#: n=5..14, where the best count's 5% band always holds floor or ceil of the root.
+_SQUARE_SCALE = {"minimax": 17, "balance": 39}
 
 
-class _Plan(NamedTuple):
-    kind: int
-    columns: int
-    chunk: int
-    width: int
-    height: int
-    length: int
+def _square_chunks(size: int, kind: str) -> set[int]:
+    """Return the chunk sizes of the two chunk counts around the square root."""
+    count = max(1, isqrt(2 * size // _SQUARE_SCALE[kind]))
+    return {-(-size // count), -(-size // (count + 1))}
 
-    def score(self) -> tuple[int, int, int, int, int]:
-        return (
-            max(self.width, self.height),
-            self.width * self.height,
-            self.length,
-            self.kind,
-            self.columns,
+
+def _folds(
+    table: str,
+    n: int,
+    chunks: set[int],
+    essential: list[bool] | None,
+    *,
+    postfix: bool = False,
+    columns: int = 0,
+) -> list[str]:
+    """Return each chunk size folded at ``columns``, else as narrow as it goes."""
+    return [
+        _alight_folded(
+            _alight_units(table, n, chunk, essential, postfix=postfix), columns
         )
+        for chunk in sorted(chunks)
+    ]
 
-    def ready(self) -> int:
-        return max(self.width, self.columns)
+
+_COLUMN_SCALES = (4, 5, 6)
 
 
-def _fold_shape(
-    pieces: list[_Affine], span: _Affine, value: int, stop: int
-) -> tuple[int, int, int, int]:
-    """Return width, height, length and the next greedy row-fit transition.
+def _square_columns(length: int, kind: str) -> set[int]:
+    """Return the widths around the one at which ``length`` cells fold square.
 
-    ``pieces`` are ``(slope, intercept)`` affine lengths of each row-unit as
-    a function of the fold width ``value``; ``span`` is the same pair for
-    the widest row.  Units are placed greedily left to right, each row
-    reserving its turn's cells; a row fails when its affine width plus the
-    turn reserve exceeds the widest row.  That boundary,
-    ``rate * value + offset``, is linear in ``value``, so ``stop`` narrows
-    to the nearest width that could change the fit, letting the caller step
-    straight there instead of re-testing every width.
+    Each fold row adds about 11 rows of height (22 under ``balance_score``).
     """
-    at = 0
-    rows = 0
-    while at < len(pieces):
-        reserve = _EAST if rows == 0 else (_WEST + 1 if rows % 2 else _EAST + 1)
-        used = (0, 0)
-        while at < len(pieces):
-            piece = pieces[at]
-            total = (used[0] + piece[0], used[1] + piece[1])
-            if used != (0, 0):
-                rate = total[0] - span[0]
-                offset = total[1] - span[1] + reserve
-                failed = rate * value + offset > 0
-                if rate < 0 and failed:
-                    stop = min(stop, (offset - rate - 1) // -rate)
-                elif rate > 0 and not failed:
-                    stop = min(stop, -offset // rate + 1)
-                if failed:
-                    break
-            used = total
-            at += 1
-        rows += 1
-    columns = span[0] * value + span[1]
-    last = used[0] * value + used[1]
-    east, west = rows // 2, (rows - 1) // 2
-    height = _EAST * east + _WEST * west + 1
-    if rows == 1:
-        return last, 1, last, stop
-    final = columns if rows % 2 == 0 else last + 1
-    east_ink = _EAST - 1 - _ALIGHT_EAST_TURN[:-1].count(" ")
-    west_ink = _WEST - 1 - _ALIGHT_WEST_TURN[:-1].count(" ")
-    length = (
-        (rows - 1 + east_ink * east) * columns + west_ink * west + final + height - 1
-    )
-    return columns, height, length, stop
+    root = isqrt(length * (11 if kind == "minimax" else 22))
+    return {root * scale // 5 for scale in _COLUMN_SCALES}
 
 
-class _Rows(NamedTuple):
-    """Fold-model inputs: literal ``size``, command widths around the lookup."""
-
-    size: int
-    prefix: list[int]
-    lookup: int
-    tail: list[int]
-    flat: int
-
-    @property
-    def overhead(self) -> int:
-        """Guard and lookup width around the index text."""
-        return _ALIGHT_OVERHEAD + 2 * len(_half_before(self.size))
-
-
-def _whole_folds(rows: _Rows) -> list[_Plan]:
-    """Fold plans with the whole table in one lookup, one per fit transition.
-
-    They win only at n<=4 (dropping them costs +74-84% minimax there, 0.00%
-    at n=5..9 over 200 random tables, bounded and balanced).
-    """
-    size = rows.size
-    shift = rows.overhead + _EAST
-    whole = (
-        1
-        if _alight_chunk(size, 1) == size
-        else shift + size + rows.lookup - rows.overhead
-    )
-    lengths = [*rows.prefix, size + rows.lookup, *rows.tail]
-    pieces = [(0, length) for length in lengths]
-    widest = max(lengths)
-    lower = max(whole, widest + _EAST + 1)
-    upper = max(lower, rows.flat)
-    plans = []
-    while lower <= upper:
-        width, height, length, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
-        columns = whole if lower == widest + _EAST + 1 else lower
-        plans.append(_Plan(_FOLD, columns, size, width, height, length))
-        lower = stop
-    return plans
-
-
-def _chunked_folds(rows: _Rows) -> list[_Plan]:
-    """Fold plans splitting the table into ``count`` guarded lookups."""
-    size = rows.size
-    shift = rows.overhead + _EAST
-    cutoff = size + rows.lookup - rows.overhead
-    plans: list[_Plan] = []
-    if cutoff <= 1:
-        return plans
-    maximum = cutoff - 1
-    powers = []
-    power = 10
-    while power < size:
-        powers.append(power + 1)
-        power *= 10
-    for count in near_even_counts(size):
-        low = (size + count - 1) // count
-        high = min(maximum, (size - 1) // (count - 1))
-        if low > high:
-            continue
-        events = {low, high + 1}
-        for number in range(1, count):
-            events.update(
-                point
-                for power in powers
-                if low < (point := (power + number - 1) // number) <= high
-            )
-        for lo, hi in pairwise(sorted(events)):
-            first = (1, 30 + len(_half_before(lo)))
-            pieces = [(0, length) for length in rows.prefix] + [first]
-            for number in range(1, count):
-                digits = len(_half_before(number * lo))
-                pieces.append(
-                    (1 - count, size + 27 + 2 * digits)
-                    if number == count - 1
-                    else (1, 27 + 2 * digits)
-                )
-            pieces.extend((0, length) for length in rows.tail)
-            while lo < hi:
-                width, height, length, stop = _fold_shape(pieces, (1, shift), lo, hi)
-                columns = 1 if lo == 1 else lo + shift
-                plans.append(_Plan(_FOLD, columns, lo, width, height, length))
-                lo = stop
-    return plans
-
-
-@cache
-def _plans(n: int, kept: tuple[bool, ...] | None = None) -> tuple[_Plan, ...]:
-    """Return native-dominating fold endpoints; geometry ignores literal bits.
-
-    ``kept`` marks the essential reads; the rest are bare ``inp`` and the
-    table has ``2**sum(kept)`` rows.
-    """
-    essential = list(kept or (True,) * n)
-    size = 1 << sum(essential)
-    flat = size + len(_alight_flat_compact("", n, essential))
-    base = [len(";".join(unit)) + 1 for unit in _alight_units("", n, 0, essential)]
-    rows = _Rows(size, base[:-3], base[-3], base[-2:], flat)
-    return (
-        _Plan(_COLUMN, 0, 0, 1, flat, 2 * flat - 1),
-        _Plan(_ROW, 0, 0, flat, 1, flat),
-        *_whole_folds(rows),
-        *_chunked_folds(rows),
-    )
-
-
-def _render(table: str, n: int, plan: _Plan, essential: list[bool] | None) -> str:
-    """Return the program ``plan`` describes for ``table``."""
-    flat = _alight_flat_compact(table, n, essential)
-    if plan.kind == _COLUMN:
-        return "\n".join(flat)
-    if plan.kind == _ROW:
-        return flat
-    return _alight_folded(_alight_units(table, n, plan.chunk, essential), plan.columns)
-
-
-def _emit(table: str, n: int, plan: _Plan, essential: list[bool] | None = None) -> str:
-    program = _render(table, n, plan, essential)
-    if (*_dimensions(program), len(program)) != (plan.width, plan.height, plan.length):
-        raise AssertionError("Alight fold model disagrees with the rendered program")
-    return program
-
-
-def select_alight(table: str, n: int, width: int) -> str:
-    """Return the original minimax winner among the permitted fit regimes."""
-    plan = min((plan for plan in _plans(n) if plan.ready() <= width), key=_Plan.score)
-    return _emit(table, n, plan)
-
-
-def _squareness(width: int, height: int, length: int) -> tuple[int, int, int]:
-    """Rank a shape: rendered side, then length, then width, as ``balance_score``."""
-    return rendered_side(width, height), length, width
-
-
-def _balance_postfix(
-    table: str, n: int, default: str, essential: list[bool] | None = None
+def select_alight(
+    table: str, n: int, width: int, essential: list[bool] | None = None
 ) -> str:
-    """Balance square-root chunks at greedy fold transitions."""
-    width, height = _dimensions(default)
-    best = _squareness(width, height, len(default))
-    selected: tuple[list[list[str]], int, tuple[int, int, int]] | None = None
-    # Whole-table chunks add 0.00% to the square-root chunk on 200 random
-    # tables each at n=7 and 8; alone they lose 41-60% in area-imbalance.
-    units = _postfix_units(table, n, isqrt(len(table) - 1) + 1, essential)
-    pieces = [(0, len(";".join(unit)) + 1) for unit in units]
-    lower = max(length for _, length in pieces) + _EAST + 1
-    upper = sum(length for _, length in pieces)
-    while lower <= upper:
-        width, height, length, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
-        # Height is constant until the next row-fit transition and width
-        # never shrinks, so each transition's first width is its smallest side.
-        score = _squareness(width, height, length)
-        if score < best:
-            best = score
-            selected = units, lower, (width, height, length)
-        lower = stop
-    if selected is None:
-        return default
-    units, columns, shape = selected
-    program = _alight_folded(units, columns)
-    if (*_dimensions(program), len(program)) != shape:
-        raise AssertionError("Alight postfix fold model disagrees with rendering")
-    return program
+    """Return the squarest of the straight, vertical and square-root fold layouts.
+
+    The widest lookup that fits ``width`` joins the square-root folds, so a
+    narrow request still folds; layouts wider than ``width`` are dropped and
+    the vertical line, one column, always fits.
+    """
+    flat = _alight_flat_compact(table, n, essential)
+    chunks = _square_chunks(len(table), "minimax")
+    chunks.add(min(len(table), _alight_chunk(len(table), width)))
+    layouts = [flat, "\n".join(flat), *_folds(table, n, chunks, essential)]
+    for columns in _square_columns(len(flat), "minimax"):
+        layouts += _folds(
+            table, n, {len(table)}, essential, columns=min(width, columns)
+        )
+    return _smallest(*(_fit(layout, width) for layout in layouts))
 
 
 def balance_alight(
@@ -704,52 +515,32 @@ def balance_alight(
     default: str,
     *,
     expression_syntax: str = "infix",
-    keep_constant_input: bool = False,
 ) -> str:
     """Balance the layouts that can win the native minimax width selector."""
     n = _validate_truth_table(table)
     weights, projected = input_weights(table, n)
     # Constants have no index inputs; reads remain in stream order.
     essential = [bool(weight) for weight in weights]
-    if not any(essential) and not keep_constant_input:
-        legacy = _program(
-            table, expression_syntax=expression_syntax, keep_constant_input=True
-        )
-        return min(
-            _balance_projected(projected, n, default, essential, expression_syntax),
-            balance_alight(
-                table,
-                legacy,
-                expression_syntax=expression_syntax,
-                keep_constant_input=True,
-            ),
-            key=balance_score,
-        )
-    if not any(essential) or all(essential):
-        essential = [True] * n
-        projected = table
     return _balance_projected(projected, n, default, essential, expression_syntax)
 
 
 def _balance_projected(
     table: str, n: int, default: str, essential: list[bool], expression_syntax: str
 ) -> str:
-    """Balance an indexed lookup after projecting its input dimensions."""
-    if expression_syntax == "postfix":
-        return _balance_postfix(table, n, default, essential)
-    plans = _plans(n, tuple(essential))
-    records = [next(plan for plan in plans if plan.kind == _ROW)]
-    best: _Plan | None = None
-    # Keep only the plans whose score improves as their ready width grows;
-    # the balance winner is the squarest of those plus the row candidate.
-    for plan in sorted(plans, key=lambda plan: (plan.ready(), plan.score())):
-        if best is None or plan.score() < best.score():
-            best = plan
-            records.append(plan)
-    selected = min(
-        records, key=lambda plan: _squareness(plan.width, plan.height, plan.length)
-    )
-    return _emit(table, n, selected, essential)
+    """Balance an indexed lookup after projecting its input dimensions.
+
+    Folds at the square-root chunk counts of both aspect ratios compete with
+    ``default``: geometry ignores the literal's bits, so the best count is a
+    function of the table size alone.
+    """
+    postfix = expression_syntax == "postfix"
+    chunks = _square_chunks(len(table), "balance")
+    candidates = [default, *_folds(table, n, chunks, essential, postfix=postfix)]
+    for columns in _square_columns(len(default), "balance"):
+        candidates += _folds(
+            table, n, {len(table)}, essential, postfix=postfix, columns=columns
+        )
+    return min(candidates, key=balance_score)
 
 
 LANGUAGE = Language(

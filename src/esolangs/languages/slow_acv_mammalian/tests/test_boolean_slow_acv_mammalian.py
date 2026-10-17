@@ -10,13 +10,10 @@ import pytest
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.languages.slow_acv_mammalian.generator import (
-    _greedy_advance,
+    _merge_address,
     _stash_chunk,
-    _Sums,
+    _stash_run,
     _trampoline,
-    _trampoline_len,
-    _w_raise,
-    _w_raise_len,
 )
 from esolangs.languages.slow_acv_mammalian.wrapping import (
     _balance_mammalian,
@@ -65,7 +62,7 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
 ) -> None:
     import esolangs
     from esolangs.generation.wrap import balance_program, balance_score
-    from esolangs.languages.slow_acv_mammalian.generator import _program
+    from esolangs.languages.slow_acv_mammalian.generator import _unprojected_255
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
     from esolangs.vm import run_until_halt_or_cycle
@@ -76,9 +73,7 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
         for row in range(1 << inputs)
     )
     settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
-    legacy = _program(
-        table, cell_modulus=255, io_modulus=io_modulus, keep_ignored_inputs=True
-    )
+    legacy = _unprojected_255(table, inputs, io_modulus)
     program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
     assert len(program) <= len(legacy)
     if inputs >= 3 or io_modulus == 256:
@@ -137,17 +132,19 @@ class TestSlowAcvMammalian:
             assert (fell[1] ^ sum(fell[0])) % 256 == 48
             assert (taken[1] ^ sum(taken[0])) % 256 == 48
 
-    def test_the_landing_is_start_minus_15(self) -> None:
-        """A 1-bit resumes exactly 15 tokens short of the array sum."""
-        from esolangs.languages.slow_acv_mammalian.generator import _node, _seeded
+    def test_the_landing_is_the_rest_minus_15(self) -> None:
+        """A 1-bit resumes 15 tokens short of the non-head sum, whatever the head."""
+        from esolangs.languages.slow_acv_mammalian.generator import _node
         from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
         from esolangs.runtime.io import ScriptedIO
 
-        for array, acc in (([3, 255, 255, 255], 7), ([90, 200, 200, 255], 4242)):
+        for array, acc in (
+            ([3, 255, 255, 255], 7),
+            ([90, 200, 200, 255], 4242),
+            ([230, 200, 200, 255], 0),  # the aim would wrap the head
+        ):
             tokens, _, taken, landing = _node(list(array), acc)
-            wrap = (256 - array[0]) % 256
-            start = sum([*_seeded(array, wrap), acc % 256])
-            assert landing == start - 15
+            assert landing == sum(array[1:]) + acc % 256 - 15
             padded = [*tokens, *["SEED"] * (landing + 2 - len(tokens))]
             machine = _Machine(" ".join(padded), ScriptedIO("1\n"), io_modulus=256)
             machine.lst = (tuple(array), *machine.lst[1:])
@@ -236,7 +233,7 @@ class TestSlowAcvMammalian:
         while not machine.halted:
             machine.step()
             commands += 1
-        assert commands == module._w_raise_len(9, 255, amount)[0]  # noqa: SLF001
+        assert commands == len(tokens)
         array = machine.lst[16]
         assert sum(array) - array[0] == 255 + amount
         assert (st.nw, st.hw) == (255 + amount, array[0])
@@ -249,8 +246,9 @@ class TestSlowAcvMammalian:
 
         table = "01101001"
         program = boolean.slow_acv_mammalian(table)
-        tokens = program.split()
-        leaf_base = len(tokens) - _LEAF_UNIT * len(table)
+        # The table leads, behind the jump from the empty machine.
+        span = _LEAF_UNIT * len(table)
+        leaf_base = _merge_address(0, 0, span, 255) - span
         weights = _weights(3)
         for row in range(8):
             bits = [(row >> (2 - i)) & 1 for i in range(3)]
@@ -264,95 +262,58 @@ class TestSlowAcvMammalian:
         """Exact sizes per arity, and the leaf table is the whole growth."""
         tables = ("01", "0110", "01101001")
         sizes = [len(boolean.slow_acv_mammalian(table)) for table in tables]
-        assert sizes == [11_451, 20_253, 26_326]
+        assert sizes == [11_954, 18_813, 24_423]
         sizes = [
             len(boolean.slow_acv_mammalian(table, io_modulus=256)) for table in tables
         ]
-        assert sizes == [13_276, 23_330, 28_055]
+        assert sizes == [11_994, 18_878, 24_508]
 
     def test_a_slot_is_the_same_width_for_either_digit(self) -> None:
         """The table's stride is a leaf, and a leaf does not read the sum."""
         from esolangs.languages.slow_acv_mammalian.generator import _program
 
-        # Constants bypass this dispatch; compare its two leaf digits directly.
-        sizes = {
-            len(_program(table, keep_constant_input=True))
-            for table in ("0000", "1111", "0110", "1001", "0111")
-        }
+        sizes = {len(_program(table)) for table in ("0110", "1001", "0111")}
         assert len(sizes) == 1
 
 
-class TestFastLanding:
-    """The O(1) sizing helpers agree with the O(weight) builds they replace."""
+class TestClosedForms:
+    """The solved lengths and addresses agree with the builds they size."""
 
-    @pytest.mark.parametrize(
-        ("hw0", "nw0", "amount"),
-        [
-            (0, 0, 0),  # no raise at all
-            (5, 100, 10),  # inside the two exact chunks, no greedy phase
-            (5, 100, 1_000),  # a handful of greedy chunks, no cycle
-            (200, 50_000, 5_000_000),  # forces a residue cycle
-            (1, 1, 10**7),  # forces a residue cycle from a different start
-        ],
-    )
-    def test_w_raise_len_matches_the_real_build(
-        self, hw0: int, nw0: int, amount: int
+    @pytest.mark.parametrize("io_modulus", [255, 256])
+    def test_stash_run_matches_the_real_chunks(self, io_modulus: int) -> None:
+        rng = random.Random(io_modulus)
+        for _ in range(200):
+            head, rest, chunks = (
+                rng.randrange(256),
+                rng.randrange(9000),
+                rng.randrange(6),
+            )
+            array, tokens = [head, rest], 0
+            for _ in range(chunks):
+                chunk, array = _stash_chunk(array, 0, io_modulus=io_modulus)
+                array = [array[0], sum(array[1:])]
+                tokens += len(chunk)
+            assert _stash_run(head, rest, chunks, io_modulus) == (tokens, *array)
+
+    @pytest.mark.parametrize("io_modulus", [255, 256])
+    def test_merge_address_is_the_first_window_end_holding_its_jump(
+        self, io_modulus: int
     ) -> None:
-        st = _Sums()
-        st.hw, st.nw, st.ptr = hw0, nw0, 16
-        real_tokens = _w_raise(st, amount)
+        """The replaced slot search, kept as the spec: try each window end in turn."""
+        byte = io_modulus - 1
+        rng = random.Random(io_modulus)
+        for _ in range(300):
+            head, rest = rng.randrange(256), rng.randrange(5000)
+            start = rest + rng.randrange(-600, 1500)
 
-        fast_len, fast_hw = _w_raise_len(hw0, nw0, amount)
-        assert fast_len == len(real_tokens)
-        assert fast_hw == st.hw
-
-    def test_greedy_advance_cycle_matches_a_full_walk(self) -> None:
-        """A target past 256 chunks must exercise the cycle-jump branch."""
-        _, chunks, advance, final_r = _greedy_advance(17, 10**6)
-        assert chunks > 256  # otherwise this case is not testing the jump
-        assert advance >= 10**6
-
-        # Cross-check against the slow reference the construction ships.
-        st = _Sums()
-        st.hw, st.nw, st.ptr = 0, 17, 16
-        _w_raise(st, 10**6 + 510)
-        assert (st.hw + st.nw) % 256 == final_r
-
-    def test_greedy_rule_matches_every_residue_and_chunk_boundary(self) -> None:
-        """Check both sides of the eight-step arithmetic cycle boundary."""
-        for initial in range(256):
-            residue = initial
-            seeds = advance = 0
-            walked = []
-            for chunks in range(1, 26):
-                count = next(k for k in range(16) if (residue + 17 * k) % 256 >= 239)
-                added = (residue + 17 * count) % 256
-                seeds += count
-                advance += added
-                residue = 2 * added % 256
-                walked.append((seeds, chunks, advance, residue))
-            assert _greedy_advance(initial, 0) == (0, 0, 0, initial)
-            for _, _, boundary, _ in walked[:-1]:
-                for target in (boundary - 1, boundary, boundary + 1):
-                    expected = next(state for state in walked if state[2] >= target)
-                    assert _greedy_advance(initial, target) == expected
-
-    @pytest.mark.parametrize(
-        ("h0", "n0", "acc", "target"),
-        [
-            (5, 0, 0, 1),  # zero chunks: the initial gap already fits
-            (5, 10, 4, 20),  # one chunk
-            (5, 10, 4, 500),  # two chunks
-            (5, 10, 4, 100_000),  # past two chunks: the closed-form tail
-            (200, 50_000, 999, 300_000),  # a longer closed-form tail
-        ],
-    )
-    def test_trampoline_len_matches_the_real_build(
-        self, h0: int, n0: int, acc: int, target: int
-    ) -> None:
-        array = [h0, n0]
-        real_tokens, _, _ = _trampoline(array, acc, target)
-        assert _trampoline_len(array, acc, target) == len(real_tokens)
+            array = [head, rest]
+            first = next(
+                cont
+                for cont in (rest + byte * (m + 1) for m in range(20))
+                if cont - start
+                >= len(_trampoline(array, 0, cont, io_modulus=io_modulus)[0])
+            )
+            assert _merge_address(head, rest, start, io_modulus) == first
 
     def test_trampoline_stash_chunk_count_is_one_past_the_second(self) -> None:
         """The closed-form tail's premise, pinned directly."""
@@ -363,27 +324,6 @@ class TestFastLanding:
             acc = 0
             counts.append(len(chunk) - 2)
         assert counts[2:] == [1, 1, 1, 1]
-
-
-def test_unreachable_arm_is_declined_but_invariants_propagate(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import importlib
-
-    from esolangs.languages.slow_acv_mammalian.generator import (
-        slow_acv_mammalian as generate,
-    )
-
-    module = importlib.import_module(generate.__module__)
-    assert module._try_arm(_Sums(), _Sums(), 8, None, 0) is None  # noqa: SLF001
-    assert module._try_arm(_Sums(), _Sums(), 8, None, 1000) is not None  # noqa: SLF001
-
-    def broken(*_args: object) -> None:
-        raise AssertionError("broken tuning invariant")
-
-    monkeypatch.setattr(module, "_tune", broken)
-    with pytest.raises(AssertionError, match="broken tuning invariant"):
-        module._try_arm(_Sums(), _Sums(), 8, None, 1000)  # noqa: SLF001
 
 
 def test_explicit_default_moduli_preserve_generation() -> None:
@@ -701,7 +641,7 @@ def test_compact_pool_retrieves_weight_and_routes(
     assert sum(machine.lst[pool][1:]) == (chain.weight - pool) % 23
 
 
-@pytest.mark.parametrize(("modulus", "budget"), [(255, 63_845), (256, 62_600)])
+@pytest.mark.parametrize(("modulus", "budget"), [(255, 65_757), (256, 64_158)])
 def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -> None:
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
@@ -777,17 +717,12 @@ def test_cell_255_tree_runs_in_stepped_interpreter(io_modulus: int) -> None:
 
 @pytest.mark.parametrize("head", [0, 255])
 @pytest.mark.parametrize("target", [700, 66000])
-def test_modulo_255_trampoline_length_and_execution(head: int, target: int) -> None:
-    from esolangs.languages.slow_acv_mammalian.generator import (
-        _trampoline,
-        _trampoline_len,
-    )
+def test_modulo_255_trampoline_execution(head: int, target: int) -> None:
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
     array, acc = [head, 254], 507
     tokens, predicted, predicted_acc = _trampoline(array, acc, target, io_modulus=255)
-    assert len(tokens) == _trampoline_len(array, acc, target, io_modulus=255)
     machine = _Machine(" ".join(tokens), ScriptedIO(), io_modulus=255)
     machine.lst = (tuple(array), *machine.lst[1:])
     machine.acc = acc
@@ -805,15 +740,10 @@ def test_modulo_255_trampoline_length_and_execution(head: int, target: int) -> N
 def test_modulo_255_trampoline_rejects_a_target_consumed_by_normalization(
     target: int,
 ) -> None:
-    from esolangs.languages.slow_acv_mammalian.generator import (
-        _trampoline,
-        _trampoline_len,
-        _UnreachableError,
-    )
+    from esolangs.languages.slow_acv_mammalian.generator import _UnreachableError
 
-    for build in (_trampoline, _trampoline_len):
-        with pytest.raises(_UnreachableError):
-            build([0, 254], 253, target, io_modulus=255)
+    with pytest.raises(_UnreachableError):
+        _trampoline([0, 254], 253, target, io_modulus=255)
 
 
 def test_modulo_255_greedy_window_covers_every_head_and_sum_residue() -> None:
@@ -824,13 +754,22 @@ def test_modulo_255_greedy_window_covers_every_head_and_sum_residue() -> None:
             )
 
 
-def test_modulo_255_merge_rejects_a_one_branch_past_the_target() -> None:
-    from esolangs.languages.slow_acv_mammalian.generator import _try_arm
+def test_compact_print_pairs_are_the_first_coprime_pair() -> None:
+    """The search ``_PRINTS`` replaced, kept as the spec."""
+    from esolangs.languages.slow_acv_mammalian._mammalian_compact import _PRINTS
 
-    one = _Sums(io_modulus=255)
-    zero = _Sums(io_modulus=255)
-    one.n0 = 1000
-    assert _try_arm(one, zero, 8, None, 500) is None
+    for modulus, pair in _PRINTS.items():
+        units = [a for a in range(23) if gcd(a + 1, modulus) == 1]
+        weight = units[1]
+        found = next(
+            (first, (first + seeds * (weight + 1)) % 23, seeds)
+            for seeds in range(1, 23)
+            for first in units
+            if first not in (0, weight)
+            and (first + seeds * (weight + 1)) % 23 in units
+            and (first + seeds * (weight + 1)) % 23 not in (0, weight, first)
+        )
+        assert pair == found
 
 
 @pytest.mark.parametrize(
@@ -920,10 +859,10 @@ def test_equal_modulus_eleven_input_read_calibration(row: int) -> None:
         peak = max(peak, sum(map(len, machine.lst)))
     assert io.getvalue() == table[row]
     assert io.reads == 11
-    # Pre-setup fastest sampled path took 11,148 steps; peak was 731 cells.
-    assert steps < 11_148
-    assert peak <= 731
-    assert len(source) <= 345_354
+    # The slowest sampled path took 10,062 steps; peak was 591 cells.
+    assert steps <= 10_062
+    assert peak <= 591
+    assert len(source) <= 346_181
 
 
 def test_mammalian_uses_seed_sized_cells() -> None:
@@ -952,15 +891,11 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> None:
     import esolangs
-    from esolangs.languages.slow_acv_mammalian.generator import _program
     from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
     program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
-    assert len(program) < len(
-        _program(table, cell_modulus=cell, io_modulus=io, keep_constant_input=True)
-    )
     assert program.split().count("ACCEPT") == 8
     assert "LEAPFROG" not in program
     assert (

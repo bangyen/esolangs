@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable
 from esolangs.languages.malbolge.interpreter import _crazy
 
 from .cascade import _ENTRY, _START_D
-from .isa import _ACTIVE, _ALL1, _CONSTS, _WORDS, _char_for, _g, _rot
+from .isa import _ACTIVE, _ALL1, _CONSTS, _WORDS, _char_for, _first_free, _g, _rot
 
 # ---------------------------------------------------------------------------
 # Shared by the builds from thirteen inputs up: a planner that navigates by
@@ -261,13 +261,18 @@ def _walker(used: set[int], layout: dict[int, int] | None = None) -> Callable[..
     def walked(value: int | None = None) -> int:
         key = count[0]
         count[0] += 1
-        candidates = [
-            a
-            for a in range(128, _ENTRY)
-            if a not in used and (value is None or _g(a) == value)
-        ]
         preferred = (layout or {}).get(key)
-        address = preferred if preferred in candidates else candidates[0]
+        if (
+            preferred is not None
+            and 128 <= preferred < _ENTRY
+            and preferred not in used
+            and (value is None or _g(preferred) == value)
+        ):
+            address = preferred
+        elif value is None:
+            address = next(a for a in range(128, _ENTRY) if a not in used)
+        else:
+            address = _first_free(value, 128, _ENTRY, used)
         used.add(address)
         return address
 

@@ -15,7 +15,7 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.wrap import wrap_tokens
+from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -49,9 +49,8 @@ def fackward(truth_table: str) -> str:
     return f")[{_contents(truth_table, {})}]"
 
 
-def _wrap(program: str, width: int) -> str:
-    """Break anywhere but inside a number, which a newline would split."""
-    return wrap_tokens(program, width, r"\d+|[\s\S]")
+#: Break anywhere but inside a number, which a newline would split.
+_wrap = TokenWrapper(r"\d+|[\s\S]")
 
 
 LANGUAGE = Language(

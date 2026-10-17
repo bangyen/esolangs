@@ -77,8 +77,9 @@ from .isa import (
 _DIGITS_N = 16
 
 #: The gadget: ``/`` reads an input, ``K`` sets ``A`` to 0 / all-1 / all-2 and
-#: a digit names the cell a ``p`` runs over.  Found by breadth-first search
-#: over trit 0; cells 1 and 2 end injective in the three inputs.
+#: a digit names the cell a ``p`` runs over.  The unique shortest injective
+#: suffix after the wipe prefix (``test_suffix_is_unique_shortest``); cells 1, 2
+#: are ``u = 1+x-y-xyz``, ``v = (2-x)(1-z)+zxy`` mod 3 (trit 0).
 _GADGET = tuple("/ 0 / 1 K2 0 K2 1 / 2 0 1 0 K1 0 2".split())  # noqa: SIM905
 #: Per group, the ``g`` values of the three gadget cells.  Trits 1..3 of each
 #: were solved for so that ``S``'s untouched trits arrive right and the

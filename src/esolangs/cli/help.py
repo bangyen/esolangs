@@ -35,8 +35,7 @@ def _capability_examples() -> tuple[str, str]:
                 )
                 setting = shlex.quote(f"{key}={values[-1]}")
                 dialects = (
-                    f"  esolangs generate --portable --settings {settings} \\\n"
-                    f"    {quoted} 0110 > p.json\n"
+                    f"  esolangs generate --settings {settings} {quoted} 0110\n"
                     f"  esolangs generate --set {setting} {quoted} 0110"
                 )
                 break
@@ -55,30 +54,21 @@ USAGE = f"""usage: esolangs <command> [...]
 commands:
   Generator-made (the API invents source from a truth table):
     generate [--width [N] | --balance] [--bits BITS] [--scale N]
-             [--settings JSON] [--set KEY=VALUE] [--portable] [--plain]
+             [--settings JSON] [--set KEY=VALUE] [--plain]
              <language> <truth-table>
                                 print a program computing a truth table
                                 (--width wraps it; --bits fills a template)
   Caller-supplied (you supply the program):
     run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
         [--seed N] [--scale N] [--settings JSON]
-        [--set KEY=VALUE] [--portable] <language> <file>
+        [--set KEY=VALUE] <language> <file>
                                 run a program through its interpreter
-    debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S]
-          [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-          [--settings JSON] [--set KEY=VALUE] [--portable]
-          <language> <file>
-                                run under the debugger and report where it
-                                stopped, plus any watched cell's history
   Contract adapters (your data in, checked data out):
     encode <language> <bits>    print the stdin that feeds those bits
     read-answer <language>      read a program's output on stdin and print
                                 the answer bit it carries
   Catalog:
     list [--details] [--json] [--generator | --interpreter-only]
-         [--source text|raster] [--answer output|dump|termination] [--inputs N]
-         [--state-model MODEL] [--shape SHAPE] [--template | --reads-input]
-         [--input-shape SHAPE] [--random] [--width-effect EFFECT]
          [--grep REGEX]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
@@ -87,9 +77,9 @@ commands:
                                 interpreter's own description of it)
 
 Language names are case-insensitive.  `esolangs <command> --help` describes
-one command in full; `--version` prints the version.  Short forms: -p is
---portable and -s is --settings.  A truth table is 2^n bits,
-most significant first; its length sets the input count (0110 is two-input XOR).
+one command in full; `--version` prints the version.  -s is short for
+--settings.  A truth table is 2^n bits, most significant first; its length
+sets the input count (0110 is two-input XOR).
 
 exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal
 error (a bug in esolangs), 120 stdout closed early, 124 the timeout ran out,
@@ -104,7 +94,6 @@ examples:
 {_TEMPLATE_EXAMPLE}
   esolangs encode brainfuck 10 | esolangs run brainfuck prog.txt \\
     | esolangs read-answer brainfuck
-  esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
 
 
@@ -128,13 +117,10 @@ example:
   esolangs encode brainfuck 10  # prints 10
 """,
     "list": """usage: esolangs list [--details] [--json]
-                     [--generator | --interpreter-only]
-                     [--source text|raster] [--answer output|dump|termination]
-                     [--inputs N] [--state-model MODEL] [--shape SHAPE]
-                     [--template | --reads-input] [--input-shape SHAPE]
-                     [--random] [--width-effect EFFECT] [--grep REGEX]
+                     [--generator | --interpreter-only] [--grep REGEX]
 
-List matching languages, one per line. Filters combine with AND.
+List matching languages, one per line. Filters combine with AND; filter on
+any other fact with `list --json --details | jq`.
 
 options:
   --details   add a marker column per language:
@@ -147,36 +133,17 @@ options:
   --json      print a JSON array: names, or capability records with --details
   --generator restrict to languages with a Boolean generator
   --interpreter-only restrict to languages without a Boolean generator
-  --source    select text or raster source
-  --answer    select by where the Boolean answer lands: output (printed),
-              dump (a fixed place in the final state), or termination
-              (halting is 0, diverging is 1)
-  --inputs N  select generators whose declared input cap admits positive N;
-              table-dependent restrictions still apply (shown by --details)
-  --state-model MODEL
-              select the language's category, from its interpreter family:
-              register, tape, stack, grid, queue, program, variables, other
-  --shape SHAPE
-              select generators by construction shape: tree, reducing, lookup
-  --template  restrict to generators that embed the inputs in the program
-  --reads-input restrict to generators whose programs read their inputs
-  --input-shape SHAPE
-              select reading programs by how the bits arrive: line_per_bit,
-              char_stream, char_stream_padded, char_stream_cyclic, row_index
-  --random    restrict to languages with instructions that draw at random
-  --width-effect EFFECT
-              select by what --width does: layout (builds a shape to fit),
-              wrap (reflows between tokens), none (newlines are semantic)
   --grep REGEX
               select languages whose spec (`describe --spec`) matches,
               case-insensitively
 
-example:
-  esolangs list --generator --source text --answer output --inputs 4 --details
+examples:
+  esolangs list --generator --details
+  esolangs list --json --details | jq -r '.[] | select(.shape == "lookup") | .name'
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
-                         [--portable] [--plain] <language> <truth-table>
+                         [--plain] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -197,9 +164,6 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  -p, --portable
-               write JSON retaining source, dialect choices, and template
-               setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
   -s, --settings JSON
                dialect overrides; describe lists supported settings.
@@ -235,7 +199,7 @@ examples:
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--seed N]
                     [--scale N] [--settings JSON] [--set KEY=VALUE]
-                    [--portable] <language> <program-file>
+                    <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
@@ -262,9 +226,6 @@ options:
   --timeout SECONDS  stop the run after this long rather than hanging.
                      Unbounded by default.
   --scale N          override detected raster scale; 1 preserves native pixels.
-  -p, --portable         load JSON saved by generate --portable.  The language
-                     may be omitted because the JSON names it.
-                     --settings overrides individual saved choices.
   -s, --settings JSON    dialect overrides; describe lists supported settings.
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied
                      after --settings.
@@ -275,9 +236,6 @@ options:
 examples:
   printf '10' | esolangs run brainfuck prog.txt
   printf '10' | esolangs run --timeout 5 brainfuck prog.txt
-  esolangs generate --portable brainfuck 0110 > p.json
-  esolangs encode brainfuck 10 | esolangs run --portable brainfuck p.json \\
-    | esolangs read-answer brainfuck
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>
 
@@ -327,38 +285,5 @@ examples:
   esolangs generate brainfuck 0110 > p.txt
   esolangs encode brainfuck 10 | esolangs run brainfuck p.txt \\
     | esolangs read-answer brainfuck
-""",
-    "debug": """usage: esolangs debug [options] <language> <program-file>
-
-Run a program under the breakpoint/watch VM and report where it stopped.
-
-Prints whether the machine halted, its final instruction position, its
-output, any watched cell's history, and any error it raised (a debugged
-program is one you are already unsure of, so a raise is reported rather
-than propagated).
-
-options:
-  --steps N            stop after N commands.  The default is unbounded,
-                       which hangs on a program that never halts.
-  --watch-cell I       record memory cell I after every step and print the
-                       history.  A long history is abridged; --steps bounds
-                       it exactly.
-  --break-on-output S  stop once S has been written, with S still the last
-                       thing written.
-  --break-at N         stop when the instruction position reaches N,
-                       before executing it.
-  --break-on-cell I=V  stop while memory cell I still holds V.
-  --timeout SECONDS    stop the run after this long, reporting
-                       `stopped: timeout`.  Like --steps this bounds a
-                       program that never halts.
-  --stdin TEXT         feed TEXT verbatim using the language's input unit.
-                       Without this option, read the program input from stdin.
-  -p, --portable       load JSON saved by generate --portable.  The language
-                       may be omitted because the JSON names it.
-                       --settings overrides individual saved choices.
-  -s, --settings JSON  dialect overrides shared with generate and run.
-  --set KEY=VALUE      one dialect override without JSON, repeatable and
-                       applied after --settings.
-
 """,
 }

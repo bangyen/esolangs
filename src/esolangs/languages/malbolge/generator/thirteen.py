@@ -35,6 +35,7 @@ from .core import (
 )
 from .isa import (
     _apply,
+    _first_free,
     _g,
     _rot,
 )
@@ -122,10 +123,7 @@ def _thirteen() -> _Layout:
     select = [walked(_g(a)) for a in _W_SELECT]
     seeds = {lab: walked(value) for lab, (value, _) in _T_SEEDS.items()}
     label = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab != "-"}
-    mix = [
-        next(a for a in range(34, 128) if _g(a) == v and a not in label)
-        for v in _C_INITS
-    ]
+    mix = [_first_free(v, 34, 128, label) for v in _C_INITS]
     values, pointer = _pointers(label, _seed_values(seeds, _T_SEEDS))
     data, stubs, hub_turns = _t_place(
         values, label, cells_of_tables | set(_T_DECODER_AVOID)

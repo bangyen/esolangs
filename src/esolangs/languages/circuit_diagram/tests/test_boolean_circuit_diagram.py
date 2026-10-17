@@ -654,8 +654,9 @@ def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs) -> None:
     from esolangs.runtime._evaluate import _evaluate
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
-    model = _linear_shared_layout(table, inputs)
-    assert model is not None
+    models: list = []
+    _linear_shared_layout(table, inputs, models)
+    model = min(models, key=lambda m: m.bounds()[0] * m.bounds()[1])
     program = boolean.circuit_diagram(table)
     lines = program.splitlines()
     assert len(lines) * max(map(len, lines)) <= model.bounds()[0] * model.bounds()[1]
@@ -669,7 +670,6 @@ def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs) -> None:
 
 @pytest.mark.medium
 def test_complete_wide_projection_retains_nonadjacent_ports() -> None:
-    from esolangs.languages.circuit_diagram.generator import _linear_shared_layout
     from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
     from esolangs.languages.circuit_diagram.generator.hpool import _h_pool_layout
     from esolangs.runtime._evaluate import _evaluate
@@ -678,7 +678,6 @@ def test_complete_wide_projection_retains_nonadjacent_ports() -> None:
     residual = "".join(rng.choice("01") for _ in range(128))
     # Input six is ignored; the last input keeps its original eighth port.
     table = "".join(residual[((row >> 2) << 1) | (row & 1)] for row in range(256))
-    assert _linear_shared_layout(table, 8) is not None
     model = _h_pool_layout(residual, input_order=[0, 1, 2, 3, 4, 5, 7], port_inputs=8)
     program = boolean.circuit_diagram(table)
     height, width = model.bounds()
@@ -726,3 +725,43 @@ def test_h_side_closed_form() -> None:
         assert _h_size(2 * k + 1) == _LATTICE * (14 * 2**k - 4 * k - 12)
         assert _h_size(2 * k) ** 2 < 144 * _LATTICE**2 * 2 ** (2 * k)
         assert _h_size(2 * k + 1) ** 2 < 144 * _LATTICE**2 * 2 ** (2 * k + 1)
+
+
+def test_balance_matches_the_every_width_sweep() -> None:
+    """Per table, 2..4 inputs: no width in 1..flat span beats the balanced drawing.
+
+    The retired balance visited the widths where a decision flips; this
+    visits every width (``_drawn_at`` per width).
+    """
+    from esolangs.generation.helpers import grid_width
+    from esolangs.languages.circuit_diagram.generator import _circuit_diagram_at
+    from esolangs.languages.circuit_diagram.generator.balance import _drawn_at
+
+    rng = random.Random(2)
+    for n in (2, 3, 4):
+        for _ in range(8):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            flat = _circuit_diagram_at(table, None)
+            best = min(
+                (_drawn_at(table, flat, w) for w in range(1, grid_width(flat))),
+                key=balance_score,
+                default=flat,
+            )
+            balanced = esolangs.generate("Circuit Diagram", table, balance=True)
+            assert balance_score(balanced) <= min(
+                balance_score(best), balance_score(flat)
+            ), table
+
+
+@pytest.mark.parametrize(("inputs", "column", "negated"), [(8, 0, 0), (9, 8, 1)])
+def test_a_single_input_table_past_the_competing_floor_builds(
+    inputs: int, column: int, negated: int
+) -> None:
+    """One essential input has no H term to wire; the pool draws it."""
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = "".join(
+        str((row >> (inputs - 1 - column) & 1) ^ negated) for row in range(1 << inputs)
+    )
+    program = esolangs.generate("Circuit Diagram", table)
+    assert _evaluate("Circuit Diagram", program, inputs=inputs) == table

@@ -15,6 +15,7 @@ Size:
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from itertools import count, pairwise
+from math import isqrt
 from string import ascii_letters
 from typing import NamedTuple
 
@@ -26,6 +27,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -314,6 +316,8 @@ def _container_threshold(truth_table: str) -> str:
     else:
         weights = [1 << (n - 1 - k) for k in range(n)]
     essential = sum(map(bool, weights))
+    # The mirror saves 15-44% of chars on tables tiled from two blocks (n=7..12,
+    # 4 or 16 blocks, 20 tables each) and 0.6-2.8% on random ones.
     mirrored = _threshold_deltas(truth_table, essential, mirror=True)
     plain = _threshold_deltas(truth_table, essential, mirror=False)
     mirror = sum(map(bool, mirrored[1:])) < sum(map(bool, plain[1:]))
@@ -444,45 +448,19 @@ def container(truth_table: str, width: int | None = None) -> str:
 
 
 def balance_container(table: str, default: str) -> str:
-    """Compare rule-fit and decimal-delta budget transitions."""
+    """Return the squarest of the default and its narrowings at the square width."""
     n = _validate_truth_table(table)
-    span = grid_width(default)
     programs = [default]
     if n <= _TREE_MAX_N:
         programs.append(_container_threshold(table))
-    thresholds = {1}
-    for program in programs:
-        # Constant names stay fixed between original rule-fit thresholds.
-        boundaries = {1, span}
-        boundaries.update(
-            len(str(int(delta))) + 1 + len(condition)
-            for line in program.splitlines()
-            if not line.endswith(":")
-            for delta, condition in [line.split()]
-        )
-        boundaries = {value for value in boundaries if value <= span}
-        for lower, stop in pairwise(sorted(boundaries)):
-            thresholds.add(lower)
-            for part in _narrow_rule_parts(program, lower):
-                if isinstance(part, str):
-                    continue
-                delta, condition = part
-                # Within a naming regime only the permitted decimal digits
-                # change a rule. One-digit deltas already apply at its start.
-                overhead = len(condition) + 1 + (delta < 0)
-                thresholds.update(
-                    overhead + digits
-                    for digits in range(2, len(str(abs(delta))) + 1)
-                    if lower < overhead + digits < stop
-                )
-    candidates = [default]
-    for width in thresholds:
-        candidates.append(
-            min(
-                (_narrow_rules(program, width) for program in programs),
-                key=lambda text: (grid_width(text), len(text)),
-            )
-        )
+    # Narrowing at w costs no characters until a rule stops fitting, so the
+    # square side is isqrt(CELL_ASPECT * characters); the threshold program
+    # and the narrowest width are the named alternatives.
+    side = isqrt(CELL_ASPECT * len(default))
+    candidates = [
+        _narrow_rules(program, width) for program in programs for width in (1, side)
+    ]
+    candidates.append(default)
     return min(candidates, key=balance_score)
 
 

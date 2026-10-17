@@ -131,7 +131,7 @@ def test_fractran_phase_parity_public_uniform_setters(
 
 
 def test_fractran_phase_parity_exact_resolver_and_size() -> None:
-    from esolangs.languages.fractran.generator import fractran, fractran_setters
+    from esolangs.languages.fractran.generator import fractran_setters
 
     template = fractran("0110", 1)
     assert max(map(len, template.splitlines())) == 3
@@ -172,8 +172,3 @@ def test_fractran_parity_representation_omits_empty_width_regimes() -> None:
         esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 6, 8)
     ]
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
-
-
-def test_folding_shortens_a_constant_table() -> None:
-    """A table whose rows agree collapses below one that folds nothing."""
-    assert len(fractran("00000000")) < len(fractran("01101001"))

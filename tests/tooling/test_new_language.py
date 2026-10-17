@@ -53,11 +53,11 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
 
 
 def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
-    curation = root / "tests/support/fixtures/curation.toml"
+    curation = root / "ledgers/curation.toml"
     curation.parent.mkdir(parents=True)
-    curation.write_text('[languages]\nKept = { route = "fame" }\n')
+    curation.write_text("[languages]\nKept = { backlinks = 60 }\n")
     new_language.scaffold("Tiny Lang", "other", generator=False)
-    assert curation.read_text().endswith('"Tiny Lang" = { route = "unassessed" }\n')
+    assert curation.read_text().endswith('"Tiny Lang" = { unassessed = true }\n')
 
 
 def test_scaffold_refuses_overwrite(root: Path) -> None:
@@ -188,9 +188,9 @@ def test_remove_drops_a_bullet_with_a_fenced_example(tmp_path: Path) -> None:
 
 def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     new_language.scaffold("Tiny", "other", generator=False)
-    fixtures = root / "tests/support/fixtures"
-    fixtures.mkdir(parents=True)
-    (fixtures / "curation.toml").write_text("[languages]\n")
+    ledgers = root / "ledgers"
+    ledgers.mkdir(parents=True)
+    (ledgers / "curation.toml").write_text("[languages]\n")
     gaps = new_language._common_gaps("Tiny", "tiny")  # noqa: SLF001
     assert (
         "src/esolangs/languages/tiny/tests/test_tiny.py",
@@ -201,10 +201,10 @@ def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
 def test_finish_still_runs_the_gate_past_open_steps(
     root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    fixtures = root / "tests/support/fixtures"
-    fixtures.mkdir(parents=True)
-    (fixtures / "curation.toml").write_text(
-        '[languages]\nTiny = { route = "unassessed" }\n'
+    ledgers = root / "ledgers"
+    ledgers.mkdir(parents=True)
+    (ledgers / "curation.toml").write_text(
+        "[languages]\nTiny = { unassessed = true }\n"
     )
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
@@ -472,11 +472,10 @@ def test_remove_cleans_language_package(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")
     for relative in (
-        "tests/support/fixtures/curation.toml",
-        "src/esolangs/proof_status.toml",
-        "tests/support/fixtures/sharing_catalogue.toml",
-        "tests/support/fixtures/canonical_folding_catalogue.toml",
-        "tests/support/fixtures/deep_arities.toml",
+        "ledgers/curation.toml",
+        "ledgers/proof_status.toml",
+        "ledgers/generator_catalogue.toml",
+        "ledgers/deep_arities.toml",
         "docs/limitations.md",
         "docs/proofs/index.md",
         "src/esolangs/generation/wrap.py",
@@ -484,7 +483,7 @@ def test_remove_cleans_language_package(
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")
-    (root / "tests/support/fixtures/generator_sizes.json").write_text("{\n}\n")
+    (root / "ledgers/generator_sizes.json").write_text("{\n}\n")
     documents = (
         "README.md",
         "docs/CONTRIBUTING.md",
@@ -499,7 +498,7 @@ def test_remove_cleans_language_package(
     history = root / "docs/CHANGELOG.md"
     history.write_text("- Tiny was added.\n")
     for relative in (
-        "src/esolangs/languages/tiny/tests/fixtures/wiki_examples.toml",
+        "src/esolangs/languages/tiny/tests/cases.toml",
         "src/esolangs/languages/tiny/tests/proofs/helper.py",
         "src/esolangs/languages/tiny/tiny.txt",
     ):

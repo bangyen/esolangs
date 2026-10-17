@@ -1,9 +1,9 @@
 """Revision-pinned published programs, independent of this repo's generators.
 
-Each language's ``tests/fixtures/wiki_examples.toml`` holds its wiki page's
-examples (CC0): ``language``, ``oldid`` and one ``[[examples]]`` table each.
-An example has an ``id``, its ``source`` (or a ``source_file`` beside the
-TOML), optional ``stdin``, and the page's stated output as ``expected`` (or
+Each language's ``tests/cases.toml`` holds its wiki page's examples (CC0):
+``language``, ``oldid`` and one ``[[examples]]`` table each.  An example has
+an ``id``, its ``source`` (or a ``source_file`` relative to the TOML),
+optional ``stdin``, and the page's stated output as ``expected`` (or
 ``expected_file``).  Expected values come from the cited page, not local
 execution.
 
@@ -53,14 +53,9 @@ def _text(page: Path, example: dict, key: str) -> str:
 
 
 def _cases():
-    for page in sorted(
-        [
-            *_DIR.glob("*/tests/wiki_examples.toml"),
-            *_DIR.glob("*/tests/fixtures/wiki_examples.toml"),
-        ]
-    ):
+    for page in sorted(_DIR.glob("*/tests/cases.toml")):
         data = tomllib.loads(page.read_text(encoding="utf-8"))
-        for example in data["examples"]:
+        for example in data.get("examples", []):
             yield pytest.param(
                 data["language"],
                 page,

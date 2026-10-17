@@ -1,5 +1,8 @@
 """rotfuck generator tests."""
 
+from collections.abc import Callable, Iterable
+from functools import cache
+
 import pytest
 
 from esolangs.languages import generators as boolean
@@ -71,21 +74,80 @@ class TestRotfuck:
             assert [c for c in "+-><" if not _shows(c, 0, 5)] == ["+", "<"]
             assert [c for c in "+-><" if not _shows(c, 0, 6)] == [">", "<"]
 
-    def test_every_pad_is_invisible_and_they_are_shortest_first(self) -> None:
-        """Padding shifts the rotation without shifting anything else."""
-        from esolangs.languages.rotfuck.generator import _PADS
+    def test_net_zero_runs_are_pairs_wrapped_in_inverses_and_chained(self) -> None:
+        """The brute-force pad set (every ``+-><`` run <= 6) is the grammar's."""
+        inverse = {"+": "-", "-": "+", "<": ">", ">": "<"}
+        grown: dict[int, set[str]] = {0: {""}}
+        for size in range(2, 7, 2):
+            made = {
+                step + run + inverse[step] for step in "+-><" for run in grown[size - 2]
+            }
+            for left in range(2, size, 2):
+                made |= {a + b for a in grown[left] for b in grown[size - left]}
+            grown[size] = made
+        assert set(_search_pads()) == set().union(*grown.values()) - {""}
 
-        assert _PADS[:4] == ("+-", "-+", "><", "<>")
-        assert list(_PADS) == sorted(_PADS, key=len)
-        for pad in _PADS:
-            cells: dict[int, int] = {}
-            at = 0
-            for char in pad:
-                assert char in "+-><", pad
-                at += (char == ">") - (char == "<")
-                cells[at] = cells.get(at, 0) + (char == "+") - (char == "-")
-            assert at == 0, pad
-            assert not any(cells.values()), pad
+    # 3.8 s alone, but 16-17 s under CI's -n load (3 of 5 runs, 2026-10-16).
+    @pytest.mark.slow
+    def test_pads_match_the_search_they_replaced(self) -> None:
+        """Same length and rotation as the Dijkstra over pads, on every state.
+
+        A state is the open seeks and the rotation; the targets are every
+        command hidden, a loop's opening and every phase.  The rule's word is
+        hidden and net zero.
+        """
+        from esolangs.languages.rotfuck import generator as gen
+        from esolangs.languages.rotfuck.interpreter import ROTFUCK_CYCLES
+
+        # Open phases are pairwise 0, 3, 4 or 5 apart, so a set never has three.
+        stacks = {()}
+        for _ in range(2):
+            stacks |= {
+                tuple(sorted({*stack, phase}))
+                for stack in stacks
+                for phase in range(8)
+                if all((seek - phase) % 8 in (0, 3, 4, 5) for seek in stack)
+            }
+        checked = 0
+        for cycle in ROTFUCK_CYCLES.values():
+            for stack in stacks:
+                for rot in range(8):
+                    for done in _targets(stack, cycle):
+                        ruled = gen._Builder(cycle)  # noqa: SLF001
+                        ruled._seeks, ruled.rot = list(stack), rot  # noqa: SLF001
+                        found = _search_pad_until(ruled, done)
+                        try:
+                            ruled._pad_until(done)  # noqa: SLF001
+                        except gen._UnplaceableError:  # noqa: SLF001
+                            assert found is None
+                            continue
+                        assert found == len(ruled.src)
+                        word = [
+                            gen._rotfuck_rot(char, rot + at, cycle)  # noqa: SLF001
+                            for at, char in enumerate(ruled.src)
+                        ]
+                        assert not any(
+                            gen._shows(cmd, seek, rot + at, cycle)  # noqa: SLF001
+                            for at, cmd in enumerate(word)
+                            for seek in stack
+                        )
+                        assert _is_net_zero(word)
+                        checked += 1
+        assert checked > 4000
+
+    def test_the_stride_is_the_walks_square_root(self) -> None:
+        """One closed-form stride: at worst 16% over the scan it replaced.
+
+        The scan won 0.08% of whole programs (94,060 vs 94,134 chars over 40
+        random n=7..10 tables).
+        """
+        from esolangs.languages.rotfuck.generator import _skip
+
+        for fresh in (True, False):
+            for distance in (*range(1, 300), 533, 1000, 2047):
+                ruled = len(_skip(distance, fresh=fresh))
+                assert ruled <= distance
+                assert ruled <= len(_scanned_skip(distance, fresh=fresh)) * 1.16
 
     @pytest.mark.parametrize("trips", range(7))
     def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
@@ -189,12 +251,10 @@ def test_rotation_is_checked() -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs import generate
-    from esolangs.languages.rotfuck.generator import _program
     from tests.support.generator_support import assert_shared_program
 
     language = "ROTfuck"
     table = bit * 256
-    plain = _program(table, keep_constant_input=True)
     commands = len(generate(language, table))
 
     def workspace(p):
@@ -208,21 +268,7 @@ def test_every_constant_row_within_written_state_bound(bit: str) -> None:
             + 4
         )
 
-    assert_shared_program(language, table, plain, commands, workspace)
-
-
-# n=1 and 11 bound the arity range; the rest are the sizes where the
-# legacy layout strictly beats the default (what retention exists for).
-@pytest.mark.parametrize("n", [1, 5, 11])
-@pytest.mark.parametrize("bit", "01")
-def test_balancing_retains_legacy_constant_shape(n: int, bit: str) -> None:
-    from esolangs.languages.rotfuck.generator import _program
-    from tests.support.generator_support import assert_constant_balanced_shape
-
-    table = bit * (1 << n)
-    assert_constant_balanced_shape(
-        "ROTfuck", "rotfuck", table, _program(table, keep_constant_input=True)
-    )
+    assert_shared_program(language, table, None, commands, workspace)
 
 
 run_rotfuck = _runner("rotfuck")
@@ -233,3 +279,84 @@ def run_rotfuck_forward(program: str, inputs: list[str]) -> str:
     from esolangs.languages.rotfuck.interpreter import run as _run
 
     return run_program(_run, program, "".join(inputs), rotation="forward")
+
+
+@cache
+def _search_pads() -> tuple[str, ...]:
+    """Every net-zero run of ``+-><`` of even length <= 6 (the old pad set)."""
+    from itertools import product
+
+    return tuple(
+        "".join(run)
+        for length in range(2, 7, 2)
+        for run in product("+-><", repeat=length)
+        if _is_net_zero(run)
+    )
+
+
+def _scanned_skip(distance: int, *, fresh: bool) -> str:
+    """The old ``_skip``: the shortest walk over every stride."""
+    best = ">" * distance
+    start = "" if fresh else ">"
+    room = distance - 1 if fresh else distance - 2
+    for stride in range(2, room + 1):
+        count = room // stride
+        if count < 2:
+            break
+        walk = f"[[-{'>' * stride}+{'<' * stride}]{'>' * stride}-]"
+        left = distance - len(start) - stride * count
+        candidate = start + "+" * count + walk + ">" * left
+        if len(candidate) < len(best):
+            best = candidate
+    return best
+
+
+def _is_net_zero(run: Iterable[str]) -> bool:
+    """Whether ``run`` leaves every cell and the pointer where they were."""
+    cells: dict[int, int] = {}
+    at = 0
+    for char in run:
+        at += (char == ">") - (char == "<")
+        cells[at] = cells.get(at, 0) + (char == "+") - (char == "-")
+    return at == 0 and not any(cells.values())
+
+
+def _targets(stack: tuple[int, ...], cycle: str) -> list[Callable[[int], bool]]:
+    """Every ``done`` predicate the builder passes, for open seeks ``stack``."""
+    from esolangs.languages.rotfuck.generator import _shows
+
+    hides = [
+        lambda rot, cmd=cmd: not any(_shows(cmd, seek, rot, cycle) for seek in stack)
+        for cmd in "+-<>,.[]"
+    ]
+
+    def opens(rot: int) -> bool:
+        return all((seek - rot) % 8 in (0, 3, 4, 5) for seek in stack)
+
+    phases = [lambda rot, phase=phase: rot == phase for phase in range(8)]
+    return [*hides, opens, *phases]
+
+
+def _search_pad_until(builder: object, done: Callable[[int], bool]) -> int | None:
+    """The old Dijkstra over pad runs: the shortest pad length, or ``None``."""
+    import heapq
+
+    pads = _search_pads()
+    queue = [(0, builder.rot, "")]  # type: ignore[attr-defined]
+    seen: set[int] = set()
+    while queue:
+        cost, rot, path = heapq.heappop(queue)
+        if done(rot):
+            return cost
+        if rot in seen:
+            continue
+        seen.add(rot)
+        for run in pads:
+            if all(
+                builder._hidden(c, rot + i)  # type: ignore[attr-defined]  # noqa: SLF001
+                for i, c in enumerate(run)
+            ):
+                heapq.heappush(
+                    queue, (cost + len(run), (rot + len(run)) % 8, path + run)
+                )
+    return None

@@ -1,0 +1,60 @@
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "a character that is no command"
+
+[[spec_triggers]]
+program = "[i"
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched bracket"
+
+[[spec_triggers]]
+program = "B"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "B at EOF"
+
+[[spec_triggers]]
+program = "B"
+stdin = "x\n"
+expect = "ArgumentError"
+claim = "B given a token that is not an integer"
+
+[[spec_triggers]]
+program = "p"
+stdin = ""
+expect = "HaltError"
+claim = "underflow"
+
+[[spec_triggers]]
+program = "[]p"
+stdin = ""
+expect = "HaltError"
+claim = "a function where a number is needed"
+
+[[spec_triggers]]
+program = "iic+i>"
+stdin = ""
+expect = "HaltError"
+claim = "a non-real comparison"
+
+[[spec_triggers]]
+program = "[]ii?"
+stdin = ""
+expect = "HaltError"
+claim = "? reaching a non-function"
+
+[[spec_triggers]]
+program = "iic+/"
+stdin = ""
+expect = "HaltError"
+claim = "a zero reciprocal"
+
+[[spec_triggers]]
+program = "Ap"
+stdin = ""
+expect = "output"
+output = "i"
+claim = "A pushes i at EOF"

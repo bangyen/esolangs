@@ -1,0 +1,11 @@
+[[spec_triggers]]
+program = ")"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: ) at EOF"
+
+[[spec_triggers]]
+program = "{"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unmatched bracket, when it would jump"

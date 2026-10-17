@@ -7,6 +7,17 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- **Breaking:** Remove `esolangs debug`. The stepping API,
+  `esolangs.debugger`, is unchanged.
+- **Breaking:** Remove `--portable` and `-p` from `generate` and `run`.
+  `dump_program` and `load_program` still save and restore dialect choices
+  and template setters.
+- **Breaking:** `list` keeps `--generator`, `--interpreter-only` and
+  `--grep`; filter on every other capability with `list --json --details`.
+- Until 2.0, a minor release may remove CLI options and commands.
+
+## 1.0.0
+
 - **Breaking:** `balance=True` picks the text layout fitting the smallest
   on-screen square, max(columns, 2 x rows), then the shortest.  It minimized
   |columns - rows| first, which rendered about twice as tall as wide and
@@ -14,6 +25,17 @@ Releases before 0.10.0 are described on the
   programs change shape.  Rasters likewise rank by max(width, height) in
   pixels, then area; Piet no longer returns a packed layout larger than its
   default.
+- **Breaking:** A name resolves punctuation-insensitively only by dropping
+  punctuation the language's own name has.  `Piet++`, `Brainfuck++` and
+  `hq9++` ran Piet, brainfuck and HQ9+; they now raise
+  `UnknownLanguageError`, which 0.15.0 claimed for Piet++.
+- **Breaking:** CPython's 4300-digit int/str cap and `OverflowError` raise
+  `InterpreterLimitError` (CLI exit 1).  The cap raised `ProgramError` (exit
+  2) on valid programs; Fackward's `$` past `sys.maxsize` escaped bare.
+- **Breaking:** `CompressedText`'s optional arguments (`language`,
+  `settings`, `limits`) are keyword-only, as usage.md promises.
+- Fix: `balance=True` fits SendStuff, Pointless, Fackward and What!? by whole
+  tokens, exactly; it estimated, and SendStuff `0010` missed a squarer width.
 
 ## 0.15.0
 

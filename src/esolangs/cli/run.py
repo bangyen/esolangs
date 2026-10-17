@@ -8,13 +8,13 @@ from contextlib import nullcontext
 
 from esolangs import describe, run
 from esolangs.cli.args import (
+    _check_count,
     _errors,
     _fail,
     _integer,
     _nonnegative,
     _pop_flags,
     _pop_options,
-    _pop_portable,
     _pop_set_pairs,
     _scale_of,
     _seed_of,
@@ -33,7 +33,6 @@ from esolangs.cli.io import (
     _note,
     _read_program,
     _read_stdin,
-    _resolve_target,
     _unbounded_notice,
     _write_output,
 )
@@ -65,7 +64,6 @@ def _run(rest: list[str]) -> None:
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
-    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--isolated"})
     isolated = "--isolated" in flags
     if isolated and timeout is None:
@@ -93,34 +91,25 @@ def _run(rest: list[str]) -> None:
             check_memory(max_memory, isolated=isolated)
         except ArgumentError as exc:  # "max_memory is supported only on Linux"
             _fail(str(exc).replace("max_memory", "--max-memory"))
-    rest = _split_positional(
-        rest, set(), value_options | {"--set", "--portable", "--isolated"}
-    )
+    rest = _split_positional(rest, set(), value_options | {"--set", "--isolated"})
     seed = _seed_of(options)
     scale = _scale_of(options)
     if flags.count("--isolated") > 1:
         _fail("--isolated given more than once")
-    language, path, content = _resolve_target("run", rest, timeout, portable=portable)
+    _check_count("run", rest, 2)
+    language, path = rest
     settings = _settings_of(options, set_pairs, language=language)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
     with _errors():
-        if not portable:
-            dialect_options(language, settings)
+        dialect_options(language, settings)
         facts = describe(language)
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
-    program = _read_program(
-        path,
-        timeout,
-        language=language,
-        portable=portable,
-        settings=settings,
-        content=content,
-    )
+    program = _read_program(path, timeout, language=language)
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     try:
         with (

@@ -104,6 +104,8 @@ def six_five(truth_table: str) -> str:
 
     Node and leaf shapes: :func:`_six_five_node`, :func:`_six_five_leaf`.
     """
+    # Identity and reverse: random n=7 10.8% (200 tables), parity/and/or 12-14%;
+    # n >= 8 random exceeds the label budget either way, so 0%.
     orders = _six_five_orders(truth_table, compact=True)
     best = _six_five_chosen(truth_table, orders)
     if not best:

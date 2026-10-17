@@ -95,7 +95,7 @@ def test_qoibl_affine_row_envelope_minima() -> None:
     from itertools import product
 
     from esolangs.generation.wrap import balance_score
-    from esolangs.languages.qoibl.generator import _best_width
+    from esolangs.languages.qoibl.tests.balance_oracle import _best_width
 
     for negative, constant, positive, extra in product(
         [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]
@@ -111,3 +111,20 @@ def test_qoibl_affine_row_envelope_minima() -> None:
             for columns in range(1, 16)
         ]
         assert balance_score(layouts[width - 1]) == min(map(balance_score, layouts))
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_balance_stays_within_five_percent_of_the_retired_sweep(seed: int) -> None:
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.qoibl.tests.balance_oracle import sweep_balance_qoibl
+
+    rng = random.Random(seed)
+    for inputs in range(1, 8):
+        table = format(rng.getrandbits(1 << inputs), f"0{1 << inputs}b")
+        default = esolangs.generate("Qoibl", table)
+        balanced = esolangs.generate("Qoibl", table, balance=True)
+        oracle = sweep_balance_qoibl(table, default)
+        assert balance_score(balanced)[0] <= 1.05 * balance_score(oracle)[0]
+        for row in (0, (1 << inputs) - 1, rng.randrange(1 << inputs)):
+            bits = list(format(row, f"0{inputs}b"))
+            assert run_qoibl(balanced, bits) == table[row]

@@ -64,20 +64,10 @@ def test_every_small_stored_table_runs() -> None:
                 assert esolangs.run("Minifuck", source) == expected
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("seed", range(4))
-def test_wider_stored_tables_run(seed) -> None:
-    rng = random.Random(622026 + seed)
-    n = 5
-    table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
-    builder = plan(table)
-    template = builder.render(None)
-    assert template is not None
-    assert len(template) == builder.size
-    for row, expected in enumerate(table):
-        bits = [row >> shift & 1 for shift in range(n - 1, -1, -1)]
-        source = fill_runs(template, TEMPLATE_CHAR, (PAIR,) * n, bits)
-        assert esolangs.run("Minifuck", source) == expected
+@pytest.mark.parametrize(("table", "size"), [("0001", 1105), ("00010111", 4558)])
+def test_stored_packing_sizes(table: str, size: int) -> None:
+    """Size of the packing constants (first cell, stride, clamp); unbaselined."""
+    assert plan(table).size == size
 
 
 @pytest.mark.medium

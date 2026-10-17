@@ -6,16 +6,19 @@ four lightest are banked blind, without ever reading the sum -- and the
 dispatch jump lands on the non-head sum, so the banked total names the
 leaf slot directly.  A leaf clears the accumulator, SPRINTs to a print
 array, CONSUMEs its middle cell, and PRONOUNCEs it.  All inputs are read
-unconditionally; the merge equalities are asserted on every build, and
-the bounded fixed-point searches raise instead of hanging.
+unconditionally, and the merge equalities are asserted on every build.
 
 Three identities carry the control flow, each proved where it is used:
-``landing = start - 15`` (:func:`_node`), ``target = nonhead + b``
+``landing = rest - 15`` (:func:`_node`), ``target = nonhead + b``
 (:func:`_trampoline`), ``leaf = nonhead of array 16`` (:func:`_weights`).
+Every address is solved, none searched: the leaf table sits first, behind
+a jump sized against its own end (:func:`_emit`); an arm merges at its
+chunk window's end (:func:`_merge_address`); ballast is a division
+(:func:`_ballast`).
 
 Size:
     O(T) size and build.
-    n=10 random 1847: 144,685 chars, n=12 random 1847: 339,503 chars.
+    n=10 random 1847: 127,016 chars, n=12 random 1847: 327,178 chars.
     Executed evidence: every table through ``n == 3``, plus sampled rows of
     dense tables through ``n == 12``.
 
@@ -26,14 +29,12 @@ Decisions:
 
 from collections.abc import Sequence
 
-from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     same_token_layout,
 )
-from esolangs.generation.wrap import balance_program
 from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 from esolangs.languages.slow_acv_mammalian._sums import (
@@ -41,9 +42,10 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _J2,
     _MODULUS,
     _W,
-    _aim,
     _leaf,
+    _read_seeds,
     _replay,
+    _seeds_onto,
     _Sums,
 )
 from esolangs.languages.slow_acv_mammalian.interpreter import (
@@ -73,8 +75,6 @@ _W_STEP = _W + 1
 _GREEDY_MIN = _MODULUS - _W_STEP
 #: Seed counts a greedy chunk tries; 16 steps of 17 cover every residue.
 _GREEDY_COUNTS = _W_STEP - 1
-#: Bytes the greedy phase leaves to the exact chunks: the last two maxima.
-_EXACT_TAIL = 2 * _STASH_BYTE
 #: Inverse of the array-16 head step, for solving exact ``SEED`` counts.
 _W_INV = pow(_W_STEP, -1, _MODULUS)
 
@@ -110,16 +110,6 @@ _CHAIN_MIN_INPUTS = {255: 3, 256: 2}
 #: leaf is seven tokens, and its weights step by 255 instead of 256, so 32
 #: seven-token leaves pack into each 255-token block.
 _COMPACT_UNIT = 7
-
-#: Bound on the leaf-base fixed point and the arm-slot widening below; both
-#: are several times the measured maximum (6 and 3 over n<=10).
-_BASE_PASSES = 12
-_SLOT_PASSES = 24
-_TUNE_PASSES = 8
-#: First guess for an arm's slot past its banking run, and the step a failed
-#: build widens it by.
-_SLOT_HEADROOM = 300
-_SLOT_WIDEN = 128
 
 #: A machine state as the generator tracks it: array 0 and the accumulator.
 type _State = tuple[list[int], int]
@@ -162,19 +152,19 @@ def _node(
 ) -> tuple[list[str], _State, _State, int]:
     """One read node: tokens, the 0-exit, the 1-exit, and the landing.
 
-    The 0-branch falls through with ``acc == first``; the 1-branch jumps
-    to ``start - 15`` with ``acc == first + 1``.  Neither exit depends on
-    ``j1``, so the landing commits before the arm and merge exist.
+    The 0-branch falls through with ``acc == first``, the sum after the
+    aiming seeds; the 1-branch jumps with ``acc == first + 1`` to that sum
+    less the head, ``rest - 15``.  The head cancels, so it is only
+    stepped through zero when the aim would wrap it mid-node, and the
+    landing commits before the arm and merge exist.
     """
-    wrap = (_MODULUS - array[0]) % _MODULUS
-    opened = [*_seeded(array, wrap), acc % io_modulus]
-    start = sum(opened)
-    j1 = _aim(start)
-    first = start + j1
+    opened = [*array, acc % io_modulus] if acc else list(array)
+    rest = sum(opened[1:])
+    count = _read_seeds(opened[0], rest, _MODULUS)
+    first = (opened[0] + count) % _MODULUS + rest
     tokens = [
-        *["SEED"] * wrap,
-        "EXCRETE",
-        *["SEED"] * j1,
+        *(["EXCRETE"] if acc else []),
+        *["SEED"] * count,
         "DIGEST",
         *["SEED"] * _J2,
         "DIGEST",
@@ -182,8 +172,8 @@ def _node(
         "DIGEST",
         "LEAPFROG",
     ]
-    loaded = _seeded(opened, j1 + _J2)
-    return tokens, ([*loaded, 0], first), ([*loaded, 1], first + 1), start - 15
+    loaded = _seeded(opened, count + _J2)
+    return tokens, ([*loaded, 0], first), ([*loaded, 1], first + 1), rest - 15
 
 
 class _UnreachableError(Exception):
@@ -222,39 +212,6 @@ def _trampoline(
     return tokens, out, sum(out)
 
 
-def _trampoline_len(
-    array: list[int], acc: int, target: int, *, io_modulus: int = _IO_MODULUS
-) -> int:
-    """Token count :func:`_trampoline` would emit reaching ``target``, O(1).
-
-    The first two chunks solve a residue from ``acc``; every chunk after
-    that always spends exactly one ``SEED`` (verified against
-    :func:`_stash_chunk` directly), so the tail is closed by division
-    instead of walked -- what lets the per-node retry search check a
-    candidate landing without paying for the trampoline it would build.
-    """
-    if io_modulus == 255:
-        return _trampoline_255_len(array, acc, target)
-    cur, val = list(array), acc
-    tokens = 0
-    rest_sum = sum(cur[1:])
-    for _ in range(2):
-        if rest_sum >= target - _STASH_BYTE:
-            break
-        chunk, cur = _stash_chunk(cur, val)
-        val = 0
-        rest_sum += _STASH_BYTE
-        tokens += len(chunk)
-    if rest_sum < target - _STASH_BYTE:
-        more = -(-(target - _STASH_BYTE - rest_sum) // _STASH_BYTE)
-        tokens += 3 * more
-        rest_sum += _STASH_BYTE * more
-        cur = [(cur[0] + more) % _MODULUS, *cur[1:]]
-    hop = target - rest_sum
-    count = (((val % _MODULUS) ^ hop) - (cur[0] + rest_sum)) % _MODULUS
-    return tokens + count + 4
-
-
 def _trampoline_255(
     array: list[int], acc: int, target: int
 ) -> tuple[list[str], list[int], int]:
@@ -276,23 +233,6 @@ def _trampoline_255(
     tokens += ["DIGEST", "EXCRETE", "DIGEST", "LEAPFROG"]
     out = [head, *cur[1:], hop]
     return tokens, out, sum(out)
-
-
-def _trampoline_255_len(array: list[int], acc: int, target: int) -> int:
-    """Count the same chunks; head 254 to 0 takes two SEEDs, not one."""
-    head, rest, tokens = array[0], sum(array[1:]), int(acc != 0)
-    rest += acc % 255 if acc else 0
-    if target <= rest:
-        raise _UnreachableError("trampoline target is not past the running sum")
-    chunks = max(0, -(-(target - 254 - rest) // 254))
-    if chunks:
-        first = (254 - rest) % 255
-        wraps = (first + chunks - 1) // 255
-        tokens += (first - head) % _MODULUS + 3 * chunks - 1 + wraps
-        head = (first + chunks - 1) % 255
-        rest += 254 * chunks
-    hop = target - rest
-    return tokens + (((hop - rest) % 255) - head) % _MODULUS + 4
 
 
 def _plant(st: _Sums) -> list[str]:
@@ -323,13 +263,12 @@ def _route(st: _Sums, dest: int) -> list[str]:
 
 
 def _route_len(head: int, here: int, dest: int) -> int:
-    """Token count :func:`_route` spends from head ``head``, accumulator 0."""
+    """Token count :func:`_route` spends from head ``head``, accumulator 0.
+
+    Every routed array has an even index, so its step ``here + 1`` is odd.
+    """
     want = (dest - here) % _ARRAYS
-    step = here + 1
-    for count in range(_MODULUS):
-        if ((head + step * count) % _MODULUS) % _ARRAYS == want:
-            return count + 1
-    raise AssertionError(f"no seed count routes {here} to {dest}")  # pragma: no cover
+    return _seeds_onto(head, here + 1, range(want, _MODULUS, _ARRAYS)) + 1
 
 
 def _exact_append(st: _Sums, value: int) -> list[str]:
@@ -376,11 +315,15 @@ def _w_greedy_chunk(st: _Sums) -> list[str]:
     """
     if st.io_modulus == 255:
         # Folding 256 head positions into 255 residues leaves no gap over 17.
-        for count in range(_GREEDY_COUNTS):
-            head = (st.hw + _W_STEP * count) % _MODULUS
-            if (head + st.nw) % 255 >= 255 - _W_STEP:
-                return _digest_excrete(st, count)
-        raise AssertionError("no 17-step residue in [238, 254]")  # pragma: no cover
+        heads = (
+            head
+            for byte in range(255 - _W_STEP, 255)
+            for head in range((byte - st.nw) % 255, _MODULUS, 255)
+        )
+        count = _seeds_onto(st.hw, _W_STEP, heads)
+        if count >= _GREEDY_COUNTS:  # pragma: no cover
+            raise AssertionError("no 17-step residue in [238, 254]")
+        return _digest_excrete(st, count)
     return _digest_excrete(st, _greedy_step((st.hw + st.nw) % _MODULUS)[0])
 
 
@@ -406,64 +349,6 @@ def _greedy_step(r: int) -> tuple[int, int]:
     """Return the first 17-step hit in [239, 255], without wrapping."""
     count = max(0, -(-(_GREEDY_MIN - r) // _W_STEP))
     return count, r + _W_STEP * count
-
-
-def _greedy_advance(r: int, target: int) -> tuple[int, int, int, int]:
-    """Return seeds, chunks, byte advance and final residue in O(1).
-
-    After one chunk r = 254 - 2d, d in 0..16, and d' = (2d + 1) mod 17.
-    d=16 is fixed. Otherwise d+1 doubles with period eight; opposite pairs
-    sum to 17 since 2**4 = -1 mod 17. Thus sum(d)=60, eight chunks add
-    8*255-60=1980 bytes and spend (1980-(8*254-2*60))/17=4 seeds.
-    """
-    if target <= 0:
-        return 0, 0, 0, r
-    seeds, advance = _greedy_step(r)
-    r = 2 * advance % _MODULUS
-    chunks = 1
-    if r == 222:
-        extra = max(0, -(-(target - advance) // 239))
-        return seeds + extra, chunks + extra, advance + 239 * extra, r
-    full = max(0, (target - advance - 1) // 1980)
-    seeds += 4 * full
-    chunks += 8 * full
-    advance += 1980 * full
-    while advance < target:
-        count, added = _greedy_step(r)
-        seeds += count
-        chunks += 1
-        advance += added
-        r = 2 * added % _MODULUS
-    return seeds, chunks, advance, r
-
-
-def _w_raise_len(hw: int, nw: int, amount: int) -> tuple[int, int]:
-    """``(token count, final hw)`` for :func:`_w_raise`'s effect, in O(1).
-
-    Mirrors ``_w_raise`` exactly -- same chunk boundaries, same byte
-    values -- but the greedy phase is closed by :func:`_greedy_advance`
-    instead of walked chunk by chunk.  Sizing an arm's slot only needs
-    this length and the resulting head, never the token text itself.
-    """
-    r = (hw + nw) % _MODULUS
-    target = max(0, amount - _EXACT_TAIL)
-    total_seeds, chunks, greedy_advance_amt, r = _greedy_advance(r, target)
-    remaining = amount - greedy_advance_amt
-    if remaining > _STASH_BYTE:
-        value = remaining - _STASH_BYTE
-        count = ((value - r) * _W_INV) % _MODULUS
-        total_seeds += count
-        chunks += 1
-        r = (2 * value) % _MODULUS
-        remaining = _STASH_BYTE
-    if remaining:
-        value = remaining
-        count = ((value - r) * _W_INV) % _MODULUS
-        total_seeds += count
-        chunks += 1
-    tokens = total_seeds + 2 * chunks
-    final_hw = (hw + _W_STEP * total_seeds) % _MODULUS
-    return tokens, final_hw
 
 
 def _jump(st: _Sums, target: int) -> list[str]:
@@ -546,42 +431,6 @@ def _arm_core(st: _Sums, weight: int, pool: int | None) -> list[str]:
     return tokens + _route(st, 0)
 
 
-def _arm(
-    one: _Sums, weight: int, pool: int | None, beta: int, cont: int
-) -> tuple[list[str], _Sums]:
-    """Build the 1-branch: bank ``weight`` and merge at ``cont``.
-
-    The tuning chunk's ``beta`` shifts this path's SEED count at slope -2,
-    the knob that matches the 0-path's heads.
-    """
-    st = one.clone()
-    tokens = _arm_core(st, weight, pool)
-    tokens += _close_arm(st, beta, cont)
-    return tokens, st
-
-
-def _close_arm(st: _Sums, beta: int, cont: int) -> list[str]:
-    """Append the tuning residue and jump to the merge."""
-    if st.io_modulus == 255:
-        run = _exact_append(st, beta)
-    else:
-        run = _digest_excrete(st, (beta - st.h0 - st.n0) % _MODULUS)
-    return run + _jump(st, cont)
-
-
-def _arm_core_len(st: _Sums, weight: int, pool: int | None) -> int:
-    """Token count :func:`_arm_core` would spend, without building it."""
-    if st.io_modulus == 255:
-        return len(_arm_core(st.clone(), weight, pool))
-    launder = 2 if st.acc else 0
-    out = _route_len(st.heads[0], 0, pool if pool is not None else _W)
-    if pool is not None:
-        return launder + out + 3 + _route_len(st.heads[pool], pool, 0)
-    hw = (st.hw + _W_STEP * (out - 1)) % _MODULUS
-    raise_len, final_hw = _w_raise_len(hw, st.nw, weight)
-    return launder + out + raise_len + _route_len(final_hw, _W, 0)
-
-
 def _dispatch_head(hw: int) -> int:
     """Seeds putting array 16's head on the class both print arrays need.
 
@@ -590,11 +439,7 @@ def _dispatch_head(hw: int) -> int:
     below 239 -- past that the extra 17 wraps and the second leaf misses.
     """
     want = (_PRINT[0] - _W) % _ARRAYS
-    for count in range(_MODULUS):
-        value = (hw + _W_STEP * count) % _MODULUS
-        if value % _ARRAYS == want and value < _GREEDY_MIN:
-            return count
-    raise AssertionError("no seed count aims the leaf pair")  # pragma: no cover
+    return _seeds_onto(hw, _W_STEP, range(want, _GREEDY_MIN, _ARRAYS))
 
 
 def _prologue(st: _Sums, pairs: Sequence[tuple[int, int]], base: int) -> list[str]:
@@ -624,32 +469,86 @@ def _level(
 
     The node is preceded by as much ballast as its landing needs to clear
     the 0-branch's trampoline: the landing is array 0's own sum, so a
-    stash chunk buys 255 of it for three tokens once the residue settles.
+    stash chunk buys ``s`` of it (255, or 254 under I/O 255) for three
+    tokens once the residue settles.  :func:`_ballast` counts the chunks.
     """
-    tokens: list[str] = []
-    while True:
-        node_toks, _, _, landing = _node(st.arr0(), st.acc, io_modulus=st.io_modulus)
-        node_end = pos + len(node_toks)
-        zero, one = st.clone(), st.clone()
-        _replay(zero, node_toks, bit=0)
-        _replay(one, node_toks, bit=1)
-        arm_toks, merged, cont = _settle(one, zero, weight, pool, landing)
-        reach = len(_lead(zero)) + _trampoline_len(
-            _laundered(zero).arr0(), 0, cont, io_modulus=st.io_modulus
-        )
-        if landing >= node_end + reach:
-            break
-        chunk, _ = _stash_chunk(st.arr0(), st.acc, io_modulus=st.io_modulus)
+    tokens = _plant(st) if st.acc else []
+    pos += len(tokens)
+    for _ in range(_ballast(st, pos, _chain_bound(weight, pool, st.io_modulus))):
+        chunk, _ = _stash_chunk(st.arr0(), 0, io_modulus=st.io_modulus)
         _replay(st, chunk)
         tokens += chunk
         pos += len(chunk)
-
+    node_toks, _, _, landing = _node(st.arr0(), st.acc, io_modulus=st.io_modulus)
+    node_end = pos + len(node_toks)
+    zero, one = st.clone(), st.clone()
+    _replay(zero, node_toks, bit=0)
+    _replay(one, node_toks, bit=1)
+    arm_toks, merged, cont = _settle(one, zero, weight, pool, landing)
     z = _laundered(zero)
     t0 = _lead(zero) + _jump(z, cont)
+    if landing < node_end + len(t0):  # pragma: no cover - _ballast reserves it
+        raise AssertionError(f"the 0-branch runs past the landing at {landing}")
     _check_merge(merged, z, weight)
     tokens += node_toks + t0
     tokens += ["SEED"] * (landing - node_end - len(t0))
     return tokens + arm_toks, z, cont
+
+
+def _ballast(st: _Sums, pos: int, chain: int) -> int:
+    """Stash chunks putting the landing past the node and the 0-branch.
+
+    The 0-branch is its 2-token lead, its trampoline's first stash chunk,
+    ``chain`` (the rest of its chunks, :func:`_chain_bound`), a closing run
+    of at most 2 at a window end, and the 4-token close.  With no ballast
+    that is checked directly.  After any chunk ``head + n0`` is ``s - 1``
+    modulo ``s + 1``, so the 21-token node's aiming seeds (at most 115) and
+    that chunk's residue sum to 193 (192 or 193 under I/O 255): the
+    prefix is at most ``224 + chain``.  ``k`` chunks raise the landing ``n0
+    - 15`` by ``k*s`` for ``seeds + 3k - 1`` tokens, so the count is a
+    division, plus one when an I/O 255 head wrap adds a SEED.
+    """
+    io_modulus, rest = st.io_modulus, st.n0
+    node, _, _, landing = _node(st.arr0(), 0, io_modulus=io_modulus)
+    zero = st.clone()
+    _replay(zero, node, bit=0)
+    lead = _laundered(zero)
+    first = _stash_run(lead.h0, lead.n0, 1, io_modulus)[0]
+    if landing >= pos + len(node) + 2 + first + chain + 6:
+        return 0
+    byte = io_modulus - 1
+    prefix = 224 + chain
+    seeds = _stash_run(st.h0, rest, 1, io_modulus)[0] - 2
+    chunks = max(1, -(-(pos - rest + 14 + seeds + prefix) // (byte - 3)))
+    spent = _stash_run(st.h0, rest, chunks, io_modulus)[0]
+    return chunks + (rest + byte * chunks - 15 < pos + spent + prefix)
+
+
+def _chain_bound(weight: int, pool: int | None, io_modulus: int) -> int:
+    """Bound the tokens the 0-branch trampoline spends past its first chunk.
+
+    The arm's sum sits ``s`` past the 0-branch's (its launder appends 48
+    after the 0-branch's, its tuning byte is ``s - 1``), so with ``m`` arm
+    chunks the 0-branch takes ``m + 1``: ``3m`` more tokens, and under I/O
+    255 a head wrap per 255.  :func:`_merge_address` takes the first window
+    holding the arm, which starts ``63 + s`` short of its sum: its route
+    out (at most 47), banking run, route back (256), tuning chunk (257),
+    and its trampoline, whose first residue the tuning byte leaves at 3
+    (or 4) and whose closing run at a window end is at most 2.
+    """
+    byte = io_modulus - 1
+    # Greedy chunks bank at least 238 for at most 17 tokens; two exact
+    # chunks of at most 257 close the raise.
+    raise_ = 17 * -(-max(0, weight - 2 * byte) // 238) + 514
+    body = 3 if pool is not None else raise_
+    start = 47 + body + 256 + 257 - 63 - byte
+    if start + 4 + 4 <= byte:
+        return 0
+    chunks = -(-(start + 4 + 3 + 2 - byte) // (byte - 3))
+    if io_modulus == 255:
+        # A head wrap may move the arm a window on, and costs a SEED.
+        return 3 * (chunks + 1) + -(-(chunks + 2) // 255)
+    return 3 * chunks
 
 
 def _lead(st: _Sums) -> list[str]:
@@ -659,8 +558,8 @@ def _lead(st: _Sums) -> list[str]:
     cont``, which is ``2 * hop - cont`` -- and so even, whatever the hop
     -- only when it enters with a cleared accumulator.  The 1-arm always
     does, because its tuning chunk ends in ``EXCRETE``; the 0-branch
-    arrives holding the node's sum, and without this the two heads differ
-    by an odd number that :func:`_tune`'s slope of -2 can never close.
+    arrives holding the node's sum, and without this the two heads would
+    differ by an odd number no tuning byte closes.
     """
     return ["DIGEST", "EXCRETE"] if st.acc else []
 
@@ -675,91 +574,75 @@ def _laundered(st: _Sums) -> _Sums:
 def _settle(
     one: _Sums, zero: _Sums, weight: int, pool: int | None, landing: int
 ) -> tuple[list[str], _Sums, int]:
-    """Build the arm and let its own length name the merge address.
+    """Build the arm at ``landing``: tokens padded to the merge, exit, merge.
 
-    Both branches leave through one address and the arm sits at the
-    landing, so the merge is ``landing + len(arm)``: a self reference, since
-    the arm's closing trampoline reaches it.  The search walks that
-    reference instead of reserving a bound, because a bound wide enough for
-    the worst tuning chunk and trampoline is twice what a level spends and
-    the difference was emitted as dead SEEDs.  Re-aiming at the unpadded
-    length ("tight") returned the same program on 40 random tables, n=3..12:
-    0.00%.  Aiming too close fails, since a trampoline can only reach
-    *past* array 0's running sum, so a failed build widens the slot and the
-    narrowest arm that fits is kept.
+    The merge is the arm's own end, reached by the arm's closing
+    trampoline: a self reference.  A trampoline to ``cont`` leaves
+    ``head0 == 2*hop - cont``, and its stash chunks each append ``s``
+    (255, or 254 under I/O 255), so its ``hop`` is ``cont - sum`` folded
+    into ``1..s``.  The tuning byte congruent to the 0-path's sum minus
+    the arm's, modulo ``s``, gives both paths one ``hop`` whatever ``cont``
+    is; so everything before the trampoline is fixed first, and
+    :func:`_merge_address` closes the reference.
     """
-    slot = _arm_core_len(one, weight, pool) + _SLOT_HEADROOM
-    for _ in range(_SLOT_PASSES):
-        built = _try_arm(one, zero, weight, pool, landing + slot)
-        if built is not None and len(built[0]) <= slot:
-            break
-        slot = max(slot + _SLOT_WIDEN, len(built[0]) if built else 0)
-    else:  # pragma: no cover - widening always reaches a fit
-        raise AssertionError("the arm slot did not settle")
-    arm_toks, merged = built
-    return (
-        [*arm_toks, *["SEED"] * (slot - len(arm_toks))],
-        merged,
-        landing + slot,
-    )
-
-
-def _try_arm(
-    one: _Sums, zero: _Sums, weight: int, pool: int | None, cont: int
-) -> tuple[list[str], _Sums] | None:
-    """Build the arm merging at ``cont``, or ``None`` if it cannot reach it.
-
-    A trampoline only aims past array 0's running sum, and the tuning
-    chunk's own byte raises that sum, so a merge address too close to the
-    landing has no solution at all.  That is a question about ``cont``,
-    not an error, so the search reads it as one.
-    """
-    try:
-        return _tune(one, zero, weight, pool, cont)
-    except _UnreachableError:
-        return None
-
-
-def _tune(
-    one: _Sums, zero: _Sums, weight: int, pool: int | None, cont: int
-) -> tuple[list[str], _Sums]:
-    """Build the arm, moving ``beta`` until the two branches' heads agree.
-
-    Both paths leave ``head0 == 2*hop - cont`` in the I/O residue domain.
-    Modulo 255 :func:`_tune_255` solves beta directly. Modulo 256 the delta
-    is even; the loop absorbs chunk-boundary changes (at most 4 passes
-    measured over n<=10).
-    """
-    z = _laundered(zero)
-    _jump(z, cont)
-    if one.io_modulus == 255:
-        return _tune_255(one, z, weight, pool, cont)
-    beta = one.io_modulus - 1
-    for _ in range(_TUNE_PASSES):
-        arm_toks, merged = _arm(one, weight, pool, beta, cont)
-        delta = (merged.h0 - z.h0) % one.io_modulus
-        if delta == 0:
-            return arm_toks, merged
-        if delta % 2:  # pragma: no cover - see the evenness argument
-            raise AssertionError(f"odd head delta {delta}")
-        beta = (beta + delta // 2) % _MODULUS
-    raise AssertionError("the tuning byte did not settle")  # pragma: no cover
-
-
-def _tune_255(
-    one: _Sums, z: _Sums, weight: int, pool: int | None, cont: int
-) -> tuple[list[str], _Sums]:
-    """Modulo-255 :func:`_tune`: solve ``beta`` directly from the zero path's hop."""
     st = one.clone()
     tokens = _arm_core(st, weight, pool)
-    # Closing head is (2*hop - cont) % 255. Reuse the zero path's hop;
-    # beta + 254*chunks = cont - nonhead - hop fixes beta modulo 254.
-    hop = ((z.h0 + cont) * pow(2, -1, 255)) % 255
-    gap = cont - st.n0 - hop
-    if gap < 0:
-        raise _UnreachableError("merge precedes the one-branch sum")
-    tokens += _close_arm(st, gap % 254, cont)
-    return tokens, st
+    z = _laundered(zero)
+    beta = (z.n0 - st.n0) % (st.io_modulus - 1)
+    if st.io_modulus == 255:
+        tokens += _exact_append(st, beta)
+    else:
+        tokens += _digest_excrete(st, (beta - st.h0 - st.n0) % _MODULUS)
+    cont = _merge_address(st.h0, st.n0, landing + len(tokens), st.io_modulus)
+    tokens += _jump(st, cont)
+    if len(tokens) > cont - landing:  # pragma: no cover - the solve reserves it
+        raise AssertionError(f"the arm overran its merge at {cont}")
+    return [*tokens, *["SEED"] * (cont - landing - len(tokens))], st, cont
+
+
+def _stash_run(
+    head: int, rest: int, chunks: int, io_modulus: int
+) -> tuple[int, int, int]:
+    """Tokens, head and non-head sum after ``chunks`` stash chunks, accumulator 0.
+
+    The first chunk solves its residue; each later one is a single SEED,
+    two under I/O 255 when the head steps from 254 past the unreachable 255.
+    """
+    if not chunks:
+        return 0, head, rest
+    if io_modulus == 255:
+        first = (254 - rest) % 255
+        wraps = (first + chunks - 1) // 255
+        tokens = (first - head) % _MODULUS + 3 * chunks - 1 + wraps
+        return tokens, (first + chunks - 1) % 255, rest + 254 * chunks
+    count = (_STASH_BYTE - head - rest) % _MODULUS
+    head = (head + count + chunks - 1) % _MODULUS
+    return count + 3 * chunks - 1, head, rest + _STASH_BYTE * chunks
+
+
+def _merge_address(head: int, rest: int, start: int, io_modulus: int) -> int:
+    """Return a ``cont`` with ``cont - start`` holding the trampoline to ``cont``.
+
+    The trampoline enters with ``head``, non-head sum ``rest`` and a clear
+    accumulator.  ``m`` stash chunks reach the window ``rest + s*m``,
+    exclusive, to ``rest + s*(m + 1)``; ``cont`` is the end of the first
+    window holding the trampoline.  There the closing run is the first
+    chunk's residue when ``m == 0`` and 1 past it (1 or 2 under I/O 255),
+    and each window adds ``s - 3`` of slack, so the first is a division.
+    Ending there, ``hop == s``: the merged accumulator ``2*hop`` makes the
+    next level's ``EXCRETE`` append ``s - 1`` and its first stash chunk
+    take 3 SEEDs, where a window's first address left 251.
+    """
+    byte = io_modulus - 1
+    seeds = _stash_run(head, rest, 1, io_modulus)[0] - 2
+    if start + seeds + 4 <= rest + byte:
+        return rest + byte
+    run = 1 if io_modulus == _IO_MODULUS else 2
+    chunks = max(1, -(-(start + seeds + 3 + run - rest - byte) // (byte - 3)))
+    # Under I/O 255 a head wrap adds a SEED and may need one window more.
+    spent = _stash_run(head, rest, chunks, io_modulus)[0]
+    chunks += start + spent + 4 + run > rest + byte * (chunks + 1)
+    return rest + byte * (chunks + 1)
 
 
 def _check_merge(merged: _Sums, zero: _Sums, weight: int) -> None:
@@ -788,36 +671,34 @@ def _program(
     *,
     cell_modulus: int = DEFAULT_MODULI.cell_modulus,
     io_modulus: int = DEFAULT_MODULI.io_modulus,
-    keep_constant_input: bool = False,
-    keep_ignored_inputs: bool = False,
 ) -> str:
     """Build the dispatch, optionally retaining constant-input weights."""
     moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
-    if not keep_constant_input and len(set(truth_table)) == 1:
+    if len(set(truth_table)) == 1:
         return _constant_read(truth_table[0], n, moduli.cell_modulus)
     if moduli.cell_modulus == 255:
-        return _program_255(
-            truth_table, n, moduli.io_modulus, keep_ignored_inputs=keep_ignored_inputs
-        )
+        return _program_255(truth_table, n, moduli.io_modulus)
     return _program_256(truth_table, n, moduli.io_modulus)
 
 
-def _program_255(
-    truth_table: str, n: int, io_modulus: int, *, keep_ignored_inputs: bool
-) -> str:
+def _unprojected_255(truth_table: str, n: int, io_modulus: int) -> str:
+    """Cell modulus 255 over every input: the chain, or a tree below break-even."""
+    if n >= _CHAIN_MIN_INPUTS[io_modulus]:
+        return compact_chain(truth_table, n, modulus=255, io_modulus=io_modulus)
+    return decision_tree(truth_table, n, io_modulus=io_modulus)
+
+
+def _program_255(truth_table: str, n: int, io_modulus: int) -> str:
     """Cell modulus 255: a coprime-array chain, or a tree below its break-even.
 
     A table with ignored inputs also races the chain projected onto its
     essential inputs, keeping the shorter; one ignored input saves 4.6% at
     n=8 and 11.6% at n=10 (I/O 255).
     """
-    if n >= _CHAIN_MIN_INPUTS[io_modulus]:
-        legacy = compact_chain(truth_table, n, modulus=255, io_modulus=io_modulus)
-    else:
-        legacy = decision_tree(truth_table, n, io_modulus=io_modulus)
+    legacy = _unprojected_255(truth_table, n, io_modulus)
     used = essential_inputs(truth_table, n)
-    if keep_ignored_inputs or not used or len(used) == n:
+    if not used or len(used) == n:
         return legacy
     projected = compact_chain(
         truth_table, n, modulus=255, io_modulus=io_modulus, project_inputs=True
@@ -842,30 +723,32 @@ def _program_256(truth_table: str, n: int, io_modulus: int) -> str:
     pools: list[int | None] = [None] * n
     for i, weight, pool in zip(essential, kept, kept_pools, strict=True):
         weights[i], pools[i] = weight, pool
-    # The leaf base is a fixed point of the emitted length: each pass pads to
-    # the previous length.  Measured 2-6 passes over n<=10 random tables.
-    base = 0
-    for _ in range(_BASE_PASSES):
-        tokens = _emit(weights, pools, base, io_modulus=io_modulus, unit=unit)
-        leaf_start = len(tokens) - sum(weights) - unit
-        if leaf_start == base:
-            return " ".join(_with_leaves(tokens, truth_table, weights, unit=unit))
-        base = max(leaf_start, base)
-    raise AssertionError("the leaf base did not settle")  # pragma: no cover
+    tokens, base = _emit(weights, pools, io_modulus=io_modulus, unit=unit)
+    return " ".join(_with_leaves(tokens, base, truth_table, weights, unit=unit))
 
 
 def _emit(
     weights: Sequence[int],
     pools: Sequence[int | None],
-    base: int,
     *,
     io_modulus: int = _IO_MODULUS,
     unit: int = _LEAF_UNIT,
-) -> list[str]:
-    """Return everything but the leaf bodies: prologue, chain, dispatch, pad."""
+) -> tuple[list[str], int]:
+    """Return everything but the leaf bodies, and where the leaf table starts.
+
+    The table comes first, behind a jump from the empty machine that
+    :func:`_merge_address` sizes against its own end; so its base is known
+    before the prologue raises array 16 to it, and the chain after it has
+    no length to wait for.
+    """
     st = _Sums(io_modulus=io_modulus)
+    table = sum(weights) + unit
+    cont = _merge_address(st.h0, st.n0, table, io_modulus)
+    base = cont - table
+    tokens = _jump(st, cont)
+    tokens += ["SEED"] * (cont - len(tokens))
     pairs = [(w, p) for w, p in zip(weights, pools, strict=True) if p is not None]
-    tokens = _prologue(st, pairs, base)
+    tokens += _prologue(st, pairs, base)
     pos = len(tokens)
     for weight, pool in zip(weights, pools, strict=True):
         level, st, pos = _level(st, weight, pool, pos)
@@ -882,20 +765,19 @@ def _emit(
         _W + (st.hw + _W_STEP) % _MODULUS
     ) % _ARRAYS != _PRINT[1]:  # pragma: no cover - _dispatch_head solves both
         raise AssertionError(f"head {st.hw} misses the print pair")
-    tokens += ["SEED"] * max(0, base - len(tokens))
-    return tokens + ["SEED"] * (sum(weights) + unit)
+    return tokens, base
 
 
 def _with_leaves(
     tokens: list[str],
+    base: int,
     truth_table: str,
     weights: Sequence[int],
     *,
     unit: int = _LEAF_UNIT,
 ) -> list[str]:
-    """Overwrite the padded tail with one leaf per row, at its own slot."""
+    """Overwrite the padded table at ``base`` with one leaf per row, at its own slot."""
     out = tokens.copy()
-    base = len(tokens) - sum(weights) - unit
     n = len(weights)
     for row, entry in enumerate(truth_table):
         banked = sum(w for i, w in enumerate(weights) if (row >> (n - 1 - i)) & 1)
@@ -922,45 +804,11 @@ def _constant_read(bit: str, inputs: int, modulus: int) -> str:
     )
 
 
-def balance_slow_acv_mammalian(
-    truth_table: str,
-    default: str,
-    *,
-    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
-    io_modulus: int = DEFAULT_MODULI.io_modulus,
-) -> str:
-    """Retain the legacy weighted dispatch when its layout balances better."""
-    if len(set(truth_table)) > 1:
-        if cell_modulus == 255:
-            return balanced_projection(
-                default,
-                _program(
-                    truth_table,
-                    cell_modulus=cell_modulus,
-                    io_modulus=io_modulus,
-                    keep_ignored_inputs=True,
-                ),
-                "slow_acv_mammalian",
-            )
-        return balance_program(default, "slow_acv_mammalian")
-    return balanced_projection(
-        default,
-        _program(
-            truth_table,
-            cell_modulus=cell_modulus,
-            io_modulus=io_modulus,
-            keep_constant_input=True,
-        ),
-        "slow_acv_mammalian",
-    )
-
-
 LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
     "slow_acv_mammalian",
     category="tape_based",
     boolean=slow_acv_mammalian,
-    balance=balance_slow_acv_mammalian,
     dialect=MammalianModuli,
     dialect_values={"cell_modulus": MODULI, "io_modulus": MODULI},
     # Not a tree: a branch-free chain into a flat leaf table.

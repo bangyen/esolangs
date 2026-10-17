@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import TruthTableError
-from esolangs.generation.helpers import TEMPLATE_CHAR, best_input_order, runs
+from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.languages.crement.generator import PAIR, _crement_ordered, crement
 from esolangs.languages.crement.interpreter import _Machine
 from esolangs.runtime._evaluate import _evaluate
@@ -149,25 +149,29 @@ class TestCrementSharing:
         """(plain, shipped) character totals."""
         before = after = 0
         for table in tables:
-            plain = len(best_input_order(table, _crement_ordered))
+            plain = len(
+                _crement_ordered(table, tuple(range(len(table).bit_length() - 1)))
+            )
             shipped = len(crement(table))
             before, after = before + plain, after + shipped
         return before, after
 
     def test_three_input_total(self) -> None:
-        """All 256 three-input tables: 39,156 to 37,862 characters, 3.3%."""
+        """All 256 three-input tables: 43,596 to 37,862 characters, 13.2%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (39156, 37862)
+        assert self._totals(tables) == (43596, 37862)
 
     def test_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 114,791 to 84,600 characters, 26.3%."""
-        assert self._totals(five_input_sample()) == (114791, 84600)
+        """200 seeded five-input tables: 127,301 to 84,600 characters, 33.5%."""
+        assert self._totals(five_input_sample()) == (127301, 84600)
 
     def test_a_shared_copy_is_patched_by_whoever_enters(self) -> None:
         """Parity's repeated subtrees run from both parents, every row."""
         table = "01101001" * 4
         template = crement(table)
-        assert len(template) < len(best_input_order(table, _crement_ordered))
+        assert len(template) < len(
+            _crement_ordered(table, tuple(range(len(table).bit_length() - 1)))
+        )
         _check(table)
 
 
@@ -182,3 +186,23 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
 # The shared verifier's timeout floor was measured across 123, ArrowQueue,
 # Crement and Vandevelo on 0110, 0001, 10010110 and 00010111: 0.000s,
 # every halting row sub-millisecond; its 1s bound has 1000x headroom.
+
+
+def test_packed_rule_matches_the_k_scan() -> None:
+    """Oracle: k0-1..k0+1 lines per row reach the best side of the full scan."""
+    import random
+
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.crement.generator import _packed, crement
+
+    rng = random.Random(3)
+    for n in range(1, 9):
+        default = crement(format(rng.getrandbits(1 << n), f"0{1 << n}b"))
+        lines = default.split("\n")
+        scan = (
+            "\n".join(" ".join(lines[i : i + k]) for i in range(0, len(lines), k))
+            for k in range(2, len(lines))
+        )
+        best = min(map(balance_score, scan), default=(0,))[0]
+        rule = min(map(balance_score, _packed(default)), default=(0,))[0]
+        assert rule <= best

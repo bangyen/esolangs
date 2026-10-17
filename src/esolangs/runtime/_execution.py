@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import re
 import shlex
 import signal
 import threading
+import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from types import ModuleType
-from typing import Any
+from typing import Any, cast
 
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
+    ExecutionTimeoutError,
     InterpreterLimitError,
     ProgramError,
 )
@@ -34,9 +37,99 @@ def check_signal_timeout(timeout: float | None, message: str) -> None:
         raise ArgumentError(message)
 
 
+def run_under_alarm(
+    run_fn: Callable[..., Any],
+    program: RunnerProgram,
+    io_obj: ScriptedIO,
+    timeout: float,
+) -> None:
+    """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
+    # The handler fires between any two bytecodes, including the cleanup's;
+    # raising into its own teardown left the timer armed and the default
+    # SIGALRM disposition killed one run in three.  Clearing this is one store.
+    armed = True
+    old = signal.getsignal(signal.SIGALRM)
+    started = time.monotonic()
+    pending, interval = signal.getitimer(signal.ITIMER_REAL)
+    caller_deadline = started + pending if pending else None
+    deadline = started + timeout
+
+    def _timeout_handler(_signum: int, _frame: object) -> None:
+        nonlocal caller_deadline
+        # coverage cannot trace a raise inside a signal handler
+        if not armed:  # pragma: no cover - a late alarm, not an overrun
+            return
+        now = time.monotonic()
+        if caller_deadline is not None and now >= caller_deadline:
+            caller_deadline = (
+                caller_deadline
+                + (int((now - caller_deadline) // interval) + 1) * interval
+                if interval
+                else None
+            )
+            if callable(old):
+                old(_signum, cast("Any", _frame))
+            elif old == signal.SIG_DFL:
+                signal.signal(signal.SIGALRM, old)
+                signal.raise_signal(signal.SIGALRM)
+            now = time.monotonic()
+            if now < deadline:
+                next_deadline = (
+                    min(deadline, caller_deadline)
+                    if caller_deadline is not None
+                    else deadline
+                )
+                signal.setitimer(
+                    signal.ITIMER_REAL, max(0.000001, next_deadline - time.monotonic())
+                )
+                return
+        raise ExecutionTimeoutError(
+            f"execution exceeded the {timeout}-second timeout"
+        )  # pragma: no cover
+
+    # Dispatch the earlier deadline: replacing a caller's timer let a nested
+    # 0.05-second guard return successfully after 0.159 seconds.
+    signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.setitimer(signal.ITIMER_REAL, min(timeout, pending) if pending else timeout)
+    try:
+        run_fn(program, io_obj)
+    finally:
+        armed = False
+        # Ignore first, then disarm, then restore: an alarm in flight after
+        # ``old`` (the default disposition) is restored terminates the
+        # process -- exit 142, one run in ten.  ``SIG_IGN`` is C-level.
+        # An alarm between ``run_fn`` returning and here still raises a
+        # timeout; closing that needs a flag read from a handler, not worth it.
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old)
+        if caller_deadline is not None:
+            signal.setitimer(
+                signal.ITIMER_REAL,
+                max(0.000001, caller_deadline - time.monotonic()),
+                interval,
+            )
+
+
 def interpreter_module(name: str) -> ModuleType:
     """Return the canonical language's interpreter module."""
     return importlib.import_module(INTERPRETERS[name])
+
+
+#: CPython's int/str digit-cap ValueError, an implementation limit.  Matched
+#: from the start: a parse error echoing source "Exceeds the limit (" is not.
+_DIGIT_CAP = re.compile(r"Exceeds the limit \(\d+ digits\) for integer string")
+
+
+def _hit_digit_cap(error: BaseException | None) -> bool:
+    """Whether CPython's digit cap raised ``error`` or anything it chains."""
+    seen: set[int] = set()
+    while error is not None and id(error) not in seen:
+        if isinstance(error, ValueError) and _DIGIT_CAP.match(str(error)):
+            return True
+        seen.add(id(error))
+        error = error.__cause__ or error.__context__
+    return False
 
 
 # Substrings of CPython's ValueError wording, mapped to the hint each
@@ -56,10 +149,6 @@ _VALUE_ERROR_HINTS = (
     (
         "bytes must be in range",
         "keep byte values between 0 and 255",
-    ),
-    (
-        "Exceeds the limit (",
-        "shorten the decimal literal or set PYTHONINTMAXSTRDIGITS to a larger limit",
     ),
 )
 
@@ -140,11 +229,29 @@ def interpreter_errors(
     """Translate interpreter failures, preserving public errors and prior output."""
     try:
         yield
-    except (RecursionError, MemoryError, EsolangError, ValueError) as original:
+    except (
+        RecursionError,
+        MemoryError,
+        OverflowError,
+        EsolangError,
+        ValueError,
+    ) as original:
         error: EsolangError
         if isinstance(original, RecursionError):
             error = InterpreterLimitError(
                 recursion_message, hint="reduce expression nesting or recursion depth"
+            )
+        elif isinstance(original, OverflowError):
+            # A host limit: Fackward's ``$`` repeating past sys.maxsize
+            # escaped bare.
+            error = InterpreterLimitError(str(original))
+        elif _hit_digit_cap(original):
+            # A valid Ascenic PRINT of a 4300-digit number was reported as a
+            # load error.
+            error = InterpreterLimitError(
+                str(original),
+                hint="shorten the decimal literal or set PYTHONINTMAXSTRDIGITS "
+                "to a larger limit",
             )
         elif isinstance(original, MemoryError):
             # As isolated execution reports a worker that hit max_memory.

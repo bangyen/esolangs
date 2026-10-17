@@ -2,28 +2,30 @@
 
 ``??`` reads each bit and ``.2*.??+`` folds it into the index by Horner's
 rule.  Beside a 1, the index ``W`` loses one ``-`` a row up to each change
-point ``b``, wrapping below 0 to 65536 less, so ``[2^k>`` holds exactly
+point ``b``, wrapping below 0 to 65536 less, so ``[32768>`` holds exactly
 for rows ``r >= b`` and writes the run's answer; ``.!`` prints the last.
 Past 15 inputs, blocks of ``2^15`` rows reload ``W`` behind a sentinel
 65535 and a guard on the high bits, which ``???`` put in ``W``'s string.
 
 Size:
-    Through 15 inputs, 7n + 12 chars plus 7 + len(str(2^n)) per change
-    point and one per row up to the last, at most 13T + 7n; 6T + 6n + 5
-    steps at most; n=10 parity: 8,607 chars, n=10 random 1847: 6,880
-    chars.
+    Through 15 inputs, 7n + 12 chars plus 12 per change point and one per
+    row up to the last, at most 13T + 7n; 6T + 6n + 5 steps at most; n=10
+    parity: 9,289 chars, n=10 random 1847: 7,405 chars.
 
 Decisions:
     Literal row numbers per change point are O(T log T), smaller only
-    while digits are few: 11,240 against 12,358 chars at n=10.
+    while digits are few: 11,240 against 12,358 chars at n=10.  A ``2^n``
+    test literal grew the same way (ratio 4.447 on n=12 parity).
 """
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.wrap import wrap_tokens
+from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._language import Language
 
 #: Wrapped values stay at or above 65536 - 2^15, valid ones below 2^15.
 _LOW_INPUTS = 15
+#: Valid indices sit below ``2^low``, wrapped ones at or above ``65536 - 2^15``.
+_TEST = 1 << _LOW_INPUTS
 #: Copies the index from two slots left into ``W``, leaving 1 between.
 _LOAD = ",0+.0+,1."
 
@@ -49,15 +51,14 @@ def what(truth_table: str) -> str:
             row = start + offset
             if truth_table[row] != truth_table[row - 1]:
                 answer = 48 + int(truth_table[row])
-                parts.append("-" * (offset - last) + f"[{block}>.{answer},]")
+                parts.append("-" * (offset - last) + f"[{_TEST}>.{answer},]")
                 last = offset
     parts.append(".!")
     return "".join(parts)
 
 
-def _wrap(program: str, width: int) -> str:
-    """Break between tokens, never inside a literal, a ``?`` run or a test."""
-    return wrap_tokens(program, width, r'\[(?:\d+>|"[01]+":)|\d+|\?+|[\s\S]')
+#: Break between tokens, never inside a literal, a ``?`` run or a test.
+_wrap = TokenWrapper(r'\[(?:\d+>|"[01]+":)|\d+|\?+|[\s\S]')
 
 
 LANGUAGE = Language(

@@ -193,12 +193,12 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
 
 def _seed_curation(name: str) -> None:
     """Record ``name`` as unassessed; ``finish`` asks for the real count."""
-    path = ROOT / "tests/support/fixtures/curation.toml"
+    path = ROOT / "ledgers/curation.toml"
     if not path.exists() or name in tomllib.loads(path.read_text())["languages"]:
         return
     key = name if re.fullmatch(r"[A-Za-z0-9_-]+", name) else json.dumps(name)
     text = path.read_text(encoding="utf-8").rstrip("\n")
-    path.write_text(f'{text}\n{key} = {{ route = "unassessed" }}\n', encoding="utf-8")
+    path.write_text(f"{text}\n{key} = {{ unassessed = true }}\n", encoding="utf-8")
 
 
 def _interpreter_stub(name: str) -> str:
@@ -306,18 +306,16 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "protocol and debugger tests step it",
             )
         )
-    curation = tomllib.loads(
-        (ROOT / "tests/support/fixtures/curation.toml").read_text()
-    )
+    curation = tomllib.loads((ROOT / "ledgers/curation.toml").read_text())
     if name not in curation["languages"]:
         gaps.append(
             Gap(
-                "tests/support/fixtures/curation.toml",
-                f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
-                'route = "fame" (60+) | "first implementation" } under '
-                "[languages], plus bf_derivative = true if the wiki tags it "
+                "ledgers/curation.toml",
+                f'add "{name}" = {{ backlinks = <wiki "What links here" count> }} '
+                "under [languages] (60+ is the fame route, fewer a first "
+                "implementation), plus bf_derivative = true if the wiki tags it "
                 "Brainfuck derivatives (see docs/limitations.md#curation); offline, "
-                '{ route = "unassessed" } until the count is recorded',
+                "{ unassessed = true } until the count is recorded",
             )
         )
     return gaps
@@ -380,16 +378,17 @@ def _generator_gaps(lang: Language) -> list[Gap]:
 
 def _ledger_gaps(name: str) -> list[Gap]:
     """List the ledger row and the formula tests its stated bounds need."""
-    data = tomllib.loads((ROOT / "src/esolangs/proof_status.toml").read_text())
+    data = tomllib.loads((ROOT / "ledgers/proof_status.toml").read_text())
     row = next((row for row in data["ledger"] if row["generator"] == name), None)
     if row is None:
         return [
             Gap(
-                "src/esolangs/proof_status.toml",
+                "ledgers/proof_status.toml",
                 f'add a [[ledger]] block: generator = "{name}", labels = ["tree"], '
-                "qualification, scaling, execution, workspace and evidence = "
-                '"docs/proofs/index.md#generator-ledger"; copy a block with the '
-                "same construction and see Symbols in docs/proofs/index.md; "
+                "qualification, scaling, execution and workspace (evidence "
+                "defaults to docs/proofs/index.md#generator-ledger); copy a "
+                "block with the same construction and see Symbols in "
+                "docs/proofs/index.md; "
                 'each cell is "<class>: <clause>", e.g. "linear: ..." or '
                 '"poly n: worst 7n + 3 commands ..."; '
                 "a clause after `worst`/`at most` takes at most "
@@ -558,14 +557,14 @@ def finish(name: str) -> int:
         _report(name, gaps)
         print("running the gate anyway, to list every other failure")
     gate = _gate()
-    if _curation(name).get("route") == "unassessed":
+    if _curation(name).get("unassessed"):
         print(f"{name}: curation unassessed; record its backlinks before merging")
     return 1 if gaps else gate
 
 
 def _curation(name: str) -> dict[str, Any]:
     """Return ``name``'s row in the curation fixture, or {}."""
-    text = (ROOT / "tests/support/fixtures/curation.toml").read_text(encoding="utf-8")
+    text = (ROOT / "ledgers/curation.toml").read_text(encoding="utf-8")
     return dict(tomllib.loads(text)["languages"].get(name, {}))
 
 

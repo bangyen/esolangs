@@ -906,3 +906,25 @@ def test_shared_stamps_refuse_unsupported_shapes(
 
     with pytest.raises(AssertionError, match="shared stamps require"):
         _dig_flat_leaf("0" * length, high, low, classes=classes)
+
+
+@pytest.mark.parametrize("axis", [0, 1])
+def test_compaction_keeps_the_line_between_a_reader_and_a_digit(axis: int) -> None:
+    """Dropping an empty run must not seat a digit beside a reader."""
+    from esolangs.languages.dig.generator._layout import (
+        _compaction_lines,
+        _Point,
+    )
+
+    def at(line: int, cross: int) -> _Point:
+        return _Point(line, cross) if axis == 0 else _Point(cross, line)
+
+    cells = {at(0, 0): "$", at(0, 1): "5", at(4, 0): "7", at(4, 1): "#", at(8, 0): "#"}
+    reads = [(at(0, 0), at(0, 1), frozenset())]
+    # the digit at 4 would land beside `$` once lines 1-3 go
+    assert _compaction_lines(cells, reads, axis) == [0, 1, 4, 8]
+    # no reader, a pending store, or a non-digit across: the run goes
+    assert _compaction_lines(cells, [], axis) == [0, 4, 8]
+    held = [(at(0, 0), at(0, 1), frozenset({at(4, 0)}))]
+    assert _compaction_lines(cells, held, axis) == [0, 4, 8]
+    assert _compaction_lines({**cells, at(4, 0): "#"}, reads, axis) == [0, 4, 8]

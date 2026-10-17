@@ -7,38 +7,6 @@ import pytest
 import esolangs
 from esolangs import DialectSettings
 from esolangs.tagged import _Tagged
-from tests.support.cli_support import call_both
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "debug"])
-def test_partial_override_inherits_cell_modulus(tmp_path, capsys, command) -> None:
-    source = _Tagged(
-        "SEED " * 255 + "DIGEST PRONOUNCE",
-        "SLOW ACV MAMMALIAN",
-        DialectSettings(cell_modulus=256, io_modulus=255),
-    )
-    path = tmp_path / "program.json"
-    path.write_text(
-        esolangs.dump_program("SLOW ACV MAMMALIAN", source), encoding="utf-8"
-    )
-    output, error = call_both(
-        [
-            command,
-            "--portable",
-            "--settings",
-            '{"io_modulus":256}',
-            "SLOW ACV MAMMALIAN",
-            str(path),
-        ],
-        capsys,
-    )
-    assert error == ""
-    if command == "run":
-        assert output == chr(255)
-    else:
-        assert "halted: yes" in output
-        assert "output: 'ÿ'" in output
 
 
 @pytest.mark.medium

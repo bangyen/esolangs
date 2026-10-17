@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import difflib
+import unicodedata
+from collections import Counter
 from functools import cache
 from typing import TYPE_CHECKING
 from urllib.parse import quote
@@ -227,13 +229,29 @@ def wiki_url(name: str) -> str:
     return f"https://esolangs.org/wiki/{slug}"
 
 
+def _symbols(*names: str) -> Counter[str]:
+    """Count the characters a slug drops that are not separators."""
+    counts: Counter[str] = Counter()
+    for name in names:
+        counts |= Counter(c for c in name if not (c.isalnum() or _separator(c)))
+    return counts
+
+
+def _separator(c: str) -> bool:
+    # Whitespace and every dash: ``'\tfor_thorn\n'``, ``'Super\xa0SNUSP'`` and
+    # ``'6\u20135'`` resolved before the symbol rule and must still.
+    return c.isspace() or c == "_" or unicodedata.category(c) == "Pd"
+
+
 def resolve(name: str) -> str:
     """Return the registered display name matching ``name``.
 
     An exact hit wins; otherwise :func:`canonical_id` makes the lookup case-
     and punctuation-insensitive: ``Brainfuck``, ``brainfuck`` and ``BRAINFUCK``
     all reach the registered ``brainfuck``.  Display names mix conventions, so
-    callers cannot guess the spelling.  A miss raises
+    callers cannot guess the spelling.  Only punctuation the name itself has
+    may be dropped: ``Piet++`` and ``Brainfuck++`` are other wiki languages,
+    and slugging them onto Piet and brainfuck ran the wrong one.  A miss raises
     :class:`UnknownLanguageError` naming the closest registered spellings.
     """
     if not isinstance(name, str):
@@ -245,9 +263,14 @@ def resolve(name: str) -> str:
         )
     if name in LANGUAGES:
         return name
-    match = _BY_FOLDED.get(name.strip().casefold()) or _BY_ID.get(canonical_id(name))
+    match = _BY_FOLDED.get(name.strip().casefold())
     if match is not None:
         return match
+    match = _BY_ID.get(canonical_id(name))
+    if match is not None:
+        own = _symbols(match, *LANGUAGES[match].aliases)
+        if not _symbols(name) - own:
+            return match
     close = difflib.get_close_matches(
         canonical_id(name), _BY_ID, n=2, cutoff=SUGGESTION_CUTOFF
     )

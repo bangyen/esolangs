@@ -67,6 +67,7 @@ axes never remove a language; a stalled row stays open on the
 | `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures and examples |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | shared contracts, infrastructure and proof runners |
+| `ledgers/` | cross-language records: proof status, curation, catalogues, size and timing baselines |
 
 The registry connects the API and CLI to generators and interpreters:
 
@@ -157,8 +158,8 @@ shape (prose, then `Commands:`, `Input/output:`, `Errors:`, `Decisions:`) is
 names the public exception a caller catches, not the builtin the interpreter
 raises. `tests/interpreters/test_interpreter_conventions.py` checks the shape
 and that `Errors:` lists what the source raises; every entry needs a trigger
-in the language's own `tests/spec_triggers.json` (a program and the exception
-`run` gives), which `tests/interpreters/test_spec_triggers.py` runs. The exported API's Google
+in the language's own `tests/cases.toml` (`[[spec_triggers]]`: a program and
+the exception `run` gives), which `tests/interpreters/test_spec_triggers.py` runs. The exported API's Google
 `Raises:` sections are held to the same standard by
 `tests/api/test_public_docstrings.py`.
 
@@ -167,7 +168,7 @@ then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor,
 `n=10 random 1847: 1,118 chars`, which
 `tests/generators/test_generator_docstrings.py` regenerates, so a size change
 updates it.  `Raises:` lists `GeneratorCapError` wherever the generator can
-refuse a table, with a trigger in `tests/generator_triggers.json`.  A figure
+refuse a table, with a `[[generator_triggers]]` entry in `tests/cases.toml`.  A figure
 in `Size:` or `Decisions:` appears nowhere else in the generator: a figure
 about one helper lives beside it instead.
 
@@ -249,13 +250,16 @@ Judge a module by what the language does not demand.
   200,000 random single steps.
 - Validators and debugger views sit beside the step, not inside it
   (Streetcode's `interpreter/validation.py`).
+- A new CLI flag needs a shell workflow it serves; API parity is not one.
+  Ten `list` filters, `debug` and `--portable` went in 1.1.0 for lack of
+  one.
 
 ## Checklist
 
 1. `just new-language "Name" --category tape_based` (the matching category;
    `--interpreter-only` for a fame admission) writes the interpreter,
    generator and test stubs, and records the language as
-   `{ route = "unassessed" }` in `tests/support/fixtures/curation.toml`. Replace
+   `{ unassessed = true }` in `ledgers/curation.toml`. Replace
    the placeholder semantics and tests.
 2. `just check-language "Name"` lists every integration step still missing,
    each with the file and entry to add: registry, exports, contract,
@@ -268,8 +272,8 @@ Judge a module by what the language does not demand.
    word limits and fold measure, and its formula rows. It lists the generated
    files it refreshed.
    Optional: the wiki page's own examples, with their stated output, go in
-   `src/esolangs/languages/<id>/tests/fixtures/wiki_examples.toml` (schema in
-   `tests/interpreters/test_published_programs.py`).
+   `src/esolangs/languages/<id>/tests/cases.toml` as `[[examples]]` (schema
+   in `tests/interpreters/test_published_programs.py`).
    To try a program that may loop, bound it:
    `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
    `timeout=5`, never a bare `run`.
@@ -298,7 +302,7 @@ asks for and every test file `tests/api/test_language_coupling.py` counts as
 the language's own (committed or not), prunes the helper modules only it
 imported and the per-language code the shared generators and
 `wrap.py` no longer reference, drops its wiki fixtures, timing rows and
-prose entries, regenerates, lowers `tests/support/fixtures/coupling.toml`, and
+prose entries, regenerates, and
 lists the mentions left to edit by hand (display name and aliases, quoted
 ids, dotted module paths), each labelled with the edit it needs -- a
 runnable example, prose, or a comment. brainfuck is the reference language
@@ -308,9 +312,8 @@ shared tests, the examples and `scripts/docs/generate.py` spell out, so
 A language should live in its own files: its generator module's
 `LANGUAGE`, its interpreter, and its own test files. A fact another file
 keys by a language's name (a list of names in a shared test, a branch on
-an id) is coupling, and `tests/api/test_language_coupling.py` holds each
-file's count of them to `tests/support/fixtures/coupling.toml`, which only goes
-down. Put such a fact on `Language`, or the test in the language's own
+an id) is coupling, and `tests/api/test_language_coupling.py` allows
+none. Put such a fact on `Language`, or the test in the language's own
 test file under `src/esolangs/languages/<id>/tests/`: `test_<id>.py` for
 its interpreter, `test_boolean_<id>.py` for its generator, and
 `test_integration_<id>.py` for its API, CLI, VM and debugger checks. A shared file states a language's own facts, never a second

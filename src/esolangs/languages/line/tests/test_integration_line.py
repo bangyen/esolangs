@@ -14,19 +14,18 @@ from esolangs.languages.line.interpreter.extract import detect_scale, normalize_
 from esolangs.languages.line.interpreter.mask import Mask
 from esolangs.runtime._evaluate import _evaluate
 from tests.cli.test_cli import _FakeStdin, call_main
-from tests.cli.test_cli_portable import save_generated
 from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
-from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [1, 2])
-def test_cli_scaled_raster(tmp_path, capsys, scale) -> None:
-    settings = DialectSettings()
-    path = save_generated(tmp_path, capsys, "Line", settings, "--scale", str(scale))
-    restored = esolangs.load_program("Line", path.read_text(encoding="utf-8"))
-    assert _evaluate("Line", restored, inputs=2) == "0110"
+def test_cli_scaled_raster(capsysbinary, scale) -> None:
+    argv = ["esolangs", "generate", "--scale", str(scale), "Line", "0110"]
+    with patch.object(sys, "argv", argv):
+        main()
+    image = Raster.from_png(capsysbinary.readouterr().out)
+    assert _evaluate("Line", image, inputs=2) == "0110"
 
 
 @pytest.mark.medium
@@ -87,49 +86,6 @@ class TestTheSmallInconsistencies:
         image = esolangs.Raster.from_png(captured.out)
         assert esolangs.run("Line", image, stdin="0\n0\n") == "0"
 
-    def test_a_breakpoint_that_never_fires_says_so(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It looked exactly like a program that never reached it."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate(REFERENCE, "0110"))
-        _out, err = call_both(
-            [
-                "debug",
-                "--break-on-output",
-                "Z",
-                "--steps",
-                "5000",
-                REFERENCE,
-                str(path),
-            ],
-            capsys,
-            stdin="0\n1\n",
-        )
-        assert "no breakpoint matched" in err
-
-    def test_a_breakpoint_that_fires_is_not_reported_as_missed(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The other half, so the note means something."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate(REFERENCE, "0110"))
-        out, err = call_both(
-            [
-                "debug",
-                "--break-on-output",
-                "1",
-                "--steps",
-                "5000",
-                REFERENCE,
-                str(path),
-            ],
-            capsys,
-            stdin="01",
-        )
-        assert "stopped: breakpoint" in out
-        assert "no breakpoint matched" not in err
-
 
 def test_source_kind_cannot_change_language_contract() -> None:
     document = json.loads(
@@ -156,6 +112,31 @@ def test_line_detection_has_no_sixteen_fold_ceiling() -> None:
         [0] * 3 + [((1 << 34) - 1) << 5] * 17 + [((1 << 17) - 1) << 5] * 17 + [0] * 3,
     )
     assert detect_scale(mask) == 17
+
+
+def test_a_one_pixel_path_below_a_stair_stepped_arrowhead_keeps_scale_one() -> None:
+    # Only the last row is one pixel thick, so only it shows the scale is 1.
+    art = [
+        "....##........",
+        "....##........",
+        "..######......",
+        "..######......",
+        "##########....",
+        "##############",
+    ]
+    ink, blank = (0, 0, 0), (255, 255, 255)
+    image = Raster(tuple(tuple(ink if c == "#" else blank for c in r) for r in art))
+    assert esolangs.run("Line", image) == ""
+
+
+def test_a_two_pixel_speck_nearer_than_the_path_is_not_the_path() -> None:
+    # Extraction tolerates two stray pixels; they must not be read as the path.
+    rows = [list(row) for row in esolangs.generate("Line", "01").rows]
+    for y in (1, 2):
+        rows[y][51] = (0, 0, 0)
+    image = Raster(tuple(map(tuple, rows)))
+    assert esolangs.run("Line", image, stdin="0\n") == "0"
+    assert esolangs.run("Line", image, stdin="1\n") == "1"
 
 
 def test_explicit_line_scale_checks_ink_blocks() -> None:

@@ -9,20 +9,20 @@ complement; a constant subtree, or one equal to a bit under it, is one write.
 sets a flag in the tree and is written once after it, guarded by that flag.
 
 Size:
-    O(T) for dense tables, O(n) for parity and and; n=10 parity: 2,462 chars,
+    O(T) for dense tables, O(n) for parity and and; n=10 parity: 2,300 chars,
     n=10 and: 472 chars, n=10 random 1847: 8,588 chars.
 
 Decisions:
-    At 4 rows a share pays in 46 of the 65,536 n=4 tables, by at most 5
-    characters; 2 rows pay in none.  A greedy input order saves 2.2% at n=8,
-    under the 10% bar.
+    Shares are chosen by ``_gain`` from counts and lengths, no trial
+    emission.  It gives up the 46 of 65,536 n=4 tables a greedy trial found
+    (at most 5 characters each) and is within 1.4% of that greedy loop on
+    148 tables, n=4..8.  A greedy input order saves 2.2% at n=8, under the
+    10% bar.
 """
 
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum, auto
-from fractions import Fraction
-from functools import cache
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -37,57 +37,37 @@ from esolangs.registry._language import Language
 __all__ = ["three_x"]
 
 
-# 3x's only literal is ``3`` and its only arithmetic is ``x`` (replace the
-# top three items ``a, b, c`` with the exact rational ``(c - b) / a``), so a
-# constant is a program of the grammar ``C ::= 3 | C C C x``.  Enumerated by
-# length that grammar gives the cheapest *distinct* rationals -- one at 1
-# character, one at 4, two at 7, four at 10 -- and a variable key only has to
-# be distinct, so the keys are that enumeration rather than 0, 1, 2, ...
-# Keys are 64% of an emitted program, and base-3 integer names cost 4 to 45
-# characters for the first ten; nineteen of these fit in 13.  The values stay
-# small on their own -- the widest at 300 names is 364/243 -- so nothing has
-# to bound them.
-@cache
-def _level(length: int) -> dict[Fraction, str]:
-    """Return the constants whose shortest program is ``length`` characters.
-
-    Pure and memoized per length.
-    """
-    if length == 1:
-        return {Fraction(3): "3"}
-    lower = {size: _level(size) for size in range(1, length)}
-    seen = set().union(*lower.values())
-    fresh: dict[Fraction, str] = {}
-    for first, divisors in lower.items():
-        for second, subtracted in lower.items():
-            tops = lower.get(length - 1 - first - second)
-            if tops is None:
-                continue
-            for a, code_a in divisors.items():
-                if a == 0:  # ``x`` divides by the third item down
-                    continue
-                for b, code_b in subtracted.items():
-                    for c, code_c in tops.items():
-                        value = (c - b) / a
-                        if value in seen or value in fresh:
-                            continue
-                        fresh[value] = code_a + code_b + code_c + "x"
-    return fresh
-
-
-def _constants(count: int) -> list[str]:
-    """Return the ``count`` shortest constant programs, distinct values."""
-    codes: list[str] = []
-    length = 0
-    while len(codes) < count:
-        length += 1
-        codes.extend(_level(length).values())
-    return codes[:count]
-
-
 _ZERO = "333x"  # (3 - 3) / 3
 _ONE = "3333x3x"  # (3 - 0) / 3
 _NEG_ONE = "33333xx"  # (0 - 3) / 3
+
+
+# 3x's only literal is ``3`` and its only arithmetic is ``x`` (replace the
+# top three items ``a, b, c`` with the exact rational ``(c - b) / a``), so a
+# constant is a program of the grammar ``C ::= 3 | C C C x``.  A variable key
+# only has to be distinct, and keys are 64% of an emitted program, so key
+# ``k`` is a named family, not 0, 1, 2, ... (base-3 names cost 4 to 45
+# characters for the first ten): ``3``, then ``_ZERO`` wrapped once per
+# binary digit of ``k`` after its leading one -- ``c / 3 - 1`` for a 0,
+# ``1 - c / 3`` for a 1, each 3 characters.  Every value stays within 3/2,
+# so two wrapped words can meet only through the same sign, which strips
+# one wrapper from both; a word reaching 0 needs a 3; and the opposite
+# signs need two values summing to 6.  Keys are therefore distinct, and key
+# ``k`` costs ``4 + 3 * (bit_length(k) - 1)`` characters: the shortest
+# grammar enumeration's lengths (1, 4, 7, 7, 10 x4, ...) without the search.
+def _constant(k: int) -> str:
+    """Return key ``k``'s constant program; values are distinct per ``k``."""
+    if k == 0:
+        return "3"
+    code = _ZERO
+    for digit in bin(k)[3:]:
+        code = "33" + code + "x" if digit == "0" else "3" + code + "3x"
+    return code
+
+
+def _constants(count: int) -> list[str]:
+    """Return the first ``count`` constant programs."""
+    return [_constant(k) for k in range(count)]
 
 
 #: From ``[b]``, leave ``3b``.  A set bit is stored as 3 so that copying a
@@ -182,6 +162,48 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return _three_x_build(table, perm, essential, n)
 
 
+def _gain(rows: int, uses: int) -> int:
+    """Return the characters saved by sharing a ``rows``-row block ``uses`` times.
+
+    A row costs about 7 characters inline; a use costs a flag write, about
+    10, and the flag's guarded copy of the block costs 80 more than one
+    inline copy.  Fitted on the module's sample, mostly repeated-block
+    tables: the greedy loop saved 13.8%, this 12.6%.  No closed form exists:
+    a key's length depends on its global use rank and a block's cost on its
+    content, so exact means trial emission.  Greedy substitution fixes the
+    reference cost the same way (Apostolico & Lonardi, Proc. IEEE 88(11), 2000).
+    """
+    return (uses - 1) * 7 * rows - 10 * uses - 80
+
+
+def _shared_blocks(table: str, width: int) -> tuple[str, ...]:
+    """Return the repeated aligned blocks worth sharing, best gain first.
+
+    A block is a candidate when it is non-constant, at least ``_SHARE_MIN``
+    rows and seen twice.  Candidates are taken once, in order of gain, and
+    count only the uses not already inside a taken block's uses.
+    """
+    at: dict[str, list[int]] = {}
+    for rows in (2**k for k in range(_SHARE_MIN.bit_length() - 1, width)):
+        for lo in range(0, 2**width, rows):
+            block = table[lo : lo + rows]
+            if "0" in block and "1" in block:
+                at.setdefault(block, []).append(lo)
+    taken: list[str] = []
+    covered = bytearray(len(table))
+    for block in sorted(
+        (block for block, los in at.items() if len(los) > 1),
+        key=lambda block: -_gain(len(block), len(at[block])),
+    ):
+        rows = len(block)
+        free = [lo for lo in at[block] if not any(covered[lo : lo + rows])]
+        if _gain(rows, len(free)) > 0:
+            taken.append(block)
+            for lo in free:
+                covered[lo : lo + rows] = b"\1" * rows
+    return tuple(taken)
+
+
 def _three_x_build(
     table: str,
     perm: tuple[int, ...],
@@ -191,36 +213,13 @@ def _three_x_build(
     """Return the shorter of the plain tree and the tree sharing blocks.
 
     A block that repeats is shared when deferring it pays: see
-    :func:`_three_x_emit`.  Candidates are the non-constant aligned blocks
-    of at least ``_SHARE_MIN`` rows seen twice or more; the greedy loop adds
-    the one that shrinks the program most until none does.
+    :func:`_three_x_emit` and :func:`_shared_blocks`.
     """
-    width = len(essential)
-    shares: tuple[str, ...] = ()
-    best = _three_x_emit(table, perm, essential, n, shares)
-    candidates: set[str] = set()
-    seen: set[str] = set()
-    for rows in (2**k for k in range(_SHARE_MIN.bit_length() - 1, width)):
-        for lo in range(0, 2**width, rows):
-            block = table[lo : lo + rows]
-            if "0" in block and "1" in block:
-                if block in seen:
-                    candidates.add(block)
-                seen.add(block)
-    while True:
-        trial = min(
-            (
-                (_three_x_emit(table, perm, essential, n, (*shares, block)), block)
-                for block in candidates
-                if block not in shares
-            ),
-            key=lambda pair: len(pair[0]),
-            default=None,
-        )
-        if trial is None or len(trial[0]) >= len(best):
-            return best
-        best = trial[0]
-        shares = (*shares, trial[1])
+    plain = _three_x_emit(table, perm, essential, n, ())
+    shares = _shared_blocks(table, len(essential))
+    if not shares:
+        return plain
+    return min(plain, _three_x_emit(table, perm, essential, n, shares), key=len)
 
 
 class _Emitter:

@@ -70,3 +70,12 @@ def test_raster_execution_obeys_the_step_bound(language: str) -> None:
 def test_interpreter_errors_are_preserved() -> None:
     with pytest.raises(esolangs.InputExhaustedError):
         esolangs.run(REFERENCE, ",", max_steps=1)
+
+
+def test_a_program_error_echoing_the_digit_cap_text_stays_a_program_error() -> None:
+    """Malformed source reading "Exceeds the limit (" is not a host limit."""
+    from esolangs.runtime._execution import interpreter_errors
+
+    with pytest.raises(esolangs.ProgramError) as caught, interpreter_errors("deep"):
+        raise ValueError("invalid expression: Exceeds the limit (")
+    assert not isinstance(caught.value, esolangs.InterpreterLimitError)

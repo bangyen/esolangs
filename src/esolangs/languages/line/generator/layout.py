@@ -212,44 +212,20 @@ def _moved(pointer: int, cell: int, rest: Node) -> Node:
 
 
 def _guard_return(
-    cursor: _Cursor,
-    target: Node,
-    legs: list[tuple[tuple[int, int], int]],
-    plan: _Plan,
+    cursor: _Cursor, legs: list[tuple[tuple[int, int], int]]
 ) -> list[tuple[tuple[int, int], int]] | None:
-    """``legs`` if they clear existing ink, else a trunk merge, else None.
+    """``legs`` if they clear existing ink, else None.
 
     Drift guard, real mode only: the construction never reads ink, so
     anything it did not reserve must be caught, not drawn through.  This is
     what fired on the ring wrapping into a long run drawn before the fork,
     now reserved by `_stem_len`.  Endpoints (body tip, stem merge) are
-    legitimate ink.  A clean return is recorded as the target's trunk.
+    legitimate ink.
     """
     occupied = cursor.occupied
     assert occupied is not None
-    start = (cursor.y, cursor.x)
-    stop_at = occupied if plan.ancestor_returns else None
-    cells = _leg_cells(start, legs, stop_at)
-    blocked = cells[-1] != _leg_end(start, legs) or any(
-        c in occupied for c in cells[1:-1]
-    )
-    if blocked:
-        trunk = plan.returns.get(id(target))
-        merged = (
-            None
-            if trunk is None
-            else _merge_return_legs(cells, trunk, plan.return_indices[id(target)])
-        )
-        if merged is None:
-            return None
-        cells = _leg_cells(start, merged)
-        if any(c in occupied for c in cells[1:-1]):
-            return None
-        legs = merged
-    if plan.ancestor_returns and id(target) not in plan.returns:
-        plan.returns[id(target)] = cells
-        plan.return_indices[id(target)] = {cell: i for i, cell in enumerate(cells)}
-    return legs
+    cells = _leg_cells((cursor.y, cursor.x), legs)
+    return None if any(c in occupied for c in cells[1:-1]) else legs
 
 
 def _draw_loop_back(
@@ -276,15 +252,9 @@ def _draw_loop_back(
     # lacks its outermost fork, which the caller's frame draws.
     legs = None
     if id(target) in entries:
-        legs = _loop_return_legs(
-            (cursor.y, cursor.x),
-            target,
-            entries,
-            plan,
-            cursor.heading if plan.ancestor_returns else None,
-        )
+        legs = _loop_return_legs((cursor.y, cursor.x), target, entries, plan)
     if legs is not None and cursor.occupied is not None:
-        legs = _guard_return(cursor, target, legs, plan)
+        legs = _guard_return(cursor, legs)
     if legs is not None:
         for direction, length in legs:
             cursor.advance(direction, length)
@@ -318,31 +288,16 @@ _CLEARANCE = 1
 _TREE_GAP = _CLEARANCE + 1
 
 
-def _leg_end(
-    start: tuple[int, int], legs: list[tuple[tuple[int, int], int]]
-) -> tuple[int, int]:
-    """Return the cell the ``legs`` walk ends on from ``start``."""
-    return (
-        start[0] + sum(direction[0] * length for direction, length in legs),
-        start[1] + sum(direction[1] * length for direction, length in legs),
-    )
-
-
 def _leg_cells(
-    start: tuple[int, int],
-    legs: list[tuple[tuple[int, int], int]],
-    stop_at: set[tuple[int, int]] | None = None,
+    start: tuple[int, int], legs: list[tuple[tuple[int, int], int]]
 ) -> list[tuple[int, int]]:
-    """Return walked cells, stopping at occupied interior ink when requested."""
+    """Return the cells walked by ``legs`` from ``start``."""
     cells = [start]
-    end = _leg_end(start, legs)
     y, x = start
     for (dy, dx), length in legs:
         for _ in range(length):
             y, x = y + dy, x + dx
             cells.append((y, x))
-            if stop_at is not None and (y, x) != end and (y, x) in stop_at:
-                return cells
     return cells
 
 
@@ -392,10 +347,6 @@ class _Plan:
 
     extents: dict[int, tuple[int, int, int, int]] = field(default_factory=dict)
     tree: set[int] = field(default_factory=set)
-    ancestor_returns: bool = False
-    # Only real drawing records trunks; dry-run coordinates are local.
-    returns: dict[int, list[tuple[int, int]]] = field(default_factory=dict)
-    return_indices: dict[int, dict[tuple[int, int], int]] = field(default_factory=dict)
     stem: int = _TREE_GAP
     arm: int = _TREE_GAP
     tight: bool = False
@@ -532,32 +483,12 @@ _Point = tuple[int, int]
 _Box = tuple[int, int, int, int]  # (y0, y1, x0, x1)
 
 
-def _perimeter_entry(
-    ey: int, ex: int, box: _Box, direction: _Point | None
-) -> tuple[_Point, tuple[_Point, int] | None] | None:
-    """Canonical-frame ``(point, extension)`` on ``box``'s perimeter, or None.
-
-    An interior tip first runs straight along ``direction`` to the perimeter
-    (``extension`` is that leg); without a direction it is rejected.
-    """
+def _perimeter_entry(ey: int, ex: int, box: _Box) -> _Point | None:
+    """The canonical-frame point ``(ey, ex)`` if on ``box``'s perimeter, else None."""
     y0, y1, x0, x1 = box
-
-    def on_perimeter(y: int, x: int) -> bool:
-        return (y in (y0, y1) and x0 <= x <= x1) or (x in (x0, x1) and y0 <= y <= y1)
-
-    if on_perimeter(ey, ex):
-        return (ey, ex), None
-    if direction is None:
-        return None
-    dy, dx = direction
-    distance = (
-        (y1 - ey if dy > 0 else ey - y0) if dy else (x1 - ex if dx > 0 else ex - x0)
-    )
-    ey += dy * distance
-    ex += dx * distance
-    if not on_perimeter(ey, ex):
-        return None
-    return (ey, ex), (direction, distance)
+    on_y = ey in (y0, y1) and x0 <= ex <= x1
+    on_x = ex in (x0, x1) and y0 <= ey <= y1
+    return (ey, ex) if on_y or on_x else None
 
 
 def _ring_points(
@@ -620,7 +551,6 @@ def _loop_return_legs(
     target: Node,
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
     plan: _Plan,
-    heading: tuple[int, int] | None = None,
 ) -> list[tuple[tuple[int, int], int]] | None:
     """Construct a loop-back's legs deterministically, without search.
 
@@ -634,9 +564,7 @@ def _loop_return_legs(
     with a :data:`_DIAGONAL_APPROACH` diagonal (a ``"merge"`` to the
     extractor, not a fork).
 
-    An interior tip continues straight to the perimeter when its heading
-    is supplied. The real layout rejects any exit that crosses existing ink;
-    without a heading the original perimeter premise remains mandatory.
+    The body's end must lie on its perimeter.
     """
     vertex, h = entries[id(target)]
     a_h = _turn_left(h)
@@ -644,18 +572,17 @@ def _loop_return_legs(
     entry_pt = (vertex[0] + a_h[0] * arm_run, vertex[1] + a_h[1] * arm_run)
     box = _subtree_extent(target.nonzero, plan)
 
-    # `start` and `heading` in the canonical frame (+y = a_h, +x =
-    # turn_left(a_h)); projection inverts `_rotate` exactly.
+    # `start` in the canonical frame (+y = a_h, +x = turn_left(a_h));
+    # projection inverts `_rotate` exactly.
     ly, lx = _turn_left(a_h)
 
     def project(v: _Point) -> _Point:
         return v[0] * a_h[0] + v[1] * a_h[1], v[0] * ly + v[1] * lx
 
     ey, ex = project((start[0] - entry_pt[0], start[1] - entry_pt[1]))
-    entry = _perimeter_entry(ey, ex, box, None if heading is None else project(heading))
-    if entry is None:
+    tip = _perimeter_entry(ey, ex, box)
+    if tip is None:
         return None
-    tip, extension = entry
 
     bay_y = box[0] - _RING_OFFSET
     # Guaranteed by `_arm_spacing`'s floor + corridor; a failure here is a
@@ -670,59 +597,8 @@ def _loop_return_legs(
     body = _axis_aligned_legs(pts)
     if body is None:
         return None
-    legs = ([extension] if extension is not None else []) + body
-    legs.append(((-1, -1), _DIAGONAL_APPROACH))
-    return [(_rotate(d, a_h), n) for d, n in legs]
-
-
-def _unit_step(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int] | None:
-    """``b - a`` if it is a single orthogonal cell step, else None."""
-    step = (b[0] - a[0], b[1] - a[1])
-    return step if abs(step[0]) + abs(step[1]) == 1 else None
-
-
-def _straight_run(
-    cells: list[tuple[int, int]], at: int, step: tuple[int, int], sign: int, count: int
-) -> bool:
-    """Whether ``cells[at + sign*i] == cells[at] + sign*i*step`` for i in 1..count."""
-    return all(
-        cells[at + sign * i]
-        == (cells[at][0] + sign * i * step[0], cells[at][1] + sign * i * step[1])
-        for i in range(1, count + 1)
-    )
-
-
-def _merge_return_legs(
-    cells: list[tuple[int, int]],
-    trunk: list[tuple[int, int]],
-    index: dict[tuple[int, int], int],
-) -> list[tuple[tuple[int, int], int]] | None:
-    """Join the first perpendicular trunk crossing with a native diagonal merge."""
-    hit = len(cells) - 1
-    join = index.get(cells[hit])
-    distance = _DIAGONAL_APPROACH
-    if join is None or hit < distance or join + distance >= len(trunk):
-        return None
-    forward = _unit_step(trunk[join], trunk[join + 1])
-    arrival = _unit_step(cells[hit - 1], cells[hit])
-    if forward is None or arrival is None:
-        return None
-    if forward[0] * arrival[0] + forward[1] * arrival[1]:
-        return None
-    if not (
-        _straight_run(trunk, join, forward, 1, distance)
-        and _straight_run(cells, hit, arrival, -1, distance)
-    ):
-        return None
-    result: list[tuple[tuple[int, int], int]] = []
-    for a, b in itertools.pairwise(cells[: hit - distance + 1]):
-        direction = (b[0] - a[0], b[1] - a[1])
-        if result and result[-1][0] == direction:
-            result[-1] = (direction, result[-1][1] + 1)
-        else:
-            result.append((direction, 1))
-    result.append(((arrival[0] + forward[0], arrival[1] + forward[1]), distance))
-    return result
+    body.append(((-1, -1), _DIAGONAL_APPROACH))
+    return [(_rotate(d, a_h), n) for d, n in body]
 
 
 def _layout(

@@ -144,5 +144,10 @@ class TestStateViewValues:
 
 
 @pytest.mark.medium
-def test_malformed_source_carries_a_repair_hint() -> None:
-    assert_rejected_with_hint("RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS")
+def test_a_literal_past_the_host_digit_cap_is_a_limit_with_a_hint() -> None:
+    """Legal source the host cannot convert: a limit, not malformed source."""
+    from esolangs.exceptions import InterpreterLimitError
+
+    assert_rejected_with_hint(
+        "RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS", error=InterpreterLimitError
+    )

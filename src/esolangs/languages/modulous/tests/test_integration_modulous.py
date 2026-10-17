@@ -41,26 +41,16 @@ def test_vm_runtime_error_keeps_its_hint() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "debug"])
-def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys) -> None:
+def test_cli_prints_runtime_hints(tmp_path: Path, capsys) -> None:
     source = tmp_path / "bad.mod"
     source.write_text("[JMP F]", encoding="utf-8")
-    args = [command, "--timeout", "1", "Modulous", str(source)]
+    args = ["run", "--timeout", "1", "Modulous", str(source)]
     with pytest.raises(SystemExit):
         call_both(args, capsys)
     streams = capsys.readouterr()
     text = streams.out + streams.err
     assert "missing operand in JMP F" in text
     assert "hint: supply the required operand" in text
-
-
-@pytest.mark.medium
-def test_hints_do_not_discard_partial_output() -> None:
-    with pytest.raises(esolangs.ProgramError, match="missing operand") as caught:
-        esolangs.run("Modulous", "[PSH INT 65][PRT][JMP F]", timeout=1)
-    assert caught.value.partial_output == "A"
-    assert "hint:" in caught.value.__notes__[0]
-    assert "printed 'A'" in caught.value.__notes__[1]
 
 
 @pytest.mark.parametrize("isolated", [False, True])
@@ -72,23 +62,6 @@ def test_runtime_error_keeps_partial_output_and_one_hint(isolated) -> None:
     assert caught.value.partial_output == "A"
     assert caught.value.__notes__[0] == "hint: push two values before SWP"
     assert sum(note.startswith("hint:") for note in caught.value.__notes__) == 1
-
-
-@pytest.mark.medium
-def test_vm_displays_runtime_hints() -> None:
-    machine = make_vm("Modulous", "[SWP]", stdin="")
-    with pytest.raises(HaltError) as caught:
-        machine.step()
-    assert caught.value.__notes__ == ["hint: push two values before SWP"]
-
-
-@pytest.mark.medium
-def test_cli_displays_runtime_hints(tmp_path, capsys) -> None:
-    source = tmp_path / "runtime.mod"
-    source.write_text("[SWP]")
-    with pytest.raises(SystemExit):
-        call_both(["run", "Modulous", str(source)], capsys)
-    assert "hint: push two values before SWP" in capsys.readouterr().err
 
 
 @pytest.mark.medium

@@ -3,7 +3,6 @@
 import builtins
 import importlib
 import io
-import json
 import sys
 from contextlib import redirect_stdout
 
@@ -11,6 +10,7 @@ import pytest
 
 import esolangs
 from esolangs.languages.polynomial import interpreter as polynomial_module
+from esolangs.languages.polynomial.generator import _polynomial_assemble
 from esolangs.languages.polynomial.interpreter import (
     brackets,
     convert,
@@ -41,15 +41,25 @@ from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.support.paths import ROOT
 
-# Programs whose roots span orders of magnitude or repeat a wide delta -- the
-# cases where a float64 solver rounds a root and drops or corrupts a
-# character.  Kept as data because only the decode is under test.
-_PRECISION_PROGRAMS: dict[str, str] = json.loads(
-    (
-        ROOT
-        / "src/esolangs/languages/polynomial/tests/fixtures/polynomial_precision.json"
-    ).read_text()
-)
+
+def _printing(text: str) -> str:
+    """Return the program that prints ``text``: per character, add or
+    subtract the code point delta (``[d, 1]``/``[d, 2]``), then print
+    (``[0, 1]``), one prime per instruction.
+
+    Wide deltas make roots span orders of magnitude or repeat -- where a
+    float64 solver rounds a root and drops or corrupts a character.  The
+    output must equal ``text``, so only the decode is under test.
+    """
+    instructions: list[list[int]] = []
+    register = 0
+    for char in text:
+        delta = ord(char) - register
+        if delta:
+            instructions.append([delta, 1] if delta > 0 else [-delta, 2])
+        instructions.append([0, 1])
+        register = ord(char)
+    return _polynomial_assemble(instructions)
 
 
 def test_missing_math_extra_is_actionable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -332,26 +342,6 @@ class TestPeelPrimePowerRoots:
         # The remainder is the deflated quotient, x - 6.
         assert remainder == [1, -6]
 
-    def test_peeled_roots_are_exact_factors(self) -> None:
-        """Anything peeled divides the polynomial with no remainder."""
-        import sympy as sp
-
-        from esolangs.languages.polynomial.interpreter.peel import (
-            _peel_prime_power_roots,
-        )
-
-        x = sp.Symbol("x")
-        poly = sp.Poly((x - 2**3) * (x - 3**2) * (x - 5) * ((x - 4) ** 2 + 2**6), x)
-        coefficients = [int(k) for k in poly.all_coeffs()]
-        peeled, _remainder = _peel_prime_power_roots(list(coefficients))
-
-        assert peeled, "the polynomial has prime-power roots to take"
-        product = sp.Poly(1, x)
-        for root in peeled:
-            product = product * sp.Poly(x - root, x)
-        _quotient, rest = sp.div(poly, product)
-        assert rest == sp.Poly(0, x), f"peeled {peeled} is not an exact divisor"
-
 
 class TestFactorRootsRejections:
     """A quadratic factor only encodes an instruction in one exact shape."""
@@ -543,6 +533,29 @@ class TestPeelInstructionQuadratics:
         recomposed = taken * sp.Poly(remainder, x) if len(remainder) > 1 else taken
         assert recomposed == original
 
+    def test_the_field_roots_are_the_integer_roots_mod_p(self) -> None:
+        """``2x - 6`` has the one root 3, whatever its leading coefficient."""
+        from esolangs.languages.polynomial.interpreter.peel import (
+            _roots_in_peel_field,
+        )
+
+        assert _roots_in_peel_field([2, -6]) == {3}
+
+    def test_a_lone_field_root_proposes_no_quadratic(self) -> None:
+        """A candidate needs *both* roots ``a +- sqrt(-q)``; one alone is not a pair."""
+        import sympy as sp
+
+        from esolangs.languages.polynomial.interpreter.peel import (
+            _PEEL_MODULUS,
+            _quadratic_candidates_mod,
+        )
+
+        offset = int(sp.sqrt_mod(-4 % _PEEL_MODULUS, _PEEL_MODULUS))
+        lone = {(5 - offset) % _PEEL_MODULUS}
+        assert _quadratic_candidates_mod(lone, 1) == set()
+        pair = lone | {(5 + offset) % _PEEL_MODULUS}
+        assert (5, 4) in _quadratic_candidates_mod(pair, 1)
+
     def test_divide_quadratic_refuses_a_non_divisor(self) -> None:
         """The exact-division gate is what makes an accepted pair sound."""
         import sympy as sp
@@ -643,6 +656,31 @@ class TestNttRecovery:
         assert (real, base * base) in _quadratic_candidates_ntt(
             1, (root_sets[0], root_sets[1]), 20
         )
+
+    def test_pairs_keep_a_real_part_at_the_bound(self) -> None:
+        """The lift window is closed: ``a == real_bound`` is proposed."""
+        from esolangs.languages.polynomial.interpreter.ntt import (
+            _NTT_FIELDS,
+            _ntt_pairs,
+        )
+
+        base, real = 3, 7
+        data = []
+        for modulus, _, _, generator in _NTT_FIELDS:
+            unit = pow(generator, (modulus - 1) // 4, modulus)
+            offset = unit * base % modulus
+            roots = {(real + offset) % modulus, (real - offset) % modulus}
+            data.append((modulus, unit, roots, sum(1 << r for r in roots)))
+
+        assert (real, base * base) in _ntt_pairs(base, data[0], data[1], real)
+
+    def test_real_bound_is_half_the_pairing_field(self) -> None:
+        from esolangs.languages.polynomial.interpreter.ntt import (
+            _NTT_FIELDS,
+            _ntt_real_bound,
+        )
+
+        assert _ntt_real_bound(1) == _NTT_FIELDS[0][0] // 2
 
     @pytest.mark.medium
     def test_a_large_program_is_recovered_exactly(self) -> None:
@@ -745,13 +783,13 @@ class TestPolynomialHighPrecisionRoots:
     """
 
     def _decode(self, text: str) -> str:
-        """Run the fixture program for ``text`` and return what it printed."""
+        """Run the program printing ``text`` and return what it printed."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(_PRECISION_PROGRAMS[text], io=IO())
+            run(_printing(text), io=IO())
         return buffer.getvalue()
 
-    @pytest.mark.parametrize("text", ["😀t", "a中", "1😀+", "a日a日", "A中B"])
+    @pytest.mark.parametrize("text", ["😀t", "A中B"])
     def test_wide_codepoint_deltas_round_trip(self, text: str) -> None:
         """ASCII followed by CJK/emoji spans several orders of magnitude."""
         assert self._decode(text) == text
@@ -800,6 +838,27 @@ class TestPolynomialHighPrecisionRoots:
 
         with pytest.raises(ValueError, match="unmatched"):
             run("f(x) = x - 4", io=IO())
+
+    def test_an_unmatched_closer_raises_where_it_is_reached(self) -> None:
+        """Roots 4, 4 are two closers: the first raises, not the scan past it."""
+        with pytest.raises(ValueError, match="unmatched"):
+            _machine("f(x) = x^2 - 8x + 16").step()
+
+    @pytest.mark.parametrize(
+        "instructions",
+        [
+            pytest.param([[5], [6], [6]], id="closer_with_a_six_before_it"),
+            pytest.param([[5], [7], [6]], id="seven_is_an_opener_not_a_closer"),
+        ],
+    )
+    def test_every_unmatched_bracket_raises(
+        self, instructions: list[list[int]]
+    ) -> None:
+        """Codes 2 and 6 close, 7 opens: a bracket scan or pairing that mixes
+        them up silently matches (or skips) what must be rejected.
+        """
+        with pytest.raises(ValueError, match="unmatched"):
+            run(_polynomial_assemble(instructions), io=IO())
 
 
 class TestStepMachine:

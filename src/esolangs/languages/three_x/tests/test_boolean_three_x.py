@@ -1,11 +1,52 @@
 """three_x generator tests."""
 
 import itertools
+from fractions import Fraction
 
 from esolangs.languages import generators as boolean
-from esolangs.languages.three_x.generator import _level
+from esolangs.languages.three_x.generator import _constant, _gain
 from esolangs.languages.three_x.tests.formulas import _key
 from scripts.benchmark import state_bits
+
+
+def _grammar_level(length: int, memo: dict[int, dict[Fraction, str]]) -> dict:
+    """Oracle: constants whose shortest ``3 | C C C x`` program is ``length`` long."""
+    if length in memo:
+        return memo[length]
+    if length == 1:
+        memo[1] = {Fraction(3): "3"}
+        return memo[1]
+    lower = {size: _grammar_level(size, memo) for size in range(1, length)}
+    seen = set().union(*lower.values())
+    fresh: dict[Fraction, str] = {}
+    for first, divisors in lower.items():
+        for second, subtracted in lower.items():
+            tops = lower.get(length - 1 - first - second)
+            if tops is None:
+                continue
+            for a, code_a in divisors.items():
+                if a == 0:
+                    continue
+                for b, code_b in subtracted.items():
+                    for c, code_c in tops.items():
+                        value = (c - b) / a
+                        if value not in seen and value not in fresh:
+                            fresh[value] = code_a + code_b + code_c + "x"
+    memo[length] = fresh
+    return fresh
+
+
+def _evaluate(code: str) -> Fraction:
+    """Evaluate a ``C ::= 3 | C C C x`` program with exact rationals."""
+    stack: list[Fraction] = []
+    for char in code:
+        if char == "3":
+            stack.append(Fraction(3))
+        else:
+            c, b, a = stack.pop(), stack.pop(), stack.pop()
+            stack.append((c - b) / a)
+    (value,) = stack
+    return value
 
 
 class TestThreeX:
@@ -105,30 +146,44 @@ class TestThreeX:
         parity8 = "".join(str(i.bit_count() & 1) for i in range(2**8))
         assert len(boolean.three_x(parity8)) < 2 * len(boolean.three_x(parity7))
 
-    def test_constant_ladder_is_the_grammar_shortest_first(self) -> None:
-        """Keys are the shortest ``C ::= 3 | C C C x`` programs, by length."""
-        from esolangs.languages.three_x.generator import _constants
+    def test_constants_are_distinct_grammar_programs(self) -> None:
+        """Every key is a ``3 | C C C x`` program; no two share a value."""
+        values = [_evaluate(_constant(k)) for k in range(3000)]
+        assert len(set(values)) == len(values)  # a key has to be distinct
+
+    def test_constant_lengths_are_closed_form(self) -> None:
+        """Key ``k`` costs ``4 + 3 * (bit_length(k) - 1)`` characters; key 0 is 3."""
+        assert _constant(0) == "3"
+        for k in range(1, 3000):
+            assert len(_constant(k)) == 4 + 3 * (k.bit_length() - 1)
+
+    def test_constants_match_the_grammar_enumeration_lengths(self) -> None:
+        """Against the shortest-first enumeration: equal for 16 keys, 3 longer by 41."""
+        memo: dict[int, dict[Fraction, str]] = {}
+        oracle: list[str] = []
+        length = 0
+        while len(oracle) < 41:
+            length += 1
+            oracle.extend(_grammar_level(length, memo).values())
+        mine = [len(_constant(k)) for k in range(41)]
+        assert mine[:16] == [len(c) for c in oracle[:16]]
+        assert all(m <= len(c) + 3 for m, c in zip(mine, oracle[:41], strict=True))
+
+    def test_constants_run_to_their_value(self) -> None:
+        """The interpreter agrees with the exact evaluation for the first 40 keys."""
         from esolangs.languages.three_x.interpreter import run
         from esolangs.runtime.io import ScriptedIO
 
-        codes = _constants(13)
-        assert [len(c) for c in codes] == [1, 4, 7, 7] + [10] * 4 + [13] * 5
-        values = []
-        for code in codes:
+        for k in range(40):
             io = ScriptedIO("")
-            run(code + "!", io)  # each leaves exactly one value on the stack
-            values.append(io.getvalue().strip())
-        assert values[0] == "3"
-        assert len(set(values)) == len(values)  # a key has to be distinct
+            run(_constant(k) + "!", io)
+            assert Fraction(io.getvalue().strip()) == _evaluate(_constant(k))
 
-    def test_constant_ladder_only_ever_extends(self) -> None:
-        """More names append to the cache; 30 of them still fit 16 characters."""
-        from esolangs.languages.three_x.generator import _constants
-
-        first = _constants(4)
-        longer = _constants(30)
-        assert longer[:4] == first
-        assert len(longer[-1]) <= 16
+    def test_share_gain_prices_uses_and_rows(self) -> None:
+        """One use never pays; more uses of a longer block pay more."""
+        assert _gain(64, 1) < 0
+        assert _gain(4, 2) < 0 < _gain(16, 8)
+        assert _gain(16, 8) < _gain(32, 8)
 
     def test_bit_copies_replace_a_guarded_pair(self) -> None:
         """A subtree that *is* one of its bits collapses to one write."""
@@ -154,11 +209,6 @@ class TestThreeX:
 
 
 def test_three_x_keys_fit_their_bound() -> None:
-    """K(i) covers the 41 shortest constants, every key through n = 20."""
-    keys: list = []
-    length = 0
-    while len(keys) < 41:
-        length += 1
-        keys.extend(_level(length))
-    for i, value in enumerate(keys[:41], 1):
-        assert state_bits(value, {}) <= _key(i), (i, value)
+    """K(i) covers the 41 first keys, every key through n = 20."""
+    for i in range(1, 42):
+        assert state_bits(_evaluate(_constant(i - 1)), {}) <= _key(i), i

@@ -4,11 +4,9 @@ import itertools
 
 import pytest
 
-from esolangs.languages import generators as boolean
 from esolangs.languages.bitdeque.generator import _bitdeque_ordered
 from tests.proofs.test_conventions import _embedding, _tables
-from tests.support.source_support import source_units
-from tests.support.witness_tables import row_bits, witnesses
+from tests.support.witness_tables import witnesses
 
 
 class TestParameterizedBitdeque:
@@ -60,20 +58,6 @@ class TestParameterizedBitdeque:
         for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
             assert self.run_bitdeque(self.instantiate(template, bits)) == str(bits[1])
 
-    def test_linear_route_forces_the_register_between_inputs(self) -> None:
-        """Both discard paths meet at a reset, and the last input skips it."""
-
-        from esolangs.languages.bitdeque.generator import _bitdeque_linear
-
-        n = 5
-        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        tokens = _bitdeque_linear(table).split()
-        assert tokens[:3] == ["PUSH", "INVERT", "PUSH"]  # parity opens 0, 1
-        assert tokens.count("POP") == 2**n - 1 + n  # the discards, the reads
-        assert tokens.count("EJECT") == 2**n - 1
-        assert " ".join(tokens).count("INVERT INVERT") == n - 1  # the resets
-        assert tokens[-1] == "EJECT"  # the last input ends on its one block
-
     def test_ordered_route_rotates_a_nonhead_input_toward_the_head(self) -> None:
         """The private candidate builder covers the other shortest rotation."""
 
@@ -90,17 +74,6 @@ class TestParameterizedBitdeque:
         template = generators.bitdeque("01101001")
         assert template.startswith("GOTO 4 INVERT GOTO 5 GOTO ")
         assert f"{template} ".count("GOTO 1 ") == 2
-
-    def test_linear_discard_executes_wide_rows(self) -> None:
-        """Head/tail discards leave sampled six-input answers."""
-        from esolangs.languages.bitdeque.generator import _bitdeque_linear
-
-        n = 6
-        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        template = _bitdeque_linear(table)
-        for row in (0, 1, 2, 7, 31, 32, 62, 63):
-            bits = row_bits(row, n)
-            assert self.run_bitdeque(self.instantiate(template, bits)) == table[row]
 
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 11, 40, 80])
@@ -129,7 +102,7 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
             len(esolangs.generate("Bitdeque", format(value, "08b"), width=1))
             for value in range(256)
         )
-        == 117472
+        == 118538
     )
 
 
@@ -166,24 +139,7 @@ def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
         esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
 
 
-def test_reordering_never_grows_and_shrinks_where_it_should() -> None:
-    """Choosing the input order can only shrink the emitted program."""
-    for n in (1, 2, 3):
-        for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
-            baseline = _bitdeque_ordered(table, tuple(range(n)))
-            # An order the search cannot place has no baseline to beat.
-            if not baseline:
-                continue
-            assert source_units(boolean.bitdeque(table)) <= len(baseline), table
-    # A table only one input order folds well is emitted from that order.
-    table = "10101010"
-    assert source_units(boolean.bitdeque(table)) < len(
-        _bitdeque_ordered(table, (0, 1, 2))
-    )
-
-
-def test_bitdeque_linear_route_is_one_width() -> None:
+def test_bitdeque_filled_template_is_one_width() -> None:
     """The route the equal-width test misses stays at one length."""
     example = _embedding()["Bitdeque"]
     assert example.fill is not None

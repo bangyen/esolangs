@@ -36,7 +36,10 @@ class Language:
         scale: int = 1,
         settings: DialectSettings | None = None,
     ) -> Program:
-        """Return a program computing ``truth_table``."""
+        """Return a program computing ``truth_table``.
+
+        Arguments and errors: :func:`esolangs.generate`.
+        """
         return esolangs.generate(
             self.name,
             truth_table,
@@ -55,7 +58,10 @@ class Language:
         truth_table: str | None = None,
         settings: DialectSettings | None = None,
     ) -> str:
-        """Fill a parameterized template with ``bits``."""
+        """Fill a parameterized template with ``bits``.
+
+        Arguments and errors: :func:`esolangs.instantiate`.
+        """
         return esolangs.instantiate(
             self.name,
             template,
@@ -68,11 +74,17 @@ class Language:
     def dump_program(
         self, program: Program, *, settings: DialectSettings | None = None
     ) -> str:
-        """Return portable JSON retaining source and dialect choices."""
+        """Return portable JSON retaining source and dialect choices.
+
+        Arguments and errors: :func:`esolangs.dump_program`.
+        """
         return esolangs.dump_program(self.name, program, settings=settings)
 
     def load_program(self, document: str) -> Program:
-        """Restore portable JSON as this language's tagged source."""
+        """Restore portable JSON as this language's tagged source.
+
+        Arguments and errors: :func:`esolangs.load_program`.
+        """
         return esolangs.load_program(self.name, document)
 
     def run(
@@ -89,7 +101,10 @@ class Language:
         settings: DialectSettings | None = None,
         scale: int | None = None,
     ) -> str:
-        """Execute source using the same bounds as :func:`esolangs.run`."""
+        """Execute source.
+
+        Arguments and errors: :func:`esolangs.run`.
+        """
         return esolangs.run(
             self.name,
             program,
@@ -105,15 +120,24 @@ class Language:
         )
 
     def describe(self) -> LanguageInfo:
-        """Return this language's registry metadata and interpreter description."""
+        """Return this language's registry metadata and interpreter description.
+
+        Arguments and errors: :func:`esolangs.describe`.
+        """
         return esolangs.describe(self.name)
 
     def encode_inputs(
         self, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None
     ) -> str:
-        """Return the stdin encoding for ``bits``."""
+        """Return the stdin encoding for ``bits``.
+
+        Arguments and errors: :func:`esolangs.encode_inputs`.
+        """
         return esolangs.encode_inputs(self.name, bits, truth_table=truth_table)
 
     def read_answer(self, output: str) -> str:
-        """Extract the answer bit from raw output."""
+        """Extract the answer bit from raw output.
+
+        Arguments and errors: :func:`esolangs.read_answer`.
+        """
         return esolangs.read_answer(self.name, output)

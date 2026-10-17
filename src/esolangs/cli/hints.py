@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from difflib import get_close_matches
 
 from esolangs import LanguageInfo
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
 from esolangs.registry import SUGGESTION_CUTOFF
 from esolangs.runtime.source_hints import error_text
-
-# A watched cell's history longer than this is printed abridged: the whole
-# thing was one line of 486 comma-separated values for a 486-step program,
-# which buries the ends that are actually read.
-_HISTORY_SHOWN = 40
-
 
 #: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
 #: a program error's 1, which it shared. A timeout leaves termination
@@ -127,15 +121,6 @@ def _did_you_mean(word: str, known: Iterable[str]) -> str:
     return f"; did you mean {' or '.join(close)}?"
 
 
-def _abridge(history: Sequence[object]) -> str:
-    """Render a watch history, eliding the middle of a long one."""
-    if len(history) <= _HISTORY_SHOWN:
-        return str(history)
-    head = ", ".join(str(v) for v in history[: _HISTORY_SHOWN // 2])
-    tail = ", ".join(str(v) for v in history[-_HISTORY_SHOWN // 2 :])
-    return f"[{head}, ... {len(history) - _HISTORY_SHOWN} more ..., {tail}]"
-
-
 def _decode_note(exc: UnicodeDecodeError) -> str:
     """Describe where a decode failed, without the codec's full sentence."""
     return f"invalid UTF-8 at byte {exc.start}"
@@ -170,6 +155,8 @@ def _input_sentence(facts: LanguageInfo) -> str:
     example = f"{one}{zero}"
     if shape == "row_index":
         return 'one decimal row index, e.g. "2" for the bits 10'
+    if shape == "row_number":
+        return 'one decimal row index plus one, e.g. "3" for the bits 10'
     if shape in {"char_stream", "char_stream_cyclic"}:
         return f'adjacent bit characters, e.g. "{example}"'
     if shape == "char_stream_padded":

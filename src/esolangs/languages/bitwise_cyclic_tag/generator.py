@@ -17,7 +17,6 @@ Size:
 
 from __future__ import annotations
 
-from esolangs.generation.constant_projection import balance_legacy_walk
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -39,10 +38,10 @@ def bitwise_cyclic_tag(truth_table: str) -> str:
     return _program(truth_table)
 
 
-def _program(truth_table: str, *, keep_constant_walk: bool = False) -> str:
+def _program(truth_table: str) -> str:
     """Build the indexed walk, or delete inputs and a literal constant answer."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_walk:
+    if len(set(truth_table)) == 1:
         return "0," + TEMPLATE_CHAR * n + truth_table[0]
     # An ignored input appends nothing either way: its command is a bare ``0``.
     weights, table = input_weights(truth_table, n)
@@ -58,23 +57,11 @@ def _program(truth_table: str, *, keep_constant_walk: bool = False) -> str:
     return f"{''.join(parts)},{data}"
 
 
-def balance_bitwise_cyclic_tag(table: str, default: str) -> str:
-    """Retain the old constant walk if its wrapped shape balances better."""
-    return balance_legacy_walk(
-        table,
-        default,
-        "bitwise_cyclic_tag",
-        PAIR,
-        lambda t: _program(t, keep_constant_walk=True),
-    )
-
-
 LANGUAGE = Language(
     "Bitwise Cyclic Tag",
     "bitwise_cyclic_tag",
     category="queue_based",
     boolean=bitwise_cyclic_tag,
-    balance=balance_bitwise_cyclic_tag,
     # A positional walk, not a tree of callable residuals.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

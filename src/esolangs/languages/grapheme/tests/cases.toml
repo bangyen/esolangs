@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "M"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: underflow"
+
+[[spec_triggers]]
+program = "W"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "W reads one line and raises at EOF"
+
+[[spec_triggers]]
+program = "a"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a character outside A-Z"

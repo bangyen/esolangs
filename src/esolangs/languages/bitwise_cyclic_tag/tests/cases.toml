@@ -1,0 +1,25 @@
+[[spec_triggers]]
+program = "2"
+stdin = ""
+expect = "ProgramError"
+claim = "a character outside 01,"
+
+[[spec_triggers]]
+program = "0,1,1"
+stdin = ""
+expect = "ProgramError"
+claim = "a second comma"
+
+[[spec_triggers]]
+program = "1,"
+stdin = ""
+expect = "output"
+output = ""
+claim = "an empty data-string halts at once; nothing printed when no 0 fires"
+
+[[spec_triggers]]
+program = "0,1"
+stdin = ""
+expect = "output"
+output = "1"
+claim = "the bit the last 0 consumes prints at the end"

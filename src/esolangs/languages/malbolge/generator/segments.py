@@ -46,6 +46,7 @@ from .isa import (
     _apply,
     _char_for,
     _g,
+    _progression,
     _rot,
 )
 from .thirteen import (
@@ -307,12 +308,15 @@ class _Window:
 
     def take(self, value: int | None = None, *, packed: bool = True) -> int:
         """Allocate a walked cell with ``g == value`` (any, if ``None``)."""
-        spans = [range(*_F_WINDOW)] if packed else []
-        for span in [*spans, range(128, _ENTRY)]:
-            for a in span:
-                if (value is None or _g(a) == value) and a not in self.used:
-                    self.used.add(a)
-                    return a
+        spans = [_F_WINDOW] if packed else []
+        for lo, hi in [*spans, (128, _ENTRY)]:
+            if value is None:
+                free = [a for a in range(lo, hi) if a not in self.used]
+            else:
+                free = [a for a in _progression(value, lo, hi) if a not in self.used]
+            if free:
+                self.used.add(free[0])
+                return free[0]
         raise AssertionError(f"no walked cell with g {value}")  # pragma: no cover
 
 

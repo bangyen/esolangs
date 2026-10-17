@@ -12,7 +12,7 @@ from .anchors import anchors
 ROOT = Path(__file__).resolve().parents[2]
 
 
-MANIFEST = ROOT / "src" / "esolangs" / "proof_status.toml"
+MANIFEST = ROOT / "ledgers" / "proof_status.toml"
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,10 @@ class ScalingRow:
     generation_time: str
     output_size: str
     evidence: str
+
+
+#: A ledger row's evidence unless it names its own proof.
+LEDGER_EVIDENCE = "docs/proofs/index.md#generator-ledger"
 
 
 def _text(row: dict[str, object], key: str) -> str:
@@ -86,6 +90,8 @@ def validate(
             isinstance(item, str) and " = " in item for item in definitions
         ):
             raise ValueError("invalid proof definitions")
+        if row.get("evidence") == LEDGER_EVIDENCE:
+            raise ValueError(f"{row['generator']}: omit the default evidence")
         proofs.append(
             ProofRow(
                 _text(row, "generator"),
@@ -94,7 +100,7 @@ def validate(
                 _text(row, "scaling"),
                 _text(row, "execution"),
                 _text(row, "workspace"),
-                _text(row, "evidence"),
+                _text({"evidence": LEDGER_EVIDENCE} | row, "evidence"),
                 tuple(definitions),
             )
         )

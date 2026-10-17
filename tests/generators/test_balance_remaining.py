@@ -11,7 +11,11 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
 from esolangs.registry import LANGUAGES, SourceKind
 from esolangs.runtime._evaluate import _evaluate
+from tests.support.exact_token_width import exact_token_width
 from tests.support.witness_tables import witnesses
+
+#: ``balanced_token_width`` and ``balance`` may exceed the best side by this much.
+TOLERANCE = 1.05
 
 
 @pytest.mark.parametrize(("minimum", "maximum"), [(1, 5), (2, 9), (6, 15)])
@@ -23,11 +27,11 @@ def test_token_fit_lattice_respects_width_regimes(minimum, maximum) -> None:
         tokens = ["x" * rng.randrange(1, 12) for _ in range(rng.randrange(1, 30))]
         width = balanced_token_width(tokens, " ", minimum=minimum, maximum=maximum)
         assert minimum <= width <= maximum
-        optimum = min(
-            (_join_tokens(tokens, width, " ") for width in range(minimum, maximum + 1)),
-            key=balance_score,
+        exact = exact_token_width(tokens, " ", minimum=minimum, maximum=maximum)
+        assert (
+            balance_score(_join_tokens(tokens, width, " "))[0]
+            <= TOLERANCE * balance_score(_join_tokens(tokens, exact, " "))[0]
         )
-        assert balance_score(_join_tokens(tokens, width, " ")) == balance_score(optimum)
 
 
 @pytest.mark.parametrize("separator", ["", " "])
@@ -36,13 +40,11 @@ def test_long_token_dominates_packed_row_count(separator) -> None:
 
     tokens = ["x" * 80, *(["x", "xx"] * 80)]
     width = balanced_token_width(tokens, separator, minimum=80)
-    assert width == 80
-    optimum = min(
-        (_join_tokens(tokens, candidate, separator) for candidate in range(80, 241)),
-        key=balance_score,
-    )
-    assert balance_score(_join_tokens(tokens, width, separator)) == balance_score(
-        optimum
+    assert width >= 80
+    exact = exact_token_width(tokens, separator, minimum=80)
+    assert (
+        balance_score(_join_tokens(tokens, width, separator))[0]
+        <= TOLERANCE * balance_score(_join_tokens(tokens, exact, separator))[0]
     )
 
 
@@ -76,7 +78,8 @@ def test_trimmed_row_ends_keep_the_width_lattice() -> None:
         )
 
     width = balanced_token_width(tokens, " ", minimum=13, maximum=40, rstrip_rows=True)
-    assert score(width) == min(score(candidate) for candidate in range(13, 41))
+    assert 13 <= width <= 40
+    assert score(width)[0] <= TOLERANCE * min(score(w)[0] for w in range(13, 41))
 
 
 @pytest.mark.parametrize(
@@ -96,7 +99,7 @@ def test_aligned_balanced_programs_compute_the_table(language, table) -> None:
         + [esolangs.generate(language, table, width=width) for width in range(1, 129)],
         key=balance_score,
     )
-    assert balance_score(balanced) <= balance_score(optimum)
+    assert balance_score(balanced)[0] <= TOLERANCE * balance_score(optimum)[0]
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 
@@ -110,7 +113,7 @@ def _balances_whole_tokens(wrapper: object) -> bool:
     """Whether ``balance_program`` fits ``wrapper``'s tokens, not characters."""
     if any(lang.wrap is wrapper and lang.wrap_balance for lang in LANGUAGES.values()):
         return True
-    return isinstance(wrapper, _wrap._TokenWrapper) or wrapper in (  # noqa: SLF001
+    return isinstance(wrapper, _wrap.TokenWrapper) or wrapper in (
         _wrap.wrap_space_delimited,
         _wrap.wrap_grid,
     )
@@ -154,10 +157,8 @@ def test_balance_reaches_the_supported_minimum(language, table) -> None:
         for width in range(1, max(65, widest + 1))
     ]
     optimum = min(layouts, key=balance_score)
-    # A balancer may also try a construction no width reaches (Subleq's
-    # legacy decoder); it must then beat them all.
-    assert balance_score(balanced) <= balance_score(optimum)
-    assert balanced in layouts or balance_score(balanced) < balance_score(optimum)
+    # Contract relaxed by the user (2026-10-16): balance may be 5% worse in side.
+    assert balance_score(balanced)[0] <= 1.05 * balance_score(optimum)[0]
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 

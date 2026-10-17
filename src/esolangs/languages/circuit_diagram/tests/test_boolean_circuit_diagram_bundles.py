@@ -9,6 +9,7 @@ from esolangs.languages.circuit_diagram.generator.bundled_banks import (
     bundled_class_bank_candidate,
 )
 from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
+from esolangs.languages.circuit_diagram.generator.layout import _layout_area
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
@@ -49,6 +50,15 @@ def test_bundle_rejects_constants_small_prefixes_and_zero_budget() -> None:
     assert bundled_class_bank_candidate("1" * 512) is None
     assert bundled_class_bank_candidate(dense(8)) is None
     assert bundled_class_bank_candidate(dense(9), 0) is None
+
+
+def test_bundle_ceiling_admits_its_own_area_and_rejects_one_less() -> None:
+    table = dense(9)
+    model = bundled_class_bank_candidate(table)
+    assert model is not None
+    area = _layout_area(model)
+    assert bundled_class_bank_candidate(table, area) is not None
+    assert bundled_class_bank_candidate(table, area - 1) is None
 
 
 def test_mask_work_is_checked_before_building_forests(monkeypatch) -> None:

@@ -9,7 +9,7 @@ the shortest program wins.  Above sixteen entries (without a width) the
 weighted linear-space lookup replaces the tree.
 
 Size:
-    About 23T chars from n=5 (weighted lookup); n=4 random 1847: 482 chars,
+    About 23T chars from n=5 (weighted lookup); n=4 random 1847: 548 chars,
     n=10 random 1847: 24,605 chars, n=16 and: 1,443,471 chars.
 
 Decisions:
@@ -25,12 +25,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     grid_width,
-    input_orders,
     input_weights,
     level_cells,
     move_text,
     narrowest_grid,
-    permute_truth_table,
     subtree_ids,
 )
 from esolangs.registry._contracts import BooleanContract
@@ -668,8 +666,8 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-    :func:`_laserfuck_build` is the construction; this is the search over
-    input orders around it (:func:`_laserfuck_pool`).  A width is applied to
+    :func:`_laserfuck_build` is the construction; this is the race over
+    tree placements around it (:func:`_laserfuck_pool`).  A width is applied to
     every candidate, not the winner: the reader's orientations and the tree's
     placement already trade rows against columns, so the narrowest program is
     often not the shortest.
@@ -681,25 +679,14 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
 
 
 def _laserfuck_pool(truth_table: str, width: int | None) -> str:
-    """Return the best candidate over input orders and tree placements.
+    """Return the best candidate over tree placements.
 
-    Order is a *placement*: a node is ``>#v)``, which steps the pointer and
-    tests the cell under it, so level ``k`` tests cell ``k + 1`` whatever is
-    in it, and moving which cell an input is read into changes what every
-    node tests.  Only the reader's read section changes (see
-    :func:`_laserfuck_reads`), and the reads stay in stream order.  The
-    identity order is built first and ties keep it.
+    Input order stays the identity: a node is ``>#v)``, which steps the pointer
+    and tests the cell under it, so a reorder changes what every node tests; a
+    greedy order saved 0% at n=6..8 (40 random tables) and at most 4.3% at n<=4.
     """
-    orders = input_orders(truth_table)
-    identity = orders[0]
-
+    identity = tuple(range(_validate_truth_table(truth_table)))
     best = _laserfuck_build(truth_table, identity, width)
-    for perm in orders[1:]:
-        candidate = _laserfuck_build(
-            permute_truth_table(truth_table, perm), perm, width
-        )
-        if len(candidate) < len(best):
-            best = candidate
     if width is not None and grid_width(best) > width:
         # Move the start funnel above the computation, reclaiming its three
         # reserved columns. Two '/' turns enter its first heading setter.
@@ -787,25 +774,20 @@ def _laserfuck_raise_funnel(program: str) -> str:
 def balance_laserfuck(table: str, default: str) -> str:
     """Compare reader fits, tree placements and startup-funnel fits."""
     n = _validate_truth_table(table)
-    orders = input_orders(table)
-    regimes = [(permute_truth_table(table, perm), perm) for perm in orders]
+    identity = tuple(range(n))
     margin = MARGIN
     events = {1, 4}
-    for ordered, perm in regimes:
-        tree = _laserfuck_tree(ordered, n)
-        span = max(map(len, tree.upright))
-        for candidate in _laserfuck_reader_candidates(n, perm):
-            exit_column = candidate.reader.exit_col
-            events.update(
-                (margin + candidate.span + 2, margin + exit_column + span + 1)
-            )
+    span = max(map(len, _laserfuck_tree(table, n).upright))
+    for candidate in _laserfuck_reader_candidates(n, identity):
+        exit_column = candidate.reader.exit_col
+        events.update((margin + candidate.span + 2, margin + exit_column + span + 1))
     boundaries = sorted(events)
     widths = set(boundaries)
     for index, start in enumerate(boundaries):
         stop = boundaries[index + 1] if index + 1 < len(boundaries) else None
-        forms = [_laserfuck_build(ordered, perm, start) for ordered, perm in regimes]
+        forms = [_laserfuck_build(table, identity, start)]
         if len(table) <= 8:
-            forms.append(_laserfuck_build(table, orders[0], start, vertical_tree=True))
+            forms.append(_laserfuck_build(table, identity, start, vertical_tree=True))
         # Reader and tree geometry is fixed within this interval. Only the
         # source's own fit can switch its startup funnel or narrow fallback.
         spans = {grid_width(form) for form in forms}

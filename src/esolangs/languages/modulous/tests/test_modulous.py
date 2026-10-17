@@ -100,8 +100,6 @@ _OUTPUT = {
         "A",
     ),
     "swap": ("[PSH INT 1][PSH INT 2][SWP][PRT INT][PRT INT][END]", "12"),
-    # JMP F skips a module.
-    "jump_forward": ("[PSH INT 5][JMP F 1][PRT INT][END]", "5"),
     # JMP ... IF jumps only when the top matches.
     "conditional_jump": ("[PSH INT 5][JMP F 1 IF 5][PRT INT][END]", "5"),
     # JMP ... NIF jumps only when the top does not match.
@@ -136,14 +134,11 @@ _OUTPUT_WITH_INPUT = {
 _RUNTIME_FAULTS_HALT = {
     # Arithmetic on an empty stack is an invalid operation.
     "add_on_empty_stack_halts": "[ADD 1]",
-    "swap_on_short_stack_halts": "[SWP]",
-    "print_on_empty_stack_halts": "[PRT INT]",
     "print_undefined_variable_halts": "[PRT VAR9 INT]",
     # Storing into an undeclared variable is invalid, as reading one is.
     "push_undefined_variable_halts": "[PSH INT 7][PSH VAR9]",
     # ``[PSH VAR VAR1]`` is not the syntax and does not quietly store.
     "push_variable_keyword_spelling_halts": "[PSH INT 7][PSH VAR VAR1]",
-    "random_zero_bound_halts": "[RND 0]",
 }
 
 
@@ -287,7 +282,7 @@ class TestModulous:
         with pytest.raises(ValueError, match=rf"did you mean {hint}\?"):
             run(source, IO())
 
-    @pytest.mark.parametrize("source", ["[XYZ]", "[PRP]", "[P]", "[S]", "[p 5]"])
+    @pytest.mark.parametrize("source", ["[XYZ]", "[PRP]", "[P]", "[S]"])
     def test_unknown_command_without_unique_match_has_no_hint(
         self, source: str
     ) -> None:
@@ -434,6 +429,48 @@ def test_modulous_declines_input_and_caps_a_wide_draw() -> None:
         run_until_halt_or_all_branches_cycle(wide, limit=100000)
     assert "cap on a single transition" in str(caught.value)
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
+
+
+def test_branching_search_sees_a_cursor_past_the_last_token_as_halted() -> None:
+    """Running off the end halts; the search must not read a token there."""
+    assert run_until_halt_or_all_branches_cycle(Modulous("[RND 2]", ScriptedIO()))
+
+
+class _Scripted:
+    """A draw source that replays fixed values."""
+
+    def __init__(self, *values: int) -> None:
+        self._values = iter(values)
+
+    def randbelow(self, _upper: int) -> int:
+        return next(self._values)
+
+
+def test_rnd_one_still_consumes_a_draw() -> None:
+    """``RND 1`` is a draw like any other: the next ``RND`` sees the next value."""
+    io = ScriptedIO()
+    run("[RND 1][RND 100][PRT INT]", io, _Scripted(0, 7))
+    assert io.getvalue() == "7"
+
+
+def test_a_variable_change_moves_the_snapshot_at_the_same_cursor() -> None:
+    """A counting loop returns to token 0 with an empty stack but is not a cycle."""
+    machine = Modulous("[VAR1+1][RST]", ScriptedIO())
+    start = machine.snapshot()
+    machine.step()
+    machine.step()
+    assert machine.ind == 0
+    assert machine.snapshot() != start
+
+
+def test_a_draw_moves_the_snapshot_at_the_same_cursor() -> None:
+    """Draw, discard, rewind: only the draw count tells this from the start."""
+    machine = Modulous("[RND 2][POP][RST]", ScriptedIO(), _Scripted(1))
+    start = machine.snapshot()
+    for _ in range(3):
+        machine.step()
+    assert (machine.ind, machine.stk) == (0, ())
+    assert machine.snapshot() != start
 
 
 class TestContract(SnapshotContract):

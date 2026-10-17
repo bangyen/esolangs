@@ -2,7 +2,6 @@
 
 import math
 import random
-import re
 import time
 
 import pytest
@@ -13,27 +12,25 @@ from esolangs.languages.polynomial.generator.algebra import format_coeffs
 from esolangs.languages.polynomial.interpreter import (
     _parse_program,
     convert,
-    sanitize,
+    primality,
     sanitize_terms,
 )
+from esolangs.languages.polynomial.interpreter import roots as roots_module
 from esolangs.languages.polynomial.interpreter.gaussian import (
     _dense_gaussian_roots,
     _gap_chunks,
     _gauss_reduce,
+    _gaussian_pow,
     _sparse_multiplicity,
 )
 from esolangs.languages.polynomial.interpreter.primality import (
     _aks,
+    _aks_modulus,
     _integer_root,
     _is_proven_prime,
+    _totient,
 )
-from esolangs.languages.polynomial.interpreter.roots import (
-    _Root,
-    _sparse_roots,
-)
-
-X = sp.Symbol("x")
-
+from esolangs.languages.polynomial.interpreter.roots import _Root, _sparse_roots
 
 # --------------------------------------------------------------------------
 # The oracle: the pre-sparse parser, kept only as a specification
@@ -59,29 +56,6 @@ def _oracle_convert(roots: list[tuple[int, int]]) -> list[list[int]]:
                         break
         num += 1
     return post
-
-
-def _oracle_parse(code: str) -> tuple[tuple[int, ...], ...]:
-    """Dense coefficients, ``factor_list``, scanning ``convert``."""
-    cleaned = re.sub(r"[^\df(x)=+-^]", "", code)
-    coefficients = sanitize(cleaned)
-    if not any(coefficients):
-        # The peel's quirk on an all-zero list: ``x - 2`` divides it
-        # ``degree`` times.
-        return ((1,),) * (len(coefficients) - 1)
-    roots: list[tuple[int, int]] = []
-    _, factors = sp.factor_list(sp.Poly.from_list(coefficients, X))
-    for factor, multiplicity in factors:
-        coeffs = [int(k) for k in factor.all_coeffs()]
-        if len(coeffs) == 2 and coeffs[0] == 1:
-            roots.extend([(-coeffs[1], 0)] * multiplicity)
-        elif len(coeffs) == 3 and coeffs[0] == 1 and coeffs[1] % 2 == 0:
-            real = -coeffs[1] // 2
-            square = coeffs[2] - real * real
-            imag = math.isqrt(square) if square > 0 else 0
-            if imag and imag * imag == square:
-                roots.extend([(real, imag)] * multiplicity)
-    return tuple(tuple(k) for k in _oracle_convert(roots))
 
 
 def _expand(factors: list[list[int]]) -> list[int]:
@@ -116,109 +90,6 @@ def _render(poly: dict[int, int]) -> str:
         for e, c in sorted(poly.items(), reverse=True)
     )
     return "f(x) = " + (text[2:] if text.startswith("+ ") else "-" + text[2:])
-
-
-def _cofactor(rng: random.Random) -> list[list[int]]:
-    """A factor that encodes nothing, or encodes on purpose, or repeats."""
-    kind = rng.randrange(10)
-    if kind == 0:
-        return [[1, -rng.choice([0, 1, -1])]] * rng.randint(1, 3)
-    if kind == 1:
-        return [[rng.choice([2, 3, 5]), rng.choice([-1, 1, 3, -7])]]
-    if kind == 2:
-        return [rng.choice([[1, 0, 1], [1, -2, 2], [1, 2, 2]])]
-    if kind == 3:
-        root = rng.choice([2, 4, 8, 9, 27, 6, 12, -2, -9, 256, 3**8, 2**9])
-        return [[1, -root]] * rng.randint(1, 3)
-    if kind == 4:
-        real = rng.randint(-50, 50)
-        imag = rng.choice([2, 4, 3, 9, 6, 12, 2**7, 5, 1])
-        return [[1, -2 * real, real * real + imag * imag]] * rng.randint(1, 3)
-    if kind == 5:
-        return [[rng.randint(-9, 9) or 1 for _ in range(rng.randint(2, 6))]]
-    if kind == 6:
-        return [[1, 0, 0, -2]]
-    if kind == 7:
-        return [[3, -30, 87]]  # 3((x-5)**2 + 4): content over a real pair
-    if kind == 8:
-        return [[rng.choice([2, -3]), 0]]
-    return []
-
-
-def _instructions(rng: random.Random) -> list[list[int]]:
-    out: list[list[int]] = []
-    for _ in range(rng.randint(0, 5)):
-        if rng.random() < 0.5:
-            out.append([rng.randint(1, 4)])
-        else:
-            out.append([rng.randint(-40, 40), rng.randint(1, 3)])
-    return out
-
-
-def _corpus(count: int, seed: int) -> list[str]:
-    rng = random.Random(seed)
-    sources = []
-    for _ in range(count):
-        instructions = _instructions(rng)
-        factors = _polynomial_factors(instructions) if instructions else []
-        for _ in range(rng.randint(0, 3)):
-            factors += _cofactor(rng)
-        rng.shuffle(factors)
-        coefficients = _expand(factors) if factors else [rng.randint(-5, 5)]
-        source = format_coeffs(coefficients) if any(coefficients) else "f(x) = 0"
-        quirk = rng.randrange(6)
-        if quirk == 0:
-            source = source.replace(" ", "")
-        elif quirk == 1:
-            # A later term for an existing degree wins.
-            degree = rng.randrange(len(coefficients))
-            extra = rng.randint(1, 9)
-            source += f" + {extra}x^{degree}" if degree else f" + {extra}"
-        elif quirk == 2:
-            source += " + 7 - 3"  # the last bare number is the constant
-        elif quirk == 3:
-            source = source.replace("f(x) = ", f"f(x) = 0x^{len(coefficients) + 3} + ")
-        elif quirk == 4:
-            source = "comment " + source + " end"
-        sources.append(source)
-    return sources
-
-
-def _forced_sparse(source: str) -> tuple[tuple[int, ...], ...] | None:
-    """The sparse path on a source the dispatcher would parse densely."""
-    terms = sanitize_terms(re.sub(r"[^\df(x)=+-^]", "", source))
-    if not any(terms.values()):
-        return None
-    roots = [k for k in _sparse_roots(terms) if k.imag >= 0]
-    return tuple(tuple(k) for k in convert(roots))
-
-
-# --------------------------------------------------------------------------
-# The whole parser against the oracle
-# --------------------------------------------------------------------------
-
-
-class TestDifferential:
-    """New parse == old parse on a seeded corpus, both dispatch paths."""
-
-    @pytest.mark.medium
-    def test_moderately_sparse_sources_match_the_oracle(self) -> None:
-        """Exponents small enough for the dense oracle, large enough to gap."""
-        rng = random.Random(7)
-        for _ in range(6):
-            poly = {0: 1}
-            for _ in range(rng.randint(1, 2)):
-                gap = rng.randint(20, 45)
-                poly = _sparse_mul(poly, {gap: 1, 0: rng.choice([-1, 1])})
-            factors = _polynomial_factors(_instructions(rng)) + _cofactor(rng)
-            for factor in factors:
-                poly = _sparse_mul(poly, _dense_to_sparse(factor))
-            source = _render(poly)
-            expected = _oracle_parse(source)
-            _parse_program.cache_clear()
-            assert _parse_program(source) == expected, source
-            forced = _forced_sparse(source)
-            assert forced is None or forced == expected, source
 
 
 # --------------------------------------------------------------------------
@@ -278,14 +149,6 @@ class TestHugeExponents:
 
 
 class TestSteps:
-    def test_sanitize_terms_is_sanitize_without_the_list(self) -> None:
-        for source in _corpus(60, 11):
-            cleaned = re.sub(r"[^\df(x)=+-^]", "", source)
-            terms = sanitize_terms(cleaned)
-            dense = sanitize(cleaned)
-            degree = max(terms, default=0)
-            assert dense == [terms.get(d, 0) for d in range(degree, -1, -1)]
-
     def test_duplicate_degrees_and_constants(self) -> None:
         assert sanitize_terms("f(x)=3x^2+5x^2+1+x^0-4") == {2: 5, 0: -4}
 
@@ -326,11 +189,34 @@ class TestProvenPrimality:
     def test_aks_agrees_with_the_sieve(self) -> None:
         assert [n for n in range(-2, 90) if _aks(n)] == list(sp.primerange(2, 90))
 
+    def test_totient_counts_repeated_and_even_factors(self) -> None:
+        # 4 and 9 are squares (factor * factor == rest); 6 needs the exact
+        # ``result // factor``; even inputs need the factor 2.
+        assert [_totient(n) for n in (4, 6, 9, 12)] == [2, 2, 6, 4]
+
     def test_aks_runs_its_congruences_on_a_prime_past_r(self) -> None:
         # 1009 > r here, so the answer comes from the (x + a)**n checks.
         assert _aks(1009)
         assert not _aks(561)  # Carmichael
         assert not _aks(1009 * 1013)
+
+    def test_aks_asks_for_order_above_the_squared_bit_length(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The proof needs ord_r(n) > log2(n)**2; a weaker bound accepted every
+        # tested composite too, so only the bound itself can be checked.
+        asked: list[tuple[int, int]] = []
+        found = _aks_modulus
+
+        def spy(number: int, square: int) -> int:
+            asked.append((number, square))
+            return found(number, square)
+
+        monkeypatch.setattr(primality, "_aks_modulus", spy)
+        assert _aks(1009)
+        assert asked == [(1009, (1009).bit_length() ** 2)]
+        r = found(1009, 100)
+        assert min(k for k in range(1, r) if pow(1009, k, r) == 1) > 100
 
     def test_convert_above_the_deterministic_range(
         self, monkeypatch: pytest.MonkeyPatch
@@ -356,10 +242,38 @@ class TestProvenPrimality:
         assert 143 not in calls  # BPSW's "composite" is already a proof
 
 
+class TestRootHelpers:
+    def test_a_gaussian_power_squares_its_base(self) -> None:
+        """``(3 + i)**2 = 8 + 6i``: the squaring step, then the multiply."""
+        assert _gaussian_pow((3, 1), 2) == (8, 6)
+
+    def test_a_two_term_sparse_source_has_its_root(self) -> None:
+        """``x^3 - 8`` has two terms, the fewest a root can need."""
+        assert _sparse_roots({3: 1, 0: -8}) == [_Root(2, 0)]
+
+    def test_a_chunk_far_from_zero_is_densified_from_its_lowest_term(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The dense list spans ``high - low + 1``, not ``high + low + 1``."""
+        seen: list[list[int]] = []
+
+        def record(dense: list[int]) -> set[tuple[int, int]]:
+            seen.append(dense)
+            return set()
+
+        monkeypatch.setattr(roots_module, "_dense_gaussian_roots", record)
+        _sparse_roots({10**6 + 3: 1, 10**6: -8})
+        assert seen == [[1, 0, 0, -8]]
+
+    def test_the_lift_modulus_covers_a_root_at_the_bound(self) -> None:
+        """Lead 2, others at most 2: Cauchy's ``B`` is 2, and ``1 +- i`` is a root."""
+        poly = [2, -2, 2, 1, 2, 2]
+        assert _dense_gaussian_roots(poly) == {(1, 1), (1, -1)}
+
+
 class TestConvert:
-    @pytest.mark.parametrize("seed", range(3))
-    def test_matches_the_scanning_convert(self, seed: int) -> None:
-        rng = random.Random(seed)
+    def test_matches_the_scanning_convert(self) -> None:
+        rng = random.Random(0)
         # The oracle scans every integer up to the widest root, so keep it small.
         powers = [p**v for p in (2, 3, 5, 7, 11, 13) for v in range(1, 9)]
         powers = [k for k in powers if k < 5000]

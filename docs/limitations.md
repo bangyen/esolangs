@@ -54,7 +54,12 @@ Text and image-based languages share the same VM and step rules; `RUNNERS`
 describes text bundling only.
 
 - Line retains its graph for repeated generated rows; stepping parses pixels.
-- Piet emits and executes pixels.
+- Piet emits and executes pixels. Its packer tries up to 9 start-colour
+  phases per lane (18 for duplicate lanes), averaging 1.9 tries on duplicates;
+  no lane-level rule picks the phase. The winner is the least phase no aligned
+  column forbids: n=2 `0110` and `1001` win phases 1 and 3 at lane 2 of 6, the
+  same end colour and direction. A spacer row needs no retry but costs 32-64%
+  area.
 
 ## Source positions
 
@@ -152,6 +157,37 @@ Each missed the 10% bar:
   Dispatch does not fit (2026-10-14, scratch, executed): the seven-class label
   window plus 14 hubs alone takes 5,155 main-line cells, leaving the line near
   7,200 against 6,562 before the third-cell fold and per-state transitions.
+
+  Decoder limits (2026-10-16, CP-SAT, scratch):
+
+  - No decoder reads only the `b` cell and the shared cell. Seven blocks of
+    seven cannot cover every pair of the 16 two-input leaves: `C(16,7,2) > 7`
+    (infeasible; 8 is feasible).
+  - Eight meanings per cell are infeasible for odd-address read offsets
+    1-11, 13, 15, 17, 21, 25, 31 and 47, so cells cap at seven.
+  - A three-read decoder exists. After the address, read the next input `c`.
+    For `c = 0` the label (`0 1 x n`) is a 7x7 table of (own cell, shared
+    cell). For `c = 1`, (own, shared) picks one of six contexts, and the other
+    cell's meaning picks the label. All 256 targets are covered; corrupting one
+    entry leaves 246. That is 22 dispatch blocks.
+  - A concrete third map: inputs 13-14 pick a low digit `j`, which is set to
+    its missing value, and group `j` moves to the top digit as one of 1..8.
+    For `j = 1`, swapping 1 and 2 in trit 0 of digit 0 stops one prefix
+    wrapping to cell 0. It gives 49,152 cells, no collision and 9,897 free
+    (model). The third cell's parity varies with the moved digit, while the
+    two `b` cells always have opposite parity.
+
+  Navigation, not ops, is sixteen's cost: of 3,618 code cells, 427 are `p`,
+  `*`, `/` or `i`, and 3,191 are `o` or `j` (`o` 2,558, `j` 633).
+  Sweeps cannot cut the label window's share (2026-10-16, model): every
+  sequence of up to five chained `p`/`*` sweeps over cells 34..127 leaves at
+  least 61 distinct values, so a class's pointers still need priming. Priming
+  is `p` twice per cell from `A` = all-1: the first leaves trits {0, 2}, the
+  second is `crazy(v, v)` = all-1, and it needs `A` equal to the cell's own
+  value, so the walk back (prime 799 cells for 72, seeds 554 for 68) stays.
+  Contiguous class runs would shorten seeding, but a run must be 22 cells
+  long to meet every table address's eight pointers, and seven classes need
+  154 > 94.
 
   Counting bounds each family independently of mixer quality:
 
@@ -252,7 +288,14 @@ requires a construction exemption rather than a sub-gate bound.
 - Dig has 10.9% repeated-node potential at n=5; its admission tests support
   its construction exemption. Its shared pool is 2..10 unique 64-row classes
   indexed by one decimal digit over 2..6 prefix bits; a larger pool needs a
-  multi-digit index.
+  multi-digit index. A finished sharing layout whose `_chain_lanes` corridor
+  crosses another class's lane arrow or branch `$` is rejected and falls back
+  unshared: 131 of 602 lane and parallel layouts at n=12 (random 64-bit leaf
+  classes mixed with constant leaves). A per-class gutter line removes the
+  rejection but shares no more (26 to 24 lane layouts) and grows shared
+  layouts ~5%: a crossed leaf or constant read row kills the gutter.
+  Recovery would save nothing: at n=12 the indexed leaf decoder emits 11-22x
+  less area than every shared layout, which `generate` never picks there.
 - Boolfuck has sub-gate repeated-node potential: 2.3% of emitted size at n=5,
   pinned in `tests/generators/test_boolean_boolfuck.py`.
 - Home Row is a lookup that names no decision-tree node.
@@ -260,10 +303,14 @@ requires a construction exemption rather than a sub-gate bound.
 - Dimensional is a lookup that names no decision-tree node.
 - LaserFuck's path-dependent leaf code makes equal subtables unequal text.
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 49
-tree-shaped generators use a sharing helper: 32 reference a canonical helper
-(`subtree_ids`, `SubtreeDiagram`), eight a declared local helper, and nine are
-exempt. Having a helper does not establish complete sharing.
+<!-- SHARING-COUNTS:START -->
+
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
+of 57 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 19 are
+exempt with a reason. One shrinking probe does not establish complete sharing.
+
+<!-- SHARING-COUNTS:END -->
 
 - Underload references a canonical sharing helper.
 - Unlambda references a canonical sharing helper.
@@ -343,6 +390,21 @@ controlled by executed checks in each language's own tests.
 - BFStack has a sampled peak machine payload of 756 bits at eight inputs.
 - Subleq has a sampled peak machine payload of 3,066 bits at eight inputs.
 
+`T log T` workspace (eight ledger rows) is a store key or a shared reference,
+which `state_bits` (`scripts/benchmark.py`) counts in full each time; the
+counting rule stands. Dense tables, n=8 to 9 unless stated:
+
+- A Painter Ant, B-tapemark, Collatz Multiverse, Dimensional, Flowchart and
+  Streetcode key a sparse store by address: bits per entry rise one per input
+  (A Painter Ant 9.0 to 10.0 a painted cell, Streetcode 8.0 to 8.9).
+- Unlambda's frames share subterms, each counted at every reference:
+  14,752 to 28,384 continuation bits.
+- Forþ keys every scope by heap index, but twin calls hold the count near
+  `4.6T/n` (`S·n/T` 4.75, 4.86, 4.42 at n=8, 10, 12), so keys cost about
+  `4.6T` bits. The log factor needs a twin 50,625 or more scopes back, whose
+  20-character call misses `_FORTH_SUBTREE_FLOOR` (17): at least 20 inputs,
+  derived, not executed.
+
 - Malbolge:
   `test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
   and every second-level cascade row. Both are needed: at eleven inputs,
@@ -355,7 +417,7 @@ controlled by executed checks in each language's own tests.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 88 languages.
+The collection has 90 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -379,7 +441,7 @@ between requests.
 
 The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
 Record resolved title, date and count; missing data means unassessed
-(`route = "unassessed"`, which `finish` flags until the count is recorded). Low
+(`unassessed = true`, which `finish` flags until the count is recorded). Low
 backlinks count against only old languages; Wikipedia pageviews are not a
 gate.
 
@@ -514,9 +576,9 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 <!-- CURATION-CENSUS:START -->
 
-The 2026-10-06 census (`tests/support/fixtures/curation.toml`) records each
+The 2026-10-06 census (`ledgers/curation.toml`) records each
 language's backlinks and route: 21 clear the fame gate
-and 67 are first implementations.
+and 69 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
@@ -547,7 +609,9 @@ Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
   zeros skip 2r productions, and the sentinel appends table[r]. The next empty
   production consumes the answer and halts.
 
-  Source is exactly 5T + 2n + 1 characters; execution takes n + 3 + 2r steps.
+  A non-constant table's source is exactly 5 * 2^m + 2n + 1 characters for
+  m essential inputs (5T + 2n + 1 when all are) and execution takes
+  n + 3 + 2r steps; a constant table's source is n + 2.
   Emission writes 2(T-1) padding zeros and 2T table productions without search:
   O(T) build work. Tests execute 309 tables and 3,352 rows, exhaustive through
   three inputs, then constants, parity and eight seeded random tables per arity
@@ -581,14 +645,14 @@ The 2026-10-01 fame audit covered eight census candidates:
   Escaped future patterns prevent earlier sweeps corrupting later rules.
   The selected entry becomes 0/1 and the suffix is deleted. Source is
   exactly 20*2^m + n + 53 characters, plus k + 10 for k = n - m > 0
-  ignored inputs; build work is O(T).
+  ignored inputs; a constant table is n + 9.  Build work is O(T).
 
 The constructions supply the bounds; dense size-difference ratios at
 n=8,10,12 are measurements. Each uses a 309-table, 3,352-row corpus.
 
 - Cyclic tag has a dense size-difference ratio of 3.997.
-- Boolfuck has a dense size-difference ratio of 3.903.
-- Subleq has a dense size-difference ratio of 2.926.
+- Boolfuck has a dense size-difference ratio of 3.981.
+- Subleq has a dense size-difference ratio of 1.994.
 - /// has a dense size-difference ratio of 4.000.
 
 - [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.

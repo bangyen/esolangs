@@ -481,6 +481,9 @@ class TestGuardsAndBoundaries:
         ("(10**20 + 1) / 1", "", "100000000000000000001\n"),
         # A float operand divides as a float, exact or not.
         ("1.5 / 3", "", "0.5\n"),
+        # An exact float quotient becomes an exact integer again, so a later
+        # +1 lands on it instead of being absorbed by float rounding.
+        ("10**30 / 1.0 + 1", "", "1000000000000000019884624838657\n"),
         # Integers are unbounded, past Python's 4300-digit str limit.
         ("10**4400 + 1", "", "1" + "0" * 4399 + "1\n"),
         # A short-circuit must not skip a read the spec says happens.

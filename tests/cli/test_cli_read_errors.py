@@ -5,28 +5,15 @@ from __future__ import annotations
 import io
 import sys
 import threading
-from pathlib import Path
 
 import pytest
 
 from esolangs.cli import main
 from esolangs.cli.io import (
     _bounded_read,
-    _portable_language,
     _read_stdin,
     _write_output,
 )
-from esolangs.exceptions import ProgramError
-
-
-@pytest.mark.parametrize("content", [b"\xff", b"{", b"[]", b'{"language": 3}'])
-def test_portable_reader_rejects_invalid_documents(
-    tmp_path: Path, content: bytes
-) -> None:
-    path = tmp_path / "program.json"
-    path.write_bytes(content)
-    with pytest.raises(ProgramError, match="portable program"):
-        _portable_language(str(path))
 
 
 @pytest.mark.parametrize("raw", [b"\xff", b"\x80"])

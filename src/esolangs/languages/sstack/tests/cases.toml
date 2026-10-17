@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = "\"300/a\" :a:"
+stdin = ""
+expect = "HaltError"
+claim = ":x: with a top above 255"
+
+[[spec_triggers]]
+program = ";a;"
+stdin = ""
+expect = "InputExhaustedError"
+claim = ";x; at EOF"
+
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "stray character"
+
+[[spec_triggers]]
+program = "[a\\b/"
+stdin = ""
+expect = "ProgramError"
+claim = "unmatched brackets"

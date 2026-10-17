@@ -37,6 +37,10 @@ from esolangs.languages.bitwise_cyclic_tag.generator import (
     LANGUAGE as _BITWISE_CYCLIC_TAG_LANGUAGE,
 )
 from esolangs.languages.bitwise_cyclic_tag.generator import bitwise_cyclic_tag
+from esolangs.languages.blindfolded_arithmetic.generator import (
+    LANGUAGE as _BLINDFOLDED_ARITHMETIC_LANGUAGE,
+)
+from esolangs.languages.blindfolded_arithmetic.generator import blindfolded_arithmetic
 from esolangs.languages.boolfuck.generator import LANGUAGE as _BOOLFUCK_LANGUAGE
 from esolangs.languages.boolfuck.generator import boolfuck
 from esolangs.languages.brainfuck.generator import LANGUAGE as _BRAINFUCK_LANGUAGE
@@ -87,16 +91,18 @@ from esolangs.languages.fish.generator import LANGUAGE as _FISH_LANGUAGE
 from esolangs.languages.fish.generator import fish
 from esolangs.languages.flowchart.generator import LANGUAGE as _FLOWCHART_LANGUAGE
 from esolangs.languages.flowchart.generator import flowchart
+from esolangs.languages.for_thorn.generator import LANGUAGE as _FOR_THORN_LANGUAGE
+from esolangs.languages.for_thorn.generator import for_thorn
 from esolangs.languages.forbin.generator import LANGUAGE as _FORBIN_LANGUAGE
 from esolangs.languages.forbin.generator import forbin
-from esolangs.languages.forth.generator import LANGUAGE as _FORTH_LANGUAGE
-from esolangs.languages.forth.generator import forth
 from esolangs.languages.fractran.generator import LANGUAGE as _FRACTRAN_LANGUAGE
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.grapheme.generator import LANGUAGE as _GRAPHEME_LANGUAGE
 from esolangs.languages.grapheme.generator import grapheme
 from esolangs.languages.home_row.generator import LANGUAGE as _HOME_ROW_LANGUAGE
 from esolangs.languages.home_row.generator import home_row
+from esolangs.languages.hot.generator import LANGUAGE as _HOT_LANGUAGE
+from esolangs.languages.hot.generator import hot
 from esolangs.languages.inject.generator import LANGUAGE as _INJECT_LANGUAGE
 from esolangs.languages.inject.generator import inject
 from esolangs.languages.intercal.generator import LANGUAGE as _INTERCAL_LANGUAGE
@@ -141,8 +147,8 @@ from esolangs.languages.rotfuck.generator import LANGUAGE as _ROTFUCK_LANGUAGE
 from esolangs.languages.rotfuck.generator import rotfuck
 from esolangs.languages.rubic.generator import LANGUAGE as _RUBIC_LANGUAGE
 from esolangs.languages.rubic.generator import rubic
-from esolangs.languages.sbleq.generator import LANGUAGE as _SBLEQ_LANGUAGE
-from esolangs.languages.sbleq.generator import sbleq
+from esolangs.languages.s_bleq.generator import LANGUAGE as _S_BLEQ_LANGUAGE
+from esolangs.languages.s_bleq.generator import s_bleq
 from esolangs.languages.sendstuff.generator import LANGUAGE as _SENDSTUFF_LANGUAGE
 from esolangs.languages.sendstuff.generator import sendstuff
 from esolangs.languages.six_five.generator import LANGUAGE as _SIX_FIVE_LANGUAGE
@@ -203,6 +209,7 @@ _LANGUAGES = (
     _BIT_TILDE_LANGUAGE,
     _BITDEQUE_LANGUAGE,
     _BITWISE_CYCLIC_TAG_LANGUAGE,
+    _BLINDFOLDED_ARITHMETIC_LANGUAGE,
     _BOOLFUCK_LANGUAGE,
     _BRAINFUCK_LANGUAGE,
     _BRAINIF_LANGUAGE,
@@ -226,11 +233,12 @@ _LANGUAGES = (
     _FARGO_LANGUAGE,
     _FISH_LANGUAGE,
     _FLOWCHART_LANGUAGE,
+    _FOR_THORN_LANGUAGE,
     _FORBIN_LANGUAGE,
-    _FORTH_LANGUAGE,
     _FRACTRAN_LANGUAGE,
     _GRAPHEME_LANGUAGE,
     _HOME_ROW_LANGUAGE,
+    _HOT_LANGUAGE,
     _INJECT_LANGUAGE,
     _INTERCAL_LANGUAGE,
     _INTERPROGCK8_LANGUAGE,
@@ -252,7 +260,7 @@ _LANGUAGES = (
     _RAM0_LANGUAGE,
     _ROTFUCK_LANGUAGE,
     _RUBIC_LANGUAGE,
-    _SBLEQ_LANGUAGE,
+    _S_BLEQ_LANGUAGE,
     _SENDSTUFF_LANGUAGE,
     _SIX_FIVE_LANGUAGE,
     _SLASHES_LANGUAGE,
@@ -292,6 +300,7 @@ __all__ = [
     "bit_tilde",
     "bitdeque",
     "bitwise_cyclic_tag",
+    "blindfolded_arithmetic",
     "boolfuck",
     "brainfuck",
     "brainif",
@@ -315,11 +324,12 @@ __all__ = [
     "fargo",
     "fish",
     "flowchart",
+    "for_thorn",
     "forbin",
-    "forth",
     "fractran",
     "grapheme",
     "home_row",
+    "hot",
     "inject",
     "intercal",
     "interprogck8",
@@ -341,7 +351,7 @@ __all__ = [
     "ram0",
     "rotfuck",
     "rubic",
-    "sbleq",
+    "s_bleq",
     "sendstuff",
     "six_five",
     "slashes",

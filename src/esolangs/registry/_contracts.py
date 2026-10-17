@@ -15,6 +15,7 @@ type InputShape = Literal[
     "char_stream_padded",
     "char_stream_cyclic",
     "row_index",
+    "row_number",
 ]
 type WidthEffect = Literal["layout", "wrap", "none"]
 

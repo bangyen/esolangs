@@ -3,9 +3,9 @@
 Each input is read into a cell as a byte and, if tested, hoisted to 0 or 4; a
 node adds that to its goto's own ``c`` operand to pick the zero or one
 trampoline.  Up to 16 rows the shorter of tree and shared residuals in input
-order, and 32 rows also try the shared residual tree; wider tables use the
-packed decoder over essential inputs (or a read-and-print constant root),
-which indexes ``m``-bit cells.
+order, and 32 rows (or 32 essential rows) also try the residual trees; wider
+tables use the packed decoder over essential inputs (or a read-and-print
+constant root), which indexes ``m``-bit cells.
 
 Size:
     Packed is O(T) cells over O(T/log T) words; n=4 parity: 614 chars,
@@ -16,7 +16,6 @@ Decisions:
     them, so equal cells cannot share a word and a constant run costs a cell each.
 """
 
-from esolangs.generation.constant_projection import balanced_projection
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -27,7 +26,7 @@ from esolangs.generation.helpers import (
     input_weights,
     stored_inputs,
 )
-from esolangs.generation.wrap import balance_program, wrap_grid
+from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -111,26 +110,32 @@ def addsubjump(truth_table: str) -> str:
         return in_input_order(truth_table, _addsubjump_candidate)
     packed = _addsubjump_packed(truth_table)
     if len(truth_table) == 32:
+        # Shared residuals save 18.9% of chars against packed alone at n=5
+        # (200 random tables).
         shared = _addsubjump_ordered(truth_table, tuple(range(5)), shared=True)
         return min((packed, shared), key=len)
+    n = _validate_truth_table(truth_table)
+    if len(input_weights(truth_table, n)[1]) <= 32:
+        # Route by essential rows: the tree folds the ignored levels.  It saves
+        # 18.7% (n=6) and 20.6% (n=7) of chars with five essential inputs.
+        tree = _addsubjump_candidate(truth_table, tuple(range(n)))
+        return min((packed, tree), key=len)
     return packed
 
 
 def _addsubjump_packed(truth_table: str, *, keep_ignored_inputs: bool = False) -> str:
-    """Emit the shorter full or essential-input packed decoder."""
+    """Emit the essential-input packed decoder, or the full one if asked."""
     n = _validate_truth_table(truth_table)
     if keep_ignored_inputs:
         return _packed_build(truth_table, [1] * n)
     weights, projected = input_weights(truth_table, n)
     if all(weights):
         return _packed_build(truth_table, weights)
-    legacy = _packed_build(truth_table, [1] * n)
-    folded = (
-        _addsubjump_ordered(truth_table, tuple(range(n)))
-        if len(projected) == 1
-        else _packed_build(projected, weights)
-    )
-    return min(legacy, folded, key=len)
+    # The full-table build never won against this one: 0 of 322 tables with
+    # ignored inputs (n=6..8, 1..n-1 essential), so it is not raced.
+    if len(projected) == 1:
+        return _addsubjump_ordered(truth_table, tuple(range(n)))
+    return _packed_build(projected, weights)
 
 
 def _packed_build(truth_table: str, weights: list[int]) -> str:
@@ -269,14 +274,22 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
 
 def balance_addsubjump(table: str, default: str) -> str:
     """Keep the former full packed layout among the balanced candidates."""
-    if len(table) <= 16 or all(input_weights(table, _validate_truth_table(table))[0]):
+    if (
+        len(table) <= 16
+        or len(set(table)) == 1
+        or all(input_weights(table, _validate_truth_table(table))[0])
+    ):
         return balance_program(default, "addsubjump")
     legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
     if len(table) == 32:
         legacy = min(
             legacy, _addsubjump_ordered(table, tuple(range(5)), shared=True), key=len
         )
-    return balanced_projection(default, legacy, "addsubjump")
+    return min(
+        balance_program(default, "addsubjump"),
+        balance_program(legacy, "addsubjump"),
+        key=balance_score,
+    )
 
 
 def _addsubjump_candidate(truth_table: str, perm: tuple[int, ...]) -> str:

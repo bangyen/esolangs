@@ -1,0 +1,47 @@
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched bracket"
+
+[[spec_triggers]]
+program = "\"f\"{"
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched brace"
+
+[[spec_triggers]]
+program = "\"f"
+stdin = ""
+expect = "ProgramError"
+claim = "an unterminated quote"
+
+[[spec_triggers]]
+program = "\"f\""
+stdin = ""
+expect = "ProgramError"
+claim = "a call to an undeclared function"
+
+[[spec_triggers]]
+program = "\"f\"{}\"f\"{}"
+stdin = ""
+expect = "ProgramError"
+claim = "a duplicate declaration"
+
+[[spec_triggers]]
+program = ","
+stdin = ""
+expect = "InputExhaustedError"
+claim = ", at EOF"
+
+[[spec_triggers]]
+program = "<"
+stdin = ""
+expect = "HaltError"
+claim = "moving left of cell 0"
+
+[[spec_triggers]]
+program = "!>!"
+stdin = ""
+expect = "HaltError"
+claim = "a second !"

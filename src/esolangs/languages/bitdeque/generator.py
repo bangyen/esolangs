@@ -3,11 +3,11 @@
 The load pushes every input bit as the fixed pair ``PUSH INVERT`` / ``INVERT
 PUSH`` (``2n`` commands, no absolute ``GOTO``); each node pops one bit and
 ``GOTO``s its one-subtree, and a leaf drains the deque, pushes the answer and
-halts through a low-address trampoline.  The split order is the shortest
-found by ``best_input_order``; rotations happen inside the tree, so the load
-is byte-identical under every order.  Constant subtrees are one leaf and a
-repeated subtree at its level is reached by ``GOTO``.  Past n=4 the shorter of
-the tree and a linear discard lookup wins.
+halts through a low-address trampoline.  The split order is input order
+(a greedy reorder saved 0.9% at n=8, 60 random tables); rotations happen
+inside the tree, so the load is byte-identical under every order.  Constant
+subtrees are one leaf and a repeated subtree at its level is reached by
+``GOTO``.
 
 Size:
     O(n) for parity and and, O(T) for dense tables; n=10 parity: 682 chars,
@@ -16,8 +16,8 @@ Size:
 Decisions:
     A deque's ``EJECT``/``INJECT`` work the head, so any bit reaches an end at
     two commands per position: measured, not modelled.  Sharing: n=4, all
-    65,536 tables, -49.3%, none longer.  The linear lookup: tree 0.48x to
-    0.29x at n=5..10, random tables; never longer.
+    65,536 tables, -49.3%, none longer.  A linear discard lookup raced the tree
+    and won on 0 of 215 tables (random, parity, and, majority; n=5..9): retired.
 """
 
 import re
@@ -27,8 +27,6 @@ from typing import Any
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    best_input_order,
-    input_weights,
     runs,
     same_tokens,
     subtree_ids,
@@ -57,12 +55,8 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     """
     small = len(truth_table) <= 16
     short = small and width is not None and width < len(BITDEQUE_PAIR[0])
-    program = best_input_order(
-        truth_table,
-        lambda table, perm: _bitdeque_ordered(table, perm, short=short),
-    )
-    if not small:
-        program = min(program, _bitdeque_linear(truth_table), key=len)
+    n = _validate_truth_table(truth_table)
+    program = _bitdeque_ordered(truth_table, tuple(range(n)), short=short)
     if width is not None:
         return _bitdeque(program, width)
     return program
@@ -116,58 +110,6 @@ def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
         # Called only to raise if the runs do not match the setters.
         runs(template, TEMPLATE_CHAR, setters)
     return setters
-
-
-def _bitdeque_linear(truth_table: str) -> str:
-    """Push the table, then discard its prefix and suffix in O(T) text.
-
-    After the table is pushed, each run pushes its bit, ``POP`` takes it into
-    the register, and a ``GOTO`` picks a discard block: ``EJECT`` the upper
-    half off the head for a one, ``POP`` the lower half off the tail for a
-    zero, ``2**(n-1-i)`` commands each, meeting at a block that zeroes the
-    register.  The last input skips that.  ``2T`` commands long, ``T`` executed.
-    An ignored input's bit is popped straight back and the register zeroed,
-    so the table indexes the rest.
-    """
-    n = _validate_truth_table(truth_table)
-    weights, truth_table = input_weights(truth_table, n)
-    tokens: list[str] = []
-    register = 0
-    for bit in truth_table:
-        value = int(bit)
-        if value != register:
-            tokens.append("INVERT")
-            register = value
-        tokens.append("PUSH")
-    if register:
-        tokens.append("INVERT")
-    # Command numbers count from 1, as ``GOTO`` does.
-    at = len(tokens) + 1
-    for i, k in enumerate(weights):
-        if not k:
-            # Pop the bit back; a one skips the first INVERT, zeroing it.
-            tokens += [_SETTER, "POP", f"GOTO {at + 5}", "INVERT", "INVERT"]
-            at += 6
-            continue
-        # ``_SETTER`` is one token of text but two commands once filled.
-        at += 2
-        # Command numbers, with ``at`` the ``POP`` that reads the bit back:
-        # the zero block spans ``at + 2 .. at + k + 1``, its exit ``at + k +
-        # 2 .. at + k + 4``, the one block ``at + k + 5 .. at + 2k + 4`` and
-        # the shared reset begins at ``at + 2k + 5``.
-        one_block = at + k + 5
-        meet = at + 2 * k + 5
-        tokens += [_SETTER, "POP", f"GOTO {one_block}"]
-        tokens += ["POP"] * k
-        # Force the register to one, then jump: a one skips the INVERT.
-        tokens += [f"GOTO {at + k + 4}", "INVERT", f"GOTO {meet}"]
-        tokens += ["EJECT"] * k
-        at = meet
-        if i < n - 1:
-            # Force the register to zero: a one skips the first INVERT.
-            tokens += [f"GOTO {at + 2}", "INVERT", "INVERT"]
-            at += 3
-    return " ".join(tokens)
 
 
 def _bitdeque_ordered(

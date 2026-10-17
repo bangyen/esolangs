@@ -11,10 +11,9 @@ hides this using [`describe`](#describe) metadata.
 | --- | --- |
 | `generate` | print a program computing a truth table |
 | `run` | run a program through its interpreter |
-| `debug` | run under the breakpoint/watch VM |
 | `encode` | print the stdin that feeds a bit string |
 | `read-answer` | print the answer bit a program's output carries |
-| `list` | list the languages; `--details` adds the generator, template and example markers; `--state-model` and `--shape` filter by category and construction shape |
+| `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives every capability field to filter with `jq` |
 | `describe` | how one language reads input and where its answer lands |
 
 `encode` and `read-answer` wrap `run` for one input row:
@@ -59,7 +58,7 @@ Two kinds of language need a different call:
   ```
 
   `bits[0]` is the most significant input. Template languages are those with
-  `describe(name)["parameterized"]` (CLI: `list --template`).
+  `describe(name)["parameterized"]` (CLI: the `tmpl` mark of `list --details`).
 
 - Piet returns an image source:
 
@@ -77,7 +76,8 @@ Two kinds of language need a different call:
 - a `Raster`, for images;
 - a `CompressedText` (Unary).
 
-`str()` of the last two is a summary, not source. `dump_program` and
+`str()` of a `Raster` is a summary, not source; of a `CompressedText`, the
+expanded text. `dump_program` and
 `load_program` round-trip all three as text.
 
 ## Work with one language
@@ -152,6 +152,7 @@ Build language-specific stdin with `encode_inputs`:
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Ascenic | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Blindfolded Arithmetic | `row_number` | `0`/`1` | `'6\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Caballo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
@@ -173,7 +174,7 @@ Build language-specific stdin with `encode_inputs`:
 | Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 43 that read stdin take one `0`/`1` character per bit -- `'101'`.
+The other 44 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 17 embed their inputs and read no stdin: `instantiate` fills them.
 The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
@@ -211,7 +212,8 @@ A timeout on a termination language remains undecided. Their
 
 ## Width
 
-`generate` and CLI `--width` bound columns through layout.
+`generate` and CLI `--width` request a column count, not a bound: a token
+longer than the width overruns it (a Quassaunt node body reaches 180).
 `describe(language)["width_effect"]` identifies the three behaviours,
 including the languages it does not affect (`"none"`).
 
@@ -222,7 +224,7 @@ defaults. Pass `settings=DialectSettings(expression_syntax="postfix")` to
 `generate`, `run` or `make_debugger`. On the CLI, use `--settings JSON` or the repeatable `--set KEY=VALUE`.
 
 A generated program retains its settings. Plain text saved to a file does
-not, so `run` needs them again; `--portable` keeps them.
+not, so `run` needs them again; `dump_program` keeps them.
 
 ## Bounded execution
 
@@ -284,21 +286,7 @@ returns output on halt. When either bound expires it raises
 
 ## Debugging
 
-`esolangs debug` runs a program under the breakpoint/watch VM and reports
-where it stopped:
-
-```bash
-esolangs generate brainfuck 0110 > bf.txt
-printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
-```
-
-| Flag | Does |
-| --- | --- |
-| `--steps` | bounds the run |
-| `--watch-cell` | prints one value per step |
-| `--break-at`, `--break-on-cell I=V`, `--break-on-output` | each stops with its condition still true |
-
-From Python, the stepping API lives in `esolangs.debugger`: `VM`,
+The stepping API lives in `esolangs.debugger`: `VM`,
 `Debugger`, `make_vm`, `make_debugger`, `StopReason`, and `STOP_REASONS`.
 
 To step a text program and inspect its state:
@@ -318,7 +306,7 @@ print(vm.ip, vm.memory, vm.output)
 
 `make_debugger(...).run()` returns one of `STOP_REASONS`:
 `"halted"`, `"breakpoint"`, `"max_steps"`, or `"timeout"`. Program faults raise
-an exception instead; the CLI catches it and prints `stopped: raised`.
+an exception instead.
 
 Every language steps under the debugger.
 
@@ -328,8 +316,6 @@ Every language steps under the debugger.
 | Watches | `watch_cell(index)`, `watch_stack(slot)`: both return per-step histories |
 | Inspect | `ip` (shaped by `ip_shape`), `memory`, `ptr`, `stack`, `views` |
 
-- The CLI has only `--watch-cell`, so a stack language reports the cell as
-  never written.
 - A cell the machine has not reached reads `None`, so `break_on_cell(i, 0)`
   fires only once the pointer gets there.
 - `break_on_output(text)` stops once output contains `text`. After a hit,
@@ -390,14 +376,16 @@ There are more fields beyond these.
 
 ## Compatibility
 
-The package is beta until 1.0: a 0.x minor release may still break the
-surface below, and [CHANGELOG.md](CHANGELOG.md) lists every break.
+The CLI is a deliberate subset of the Python API, not a mirror of it:
+every command calls public functions, a capability lands in the API first,
+and the CLI gains a flag only for a shell workflow. Filtering, stepping and
+saving programs stay in Python.
 
 The public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus
 the documented CLI. Every other module (`esolangs.vm`, `esolangs.registry`,
 `esolangs.generation`, `esolangs.runtime`, ...) is internal.
 
-From 1.0, within a major release, compatibility covers:
+Within a major release, compatibility covers:
 
 - public names, their signatures (required arguments positional, optional
   ones keyword-only), and deliberate `EsolangError` exceptions;
@@ -414,6 +402,8 @@ generated program text, debugger presentation, internal modules, and private
 `_` names may change without deprecation; generated programs retain
 behaviour, not spelling or size.
 
-A breaking public change requires a major release. Coexisting replacements
+A breaking public change requires a major release, except that until 2.0 a
+minor release may remove CLI options and commands;
+[CHANGELOG.md](CHANGELOG.md) lists every break. Coexisting replacements
 are documented for at least one minor release.
 Security and correctness fixes may reject input accepted by mistake.

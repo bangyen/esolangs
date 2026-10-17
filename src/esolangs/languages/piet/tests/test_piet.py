@@ -116,6 +116,9 @@ def test_enclosed_white_terminates() -> None:
 
 def test_black_start_terminates() -> None:
     assert execute(raster((BLACK,))) == ""
+    # Beside a block that would push and print, the start still halts.
+    machine = _Machine(raster((BLACK, RED, DARK_MAGENTA)), ScriptedIO(""))
+    assert machine.halted
 
 
 def test_white_start_with_no_exit_terminates() -> None:
@@ -158,16 +161,6 @@ def test_input_number_skips_whitespace_until_eof() -> None:
     at_end: list[int] = []
     _execute_command((4, 2), 1, at_end, ScriptedIO(""))
     assert at_end == []
-
-
-def test_public_api_runs_a_raster() -> None:
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, DARK_MAGENTA),
-        (LIGHT_RED, LIGHT_RED, RED, DARK_MAGENTA),
-        (BLACK, BLACK, BLACK, DARK_MAGENTA),
-    )
-    assert esolangs.describe("Piet")["source_kind"] == "raster"
-    assert esolangs.run("Piet", program) == "3"
 
 
 def test_public_api_loads_a_png(tmp_path: Path) -> None:
@@ -216,6 +209,7 @@ def test_codel_chooser_selects_the_documented_edge(
         ((2, 2), [9], [0]),
         ((2, 2), [0], [1]),
         ((3, 0), [8, 3], [1]),
+        ((3, 0), [3, 3], [0]),  # greater is strict
         ((4, 0), [8], [8, 8]),
         ((4, 1), [1, 2, 3, 3, 1], [3, 1, 2]),
     ],
@@ -274,13 +268,6 @@ def test_a_depth_zero_roll_pops_its_operands() -> None:
     assert stack == [5]
 
 
-def test_the_wiki_roll_example() -> None:
-    """1,2,3 then push 3 and 1, roll: 3,1,2."""
-    stack = [1, 2, 3, 3, 1]
-    _execute_command((4, 1), 1, stack, ScriptedIO())
-    assert stack == [3, 1, 2]
-
-
 def test_switch_transition_changes_the_run_codel_chooser() -> None:
     program = raster(
         (LIGHT_RED, BLACK, BLACK, LIGHT_CYAN),
@@ -329,6 +316,17 @@ def test_halted_transition_preserves_state() -> None:
 
     state = ((0, 0), 0, -1, (3, 5), True)
     assert _advance(state, ((BLACK,),)) == (state, None)
+    # A lone black codel halts either way; red -> dark red would push.
+    assert _advance(state, ((RED, DARK_RED),)) == (state, None)
+
+
+def test_switch_flips_the_codel_chooser_by_parity() -> None:
+    from esolangs.languages.piet.interpreter import _advance
+
+    rows = ((RED, LIGHT_CYAN),)  # hue +3, lightness +2: switch
+    for top, cc in ((1, 1), (2, -1), (3, 1)):
+        state, _effect = _advance(((0, 0), 0, -1, (top,), False), rows)
+        assert state[2:4] == (cc, ())
 
 
 def test_numeric_and_character_commands_share_the_input_cursor() -> None:

@@ -10,7 +10,7 @@ bit).
 
 Size:
     O(T) for dense tables, about n**2 for parity and linear in n for ``and``;
-    n=10 random 1847: 12,363 chars, n=10 parity: 2,424 chars, n=10 and: 224
+    n=10 random 1847: 11,071 chars, n=10 parity: 2,424 chars, n=10 and: 196
     chars.
 
 Decisions:
@@ -50,8 +50,18 @@ from esolangs.registry._language import Example, Language
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
 
-#: Levels sharing one result cell; measured best of 2 to 5 at n = 3 to 10.
+#: Levels sharing one result cell.  No closed form picks it: a leaf node's
+#: result flip travels ~3 band cells while band transfers fall as 1/(2**band-1)
+#: an entry, an interior optimum near 3, but the sharing of deferred residuals
+#: removes leaf flips at n >= 8 and the argmin then depends on the class.
+#: Measured chars an entry over 1..6: random n=3..7 best 3; random n=8..11
+#: best 5 (6.0, 10.2, 10.2, 10.0% under 3); parity n=8, 10, tiled n=10 and
+#: sparse n=10 best 3, and majority n=8 best 3 but n=10 best 4.  From
+#: ``WIDE_FROM`` the build is the smaller of the two named bands, so it is
+#: never worse than 3; below it 5 never won, so only 3 is built.
 BAND = 3
+BANDS = (BAND, 5)
+WIDE_FROM = 8
 
 #: Cells per level: input ``3 i``, flag ``3 k + 1``, band result ``3 k + 2``.
 STRIDE = len(PAIR[0]) - 1
@@ -66,15 +76,15 @@ def _band_cell(level: int) -> int:
     return STRIDE * level + 2
 
 
-def _owns_band_cell(n: int, level: int) -> bool:
+def _owns_band_cell(n: int, level: int, band: int) -> bool:
     """Whether ``level`` opens a new band of result cells.
 
-    Bands of :data:`BAND` levels are counted up from the leaves, so the
-    band-owning levels are ``n - 1``, ``n - 1 - BAND``, and so on: exactly
-    those with ``(n - BAND - level - 1) % BAND == 0``.  The virtual root
+    Bands of ``band`` levels are counted up from the leaves, so the
+    band-owning levels are ``n - 1``, ``n - 1 - band``, and so on: exactly
+    those with ``(n - band - level - 1) % band == 0``.  The virtual root
     (level -1) owns no cell.
     """
-    return level >= 0 and (n - BAND - level - 1) % BAND == 0
+    return level >= 0 and (n - band - level - 1) % band == 0
 
 
 class _Builder:
@@ -134,18 +144,24 @@ def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     bound are dropped.
     """
     n = len(perm)
-    forms = [_smallfuck_tree(table, perm)]
+    forms = []
+    # The bank: random 0%, majority +14.1% at n=10; per-level: parity +40-130%.
     plans = dict.fromkeys(
         [(repeated_blocks(table), ()), repeated_bank(table, ranked=False)]
     )
-    for blocks, flags in plans:
-        if blocks:
-            forms.append(
-                _smallfuck_tree(table, perm, shared_blocks=blocks, flag_levels=flags)
-            )
+    # Paired roots: random +15.9/+20.5/+23.2% at n=9/10/11 (12 tables), 0% below 8.
     paired = _paired_roots(table)
-    if paired:
-        forms.append(_smallfuck_tree(table, perm, paired_roots=paired))
+    for band in BANDS if n >= WIDE_FROM else BANDS[:1]:
+        forms.append(_smallfuck_tree(table, perm, band=band))
+        for blocks, flags in plans:
+            if blocks:
+                forms.append(
+                    _smallfuck_tree(
+                        table, perm, shared_blocks=blocks, flag_levels=flags, band=band
+                    )
+                )
+        if paired:
+            forms.append(_smallfuck_tree(table, perm, paired_roots=paired, band=band))
     return min(
         (code for code, cost in forms if cost <= 9 * n * n + 100 * n + 20), key=len
     )
@@ -188,8 +204,10 @@ class _Tree:
         pending_levels: tuple[int, ...],
         selected: dict[tuple[int, int], int],
         pairs: dict[int, int],
+        band: int,
     ) -> None:
         self.n = n
+        self.band = band
         self.truth_table = truth_table
         self.perm = perm
         self.constant = constant
@@ -273,7 +291,7 @@ class _Tree:
             if self.pair_phase:
                 self.clear_prefix(level + 1)
             return _Cost(self.builder.count - start)
-        if not _owns_band_cell(self.n, level):
+        if not _owns_band_cell(self.n, level, self.band):
             return self.tree(level + 1, lo, hi, result, on, free)
         own = _band_cell(level + 1)
         cost = self.tree(level + 1, lo, hi, own, on, free)
@@ -524,14 +542,15 @@ def _smallfuck_tree(
     shared_blocks: tuple[tuple[int, int], ...] = (),
     flag_levels: tuple[int, ...] = (),
     paired_roots: tuple[tuple[int, int], ...] = (),
+    band: int = BAND,
 ) -> tuple[str, int]:
     """Emit one order's template; level ``k`` tests input ``perm[k]``.
 
     ``truth_table`` is already permuted.  Level ``k`` keeps its flag in
     cell ``3 k + 1``.  Answers are XORed into one cell per band of
-    :data:`BAND` levels, counted up from the leaves: a band's top level
+    ``band`` levels, counted up from the leaves: a band's top level
     ``k`` owns cell ``3 k + 2`` and transfers it into its parent's cell
-    when done, so a flip travels at most ``3 BAND`` cells and a node costs
+    when done, so a flip travels at most ``3 band`` cells and a node costs
     O(1) either way.  An arm whose lower half is constant needs no flag:
     that constant is flipped in first and the upper arm built inverted, so
     a node over two leaves is ``result ^= bit`` alone.
@@ -564,6 +583,7 @@ def _smallfuck_tree(
         pending_levels,
         selected,
         pairs,
+        band,
     )
     prefix = tree.arm(-1, 0, len(truth_table), ANSWER, "1")
     if pairs:

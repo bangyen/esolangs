@@ -174,3 +174,65 @@ def test_single_column_cannot_close_a_clockwise_ring() -> None:
     machine.step()
     with pytest.raises(ValueError, match="ring is not closed"):
         machine.step()
+
+
+@pytest.mark.parametrize("split", [1, 2, 3])
+def test_banded_lookup_selects_a_strip_by_the_first_inputs(split: int) -> None:
+    from esolangs.languages.clockwise.generator import _clockwise_banded
+    from esolangs.runtime._evaluate import _evaluate
+
+    # The second input is ignored and the sixth trails: a head reads past
+    # one and the rail reads the other.
+    table = "".join(
+        str((i >> 5) ^ (i >> 3) & 1 ^ (i >> 1) & (i >> 2) & 1) for i in range(64)
+    )
+    program = _clockwise_banded(table, split)
+    assert _evaluate("Clockwise", program, inputs=6) == table
+    # A positive control: dropping one entry's + flips that row alone.
+    lines = program.splitlines()
+    row, col = next(
+        (r, c)
+        for r, line in enumerate(lines)
+        for c, ch in enumerate(line)
+        if ch == "+" and lines[r - 1][c] == "!"
+    )
+    lines[row] = lines[row][:col] + " " + lines[row][col + 1 :]
+    assert _evaluate("Clockwise", "\n".join(lines), inputs=6) != table
+
+
+def test_balance_bands_a_random_table() -> None:
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+
+    table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
+    balanced = esolangs.generate("Clockwise", table, balance=True)
+    # 184 columns by default; two selected strips of sixteen entries each.
+    assert (
+        balance_score(balanced)[0]
+        < 120
+        < balance_score(esolangs.generate("Clockwise", table))[0]
+    )
+
+
+@pytest.mark.medium
+def test_balance_split_rule_matches_the_split_search() -> None:
+    """Oracle: the {k//3, k//3+1} contest is no wider than scanning every split."""
+    import random
+
+    from esolangs.generation.helpers import essential_inputs
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.clockwise.generator import (
+        _balance,
+        _clockwise_banded,
+        clockwise,
+    )
+
+    rng = random.Random(5)
+    for n in (4, 5, 6, 7, 8):
+        table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+        k = len(essential_inputs(table, n))
+        searched = min(
+            (_clockwise_banded(table, s) for s in range(1, k)), key=balance_score
+        )
+        rule = _balance(table, clockwise(table))
+        assert balance_score(rule)[0] <= balance_score(searched)[0]

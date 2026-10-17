@@ -1,0 +1,18 @@
+[[spec_triggers]]
+program = "+."
+settings = { rotation = "sideways" }
+expect = "ArgumentError"
+claim = "a rotation setting other than backward or forward"
+stdin = ""
+
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a partnerless bracket that fires."
+
+[[spec_triggers]]
+program = ","
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: , at EOF."

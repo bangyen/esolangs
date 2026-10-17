@@ -1,11 +1,14 @@
 """Covers :mod:`esolangs.languages.streetcode.generator`."""
 
+import itertools
+import random
 from importlib import import_module
 
 import pytest
 
 from esolangs.generation.wrap import shortest
 from esolangs.languages import generators as boolean
+from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import row_bits
 
@@ -50,8 +53,8 @@ class TestStreetcode:
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
                 tree = module._streetcode_tree(table)  # noqa: SLF001
-                shared = module._streetcode_shared_programs(table, n, tree)  # noqa: SLF001
-                assert boolean.streetcode(table) == shortest(*shared)
+                shared = module._streetcode_shared_program(n, tree)  # noqa: SLF001
+                assert boolean.streetcode(table) == shortest(shared)
 
     @pytest.mark.parametrize("table", ["01100110", "00010101"])
     def test_equal_siblings_share_one_drawing(self, table: str) -> None:
@@ -97,40 +100,20 @@ class TestStreetcode:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_streetcode(program, [str(b) for b in bits]) == "0"
 
-    def test_input_reordering_folds_a_scattered_table(self) -> None:
-        """The tree splits in whichever order folds most, not input order."""
-        scattered = len(boolean.streetcode("10101010"))
-        aligned = len(boolean.streetcode("11110000"))
-        parity = len(boolean.streetcode("01101001"))
-        # Both are one-dependency tables, so reordering brings the scattered
-        # one down to the aligned one's shape.  It stays a few characters
-        # longer, and those characters are the walk that puts its bit in the
-        # cell the root's hall tests -- the price of the reorder, paid once
-        # in the prefix rather than per hall.
-        assert aligned < scattered < parity
-        assert scattered - aligned < 0.05 * aligned
-
-    def test_input_reordering_never_grows_a_program(self) -> None:
-        """The identity order is built first and ties keep it."""
-        parity = boolean.streetcode("01101001")
-        # Parity is the table where every order is equally bad, so the
-        # program is the identity one and carries no reordering walks.
-        assert "_I" not in parity
-
     @pytest.mark.parametrize(
         "table",
         ["10101010", "11001100", "01011010", "00111100", "10010110"],
     )
-    def test_reordered_programs_compute_the_table(self, table: str) -> None:
-        """A reordered program still computes its function."""
+    def test_scattered_programs_compute_the_table(self, table: str) -> None:
+        """A scattered table still computes its function."""
         program = boolean.streetcode(table)
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             got = run_streetcode(program, [str(b) for b in bits])
             assert got == table[combo], f"{table} inputs {bits}"
 
-    def test_reordering_keeps_the_reads_in_stream_order(self) -> None:
-        """Reordering moves where a bit is stored, never when it is read."""
+    def test_reads_stay_in_stream_order(self) -> None:
+        """Every input is read once, in stream order."""
         for table in ("10101010", "11110000", "01101001"):
             assert boolean.streetcode(table).count("I") == 3
 
@@ -182,7 +165,7 @@ class TestStreetcode:
 
     @pytest.mark.parametrize(
         ("table", "length"),
-        [("01", 302), ("0000", 340), ("0101", 340)],
+        [("01", 302), ("0000", 340), ("0101", 348)],
     )
     def test_the_emitted_program_has_an_exact_length(
         self, table: str, length: int
@@ -204,14 +187,6 @@ class TestStreetcode:
             assert set(boolean.streetcode(table)) <= allowed, table
         for width in (1, 20, 29, 33):
             assert set(boolean.streetcode("0110", width)) <= allowed, width
-
-    def test_only_identity_and_greedy_orders_are_offered(self) -> None:
-        """Streetcode never renders more than two order candidates."""
-        from esolangs.generation.helpers import input_orders
-
-        table = "01011010"
-        assert input_orders(table)[0] == (0, 1, 2)
-        assert len(input_orders(table)) <= 2
 
 
 def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
@@ -245,3 +220,101 @@ def test_quarter_turned_rendered_size_is_linear() -> None:
         len(boolean.streetcode("01101001" * (2 ** (n - 3)), 1)) for n in (5, 6, 7, 8)
     ]
     assert all(later < 2 * earlier for earlier, later in pairwise(sizes))
+
+
+@pytest.mark.parametrize("row", [0, 37, 63])
+def test_balance_folds_the_lookup_into_strips(row: int) -> None:
+    import esolangs
+
+    table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
+    program = str(esolangs.generate("Streetcode", table, balance=True))
+    rows = program.splitlines()
+    # 409x9 flat; the fold is about square.
+    assert max(map(len, rows)) < 2 * 2 * len(rows) < 409
+    assert run_streetcode(program, [str(bit) for bit in row_bits(row, 6)]) == table[row]
+
+
+def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:
+    """Positive control: the shared-sill fold's strip end frames a mouth."""
+    from esolangs.languages.streetcode.tests.fold_oracle import (
+        drives_alike,
+        shared_sill_fold,
+    )
+    from esolangs.runtime.io import ScriptedIO
+
+    generator = import_module("esolangs.languages.streetcode.generator")
+    run = import_module("esolangs.languages.streetcode.interpreter").run
+    table = "0" * 64 + "1" * 64
+    flat = generator._streetcode_flat(table, 7)  # noqa: SLF001
+    fold, origin = shared_sill_fold(flat, 30, east=True)
+    assert not drives_alike(flat, fold, origin)
+    io = ScriptedIO("0" * 7)
+    with pytest.raises(Exception, match="read past the end of input"):
+        run(fold.splitlines(), io)
+    # The same target, folded with a gap and wide margins, drives alike.
+    sound, origin = generator._streetcode_fold(flat, 30, east=True)  # noqa: SLF001
+    assert drives_alike(flat, sound, origin)
+
+
+def _random_table(rng: random.Random, n: int) -> str:
+    return "".join(rng.choice("01") for _ in range(1 << n))
+
+
+def _assert_every_fold_drives_alike(n: int, tables: int, step: int) -> None:
+    """Every ``step``-th target, both cut directions, random tables."""
+    from esolangs.languages.streetcode.tests.fold_oracle import drives_alike
+
+    generator = import_module("esolangs.languages.streetcode.generator")
+    rng = random.Random(n)
+    for _ in range(tables):
+        flat = generator._streetcode_flat(_random_table(rng, n), n)  # noqa: SLF001
+        span = max(map(len, flat.splitlines()))
+        for target in range(8, span + 1, step):
+            for east in (False, True):
+                fold, origin = generator._streetcode_fold(flat, target, east=east)  # noqa: SLF001
+                assert drives_alike(flat, fold, origin), (n, target, east)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "step"), [(3, 9), (4, 23), (5, 43)])
+def test_folds_drive_like_the_flat_street(n: int, step: int) -> None:
+    """Folds are sound by construction; the drive check is only the oracle."""
+    _assert_every_fold_drives_alike(n, 1, step)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(("n", "step"), [(6, 29), (7, 41), (8, 61)])
+def test_folds_drive_like_the_flat_street_at_scale(n: int, step: int) -> None:
+    _assert_every_fold_drives_alike(n, 3, step)
+
+
+@pytest.mark.parametrize(
+    "n",
+    [
+        pytest.param(1, marks=pytest.mark.medium),
+        pytest.param(2, marks=pytest.mark.medium),
+        pytest.param(3, marks=pytest.mark.slow),
+    ],
+)
+def test_the_folded_street_computes_every_table(n: int) -> None:
+    generator = import_module("esolangs.languages.streetcode.generator")
+    for bits in itertools.product("01", repeat=1 << n):
+        table = "".join(bits)
+        fold = generator._streetcode_folded(generator._streetcode_flat(table, n))  # noqa: SLF001
+        assert _evaluate("Streetcode", fold, inputs=n) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "count"), [(4, 4), (5, 4), (6, 2), (7, 1)])
+def test_the_folded_street_computes_random_tables(n: int, count: int) -> None:
+    import esolangs
+
+    generator = import_module("esolangs.languages.streetcode.generator")
+    rng = random.Random(100 + n)
+    for _ in range(count):
+        table = _random_table(rng, n)
+        fold = generator._streetcode_folded(generator._streetcode_flat(table, n))  # noqa: SLF001
+        assert len(fold.splitlines()) > 9
+        assert _evaluate("Streetcode", fold, inputs=n) == table
+        balanced = esolangs.generate("Streetcode", table, balance=True)
+        assert _evaluate("Streetcode", balanced, inputs=n) == table

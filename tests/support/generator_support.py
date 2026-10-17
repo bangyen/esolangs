@@ -2,6 +2,7 @@
 
 import random
 from itertools import pairwise
+from math import isqrt
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
@@ -144,25 +145,6 @@ def run_lines(run, program: str, bits: str) -> tuple[str, int]:
     return io.getvalue(), io.reads
 
 
-def assert_constant_balanced_shape(language, language_id, table, legacy, pair=None):
-    """Check that a projected constant retains its legacy balanced shape.
-
-    ``pair`` marks a template's input runs before balancing, as
-    ``balance_legacy_walk`` does, so the runs wrap whole.
-    """
-    from esolangs.generation.helpers import mark_runs, unmark
-    from esolangs.generation.wrap import balance_program, balance_score
-
-    if pair is None:
-        old = balance_program(legacy, language_id)
-    else:
-        n = len(table).bit_length() - 1
-        marked = mark_runs(legacy, TEMPLATE_CHAR, (pair,) * n)
-        old = unmark(balance_program(marked, language_id), TEMPLATE_CHAR, n)
-    balanced = esolangs.generate(language, table, balance=True)
-    assert balance_score(balanced) <= balance_score(old)
-
-
 def assert_shared_program(
     language, table, plain, command_bound, workspace_bound, *, size=len, rows=None
 ):
@@ -172,7 +154,7 @@ def assert_shared_program(
 
     n = len(table).bit_length() - 1
     program = esolangs.generate(language, table)
-    assert size(program) < size(plain)
+    assert plain is None or size(program) < size(plain)
     parameterized = esolangs.describe(language)["parameterized"]
     for row in range(len(table)) if rows is None else rows:
         expected = table[row]
@@ -200,3 +182,14 @@ def assert_shared_program(
         assert esolangs.read_answer(language, machine.output) == expected
         assert commands <= command_bound
         assert written.bits <= workspace_bound(program)
+
+
+def near_even_counts(size: int) -> set[int]:
+    """Return ``size`` and the chunk counts near the divisors of ``size - 1``.
+
+    Those are every count that splits ``size`` items near-evenly: O(sqrt size).
+    """
+    counts = {size}
+    for divisor in range(1, isqrt(size - 1) + 1):
+        counts.update((divisor + 1, (size - 1) // divisor + 1))
+    return counts

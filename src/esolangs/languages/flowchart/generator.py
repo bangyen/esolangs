@@ -672,7 +672,7 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     return stacked
 
 
-def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> str:
+def _flowchart_deque(truth_table: str) -> str:
     r"""Address one preloaded answer by walking the deque cursor to it.
 
     Entries ``2j`` and ``2j + 1`` are pushed onto deque ``j`` in that order,
@@ -692,7 +692,7 @@ def _flowchart_deque(truth_table: str, *, keep_constant_input: bool = False) -> 
     answer arm, ahead of its pop.
     """
     n = len(truth_table).bit_length() - 1
-    if not essential_inputs(truth_table, n) and not keep_constant_input:
+    if not essential_inputs(truth_table, n):
         # Read only the value bit of the final byte; earlier bytes are skipped.
         nodes = ["( )", *["/ /"] * (8 * (n - 1) + 1), _set(truth_table[0]), *_ANSWER]
         return "─".join(reversed(nodes))

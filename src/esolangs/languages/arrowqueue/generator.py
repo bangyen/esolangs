@@ -12,16 +12,23 @@ Size:
     5,500 at three lines a row).
     Narrow paths drop ignored inputs for area -46.8% / -70.5% at n=8, 1 / 2
     ignored.
+    Balanced, the cascade folds into side-by-side strips (``_folded``): one
+    line an entry, every exit local.  Mean rendered side vs the unfolded
+    candidates: 68.6 -> 26.7 at n=3, 275.6 -> 41.8 at n=6, 878.6 -> 65.9 at
+    n=8; none worse over all n<=3 and 30 random tables each at n=4..8.
 
 Decisions:
     The decision tree (``n <= 4``) was at most 3.9% smaller at n=4 and kept
     ignored inputs.
 """
 
+from math import isqrt
+
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
+    read_at,
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
@@ -42,9 +49,13 @@ _IGNORED = [" " * 5 + TEMPLATE_CHAR]
 #: The same setter one column in, for the narrow paths.
 _IGNORED_NARROW = [" " * 4 + TEMPLATE_CHAR]
 
-#: The cascade's row per table entry: a ring right of the ``+``, or none.  Two
-#: lines per ``1`` and one per ``0``: after the sentinel pop the queue is always
-#: ``R D L U``, which a two-line ring never leaves (brute-forced over the cells).
+#: The cascade's row per table entry.  The IP enters down column 1; each ``+``
+#: there pops a marker D, and the sentinel pop (heading R) leaves the queue
+#: ``R D L U``.  A ``0`` row then exits right off the grid and halts.  A ``1``
+#: row is a 2x3 loop of four ``+`` corners entered heading right: the first
+#: lap pops R, D, L, U at its corners in order while the two ``~`` push R and
+#: L back, after which the top pair bounces forever.  Tested in
+#: ``test_ring_pops_rdlu_then_sustains``.
 _ROWS = {"0": [" +"], "1": [" + +~+", "   +~+"]}
 
 #: A folded tail of ``1`` rows: every marker left laps the ``*`` square back
@@ -57,12 +68,10 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     return _program(truth_table, width)
 
 
-def _program(
-    truth_table: str, width: int | None = None, *, keep_constant_cascade: bool = False
-) -> str:
+def _program(truth_table: str, width: int | None = None) -> str:
     """Build the marker cascade, or a direct constant halt/ring."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_cascade:
+    if len(set(truth_table)) == 1:
         if truth_table[0] == "0":
             return "+" + ("\n" + TEMPLATE_CHAR) * n
         # The initial ~ supplies R to the top-left +. The ring's top ~
@@ -117,22 +126,140 @@ def _cascade(truth_table: str) -> list[str]:
     return [*rows, *_DRAINED_RING] if truth_table[-1] == "1" else rows
 
 
+#: A folded cascade's line per entry.  A sentinel pop leaves heading R with the
+#: queue ``R D L U``; a ``1`` laps the ``+~+`` ring the next line closes, a ``0``
+#: halts on an empty pop in the 2x2 of ``+`` below its own (the next line's
+#: column-2 ``+``, or its leaf ``+`` when that is blank).  Every exit stays in
+#: rows r, r+1 and columns 1..5, so strips stand side by side.
+_LEAF = {"0": " +++~+", "1": " + +~+"}
+
+#: The line below a strip's last entry: the ring's lower half, and for a ``0``
+#: the ``+`` its halt laps.  Columns 0 and 1 stay free for a fold's corridor.
+_LEAF_END = {"0": "  ++~+", "1": "   +~+"}
+
+#: Lines, entry column, exit column; the IP enters and leaves heading down.
+type _Block = tuple[list[str], int, int]
+
+
+def _folded(table: str, height: int) -> str | None:
+    """Fold the cascade into side-by-side strips at most ``height`` rows tall.
+
+    Each strip but the last ends in a corridor: ``*`` turns left below its
+    exit, ``*`` turns up its column 0, a lane clear to the top, where ``*``
+    turns right along row 1 (even strips) or row 0 (odd), across to the next
+    strip's entry ``*``.  Alternating the rows lets each crossing pass the
+    next lane where it is blank.  A strip whose column 0 is used (the middle)
+    shifts right one.  Templates fill in reading order, so stage ``j`` reads
+    the input its setter ranks; leaves are indexed in that order.  ``None``
+    when that order puts an ignored setter where a stage stands, or when one
+    strip holds everything.  ``height`` >= 10 fits the middle.
+    """
+    n = _validate_truth_table(table)
+    weights, _ = input_weights(table, n)
+    cap = height - 3
+    strips: list[list[_Block]] = [[]]
+    used = [0]
+
+    def place(block: _Block) -> None:
+        if used[-1] + len(block[0]) > cap:
+            strips.append([])
+            used.append(0)
+        strips[-1].append(block)
+        used[-1] += len(block[0])
+
+    setters = []  # (row, strip, chain position)
+    for j, weight in enumerate(weights):
+        place((_STAGE if weight else _IGNORED_NARROW, 3, 3))
+        row = used[-1] - len(strips[-1][-1][0]) + (1 if weight else 0)
+        setters.append((row, len(strips) - 1, j))
+    place((_MIDDLE, 3, 1))
+    reads = [0] * n
+    for rank, (_row, _strip, j) in enumerate(sorted(setters)):
+        if bool(weights[j]) != bool(weights[rank]):
+            return None
+        reads[j] = rank
+    leaves = read_at(table, [reads[j] for j in range(n) if weights[j]], n)
+    tail = len(leaves.rstrip(leaves[-1]))
+    lines = [_LEAF[bit] for bit in leaves[:tail]]
+    blocks: list[_Block] = [([line], 1, 1) for line in lines]
+    if leaves[-1] == "1":
+        blocks.append((_DRAINED_RING, 1, 1))
+    else:
+        blocks[-1] = ([lines[-1], _LEAF_END["1"]], 1, 1)
+    for block in blocks:
+        place(block)
+    if len(strips) == 1:
+        return None
+    return _render_strips(strips)
+
+
+def _render_strips(strips: list[list[_Block]]) -> str:
+    """Draw ``strips`` from row 2 with their corridors; see :func:`_folded`."""
+    last = len(strips) - 1
+    shifts = [
+        int(i < last and any(line[:1].strip() for b in strip for line in b[0]))
+        for i, strip in enumerate(strips)
+    ]
+    widths = [
+        shift + max(len(line) for b in strip for line in b[0])
+        for shift, strip in zip(shifts, strips, strict=True)
+    ]
+    heights = [
+        2 + sum(len(b[0]) for b in strip) + (i < last) for i, strip in enumerate(strips)
+    ]
+    grid = [[" "] * sum(widths) for _ in range(max(heights))]
+    x = 0
+    entries = []
+    for i, strip in enumerate(strips):
+        left = x + shifts[i]
+        entries.append(left + strip[0][1])
+        row = 2
+        for lines, _entry, _exit in strip:
+            for line in lines:
+                grid[row][left : left + len(line)] = line
+                row += 1
+        if i < last:
+            lines, _entry, exit_col = strip[-1]
+            if lines[-1] in _LEAF.values():
+                below = _LEAF_END["0" if lines[-1] == _LEAF["0"] else "1"]
+                grid[row][left : left + len(below)] = below
+            grid[row][x] = grid[row][left + exit_col] = "*"
+        x += widths[i]
+    grid[0][entries[0] - 1 : entries[0] + 1] = "~*"
+    x = 0
+    for i in range(last):
+        grid[1 - i % 2][x] = grid[1 - i % 2][entries[i + 1]] = "*"
+        x += widths[i]
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
+def _folds(table: str) -> list[str]:
+    """Folds at four heights around where the strips' width meets twice the height.
+
+    A fold is ``F`` lines (``6n + 7 +`` one a table entry) cut into strips of
+    ``h - 3`` rows, each about 6 columns wide: ``2h = 6F / (h - 3)``, so
+    ``h = (3 + sqrt(9 + 12F)) / 2``.  That lands within one row of the best
+    height at n=3..10 (4 random tables each; e.g. 59 vs 58-60 at n=10).
+    """
+    n = _validate_truth_table(table)
+    lines = 6 * n + 7 + len(table)
+    centre = (3 + isqrt(9 + 12 * lines)) // 2
+    folds = (
+        _folded(table, max(10, height)) for height in range(centre - 1, centre + 3)
+    )
+    return [fold for fold in folds if fold is not None]
+
+
 def _balance(table: str, default: str) -> str:
-    """Compare the tree and cascades with one, five and six columns."""
+    """Compare the tree, cascades with one, five and six columns, and folds."""
     if len(set(table)) == 1:
-        return min(
-            default,
-            *(
-                _program(table, width, keep_constant_cascade=True)
-                for width in (None, 1, 5, 6)
-            ),
-            key=balance_score,
-        )
+        return default
     return min(
         default,
         arrowqueue(table, 1),
         arrowqueue(table, 5),
         arrowqueue(table, 6),
+        *_folds(table),
         key=balance_score,
     )
 
@@ -154,5 +281,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="the queue and decision tree occupy fixed grid coordinates",
-    example=Example(pair=PAIR, expected="0 1 2 3"),
+    example=Example(pair=PAIR, expected=""),
 )

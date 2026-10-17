@@ -210,7 +210,7 @@ _UNLAMBDA_COMMAND = r"[.?][\s\S]|[\s\S]"
 
 
 @dataclass(frozen=True)
-class _TokenWrapper:
+class TokenWrapper:
     """A wrapper that breaks only between matches of ``pattern``.
 
     :func:`balance_program` fits the same tokens, reading ``pattern`` off it.
@@ -219,15 +219,16 @@ class _TokenWrapper:
     pattern: str
 
     def __call__(self, program: str, width: int) -> str:
+        """Wrap ``program`` to ``width`` between tokens."""
         return wrap_tokens(program, width, self.pattern)
 
 
-_dimensional = _TokenWrapper(_DIMENSIONAL_COMMAND)
-_six_five = _TokenWrapper(_SIX_FIVE_COMMAND)
-_false = _TokenWrapper(_FALSE_COMMAND)
-_unlambda = _TokenWrapper(_UNLAMBDA_COMMAND)
-_bracket_literal = _TokenWrapper(_BRACKET_LITERAL)
-_quote_literal = _TokenWrapper(_EVAL_UNIT)
+_dimensional = TokenWrapper(_DIMENSIONAL_COMMAND)
+_six_five = TokenWrapper(_SIX_FIVE_COMMAND)
+_false = TokenWrapper(_FALSE_COMMAND)
+_unlambda = TokenWrapper(_UNLAMBDA_COMMAND)
+_bracket_literal = TokenWrapper(_BRACKET_LITERAL)
+_quote_literal = TokenWrapper(_EVAL_UNIT)
 
 
 def _minifuck(program: str, width: int) -> str:
@@ -345,7 +346,7 @@ def _balance_line(program: str, language_id: str) -> str | None:
     wrapper = lang.wrap
     if wrapper is wrap_space_delimited:
         return _token_fit(program, program.split(), " ")
-    if isinstance(wrapper, _TokenWrapper):
+    if isinstance(wrapper, TokenWrapper):
         return _token_fit(program, _tokens(program, wrapper.pattern))
     if wrapper is wrap_chars and _MARK_PATTERN.search(program):
         return _token_fit(program, _tokens(program, r"[\s\S]"))

@@ -32,7 +32,6 @@ _ARGUMENTS = {
     "encode": ("<language>", "<bits>"),
     "generate": ("<language>", "<truth-table>"),
     "run": ("<language>", "<program-file>"),
-    "debug": ("<language>", "<program-file>"),
     "describe": ("<language>",),
     "read-answer": ("<language>",),
 }
@@ -49,9 +48,6 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
 #: short-option expansion skips the token after one of these: it is a value,
 #: even when it happens to spell ``-p``.
 _VALUE_OPTIONS = {
-    "--source",
-    "--answer",
-    "--inputs",
     "--bits",
     "--scale",
     "--settings",
@@ -60,15 +56,9 @@ _VALUE_OPTIONS = {
     "--max-output",
     "--max-memory",
     "--seed",
-    "--steps",
-    "--watch-cell",
-    "--break-at",
-    "--break-on-cell",
-    "--break-on-output",
-    "--stdin",
 }
 
-_SHORT_OPTIONS = {"-p": "--portable", "-s": "--settings"}
+_SHORT_OPTIONS = {"-s": "--settings"}
 
 
 def _expand_short_options(rest: list[str]) -> list[str]:
@@ -282,14 +272,6 @@ def _pop_flags(rest: list[str], names: set[str]) -> tuple[list[str], list[str]]:
     return args + rest[boundary:], flags
 
 
-def _pop_portable(rest: list[str]) -> tuple[list[str], bool]:
-    """Remove one portable-format flag before the positional separator."""
-    rest, flags = _pop_flags(rest, {"--portable"})
-    if len(flags) > 1:
-        _fail("--portable given more than once")
-    return rest, bool(flags)
-
-
 def _refuse_repeat(found: dict[str, str], name: str) -> None:
     """Refuse a second copy of an option that takes a value.
 
@@ -348,22 +330,6 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
             .replace("--timeout 5.0", f"{option} 5.0")
         )
     return seconds
-
-
-def _pop_cell(options: dict[str, str]) -> tuple[int, int] | None:
-    """Read ``--break-on-cell I=V`` into a pair, or ``None`` if absent.
-
-    A cell breakpoint needs two numbers where every other option takes one,
-    and ``I=V`` keeps that one token rather than making this the only option
-    that consumes two arguments.
-    """
-    raw = options.get("--break-on-cell")
-    if raw is None:
-        return None
-    index, sep, value = raw.partition("=")
-    if not sep or not _is_int(index) or not _is_int(value):
-        _fail(f"--break-on-cell wants INDEX=VALUE, got {raw!r}")
-    return int(index), int(value)
 
 
 @contextmanager

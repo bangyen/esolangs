@@ -36,8 +36,9 @@ class TestDecleq:
             cells = [int(tok) for tok in boolean.decleq(table).split()]
             return cells.count(-2)
 
-        # The two gadgets print; a table leaf carries one more print each.
-        assert outputs(halves) == 2
+        # The two gadgets print; a table leaf carries one more print each.  The
+        # halves table has one essential input, routed at table level: one leaf.
+        assert outputs(halves) == 3
         assert outputs(parity) == 4
         assert len(boolean.decleq(halves)) < len(boolean.decleq(parity))
 

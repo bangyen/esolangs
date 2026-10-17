@@ -19,8 +19,6 @@ Names resolve case-insensitively; deliberate errors derive from EsolangError.
 import importlib
 import inspect
 import re
-import signal
-import time as _time
 from collections.abc import Callable
 from functools import cache, partial
 from math import isqrt
@@ -83,6 +81,7 @@ from esolangs.runtime._execution import (
     interpreter_errors,
     interpreter_module,
     prepare_call,
+    run_under_alarm,
 )
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import run_isolated as _run_isolated
@@ -851,78 +850,4 @@ def _run(
     if timeout is None:
         run_fn(program, io_obj)
     else:
-        _run_timed_signal(run_fn, program, io_obj, timeout)
-
-
-def _run_timed_signal(
-    run_fn: Callable[..., Any],
-    program: RunnerProgram,
-    io_obj: ScriptedIO,
-    timeout: float,
-) -> None:
-    """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
-    # The handler fires between any two bytecodes, including the cleanup's;
-    # raising into its own teardown left the timer armed and the default
-    # SIGALRM disposition killed one run in three.  Clearing this is one store.
-    armed = True
-    old = signal.getsignal(signal.SIGALRM)
-    started = _time.monotonic()
-    pending, interval = signal.getitimer(signal.ITIMER_REAL)
-    caller_deadline = started + pending if pending else None
-    deadline = started + timeout
-
-    def _timeout_handler(_signum: int, _frame: object) -> None:
-        nonlocal caller_deadline
-        # coverage cannot trace a raise inside a signal handler
-        if not armed:  # pragma: no cover - a late alarm, not an overrun
-            return
-        now = _time.monotonic()
-        if caller_deadline is not None and now >= caller_deadline:
-            caller_deadline = (
-                caller_deadline
-                + (int((now - caller_deadline) // interval) + 1) * interval
-                if interval
-                else None
-            )
-            if callable(old):
-                old(_signum, cast("Any", _frame))
-            elif old == signal.SIG_DFL:
-                signal.signal(signal.SIGALRM, old)
-                signal.raise_signal(signal.SIGALRM)
-            now = _time.monotonic()
-            if now < deadline:
-                next_deadline = (
-                    min(deadline, caller_deadline)
-                    if caller_deadline is not None
-                    else deadline
-                )
-                signal.setitimer(
-                    signal.ITIMER_REAL, max(0.000001, next_deadline - _time.monotonic())
-                )
-                return
-        raise ExecutionTimeoutError(
-            f"execution exceeded the {timeout}-second timeout"
-        )  # pragma: no cover
-
-    # Dispatch the earlier deadline: replacing a caller's timer let a nested
-    # 0.05-second guard return successfully after 0.159 seconds.
-    signal.signal(signal.SIGALRM, _timeout_handler)
-    signal.setitimer(signal.ITIMER_REAL, min(timeout, pending) if pending else timeout)
-    try:
-        run_fn(program, io_obj)
-    finally:
-        armed = False
-        # Ignore first, then disarm, then restore: an alarm in flight after
-        # ``old`` (the default disposition) is restored terminates the
-        # process -- exit 142, one run in ten.  ``SIG_IGN`` is C-level.
-        # An alarm between ``run_fn`` returning and here still raises a
-        # timeout; closing that needs a flag read from a handler, not worth it.
-        signal.signal(signal.SIGALRM, signal.SIG_IGN)
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, old)
-        if caller_deadline is not None:
-            signal.setitimer(
-                signal.ITIMER_REAL,
-                max(0.000001, caller_deadline - _time.monotonic()),
-                interval,
-            )
+        run_under_alarm(run_fn, program, io_obj, timeout)

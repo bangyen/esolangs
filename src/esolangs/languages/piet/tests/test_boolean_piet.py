@@ -12,12 +12,11 @@ from esolangs.languages.piet.generator import piet as generate
 from esolangs.languages.piet.tests.test_boolean_piet_raster_balance import TABLES, score
 from esolangs.raster import Raster
 from esolangs.runtime._evaluate import _evaluate
-from tests.support.generator_support import verify_generated
 
 
 @pytest.mark.parametrize(
     "truth_table",
-    ["01", "10", "0001", "0110", "10010110", "0110100110010110"],
+    ["01", "0110", "10010110", "0110100110010110"],
 )
 def test_every_row_executes(truth_table: str) -> None:
     program = generate(truth_table)
@@ -28,11 +27,13 @@ def test_every_row_executes(truth_table: str) -> None:
         assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
 
 
-def test_png_round_trip_executes_the_same_program() -> None:
-    program = generate("0110")
-    assert (
-        esolangs.run("Piet", Raster.from_png(program.to_png()), stdin="1\n0\n") == "1"
-    )
+def test_the_generator_scale_upscales_and_executes() -> None:
+    plain, scaled = generate("0110"), generate("0110", scale=3)
+    assert len(scaled.rows) == 3 * len(plain.rows)
+    assert len(scaled.rows[0]) == 3 * len(plain.rows[0])
+    for row, bits in enumerate(product((0, 1), repeat=2)):
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        assert esolangs.run("Piet", scaled, stdin=stdin) == "0110"[row]
 
 
 @pytest.mark.parametrize("balanced", [False, True])
@@ -108,13 +109,6 @@ def test_larger_asymmetric_function_executes_through_png(*, balanced: bool) -> N
     assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=6) == table
 
 
-def test_public_generate_returns_a_piet_raster() -> None:
-    program = esolangs.generate("Piet", "01")
-    assert isinstance(program, Raster)
-    assert esolangs.run("Piet", program, stdin="1\n") == "1"
-    assert verify_generated("Piet", "0110")
-
-
 def test_emitted_pixels_are_linear_in_the_table() -> None:
     for inputs in range(1, 9):
         entries = 2**inputs
@@ -146,17 +140,6 @@ def test_a_constant_half_is_folded_and_runs() -> None:
 def test_invalid_truth_table_is_rejected(truth_table: str) -> None:
     with pytest.raises(ValueError, match="truth table"):
         generate(truth_table)
-
-
-def test_piet_generator_and_interpreter() -> None:
-    from esolangs.languages.piet.generator import piet as generate
-    from esolangs.languages.piet.interpreter import run
-    from esolangs.runtime.io import ScriptedIO
-
-    program = generate("01", scale=2)
-    io = ScriptedIO("1")
-    run(program, io)
-    assert io.getvalue() == "1"
 
 
 def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -41,7 +41,7 @@ from benchmark import evidence_session, measure  # noqa: E402
 import esolangs  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
 
-BASELINE = REPO_ROOT / "tests/support/fixtures/generator_sizes.json"
+BASELINE = REPO_ROOT / "ledgers/generator_sizes.json"
 
 
 def benchmark_tables() -> tuple[str, ...]:
@@ -65,7 +65,7 @@ TABLES = benchmark_tables()
 #: return null ``commands`` before stepping rather than on the cap.
 STEP_CAP = 200_000
 
-SCHEMA = 3
+SCHEMA = 4
 
 # Dense parity reaches each language's layout switch without folding inputs.
 BOUNDARIES = {
@@ -173,8 +173,6 @@ def baseline(records: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "schema": SCHEMA,
         "step_cap": STEP_CAP,
-        "tables": list(TABLES),
-        "boundaries": {name: list(boundary_tables(name)) for name in BOUNDARIES},
         "records": by_name,
     }
 
@@ -193,11 +191,14 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     if old.get("schema") != new["schema"]:
         return [f"baseline schema {old.get('schema')!r}, expected {SCHEMA}"]
-    if old.get("tables") != new["tables"]:
-        return [f"baseline tables {old.get('tables')!r}, expected {list(TABLES)}"]
-    if old.get("boundaries") != new["boundaries"]:
-        return ["baseline boundary corpus changed"]
     was, is_ = old.get("records", {}), new["records"]
+    # The record keys are the corpus: a changed table set would otherwise read
+    # as a diff in every language.
+    moved = sorted(
+        name for name in set(was) & set(is_) if set(was[name]) != set(is_[name])
+    )
+    if moved:
+        return [f"baseline corpus changed for {', '.join(moved)}; re-record it"]
     for name in sorted(set(was) | set(is_)):
         if name not in was:
             lines.append(f"{name}: not in the baseline (new language?)")

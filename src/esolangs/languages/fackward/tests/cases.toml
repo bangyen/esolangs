@@ -1,0 +1,29 @@
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "a character outside the syntax"
+
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched bracket"
+
+[[spec_triggers]]
+program = "-5"
+stdin = ""
+expect = "HaltError"
+claim = "printing a number that is no code point"
+
+[[spec_triggers]]
+program = "/1 0"
+stdin = ""
+expect = "HaltError"
+claim = "/ by 0"
+
+[[spec_triggers]]
+program = ")[5]-1$"
+stdin = ""
+expect = "HaltError"
+claim = "$ with a negative count"

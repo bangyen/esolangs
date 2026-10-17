@@ -114,11 +114,7 @@ def _layout(
         elif number == len(lanes) - 1:
             gap = 3  # Isolate the vertical halt from the preceding lane.
         else:
-            even = all(
-                operation.change[0] % 2 == 0
-                for operation in operations[previous.first : lane.last]
-            )
-            gap = 1 if duplicate or even else 2
+            gap = 1 if duplicate else 2
         y = old_y + gap
         while True:
             for phase in range((18 if duplicate else 9) if previous is not None else 1):

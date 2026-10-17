@@ -15,6 +15,7 @@ Decisions:
 """
 
 import re
+from math import isqrt
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
@@ -22,12 +23,7 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
-from esolangs.generation.token_balance import (
-    balanced_token_width,
-    near_even_counts,
-    rendered_side,
-    run_widths,
-)
+from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _BRACKET_LITERAL,
     _bracket_literal,
@@ -40,22 +36,7 @@ from esolangs.registry._language import Language, Shape
 # (10 chars) and ``"]`` closes the literal (2 chars).
 _TABLE_PUSH_OVERHEAD = len('[PSH STR ""]')
 
-# Token lengths of the chunk-boundary window ``[ PSH STR "<chunk>"] [ PSH STR``
-# with the chunk itself zeroed, so slice sums over it measure only the fixed
-# push syntax straddling a chunk boundary.
-_CHUNK_BOUNDARY_FIXED = [1, 3, 3, 0, 1, 3, 3]
-
-# A chunk token ``"<chunk>"]`` is the chunk plus quote, quote, bracket.
-_CHUNK_TOKEN_EXTRA = 3
-
-# Estimated fixed characters per table chunk: the ``[PSH STR "`` / ``"]`` push
-# syntax plus its separators -- the per-chunk term of the length proxy scored
-# in the chunked search below.
-_CHUNK_PUSH_OVERHEAD = 14
-
-# Narrowest chunk width the search considers: ``[ PSH STR`` is 9 characters and
-# needs a row of its own, so narrower chunks cannot use the two-rows-per-push
-# layout the row estimate assumes.
+# Narrowest chunk width: ``[ PSH STR`` (9 characters) needs its own row.
 _MIN_CHUNK_WIDTH = 6
 
 # A bracketed string literal with its closer, a mnemonic, a number or a glyph.
@@ -105,87 +86,13 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     return wrap_space_delimited(" ".join(tokens), width)
 
 
-def _height(parts: list[int], columns: int) -> int:
-    """Greedy single-space wrap row count for token lengths."""
-    rows, used = 1, 0
-    for length in parts:
-        if used and used + 1 + length > columns:
-            rows += 1
-            used = length
-        else:
-            used += length + bool(used)
-    return rows
+def _chunked_columns(size: int, suffix_lengths: list[int]) -> int:
+    """Square width ``w^2 = 4 size + 2 S`` of the chunked table, suffix ``S``.
 
-
-def _best_chunked_columns(
-    table: str, suffix_lengths: list[int], suffix_fits: set[int]
-) -> int | None:
-    """Return the best column width from the chunked-table search, if any.
-
-    Splits the table literal into ``count`` ``[PSH STR "…"]`` pushes and scans
-    chunk widths, counting rows at ``chunk width + 3`` columns -- the exact fit
-    of a full chunk token -- as the greedy wrap of the first chunk's boundary
-    window (``[ PSH STR "<chunk>"] [ PSH STR``), plus one row for the second
-    push's tail and two rows per remaining push, plus the greedy wrap of the
-    instruction suffix.  Only chunk widths where a greedy row count can change
-    are visited: widths where a suffix token run exactly fills the column
-    budget, and widths where the boundary window rewraps, for chunk counts
-    near the divisors of ``size - 1``.  Each visited interval scores
-    ``(rendered_side(columns, rows), size + 14 * count, columns)`` -- side first,
-    then an estimated program length (table characters plus push syntax per
-    chunk), then width -- and the winning width is the first of its
-    interval.
+    Within 1.5% of the swept side at n=2..12 (test oracle).
     """
-    size = len(table)
-
-    # Widths of the push syntax around a chunk boundary: every contiguous run
-    # of the boundary template straddling the (zeroed) chunk token.
-    boundary_fits = {
-        sum(_CHUNK_BOUNDARY_FIXED[start:stop]) + stop - start - 1
-        for start in range(4)
-        for stop in range(4, 8)
-    }
-    quotients = near_even_counts(size)
-
-    best: tuple[int, int, int] | None = None
-    for count in quotients:
-        # ``count`` pushes need chunks of at least ``size / count`` characters;
-        # the bounds keep the final chunk non-empty and short of a full chunk.
-        lower = max(_MIN_CHUNK_WIDTH, (size + count - 1) // count)
-        upper = min(size - 1, (size - 1) // (count - 1))
-        if lower > upper:
-            continue
-        events = {lower, upper + 1}
-        events.update(fit for fit in suffix_fits if lower < fit <= upper)
-        events.update(
-            point
-            for extra in boundary_fits
-            if lower < (point := (size + extra + count - 1) // count) <= upper
-        )
-        boundaries = sorted(events)
-        for start in boundaries[:-1]:
-            partial = size - (count - 1) * start
-            # The boundary window with the partial chunk filled in.
-            rows = (
-                _height(
-                    [1, 3, 3, partial + _CHUNK_TOKEN_EXTRA, 1, 3, 3],
-                    start + _CHUNK_TOKEN_EXTRA,
-                )
-                + 2 * count
-                - 3
-                + _height(suffix_lengths, start + _CHUNK_TOKEN_EXTRA)
-            )
-            # Rows are fixed inside this event interval: its first width
-            # renders the smallest square.
-            columns = start + _CHUNK_TOKEN_EXTRA
-            score = (
-                rendered_side(columns, rows),
-                size + _CHUNK_PUSH_OVERHEAD * count,
-                columns,
-            )
-            if best is None or score < best:
-                best = score
-    return best[2] if best is not None else None
+    suffix = sum(suffix_lengths) + len(suffix_lengths)
+    return max(_MIN_CHUNK_WIDTH + 3, isqrt(4 * size + 2 * suffix) + 1)
 
 
 def _balance(table: str, default: str) -> str:
@@ -200,7 +107,7 @@ def _balance(table: str, default: str) -> str:
     * the fine token stream rewrapped at narrow widths 1 through 8;
     * the whole table as one literal chunk, at the optimal width between
       ``size + 3`` and the longest atom;
-    * the chunked-table search in ``_best_chunked_columns``.
+    * the chunked table at four widths around ``_chunked_columns``.
     """
     atoms = re.findall(_BRACKET_LITERAL, default)
     floor = max(map(len, atoms))
@@ -216,15 +123,10 @@ def _balance(table: str, default: str) -> str:
     width = balanced_token_width(whole, " ", minimum=size + 3, maximum=floor - 1)
     candidates.append(modulous(table, width))
     # Skip the ``[PSH STR "`` prologue, the table, and the ``"]`` closer: the
-    # rest is the instruction suffix whose rows the chunked search packs.
+    # rest is the instruction suffix the chunked rows pack beside the pushes.
     suffix = _TOKEN.findall(default[size + _TABLE_PUSH_OVERHEAD :])
-    lengths = list(map(len, suffix))
-    # A suffix token run exactly fills a column budget of ``span``;
-    # subtract the chunk-to-column offset to get the chunk width.
-    fits = {span - _CHUNK_TOKEN_EXTRA for span in run_widths(lengths)}
-    columns = _best_chunked_columns(table, lengths, fits)
-    if columns is not None:
-        candidates.append(modulous(table, columns))
+    centre = _chunked_columns(size, list(map(len, suffix)))
+    candidates.extend(modulous(table, centre + offset) for offset in (-3, -1, 1, 3))
     return min(candidates, key=balance_score)
 
 

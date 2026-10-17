@@ -16,7 +16,7 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.wrap import wrap_tokens
+from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -57,9 +57,8 @@ def sendstuff(truth_table: str) -> str:
     return "".join([_MACROS, *nodes, ">", name(0, 0)])
 
 
-def _wrap(program: str, width: int) -> str:
-    """Break between words: a newline inside ``>17``, ``>%`` or ``!o`` splits a name."""
-    return wrap_tokens(program, width, r"[|<>!@]?[A-Za-z0-9_.%]+|[\s\S]")
+#: Break between words: a newline inside ``>17``, ``>%`` or ``!o`` splits a name.
+_wrap = TokenWrapper(r"[|<>!@]?[A-Za-z0-9_.%]+|[\s\S]")
 
 
 LANGUAGE = Language(

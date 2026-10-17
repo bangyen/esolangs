@@ -9,6 +9,7 @@ from itertools import pairwise
 
 from esolangs.languages.minifuck.generator.pool import (
     _BASE,
+    _POOL,
     _POOL_MASK,
     _POOL_WIDTH,
     _PROBE_WALK_OUT,
@@ -71,10 +72,44 @@ def _mux_start(n: int) -> int:
     return _MUX_BASE + max(0, (1 << (n - 1)) - (_MUX_BASE - _MUX_GUARD + 1))
 
 
-#: The pool code every build uses: from the canonical state (all pointers 0, no
-#: skip, pool region ``(0, 1, 1, 1, 1, 1, 1, 1)``, checked in
-#: :func:`_canonical_endgame`) it answers ``cell7 == 0`` and none answers 1.
-_SCULPT_POOL_CODE = "[<[<[<<[[[<[[<<<"
+#: Where the pool code parks the pointer.  The tail's ``[x`` walk complements
+#: the prefix-XOR of cells above it, so cells ``0..4`` must already read the
+#: pool and the window above must be ``1, 0, 0`` (every walked cell then
+#: reads 0 and the window parity, 1, carries into the accumulator).  Landings
+#: 2..4 construct; 5 and 6 cannot, cell 7 only ever gets a carry.
+_SCULPT_LANDED = 4
+
+
+def _sculpt_pool_code(landed: int = _SCULPT_LANDED) -> str:
+    """Return the code taking the canonical pool state to its frame at ``landed``.
+
+    Start ``(0, 1, 1, 1, 1, 1, 1, 1)``, pointer 0.  A ``[`` complements the
+    cell it crosses and advances; crossing a one clears it, flips the cell
+    above and owes a skip.  The pointer moves right only by crossing, so each
+    of cells 1..6 is crossed once (when it must flip) or twice (``[<`` back
+    over it then ``[`` again, when it must not).  A carry's skip eats the next
+    ``<``: ``[<`` after a clearing cross, ``[<<`` when stepping back.  Cell 7
+    is never crossed (a clear there would carry into the accumulator); it is
+    only checked, and the pointer then walks back to ``landed``.  Replaced a
+    found string; 16 characters either way.
+    """
+    target = [*_POOL[: landed + 1], 1, *([0] * (_POOL_WIDTH - landed - 2))]
+    cells = [0] + [1] * (_POOL_WIDTH - 1)
+    parts: list[str] = []
+    for j in range(1, _POOL_WIDTH - 1):
+        crossings = 1 if cells[j] != target[j] else 2
+        for k in range(crossings):
+            cleared = cells[j]
+            cells[j] ^= 1
+            cells[j + 1] ^= cleared
+            # The skip owed by a clear eats one ``<``; stepping back needs one more.
+            parts.append("[" + "<" * (cleared + (k + 1 < crossings)))
+    if cells != target:  # pragma: no cover - holds for landed 2..4
+        raise AssertionError("the pool cannot be sculpted to that frame")
+    return "".join(parts) + "<" * (_POOL_WIDTH - 2 - landed)
+
+
+_SCULPT_POOL_CODE = _sculpt_pool_code()
 
 
 #: The relay leaves the pointer at 6 for a one, 7 for a zero, over pool

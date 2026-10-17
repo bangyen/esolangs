@@ -501,50 +501,6 @@ def in_input_order(
     return build(truth_table, tuple(range(n)))
 
 
-def input_orders(
-    truth_table: str, *, max_arity: int | None = None
-) -> list[tuple[int, ...]]:
-    """Return identity then distinct greedy order, capped only when requested."""
-    n = _validate_truth_table(truth_table)
-    identity = tuple(range(n))
-    if max_arity is not None and n > max_arity:
-        return [identity]
-    greedy = _greedy_input_order(truth_table, n)
-    return [identity] if greedy == identity else [identity, greedy]
-
-
-def best_input_order(
-    truth_table: str,
-    build: Callable[[str, tuple[int, ...]], str],
-) -> str:
-    """Return the shorter program from the identity and greedy input orders.
-
-    ``build(permuted_table, perm)`` splits on ``perm[k]`` at level ``k`` of
-    the *permuted* table.  Up to :data:`_GREEDY_ORDER_MAX_ARITY` both orders
-    are built (greedy scoring is ``O(n * 2**n)``; routing can outweigh
-    folds); wider tables use the identity, which also wins ties, so
-    reordering never grows a program.  Only the *test* order moves; reads
-    stay in input order, which rules out a one-register language with no
-    storage (it branches on a bit before the next read).  Languages once
-    wrongly excluded keep their node-read build as a candidate, since
-    hoisting costs.  One true negative has a store but no conditional or
-    arithmetic taking a variable operand (checked against the interpreter
-    and the wiki).
-    """
-    orders = input_orders(truth_table, max_arity=_GREEDY_ORDER_MAX_ARITY)
-    identity = orders[0]
-
-    # An empty candidate means "this order could not be built" and is skipped
-    # rather than winning on length 0.  Builders that always succeed retain
-    # the plain behavior.
-    best = build(truth_table, identity)
-    for perm in orders[1:]:
-        candidate = build(permute_truth_table(truth_table, perm), perm)
-        if candidate and (not best or len(candidate) < len(best)):
-            best = candidate
-    return best
-
-
 def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     """Pick an input order one level at a time.
 

@@ -1,0 +1,42 @@
+[[spec_triggers]]
+program = "codesick a out c d;"
+stdin = ""
+expect = "ProgramError"
+claim = "a bare out other than as A"
+
+[[spec_triggers]]
+program = "codesick codesick b c d;"
+stdin = ""
+expect = "ProgramError"
+claim = "a bare codesick other than as the keyword"
+
+[[spec_triggers]]
+program = "a b c d;"
+stdin = ""
+expect = "ProgramError"
+claim = "a wrong argument count"
+
+[[spec_triggers]]
+program = "l codesick a b c d;\nl codesick a b c d;"
+stdin = ""
+expect = "ProgramError"
+claim = "a duplicate label"
+
+[[spec_triggers]]
+program = "codesick \"a b c d;"
+stdin = ""
+expect = "ProgramError"
+claim = "an unterminated string"
+
+[[spec_triggers]]
+program = "codesick a b c d"
+stdin = ""
+expect = "ProgramError"
+claim = "a missing ;"
+
+[[spec_triggers]]
+program = "codesick out in c d e;"
+stdin = ""
+expect = "output"
+output = ""
+claim = "an empty stdin is an empty string, never EOF"

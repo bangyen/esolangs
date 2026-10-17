@@ -306,3 +306,87 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
             for drawing, sizes in builds.items():
                 assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
     assert checked >= 3, checked
+
+
+def _drawn_plan(table, levels, n, wrap, vertical):
+    """The replaced search: mark candidates, redraw, keep the ones that land."""
+    from esolangs.generation.helpers import constant_span_test, subtree_ids
+    from esolangs.languages.back.generator import _WRAP_ROWS, _back_draw, _extent
+
+    constant, ids = constant_span_test(table), subtree_ids(table)
+
+    def walk(order, level, block, k, shared):
+        size = 2 ** (levels - level)
+        if level == levels or constant(block * size, (block + 1) * size):
+            return
+        if level == k:
+            order.append(block)
+        walk(order, level + 1, 2 * block, k, shared)
+        if (level, block) not in shared:
+            walk(order, level + 1, 2 * block + 1, k, shared)
+
+    shared = set()
+    for k in range(levels):
+        order = []
+        walk(order, 0, 0, k, shared)
+        ring = wrap and 2 ** (levels - k - 1) >= _WRAP_ROWS
+        follower = dict(pairwise([*order, *order[:1]] if ring else order))
+        tried = {
+            (k, a)
+            for a, b in follower.items()
+            if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b]
+        }
+        if not tried:
+            continue
+        grid, where = _back_draw(
+            table, levels, n, shared | tried, constant, vertical=vertical
+        )
+        height, column = _extent(grid)[0], 3 * k + 2
+        owner = {cell: node for node, cell in where.items()}
+        for _, a in tried:
+            row = where[k, a][0] + 1
+            while row < height and (row, column) not in grid:
+                row += 1
+            if ring and row == height:
+                row = 0
+                while (row, column) not in grid:
+                    row += 1
+            if owner.get((row, column)) == (k, follower[a]):
+                shared.add((k, a))
+    return shared
+
+
+@pytest.mark.medium
+def test_the_landing_rule_matches_drawing_the_tree() -> None:
+    """The geometric rule picks the sets the draw-and-verify search kept."""
+    import random
+
+    from esolangs.generation.helpers import constant_span_test, subtree_ids
+    from esolangs.languages.back.generator import _back_plan
+
+    rng = random.Random(7)
+    tables = ["0" * 64, "01" * 32, "0" * 32 + "1" * 32]
+    for n in (5, 6, 7, 8):
+        for block in (2, 4, 8, 16):
+            pool = ["".join(rng.choice("01") for _ in range(block)) for _ in range(2)]
+            for _ in range(2):
+                tables.append("".join(rng.choice(pool) for _ in range(2**n // block)))
+        tables.append("".join("1" if rng.random() < 0.06 else "0" for _ in range(2**n)))
+        tables.append("0" * 2 ** (n - 1) + "".join(rng.choices("01", k=2 ** (n - 1))))
+    kept = 0
+    for table in tables:
+        levels = len(table).bit_length() - 1
+        for wrap in (False, True):
+            for vertical in (False, True):
+                rule = _back_plan(
+                    vertical=vertical,
+                    truth_table=table,
+                    levels=levels,
+                    n=levels,
+                    wrap=wrap,
+                    ids=subtree_ids(table),
+                    constant=constant_span_test(table),
+                )
+                assert rule == _drawn_plan(table, levels, levels, wrap, vertical)
+                kept += len(rule)
+    assert kept > 500  # positive control: the corpus shares nodes

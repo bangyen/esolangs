@@ -1,5 +1,6 @@
 """Executed tests for the Smallfuck banded-result tree."""
 
+import random
 from itertools import pairwise
 
 import pytest
@@ -311,3 +312,18 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
             template, TEMPLATE_CHAR, [PAIR] * 4, [int(bit) for bit in f"{row:04b}"]
         )
         assert esolangs.run("Smallfuck", program) == expected
+
+
+def test_wide_band_is_never_larger_than_the_narrow_band() -> None:
+    """Above the cutover the min over bands (3, 5) beats band 3 alone."""
+    from esolangs.languages.smallfuck import generator
+
+    rng = random.Random(8)
+    table = "".join(rng.choice("01") for _ in range(1 << 9))
+    wide = len(smallfuck(table))
+    try:
+        generator.WIDE_FROM = 99
+        narrow = len(smallfuck(table))
+    finally:
+        generator.WIDE_FROM = 8
+    assert wide < narrow

@@ -26,7 +26,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.generation.wrap import balance_program, balance_score, wrap_chars
+from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
@@ -47,18 +47,14 @@ def _runs(rows: str) -> list[tuple[int, str]]:
 
 
 def home_row(truth_table: str) -> str:
-    """Return a Home Row template for a binary, MSB-first ``2**n`` truth table.
-
-    Rows agreeing with the final answer share its unguarded leaf; any other
-    run of equal rows is one leaf behind ``js`` clamped decrements.
-    """
+    """Return a Home Row template for a binary, MSB-first ``2**n`` truth table."""
     return _program(truth_table)
 
 
-def _program(truth_table: str, *, keep_constant_layout: bool = False) -> str:
+def _program(truth_table: str) -> str:
     """Build a weighted lookup or discard all setters and print a literal."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1 and not keep_constant_layout:
+    if len(set(truth_table)) == 1:
         # On zero, s/a decrements then restores; j/a skips the increment.
         # Every setter thus leaves the scratch cell zero, without an index gate.
         return (
@@ -96,15 +92,6 @@ def _program(truth_table: str, *, keep_constant_layout: bool = False) -> str:
     return _SETUP + "".join(bit_lines) + "ffff" * bool(guarded) + "".join(leaves) + last
 
 
-def _balance(table: str, default: str) -> str:
-    """Keep the old constant layout if its character fold is more balanced."""
-    candidate = balance_program(default, "home_row")
-    if len(set(table)) == 1:
-        legacy = _program(table, keep_constant_layout=True)
-        return min(candidate, balance_program(legacy, "home_row"), key=balance_score)
-    return candidate
-
-
 LANGUAGE = Language(
     "Home Row",
     "home_row",
@@ -114,6 +101,5 @@ LANGUAGE = Language(
     shape=Shape.REDUCING,
     contract=BooleanContract(),
     wrap=wrap_chars,
-    balance=_balance,
     example=Example(pair=HOME_ROW_PAIR),
 )

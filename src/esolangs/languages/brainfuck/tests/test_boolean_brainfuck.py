@@ -1,7 +1,5 @@
 """brainfuck generator tests."""
 
-import random
-
 import pytest
 
 from tests.support.reference import REFERENCE
@@ -65,58 +63,6 @@ def test_affine_stream_reduces_cap_parity_within_ledger() -> None:
         ),
         rows=[0, 1, 2, 3, 32767, 32768, 65534, 65535],
     )
-
-
-@pytest.mark.medium
-def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.languages.brainfuck.generator import _bf_ordered
-    from tests.support.generator_support import assert_shared_program
-
-    zero = "0001011101101001" * 4
-    one = "0110100100010111" * 4
-    table = zero + one + one + zero
-    plain = _bf_ordered(table, tuple(range(8)), share=False)
-    assert_shared_program(
-        REFERENCE,
-        table,
-        plain,
-        69 * 8 + 44,
-        lambda p: (
-            2 * 8 + 6 + (2 * 8).bit_length() + (8).bit_length() + len(p).bit_length()
-        ),
-    )
-
-
-@pytest.mark.medium
-def test_multiple_residual_dispatches_match_outputs_and_command_prices() -> None:
-    from esolangs.debugger import make_vm
-    from esolangs.generation.shared_block import repeated_blocks
-    from esolangs.generation.shared_flag import flag_tree_body
-
-    rng = random.Random(722026)
-    tables = ["".join(str(rng.randrange(2)) for _ in range(64)) for _ in range(12)]
-    tables.append("0" * 224 + "01101001" * 4)
-    served = 0
-    for table in tables:
-        n = len(table).bit_length() - 1
-        blocks = repeated_blocks(table)
-        served += len(blocks) > 1
-        body, cost = flag_tree_body(
-            table, tuple(range(n)), 2 * (n - 1), 2 * n, shared_blocks=blocks
-        )
-        header = ">>".join("," + "-" * 48 for _ in range(n))
-        source = header + body + "+" * 48 + "."
-        limit = len(header) + cost + 49
-        for row, expected in enumerate(table):
-            machine = make_vm(REFERENCE, source, stdin=f"{row:0{n}b}")
-            commands = 0
-            while not machine.halted and commands <= limit:
-                machine.step()
-                commands += 1
-            assert machine.halted
-            assert machine.output == expected
-            assert commands <= limit
-    assert served > 0
 
 
 @pytest.mark.parametrize("blocks", [((1, 0), (1, 4)), ((2, 0), (1, 0)), ((3, 0),)])

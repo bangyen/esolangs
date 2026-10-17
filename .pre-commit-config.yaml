@@ -9,12 +9,12 @@ repos:
       # `examples/` at the root is a symlink to them.  While this said only
       # `^examples/` the hook stripped the real files and
       # test_boolean_example_matches_generator caught it.  Wiki examples are
-      # verbatim too (all of tests/support/fixtures/): a 2D program's padding and an
-      # output's last byte count.
+      # verbatim too (each language's tests/cases.toml): a 2D program's
+      # padding and an output's last byte count.
       - id: trailing-whitespace
-        exclude: ^(src/esolangs/languages/[^/]+/([^/]+\.(txt|png|gz)$|tests/fixtures/)|tests/support/fixtures/)
+        exclude: ^(src/esolangs/languages/[^/]+/([^/]+\.(txt|png|gz)$|tests/fixtures/|tests/cases\.toml$)|tests/support/fixtures/)
       - id: end-of-file-fixer
-        exclude: ^(src/esolangs/languages/[^/]+/([^/]+\.(txt|png|gz)$|tests/fixtures/)|tests/support/fixtures/)
+        exclude: ^(src/esolangs/languages/[^/]+/([^/]+\.(txt|png|gz)$|tests/fixtures/|tests/cases\.toml$)|tests/support/fixtures/)
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags
       - id: check-added-large-files

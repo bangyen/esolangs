@@ -1,0 +1,47 @@
+language = "Taglate"
+oldid = 189094
+
+[[examples]]
+id = "hello"
+source = '''
+Hello, world!
+iiiiiiiiiiiii'''
+expected = "Hello, world!"
+
+[[examples]]
+id = "url-of-empty-queue"
+source = '''
+
+tgyigz'''
+expected = "https://translate.google.com/?sl=en&tl=es&text=&op=translate"
+
+[[spec_triggers]]
+program = "a\u0000\nd"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: division by zero"
+
+[[spec_triggers]]
+program = "a\nff"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: popping an empty queue"
+
+[[spec_triggers]]
+program = "a\nh"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: h at EOF"
+
+[[spec_triggers]]
+program = "a\ngz"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: gy/gz with no partner, when it would jump"
+
+[[spec_triggers]]
+program = "a\nqqqi"
+stdin = ""
+expect = "output"
+output = "a"
+claim = "a non-command character is skipped"

@@ -1,0 +1,43 @@
+[[spec_triggers]]
+program = "f(x) = x^2 + 2x + 4097"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: ^ of a zero register by a negative power."
+
+[[spec_triggers]]
+program = "f(x) = x - 2"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unmatched opener when it would jump (zero register, opener code 1)."
+
+[[spec_triggers]]
+program = "x^2"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: source does not start with f(x) =."
+
+[[spec_triggers]]
+program = "f(x) = x^4 + 25x^2 + 144"
+stdin = ""
+expect = "output"
+output = ""
+claim = "A read at EOF stores -1, and output ignores negatives."
+
+[[spec_triggers]]
+program = "f(x) = x - 16"
+stdin = ""
+expect = "output"
+output = ""
+claim = "An unmatched opener on a zero register is entered (no error)."
+
+[[spec_triggers]]
+program = "f(x) = x^4 + 25x^2 + 144"
+stdin = "A"
+expect = "output"
+output = "A"
+claim = "Positive control: a read stores the character and output prints it."
+
+[[generator_triggers]]
+table = "n=11 random 1847"
+expect = "GeneratorCapError"
+claim = "the cheapest construction needs more than 1934 instructions (dense n=11 needs 2447)"

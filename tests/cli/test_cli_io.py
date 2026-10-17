@@ -25,9 +25,8 @@ _SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=Tr
 class TestTheStdinReaderInProcess:
     """The subprocess tests prove the behaviour; these reach the lines."""
 
-    @pytest.mark.parametrize("command", ["run", "debug"])
     def test_an_unknown_language_is_named_before_stdin_is_read(
-        self, command: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """It read stdin first, so this answer waited on input forever."""
         path = tmp_path / "p.txt"
@@ -40,7 +39,7 @@ class TestTheStdinReaderInProcess:
             def read(self) -> str:  # pragma: no cover - must not be called
                 raise AssertionError("stdin was read before the name resolved")
 
-        argv = ["esolangs", command, "NotALang", str(path)]
+        argv = ["esolangs", "run", "NotALang", str(path)]
         with (
             patch.object(sys, "stdin", _NeverEnding()),
             patch.object(sys, "argv", argv),
@@ -64,14 +63,6 @@ class TestNonTextInputIsRefusedNotCrashed:
         assert result.returncode == 2
         assert "not text" in result.stderr
         assert "Traceback" not in result.stderr
-
-    def test_debug_refuses_it_too(self, tmp_path: Path) -> None:
-        """The same reader serves both commands."""
-        path = tmp_path / "binary.txt"
-        path.write_bytes(bytes(range(256)))
-        result = run_cli("debug", "--steps", "5", REFERENCE, str(path))
-        assert result.returncode == 2
-        assert "not text" in result.stderr
 
     def test_binary_stdin_is_refused(self) -> None:
         """A program's binary output piped into `read-answer`."""
@@ -364,17 +355,6 @@ def test_run_flag_filename_after_separator(
     monkeypatch.chdir(tmp_path)
     Path(filename).write_text("+.")
     assert call_main(["run", REFERENCE, "--", filename], capsys) == "\x01"
-
-
-def test_debug_tui_filename_after_separator(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """The debugger's bare flag is positional after the separator."""
-    monkeypatch.chdir(tmp_path)
-    Path("--tui").write_text("+.")
-    assert "\\x01" in call_main(["debug", REFERENCE, "--", "--tui"], capsys)
 
 
 @pytest.mark.parametrize(

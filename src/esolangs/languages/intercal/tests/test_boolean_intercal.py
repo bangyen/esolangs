@@ -7,7 +7,6 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
 )
 from esolangs.languages.intercal.generator import PAIR, TEMPLATE_CHAR, intercal
@@ -36,14 +35,6 @@ def test_levels_select_inputs_in_the_shorter_order() -> None:
     assert template.index(".3 <- @@") < template.index(".1 <- @@")
     expression = template.split(".4 <- ", 1)[1].split("\n", 1)[0]
     assert {name for name in (".1", ".2", ".3") if name in expression} == {".1"}
-    old = new = 0
-    for value in range(256):
-        table = f"{value:08b}"
-        before = len(intercal_plain(table, (0, 1, 2)))
-        after = len(_unshared(table))
-        assert after <= before, table
-        old, new = old + before, new + after
-    assert (old, new) == (74152, 65704)
 
 
 def _five_input_sample() -> list[str]:
@@ -55,7 +46,7 @@ def _five_input_sample() -> list[str]:
 
 
 def _unshared(table: str) -> str:
-    return best_input_order(table, intercal_plain)
+    return intercal_plain(table, tuple(range(len(table).bit_length() - 1)))
 
 
 def test_repeated_subexpressions_are_assigned_once() -> None:
@@ -65,8 +56,8 @@ def test_repeated_subexpressions_are_assigned_once() -> None:
     assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 6 + [False]
     assert len(template) < len(_unshared(parity)) // 2
     for tables, pinned in (
-        ([f"{value:08b}" for value in range(256)], (65704, 64072)),
-        (_five_input_sample(), (195636, 139920)),
+        ([f"{value:08b}" for value in range(256)], (74152, 64072)),
+        (_five_input_sample(), (216624, 139920)),
     ):
         old = new = 0
         for table in tables:

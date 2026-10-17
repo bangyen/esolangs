@@ -13,7 +13,7 @@ from typing import Any
 
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
-from esolangs.generation.packed_decoder import _packed_build, packed_decoder
+from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
@@ -42,7 +42,9 @@ def _payload(state: Any) -> Payload:
 def _balance(table: str, default: str) -> str:
     """Retain the literal decoder when its grid is more balanced."""
     candidate = balance_program(default, "subleq")
-    legacy = _packed_build(table, direct=True, keep_constant_layout=True)
+    if len(set(table)) == 1:
+        return candidate
+    legacy = packed_decoder(table, direct=True)
     return min(candidate, balance_program(legacy, "subleq"), key=balance_score)
 
 

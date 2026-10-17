@@ -174,37 +174,6 @@ def test_greedy_order_never_grows_a_wide_program() -> None:
     assert len(boolean.brainfuck(table)) <= len(_bf_ordered(table, tuple(range(n))))
 
 
-def test_order_selection_builds_at_most_two_candidates() -> None:
-    """Small arities no longer trigger an exhaustive permutation contest."""
-    from esolangs.generation.helpers import best_input_order
-
-    built: list[tuple[int, ...]] = []
-
-    def build(table: str, perm: tuple[int, ...]) -> str:
-        built.append(perm)
-        return table
-
-    best_input_order("01011010", build)
-    assert 1 <= len(built) <= 2
-    assert built[0] == (0, 1, 2)
-
-
-def test_wide_order_selection_builds_only_identity() -> None:
-    """The optional greedy scorer stays off the asymptotic build path."""
-    from esolangs.generation.helpers import best_input_order
-
-    built = 0
-
-    def build(table: str, _perm: tuple[int, ...]) -> str:
-        nonlocal built
-        built += 1
-        return table
-
-    table = "01" * 2**10
-    assert best_input_order(table, build) == table
-    assert built == 1
-
-
 def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     """A greedily-ordered program still computes its table."""
     from esolangs.generation.helpers import _greedy_input_order
@@ -456,7 +425,7 @@ _LANGUAGE_SUPERLINEAR_SCALING = {
     # ``tests/proofs`` to parse it with.
     row["generator"]
     for row in tomllib.loads(
-        (Path(esolangs.__file__).parent / "proof_status.toml").read_text("utf-8")
+        (Path(__file__).parents[2] / "ledgers/proof_status.toml").read_text("utf-8")
     )["ledger"]
     if row["scaling"].startswith("lower bound:")
 }

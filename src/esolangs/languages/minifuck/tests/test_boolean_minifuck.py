@@ -9,9 +9,11 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, essential_inputs, runs
 from esolangs.languages.minifuck.generator.mux import (
     _MUX_MIN_ARITY,
     _MUX_PRESERVE_RIGHT,
+    _SCULPT_LANDED,
     _SCULPT_POOL_CODE,
     _mux,
     _probe_frame,
+    _sculpt_pool_code,
 )
 from esolangs.languages.minifuck.generator.pool import _POOL_MASK
 from esolangs.languages.minifuck.generator.sim import PAIR, _runs, _Sim
@@ -102,12 +104,6 @@ def test_minifuck_builds_five_input_xor() -> None:
     assert len(widths) == 1, widths
 
 
-# 5.8s: builds the five-input spans and replays the enumeration through them.
-# This is the guard on a *soundness* claim, so it checks the whole population
-# rather than a sample -- a screen that declines one reachable table is a
-# silent coverage regression, which no sampled test would catch.
-
-
 def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
     """``flips`` is a live derivation coordinate, not dead weight."""
 
@@ -127,12 +123,6 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
                 assert follows == bool((mask >> i) & 1), (mask, i)
 
 
-# 3.7s standalone: the target-set derivation is the cost.  It is free when the
-# XOR5 build above has already run in this process and warmed the cache, but
-# a -k selection or a shuffled order can pick this one alone, so it is marked
-# for what it costs on its own rather than for the lucky case.
-
-
 def test_mux_refuses_below_its_minimum_arity() -> None:
     """``_mux`` separates rows, which needs at least two of them to separate."""
 
@@ -148,6 +138,31 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     assert _probe_frame("[", byte) is None
     assert _probe_frame("[x" * 9, byte) is None
     assert _probe_frame(_SCULPT_POOL_CODE, byte) is not None
+
+
+#: The pool code the generator once shipped, found by search: a fixture the
+#: constructed :func:`_sculpt_pool_code` must keep landing on.
+_FOUND_POOL_CODE = "[<[<[<<[[[<[[<<<"
+
+
+def test_the_sculpted_pool_code_matches_the_found_string() -> None:
+    """The constructed code ends where the searched one did: same tape, pointer."""
+
+    def end(code: str) -> tuple[int, int, bool]:
+        sim = _Sim(32)
+        sim.tape = _POOL_MASK ^ 1
+        sim.apply(_runs(code))
+        return sim.tape, sim.ptr, sim.skip
+
+    assert end(_SCULPT_POOL_CODE) == end(_FOUND_POOL_CODE)
+    assert end(_SCULPT_POOL_CODE)[1] == _SCULPT_LANDED
+    byte = _POOL_MASK ^ 1
+    assert _probe_frame(_SCULPT_POOL_CODE, byte) == _probe_frame(_FOUND_POOL_CODE, byte)
+    for landed in (2, 3):
+        assert _probe_frame(_sculpt_pool_code(landed), byte) == (landed, 1)
+    for landed in (5, 6):
+        with pytest.raises(AssertionError, match="cannot be sculpted"):
+            _sculpt_pool_code(landed)
 
 
 def test_the_preserving_step_restores_arbitrary_tape() -> None:

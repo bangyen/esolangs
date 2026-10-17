@@ -75,6 +75,7 @@ def _move(start: int, target: int) -> str:
     the tree reaches the result cell in ``1 + target // 2`` characters
     however far right it has walked, instead of one per cell walked back.
     """
+    # Restart wins on skewed tables: or 17.8/18.9/20.1% at n=7/8/9; random 0.6%.
     relative = _reach(start, target)
     absolute = "d" + _reach(0, target)
     return relative if len(relative) <= len(absolute) else absolute
@@ -99,6 +100,8 @@ def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     n = len(perm)
     bound = (3 * n * n + 3) // 4 + 20 * n + 4
     forms = [(plain, 0), (candidate, commands)]
+    # Levels and banks over one residual: random n=8 6.0% (n=7..9 5.4-6.0%), but
+    # parity n=8 -77%/-20% (levels/banks) and majority -44%/-23%.
     plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = [
         (repeated_blocks(table), ())
     ]

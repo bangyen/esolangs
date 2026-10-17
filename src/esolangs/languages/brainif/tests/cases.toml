@@ -1,0 +1,43 @@
+language = "BrainIf"
+oldid = 164276
+
+[[examples]]
+id = "echo-e"
+source = '''
+if 0 input
+if 69 output
+'''
+stdin = "E"
+expected = "E"
+
+[[examples]]
+id = "echo-e-other"
+source = '''
+if 0 input
+if 69 output
+'''
+stdin = "F"
+expected = ""
+
+[[examples]]
+id = "hello"
+expected = "Hello, world!"
+source_file = "fixtures/brainif_hello.txt"
+
+[[spec_triggers]]
+program = "if 0 input"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "input at EOF raises"
+
+[[spec_triggers]]
+program = "if 0"
+stdin = ""
+expect = "ProgramError"
+claim = "A line missing its operands raises ProgramError"
+
+[[spec_triggers]]
+program = "if 0 goto 0"
+stdin = ""
+expect = "ProgramError"
+claim = "goto 0 raises ProgramError"

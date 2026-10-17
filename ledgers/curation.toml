@@ -1,0 +1,94 @@
+checked = "2026-10-06"
+bf_derivatives_checked = "2026-10-15"
+
+[languages]
+"///" = { backlinks = 86 }
+3x = { backlinks = 5 }
+6-5 = { backlinks = 2 }
+"A Painter Ant" = { backlinks = 4 }
+ABCDirection = { backlinks = 3 }
+AddSubJump = { backlinks = 5 }
+"Algebraic Programming Language" = { backlinks = 3 }
+Alight = { backlinks = 6 }
+ArrowQueue = { backlinks = 3 }
+B-tapemark = { backlinks = 2 }
+Back = { backlinks = 1 }
+Befunge = { backlinks = 382 }
+BFStack = { backlinks = 3, bf_derivative = true }
+Bitdeque = { backlinks = 5 }
+"Bitwise Cyclic Tag" = { backlinks = 179 }
+"bit~" = { backlinks = 1 }
+Boolfuck = { backlinks = 76, bf_derivative = true }
+brainfuck = { backlinks = 2031 }
+BrainIf = { backlinks = 5, bf_derivative = true }
+Caballo = { backlinks = 1 }
+Circlefuck = { backlinks = 5, bf_derivative = true }
+"Circuit Diagram" = { backlinks = 5 }
+Clockwise = { backlinks = 4 }
+"Collatz Multiverse" = { backlinks = 2 }
+Container = { backlinks = 1 }
+Crement = { backlinks = 2 }
+"CV(N)(C)" = { backlinks = 8 }
+"Cyclic tag" = { backlinks = 91 }
+Deadfish = { backlinks = 316 }
+Decleq = { backlinks = 5 }
+Dig = { backlinks = 11 }
+Dimensional = { backlinks = 9 }
+EGL = { backlinks = 2 }
+Eval = { backlinks = 3 }
+FALSE = { backlinks = 90 }
+Fargo = { backlinks = 3 }
+Fish = { backlinks = 91 }
+Flowchart = { backlinks = 8 }
+Forbin = { backlinks = 5 }
+"Forþ" = { backlinks = 4 }
+FRACTRAN = { backlinks = 65 }
+Grapheme = { backlinks = 3 }
+"Home Row" = { backlinks = 15 }
+"HQ9+" = { backlinks = 134 }
+Inject = { backlinks = 4 }
+INTERCAL = { backlinks = 100 }
+Interprogck8 = { backlinks = 4 }
+LaserFuck = { backlinks = 1, bf_derivative = true }
+Line = { backlinks = 2 }
+Malbolge = { backlinks = 130 }
+Minifuck = { backlinks = 9, bf_derivative = true }
+"Minsky Swap" = { backlinks = 9 }
+Modulous = { backlinks = 6 }
+"Nope." = { backlinks = 128 }
+Packlang = { backlinks = 4 }
+Painfuck = { backlinks = 3, bf_derivative = true }
+Piet = { backlinks = 65 }
+Polynomial = { backlinks = 6 }
+Qoibl = { backlinks = 3 }
+RAM0 = { backlinks = 6 }
+ROTfuck = { backlinks = 3, bf_derivative = true }
+"S*bleq" = { backlinks = 4 }
+"SLOW ACV MAMMALIAN" = { backlinks = 1 }
+Smallfuck = { backlinks = 66, bf_derivative = true }
+Smu = { backlinks = 4 }
+SStack = { backlinks = 4 }
+Streetcode = { backlinks = 2 }
+Subleq = { backlinks = 82 }
+Suffolk = { backlinks = 5 }
+"Super SNUSP" = { backlinks = 1 }
+Taglate = { backlinks = 3 }
+thisthat = { backlinks = 6 }
+Thue = { backlinks = 158 }
+Unary = { backlinks = 63, bf_derivative = true }
+Underload = { backlinks = 167 }
+Unlambda = { backlinks = 89 }
+Unsquare = { backlinks = 4 }
+Vandevelo = { backlinks = 3 }
+Rubic = { backlinks = 4 }
+"Object disoriented" = { backlinks = 6 }
+SendStuff = { backlinks = 3 }
+Quassaunt = { backlinks = 3 }
+Codesick = { backlinks = 2 }
+"1 + i" = { backlinks = 1 }
+Pointless = { backlinks = 0 }
+Ascenic = { backlinks = 0 }
+Fackward = { backlinks = 0 }
+"What!?" = { backlinks = 0 }
+"Blindfolded Arithmetic" = { backlinks = 19 }
+Hot = { backlinks = 11 }

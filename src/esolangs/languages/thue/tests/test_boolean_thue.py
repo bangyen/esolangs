@@ -257,3 +257,55 @@ def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
 def test_the_emissions_grow_by_a_line() -> None:
     """Thue drops an ignored input's round, so it is measured on parity."""
     assert_emissions_grow_by_a_line(thue, parity=True)
+
+
+def _swept_balance(table: str, default: str) -> str:
+    """The retired balance: every payload within CELL_ASPECT of each layout's root."""
+    from math import isqrt
+
+    from esolangs.generation.helpers import grid_width
+    from esolangs.generation.token_balance import CELL_ASPECT
+    from esolangs.generation.wrap import balance_score
+    from esolangs.languages.thue.generator import (
+        _QUEUED_RULES,
+        _RULES,
+        _alphabet,
+        _marker_digits,
+        _tables,
+        _thue_layout,
+        thue,
+    )
+
+    plain = min((_thue_layout(*layout, None) for layout in _tables(table)), key=len)
+    candidates = [default, plain, thue(table, 1)]
+    cap = max(grid_width(default), grid_width(plain))
+    for tab, rounds, extra in _tables(table):
+        size = len(tab)
+        digits = _marker_digits(size, len(_alphabet(rounds, extra)))
+        base = _RULES if rounds is None else _QUEUED_RULES
+        rules = len(base.splitlines()) + len(extra)
+        offset = CELL_ASPECT * rules - 2 * digits
+        root = (offset + isqrt(offset * offset + 4 * CELL_ASPECT * size)) // 2
+        overhead = digits + max(digits, 2) + 3
+        maximum = max(digits, cap - 1 - overhead)
+        candidates.extend(
+            _thue_layout(
+                tab, rounds, extra, min(maximum, max(digits, payload)) + overhead
+            )
+            for payload in range(root - CELL_ASPECT, root + 2 * CELL_ASPECT + 1)
+        )
+    return min(candidates, key=balance_score)
+
+
+def test_balance_root_payload_matches_the_swept_side() -> None:
+    """Over 3..6 inputs the root payload loses under 1% side to the sweep."""
+    from esolangs.generation.wrap import balance_score
+
+    rng = random.Random(6)
+    new = old = 0
+    for n in (3, 4, 5, 6):
+        for _ in range(8):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            new += balance_score(generate("Thue", table, balance=True))[0]
+            old += balance_score(_swept_balance(table, generate("Thue", table)))[0]
+    assert old <= new < 1.01 * old

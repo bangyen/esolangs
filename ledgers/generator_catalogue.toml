@@ -1,0 +1,102 @@
+# Generators whose mechanism is not a canonical helper, and why.  Language
+# names live here so the tests enforcing them name none.
+
+# sharing: tree-shaped generators whose sharing is a language-local
+# mechanism, or which share nothing.  Every tree generator not exempt must
+# shrink a repeated table, measured by
+# tests/generators/test_boolean_sharing_catalogue.py.
+[sharing.local]
+"Circuit Diagram" = "_dag"  # hash-consed mux fold
+"Dig" = "_dig_indexed_shared"  # indexed six-input leaf classes
+"Polynomial" = "_polynomial_states"  # ordered BDD over equal residuals
+
+"3x" = "_three_x_emit" # defer repeated blocks behind flags
+"BrainIf" = "_brainif_dag" # residual states emitted once
+"Fargo" = "_definition_program" # intern expressions into definitions
+"INTERCAL" = "_intercal_shared" # named shared diagram variables
+
+[sharing.exempt]
+"1 + i" = "a deeper function literal needs a whole-stack roll to reuse"
+"Caballo" = "no names or jumps: code runs once per place it is written"
+"Interprogck8" = "a stop sits on one lane, so two parents cannot land on one child"
+"Hot" = "no names: binding a repeated subtree by abstraction adds S and K to every pair above it"
+"LaserFuck" = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixteen entries"
+"Rubic" = "no jump or call: code runs once per place it is written"
+"Streetcode" = "a tree only through five inputs, where repeats hold at most 5.1% of nodes (n=5) before merge routing; from six an indexed street with no subtable"
+"Unsquare" = "a stack lookup, one pushed entry per row, with no subtable branch"
+"Piet" = "a strip has no jump, so a repeated subtable cannot be shared"
+"ArrowQueue" = "Horner marker cascade; no subtable is drawn"
+"Ascenic" = "threshold scan over the Horner row code; no subtable is drawn"
+"Collatz Multiverse" = "indexed packed cells, one line each, with no subtable branch; only its at most 15 cell decoders are shared (B C C B 0.72x at n=6, 0.93x at n=8)"
+"Eval" = "one literal table halved by position"
+"Fackward" = "a block nests its subtrees, so a repeated subtable is copied"
+"Grapheme" = "one integer table literal"
+"Taglate" = "indexed table reduction, with no subtable branch"
+"Vandevelo" = "sum of affine-coset guards, with no subtable branch; B C C B shrinks for its x0 xor x1 structure (0.59x), B C C D barely (0.89x at n=8)"
+"bit~" = "planted lookup entries, with no subtable branch"
+"What!?" = "threshold chain over the Horner index; no subtable is drawn"
+
+# folding: mechanisms not expressed by canonical span or residual helpers.
+# Local entries name reachable native constructors; exemptions state the
+# construction's limit.  Enforced by test_boolean_canonical_catalogue.py.
+
+[folding.ignored]
+"Ascenic" = "the Horner code reads every input; an ignored one still spaces the thresholds"
+"Malbolge" = "fixed-size source; an extra input port adds no cells"
+"What!?" = "the Horner index reads every input; an ignored one still spaces the change points"
+
+[folding.constant]
+"Alight" = "a constant table is a one-entry literal"
+"Ascenic" = "a constant table has no change point: the 6n + 13 line Horner prefix"
+"Malbolge" = "fixed-size source; a constant table is no smaller"
+"Qoibl" = "a constant table is a one-bit literal"
+"Circuit Diagram" = "both constants are one self-fed gate"
+"Piet" = "literal products collapse a constant"
+"Polynomial" = "a constant table is the k=0 state machine"
+"What!?" = "a constant table has no change point: the 7n + 12 char Horner prefix"
+
+[folding.ignored_read]
+# Fold an ignored input's branch but keep a read that costs over half a real
+# input at n=8; measured by test_boolean_canonical_catalogue.py.
+"Codesick" = "a bit is exposed only by deleting the one read before it, so an ignored one costs a delete node per residual below it"
+"Interprogck8" = "a read is itself a branch: both arms converge on one child, so an ignored input costs a read node per path"
+
+[folding.ignored_local]
+"Fackward" = "_skip" # equal halves drop their bit unread by a swap
+"Fargo" = "_arm_expression" # zero ANF arms omit their variable
+"Hot" = "_tree" # equal halves fold to K of one half
+"INTERCAL" = "_diagram" # equal children replace their selector
+"Vandevelo" = "_constraints" # affine guards retain independent tests
+
+[folding.constant_local]
+"///" = "_CONSTANT" # delete inputs and print the literal answer
+"A Painter Ant" = "_program" # restore inputs and leave one answer cell
+"ABCDirection" = "_layout" # no essential input: one table cell, no select gadget
+"ArrowQueue" = "_program" # direct halt or circulating heading
+"Hot" = "_tree" # a constant table folds to K chains over one leaf
+"B-tapemark" = "b_tapemark" # direct read-and-print constant
+"Befunge" = "input_weights" # one projected table cell
+"Blindfolded Arithmetic" = "read_at" # one projected table bit, no lookup round
+"Bitwise Cyclic Tag" = "_program" # delete inputs and a literal bit
+"BrainIf" = "_brainif_dag" # constant residual output tail
+"Circlefuck" = "_program" # read into an executed cell and print the tail
+"Clockwise" = "_constant_ring" # read rotation and literal output
+"Collatz Multiverse" = "_cm_constant_program" # reads followed by literal output
+"Cyclic tag" = "_program" # empty production deletes inputs and a literal bit
+"Dimensional" = "_program" # reads and literal output
+"EGL" = "_program" # scratch reads beside a literal answer cell
+"Eval" = "_eval_ordered" # one projected table entry
+"Fackward" = "_skip" # n bit-dropping levels, then a literal leaf
+"Fargo" = "_arm_expression" # literal zero or one ANF coefficient
+"Fish" = "input_weights" # one projected grid cell
+"Grapheme" = "_program" # one-entry integer lookup
+"Home Row" = "_program" # direct constant input-discard sequence
+"INTERCAL" = "_diagram" # equal-child reduction to a constant id
+"Minsky Swap" = "input_weights" # zero projected index weights
+"Modulous" = "input_weights" # one projected table entry
+"ROTfuck" = "_program" # one-entry rotated lookup
+"SLOW ACV MAMMALIAN" = "_constant_read" # scratch reads and coprime answer array
+"Super SNUSP" = "_emit_lookup" # projected literal table
+"Taglate" = "_taglate_raw" # smallest valid constant table
+"Vandevelo" = "_affine_coset" # a full or empty guard set
+"bit~" = "_program" # one planted projected answer

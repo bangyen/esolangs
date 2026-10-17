@@ -1,14 +1,13 @@
 """Every generator docstring follows the template, and its claims run.
 
 Each ``Size:`` anchor is regenerated and measured; each ``Raises:`` entry
-needs a trigger in ``languages/<id>/tests/generator_triggers.json``: a table
+needs a ``[[generator_triggers]]`` entry in ``languages/<id>/tests/cases.toml``: a table
 (a string or an anchor's ``n=14 parity``), ``generate`` options, and the
 exception.  ``untriggerable`` maps an entry no call reaches to the reason.
 """
 
 import ast
 import io
-import json
 import pathlib
 import re
 import tokenize
@@ -29,6 +28,7 @@ from tests.generators.generator_sections import (
     raises_entries,
 )
 from tests.interpreters.spec_sections import headers
+from tests.support.cases import cases
 
 pytestmark = pytest.mark.medium
 
@@ -237,12 +237,12 @@ def test_the_named_tables_are_the_functions_they_name() -> None:
 
 
 def triggers_of(name: str) -> dict[str, object]:
-    """Return ``name``'s trigger file, or an empty one."""
-    path = _LANGUAGES_DIR / LANGUAGES[name].id / "tests/generator_triggers.json"
-    if not path.exists():
-        return {"triggers": []}
-    data: dict[str, object] = json.loads(path.read_text(encoding="utf-8"))
-    return data
+    """Return ``name``'s triggers and untriggerable entries."""
+    data = cases(LANGUAGES[name].id)
+    return {
+        "triggers": data.get("generator_triggers", []),
+        "untriggerable": data.get("generator_untriggerable", {}),
+    }
 
 
 def _table(spec: str) -> str:

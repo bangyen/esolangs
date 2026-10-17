@@ -372,22 +372,29 @@ def cvnc(truth_table: str) -> str:
     shapes = [(truth_table, [1] * n)]
     if 1 < len(table) < len(truth_table):
         shapes.append((table, weights))
-    # A program not shorter than the gadget's reach gets one more squaring,
-    # repeated until it fits; each prologue change rebases the shared body
-    # before the reach is checked again.
-    squarings = _HALT_SQUARINGS
-    while True:
-        offset = _prologue_syllables(squarings)
-        body = min(
-            (
-                in_input_order(shape, partial(_direct, offset=offset, weights=named))
-                for shape, named in shapes
-            ),
-            key=len,
-        )
-        if len(_halt(squarings)) + len(body) < _reach(squarings):
-            return _halt(squarings) + body
-        squarings += 1
+    # The gadget must reach past the program.  Sharing only shortens a body
+    # (a jump is taken only where shorter), so the unshared body bounds it
+    # whatever the prologue, and the squarings follow from that length at
+    # once; the 64 covers the gadget itself (8 + 2 per squaring).
+    unshared = min(
+        len(in_input_order(shape, partial(_direct, offset=None, weights=named)))
+        for shape, named in shapes
+    )
+    # 2**(2**s) > m exactly when 2**s >= m.bit_length().
+    bits = (unshared + 64).bit_length()
+    squarings = max(_HALT_SQUARINGS, (bits - 1).bit_length())
+    offset = _prologue_syllables(squarings)
+    body = min(
+        (
+            in_input_order(shape, partial(_direct, offset=offset, weights=named))
+            for shape, named in shapes
+        ),
+        key=len,
+    )
+    program = _halt(squarings) + body
+    if len(program) >= _reach(squarings):  # pragma: no cover - sharing never grows
+        raise AssertionError("shared body outgrew the unshared bound")
+    return program
 
 
 LANGUAGE = Language(

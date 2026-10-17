@@ -8,7 +8,9 @@ one are read on the return rail after printing.  A literal row has no
 subtrees to fold or share.  Constants read a full input rotation, clear the
 accumulator and emit the seven answer bits on a closed two-column ring.  A
 ``width`` exceeded rotates the program counterclockwise (two columns for
-n <= 2, else ``2*n + 5``).
+n <= 2, else ``2*n + 5``).  ``balance`` may instead split the table into
+strips the first inputs select (:func:`_clockwise_banded`): n=6 random
+184 -> 106 on a side, n=9 1107 -> 270.
 
 Size:
     O(T) cells; n=8 random 1847: 5,048 chars, n=10 random 1847: 17,740 chars,
@@ -166,6 +168,90 @@ def _clockwise_program(
     return_gap = _shift_return_rail(grid, trailing)
     layout = _Layout(grid, total, len(reads), digit + return_gap, return_gap)
     return _fit_width(truth_table, layout, grid.render(), width)
+
+
+def _clockwise_banded(truth_table: str, split: int) -> str:
+    """Select one of ``2**split`` strips by the first inputs, then look up.
+
+    The top is the lookup for the first ``split`` indexed inputs with its
+    table cut to the countdown: entry ``h`` drops a column, east of every
+    strip, to a ``!`` that turns west into strip ``h`` with the accumulator
+    zero, as the digit tail leaves it.  Each strip is the lookup for the
+    remaining inputs over its slice of the table, climbed into from below.
+    Every strip leaves west along its table's return row onto one rail up
+    column 0: an ``S`` lets its ``!`` turn north, and the ``+`` above makes
+    the accumulator nonzero, so lower strips' rails pass the ``!`` straight.
+    Inputs after the last indexed one are read on the rail above the strips.
+    """
+    total = _validate_truth_table(truth_table)
+    used = essential_inputs(truth_table, total)
+    trailing = total - used[-1] - 1
+    indexed = read_at(truth_table, used, total)
+    reads = _head_widths(total, used)
+    strips, width = 1 << split, 1 << (len(used) - split)
+
+    def lookup(head_reads: list[int], table: str) -> dict[tuple[int, int], str]:
+        grid = _Grid()
+        _layout_lookup(grid, head_reads, table)
+        return grid.cells
+
+    strip_cells = [
+        lookup(reads[split:], indexed[h * width : (h + 1) * width])
+        for h in range(strips)
+    ]
+    # A strip keeps its heads, gadgets and table; its own entry descent,
+    # digit tail and exit turn give way to the shared ones.
+    climb = _TABLE_ROWS + 1 + 2 * (len(reads) - split - 1)
+    for cells in strip_cells:
+        for x, y in list(cells):
+            if y == 0 or y >= climb or (x, y) == (0, _TABLE_ROWS):
+                del cells[x, y]
+        cells[_CLIMB, climb] = "R"
+        # The lane runs west, so the digit is spelt backwards.
+        for i, char in enumerate(reversed(_DIGIT)):
+            cells[_DESCENT + i, climb] = char
+        cells[1, _TABLE_ROWS] = "S"
+        cells[0, _TABLE_ROWS] = "!"
+        cells[0, _TABLE_ROWS - 1] = "+"
+    span = max(x for cells in strip_cells for x, _ in cells) + 2
+
+    raw = lookup(reads[:split], "0" * strips)
+    start = min(x for (x, y), char in raw.items() if y == 1 and char == "!")
+    digit = _TABLE_ROWS + 1 + 2 * (split - 1)
+    # The top keeps its heads and gadgets.  Its table body and digit tail
+    # go (each strip's lane prints the digit), and so do the four rows the
+    # body held: nothing else crosses them but the descent and the climb.
+    top = {
+        (x, y if y <= 1 else y - _TABLE_ROWS + 1): char
+        for (x, y), char in raw.items()
+        if not (1 <= y <= _TABLE_ROWS and x >= start)
+        and (x, y) != (0, _TABLE_ROWS)
+        and y < digit
+    }
+    top[_DESCENT, digit - _TABLE_ROWS + 1] = top[_CLIMB, digit - _TABLE_ROWS + 1] = "R"
+    # The columns drop past the top's own gadgets, which from eight strips
+    # reach east of its table.
+    start = max(start, span, max(x for x, _ in top) + 2)
+    for h in range(strips):
+        top[start + 2 * h, 1] = "!"
+        if h + 1 < strips:
+            top[start + 2 * h + 1, 1] = "-"
+    # The rail reads trailing inputs where no strip's ``!`` follows.
+    first = max(max(y for _, y in top) + 1, _READS * trailing + 2)
+    for y in range(1, _READS * trailing + 1):
+        top[0, y] = "."
+
+    cells = dict(top)
+    for h, strip in enumerate(strip_cells):
+        offset = first + h * climb - 1
+        for (x, y), char in strip.items():
+            cells[x, y + offset] = char
+        cells[start + 2 * h, climb + offset] = "!"
+    rows = max(y for _, y in cells) + 1
+    grid = [[" "] * (max(x for x, _ in cells) + 1) for _ in range(rows)]
+    for (x, y), char in cells.items():
+        grid[y][x] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
 
 
 def _head_widths(total: int, used: list[int]) -> list[int]:
@@ -329,7 +415,7 @@ def _clockwise_two_columns(table: str) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the lookup, legacy rotation, lean rotation and two-column route."""
+    """Compare the lookup, its rotations, the two-column route and the strips."""
     inputs = len(table).bit_length() - 1
     used = essential_inputs(table, inputs)
     if len(used) <= 1:
@@ -359,7 +445,18 @@ def _balance(table: str, default: str) -> str:
         )
     rotated = clockwise(table, max(1, grid_width(default) - 1))
     lean = clockwise(table, max(1, grid_width(rotated) - 1))
-    return min(default, rotated, lean, clockwise(table, 1), key=balance_score)
+    # Measured on random tables n=3..9: side against split is minimal at
+    # k//3 (k essential inputs), k//3+1 guards the rounding.
+    k = len(used)
+    splits = {min(max(s, 1), k - 1) for s in (k // 3, k // 3 + 1)}
+    return min(
+        default,
+        rotated,
+        lean,
+        clockwise(table, 1),
+        *(_clockwise_banded(table, s) for s in sorted(splits)),
+        key=balance_score,
+    )
 
 
 LANGUAGE = Language(

@@ -1,23 +1,24 @@
 """The packed polynomial multiplication agrees with the incremental one."""
 
-from dataclasses import dataclass
+import decimal
 
 import pytest
 
+from esolangs.languages.polynomial.generator import algebra
 from esolangs.languages.polynomial.generator.algebra import (
     _PACKED_MIN_FACTORS,
+    _merge,
     _normalise,
     _pack,
+    _packed_product,
     _render_terms,
     _resign,
+    _schoolbook,
     format_coeffs,
     multiply,
     render_product,
 )
-from esolangs.languages.polynomial.generator.resources import (
-    _decimal_digits_upper,
-    estimate_generation,
-)
+from esolangs.languages.polynomial.generator.resources import estimate_generation
 
 
 def _incremental(factors: list[list[int]]) -> str:
@@ -53,6 +54,32 @@ class TestPackedAgainstIncremental:
         assert render_product(factors) == _incremental(factors)
 
 
+class TestPackedInternals:
+    def test_pack_reads_an_all_negative_list_as_negative(self) -> None:
+        assert _pack(["-1", "-2"], 3) == decimal.Decimal(-1002)
+
+    def test_merge_signs_when_only_one_side_has_negatives(self) -> None:
+        """(x + 2)(-x + 3): the left side is unnormalised but has no minus sign."""
+        assert _merge((["1", "2"], False), (["-1", "3"], False)) == (
+            ["-1", "1", "6"],
+            False,
+        )
+
+    def test_unpaired_node_is_carried_up_not_remerged(self, monkeypatch) -> None:
+        """Group size 1 over 5 factors leaves 3 nodes: an odd count."""
+        monkeypatch.setattr(algebra, "_PACKED_GROUP_SIZE", 1)
+        factors = [[1, -(3 + i)] for i in range(5)]
+        coeffs, alternating = _packed_product(factors)
+        expected = [str(c) for c in _schoolbook(factors)]
+        assert (_resign(coeffs) if alternating else coeffs) == expected
+
+    def test_alternating_signs_follow_index_parity(self) -> None:
+        assert (
+            _render_terms(["1", "1", "1", "1"], alternating=True)
+            == "f(x) = x^3 - x^2 + x - 1"
+        )
+
+
 class TestResourceEstimate:
     @pytest.mark.medium
     def test_generated_root_merge_exceeds_fnt_cutoff(self, monkeypatch) -> None:
@@ -84,13 +111,6 @@ class TestResourceEstimate:
         assert min(left, right) > 256 * 19
         assert max(left, right) < 2 * min(left, right)
         assert max(left, right) <= len(program)
-
-    def test_public_generator_covers_dispatch_resource_branches(self) -> None:
-        from esolangs.languages.polynomial.generator import _polynomial_dag, polynomial
-
-        assert polynomial("0101").startswith("f(x) = ")  # leading ignored input
-        assert polynomial("0000").startswith("f(x) = ")  # one constant leaf
-        assert _polynomial_dag("01")
 
     @pytest.mark.parametrize(
         "table",
@@ -125,79 +145,6 @@ class TestResourceEstimate:
         assert large.rendered_chars > small.rendered_chars
         assert large.peak_decimal_digits > small.peak_decimal_digits
         assert large.digit_work > small.digit_work
-
-
-# Test-only oracle: nothing in src/ reads it, so it lives beside its test.
-@dataclass(frozen=True)
-class ColdParseEstimate:
-    """Upper bounds derived from parsed integer coefficients."""
-
-    degree: int
-    coefficient_digits: int
-    real_lift_bound: int
-    field_points: int
-    field_count: int
-    fallback_possible: bool
-    peak_words: int
-    digit_work: int
-
-
-def estimate_cold_parse(coeffs: list[int]) -> ColdParseEstimate:
-    """Bound the implemented fast peel; do not price the remainder root search."""
-    from esolangs.languages.polynomial.interpreter.ntt import (
-        _NTT_FIELDS,
-        _ntt_real_bound,
-    )
-
-    degree = max(0, len(coeffs) - 1)
-    nonzero = [abs(value) for value in coeffs if value]
-    coefficient_digits = max(
-        1, max((_decimal_digits_upper(value) for value in nonzero), default=1)
-    )
-    real_lift_bound = _ntt_real_bound(degree)
-    field_points = sum(field[0] for field in _NTT_FIELDS)
-    field_count = len(_NTT_FIELDS)
-    # The two exhaustive transforms are fixed-size.  Coefficient reduction
-    # still reads every input digit; the D**2 lift can propose O(D**3)
-    # quadratics and each screen scans O(D) coefficients.
-    transform_work = field_points * max(1, field_points.bit_length())
-    arithmetic_digits = coefficient_digits + degree * len(str(degree + 1))
-    peel_work = (degree + 1) ** 4 * arithmetic_digits**2
-    prime_powers = max(1, 2 * degree) * 6
-    # Before exact division, the implementation materialises candidate
-    # ``(real, square)`` pairs.  One pair per real lift and prime power is a
-    # deliberately loose upper bound; two payload integers price each tuple.
-    candidate_count = (2 * real_lift_bound + 1) * prime_powers
-    # Tuple/set headers and Python integers dominate their payload.  Sixty-four
-    # words per degree bit is intentionally above the two integer digit arrays
-    # plus container overhead on every supported CPython word size.
-    words_per_candidate = 16 + 64 * max(1, (degree + 1).bit_length())
-    candidate_words = candidate_count * words_per_candidate
-    peak_words = field_points + (degree + 1) * coefficient_digits + candidate_words
-    # Coefficients alone carry no provenance or factor-shape certificate.
-    # Any nonconstant arbitrary program may leave a remainder for
-    # _remainder_roots, polynomial in the source but not priced here.
-    fallback_possible = degree > 0
-    return ColdParseEstimate(
-        degree,
-        coefficient_digits,
-        real_lift_bound,
-        field_points,
-        field_count,
-        fallback_possible,
-        peak_words,
-        transform_work + peel_work,
-    )
-
-
-def test_cold_parse_estimate_covers_a_root_past_the_old_fixed_lift() -> None:
-    coeffs = [1, *([0] * 399)]
-    estimate = estimate_cold_parse(coeffs)
-    assert estimate.real_lift_bound > 163_841 // 2
-    assert estimate.field_count == 2
-    assert estimate.fallback_possible
-    assert estimate.peak_words >= len(coeffs) * estimate.coefficient_digits
-    assert estimate.digit_work > 0
 
 
 def test_assemble_refuses_an_oversized_estimate_before_expansion(
@@ -246,13 +193,7 @@ class TestRenderTerms:
     def test_alternating_signs_come_from_the_index(self) -> None:
         """With the flag set the strings are magnitudes; index 2 is even,
         so its term is added rather than subtracted."""
-        assert _render_terms(["1", "0", "1"], True) == "f(x) = x^2 + 1"  # noqa: FBT003
-
-
-class TestFormatCoeffs:
-    def test_a_zero_coefficient_contributes_no_term(self) -> None:
-        """``(x - 1)(x + 1)`` is ``x^2 - 1``: the linear term drops out."""
-        assert format_coeffs([1, 0, -1]) == "f(x) = x^2 - 1"
+        assert _render_terms(["1", "0", "1"], alternating=True) == "f(x) = x^2 + 1"
 
 
 class TestBranchesTheGeneratorNoLongerReaches:

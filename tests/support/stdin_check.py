@@ -47,12 +47,16 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
             # the shape, which is where that fact already lives.
             wanted += 1
 
-    if shape == "row_index":
+    if shape in {"row_index", "row_number"}:
+        # A row number is the row index plus one, for a language whose input
+        # must be positive (Blindfolded Arithmetic).
+        base = int(shape == "row_number")
+        noun = "row number" if base else "row index"
         # ``isdecimal``, not ``isdigit``: a superscript like ``²`` passes
         # ``isdigit`` and then ``int`` rejects it with a bare ValueError.
         if len(lines) != 1 or not lines[0].isdecimal():
             raise ArgumentError(
-                f"{name} reads one decimal row index, but stdin is {stdin.strip()!r}"
+                f"{name} reads one decimal {noun}, but stdin is {stdin.strip()!r}"
             )
         if len(lines[0]) > 1 and lines[0][0] == "0":
             # A leading zero is almost always the bit string typed out
@@ -61,22 +65,22 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
             # are bits: ``int('02', 2)`` crashed the refusal.
             if not set(lines[0]) - {"0", "1"}:
                 try:
-                    index_hint = str(int(lines[0], 2))
+                    index_hint = str(int(lines[0], 2) + base)
                 except ValueError as exc:
                     raise ArgumentError(
-                        f"{name} reads one decimal row index; {len(lines[0])} "
-                        "input bits have a leading zero and their index is "
+                        f"{name} reads one decimal {noun}; {len(lines[0])} "
+                        f"input bits have a leading zero and their {noun} is "
                         "too large to print"
                     ) from exc
                 raise ArgumentError(
-                    f"{name} reads one decimal row index, and {lines[0]!r} "
+                    f"{name} reads one decimal {noun}, and {lines[0]!r} "
                     f"has a leading zero -- if those are the input bits, the "
-                    f"index is {index_hint}: "
+                    f"{noun.split()[-1]} is {index_hint}: "
                     f"`esolangs encode {name} {lines[0]}`"
                 )
             raise ArgumentError(
-                f"{name} reads one decimal row index, and {lines[0]!r} has a "
-                f"leading zero, which a decimal index never has"
+                f"{name} reads one decimal {noun}, and {lines[0]!r} has a "
+                f"leading zero, which a decimal {noun} never has"
             )
         if wanted is not None:
             try:
@@ -86,13 +90,14 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
                 # 4300-digit int->str cap; the bare ValueError used to reach
                 # the CLI's generic "this is a bug in esolangs" handler.
                 raise ArgumentError(
-                    f"{name} row index has {len(lines[0])} digits, more than "
-                    f"the {wanted}-input program can name (0..{2**wanted - 1})"
+                    f"{name} {noun} has {len(lines[0])} digits, more than the "
+                    f"{wanted}-input program can name "
+                    f"({base}..{2**wanted - 1 + base})"
                 ) from exc
-            if index >= 2**wanted:
+            if not base <= index < 2**wanted + base:
                 raise ArgumentError(
-                    f"{name} row index {lines[0]} is out of range for a "
-                    f"{wanted}-input program (0..{2**wanted - 1})"
+                    f"{name} {noun} {lines[0]} is out of range for a "
+                    f"{wanted}-input program ({base}..{2**wanted - 1 + base})"
                 )
         return
     if shape in {"char_stream", "char_stream_padded", "char_stream_cyclic"}:

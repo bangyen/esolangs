@@ -57,15 +57,15 @@ class TestLaserFuck:
         """The identity order is built first and ties keep it."""
         assert ",>,>," in boolean.laserfuck("01101001")
 
-    def test_only_identity_and_greedy_orders_are_built(self) -> None:
-        """Each table costs at most two orders, one natural layout each."""
+    def test_only_the_identity_order_is_built(self) -> None:
+        """Each table costs one order, one natural layout."""
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.languages.laserfuck.generator")
         real = module._laserfuck_build  # noqa: SLF001
 
-        for n, table, orders in ((3, "01011010", 2),):
+        for n, table, orders in ((3, "01011010", 1),):
             built = 0
 
             def counted(*args: object, _build: object = real, **kwargs: object) -> str:
@@ -383,26 +383,6 @@ def test_overhead_funnel_larger_tables(n: int) -> None:
                     run_laserfuck(program, list(format(row, f"0{n}b")), heading)
                     == table[row]
                 )
-
-
-def test_valid_more_expensive_input_order_keeps_identity(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from esolangs.languages.laserfuck.generator import _laserfuck_build
-
-    module = importlib.import_module("esolangs.languages.laserfuck.generator")
-    table = "01101001"
-    identity = _laserfuck_build(table, (0, 1, 2), 80)
-    alternative = _laserfuck_build(table, (1, 0, 2), 80)
-    assert len(alternative) > len(identity)
-    monkeypatch.setattr(module, "input_orders", lambda _table: [(0, 1, 2), (1, 0, 2)])
-    selected = boolean.laserfuck(table, 80)
-    assert selected == identity
-    for row, expected in enumerate(table):
-        bits = list(format(row, "03b"))
-        for heading in range(4):
-            assert run_laserfuck(selected, bits, heading) == expected
-            assert run_laserfuck(alternative, bits, heading) == expected
 
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 15, 18, 20, 40, 80])

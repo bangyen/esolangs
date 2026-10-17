@@ -4,7 +4,13 @@ from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
 from esolangs.generation.helpers import essential_inputs, read_at
-from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_head, _leaf
+from esolangs.languages.slow_acv_mammalian._sums import (
+    _aim,
+    _crossing_head,
+    _leaf,
+    _read_seeds,
+    _seeds_onto,
+)
 from esolangs.languages.slow_acv_mammalian.interpreter import _ARRAYS, MammalianModuli
 
 
@@ -21,26 +27,17 @@ class _State:
 
 def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
     """Return the earliest SEED count reaching a head congruent to want modulo 23."""
-    if step == _ARRAYS:
-        wraps = (head - want) * pow(modulus, -1, _ARRAYS) % _ARRAYS
-        return max(0, -(-(wraps * modulus - head) // step))
-    inverse = pow(step, -1, _ARRAYS)
-    for wraps in range(step + 1):
-        first = max(0, -(-(wraps * modulus - head) // step))
-        last = min(modulus - 1, ((wraps + 1) * modulus - 1 - head) // step)
-        residue = (want - head + wraps * modulus) * inverse % _ARRAYS
-        count = first + (residue - first) % _ARRAYS
-        if count <= last:
-            return count
-    raise AssertionError("no routing head")  # pragma: no cover - coprime steps
+    return _seeds_onto(head, step, range(want, modulus, _ARRAYS), modulus)
 
 
-def _read_seeds(head: int, total: int, modulus: int) -> int:
-    """Reach the earliest nonwrapping head whose two DIGEST sums XOR to 48."""
-    count = _aim(total + head)
-    if head + count > modulus - 17:
-        count = modulus - head + _aim(total)
-    return count
+#: The print pair by cell modulus: two unit arrays (a SEED run reaches any
+#: head there) past 0 and the weight array, ``digit`` of its SEEDs apart so
+#: a leaf's digit is its SEED count.  Under 256 the units are the even
+#: arrays and the weight array 2 steps by 3: one SEED from any even array
+#: lands on an odd one or wraps onto 0 or 2, two take 4 to 10.  Under 255
+#: the weight array 1 steps by 2, and 10 to 12 is the first step from a
+#: unit (``a + 1`` coprime to 3, 5 and 17) onto one.
+_PRINTS = {256: (4, 10, 2), 255: (10, 12, 1)}
 
 
 class _Chain:
@@ -50,29 +47,12 @@ class _Chain:
         units = [array for array in range(_ARRAYS) if gcd(array + 1, modulus) == 1]
         self.weight = units[1]
         self.step = self.weight + 1
-        for seeds in range(1, 23):
-            for first in units:
-                if first in (0, self.weight):
-                    continue
-                head = (first - self.weight) % _ARRAYS
-                second = (first + seeds * self.step) % _ARRAYS
-                if second in units and second not in (
-                    0,
-                    self.weight,
-                    first,
-                ):
-                    self.prints = (first, second)
-                    self.digit_seeds = seeds
-                    self.dispatch_head = head
-                    self.pools = tuple(
-                        array
-                        for array in units
-                        if array not in (0, self.weight, first, second)
-                    )[:4]
-                    return
-        raise AssertionError(
-            "no coprime print pair"
-        )  # pragma: no cover - supported moduli
+        first, second, self.digit_seeds = _PRINTS[self.modulus]
+        self.prints = (first, second)
+        self.dispatch_head = (first - self.weight) % _ARRAYS
+        self.pools = tuple(
+            array for array in units if array not in (0, self.weight, first, second)
+        )[:4]
 
     def seed(self, state: _State, count: int) -> list[str]:
         state.head = (state.head + count) % self.modulus
@@ -170,22 +150,31 @@ class _Chain:
         state.acc = state.head + state.rest[0]
         return [*tokens, "DIGEST", "LEAPFROG"], hop
 
-    def regions(
-        self, state: _State, weight: int, pos: int, pool: int | None
-    ) -> tuple[int, int]:
-        """Bound node regions, including residue wraps and missing-head XORs."""
-        maximum = self.io_modulus - 1
+    def costs(self) -> tuple[int, int, int]:
+        """Bound one append, a raise's two end chunks, and each full chunk between."""
         missing = self.modulus < self.io_modulus
         append = 2 * self.modulus + 3 if missing else self.modulus + 1
         # Two arbitrary end chunks; full middle chunks cost 3/4 tokens.
         # Missing head 255 adds at most 257 once per 256 full chunks.
         raise_base = 2 * append + (self.modulus + 2 if missing else 0)
         slope = 5 if missing else 3 + int(self.modulus != self.io_modulus)
+        return append, raise_base, slope
 
-        def reserve(fixed: int) -> int:
-            # x = fixed + slope*q <= maximum*q, so ceil(x/maximum) <= q.
-            return fixed + slope * (-(-fixed // (maximum - slope)))
+    def reserve(self, fixed: int) -> int:
+        """Bound a region of ``fixed`` tokens plus a raise across itself."""
+        maximum = self.io_modulus - 1
+        slope = self.costs()[2]
+        # x = fixed + slope*q <= maximum*q, so ceil(x/maximum) <= q.
+        return fixed + slope * (-(-fixed // (maximum - slope)))
 
+    def regions(
+        self, state: _State, weight: int, pos: int, pool: int | None
+    ) -> tuple[int, int]:
+        """Bound node regions, including residue wraps and missing-head XORs."""
+        maximum = self.io_modulus - 1
+        missing = self.modulus < self.io_modulus
+        append, raise_base, slope = self.costs()
+        reserve = self.reserve
         bank = 3
         if pool is None:
             minimum = self.io_modulus - self.step
@@ -312,9 +301,23 @@ class _Chain:
                 tokens += self.clear(state)
         return tokens + self.route(state, 0, short=True)
 
-    def emit(self, plan: list[tuple[int, int | None]], base: int) -> list[str]:
+    def emit(
+        self, plan: list[tuple[int, int | None]], table: int
+    ) -> tuple[list[str], int]:
+        """Return everything but the leaf bodies, and where the leaf table starts.
+
+        The table comes first, behind a jump from the empty machine sized by
+        :meth:`reserve`, so its base is known before array 16 is raised to it.
+        """
         state = _State()
-        tokens = []
+        append, raise_base, slope = self.costs()
+        maximum = self.io_modulus - 1
+        # A jump is a clear, a raise, the hop's append and DIGEST LEAPFROG.
+        base = self.reserve(3 + raise_base + append + slope * -(-table // maximum))
+        tokens, _ = self.jump(state, base + table)
+        if len(tokens) > base:  # pragma: no cover - reserve bounds the jump
+            raise AssertionError(f"the table jump overran its {base} tokens")
+        tokens += ["SEED"] * (base + table - len(tokens))
         for digit, array in enumerate(self.prints):
             tokens += self.route(state, array, short=True)
             tokens += self.append(state, 48 + digit)
@@ -322,10 +325,7 @@ class _Chain:
             tokens += self.route(state, 0, short=True)
         for weight, pool in plan:
             if pool is not None:
-                # Shorter pools shifted base calibration at n=3: 255/255
-                # grew 1900 characters, 256/256 grew 690. Preserve those.
-                compact = self.modulus != self.io_modulus or len(plan) != 3
-                tokens += self.plant_pool(state, weight, pool, compact=compact)
+                tokens += self.plant_pool(state, weight, pool)
         tokens += self.route(state, self.weight, short=True)
         tokens += self.raise_to(state, base)
         tokens += self.route(state, 0, short=True)
@@ -334,8 +334,7 @@ class _Chain:
             tokens += level
         tokens += self.route(state, self.weight)
         tokens += self.set_head(state, self.dispatch_head)
-        tokens += ["DIGEST", "LEAPFROG"]
-        return tokens + ["SEED"] * max(0, base - len(tokens))
+        return [*tokens, "DIGEST", "LEAPFROG"], base
 
     def build(self, table: str, inputs: int, *, project_inputs: bool = False) -> str:
         original_inputs = inputs
@@ -352,22 +351,17 @@ class _Chain:
             # without allocating another leaf coordinate.
             plan = [kept.get(i, (0, None)) for i in range(original_inputs)]
             table = read_at(table, used, original_inputs)
-        base = 0
-        for _ in range(16):
-            tokens = self.emit(plan, base)
-            if len(tokens) == base:
-                break
-            base = len(tokens)
-        else:  # pragma: no cover - base padding exceeds the emission slope
-            raise AssertionError("leaf base did not settle")
-        # Prefix blocks start on the I/O period; leaf offsets need no shared
-        # alignment because LEAPFROG addresses individual tokens.
-        for group in range(1 << (inputs - free)):
-            tokens += ["SEED"] * (base + group * stride - len(tokens))
+        groups = 1 << (inputs - free)
+        tokens, base = self.emit(plan, (groups - 1) * stride + (unit << free))
+        # Leaf offsets need no shared alignment: LEAPFROG addresses tokens.
+        for group in range(groups):
             for offset in range(1 << free):
                 suffix = int(f"{offset:0{free}b}"[::-1], 2)
                 digit = table[(group << free) | suffix]
-                tokens += _leaf(int(digit) * self.digit_seeds, unit=unit)
+                start = base + group * stride + offset * unit
+                tokens[start : start + unit] = _leaf(
+                    int(digit) * self.digit_seeds, unit=unit
+                )
         return " ".join(tokens)
 
 
