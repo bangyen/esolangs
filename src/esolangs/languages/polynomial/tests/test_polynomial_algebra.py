@@ -1,13 +1,20 @@
 """The packed polynomial multiplication agrees with the incremental one."""
 
+import decimal
+
 import pytest
 
+from esolangs.languages.polynomial.generator import algebra
 from esolangs.languages.polynomial.generator.algebra import (
     _PACKED_MIN_FACTORS,
+    _expand_group,
+    _merge,
     _normalise,
     _pack,
+    _packed_product,
     _render_terms,
     _resign,
+    _schoolbook,
     format_coeffs,
     multiply,
     render_product,
@@ -46,6 +53,45 @@ class TestPackedAgainstIncremental:
         factors = _mixed_factors(4)
         factors[0] = [1, 0, -1]
         assert render_product(factors) == _incremental(factors)
+
+
+class TestPackedInternals:
+    def test_pack_reads_an_all_negative_list_as_negative(self) -> None:
+        assert _pack(["-1", "-2"], 3) == decimal.Decimal(-1002)
+
+    def test_merge_signs_when_only_one_side_has_negatives(self) -> None:
+        """(x + 2)(-x + 3): the left side is unnormalised but has no minus sign."""
+        assert _merge((["1", "2"], False), (["-1", "3"], False)) == (
+            ["-1", "1", "6"],
+            False,
+        )
+
+    def test_unpaired_node_is_carried_up_not_remerged(self, monkeypatch) -> None:
+        """Group size 1 over 5 factors leaves 3 nodes: an odd count."""
+        monkeypatch.setattr(algebra, "_PACKED_GROUP_SIZE", 1)
+        factors = [[1, -(3 + i)] for i in range(5)]
+        coeffs, alternating = _packed_product(factors)
+        expected = [str(c) for c in _schoolbook(factors)]
+        assert (_resign(coeffs) if alternating else coeffs) == expected
+
+    def test_group_count_is_a_power_of_two_per_96_factors(self, monkeypatch) -> None:
+        """384 factors split into 4 groups, the documented leaf count."""
+        leaves: list[int] = []
+        original = _expand_group
+
+        def counted(factors: list[list[int]]) -> list[str]:
+            leaves.append(len(factors))
+            return original(factors)
+
+        monkeypatch.setattr(algebra, "_expand_group", counted)
+        _packed_product([[1, -(3 + i)] for i in range(384)])
+        assert leaves == [96] * 4
+
+    def test_alternating_signs_follow_index_parity(self) -> None:
+        assert (
+            _render_terms(["1", "1", "1", "1"], alternating=True)
+            == "f(x) = x^3 - x^2 + x - 1"
+        )
 
 
 class TestResourceEstimate:
@@ -161,7 +207,7 @@ class TestRenderTerms:
     def test_alternating_signs_come_from_the_index(self) -> None:
         """With the flag set the strings are magnitudes; index 2 is even,
         so its term is added rather than subtracted."""
-        assert _render_terms(["1", "0", "1"], True) == "f(x) = x^2 + 1"  # noqa: FBT003
+        assert _render_terms(["1", "0", "1"], alternating=True) == "f(x) = x^2 + 1"
 
 
 class TestBranchesTheGeneratorNoLongerReaches:
@@ -195,3 +241,17 @@ def test_draining_remains_available_at_the_instruction_cap(
     module = importlib.import_module("esolangs.languages.polynomial.generator")
     monkeypatch.setattr(module, "_POLYNOMIAL_MAX_INSTRS", 15)
     assert evaluate_generated("Polynomial", "0101") == "0101"
+
+
+def test_format_coeffs_sizes_the_digit_cap_from_the_bit_length(monkeypatch) -> None:
+    """A 5001-digit coefficient asks for a cap near 5001, not 3x that."""
+    caps: list[int] = []
+    original = algebra.digit_limit_for
+
+    def spy(digits: int):
+        caps.append(digits)
+        return original(digits)
+
+    monkeypatch.setattr(algebra, "digit_limit_for", spy)
+    format_coeffs([10**5000])
+    assert 5001 <= caps[0] <= 5010

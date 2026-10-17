@@ -301,6 +301,21 @@ def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
     assert _polynomial("1", 10) == "1"
 
 
+def test_polynomial_header_without_a_term_stays_split() -> None:
+    """``f(x)`` alone, or ``f(x) =`` with no term, has no leading term to join."""
+    assert _polynomial("f(x)", 80) == "f(x)"
+    assert _polynomial("f(x) =", 80) == "f(x)\n="
+
+
+def test_zero_operand_guard_rejects_a_two_slot_arithmetic_instruction(
+    monkeypatch,
+) -> None:
+    """``[0, 4]`` would be read as I/O; the builder must refuse to emit it."""
+    monkeypatch.setattr("esolangs.languages.polynomial.generator._ASCII_ZERO", -2)
+    with pytest.raises(AssertionError, match="zero operand"):
+        _polynomial_dag("00")
+
+
 def test_generator_restrictions_name_both_budgets() -> None:
     restrictions = esolangs.describe("Polynomial")["generator_restrictions"]
     assert "1934 instructions" in restrictions
