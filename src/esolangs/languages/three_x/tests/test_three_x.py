@@ -157,7 +157,7 @@ class TestStepMachine:
     def test_an_open_loop_is_recorded_in_jumps(self) -> None:
         from esolangs.languages.three_x.interpreter import _Machine
 
-        machine = _Machine("3()",ScriptedIO(""))
+        machine = _Machine("3()", ScriptedIO(""))
         machine.step()
         machine.step()
         assert machine.jumps == (1,)
