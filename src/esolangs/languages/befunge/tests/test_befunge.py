@@ -216,6 +216,28 @@ def test_a_value_past_signed_long_aborts() -> None:
         run_befunge("99*:*:*:*:*.@")
 
 
+_MIN_LONG = "2:*:*:*:*:*:2/0\\-*"  # -(2**31) * 2**32 = -2**63, every push in range
+
+
+def test_the_signed_long_range_is_inclusive_at_both_ends() -> None:
+    """-2**63 and 2**63 - 1 are valid; 2**63 is not, and 65536 is no 16-bit wrap."""
+    assert run_befunge(_MIN_LONG + ".@") == "-9223372036854775808 "
+    assert run_befunge(_MIN_LONG + "1+0\\-.@") == "9223372036854775807 "
+    with pytest.raises(HaltError, match="signed-long"):
+        run_befunge(_MIN_LONG + "0\\-.@")
+    assert run_befunge("99*:*:*.@") == "43046721 "
+
+
+def test_a_byte_cell_at_the_top_of_the_range_is_accepted() -> None:
+    """U+00FF is a byte: only cells above it are rejected."""
+    assert run_befunge("\xff@") == ""
+
+
+def test_get_at_the_first_column_past_the_grid_reads_zero() -> None:
+    """x == 80 is off the 80-wide grid, so ``g`` pushes 0 rather than indexing."""
+    assert run_befunge("88*88++0g.@") == "0 "
+
+
 def test_the_branch_search_refuses_a_zero_divisor_read() -> None:
     """``/`` on an empty stack reads its result, so it cannot be forked."""
     machine = _Machine(["/"], IO())
