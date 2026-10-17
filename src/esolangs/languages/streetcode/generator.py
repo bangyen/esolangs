@@ -435,17 +435,6 @@ def _streetcode_shared(n: int) -> list[str]:
     return ["".join(row) for row in grid]
 
 
-def _streetcode_rotate(program: str) -> str:
-    """Rotate a Streetcode grid 180 degrees and trim its new line ends.
-
-    Rotation preserves right-hand driving; a reflection would not.  The
-    generator no longer tries it; the balancer does.
-    """
-    rows = program.splitlines()
-    width = max(map(len, rows))
-    return "\n".join(row.ljust(width)[::-1].rstrip() for row in reversed(rows))
-
-
 def _streetcode_quarter_turn(program: str) -> str:
     """Turn the complete street clockwise, exchanging horizontal/vertical walls."""
     rows = program.splitlines()
@@ -855,13 +844,16 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare each fit threshold, the seven/nine-column fallbacks and the folds."""
+    """Return the folded indexed street from six inputs, else compare the tree fits.
+
+    From six inputs the fold beat every other layout (default, the one- and
+    nine-column fits, the indexed street and its half-turn) on every table
+    measured, so it is the only one built.
+    """
     n = _validate_truth_table(table)
     if n >= _FLAT_FROM:
-        flat = _streetcode_flat(table, n)
-        shapes = [flat, _streetcode_rotate(flat)]
-    else:
-        shapes = _tree_shapes(table, n, _streetcode_tree(table), hallway=True)
+        return _streetcode_folded(_streetcode_flat(table, n))
+    shapes = _tree_shapes(table, n, _streetcode_tree(table), hallway=True)
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]
