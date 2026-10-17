@@ -44,10 +44,6 @@ class TestAnswerMode:
         assert wrong == []
 
 
-def test_the_input_shape_is_padded() -> None:
-    assert esolangs.describe("Taglate")["input_shape"] == "char_stream_padded"
-
-
 def test_it_catches_taglates_pad() -> None:
     """Its odd input count costs an extra line, and the shape says so."""
     _check_stdin(

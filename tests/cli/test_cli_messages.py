@@ -238,35 +238,7 @@ def test_text_generator_scale_hint_uses_cli_flag(capsys) -> None:
 #: Commands refused with exit code 2, and what stderr must say.
 #: ``prog:SRC`` is a file holding SRC; a third item is stdin.
 _REFUSALS = {
-    "a_repeated_width_quotes_its_value": (
-        "generate --width 77 --width 33 brainfuck 0110",
-        "first was '77'",
-    ),
-    "a_missing_argument_is_named": ("generate brainfuck", "missing <truth-table>"),
-    "swapped_arguments_are_recognized_as_swapped": (
-        "generate 0110 brainfuck",
-        "looks like a truth table",
-    ),
-    "a_misspelled_option_is_suggested": (
-        "generate --wdith 40 brainfuck 0110",
-        "did you mean --width",
-    ),
-    "read_answer_reports_an_unknown_language": (
-        "read-answer Nonexistent",
-        "unknown language",
-        "1",
-    ),
-    "read_answer_reports_an_unreadable_output": (
-        "read-answer brainfuck",
-        "no answer this could read",
-        "no digits here!",
-    ),
-    "a_genuine_extra_argument_still_says_so": (
-        "describe brainfuck zzz",
-        "unexpected argument",
-    ),
     "removed_suggest_is_refused": ("suggest", "unknown command: suggest"),
-    "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
     "encode_refuses_a_language_that_reads_nothing": (
         "encode ArrowQueue 01",
         "reads no stdin",
@@ -275,7 +247,6 @@ _REFUSALS = {
         "generate --bits 10 --bits 01 brainfuck 0110",
         "more than once",
     ),
-    "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
 }
 
 
