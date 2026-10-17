@@ -52,7 +52,10 @@ def _h_fallback(target: _Target, large_area: int | None) -> _Layout | None:
 
     _, inputs, used, projected = target
     selected: _Layout | None = None
-    if large_area is None or large_area >= _h_term_area_floor(len(used), inputs):
+    # One essential input has no depth-2 minterm site to wire a term to.
+    if len(used) >= 2 and (
+        large_area is None or large_area >= _h_term_area_floor(len(used), inputs)
+    ):
         selected = _h_term_layout(projected, input_order=used, port_inputs=inputs)
     if len(used) >= _H_POOL_MIN_INPUTS and (
         large_area is None or large_area >= _h_pool_area_floor(len(used), inputs)

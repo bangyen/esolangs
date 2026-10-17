@@ -751,3 +751,17 @@ def test_balance_matches_the_every_width_sweep() -> None:
             assert balance_score(balanced) <= min(
                 balance_score(best), balance_score(flat)
             ), table
+
+
+@pytest.mark.parametrize(("inputs", "column", "negated"), [(8, 0, 0), (9, 8, 1)])
+def test_a_single_input_table_past_the_competing_floor_builds(
+    inputs: int, column: int, negated: int
+) -> None:
+    """One essential input has no H term to wire; the pool draws it."""
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = "".join(
+        str((row >> (inputs - 1 - column) & 1) ^ negated) for row in range(1 << inputs)
+    )
+    program = esolangs.generate("Circuit Diagram", table)
+    assert _evaluate("Circuit Diagram", program, inputs=inputs) == table
