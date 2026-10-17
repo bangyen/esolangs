@@ -453,3 +453,22 @@ def test_branching_search_leaves_input_and_wide_coin_paths_undecided() -> None:
 def test_stepping_through_the_random_instruction_is_reproducible() -> None:
     """Its random instruction steps the same way twice under one seed."""
     assert_random_steps_reproduce("Painfuck", "y")
+
+
+def test_branching_limit_admits_exactly_its_outcomes() -> None:
+    # One coin forks into two outcomes: a limit of 2 holds them, 1 does not.
+    machine = Painfuck(_encode("yp"), ScriptedIO())
+    start = machine.branching_snapshot()
+    assert len(machine.branching_successors(start, 2) or ()) == 2
+    with pytest.raises(TimeoutError, match="coin outcomes"):
+        machine.branching_successors(start, 1)
+
+
+def test_w_copies_the_right_neighbour_from_a_middle_cell() -> None:
+    # Cells 2 and 4 hold 4 and 6; from cell 3, w takes 6, not the left 4.
+    assert run_program("rpprppplwo") == "6"
+
+
+def test_v_and_y_as_the_last_command_end_the_program() -> None:
+    assert run_program("pv") == ""
+    assert run_program("py") == ""
