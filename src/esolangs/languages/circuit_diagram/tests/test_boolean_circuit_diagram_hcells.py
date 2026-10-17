@@ -85,3 +85,11 @@ def test_h_cell_neighbours_do_not_wrap_across_rows() -> None:
     layout.junction(15, 4, 2)
     layout.route((0, 5), (0, 8), 1)
     assert layout.junctions[0, 5] == 1
+
+
+@pytest.mark.parametrize(("shape", "dot"), [("down", (8, 12)), ("across", (12, 8))])
+def test_h_cell_routes_reject_foreign_junction_inside_a_run(shape, dot) -> None:
+    layout = _HCellLayout(32)
+    layout.junction(*dot, 2)
+    with pytest.raises(AssertionError, match="collides"):
+        layout.route((8, 8), (16, 16), 1, shape)
