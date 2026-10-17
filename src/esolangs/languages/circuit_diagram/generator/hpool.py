@@ -32,21 +32,6 @@ class _FooterPlan(_HTermPlan):
         )
 
 
-def _pool_tail(inputs: int) -> int:
-    """Return an H pool's leaf width: three inputs when ``inputs`` is odd, else four."""
-    return 3 if inputs % 2 else 4
-
-
-def _pool_leaf(tail: int) -> int:
-    """Return the side of a pool's leaf block for a three/four-input tail."""
-    return 96 if tail == 3 else 192
-
-
-def _pool_inset(tail: int) -> int:
-    """Return how far the prefix site sits inside the leaf's right edge."""
-    return 8 if tail == 3 else 16
-
-
 def _atom_inputs(n: int) -> int:
     """Return a class's input width: seven when ``n`` is odd, else eight."""
     return 7 if n % 2 else 8
@@ -63,35 +48,6 @@ def _large_leaf_height(inputs: int) -> int:
     # The builder uses two input rows and four rows per gate. Reserve the
     # suffix bank plus a footer below every atom, rounded to the H lattice.
     return 8 * ((_atom_gate_bound(inputs) * 4 + 10 * inputs + 59) // 8)
-
-
-def _h_pool_size(prefix_inputs: int, tail_inputs: int) -> int:
-    """Return the prefix block side, with a constant-size cofactor pool."""
-    if prefix_inputs < 0 or prefix_inputs % 2 or tail_inputs not in (3, 4):
-        raise ValueError(
-            "cofactor pools need an even prefix and three/four suffix inputs"
-        )
-    leaf = _pool_leaf(tail_inputs)
-    if prefix_inputs == 0:
-        return leaf
-    return (
-        2 * _h_pool_size(prefix_inputs - 2, tail_inputs)
-        + 16 * (prefix_inputs + tail_inputs)
-        + 8
-    )
-
-
-def _h_pool_area_floor(inputs: int, ports: int) -> int:
-    """Bound small-pool area from its bottom-right retained term glyph."""
-    tail = _pool_tail(inputs)
-    prefix = inputs - tail
-    if prefix < 2:
-        return 0
-    side = _h_pool_size(prefix, tail)
-    margin = 8 * ports + 8
-    return (margin + side - _pool_inset(tail) + 1) * (
-        margin + side - _pool_leaf(tail) + 9
-    )
 
 
 def _large_pool_layout(

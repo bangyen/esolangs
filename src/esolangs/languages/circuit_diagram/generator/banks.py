@@ -7,11 +7,11 @@ This still does not share every residual across bodies.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 
 from esolangs.generation.helpers import _validate_truth_table
 
-from . import hpool
 from .forest import _Forest, _suffix_forest
 from .hpool import (
     _atom_inputs,
@@ -441,16 +441,14 @@ def _residual_class_bank_candidate(
     return forest if _layout_area(forest) < _layout_area(separate) else separate
 
 
-def _pool_budget(n: int, ceiling: int | None) -> int | None:
-    """Cap the H-pool area by ``ceiling``; ``None`` when nothing fits.
+def _pool_budget(ceiling: int | None) -> int | None:
+    """Return the bank area budget: ``ceiling``, unbounded when ``None``.
 
-    Reads the floor through the ``hpool`` module (not a snapshot import)
-    so a patched floor reaches every candidate at call time.
+    ``None`` when nothing fits. The bank gate caps already bound the work.
     """
-    budget = hpool._h_pool_area_floor(n, n)  # noqa: SLF001
-    if ceiling is not None:
-        budget = min(budget, ceiling)
-    return budget if budget > 0 else None
+    if ceiling is None:
+        return sys.maxsize
+    return ceiling if ceiling > 0 else None
 
 
 def _bank_rectangle(

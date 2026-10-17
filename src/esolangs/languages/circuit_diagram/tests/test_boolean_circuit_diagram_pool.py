@@ -8,7 +8,6 @@ from esolangs.languages.circuit_diagram.generator import (
 )
 from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
 from esolangs.languages.circuit_diagram.generator.hpool import (
-    _h_pool_size,
     _large_pool_layout,
     _pool_layout,
 )
@@ -82,21 +81,6 @@ def test_projected_pool_reads_every_original_port_in_order(ignored) -> None:
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) <= height * width
     _execute(table, code)
-
-
-def test_pool_side_closed_form() -> None:
-    for tail, leaf in ((3, 96), (4, 192)):
-        for m in range(32):
-            side = _h_pool_size(2 * m, tail)
-            coefficient = leaf + 16 * tail + 72
-            assert side == coefficient * 2**m - 32 * m - 16 * tail - 72
-            assert side * side < coefficient**2 * 2 ** (2 * m)
-
-
-@pytest.mark.parametrize(("prefix", "tail"), [(-2, 4), (3, 4), (2, 2)])
-def test_unsupported_pool_dimensions_abort(prefix, tail) -> None:
-    with pytest.raises(ValueError, match="even prefix"):
-        _h_pool_size(prefix, tail)
 
 
 @pytest.mark.parametrize(

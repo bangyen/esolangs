@@ -9,7 +9,6 @@ import pytest
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
 from esolangs.languages.circuit_diagram.generator.hpool import (
     _atom_gate_bound,
-    _h_pool_area_floor,
     _large_pool_layout,
 )
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
@@ -20,10 +19,14 @@ from tests.support.witness_tables import dense, nested_dense, parity
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [9, 10, 11])
-def test_large_pool_area_sits_below_the_retained_glyph_floor(n) -> None:
-    """The pool floor caps bank budgets and is never beaten by the pool."""
-    height, width = _large_pool_layout(dense(n)).bounds()
-    assert height * width < _h_pool_area_floor(n, n)
+def test_large_pool_area_is_table_independent_and_fits_its_floor(n) -> None:
+    """Bank budgets rely on the pool area being a function of (n, ports) only."""
+    dense_model = _large_pool_layout(dense(n))
+    parity_model = _large_pool_layout(parity(n))
+    assert dense_model.bounds() == parity_model.bounds()
+    height, width = dense_model.bounds()
+    assert _large_pool_layout(dense(n), ceiling=height * width) is not None
+    assert _large_pool_layout(dense(n), ceiling=height) is None
 
 
 @pytest.mark.medium
@@ -70,10 +73,6 @@ def test_large_pool_floor_rejects_before_atom_routing(monkeypatch) -> None:
     assert _large_pool_layout(dense(9), ceiling=1) is None
     with pytest.raises(ValueError, match="distinct original ports"):
         _large_pool_layout(dense(9), input_order=[0] * 9, ceiling=1)
-
-
-def test_pool_area_floor_without_retained_terms_is_zero() -> None:
-    assert _h_pool_area_floor(4, 8) == 0
 
 
 @pytest.mark.medium
