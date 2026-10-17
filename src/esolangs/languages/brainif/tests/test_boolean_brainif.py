@@ -144,6 +144,13 @@ def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
                 assert io.input_str() == "sentinel"
 
 
+def test_brainif_odd_arity_loop_depth_size_pin() -> None:
+    program = boolean.brainif("0" * 31 + "1", 1)
+    assert len(program) == 2634
+    for row in (0, 17, 30, 31):
+        assert run_brainif(program, list(format(row, "05b"))) == str(row // 31)
+
+
 def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
     program = boolean.brainif("0110", 1)
     assert max(map(len, program.splitlines())) == 12
@@ -217,7 +224,7 @@ def test_loop_depth_rule_is_the_measured_best(monkeypatch) -> None:
     """``_top_level`` is the argmin of the sweep that once picked a fixed cap.
 
     Checked at the arities where the rule and the old cap of 4 differ or
-    agree on a seeded random table: n=6, 8, 10 (rule 1, 2, 3).
+    agree on a seeded random table: n=5..10 (rule 0, 1, 1, 2, 2, 3).
     """
     import random
 
@@ -225,7 +232,7 @@ def test_loop_depth_rule_is_the_measured_best(monkeypatch) -> None:
     from esolangs.languages.brainif.generator import _brainif_tree, _top_level
 
     rng = random.Random(11)
-    for n in (6, 8, 10):
+    for n in (5, 6, 7, 8, 9, 10):
         table = "".join(rng.choice("01") for _ in range(1 << n))
         sizes = []
         for top in range(5):

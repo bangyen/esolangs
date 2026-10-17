@@ -325,8 +325,9 @@ def _top_level(n: int) -> int:
     while ``2**(n-K) > 5 * 2**K``, i.e. ``K < (n - log2 5) / 2``, so the
     looped levels number ``(n - 1) // 2`` and the deepest is ``(n - 3) // 2``.
     Measured on seeded random tables the best top level is that at n=6, 8,
-    10..14 (n=5, 7, 9 are one lower, 0.9% to 3.6% smaller); the old fixed cap
-    of 4 was 2.3% to 7.6% larger at n=6, 8, 10 and 0.2% to 0.8% at n=13, 14.
+    10..14, and one lower at n=5, 7, 9 (0.9% to 3.6% smaller than the formula,
+    hence the ``n < 10`` term); the old fixed cap of 4 was 2.3% to 7.6% larger
+    at n=6, 8, 10 and 0.2% to 0.8% at n=13, 14.
 
     The cap also clears the pair condition: levels ``i < j`` share a marker
     position exactly when ``j - i == 2**(n-1-j)``, and ``m_i = 2**(n-1-i)``
@@ -335,7 +336,7 @@ def _top_level(n: int) -> int:
     stays under it.  ``n`` counts the essential inputs; :class:`_Strip`
     re-checks the pairs once ignored ones sit between the levels.
     """
-    return max(0, (n - 3) // 2)
+    return max(0, (n - 3 - (n < 10)) // 2)
 
 
 class _Strip:
