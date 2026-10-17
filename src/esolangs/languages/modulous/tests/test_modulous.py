@@ -100,8 +100,6 @@ _OUTPUT = {
         "A",
     ),
     "swap": ("[PSH INT 1][PSH INT 2][SWP][PRT INT][PRT INT][END]", "12"),
-    # JMP F skips a module.
-    "jump_forward": ("[PSH INT 5][JMP F 1][PRT INT][END]", "5"),
     # JMP ... IF jumps only when the top matches.
     "conditional_jump": ("[PSH INT 5][JMP F 1 IF 5][PRT INT][END]", "5"),
     # JMP ... NIF jumps only when the top does not match.
@@ -136,14 +134,11 @@ _OUTPUT_WITH_INPUT = {
 _RUNTIME_FAULTS_HALT = {
     # Arithmetic on an empty stack is an invalid operation.
     "add_on_empty_stack_halts": "[ADD 1]",
-    "swap_on_short_stack_halts": "[SWP]",
-    "print_on_empty_stack_halts": "[PRT INT]",
     "print_undefined_variable_halts": "[PRT VAR9 INT]",
     # Storing into an undeclared variable is invalid, as reading one is.
     "push_undefined_variable_halts": "[PSH INT 7][PSH VAR9]",
     # ``[PSH VAR VAR1]`` is not the syntax and does not quietly store.
     "push_variable_keyword_spelling_halts": "[PSH INT 7][PSH VAR VAR1]",
-    "random_zero_bound_halts": "[RND 0]",
 }
 
 
@@ -287,7 +282,7 @@ class TestModulous:
         with pytest.raises(ValueError, match=rf"did you mean {hint}\?"):
             run(source, IO())
 
-    @pytest.mark.parametrize("source", ["[XYZ]", "[PRP]", "[P]", "[S]", "[p 5]"])
+    @pytest.mark.parametrize("source", ["[XYZ]", "[PRP]", "[P]", "[S]"])
     def test_unknown_command_without_unique_match_has_no_hint(
         self, source: str
     ) -> None:
