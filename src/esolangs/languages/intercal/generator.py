@@ -24,8 +24,6 @@ from typing import Any, NamedTuple
 from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
-    layout_width,
-    same_up_to_wrapping,
 )
 from esolangs.generation.wrap import _join_tokens, balance_score
 from esolangs.registry._contracts import BooleanContract
@@ -267,17 +265,11 @@ def _program(n: int, assigned: list[tuple[int, _Expr]], result: _Expr) -> str:
     )
 
 
-def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
-    """Equivalent statement syntax at the narrowest layout, or the observed fit."""
+def _same_layout(template: str, _plain: str, layout: Callable[[int], Any]) -> bool:
+    """Equivalent statement syntax: every layout shares the narrowest one's tokens."""
     narrow = layout(1)
-    if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
+    return isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
         narrow
-    ):
-        return True
-    # Its primitive layout fits between the natural and simplified floors.
-    # Rebuild at the observed bound rather than accepting equivalent syntax.
-    return template == layout(layout_width(template)) or same_up_to_wrapping(
-        template, plain
     )
 
 
