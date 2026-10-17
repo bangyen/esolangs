@@ -204,6 +204,16 @@ class TestFlowchart:
             assert run_flowchart(once, bits) == table[row], row
 
 
+def test_a_shared_drawing_has_an_exact_size() -> None:
+    """Repeated 8-row blocks drawn once and jumped to: size and rows."""
+    table = "00010110" * 2 + "00111110" + "01111100"
+    program = boolean.flowchart(table, 60)
+    assert len(program) == 5751
+    for row in range(32):
+        bits = [str((row >> (4 - i)) & 1) for i in range(5)]
+        assert run_flowchart(program, bits) == table[row], row
+
+
 @pytest.mark.parametrize("width", [1, 40])
 def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
     """Ignored inputs cost their reads, not a switch: f(c, d) of four inputs."""
