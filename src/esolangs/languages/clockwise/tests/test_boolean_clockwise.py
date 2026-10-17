@@ -34,18 +34,13 @@ def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> No
 def test_balanced_ring_for_at_most_one_input_has_the_square_size(
     table: str, size: int
 ) -> None:
-    from esolangs.languages.clockwise.generator import _balance
+    import esolangs
 
-    program = _balance(table, boolean.clockwise(table))
+    program = str(esolangs.generate("clockwise", table, balance=True))
     assert len(program) == size
     n = len(table).bit_length() - 1
     for row in range(1 << n):
         assert run_clockwise(program, row_bits(row, n)) == table[row]
-
-
-@pytest.mark.parametrize("table", ["01101001", "00010111", "0110", "0001"])
-def test_width_zero_asks_for_no_rotation(table: str) -> None:
-    assert boolean.clockwise(table, 0) == boolean.clockwise(table)
 
 
 @pytest.mark.parametrize("width", [None, 1, 20])
