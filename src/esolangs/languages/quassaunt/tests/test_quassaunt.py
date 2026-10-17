@@ -113,6 +113,23 @@ def test_locals_belong_to_one_evaluation_and_globals_to_all() -> None:
         _run(f"@@{store.format('v')} %%Evaluate @@v %%Obtain")
 
 
+@pytest.mark.parametrize("name", ["vv", "]", "a]", "[a"])
+def test_only_a_bracketed_name_is_global(name: str) -> None:
+    store = f"@@{name}?%%Empty?%%Store"
+    with pytest.raises(HaltError, match="no variable"):
+        _run(f"@@{store} %%Evaluate @@{name} %%Obtain")
+
+
+def test_the_empty_brackets_name_is_global() -> None:
+    assert _run("@@@@[]?%%Empty?%%Store %%Evaluate @@[] %%Obtain") == ""
+
+
+def test_evaluatepermanently_drops_the_top_level_locals() -> None:
+    code = "@@v %%Empty %%Store @@@@v?%%Obtain %%Evaluatepermanently"
+    with pytest.raises(HaltError, match="no variable 'v'"):
+        _run(code)
+
+
 def test_evaluatereplace_drops_the_rest_of_its_caller() -> None:
     assert _run("@@@@x?%%Printtoconsole %%Evaluate @@y %%Printtoconsole") == "xy"
     assert _run("@@@@x?%%Printtoconsole %%Evaluatereplace @@y %%Printtoconsole") == "x"

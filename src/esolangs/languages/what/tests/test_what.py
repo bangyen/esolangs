@@ -74,6 +74,17 @@ def test_conditionals_combine_operators() -> None:
     assert _run("5[3<;!!]") == ""
     assert _run("5[3<>!!]") == "5"
     assert _run('"ab"["ab":!!!]["b">!!!]["a";1!!]') == "abab1"
+    # A literal below the string is "smaller" only when it really sorts below.
+    assert _run('"b"["a"<1!!]') == "1"
+    assert _run('"a"["b"<1!!]') == ""
+
+
+def test_ip_is_minus_one_once_halted() -> None:
+    machine = _Machine("1", ScriptedIO())
+    assert machine.ip == 0
+    machine.step()
+    assert machine.halted
+    assert machine.ip == -1
 
 
 def test_a_false_conditional_skips_to_the_next_bracket() -> None:
