@@ -3,6 +3,9 @@
 import itertools
 from fractions import Fraction
 
+import pytest
+
+import esolangs
 from esolangs.languages import generators as boolean
 from esolangs.languages.three_x.generator import _constant, _gain
 from esolangs.languages.three_x.tests.formulas import _key
@@ -212,3 +215,18 @@ def test_three_x_keys_fit_their_bound() -> None:
     """K(i) covers the 41 first keys, every key through n = 20."""
     for i in range(1, 42):
         assert state_bits(_evaluate(_constant(i - 1)), {}) <= _key(i), i
+
+
+@pytest.mark.parametrize(
+    ("table", "size"),
+    [
+        # A repeated constant block is not shared.
+        ("0001100000011000000110000000000000000000000000000000000000000000", 405),
+        # The sharing gain charges 7 characters a row.
+        ("1101110011011101110011011101110111001101110111011100110011001101", 553),
+        # Four-row blocks are candidates for sharing.
+        ("1011000000001011111111111011101111111011101100000000101100001011", 530),
+    ],
+)
+def test_block_sharing_sizes(table: str, size: int) -> None:
+    assert len(esolangs.generate("three_x", table)) == size

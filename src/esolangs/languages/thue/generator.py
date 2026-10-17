@@ -259,9 +259,9 @@ def _thue_layout(
     narrow = f"{rules_text}\n{start}{entries}E"
     if grid_width(narrow) <= limit:
         return narrow
-    # One-symbol nodes fit only bounded arities (-40% at n=3, widths 1-8);
-    # larger trees retain chunks.
-    if not queued and len(entries) <= 8 and limit < 9:
+    # One-symbol nodes fit only bounded arities (-40% at n=3, widths 1-8;
+    # -22% at width 9); larger trees retain chunks.
+    if not queued and len(entries) <= 8 and limit < 10:
         return _thue_short_tree(table)
     return _chunked(rules_text, entries, rounds, extra, limit)
 

@@ -7,10 +7,11 @@ The simulator laws are pinned differentially against the interpreter.
 
 Size:
     Parity is O(n) through the affine column, other tables O(T).
-    n=16 parity: 489 chars, n=10 random 1847: 40,581 chars.
+    n=16 parity: 489 chars, n=10 random 1847: 40,501 chars.
 
 Decisions:
-    Seeded n=16 affine: 552.8 characters against 30,849.8 positional.
+    Random n=16 affine (5 masks): 521-569 characters against 2,561-157,791
+    positional.
     :func:`two_state` allows at most two residuals per level, :func:`stored`
     each residual once within the positional length; each wins up to ~90% on
     tables it fits (stored from n=12).
@@ -175,8 +176,8 @@ def _solve_reduced(reduced: _Reduced) -> str:
 
     An interior ignored input replaces a lookup pad's last step; fresh
     padding grows only when the ignored run needs it.  Ten seeded n=8 tables
-    ignoring input 6 average 5,209.8 characters against 10,239.1 without the
-    reduction (49.1% smaller, seed 6072026).
+    ignoring input 6 average 5,129.8 characters against 10,159.1 without the
+    reduction (49.5% smaller, seed 6072026).
     """
     first, inner_table, kept, gaps, after = reduced
     if any(gaps):
@@ -203,7 +204,7 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     if mask is None:
         return _race_states(truth_table, n, positional, width)
     shared = _parity_columns(n, int(truth_table[0]), mask=mask, paired=True)
-    if width is None or width <= 0:
+    if width is None:
         return min(natural, shared, key=len)
     shared = _wrap_template(shared, n, width)
     if grid_width(shared) > width:
@@ -220,7 +221,7 @@ def _race_states(truth_table: str, n: int, positional: str, width: int | None) -
         for candidate in (two_state(truth_table), stored(truth_table, len(positional)))
         if candidate is not None
     ]
-    if width is None or width <= 0:
+    if width is None:
         return min([positional, *others], key=len)
     candidates = [positional] + [
         wrapped
@@ -248,7 +249,7 @@ def _affine_mask(truth_table: str) -> int | None:
 
 def _lookup_layout(table: str, n: int, natural: str, width: int | None) -> str:
     """Lay out the positional decoder, retaining its narrow parity floor."""
-    if width is None or width <= 0:
+    if width is None:
         return natural
     wrapped = _wrap_template(natural, n, width)
     if grid_width(wrapped) <= width:

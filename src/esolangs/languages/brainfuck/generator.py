@@ -485,9 +485,7 @@ def _affine_stream(table: str) -> str | None:
     return "".join(parts)
 
 
-def _bf_ordered(
-    truth_table: str, perm: tuple[int, ...], *, share: bool = True, bank: bool = True
-) -> str:
+def _bf_ordered(truth_table: str, perm: tuple[int, ...], *, bank: bool = True) -> str:
     """Emit a permuted table; node i tests cell 2*perm[i], reads stay ordered."""
     n = _validate_truth_table(truth_table)
 
@@ -517,8 +515,6 @@ def _bf_ordered(
     cells.append("+" * _ASCII_ZERO)
     cells.append(".")
     plain = "".join(cells)
-    if not share:
-        return plain
     # The body's share of `_command_budget`.
     budget = _command_budget(n) - len(header) - _ASCII_ZERO - 1
     bodies = []

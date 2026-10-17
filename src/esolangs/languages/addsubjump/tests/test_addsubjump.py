@@ -223,6 +223,11 @@ class TestTruncatedInstruction:
         # ... and b really is read, not defaulted: -6 is the constant 1.
         assert self._once("-1 -6") == ("\x01", 0)
 
+    def test_the_fourth_operand_is_the_selector_cell_not_its_neighbour(self) -> None:
+        # d is cell 3 (the constant 1, so subtract); cell 4 is the constant 0 (add).
+        code = memory([[12, -6, 5, -6, -7], [-1, 12, -1, -7]], {12: 0})
+        assert _run(code) == "\xff"
+
     def test_a_present_third_operand_is_the_literal_target(self) -> None:
         # Three cells: c exists and holds -1, a special address, which
         # halts. d is still absent and reads 0, so the += branch runs.
@@ -319,6 +324,13 @@ class TestStepMachine:
             0,
             1,
         )
+
+    def test_the_negative_flag_view_is_not_the_mode(self) -> None:
+        """A zero result with the mode on: ``NF`` reads 0 while ``FUM`` reads 1."""
+        machine = _machine(TestFlags._flag(-7, -4))  # noqa: SLF001
+        machine.step()
+        machine.step()
+        assert (machine.zf, machine.nf, machine.fum) == (1, 0, 1)
 
     def test_step_tracks_ip_and_memory(self) -> None:
         from esolangs.languages.addsubjump.interpreter import _Machine

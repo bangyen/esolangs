@@ -75,7 +75,7 @@ def _move(start: int, target: int) -> str:
     the tree reaches the result cell in ``1 + target // 2`` characters
     however far right it has walked, instead of one per cell walked back.
     """
-    # Restart wins on skewed tables: or 17.8/18.9/20.1% at n=7/8/9; random 0.6%.
+    # Restart wins on skewed tables: n-input OR 17.8/18.9/20.1% at n=7/8/9; random 0.6%.
     relative = _reach(start, target)
     absolute = "d" + _reach(0, target)
     return relative if len(relative) <= len(absolute) else absolute

@@ -34,7 +34,7 @@ def bundled_class_bank_candidate(
     q = len(classes)
     if q * len(chunks) > 4 * len(table):
         return None
-    budget = _pool_budget(n, ceiling)
+    budget = _pool_budget(ceiling)
     if budget is None:
         return None
     masks = _folded_class_masks(chunks, classes, prefix, len(table))

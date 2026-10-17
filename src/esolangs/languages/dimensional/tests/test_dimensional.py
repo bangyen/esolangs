@@ -117,6 +117,11 @@ class TestDimensional:
         assert run_and_capture(">") == ""
         assert run_and_capture("$") == ""
 
+    def test_a_number_may_end_the_program(self) -> None:
+        """The digit run of a final operand stops at the end of the code."""
+        assert run_and_capture(">12") == ""
+        assert run_and_capture("+>10") == ""
+
     def test_the_selected_axis_is_the_one_asked_for(self) -> None:
         """``$AXIS`` sets the axis to exactly ``AXIS``, clamped below at 2."""
         from esolangs.languages.dimensional.interpreter import _Machine

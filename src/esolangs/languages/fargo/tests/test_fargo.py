@@ -212,6 +212,19 @@ class TestWikiExamples:
         """It cannot be a call, so the count treats it as one value."""
         run_program("f x & x nope\n$\n")
 
+    def test_a_raw_mark_or_slot_supplies_a_name_not_a_call(self) -> None:
+        """A marked name, or any name in ``:``'s raw slot, owes nothing."""
+        assert run_program("f x & :& x\n$") == "0"
+        assert run_program("f : 1 &\n$") == "0"
+
+    def test_a_raw_parameter_owes_at_most_one_token(self) -> None:
+        """``f :x x`` is one complete call: the lone ``x`` is the call."""
+        assert run_program("f :x x\n$") == "0"
+
+    @pytest.mark.parametrize("line", ["101", ":s"])
+    def test_a_literal_or_raw_first_token_is_a_call_line(self, line: str) -> None:
+        assert run_program(f"s $\n{line}\n") == ""
+
     def test_redefinition_is_unreachable_rather_than_rejected(self) -> None:
         """The wiki calls it an error; the grammar makes it unwritable."""
         defs, calls = _parse_program("f | 1 0\nf | 0 0\n$\n")

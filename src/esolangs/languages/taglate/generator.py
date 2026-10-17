@@ -228,10 +228,6 @@ def _taglate_raw(truth_table: str) -> str:
     if len(set(truth_table)) == 1:
         return truth_table[0] + "\n" + "h" * (n + ghost) + "i"
     used = essential_inputs(truth_table, n)
-    # A constant table reduces to a one-input constant, never the length-1
-    # table, which is not a valid shape.
-    if not used and n > 1:
-        used = [0]
     used = _widen_even(used, n)
     # A single input needs no ghost, so odd size is fine there.
     if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):

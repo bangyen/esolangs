@@ -18,7 +18,7 @@ from esolangs.generation.packed_decoder import (
     _sbleq_constant,
     packed_decoder,
 )
-from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
+from esolangs.generation.wrap import wrap_grid
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -43,16 +43,6 @@ def s_bleq(truth_table: str) -> str:
     return tree if len(tree) < len(packed) else packed
 
 
-def _balance(table: str, default: str) -> str:
-    """Race the input-order tree and packed decoder on large non-constant tables."""
-    candidate = balance_program(default, "s_bleq")
-    if len(set(table)) == 1 or len(table) <= _TREE_ROWS:
-        return candidate
-    legacy = [in_input_order(table, _sbleq_hoisted), packed_decoder(table)]
-    old = balance_program(min(legacy, key=len), "s_bleq")
-    return min(candidate, old, key=balance_score)
-
-
 LANGUAGE = Language(
     "S*bleq",
     "s_bleq",
@@ -62,6 +52,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
-    balance=_balance,
     eof="a failed read leaves the cell alone and the program runs on",
 )

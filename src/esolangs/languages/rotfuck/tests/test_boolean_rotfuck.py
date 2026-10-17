@@ -231,6 +231,10 @@ class TestRotfuck:
         """The forward layout is deterministic down to the character."""
         assert len(boolean.rotfuck(table, rotation="forward")) == length
 
+    def test_a_lone_late_one_in_a_64_table_is_exactly_616_long(self) -> None:
+        """The loop-phase set (0, 3, 4, 5) mod 8 fixes the pads, so the length."""
+        assert len(boolean.rotfuck("0" * 52 + "1" + "0" * 11)) == 616
+
     def test_a_long_run_of_zero_entries_is_skipped_by_a_walk_and_runs(self) -> None:
         """A zero upper half is one carried count, not 2 * 128 steps."""
         half = "".join(str(bin(row * 37 % 256).count("1") & 1) for row in range(128))

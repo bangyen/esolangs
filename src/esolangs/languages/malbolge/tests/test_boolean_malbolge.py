@@ -13,7 +13,7 @@ from esolangs.languages import generators as boolean
 from esolangs.languages.malbolge.generator.cascade import (
     _cascade,
 )
-from esolangs.languages.malbolge.interpreter import _XLAT1, _load, run
+from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense, parity, row_bits
 
@@ -51,7 +51,7 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
     assert max(map(len, wrapped.splitlines())) <= width
     assert wrapped.replace("\n", "") == plain
     assert len(wrapped) == len(plain) + (len(plain) - 1) // width
-    assert _load(wrapped) == _load(plain)
+    assert _initial_memory(wrapped) == _initial_memory(plain)
     n = len(table).bit_length() - 1
     rows = range(len(table)) if n <= 3 else (0, 1, len(table) // 2, len(table) - 1)
     for row in rows:

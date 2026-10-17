@@ -42,7 +42,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import balance_score, wrap_tokens
+from esolangs.generation.wrap import wrap_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -117,9 +117,9 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
 
 def underload(truth_table: str, width: int | None = None) -> str:
     """Return a promise tree; narrow selectors defer execution to their node."""
-    short = width is not None and 0 < width < 5
+    short = width is not None and width < 5
     program = _shared(truth_table, short=short)
-    if width is None or width <= 0:
+    if width is None:
         return program
     # Only bit literals reach S; every other pushed string is executable code.
     if not short:
@@ -151,19 +151,9 @@ def _underload_layout_tokens(template: str) -> list[str]:
 
 
 def _balance(table: str, default: str) -> str:
-    """Balance default selectors, the width-four form and swap bits."""
+    """Balance the selectors at their token fit; the other forms never won."""
     normal = re.findall(_token_pattern(len(PAIR[0])), default)
-    width = balanced_token_width(normal, minimum=5)
-    short = underload(table, 3).replace("\n", "")
-    tokens = re.findall(_token_pattern(1), short)
-    short_width = balanced_token_width(tokens, maximum=3)
-    return min(
-        default,
-        underload(table, width),
-        underload(table, 4),
-        underload(table, short_width),
-        key=balance_score,
-    )
+    return underload(table, balanced_token_width(normal, minimum=5))
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:

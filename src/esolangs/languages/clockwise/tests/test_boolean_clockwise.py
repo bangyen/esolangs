@@ -27,6 +27,22 @@ def test_constant_ring_reads_and_prints_without_a_lookup(n: int, bit: str) -> No
             assert run_clockwise(program, row_bits(row, n)) == bit
 
 
+@pytest.mark.parametrize(
+    ("table", "size"),
+    [("00", 35), ("11", 39), ("01", 39), ("0011", 59), ("00001111", 97)],
+)
+def test_balanced_ring_for_at_most_one_input_has_the_square_size(
+    table: str, size: int
+) -> None:
+    import esolangs
+
+    program = str(esolangs.generate("clockwise", table, balance=True))
+    assert len(program) == size
+    n = len(table).bit_length() - 1
+    for row in range(1 << n):
+        assert run_clockwise(program, row_bits(row, n)) == table[row]
+
+
 @pytest.mark.parametrize("width", [None, 1, 20])
 def test_trailing_inputs_are_read_after_the_two_entry_lookup(width: int | None) -> None:
     table = "0" * 128 + "1" * 128

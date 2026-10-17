@@ -7,14 +7,8 @@ from pathlib import Path
 import pytest
 
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
-from esolangs.languages.circuit_diagram.generator.hlayout import (
-    _h_term_area_floor,
-    _h_term_layout,
-)
 from esolangs.languages.circuit_diagram.generator.hpool import (
     _atom_gate_bound,
-    _h_pool_area_floor,
-    _h_pool_layout,
     _large_pool_layout,
 )
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
@@ -24,17 +18,15 @@ from tests.support.witness_tables import dense, nested_dense, parity
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [6, 7, 8])
-def test_retained_glyph_floors_bound_executed_layouts(n) -> None:
-    table = dense(n)
-    for build, floor in (
-        (_h_term_layout, _h_term_area_floor),
-        (_h_pool_layout, _h_pool_area_floor),
-    ):
-        model = build(table)
-        height, width = model.bounds()
-        assert 0 < floor(n, n) <= height * width
-        _execute(table, model.render(), (0, 1, (1 << n) - 1))
+@pytest.mark.parametrize("n", [9, 10, 11])
+def test_large_pool_area_is_table_independent_and_fits_its_floor(n) -> None:
+    """Bank budgets rely on the pool area being a function of (n, ports) only."""
+    dense_model = _large_pool_layout(dense(n))
+    parity_model = _large_pool_layout(parity(n))
+    assert dense_model.bounds() == parity_model.bounds()
+    height, width = dense_model.bounds()
+    assert _large_pool_layout(dense(n), ceiling=height * width) is not None
+    assert _large_pool_layout(dense(n), ceiling=height) is None
 
 
 @pytest.mark.medium
@@ -83,11 +75,6 @@ def test_large_pool_floor_rejects_before_atom_routing(monkeypatch) -> None:
         _large_pool_layout(dense(9), input_order=[0] * 9, ceiling=1)
 
 
-def test_area_floors_without_retained_terms_are_zero() -> None:
-    assert _h_term_area_floor(1, 8) == 0
-    assert _h_pool_area_floor(4, 8) == 0
-
-
 @pytest.mark.medium
 def test_direct_atom_exact_area_ceiling() -> None:
     table = dense(8)
@@ -99,20 +86,9 @@ def test_direct_atom_exact_area_ceiling() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("floor", [0, 10**12])
-def test_large_atom_displaces_older_layout_after_exact_comparison(
-    monkeypatch, floor
-) -> None:
+def test_large_pool_is_the_competing_model_when_folds_decline(monkeypatch) -> None:
     module = importlib.import_module("esolangs.languages.circuit_diagram.generator")
     monkeypatch.setattr(module, "_linear_shared_layout", lambda *_args: None)
-    terms = importlib.import_module(
-        "esolangs.languages.circuit_diagram.generator.hlayout"
-    )
-    monkeypatch.setattr(terms, "_h_term_area_floor", lambda *_args: floor)
-    pools = importlib.import_module(
-        "esolangs.languages.circuit_diagram.generator.hpool"
-    )
-    monkeypatch.setattr(pools, "_h_pool_area_floor", lambda *_args: 0)
     table = dense(8)
     code = circuit_diagram(table)
     assert code == _large_pool_layout(table).render()

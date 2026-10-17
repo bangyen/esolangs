@@ -122,3 +122,29 @@ def test_errors_halt() -> None:
 def test_malformed_programs_raise(code: str) -> None:
     with pytest.raises(ValueError, match="1 \\+ i"):
         run(code, ScriptedIO())
+
+
+def test_reciprocal_of_a_complex_number() -> None:
+    assert _run("D/p", "3 - 4i\n") == "0.12 + 0.16i"
+
+
+def test_mixing_an_inexact_number_with_an_exact_one() -> None:
+    # e leaves floating point; i + or i * then mixes it with an exact value.
+    assert _run("iei+p") == "0.5403023058681398 + 1.8414709848078965i"
+    assert _run("iei*p") == "-0.8414709848078965 + 0.5403023058681398i"
+
+
+def test_equal_reals_are_neither_above_nor_below() -> None:
+    assert _run("ici*ici*<p") == "1"
+    assert _run("ici*ici*>p") == "1"
+
+
+def test_bytes_take_the_imaginary_part_from_256() -> None:
+    assert _run("Do", "255i\n") == "\x00"
+    assert _run("Do", "256i\n") == "\x00\x00"
+    assert _run("Do", "257i\n") == "\x00\x01"
+
+
+def test_zero_to_a_non_integer_power_halts() -> None:
+    with pytest.raises(HaltError):
+        _run("DD^", "0\n-0.5\n")

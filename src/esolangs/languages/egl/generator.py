@@ -29,11 +29,7 @@ def _program(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return _wrap("2,1:" + "x" * n + ">" + "+" * int(truth_table[0]) + "=", width)
-    weights, projected = input_weights(truth_table, n)
-    if any(weights):
-        truth_table = projected
-    else:
-        weights = [1 << (n - 1 - index) for index in range(n)]
+    weights, truth_table = input_weights(truth_table, n)
     size = len(truth_table)
 
     # Paint row 1 left to right, then fold both axes back to the origin: ``%``

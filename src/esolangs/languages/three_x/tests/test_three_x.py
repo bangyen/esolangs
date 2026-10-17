@@ -154,6 +154,14 @@ class TestStepMachine:
         with pytest.raises(HaltError, match="unmatched"):
             drain(_Machine("?)", ScriptedIO("1\n")))
 
+    def test_an_open_loop_is_recorded_in_jumps(self) -> None:
+        from esolangs.languages.three_x.interpreter import _Machine
+
+        machine = _Machine("3()", ScriptedIO(""))
+        machine.step()
+        machine.step()
+        assert machine.jumps == (1,)
+
     def test_an_unterminated_literal_prints_nothing(self) -> None:
         """``[`` with no closing ``]`` prints the empty string, not the rest."""
         from esolangs.languages.three_x.interpreter import _Machine

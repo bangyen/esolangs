@@ -19,8 +19,6 @@ from esolangs.languages.circuit_diagram.generator import (
     folded_banks,
     sparse_banks,
 )
-from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
-from esolangs.languages.circuit_diagram.generator.hpool import _H_POOL_MIN_INPUTS
 from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
 
 
@@ -36,52 +34,19 @@ class _Target(NamedTuple):
 _Candidate = Callable[[_Target, "int | None"], "_Layout | None"]
 
 
-def _h_fallback(target: _Target, large_area: int | None) -> _Layout | None:
-    """Return the smaller H layout, skipping one the large pool already beats.
-
-    Only skips an older layout when it is strictly larger, preserving its
-    area ties: the mandatory term glyphs prove these floors.
-    """
-    from esolangs.languages.circuit_diagram.generator.hlayout import (
-        _h_term_area_floor,
-    )
-    from esolangs.languages.circuit_diagram.generator.hpool import (
-        _h_pool_area_floor,
-        _h_pool_layout,
-    )
-
-    _, inputs, used, projected = target
-    selected: _Layout | None = None
-    # One essential input has no depth-2 minterm site to wire a term to.
-    if len(used) >= 2 and (
-        large_area is None or large_area >= _h_term_area_floor(len(used), inputs)
-    ):
-        selected = _h_term_layout(projected, input_order=used, port_inputs=inputs)
-    if len(used) >= _H_POOL_MIN_INPUTS and (
-        large_area is None or large_area >= _h_pool_area_floor(len(used), inputs)
-    ):
-        pooled = _h_pool_layout(projected, input_order=used, port_inputs=inputs)
-        if selected is None or _layout_area(pooled) < _layout_area(selected):
-            selected = pooled
-    return selected
-
-
 def _pool(target: _Target, ceiling: int | None) -> _Layout | None:
-    """Large pool; with no model yet, the H layouts too (the pool wins strict only)."""
+    """Large pool; the H term and pool layouts never win, so they do not race.
+
+    Up to eight essential inputs the folds beat them on area; from nine the
+    pool's geometry is table-independent and its area is 0.80-0.85 of the
+    smaller H floor.
+    """
     from esolangs.languages.circuit_diagram.generator.hpool import _large_pool_layout
 
     _, inputs, used, projected = target
-    large = _large_pool_layout(
+    return _large_pool_layout(
         projected, input_order=used, port_inputs=inputs, ceiling=ceiling
     )
-    if ceiling is not None:
-        return large
-    fallback = _h_fallback(target, _layout_area(large) if large is not None else None)
-    if large is not None and (
-        fallback is None or _layout_area(large) < _layout_area(fallback)
-    ):
-        return large
-    return fallback
 
 
 def _residual(target: _Target, ceiling: int | None) -> _Layout | None:

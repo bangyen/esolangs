@@ -235,3 +235,21 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
         doc = module.__doc__ or ""
         assert "is **skipped**" in doc
         assert "word-command queue language" in doc
+
+
+def test_a_trailing_g_is_skipped() -> None:
+    assert run_and_capture(["A", "ig"]) == "A"
+
+
+def test_the_seed_keeps_characters_above_the_queue_ceiling_modulo_65536() -> None:
+    assert run_and_capture(["\U00010000\U00010001", "ii"]) == "\x00\x01"
+
+
+def test_a_halting_division_leaves_the_rest_of_the_queue() -> None:
+    from esolangs.languages.taglate.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    machine = _Machine(["1\x00A", "d"], ScriptedIO(""))
+    with pytest.raises(HaltError, match="zero"):
+        machine.step()
+    assert machine.queue == (ord("A"),)

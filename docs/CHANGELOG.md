@@ -5,7 +5,7 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
-## Unreleased
+## 1.1.0
 
 - **Breaking:** Remove `esolangs debug`. The stepping API,
   `esolangs.debugger`, is unchanged.
@@ -15,6 +15,10 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `list` keeps `--generator`, `--interpreter-only` and
   `--grep`; filter on every other capability with `list --json --details`.
 - Until 2.0, a minor release may remove CLI options and commands.
+- Add Hot and Blindfolded Arithmetic (90 languages).
+- Fix: Packlang `balance=True` programs with a 0- or 1-digit loop bound ran
+  wrong (n=5); Interprogck8 treats an unclosed `[` line as an unknown
+  instruction, not a range.
 
 ## 1.0.0
 

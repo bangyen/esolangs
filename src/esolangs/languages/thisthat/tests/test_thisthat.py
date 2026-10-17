@@ -8,13 +8,38 @@ from esolangs.languages.thisthat.generator import thisthat
 from esolangs.languages.thisthat.interpreter import (
     _advance,
     _Machine,
+    _NeedDrawError,
     _NeedInputError,
     _Pointer,
     run,
 )
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import FirstDraw
+from esolangs.runtime.randomness import FirstDraw, draw
 from tests.support.paths import ROOT
+
+
+def _advance_one(
+    machine: _Machine, pointer: _Pointer, following: list[_Pointer]
+) -> None:
+    """Run one cell's handler for ``pointer``, as a tick does."""
+    machine._workspace(following).advance(pointer)
+
+
+def _merge(
+    machine: _Machine, cell: str, arrived: list[_Pointer], following: list[_Pointer]
+) -> None:
+    """Merge ``arrived`` on ``cell``, drawing as a tick does."""
+    saved = list(following)
+    draws: tuple[int, ...] = ()
+    while True:
+        following[:] = saved
+        step = machine._workspace(following)
+        step.draws = draws
+        try:
+            step.merge(cell, arrived)
+            return
+        except _NeedDrawError as need:
+            draws = (*draws, draw(machine.rng, need.upper))
 
 
 class _EventIO(ScriptedIO):
@@ -219,10 +244,10 @@ def test_barrier_waits_for_a_second_pointer() -> None:
     machine = _Machine(["▣"], ScriptedIO(""))
     pointer = _Pointer((0, 0), None)
     following: list[_Pointer] = []
-    machine._merge("◈", [pointer], following)
+    _merge(machine, "◈", [pointer], following)
     assert following == [pointer]
     following = []
-    machine._merge("◈", [pointer, pointer], following)
+    _merge(machine, "◈", [pointer, pointer], following)
     assert following == []
 
 
@@ -346,12 +371,13 @@ def test_router_execution_and_empty_transfer_routes() -> None:
 def test_execution_merge_and_constant_gate() -> None:
     gate = _Machine(["▣═□═◇"], ScriptedIO(""))
     following: list[_Pointer] = []
-    gate._merge("□", [_Pointer((2, 0), (1, 0))], following)
+    _merge(gate, "□", [_Pointer((2, 0), (1, 0))], following)
     assert following == [_Pointer((3, 0), (2, 0), "data", 0)]
 
     merge = _Machine(["▣─◘─◉"], ScriptedIO(""), FirstDraw(1))
     following = []
-    merge._merge(
+    _merge(
+        merge,
         "◘",
         [_Pointer((2, 0), (1, 0)), _Pointer((2, 0), (3, 0))],
         following,
@@ -363,27 +389,27 @@ def test_execution_merge_and_constant_gate() -> None:
 def test_arrows_noop_and_cursor_data_behaviors() -> None:
     machine = _Machine(["▣▶─"], ScriptedIO(""))
     following: list[_Pointer] = []
-    machine._advance_one(_Pointer((1, 0), (0, 0)), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0)), following)
     assert following[0].position == (2, 0)
 
     machine = _Machine([" │", "▣▷─", " │"], ScriptedIO(""))
     following = []
-    machine._advance_one(_Pointer((1, 1), (1, 0)), following)
+    _advance_one(machine, _Pointer((1, 1), (1, 0)), following)
     assert [p.position for p in following] == [(1, 2)]
     following = []
-    machine._advance_one(_Pointer((1, 1), (2, 1)), following)
+    _advance_one(machine, _Pointer((1, 1), (2, 1)), following)
     assert following == []
 
     machine = _Machine(["▣◯─"], ScriptedIO(""))
     following = []
-    machine._advance_one(_Pointer((1, 0), (0, 0)), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0)), following)
     assert following[0].position == (2, 0)
 
     machine = _Machine(["▣◹─"], ScriptedIO(""))
     following = []
-    machine._advance_one(_Pointer((1, 0), (0, 0), "data", 0), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0), "data", 0), following)
     assert following == []
-    machine._advance_one(_Pointer((1, 0), (0, 0), "data", 1), following)
+    _advance_one(machine, _Pointer((1, 0), (0, 0), "data", 1), following)
     assert following[0].channel == "execution"
 
 
@@ -396,7 +422,7 @@ def test_unreachable_bad_cell_still_aborts() -> None:
     machine = _Machine(["▣─"], ScriptedIO(""))
     machine.grid = ("▣x",)
     with pytest.raises(HaltError, match="unsupported thisthat cell"):
-        machine._advance_one(_Pointer((1, 0), (0, 0)), [])
+        _advance_one(machine, _Pointer((1, 0), (0, 0)), [])
 
 
 def test_popping_an_empty_head_shifts_the_stack_back() -> None:
@@ -469,3 +495,68 @@ def test_cursor_moves_before_a_bistack_read_in_the_same_cycle() -> None:
         machine.step()
     assert machine.io.getvalue() == "1"
     assert machine.cells == {(0, 0): 0}
+
+
+def test_or_merge_of_two_ones_is_one() -> None:
+    """``■`` is 1 when every input is 1, not only when some input is 0."""
+    machine = _Machine(["▣═■═◇"], ScriptedIO(""))
+    machine.pointers = tuple(_Pointer((2, 0), (1, 0), "data", 1) for _ in range(2))
+    while not machine.halted:
+        machine.step()
+    assert machine.io.getvalue() == "1"
+
+
+def test_only_a_random_merge_draws() -> None:
+    """A ``◘`` with one pointer, or a logic node with two, needs no draw."""
+    single = _Machine(["▣─◘─◉"], ScriptedIO(""))
+    single.pointers = (_Pointer((2, 0), (1, 0)),)
+    assert len(single.branching_successors(single.branching_snapshot(), 10) or ()) == 1
+    logic = _Machine(["▣═■═◇"], ScriptedIO(""))
+    logic.pointers = (
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((2, 0), (3, 0), "data", 1),
+    )
+    assert len(logic.branching_successors(logic.branching_snapshot(), 10) or ()) == 1
+
+
+def test_a_random_merge_branches_each_channel_by_its_own_count() -> None:
+    """Two execution and three data pointers on one ``◘``: 2 * 3 outcomes."""
+    machine = _Machine(["▣║ ", "─◘═", " │ "], ScriptedIO(""))
+    machine.pointers = (
+        _Pointer((1, 1), (0, 1)),
+        _Pointer((1, 1), (1, 2)),
+        _Pointer((1, 1), (1, 0), "data", 1),
+        _Pointer((1, 1), (2, 1), "data", 1),
+        _Pointer((1, 1), (5, 5), "data", 1),
+    )
+    successors = machine.branching_successors(machine.branching_snapshot(), 100)
+    assert len(set(successors or ())) == 6
+
+
+def test_pushing_shifts_the_stack_one_place_away_from_the_head() -> None:
+    machine = _Machine(["▣"], ScriptedIO(""))
+    machine._head("row", 0)
+    machine._head("row", 1)
+    assert machine.cells == {(0, 0): 1, (1, 0): 0}
+    assert machine._head("row", None) == 1
+    assert machine._head("row", None) == 0
+
+
+def test_the_stack_is_ordered_by_position_not_insertion() -> None:
+    """A pop shifts a stack held in any dict order; so does a push."""
+    machine = _Machine(["▣"], ScriptedIO(""))
+    machine.cells = {(2, 0): 5, (1, 0): 4}
+    machine._head("row", None)
+    assert machine.cells == {(0, 0): 4, (1, 0): 5}
+    machine.cells = {(1, 0): 4, (0, 0): 3}
+    machine._head("row", 9)
+    assert machine.cells == {(0, 0): 9, (1, 0): 3, (2, 0): 4}
+
+
+def test_setting_the_pointers_keeps_the_cursor() -> None:
+    machine = _Machine(["▣─◹"], ScriptedIO(""))
+    for _ in range(3):
+        machine.step()
+    assert machine.cursor == 1
+    machine.pointers = ()
+    assert machine.cursor == 1

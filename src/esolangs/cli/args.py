@@ -333,12 +333,12 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
 
 
 @contextmanager
-def _errors(code: int = 2) -> Iterator[None]:
+def _errors() -> Iterator[None]:
     """Report library errors using the command's exit code."""
     try:
         yield
     except EsolangError as exc:
-        _fail(exc, code)
+        _fail(exc)
 
 
 def _integer(value: str, name: str, *, kind: str = "an integer") -> int:

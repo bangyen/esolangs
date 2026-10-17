@@ -359,6 +359,9 @@ class TestGeneratorEdgePaths:
 
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
+        # Below the 5k <= value window: ``6``s, then ``62`` pairs.
+        assert _six_five_const(1) == "62"
+        assert _six_five_const(7) == "662"
 
     def test_six_five_label_rejects_an_unspellable_operand(self) -> None:
         """Operands are one character, so the alphabet runs out at 35."""

@@ -105,6 +105,15 @@ class TestTaglate:
                 bits = [str((combo >> shift) & 1) for shift in (2, 1, 0)]
                 assert run_taglate(program, ["0", *bits]) == table[combo], (table, bits)
 
+    def test_three_inputs_of_five_widen_to_an_adjacent_pair(self) -> None:
+        """An odd dependency set of three in n=5 widens by the next input."""
+        table = "".join(bit * 4 for bit in "01101001")
+        program = boolean.taglate(table)
+        assert len(program) == 524
+        for combo in range(32):
+            bits = [str((combo >> shift) & 1) for shift in (4, 3, 2, 1, 0)]
+            assert run_taglate(program, ["0", *bits]) == table[combo], bits
+
     def test_reduced_programs_still_read_every_input(self) -> None:
         """A reduced program consumes the inputs it no longer uses."""
         for n in (1, 2, 3, 4):

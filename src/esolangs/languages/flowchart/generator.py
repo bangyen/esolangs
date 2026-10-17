@@ -763,18 +763,29 @@ def _balance(table: str, _default: str) -> str:
     """Return the squarest tree: read chains and answer snaked over columns.
 
     Candidates are the flat tree folded over 1, 3 or 5 columns per chain
-    (``_snake``) and 1..6 for the answer; ``1, 1`` is the plain tall tree, so
-    nothing is worse than it.  Folding trades height for width, so it fades
-    from n=6, where the leaf row (~4.6 columns a leaf) is already the wider
-    side: mean side 272 vs 274 at n=6, 558 vs 559 at n=7.  The deque (2
-    rows), the stacked fallback and the constant-input deque never beat the
-    flat tree: 0 wins of ~1.5k tables at n=1..12 (exhaustive to n=3).
+    (``_snake``) and up to 6 for the answer.  Only nine of the 18 pairs ever
+    won (68 random tables n=1..7, then 844 incl. tiled and constant-leaf
+    tables to n=10: the nine give byte-identical output).  Folding trades
+    height for width, so it fades from n=6, where the leaf row (~4.6 columns a
+    leaf) is already the wider side: mean side 272 vs 274 at n=6, 558 vs 559
+    at n=7.  The deque (2 rows), the stacked fallback and the constant-input
+    deque never beat the flat tree: 0 wins of ~1.5k tables at n=1..12
+    (exhaustive to n=3).
     """
     return min(
         (
             _flowchart_render(_flowchart_cells(table, fold, cols))
-            for fold in (1, 3, 5)
-            for cols in range(1, 7)
+            for fold, cols in (
+                (1, 2),
+                (1, 4),
+                (1, 6),
+                (3, 2),
+                (3, 3),
+                (3, 4),
+                (3, 6),
+                (5, 4),
+                (5, 6),
+            )
         ),
         key=balance_score,
     )

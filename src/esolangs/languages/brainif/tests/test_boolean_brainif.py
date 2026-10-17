@@ -217,7 +217,7 @@ def test_loop_depth_rule_is_the_measured_best(monkeypatch) -> None:
     """``_top_level`` is the argmin of the sweep that once picked a fixed cap.
 
     Checked at the arities where the rule and the old cap of 4 differ or
-    agree on a seeded random table: n=6, 8, 10 (rule 1, 2, 3).
+    agree on a seeded random table: n=5..10 (rule 0, 1, 1, 2, 2, 3).
     """
     import random
 
@@ -225,7 +225,7 @@ def test_loop_depth_rule_is_the_measured_best(monkeypatch) -> None:
     from esolangs.languages.brainif.generator import _brainif_tree, _top_level
 
     rng = random.Random(11)
-    for n in (6, 8, 10):
+    for n in (5, 6, 7, 8, 9, 10):
         table = "".join(rng.choice("01") for _ in range(1 << n))
         sizes = []
         for top in range(5):
@@ -235,3 +235,14 @@ def test_loop_depth_rule_is_the_measured_best(monkeypatch) -> None:
             sizes.append(len(_brainif_tree(table, None)))
         monkeypatch.undo()
         assert _top_level(n) == sizes.index(min(sizes)), (n, sizes)
+
+
+def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
+    """The single-one table's strip walks every unlooped level's guards in full."""
+    import esolangs
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = "0" * 31 + "1"
+    program = esolangs.generate("brainif", table, width=1)
+    assert len(str(program)) == 2634
+    assert _evaluate("BrainIf", program, inputs=5) == table

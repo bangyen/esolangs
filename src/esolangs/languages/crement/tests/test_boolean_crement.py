@@ -14,6 +14,7 @@ from esolangs.runtime._evaluate import _evaluate
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generators.fills import fill
 from tests.generators.sample_tables import five_input_sample
+from tests.support.divergence import diverges
 from tests.support.witness_tables import dense
 
 instantiate_crement = fill("Crement")
@@ -180,6 +181,16 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Crement", table, balance=True)
     assert _evaluate("Crement", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+def test_balanced_packed_template_instantiates_for_its_table() -> None:
+    """A balanced, line-packed template still fills for its own table."""
+    table = "0001011000111110"
+    template = str(esolangs.generate("Crement", table, balance=True))
+    for row, expected in enumerate(table):
+        bits = [int(c) for c in format(row, "04b")]
+        source = esolangs.instantiate("Crement", template, bits, truth_table=table)
+        assert diverges("Crement", source, "") is (expected == "1")
 
 
 # language-owners: ["ArrowQueue", "Vandevelo"]

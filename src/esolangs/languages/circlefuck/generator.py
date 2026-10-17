@@ -49,8 +49,7 @@ def _program(truth_table: str) -> str:
     _validate_truth_table(truth_table)
     n = len(truth_table).bit_length() - 1
     if len(set(truth_table)) == 1:
-        # Reads rewrite cell zero after its instruction has run. The final
-        # < wraps to the literal after @, clear of every rewritten cell.
+        # Reads rewrite cell zero; the final < wraps to the literal after @.
         return "," * n + "<.@" + truth_table[0]
     essential = essential_inputs(truth_table, n)
     width = len(essential)
@@ -61,8 +60,6 @@ def _program(truth_table: str) -> str:
     for digit in range(cells):
         top = max(0, width - _DIGIT_BITS * (digit + 1))
         places = essential[top : width - _DIGIT_BITS * digit]
-        if not places:
-            continue
         prog.append("<" * (at - places[0]))
         for below, here in pairwise(places):
             gap = here - below

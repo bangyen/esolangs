@@ -309,3 +309,26 @@ def test_balance_root_payload_matches_the_swept_side() -> None:
             new += balance_score(generate("Thue", table, balance=True))[0]
             old += balance_score(_swept_balance(table, generate("Thue", table)))[0]
     assert old <= new < 1.01 * old
+
+
+@pytest.mark.parametrize(("n", "score"), [(8, (58, 495, 53)), (11, (94, 1438, 92))])
+def test_balanced_fold_tables_keep_their_square(
+    n: int, score: tuple[int, int, int]
+) -> None:
+    """A table with a constant half balances at a pinned side, length and width."""
+    from esolangs.generation.wrap import balance_score
+
+    half = format(random.Random(1).getrandbits(1 << (n - 1)), f"0{1 << (n - 1)}b")
+    program = generate("Thue", half + "1" * (1 << (n - 1)), balance=True)
+    assert balance_score(program) == score
+
+
+@pytest.mark.parametrize(
+    ("table", "width", "size"),
+    [("00", 11, 189), ("00", 9, 193), ("00111011", 10, 211)],
+)
+def test_width_requests_keep_their_exact_size(
+    table: str, width: int, size: int
+) -> None:
+    """The nearest layout to the width, then the shortest, fixes the source size."""
+    assert len(generate("Thue", table, width=width)) == size

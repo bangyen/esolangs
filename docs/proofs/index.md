@@ -431,7 +431,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T | linear: at most 18T + 56n + 5 commands past n = 4: one pass along the weighted row | linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells |
 | Line | tree | finite decision trees preserve totality; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: complete residual models and area-admitted rasters cost O(T) | poly n: worst 5n commands; complete folds retain this bound | poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4 |
 | Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
-| Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: shared tape text admitted within the positional mux budget | linear: at most L commands: straight-line, the cursor never moves back | linear: worst 6T + 30 + bl(6T+28) + bl(6T+30) + bl(L) bits past n = 4: a tape bit-integer |
+| Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: shared tape text admitted within the positional mux budget | linear: at most L commands: straight-line, the cursor never moves back | linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n = 4: a tape bit-integer |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`) | linear: cascade routes to two shared leaves, one-digit targets | linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down | poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
 | Object disoriented | tree | a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; equal halves drop the bit untested, constant subtables fold, and a repeated branch is a class written once | linear: at most 39T + 21 characters: 35 a node, 4 a leaf | poly n: worst 67n + 34 commands: one tree path, 67 ops a level | poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3) + 2bl(L)+bl(6n+8)+bl(6n+9)+bl(n)+19 bits: two frames and six cells a level |
@@ -617,13 +617,12 @@ by maximality of `r`; every input-forgetting realization needs that width.
   audit marks size `Measured`, keeping its regression gate without claiming
   an asymptotic proof.
 
-  The audit counts identifier characters, sampled fallback calls, pair draws
-  and the cosets each draw visits. A forced
-  six-input span-invariant control fires the fallback once: four draws over
-  its three cosets. Its selected direction has exactly eight pairs, checked
-  directly. The default corpus executes 66 tables through six inputs and
-  2,772 rows across original and renamed programs; one fallback call draws
-  five times and visits 30 cosets.
+  The audit counts identifier characters. The default corpus executes 66
+  tables through six inputs and 2,772 rows across original and renamed
+  programs. The seeded pair-sampling fallback it once counted is gone:
+  dropping it changed 0 of 200 random tables at each n=6..10. Through five
+  inputs an exact scan of all directions replaces it: no three-input table
+  grows, and the four-input tables total 0.05% less.
 
   The tested naming rule assigns the shortest existing names to the most
   frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
@@ -650,8 +649,8 @@ by maximality of `r`; every input-forgetting realization needs that width.
   Over the density bands `(2**-(i+1), 2**-i]` that is under `16*2**n/n`
   dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
   `2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
-  never computed, so output is byte-identical. With candidates and the
-  sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
+  never computed, so output is byte-identical. With candidates disabled,
+  it alone keeps n=8 and n=10 random tables under
   `T/n` clauses (`tests/generators/test_boolean_vandevelo.py`).
 
   Commands per row are therefore linear. A halting row fails one part of

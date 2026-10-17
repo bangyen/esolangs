@@ -262,3 +262,26 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
             new = esolangs.generate("Collatz Multiverse", table, balance=True)
             old = _swept_balance(table, esolangs.generate("Collatz Multiverse", table))
             assert balance_score(new) <= balance_score(old), table
+
+
+@pytest.mark.parametrize(
+    ("table", "width", "size"),
+    [
+        # More than 24 registers get B<i> names after the alphabet.
+        (
+            "0100001010101000011000010000010010111100100010000000101100100001",
+            30,
+            2399,
+        ),
+        # A width request tries a rotated selector order from three inputs.
+        ("01000010", 30, 849),
+        # An alias line that only breaks even is not emitted.
+        (
+            "00000000000000000000011100000111011101110111011101110111011101110000011100000000000000000111011101110111011100000111011100000111",
+            None,
+            2322,
+        ),
+    ],
+)
+def test_layout_sizes(table: str, width: int | None, size: int) -> None:
+    assert len(esolangs.generate("collatz_multiverse", table, width=width)) == size

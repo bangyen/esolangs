@@ -11,6 +11,7 @@ from esolangs.languages.smallfuck.generator import PAIR, smallfuck
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
 from tests.support.generator_support import multiple_tables, run_filled
+from tests.support.witness_tables import dense, witnesses
 
 
 def _run(table: str, row: int) -> str:
@@ -327,3 +328,22 @@ def test_wide_band_is_never_larger_than_the_narrow_band() -> None:
     finally:
         generator.WIDE_FROM = 8
     assert wide < narrow
+
+
+@pytest.mark.parametrize(
+    ("table", "size"),
+    [
+        (witnesses(4)[5], 200),
+        ("00011011010010111011100101000100", 444),
+        (witnesses(8)[2], 158),
+        (dense(8), 3467),
+    ],
+    ids=["n4-banded", "n5-paired", "n8-and", "n8-dense"],
+)
+def test_pinned_template_sizes(table: str, size: int) -> None:
+    """Pin band ownership at the leaves, the paired decoder, and both bands."""
+    n = len(table).bit_length() - 1
+    template = smallfuck(table)
+    assert len(template) == size
+    for row in range(0, len(table), max(1, len(table) // 16)):
+        assert run_filled(run, template, [PAIR] * n, row, n) == table[row]

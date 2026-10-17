@@ -174,6 +174,14 @@ class TestStepMachine:
         machine.step()
         assert machine.cells == (ord("A"),)
 
+    def test_a_read_above_a_byte_wraps_modulo_256(self) -> None:
+        from esolangs.languages.brainif.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
+
+        machine = _Machine(["if 0 input"], ScriptedIO("\u0100"))
+        machine.step()
+        assert machine.cells == (0,)
+
 
 def test_a_blank_line_is_skipped() -> None:
     """A line with nothing on it advances the counter and does no work."""

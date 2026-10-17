@@ -40,6 +40,11 @@ def test_lazy_self_reference_is_a_cycle_only_when_selected() -> None:
     assert not _halts(program, "1\n")
 
 
+def test_a_chain_whose_last_part_is_not_nil_moves_to_the_next_line() -> None:
+    assert _halts("Nil? == Nil? :: Nil? == Nil?")
+    assert not _halts("loop -> loop?\nNil? == Nil?\nloop?")
+
+
 def test_strict_and_negated_assignments() -> None:
     assert _halts("x ~!> Nil?\nx? :: Nil?")
     assert _halts("x -!> Nil?\nx? :: Nil?")

@@ -70,6 +70,15 @@ def test_errors() -> None:
         _run("x")
 
 
+def test_the_printable_range_is_the_scalar_values() -> None:
+    assert _run("1114111") == chr(0x10FFFF)
+    assert _run("55295") == chr(0xD7FF)
+    assert _run("57344") == chr(0xE000)
+    for bad in ("1114112", "55296", "57343"):
+        with pytest.raises(HaltError, match="no code point"):
+            _run(bad)
+
+
 def test_a_count_past_sys_maxsize_is_a_limit() -> None:
     """``[x] * count`` raised a bare OverflowError (CLI exit 70)."""
     import esolangs

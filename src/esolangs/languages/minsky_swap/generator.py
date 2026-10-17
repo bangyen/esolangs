@@ -91,7 +91,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     end = pos + 1
     resolved = [end if t is None else t for t in targets]
     program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
-    if width is None or width <= 0 or grid_width(program) <= width:
+    if width is None or grid_width(program) <= width:
         return program
     if n <= 2 and width < 10:
         return _rmsn_small(truth_table, n)
@@ -144,13 +144,7 @@ def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 
 def _balance(table: str, default: str) -> str:
     """Compare compact source and the three line-oriented setter regimes."""
-    return min(
-        default,
-        minsky_swap(table, 1),
-        minsky_swap(table, 10),
-        minsky_swap(table, 15),
-        key=balance_score,
-    )
+    return min(default, minsky_swap(table, 1), key=balance_score)
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:

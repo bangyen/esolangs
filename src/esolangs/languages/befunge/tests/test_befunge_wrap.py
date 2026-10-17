@@ -110,7 +110,7 @@ def test_xor_has_one_column() -> None:
 @pytest.mark.parametrize("inputs", range(2, 14))
 def test_balance_crossing_neighbours_match_the_wider_sweep(inputs: int) -> None:
     """Offsets -1..2 from the crossing tie the old -1..4 window on every layout."""
-    table = "".join(random.Random(inputs).choice("01") for _ in range(1 << inputs))
+    table = _seeded(inputs)
     count = 1 << inputs
     layouts = [(5 * inputs + _BOUND_NARROW, 4, 9), (5 * inputs + _BOUND_WIDE, 10, 80)]
     if inputs > 10:
@@ -130,3 +130,59 @@ def test_balance_crossing_neighbours_match_the_wider_sweep(inputs: int) -> None:
             for offsets in (range(-1, 3), range(-1, 2 * CELL_ASPECT + 1))
         ]
         assert min(found[0]) == min(found[1])
+
+
+def _seeded(inputs: int) -> str:
+    rng = random.Random(inputs)
+    return "".join(rng.choice("01") for _ in range(1 << inputs))
+
+
+def _shape(program: str) -> tuple[int, int, int]:
+    rows = program.splitlines()
+    return len(program), len(rows), max(map(len, rows))
+
+
+@pytest.mark.parametrize(
+    ("inputs", "width", "shape"),
+    [
+        (1, 11, (49, 5, 11)),  # two-digit columns just reachable from width 10
+        (4, 20, (79, 4, 20)),
+        (7, 1, (224, 20, 11)),  # the row floor of the narrowest request
+        (13, 1, (1522, 23, 67)),  # the packed lookup's row floor
+    ],
+)
+def test_requested_width_builds_the_exact_grid(
+    inputs: int, width: int, shape: tuple[int, int, int]
+) -> None:
+    program = esolangs.generate("Befunge", _seeded(inputs), width=width)
+    assert _shape(program) == shape
+
+
+@pytest.mark.parametrize(
+    ("table", "shape"),
+    [
+        ("1" * 16, (42, 6, 9)),
+        (_seeded(6), (140, 9, 17)),
+        (_seeded(7), (218, 11, 20)),  # the narrow layout's floor passes 9 columns
+        (_seeded(11), (484, 15, 32)),
+    ],
+)
+def test_balanced_grid_is_the_smallest_square(
+    table: str, shape: tuple[int, int, int]
+) -> None:
+    program = esolangs.generate("Befunge", table, balance=True)
+    assert _shape(program) == shape
+
+
+@pytest.mark.parametrize("width", [81, 1000])
+def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
+    table = _seeded(11)
+    program = esolangs.generate("Befunge", table, width=width)
+    assert max(map(len, program.splitlines())) <= 80
+    for row in (0, 1, 2047):
+        bits = [int(bit) for bit in f"{row:011b}"]
+        stdin = esolangs.encode_inputs("Befunge", bits)
+        assert (
+            esolangs.run("Befunge", program, stdin=stdin, max_steps=500).strip()
+            == table[row]
+        )

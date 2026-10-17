@@ -80,6 +80,26 @@ def test_balanced_fold_computes_every_row_and_is_squarer(table: str) -> None:
     assert balance_score(program)[0] < balance_score(flat)[0]
 
 
+@pytest.mark.parametrize(
+    ("table", "rows", "cols", "chars"),
+    [
+        ("11101111", 10, 26, 245),
+        ("01000100", 10, 21, 180),
+        ("01011010", 26, 5, 133),
+    ],
+)
+def test_balanced_three_input_sizes_are_pinned(
+    table: str, rows: int, cols: int, chars: int
+) -> None:
+    """Balanced 3-input programs keep their measured shape and still compute."""
+    from esolangs.runtime._evaluate import _evaluate
+
+    program = str(esolangs.generate("ArrowQueue", table, balance=True))
+    lines = program.split("\n")
+    assert (len(lines), max(map(len, lines)), len(program)) == (rows, cols, chars)
+    assert _evaluate("ArrowQueue", program, inputs=3) == table
+
+
 def test_fold_heights_stay_near_the_swept_optimum() -> None:
     """Four heights from a closed form are within 5% of every height (sum)."""
     import random

@@ -119,11 +119,9 @@ def _element(
     return data, index
 
 
-def _expression(
-    text: str, variables: dict[int, int], at: int = 0
-) -> tuple[_Value, int]:
+def _expression(text: str, variables: dict[int, int]) -> tuple[_Value, int]:
     """Parse and evaluate one expression over onespot ``variables``."""
-    node, end = _parse_expression(text, at)
+    node, end = _parse_expression(text, 0)
     scalars = {(".", number): value for number, value in variables.items()}
     return _evaluate(node, scalars, {}), end
 

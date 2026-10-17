@@ -33,7 +33,6 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
     _dimensional,
-    balance_score,
     wrap_program,
 )
 from esolangs.registry._language import Language, Shape
@@ -87,8 +86,6 @@ def _paint(truth_table: str) -> str:
     as a cell is keyed by every nonzero coordinate, counter included.
     """
     last = truth_table.rfind("1")
-    if last < 0:
-        return ""
     cells = [
         _advance(len(run)) if bit == "0" else "+>" * len(run)
         for bit, group in groupby(truth_table[:last])
@@ -139,8 +136,6 @@ def _dimensional_bare(table: str, n: int) -> str:
     the dimension) to a second leaf copy.
     """
     weights, painted = input_weights(table, n)
-    if not any(weights):
-        weights, painted = [1] * n, table
     essential = [i for i, weight in enumerate(weights) if weight]
     m = len(essential)
     last = essential[-1]
@@ -174,15 +169,10 @@ def _dimensional_bare(table: str, n: int) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the token-balanced and one-column layouts of one construction."""
+    """Return the token-balanced layout; the default and one column never won."""
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
-    return min(
-        default,
-        _program(table, width),
-        _program(table, 1),
-        key=balance_score,
-    )
+    return _program(table, width)
 
 
 LANGUAGE = Language(

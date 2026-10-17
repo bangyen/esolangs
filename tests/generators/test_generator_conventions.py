@@ -1,5 +1,6 @@
 """Generator capabilities and conventions every generator follows."""
 
+import contextlib
 import inspect
 import json
 from collections.abc import Callable
@@ -14,6 +15,7 @@ from esolangs.registry import LANGUAGES
 from esolangs.runtime._evaluate import _evaluate
 from tests.cli.test_cli import call_main
 from tests.support.generator_support import probe_table
+from tests.support.witness_tables import witnesses
 
 
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
@@ -65,6 +67,17 @@ def test_boolean_generators_take_a_truth_table() -> None:
 def test_declared_arity_cap_is_enforced(name, cap) -> None:
     with pytest.raises(esolangs.GeneratorCapError):
         esolangs.generate(name, "0" * (1 << (cap + 1)))
+
+
+@pytest.mark.parametrize(
+    "name", sorted(name for name, lang in LANGUAGES.items() if lang.boolean)
+)
+def test_structured_witnesses_build_at_the_arity_cap(name) -> None:
+    """Up to the cap (or 11), structured tables build or refuse by contract."""
+    inputs = min(LANGUAGES[name].generator_max_inputs or 11, 11)
+    for table in witnesses(inputs)[:-1]:  # the random witness is priced per language
+        with contextlib.suppress(esolangs.GeneratorCapError):
+            esolangs.generate(name, table)
 
 
 #: Generators whose ``GeneratorCapError`` never reaches a caller.

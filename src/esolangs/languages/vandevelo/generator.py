@@ -47,7 +47,6 @@ from itertools import islice
 from typing import TYPE_CHECKING, NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table, short_name
-from esolangs.generation.wrap import balance_score
 from esolangs.languages.vandevelo._cover import _cover, _flips
 from esolangs.languages.vandevelo._peel import _CANDIDATES, _points
 from esolangs.registry._contracts import BooleanContract
@@ -140,8 +139,7 @@ class _Bank:
                 register = short_name(self.next_register, _ALPHABET)
                 self.next_register += 1
             else:
-                # Bank full: respell the least recently used free
-                # register, which costs what a fresh one would.
+                # Bank full: respell the least recently used free register.
                 register = next(r for r in held if r not in used)
                 del held[register]
             first, *toggles = _points(w)
@@ -207,9 +205,9 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare the two spellings; any requested width selects the compact one."""
-    return min(default, vandevelo(table, 1), key=balance_score)
+def _balance(table: str, _default: str) -> str:
+    """Return the compact spelling; the default never won (n=1..8)."""
+    return vandevelo(table, 1)
 
 
 LANGUAGE = Language(

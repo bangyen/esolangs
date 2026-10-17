@@ -127,6 +127,9 @@ class TestQoiblBehaviour:
             HaltError, match=r"variable index 3980276840\d{6011} is outside"
         ):
             _eval(["qe", "y" + "e" * 20000, "qe"], {}, (), 0, [])
+        # The diagnostic names the true bounds of the list.
+        with pytest.raises(HaltError, match=r"is outside 0\.\.255\n"):
+            _eval(["qe", "yeeeeeeee", "qe"], {}, (), 0, [])
 
     def test_division_by_zero(self) -> None:
         from esolangs.exceptions import HaltError
@@ -341,6 +344,8 @@ class TestTheTokenizerCarriesItsOwnStack:
             ("eyr ", [["e", "yr"]]),
             ("eeyr", [["ee", "yr"]]),
             ("yyr", [["y", "yr"]]),
+            # A marker at the start of a run is two characters wide.
+            ("yree", [["yr", "ee"]]),
             # Whitespace is a boundary, so the backwards reach cannot cross
             # it and the same characters read differently.
             ("e yr", [["e", "yr"]]),

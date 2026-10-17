@@ -30,6 +30,8 @@ class TestEval:
             pytest.param("0=~.", "0", id="move_between_stacks"),
             # ! evaluates a pushed string as a program.
             pytest.param('"0+."!', "1", id="eval_string_evaluates_program"),
+            # - decrements the top, below zero too.
+            pytest.param("0-.", "-1", id="minus_decrements"),
         ],
     )
     def test_output(self, code: str, expected: str) -> None:

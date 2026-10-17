@@ -31,7 +31,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -197,12 +197,9 @@ def _tree(
         lines = build(level, row, span)
         if count[key] > 1:
             name = names.fresh()
-            # Keep the function only where its calls cost less than the copies.
-            saved = (count[key] - 1) * (len("".join(lines)) - len(call(name)))
-            if saved > len(name) + 2:
-                shared[key] = name
-                defs.extend([f"{name}{{", *lines, "}"])
-                return [call(name)]
+            shared[key] = name
+            defs.extend([f"{name}{{", *lines, "}"])
+            return [call(name)]
         return lines
 
     def build(level: int, row: int, span: int) -> list[str]:
@@ -249,10 +246,10 @@ def _register(names: _Names, block: int, high: int, n: int) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Balance the disjoint-guard spelling below the natural statement span."""
+    """Return the disjoint-guard spelling below the statement span."""
     tokens = forbin(table, 1).split()
     width = balanced_token_width(tokens, " ", maximum=grid_width(default) - 1)
-    return min(default, _join_tokens(tokens, width, " "), key=balance_score)
+    return _join_tokens(tokens, width, " ")
 
 
 LANGUAGE = Language(

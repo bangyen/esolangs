@@ -32,10 +32,16 @@ from esolangs.languages.minifuck.generator.sim import (
 # this is 0.004s at 5.  448 of 448 rows correct at n=5,6,7.
 
 # Pool codes were designed against ``_walk_to``'s uniform wake, marks to
-# ~cell 14; eight writable cells between guard and embed are what the
-# construction needs, and sealing them turned n=4 from 15s into a failure.
-_MUX_BASE = _BASE + 16
-_MUX_GUARD = _MUX_BASE - 8
+# ~cell 14.  The pool is cells 0..7; the guard is the first cell past it and
+# gadgets write only to its right.  The cells right of it must stay writable
+# (sealing eight of them turned n=4 from 15s into a failure).  The guard was
+# cell 24; at 8, no length grows and 175,828 of 177,728 sampled outputs
+# shrink (n=2..11, up to 231 characters), and the n=3 and n=4 starts drop too.
+_MUX_GUARD = _POOL_WIDTH
+
+# Where the control field starts.  Its place changes no length, but moving it
+# with the guard grew wrapped n=3 and n=4 outputs by a character.
+_MUX_FIELD = _BASE + 12
 
 # Constants and unary projections use the standing column instead.
 _MUX_MIN_ARITY = 2
@@ -61,15 +67,12 @@ def _mux_start(n: int) -> int:
     """Return where to lay the embed so no gadget writes left of the guard.
 
     The first gadget is the heaviest and reaches ``k - 2`` left of the bit
-    (``k - 3`` from the setter); with ``start = _MUX_BASE + 2**(n-1) - offset``
-    the ``2**(n-1)`` cancels and the leftmost write is
-    ``_MUX_BASE - offset + 2`` at every arity, so
-    ``offset = _MUX_BASE - _MUX_GUARD + 1`` (9) clears the guard by one.
-    Derived, not tuned: every offset builds and larger is shorter (n=5 mean
-    1443 -> 1383 for offsets 3..13), but one more lands on :data:`_MUX_GUARD`
-    and the guard is overwritten.  Applies only from five inputs.
+    (``k - 3`` from the setter), so with ``start = 2**(n-1) + _MUX_GUARD - 1``
+    the leftmost write is ``_MUX_GUARD + 1`` at every arity.  Derived, not
+    tuned: lower is shorter, one lower writes on the guard.  Two inputs
+    would start inside the field, so they start where the embed clears it.
     """
-    return _MUX_BASE + max(0, (1 << (n - 1)) - (_MUX_BASE - _MUX_GUARD + 1))
+    return max((1 << (n - 1)) + _MUX_GUARD - 1, _MUX_FIELD + 3 - 3 * (1 << n))
 
 
 #: Where the pool code parks the pointer.  The tail's ``[x`` walk complements
@@ -219,14 +222,14 @@ def _mux_lookup(
     total = len(truth_table)
     # Cross the setter before the first gap so its right-hand cells are fresh.
     # Each extra step flips one separator bit and moves the final pointer once.
-    phase = (n ^ (_mux_start(n) - _MUX_BASE) ^ extra ^ 1) & 1
+    phase = (n ^ _mux_start(n) ^ extra ^ 1) & 1
     baseline = [((row.bit_count() ^ phase) & 1) for row in range(total)]
     controls = [
         int(bit) ^ base for bit, base in zip(truth_table, baseline, strict=True)
     ]
     sentinel = sum(controls) & 1
 
-    field_lo = _MUX_GUARD + 4
+    field_lo = _MUX_FIELD
     field = "".join(map(str, reversed(controls))) + str(sentinel)
     # Fresh cells flip to one and never skip, so their walks need no ``x``;
     # one preserving step crosses the preset one the field ends before.

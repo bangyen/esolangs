@@ -319,3 +319,29 @@ def test_the_wiki_quines_print_their_source() -> None:
 @pytest.mark.medium
 def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint("Fish", "+", "something smells fishy", "push a value")
+
+
+def test_only_x_draws_from_the_source() -> None:
+    """The first draw is ``x``'s, however many commands run before it."""
+    assert _run("1nx;", rng=FirstDraw(0, rest=2)) == "1"
+
+
+def test_jumping_to_column_zero_is_allowed() -> None:
+    assert _run("01.\n 9n;") == "9"
+
+
+def test_the_quote_view_names_the_open_quote() -> None:
+    machine = _Machine(['"a"'], ScriptedIO(""))
+    assert machine.quote is None
+    machine.step()
+    assert machine.quote == '"'
+    machine.step()
+    machine.step()
+    assert machine.quote is None
+
+
+def test_the_last_codepoint_is_printable_and_the_next_is_not() -> None:
+    horner = "1" + "".join(f"f1+*{digit}+" for digit in "0ffff")  # 0x10FFFF
+    assert _run(horner + "o;") == "\U0010ffff"
+    with pytest.raises(HaltError, match="smells fishy"):
+        _run(horner + "1+o;")

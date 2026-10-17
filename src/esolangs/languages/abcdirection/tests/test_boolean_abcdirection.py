@@ -49,3 +49,15 @@ def test_balance_is_near_the_swept_optimum() -> None:
         got += balance_score(program)[0]
         swept += _swept_side(table)
     assert swept <= got <= 1.1 * swept
+
+
+def test_balance_of_the_constant_zero_n3_is_exact() -> None:
+    """The helix's print units are priced at their real width: (side, length, width)."""
+    program = str(esolangs.generate("ABCDirection", "00000000", balance=True))
+    assert balance_score(program) == (34, 559, 34)
+
+
+def test_balance_of_xor_n2_is_exact() -> None:
+    """The tight width charges reads and band cells, not the write: 37x16."""
+    program = str(esolangs.generate("ABCDirection", "0110", balance=True))
+    assert balance_score(program) == (37, 607, 37)

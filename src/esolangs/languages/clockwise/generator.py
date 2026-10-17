@@ -152,14 +152,10 @@ class _Layout(NamedTuple):
     return_gap: int
 
 
-def _clockwise_program(
-    truth_table: str, width: int | None = None, *, keep_trailing: bool = False
-) -> str:
+def _clockwise_program(truth_table: str, width: int | None = None) -> str:
     """Build the indexed lookup, retaining the previous constant layout."""
     total = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, total)
-    if keep_trailing or not used:
-        used += range(used[-1] + 1 if used else 0, total)
     trailing = total - used[-1] - 1
     indexed = read_at(truth_table, used, total)
     reads = _head_widths(total, used)
@@ -349,7 +345,7 @@ def _fit_width(
     truth_table: str, layout: _Layout, program: str, width: int | None
 ) -> str:
     """Return ``program``, or its lean rotation (two columns, n <= 2) past ``width``."""
-    if width is None or width <= 0 or layout.grid.span() <= width:
+    if width is None or layout.grid.span() <= width:
         return program
     lean = _lean_rotate(layout)
     # Only n <= 2 has a two-column form (its prefix handles n == 2 alone).
@@ -422,27 +418,12 @@ def _balance(table: str, default: str) -> str:
         commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)
         # The ring's 2W+2H-7 free cells fix W+H; W=A*H splits them.
         width = max(2, ceil(CELL_ASPECT * (commands + 7) / (2 * CELL_ASPECT + 2)))
-        square = (
+        ring = (
             _coordinate_ring(inputs, used[0], table[0], width)
             if used
             else _constant_ring(inputs, table[0], width)
         )
-        legacy = _clockwise_program(table, keep_trailing=True)
-        rotated = _clockwise_program(
-            table, max(1, grid_width(legacy) - 1), keep_trailing=True
-        )
-        lean = _clockwise_program(
-            table, max(1, grid_width(rotated) - 1), keep_trailing=True
-        )
-        return min(
-            default,
-            square,
-            legacy,
-            rotated,
-            lean,
-            _clockwise_program(table, 1, keep_trailing=True),
-            key=balance_score,
-        )
+        return min(default, ring, key=balance_score)
     rotated = clockwise(table, max(1, grid_width(default) - 1))
     lean = clockwise(table, max(1, grid_width(rotated) - 1))
     # Measured on random tables n=3..9: side against split is minimal at

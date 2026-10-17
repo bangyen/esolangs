@@ -170,11 +170,6 @@ def _initial_memory(code: str) -> tuple[int, ...]:
     return tuple(memory)
 
 
-def _load(code: str) -> list[int]:
-    """Return fresh 59049-word memory for ``code``."""
-    return list(_initial_memory(code))
-
-
 class _Machine:
     """Protocol shell holding the registers and the mutable word store."""
 
@@ -182,7 +177,7 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(self, code: str, io: IO) -> None:
-        self.memory = _load(code)
+        self.memory = list(_initial_memory(code))
         self.io = io
         self.state: _State = (0, 0, 0, False)
         # ``snapshot``'s memory as fixed chunks, rebuilt only where a step

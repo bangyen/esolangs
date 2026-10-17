@@ -116,9 +116,11 @@ def test_ordered_fold_matches_oracle(table: str) -> None:
         assert set(_walk_states(built[0], table)) == states
 
 
-@pytest.mark.parametrize("table", ["0000", "1111", "00000000", "11111111"])
-def test_constants_and_test_free_tables_offer_no_fold(table: str) -> None:
-    """A never-repeating (here constant) residual has nothing to share."""
+@pytest.mark.parametrize(
+    "table", ["00", "01", "10", "11", "0000", "1111", "00000000", "11111111"]
+)
+def test_tables_without_a_repeated_residual_offer_no_fold(table: str) -> None:
+    """Constants and one-input tables have no residual to share."""
     joins, _ = _oracle(table)
     assert joins == 0
     assert streaming_canvas(table, 10**9) is None
@@ -188,10 +190,3 @@ def test_complete_fold_wins_fallback_tie(monkeypatch) -> None:
         _execute(table, image, range(4))
     finally:
         _generate.cache_clear()
-
-
-@pytest.mark.parametrize("table", ["00", "01", "10", "11"])
-def test_one_input_tables_have_no_residual_merge(table) -> None:
-    joins, _ = _oracle(table)
-    assert joins == 0
-    assert streaming_canvas(table, 10**9) is None

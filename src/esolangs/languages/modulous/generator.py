@@ -65,7 +65,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # keeps the counter reachable: nothing but the top two cells is.
     walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT][END]"
     program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
-    if width is None or width <= 0:
+    if width is None:
         return program
     wrapped = _bracket_literal(program, width)
     if grid_width(wrapped) <= width:

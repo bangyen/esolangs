@@ -6,9 +6,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.vandevelo._peel import (
-    _SAMPLES,
     _best,
-    _ensure_popular,
     _Node,
     _pairs,
 )
@@ -196,21 +194,6 @@ def test_coset_membership_work_is_geometric() -> None:
         assert table.reads == len(ones) - 1
 
 
-def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The fallback that makes the clause bound a bound, not a heuristic."""
-    import importlib
-
-    table = "1101010110111010"
-    program = vandevelo(table)
-    results = (_result(program, bits) for bits in product(range(2), repeat=4))
-    assert "".join(results) == table
-    module = importlib.import_module("esolangs.languages.vandevelo._peel")
-    monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
-    assert len(vandevelo(table)) > len(program)
-
-
 def test_the_peel_partitions_the_one_set_into_cubes() -> None:
     """Every harvested cube lies in the 1-set, and together they tile it."""
     import random
@@ -378,33 +361,6 @@ def test_a_near_full_chain_holds_cosets_not_points() -> None:
         )
 
 
-# Sampled popular-direction fallback, with a forced positive control.
-
-
-def test_fallback_draws_a_half_average_direction(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Three span cosets with no scored candidate: the fallback must fire."""
-    module = importlib.import_module("esolangs.languages.vandevelo._peel")
-    span = set(range(4))
-    points = {base ^ offset for base in (0, 4, 8) for offset in span}
-    node = _Node.root(points).below(1).below(2)
-    draws = []
-
-    def counted(node: _Node, v: int) -> int:
-        draws.append(v)
-        return _pairs(node, v)
-
-    monkeypatch.setattr(module, "_pairs", counted)
-    _ensure_popular(node, 6)
-    direction, count = _best(node)
-    assert direction is not None
-    assert direction not in span
-    assert count == sum((point ^ direction) in points for point in points) == 8
-    assert 2 * count * 64 >= len(points) ** 2
-    assert 1 <= len(draws) <= _SAMPLES
-
-
 def test_assure_finds_a_half_average_direction() -> None:
     """Sparse, dense, and inside a span: the pigeonhole bucket count suffices."""
     import random
@@ -437,7 +393,6 @@ def test_the_clause_bound_holds_on_assure_alone(
 
     module = importlib.import_module("esolangs.languages.vandevelo._peel")
     monkeypatch.setattr(module, "_nearest", lambda *_, **__: [])
-    monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
     rng = random.Random(7)
     for n in (8, 10):
         ones = {p for p in range(1 << n) if rng.random() < 0.5}
@@ -483,7 +438,6 @@ def test_certification_assures_unrefreshed_candidate_pools(monkeypatch) -> None:
 
     module = importlib.import_module("esolangs.languages.vandevelo._peel")
     monkeypatch.setattr(module, "_nearest", lambda *_, **__: [])
-    monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
     peel = _Peel({row for row in range(256) if row % 5 != 0}, 8)
 
     def reject(*_args):

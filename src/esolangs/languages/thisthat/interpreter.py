@@ -791,34 +791,6 @@ class _Machine:
             following=following,
         )
 
-    def _merge(
-        self, cell: str, arrived: list[_Pointer], following: list[_Pointer]
-    ) -> None:
-        saved = list(following)
-        draws: tuple[int, ...] = ()
-        while True:
-            following[:] = saved
-            step = self._workspace(following)
-            step.draws = draws
-            try:
-                step.merge(cell, arrived)
-                return
-            except _NeedDrawError as need:
-                draws = (*draws, draw(self.rng, need.upper))
-
-    def _advance_one(self, pointer: _Pointer, following: list[_Pointer]) -> None:
-        saved = list(following)
-        draws: tuple[int, ...] = ()
-        while True:
-            following[:] = saved
-            step = self._workspace(following)
-            step.draws = draws
-            try:
-                step.advance(pointer)
-                return
-            except _NeedDrawError as need:
-                draws = (*draws, draw(self.rng, need.upper))
-
     def _flush(self, effects: tuple[int, ...], flushed: int) -> None:
         """Write the prints beyond ``flushed``; a prefix is written once."""
         for value in effects[flushed:]:

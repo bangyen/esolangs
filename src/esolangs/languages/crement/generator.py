@@ -34,7 +34,6 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     subtree_ids,
 )
-from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -68,7 +67,7 @@ def crement(truth_table: str, width: int | None = None) -> str:
     tester data is filled.
     """
     template = in_input_order(truth_table, _crement_shared)
-    if width is None or width <= 0 or grid_width(template) <= width:
+    if width is None or grid_width(template) <= width:
         return template
     return _narrow(template, width)
 
@@ -166,24 +165,9 @@ def _crement_ordered(
     return "\n".join(header + testers + lines)
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare preserved instructions and the two field-wrapping regimes."""
-    candidates = [default]
-    upper = grid_width(default) - 1
-    if upper >= 6:
-        normal = crement(table, upper)
-        candidates.append(normal)
-        folded_upper = min(upper, grid_width(normal) - 1)
-        if folded_upper >= 6:
-            width = balanced_token_width(
-                normal.split(), " ", minimum=6, maximum=folded_upper
-            )
-            candidates.append(crement(table, width))
-    short = crement(table, 1)
-    width = balanced_token_width(short.split(), " ", maximum=5)
-    candidates.append(crement(table, width))
-    candidates.extend(_packed(default))
-    return min(candidates, key=balance_score)
+def _balance(_table: str, default: str) -> str:
+    """Compare ``default`` with k whole instructions per line."""
+    return min([default, *_packed(default)], key=balance_score)
 
 
 def _packed(default: str) -> Iterator[str]:

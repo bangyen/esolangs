@@ -116,6 +116,24 @@ class TestForbinBoolean:
             bits = list(format(row, "09b"))
             assert run_forbin_boolean(program, bits) == table[row]
 
+    @pytest.mark.parametrize(
+        ("layout", "size"), [("XXXYXYXY", 1938), ("XXXYXXYX", 1984)]
+    )
+    def test_nested_repeats_share_once(self, layout: str, size: int) -> None:
+        """A repeated subtree costs one function; its insides are not repeats."""
+        from esolangs.languages.forbin.generator import _BLOCK_BITS
+
+        rng = random.Random(3)
+        blocks = {
+            c: "".join(rng.choice("01") for _ in range(2**_BLOCK_BITS)) for c in "XY"
+        }
+        table = "".join(blocks[c] for c in layout)
+        program = boolean.forbin(table)
+        assert len(program) == size
+        for row in (0, 127, 128, 300, 511, 512, 700, 1023):
+            bits = list(format(row, "010b"))
+            assert run_forbin_boolean(program, bits) == table[row]
+
 
 def test_forbin_skips_keywords_at_length_boundaries(
     monkeypatch: pytest.MonkeyPatch,

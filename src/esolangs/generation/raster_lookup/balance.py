@@ -1,6 +1,5 @@
 """Raster row-fit regimes with stack-neutral turns and bounded push blocks."""
 
-from collections.abc import Callable
 from math import isqrt
 from typing import NamedTuple
 
@@ -10,7 +9,6 @@ from esolangs.generation.raster_lookup import (
     _MULTIPLY,
     _POINTER,
     _POP,
-    Change,
     Pixel,
     _area,
     _candidates,
@@ -120,13 +118,7 @@ def _plan(
     return _Plan(width, y + 2, stop, rows, compact, dense)
 
 
-def _emit(
-    operations: list[_Operation],
-    plan: _Plan,
-    *,
-    initial: Pixel = _INITIAL,
-    next_colour: Callable[[Pixel, Change], Pixel] = _next_colour,
-) -> Raster:
+def _emit(operations: list[_Operation], plan: _Plan) -> Raster:
     rows = [[BLACK] * plan.width for _ in range(plan.height)]
 
     def put(x: int, y: int, colour: Pixel) -> None:
@@ -137,8 +129,8 @@ def _emit(
         rows[y][x] = colour
 
     for x, y in ((0, 0), (0, 1), (1, 1)):
-        put(x, y, initial)
-    colour = next_colour(initial, _POP)
+        put(x, y, _INITIAL)
+    colour = _next_colour(_INITIAL, _POP)
     x = y = 0
 
     def block(operation: _Operation, dx: int, dy: int) -> None:
@@ -146,7 +138,7 @@ def _emit(
         for _ in range(operation.size):
             put(x, y, colour)
             x, y = x + dx, y + dy
-        colour = next_colour(colour, operation.change)
+        colour = _next_colour(colour, operation.change)
 
     for number, row in enumerate(plan.rows):
         x, y = row.x, row.y
@@ -166,12 +158,12 @@ def _emit(
             cells = ((0, 0), (-1, 0), (0, 1)) if final else ((0, 0), (-1, 0), (-2, 0))
             for dx, dy in cells:
                 put(x + dx, y + dy, colour)
-            colour = next_colour(colour, _push(3).change)
+            colour = _next_colour(colour, _push(3).change)
             y += 2 if final else 1
         elif plan.compact and value == 3:
             for dx, dy in ((0, 0), (0, 1), (1, 1)):
                 put(x + dx, y + dy, colour)
-            colour = next_colour(colour, _push(3).change)
+            colour = _next_colour(colour, _push(3).change)
             x, y = x + 1, y + 2
         else:
             block(_push(value), 0, 1)

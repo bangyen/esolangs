@@ -83,7 +83,7 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     packed = sum(int(bit) << index for index, bit in enumerate(truth_table))
     lines = _read_statements(weights, power, row, zero, two, packed)
     program = "\n".join(lines)
-    if width is None or width <= 0:
+    if width is None:
         return program
     # Fits as-is: no Horner expansion needed.
     wrapped = _qoibl(program, width)

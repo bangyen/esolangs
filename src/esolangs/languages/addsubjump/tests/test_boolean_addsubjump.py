@@ -256,3 +256,11 @@ def test_balancing_retains_legacy_packed_layout_with_an_ignored_input() -> None:
     balanced = esolangs.generate("AddSubJump", table, balance=True)
     old = balance_program(legacy, "addsubjump")
     assert balance_score(balanced) <= balance_score(old)
+
+
+def test_six_input_table_with_five_essential_rows_pins_both_sizes() -> None:
+    """Five essential inputs at n=6 take the tree route, and balancing keeps
+    the full packed layout when it scores better; both sizes are pinned."""
+    table = "0010100100101001011011100110111010011011100110110110101101101011"
+    assert len(esolangs.generate("AddSubJump", table)) == 1063
+    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1427

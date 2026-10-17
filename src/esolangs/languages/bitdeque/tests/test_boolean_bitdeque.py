@@ -4,7 +4,6 @@ import itertools
 
 import pytest
 
-from esolangs.languages.bitdeque.generator import _bitdeque_ordered
 from tests.proofs.test_conventions import _embedding, _tables
 from tests.support.witness_tables import witnesses
 
@@ -58,12 +57,6 @@ class TestParameterizedBitdeque:
         for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
             assert self.run_bitdeque(self.instantiate(template, bits)) == str(bits[1])
 
-    def test_ordered_route_rotates_a_nonhead_input_toward_the_head(self) -> None:
-        """The private candidate builder covers the other shortest rotation."""
-
-        template = _bitdeque_ordered("0110100110010110", (1, 0, 2, 3))
-        assert "EJECT PUSH EJECT" in template
-
     def test_constant_leaf_and_shared_halt_trampoline(self) -> None:
         """A constant table is a branching-free leaf; both leaves use GOTO 1."""
         from esolangs.languages import generators
@@ -104,6 +97,16 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
         )
         == 118538
     )
+
+
+def test_bitdeque_width_eleven_is_the_normal_load() -> None:
+    """Width 10 still takes the short load; from 11 the eleven-cell one is smaller."""
+    import esolangs
+
+    sizes = [
+        len(esolangs.generate("Bitdeque", "0110", width=width)) for width in (10, 11)
+    ]
+    assert sizes == [342, 174]
 
 
 @pytest.mark.parametrize("width", [1, 9, 40, 80])

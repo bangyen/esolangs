@@ -22,7 +22,6 @@ from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     constant_span_test,
-    in_input_order,
     input_weights,
     stored_inputs,
 )
@@ -106,8 +105,6 @@ def _memory(
 
 def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program for ``truth_table`` (length ``2**n``, MSB first)."""
-    if len(truth_table) <= 16:
-        return in_input_order(truth_table, _addsubjump_candidate)
     packed = _addsubjump_packed(truth_table)
     if len(truth_table) == 32:
         # Shared residuals save 18.9% of chars against packed alone at n=5
@@ -281,10 +278,6 @@ def balance_addsubjump(table: str, default: str) -> str:
     ):
         return balance_program(default, "addsubjump")
     legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
-    if len(table) == 32:
-        legacy = min(
-            legacy, _addsubjump_ordered(table, tuple(range(5)), shared=True), key=len
-        )
     return min(
         balance_program(default, "addsubjump"),
         balance_program(legacy, "addsubjump"),

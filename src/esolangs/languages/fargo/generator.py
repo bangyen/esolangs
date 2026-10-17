@@ -49,8 +49,8 @@ class _Grain[T]:
 
     The shared recursion (``davio`` inside :func:`_arm_expression`) runs
     unchanged on either grain; each grain supplies the scalar-int or
-    packed-word-list version of every operation that touches the table or
-    the ANF coefficients.
+    packed-word-list version of every operation that touches the ANF
+    coefficients.
     """
 
     def __init__(
@@ -63,8 +63,8 @@ class _Grain[T]:
         is_one: Callable[[T, int], bool],
         needs_weight: bool,
         xor: Callable[[T, T], T],
-        child: Callable[[T, T, int], None],
-        downgrade: Callable[[T, T, int], bool],
+        child: Callable[[T, int], None],
+        downgrade: Callable[[T, int], bool],
     ) -> None:
         self.initial_half = initial_half
         self.split = split
@@ -77,9 +77,7 @@ class _Grain[T]:
         self.downgrade = downgrade
 
 
-def _arm[T](
-    choice: int, f0: T, f1: T, low: T, one: T, high: T, d: T
-) -> tuple[T, T, str, T, T]:
+def _arm[T](choice: int, low: T, one: T, high: T) -> tuple[T, str, T]:
     """Return the kept arm, operator, and operand arm for a Davio choice.
 
     Choice 0 keeps the 0-arm and xors out the Davio difference; choice 1
@@ -87,10 +85,10 @@ def _arm[T](
     with a monotone OR when the 1-arm is the constant one.
     """
     if choice == 0:
-        return f0, low, "^", d, high
+        return low, "^", high
     if choice == 1:
-        return f1, one, "^", d, high
-    return f0, low, "|", f1, one
+        return one, "^", high
+    return low, "|", one
 
 
 def _word_width(n: int) -> int:
@@ -116,7 +114,7 @@ class _ArmBuilder:
         self.at = at
         self.pieces: list[str] = []
         self.scalar_grain = _Grain[int](
-            initial_half=lambda _table, bit: 1 << bit,
+            initial_half=lambda _anf, bit: 1 << bit,
             split=lambda value, half: (value & ((1 << half) - 1), value >> half),
             is_zero=lambda value: not value,
             weight=self.count,
@@ -124,10 +122,10 @@ class _ArmBuilder:
             needs_weight=False,
             xor=lambda a, b: a ^ b,
             child=self.scalar_leaf,
-            downgrade=lambda _table, _anf, _bit: False,
+            downgrade=lambda _anf, _bit: False,
         )
         self.word_grain = _Grain[list[int]](
-            initial_half=lambda table, _bit: len(table) // 2,
+            initial_half=lambda anf, _bit: len(anf) // 2,
             split=lambda value, half: (value[:half], value[half:]),
             is_zero=lambda value: not any(value),
             weight=self.weight,
@@ -144,39 +142,38 @@ class _ArmBuilder:
     def weight(self, words: list[int]) -> int:
         return sum(self.count(value) for value in words)
 
-    def scalar_leaf(self, table: int, anf: int, bit: int) -> None:
+    def scalar_leaf(self, anf: int, bit: int) -> None:
         if anf == 1:
             self.pieces.append("1")
         else:
-            self.davio(table, anf, bit, self.scalar_grain)
+            self.davio(anf, bit, self.scalar_grain)
 
-    def leaf(self, table: list[int], anf: list[int], bit: int) -> None:
+    def leaf(self, anf: list[int], bit: int) -> None:
         if len(anf) == 1:
-            self.scalar_leaf(table[0], anf[0], bit)
+            self.scalar_leaf(anf[0], bit)
         elif anf[0] == 1 and self.weight(anf) == 1:
             self.pieces.append("1")
         else:
-            self.davio(table, anf, bit, self.word_grain)
+            self.davio(anf, bit, self.word_grain)
 
-    def word_downgrade(self, table: list[int], anf: list[int], bit: int) -> bool:
+    def word_downgrade(self, anf: list[int], bit: int) -> bool:
         # A single remaining word drops to the scalar recursion.
         if len(anf) == 1:
-            self.scalar_leaf(table[0], anf[0], bit)
+            self.scalar_leaf(anf[0], bit)
             return True
         return False
 
-    def davio[T](self, table: T, anf: T, bit: int, grain: _Grain[T]) -> None:
+    def davio[T](self, anf: T, bit: int, grain: _Grain[T]) -> None:
         """Shared Davio-choice recursion; ``grain`` fixes int vs word granularity."""
         pieces = self.pieces
-        half = grain.initial_half(table, bit)
+        half = grain.initial_half(anf, bit)
         low, high = grain.split(anf, half)
         while grain.is_zero(high):
-            table, anf, bit = grain.split(table, half)[0], low, bit - 1
-            if grain.downgrade(table, anf, bit):
+            anf, bit = low, bit - 1
+            if grain.downgrade(anf, bit):
                 return
             half //= 2
             low, high = grain.split(anf, half)
-        f0, f1 = grain.split(table, half)
         one = grain.xor(low, high)
         w0, w1 = grain.weight(low), grain.weight(one)
         if not w1:
@@ -185,14 +182,11 @@ class _ArmBuilder:
             choice = 2
         else:
             choice = 0
-        d = grain.xor(f0, f1)
-        kept, kept_anf, op, operand, operand_anf = _arm(
-            choice, f0, f1, low, one, high, d
-        )
+        kept_anf, op, operand_anf = _arm(choice, low, one, high)
         literal = f"^ 1 @ {self.at[bit]:b}" if choice % 2 else f"@ {self.at[bit]:b}"
         if not grain.is_zero(kept_anf):
             pieces.append(f"{op} ")
-            grain.child(kept, kept_anf, bit - 1)
+            grain.child(kept_anf, bit - 1)
             pieces.append(" ")
         # The scalar grain's is_one ignores the weight, so skip computing it.
         operand_weight = grain.weight(operand_anf) if grain.needs_weight else 0
@@ -200,7 +194,7 @@ class _ArmBuilder:
             pieces.append(literal)
         else:
             pieces.append(f"& {literal} ")
-            grain.child(operand, operand_anf, bit - 1)
+            grain.child(operand_anf, bit - 1)
 
 
 def _arm_expression(
@@ -219,13 +213,10 @@ def _arm_expression(
         sum(value << bit for bit, value in enumerate(coeffs[start : start + w]))
         for start in range(0, len(table), w)
     ]
-    values = [
-        int(table[start : start + w][::-1], 2) for start in range(0, len(table), w)
-    ]
     if not any(anf):
         return "0"
     builder = _ArmBuilder(w, at)
-    builder.leaf(values, anf, n - 1)
+    builder.leaf(anf, n - 1)
     return "".join(builder.pieces)
 
 

@@ -24,7 +24,7 @@ from esolangs.generation.helpers import (
     subtree_slot,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -218,13 +218,11 @@ def _ram0_ordered(
     return " ".join(str(end) if t == "END@" else t for t in tokens)
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare the width-one NAND form and ordinary operand row fits."""
+def _balance(_table: str, default: str) -> str:
+    """Return the operand row fit; the default and width-one NAND form never won."""
     tokens = default.split()
-    width = balanced_token_width(tokens, " ", minimum=2)
-    return min(
-        default, _join_tokens(tokens, width, " "), ram0(table, 1), key=balance_score
-    )
+    width = balanced_token_width(tokens, " ")
+    return _join_tokens(tokens, width, " ")
 
 
 LANGUAGE = Language(

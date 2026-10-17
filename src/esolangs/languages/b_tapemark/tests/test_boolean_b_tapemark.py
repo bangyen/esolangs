@@ -4,7 +4,9 @@ from itertools import product
 
 import pytest
 
+import esolangs
 from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as tools
 from esolangs.languages.b_tapemark.generator import _Builder
 from esolangs.languages.b_tapemark.interpreter import run
@@ -220,6 +222,21 @@ def test_sparse_tapemark_columns_do_not_scan_the_coordinate_span() -> None:
     builder.put(10**9, 1, "y")
     assert builder.render() == "x\n y"
     assert builder.render(reflect=True) == " y\nx"
+
+
+@pytest.mark.parametrize(
+    ("table", "length"), [("01", 100), ("10", 100), ("0011", 172), ("0101", 172)]
+)
+def test_the_narrow_staircase_is_exactly_sized(table: str, length: int) -> None:
+    """Row spacing and the zero pad before a short projected table, to the cell."""
+    assert len(esolangs.generate("B-tapemark", table, width=8)) == length
+
+
+def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
+    """The reduced copy length (17/20 of the closed form) stays in the folds tried."""
+    table = "".join("1" if i in (13, 107, 141) else "0" for i in range(256))
+    program = str(esolangs.generate("B-tapemark", table, balance=True))
+    assert balance_score(program) == (170, 3297, 148)
 
 
 @pytest.mark.parametrize(("copy", "run"), [(1, 1), (5, 3), (16, 40)])

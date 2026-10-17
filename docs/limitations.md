@@ -226,6 +226,16 @@ Each missed the 10% bar:
   time is therefore superlinear for the shipped construction. A replacement
   with universal O(T) size and generation time remains open; no language-wide
   impossibility was proved. See [the bound summary](proofs/index.md#vandevelo-sparse-bound).
+- Vandevelo's cover is the deterministic greedy popular-difference peel;
+  measured deterministic alternatives do not beat it by 10%. An axis-cube
+  merge emits 2.1x its text at n=8 (5.6x on n=10 majority), losing on cube
+  count, not guard cost (rand8: 63 clauses at mean dimension 0.8 vs 23 at
+  2.0). Exact Walsh-autocorrelation directions (top 8 per node, lowest
+  weight first) emit 0.977x/0.988x on 200 random n=7/8 tables, but
+  pure-Python generation grows 2.6x per input at n=11..12. An affine
+  Quine--McCluskey merge (each span group's most popular window-4 successor
+  difference) emits 1.060x on 200 random n=8 tables and 1.09-1.12x at
+  n=10..12, ~20x faster, with no clause bound.
 
 The no-`i`/`j` model cannot express NOT. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in

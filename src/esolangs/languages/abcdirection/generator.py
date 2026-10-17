@@ -33,7 +33,7 @@ a drop has room above it) and drop to the next lap where a ``B`` precedes a
 landing.  Teeth alternate ``rise`` and plain to stay in five rows without
 wrapping.  The width is the narrowest the widest atom (a gadget, ``run + 8``)
 allows or where ``width == 2 * height`` (``_tight_width``), whichever is
-squarer; the flat layout stays a candidate.  ``n = 2``: 83x5 flat, 33x16
+squarer; the flat layout stays a candidate.  ``n = 2``: 83x5 flat, 37x16
 balanced.
 
 Size:
@@ -408,19 +408,14 @@ def _helix(table: str, n: int, width: int) -> str:
 def _tight_width(table: str, n: int) -> int:
     """The width where ``width == 2 * height`` under a closed-form lap model.
 
-    Rows are ``(2 write + 5 reads + 4 band cells) / (room - atom / 2) + 6``:
-    greedy laps waste half the widest atom on average.  Solving
-    ``w = 2h`` is a quadratic.  Within 10% of the best width's rendered side
-    over 40 random tables each at n=2..7 (1,477 vs 1,303 at n=2, 2,600 vs
-    2,360 at n=6, the floor alone 2,528 and 2,640).
+    Rows are ``(5 reads + 4 band cells) / (room - atom / 2) + 6``: greedy
+    laps waste half the widest atom on average.  Solving ``w = 2h`` is a
+    quadratic.  Charging the write's cells too (two each) left the balanced
+    side 2.1-6.1% larger at n=2..6 and never smaller (60 random tables each).
     """
-    write, teeth, pieces = _sizes(table, n)
+    _, teeth, pieces = _sizes(table, n)
     sizes = [_piece_size(*piece) for piece in pieces]
-    work = (
-        2 * len(write)
-        + 5 * sum(3 if enqueue else 2 for _, enqueue in teeth)
-        + 4 * sum(sizes)
-    )
+    work = 5 * sum(3 if enqueue else 2 for _, enqueue in teeth) + 4 * sum(sizes)
     slack = max(sizes) // 2 + 4  # the lap's landing and drop columns
     b = 12 - slack  # (w - slack) = 2 * (work / (w - slack) + 6)
     return (b + isqrt(b * b + 8 * work)) // 2 + slack + 1
@@ -438,7 +433,7 @@ def _balance(table: str, default: str) -> str:
     if floor >= flat:
         return default
     widths = {floor, min(max(_tight_width(table, n), floor), flat - 1)}
-    return min(default, *(_helix(table, n, w) for w in widths), key=balance_score)
+    return min((_helix(table, n, w) for w in widths), key=balance_score)
 
 
 def abcdirection(truth_table: str) -> str:

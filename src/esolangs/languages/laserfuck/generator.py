@@ -785,13 +785,10 @@ def balance_laserfuck(table: str, default: str) -> str:
     widths = set(boundaries)
     for index, start in enumerate(boundaries):
         stop = boundaries[index + 1] if index + 1 < len(boundaries) else None
-        forms = [_laserfuck_build(table, identity, start)]
-        if len(table) <= 8:
-            forms.append(_laserfuck_build(table, identity, start, vertical_tree=True))
+        form = _laserfuck_build(table, identity, start)
         # Reader and tree geometry is fixed within this interval. Only the
         # source's own fit can switch its startup funnel or narrow fallback.
-        spans = {grid_width(form) for form in forms}
-        spans.update(grid_width(_laserfuck_raise_funnel(form)) for form in forms)
+        spans = {grid_width(form), grid_width(_laserfuck_raise_funnel(form))}
         widths.update(
             span for span in spans if start < span and (stop is None or span < stop)
         )

@@ -154,7 +154,7 @@ def _tree(table: str, n: int, layout: _Layout) -> int:
             return node(depth + 1, 2 * block, landing + 1)
         frontier = node(depth + 1, 2 * block, arm + 1)
         air.discard(lane)
-        landing = stop(max(frontier, launch + 2), lane)
+        landing = stop(frontier, lane)
         layout.lay(launch, _STRIDE, landing)
         return node(depth + 1, 2 * block + 1, landing + 1)
 
@@ -186,9 +186,9 @@ def _printers(layout: _Layout, start: int) -> tuple[int, dict[int, int]]:
     layout.put(end, "x")  # the escape lands here, never past the last line
     rung = hop + 19
     distance = end - rung - 1
-    spell = ["@id"] * (distance // 10) + ["@nd"] * (distance % 10)
-    if len(spell) > 19:
-        raise AssertionError(f"printer escape spells {distance} in {len(spell)} lines")
+    if distance != 44:  # the spacing and printer lanes fix it
+        raise AssertionError(f"printer escape spans {distance} lines, not 44")
+    spell = ["@id"] * 4 + ["@nd"] * 4
     for i, op in enumerate(spell):
         layout.put(hop + i, op)
     for line in range(hop + len(spell), rung):

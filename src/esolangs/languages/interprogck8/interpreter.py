@@ -273,7 +273,7 @@ def _accumulate(
         return acc, chr(acc).join(str(i) for i in range(1, 27))
     if line in ("$py", "u"):
         return reads[0], None
-    if line.startswith("["):
+    if line.startswith("[") and line.endswith("]"):
         return _roll(line, acc, rng, reads[0] if reads else None), None
     args = _split_args(line)
     if args is None:

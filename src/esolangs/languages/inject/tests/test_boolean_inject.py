@@ -1,5 +1,6 @@
 """inject generator tests."""
 
+import random
 from itertools import pairwise
 
 import pytest
@@ -142,3 +143,13 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.inject, range(11, 15))
+
+
+def test_a_width_the_program_exactly_fills_keeps_the_program() -> None:
+    rng = random.Random(6)
+    table = "".join(rng.choice("01") for _ in range(64))
+    program = esolangs.generate("Inject", table)
+    widest = max(map(len, program.splitlines()))
+    assert widest == 64
+    assert esolangs.generate("Inject", table, width=widest) == program
+    assert len(esolangs.generate("Inject", table, width=widest - 1)) == 686

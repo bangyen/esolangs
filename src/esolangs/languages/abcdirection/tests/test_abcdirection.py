@@ -106,3 +106,30 @@ def test_a_step_after_the_halt_changes_nothing() -> None:
     before = machine.snapshot()
     machine.step()
     assert machine.snapshot() == before
+
+
+def test_memory_spans_the_highest_one() -> None:
+    """``A`` heads the pointer left onto the wrapped ``C``, which sets cell 1."""
+    machine = _Machine("ABBBBC\nDDDDDD", ScriptedIO())
+    machine.step()
+    machine.step()
+    assert machine.memory == [0, 1]
+
+
+def test_snapshots_tell_tapes_apart_down_to_the_last_one() -> None:
+    blank = _Machine("DDDDDD", ScriptedIO())
+    marked = _Machine("DDDDDD", ScriptedIO())
+    marked.ones.add(0)
+    assert blank.snapshot() != marked.snapshot()
+
+
+def test_input_characters_wrap_to_a_byte() -> None:
+    """A read lays its byte onto the tape; chr(300) is chr(44)."""
+
+    def tape(stdin: str) -> tuple[list[int], int]:
+        machine = _Machine("AAAAAC\nDDDDDD", ScriptedIO(stdin))
+        for _ in range(400):
+            machine.step()
+        return machine.memory, machine.writes
+
+    assert tape("\u012c") == tape(",")

@@ -407,22 +407,13 @@ def _layout(
 
 
 def _balance(truth_table: str, default: str) -> str:
-    """Compare shared and inline tree orientations at the square width and at 1.
+    """Compare the default with the narrowest grid.
 
-    Each is rewrapped to the side of the square holding its area; width 1 is
-    the narrowest grid.  Walking down one column at a time (``width - 1``,
-    three times) never beat these on 127 tables through n=11.
+    The inline tree and the square-width rewraps of both orientations never
+    won (n=1..8, incl. tiled and constant-leaf tables); neither did walking
+    down one column at a time (127 tables through n=11).
     """
-    inline = _tree(truth_table)
-    candidates = [default, inline, thisthat(truth_table, 1)]
-    for base, shared in ((default, True), (inline, False)):
-        width = max(1, isqrt(grid_area(base)))
-        candidates.append(
-            thisthat(truth_table, width)
-            if shared
-            else _narrow_tree(truth_table, base, width)
-        )
-    return min(candidates, key=balance_score)
+    return min(default, thisthat(truth_table, 1), key=balance_score)
 
 
 _MIN_NODE_BUDGET = 8

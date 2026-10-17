@@ -40,6 +40,28 @@ def test_a_deep_path_keeps_its_lanes_apart(one: int) -> None:
         assert _answer(program, n, row) == table[row], row
 
 
+def test_three_input_program_keeps_its_measured_length() -> None:
+    """A leaf's print entry sits on the first even line, so 3 inputs take 1302 lines."""
+    table = "00011110"
+    program = esolangs.generate("Interprogck8", table)
+    assert len(str(program).split("\n")) == 1302
+    for row in range(8):
+        assert _answer(program, 3, row) == table[row], row
+
+
+def test_sixteen_inputs_keep_their_lanes_apart() -> None:
+    """The first table size where an in-air ancestor shares a lane still builds.
+
+    Two ancestors 15 levels apart collide at ``n = 16``; a read left on its
+    entry line there made this table's flight hit another lane's stop.
+    """
+    n = 16
+    table = "1" + "0" * ((1 << n) - 1)
+    program = esolangs.generate("Interprogck8", table)
+    for row in (0, 1, 1 << (n - 1), (1 << n) - 1):
+        assert _answer(program, n, row) == table[row], row
+
+
 def test_closed_form_addresses_match_the_scans_they_replaced() -> None:
     """The stop hop, leaf line and printer-code shift equal the old first-fit scans."""
     stride, ps, lane0, lane1 = 82, 66, 33, 1

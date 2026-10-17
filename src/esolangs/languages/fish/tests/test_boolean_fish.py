@@ -1,5 +1,6 @@
 """Executed tests for the Fish boolean generator."""
 
+import random
 from itertools import pairwise
 
 import pytest
@@ -57,3 +58,16 @@ def test_fish_balance_matches_all_power_of_two_folds(table) -> None:
 def test_xor_has_one_column() -> None:
     xor = esolangs.generate("Fish", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
+
+
+@pytest.mark.slow
+def test_a_balanced_table_past_225_code_rows_uses_a_doubling_height_literal() -> None:
+    """n=23 balanced needs more than a*b rows of code; the doubling literal answers."""
+    inputs = 23
+    table = format(random.Random(2).getrandbits(1 << inputs), f"0{1 << inputs}b")
+    program = esolangs.generate("Fish", table, balance=True)
+    for row in (0, 5000001, (1 << inputs) - 1):
+        bits = [int(bit) for bit in format(row, f"0{inputs}b")]
+        stdin = esolangs.encode_inputs("Fish", bits)
+        got = esolangs.run("Fish", program, stdin=stdin, timeout=60)
+        assert esolangs.read_answer("Fish", got) == table[row], row

@@ -33,7 +33,7 @@ from esolangs.registry._language import Language, Shape
 def fish(truth_table: str, width: int | None = None) -> str:
     """Return a Fish lookup grid; lookup folds need three columns; parity uses one."""
     n = _validate_truth_table(truth_table)
-    if width is not None and 0 < width < 3:
+    if width is not None and width < 3:
         bias = _parity_bias(truth_table)
         if bias is not None:
             return _parity(n, bias)
@@ -41,7 +41,7 @@ def fish(truth_table: str, width: int | None = None) -> str:
     weights, truth_table = input_weights(truth_table, n)
     reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
     header = "0" + reads + "1g68*-n;"
-    if width is None or width <= 0 or max(len(header), len(truth_table)) <= width:
+    if width is None or max(len(header), len(truth_table)) <= width:
         return header + "\n" + truth_table
     columns = 1 << (min(max(1, width - 2), len(truth_table)).bit_length() - 1)
     return _folded(reads, truth_table, columns)

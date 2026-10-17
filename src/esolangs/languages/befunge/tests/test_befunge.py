@@ -1,5 +1,7 @@
 """Execution tests for the Befunge classic."""
 
+from ctypes import c_long, sizeof
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -214,6 +216,31 @@ def test_a_value_past_signed_long_aborts() -> None:
     """81**16 overflows the reference's C long (UB there): abort, not a bignum."""
     with pytest.raises(HaltError, match="signed-long"):
         run_befunge("99*:*:*:*:*.@")
+
+
+_LONG_BITS = sizeof(c_long) * 8  # 64, or 32 on Windows
+# 2 squared to 2**(bits/2), times -(2**(bits/2 - 1)): -2**(bits-1), every push in range.
+_MIN_LONG = "2" + ":*" * ((_LONG_BITS // 2).bit_length() - 1) + ":2/0\\-*"
+
+
+def test_the_signed_long_range_is_inclusive_at_both_ends() -> None:
+    """A C long's two ends are valid, one past the top is not, and 2**16 is no wrap."""
+    low = -(1 << (_LONG_BITS - 1))
+    assert run_befunge(_MIN_LONG + ".@") == f"{low} "
+    assert run_befunge(_MIN_LONG + "1+0\\-.@") == f"{-low - 1} "
+    with pytest.raises(HaltError, match="signed-long"):
+        run_befunge(_MIN_LONG + "0\\-.@")
+    assert run_befunge("99*:*:*.@") == "43046721 "
+
+
+def test_a_byte_cell_at_the_top_of_the_range_is_accepted() -> None:
+    """U+00FF is a byte: only cells above it are rejected."""
+    assert run_befunge("\xff@") == ""
+
+
+def test_get_at_the_first_column_past_the_grid_reads_zero() -> None:
+    """x == 80 is off the 80-wide grid, so ``g`` pushes 0 rather than indexing."""
+    assert run_befunge("88*88++0g.@") == "0 "
 
 
 def test_the_branch_search_refuses_a_zero_divisor_read() -> None:

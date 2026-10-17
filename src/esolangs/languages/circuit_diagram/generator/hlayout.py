@@ -171,10 +171,10 @@ class _HTermPlan:
         return x + _RESULT_TRACK[0], y - _RESULT_TRACK[1]
 
 
-def _h_term_plan(table: str, *, port_inputs: int | None = None) -> _HTermPlan:
+def _h_term_plan(table: str) -> _HTermPlan:
     """Assign minterm and result signals to fixed H-layout sites."""
     inputs = len(table).bit_length() - 1
-    margin = _LATTICE * (inputs if port_inputs is None else port_inputs) + _LATTICE
+    margin = _LATTICE * inputs + _LATTICE
     sites = {
         prefix: (x + margin, y + margin)
         for prefix, (x, y) in _h_minterm_sites(inputs).items()
@@ -264,19 +264,10 @@ def _h_route_literals(
     literal_anchors: dict[tuple[int, str, int], tuple[int, int]],
     *,
     input_order: list[int] | None = None,
-    port_inputs: int | None = None,
 ) -> None:
     """Route input feeders, minterm prefixes, and literal fanout."""
     inputs, sites, literal = plan.inputs, plan.sites, plan.literal
     order = list(range(inputs)) if input_order is None else input_order
-    if port_inputs is not None:
-        kept = set(order)
-        first_unused = len(plan.signals) + 2 * inputs + len(plan.results)
-        for index in range(port_inputs):
-            if index not in kept:
-                row = _LATTICE * index
-                signal = first_unused + index
-                layout.input_port(row, 2, signal)
     input_starts: dict[tuple[int, str], tuple[int, int]] = {}
     for depth in range(inputs):
         row = _LATTICE * order[depth]
@@ -440,27 +431,7 @@ def _result_children(results: dict[int, int | None], prefix: int) -> list[int]:
     ]
 
 
-def _h_term_area_floor(inputs: int, ports: int) -> int:
-    """Bound area from the term glyphs retained regardless of selected rows."""
-    sites = [
-        point
-        for prefix, point in _h_minterm_sites(inputs).items()
-        if _depth(prefix) >= 2
-    ]
-    if not sites:
-        return 0
-    margin = 8 * ports + 8
-    return (max(x for x, _ in sites) + margin + 1) * (
-        max(y for _, y in sites) + margin + 1
-    )
-
-
-def _h_term_layout(
-    table: str,
-    *,
-    input_order: list[int] | None = None,
-    port_inputs: int | None = None,
-) -> _Layout:
+def _h_term_layout(table: str) -> _Layout:
     """Route one truth table's parallel minterm tree through an H-layout.
 
     Every wire takes a lane fixed by its class (see ``_LATTICE``): the
@@ -470,16 +441,9 @@ def _h_term_layout(
     here searches; the collision check in :meth:`_RoutingLayout.route` is
     a guard on the lattice.
     """
-    plan = _h_term_plan(table, port_inputs=port_inputs)
-    ports = plan.inputs if port_inputs is None else port_inputs
-    layout = _HCellLayout(_h_size(plan.inputs) + 8 * ports + 64)
+    plan = _h_term_plan(table)
+    layout = _HCellLayout(_h_size(plan.inputs) + 8 * plan.inputs + 64)
     literal_anchors = _h_reserve_terms(layout, plan)
-    _h_route_literals(
-        layout,
-        plan,
-        literal_anchors,
-        input_order=input_order,
-        port_inputs=port_inputs,
-    )
+    _h_route_literals(layout, plan, literal_anchors)
     _h_route_results(layout, plan)
     return layout.seal()

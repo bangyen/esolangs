@@ -22,7 +22,7 @@ from esolangs.languages.interprogck8.interpreter import (
     run,
 )
 from esolangs.runtime.io import ScriptedIO
-from esolangs.runtime.randomness import Seeded
+from esolangs.runtime.randomness import FirstDraw, Seeded
 from esolangs.vm import run_until_halt_or_all_branches_cycle
 
 # The wiki's Hello World, verbatim.
@@ -221,6 +221,12 @@ class TestCommands:
         outputs = {go("~", "") for _ in range(1)}
         assert outputs <= {"", "Interprogck8\n"}
 
+    def test_tilde_prints_exactly_on_the_zero_draw(self) -> None:
+        for first, expected in ((0, "Interprogck8\n"), (1, ""), (9, "")):
+            io = ScriptedIO("")
+            run("~", io, FirstDraw(first))
+            assert io.getvalue() == expected
+
 
 class TestDownAccLines:
     def test_zero_falls_through(self) -> None:
@@ -340,6 +346,12 @@ class TestBranchingSearch:
         assert successors is not None
         assert len(successors) == 1
 
+    @pytest.mark.parametrize("line", ["[. :", "[. :x"])
+    def test_a_range_missing_its_closer_is_refused(self, line: str) -> None:
+        """An unclosed ``[`` is no range: its last character is not a bracket."""
+        with pytest.raises(HaltError, match="unknown instruction"):
+            go(line)
+
     def test_a_reading_line_declines_to_fork(self) -> None:
         """Siblings cannot share one input cursor, so the search declines."""
         machine = _Machine("u\ndiv", ScriptedIO("a\n"))
@@ -401,6 +413,12 @@ class TestConstructedGuards:
         assert _split_args(line) is None
         with pytest.raises(HaltError, match="unknown instruction"):
             go(line)
+
+    def test_a_malformed_argument_reads_no_input(self) -> None:
+        """``x$py]`` is not a range, so the line takes no byte: its error is
+        the unknown-literal one, not end-of-input."""
+        with pytest.raises(HaltError):
+            go("{values/=x$py]/=/=}", "")
 
     def test_a_range_bound_with_no_byte_is_refused(self) -> None:
         with pytest.raises(HaltError, match="read nothing"):

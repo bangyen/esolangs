@@ -64,7 +64,7 @@ def folded_class_bank_candidate(
         return None
     # q <= 2**(tail+2) and prefix >= tail+1 give clock <= 2n+2:
     # parallel folds, one AND, ceil(log2 q) ORs and three I/O ticks.
-    budget = _pool_budget(n, ceiling)
+    budget = _pool_budget(ceiling)
     if budget is None:
         return None
     masks = _folded_class_masks(chunks, classes, prefix, len(table))

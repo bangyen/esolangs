@@ -34,7 +34,7 @@ def test_minifuck_xor_floor_and_rendered_size_tradeoff() -> None:
     natural = mark_runs(minifuck(table), TEMPLATE_CHAR, (PAIR,) * 2)
     assert max(map(len, wrap_program(natural, "minifuck", 1).splitlines())) == 2
     legacy = mark_runs(_solve(table), TEMPLATE_CHAR, (PAIR,) * 2)
-    assert max(map(len, wrap_program(legacy, "minifuck", 1).splitlines())) == 33
+    assert max(map(len, wrap_program(legacy, "minifuck", 1).splitlines())) == 29
     assert (
         max(map(len, esolangs.generate("Minifuck", table, width=1).splitlines())) == 1
     )

@@ -57,6 +57,28 @@ class TestForth:
     def test_prints(self, code: str, expected: str) -> None:
         assert run_program(code) == expected
 
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (0x10FFFF, "\U0010ffff"),  # the last code point prints whole
+            (0x110000, "\x00"),  # one past it keeps the low byte
+            (0xD7FF, "\ud7ff"),  # just below the surrogates
+            (0xD800, "\x00"),  # the first surrogate keeps the low byte
+            (0xDFFF, "\xff"),  # the last surrogate keeps the low byte
+            (0xE000, "\ue000"),  # just above them prints whole
+        ],
+    )
+    def test_print_of_a_wide_value_follows_the_scalar_range(
+        self, value: int, expected: str
+    ) -> None:
+        digits = []
+        while value:
+            digits.append(value % 15)
+            value //= 15
+        hexa = "0123456789ABCDE"
+        code = hexa[digits.pop()] + "".join(f"F*{hexa[d]}+" for d in reversed(digits))
+        assert run_program(code + ".") == expected
+
     def test_arithmetic(self) -> None:
         assert run_program("23+.") == "\x05"
         assert run_program("95-.") == "\x04"

@@ -70,7 +70,7 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     statements between tokens.
     """
     natural = in_input_order(truth_table, _intercal_shared)
-    if width is None or width <= 0:
+    if width is None:
         return natural
     return _wrap_intercal(natural, width)
 

@@ -186,31 +186,3 @@ def test_public_folded_masks_below_old_cap_execute_prefix_boundaries() -> None:
         }
     )
     assert _execute(table, code, rows) == 30
-
-
-def test_the_pool_floor_is_read_through_hpool_not_snapshotted(monkeypatch) -> None:
-    """A patched ``hpool`` floor must reach every bank candidate at call time.
-
-    The candidates used to bind ``hpool._h_pool_area_floor`` at import, so a
-    floor active when they first imported leaked into every later build and
-    made generation depend on test order; reading through the module keeps the
-    patch honest and its removal complete.
-    """
-    from esolangs.languages.circuit_diagram.generator.bundled_banks import (
-        bundled_class_bank_candidate,
-    )
-    from esolangs.languages.circuit_diagram.generator.sparse_banks import (
-        sparse_class_bank_candidate,
-    )
-
-    table, _ = _classes(7, 8)
-    assert folded_class_bank_candidate(table) is not None
-    assert sparse_class_bank_candidate(table) is not None
-    assert bundled_class_bank_candidate(table) is not None
-    hpool = importlib.import_module(
-        "esolangs.languages.circuit_diagram.generator.hpool"
-    )
-    monkeypatch.setattr(hpool, "_h_pool_area_floor", lambda *_args, **_kwargs: 0)
-    assert folded_class_bank_candidate(table) is None
-    assert sparse_class_bank_candidate(table) is None
-    assert bundled_class_bank_candidate(table) is None

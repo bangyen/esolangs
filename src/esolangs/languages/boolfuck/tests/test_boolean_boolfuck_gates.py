@@ -144,3 +144,28 @@ def test_boolfuck_scaling_windows_follow_normalized_gate_route() -> None:
     trend = _trend(series)
     assert trend is not None
     assert trend <= MAX_DIFF_RATIO
+
+
+# Gate programs whose true cost is a few commands past 2n^2 + 27n + 8: the
+# planner must refuse them, so the public program stays within the bound.
+@pytest.mark.parametrize(
+    "table",
+    [
+        "1110011111100110000011100110011001110110011110010000111000000000",
+        "0101101001010011011000111101010100010011001110110110010100101000"
+        "1110111100000111100001010010011111110101110010011001110000011000",
+        "1110110010101111000111100010101111011011111101011111001010101101"
+        "1100010011101000101110001000101010001111110100010110100000111100",
+    ],
+)
+def test_public_program_stays_within_the_command_bound_past_gate_costs(
+    table: str,
+) -> None:
+    _execute(table, boolfuck(table), range(len(table)))
+
+
+def test_six_input_table_keeps_its_shared_gate_size() -> None:
+    import esolangs
+
+    table = "0001111111110001101100011011110111110000110100010001111110110001"
+    assert len(esolangs.generate("Boolfuck", table)) == 633

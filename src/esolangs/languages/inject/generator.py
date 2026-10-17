@@ -35,7 +35,6 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
-from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -177,7 +176,7 @@ def inject(truth_table: str, width: int | None = None) -> str:
     else:
         program = _inject_halving(truth_table)
     widest = grid_width(program)
-    if width is None or width <= 0 or widest <= width:
+    if width is None or widest <= width:
         return program
     banded = _inject_banded(truth_table)
     return banded if grid_width(banded) < widest else program
@@ -261,9 +260,9 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return "\n".join([*head, *body, *tail])
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare the normal program and its width-selected banded lookup."""
-    return min(default, inject(table, 1), key=balance_score)
+def _balance(_table: str, default: str) -> str:
+    """Return the normal program; the banded lookup never won (n=1..8)."""
+    return default
 
 
 LANGUAGE = Language(

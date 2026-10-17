@@ -132,11 +132,10 @@ def _stash_chunk(
     count is 1, so a chunk is 3 tokens for 255 of reach.
     """
     if io_modulus == 255:
+        if acc:
+            raise AssertionError("the modulo-255 chunk starts from a clear accumulator")
         cur = list(array)
         tokens = []
-        if acc:
-            cur.append(acc % io_modulus)
-            tokens.append("EXCRETE")
         head = (io_modulus - 1 - sum(cur[1:])) % io_modulus
         tokens += ["SEED"] * ((head - cur[0]) % _MODULUS) + ["DIGEST", "EXCRETE"]
         return tokens, [head, *cur[1:], io_modulus - 1]

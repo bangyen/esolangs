@@ -7,7 +7,7 @@ from esolangs.languages.malbolge.interpreter import (
     _WORDS,
     _advance,
     _crazy,
-    _load,
+    _initial_memory,
     _Machine,
     _op,
     run,
@@ -38,7 +38,7 @@ def test_decipherment_and_halt() -> None:
 
 
 def test_memory_is_filled_and_sized() -> None:
-    memory = _load("Q")
+    memory = _initial_memory("Q")
     assert len(memory) == _WORDS
     assert memory[0] == ord("Q")
     assert memory[1] == _crazy(memory[0], 0)
@@ -46,9 +46,9 @@ def test_memory_is_filled_and_sized() -> None:
 
 
 def test_each_machine_receives_fresh_memory() -> None:
-    first = _load("Q")
-    first[0] = 0
-    assert _load("Q")[0] == ord("Q")
+    # The image is cached; a machine that wrote through it would leak.
+    _Machine("Q", ScriptedIO("")).memory[0] = 0
+    assert _Machine("Q", ScriptedIO("")).memory[0] == ord("Q")
 
 
 def test_a_known_program_prints_its_greeting() -> None:
@@ -87,7 +87,7 @@ def test_a_non_instruction_source_character_is_rejected() -> None:
     # 'x' at cell 0 deciphers to something outside the eight instructions.
     assert _op(ord("x"), 0) not in "ji*p</vo"
     with pytest.raises(ValueError, match="does not decipher"):
-        _load("x")
+        _initial_memory("x")
 
 
 def test_an_empty_program_halts_at_once() -> None:
@@ -96,7 +96,7 @@ def test_an_empty_program_halts_at_once() -> None:
 
 def test_a_halted_state_advances_to_itself() -> None:
     done = (0, 0, 0, True)
-    assert _advance(done, _load("Q")) == (done, (), None)
+    assert _advance(done, list(_initial_memory("Q"))) == (done, (), None)
 
 
 def test_both_pointers_wrap_past_the_last_cell() -> None:

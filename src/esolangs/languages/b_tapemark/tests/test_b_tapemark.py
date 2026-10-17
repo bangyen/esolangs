@@ -6,6 +6,7 @@ from esolangs.languages.b_tapemark.interpreter import (
     _advance,
     _Grid,
     _load,
+    _Machine,
     run,
 )
 from esolangs.runtime.io import ScriptedIO
@@ -106,3 +107,27 @@ def test_copy_onto_an_occupied_cell_leaves_it() -> None:
     io = ScriptedIO("A\n")
     run(">-*+!", io)
     assert io.getvalue() == ""
+
+
+def test_the_last_letter_is_a_command_symbol() -> None:
+    """``Z`` is the top of the uppercase range: it loads and prints."""
+    assert execute(">Z!") == "Z"
+
+
+def test_a_nonblank_data_cell_keeps_the_question_mark_in_the_program() -> None:
+    """``?`` hands control to the data tape only over a blank data cell."""
+    state = _load(">*A?!")
+    for _ in range(3):
+        state = _advance(state)[0]
+    assert state.program == 0
+    assert _advance(state)[0].halted
+
+
+def test_the_data_tape_can_run_a_dash_command() -> None:
+    """A ``-`` run from the data tape looks at the program tape, not itself."""
+    # the data tape gets a ``-`` at its origin, steps back, and ``?`` jumps onto it
+    machine = _Machine(">*-\\\n /|/\n \\?", ScriptedIO(""))
+    for _ in range(9):
+        machine.step()
+    assert machine.state.program == 1
+    assert machine.ip == (1, 0)

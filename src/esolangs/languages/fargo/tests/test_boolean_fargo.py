@@ -150,3 +150,36 @@ def test_packed_lines_name_shared_or_overlong_nodes(width: int) -> None:
     # A positive control: flipping the first input read flips some answer.
     mutant = program.replace("@ 0", "@ 1", 1)
     assert _evaluate("Fargo", mutant, inputs=6) != table
+
+
+@pytest.mark.parametrize(
+    ("table", "width", "size"),
+    [("10", 9, 18), ("01", 7, 10)],
+)
+def test_a_width_request_keeps_the_exact_fit_and_counts_every_use(
+    table: str, width: int, size: int
+) -> None:
+    """Both programs fit their width exactly or inline shared uses; sizes are exact."""
+    import esolangs
+    from esolangs.runtime._evaluate import _evaluate
+
+    program = esolangs.generate("fargo", table, width=width)
+    assert len(str(program)) == size
+    assert _evaluate("Fargo", program, inputs=1 if len(table) == 2 else 2) == table
+
+
+@pytest.mark.parametrize(
+    ("table", "score"),
+    [("1101", (10, 32, 9)), ("11000010", (14, 53, 11))],
+)
+def test_balanced_layout_scores_are_exact(
+    table: str, score: tuple[int, int, int]
+) -> None:
+    """The squarest packing the width walk finds, as side, length and width."""
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
+
+    program = esolangs.generate("fargo", table, balance=True)
+    assert balance_score(str(program)) == score
+    assert _evaluate("Fargo", program, inputs=len(table).bit_length() - 1) == table

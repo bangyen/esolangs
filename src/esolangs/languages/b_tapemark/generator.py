@@ -272,8 +272,6 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
     """
     depth = _validate_truth_table(truth_table)
     weights, painted = input_weights(truth_table, depth)
-    if not any(weights):
-        painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
     builder = _Builder()
 
     # Strip k holds entries k*copy.. on row 2k, read westward from x_east;
@@ -327,15 +325,7 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
 def _balance(table: str, default: str) -> str:
     """Compare the original grid, its reflection and the narrow staircase."""
     if len(set(table)) == 1:
-        legacy = _b_tapemark_program(table, keep_full_narrow=True)
-        return min(
-            default,
-            b_tapemark(table, 1),
-            legacy,
-            _b_tapemark_program(table, grid_width(legacy), keep_full_narrow=True),
-            _b_tapemark_program(table, 1, keep_full_narrow=True),
-            key=balance_score,
-        )
+        return min(default, b_tapemark(table, 1), key=balance_score)
     candidates = [
         default,
         b_tapemark(table, grid_width(default)),
@@ -353,13 +343,6 @@ def _balance(table: str, default: str) -> str:
     for copy in {best, best * 17 // 20}:
         for run in {max(1, 3 * copy - 12), len(table)}:
             candidates.append(_b_tapemark_folded(table, max(1, copy), run))
-    if len(input_weights(table, depth)[1]) <= depth:
-        candidates.extend(
-            [
-                _b_tapemark_program(table, grid_width(default), keep_full_narrow=True),
-                _b_tapemark_program(table, 1, keep_full_narrow=True),
-            ]
-        )
     return min(candidates, key=balance_score)
 
 

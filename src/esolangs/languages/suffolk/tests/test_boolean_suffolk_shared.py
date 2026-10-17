@@ -99,3 +99,14 @@ def test_repeated_passes_overwrite_every_shared_value() -> None:
     while not machine.halted:
         machine.step()
     assert machine.io.getvalue() == table[0] + table[31] + table[9]
+
+
+def test_dag_at_the_pointer_bit_boundary_stays_shared() -> None:
+    """10 essential inputs and 17 muxes sit exactly on the tape cap."""
+    table = "".join(
+        str(int((row >> 2).bit_count() % 2 == 1 and row & 3 == 3))
+        for row in range(1 << 10)
+    )
+    program = suffolk(table)
+    assert len(program) == 3060
+    _execute(table, program, _witness_rows(10)[:8])

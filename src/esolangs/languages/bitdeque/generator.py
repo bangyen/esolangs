@@ -32,7 +32,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, balance_score
+from esolangs.generation.wrap import _join_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -55,8 +55,7 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     """
     small = len(truth_table) <= 16
     short = small and width is not None and width < len(BITDEQUE_PAIR[0])
-    n = _validate_truth_table(truth_table)
-    program = _bitdeque_ordered(truth_table, tuple(range(n)), short=short)
+    program = _bitdeque_ordered(truth_table, short=short)
     if width is not None:
         return _bitdeque(program, width)
     return program
@@ -112,27 +111,20 @@ def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return setters
 
 
-def _bitdeque_ordered(
-    truth_table: str, perm: tuple[int, ...], *, short: bool = False
-) -> str:
-    """Emit one input order's Bitdeque template; see :func:`bitdeque`.
+def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
+    """Emit the Bitdeque template; see :func:`bitdeque`.
 
-    ``perm`` is spent on the rotations before a node consumes its bit, a
-    function of the level alone, so a node's width is well-defined.  The
-    identity order emits no rotation.  Bits are pushed in reverse so ``POP``
+    Level ``i`` consumes input ``i`` from the head (``EJECT``); the last
+    level's lone bit is popped.  Bits are pushed in reverse so ``POP``
     yields the MSB first; the register flips after every load block, so
     odd load positions push complemented;
     the tree reads the table with those inputs complemented back
     (``row ^ mask``), a relabelling that folds as the table did.
     """
     n = _validate_truth_table(truth_table)
-    # Level ``level`` tests input ``perm[level]``, whose load position is
-    # its name; the row bit for a level is ``n - 1 - level``.
-    mask = (
-        0
-        if short
-        else sum(1 << (n - 1 - level) for level in range(n) if perm[level] % 2)
-    )
+    # Level ``level`` tests input ``level``, whose load position is its name;
+    # the row bit for a level is ``n - 1 - level``.
+    mask = 0 if short else sum(1 << (n - 1 - level) for level in range(n) if level % 2)
     seen = "".join(truth_table[row ^ mask] for row in range(2**n))
 
     def leaf(answer: str) -> list[str]:
@@ -147,27 +139,8 @@ def _bitdeque_ordered(
         out.append("GOTO 1")
         return out
 
-    # Simulate the deque per level: the tail (``POP``) is input ``n - 1``,
-    # the head input 0.  Name order costs nothing over reversed -- the
-    # rotation-length multisets are identical over every order at n=2,3,4.
-    deque = list(range(n))
-    rotations: list[list[str]] = []
-    for level in range(n):
-        want = perm[level]
-        index = deque.index(want)
-        from_tail = len(deque) - 1 - index
-        if from_tail <= index:
-            # Nearer the tail: rotate the tail round to the head, then POP.
-            rotations.append(["POP", "INJECT"] * from_tail + ["POP"])
-            for _ in range(from_tail):
-                deque.insert(0, deque.pop())
-            deque.pop()
-        else:
-            # Nearer the head: rotate the head round to the tail, then EJECT.
-            rotations.append(["EJECT", "PUSH"] * index + ["EJECT"])
-            for _ in range(index):
-                deque.append(deque.pop(0))
-            deque.pop(0)
+    # The head is input ``level`` at each level, so no rotation is needed.
+    rotations = [["EJECT"]] * (n - 1) + [["POP"]]
 
     def width(level: int) -> int:
         # the rotation, its consuming pop, and the node's own ``GOTO``
@@ -218,18 +191,10 @@ def _bitdeque_ordered(
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
 
 
-def _balance(table: str, default: str) -> str:
-    """Balance the eleven-cell and short endpoint loads in their width regimes."""
+def _balance(_table: str, default: str) -> str:
+    """Balance the eleven-cell endpoint loads."""
     normal = _bitdeque_tokens(default)
-    short = _bitdeque_tokens(bitdeque(table, 1))
-    normal_width = balanced_token_width(normal, " ", minimum=11)
-    short_width = balanced_token_width(short, " ", maximum=10)
-    return min(
-        default,
-        _join_tokens(normal, normal_width, " "),
-        _join_tokens(short, short_width, " "),
-        key=balance_score,
-    )
+    return _join_tokens(normal, balanced_token_width(normal, " ", minimum=11), " ")
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:

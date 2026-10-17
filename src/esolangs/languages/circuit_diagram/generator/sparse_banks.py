@@ -54,7 +54,7 @@ def sparse_class_bank_candidate(
     depth = (q - 1).bit_length()
     if 2 * max(prefix, tail) + depth + 5 > 2 * n + 2:
         return None
-    budget = _pool_budget(n, ceiling)
+    budget = _pool_budget(ceiling)
     if budget is None:
         return None
     work = _SparseWork(4 * len(table))

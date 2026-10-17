@@ -161,13 +161,11 @@ def _shared(truth_table: str, n: int) -> str:
     return stores + render((0, ids[0][0]))
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare ordinary token fits above width one and the alternate zero push."""
+def _balance(_table: str, default: str) -> str:
+    """Compare ordinary token fits; the alternate zero push never won."""
     tokens = re.findall(_FALSE_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
-    return min(
-        default, _join_tokens(tokens, width, ""), false(table, 1), key=balance_score
-    )
+    return min(default, _join_tokens(tokens, width, ""), key=balance_score)
 
 
 LANGUAGE = Language(

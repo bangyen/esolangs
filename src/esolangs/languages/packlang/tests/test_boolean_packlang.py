@@ -141,3 +141,47 @@ def test_packlang_keeps_unknown_punctuation_verbatim() -> None:
 def test_folded_skips_an_empty_statement() -> None:
     """An empty statement contributes no line to the fold."""
     assert _folded(["", "a"]) == ["a"]
+
+
+def _bits(hexed: str, n: int) -> str:
+    return format(int(hexed, 16), f"0{1 << n}b")
+
+
+@pytest.mark.parametrize(
+    "table", ["0110", "1110111101001010", "10001000000111110011000110111000"]
+)
+def test_binary_digits_small_tables_run(table) -> None:
+    source = boolean.packlang(table, literal_policy="binary_digits")
+    n = len(table).bit_length() - 1
+    for row, bit in enumerate(table):
+        io = ScriptedIO(format(row, f"0{n}b"))
+        packlang_run(source, io, literal_policy="binary_digits")
+        assert io.getvalue() == bit
+
+
+def test_binary_digits_block_bounds_cost_their_binary_digits() -> None:
+    """Four blocks of 16 rows declare their counters as ``Integer(0,11,...)``."""
+    table = _bits("655d655d0791655d", 6)
+    assert len(boolean.packlang(table, literal_policy="binary_digits")) == 819
+
+
+@pytest.mark.parametrize(
+    ("hexed", "size"),
+    [
+        ("0000080000001000820024000002402982002400000240290000080000001000", 852),
+        ("0100000000010000084f24082187e201084f24082187e2010100000000010000", 971),
+    ],
+)
+def test_an_alias_is_taken_exactly_when_it_is_cheaper(hexed, size) -> None:
+    """A repeated block remaps to its first copy only when that saves characters."""
+    table = _bits(hexed, 8)
+    program = boolean.packlang(table)
+    assert len(program) == size
+    assert _evaluate("Packlang", program, inputs=8) == table
+
+
+def test_balance_keeps_the_widest_square_candidate() -> None:
+    table = _bits("2aa42a2aa4a42aa42a2aa4a42a2aa42aa42aa42a2aa42a2aa42aa42a2aa4a4a4", 8)
+    program = esolangs.generate("Packlang", table, balance=True)
+    rows = program.rstrip("\n").split("\n")
+    assert (max(map(len, rows)), len(rows), len(program)) == (72, 34, 1648)

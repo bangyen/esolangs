@@ -73,6 +73,11 @@ def test_a_negative_loop_runs_backwards_and_inverted() -> None:
     assert _run("-ww %oo !") == "\x00"
 
 
+def test_a_zero_loop_inside_a_backwards_loop_is_skipped() -> None:
+    """The nested loop reached at V = 0 resumes before it, not into its body."""
+    assert _run("-ww ( ( ! ) .w'w ) +ww !", "abcdefgh") == "\x08"
+
+
 def test_a_backwards_bang_reads_one_character() -> None:
     assert _run("-ww ( ! ) !", "abcdefgh") == "h"
 

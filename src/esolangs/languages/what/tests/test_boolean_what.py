@@ -1,5 +1,7 @@
 """Tests for the What!? Boolean generator."""
 
+import random
+
 import pytest
 
 import esolangs
@@ -19,3 +21,14 @@ def test_every_row_prints_its_answer(table: str) -> None:
         got = esolangs.run("What!?", program, stdin=stdin, timeout=5)
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("What!?", got) == table[row], (table, row)
+
+
+@pytest.mark.medium
+def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
+    """n=16 splits into two labelled blocks; rows on both sides answer."""
+    table = format(random.Random(1).getrandbits(1 << 16), "065536b")
+    program = esolangs.generate("What!?", table)
+    for row in (0, 32767, 32768, 65535):
+        stdin = esolangs.encode_inputs("What!?", [int(b) for b in format(row, "016b")])
+        got = esolangs.run("What!?", program, stdin=stdin, timeout=10)
+        assert esolangs.read_answer("What!?", got) == table[row], row

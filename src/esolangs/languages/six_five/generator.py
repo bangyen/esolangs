@@ -87,16 +87,16 @@ def _six_five_markers(table: str) -> int:
 
 
 def _six_five_halves(
-    table: str, constant: Callable[[int, int], bool], lo: int, hi: int, pair: str
+    table: str, constant: Callable[[int, int], bool], lo: int, hi: int
 ) -> bool:
-    """Whether the span is constant ``pair[0]`` then constant ``pair[1]``.
+    """Whether the span is constant 0 then constant 1.
 
-    ``"01"`` copies the first bit: both arms print from the tested cell with
-    one text (0 from 31, 1 from 32), so the node needs no test and spends no
-    label.  ``"10"`` is its inversion.
+    Such a node copies the first bit: both arms print from the tested cell
+    with one text (0 from 31, 1 from 32), so it needs no test and spends no
+    label.
     """
     mid = (lo + hi) // 2
-    return table[lo] + table[mid] == pair and constant(lo, mid) and constant(mid, hi)
+    return table[lo] + table[mid] == "01" and constant(lo, mid) and constant(mid, hi)
 
 
 def six_five(truth_table: str) -> str:
@@ -208,8 +208,6 @@ def _six_five_preload(truth_table: str, n: int) -> str:
     """Place table ones n strides from the entry cell; return there."""
     # Later zero rows stay virgin; the walk grows the tape on demand.
     last = truth_table.rfind("1")
-    if last < 0:
-        return ""
     out = ["1" * n]
     for row in range(last + 1):
         if truth_table[row] == "1":
@@ -440,7 +438,7 @@ def _six_five_use_counts(
         if perm[level] not in stored:
             tally(level + 1, lo, mid)
             return
-        if _six_five_halves(truth_table, constant, lo, hi, "01"):
+        if _six_five_halves(truth_table, constant, lo, hi):
             uses[perm[level]] += 1 if raw_copies else 2
             return
         uses[perm[level]] += 1
@@ -510,7 +508,7 @@ def _six_five_node(
         return child(level + 1, lo, mid, entry, held)
     cell = cell_of[perm[level]]
     nav = _six_five_move(entry, cell)
-    if _six_five_halves(truth_table, constant, lo, hi, "01"):
+    if _six_five_halves(truth_table, constant, lo, hi):
         # A read left raw prints as it came.
         base = _ASCII_ZERO if perm[level] in lazy else _SIX_FIVE_HELD
         return nav + _six_five_leaf("0", cell, base, scratch)

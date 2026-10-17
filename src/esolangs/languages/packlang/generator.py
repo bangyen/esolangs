@@ -86,7 +86,7 @@ def packlang(
         program = _painted(table, weights, runs=runs, block=block)
         if literal_policy != "decimal":
             program = re.sub(
-                r"\b\d+\b", lambda match: literals.emit(int(match[0])), program
+                r"(?<!\w)\d+", lambda match: literals.emit(int(match[0])), program
             )
         if width is not None and width > 0:
             # The package is never named by its own body or the IO dependency.
@@ -107,7 +107,7 @@ def _blocks(table: str) -> list[int]:
     """
     n = len(table).bit_length() - 1
     top = min(n, _BLOCK)
-    if n <= _MIN_BLOCK:
+    if n <= _MIN_BLOCK:  # also a constant table, whose projection has n = 0
         return [top]
     ids = subtree_ids(table)
     smaller = [
@@ -126,7 +126,7 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
     Height is fixed between them and only reduced indentation grows with
     width, so each interval's first width renders its smallest square.
     """
-    events = {minimum, maximum + 1}
+    events = {minimum}
     for line in program.split("\n"):
         tokens = re.findall(_PACKLANG_LEXEME, line)
         indent = len(line) - len(line.lstrip())
@@ -139,13 +139,11 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
 
 
 def balance_packlang(_table: str, default: str) -> str:
-    """Compare token-fit layouts with the two package-name spellings."""
-    short = _short_name(default)
+    """Compare ``default`` with token-fit layouts."""
     maximum = grid_width(default) - 1
     return min(
         default,
         _balance_form(default, _NAME_LEN, maximum),
-        _balance_form(short, 1, _NAME_LEN - 1),
         key=balance_score,
     )
 

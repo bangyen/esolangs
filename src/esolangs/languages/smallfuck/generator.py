@@ -140,8 +140,8 @@ def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     Deferred plans are the per-level residuals and the unranked same-level
     bank.  The single-residual and ranked-bank forms were retired at 1.2%
     jointly (n=8..12, 40 to 250 tables per class); dropping the per-level
-    plan too costs 10.4% on a tiled n=6 table.  Plans above the command
-    bound are dropped.
+    plan too costs 10.4% on a tiled n=6 table.  A plan above the command
+    bound is a cost-model bug and aborts.
     """
     n = len(perm)
     forms = []
@@ -162,9 +162,11 @@ def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
                 )
         if paired:
             forms.append(_smallfuck_tree(table, perm, paired_roots=paired, band=band))
-    return min(
-        (code for code, cost in forms if cost <= 9 * n * n + 100 * n + 20), key=len
-    )
+    bound = 9 * n * n + 100 * n + 20
+    for _, cost in forms:
+        if cost > bound:
+            raise AssertionError(f"worst-case cost {cost} exceeds {bound}")
+    return min((code for code, _ in forms), key=len)
 
 
 def _paired_roots(table: str) -> tuple[tuple[int, int], ...]:
@@ -435,7 +437,7 @@ class _Tree:
         decoder = _PairDecoder(self, skipped, delta, bits, guards)
         model = decoder.decode(0, (0, *self.pairs))
         decoder.price(model)
-        program = _trim_tail("".join(self.builder.code)).ljust(3, ">")
+        program = _trim_tail("".join(self.builder.code))
         return program, len(PAIR[0]) * self.n + prefix.evaluate(decoder.pair_tails) + 1
 
 
@@ -596,7 +598,6 @@ def _smallfuck_tree(
     stages = []
     for i, (depth, row) in enumerate(blocks):
         body_cost, active, skipped = tree.emit_definition(i, depth, row)
-        cost += body_cost.evaluate(empty_tails) + active
         stages.append((i, body_cost, active, skipped))
     if shared_blocks:
         tails: dict[int | None, int] = {None: 0}
@@ -605,7 +606,7 @@ def _smallfuck_tree(
             tails = {target: value + skipped for target, value in tails.items()}
             tails[i] = commands
         cost = len(PAIR[0]) * n + prefix.evaluate(tails) + 1
-    program = _trim_tail("".join(builder.code)).ljust(3, ">")
+    program = _trim_tail("".join(builder.code))
     return program, cost
 
 
