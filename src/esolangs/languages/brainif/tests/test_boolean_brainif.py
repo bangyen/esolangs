@@ -235,3 +235,14 @@ def test_loop_depth_rule_is_the_measured_best(monkeypatch) -> None:
             sizes.append(len(_brainif_tree(table, None)))
         monkeypatch.undo()
         assert _top_level(n) == sizes.index(min(sizes)), (n, sizes)
+
+
+def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
+    """The single-one table's strip walks every unlooped level's guards in full."""
+    import esolangs
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = "0" * 31 + "1"
+    program = esolangs.generate("brainif", table, width=1)
+    assert len(str(program)) == 2731
+    assert _evaluate("BrainIf", program, inputs=5) == table
