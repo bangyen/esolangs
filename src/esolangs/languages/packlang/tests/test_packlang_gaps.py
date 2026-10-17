@@ -205,6 +205,32 @@ Package : lib, IO {
         assert _run(program) == "AB"
 
 
+class TestReadIntoCalledIndex:
+    def test_charget_resolves_a_call_inside_the_array_index(self) -> None:
+        program = """
+Dependency {
+  Integer id : Integer a {
+    a;
+  }
+} lib;
+Package : lib, IO {
+  Array(Char, 3) row;
+  Integer main {
+    charGet(row(id(1)));
+    charPut(row(1));
+    0;
+  }
+} p;
+"""
+        assert _run(program, "A") == "A"
+
+
+class TestDefaultIntegerRange:
+    def test_a_plain_integer_underflows_to_255(self) -> None:
+        program = _wrap("    DECR cell;\n    charPut(cell ^ 255);", "Integer cell;")
+        assert _run(program) == "\0"
+
+
 class TestMachineMemory:
     def test_memory_flattens_an_array_into_its_cells(self) -> None:
         program = _wrap("    INCR row(1);\n    0;", "Array(Integer, 3) row;")
