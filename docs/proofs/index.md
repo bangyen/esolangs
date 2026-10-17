@@ -617,13 +617,11 @@ by maximality of `r`; every input-forgetting realization needs that width.
   audit marks size `Measured`, keeping its regression gate without claiming
   an asymptotic proof.
 
-  The audit counts identifier characters, sampled fallback calls, pair draws
-  and the cosets each draw visits. A forced
-  six-input span-invariant control fires the fallback once: four draws over
-  its three cosets. Its selected direction has exactly eight pairs, checked
-  directly. The default corpus executes 66 tables through six inputs and
-  2,772 rows across original and renamed programs; one fallback call draws
-  five times and visits 30 cosets.
+  The audit counts identifier characters. The default corpus executes 66
+  tables through six inputs and 2,772 rows across original and renamed
+  programs. The seeded pair-sampling fallback it once counted is gone: it
+  changed 0 of 200 random tables at each n=6..10 and saved 0.44% over every
+  n=4 table, under the 10% bar.
 
   The tested naming rule assigns the shortest existing names to the most
   frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
@@ -650,8 +648,8 @@ by maximality of `r`; every input-forgetting realization needs that width.
   Over the density bands `(2**-(i+1), 2**-i]` that is under `16*2**n/n`
   dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
   `2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
-  never computed, so output is byte-identical. With candidates and the
-  sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
+  never computed, so output is byte-identical. With candidates disabled,
+  it alone keeps n=8 and n=10 random tables under
   `T/n` clauses (`tests/generators/test_boolean_vandevelo.py`).
 
   Commands per row are therefore linear. A halting row fails one part of

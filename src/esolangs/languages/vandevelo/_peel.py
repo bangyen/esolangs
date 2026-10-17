@@ -44,9 +44,10 @@ until removals reach a quarter of the current size: scanning ``q``
 representatives then charges at most four visits per removed coset.
 The exact :func:`_assure` fallback sorts representatives, so its cost
 is ``O(q log q)`` per call, before charging repeated certification.
-The sampled fallback scores :data:`_SAMPLES` uniform pair differences; it
-is a heuristic -- :func:`_assure` carries the bound and on measured tables
-never computes.  The sparse tail costs a constant per point.
+The dense fallback is :func:`_assure` alone.  A seeded pair-sampling
+fallback once preceded it: dropping it changed 0 of 200 random tables at
+each n=6..10 and cost 0.44% over every n=4 table, under the 10% bar.  The
+sparse tail costs a constant per point.
 
 Linear time is not proved, and cannot be before linear output.  Four build
 terms escape the charge: a child rebuilt after it empties scans its
@@ -68,7 +69,6 @@ visits per entry are flat at n=10..14 -- three or eight zeros
 from __future__ import annotations
 
 import heapq
-import random
 
 # Directions scored per node: the parent's best _INHERIT plus fresh nearest
 # differences inside the node.  The peel is exact with any cap -- a missed
@@ -80,9 +80,6 @@ _INHERIT = 24
 # gone; the pool likewise.  Each refresh costs the node's size times the
 # candidates replaced, so the charge per removed point is a constant.
 _REFRESH = 0.25
-# Pair differences drawn when no candidate reaches half the pigeonhole
-# average; each clears it with probability at least a half.
-_SAMPLES = 8
 
 
 def _points(mask: int) -> list[int]:
@@ -257,42 +254,6 @@ def _best(node: _Node) -> tuple[int | None, int]:
     return best_v, best_c
 
 
-def _ensure_popular(node: _Node, n: int) -> None:
-    """Apply the proof's fallback: score a sampled half-average direction.
-
-    Only on a dense set (``|S| >= 2**n / n``) whose best scored direction
-    misses half the pigeonhole average ``|S|**2 / 2**n``.  The difference
-    ``a ^ b`` of a uniform pair is a direction drawn by popularity, and the
-    directions under half the average hold under ``2**n * |S|**2 / 2**(n+1)``
-    of the ``|S|**2`` pairs, so each draw clears half the average with
-    probability at least a half.  A uniform pair of points is a uniform
-    pair of cosets plus a span element that changes no pair count, so the
-    draw is between representatives.  :data:`_SAMPLES` draws cost as much as
-    scoring that many candidates; the first to clear joins the candidates.
-    """
-    size = node.size
-    total = 1 << n
-    if size * n < total:
-        return
-    _, best_c = _best(node)
-    if best_c * total >= size * size:
-        return
-    reps = list(node.reps)
-    # Seeded by the set, so the program is a function of the table.
-    rng = random.Random(size)
-    best_v = None
-    for _ in range(_SAMPLES):
-        v = rng.choice(reps) ^ rng.choice(reps)
-        if not v or v in node.cands:
-            continue
-        count = _pairs(node, v)
-        if count > best_c:
-            best_v, best_c = v, count
-    if best_v is not None:
-        node.canon[best_v] = best_v
-        node.cands[best_v] = best_c
-
-
 def _assure(node: _Node, n: int) -> None:
     """Make the node's best candidate reach half the pigeonhole average.
 
@@ -409,7 +370,6 @@ class _Peel:
         self.cubes: list[tuple[int, list[int]]] = []
         self.since = 0  # points removed since the pool was refreshed
         _score(self.root, _nearest(self.root, min(ones), set(), n, _CANDIDATES))
-        _ensure_popular(self.root, n)
 
     def make_child(self, parent: _Node, v: int) -> _Node:
         """Build the node for direction ``v`` below ``parent``.
@@ -425,7 +385,6 @@ class _Peel:
             child, min(child.reps), set(dirs), self.n, _CANDIDATES - len(dirs)
         )
         _score(child, dirs + fresh)
-        _ensure_popular(child, self.n)
         return child
 
     def discard_pairless(self, node: _Node) -> None:
@@ -451,7 +410,6 @@ class _Peel:
                 _CANDIDATES - len(node.cands),
             )
             _score(node, fresh)
-        _ensure_popular(node, self.n)
 
     def extend(self, node: _Node, *, certain: bool = False) -> int:
         """Build the greedy chain below ``node`` as far as it goes; its depth.
@@ -505,8 +463,8 @@ class _Peel:
         """Bring the chain the proof speaks for up to date and return it.
 
         From the most popular root direction, at each level the most
-        popular candidate of the current set, with the sampled fallback at
-        each.  Levels whose direction is still the most popular are kept;
+        popular candidate of the current set, with :func:`_assure` at each.
+        Levels whose direction is still the most popular are kept;
         the chain is rebuilt below the first that is not.
         """
         _assure(self.root, self.n)
@@ -569,9 +527,7 @@ class _Peel:
             if best is not None:
                 self.harvest(best)
                 continue
-            # 2. score one more pooled direction this phase -- a sampled
-            # popular one first, if the pool has fallen below average
-            _ensure_popular(root, n)
+            # 2. score one more pooled direction this phase
             if depth_target > n:
                 _assure(root, n)
             pick = None
