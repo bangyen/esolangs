@@ -57,6 +57,11 @@ def run_super(program: str, stdin: str = "") -> str:
         ('"64).', "A"),  # INC steps it up one.
         ('   .\n"65/', "A"),  # RULD mirror turns rightward flow upward.
         ('"1_`65.\n', chr(5)),  # NEGSKIP steps over the 6 when the cell is < 0.
+        ('"0`65.', "A"),  # a zero cell does not skip.
+        ('"A.', "A"),  # a letter loads its code point, at either end of a range.
+        ('"Z.', "Z"),
+        ('"a.', "a"),
+        ('"z.', "z"),
         ('"65_`.9.', "\t"),  # a negative cell skips the emit and builds 9.
         ('"100{365_%#', "-65"),  # MOD keeps the dividend's sign.
         ('"3{27_;#', "-3"),  # an exact odd root of a negative value.
@@ -149,6 +154,15 @@ def test_generator_reduces_unused_inputs_but_reads_them() -> None:
 def test_generator_rejects_invalid_table() -> None:
     with pytest.raises(ValueError, match="power-of-two"):
         super_snusp("011")
+
+
+@pytest.mark.parametrize(
+    ("value", "degree", "root"), [(1, 1, 1), (4, 2, 2), (8, 3, 2), (0, 2, 0)]
+)
+def test_the_integer_root_is_exact_when_the_power_is_a_doubling(
+    value: int, degree: int, root: int
+) -> None:
+    assert _floor_root(value, degree) == root
 
 
 @pytest.mark.parametrize(("value", "degree"), [(5, 0), (-9, 2), (-1, 4)])
@@ -250,6 +264,12 @@ def test_super_snusp_declines_input_and_caps_a_wide_span() -> None:
         run_until_halt_or_all_branches_cycle(wide, limit=100000)
     assert "cap on a single transition" in str(caught.value)
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
+
+
+def test_a_span_of_exactly_the_cap_is_still_decided() -> None:
+    """'=' over 256 values (0..255) is within the per-transition cap."""
+    machine = SuperSnusp(['"255{>='], ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine, limit=100000) is True
 
 
 def test_its_one_row_program_moves_along_the_columns() -> None:

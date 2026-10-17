@@ -7,6 +7,7 @@ import pytest
 from esolangs.languages.unlambda.interpreter import (
     _advance,
     _App,
+    _Kont,
     _Machine,
     _parse,
     _Promise,
@@ -129,6 +130,14 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
     assert kont is not None
     assert kont != kont.rest
     assert kont != kont.frames()
+
+
+def test_continuations_of_different_lengths_are_unequal() -> None:
+    """A stack of one frame is not a longer stack of the same frame."""
+    one = _Kont("f", None)  # type: ignore[arg-type]
+    three = _Kont("f", _Kont("f", _Kont("f", None)))  # type: ignore[arg-type]
+    assert one != three
+    assert three != one
 
 
 def test_d_applied_as_a_value_promises_what_it_was_given() -> None:
