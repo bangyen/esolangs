@@ -40,6 +40,15 @@ def test_minifuck_xor_floor_and_rendered_size_tradeoff() -> None:
     )
 
 
+def test_width_three_keeps_the_parity_floor() -> None:
+    """Width 3 is below the lookup's token floor: the width-1 parity program."""
+    for table in ("0110", "01101001"):
+        narrow = str(esolangs.generate("Minifuck", table, width=1))
+        assert str(esolangs.generate("Minifuck", table, width=3)).replace(
+            "\n", ""
+        ) == narrow.replace("\n", "")
+
+
 def test_minifuck_parity_provenance_retains_skip_absorbing_linefeeds() -> None:
     template = str(esolangs.generate("Minifuck", "0110", width=1))
     with pytest.raises(esolangs.TemplateError, match="not the template"):

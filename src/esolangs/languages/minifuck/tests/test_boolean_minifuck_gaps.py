@@ -144,6 +144,20 @@ def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
     assert _probe_frame("[" * _POOL_WIDTH, 0) is None
 
 
+def test_probe_frame_refuses_a_pointer_parked_on_the_region_edge() -> None:
+    """Seven ``[`` then ``.<.`` park at cell 8 with its flips undone: still past."""
+    assert _probe_frame("[[[[[[[.<.", 0) is None
+
+
+def test_paired_field_writes_absorb_skips_on_leading_ones() -> None:
+    """``paired`` costs one ``x`` per leading one, and nothing else."""
+    from esolangs.languages.minifuck.generator.mux import _mux_init_bits
+
+    bits = "1101"
+    leading = len(bits) - len(bits.lstrip("1"))
+    assert len(_mux_init_bits(bits, paired=True)) == len(_mux_init_bits(bits)) + leading
+
+
 def test_narrow_layout_drops_ignored_inputs() -> None:
     """A width-1 layout drops ignored inputs: under half a fully essential one."""
     from esolangs import generate

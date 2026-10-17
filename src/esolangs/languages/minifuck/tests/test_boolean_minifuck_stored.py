@@ -64,6 +64,12 @@ def test_every_small_stored_table_runs() -> None:
                 assert esolangs.run("Minifuck", source) == expected
 
 
+@pytest.mark.parametrize(("table", "size"), [("0001", 1178), ("00010111", 5066)])
+def test_stored_packing_sizes(table: str, size: int) -> None:
+    """Size of the packing constants (first cell, stride, clamp); unbaselined."""
+    assert plan(table).size == size
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize(
     ("width", "balance"), [(None, False), (1, False), (40, False), (None, True)]
