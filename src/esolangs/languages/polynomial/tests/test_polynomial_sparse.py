@@ -24,6 +24,7 @@ from esolangs.languages.polynomial.interpreter.primality import (
     _aks,
     _integer_root,
     _is_proven_prime,
+    _totient,
 )
 from esolangs.languages.polynomial.interpreter.roots import _Root
 
@@ -183,6 +184,11 @@ class TestSteps:
 class TestProvenPrimality:
     def test_aks_agrees_with_the_sieve(self) -> None:
         assert [n for n in range(-2, 90) if _aks(n)] == list(sp.primerange(2, 90))
+
+    def test_totient_counts_repeated_and_even_factors(self) -> None:
+        # 4 and 9 are squares (factor * factor == rest); 6 needs the exact
+        # ``result // factor``; even inputs need the factor 2.
+        assert [_totient(n) for n in (4, 6, 9, 12)] == [2, 2, 6, 4]
 
     def test_aks_runs_its_congruences_on_a_prime_past_r(self) -> None:
         # 1009 > r here, so the answer comes from the (x + a)**n checks.

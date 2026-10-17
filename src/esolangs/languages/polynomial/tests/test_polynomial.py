@@ -634,6 +634,31 @@ class TestNttRecovery:
             1, (root_sets[0], root_sets[1]), 20
         )
 
+    def test_pairs_keep_a_real_part_at_the_bound(self) -> None:
+        """The lift window is closed: ``a == real_bound`` is proposed."""
+        from esolangs.languages.polynomial.interpreter.ntt import (
+            _NTT_FIELDS,
+            _ntt_pairs,
+        )
+
+        base, real = 3, 7
+        data = []
+        for modulus, _, _, generator in _NTT_FIELDS:
+            unit = pow(generator, (modulus - 1) // 4, modulus)
+            offset = unit * base % modulus
+            roots = {(real + offset) % modulus, (real - offset) % modulus}
+            data.append((modulus, unit, roots, sum(1 << r for r in roots)))
+
+        assert (real, base * base) in _ntt_pairs(base, data[0], data[1], real)
+
+    def test_real_bound_is_half_the_pairing_field(self) -> None:
+        from esolangs.languages.polynomial.interpreter.ntt import (
+            _NTT_FIELDS,
+            _ntt_real_bound,
+        )
+
+        assert _ntt_real_bound(1) == _NTT_FIELDS[0][0] // 2
+
     @pytest.mark.medium
     def test_a_large_program_is_recovered_exactly(self) -> None:
         """Past the threshold, every planted factor comes back and nothing
