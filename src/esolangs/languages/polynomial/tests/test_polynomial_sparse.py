@@ -12,6 +12,7 @@ from esolangs.languages.polynomial.generator.algebra import format_coeffs
 from esolangs.languages.polynomial.interpreter import (
     _parse_program,
     convert,
+    primality,
     sanitize_terms,
 )
 from esolangs.languages.polynomial.interpreter import roots as roots_module
@@ -24,6 +25,7 @@ from esolangs.languages.polynomial.interpreter.gaussian import (
 )
 from esolangs.languages.polynomial.interpreter.primality import (
     _aks,
+    _aks_modulus,
     _integer_root,
     _is_proven_prime,
     _totient,
@@ -197,6 +199,24 @@ class TestProvenPrimality:
         assert _aks(1009)
         assert not _aks(561)  # Carmichael
         assert not _aks(1009 * 1013)
+
+    def test_aks_asks_for_order_above_the_squared_bit_length(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The proof needs ord_r(n) > log2(n)**2; a weaker bound accepted every
+        # tested composite too, so only the bound itself can be checked.
+        asked: list[tuple[int, int]] = []
+        found = _aks_modulus
+
+        def spy(number: int, square: int) -> int:
+            asked.append((number, square))
+            return found(number, square)
+
+        monkeypatch.setattr(primality, "_aks_modulus", spy)
+        assert _aks(1009)
+        assert asked == [(1009, (1009).bit_length() ** 2)]
+        r = found(1009, 100)
+        assert min(k for k in range(1, r) if pow(1009, k, r) == 1) > 100
 
     def test_convert_above_the_deterministic_range(
         self, monkeypatch: pytest.MonkeyPatch

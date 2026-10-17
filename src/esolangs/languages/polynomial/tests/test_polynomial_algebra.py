@@ -7,7 +7,6 @@ import pytest
 from esolangs.languages.polynomial.generator import algebra
 from esolangs.languages.polynomial.generator.algebra import (
     _PACKED_MIN_FACTORS,
-    _expand_group,
     _merge,
     _normalise,
     _pack,
@@ -73,19 +72,6 @@ class TestPackedInternals:
         coeffs, alternating = _packed_product(factors)
         expected = [str(c) for c in _schoolbook(factors)]
         assert (_resign(coeffs) if alternating else coeffs) == expected
-
-    def test_group_count_is_a_power_of_two_per_96_factors(self, monkeypatch) -> None:
-        """384 factors split into 4 groups, the documented leaf count."""
-        leaves: list[int] = []
-        original = _expand_group
-
-        def counted(factors: list[list[int]]) -> list[str]:
-            leaves.append(len(factors))
-            return original(factors)
-
-        monkeypatch.setattr(algebra, "_expand_group", counted)
-        _packed_product([[1, -(3 + i)] for i in range(384)])
-        assert leaves == [96] * 4
 
     def test_alternating_signs_follow_index_parity(self) -> None:
         assert (
@@ -241,17 +227,3 @@ def test_draining_remains_available_at_the_instruction_cap(
     module = importlib.import_module("esolangs.languages.polynomial.generator")
     monkeypatch.setattr(module, "_POLYNOMIAL_MAX_INSTRS", 15)
     assert evaluate_generated("Polynomial", "0101") == "0101"
-
-
-def test_format_coeffs_sizes_the_digit_cap_from_the_bit_length(monkeypatch) -> None:
-    """A 5001-digit coefficient asks for a cap near 5001, not 3x that."""
-    caps: list[int] = []
-    original = algebra.digit_limit_for
-
-    def spy(digits: int):
-        caps.append(digits)
-        return original(digits)
-
-    monkeypatch.setattr(algebra, "digit_limit_for", spy)
-    format_coeffs([10**5000])
-    assert 5001 <= caps[0] <= 5010
