@@ -349,7 +349,7 @@ def _fit_width(
     truth_table: str, layout: _Layout, program: str, width: int | None
 ) -> str:
     """Return ``program``, or its lean rotation (two columns, n <= 2) past ``width``."""
-    if width is None or width <= 0 or layout.grid.span() <= width:
+    if width is None or layout.grid.span() <= width:
         return program
     lean = _lean_rotate(layout)
     # Only n <= 2 has a two-column form (its prefix handles n == 2 alone).

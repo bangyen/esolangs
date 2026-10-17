@@ -92,7 +92,7 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
     if len(table) > 1 << 10:
         return _packed_befunge(table, reads, width)
-    if width is not None and 0 < width < 4:
+    if width is not None and width < 4:
         bias = _parity_bias(truth_table)
         if bias is not None:
             # One vertical column of sums modulo two: at most 25 commands even
@@ -111,7 +111,7 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         table[base : base + table_width] for base in range(0, count, table_width)
     )
     plain = "\n".join(rows)
-    if width is None or width <= 0:
+    if width is None:
         width = 80
     if max(map(len, rows)) <= min(width, 80) and len(rows) <= 25:
         return plain
@@ -152,7 +152,7 @@ def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
     # beyond the input fold. The floor gives at most six header rows and
     # ceil(B/(W-2)) + ceil(T/W) <= 25, including the n=13 dense build.
     bound = len(reads) + _BOUND_PACKED
-    requested = 80 if width is None or width <= 0 else width
+    requested = 80 if width is None else width
     columns = min(80, max(requested, _min_columns(count, bound)))
     header_rows = _header_rows(bound, columns)
     literal = _literal(columns)

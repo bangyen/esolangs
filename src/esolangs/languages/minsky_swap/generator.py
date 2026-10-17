@@ -91,7 +91,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     end = pos + 1
     resolved = [end if t is None else t for t in targets]
     program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
-    if width is None or width <= 0 or grid_width(program) <= width:
+    if width is None or grid_width(program) <= width:
         return program
     if n <= 2 and width < 10:
         return _rmsn_small(truth_table, n)

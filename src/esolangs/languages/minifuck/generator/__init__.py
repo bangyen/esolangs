@@ -203,7 +203,7 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     if mask is None:
         return _race_states(truth_table, n, positional, width)
     shared = _parity_columns(n, int(truth_table[0]), mask=mask, paired=True)
-    if width is None or width <= 0:
+    if width is None:
         return min(natural, shared, key=len)
     shared = _wrap_template(shared, n, width)
     if grid_width(shared) > width:
@@ -220,7 +220,7 @@ def _race_states(truth_table: str, n: int, positional: str, width: int | None) -
         for candidate in (two_state(truth_table), stored(truth_table, len(positional)))
         if candidate is not None
     ]
-    if width is None or width <= 0:
+    if width is None:
         return min([positional, *others], key=len)
     candidates = [positional] + [
         wrapped
@@ -248,7 +248,7 @@ def _affine_mask(truth_table: str) -> int | None:
 
 def _lookup_layout(table: str, n: int, natural: str, width: int | None) -> str:
     """Lay out the positional decoder, retaining its narrow parity floor."""
-    if width is None or width <= 0:
+    if width is None:
         return natural
     wrapped = _wrap_template(natural, n, width)
     if grid_width(wrapped) <= width:

@@ -117,9 +117,9 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
 
 def underload(truth_table: str, width: int | None = None) -> str:
     """Return a promise tree; narrow selectors defer execution to their node."""
-    short = width is not None and 0 < width < 5
+    short = width is not None and width < 5
     program = _shared(truth_table, short=short)
-    if width is None or width <= 0:
+    if width is None:
         return program
     # Only bit literals reach S; every other pushed string is executable code.
     if not short:

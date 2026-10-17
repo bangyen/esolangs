@@ -435,7 +435,7 @@ def container(truth_table: str, width: int | None = None) -> str:
         program = _container_tree(truth_table, share=True)
     else:
         program = _container_threshold(truth_table)
-    if width is None or width <= 0 or grid_width(program) <= width:
+    if width is None or grid_width(program) <= width:
         return program
     narrow = _narrow_rules(program, width)
     if n > _TREE_MAX_N:

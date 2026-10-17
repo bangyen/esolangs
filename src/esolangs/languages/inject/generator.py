@@ -177,7 +177,7 @@ def inject(truth_table: str, width: int | None = None) -> str:
     else:
         program = _inject_halving(truth_table)
     widest = grid_width(program)
-    if width is None or width <= 0 or widest <= width:
+    if width is None or widest <= width:
         return program
     banded = _inject_banded(truth_table)
     return banded if grid_width(banded) < widest else program

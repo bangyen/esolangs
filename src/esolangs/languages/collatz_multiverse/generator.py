@@ -294,7 +294,7 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
         _cm_candidates(truth_table, n, narrow=False, expanded=width is not None),
         key=len,
     )
-    if width is None or width <= 0:
+    if width is None:
         return program
     fitted = _cm_layout(program, width)
     if grid_width(fitted) <= width:

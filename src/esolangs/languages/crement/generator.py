@@ -68,7 +68,7 @@ def crement(truth_table: str, width: int | None = None) -> str:
     tester data is filled.
     """
     template = in_input_order(truth_table, _crement_shared)
-    if width is None or width <= 0 or grid_width(template) <= width:
+    if width is None or grid_width(template) <= width:
         return template
     return _narrow(template, width)
 
