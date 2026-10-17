@@ -533,6 +533,29 @@ class TestPeelInstructionQuadratics:
         recomposed = taken * sp.Poly(remainder, x) if len(remainder) > 1 else taken
         assert recomposed == original
 
+    def test_the_field_roots_are_the_integer_roots_mod_p(self) -> None:
+        """``2x - 6`` has the one root 3, whatever its leading coefficient."""
+        from esolangs.languages.polynomial.interpreter.peel import (
+            _roots_in_peel_field,
+        )
+
+        assert _roots_in_peel_field([2, -6]) == {3}
+
+    def test_a_lone_field_root_proposes_no_quadratic(self) -> None:
+        """A candidate needs *both* roots ``a +- sqrt(-q)``; one alone is not a pair."""
+        import sympy as sp
+
+        from esolangs.languages.polynomial.interpreter.peel import (
+            _PEEL_MODULUS,
+            _quadratic_candidates_mod,
+        )
+
+        offset = int(sp.sqrt_mod(-4 % _PEEL_MODULUS, _PEEL_MODULUS))
+        lone = {(5 - offset) % _PEEL_MODULUS}
+        assert _quadratic_candidates_mod(lone, 1) == set()
+        pair = lone | {(5 + offset) % _PEEL_MODULUS}
+        assert (5, 4) in _quadratic_candidates_mod(pair, 1)
+
     def test_divide_quadratic_refuses_a_non_divisor(self) -> None:
         """The exact-division gate is what makes an accepted pair sound."""
         import sympy as sp
@@ -815,6 +838,27 @@ class TestPolynomialHighPrecisionRoots:
 
         with pytest.raises(ValueError, match="unmatched"):
             run("f(x) = x - 4", io=IO())
+
+    def test_an_unmatched_closer_raises_where_it_is_reached(self) -> None:
+        """Roots 4, 4 are two closers: the first raises, not the scan past it."""
+        with pytest.raises(ValueError, match="unmatched"):
+            _machine("f(x) = x^2 - 8x + 16").step()
+
+    @pytest.mark.parametrize(
+        "instructions",
+        [
+            pytest.param([[5], [6], [6]], id="closer_with_a_six_before_it"),
+            pytest.param([[5], [7], [6]], id="seven_is_an_opener_not_a_closer"),
+        ],
+    )
+    def test_every_unmatched_bracket_raises(
+        self, instructions: list[list[int]]
+    ) -> None:
+        """Codes 2 and 6 close, 7 opens: a bracket scan or pairing that mixes
+        them up silently matches (or skips) what must be rejected.
+        """
+        with pytest.raises(ValueError, match="unmatched"):
+            run(_polynomial_assemble(instructions), io=IO())
 
 
 class TestStepMachine:

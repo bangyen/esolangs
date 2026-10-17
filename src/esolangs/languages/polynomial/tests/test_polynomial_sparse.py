@@ -14,10 +14,12 @@ from esolangs.languages.polynomial.interpreter import (
     convert,
     sanitize_terms,
 )
+from esolangs.languages.polynomial.interpreter import roots as roots_module
 from esolangs.languages.polynomial.interpreter.gaussian import (
     _dense_gaussian_roots,
     _gap_chunks,
     _gauss_reduce,
+    _gaussian_pow,
     _sparse_multiplicity,
 )
 from esolangs.languages.polynomial.interpreter.primality import (
@@ -26,7 +28,7 @@ from esolangs.languages.polynomial.interpreter.primality import (
     _is_proven_prime,
     _totient,
 )
-from esolangs.languages.polynomial.interpreter.roots import _Root
+from esolangs.languages.polynomial.interpreter.roots import _Root, _sparse_roots
 
 # --------------------------------------------------------------------------
 # The oracle: the pre-sparse parser, kept only as a specification
@@ -218,6 +220,35 @@ class TestProvenPrimality:
         assert 101 in calls
         assert 103 in calls
         assert 143 not in calls  # BPSW's "composite" is already a proof
+
+
+class TestRootHelpers:
+    def test_a_gaussian_power_squares_its_base(self) -> None:
+        """``(3 + i)**2 = 8 + 6i``: the squaring step, then the multiply."""
+        assert _gaussian_pow((3, 1), 2) == (8, 6)
+
+    def test_a_two_term_sparse_source_has_its_root(self) -> None:
+        """``x^3 - 8`` has two terms, the fewest a root can need."""
+        assert _sparse_roots({3: 1, 0: -8}) == [_Root(2, 0)]
+
+    def test_a_chunk_far_from_zero_is_densified_from_its_lowest_term(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The dense list spans ``high - low + 1``, not ``high + low + 1``."""
+        seen: list[list[int]] = []
+
+        def record(dense: list[int]) -> set[tuple[int, int]]:
+            seen.append(dense)
+            return set()
+
+        monkeypatch.setattr(roots_module, "_dense_gaussian_roots", record)
+        _sparse_roots({10**6 + 3: 1, 10**6: -8})
+        assert seen == [[1, 0, 0, -8]]
+
+    def test_the_lift_modulus_covers_a_root_at_the_bound(self) -> None:
+        """Lead 2, others at most 2: Cauchy's ``B`` is 2, and ``1 +- i`` is a root."""
+        poly = [2, -2, 2, 1, 2, 2]
+        assert _dense_gaussian_roots(poly) == {(1, 1), (1, -1)}
 
 
 class TestConvert:
