@@ -185,6 +185,16 @@ class TestFunctions:
             == "0"
         )
 
+    def test_a_program_may_run_down_a_column(self) -> None:
+        """The walk resumes just past ``begin`` going down, with or without a ``;``."""
+        text = "beginvar v;set v 33+32;out v;end;"
+        assert _run(list(text)) == "A"
+
+    def test_a_function_may_run_down_a_column(self) -> None:
+        body = "func f{a};end a+64;"
+        code = ["begin;var v;set v f{1};out v;end;", "", *body]
+        assert _run(code) == "A"
+
     def test_a_function_namespace_is_its_own(self) -> None:
         """The callee's ``n`` does not disturb the caller's."""
         assert (
@@ -646,6 +656,15 @@ def test_a_list_without_a_placeholder_is_left_unchanged() -> None:
     """The no-match return for a node that is not a call."""
     expr = ("list", [("num", 1)])
     assert _replace_first(expr, ("val", 2)) == (expr, False)
+
+
+def test_a_tuple_spelled_binary_node_keeps_its_operand_order() -> None:
+    """The legacy ``("bin", op, left, right)`` spelling converts left to right."""
+    expr = ("bin", "-", ("call", "f", []), ("num", 2))
+    assert _replace_first(expr, 7) == (
+        ("bin", "-", ("val", 7), ("num", 2)),
+        True,
+    )
 
 
 class TestPureTransition:

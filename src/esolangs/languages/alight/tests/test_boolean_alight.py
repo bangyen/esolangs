@@ -160,6 +160,17 @@ class TestAlightWidth:
         rows = boolean.alight(table, width).splitlines()
         assert (max(map(len, rows)), len(rows)) == dimensions
 
+    def test_postfix_ranks_candidates_by_area_alone(self) -> None:
+        """The straight column (area 137) beats a 40-wide fold (area 1720)."""
+        from esolangs.settings import DialectSettings
+
+        table = "00000011"
+        built = boolean.alight(table, 40, expression_syntax="postfix")
+        rows = built.splitlines()
+        assert (max(map(len, rows)), len(rows)) == (1, 137)
+        settings = DialectSettings(expression_syntax="postfix")
+        assert _evaluate("Alight", built, inputs=3, settings=settings) == table
+
     def test_width_must_have_one_column(self) -> None:
         with pytest.raises(ValueError, match="at least 1"):
             boolean.alight("0001", 0)
