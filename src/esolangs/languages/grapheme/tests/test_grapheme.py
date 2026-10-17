@@ -81,6 +81,7 @@ def test_loading_ignores_only_lf(char: str) -> None:
         pytest.param("FAFHYHIE", "1", id="i_runs_function"),
         pytest.param("FAFHYHZ", "1", id="z_runs_while_stack_nonempty"),
         pytest.param("FAFKHYHZ", "11", id="z_repeats"),
+        pytest.param("HYHZ", "", id="z_on_a_lone_function_runs_nothing"),
         pytest.param("FAFKKQY", "1", id="q_needs_a_function"),
         pytest.param("FAFKKVY", "1", id="v_truthy_no_jump"),
         pytest.param("FAFKZY", "1", id="z_needs_a_function"),
@@ -92,6 +93,7 @@ def test_loading_ignores_only_lf(char: str) -> None:
         pytest.param("EFAEJY", "0", id="j_on_string"),
         pytest.param("EAENY", "A", id="n_on_string"),
         pytest.param("FFNY", "J", id="n_on_zero"),
+        pytest.param("FAZFNY", "AJ", id="n_on_ten"),
         pytest.param("FAFIY", "1", id="i_pushes_non_function"),
         pytest.param("F", "", id="unterminated_int_mode"),
         pytest.param("H", "", id="unterminated_func_mode"),
@@ -117,6 +119,11 @@ def test_prints(code: str, expected: str) -> None:
         ),
         # truthy 1 on the stack, fn Y: Q pops fn and the 1, then Y pops empty
         pytest.param("FAFHYHQ", "", HaltError, "popped", id="q_conditional_execution"),
+        # Z keeps looping while a lap's end leaves values: a lap that ends in a push
+        # (here K) still sees the stack live, until MM runs dry.
+        pytest.param(
+            "FAFFAFFAFHMMKHZ", "", HaltError, "popped", id="z_counts_the_last_push"
+        ),
         pytest.param("AB", "", HaltError, "popped", id="pop_empty_halts"),
         pytest.param("hello", "", ValueError, "uppercase", id="lowercase_rejected"),
         pytest.param("FFFFVY", "", HaltError, "popped", id="v_branches_on_falsy"),
