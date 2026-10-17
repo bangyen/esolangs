@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.languages.sbleq.generator`: the shared tree and the
+"""Covers :mod:`esolangs.languages.s_bleq.generator`: the shared tree and the
 packed decoder."""
 
 import random
@@ -8,19 +8,19 @@ import pytest
 import esolangs
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages import generators as boolean
-from esolangs.languages.sbleq.interpreter import _Machine
+from esolangs.languages.s_bleq.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import assert_parity_at_most_doubles
 
-run_sbleq = _runner("sbleq")
+run_sbleq = _runner("s_bleq")
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
     table = bit * (1 << n)
-    for program in (boolean.sbleq(table), packed_decoder(table)):
+    for program in (boolean.s_bleq(table), packed_decoder(table)):
         for row in range(1 << n):
             text = f"{row:0{n}b}"
             io = ScriptedIO(text + "extra")
@@ -63,7 +63,7 @@ class TestSbleq:
 
     def test_a_repeated_subtree_is_jumped_to(self) -> None:
         """XOR's second test reaches the leaves already emitted for the first."""
-        shared = boolean.sbleq("0110").split()
+        shared = boolean.s_bleq("0110").split()
         # Four leaves, two distinct: each output is emitted once, then jumped to.
         assert shared[-3:-1] == ["0", "0"]
         assert shared.count("-3") == 2
@@ -72,7 +72,7 @@ class TestSbleq:
         """A seeded seven-input table, every row, through the shared tree."""
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")
-        program = boolean.sbleq(table)
+        program = boolean.s_bleq(table)
         assert len(program) < len(packed_decoder(table))
         for row in range(2**n):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
@@ -81,4 +81,4 @@ class TestSbleq:
 
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
-    assert_parity_at_most_doubles(boolean.sbleq, range(11, 15))
+    assert_parity_at_most_doubles(boolean.s_bleq, range(11, 15))

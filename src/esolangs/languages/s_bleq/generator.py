@@ -27,7 +27,7 @@ from esolangs.registry._language import Language
 _TREE_ROWS = 16
 
 
-def sbleq(truth_table: str) -> str:
+def s_bleq(truth_table: str) -> str:
     """Read once, then choose a shared tree or packed decoder.
 
     Each branch destroys its input once; value cells never alias indirect
@@ -45,19 +45,19 @@ def sbleq(truth_table: str) -> str:
 
 def _balance(table: str, default: str) -> str:
     """Race the input-order tree and packed decoder on large non-constant tables."""
-    candidate = balance_program(default, "sbleq")
+    candidate = balance_program(default, "s_bleq")
     if len(set(table)) == 1 or len(table) <= _TREE_ROWS:
         return candidate
     legacy = [in_input_order(table, _sbleq_hoisted), packed_decoder(table)]
-    old = balance_program(min(legacy, key=len), "sbleq")
+    old = balance_program(min(legacy, key=len), "s_bleq")
     return min(candidate, old, key=balance_score)
 
 
 LANGUAGE = Language(
     "S*bleq",
-    "sbleq",
+    "s_bleq",
     category="tape_based",
-    boolean=sbleq,
+    boolean=s_bleq,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

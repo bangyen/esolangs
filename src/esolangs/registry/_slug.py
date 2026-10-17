@@ -29,7 +29,7 @@ SUGGESTION_CUTOFF = 0.65
 def canonical_id(name: str) -> str:
     """Return a display name's slug; a language whose slug collides sets ``id=``."""
     name = name.strip()
-    s = name.lower().replace("~", "_tilde").replace("*", "")
+    s = name.lower().replace("~", "_tilde")
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     # A non-ASCII letter that survives decomposition is named, not dropped:
