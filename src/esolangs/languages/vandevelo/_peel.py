@@ -44,10 +44,9 @@ until removals reach a quarter of the current size: scanning ``q``
 representatives then charges at most four visits per removed coset.
 The exact :func:`_assure` fallback sorts representatives, so its cost
 is ``O(q log q)`` per call, before charging repeated certification.
-The dense fallback is :func:`_assure` alone.  A seeded pair-sampling
-fallback once preceded it: dropping it changed 0 of 200 random tables at
-each n=6..10 and cost 0.44% over every n=4 table, under the 10% bar.  The
-sparse tail costs a constant per point.
+Through five inputs :func:`_ensure_popular` scores every direction first;
+it is a size rule, not part of the bound.  The sparse tail costs a constant
+per point.
 
 Linear time is not proved, and cannot be before linear output.  Four build
 terms escape the charge: a child rebuilt after it empties scans its
@@ -254,6 +253,37 @@ def _best(node: _Node) -> tuple[int | None, int]:
     return best_v, best_c
 
 
+def _ensure_popular(node: _Node, n: int) -> None:
+    """Score every direction when a small dense set's candidates fall short.
+
+    Only for ``2**n <= 32``, on a dense set (``|S| >= 2**n / n``) whose best
+    scored direction misses the pigeonhole average ``|S|**2 / 2**n``: the
+    most popular of all ``2**n - 1`` directions, ties to the smallest, joins
+    the candidates.  At most 31 directions a call, so a constant.  Without it
+    12 of 256 three-input tables grow, by up to 46 characters (63%); with it
+    no three-input table is larger than under the seeded 8-draw sampling it
+    replaced, and four inputs total 0.05% less.  Hence the cap: dropping
+    that sampling changed 0 of 200 random tables at each n=6..10.
+    """
+    total = 1 << n
+    size = node.size
+    if total > 32 or size * n < total:
+        return
+    _, best_c = _best(node)
+    if best_c * total >= size * size:
+        return
+    best_v = None
+    for v in range(1, total):
+        cv = node.reduce(v)
+        if cv and v not in node.cands:
+            count = _pairs(node, cv)
+            if count > best_c:
+                best_v, best_c = v, count
+    if best_v is not None:
+        node.canon[best_v] = node.reduce(best_v)
+        node.cands[best_v] = best_c
+
+
 def _assure(node: _Node, n: int) -> None:
     """Make the node's best candidate reach half the pigeonhole average.
 
@@ -370,6 +400,7 @@ class _Peel:
         self.cubes: list[tuple[int, list[int]]] = []
         self.since = 0  # points removed since the pool was refreshed
         _score(self.root, _nearest(self.root, min(ones), set(), n, _CANDIDATES))
+        _ensure_popular(self.root, n)
 
     def make_child(self, parent: _Node, v: int) -> _Node:
         """Build the node for direction ``v`` below ``parent``.
@@ -385,6 +416,7 @@ class _Peel:
             child, min(child.reps), set(dirs), self.n, _CANDIDATES - len(dirs)
         )
         _score(child, dirs + fresh)
+        _ensure_popular(child, self.n)
         return child
 
     def discard_pairless(self, node: _Node) -> None:
@@ -410,6 +442,7 @@ class _Peel:
                 _CANDIDATES - len(node.cands),
             )
             _score(node, fresh)
+        _ensure_popular(node, self.n)
 
     def extend(self, node: _Node, *, certain: bool = False) -> int:
         """Build the greedy chain below ``node`` as far as it goes; its depth.
@@ -527,7 +560,9 @@ class _Peel:
             if best is not None:
                 self.harvest(best)
                 continue
-            # 2. score one more pooled direction this phase
+            # 2. score one more pooled direction this phase -- the most
+            # popular one first, if a small pool has fallen below average
+            _ensure_popular(root, n)
             if depth_target > n:
                 _assure(root, n)
             pick = None

@@ -619,9 +619,10 @@ by maximality of `r`; every input-forgetting realization needs that width.
 
   The audit counts identifier characters. The default corpus executes 66
   tables through six inputs and 2,772 rows across original and renamed
-  programs. The seeded pair-sampling fallback it once counted is gone: it
-  changed 0 of 200 random tables at each n=6..10 and saved 0.44% over every
-  n=4 table, under the 10% bar.
+  programs. The seeded pair-sampling fallback it once counted is gone:
+  dropping it changed 0 of 200 random tables at each n=6..10. Through five
+  inputs an exact scan of all directions replaces it: no three-input table
+  grows, and the four-input tables total 0.05% less.
 
   The tested naming rule assigns the shortest existing names to the most
   frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s

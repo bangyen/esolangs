@@ -95,7 +95,7 @@ def test_three_input_steps_and_sizes() -> None:
         program = vandevelo(format(index, "08b"))
         size += len(program)
         steps += sum(_steps(program, bits) for bits in product(range(2), repeat=3))
-    assert (size, steps) == (23907, 23968)
+    assert (size, steps) == (23425, 23430)
 
 
 def test_parity_is_a_single_hyperplane() -> None:
