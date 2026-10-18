@@ -99,6 +99,7 @@ def _record(
         "alphabet": "".join(corpus.alphabet),
         "alphabet_size": len(corpus.alphabet),
         "corpus_arities": list(corpus.corpus_arities),
+        "corpus_truncated": corpus.truncated,
         "parameterized": runner.parameterized,
         "terminating": runner.terminating,
         "outcomes": rows,
@@ -148,6 +149,7 @@ def _audit_fleet(args: argparse.Namespace) -> int:
         budget_seconds=args.budget,
         candidate_cap=args.cap,
         wall_seconds=args.wall,
+        progress=True,
     )
     records = []
     gaps = 0

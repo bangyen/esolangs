@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import importlib
 import signal
+import sys
 import time
 from dataclasses import dataclass, field
 from itertools import product
@@ -101,13 +102,23 @@ class Runner:
         if self.parameterized:
             source = esolangs.instantiate(self.name, program, bits)
             stdin = ""
-        out = esolangs.run(
-            self.name,
-            source,
-            stdin=stdin,
-            timeout=_ROW_TIMEOUT,
-            max_steps=_MAX_STEPS,
-        )
+        # The run's own timeout is a soft deadline inside each VM; the
+        # alarm is the hard backstop so one wedged candidate cannot eat
+        # a pair's whole wall (measured: the first fleet run stalled
+        # inside a single pair past its budget).
+        previous = signal.signal(signal.SIGALRM, _alarm)
+        signal.setitimer(signal.ITIMER_REAL, _ROW_TIMEOUT + 2.0)
+        try:
+            out = esolangs.run(
+                self.name,
+                source,
+                stdin=stdin,
+                timeout=_ROW_TIMEOUT,
+                max_steps=_MAX_STEPS,
+            )
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous)
         return esolangs.read_answer(self.name, out)
 
     def check(self, program: str, table: str) -> tuple[bool, int]:
@@ -244,6 +255,16 @@ class Corpus:
     alphabet: tuple[str, ...]
     sizes: dict[int, dict[str, int]]
     corpus_arities: tuple[int, ...]
+    truncated: bool = False
+
+
+#: Corpus collection is generation, and generation can be slow: the
+#: whole collection gets one wall bound and the arity-3 extension a
+#: tighter one.  A collection that overruns keeps what it gathered and
+#: reports ``truncated`` -- its alphabet may be missing characters, so
+#: its certificates hold over the collected alphabet only.
+_CORPUS_TIMEOUT = 150.0
+_ARITY3_TIMEOUT = 30.0
 
 
 def corpus_for(name: str, *, arity3_size_cap: int = 2000) -> Corpus:
@@ -257,35 +278,48 @@ def corpus_for(name: str, *, arity3_size_cap: int = 2000) -> Corpus:
     (Malbolge: 59,049) yields an empty alphabet and is out of scope.
     """
     lang = esolangs.Language(name)
-    sizes: dict[int, dict[str, int]] = {}
+    sizes: dict[int, dict[str, int]] = {1: {}, 2: {}}
     chars: set[str] = set()
     arities = [1, 2]
-    for arity in arities:
+    truncated = False
+
+    def collect(arity: int) -> bool:
+        """Fill one arity's sizes/chars; False if the wall fired."""
         sizes[arity] = {}
         for table in tables(arity):
             try:
                 program = lang.generate(table)
+            except _OracleTimeoutError:
+                return False
             except Exception:
                 continue
             if isinstance(program, Raster):
                 continue
             sizes[arity][table] = len(program)
             if len(program) < 20_000:
-                chars |= set(str(program))
-    if sizes.get(2) and max(sizes[2].values()) <= arity3_size_cap:
-        sizes[3] = {}
-        for table in tables(3):
-            try:
-                program = lang.generate(table)
-            except Exception:
-                continue
-            if isinstance(program, Raster):
-                continue
-            sizes[3][table] = len(program)
-            if len(program) < 20_000:
-                chars |= set(str(program))
-        arities.append(3)
-    return Corpus(tuple(sorted(chars)), sizes, tuple(arities))
+                chars.update(str(program))
+        return True
+
+    previous = signal.signal(signal.SIGALRM, _alarm)
+    signal.setitimer(signal.ITIMER_REAL, _CORPUS_TIMEOUT)
+    try:
+        for arity in (1, 2):
+            if not collect(arity):
+                truncated = True
+                sizes[arity] = {}
+                break
+        else:
+            if sizes[2] and max(sizes[2].values()) <= arity3_size_cap:
+                signal.setitimer(signal.ITIMER_REAL, _ARITY3_TIMEOUT)
+                if collect(3):
+                    arities.append(3)
+                else:
+                    truncated = True
+                    del sizes[3]
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+    return Corpus(tuple(sorted(chars)), sizes, tuple(arities), truncated)
 
 
 def approx(n: int) -> str:
@@ -519,6 +553,7 @@ def audit_fleet(
     budget_seconds: float,
     candidate_cap: int | None,
     wall_seconds: float,
+    progress: bool = False,
 ) -> list[tuple[str, Corpus, list[Outcome]]]:
     """Audit languages cheapest-first until the global budget is spent.
 
@@ -604,4 +639,11 @@ def audit_fleet(
                     )
                 )
         results.append((name, corpus, outcomes))
+        if progress:
+            kinds = [o.outcome for o in outcomes]
+            print(
+                f"[fleet] {name}: {kinds} ({time.monotonic() - began:.0f}s elapsed)",
+                file=sys.stderr,
+                flush=True,
+            )
     return results
