@@ -39,10 +39,10 @@ from esolangs.runtime._evaluate import _evaluate, _iter_evaluate
 from esolangs.runtime._program import Program
 from esolangs.runtime.io import ScriptedIO
 
-#: Bounds on one row through the public runner: shipped programs at
-#: these arities finish far inside them; a candidate past them is
-#: treated as not answering.
-_MAX_STEPS = 20_000
+#: Bound on one row through the public runner: a 5 s timeout, the
+#: same timeout-governed regime as ``_evaluate`` (a step cap of
+#: 20,000 was tried first and wrongly rejected A Painter Ant's
+#: shipped programs, which need more steps than that).
 _ROW_TIMEOUT = 5.0
 #: Per-row bound for termination-mode rows (the repo default is 5 s).
 _TERM_TIMEOUT = 2.0
@@ -99,10 +99,13 @@ class Runner:
         stdin, plain programs read ``encode_inputs(bits)``.
         """
         source: Program = program
-        stdin = esolangs.encode_inputs(self.name, bits)
+        stdin = ""
         if self.parameterized:
+            # Parameterized languages embed the bits; encode_inputs
+            # raises for them, so it must not be called first.
             source = esolangs.instantiate(self.name, program, bits)
-            stdin = ""
+        else:
+            stdin = esolangs.encode_inputs(self.name, bits)
         # The run's own timeout is a soft deadline inside each VM; the
         # alarm is the hard backstop so one wedged candidate cannot eat
         # a pair's whole wall (measured: the first fleet run stalled
@@ -115,7 +118,6 @@ class Runner:
                 source,
                 stdin=stdin,
                 timeout=_ROW_TIMEOUT,
-                max_steps=_MAX_STEPS,
             )
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
@@ -392,7 +394,11 @@ class _Search:
         )
         for length in range(self.shipped_size):
             for combo in product(self.alphabet, repeat=length):
-                if self.candidates % 256 == 0 and self.over_budget():
+                # The budget cadence is tight on purpose: one candidate
+                # can cost two 5 s row timeouts on a slow interpreter,
+                # so checking every 256 (the first fleet run's setting)
+                # let a single block overrun a pair's wall by minutes.
+                if self.candidates % 8 == 0 and self.over_budget():
                     return self._finish(outcome, complete=length - 1)
                 candidate = "".join(combo)
                 self.candidates += 1
