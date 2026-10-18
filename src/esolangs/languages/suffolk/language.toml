@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 5
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "workspace-limited NOR cofactors share computed values; otherwise a countdown counts rising and falling steps to recover the indexed entry"
+scaling = "linear: residual interning, bounded NOR circuit, countdown fallback"
+execution = "linear: worst L + R commands, R the prefix through the first read: one pass, then EOF"
+workspace = "poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: bounded NOR cells or eight countdown cells"
+
+[generator_sizes]
+"00000001" = { commands = 548, commands_by_row = { "0" = 548, "1" = 548, "2" = 548, "3" = 548, "4" = 548, "5" = 548, "6" = 548, "7" = 548 }, source_units = 489 }
+"00001100" = { commands = 399, commands_by_row = { "0" = 399, "1" = 399, "2" = 399, "3" = 399, "4" = 399, "5" = 399, "6" = 399, "7" = 399 }, source_units = 340 }
+"00110110" = { commands = 699, commands_by_row = { "0" = 699, "1" = 699, "2" = 699, "3" = 699, "4" = 699, "5" = 699, "6" = 699, "7" = 699 }, source_units = 640 }
+"0110" = { commands = 464, commands_by_row = { "0" = 464, "1" = 464, "2" = 464, "3" = 464 }, source_units = 405 }
+"01101001" = { commands = 709, commands_by_row = { "0" = 709, "1" = 709, "2" = 709, "3" = 709, "4" = 709, "5" = 709, "6" = 709, "7" = 709 }, source_units = 650 }
+"0110100110010110" = { commands = 1138, commands_by_row = { "0" = 1138, "1" = 1138, "2" = 1138, "3" = 1138, "4" = 1138, "5" = 1138, "6" = 1138, "7" = 1138, "8" = 1138, "9" = 1138, "10" = 1138, "11" = 1138, "12" = 1138, "13" = 1138, "14" = 1138, "15" = 1138 }, source_units = 987 }
+"1101001101101101" = { commands = 1138, commands_by_row = { "0" = 1138, "1" = 1138, "2" = 1138, "3" = 1138, "4" = 1138, "5" = 1138, "6" = 1138, "7" = 1138, "8" = 1138, "9" = 1138, "10" = 1138, "11" = 1138, "12" = 1138, "13" = 1138, "14" = 1138, "15" = 1138 }, source_units = 987 }
+"11111110" = { commands = 550, commands_by_row = { "0" = 550, "1" = 550, "2" = 550, "3" = 550, "4" = 550, "5" = 550, "6" = 550, "7" = 550 }, source_units = 491 }

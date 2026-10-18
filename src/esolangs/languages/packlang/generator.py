@@ -41,6 +41,7 @@ from esolangs.languages.packlang.interpreter._literals import (
     LITERAL_POLICIES,
     PacklangLiterals,
 )
+from esolangs.languages.packlang.proof_formulas import execution, workspace
 from esolangs.languages.packlang.wrapping import (
     _PACKLANG_LEXEME,
     _packlang,
@@ -329,4 +330,6 @@ LANGUAGE = Language(
     balance=balance_packlang,
     eof="an exhausted charGet is newline byte 10",
     empty_program="empty program",
+    proof_execution=(execution, True, (3, 7)),
+    proof_workspace=(workspace, False, (3, 5)),
 )

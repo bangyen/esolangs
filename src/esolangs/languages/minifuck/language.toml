@@ -1,0 +1,27 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 9
+bf_derivative = true
+bf_derivative_predates = true
+
+[proof_status]
+labels = ["parameterized construction"]
+qualification = "affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback"
+scaling = "linear: shared tape text admitted within the positional mux budget"
+execution = "linear: at most L commands: straight-line, the cursor never moves back"
+workspace = "linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n = 4: a tape bit-integer"
+
+[generator_sizes]
+"00000001" = { commands = 299, commands_by_row = { "0" = 317, "1" = 321, "2" = 319, "3" = 320, "4" = 321, "5" = 314, "6" = 313, "7" = 299 }, source_units = 367 }
+"00001100" = { commands = 120, commands_by_row = { "0" = 121, "1" = 120, "2" = 120, "3" = 120, "4" = 123, "5" = 122, "6" = 121, "7" = 120 }, source_units = 144 }
+"00110110" = { commands = 321, commands_by_row = { "0" = 315, "1" = 317, "2" = 306, "3" = 306, "4" = 317, "5" = 308, "6" = 308, "7" = 321 }, source_units = 368 }
+"0110" = { commands = 71, commands_by_row = { "0" = 72, "1" = 72, "2" = 72, "3" = 71 }, source_units = 79 }
+"01101001" = { commands = 105, commands_by_row = { "0" = 108, "1" = 106, "2" = 107, "3" = 108, "4" = 107, "5" = 108, "6" = 107, "7" = 105 }, source_units = 120 }
+"0110100110010110" = { commands = 125, commands_by_row = { "0" = 128, "1" = 128, "2" = 127, "3" = 126, "4" = 128, "5" = 127, "6" = 128, "7" = 128, "8" = 128, "9" = 127, "10" = 128, "11" = 128, "12" = 127, "13" = 127, "14" = 126, "15" = 125 }, source_units = 145 }
+"1101001101101101" = { commands = 564, commands_by_row = { "0" = 595, "1" = 595, "2" = 596, "3" = 590, "4" = 598, "5" = 598, "6" = 589, "7" = 583, "8" = 590, "9" = 578, "10" = 575, "11" = 593, "12" = 569, "13" = 583, "14" = 586, "15" = 564 }, source_units = 689 }
+"11111110" = { commands = 323, commands_by_row = { "0" = 316, "1" = 313, "2" = 314, "3" = 310, "4" = 306, "5" = 310, "6" = 310, "7" = 323 }, source_units = 372 }
+
+[formula_arities]
+workspace = [5]

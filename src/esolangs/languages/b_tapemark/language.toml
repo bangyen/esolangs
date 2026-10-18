@@ -1,0 +1,36 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+execution = 7
+workspace = 7
+
+[curation]
+backlinks = 2
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on"
+scaling = "linear: 3T copy cells, T pointer steps, one stage per input"
+execution = "linear: worst 4T + 42n + 5 steps: 2T copy, stages 32 or 2w + 37"
+workspace = "T log T: at most (4T+31n+5)(8+bl(3T+n+3)+bl(9n+3)) + (T+4n)(10+2bl(8T+50n)) + 4bl(8T+50n) + bl(n) + 12 bits: program cells, data marks"
+
+[generator_sizes]
+"00000001" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"00001100" = { commands = 126, commands_by_row = { "0" = 147, "1" = 142, "2" = 140, "3" = 135, "4" = 138, "5" = 133, "6" = 131, "7" = 126 }, source_units = 344 }
+"00110110" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"0110" = { commands = 89, commands_by_row = { "0" = 105, "1" = 98, "2" = 96, "3" = 89 }, source_units = 221 }
+"01101001" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"0110100110010110" = { commands = 187, commands_by_row = { "0" = 237, "1" = 230, "2" = 228, "3" = 221, "4" = 224, "5" = 217, "6" = 215, "7" = 208, "8" = 216, "9" = 209, "10" = 207, "11" = 200, "12" = 203, "13" = 196, "14" = 194, "15" = 187 }, source_units = 545 }
+"1101001101101101" = { commands = 187, commands_by_row = { "0" = 237, "1" = 230, "2" = 228, "3" = 221, "4" = 224, "5" = 217, "6" = 215, "7" = 208, "8" = 216, "9" = 209, "10" = 207, "11" = 200, "12" = 203, "13" = 196, "14" = 194, "15" = 187 }, source_units = 545 }
+"11111110" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+
+[catalogue]
+folding_constant_local = "b_tapemark"  # direct read-and-print constant
+
+[formula_arities]
+execution = [3, 6]
+workspace = [3, 4]
+
+[schemes]
+folds_without_tree = true

@@ -1,0 +1,31 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit"
+scaling = "linear: five table rows of 2T columns, doubling gadgets whose widths halve downward"
+execution = "linear: worst 10T + 20n + 30 steps: the pointer's path to the last row"
+workspace = "poly n: worst 57n + 50 + bl(2n+14) + bl(2^(n+1)+9n+1) bits: 7n-character queue"
+
+[generator_sizes]
+"00000001" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 387 }
+"00001100" = { commands = 120, commands_by_row = { "0" = 102, "1" = 102, "2" = 106, "3" = 106, "4" = 116, "5" = 116, "6" = 120, "7" = 120 }, source_units = 246 }
+"00110110" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 385 }
+"0110" = { commands = 110, commands_by_row = { "0" = 92, "1" = 96, "2" = 106, "3" = 110 }, source_units = 236 }
+"01101001" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 387 }
+"0110100110010110" = { commands = 270, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196, "8" = 218, "9" = 222, "10" = 232, "11" = 236, "12" = 252, "13" = 256, "14" = 266, "15" = 270 }, source_units = 616 }
+"1101001101101101" = { commands = 270, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196, "8" = 218, "9" = 222, "10" = 232, "11" = 236, "12" = 252, "13" = 256, "14" = 266, "15" = 270 }, source_units = 618 }
+"11111110" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 385 }
+
+[catalogue]
+folding_constant_local = "_constant_ring"  # read rotation and literal output
+
+[formula_arities]
+workspace = [3, 6]
+
+[schemes]
+folds_without_tree = true

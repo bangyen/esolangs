@@ -1,0 +1,23 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 5
+
+[proof_status]
+labels = ["tree"]
+qualification = "the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits; an equal subtree is emitted once"
+scaling = "linear: bounded dependency scan and canonical residual IDs"
+execution = "poly n: at most 49n + 3*2^k + (n-k) + 2 commands, k = bitlen(2n-1)"
+workspace = "linear: worst 55n + 11S + 95B + D + E + F + R bits: the memory tuple and registers"
+definitions = ["S = 2^k, m = n-k, c = 3⌈(n+18)/3⌉, P = c + 144n + 3k + 3S - 3", "B = Σ_{i<n} bl(18+i)", "D = Σ_{j<k} (2bl(18+m+j) + bl(P + 3(j-k+2) - 3·2^(k-1-j)))", "E = Σ_{l<m, u<2^l} (2bl(18+l) + bl(P + 3l + (2u+1)2^(m-l-1)(S+18) - 3ν(u))), ν = ones in binary", "F = Σ_{j<2^m} (22 + 6S + bl(x) + bl(x+9) + 2bl(x+10) + bl(x+14+S)), x = P+3m+j(S+18)-3ν(j)", "R = 3bl(P - 3 + 2^m(S+18)) + bl(n) + bl(c) + c + k + 8"]
+
+[generator_sizes]
+"00000001" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }
+"00001100" = { commands = 107, commands_by_row = { "0" = 113, "1" = 113, "2" = 111, "3" = 111, "4" = 109, "5" = 109, "6" = 107, "7" = 107 }, source_units = 927 }
+"00110110" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }
+"0110" = { commands = 106, commands_by_row = { "0" = 112, "1" = 110, "2" = 108, "3" = 106 }, source_units = 919 }
+"01101001" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }
+"0110100110010110" = { commands = 208, commands_by_row = { "0" = 222, "1" = 220, "2" = 218, "3" = 216, "4" = 214, "5" = 212, "6" = 210, "7" = 208, "8" = 222, "9" = 220, "10" = 218, "11" = 216, "12" = 214, "13" = 212, "14" = 210, "15" = 208 }, source_units = 1824 }
+"1101001101101101" = { commands = 208, commands_by_row = { "0" = 222, "1" = 220, "2" = 218, "3" = 216, "4" = 214, "5" = 212, "6" = 210, "7" = 208, "8" = 222, "9" = 220, "10" = 218, "11" = 216, "12" = 214, "13" = 212, "14" = 210, "15" = 208 }, source_units = 1824 }
+"11111110" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }

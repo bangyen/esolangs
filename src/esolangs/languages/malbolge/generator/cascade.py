@@ -8,6 +8,7 @@ from typing import Protocol
 
 from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2
 
+from .emitter import _Walker
 from .isa import (
     _ACTIVE,
     _ALL2,
@@ -77,35 +78,6 @@ _NEXTS = (*range(76, 79), *range(80, 99), 101, 102)
 #: give ``A = tau(69) = 48`` before each level's jump (48 -> 69 -> 48 on the
 #: second).
 _C_HELPERS = {"z1": 40, "z0": 37, "w": 80, "v": 78, "seed": 113, "a1": 69, "a2": 48}
-
-
-class _Walker:
-    """Code emitter tracking ``d`` through the walked region."""
-
-    def __init__(self, start: int, d: int, modified: frozenset[int]) -> None:
-        self.code: dict[int, str] = {}
-        self.c = start
-        self.d = d
-        self.modified = modified
-
-    def raw(self, op: str) -> None:
-        self.code[self.c] = op
-        self.c += 1
-        self.d += 1
-
-    def set_d(self, target: int) -> None:
-        """Walk ``d`` up to a cell whose value is ``target - 1``, then ``j``."""
-        if self.d == target:
-            return
-        address = _first_free(target - 1, self.d, _ENTRY, self.modified)
-        while self.d < address:
-            self.raw("o")
-        self.raw("j")
-        self.d = target
-
-    def op(self, op: str, target: int) -> None:
-        self.set_d(target)
-        self.raw(op)
 
 
 def _jump(walker: _Walker, readout: int, offset: int) -> None:
@@ -180,7 +152,7 @@ def _head(
         modified.add(a)
     frozen = frozenset(modified)
 
-    main = _Walker(_ENTRY + 1, _START_D, frozen)
+    main = _Walker(_ENTRY + 1, _START_D, frozen, ceiling=_ENTRY)
     main.code[_ENTRY] = "j"
     _build_constants(main, helper)
     for a in sorted({*pair_cells, *_NEXTS}):
@@ -267,7 +239,7 @@ def _cascade() -> _Cascade:
 
     # The second decoder: its first ``j`` reads the NEXT cell after the pointer
     # (all-1).
-    dec = _Walker(_NEXT + 1, 0, frozen)
+    dec = _Walker(_NEXT + 1, 0, frozen, ceiling=_ENTRY)
     _decoder_entry(dec, _NEXT + 1)
     dec.op("*", helper["w"])
     _ops(dec, cell, _C_POST[1])

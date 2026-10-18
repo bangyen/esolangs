@@ -1,17 +1,19 @@
-"""The planner and hub placement the builds from thirteen inputs up share."""
+"""Hub placement and planner helpers the builds from thirteen inputs up share."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 
 from esolangs.languages.malbolge.interpreter import _crazy
 
 from .cascade import _ENTRY, _START_D
-from .isa import _ACTIVE, _ALL1, _CONSTS, _WORDS, _char_for, _first_free, _g, _rot
+from .emitter import _Planner, _valid_chars
+from .isa import _ALL1, _CONSTS, _WORDS, _first_free, _g, _rot
 
 # ---------------------------------------------------------------------------
-# Shared by the builds from thirteen inputs up: a planner that navigates by
-# shortest path, and hub placement.
+# Shared by the builds from thirteen inputs up: hub placement and the
+# helpers that drive the shared shortest-path planner (see emitter.py).
 
 #: Label of the pointer cell ``T + 1`` for ``T`` in ``33..126`` (``n`` is
 #: ``not x``, ``-`` a mixer cell or unused).  Every ``h mod 94`` admits a
@@ -50,110 +52,11 @@ _CHAIN_A = dict(zip(_K_CELL, _CONSTS, strict=True))
 _ANSWER = {"00": "0", "11": "1", "01": "x", "10": "n"}
 
 
-def _valid_chars(address: int) -> list[int]:
-    return [_char_for(op, address) for op in _ACTIVE]
-
-
-class _Planner:
-    """Code emitter that navigates by shortest path over ``o`` and ``j``.
-
-    ``mem`` maps walked addresses to their known values (``None`` once
-    written to an unknown value); ``a`` is the accumulator ``A`` when the ops
-    so far have determined it, else ``None``; ``data`` maps store addresses
-    above the code to source characters, which a ``j`` from there reads to
-    come back below 128.  Knowing ``mem``/``a`` is only an optimisation: a
-    cell whose value is still known stays usable as a ``j`` target, so the
-    shortest-path search sees the shortcuts the run-time pointers provide.
-    """
-
-    def __init__(
-        self,
-        start: int,
-        d: int,
-        mem: dict[int, int | None],
-        data: dict[int, int],
-        a: int | None = None,
-    ) -> None:
-        self.code: dict[int, str] = {}
-        self.c = start
-        self.d = d
-        self.mem = mem
-        self.data = data
-        self.a = a
-
-    def raw(self, op: str) -> None:
-        cell = self.d
-        self.code[self.c] = op
-        self.c += 1
-        self.d += 1
-        if op in "p*":
-            self.mem[cell] = self._written(op, cell)
-        elif op == "/":
-            self.a = None
-
-    def _written(self, op: str, cell: int) -> int | None:
-        """Return the new value of ``cell`` after ``op``, or ``None`` if unknown."""
-        old = self.mem.get(cell)
-        if op == "*":
-            if isinstance(old, int):
-                self.a = _rot(old)
-            else:
-                self.a = None
-        elif isinstance(old, int) and isinstance(self.a, int):
-            self.a = _crazy(self.a, old)
-        else:
-            self.a = None
-        return self.a
-
-    def goto(self, target: int) -> None:
-        if self.d >= _ENTRY:
-            char = self.data.setdefault(self.d, min(_valid_chars(self.d)))
-            self.raw("j")
-            self.d = char + 1
-        previous: dict[int, tuple[int, str] | None] = {self.d: None}
-        frontier = [self.d]
-        while target not in previous:
-            following = []
-            for d in frontier:
-                moves = [(d + 1, "o")]
-                value = self.mem.get(d)
-                if value is not None:
-                    moves.append((value + 1, "j"))
-                for step, op in moves:
-                    if step < _ENTRY and step not in previous:
-                        previous[step] = (d, op)
-                        following.append(step)
-            if not following:  # pragma: no cover - the walked cells cover all
-                raise AssertionError(f"cannot reach {target}")
-            frontier = following
-        path = []
-        node = target
-        while (link := previous[node]) is not None:
-            node, op = link
-            path.append(op)
-        for op in reversed(path):
-            self.code[self.c] = op
-            self.c += 1
-        self.d = target
-
-    def op(self, op: str, target: int) -> None:
-        self.goto(target)
-        self.raw(op)
-
-    def hub(self, pointer: int, value: int, offset: int = 1) -> None:
-        """``j`` through ``pointer`` (holding ``value``) to ``value + offset``."""
-        self.goto(pointer)
-        self.raw("j")
-        self.d = value + 1
-        while self.d < value + offset:
-            self.raw("o")
-
-
 def _main_planner(data: dict[int, int]) -> tuple[_Planner, dict[int, int | None]]:
     """Return the main-code planner (entry ``j`` placed) and its walked memory."""
     mem: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
     # ``A`` is 0 when the entry ``j`` runs: the initial walk is all nops.
-    main = _Planner(_ENTRY + 1, _START_D, mem, data, a=0)
+    main = _Planner(_ENTRY + 1, _START_D, mem, data, ceiling=_ENTRY, a=0)
     main.code[_ENTRY] = "j"
     return main, mem
 
@@ -269,9 +172,10 @@ def _walker(used: set[int], layout: dict[int, int] | None = None) -> Callable[..
             and (value is None or _g(preferred) == value)
         ):
             address = preferred
-        elif value is None:
-            address = next(a for a in range(128, _ENTRY) if a not in used)
         else:
+            # A no-value call always takes its layout cell above: the only
+            # ones are the digit build's ``s``/``z``, whose cells are free.
+            assert value is not None
             address = _first_free(value, 128, _ENTRY, used)
         used.add(address)
         return address
@@ -299,34 +203,40 @@ def _pointers(
     return values, pointer
 
 
-def _t_hubs(
-    values: dict[int, int],
-    label: dict[int, str],
-    avoid: set[int],
-    *,
-    hub_cells: dict[str, int | tuple[int, ...]],
-    options_of: Callable[[int, str], list[dict[int, int]]],
-    floor: int,
-    ceiling: int = _WORDS,
-    hub_floor: int = 0,
-) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
-    """Return hub and data characters, stub code and rotations per hub.
+@dataclass(frozen=True)
+class _HubRequest:
+    """One hub placement's policy, bundled: what :func:`_t_hubs` searches with.
 
     ``hub_cells`` gives, per label, how many cells past a hub are reserved
     or exactly which offsets are; ``options_of(v, label)`` the data cells a
     hub's stub reads, tried in order.  A stub lands in ``floor <= s <
     ceiling`` and a hub at or above ``hub_floor``.
     """
+
+    hub_cells: dict[str, int | tuple[int, ...]]
+    options_of: Callable[[int, str], list[dict[int, int]]]
+    floor: int
+    ceiling: int = _WORDS
+    hub_floor: int = 0
+
+
+def _t_hubs(
+    values: dict[int, int],
+    label: dict[int, str],
+    avoid: set[int],
+    request: _HubRequest,
+) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
+    """Return hub and data characters, stub code and rotations per hub."""
     hubs = {values[p]: label[p] for p in sorted(values)}
     reserved: set[int] = set()
     for v, lab in sorted(hubs.items()):
-        span = hub_cells[lab]
+        span = request.hub_cells[lab]
         cells = (
             set(range(v + 1, v + 1 + span))
             if isinstance(span, int)
             else {v + o for o in span}
         )
-        if v < hub_floor or cells & (avoid | reserved):
+        if v < request.hub_floor or cells & (avoid | reserved):
             raise AssertionError(f"hub {v} collides")
         reserved |= cells
     data: dict[int, int] = {}
@@ -338,10 +248,10 @@ def _t_hubs(
         placed = next(
             (
                 (option, char, k, s)
-                for option in options_of(v, lab)
+                for option in request.options_of(v, lab)
                 for char in _valid_chars(v + 1)
                 for k, s in _rotations(char)
-                if floor <= s < ceiling
+                if request.floor <= s < request.ceiling
                 and not set(range(s, s + 1 + len(_T_STUBS[lab])))
                 & (avoid | reserved | set(option))
             ),

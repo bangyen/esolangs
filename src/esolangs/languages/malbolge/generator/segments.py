@@ -31,14 +31,13 @@ from .core import (
     _main_planner,
     _merge_code,
     _n_hub_pass,
-    _Planner,
     _pointers,
     _prime,
     _seed_label_chains,
     _t_jump,
     _turn_hubs,
-    _valid_chars,
 )
+from .emitter import _Planner, _valid_chars
 from .isa import (
     _ALL2,
     _CONSTS,
@@ -288,7 +287,7 @@ def _f_handler(
             s = _chain(char, chain)
             if s < _F_HANDLER_FLOOR or s + 60 >= _WORDS:
                 continue
-            handler = _Planner(s + 1, v + 12, mem, dict(data))
+            handler = _Planner(s + 1, v + 12, mem, dict(data), ceiling=_ENTRY)
             handler.goto(target)
             handler.raw("i")
             cells = set(range(s, handler.c))
@@ -615,10 +614,10 @@ def _f_emit_epilogue(
     for lvl, per_copy in enumerate(_f_select()):
         entry = alloc.select[2 * lvl] + 1
         for c, value in enumerate(per_copy):
-            stub = _Planner(value + 1, entry, mem, place.data)
+            stub = _Planner(value + 1, entry, mem, place.data, ceiling=_ENTRY)
             _t_jump(stub, alloc.readout[c, lvl], _F_OFFSETS[c][lvl])
             parts.append(stub.code)
-    dec = _Planner(_F_DECODER, 0, mem, place.data)
+    dec = _Planner(_F_DECODER, 0, mem, place.data, ceiling=_ENTRY)
     _decoder_entry(dec, _F_DECODER)
     for _ in range(_F_DECODER_NOPS):
         dec.raw("o")

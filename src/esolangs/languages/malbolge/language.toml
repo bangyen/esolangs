@@ -1,0 +1,36 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 130
+
+[proof_status]
+labels = ["exception"]
+qualification = "finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound))"
+scaling = "measured: fixed 59049-cell store through n <= 16"
+execution = "unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds"
+workspace = "poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag"
+
+[proof_status.audit]
+totality = "Exception"
+generation_time = "Open"
+output_size = "Linear"
+evidence = "docs/proofs/index.md#malbolge-bound"
+
+[generator_sizes]
+"00000001" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
+"00001100" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
+"00110110" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
+"0110" = { commands = 2415, commands_by_row = { "0" = 2415, "1" = 2415, "2" = 2415, "3" = 2415 }, source_units = 59049 }
+"01101001" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
+"0110100110010110" = { commands = 3371, commands_by_row = { "0" = 3371, "1" = 3371, "2" = 3371, "3" = 3371, "4" = 3371, "5" = 3371, "6" = 3371, "7" = 3371, "8" = 3371, "9" = 3371, "10" = 3371, "11" = 3371, "12" = 3371, "13" = 3371, "14" = 3371, "15" = 3371 }, source_units = 59049 }
+"1101001101101101" = { commands = 3371, commands_by_row = { "0" = 3371, "1" = 3371, "2" = 3371, "3" = 3371, "4" = 3371, "5" = 3371, "6" = 3371, "7" = 3371, "8" = 3371, "9" = 3371, "10" = 3371, "11" = 3371, "12" = 3371, "13" = 3371, "14" = 3371, "15" = 3371 }, source_units = 59049 }
+"11111110" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
+
+[catalogue]
+folding_ignored = "fixed-size source; an extra input port adds no cells"
+folding_constant = "fixed-size source; a constant table is no smaller"
+
+[formula_arities]
+# Every word and register is below 3^10 < 2^16; measured ~394k bits.
+workspace = [2, 3]

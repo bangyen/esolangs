@@ -21,13 +21,10 @@ from __future__ import annotations
 
 import argparse
 import itertools
-import json
 import keyword
-import re
 import shlex
 import subprocess
 import sys
-import tomllib
 from collections.abc import Container
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,6 +39,8 @@ ROOT = Path(__file__).parents[1]
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
 import remove_language as removal  # noqa: E402
+from docs.curation import fragment_row as _curation_fragment  # noqa: E402
+from docs.proof_status import load as _proof_status_load  # noqa: E402
 
 CATEGORIES = (
     "grid_based",
@@ -167,6 +166,11 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         )
     files[package / "tests/__init__.py"] = '"""Language-specific execution tests."""\n'
     files[package / "__init__.py"] = '"""Language implementation modules."""\n'
+    files[package / "language.toml"] = (
+        "# Language-owned data, one section per dataset; aggregators read\n"
+        "# only their own section and skip this file when it is absent.\n\n"
+        "[curation]\nunassessed = true\n"
+    )
     namespace = package.parent / "__init__.py"
     if not namespace.exists():
         files[namespace] = '"""Language-owned interpreters and generators."""\n'
@@ -187,18 +191,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     for path, text in files.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
-    _seed_curation(name)
     return list(files)
-
-
-def _seed_curation(name: str) -> None:
-    """Record ``name`` as unassessed; ``finish`` asks for the real count."""
-    path = ROOT / "ledgers/curation.toml"
-    if not path.exists() or name in tomllib.loads(path.read_text())["languages"]:
-        return
-    key = name if re.fullmatch(r"[A-Za-z0-9_-]+", name) else json.dumps(name)
-    text = path.read_text(encoding="utf-8").rstrip("\n")
-    path.write_text(f"{text}\n{key} = {{ unassessed = true }}\n", encoding="utf-8")
 
 
 def _interpreter_stub(name: str) -> str:
@@ -306,16 +299,15 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "protocol and debugger tests step it",
             )
         )
-    curation = tomllib.loads((ROOT / "ledgers/curation.toml").read_text())
-    if name not in curation["languages"]:
+    if not _curation(name):
         gaps.append(
             Gap(
-                "ledgers/curation.toml",
-                f'add "{name}" = {{ backlinks = <wiki "What links here" count> }} '
-                "under [languages] (60+ is the fame route, fewer a first "
+                f"src/esolangs/languages/{module}/language.toml",
+                'add a [curation] section with backlinks = <wiki "What links '
+                'here" count> (60+ is the fame route, fewer a first '
                 "implementation), plus bf_derivative = true if the wiki tags it "
-                "Brainfuck derivatives (see docs/limitations.md#curation); offline, "
-                "{ unassessed = true } until the count is recorded",
+                "Brainfuck derivatives (see docs/limitations.md#curation); "
+                "offline, unassessed = true until the count is recorded",
             )
         )
     return gaps
@@ -378,17 +370,17 @@ def _generator_gaps(lang: Language) -> list[Gap]:
 
 def _ledger_gaps(name: str) -> list[Gap]:
     """List the ledger row and the formula tests its stated bounds need."""
-    data = tomllib.loads((ROOT / "ledgers/proof_status.toml").read_text())
-    row = next((row for row in data["ledger"] if row["generator"] == name), None)
+    rows, _ = _proof_status_load()
+    row = next((item for item in rows if item.generator == name), None)
     if row is None:
         return [
             Gap(
-                "ledgers/proof_status.toml",
-                f'add a [[ledger]] block: generator = "{name}", labels = ["tree"], '
-                "qualification, scaling, execution and workspace (evidence "
-                "defaults to docs/proofs/index.md#generator-ledger); copy a "
-                "block with the same construction and see Symbols in "
-                "docs/proofs/index.md; "
+                f"src/esolangs/languages/{_slug(name)}/language.toml",
+                "add a [proof_status] section: "
+                'labels = ["tree"], qualification, scaling, execution and '
+                "workspace (evidence defaults to "
+                "docs/proofs/index.md#generator-ledger); copy a section with "
+                "the same construction and see Symbols in docs/proofs/index.md; "
                 'each cell is "<class>: <clause>", e.g. "linear: ..." or '
                 '"poly n: worst 7n + 3 commands ..."; '
                 "a clause after `worst`/`at most` takes at most "
@@ -400,11 +392,11 @@ def _ledger_gaps(name: str) -> list[Gap]:
                 "worst steps and bits to state",
             )
         ]
-    if not row["execution"].split(": ", 1)[-1].startswith(("worst ", "at most ")):
+    if not row.execution.split(": ", 1)[-1].startswith(("worst ", "at most ")):
         return []
     gaps = []
     for cell in ("execution", "workspace"):
-        stated = row[cell].split(": ", 1)[-1]
+        stated = getattr(row, cell).split(": ", 1)[-1]
         table = f"test_{cell}_formulas"
         if cell == "workspace" and "bits" not in stated:
             continue
@@ -415,8 +407,10 @@ def _ledger_gaps(name: str) -> list[Gap]:
                     f"the ledger's {cell} cell does not parse as a formula: "
                     f"{stated}; write its bound with n, T, L, integers, bl, "
                     "max, min, ⌈⌉ and ⌊⌋ before the unit (tests/proofs/"
-                    f'_formula.py), or add "{name}": (lambda n, _: ..., '
-                    "exact, (lo, hi)) to _HAND for a case split or definition",
+                    f"_formula.py), or declare proof_{cell}=(callable, "
+                    "exact, (lo, hi)) on the Language with the callable "
+                    "in the package's proof_formulas.py (taglate is the "
+                    "example)",
                 )
             )
     return gaps
@@ -563,9 +557,9 @@ def finish(name: str) -> int:
 
 
 def _curation(name: str) -> dict[str, Any]:
-    """Return ``name``'s row in the curation fixture, or {}."""
-    text = (ROOT / "ledgers/curation.toml").read_text(encoding="utf-8")
-    return dict(tomllib.loads(text)["languages"].get(name, {}))
+    """Return ``name``'s row in its package's curation section, or {}."""
+    path = ROOT / "src/esolangs/languages" / _slug(name) / "language.toml"
+    return _curation_fragment(path)
 
 
 def _gate() -> int:
@@ -579,10 +573,10 @@ def _gate() -> int:
         print("+", " ".join(cmd[1:]), flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
             return 1
-    print("+ scripts/verify/gate.py --quiet", flush=True)
+    print("+ scripts/verify/gate.py --full --quiet", flush=True)
     failed = []
     with subprocess.Popen(
-        [*python, "scripts/verify/gate.py", "--quiet"],
+        [*python, "scripts/verify/gate.py", "--full", "--quiet"],
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

@@ -1,0 +1,31 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 9
+
+[proof_status]
+labels = ["parameterized lookup"]
+qualification = "every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`)"
+scaling = "linear: cascade routes to two shared leaves, one-digit targets"
+execution = "linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down"
+workspace = "poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor"
+
+[generator_sizes]
+"00000001" = { commands = 38, commands_by_row = { "0" = 13, "1" = 18, "2" = 20, "3" = 25, "4" = 24, "5" = 29, "6" = 31, "7" = 38 }, source_units = 112 }
+"00001100" = { commands = 26, commands_by_row = { "0" = 14, "1" = 14, "2" = 19, "3" = 19, "4" = 23, "5" = 23, "6" = 26, "7" = 26 }, source_units = 85 }
+"00110110" = { commands = 36, commands_by_row = { "0" = 13, "1" = 18, "2" = 22, "3" = 27, "4" = 24, "5" = 31, "6" = 33, "7" = 36 }, source_units = 112 }
+"0110" = { commands = 22, commands_by_row = { "0" = 10, "1" = 17, "2" = 19, "3" = 22 }, source_units = 74 }
+"01101001" = { commands = 38, commands_by_row = { "0" = 13, "1" = 20, "2" = 22, "3" = 25, "4" = 26, "5" = 29, "6" = 31, "7" = 38 }, source_units = 112 }
+"0110100110010110" = { commands = 58, commands_by_row = { "0" = 16, "1" = 23, "2" = 25, "3" = 28, "4" = 29, "5" = 32, "6" = 34, "7" = 41, "8" = 37, "9" = 40, "10" = 42, "11" = 49, "12" = 46, "13" = 53, "14" = 55, "15" = 58 }, source_units = 170 }
+"1101001101101101" = { commands = 60, commands_by_row = { "0" = 18, "1" = 23, "2" = 23, "3" = 30, "4" = 27, "5" = 32, "6" = 36, "7" = 41, "8" = 35, "9" = 42, "10" = 44, "11" = 47, "12" = 48, "13" = 53, "14" = 53, "15" = 60 }, source_units = 170 }
+"11111110" = { commands = 36, commands_by_row = { "0" = 15, "1" = 20, "2" = 22, "3" = 27, "4" = 26, "5" = 31, "6" = 33, "7" = 36 }, source_units = 112 }
+
+[catalogue]
+folding_constant_local = "input_weights"  # zero projected index weights
+
+[formula_arities]
+workspace = [3, 6]
+
+[schemes]
+folds_without_tree = true

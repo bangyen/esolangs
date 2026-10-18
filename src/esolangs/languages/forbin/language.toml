@@ -1,0 +1,29 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 5
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry"
+scaling = "linear: two characters an entry, halvings sum to `2 * 128`"
+execution = "poly n: worst 2 max(n - 7, 0) + 2 commands"
+workspace = "linear: worst 32n + 71 + 2bl(n) + G bits for n ≤ 48: main's locals in both frame and scope"
+definitions = ["G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-7, 0), the loop cursor"]
+
+[generator_sizes]
+"00000001" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
+"00001100" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 147 }
+"00110110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
+"0110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2 }, source_units = 131 }
+"01101001" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
+"0110100110010110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2, "11" = 2, "12" = 2, "13" = 2, "14" = 2, "15" = 2 }, source_units = 281 }
+"1101001101101101" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2, "11" = 2, "12" = 2, "13" = 2, "14" = 2, "15" = 2 }, source_units = 281 }
+"11111110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
+
+[formula_arities]
+execution = [3, 8]
+
+[schemes]
+folds_without_tree = true

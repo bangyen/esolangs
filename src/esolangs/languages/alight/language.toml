@@ -1,0 +1,28 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 6
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches"
+scaling = "linear: one T-character literal, O(n) Horner reads"
+execution = "poly n: worst 2n + 5 commands, n Horner reads and one `at`"
+workspace = "poly n: worst 72n + 762 + bl(6n+12) + bl(n) bits, n in 2..25"
+
+[generator_sizes]
+"00000001" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 97 }
+"00001100" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10 }, source_units = 83 }
+"00110110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 97 }
+"0110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9 }, source_units = 77 }
+"01101001" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 97 }
+"0110100110010110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13, "8" = 13, "9" = 13, "10" = 13, "11" = 13, "12" = 13, "13" = 13, "14" = 13, "15" = 13 }, source_units = 121 }
+"1101001101101101" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13, "8" = 13, "9" = 13, "10" = 13, "11" = 13, "12" = 13, "13" = 13, "14" = 13, "15" = 13 }, source_units = 121 }
+"11111110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 97 }
+
+[catalogue]
+folding_constant = "a constant table is a one-entry literal"
+
+[schemes]
+folds_without_tree = true

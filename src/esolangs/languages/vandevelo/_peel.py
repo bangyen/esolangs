@@ -529,13 +529,71 @@ class _Peel:
                 child = cur.child = self.make_child(cur, best_w)
             cur = child
 
+    def _prune_empty_nodes(self) -> None:
+        """Drop pooled nodes whose sets have emptied, unscoring them."""
+        for v in [v for v, node in self.nodes.items() if not node.reps]:
+            del self.nodes[v]
+            self.tried.discard(v)
+
+    def _deepest_chain(self, depth_target: int) -> _Node | None:
+        """Return the pooled node whose chain is at least ``depth_target`` deep."""
+        best: _Node | None = None
+        best_key: tuple[int, int, int] | None = None
+        for v, node in self.nodes.items():
+            if node.removed >= _REFRESH * node.size:
+                self.refresh(node)
+            depth = self.extend(node) + 1
+            if depth >= depth_target:
+                key = (depth, node.size, -v)
+                if best_key is None or key > best_key:
+                    best, best_key = node, key
+        return best
+
+    def _pool_next(self, depth_target: int) -> int | None:
+        """Score one more pooled direction this phase; the target it leaves."""
+        root = self.root
+        # The most popular one first, if a small pool has fallen below average.
+        _ensure_popular(root, self.n)
+        if depth_target > self.n:
+            _assure(root, self.n)
+        pick = None
+        for v, c in sorted(root.cands.items(), key=lambda kv: (-kv[1], kv[0])):
+            if c < 2:
+                break
+            if v not in self.nodes and v not in self.tried:
+                pick = v
+                break
+        if pick is None:
+            return None
+        self.tried.add(pick)
+        self.nodes[pick] = self.make_child(root, pick)
+        if depth_target > self.n:
+            return self.extend(self.nodes[pick], certain=True) + 1
+        return depth_target
+
+    def _certify_step(self, depth_target: int) -> tuple[bool, int]:
+        """Harvest past the proven chain, or drop the phase target a level."""
+        proven = self.certify()
+        if proven is not None and self.extend(proven) + 1 >= depth_target:
+            self.harvest(proven)
+            return True, depth_target
+        if depth_target > 1:
+            self.tried.clear()
+            return True, depth_target - 1
+        return False, depth_target
+
+    def _take_lowest(self) -> None:
+        """Take the remainder's lowest point as a cube of dimension zero."""
+        p = min(self.root.reps)
+        self.cubes.append((p, []))
+        self.take(p)
+
     def run(self) -> list[tuple[int, list[int]]]:
         """Peel the whole 1-set; returns ``(base, dirs)`` per cube."""
         root = self.root
         n = self.n
         sparse_at = (1 << n) // max(_CANDIDATES, n)
         depth_target = n + 1
-        tried = self.tried
         while root.reps:
             if len(root.reps) <= sparse_at:
                 self.sparse()
@@ -543,53 +601,22 @@ class _Peel:
             if self.since >= _REFRESH * len(root.reps):
                 self.since = 0
                 self.refresh(root)
-            for v in [v for v, node in self.nodes.items() if not node.reps]:
-                del self.nodes[v]
-                tried.discard(v)
+            self._prune_empty_nodes()
             # 1. the deepest chain at least depth_target deep
-            best: _Node | None = None
-            best_key: tuple[int, int, int] | None = None
-            for v, node in self.nodes.items():
-                if node.removed >= _REFRESH * node.size:
-                    self.refresh(node)
-                depth = self.extend(node) + 1
-                if depth >= depth_target:
-                    key = (depth, node.size, -v)
-                    if best_key is None or key > best_key:
-                        best, best_key = node, key
+            best = self._deepest_chain(depth_target)
             if best is not None:
                 self.harvest(best)
                 continue
-            # 2. score one more pooled direction this phase -- the most
-            # popular one first, if a small pool has fallen below average
-            _ensure_popular(root, n)
-            if depth_target > n:
-                _assure(root, n)
-            pick = None
-            for v, c in sorted(root.cands.items(), key=lambda kv: (-kv[1], kv[0])):
-                if c < 2:
-                    break
-                if v not in self.nodes and v not in tried:
-                    pick = v
-                    break
-            if pick is not None:
-                tried.add(pick)
-                self.nodes[pick] = self.make_child(root, pick)
-                if depth_target > n:
-                    depth_target = self.extend(self.nodes[pick], certain=True) + 1
+            # 2. score one more pooled direction this phase
+            pooled = self._pool_next(depth_target)
+            if pooled is not None:
+                depth_target = pooled
                 continue
             # 3. drop the phase, but only past a chain the proof speaks for
-            proven = self.certify()
-            if proven is not None and self.extend(proven) + 1 >= depth_target:
-                self.harvest(proven)
+            stepped, depth_target = self._certify_step(depth_target)
+            if stepped:
                 continue
-            if depth_target > 1:
-                depth_target -= 1
-                tried.clear()
-                continue
-            p = min(root.reps)
-            self.cubes.append((p, []))
-            self.take(p)
+            self._take_lowest()
         return self.cubes
 
     def sparse(self) -> None:

@@ -73,24 +73,36 @@ class _Compiled:
     positions: tuple[tuple[int, int], ...] = ()
 
 
-def _compile(stroke: Stroke, unit: int) -> _Compiled:
-    """Classify every stroke in ``stroke``'s tree exactly once, recursively.
+class _TreeCompiler:
+    """State for one :func:`_compile` pass over a stroke tree.
 
-    Also recovers the loop-back link: every leaf's final vertex is tested by
-    ``find_merge`` against every other stroke's final vertex and straight
-    legs (exact integer cross/dot product; no tolerance needed).  A match on
-    a stroke's own final vertex resumes at that node; a mid-leg match builds
-    a synthetic node holding the remaining ops.  A stroke never matches its
-    own final vertex.  The whole tree is built before linking, since a target
-    can be defined after the leaf that jumps to it.
+    ``strokes`` registers every real stroke's geometry for
+    :meth:`find_merge`; ``leaves`` collects the strokes with no branch
+    children, whose loop-back links are resolved once the whole tree is
+    built; ``resume_cache`` deduplicates synthetic resume nodes so two
+    merges into one leg share a node.
     """
-    # Every real stroke's geometry, for find_merge below.
-    strokes: list[tuple[_Compiled, list[Vertex], list[OpCall]]] = []
-    leaves: list[_Compiled] = []
-    resume_cache: dict[tuple[int, int], _Compiled] = {}
 
-    def build(node: Stroke) -> _Compiled:
-        ops = classify_ops(node.vertices, unit)
+    def __init__(self, unit: int) -> None:
+        self.unit = unit
+        self.strokes: list[tuple[_Compiled, list[Vertex], list[OpCall]]] = []
+        self.leaves: list[_Compiled] = []
+        self.resume_cache: dict[tuple[int, int], _Compiled] = {}
+
+    def compile(self, stroke: Stroke) -> _Compiled:
+        """Build the tree, then link each leaf's loop-back, if it has one."""
+        root = self.build(stroke)
+        for leaf in self.leaves:
+            match = self.find_merge(leaf.end, exclude=leaf)
+            if match is None:
+                continue
+            target, remaining = match
+            leaf.goto = self.resume(target, remaining)
+        return root
+
+    def build(self, node: Stroke) -> _Compiled:
+        """Classify one stroke and, recursively, its branch children."""
+        ops = classify_ops(node.vertices, self.unit)
         last = node.vertices[-1]
         compiled = _Compiled(
             ops=ops,
@@ -103,20 +115,26 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
             ),
         )
         if node.zero is not None:
-            compiled.zero = build(node.zero)
+            compiled.zero = self.build(node.zero)
         if node.nonzero is not None:
-            compiled.nonzero = build(node.nonzero)
+            compiled.nonzero = self.build(node.nonzero)
         if compiled.zero is None and compiled.nonzero is None:
-            leaves.append(compiled)
-        strokes.append((compiled, node.vertices, ops))
+            self.leaves.append(compiled)
+        self.strokes.append((compiled, node.vertices, ops))
         return compiled
 
-    def resume(target: _Compiled, remaining: list[OpCall]) -> _Compiled:
+    def resume(self, target: _Compiled, remaining: list[OpCall]) -> _Compiled:
+        """Return the node a merge into ``target`` resumes at.
+
+        The target itself when nothing was skipped; otherwise a synthetic
+        node holding only the ops not yet run, sharing the target's
+        children, cached so merges at the same point share it.
+        """
         if remaining == target.ops:
             return target
         key = id(target), len(remaining)
-        if key not in resume_cache:
-            resume_cache[key] = _Compiled(
+        if key not in self.resume_cache:
+            self.resume_cache[key] = _Compiled(
                 ops=remaining,
                 end=target.end,
                 zero=target.zero,
@@ -126,13 +144,18 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
                     target.positions[target.ops.index(call)] for call in remaining
                 ),
             )
-        return resume_cache[key]
+        return self.resume_cache[key]
 
     def find_merge(
-        point: tuple[int, int], exclude: _Compiled
+        self, point: tuple[int, int], exclude: _Compiled
     ) -> tuple[_Compiled, list[OpCall]] | None:
+        """Find where a leaf ending at ``point`` reconnects, if anywhere.
+
+        Tests every other stroke's final vertex, then every straight leg
+        (exact integer cross/dot product; no tolerance needed).
+        """
         py, px = point
-        for target, vertices, ops in strokes:
+        for target, vertices, ops in self.strokes:
             if target is exclude:
                 # A leaf trivially matches its own final vertex; skip it.
                 continue
@@ -155,14 +178,19 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
                     return target, [c for c in ops if c.index >= i + 1]
         return None
 
-    root = build(stroke)
-    for leaf in leaves:
-        match = find_merge(leaf.end, exclude=leaf)
-        if match is None:
-            continue
-        target, remaining = match
-        leaf.goto = resume(target, remaining)
-    return root
+
+def _compile(stroke: Stroke, unit: int) -> _Compiled:
+    """Classify every stroke in ``stroke``'s tree exactly once, recursively.
+
+    Also recovers the loop-back link: every leaf's final vertex is tested by
+    ``find_merge`` against every other stroke's final vertex and straight
+    legs (exact integer cross/dot product; no tolerance needed).  A match on
+    a stroke's own final vertex resumes at that node; a mid-leg match builds
+    a synthetic node holding the remaining ops.  A stroke never matches its
+    own final vertex.  The whole tree is built before linking, since a target
+    can be defined after the leaf that jumps to it.
+    """
+    return _TreeCompiler(unit).compile(stroke)
 
 
 def compile_program(stroke: Stroke, unit: int | None = None) -> _Compiled:

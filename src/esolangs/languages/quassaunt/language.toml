@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 3
+
+[proof_status]
+labels = ["tree"]
+qualification = "each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched"
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "linear: at most 5⌊L/57⌋ + 21n + 9 steps: five a stored node, 21 a level"
+workspace = "linear: at most 24L bits: the running code, the stored code and the stack, each within the source"
+
+[generator_sizes]
+"00000001" = { commands = 107, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 107, "7" = 107 }, source_units = 1110 }
+"00001100" = { commands = 98, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 98, "7" = 98 }, source_units = 1039 }
+"00110110" = { commands = 117, commands_by_row = { "0" = 108, "1" = 108, "2" = 108, "3" = 108, "4" = 117, "5" = 117, "6" = 117, "7" = 117 }, source_units = 1542 }
+"0110" = { commands = 76, commands_by_row = { "0" = 76, "1" = 76, "2" = 76, "3" = 76 }, source_units = 820 }
+"01101001" = { commands = 107, commands_by_row = { "0" = 107, "1" = 107, "2" = 107, "3" = 107, "4" = 107, "5" = 107, "6" = 107, "7" = 107 }, source_units = 1250 }
+"0110100110010110" = { commands = 138, commands_by_row = { "0" = 138, "1" = 138, "2" = 138, "3" = 138, "4" = 138, "5" = 138, "6" = 138, "7" = 138, "8" = 138, "9" = 138, "10" = 138, "11" = 138, "12" = 138, "13" = 138, "14" = 138, "15" = 138 }, source_units = 1680 }
+"1101001101101101" = { commands = 153, commands_by_row = { "0" = 144, "1" = 144, "2" = 153, "3" = 153, "4" = 144, "5" = 144, "6" = 144, "7" = 144, "8" = 153, "9" = 153, "10" = 153, "11" = 153, "12" = 144, "13" = 144, "14" = 153, "15" = 153 }, source_units = 2188 }
+"11111110" = { commands = 107, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 107, "7" = 107 }, source_units = 1110 }

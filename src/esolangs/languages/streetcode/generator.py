@@ -16,7 +16,7 @@ upper bound on sharing before the routing that would merge two paths.
 
 Size:
     O(T) from six inputs, nine rows; n=4 parity: 3,391 chars, n=10 random
-    1847: 20,962 chars, n=10 parity: 20,962 chars.
+    1847: 21,421 chars, n=10 parity: 21,421 chars.
 
 Decisions:
     A half-turn rotation only strips trailing blanks (0.0% by area at n=2-8,
@@ -51,6 +51,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, shortest
+from esolangs.languages.streetcode.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -166,8 +167,8 @@ def _streetcode_tree(table: str) -> list[str]:
     if len(table) > _TREE_CACHE_MAX:
         return _streetcode_tree_span(table, 0, len(table), constant_span_test(table))
     # Copied out: the cache hands back the same object to every caller, and
-    # ``_streetcode_combine`` and ``_streetcode_lift`` both treat their rows
-    # as read-only today, which is not a property to leave load-bearing.
+    # ``_streetcode_combine`` treats its rows as read-only today, which is
+    # not a property to leave load-bearing.
     return list(_streetcode_tree_memo(table))
 
 
@@ -188,9 +189,9 @@ def _streetcode_tree_span(
     def child(lo: int, hi: int) -> list[str]:
         if constant(lo, hi):
             return _streetcode_leaf(int(table[lo]), skipped)
-        if hi - lo <= _TREE_CACHE_MAX:
-            return list(_streetcode_tree_memo(table[lo:hi]))
-        return _streetcode_tree_span(table, lo, hi, constant)
+        # A child is half a span, and spans start at most 32 long (the tree
+        # is only built through five inputs), so every child fits the memo.
+        return list(_streetcode_tree_memo(table[lo:hi]))
 
     return _streetcode_join(child(start, middle), child(middle, stop))
 
@@ -254,52 +255,6 @@ def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:
         hall.append(row)
 
     return _streetcode_combine([hall, [*top, *bot]])
-
-
-def _streetcode_lift(rows: list[str]) -> list[str]:
-    """Run the leading instructions westbound along row 1 instead of row 2.
-
-    Row 1 is the blank oncoming lane, so starting the car there frees the
-    leading run's columns (nine for the ring's labels, seven for the
-    hallway's) from every row.  Written East-to-West, hairpinning at the west
-    wall.  The run's leading ``^`` keeps cell 0 nonzero across every loop
-    mouth, so no junction captures the car.
-    """
-    lane = rows[2]
-    # The prefix runs from the ``C`` to the first blank; what follows it
-    # belongs to loops the car only meets after the hairpin.
-    start = lane.index("C")
-    end = start
-    while end < len(lane) and lane[end] != " ":
-        end += 1
-
-    width = max(len(row) for row in rows)
-    grid = [list(row.ljust(width)) for row in rows]
-    prefix = "".join(grid[2][start:end])
-    # Drop the columns the prefix occupied, from every row.
-    kept = [c for c in range(width) if not (start <= c < end)]
-    grid = [[row[c] for c in kept] for row in grid]
-
-    # Write it into row 1 reversed, ending against the eastern wall, which
-    # is found rather than assumed to be the last column: a block hanging
-    # below the street can be wider than the street, and ``width`` is the
-    # widest row of the whole grid.  ``generate("Streetcode", "0001", width=20)``
-    # was one of four two-input tables whose prefix landed outside the wall.
-    east = "".join(grid[0]).rindex("+") - 1
-    for i, char in enumerate(prefix):
-        grid[1][east - i] = char
-
-    # With the label gone, the first loop's block is flush against the
-    # street's western wall, which leaves two wall columns side by side:
-    # the street's own, walling rows 0-3, and the block's, walling rows 3
-    # down.  They only ever meet at row 3, so one column does for both --
-    # drop the street's and let the block's carry the street rows too,
-    # taking one more column off every row.
-    grid = [row[1:] for row in grid]
-    grid[0][0] = "+"
-    grid[1][0] = "|"
-    grid[2][0] = "|"
-    return ["".join(row).rstrip() for row in grid]
 
 
 def _streetcode_populate(n: int) -> list[str]:
@@ -584,7 +539,11 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     # ``pending`` trailing ignored inputs are lone ``I`` between the last
     # mouth and the tail; each overwrites the cell CP rests on, one east of
     # the answer, which the tail's ``_`` leaves behind.
-    mouths = _streetcode_mouths(n, max(len(fill) + 3, len(_TAIL) + pending + 1), gaps)
+    # The tail gets its own columns between the fill and the first mouth.
+    # Overlapping it onto the fill's columns saved a fixed ~51 columns --
+    # 8.6% of area at n=7, 6.0% at n=8, a share falling with arity -- under
+    # the genuine-percentage rule in docs/CONTRIBUTING.md.
+    mouths = _streetcode_mouths(n, len(fill) + 3 + len(_TAIL) + pending, gaps)
     width = mouths[0][0] + _READ_RUN + 2 + gaps[0]
     grid: dict[tuple[int, int], str] = {}
     for col in range(width + 2):
@@ -610,9 +569,7 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
 
 def _streetcode_hallway_program(n: int, tree: list[str]) -> str:
     """Render the narrow per-input layout used for width selection."""
-    return "\n".join(
-        _streetcode_lift(_streetcode_combine([_streetcode_populate(n), tree]))
-    )
+    return "\n".join(_streetcode_combine([_streetcode_populate(n), tree]))
 
 
 def _streetcode_shared_program(n: int, tree: list[str]) -> str:
@@ -677,9 +634,11 @@ def _streetcode_bounds(rows: list[str], target: int, *, east: bool) -> list[int]
         start = bounds[-1]
         within = list(cuts(range(start + 4, start + target + 1)))
         beyond = cuts(range(start + target + 1, span))
-        cut = within[-1] if within else next(beyond, None)
-        if cut is None:
-            break
+        # A cut always remains in range: columns 5 and ``span - 5`` are
+        # legal cuts at the street's plain ends, and every caller passes
+        # ``target >= 8``, so this pass starts at most ``span - 9`` and
+        # the far end's cut lies in the searched range either direction.
+        cut = within[-1] if within else next(beyond)
         bounds.append(cut)
     bounds.append(span)
     return [span - bound for bound in reversed(bounds)] if east else bounds
@@ -805,10 +764,6 @@ def _tree_shapes(
     # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
     # decisively as the input count grows.
     programs = [_streetcode_hallway_program(n, tree)] if hallway else []
-    # The shared shape is not lifted: its prefix is as long as the street it
-    # heads, so a westbound run of it crosses the loops' own mouths, and at
-    # each one CP names a cell nothing has seeded yet.  No ordering of the
-    # seeds avoids that.
     programs.append(_streetcode_shared_program(n, tree))
     # At five the flat lookup wins on dense and parity tables and loses on
     # one that folds, so it is compared; without it parity at five costs
@@ -874,4 +829,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     empty_program="Streetcode program cannot be empty",
+    proof_execution=(execution, True, (6, 8)),
+    proof_workspace=(workspace, True, (6, 7)),
 )

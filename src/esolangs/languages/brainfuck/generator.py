@@ -68,18 +68,8 @@ class _PendingKey(NamedTuple):
 _BankCost = ContinuationCost[_PendingKey]
 
 
-@dataclass
-class _BankState:
-    """Mutable working state threaded through the bank builders."""
-
-    out: list[str]
-    count: int
-    pos: int
-    targets: dict[_PendingKey, tuple[int, int | None]]
-
-
 class _BankPlan(NamedTuple):
-    """Read-only inputs the bank builders close over."""
+    """Read-only inputs every bank phase reads: layout, labels and words."""
 
     n: int
     depth: int
@@ -95,62 +85,69 @@ class _BankPlan(NamedTuple):
     words: dict[int, str]
 
 
-def _emit(state: _BankState, code: str) -> None:
-    """Append emitted text and account its length."""
-    state.out.append(code)
-    state.count += len(code)
+@dataclass
+class _BankState:
+    """The bank's emitted text so far, changed only by its named transitions.
 
-
-def _move(state: _BankState, target: int) -> None:
-    """Emit the run reaching ``target`` and move the head there."""
-    _emit(state, move_text(state.pos, target, ">", "<"))
-    state.pos = target
-
-
-def _drain(state: _BankState, source: int, target: int) -> None:
-    """Emit ``[-]``-style transfer of ``source`` into ``target``; ends on source."""
-    _move(state, source)
-    _emit(state, "[-")
-    _move(state, target)
-    _emit(state, "+")
-    _move(state, source)
-    _emit(state, "]")
-
-
-def _clear(state: _BankState, plan: _BankPlan, cell: int) -> int:
-    """Clear ``cell`` and return its command price."""
-    _move(state, cell)
-    _emit(state, "[-]")
-    return 1 if cell in plan.unwritten else 3
-
-
-def _inline(state: _BankState, plan: _BankPlan, word: str) -> int:
-    """Emit a shared body for ``word``; return its command count.
-
-    Each word is its own definition: defer its greatest repeat, so a
-    nested body shares like a top-level one.  Zero-constant elision
-    stays off -- its price is not the bank's price model.
+    ``count`` is always the length of the joined ``out`` text, ``pos`` is
+    always the cell the head rests on, and ``targets`` records each
+    deferred body once, in the order its prefix first priced it.
     """
-    code, commands = flag_tree_body(
-        word,
-        tuple(range(plan.depth, plan.n)),
-        state.pos,
-        plan.result,
-        shared=repeated_block(word),
-        fold_zero=False,
-    )
-    _emit(state, code)
-    state.pos = plan.result
-    return commands
 
+    out: list[str]
+    count: int
+    pos: int
+    targets: dict[_PendingKey, tuple[int, int | None]]
 
-def _register_target(
-    state: _BankState, code: int, free: int | None = None
-) -> _PendingKey:
-    """Record a deferred body and return its key."""
-    key = _PendingKey(code, free)
-    state.targets[key] = (code, free)
-    return key
+    def emit(self, code: str) -> None:
+        """Append emitted text and account its length."""
+        self.out.append(code)
+        self.count += len(code)
+
+    def move_to(self, target: int) -> None:
+        """Emit the run reaching ``target`` and move the head there."""
+        self.emit(move_text(self.pos, target, ">", "<"))
+        self.pos = target
+
+    def drain(self, source: int, target: int) -> None:
+        """Emit a ``[-]``-style transfer of ``source`` into ``target``."""
+        self.move_to(source)
+        self.emit("[-")
+        self.move_to(target)
+        self.emit("+")
+        self.move_to(source)
+        self.emit("]")
+
+    def clear(self, plan: _BankPlan, cell: int) -> int:
+        """Clear ``cell`` and return its command price."""
+        self.move_to(cell)
+        self.emit("[-]")
+        return 1 if cell in plan.unwritten else 3
+
+    def inline(self, plan: _BankPlan, word: str) -> int:
+        """Emit a shared body for ``word``; return its command count.
+
+        Each word is its own definition: defer its greatest repeat, so a
+        nested body shares like a top-level one.  Zero-constant elision
+        stays off -- its price is not the bank's price model.
+        """
+        code, commands = flag_tree_body(
+            word,
+            tuple(range(plan.depth, plan.n)),
+            self.pos,
+            plan.result,
+            shared=repeated_block(word),
+            fold_zero=False,
+        )
+        self.emit(code)
+        self.pos = plan.result
+        return commands
+
+    def register_target(self, code: int, free: int | None = None) -> _PendingKey:
+        """Record a deferred body and return its key."""
+        key = _PendingKey(code, free)
+        self.targets[key] = (code, free)
+        return key
 
 
 def _split[Branch](
@@ -167,33 +164,90 @@ def _split[Branch](
     """
     beginning = state.count
     flag = bit + 1
-    _move(state, flag)
-    _emit(state, "+")
-    _move(state, bit)
+    state.move_to(flag)
+    state.emit("+")
+    state.move_to(bit)
     zero_entry = state.count - beginning + 1
-    _emit(state, "[-")
-    _move(state, flag)
-    _emit(state, "-")
+    state.emit("[-")
+    state.move_to(flag)
+    state.emit("-")
     one_entry = state.count - beginning
     one_body = one()
     finish = state.count
-    _move(state, bit)
-    _emit(state, "]")
+    state.move_to(bit)
+    state.emit("]")
     one_finish = state.count - finish
     zero_start = state.count
-    _move(state, flag)
-    _emit(state, "[-")
+    state.move_to(flag)
+    state.emit("[-")
     one_finish += state.count - zero_start - 1
     zero_entry += state.count - zero_start
     zero_body = zero()
     finish = state.count
-    _move(state, flag)
-    _emit(state, "]")
+    state.move_to(flag)
+    state.emit("]")
     return (
         one_body,
         one_entry + one_finish,
         zero_body,
         zero_entry + state.count - finish,
+    )
+
+
+def _leaf_cost(
+    state: _BankState,
+    plan: _BankPlan,
+    lo: int,
+    hi: int,
+    free: int | None,
+    beginning: int,
+    sub_id: int,
+) -> _BankCost:
+    """Price a bank prefix that has reached the suffix depth."""
+    code = plan.selected.get(sub_id)
+    if code is not None and (not (code & plan.high_bit) or free is not None):
+        cells = (*plan.flags, plan.result, free)
+        for bit, cell in enumerate(cells):
+            if code & (1 << bit):
+                if cell is None:
+                    raise ValueError("a high marker needs a retired input")
+                state.move_to(cell)
+                state.emit("+")
+        return _BankCost(
+            state.count - beginning,
+            target=state.register_target(code, free if code & plan.high_bit else None),
+        )
+    commands = state.inline(plan, plan.table[lo:hi])
+    if plan.constant(lo, hi):
+        return _BankCost(
+            commands,
+            target=state.register_target(
+                plan.completed_one if plan.table[lo] == "1" else 0
+            ),
+        )
+    return _BankCost(
+        commands,
+        (
+            _BankCost(0, target=state.register_target(0)),
+            _BankCost(0, target=state.register_target(plan.completed_one)),
+        ),
+    )
+
+
+def _constant_cost(
+    state: _BankState, plan: _BankPlan, i: int, lo: int, beginning: int
+) -> _BankCost:
+    """Price a constant bank prefix, clearing its unvisited inputs."""
+    if plan.table[lo] == "1":
+        state.move_to(plan.result)
+        state.emit("+")
+    # Unvisited prefix bits must not masquerade as a high marker.
+    adjustment = sum(state.clear(plan, 2 * level) - 3 for level in range(i, plan.depth))
+    return _BankCost(
+        state.count - beginning + adjustment,
+        target=state.register_target(
+            plan.completed_one if plan.table[lo] == "1" else 0
+        ),
     )
 
 
@@ -204,68 +258,29 @@ def _node(
     beginning = state.count
     sub_id = plan.ids[i][lo >> (plan.n - i)]
     if i == plan.depth:
-        code = plan.selected.get(sub_id)
-        if code is not None and (not (code & plan.high_bit) or free is not None):
-            cells = (*plan.flags, plan.result, free)
-            for bit, cell in enumerate(cells):
-                if code & (1 << bit):
-                    if cell is None:
-                        raise ValueError("a high marker needs a retired input")
-                    _move(state, cell)
-                    _emit(state, "+")
-            return _BankCost(
-                state.count - beginning,
-                target=_register_target(
-                    state, code, free if code & plan.high_bit else None
-                ),
-            )
-        commands = _inline(state, plan, plan.table[lo:hi])
-        if plan.constant(lo, hi):
-            return _BankCost(
-                commands,
-                target=_register_target(
-                    state, plan.completed_one if plan.table[lo] == "1" else 0
-                ),
-            )
-        return _BankCost(
-            commands,
-            (
-                _BankCost(0, target=_register_target(state, 0)),
-                _BankCost(0, target=_register_target(state, plan.completed_one)),
-            ),
-        )
+        return _leaf_cost(state, plan, lo, hi, free, beginning, sub_id)
     if plan.constant(lo, hi):
-        if plan.table[lo] == "1":
-            _move(state, plan.result)
-            _emit(state, "+")
-        # Unvisited prefix bits must not masquerade as a high marker.
-        adjustment = sum(
-            _clear(state, plan, 2 * level) - 3 for level in range(i, plan.depth)
-        )
-        return _BankCost(
-            state.count - beginning + adjustment,
-            target=_register_target(
-                state, plan.completed_one if plan.table[lo] == "1" else 0
-            ),
-        )
+        return _constant_cost(state, plan, i, lo, beginning)
     mid = (lo + hi) // 2
     zero_id, one_id = (
         plan.ids[i + 1][lo >> (plan.n - i - 1)],
         plan.ids[i + 1][mid >> (plan.n - i - 1)],
     )
     if zero_id == one_id:
-        cleared = _clear(state, plan, 2 * i)
+        cleared = state.clear(plan, 2 * i)
         prefix = state.count - beginning + cleared - 3
         return _BankCost(prefix, (_node(state, plan, i + 1, lo, mid, 2 * i),))
+
+    def one_branch() -> _BankCost:
+        return _node(state, plan, i + 1, mid, hi, free)
+
+    def zero_branch() -> _BankCost:
+        return _node(state, plan, i + 1, lo, mid, 2 * i)
+
     # An active one guard still tests its cleared input when it closes.
     # Only a zero arm (whose one test has finished) or an ignored input
     # can hold the high marker. With neither available, keep this copy.
-    one, one_cost, zero, zero_cost = _split(
-        state,
-        2 * i,
-        lambda: _node(state, plan, i + 1, mid, hi, free),
-        lambda: _node(state, plan, i + 1, lo, mid, 2 * i),
-    )
+    one, one_cost, zero, zero_cost = _split(state, 2 * i, one_branch, zero_branch)
     return _BankCost(0, (_BankCost(one_cost, (one,)), _BankCost(zero_cost, (zero,))))
 
 
@@ -281,10 +296,10 @@ def _decode(
     if bit < 0:
         code = labels[0]
         if code == plan.completed_one:
-            _move(state, plan.result)
-            _emit(state, "+")
+            state.move_to(plan.result)
+            state.emit("+")
         elif code != 0:
-            return {code: _inline(state, plan, plan.words[code])}
+            return {code: state.inline(plan, plan.words[code])}
         return {code: state.count - beginning}
     groups = [
         tuple(code for code in labels if (code >> bit) & 1 == value) for value in (0, 1)
@@ -292,8 +307,8 @@ def _decode(
     cell = scratch[bit]
     if not groups[0] or not groups[1]:
         if groups[1]:
-            _move(state, cell)
-            _emit(state, "-")
+            state.move_to(cell)
+            state.emit("-")
         flat = state.count - beginning
         return {
             label: flat + cost
@@ -301,29 +316,27 @@ def _decode(
                 state, plan, scratch, bit - 1, groups[1] or groups[0]
             ).items()
         }
-    one, one_cost, zero, zero_cost = _split(
-        state,
-        cell,
-        lambda: _decode(state, plan, scratch, bit - 1, groups[1]),
-        lambda: _decode(state, plan, scratch, bit - 1, groups[0]),
-    )
+
+    def one_labels() -> dict[int, int]:
+        return _decode(state, plan, scratch, bit - 1, groups[1])
+
+    def zero_labels() -> dict[int, int]:
+        return _decode(state, plan, scratch, bit - 1, groups[0])
+
+    one, one_cost, zero, zero_cost = _split(state, cell, one_labels, zero_labels)
     return {
         **{label: cost + one_cost for label, cost in one.items()},
         **{label: cost + zero_cost for label, cost in zero.items()},
     }
 
 
-def binary_bank(
-    table: str, command_budget: int, *, remaining: int = 2
-) -> tuple[str, int] | None:
-    """Return a priced suffix bank after the standard identity-order reads."""
+def _make_bank_plan(table: str, remaining: int) -> _BankPlan | None:
+    """Plan a suffix bank, or return None when this level cannot bank."""
     n = _validate_truth_table(table)
     depth = n - remaining
     if remaining < 1 or depth < 2:
         return None
-    start, result = 2 * (n - 1), 2 * n
     ids = subtree_ids(table)
-    constant = constant_span_test(table)
     blocks = [(d, row) for d, row, _ in _repeated_blocks(table) if d == depth]
     if len(blocks) < 2:
         return None
@@ -338,8 +351,6 @@ def binary_bank(
             return None
         result_bit = min(remaining, planned_width - 1)
     completed_one = 1 << result_bit
-    high_bit = 1 << (remaining + 1)
-    flags = tuple(2 * (depth + i) + 1 for i in range(result_bit))
     kept = essential_inputs(table, n)
     # Standard reads overwrite the next kept cell for ignored inputs. Their
     # own cells before the last kept input remain zero, so [-] costs one step.
@@ -347,53 +358,76 @@ def binary_bank(
     codes = [value for value in range(1, 1 << planned_width) if value != completed_one]
     # Reserve R's digit for completed one. All other digits use unread flags;
     # only a word exceeding that capacity needs the retired-input high bit.
-    selected = {
-        ids[depth][row >> remaining]: codes[i] for i, (_, row) in enumerate(blocks)
-    }
-    words = {
-        codes[i]: table[row : row + (1 << remaining)]
-        for i, (_, row) in enumerate(blocks)
-    }
-    plan = _BankPlan(
+    return _BankPlan(
         n=n,
         depth=depth,
         ids=ids,
-        constant=constant,
-        flags=flags,
-        result=result,
-        selected=selected,
+        constant=constant_span_test(table),
+        flags=tuple(2 * (depth + i) + 1 for i in range(result_bit)),
+        result=2 * n,
+        selected={
+            ids[depth][row >> remaining]: codes[i] for i, (_, row) in enumerate(blocks)
+        },
         completed_one=completed_one,
-        high_bit=high_bit,
+        high_bit=1 << (remaining + 1),
         table=table,
         unwritten=unwritten,
-        words=words,
+        words={
+            codes[i]: table[row : row + (1 << remaining)]
+            for i, (_, row) in enumerate(blocks)
+        },
     )
-    state = _BankState(out=[], count=0, pos=start, targets={})
 
-    prefix = _node(state, plan, 0, 0, len(table), None)
-    labels = tuple(sorted({code for code, _ in state.targets.values()}))
-    width = max(labels).bit_length()
-    if width > depth:
-        return None
-    collector = 2 * (depth - 1) + 1
-    # At most one retired input holds a high marker; every other prefix
-    # input is zero. Collect it before reusing those cells as decoder bits.
+
+def _collect_high_marker(
+    state: _BankState, plan: _BankPlan, *, collect: bool
+) -> tuple[int, int]:
+    """Drain any retired-input high marker into its collector cell.
+
+    Return the collector cell and the price every tail pays for the
+    collection, whether or not a marker was present.
+    """
+    collector = 2 * (plan.depth - 1) + 1
     collector_base = 0
-    for i in range(depth if width == remaining + 2 else 0):
+    for i in range(plan.depth if collect else 0):
         collector_base += abs(state.pos - 2 * i) + 1
-        _drain(state, 2 * i, collector)
-    scratch = tuple(2 * (depth - width + i) for i in range(width))
-    metadata = (*flags, result, collector)[:width]
+        state.drain(2 * i, collector)
+    return collector, collector_base
+
+
+def _transfer_label_bits(
+    state: _BankState, plan: _BankPlan, collector: int, width: int
+) -> tuple[tuple[int, ...], int, list[int]]:
+    """Move the label metadata into decoder scratch cells.
+
+    Return the scratch cells, the price every tail pays for the transfer,
+    and the extra price a tail pays for each label bit it sets.
+    """
+    scratch = tuple(2 * (plan.depth - width + i) for i in range(width))
+    metadata = (*plan.flags, plan.result, collector)[:width]
     transfer_base = 0
-    transfer_active = []
+    transfer_active: list[int] = []
     for source, target in zip(metadata, scratch, strict=True):
         transfer_base += abs(state.pos - source) + 1
         transfer_active.append(2 * abs(source - target) + 3)
-        _drain(state, source, target)
+        state.drain(source, target)
+    return scratch, transfer_base, transfer_active
 
-    decoder = _decode(state, plan, scratch, width - 1, labels)
-    final_move = abs(result - state.pos)
-    _move(state, result)
+
+def _price_bank(
+    state: _BankState,
+    plan: _BankPlan,
+    prefix: _BankCost,
+    decoder: dict[int, int],
+    *,
+    collector: int,
+    collector_base: int,
+    transfer_base: int,
+    transfer_active: list[int],
+) -> int:
+    """Move to the result cell and price every deferred tail."""
+    final_move = abs(plan.result - state.pos)
+    state.move_to(plan.result)
     tails: dict[_PendingKey | None, int] = {
         key: collector_base
         + (2 * abs(collector - free) + 3 if free is not None else 0)
@@ -403,7 +437,42 @@ def binary_bank(
         + final_move
         for key, (code, free) in state.targets.items()
     }
-    commands = prefix.evaluate(tails)
+    return prefix.evaluate(tails)
+
+
+def binary_bank(
+    table: str, command_budget: int, *, remaining: int = 2
+) -> tuple[str, int] | None:
+    """Return a priced suffix bank after the standard identity-order reads."""
+    plan = _make_bank_plan(table, remaining)
+    if plan is None:
+        return None
+    state = _BankState(out=[], count=0, pos=2 * (plan.n - 1), targets={})
+    # Phase 1: emit the prefix, registering each deferred body it prices.
+    prefix = _node(state, plan, 0, 0, len(table), None)
+    labels = tuple(sorted({code for code, _ in state.targets.values()}))
+    width = max(labels).bit_length()
+    # Phase 2: at most one retired input holds a high marker; every other
+    # prefix input is zero. Collect it before its cells become decoder bits.
+    collector, collector_base = _collect_high_marker(
+        state, plan, collect=width == remaining + 2
+    )
+    # Phase 3: move the label bits into scratch, then decode shared bodies.
+    scratch, transfer_base, transfer_active = _transfer_label_bits(
+        state, plan, collector, width
+    )
+    decoder = _decode(state, plan, scratch, width - 1, labels)
+    # Phase 4: price the whole bank through its deferred tails.
+    commands = _price_bank(
+        state,
+        plan,
+        prefix,
+        decoder,
+        collector=collector,
+        collector_base=collector_base,
+        transfer_base=transfer_base,
+        transfer_active=transfer_active,
+    )
     # The body keeps every value binary and every address lies in 0..2n.
     # Adding ASCII 48 only to R therefore preserves the 2n+6 tape-bit cap.
     if commands > command_budget:

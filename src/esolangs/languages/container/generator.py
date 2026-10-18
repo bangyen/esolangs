@@ -29,6 +29,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.container.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -67,63 +68,93 @@ class _TreePlan:
     relays: dict[int, int]
 
 
-def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _TreePlan:
-    """Plan pruned nodes, shared parents, and opposite-side relays."""
-    size = 2**n
+class _TreePlanner:
+    """Plan pruned nodes, shared parents, and opposite-side relays.
 
-    nodes: list[_Node] = []
-    parents: dict[int, list[int]] = {}
-    relays: dict[int, int] = {}
-    levels: list[list[_Node]] = [[] for _ in range(n + 1)]
-    ids = subtree_ids(truth_table) if share else []
-    first: dict[tuple[int, int, int], int] = {}
-    either: dict[tuple[int, int], int] = {}
+    The candidate levels, the canonical-copy maps and the plan under
+    construction are shared by every step, so they live on ``self``
+    instead of in closures over the enclosing function's locals.
+    """
 
-    def settle(depth: int, lo: int) -> int:
+    def __init__(self, truth_table: str, n: int, *, prune: bool, share: bool) -> None:
+        self.truth_table = truth_table
+        self.n = n
+        self.prune = prune
+        self.share = share
+        self.size = 2**n
+        self.nodes: list[_Node] = []
+        self.parents: dict[int, list[int]] = {}
+        self.relays: dict[int, int] = {}
+        self.levels: list[list[_Node]] = [[] for _ in range(n + 1)]
+        self.ids = subtree_ids(truth_table) if share else []
+        self.first: dict[tuple[int, int, int], int] = {}
+        self.either: dict[tuple[int, int], int] = {}
+
+    def _settle(self, depth: int, lo: int) -> int:
         """Return the first level whose halves differ."""
-        span = size >> depth
+        span = self.size >> depth
         while (
-            prune
-            and depth < n
-            and truth_table[lo : lo + span // 2]
-            == truth_table[lo + span // 2 : lo + span]
+            self.prune
+            and depth < self.n
+            and self.truth_table[lo : lo + span // 2]
+            == self.truth_table[lo + span // 2 : lo + span]
         ):
             depth += 1
             span //= 2
         return depth
 
-    def children(tests: int, lo: int, parent: int) -> None:
-        if tests < n:
-            half = size >> (tests + 1)
-            levels[tests + 1].extend(
-                _Node(tests + 1, settle(tests + 1, row), row, parent)
+    def _children(self, tests: int, lo: int, parent: int) -> None:
+        if tests < self.n:
+            half = self.size >> (tests + 1)
+            self.levels[tests + 1].extend(
+                _Node(tests + 1, self._settle(tests + 1, row), row, parent)
                 for row in (lo, lo + half)
             )
 
-    root_tests = settle(0, 0)
-    children(root_tests, 0, -1)
-    # Resolve copies before growing them: folded nodes never allocate descendants.
-    # Birth depth and row choose the same canonical copy as the full tree.
-    for level in levels:
-        for node in sorted(level, key=lambda node: node.lo):
-            born, tests, lo, parent = node
-            block = lo >> (n - born)
-            slot = (born, ids[born][block], block & 1) if share else None
-            if slot in first:
-                parents[first[slot]].append(parent)
-                continue
-            i = len(nodes)
-            nodes.append(node)
-            parents[i] = [parent]
-            if slot is not None:
-                first[slot] = i
-                identity = (born, slot[1])
-                if identity in either and tests < n:
-                    relays[i] = either[identity]
-                    continue
-                either.setdefault(identity, i)
-            children(tests, lo, i)
-    return _TreePlan(root_tests, nodes, parents, relays)
+    def _slot(self, node: _Node) -> tuple[int, int, int] | None:
+        if not self.share:
+            return None
+        block = node.lo >> (self.n - node.born)
+        return (node.born, self.ids[node.born][block], block & 1)
+
+    def _adopt(self, node: _Node) -> bool:
+        """Record ``node`` unless it folds into an earlier copy.
+
+        Return whether the node's children still need growing: a folded
+        node never allocates descendants, and a relay's subtree is spent
+        once by the copy it feeds.
+        """
+        slot = self._slot(node)
+        if slot in self.first:
+            self.parents[self.first[slot]].append(node.parent)
+            return False
+        i = len(self.nodes)
+        self.nodes.append(node)
+        self.parents[i] = [node.parent]
+        if slot is not None:
+            self.first[slot] = i
+            identity = (node.born, slot[1])
+            if identity in self.either and node.tests < self.n:
+                self.relays[i] = self.either[identity]
+                return False
+            self.either.setdefault(identity, i)
+        return True
+
+    def build(self) -> _TreePlan:
+        """Resolve copies before growing them, level by level."""
+        root_tests = self._settle(0, 0)
+        self._children(root_tests, 0, -1)
+        # Birth depth and row choose the same canonical copy as the full tree.
+        for level in self.levels:
+            for node in sorted(level, key=lambda node: node.lo):
+                if self._adopt(node):
+                    self._children(node.tests, node.lo, len(self.nodes) - 1)
+        return _TreePlan(root_tests, self.nodes, self.parents, self.relays)
+
+
+def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _TreePlan:
+    """Plan pruned nodes, shared parents, and opposite-side relays."""
+    return _TreePlanner(truth_table, n, prune=prune, share=share).build()
 
 
 def _birth_value(born: int, tests: int) -> int:
@@ -183,95 +214,141 @@ def _container_tree(
     """
     n = _validate_truth_table(truth_table)
     plan = _container_plan(truth_table, n, prune=prune, share=share)
-    nodes, root_tests = plan.nodes, plan.root_tests
-    parents, relays = plan.parents, plan.relays
-    fed: dict[int, list[int]] = {}
-    for relay, target in relays.items():
-        fed.setdefault(target, []).append(relay)
+    return _TreeEmitter(truth_table, n, plan).build()
 
-    def row_of(i: int) -> int:  # the root (-1) is a constant table's only leaf
-        return nodes[i].lo if i >= 0 else 0
 
-    leaves = [i for i, node in enumerate(nodes) if node.tests == n] or [-1]
-    ones = sum(truth_table[row_of(i)] == "1" for i in leaves)
-    invert = ones > len(leaves) - ones
-    wanted = "0" if invert else "1"
-    answers = {i for i in leaves if truth_table[row_of(i)] == wanted}
-    order = [i for i, node in enumerate(nodes) if node.tests < n or i in answers]
+class _TreeEmitter:
+    """Emit one planned tree, phase by phase.
 
-    identifiers = _free_names(_RESERVED)
-    names = {i: next(identifiers) for i in [-1, *order]}
-    keys = {
-        (nodes[i].born - 1, (nodes[i].lo >> (n - nodes[i].born)) & 1) for i in order
-    }
-    gates = {key: next(identifiers) for key in sorted(keys)}
-    root, output_gate = names[-1], next(identifiers)
+    The plan, the leaf selection and the allocated names are read by
+    every phase, so they live on ``self`` instead of being threaded
+    through each emit helper.
+    """
 
-    # A positive delta is spelt unsigned, as ``int`` reads it.
-    lines = ["T:", "1 T>=T"]
-    lines.append(":")  # the empty-named container reads input
-    lines.append("1 T>=0")
-    lines.append("-2 T>=1")
-    for k in range(1, n):
-        lines.append(f"2 T>={2 * k}")
-        lines.append(f"-2 T>={2 * k + 1}")
-    lines.append(f"1 T>={2 * n}")
-    # IN starts at 0.  Only a child's mismatch rule reads it, and the first
-    # read lands after tick 0, when every child is still 0 and clamped.
-    lines.append("IN:")
-    for (k, high), gate in gates.items():
-        sign = 1 if high else -1
-        lines.extend(
-            (
-                f"{gate}={47 if high else 50}:",
-                f"{sign} T>={2 * k}",
-                f"{-2 * sign} T>={2 * k + 1}",
-                f"{sign} T>={2 * k + 2}",
+    def __init__(self, truth_table: str, n: int, plan: _TreePlan) -> None:
+        self.truth_table = truth_table
+        self.n = n
+        self.nodes, self.root_tests = plan.nodes, plan.root_tests
+        self.parents, self.relays = plan.parents, plan.relays
+        self.fed: dict[int, list[int]] = {}
+        for relay, target in self.relays.items():
+            self.fed.setdefault(target, []).append(relay)
+        self._select_leaves()
+        self._allocate_names()
+
+    def _row_of(self, i: int) -> int:
+        # The root (-1) is a constant table's only leaf.
+        return self.nodes[i].lo if i >= 0 else 0
+
+    def _select_leaves(self) -> None:
+        nodes, n, table = self.nodes, self.n, self.truth_table
+        self.leaves = [i for i, node in enumerate(nodes) if node.tests == n] or [-1]
+        ones = sum(table[self._row_of(i)] == "1" for i in self.leaves)
+        self.invert = ones > len(self.leaves) - ones
+        wanted = "0" if self.invert else "1"
+        self.answers = {i for i in self.leaves if table[self._row_of(i)] == wanted}
+        self.order = [
+            i for i, node in enumerate(nodes) if node.tests < n or i in self.answers
+        ]
+
+    def _allocate_names(self) -> None:
+        nodes, n = self.nodes, self.n
+        identifiers = _free_names(_RESERVED)
+        self.names = {i: next(identifiers) for i in [-1, *self.order]}
+        keys = {
+            (nodes[i].born - 1, (nodes[i].lo >> (n - nodes[i].born)) & 1)
+            for i in self.order
+        }
+        self.gates = {key: next(identifiers) for key in sorted(keys)}
+        self.root, self.output_gate = self.names[-1], next(identifiers)
+
+    def _pulse_lines(self) -> list[str]:
+        # A positive delta is spelt unsigned, as ``int`` reads it.
+        lines = ["T:", "1 T>=T"]
+        lines.append(":")  # the empty-named container reads input
+        lines.append("1 T>=0")
+        lines.append("-2 T>=1")
+        for k in range(1, self.n):
+            lines.append(f"2 T>={2 * k}")
+            lines.append(f"-2 T>={2 * k + 1}")
+        lines.append(f"1 T>={2 * self.n}")
+        return lines
+
+    def _gate_lines(self) -> list[str]:
+        # IN starts at 0.  Only a child's mismatch rule reads it, and the
+        # first read lands after tick 0, when every child is 0 and clamped.
+        lines = ["IN:"]
+        for (k, high), gate in self.gates.items():
+            sign = 1 if high else -1
+            lines.extend(
+                (
+                    f"{gate}={47 if high else 50}:",
+                    f"{sign} T>={2 * k}",
+                    f"{-2 * sign} T>={2 * k + 1}",
+                    f"{sign} T>={2 * k + 2}",
+                )
             )
-        )
-    lines.append(f"{root}={2 + 2 * root_tests}:")
-    if root_tests < n:
-        lines.append(f"-1 {root}>=1")
-    for i in order:
-        born, tests = nodes[i].born, nodes[i].tests
-        child = names[i]
+        return lines
+
+    def _root_lines(self) -> list[str]:
+        lines = [f"{self.root}={2 + 2 * self.root_tests}:"]
+        if self.root_tests < self.n:
+            lines.append(f"-1 {self.root}>=1")
+        return lines
+
+    def _node_lines(self, i: int) -> list[str]:
+        born, tests = self.nodes[i].born, self.nodes[i].tests
+        child = self.names[i]
         value = _birth_value(born, tests)
-        lines.append(f"{child}:")
+        lines = [f"{child}:"]
         # The paired parent rules fire only while the parent is exactly 1,
         # and one parent at most is alive: the others are off the path.
-        for parent in parents[i]:
-            lines.append(f"{value} {names[parent]}>=1")
-            lines.append(f"-{value} {names[parent]}>=2")
-        high = (nodes[i].lo >> (n - born)) & 1
-        gate = gates[born - 1, high]
+        for parent in self.parents[i]:
+            lines.append(f"{value} {self.names[parent]}>=1")
+            lines.append(f"-{value} {self.names[parent]}>=2")
+        high = (self.nodes[i].lo >> (self.n - born)) & 1
+        gate = self.gates[born - 1, high]
         mismatch = f"{gate}>=IN" if high else f"IN>={gate}"
         lines.append(f"-{value} {mismatch}")
-        if i in relays:  # alive one tick after its birth, then gone
+        if i in self.relays:  # alive one tick after its birth, then gone
             lines.append(f"-{value} {child}>=1")
-            continue
+            return lines
         # A relay is alive a tick late, so it feeds one less than a parent.
-        for relay in fed.get(i, []):
-            lines.append(f"{value - 1} {names[relay]}>=1")
+        for relay in self.fed.get(i, []):
+            lines.append(f"{value - 1} {self.names[relay]}>=1")
         # Only a node that tests must decay, to be 1 when its bit is in
         # IN.  A leaf keeps its birth value, below the output gate's rest.
-        if tests < n:
+        if tests < self.n:
             lines.append(f"-1 {child}>=1")
-    peak = max(_birth_value(nodes[i].born if i >= 0 else 0, n) for i in leaves)
-    rest = peak + 1 if peak > 2 else 2
-    # The gate is never restored: EXIT halts the tick after PRINT.
-    lines.append(f"{output_gate}={rest}:")
-    lines.append(f"-{rest - 1} T>={2 * n - 1}")
-    # Whichever leaf set is smaller wins; ties keep the plain form.  The
-    # gate alone keeps OUT at its base until the printing tick.
-    lines.append(f"OUT={_ASCII_ZERO + 1 if invert else _ASCII_ZERO}:")
-    delta = "-1" if invert else "1"
-    for i in sorted(answers, key=row_of):
-        lines.append(f"{delta} {names[i]}>={output_gate}")
-    lines.append("PRINT:")
-    lines.append(f"1 T>={2 * n}")
-    lines.append("EXIT=1:")
-    lines.append(f"-1 T>={2 * n + 1}")
-    return "\n".join(lines)
+        return lines
+
+    def _output_lines(self) -> list[str]:
+        n, nodes = self.n, self.nodes
+        peak = max(_birth_value(nodes[i].born if i >= 0 else 0, n) for i in self.leaves)
+        rest = peak + 1 if peak > 2 else 2
+        # The gate is never restored: EXIT halts the tick after PRINT.
+        lines = [f"{self.output_gate}={rest}:", f"-{rest - 1} T>={2 * n - 1}"]
+        # Whichever leaf set is smaller wins; ties keep the plain form.  The
+        # gate alone keeps OUT at its base until the printing tick.
+        lines.append(f"OUT={_ASCII_ZERO + 1 if self.invert else _ASCII_ZERO}:")
+        delta = "-1" if self.invert else "1"
+        for i in sorted(self.answers, key=self._row_of):
+            lines.append(f"{delta} {self.names[i]}>={self.output_gate}")
+        lines.append("PRINT:")
+        lines.append(f"1 T>={2 * n}")
+        lines.append("EXIT=1:")
+        lines.append(f"-1 T>={2 * n + 1}")
+        return lines
+
+    def build(self) -> str:
+        """Assemble the phases in program order."""
+        lines = self._pulse_lines()
+        lines += self._gate_lines()
+        lines += self._root_lines()
+        for i in self.order:
+            lines += self._node_lines(i)
+        lines += self._output_lines()
+        return "\n".join(lines)
 
 
 def _threshold_deltas(truth_table: str, n: int, *, mirror: bool) -> list[int]:
@@ -308,6 +385,25 @@ def _container_threshold(truth_table: str) -> str:
     (``"01" * 2**(n-1)``, every row a step) into one line.
     """
     n = _validate_truth_table(truth_table)
+    weights, truth_table, essential = _threshold_weights(truth_table, n)
+    mirror, deltas, steps = _threshold_choice(truth_table, essential)
+
+    identifiers = _free_names(_RESERVED)
+    counter, gate = next(identifiers), next(identifiers)
+    latches = [next(identifiers) for _ in range(n)]
+    windows = [next(identifiers) for _ in range(n)]
+
+    lines = _threshold_pulse_lines(n)
+    lines += _threshold_window_lines(windows, latches, n)
+    lines += _threshold_counter_lines(
+        gate, counter, weights, essential, latches, n, mirror=mirror
+    )
+    lines += _threshold_output_lines(counter, deltas, steps, n)
+    return "\n".join(lines)
+
+
+def _threshold_weights(truth_table: str, n: int) -> tuple[list[int], str, int]:
+    """Return the input weights, the projected table and its essential count."""
     # An ignored input is latched like any other but adds no weight, so the
     # steps are those of the table over the rest.  A constant keeps them all.
     weights, projected = input_weights(truth_table, n)
@@ -315,7 +411,13 @@ def _container_threshold(truth_table: str) -> str:
         truth_table = projected
     else:
         weights = [1 << (n - 1 - k) for k in range(n)]
-    essential = sum(map(bool, weights))
+    return weights, truth_table, sum(map(bool, weights))
+
+
+def _threshold_choice(
+    truth_table: str, essential: int
+) -> tuple[bool, list[int], list[tuple[int, int]]]:
+    """Return the cheaper of the plain and mirrored step orders."""
     # The mirror saves 15-44% of chars on tables tiled from two blocks (n=7..12,
     # 4 or 16 blocks, 20 tables each) and 0.6-2.8% on random ones.
     mirrored = _threshold_deltas(truth_table, essential, mirror=True)
@@ -323,20 +425,26 @@ def _container_threshold(truth_table: str) -> str:
     mirror = sum(map(bool, mirrored[1:])) < sum(map(bool, plain[1:]))
     deltas = mirrored if mirror else plain
     steps = [(row, delta) for row, delta in enumerate(deltas) if row and delta]
+    return mirror, deltas, steps
 
-    identifiers = _free_names(_RESERVED)
-    counter, gate = next(identifiers), next(identifiers)
-    latches = [next(identifiers) for _ in range(n)]
-    windows = [next(identifiers) for _ in range(n)]
 
+def _threshold_pulse_lines(n: int) -> list[str]:
+    """Return the tick pulse and the unmatched ``IN`` declaration."""
     lines = ["T:", "+1 T>=T", ":", "+1 T>=0", "-2 T>=1"]
     for k in range(1, n):
         lines.extend((f"+2 T>={2 * k}", f"-2 T>={2 * k + 1}"))
     lines.append(f"+1 T>={2 * n}")  # cancels the pulse, so there is no n+1th read
     lines.append("IN=50:")  # a value no real byte matches
+    return lines
 
+
+def _threshold_window_lines(
+    windows: list[str], latches: list[str], n: int
+) -> list[str]:
+    """Return each input's window and the latch it feeds."""
     # Window k is 49 for exactly the tick input k sits in IN and 65
     # otherwise, so ``IN>=window`` holds exactly when that bit is a one.
+    lines: list[str] = []
     for k in range(n):
         window = windows[k]
         lines.extend(
@@ -349,29 +457,46 @@ def _container_threshold(truth_table: str) -> str:
                 f"+1 IN>={window}",
             )
         )
+    return lines
 
+
+def _threshold_counter_lines(
+    gate: str,
+    counter: str,
+    weights: list[int],
+    essential: int,
+    latches: list[str],
+    n: int,
+    *,
+    mirror: bool,
+) -> list[str]:
+    """Return the dipping gate, the counter and its weighted latch rules."""
     # The gate rests at 2 and dips to 1 for tick ``2n`` alone, so a latch at
     # 1 clears it exactly then: the counter takes every weight in that one
     # tick and none after, and is live for tick ``2n + 1`` only.
-    lines.extend(
-        (
-            f"{gate}=2:",
-            f"-1 T>={2 * n - 1}",
-            f"+2 T>={2 * n}",
-            f"-1 T>={2 * n + 1}",
-            f"{counter}:",
-        )
-    )
+    lines = [
+        f"{gate}=2:",
+        f"-1 T>={2 * n - 1}",
+        f"+2 T>={2 * n}",
+        f"-1 T>={2 * n + 1}",
+        f"{counter}:",
+    ]
     for k, weight in enumerate(weights):
         if weight:
             # The mirror reverses the essential inputs' ranks.
             weight = (1 << (essential - 1)) // weight if mirror else weight
             lines.append(f"+{weight} {latches[k]}>={gate}")
+    return lines
 
-    lines.append(f"OUT={_ASCII_ZERO + deltas[0]}:")
+
+def _threshold_output_lines(
+    counter: str, deltas: list[int], steps: list[tuple[int, int]], n: int
+) -> list[str]:
+    """Return ``OUT`` with its step rules, then ``PRINT`` and ``EXIT``."""
+    lines = [f"OUT={_ASCII_ZERO + deltas[0]}:"]
     lines.extend(f"{delta:+d} {counter}>={row}" for row, delta in steps)
     lines.extend(("PRINT:", f"+1 T>={2 * n + 1}", "EXIT=1:", f"-1 T>={2 * n + 1}"))
-    return "\n".join(lines)
+    return lines
 
 
 def _narrow_rule_parts(program: str, width: int) -> list[str | tuple[int, str]]:
@@ -478,4 +603,6 @@ LANGUAGE = Language(
     no_wrap="each line declares a container or one of its rules",
     # Wiki: the empty container sets IN "with EOF returning 0".
     eof="an exhausted read sets IN to the spec's 0",
+    proof_execution=(execution, True, (3, 7)),
+    proof_workspace=(workspace, True, (7,)),
 )

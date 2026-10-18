@@ -35,6 +35,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.languages.inject.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -280,4 +281,5 @@ LANGUAGE = Language(
     # ``send`` terminates every line it writes, so the answer arrives
     # with a newline after it -- there is no other output command.
     example=Example(expected="0\n"),
+    proof_workspace=(workspace, True, (5,)),
 )

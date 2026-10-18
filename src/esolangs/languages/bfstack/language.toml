@@ -1,0 +1,27 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+workspace = 9
+
+[curation]
+backlinks = 3
+bf_derivative = true
+bf_derivative_predates = true
+
+[proof_status]
+labels = ["minterms"]
+qualification = "—"
+scaling = "linear: zero-row walk telescopes to T"
+execution = "poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7"
+workspace = "poly n: at most n + 7 + bl(n) + (d+1)bl(L) bits, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2: brackets"
+
+[generator_sizes]
+"00000001" = { commands = 238, commands_by_row = { "0" = 227, "1" = 232, "2" = 233, "3" = 238, "4" = 235, "5" = 240, "6" = 241, "7" = 238 }, source_units = 240 }
+"00001100" = { commands = 184, commands_by_row = { "0" = 173, "1" = 173, "2" = 178, "3" = 178, "4" = 171, "5" = 171, "6" = 184, "7" = 184 }, source_units = 179 }
+"00110110" = { commands = 246, commands_by_row = { "0" = 211, "1" = 220, "2" = 241, "3" = 246, "4" = 229, "5" = 248, "6" = 249, "7" = 246 }, source_units = 245 }
+"0110" = { commands = 177, commands_by_row = { "0" = 160, "1" = 179, "2" = 180, "3" = 177 }, source_units = 179 }
+"01101001" = { commands = 253, commands_by_row = { "0" = 211, "1" = 239, "2" = 240, "3" = 228, "4" = 242, "5" = 235, "6" = 240, "7" = 253 }, source_units = 244 }
+"0110100110010110" = { commands = 329, commands_by_row = { "0" = 262, "1" = 311, "2" = 312, "3" = 279, "4" = 314, "5" = 286, "6" = 291, "7" = 325, "8" = 318, "9" = 300, "10" = 305, "11" = 329, "12" = 312, "13" = 331, "14" = 332, "15" = 329 }, source_units = 323 }
+"1101001101101101" = { commands = 330, commands_by_row = { "0" = 299, "1" = 304, "2" = 270, "3" = 310, "4" = 277, "5" = 286, "6" = 313, "7" = 318, "8" = 291, "9" = 316, "10" = 317, "11" = 308, "12" = 319, "13" = 324, "14" = 317, "15" = 330 }, source_units = 318 }
+"11111110" = { commands = 237, commands_by_row = { "0" = 226, "1" = 231, "2" = 232, "3" = 237, "4" = 234, "5" = 239, "6" = 240, "7" = 237 }, source_units = 239 }

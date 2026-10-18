@@ -1,0 +1,33 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 0
+
+[proof_status]
+labels = ["tree"]
+qualification = "Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump"
+scaling = "lower bound: tight language and generated Theta(T**2) ([summary](#ascenic-bound))"
+execution = "linear: worst 2T + 7n + 3 - 2⌊n/2⌋ commands: alternating answers, two lines a change"
+workspace = "poly n: at most 3n + bl(n) + 15 bits: line index, scale times code, input cursor"
+
+[proof_status.audit]
+totality = "Total"
+generation_time = "Language lower bound"
+output_size = "Language lower bound"
+evidence = "docs/proofs/index.md#ascenic-bound"
+
+[generator_sizes]
+"00000001" = { commands = 26, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26 }, source_units = 947 }
+"00001100" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1007 }
+"00110110" = { commands = 32, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 32, "5" = 32, "6" = 32, "7" = 32 }, source_units = 1213 }
+"0110" = { commands = 21, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21 }, source_units = 568 }
+"01101001" = { commands = 34, commands_by_row = { "0" = 34, "1" = 34, "2" = 34, "3" = 34, "4" = 34, "5" = 34, "6" = 34, "7" = 34 }, source_units = 1319 }
+"0110100110010110" = { commands = 49, commands_by_row = { "0" = 49, "1" = 49, "2" = 49, "3" = 49, "4" = 49, "5" = 49, "6" = 49, "7" = 49, "8" = 49, "9" = 49, "10" = 49, "11" = 49, "12" = 49, "13" = 49, "14" = 49, "15" = 49 }, source_units = 2427 }
+"1101001101101101" = { commands = 49, commands_by_row = { "0" = 49, "1" = 49, "2" = 49, "3" = 49, "4" = 49, "5" = 49, "6" = 49, "7" = 49, "8" = 49, "9" = 49, "10" = 49, "11" = 49, "12" = 49, "13" = 49, "14" = 49, "15" = 49 }, source_units = 2473 }
+"11111110" = { commands = 26, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26 }, source_units = 935 }
+
+[catalogue]
+sharing_exempt = "threshold scan over the Horner row code; no subtable is drawn"
+folding_ignored = "the Horner code reads every input; an ignored one still spaces the thresholds"
+folding_constant = "a constant table has no change point: the 6n + 13 line Horner prefix"

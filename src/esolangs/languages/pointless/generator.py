@@ -53,39 +53,49 @@ def _setup(n: int) -> str:
 _wrap = TokenWrapper(r'"[^"]*"|[\s\S]')
 
 
-def pointless(truth_table: str) -> str:
-    """Build a Pointless program printing ``truth_table[row]`` for the inputs."""
-    n = _validate_truth_table(truth_table)
-    ids = subtree_ids(truth_table)
-    functions: dict[str, str] = {}
+class _Functions:
+    """The body of every distinct subtable, children named before parents."""
 
-    def constant(sub: int, depth: int) -> str:
+    def __init__(self, ids: list[list[int]], n: int) -> None:
+        self._ids = ids
+        self._n = n
+        self.bodies: dict[str, str] = {}
+
+    def constant(self, sub: int, depth: int) -> str:
+        """Name the constant function for ``sub`` at ``depth``, building it once."""
         key = f"c{sub}d{depth}"
-        if key not in functions:
+        if key not in self.bodies:
             away = _X + 2 * depth - _OUT - sub
-            functions[key] = "," * (n - depth) + "<" * away + "." + ">" * away
+            self.bodies[key] = "," * (self._n - depth) + "<" * away + "." + ">" * away
         return key
 
-    def build(depth: int, k: int) -> None:
-        sub = ids[depth][k]
-        functions[str(sub)] = ""  # reserve: children are named first
-        zero, one = (child(depth + 1, 2 * k + b) for b in (0, 1))
+    def build(self, depth: int, k: int) -> None:
+        """Fill in the body of the subtable at ``depth``, index ``k``."""
+        sub = self._ids[depth][k]
+        self.bodies[str(sub)] = ""  # reserve: children are named first
+        zero, one = (self.child(depth + 1, 2 * k + b) for b in (0, 1))
         if zero == one:
             body = f',>>"{zero}"<<'
         else:
             body = f',=[>-<->>"{one}"<<]>[->"{zero}"<]<'
-        functions[str(sub)] = body
+        self.bodies[str(sub)] = body
 
-    def child(depth: int, k: int) -> str:
-        sub = ids[depth][k]
+    def child(self, depth: int, k: int) -> str:
+        """Return the function name for the subtable at ``depth``, index ``k``."""
+        sub = self._ids[depth][k]
         if sub < 2:
-            return constant(sub, depth)
-        if str(sub) not in functions:
-            build(depth, k)
+            return self.constant(sub, depth)
+        if str(sub) not in self.bodies:
+            self.build(depth, k)
         return str(sub)
 
-    root = child(0, 0)
-    return _setup(n) + _inlined(functions, root)
+
+def pointless(truth_table: str) -> str:
+    """Build a Pointless program printing ``truth_table[row]`` for the inputs."""
+    n = _validate_truth_table(truth_table)
+    functions = _Functions(subtree_ids(truth_table), n)
+    root = functions.child(0, 0)
+    return _setup(n) + _inlined(functions.bodies, root)
 
 
 def _inlined(functions: dict[str, str], root: str) -> str:
@@ -105,32 +115,44 @@ def _inlined(functions: dict[str, str], root: str) -> str:
     declared: set[str] = set()
     # Callees first: a callee shared by two callers can be declared between
     # them, so declaration order is not enough.  Depth is at most n + 1.
-    order: list[str] = []
-
-    def visit(key: str) -> None:
-        if key not in size:
-            size[key] = 0
-            for name in calls[key]:
-                visit(name)
-            order.append(key)
-
-    visit(root)
-    for key in order:
+    for key in _callees_first(calls, root):
         size[key] = len(functions[key]) + sum(
             size[name] - len(name) - 2 for name in calls[key] if name not in declared
         )
         call = len(key) + 2
         if uses[key] * size[key] > call + 2 + size[key] + uses[key] * call:
             declared.add(key)
-
-    def text(key: str) -> str:
-        return _CALL.sub(
-            lambda m: m[0] if m[1] in declared else text(m[1]), functions[key]
-        )
-
-    main = f'"{root}"' if root in declared else text(root)
+    main = f'"{root}"' if root in declared else _expand(functions, declared, root)
     return main + "".join(
-        f'"{key}"{{{text(key)}}}' for key in functions if key in declared
+        f'"{key}"{{{_expand(functions, declared, key)}}}'
+        for key in functions
+        if key in declared
+    )
+
+
+def _callees_first(calls: dict[str, list[str]], root: str) -> list[str]:
+    """Return the functions reachable from ``root``, each after its callees."""
+    order: list[str] = []
+    seen = {root}
+    stack: list[tuple[str, bool]] = [(root, False)]
+    while stack:
+        key, expanded = stack.pop()
+        if expanded:
+            order.append(key)
+            continue
+        stack.append((key, True))
+        for name in reversed(calls[key]):
+            if name not in seen:
+                seen.add(name)
+                stack.append((name, False))
+    return order
+
+
+def _expand(functions: dict[str, str], declared: set[str], key: str) -> str:
+    """Return ``key``'s body with every undeclared call pasted in, recursively."""
+    return _CALL.sub(
+        lambda m: m[0] if m[1] in declared else _expand(functions, declared, m[1]),
+        functions[key],
     )
 
 

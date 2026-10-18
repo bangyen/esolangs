@@ -29,6 +29,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.collatz_multiverse.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
 
 __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
@@ -45,6 +46,11 @@ _CM_ALIAS = "abcefghijlmnpqr"
 
 #: The shortest line that does nothing -- ``z`` is the zero register.
 _CM_PAD = "z=zx+z,NOT PRINT."
+
+#: The fold line ``{dst}=k1x+{src}``: ``d = A x + B`` is ``d := B + d*A``
+#: for a destination holding zero and ``d := d // 2`` for an even one, so
+#: folding ``src`` into ``dst`` accumulates without a separate add line.
+_CM_FOLD = "{dst}=k1x+{src},NOT PRINT."
 
 
 #: Renamable registers in a laid-out program.
@@ -155,9 +161,35 @@ def _cm_build(
         *weights,
         *(address_scale * _CM_CHUNK * code for code, _ in stored),
     }
-    lines = _cm_narrow_constants(needed) if narrow else _cm_constants(needed, zero="z")
-    # A cell names its code's constant, or a one-letter alias of it when the
-    # alias line is cheaper than the characters the alias saves.
+    lines = _cm_emit_constants(needed, narrow=narrow)
+    names = _cm_emit_aliases(lines, stored, uses, address_scale, narrow=narrow)
+    _cm_emit_decoder(lines, codes, narrow=narrow)
+    _cm_emit_cells(lines, chunks, names, narrow=narrow)
+    _cm_emit_address(lines, n, order, high, address_scale)
+    return "\n".join(lines)
+
+
+def _cm_emit_constants(needed: set[int], *, narrow: bool) -> list[str]:
+    """Constants phase: return the lines building every needed constant."""
+    if narrow:
+        return _cm_narrow_constants(needed)
+    return _cm_constants(needed, zero="z")
+
+
+def _cm_emit_aliases(
+    lines: list[str],
+    stored: list[tuple[int, int]],
+    uses: Counter[int],
+    address_scale: int,
+    *,
+    narrow: bool,
+) -> dict[int, str]:
+    """Aliases phase: name each stored value for the cells phase.
+
+    A cell names its code's constant, or a one-letter alias of it when the
+    alias line is cheaper than the characters the alias saves.  Returns
+    the name each stored value's cells are written with.
+    """
     # The narrow cursor owns r throughout both array blocks.
     alias_pool = _CM_ALIAS.replace("r", "u") if narrow else _CM_ALIAS
     names: dict[int, str] = {}
@@ -172,6 +204,11 @@ def _cm_build(
             names[value] = alias
         else:
             names[value] = constant
+    return names
+
+
+def _cm_emit_decoder(lines: list[str], codes: dict[int, int], *, narrow: bool) -> None:
+    """Decoder phase: write the decoder cells ``D`` the lookup reads back."""
     decoder: list[str | None] = [None] * (_CM_CHUNK * (max(codes.values()) + 1))
     for value, code in codes.items():
         for j in range(_CM_CHUNK):
@@ -179,8 +216,25 @@ def _cm_build(
                 decoder[_CM_CHUNK * code + j] = "k1"
     cells_builder = _cm_narrow_cells if narrow else _cm_cells
     cells_builder(lines, "D", decoder, "t")
+
+
+def _cm_emit_cells(
+    lines: list[str], chunks: list[int], names: dict[int, str], *, narrow: bool
+) -> None:
+    """Cells phase: write each chunk's code name into array ``A``."""
+    cells_builder = _cm_narrow_cells if narrow else _cm_cells
     cells_builder(lines, "A", [names.get(value) for value in chunks], "s")
 
+
+def _cm_emit_address(
+    lines: list[str], n: int, order: list[int], high: int, address_scale: int
+) -> None:
+    """Address phase: read the inputs, sum the address, print the bit.
+
+    Every input is read into its ``w`` register; the ones ``order`` names
+    before ``high`` are weighted into ``s``, the rest select within the
+    decoded cell.  The output lines follow the cells phase's arrays.
+    """
     for i in range(n):
         lines.append(f"w{i}=zx+input,NOT PRINT.")
     # ``s`` sits one below the first cell, so the address wants the missing
@@ -190,23 +244,22 @@ def _cm_build(
     cells, select = order[:high], order[high:]
     for k, i in enumerate(cells[:-1]):
         lines.append(f"w{i}=k{address_scale * 2 ** (high - 1 - k)}x+z,NOT PRINT.")
-        lines.append(f"s=k1x+w{i},NOT PRINT.")
+        lines.append(_CM_FOLD.format(dst="s", src=f"w{i}"))
     if cells:
         lines.append(f"w{cells[-1]}=k{address_scale}x+k{address_scale},NOT PRINT.")
-        lines.append(f"s=k1x+w{cells[-1]},NOT PRINT.")
+        lines.append(_CM_FOLD.format(dst="s", src=f"w{cells[-1]}"))
     else:
         lines.append(f"s=k1x+k{address_scale},NOT PRINT.")
     lines.append("t=k1x+A[s],NOT PRINT.")
     if len(select) == 2:
         lines.append(f"w{select[0]}=k{2 * address_scale}x+z,NOT PRINT.")
-        lines.append(f"t=k1x+w{select[0]},NOT PRINT.")
+        lines.append(_CM_FOLD.format(dst="t", src=f"w{select[0]}"))
     one = f"k{address_scale}x+k{address_scale}"
     lines.append(f"w{select[-1]}={one},NOT PRINT.")
-    lines.append(f"t=k1x+w{select[-1]},NOT PRINT.")
+    lines.append(_CM_FOLD.format(dst="t", src=f"w{select[-1]}"))
     lines.append("o=zx+D[t],NOT PRINT.")
     # ``o`` holds the bit: ``0 * a + b`` for a zero, ``1 * a + b`` for a one.
     lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
-    return "\n".join(lines)
 
 
 def _cm_layout(program: str, width: int) -> str:
@@ -383,4 +436,6 @@ LANGUAGE = Language(
     boolean=collatz_multiverse,
     balance=balance_collatz_multiverse,
     no_wrap="each line is one complete register assignment",
+    proof_execution=(execution, False, (3, 6)),
+    proof_workspace=(workspace, False, (3, 6)),
 )

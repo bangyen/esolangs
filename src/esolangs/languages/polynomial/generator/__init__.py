@@ -37,6 +37,7 @@ from esolangs.generation.helpers import (
 from esolangs.generation.wrap import balance_program
 from esolangs.languages.polynomial.generator.algebra import primes, render_product
 from esolangs.languages.polynomial.generator.resources import estimate_generation
+from esolangs.languages.polynomial.proof_formulas import workspace
 from esolangs.languages.polynomial.wrapping import (
     _balance_polynomial,
     _polynomial,
@@ -89,6 +90,44 @@ def polynomial(truth_table: str) -> str:
 
 
 _READ = [0, 2]
+
+#: ``[0, 1]``: output -- with ``_READ``, one of the two ``a == 0`` I/O spells.
+_OUTPUT = [0, 1]
+
+
+def _read() -> list[int]:
+    """Return a fresh read instruction (``[0, 2]``; see ``_READ``)."""
+    return list(_READ)
+
+
+def _output() -> list[int]:
+    """Return a fresh output instruction (``[0, 1]``; see ``_OUTPUT``)."""
+    return list(_OUTPUT)
+
+
+def _add(operand: int) -> list[int]:
+    """Return the ``+= operand`` instruction, ``[operand, 1]``."""
+    return [operand, 1]
+
+
+def _multiply(span: int) -> list[int]:
+    """Return the ``*= span`` instruction, ``[span, 3]``."""
+    return [span, 3]
+
+
+def _divide_by_50() -> list[int]:
+    """Return ``//= 50``, ``[50, 4]``: undo a read's ``48 + bit``."""
+    return [_ASCII_ZERO + 2, 4]
+
+
+def _if_positive() -> list[int]:
+    """Return the ``if reg > 0`` instruction, ``[1]``."""
+    return [1]
+
+
+def _endif() -> list[int]:
+    """Return the ``endif`` instruction, ``[2]``."""
+    return [2]
 
 
 def _polynomial_candidates(
@@ -245,66 +284,101 @@ def _polynomial_dag(truth_table: str, park: int | None = None) -> list[list[int]
     ``[0, b]`` spells I/O.  A leaf steps to the digit, prints, and parks at
     or below ``-park`` so enclosing arms never see a positive register.
     """
-    n = _validate_truth_table(truth_table)
     if park is None:
-        park = n + 2
-    levels = _polynomial_states(truth_table, n)
-    index = _polynomial_labels(levels, n)
-    instrs: list[list[int]] = []
+        park = _validate_truth_table(truth_table) + 2
+    return _DagEmitter(truth_table, park).run()
 
-    for k in range(n):
-        width = 2 ** (n - k - 1)
-        states = sorted(levels[k], key=index[k].__getitem__)
+
+class _DagEmitter:
+    """The state machine of :func:`_polynomial_dag`, as state plus phases.
+
+    ``levels``/``index`` come from :func:`_polynomial_states` and
+    :func:`_polynomial_labels`; ``instrs`` accumulates the instructions
+    as each level's blocks and then the leaves are emitted.
+    """
+
+    def __init__(self, truth_table: str, park: int) -> None:
+        self.n = _validate_truth_table(truth_table)
+        self.park = park
+        self.levels = _polynomial_states(truth_table, self.n)
+        self.index = _polynomial_labels(self.levels, self.n)
+        self.instrs: list[list[int]] = []
+
+    def run(self) -> list[list[int]]:
+        """Emit every level's blocks, then the leaves, then check the result."""
+        for k in range(self.n):
+            self.emit_level(k)
+        self.emit_leaves()
+        self.check_no_zero_operands()
+        return self.instrs
+
+    def emit_level(self, k: int) -> None:
+        """Emit one block per state at level ``k``, in label order."""
+        states = sorted(self.levels[k], key=self.index[k].__getitem__)
         chained = len(states) > 1
         for j, state in enumerate(states):
-            if chained:
-                instrs.append([1, 1])  # += 1
-                instrs.append([1])  # if reg > 0
-            remaining = len(states) - 1 - j
-            zero = index[k + 1][state[:width]]
-            one = index[k + 1][state[width:]]
-            target = -(zero + remaining)
-            instrs.append([0, 2])  # input -> 48 + bit
-            if zero == one:
-                instrs.append([_ASCII_ZERO + 2, 4])  # //= 50 -> 0
-                if target:
-                    instrs.append([target, 1])
-            else:
-                span = zero - one
-                if span != 1:
-                    instrs.append([span, 3])  # *= span, never zero here
-                if delta := target - _ASCII_ZERO * span:
-                    instrs.append([delta, 1])
-            if chained:
-                instrs.append([2])  # endif
+            self.emit_block(k, state, remaining=len(states) - 1 - j, chained=chained)
 
-    leaves = sorted(levels[n], key=index[n].__getitem__)
-    for state in leaves:
-        value = _ASCII_ZERO + int(state)
-        if len(leaves) > 1:
-            instrs.append([1, 1])  # += 1
-            instrs.append([1])  # if reg > 0, entered holding 1
-            instrs.append([value - 1, 1])
+    def emit_block(self, k: int, state: str, *, remaining: int, chained: bool) -> None:
+        """Emit one state's block: fire only at ``-j``, read, map to the child.
+
+        The read is mapped by ``*= span; += park - 48*span`` (multiply
+        dropped at ``span == 1``); merged children are divided away with
+        ``//= 50``, since ``[0, b]`` spells I/O.
+        """
+        instrs = self.instrs
+        width = 2 ** (self.n - k - 1)
+        if chained:
+            instrs.append(_add(1))  # += 1
+            instrs.append(_if_positive())  # if reg > 0
+        zero = self.index[k + 1][state[:width]]
+        one = self.index[k + 1][state[width:]]
+        target = -(zero + remaining)
+        instrs.append(_read())  # input -> 48 + bit
+        if zero == one:
+            instrs.append(_divide_by_50())  # //= 50 -> 0
+            if target:
+                instrs.append(_add(target))
         else:
-            # A constant table: every level merged, so the register is 0.
-            instrs.append([value, 1])
-        instrs.append([0, 1])  # output
-        instrs.append([-(value + park), 1])  # park below every enclosing test
-        if len(leaves) > 1:
-            instrs.append([2])  # endif
+            span = zero - one
+            if span != 1:
+                instrs.append(_multiply(span))  # *= span, never zero here
+            if delta := target - _ASCII_ZERO * span:
+                instrs.append(_add(delta))
+        if chained:
+            instrs.append(_endif())
 
-    for instr in instrs:
-        # ``a == 0`` is how the interpreter spells I/O, so an arithmetic
-        # instruction computing a zero operand would silently become a read
-        # -- a wrong program rather than a failure.  The builder never emits
-        # one; this raises rather than asserting so the guard survives
-        # ``-O``, where the trap it catches would be silent.
-        if len(instr) == 2 and instr[0] == 0 and instr not in ([0, 1], [0, 2]):
-            raise AssertionError(
-                f"{instr} has a zero operand, which the interpreter reads as "
-                "I/O rather than arithmetic",
-            )
-    return instrs
+    def emit_leaves(self) -> None:
+        """Emit one leaf per final state: step to the digit, print, park."""
+        leaves = sorted(self.levels[self.n], key=self.index[self.n].__getitem__)
+        for state in leaves:
+            value = _ASCII_ZERO + int(state)
+            if len(leaves) > 1:
+                self.instrs.append(_add(1))  # += 1
+                self.instrs.append(_if_positive())  # if reg > 0, entered holding 1
+                self.instrs.append(_add(value - 1))
+            else:
+                # A constant table: every level merged, so the register is 0.
+                self.instrs.append(_add(value))
+            self.instrs.append(_output())  # output
+            # Park below every enclosing test.
+            self.instrs.append(_add(-(value + self.park)))
+            if len(leaves) > 1:
+                self.instrs.append(_endif())
+
+    def check_no_zero_operands(self) -> None:
+        """Reject any arithmetic instruction whose zero operand spells I/O."""
+        for instr in self.instrs:
+            # ``a == 0`` is how the interpreter spells I/O, so an arithmetic
+            # instruction computing a zero operand would silently become a read
+            # -- a wrong program rather than a failure.  The builder never emits
+            # one; this raises rather than asserting so the guard survives
+            # ``-O``, where the trap it catches would be silent.
+            if len(instr) == 2 and instr[0] == 0 and instr not in (_OUTPUT, _READ):
+                raise AssertionError(
+                    f"{instr} has a zero operand, which the interpreter reads as "
+                    "I/O rather than arithmetic",
+                )
 
 
 def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
@@ -319,44 +393,72 @@ def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
     bit (``p`` and ``p**2`` vs ``if == 0``'s ``p**4``).  The machine's root
     opens with a read, so no splice is needed.
     """
-    n = _validate_truth_table(truth_table)
-    instrs: list[list[int]] = []
-    park = n + 2
+    return _HybridBuilder(truth_table, k).run()
 
-    def build(rows: list[int], bit: int, last: int) -> None:
-        vals = {truth_table[r] for r in rows}
+
+class _HybridBuilder:
+    """The recursive tree-above-machine emission of :func:`_polynomial_hybrid`.
+
+    ``instrs`` accumulates the instructions; ``park`` is the value every
+    arm leaves the register at or below, so an ancestor's ``+= 1; if > 0``
+    test can tell a taken arm from an untaken zero bit.
+    """
+
+    def __init__(self, truth_table: str, k: int) -> None:
+        self.truth_table = truth_table
+        self.n = _validate_truth_table(truth_table)
+        self.k = k
+        self.park = self.n + 2
+        self.instrs: list[list[int]] = []
+
+    def run(self) -> list[list[int]]:
+        """Build the whole table, starting from every row at the root."""
+        self.build(list(range(2**self.n)), 0, 0)
+        return self.instrs
+
+    def build(self, rows: list[int], bit: int, last: int) -> None:
+        """Emit the subtree over ``rows`` at depth ``bit``."""
+        vals = {self.truth_table[r] for r in rows}
         if len(vals) == 1:
-            v = int(vals.pop())
-            # ``last`` is 0 or 1 and the digit is 48 or 49, so neither
-            # operand here can be the zero that would spell I/O.
-            instrs.append([_ASCII_ZERO + v - last, 1])
-            instrs.append([0, 1])  # output
-            # Drain the reads the untaken siblings would have made, after
-            # printing so they cannot disturb the value; a bare read is
-            # enough, since the park below overwrites what it left.
-            for _ in range(bit, n):
-                instrs.append([0, 2])
-            # Only an ancestor tests the parked value. Removing the root
-            # store saves 13.5% on both eight-input constants (750 -> 649 chars).
-            if bit:
-                instrs.append([-(_ASCII_ZERO + 1 + park), 1])
+            self.emit_leaf(int(vals.pop()), bit, last)
             return
-        if bit == k:
-            instrs.extend(_polynomial_dag("".join(truth_table[r] for r in rows), park))
+        if bit == self.k:
+            residual = "".join(self.truth_table[r] for r in rows)
+            self.instrs.extend(_polynomial_dag(residual, self.park))
             return
-        instrs.extend([[0, 2], [-_ASCII_ZERO, 1]])  # input; += -48
+        self.emit_node(rows, bit)
+
+    def emit_leaf(self, v: int, bit: int, last: int) -> None:
+        """Emit a constant subtree: step to the digit, print, drain, park."""
+        instrs = self.instrs
+        # ``last`` is 0 or 1 and the digit is 48 or 49, so neither
+        # operand here can be the zero that would spell I/O.
+        instrs.append(_add(_ASCII_ZERO + v - last))
+        instrs.append(_output())  # output
+        # Drain the reads the untaken siblings would have made, after
+        # printing so they cannot disturb the value; a bare read is
+        # enough, since the park below overwrites what it left.
+        for _ in range(bit, self.n):
+            instrs.append(_read())
+        # Only an ancestor tests the parked value. Removing the root
+        # store saves 13.5% on both eight-input constants (750 -> 649 chars).
+        if bit:
+            instrs.append(_add(-(_ASCII_ZERO + 1 + self.park)))
+
+    def emit_node(self, rows: list[int], bit: int) -> None:
+        """Emit one tree node: read, branch into the one-arm, then the zero-arm."""
+        instrs = self.instrs
+        n = self.n
+        instrs.extend([_read(), _add(-_ASCII_ZERO)])  # input; += -48
         g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
         g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
-        instrs.append([1])  # if reg > 0
-        build(g1, bit + 1, 1)
-        instrs.append([2])
-        instrs.append([1, 1])  # += 1: a zero bit is now 1, a taken arm <= -1
-        instrs.append([1])  # if reg > 0
-        build(g0, bit + 1, 1)
-        instrs.append([2])
-
-    build(list(range(2**n)), 0, 0)
-    return instrs
+        instrs.append(_if_positive())  # if reg > 0
+        self.build(g1, bit + 1, 1)
+        instrs.append(_endif())
+        instrs.append(_add(1))  # += 1: a zero bit is now 1, a taken arm <= -1
+        instrs.append(_if_positive())  # if reg > 0
+        self.build(g0, bit + 1, 1)
+        instrs.append(_endif())
 
 
 LANGUAGE = Language(
@@ -379,4 +481,5 @@ LANGUAGE = Language(
     slow_width_sweep=True,
     eof="an exhausted input instruction stores -1",
     empty_program="Polynomial program must start with 'f(x) = '",
+    proof_workspace=(workspace, False, (3,)),
 )

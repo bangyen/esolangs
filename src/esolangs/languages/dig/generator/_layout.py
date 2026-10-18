@@ -1,6 +1,7 @@
 """Alternating tree layouts and bounded sharing routes for Dig."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import NamedTuple
 
 from esolangs.generation.helpers import constant_span_test, essential_inputs, read_at
@@ -286,6 +287,103 @@ class _LeafKey(NamedTuple):
     lane: int
 
 
+@dataclass
+class _LanePlan:
+    """The sharing decision: which leaf owners survive, on which rails.
+
+    ``cuts`` holds the parallel gutter positions, empty for a single rail.
+    """
+
+    owners: dict[_LeafKey, _Point]
+    rails: dict[_LeafKey, int]
+    cuts: list[int]
+
+
+def _sharing_lane_groups(
+    entries: dict[_Point, _LeafKey],
+    owners: dict[_LeafKey, _Point],
+    travel_axis: int,
+) -> tuple[dict[int, list[_LeafKey]], dict[_LeafKey, int]]:
+    """Group repeated leaf classes by travel-axis span end; return each start.
+
+    A class is repeated when more than one entry maps to its key.
+    """
+    counts: dict[_LeafKey, int] = {}
+    starts: dict[_LeafKey, int] = {}
+    for point, key in entries.items():
+        counts[key] = counts.get(key, 0) + 1
+        starts[key] = min(starts.get(key, point[travel_axis]), point[travel_axis])
+    by_end: dict[int, list[_LeafKey]] = {}
+    for key, count in counts.items():
+        if count > 1:
+            by_end.setdefault(owners[key][travel_axis], []).append(key)
+    return by_end, starts
+
+
+def _assign_shared_lanes(
+    by_end: dict[int, list[_LeafKey]],
+    starts: dict[_LeafKey, int],
+    *,
+    parallel: bool,
+    lane_axis: int,
+) -> tuple[set[_LeafKey], dict[_LeafKey, int]]:
+    """Share lanes among earliest-ending classes, reusing a free rail.
+
+    Two lanes need one gutter cell; further overlapping classes stay
+    unshared.
+    """
+    shared: set[_LeafKey] = set()
+    rails: dict[_LeafKey, int] = {}
+    occupied: dict[int, list[int | None]] = {}
+    for lane_end in sorted(by_end):
+        for key in by_end[lane_end]:
+            lane_coordinate = key.lane - _DIG_DIRECTIONS[key.heading][lane_axis]
+            busy = occupied.setdefault(lane_coordinate, [None] * (2 if parallel else 1))
+            for rail, last in enumerate(busy):
+                if last is None or starts[key] > last:
+                    shared.add(key)
+                    rails[key] = rail
+                    busy[rail] = lane_end
+                    break
+    return shared, rails
+
+
+def _parallel_lane_cuts(rails: dict[_LeafKey, int], lane_axis: int) -> list[int]:
+    """Return the gutter cuts separating the second rail's lanes."""
+    return sorted(
+        {
+            key.lane + int(_DIG_DIRECTIONS[key.heading][lane_axis] < 0)
+            for key, rail in rails.items()
+            if rail
+        }
+    )
+
+
+def _plan_shared_lanes(
+    entries: dict[_Point, _LeafKey],
+    owners: dict[_LeafKey, _Point],
+    *,
+    parallel: bool,
+    lane_axis: int,
+    travel_axis: int,
+) -> _LanePlan | None:
+    """Plan shared lanes for a dry-run tree; None when nothing can share."""
+    by_end, starts = _sharing_lane_groups(entries, owners, travel_axis)
+    shared, rails = _assign_shared_lanes(
+        by_end, starts, parallel=parallel, lane_axis=lane_axis
+    )
+    if not shared:
+        return None
+    # Leave unmatched copies painted, even if their contents coincide.
+    kept = {key: owner for key, owner in owners.items() if key in shared}
+    cuts: list[int] = []
+    if parallel:
+        cuts = _parallel_lane_cuts(rails, lane_axis)
+        if not cuts:
+            return None
+    return _LanePlan(kept, rails, cuts)
+
+
 class _AlternatingTree:
     """One alternating Dig tree being painted onto a grid.
 
@@ -552,79 +650,17 @@ class _AlternatingTree:
     def plan_sharing(self) -> bool:
         """Dry-run the tree and assign shared leaf lanes; False aborts."""
         self.node(0, _Point(0, 0), 1, 0, len(self.truth_table), paint=False)
-        by_end, starts = self._sharing_lane_groups()
-        shared, rails = self._assign_shared_lanes(by_end, starts)
-        if not shared:
-            return False
-        # Leave unmatched copies painted, even if their contents coincide.
-        self.owners = {
-            key: owner for key, owner in self.owners.items() if key in shared
-        }
-        self.rails = rails
-        if self.parallel:
-            self.cuts = self._parallel_lane_cuts(rails)
-            if not self.cuts:
-                return False
-        return True
-
-    def _sharing_lane_groups(
-        self,
-    ) -> tuple[dict[int, list[_LeafKey]], dict[_LeafKey, int]]:
-        """Group repeated leaf classes by travel-axis span end; return each start.
-
-        A class is repeated when more than one entry maps to its key.
-        """
-        counts: dict[_LeafKey, int] = {}
-        starts: dict[_LeafKey, int] = {}
-        for point, key in self.entries.items():
-            counts[key] = counts.get(key, 0) + 1
-            starts[key] = min(
-                starts.get(key, point[self.travel_axis]), point[self.travel_axis]
-            )
-        by_end: dict[int, list[_LeafKey]] = {}
-        for key, count in counts.items():
-            if count > 1:
-                by_end.setdefault(self.owners[key][self.travel_axis], []).append(key)
-        return by_end, starts
-
-    def _assign_shared_lanes(
-        self,
-        by_end: dict[int, list[_LeafKey]],
-        starts: dict[_LeafKey, int],
-    ) -> tuple[set[_LeafKey], dict[_LeafKey, int]]:
-        """Share lanes among earliest-ending classes, reusing a free rail.
-
-        Two lanes need one gutter cell; further overlapping classes stay
-        unshared.
-        """
-        shared: set[_LeafKey] = set()
-        rails: dict[_LeafKey, int] = {}
-        occupied: dict[int, list[int | None]] = {}
-        for lane_end in sorted(by_end):
-            for key in by_end[lane_end]:
-                lane_coordinate = (
-                    key.lane - _DIG_DIRECTIONS[key.heading][self.lane_axis]
-                )
-                busy = occupied.setdefault(
-                    lane_coordinate, [None] * (2 if self.parallel else 1)
-                )
-                for rail, last in enumerate(busy):
-                    if last is None or starts[key] > last:
-                        shared.add(key)
-                        rails[key] = rail
-                        busy[rail] = lane_end
-                        break
-        return shared, rails
-
-    def _parallel_lane_cuts(self, rails: dict[_LeafKey, int]) -> list[int]:
-        """Return the gutter cuts separating the second rail's lanes."""
-        return sorted(
-            {
-                key.lane + int(_DIG_DIRECTIONS[key.heading][self.lane_axis] < 0)
-                for key, rail in rails.items()
-                if rail
-            }
+        plan = _plan_shared_lanes(
+            self.entries,
+            self.owners,
+            parallel=self.parallel,
+            lane_axis=self.lane_axis,
+            travel_axis=self.travel_axis,
         )
+        if plan is None:
+            return False
+        self.owners, self.rails, self.cuts = plan.owners, plan.rails, plan.cuts
+        return True
 
     def expand_parallel(self) -> bool:
         """Stretch the grid with gutters for parallel lanes; False aborts."""
@@ -702,14 +738,10 @@ class _AlternatingTree:
             return False
         side = _operand_side(heading)
         count_point = first.step(side)
-        if count_point in self.cells:
-            return False
         self.cells[count_point] = str(distance - 1)
         code = "$" + "~" * (skip + 1) + " " * (distance - skip - 3) + ";#"
         for i, char in enumerate(code):
             target = first.step(heading, i)
-            if target in self.cells:
-                return False
             self.cells[target] = char
         self.reads.append((first, count_point, frozenset()))
         self.reads.append((stop, stop.step(heading, -1), frozenset()))
@@ -804,13 +836,9 @@ class _AlternatingTree:
         self.cells = {compact(point): char for point, char in self.cells.items()}
         compact_reads = _remap_reads(self.reads, compact)
         compact_corridors = _remap_corridors(self.corridors, compact)
-        # Unreachable by `_compaction_lines` (no digit becomes a reader's
-        # neighbour, corridors and lane arrows cannot change); kept as the
-        # backstop.
-        try:
-            _dig_alt_clear(self.cells, compact_reads, compact_corridors)
-        except AssertionError:
-            return False
+        # `_compaction_lines` guarantees this passes: no digit becomes a
+        # reader's neighbour, and corridors and lane arrows cannot change.
+        _dig_alt_clear(self.cells, compact_reads, compact_corridors)
         return self._sharing_walk_cost(compact) <= _walk_bound(self.n)
 
     def _sharing_walk_cost(self, compact: Callable[[_Point], _Point]) -> int:

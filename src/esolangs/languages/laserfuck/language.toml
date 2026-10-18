@@ -1,0 +1,76 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+workspace = 9
+
+[curation]
+backlinks = 1
+bf_derivative = true
+bf_derivative_predates = true
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "weighted arms select one of `2**n` prewritten cells, cleaned in one sweep"
+scaling = "linear: three rows of linear appends, ~15T"
+execution = "linear: at most 18T + 56n + 5 commands past n = 4: one pass along the weighted row"
+workspace = "linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells"
+
+[generator_sizes]
+"00000001" = { commands = 1574, commands_by_row = { "0" = 1561, "1" = 1561, "2" = 1561, "3" = 1561, "4" = 1566, "5" = 1566, "6" = 1571, "7" = 1574 }, source_units = 269 }
+"00001100" = { commands = 1568, commands_by_row = { "0" = 1561, "1" = 1561, "2" = 1561, "3" = 1561, "4" = 1567, "5" = 1567, "6" = 1568, "7" = 1568 }, source_units = 198 }
+"00110110" = { commands = 1575, commands_by_row = { "0" = 1564, "1" = 1564, "2" = 1567, "3" = 1567, "4" = 1570, "5" = 1573, "6" = 1574, "7" = 1575 }, source_units = 413 }
+"0110" = { commands = 1277, commands_by_row = { "0" = 1272, "1" = 1275, "2" = 1276, "3" = 1277 }, source_units = 229 }
+"01101001" = { commands = 1578, commands_by_row = { "0" = 1567, "1" = 1570, "2" = 1571, "3" = 1572, "4" = 1573, "5" = 1574, "6" = 1575, "7" = 1578 }, source_units = 559 }
+"0110100110010110" = { commands = 1881, commands_by_row = { "0" = 1862, "1" = 1865, "2" = 1866, "3" = 1867, "4" = 1868, "5" = 1869, "6" = 1870, "7" = 1873, "8" = 1872, "9" = 1873, "10" = 1874, "11" = 1877, "12" = 1876, "13" = 1879, "14" = 1880, "15" = 1881 }, source_units = 1319 }
+"1101001101101101" = { commands = 1878, commands_by_row = { "0" = 1860, "1" = 1860, "2" = 1864, "3" = 1867, "4" = 1863, "5" = 1863, "6" = 1866, "7" = 1866, "8" = 1868, "9" = 1871, "10" = 1872, "11" = 1873, "12" = 1871, "13" = 1871, "14" = 1875, "15" = 1878 }, source_units = 979 }
+"11111110" = { commands = 1573, commands_by_row = { "0" = 1562, "1" = 1562, "2" = 1562, "3" = 1562, "4" = 1567, "5" = 1567, "6" = 1572, "7" = 1573 }, source_units = 271 }
+
+[catalogue]
+sharing_exempt = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixteen entries"
+
+[formula_arities]
+execution = [5]
+workspace = [5]
+
+# Plain-rewrite audit record: each trick's saving measured in shipped
+# context at the largest arity where it runs (chars; seeded random
+# tables, seed 184700+n, 200 per arity).  Prices are contextual --
+# joint removals were measured separately before landing.  Rows for
+# removed tricks stay as the record of why they left.
+[ablations]
+audited = "2026-10-18"
+
+[ablations.route_switch]
+saving = 67.4
+arity = 8
+verdict = "kept"
+
+[ablations.equal_halves_skip]
+saving = 11.3
+arity = 4
+verdict = "kept: canonical, exempt from the bar"
+
+[ablations.ignored_input_arm_drop]
+saving = 43.8
+arity = 8
+verdict = "kept: canonical, exempt; saving on its own class"
+
+[ablations.sized_leaf_retirement]
+saving = 2.2
+arity = 4
+verdict = "removed: tree route only, weighted route unaffected"
+
+[ablations.reader_orientation_search]
+saving = 0.0
+arity = 4
+verdict = "kept: feasibility, not size -- vacuous on the default path, carries width compliance"
+
+[ablations.constant_folding]
+saving = 0.0
+arity = 4
+verdict = "kept: canonical, exempt; provably redundant given the skip (byte-identical without it)"
+
+[ablations.width_machinery]
+saving = 0.0
+verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column builder; no default-path effect"

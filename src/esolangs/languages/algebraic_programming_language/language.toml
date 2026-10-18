@@ -1,0 +1,23 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 3
+
+[proof_status]
+labels = ["tree"]
+qualification = "bounded shared frames; base-26 names are unbounded"
+scaling = "linear: bounded dependency scan and canonical residual IDs"
+execution = "linear: at most max(21,ceil(65n/2)-21)+K+2min(K,3n+1) commands: definitions initialize once and execute at most once"
+workspace = "poly n: at most 179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1) bits: frame/global state"
+definitions = ["K = shared uppercase definitions, excluding NOT", "A = 4n+3, active split and NOT frames", "Q = 6n+5, pending nodes across frames", "b = bl(2L+2), serial widths for AST nodes and functions", "d = bl(L), bounding function-name length and the line cursor", "V = Σ_{1≤j≤n-2} (bl(s) + bl(s+1) + bl(s+5)), s = 2n+8+7j, three serials per level", "W = bl(2n-1) + bl(2n+3) + bl(2n+13) + bl(F) + 2bl(F+1) + bl(F+2) + bl(F+4), F = 2n+7"]
+
+[generator_sizes]
+"00000001" = { commands = 28, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 26, "7" = 28 }, source_units = 50 }
+"00001100" = { commands = 33, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 30, "5" = 30, "6" = 31, "7" = 33 }, source_units = 45 }
+"00110110" = { commands = 67, commands_by_row = { "0" = 34, "1" = 34, "2" = 30, "3" = 30, "4" = 55, "5" = 51, "6" = 66, "7" = 67 }, source_units = 77 }
+"0110" = { commands = 44, commands_by_row = { "0" = 32, "1" = 28, "2" = 43, "3" = 44 }, source_units = 54 }
+"01101001" = { commands = 80, commands_by_row = { "0" = 57, "1" = 49, "2" = 62, "3" = 65, "4" = 68, "5" = 63, "6" = 78, "7" = 80 }, source_units = 62 }
+"0110100110010110" = { commands = 115, commands_by_row = { "0" = 82, "1" = 70, "2" = 83, "3" = 90, "4" = 87, "5" = 86, "6" = 99, "7" = 95, "8" = 93, "9" = 84, "10" = 97, "11" = 101, "12" = 103, "13" = 99, "14" = 114, "15" = 115 }, source_units = 86 }
+"1101001101101101" = { commands = 75, commands_by_row = { "0" = 60, "1" = 60, "2" = 69, "3" = 61, "4" = 55, "5" = 55, "6" = 51, "7" = 51, "8" = 77, "9" = 69, "10" = 82, "11" = 85, "12" = 70, "13" = 70, "14" = 73, "15" = 75 }, source_units = 133 }
+"11111110" = { commands = 55, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 41, "5" = 41, "6" = 54, "7" = 55 }, source_units = 53 }

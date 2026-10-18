@@ -15,6 +15,7 @@ from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.wrap import wrap_grid
+from esolangs.languages.subleq.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
 
@@ -51,4 +52,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
+    proof_workspace=(workspace, False, (3, 5)),
 )

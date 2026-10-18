@@ -265,9 +265,9 @@ def exempt_generators() -> dict[str, str]:
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons[row.generator] = f"proof_status.toml {label} row"
+                reasons[row.generator] = f"proof_status {label} row"
     for name in sorted(load_audit().unsettled):
-        reasons[name] = "proof_status.toml scaling audit: open"
+        reasons[name] = "proof_status scaling audit: open"
     return reasons
 
 

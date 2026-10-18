@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.cvnc.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
 
 __all__ = ["cvnc"]
@@ -132,9 +133,6 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
         cursor += 1
     else:
         chars.append(_FILLER_VOWEL)
-    if cursor < total and tokens[cursor] in _NASALS:
-        chars.append(tokens[cursor])
-        cursor += 1
     options = [("".join(chars), cursor)]
     if cursor < total and _is_consonant(tokens[cursor]):
         options.append(("".join(chars) + tokens[cursor], cursor + 1))
@@ -407,4 +405,6 @@ LANGUAGE = Language(
     # LF-only source-format deviation: discard breaks before parsing or addressing.
     wrap=wrap_chars,
     empty_program="program is empty",
+    proof_execution=(execution, False, (3, 5)),
+    proof_workspace=(workspace, True, (4, 6)),
 )

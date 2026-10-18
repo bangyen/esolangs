@@ -5,7 +5,6 @@ Each was derived from its generator, not fitted: a fit from parity data
 ``exact`` formula must also be reached here; ``bound`` only never exceeded.
 """
 
-import math
 import random
 from collections.abc import Callable
 
@@ -13,6 +12,7 @@ import esolangs
 from esolangs.debugger import make_vm
 from esolangs.registry import LANGUAGES
 from scripts.benchmark import WrittenState
+from tests.proofs._arities import formula_arities
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense, run_to_answer
@@ -20,137 +20,15 @@ from tests.support.generator_support import CHECK
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits
 
-
-def _vandevelo(p: str) -> int:
-    """Each ``?`` read, three per comparison, less each guard's final ``loop?``."""
-    guards = sum(
-        "::" in line and line.rstrip().endswith("loop?") for line in p.splitlines()
-    )
-    return p.count("?") - guards + 3 * (p.count("==") + p.count("!="))
-
-
 #: Formulas the ledger notation cannot state: a case split, a definition,
-#: a count taken from the program.
-_HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
-    # Every instruction runs once, then the EOF read stops the second pass.
-    "Suffolk": (lambda _, p: len(p) + p.index(",") + 1, True, (3, 6)),
-    "Container": (lambda n, _: 2 * n + 2, True, (3, 7)),
-    # Two passes of the whitespace-free program, the second proving the repeat.
-    "A Painter Ant": (lambda _, p: 2 * len("".join(p.split())), True, (3, 6)),
-    # Capped rows: straight-line headers, the same count on every table.
-    "Befunge": (
-        lambda n, _: (
-            5 * n + 16 + 4 * -(-n // 2)
-            if n <= 8
-            else 5 * n + 29
-            if n <= 10
-            else 5 * n + 67
-        ),
-        True,
-        (3, 9, 11),
-    ),
-    "Malbolge": (lambda n, _: 478 * n + 1459, True, (3, 6)),
-    "BFStack": (lambda n, _: 73 * n + 371 + 13 * (n % 2), True, (8, 9, 10)),
-    # Shared one-edges cap the tree at 3T/4 + 1 rows (n=3,4 exhaustive).
-    "Back": (
-        lambda n, _: max(3 * 2**n // 4 + 1, 6 * n - 1) + 3 * 2**n // 4 + 1 + 3 * n + 6,
-        True,
-        (3, 5, 6),
-    ),
-    "Decleq": (
-        lambda n, _: 49 * n + 3 * 2 ** (k := (2 * n - 1).bit_length()) + 2 + n - k,
-        False,
-        (3, 6),
-    ),
-    # At n=8 the large pool is one atom: no prefix/footer tick; parity reaches 17.
-    "Circuit Diagram": (lambda n, _: 2 * n + 1 + (n > 8), True, (3, 8)),
-    "FALSE": (lambda n, _: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
-    "thisthat": (
-        lambda n, _: (
-            32 * 2 ** (n // 2) - 29 if n % 2 == 0 else 48 * 2 ** ((n - 1) // 2) - 29
-        ),
-        True,
-        (3, 4),
-    ),
-    "Vandevelo": (lambda _, p: _vandevelo(p), False, (3, 5)),
-    "INTERCAL": (
-        lambda n, _: (
-            2 * n + 3 + sum(min(2**k, 2 ** (2 ** (n - k)) - 2) for k in range(1, n))
-        ),
-        False,
-        (3, 5),
-    ),
-    "Grapheme": (lambda n, _: 14 * n + 32 + len(str(2**2**n)), True, (3, 5)),
-    "FRACTRAN": (lambda n, _: n + 2, True, (3, 5)),
-    "Packlang": (
-        lambda n, _: 19 * 2**n // 2 - n - 4 if n <= 7 else 3 * 2**n // 64 + 1206 - n,
-        True,
-        (3, 7),
-    ),
-    "S*bleq": (lambda n, _: 3 * n + 2, True, (3, 6)),
-    "Collatz Multiverse": (lambda n, _: 2**n // 4 + 3 * n + 130, False, (3, 6)),
-    "CV(N)(C)": (
-        lambda n, p: 17 + 4 * n + (n - 1) * (3 + math.sqrt(2 * len(p))),
-        False,
-        (3, 5),
-    ),
-    "Circlefuck": (
-        lambda n, p: (
-            (2 * n + 13) * 2**n + 94 * n + 89 + 2 * sum(map(ord, p[1 : n + 1]))
-            # 94n = 63n + 31n loop-based 48-normalization in _READ
-        ),
-        True,
-        (3, 5),
-    ),
-    "Dig": (
-        lambda n, _: (
-            128 + 46 * 2 ** ((n - 6) // 2)
-            if n % 2 == 0
-            else 128 + 64 * 2 ** ((n - 7) // 2)
-        ),
-        True,
-        (7,),
-    ),
-    "AddSubJump": (
-        lambda n, _: (11 * n + 4) * (2**n // n) + 11 * 2**n + 13 * n - 17 + (n >= 10),
-        True,
-        (6,),
-    ),
-    "ROTfuck": (lambda n, _: 8 * 4**n + 43 * 2**n + 15 * n - 5, True, (3, 5)),
-    "Fargo": (
-        lambda n, _: 5 * 2**n + 1 if n > 5 else 15 * 2**n // 2 - 4,
-        False,
-        (3, 7),
-    ),
-    # Each one entry costs a step; a constant folds to one level, so the
-    # worst table is all ones but one.
-    "Streetcode": (
-        lambda n, _: 3 * 2**n + 110 * n + 55 if n < 8 else 4 * 2**n + 14 * n + 599,
-        True,
-        (6, 8),
-    ),
-}
-
-
+#: a count taken from the program.  Each lives on its language's
+#: ``proof_execution`` (``proof_formulas.py`` in its package); this table
+#: holds only entries that cannot relocate, with the reason.
+_HAND: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {}
 #: Arities where the default (see ``ledger_formulas``) is too slow or too
-#: shallow for the construction.
-_ARITIES: dict[str, tuple[int, ...]] = {
-    "Line": (3, 5),
-    "Forbin": (3, 8),
-    "Inject": (5, 6),
-    # Past n = 5: loops of 12 or 14 cells cost 3 a cell (a run of c costs at
-    # most 3c); two odd runs keep the last input essential, 2 under 3T each.
-    "Unsquare": (6, 7),
-    "ArrowQueue": (1, 7),
-    "Thue": (3, 6),
-    "Super SNUSP": (5, 6),
-    "LaserFuck": (5,),
-    "Bitdeque": (5, 6),
-    "B-tapemark": (3, 6),
-    "6-5": (3, 7),
-    "Forþ": (3, 7),
-    "Unlambda": (3, 7),
-}
+#: shallow for the construction, aggregated from each package's
+#: ``[formula_arities]`` section.
+_ARITIES = formula_arities("execution")
 
 #: Generator -> (formula, exact?, arities): the ledger's own clause where
 #: it parses (``tests/proofs/_formula.py``), else ``_HAND``.

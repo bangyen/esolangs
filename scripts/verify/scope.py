@@ -154,7 +154,8 @@ def local_tooling_deselections(changed: list[str]) -> list[str]:
             "pytest.ini",
             "tox.ini",
         }
-        or path.startswith(("tests/support/fixtures/", "ledgers/"))
+        or path == "snapshot.json"
+        or path.startswith("tests/support/fixtures/")
         or (path.startswith("tests/tooling/") and Path(path).name == "conftest.py")
         for path in changed
     ):
@@ -409,7 +410,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/runtime/",
         "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
-        "ledgers/generator_sizes.json",
+        "scripts/generator_sizes.py",
     ),
     "deep proofs (verify band)": (
         "src/esolangs/languages/arrowqueue/generator.py",

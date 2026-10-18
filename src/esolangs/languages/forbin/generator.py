@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
+from esolangs.languages.forbin.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -161,69 +162,99 @@ def _tree(
     once when ``b`` is 1, not at all when 0; every leaf returns), and a
     constant span collapses to a call to one of the two printers.
     """
-    constant: Callable[[int, int], bool] = constant_span_test(truth_table)
-    # A constant table is one entry, which has no levels to name.
-    ids = subtree_ids(truth_table) if n else []
-    count: Counter[int] = Counter()
+    return _TreeBuilder(truth_table, n, high, names, used, narrow=narrow).build()
 
-    def tally(level: int, row: int) -> None:
-        span = 2 ** (n - level)
-        if constant(row, row + span):
+
+class _TreeBuilder:
+    """Build one branch tree, holding the state its steps share.
+
+    The repeat tally, the shared-function map, the definitions emitted
+    so far and the caller's ``used`` set are read and mutated by the
+    tally, the emitter and the branch builder alike, so they live on
+    ``self`` instead of in closures over the enclosing function.
+    """
+
+    def __init__(
+        self,
+        truth_table: str,
+        n: int,
+        high: int,
+        names: _Names,
+        used: set[str],
+        *,
+        narrow: bool = False,
+    ) -> None:
+        self.truth_table = truth_table
+        self.n = n
+        self.high = high
+        self.names = names
+        self.used = used
+        self.narrow = narrow
+        self.constant: Callable[[int, int], bool] = constant_span_test(truth_table)
+        # A constant table is one entry, which has no levels to name.
+        self.ids = subtree_ids(truth_table) if n else []
+        self.count: Counter[int] = Counter()
+        self.shared: dict[int, str] = {}
+        self.defs: list[str] = []
+
+    def _tally(self, level: int, row: int) -> None:
+        span = 2 ** (self.n - level)
+        if self.constant(row, row + span):
             return
-        key = ids[level][row // span]
-        count[key] += 1
+        key = self.ids[level][row // span]
+        self.count[key] += 1
         # A repeat's insides are one copy, wherever it ends up.
-        if level < high and count[key] == 1:
-            tally(level + 1, row)
-            tally(level + 1, row + span // 2)
+        if level < self.high and self.count[key] == 1:
+            self._tally(level + 1, row)
+            self._tally(level + 1, row + span // 2)
 
-    tally(0, 0)
-    shared: dict[int, str] = {}
-    defs: list[str] = []
-
-    def call(name: str) -> str:
+    def _call(self, name: str) -> str:
         # The 0 is the wiki's: "something has to be passed to call it".
-        return f"{name} 0;" if narrow else f"return({name} 0)"
+        return f"{name} 0;" if self.narrow else f"return({name} 0)"
 
-    def emit(level: int, row: int) -> list[str]:
-        span = 2 ** (n - level)
-        if constant(row, row + span):
-            name = names.one if truth_table[row] == "1" else names.zero
-            used.add(name)
-            return [call(name)]
-        key = ids[level][row // span]
-        if key in shared:
-            return [call(shared[key])]
-        lines = build(level, row, span)
-        if count[key] > 1:
-            name = names.fresh()
-            shared[key] = name
-            defs.extend([f"{name}{{", *lines, "}"])
-            return [call(name)]
+    def _emit(self, level: int, row: int) -> list[str]:
+        span = 2 ** (self.n - level)
+        if self.constant(row, row + span):
+            name = self.names.one if self.truth_table[row] == "1" else self.names.zero
+            self.used.add(name)
+            return [self._call(name)]
+        key = self.ids[level][row // span]
+        if key in self.shared:
+            return [self._call(self.shared[key])]
+        lines = self._branch(level, row, span)
+        if self.count[key] > 1:
+            name = self.names.fresh()
+            self.shared[key] = name
+            self.defs.extend([f"{name}{{", *lines, "}"])
+            return [self._call(name)]
         return lines
 
-    def build(level: int, row: int, span: int) -> list[str]:
-        if level == high:
+    def _branch(self, level: int, row: int, span: int) -> list[str]:
+        names = self.names
+        if level == self.high:
             # The literal block goes on a line of its own: it is one
             # unbreakable token, and the wrapper holds a line to its width
             # unless a single token already overruns it.
-            used.add(names.table)
-            block = ",".join(truth_table[row : row + span])
-            if narrow:
+            self.used.add(names.table)
+            block = ",".join(self.truth_table[row : row + span])
+            if self.narrow:
                 return [f"{names.table} {block};"]
             return [f"return({names.table}", f"{block})"]
-        lower = emit(level + 1, row)
-        if narrow:
+        lower = self._emit(level + 1, row)
+        if self.narrow:
             # Both guards run at most once, so a leaf needs no early return.
             lower = [f"for _:1..!{names.bits[level]}{{", *lower, "}"]
         return [
             f"for _:1..{names.bits[level]}{{",
-            *emit(level + 1, row + span // 2),
+            *self._emit(level + 1, row + span // 2),
             "}",
             *lower,
         ]
 
-    return defs, emit(0, 0)
+    def build(self) -> tuple[list[str], list[str]]:
+        """Tally the repeats, then emit the tree from its root."""
+        self._tally(0, 0)
+        return self.defs, self._emit(0, 0)
 
 
 def _register(names: _Names, block: int, high: int, n: int) -> str:
@@ -264,4 +295,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     empty_program="Forbin program has no main function",
+    proof_workspace=(workspace, True, (3, 8)),
 )

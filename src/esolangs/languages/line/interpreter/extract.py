@@ -437,6 +437,54 @@ def _only_noise_remains(runs: list[tuple[int, int]], start: int, unit: int) -> b
     return all(_round_units(r_len, unit) == 0 for _, r_len in runs[start:])
 
 
+def _relative_turn(direction: int, heading: int) -> int:
+    """Signed turn from ``heading`` to ``direction``, in -4..3 eighth-turns."""
+    return (direction - heading + 4) % 8 - 4
+
+
+def _read_signature(
+    runs: list[tuple[int, int]], start: int, heading: int, unit: int, legs: int
+) -> tuple[list[tuple[int, int]], int] | None:
+    """Read ``legs`` kink legs from ``runs[start:]`` as (turn, units) pairs.
+
+    A noise run (0 units) can sit between two legs, so ``legs`` legs may
+    take more than ``legs`` runs.  Returns the pairs plus the index just
+    past the last leg, or ``None`` when a leg runs off the end, goes
+    straight, or is off-unit.
+    """
+    candidate: list[tuple[int, int]] = []
+    j = start
+    for _ in range(legs):
+        while j < len(runs) and _round_units(runs[j][1], unit) == 0:
+            j += 1
+        if j >= len(runs):
+            return None
+        k_idx, k_len = runs[j]
+        k_turn = _relative_turn(k_idx, heading)
+        if k_turn == 0:
+            return None
+        k_units = _round_units(k_len, unit)
+        if k_units is None:
+            return None
+        candidate.append((k_turn, k_units))
+        j += 1
+    return candidate, j
+
+
+def _match_fixed(
+    runs: list[tuple[int, int]], start: int, heading: int, unit: int
+) -> tuple[str, int] | None:
+    """Match a fixed signature at ``runs[start]``, longest template first.
+
+    Returns ``(op, next_index)``, or ``None`` when no template matches.
+    """
+    for signature, op in _FIXED_BY_LENGTH:
+        read = _read_signature(runs, start, heading, unit, len(signature))
+        if read is not None and tuple(read[0]) == signature:
+            return op, read[1]
+    return None
+
+
 def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCall]:
     """Identify which opcodes' kinks appear along a walked stroke's ``vertices``.
 
@@ -465,7 +513,7 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
     i = 0
     while i < len(runs):
         r_idx, r_len = runs[i]
-        turn = (r_idx - heading + 4) % 8 - 4
+        turn = _relative_turn(r_idx, heading)
         if turn == 0:
             i += 1
             continue
@@ -481,38 +529,12 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
             i += 1
             continue
 
-        matched = False
-        for signature, op in _FIXED_BY_LENGTH:
-            n = len(signature)
-            candidate = []
-            ok = True
-            # Read position j: a noise run can sit between two legs, so n
-            # legs may take more than n runs.
-            j = i
-            for _ in range(n):
-                while j < len(runs) and _round_units(runs[j][1], unit) == 0:
-                    j += 1
-                if j >= len(runs):
-                    ok = False
-                    break
-                k_idx, k_len = runs[j]
-                k_turn = (k_idx - heading + 4) % 8 - 4
-                if k_turn == 0:
-                    ok = False
-                    break
-                k_units = _round_units(k_len, unit)
-                if k_units is None:
-                    ok = False
-                    break
-                candidate.append((k_turn, k_units))
-                j += 1
-            if ok and tuple(candidate) == signature:
-                calls.append(OpCall(op, 1, i))
-                ends_at_last_run = _only_noise_remains(runs, j, unit)
-                i = j
-                matched = True
-                break
-        if matched:
+        matched = _match_fixed(runs, i, heading, unit)
+        if matched is not None:
+            op, next_i = matched
+            calls.append(OpCall(op, 1, i))
+            ends_at_last_run = _only_noise_remains(runs, next_i, unit)
+            i = next_i
             continue
 
         if turn in (1, -1):

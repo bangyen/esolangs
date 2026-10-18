@@ -1,9 +1,6 @@
 # Implemented languages
 
-<details>
 <!-- IMPLEMENTED:START -->
-
-<summary>Show all 90 languages</summary>
 
 ### Grid-based Languages
 
@@ -136,4 +133,3 @@ Languages that don't fit into the above categories.
 - [Unlambda](https://esolangs.org/wiki/Unlambda) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unlambda/interpreter.py))
 
 <!-- IMPLEMENTED:END -->
-</details>

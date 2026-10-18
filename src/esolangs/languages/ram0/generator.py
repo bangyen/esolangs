@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
+from esolangs.languages.ram0.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -159,26 +160,44 @@ def _ram0_ordered(
         tokens.extend(("Z", _RAM0_INPUT))  # reset, then set the bit
         tokens.append("S")
 
-    pos = len(tokens)  # token count before the tree starts
-    ids = subtree_ids(truth_table)
-    tree: list[str] = []
-    # First address of each emitted subtree, by :func:`subtree_slot` name.
-    placed: dict[tuple[int, int], int] = {}
+    emitter = _TreeEmitter(n, subtree_ids(truth_table), share=share, pos=len(tokens))
+    emitter.emit(0, 0)
+    tokens += emitter.tree
+    end = emitter.addr()  # 1-based goto operand just past the last command
+    return " ".join(str(end) if t == "END@" else t for t in tokens)
 
-    def addr() -> int:
+
+class _TreeEmitter:
+    """Recursive layout of one order's shared tree, as state plus methods.
+
+    ``tree`` accumulates the tree tokens after the ``pos`` prefix tokens
+    (the halt trampoline head and the input stores); ``placed`` maps each
+    emitted subtree's slot (see :func:`subtree_slot`) to the 1-based
+    address of its first token.
+    """
+
+    def __init__(self, n: int, ids: list[list[int]], *, share: bool, pos: int) -> None:
+        self.n = n
+        self.ids = ids
+        self.share = share
+        self.pos = pos
+        self.tree: list[str] = []
+        self.placed: dict[tuple[int, int], int] = {}
+
+    def addr(self) -> int:
         """Return the 1-based address the next emitted token will occupy."""
-        return pos + len(tree) + 1
+        return self.pos + len(self.tree) + 1
 
-    def resolve(level: int, block: int) -> tuple[int, int, tuple[int, int]]:
+    def resolve(self, level: int, block: int) -> tuple[int, int, tuple[int, int]]:
         """Return the canonical ``(level, block, slot)`` for a subtree.
 
         With sharing on, tests whose halves agree are skipped over to the
         surviving half (see :func:`subtree_slot`); the slot names the subtree
         for the ``placed`` lookup.
         """
-        return subtree_slot(ids, level, block, skip=share)
+        return subtree_slot(self.ids, level, block, skip=self.share)
 
-    def emit(level: int, block: int) -> None:
+    def emit(self, level: int, block: int) -> None:
         """Lay the subtree out where control falls in, or jump to its copy.
 
         A node is ``Z A.. L C <one>``: ``Z A.. L`` loads the level's test bit
@@ -187,35 +206,30 @@ def _ram0_ordered(
         sharing, else the address the one subtree is about to occupy,
         backpatched into the head below.
         """
-        level, block, slot = resolve(level, block)
-        copy = placed.get(slot)
+        level, block, slot = self.resolve(level, block)
+        copy = self.placed.get(slot)
         # A goto is one token; re-emitting a leaf is three, so only jump to
         # a leaf copy while its address text is shorter than the leaf.
         if copy is not None and (slot[0] >= 0 or len(str(copy)) < len(_LEAF)):
-            tree.append(str(copy))
+            self.tree.append(str(copy))
             return
-        if share:
-            placed.setdefault(slot, addr())
+        if self.share:
+            self.placed.setdefault(slot, self.addr())
         if slot[0] < 0:
-            tree.extend(["Z", "A" if slot[1] else "Z", "2"])
+            self.tree.extend(["Z", "A" if slot[1] else "Z", "2"])
             return
-        at = len(tree)
-        head = [*_address(n - 1 - level, "L"), "C"]
+        at = len(self.tree)
+        head = [*_address(self.n - 1 - level, "L"), "C"]
         # Reserve the head plus its goto operand; the one-subtree address is
         # backpatched once the fall-through zero subtree is laid out.
-        tree.extend([""] * (len(head) + 1))
-        emit(level + 1, 2 * block)
+        self.tree.extend([""] * (len(head) + 1))
+        self.emit(level + 1, 2 * block)
         # The one subtree is jumped to, so an earlier copy costs nothing.
-        one = placed.get(resolve(level + 1, 2 * block + 1)[2])
+        one = self.placed.get(self.resolve(level + 1, 2 * block + 1)[2])
         if one is None:
-            one = addr()
-            emit(level + 1, 2 * block + 1)
-        tree[at : at + len(head) + 1] = [*head, str(one)]
-
-    emit(0, 0)
-    tokens += tree
-    end = addr()  # 1-based goto operand just past the last command
-    return " ".join(str(end) if t == "END@" else t for t in tokens)
+            one = self.addr()
+            self.emit(level + 1, 2 * block + 1)
+        self.tree[at : at + len(head) + 1] = [*head, str(one)]
 
 
 def _balance(_table: str, default: str) -> str:
@@ -242,4 +256,5 @@ LANGUAGE = Language(
     wrap=wrap_space_delimited,
     balance=_balance,
     example=Example(pair=PAIR, expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}"),
+    proof_workspace=(workspace, True, (3, 6)),
 )

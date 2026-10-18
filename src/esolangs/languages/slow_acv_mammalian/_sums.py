@@ -204,3 +204,8 @@ def _crossing_head(rest: int) -> int:
     """
     first = (127 - rest) % 256
     return (255 - rest) % 256 if first >= 254 else first
+
+
+def _crossing_pair(rest: int, value: int) -> tuple[int, int]:
+    """Return the crossing head for ``rest`` and the head it unlocks for ``value``."""
+    return _crossing_head(rest), ((value ^ 255) - rest) % 256

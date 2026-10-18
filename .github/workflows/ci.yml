@@ -292,7 +292,7 @@ jobs:
       run: uv sync --group dev --python 3.14
 
     - name: Test one slow shard
-      run: uv run python scripts/ci/shard.py shard --marker "slow and not weekly" --durations ledgers/slow_durations.json --shard ${{ matrix.shard }} --shards 4 --manifest notes/ci/slow.shard.json -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
+      run: uv run python scripts/ci/shard.py shard --marker "slow and not weekly" --durations snapshot.json --shard ${{ matrix.shard }} --shards 4 --manifest notes/ci/slow.shard.json -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
     - name: Retain measured slow-test durations
       if: always()

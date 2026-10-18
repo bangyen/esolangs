@@ -53,6 +53,7 @@ from .core import (
     _T_LOW,
     _chain,
     _emit_chain,
+    _HubRequest,
     _main_planner,
     _merge_code,
     _options_of,
@@ -64,6 +65,7 @@ from .core import (
     _turn_hubs,
     _walker,
 )
+from .emitter import _Planner
 from .isa import (
     _CONSTS,
     _WORDS,
@@ -182,17 +184,14 @@ def _hubs(
     cells rather than a hub value.
     """
     operand = {f: _chain(_g(f), ops) for f, ops in _D_OPERANDS.items()}
-
-    return _t_hubs(
-        values,
-        label,
-        avoid,
-        hub_cells=_T_HUB_CELLS,
-        options_of=_options_of(operand),
-        floor=_D_FLOOR,
+    request = _HubRequest(
+        _T_HUB_CELLS,
+        _options_of(operand),
+        _D_FLOOR,
         ceiling=_WORDS - 10,
         hub_floor=_D_FLOOR,
     )
+    return _t_hubs(values, label, avoid, request)
 
 
 class _Digits(NamedTuple):
@@ -216,11 +215,49 @@ def _digits(n: int) -> _Digits:
         raise AssertionError("readouts collide or wrap")
     # Sixteen's cells hold fifteen's, so both avoid the same set.
     cells_of_tables = set(_readouts_cells())
+    cells = _allocate_cells()
+    values, pointer = _pointers(
+        cells.label,
+        [(lab, _chain(value, ops)) for lab, (value, ops) in _D_SEEDS.items()],
+    )
+    data, stubs, hub_turns = _hubs(values, cells.label, cells_of_tables)
+
+    main, _ = _main_planner(data)
+    _emit_digit_setup(main, cells, pointer, hub_turns)
+    _emit_digit_groups(main, n, cells)
+    _emit_digit_jump(main, cells)
+    code_end = main.c
+
+    code = _merge_code(
+        (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
+    )
+    labels = {p - 1: lab for p, lab in cells.label.items()}
+    return _Digits(code, data, tables, labels)
+
+
+class _DCells(NamedTuple):
+    """The digit build's walked cells, allocated in load-bearing order."""
+
+    helper: dict[str, int]
+    gadget: list[list[int]]
+    s_cell: int
+    z_cell: int
+    twos: list[int]
+    to_48: list[int]
+    seeds: dict[str, int]
+    label: dict[int, str]
+
+
+def _allocate_cells() -> _DCells:
+    """Allocate the walked cells: helpers, gadget groups, ``s``/``z``, seeds.
+
+    The walker hands out the first free cell of the wanted ``g`` value, so
+    this order fixes every address that follows; ``_D_LAYOUT`` only steers
+    it.  The label cells are reserved, not allocated.
+    """
     label = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
     used = {*_T_LOW, *label, *_D_OPERANDS}
-
     walked = _walker(used, _D_LAYOUT)
-
     helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
     for name, value in _T_HELPERS.items():
         helper[name] = walked(value)
@@ -229,66 +266,102 @@ def _digits(n: int) -> _Digits:
     twos = [walked(38) for _ in range(2)]  # ``crazy(all-1, 38) == 2``
     to_48 = [walked(69) for _ in range(2)]  # ``crazy(all-2, 69) == 48``
     seeds = {lab: walked(value) for lab, (value, _) in _D_SEEDS.items()}
+    return _DCells(helper, gadget, s_cell, z_cell, twos, to_48, seeds, label)
 
-    values, pointer = _pointers(
-        label, [(lab, _chain(value, ops)) for lab, (value, ops) in _D_SEEDS.items()]
-    )
-    data, stubs, hub_turns = _hubs(values, label, cells_of_tables)
 
-    main, _ = _main_planner(data)
+def _emit_digit_setup(
+    main: _Planner,
+    cells: _DCells,
+    pointer: dict[int, int],
+    hub_turns: dict[int, int],
+) -> None:
+    """Emit the setup: constants, priming, shortcuts, seed chains, hub turns."""
+    helper = cells.helper
     _build_constants(main, helper)
     _prime(
-        main, helper, (helper["all1"], helper["all2"], s_cell, z_cell, *sorted(label))
+        main,
+        helper,
+        (
+            helper["all1"],
+            helper["all2"],
+            cells.s_cell,
+            cells.z_cell,
+            *sorted(cells.label),
+        ),
     )
     for f, (value, ops) in sorted(_D_POINTERS.items()):
         _emit_chain(main, f, ops, helper)
         main.mem[f] = value
     _seed_label_chains(
-        main, helper, {lab: ops for lab, (_, ops) in _D_SEEDS.items()}, seeds, label
+        main,
+        helper,
+        {lab: ops for lab, (_, ops) in _D_SEEDS.items()},
+        cells.seeds,
+        cells.label,
     )
     _turn_hubs(main, pointer, hub_turns)
     for f, ops in sorted(_D_OPERANDS.items()):
         _emit_chain(main, f, ops, helper)
 
-    def swap12(target: int, two: int) -> None:
-        main.op("*", helper["all1"])
-        main.op("p", two)
-        main.op("p", target)
 
-    s = s_cell
-    for group, cell in enumerate(gadget):
-        first = True
-        for op in _GADGET:
-            if op == "/":
-                if first and _top_bit_held(n, group):
-                    main.op("*", helper["all2"])
-                    main.op("p", to_48[1])
-                else:
-                    main.raw("/")
-                first = False
-            elif op[0] == "K":
-                main.op("*", helper[_K_CELL[op]])
+def _emit_swap12(main: _Planner, target: int, two: int, helper: dict[str, int]) -> None:
+    """Emit a ``swap12`` on ``target``: make ``A`` 2 via ``two``, then ``p``."""
+    main.op("*", helper["all1"])
+    main.op("p", two)
+    main.op("p", target)
+
+
+def _emit_gadget_reads(
+    main: _Planner, n: int, group: int, cell: list[int], cells: _DCells
+) -> None:
+    """Emit one group's gadget ops over its three cells.
+
+    A held top bit (fifteen inputs, last group) replaces the first read
+    with the constant ``'0'``, folded in through the second to-48 cell.
+    """
+    helper = cells.helper
+    first = True
+    for op in _GADGET:
+        if op == "/":
+            if first and _top_bit_held(n, group):
+                main.op("*", helper["all2"])
+                main.op("p", cells.to_48[1])
             else:
-                main.op("p", cell[int(op)])
+                main.raw("/")
+            first = False
+        elif op[0] == "K":
+            main.op("*", helper[_K_CELL[op]])
+        else:
+            main.op("p", cell[int(op)])
+
+
+def _emit_digit_groups(main: _Planner, n: int, cells: _DCells) -> None:
+    """Emit the five gadget groups, folding one digit per group into ``S``.
+
+    ``S`` starts in the s cell and each group rotates it through its own
+    cell 1, so the accumulator cell alternates per group.
+    """
+    helper = cells.helper
+    s = cells.s_cell
+    for group, cell in enumerate(cells.gadget):
+        _emit_gadget_reads(main, n, group, cell, cells)
         if group == _D_SWAP_V:
-            swap12(cell[2], twos[1])
+            _emit_swap12(main, cell[2], cells.twos[1], helper)
         main.op("p", s)
         if group == _D_SWAP_U:
-            swap12(cell[1], twos[0])
+            _emit_swap12(main, cell[1], cells.twos[0], helper)
         main.op("*", s)
         main.op("p", cell[1])
         main.op("*", cell[1])
         s = cell[1]
-    main.op("p", z_cell)
-    main.op("*", helper["all2"])
-    main.op("p", to_48[0])
-    _t_jump(main, z_cell, 0)
-    code_end = main.c
 
-    code = _merge_code(
-        (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
-    )
-    return _Digits(code, data, tables, {p - 1: lab for p, lab in label.items()})
+
+def _emit_digit_jump(main: _Planner, cells: _DCells) -> None:
+    """Emit the finish: prime the readout cell at 48 and jump to the row's stub."""
+    main.op("p", cells.z_cell)
+    main.op("*", cells.helper["all2"])
+    main.op("p", cells.to_48[0])
+    _t_jump(main, cells.z_cell, 0)
 
 
 @cache

@@ -8,6 +8,7 @@ import esolangs.languages.generators as boolean
 from esolangs.generation.helpers import runs
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import Ledger, Row, load
+from tests.proofs._schemes import folds_without_tree
 from tests.support.source_support import source_units
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
@@ -35,34 +36,10 @@ _FOLD = 0.05
 #: Lookup routes can shrink degenerate tables without branching. Their
 #: mechanisms are documented in the ledger's per-language exemption bullets.
 #: Named rather than derived: these are the structural proxy's known blind
-#: spots, and the equality below requires the prose and this set to agree.
-_FOLDS_WITHOUT_TREE = frozenset(
-    {
-        "///",
-        "A Painter Ant",
-        "Alight",
-        "B-tapemark",
-        "Bitwise Cyclic Tag",
-        "bit~",
-        "Circlefuck",
-        "Clockwise",
-        "Collatz Multiverse",
-        "Cyclic tag",
-        "Dimensional",
-        "EGL",
-        "Eval",
-        "Fish",
-        "Flowchart",
-        "Forbin",
-        "Minsky Swap",
-        "Modulous",
-        "Packlang",
-        "Qoibl",
-        "SLOW ACV MAMMALIAN",
-        "Subleq",
-        "Unsquare",
-    }
-)
+#: spots, recorded per language as the ``folds_without_tree`` marker in its
+#: package's ``[schemes]`` section, and the equality below requires the
+#: prose and this set to agree.
+_FOLDS_WITHOUT_TREE = folds_without_tree()
 
 _LOOKUP_SCHEMES = frozenset({"finite lookup", "parameterized lookup", "linear lookup"})
 

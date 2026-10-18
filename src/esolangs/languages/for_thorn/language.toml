@@ -1,0 +1,25 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+
+[proof_status]
+labels = ["tree"]
+qualification = "the tree tests the essential inputs; an ignored one is read and dropped as `,0*+`"
+scaling = "linear: span walk, constant dispatch, step literals geometric"
+execution = "linear: at most 6T + 12n - 3 commands: every heap scope defined once, one dispatch path"
+workspace = "T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the scope dictionary"
+
+[generator_sizes]
+"00000001" = { commands = 57, commands_by_row = { "0" = 43, "1" = 50, "2" = 43, "3" = 57, "4" = 43, "5" = 50, "6" = 43, "7" = 57 }, source_units = 77 }
+"00001100" = { commands = 36, commands_by_row = { "0" = 43, "1" = 43, "2" = 36, "3" = 36, "4" = 43, "5" = 43, "6" = 36, "7" = 36 }, source_units = 56 }
+"00110110" = { commands = 69, commands_by_row = { "0" = 62, "1" = 69, "2" = 62, "3" = 69, "4" = 62, "5" = 69, "6" = 62, "7" = 69 }, source_units = 117 }
+"0110" = { commands = 45, commands_by_row = { "0" = 45, "1" = 45, "2" = 45, "3" = 45 }, source_units = 72 }
+"01101001" = { commands = 73, commands_by_row = { "0" = 69, "1" = 73, "2" = 69, "3" = 73, "4" = 69, "5" = 73, "6" = 69, "7" = 73 }, source_units = 115 }
+"0110100110010110" = { commands = 97, commands_by_row = { "0" = 93, "1" = 101, "2" = 97, "3" = 97, "4" = 93, "5" = 101, "6" = 97, "7" = 97, "8" = 93, "9" = 101, "10" = 97, "11" = 97, "12" = 93, "13" = 101, "14" = 97, "15" = 97 }, source_units = 158 }
+"1101001101101101" = { commands = 98, commands_by_row = { "0" = 105, "1" = 98, "2" = 109, "3" = 113, "4" = 105, "5" = 113, "6" = 109, "7" = 98, "8" = 105, "9" = 98, "10" = 109, "11" = 113, "12" = 105, "13" = 113, "14" = 109, "15" = 98 }, source_units = 198 }
+"11111110" = { commands = 57, commands_by_row = { "0" = 43, "1" = 50, "2" = 43, "3" = 57, "4" = 43, "5" = 50, "6" = 43, "7" = 57 }, source_units = 77 }
+
+[formula_arities]
+execution = [3, 7]

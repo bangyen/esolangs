@@ -22,6 +22,7 @@ Decisions:
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from esolangs.generation.helpers import (
@@ -111,6 +112,72 @@ def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return setters
 
 
+@dataclass
+class _BitdequeTreeBuilder:
+    """Emit the pop-and-GOTO tree, remembering where each subtree was placed.
+
+    ``placed`` maps a subtree id to the command address (counted from 1) of
+    its first emitted copy; a repeat is reached by ``GOTO`` to that copy
+    instead of being emitted again, so the walk's address arithmetic and
+    the placement table live here rather than in shared closure cells.
+    """
+
+    n: int
+    seen: str
+    ids: list[list[int]]
+    rotations: list[list[str]]
+    placed: dict[int, int] = field(default_factory=dict)
+
+    def leaf(self, answer: str) -> list[str]:
+        """Emit a leaf for ``answer``."""
+        # Drain n+1 POPs, push the answer, INVERT restores the register, and
+        # GOTO 1 halts through the low-address trampoline.
+        out = ["POP"] * (self.n + 1)
+        if answer == "1":
+            out.append("INVERT")
+        out.append("PUSH")
+        if answer == "0":
+            out.append("INVERT")
+        out.append("GOTO 1")
+        return out
+
+    def width(self, level: int) -> int:
+        """Return the commands a node at ``level`` spends before its subtrees."""
+        # The rotation, its consuming pop, and the node's own ``GOTO``.
+        return len(self.rotations[level]) + 1
+
+    def walk(self, level: int, block: int, at: int) -> list[str]:
+        """Emit the subtree at ``level``/``block``, its first command at ``at``.
+
+        A subtree already emitted is reached by ``GOTO`` to its first copy:
+        a one-child's node operand, or ``INVERT GOTO`` where a zero-child
+        falls in (``GOTO`` is taken on a one, and the register holds the
+        zero just popped).  Every subtree opens with a pop, so it ignores
+        the register it is entered with.  Equal halves drop the node's
+        ``GOTO``: the zero subtree is the only one.
+        """
+        key = self.ids[level][block]
+        if key in self.placed:
+            return ["INVERT", f"GOTO {self.placed[key]}"]
+        self.placed[key] = at
+        if key < 2:
+            return self.leaf(self.seen[block << (self.n - level)])
+        zero_key, one_key = self.ids[level + 1][2 * block : 2 * block + 2]
+        rotation = self.rotations[level]
+        if zero_key == one_key and zero_key not in self.placed:
+            return [*rotation, *self.walk(level + 1, 2 * block, at + len(rotation))]
+        below = at + self.width(level)
+        zero = self.walk(level + 1, 2 * block, below)
+        if one_key in self.placed:
+            return [*rotation, f"GOTO {self.placed[one_key]}", *zero]
+        one = self.walk(level + 1, 2 * block + 1, below + len(zero))
+        return [*rotation, f"GOTO {below + len(zero)}", *zero, *one]
+
+    def build(self, start: int) -> list[str]:
+        """Emit the whole tree, its first command at address ``start``."""
+        return self.walk(0, 0, start)
+
+
 def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     """Emit the Bitdeque template; see :func:`bitdeque`.
 
@@ -127,24 +194,8 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     mask = 0 if short else sum(1 << (n - 1 - level) for level in range(n) if level % 2)
     seen = "".join(truth_table[row ^ mask] for row in range(2**n))
 
-    def leaf(answer: str) -> list[str]:
-        # Drain n+1 POPs, push the answer, INVERT restores the register, and
-        # GOTO 1 halts through the low-address trampoline.
-        out = ["POP"] * (n + 1)
-        if answer == "1":
-            out.append("INVERT")
-        out.append("PUSH")
-        if answer == "0":
-            out.append("INVERT")
-        out.append("GOTO 1")
-        return out
-
     # The head is input ``level`` at each level, so no rotation is needed.
     rotations = [["EJECT"]] * (n - 1) + [["POP"]]
-
-    def width(level: int) -> int:
-        # the rotation, its consuming pop, and the node's own ``GOTO``
-        return len(rotations[level]) + 1
 
     # Commands count from 1.  Initially command 1 falls through on zero and
     # commands 2/3 skip the trampoline.  A leaf returns with one, so ``GOTO
@@ -159,33 +210,10 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree.  Commands count from 1 and the load occupies ``2n`` of them
     # ahead of the tree, so the ``GOTO`` operands are right after substitution.
-    # A subtree already emitted is reached by ``GOTO`` to its first copy: a
-    # one-child's node operand, or ``INVERT GOTO`` where a zero-child falls in
-    # (``GOTO`` is taken on a one, and the register holds the zero just popped).
-    # Every subtree opens with a pop, so it ignores the register it is entered
-    # with.  Equal halves drop the node's ``GOTO``: the zero subtree is the only one.
-    ids = subtree_ids(seen)
-    placed: dict[int, int] = {}
-
-    def walk(level: int, block: int, at: int) -> list[str]:
-        key = ids[level][block]
-        if key in placed:
-            return ["INVERT", f"GOTO {placed[key]}"]
-        placed[key] = at
-        if key < 2:
-            return leaf(seen[block << (n - level)])
-        zero_key, one_key = ids[level + 1][2 * block : 2 * block + 2]
-        rotation = rotations[level]
-        if zero_key == one_key and zero_key not in placed:
-            return [*rotation, *walk(level + 1, 2 * block, at + len(rotation))]
-        below = at + width(level)
-        zero = walk(level + 1, 2 * block, below)
-        if one_key in placed:
-            return [*rotation, f"GOTO {placed[one_key]}", *zero]
-        one = walk(level + 1, 2 * block + 1, below + len(zero))
-        return [*rotation, f"GOTO {below + len(zero)}", *zero, *one]
-
-    tree = walk(0, 0, len(prelude) + load_len + 1)
+    builder = _BitdequeTreeBuilder(
+        n=n, seen=seen, ids=subtree_ids(seen), rotations=rotations
+    )
+    tree = builder.build(len(prelude) + load_len + 1)
     end = len(prelude) + load_len + len(tree) + 1
     tokens = prelude + load + tree
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)

@@ -85,13 +85,30 @@ def test_proof_ownership_preserves_shared_index_and_evidence(
     proofs.mkdir(parents=True)
     for name in ("index.md", "private.md", "shared.md"):
         (proofs / name).write_text("Proof evidence.\n")
-    manifest = tmp_path / "ledgers/proof_status.toml"
-    manifest.parent.mkdir(parents=True)
-    manifest.write_text(
-        '[[ledger]]\ngenerator="Tiny"\nevidence="docs/proofs/private.md#bound"\n'
-        '[[audit]]\ngenerator="Tiny"\nevidence="docs/proofs/index.md#bound"\n'
-        '[[ledger]]\ngenerator="Tiny"\nevidence="docs/proofs/shared.md"\n'
-        '[[ledger]]\ngenerator="Other"\nevidence="docs/proofs/shared.md"\n'
+    packages = tmp_path / "src/esolangs/languages"
+    ledger = (
+        "[proof_status]\n"
+        'labels = ["tree"]\nqualification = "q"\nscaling = "linear: s"\n'
+        'execution = "linear: e"\nworkspace = "linear: w"\n'
+        'evidence = "{evidence}"\n'
     )
+    audit = (
+        "[proof_status.audit]\n"
+        'totality = "Total"\ngeneration_time = "Linear"\n'
+        'output_size = "Linear"\nevidence = "{evidence}"\n'
+    )
+    for slug, sections in (
+        (
+            "tiny",
+            ledger.format(evidence="docs/proofs/private.md#bound")
+            + "\n"
+            + audit.format(evidence="docs/proofs/index.md#bound"),
+        ),
+        ("other", ledger.format(evidence="docs/proofs/shared.md")),
+        ("third", audit.format(evidence="docs/proofs/shared.md")),
+    ):
+        package = packages / slug
+        package.mkdir(parents=True)
+        (package / "language.toml").write_text(sections)
     assert remove_language._owned_evidence("Tiny") == {proofs / "private.md"}  # noqa: SLF001
     assert remove_language._owned_evidence("Other") == set()  # noqa: SLF001

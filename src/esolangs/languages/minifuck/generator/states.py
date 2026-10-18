@@ -51,70 +51,103 @@ def _orientations(gates: list[list[int]]) -> list[str]:
     return out
 
 
-def _emit(gates: list[list[int]], bias: int) -> str:
-    """Keep the state in bit 7; a guarded setter clears it only when active."""
-    lower = [0] * 7
-    parts: list[str] = []
+class _StateEmitter:
+    """Emit one two-state diagram while mirroring the cells below bit 7.
 
-    def flip(cell: int) -> int:
-        parts.append("[x")
-        lower[cell] ^= 1
-        if lower[cell]:
+    ``lower`` tracks cells 0..6 and ``parts`` collects the program text.
+    Crossing a cell flips it; a flip that clears a lower cell carries into
+    the cell above, and a carry out of cell 6 is the caller's to handle.
+    """
+
+    def __init__(self) -> None:
+        self.lower = [0] * 7
+        self.parts: list[str] = []
+
+    def flip(self, cell: int) -> int:
+        """Cross ``cell`` once; return the carry out of cell 6, else 0."""
+        self.parts.append("[x")
+        self.lower[cell] ^= 1
+        if self.lower[cell]:
             return 0
         if cell < 6:
-            lower[cell + 1] ^= 1
+            self.lower[cell + 1] ^= 1
             return 0
         return 1
 
-    def seek() -> None:
+    def seek(self) -> None:
+        """Cross cells 1..6, opening a run when the carry escapes cell 6."""
         carry = 0
         for cell in range(1, 7):
-            carry ^= flip(cell)
+            carry ^= self.flip(cell)
         if carry:
-            parts.append("[x<")
+            self.parts.append("[x<")
 
-    def toggle() -> None:
-        seek()
-        parts.append("[x<" + "<" * 7)
+    def toggle(self) -> None:
+        """Seek, then flip the state in bit 7 with a guarded setter."""
+        self.seek()
+        self.parts.append("[x<" + "<" * 7)
 
-    for values in gates:
-        if sum(values) % 2 == 0:
-            constant = values[0]
-            left, right = values[0] ^ values[2], values[0] ^ values[1]
-            if not left:
-                seek()
-                parts.append(_READS[1] + PAIR[1] + "<" * 8)
-            seek()
-            if right:
-                parts.append(_MINIFUCK_INPUT + "<" * 8)
-            else:
-                # Two flips cross bit 7 without changing it; setters land at 9.
-                parts.append("[x<[x[x" + _MINIFUCK_INPUT + "<" * 10)
-            if constant:
-                toggle()
-        else:
-            majority = int(sum(values) > 2)
-            minority = values.index(1 - majority)
-            seek()
-            if minority < 2:
-                parts.append("[x<")
-            # The restoring read leaves bit 7 unchanged, with pointer 6 for a
-            # one and 7 for a zero. The setter therefore computes a & !b.
-            parts.append(_READS[1] + _MINIFUCK_INPUT + "<" * 9)
-            if majority:
-                toggle()
 
+def _emit_even_level(emitter: _StateEmitter, values: list[int]) -> None:
+    """Emit a level whose four branches XOR to a constant state update."""
+    constant = values[0]
+    left, right = values[0] ^ values[2], values[0] ^ values[1]
+    if not left:
+        emitter.seek()
+        emitter.parts.append(_READS[1] + PAIR[1] + "<" * 8)
+    emitter.seek()
+    if right:
+        emitter.parts.append(_MINIFUCK_INPUT + "<" * 8)
+    else:
+        # Two flips cross bit 7 without changing it; setters land at 9.
+        emitter.parts.append("[x<[x[x" + _MINIFUCK_INPUT + "<" * 10)
+    if constant:
+        emitter.toggle()
+
+
+def _emit_odd_level(emitter: _StateEmitter, values: list[int]) -> None:
+    """Emit a level whose update is the minority branch's guarded setter."""
+    majority = int(sum(values) > 2)
+    minority = values.index(1 - majority)
+    emitter.seek()
+    if minority < 2:
+        emitter.parts.append("[x<")
+    # The restoring read leaves bit 7 unchanged, with pointer 6 for a
+    # one and 7 for a zero. The setter therefore computes a & !b.
+    emitter.parts.append(_READS[1] + _MINIFUCK_INPUT + "<" * 9)
+    if majority:
+        emitter.toggle()
+
+
+def _finish_diagram(emitter: _StateEmitter, bias: int) -> None:
+    """Walk the lower cells into the print frame the final dot expects."""
     carry = 0
     for cell in range(1, 7):
-        carry ^= flip(cell)
-        if lower[cell] != int(cell in (2, 3)):
-            parts.append("<")
-            carry ^= flip(cell)
+        carry ^= emitter.flip(cell)
+        if emitter.lower[cell] != int(cell in (2, 3)):
+            emitter.parts.append("<")
+            carry ^= emitter.flip(cell)
     # Dot flips bit 7 before printing the byte.
     if carry ^ bias ^ 1:
-        parts.append("[x<")
-    parts.append(".")
-    return "g" + "".join(_orientations(gates)) + "g" + "".join(parts)
+        emitter.parts.append("[x<")
+
+
+def _emit_unframed(gates: list[list[int]], bias: int) -> str:
+    """Return the diagram's walk text, without its header or final dot."""
+    emitter = _StateEmitter()
+    for values in gates:
+        if sum(values) % 2 == 0:
+            _emit_even_level(emitter, values)
+        else:
+            _emit_odd_level(emitter, values)
+    _finish_diagram(emitter, bias)
+    return "".join(emitter.parts)
+
+
+def _emit(gates: list[list[int]], bias: int) -> str:
+    """Keep the state in bit 7; a guarded setter clears it only when active."""
+    walk = _emit_unframed(gates, bias)
+    return "g" + "".join(_orientations(gates)) + "g" + walk + "."
 
 
 def state_setters(template: str, n: int) -> tuple[tuple[str, str], ...] | None:

@@ -106,5 +106,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     eof="stores zero",
-    example=Example(expected="", expected_compared=False),
+    example=Example(expected="", expected_compared=False, slow_build=True),
 )

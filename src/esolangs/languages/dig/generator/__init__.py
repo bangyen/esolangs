@@ -29,6 +29,8 @@ Decisions:
     use the indexed leaf decoder.
 """
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import cast
 
 from esolangs.generation.helpers import (
@@ -52,6 +54,7 @@ from esolangs.languages.dig.generator._leaf import (
     _render,
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
+from esolangs.languages.dig.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
@@ -167,25 +170,62 @@ def _dig_grid(
 
 def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> str:
     """Lay the tree out branching on the inputs ``used``, reading the rest."""
-    truth_table = read_at(truth_table, used, n)
-    m = len(used)
-    # Inputs read before level ``l``'s own block, its skips being the gap.
-    consumed = [0, *(i + 1 for i in used)]
-    skips = [used[level] - consumed[level] for level in range(m)]
-    columns = _dig_columns(
-        [(_DIG_STRIDE if split is None else _DIG_BAND) + skip for skip in skips],
-        split,
-    )
-    total = 2 ** (m + 1) - 1
-    constant = constant_span_test(truth_table)
-    cells: dict[tuple[int, int], str] = {}
-    corridors: list[tuple[int, int, int]] = []
+    table = read_at(truth_table, used, n)
+    return _BandTreePainter(table, n, split, used).paint()
 
-    def leftward(level: int) -> bool:
+
+@dataclass
+class _BandTreePainter:
+    """The state one banded (or flat) decision tree accumulates while painted.
+
+    ``columns``/``skips``/``consumed`` are derived from the branched-on
+    inputs once; ``cells`` and ``corridors`` are what the walk paints and
+    the clearance check then verifies.
+    """
+
+    truth_table: str
+    n: int
+    split: int | None
+    used: list[int]
+    m: int = field(init=False)
+    consumed: list[int] = field(init=False)
+    skips: list[int] = field(init=False)
+    columns: list[int] = field(init=False)
+    total: int = field(init=False)
+    constant: Callable[[int, int], bool] = field(init=False)
+    cells: dict[tuple[int, int], str] = field(default_factory=dict)
+    corridors: list[tuple[int, int, int]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.m = len(self.used)
+        # Inputs read before level ``l``'s own block, its skips being the gap.
+        self.consumed = [0, *(i + 1 for i in self.used)]
+        self.skips = [
+            self.used[level] - self.consumed[level] for level in range(self.m)
+        ]
+        stride = _DIG_STRIDE if self.split is None else _DIG_BAND
+        self.columns = _dig_columns([stride + skip for skip in self.skips], self.split)
+        self.total = 2 ** (self.m + 1) - 1
+        self.constant = constant_span_test(self.truth_table)
+
+    def paint(self) -> str:
+        """Paint the tree, clear it, plant the start marker and render."""
+        # The mole starts at (0, 0) facing right, so the ``'`` below turns it
+        # down column 0 and this is the cell that turns it back out of it.
+        middle = self.total // 2
+        self.place(middle, self.columns[0] - 1, ">")
+        self.walk(middle, 0, 0, 2**self.m)
+        _dig_clear(self.cells, self.corridors)
+        if (0, 0) in self.cells:
+            raise AssertionError("the start marker's cell is taken")
+        self.cells[0, 0] = "'"
+        return _render(self.cells, dense=False)
+
+    def leftward(self, level: int) -> bool:
         """Whether this level's block is entered facing west."""
-        return split is not None and level >= split
+        return self.split is not None and level >= self.split
 
-    def place(row: int, col: int, text: str) -> None:
+    def place(self, row: int, col: int, text: str) -> None:
         """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
 
         An overwrite is one of the two ways a bad layout fails; :func:`_dig_clear`
@@ -194,45 +234,49 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
         for i, char in enumerate(text):
             if col + i < 0:
                 raise AssertionError(f"cell off the left edge at row {row}")
-            if (row, col + i) in cells:
+            if (row, col + i) in self.cells:
                 raise AssertionError(f"two cells at {(row, col + i)}")
-            cells[row, col + i] = char
+            self.cells[row, col + i] = char
 
-    def block(row: int, level: int, text: str) -> None:
+    def block(self, row: int, level: int, text: str) -> None:
         """Write a block so the mole meets its first cell first."""
-        col = columns[level]
-        if leftward(level):
-            place(row, col - len(text) + 1, text[::-1])
+        col = self.columns[level]
+        if self.leftward(level):
+            self.place(row, col - len(text) + 1, text[::-1])
         else:
-            place(row, col, text)
+            self.place(row, col, text)
 
-    def walk(row: int, level: int, lo: int, hi: int) -> None:
+    def walk(self, row: int, level: int, lo: int, hi: int) -> None:
         """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
-        if level == m or constant(lo, hi):
+        if level == self.m or self.constant(lo, hi):
             # A constant slice cannot be told apart by more branching, so
             # this is a leaf and every row below it goes unwritten.  It
             # still reads what it did not branch on: a program whose input
             # count depended on its table would desync a caller feeding
             # several programs from one stream.
-            reads = n - consumed[level]
-            block(
+            reads = self.n - self.consumed[level]
+            self.block(
                 row,
                 level,
-                _dig_leaf(reads, int(truth_table[lo]), aligned=split is not None),
+                _dig_leaf(
+                    reads, int(self.truth_table[lo]), aligned=self.split is not None
+                ),
             )
             return
-        skip = skips[level]
-        block(row, level, f"${3 + skip}{'~' * skip}~;#")
-        col = columns[level]
+        skip = self.skips[level]
+        self.block(row, level, f"${3 + skip}{'~' * skip}~;#")
+        col = self.columns[level]
         last = _DIG_LAST + skip
-        hop = col - last if leftward(level) else col + last
-        step = 2 ** (m - level - 1)
+        hop = col - last if self.leftward(level) else col + last
+        step = 2 ** (self.m - level - 1)
         half = (hi - lo) // 2
         # ``#`` rotates one way on a 0 and the other on a 1, so which child
         # is up and which is down follows the mole's heading: a bit that
         # sends an eastbound mole down sends a westbound one up.
         one, zero = (
-            (row - step, row + step) if leftward(level) else (row + step, row - step)
+            (row - step, row + step)
+            if self.leftward(level)
+            else (row + step, row - step)
         )
         for child, bounds in (
             (one, (lo + half, hi)),
@@ -241,20 +285,9 @@ def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> st
             # the mole arrives here vertically from the parent's "#", which
             # is the cell right before the child's own block -- so the turn
             # goes in that column, pointing the way the child is entered
-            place(child, hop, "<" if leftward(level + 1) else ">")
-            corridors.append((hop, row, child))
-            walk(child, level + 1, *bounds)
-
-    # The mole starts at (0, 0) facing right, so the ``'`` below turns it
-    # down column 0 and this is the cell that turns it back out of it.
-    place(total // 2, columns[0] - 1, ">")
-    walk(total // 2, 0, 0, 2**m)
-    _dig_clear(cells, corridors)
-
-    if (0, 0) in cells:
-        raise AssertionError("the start marker's cell is taken")
-    cells[0, 0] = "'"
-    return _render(cells, dense=False)
+            self.place(child, hop, "<" if self.leftward(level + 1) else ">")
+            self.corridors.append((hop, row, child))
+            self.walk(child, level + 1, *bounds)
 
 
 def _dig_clear(
@@ -319,22 +352,10 @@ def _dig_size(program: str) -> tuple[int, int]:
     return grid_area(program), len(program)
 
 
-def _dig_indexed_choice(table: str, n: int, current: str, width: int | None) -> str:
-    """Swap in the indexed leaf decoder if it shrinks area and fits ``width``.
-
-    A candidate over ``width`` still qualifies when it lowers the floor
-    ``current`` already sits above.
-    """
+def _dig_indexed_choice(table: str, n: int, current: str) -> str:
+    """Swap in the indexed leaf decoder if it shrinks area."""
     candidate = _dig_indexed_shared(table, n)
     if candidate is None:
-        return current
-    if (
-        width is not None
-        and grid_width(candidate) > width
-        and (
-            grid_width(current) <= width or grid_width(candidate) > grid_width(current)
-        )
-    ):
         return current
     return candidate if grid_area(candidate) < grid_area(current) else current
 
@@ -439,16 +460,13 @@ def _dig_build(
 
     def settle(current: str) -> str:
         """Try the indexed decoder against the cheapest layout so far."""
-        return _dig_indexed_choice(truth_table, n, current, width) if share else current
+        return _dig_indexed_choice(truth_table, n, current) if share else current
 
     lane = _dig_lane_shared(truth_table, n) if share else None
     parallel = _dig_parallel_shared(truth_table, n) if share else None
     if width is None and n > _DIG_TREE_MAX:
-        current = min(
-            filter(None, (lane, parallel, _dig_alternating(truth_table, n))),
-            key=len,
-        )
-        return settle(current)
+        layouts = filter(None, (lane, parallel, _dig_alternating(truth_table, n)))
+        return settle(min(layouts, key=len))
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
         return flat
@@ -458,12 +476,40 @@ def _dig_build(
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
     trees = min((flat, banded), key=len)
     if width is None and n == _DIG_TREE_MAX and share:
-        # Both build at n=4 and neither dominates: over all 65,536 tables
-        # racing them saves 30.7% of length (33.2% of area) against the trees alone.
-        layouts = filter(None, (lane, parallel, _dig_alternating(truth_table, n)))
-        return min(trees, settle(min(layouts, key=len)), key=len)
+        return _dig_race_at_tree_max(truth_table, n, trees, lane, parallel, settle)
     if width is None:
         return trees
+    return _dig_fit_width(truth_table, n, width, flat, banded, lane, parallel, settle)
+
+
+def _dig_race_at_tree_max(
+    truth_table: str,
+    n: int,
+    trees: str,
+    lane: str | None,
+    parallel: str | None,
+    settle: Callable[[str], str],
+) -> str:
+    """Race the trees against the alternating layouts at four inputs.
+
+    Both build at n=4 and neither dominates: over all 65,536 tables racing
+    them saves 30.7% of length (33.2% of area) against the trees alone.
+    """
+    layouts = filter(None, (lane, parallel, _dig_alternating(truth_table, n)))
+    return min(trees, settle(min(layouts, key=len)), key=len)
+
+
+def _dig_fit_width(
+    truth_table: str,
+    n: int,
+    width: int,
+    flat: str,
+    banded: str,
+    lane: str | None,
+    parallel: str | None,
+    settle: Callable[[str], str],
+) -> str:
+    """Pick the shortest layout fitting ``width``, else the narrowest one."""
     if n <= _DIG_TREE_MAX:
         if grid_width(flat) <= width:
             return flat
@@ -478,8 +524,7 @@ def _dig_build(
         if grid_width(alternating) <= width:
             fitting.append(alternating)
     if fitting:
-        current = min(fitting, key=len)
-        return settle(current)
+        return settle(min(fitting, key=len))
     # A bounded flat width keeps the rotated entry padding O(T).
     if n <= _DIG_TREE_MAX:
         candidates += (_dig_quarter_turn(flat),)
@@ -522,4 +567,6 @@ LANGUAGE = Language(
     split=True,
     balance=_balance,
     empty_program="Dig program cannot be empty",
+    proof_execution=(execution, True, (7,)),
+    proof_workspace=(workspace, True, (5,)),
 )

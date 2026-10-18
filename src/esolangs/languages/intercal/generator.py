@@ -26,6 +26,7 @@ from esolangs.generation.helpers import (
     in_input_order,
 )
 from esolangs.generation.wrap import _join_tokens, balance_score
+from esolangs.languages.intercal.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -288,4 +289,6 @@ LANGUAGE = Language(
     balance=balance_intercal,
     empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     example=Example(pair=PAIR, char=TEMPLATE_CHAR, expected="_\n\n"),
+    proof_execution=(execution, False, (3, 5)),
+    proof_workspace=(workspace, False, (3, 6)),
 )

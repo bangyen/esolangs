@@ -1,0 +1,33 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+workspace = 6
+
+[curation]
+backlinks = 3
+bf_derivative = true
+bf_derivative_predates = true
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count"
+scaling = "linear: bounded dependency scan and canonical residual IDs"
+execution = "linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: NAND's all-ones row, walks quadratic per digit"
+workspace = "linear: at most 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n) bits: 2T + 7 cells"
+
+[generator_sizes]
+"00000001" = { commands = 890, commands_by_row = { "0" = 226, "1" = 250, "2" = 330, "3" = 386, "4" = 538, "5" = 626, "6" = 770, "7" = 890 }, source_units = 298 }
+"00001100" = { commands = 326, commands_by_row = { "0" = 166, "1" = 166, "2" = 190, "3" = 190, "4" = 270, "5" = 270, "6" = 326, "7" = 326 }, source_units = 214 }
+"00110110" = { commands = 893, commands_by_row = { "0" = 229, "1" = 253, "2" = 333, "3" = 389, "4" = 541, "5" = 629, "6" = 773, "7" = 893 }, source_units = 301 }
+"0110" = { commands = 324, commands_by_row = { "0" = 164, "1" = 188, "2" = 268, "3" = 324 }, source_units = 212 }
+"01101001" = { commands = 893, commands_by_row = { "0" = 229, "1" = 253, "2" = 333, "3" = 389, "4" = 541, "5" = 629, "6" = 773, "7" = 893 }, source_units = 301 }
+"0110100110010110" = { commands = 2784, commands_by_row = { "0" = 304, "1" = 328, "2" = 408, "3" = 464, "4" = 616, "5" = 704, "6" = 848, "7" = 968, "8" = 1224, "9" = 1376, "10" = 1584, "11" = 1768, "12" = 2048, "13" = 2264, "14" = 2536, "15" = 2784 }, source_units = 400 }
+"1101001101101101" = { commands = 2786, commands_by_row = { "0" = 306, "1" = 330, "2" = 410, "3" = 466, "4" = 618, "5" = 706, "6" = 850, "7" = 970, "8" = 1226, "9" = 1378, "10" = 1586, "11" = 1770, "12" = 2050, "13" = 2266, "14" = 2538, "15" = 2786 }, source_units = 402 }
+"11111110" = { commands = 896, commands_by_row = { "0" = 232, "1" = 256, "2" = 336, "3" = 392, "4" = 544, "5" = 632, "6" = 776, "7" = 896 }, source_units = 304 }
+
+[catalogue]
+folding_constant_local = "_program"  # one-entry rotated lookup
+
+[formula_arities]
+workspace = [3, 4]

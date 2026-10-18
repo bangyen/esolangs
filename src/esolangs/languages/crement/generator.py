@@ -35,6 +35,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
+from esolangs.languages.crement.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -209,4 +210,5 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="jumps and patches name instruction numbers, so lines stay whole",
     example=Example(setters=crement_setters, expected=""),
+    proof_workspace=(workspace, False, (3, 6)),
 )

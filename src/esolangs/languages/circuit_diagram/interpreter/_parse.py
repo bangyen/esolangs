@@ -279,6 +279,11 @@ class _Parser:
 
     def _check_characters(self) -> None:
         """Reject characters that are unknown or out of scope."""
+        self._check_unknown_characters()
+        self._check_label_names()
+
+    def _check_unknown_characters(self) -> None:
+        """Reject any character outside the legal alphabet, naming the first."""
         # A row at a time, by set difference.  Every character is legal or
         # the program is rejected, so the common case is "this row holds
         # nothing new", which a set answers at C speed; only a row that
@@ -299,6 +304,8 @@ class _Parser:
                 )
             raise Hint.SYMBOL.error(f"unknown character {char!r} at ({col}, {row})")
 
+    def _check_label_names(self) -> None:
+        """Reject label names that are neither functions nor wire labels."""
         for row, line in enumerate(self.grid.rows):
             for match in _LABEL_NAME.finditer(line):
                 text = match.group()
@@ -382,24 +389,31 @@ class _Parser:
                             f"wire label at ({start}, {row}) annotates no wire"
                         )
                     continue  # pragma: no cover - validation rejects this label
-                terms: tuple[str | int, ...] = tuple(
-                    _width_integer(part) if part.isdigit() else part
-                    for part in text.split("+")
-                )
-                width = (
-                    sum(term for term in terms if isinstance(term, int))
-                    if all(isinstance(term, int) for term in terms)
-                    else None
-                )
-                if width is not None and width < 1:
-                    raise Hint.POSITIVE_WIDTH.error(
-                        f"wire label {text!r} at ({start}, {row}) must be positive"
-                    )
+                terms, width = self._label_terms(text, start, row)
                 merged = self._apply_label(start, col, row, width)
                 if len(terms) == 1 and isinstance(terms[0], str):
                     self._symbols.setdefault(terms[0], []).append(merged)
                 elif width is None:
                     self._expressions.append((merged, terms))
+
+    @staticmethod
+    def _label_terms(
+        text: str, start: int, row: int
+    ) -> tuple[tuple[str | int, ...], int | None]:
+        """Split a label into terms and total its width, when fully numeric."""
+        terms: tuple[str | int, ...] = tuple(
+            _width_integer(part) if part.isdigit() else part for part in text.split("+")
+        )
+        width = (
+            sum(term for term in terms if isinstance(term, int))
+            if all(isinstance(term, int) for term in terms)
+            else None
+        )
+        if width is not None and width < 1:
+            raise Hint.POSITIVE_WIDTH.error(
+                f"wire label {text!r} at ({start}, {row}) must be positive"
+            )
+        return terms, width
 
     def _apply_label(
         self, start: int, end: int, row: int, width: int | None
@@ -475,73 +489,96 @@ class _Parser:
         """
         gates = []
         for row, line in enumerate(self.grid.rows):
-            functions = [
-                match
-                for match in _LABEL_NAME.finditer(line)
-                if match.group() in self.definitions
-            ]
-            labels = [
-                range(match.start(), match.end())
-                for match in _LABEL_RUN.finditer(line)
-                if match.group() not in self.definitions
-                if self.grid.at(row, match.start() - 1) in _WIRES
-                and self.grid.at(row, match.end()) in _WIRES
-                and match.group() not in _SYMBOLS
-            ]
-            builtins = [
-                match
-                for match in _GATE_CELL.finditer(line)
-                if not any(
-                    match.start() in range(function.start(), function.end())
-                    for function in functions
-                )
-            ]
-            candidates = [
-                (match.start(), match.end(), match.group(), None) for match in builtins
-            ] + [
-                (
-                    match.start(),
-                    match.end(),
-                    match.group(),
-                    self.definitions[match.group()],
-                )
-                for match in functions
-            ]
+            candidates, labels = self._row_gate_candidates(row, line)
             for col, end, char, body in sorted(candidates):
                 if any(col in label for label in labels):
                     continue
-                # A built-in gate or mover, or a function name.
-                kind = cast(_GateKind, char)
-                gate = _Gate(kind, row, col, body, self.definitions)
-                if char == _OUTPUT:
-                    outputs: list[_Wiring] = []
-                elif char == _SPLIT:
-                    outputs = self._ports(row, col, 1, offsets=(-1, 1))
-                elif char in (_ZERO, _ONE, _CLOCK):
-                    outputs = self._ports(row, col, 1, offsets=(0,))
-                else:
-                    outputs = self._ports(row, end - 1, 1)
-                incoming = (
-                    [] if char in (_ZERO, _ONE, _CLOCK) else self._ports(row, col, -1)
-                )
-                if char == _OUTPUT and self.grid.at(row, col - 1) != "-":
-                    raise Hint.OUTPUT_WIRE.error(
-                        f"':' at ({col}, {row}) requires '-' directly to its left"
-                    )
-                if char == "~" and len(incoming) > 1:
-                    # NOT prefers the level input when other ports touch it (the
-                    # spec's sample is ``.~.``), so a diagonal neighbour is
-                    # some other wiring routed past the gate, not an input.
-                    level = self._ports(row, col, -1, offsets=(0,))
-                    if len(level) == 1:
-                        incoming = level
-                if any(wiring in outputs for wiring in incoming):
-                    raise ValueError("wiring feeds both input and output of a gate")
-                gate.inputs = incoming
-                gate.outputs = outputs
-                self._check_arity(gate)
-                gates.append(gate)
+                gates.append(self._bind_gate(row, col, end, char, body))
         return gates
+
+    def _row_gate_candidates(
+        self, row: int, line: str
+    ) -> tuple[list[tuple[int, int, str, tuple[str, ...] | None]], list[range]]:
+        """Collect one row's gate candidates and the label spans to skip."""
+        functions = [
+            match
+            for match in _LABEL_NAME.finditer(line)
+            if match.group() in self.definitions
+        ]
+        labels = [
+            range(match.start(), match.end())
+            for match in _LABEL_RUN.finditer(line)
+            if match.group() not in self.definitions
+            if self.grid.at(row, match.start() - 1) in _WIRES
+            and self.grid.at(row, match.end()) in _WIRES
+            and match.group() not in _SYMBOLS
+        ]
+        builtins = [
+            match
+            for match in _GATE_CELL.finditer(line)
+            if not any(
+                match.start() in range(function.start(), function.end())
+                for function in functions
+            )
+        ]
+        candidates: list[tuple[int, int, str, tuple[str, ...] | None]] = [
+            (match.start(), match.end(), match.group(), None) for match in builtins
+        ] + [
+            (
+                match.start(),
+                match.end(),
+                match.group(),
+                self.definitions[match.group()],
+            )
+            for match in functions
+        ]
+        return candidates, labels
+
+    def _gate_ports(
+        self, row: int, col: int, end: int, char: str
+    ) -> tuple[list[_Wiring], list[_Wiring]]:
+        """Return the ``(inputs, outputs)`` wirings for one gate character."""
+        if char == _OUTPUT:
+            outputs: list[_Wiring] = []
+        elif char == _SPLIT:
+            outputs = self._ports(row, col, 1, offsets=(-1, 1))
+        elif char in (_ZERO, _ONE, _CLOCK):
+            outputs = self._ports(row, col, 1, offsets=(0,))
+        else:
+            outputs = self._ports(row, end - 1, 1)
+        incoming = [] if char in (_ZERO, _ONE, _CLOCK) else self._ports(row, col, -1)
+        return incoming, outputs
+
+    def _bind_gate(
+        self,
+        row: int,
+        col: int,
+        end: int,
+        char: str,
+        body: tuple[str, ...] | None,
+    ) -> _Gate:
+        """Bind one gate candidate's ports and check its shape."""
+        # A built-in gate or mover, or a function name.
+        kind = cast(_GateKind, char)
+        gate = _Gate(kind, row, col, body, self.definitions)
+        incoming, outputs = self._gate_ports(row, col, end, char)
+        if char == _OUTPUT and self.grid.at(row, col - 1) != "-":
+            raise Hint.OUTPUT_WIRE.error(
+                f"':' at ({col}, {row}) requires '-' directly to its left"
+            )
+        if char == "~" and len(incoming) > 1:
+            # NOT prefers the level input when other ports touch it (the
+            # spec's sample is ``.~.``), so a diagonal neighbour is
+            # some other wiring routed past the gate, not an input.
+            level = self._ports(row, col, -1, offsets=(0,))
+            if len(level) == 1:
+                incoming = level
+        if any(wiring in outputs for wiring in incoming):
+            raise ValueError("wiring feeds both input and output of a gate")
+        gate.inputs = incoming
+        gate.outputs = outputs
+        self._check_arity(gate)
+        return gate
 
     def _check_arity(self, gate: _Gate) -> None:
         """Reject a gate whose port count the spec does not allow."""

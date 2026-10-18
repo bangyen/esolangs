@@ -1,0 +1,34 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it"
+scaling = "linear: `2**n` cells and `2**n - 1` pops, two bytes a row"
+execution = "linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops"
+workspace = "linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1 table cells on the stack"
+
+[generator_sizes]
+"00000001" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+"00001100" = { commands = 194, commands_by_row = { "0" = 185, "1" = 185, "2" = 189, "3" = 189, "4" = 190, "5" = 190, "6" = 194, "7" = 194 }, source_units = 56 }
+"00110110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+"0110" = { commands = 192, commands_by_row = { "0" = 183, "1" = 187, "2" = 188, "3" = 192 }, source_units = 54 }
+"01101001" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+"0110100110010110" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
+"1101001101101101" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
+"11111110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+
+[catalogue]
+sharing_exempt = "a stack lookup, one pushed entry per row, with no subtable branch"
+
+[formula_arities]
+# Past n = 5: loops of 12 or 14 cells cost 3 a cell (a run of c costs at
+# most 3c); two odd runs keep the last input essential, 2 under 3T each.
+execution = [6, 7]
+workspace = [3, 6]
+
+[schemes]
+folds_without_tree = true

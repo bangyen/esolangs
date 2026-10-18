@@ -1,0 +1,37 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+linearity = 9
+execution = 7
+workspace = 8
+
+[curation]
+backlinks = 6
+
+[proof_status]
+labels = ["tree", "cap"]
+qualification = "each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([summary](#polynomial-bound))"
+scaling = "lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([summary](#polynomial-bound))"
+execution = "unmeasured: exempt as a cap row"
+workspace = "poly n: at most bl(min(10T-7,1934) + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits, M = max_k min(2^k, 2^(2^(n-k)))"
+
+[proof_status.audit]
+totality = "Cap"
+generation_time = "Language lower bound"
+output_size = "Language lower bound"
+evidence = "docs/proofs/index.md#polynomial-bound"
+
+[generator_sizes]
+"00000001" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 5418 }
+"00001100" = { commands = 16, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 2504 }
+"00110110" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 28, "5" = 28, "6" = 29, "7" = 29 }, source_units = 11208 }
+"0110" = { commands = 18, commands_by_row = { "0" = 17, "1" = 17, "2" = 18, "3" = 18 }, source_units = 2425 }
+"01101001" = { commands = 25, commands_by_row = { "0" = 24, "1" = 24, "2" = 25, "3" = 25, "4" = 26, "5" = 26, "6" = 25, "7" = 25 }, source_units = 5649 }
+"0110100110010110" = { commands = 33, commands_by_row = { "0" = 31, "1" = 31, "2" = 32, "3" = 32, "4" = 33, "5" = 33, "6" = 32, "7" = 32, "8" = 34, "9" = 34, "10" = 33, "11" = 33, "12" = 32, "13" = 32, "14" = 33, "15" = 33 }, source_units = 10449 }
+"1101001101101101" = { commands = 37, commands_by_row = { "0" = 38, "1" = 38, "2" = 37, "3" = 37, "4" = 38, "5" = 38, "6" = 38, "7" = 38, "8" = 37, "9" = 37, "10" = 38, "11" = 38, "12" = 38, "13" = 38, "14" = 37, "15" = 37 }, source_units = 20300 }
+"11111110" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 5419 }
+
+[catalogue]
+sharing_local = "_polynomial_states"  # ordered BDD over equal residuals
+folding_constant = "a constant table is the k=0 state machine"

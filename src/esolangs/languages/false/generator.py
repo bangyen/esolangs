@@ -3,7 +3,9 @@
 A node reads with ``^``, keeps the bit with ``1&``, and runs the matching
 half as a ``[...]?`` lambda; a leaf prints its bit with ``.`` after reading
 the inputs below it with ``^%``, which a caller's next program would
-otherwise be handed.  A node over two constant halves is its own literal.
+otherwise be handed; the leaf a fold chain reaches from the root prints
+first and reads bare ``^``.  A node over two constant halves is its own
+literal.
 The reduced diagram (:func:`_shared`) shares repeated halves.
 
 Size:
@@ -14,6 +16,7 @@ Size:
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from string import ascii_lowercase
 from typing import NamedTuple
 
@@ -29,6 +32,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
+from esolangs.languages.false.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -44,9 +48,9 @@ Key = tuple[int, int]  # (level, subtable id)
 
 
 class _Literal(NamedTuple):
-    """A node over two constants: its whole text."""
+    """A node over two constants: the read that recovers its bit."""
 
-    text: str
+    read: str
 
 
 class _Fold(NamedTuple):
@@ -117,7 +121,7 @@ def _shared(truth_table: str, n: int) -> str:
             one = (depth + 1, ids[depth + 1][2 * place + 1])
             if zero[1] < 2 and one[1] < 2:  # a literal: no lambda halves
                 read = _SAME if one[1] == 1 else _FLIPPED
-                nodes[key] = _Literal(read + _SKIP * (n - depth - 1) + ".")
+                nodes[key] = _Literal(read)
                 continue
             if zero == one:  # the test changes nothing: drop the bit, run it
                 nodes[key] = _Fold(zero)
@@ -140,8 +144,8 @@ def _shared(truth_table: str, n: int) -> str:
         if node < 2:
             return _SKIP * (n - level) + str(node) + "."
         match nodes[key]:
-            case _Literal(literal):
-                return literal
+            case _Literal(read):
+                return read + _SKIP * (n - level - 1) + "."
             case _Fold(child):
                 return _SKIP + (names[child] + ";!" if child in names else text[child])
             case _Split(zero, one):
@@ -158,7 +162,42 @@ def _shared(truth_table: str, n: int) -> str:
             names[key] = name
 
     stores = "".join("[" + text[key] + "]" + name + ":" for key, name in names.items())
-    return stores + render((0, ids[0][0]))
+    return stores + _root_text((0, ids[0][0]), nodes, names, render, n)
+
+
+def _root_text(
+    key: Key,
+    nodes: dict[Key, _Literal | _Fold | _Split],
+    names: dict[Key, str],
+    render: Callable[[Key], str],
+    n: int,
+) -> str:
+    """Render the root, draining bare at the end of a fold chain.
+
+    A leaf or literal reached from the root through folds only is the
+    last text the program runs, so it prints first and reads the
+    remaining inputs with bare ``^`` instead of ``^%`` (a constant
+    table: 2n+2 -> n+2, measured n = 2..8).  Under a split the same end
+    stays stack-neutral: the split's ``?0=`` plumbing resumes above it
+    and expects its bit back on top.
+    """
+    parts: list[str] = []
+    while key[1] >= 2:
+        node = nodes[key]
+        if not isinstance(node, _Fold) or node.child in names:
+            break
+        parts.append(_SKIP)
+        key = node.child
+    level, sub = key
+    if sub < 2:
+        parts.append(str(sub) + "." + "^" * (n - level))
+        return "".join(parts)
+    node = nodes[key]
+    if isinstance(node, _Literal):
+        parts.append(node.read + "." + "^" * (n - level - 1))
+    else:
+        parts.append(render(key))
+    return "".join(parts)
 
 
 def _balance(_table: str, default: str) -> str:
@@ -181,4 +220,5 @@ LANGUAGE = Language(
     wrap=_false,
     balance=_balance,
     eof="an exhausted '^' is the spec's -1",
+    proof_execution=(execution, False, (3, 6)),
 )

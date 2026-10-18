@@ -257,7 +257,186 @@ def _finalize(state: _State) -> _State:
     return (stack, variables, frames)
 
 
-def _advance(  # noqa: C901
+@dataclass(frozen=True)
+class _Dispatch:
+    """Everything one command handler needs: the finalized state, split."""
+
+    code: str
+    closers: dict[int, int]
+    frame: _Frame
+    frames: tuple[_Frame, ...]
+    stack: tuple[_Value, ...]
+    variables: tuple[_Value | None, ...]
+
+    @property
+    def char(self) -> str:
+        """The command character the top frame is parked on."""
+        return self.code[self.frame.pc]
+
+    def go(
+        self,
+        new_stack: tuple[_Value, ...],
+        pc: int | None = None,
+        *,
+        variables: tuple[_Value | None, ...] | None = None,
+        push: tuple[_Frame, ...] = (),
+    ) -> _State:
+        """Return the state with this frame at ``pc`` (default next), ``push`` above."""
+        at = _at(self.frame, self.frame.pc + 1 if pc is None else pc)
+        return (
+            new_stack,
+            self.variables if variables is None else variables,
+            (*self.frames[:-1], at, *push),
+        )
+
+
+def _literal_step(step: _Dispatch) -> tuple[_State, _Effect] | None:
+    """Handle the commands that push a literal, a lambda or a variable ref."""
+    char, code, frame = step.char, step.code, step.frame
+    if "0" <= char <= "9":
+        value, stop = _literal(code, frame.pc, frame.end)
+        return step.go((*step.stack, value), stop), None
+    if char == "'":
+        return step.go((*step.stack, ord(code[frame.pc + 1])), frame.pc + 2), None
+    if char == "{":
+        stop = code.index("}", frame.pc) + 1
+        return step.go(step.stack, stop), None
+    if char == '"':
+        stop = code.index('"', frame.pc + 1)
+        return step.go(step.stack, stop + 1), ("str", code[frame.pc + 1 : stop])
+    if char == "[":
+        stop = step.closers[frame.pc]
+        return step.go((*step.stack, _Lambda(frame.pc + 1, stop)), stop + 1), None
+    if char in _LETTERS:
+        return step.go((*step.stack, _LETTERS.index(char))), None
+    return None
+
+
+def _stack_step(step: _Dispatch) -> tuple[_State, _Effect] | None:
+    """Handle the stack shufflers and the two unary operators."""
+    char, stack = step.char, step.stack
+    if char == "$":
+        top, _rest = _pop(stack)
+        return step.go((*stack, top)), None
+    if char == "%":
+        _top, rest = _pop(stack)
+        return step.go(rest), None
+    if char == "\\":
+        two, rest = _pop(stack)
+        one, rest = _pop(rest)
+        return step.go((*rest, two, one)), None
+    if char == "@":
+        three, rest = _pop(stack)
+        two, rest = _pop(rest)
+        one, rest = _pop(rest)
+        return step.go((*rest, two, three, one)), None
+    if char in "øO":
+        depth, rest = _pop(stack)
+        index = _number(depth, "'ø'")
+        if not 0 <= index < len(rest):
+            raise HaltError(
+                f"'ø' asks for stack entry {index}, which is not there",
+                hint="push enough values for the requested stack depth",
+            )
+        return step.go((*rest, rest[len(rest) - 1 - index])), None
+    if char == "_":
+        top, rest = _pop(stack)
+        return step.go((*rest, wrap_int32(-_number(top, "'_'")))), None
+    if char == "~":
+        top, rest = _pop(stack)
+        return step.go((*rest, wrap_int32(~_number(top, "'~'")))), None
+    return None
+
+
+def _operator_step(step: _Dispatch) -> tuple[_State, _Effect] | None:
+    """Handle the binary operators and variable store (``:``) and fetch (``;``)."""
+    char, stack = step.char, step.stack
+    if char in "+-*/&|>=":
+        return step.go(_binary(char, stack)), None
+    if char == ":":
+        reference, rest = _pop(stack)
+        # Not ``value``: that name holds the integer literal above, and one
+        # binding cannot be both an int and a lambda.
+        stored, rest = _pop(rest)
+        index = _variable(reference)
+        return step.go(
+            rest,
+            variables=(*step.variables[:index], stored, *step.variables[index + 1 :]),
+        ), None
+    if char == ";":
+        reference, rest = _pop(stack)
+        index = _variable(reference)
+        fetched = step.variables[index]
+        if fetched is None:
+            raise HaltError(
+                f"FALSE variable {_LETTERS[index]!r} was read before it was stored",
+                hint="store a value in the variable before reading it",
+            )
+        return step.go((*rest, fetched)), None
+    return None
+
+
+def _control_step(step: _Dispatch) -> tuple[_State, _Effect] | None:
+    """Handle the lambda runners: ``!``, ``?`` and the ``#`` loop driver."""
+    char, stack = step.char, step.stack
+    if char == "!":
+        body, rest = _pop(stack)
+        if not isinstance(body, _Lambda):
+            raise HaltError(
+                "'!' runs a lambda, but the top of the stack is a number",
+                hint="push a lambda before invoking this operation",
+            )
+        return step.go(rest, push=(_Frame(body.start, body.end),)), None
+    if char == "?":
+        body, rest = _pop(stack)
+        flag, rest = _pop(rest)
+        if not isinstance(body, _Lambda):
+            raise HaltError(
+                "'?' runs a lambda, but the top of the stack is a number",
+                hint="push a lambda before invoking this operation",
+            )
+        if _number(flag, "'?'"):
+            return step.go(rest, push=(_Frame(body.start, body.end),)), None
+        return step.go(rest), None
+    if char == "#":
+        body, rest = _pop(stack)
+        cond, rest = _pop(rest)
+        if not isinstance(body, _Lambda) or not isinstance(cond, _Lambda):
+            raise HaltError(
+                "'#' drives two lambdas, and one of these is a number",
+                hint="push two lambdas for the loop condition and body",
+            )
+        loop = _Loop(cond.start, cond.end, cond, body)
+        return step.go(rest, push=(loop,)), None
+    return None
+
+
+def _io_step(step: _Dispatch, char_input: int | None) -> tuple[_State, _Effect]:
+    """Handle the output commands, ``^``, and every ignored character."""
+    char, stack = step.char, step.stack
+    if char == ".":
+        top, rest = _pop(stack)
+        return step.go(rest), ("num", _number(top, "'.'"))
+    if char == ",":
+        top, rest = _pop(stack)
+        return step.go(rest), ("char", _number(top, "','") & 0xFF)
+    if char == "^":
+        # The read already happened in the shell.  ``None`` is end of input,
+        # which the spec answers with -1.
+        value = -1 if char_input is None else char_input
+        return step.go((*stack, value)), None
+    # ``ß``/``B`` flush a buffer this package does not have, and every other
+    # character is ignored, as the reference's parser ignores whitespace.
+    return step.go(stack), None
+
+
+#: The command groups, in the order ``_advance`` offers each character to
+#: them; the groups partition the command set, so the order only matters
+#: in that ``_io_step`` -- the fallback -- runs last, outside this table.
+_STEP_HANDLERS = (_literal_step, _stack_step, _operator_step, _control_step)
+
+
+def _advance(
     state: _State, code: str, closers: dict[int, int], char_input: int | None = None
 ) -> tuple[_State, _Effect]:
     """Return the state after one command, and what to write.
@@ -269,130 +448,12 @@ def _advance(  # noqa: C901
     stack, variables, frames = state
     if not frames:
         return state, None
-    frame = frames[-1]
-    char = code[frame.pc]
-
-    def go(
-        new_stack: tuple[_Value, ...],
-        pc: int | None = None,
-        *,
-        variables: tuple[_Value | None, ...] = variables,
-        push: tuple[_Frame, ...] = (),
-    ) -> _State:
-        """Return the state with this frame at ``pc`` (default next), ``push`` above."""
-        at = _at(frame, frame.pc + 1 if pc is None else pc)
-        return (new_stack, variables, (*frames[:-1], at, *push))
-
-    if "0" <= char <= "9":
-        value, stop = _literal(code, frame.pc, frame.end)
-        return go((*stack, value), stop), None
-    if char == "'":
-        return go((*stack, ord(code[frame.pc + 1])), frame.pc + 2), None
-    if char == "{":
-        stop = code.index("}", frame.pc) + 1
-        return go(stack, stop), None
-    if char == '"':
-        stop = code.index('"', frame.pc + 1)
-        return go(stack, stop + 1), ("str", code[frame.pc + 1 : stop])
-    if char == "[":
-        stop = closers[frame.pc]
-        return go((*stack, _Lambda(frame.pc + 1, stop)), stop + 1), None
-    if char in _LETTERS:
-        return go((*stack, _LETTERS.index(char))), None
-    if char == "$":
-        top, _rest = _pop(stack)
-        return go((*stack, top)), None
-    if char == "%":
-        _top, rest = _pop(stack)
-        return go(rest), None
-    if char == "\\":
-        two, rest = _pop(stack)
-        one, rest = _pop(rest)
-        return go((*rest, two, one)), None
-    if char == "@":
-        three, rest = _pop(stack)
-        two, rest = _pop(rest)
-        one, rest = _pop(rest)
-        return go((*rest, two, three, one)), None
-    if char in "øO":
-        depth, rest = _pop(stack)
-        index = _number(depth, "'ø'")
-        if not 0 <= index < len(rest):
-            raise HaltError(
-                f"'ø' asks for stack entry {index}, which is not there",
-                hint="push enough values for the requested stack depth",
-            )
-        return go((*rest, rest[len(rest) - 1 - index])), None
-    if char == "_":
-        top, rest = _pop(stack)
-        return go((*rest, wrap_int32(-_number(top, "'_'")))), None
-    if char == "~":
-        top, rest = _pop(stack)
-        return go((*rest, wrap_int32(~_number(top, "'~'")))), None
-    if char in "+-*/&|>=":
-        return go(_binary(char, stack)), None
-    if char == ":":
-        reference, rest = _pop(stack)
-        # Not ``value``: that name holds the integer literal above, and one
-        # binding cannot be both an int and a lambda.
-        stored, rest = _pop(rest)
-        index = _variable(reference)
-        return go(
-            rest, variables=(*variables[:index], stored, *variables[index + 1 :])
-        ), None
-    if char == ";":
-        reference, rest = _pop(stack)
-        index = _variable(reference)
-        fetched = variables[index]
-        if fetched is None:
-            raise HaltError(
-                f"FALSE variable {_LETTERS[index]!r} was read before it was stored",
-                hint="store a value in the variable before reading it",
-            )
-        return go((*rest, fetched)), None
-    if char == "!":
-        body, rest = _pop(stack)
-        if not isinstance(body, _Lambda):
-            raise HaltError(
-                "'!' runs a lambda, but the top of the stack is a number",
-                hint="push a lambda before invoking this operation",
-            )
-        return go(rest, push=(_Frame(body.start, body.end),)), None
-    if char == "?":
-        body, rest = _pop(stack)
-        flag, rest = _pop(rest)
-        if not isinstance(body, _Lambda):
-            raise HaltError(
-                "'?' runs a lambda, but the top of the stack is a number",
-                hint="push a lambda before invoking this operation",
-            )
-        if _number(flag, "'?'"):
-            return go(rest, push=(_Frame(body.start, body.end),)), None
-        return go(rest), None
-    if char == "#":
-        body, rest = _pop(stack)
-        cond, rest = _pop(rest)
-        if not isinstance(body, _Lambda) or not isinstance(cond, _Lambda):
-            raise HaltError(
-                "'#' drives two lambdas, and one of these is a number",
-                hint="push two lambdas for the loop condition and body",
-            )
-        loop = _Loop(cond.start, cond.end, cond, body)
-        return go(rest, push=(loop,)), None
-    if char == ".":
-        top, rest = _pop(stack)
-        return go(rest), ("num", _number(top, "'.'"))
-    if char == ",":
-        top, rest = _pop(stack)
-        return go(rest), ("char", _number(top, "','") & 0xFF)
-    if char == "^":
-        # The read already happened in the shell.  ``None`` is end of input,
-        # which the spec answers with -1.
-        value = -1 if char_input is None else char_input
-        return go((*stack, value)), None
-    # ``ß``/``B`` flush a buffer this package does not have, and every other
-    # character is ignored, as the reference's parser ignores whitespace.
-    return go(stack), None
+    step = _Dispatch(code, closers, frames[-1], frames, stack, variables)
+    for handler in _STEP_HANDLERS:
+        result = handler(step)
+        if result is not None:
+            return result
+    return _io_step(step, char_input)
 
 
 class _Machine:

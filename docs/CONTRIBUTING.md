@@ -5,7 +5,51 @@ Each ships with an interpreter and a generator; only a famous language whose
 specification precludes a generator may ship without one (see below). Record
 rejections in [limitations](limitations.md).
 
+## Start here
+
+New here? This is the whole path, end to end. Each step points at the
+section that spells out its rules, so read those when a step asks for more
+than this page says.
+
+1. **Set up once, then run the quick suite.**
+
+   ```bash
+   just install-dev
+   just test-quick
+   ```
+
+   (See [Development](#development) for the full set of suites.)
+2. **Pick the work.** Improve an existing language, or add a new one. A new
+   language must add something no language here covers yet: a construction,
+   a branch mechanism, an answer convention, or an input interface
+   (see [What makes a candidate worth adding](#what-makes-a-candidate-worth-adding)).
+3. **Write the code where it belongs.** One folder per language, with the
+   registry connecting it to the API and CLI (see [Layout](#layout)).
+   For a new language, `just new-language "Name"` writes the interpreter,
+   generator and test stubs (see [Checklist](#checklist)).
+4. **Follow the interpreter rules.** Every interpreter starts from the
+   runtime template and exposes the same shape of `run` and `_Machine`, so
+   the API, the debugger and the tests can treat all languages alike
+   (see [Interpreter conventions](#interpreter-conventions)).
+5. **Check as you go.** `just test-quick` runs the fast suite.
+   `just check-language "Name"` lists whatever a new language is still
+   missing, so you never have to guess what is left.
+6. **Land it through the gate.** `just finish-language "Name"` regenerates
+   examples, docs and the size baseline, then runs the gate. Green
+   there is what "done" means; `just test-quick` alone is not the gate.
+
+Two strict sections are worth reading before you need them. A generator
+optimization ships only if it clears the size bar in
+[What makes a generator optimization worth shipping](#what-makes-a-generator-optimization-worth-shipping),
+and [Code shape](#code-shape) says how modules are judged. Every generated
+program also follows [the Boolean I/O contract](#the-boolean-io-contract):
+it reads all its inputs, in order, and prints the answer the way its
+contract says.
+
 ## Development
+
+Set up once. While you work, run the quick suite; before committing, run
+the full one.
 
 ```bash
 just install-dev
@@ -13,15 +57,50 @@ source .venv/bin/activate        # or prefix each command with `uv run`
 just test-quick
 ```
 
+No `just`? Every recipe is a thin wrapper over a script, so run the
+script in the project env (`uv run` or `.venv/bin/python`): `just test`
+is `python scripts/verify/gate.py`, and `just check-language` /
+`just finish-language` are `python scripts/new_language.py check` /
+`finish`.
+
 Run `just test` before committing; use `just test-full` for release-scale
 changes (`test-full` includes slow tests; weekly probes run separately with
 `just test-py`, or in scheduled CI). Regenerate committed examples with
 `python scripts/docs/generate.py examples`.
 
+`gate.py` is the local gate. Its steps: generated-docs freshness,
+pre-commit (lint, format, and comment density — at least two code lines
+per prose line under `src/`), mypy, pytest, dead definitions (a helper
+nothing calls is deleted, or moves under `tests/`), the generator size
+baseline, duplicate code, the deep proofs, and the exception-leak sweep.
+Diff coverage runs only when named: `just test-diff-coverage` applies
+CI's `--partial --strict` check (90% of added statements and branches per
+touched file) to the `.coverage` a `pytest --cov --cov-branch` run left.
+The gate scopes itself to the files your branch touched; steps outside
+that scope are skipped and left to CI. `just test-full` runs every step
+over the whole tree. Inside pytest, further pins hold: no file over
+1,200 lines, and a language's tests stay smaller than its source
+(`tests/tooling/test_file_sizes.py`).
+
+Tests carry cost bands, enforced per test on CPU time: fast (the
+default) budgets 1 second, `medium` 5 seconds, and `slow` and `weekly`
+tests belong to the fuller suites and CI. A test over its band fails on
+duration alone. When a test fails in a suite run but passes alone,
+rerun it alone before believing the failure: a rotating set of duration
+failures, different on each run, is machine load, not your change (the
+bands are calibrated for a quieter box, and CI scales the ceilings).
+One that still busts its band alone is genuinely too slow: speed it up,
+or mark it for the band its cost belongs in.
+
+Commits: one focused commit per change, with a short imperative
+subject — `git log` shows the house style.
+
 CI checks the wheel on Linux, macOS and Windows: packaged examples, CLI I/O,
 PNG execution, and installation with and without the mathematics extra.
 
 ## What makes a candidate worth adding
+
+This section decides whether a proposed language is worth adding at all.
 
 A new language must add an uncovered construction, branch mechanism,
 answer convention, or input interface:
@@ -34,6 +113,8 @@ answer convention, or input interface:
   termination as the answer.
 - **Input interface** -- read-and-route, bit-addressable index,
   parameterized embed.
+
+Languages that show the axes in use:
 
 - BFStack uses a minterm sum.
 - Vandevelo uses a minterm sum and answers by termination.
@@ -60,6 +141,8 @@ axes never remove a language; a stalled row stays open on the
 
 ## Layout
 
+Where code lives, and how a language name becomes a running program.
+
 | Path | Holds |
 | --- | --- |
 | `src/esolangs/runtime/` | shared runtime machinery |
@@ -67,7 +150,18 @@ axes never remove a language; a stalled row stays open on the
 | `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures and examples |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | shared contracts, infrastructure and proof runners |
-| `ledgers/` | cross-language records: proof status, curation, catalogues, size and timing baselines |
+| `snapshot.json` | collection dates and the recorded slow-test durations |
+
+Each language package carries a `language.toml` of language-owned
+data, one section per dataset; aggregators read only their own
+section and skip an absent file or section. The sections sort into
+three kinds:
+
+| Kind | Sections | Role |
+| --- | --- | --- |
+| Gates | `proof_status`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | a check or proof test consumes the data as the claim itself; wrong data fails |
+| Reference | `curation`, `formula_arities` | census facts and extra probe arities; informs decisions, gates nothing |
+| Record | `ablations` | the plain-rewrite audit's verdicts; no consumer, kept so settled decisions are not relitigated |
 
 The registry connects the API and CLI to generators and interpreters:
 
@@ -88,20 +182,21 @@ interpreter module ◄──── source + encoded stdin ◄──┘
 - `src/esolangs/registry/` owns integration. `Language` records names,
   interpreter, source shape, optional generator and the typed input and
   answer `contract`; `resolve` normalizes spelling, and `RUNNERS` selects
-  whole-source or split-line input. A language with a generator declares
-  its own `LANGUAGE = Language(...)` at the end of its generator module, and
-  generated exports collect those explicitly for the registry. Only
-  interpreter-only languages are listed
-  in `registry/_table.py`. `esolangs.languages.generators`'s imports come from
-  the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
+  whole-source or split-line input.
+- A language with a generator declares its own `LANGUAGE = Language(...)`
+  at the end of its generator module, and generated exports collect those
+  explicitly for the registry. Only interpreter-only languages are listed
+  in `registry/_table.py`. `esolangs.languages.generators`'s imports come
+  from the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
   and by `check`).
 - Interpreters and generators live in `src/esolangs/languages/<id>/`, each
-  as a module or package. Shared generator helpers live in `src/esolangs/generation/`.
-  Most generators return runnable source;
-  input-embedding languages return a `$`-run template for `instantiate`.
-  `encode_inputs` handles stdin conventions, and `read_answer` reads printed
-  and state-dump answers through the contract; termination answers (halt or
-  diverge) are read by the evaluation harness, which runs every row.
+  as a module or package. Shared generator helpers live in
+  `src/esolangs/generation/`.
+- Most generators return runnable source; input-embedding languages return
+  a `$`-run template for `instantiate`. `encode_inputs` handles stdin
+  conventions, and `read_answer` reads printed and state-dump answers
+  through the contract; termination answers (halt or diverge) are read by
+  the evaluation harness, which runs every row.
 - `run` loads `src/esolangs/languages/<id>/interpreter`
   and calls its `run(code, io)`; `make_vm` exposes its
   step-capable machine to the debugger and the hang proofs.
@@ -111,7 +206,9 @@ interpreter module ◄──── source + encoded stdin ◄──┘
 
 ## Interpreter conventions
 
-Start from `src/esolangs/runtime/_template.py`. Every interpreter:
+Every interpreter exposes the same shape, so the API, the debugger and the
+tests can treat all languages alike. Start from
+`src/esolangs/runtime/_template.py`. Every interpreter:
 
 - Exposes `run(code, io)` with required `IO`; uses `io` for all I/O.
   Most grids receive lines via registry `split=True`.
@@ -152,7 +249,7 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 - B-tapemark receives whole source.
 - EGL receives whole source.
 
-The module docstring is the language's spec (`describe()["spec"]`); its
+The module docstring is the language's spec (`describe()["spec"]`). Its
 shape (prose, then `Commands:`, `Input/output:`, `Errors:`, `Decisions:`) is
 `_template.py`'s own docstring, which `just new-language` copies.  `Errors:`
 names the public exception a caller catches, not the builtin the interpreter
@@ -164,15 +261,23 @@ the exception `run` gives), which `tests/interpreters/test_spec_triggers.py` run
 `tests/api/test_public_docstrings.py`.
 
 A generator's module docstring follows the `just new-language` stub: prose,
-then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor,
-`n=10 random 1847: 1,118 chars`, which
-`tests/generators/test_generator_docstrings.py` regenerates, so a size change
-updates it.  `Raises:` lists `GeneratorCapError` wherever the generator can
+then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor —
+for example, `n=10 random 1847: 1,118 chars`.
+`tests/generators/test_generator_docstrings.py` regenerates the anchor, so
+a size change updates it. The anchors themselves are machine-read in
+exactly that shape (`n=10 random 1847: 1,118 chars`, `n=16 and:
+1,443,471 chars`): reword the prose around them freely, but keep each
+anchor line's form and figures as they are, or the docstring tests
+fail.  `Raises:` lists `GeneratorCapError` wherever the generator can
 refuse a table, with a `[[generator_triggers]]` entry in `tests/cases.toml`.  A figure
 in `Size:` or `Decisions:` appears nowhere else in the generator: a figure
 about one helper lives beside it instead.
 
 ## What makes a generator optimization worth shipping
+
+This section is the bar a size optimization must clear before it ships.
+The bar is measured, not argued: every requirement below comes with its
+measurement protocol.
 
 A generator guarantees its size class (the Scaling column in
 `docs/proofs/index.md`), not its constant. Every generator applies the
@@ -198,6 +303,15 @@ requirements:
   not the whole race. Smallfuck's residual forms saved 2.2% on random tables
   at n=8, 0% at n >= 9 and at most 1.0% on a named function, and were
   retired. Cite the measurement beside the code.
+- **A genuine percentage, not a fixed saving**: the saving must not tend
+  toward zero as tables grow. A trick that saves a fixed number of cells or
+  columns — a tail segment, a prologue's width — dilutes as the construction
+  around it grows: judge the share at the two largest arities where it runs,
+  and a share in clear decline across them fails, however it prices at a
+  single arity. Streetcode's tail-overlap placement saved 8.6% at n=7 and
+  6.0% at n=8: a fixed ~51 columns against a widening street. A saving
+  proportional to the construction — per room, per leaf, per entry — holds
+  its share and passes.
 - **No table grows**: checked exhaustively through three inputs, so keep the
   old build as a candidate when the new one is not uniformly shorter.
 - **Every table executes**: exhaustively through three inputs and sampled at
@@ -247,7 +361,10 @@ Judge a module by what the language does not demand.
   a `noqa`: Fish's regular commands became tables (`_STACK_OPS`, `_TURNS`)
   and the rest one `match`. A command the corpus never runs needs its own
   check: no Fish program ran `@`, so old and new `_advance` were diffed on
-  200,000 random single steps.
+  200,000 random single steps. The excuses that remain are counted
+  (`C901_EXCUSED` in `tests/tooling/test_source_conventions.py`), and the
+  count only goes down: a change that removes an excuse lowers it in the
+  same commit.
 - Validators and debugger views sit beside the step, not inside it
   (Streetcode's `interpreter/validation.py`).
 - A new CLI flag needs a shell workflow it serves; API parity is not one.
@@ -256,11 +373,14 @@ Judge a module by what the language does not demand.
 
 ## Checklist
 
+Adding a language, step by step. Work in order; at any point,
+`just check-language` from step 2 tells you what is still missing.
+
 1. `just new-language "Name" --category tape_based` (the matching category;
    `--interpreter-only` for a fame admission) writes the interpreter,
    generator and test stubs, and records the language as
-   `{ unassessed = true }` in `ledgers/curation.toml`. Replace
-   the placeholder semantics and tests.
+   `unassessed = true` in the `[curation]` section of its package's
+   `language.toml`. Replace the placeholder semantics and tests.
 2. `just check-language "Name"` lists every integration step still missing,
    each with the file and entry to add: registry, exports, contract,
    example, width policy, samples (interpreter-only languages; a
@@ -283,7 +403,9 @@ Judge a module by what the language does not demand.
    written bits per arity, with the table reaching each: a cell's "worst"
    must equal them exactly, else it says "at most".
 4. `just finish-language "Name"` regenerates examples, docs and the size
-   baseline, then runs the full `verify/gate.py`. That is the gate: `just
+   baseline, then runs the full `verify/gate.py` over the whole tree
+   (the `--full` run, like `just test-full`), not the branch-scoped
+   default the other recipes use. That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.
    Added lines need 90% statement and branch coverage per file; the
    report separates them from older gaps. It takes minutes, so run it in
@@ -299,9 +421,9 @@ bullets with indented continuations.
 
 To take a language out, `just remove-language "Name"` deletes what `check`
 asks for and every test file `tests/api/test_language_coupling.py` counts as
-the language's own (committed or not), prunes the helper modules only it
+the language's own (committed or not). It prunes the helper modules only it
 imported and the per-language code the shared generators and
-`wrap.py` no longer reference, drops its wiki fixtures, timing rows and
+`wrap.py` no longer reference. It drops its wiki fixtures, timing rows and
 prose entries, regenerates, and
 lists the mentions left to edit by hand (display name and aliases, quoted
 ids, dotted module paths), each labelled with the edit it needs -- a
@@ -322,6 +444,9 @@ X`, `unlike X`, `X's axis`) is coupling in prose too, and
 `tests/api/test_language_coupling.py` rejects it.
 
 ### The Boolean I/O contract
+
+This contract fixes how every generated program reads its inputs and
+reports its answer.
 
 A generated program reads the inputs and prints the answer the way its
 `BooleanContract` (the `contract=` of its `LANGUAGE`) says; with none the

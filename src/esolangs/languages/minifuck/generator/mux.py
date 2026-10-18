@@ -198,19 +198,13 @@ def _mux_init_bits(bits: str, *, paired: bool = False) -> str:
 _GAP_BLOCK = "[[<[" + _MINIFUCK_INPUT + "<[x<[[x<"
 
 
-def _mux_lookup(
-    truth_table: str, n: int, *, paired: bool = False, gaps: tuple[int, ...] = ()
-) -> str:
-    """Return the linear preloaded-strip mux.
+def _mux_pads(weights: tuple[int, ...], gaps: tuple[int, ...]) -> tuple[list[int], int]:
+    """Return the pad after each setter and the total gap extension.
 
-    The controls are written on fresh tape, and one left run maps row
-    ``r`` to control ``r``.  With zero controls the printed row is
-    ``popcount(r)`` plus the separator phase; a control flips every row but
-    its own and the sentinel flips all, so the selected output is the bit.
-    ``paired`` absorbs skips on fresh padding, allowing two-character breaks.
-    ``gaps[i]`` ignored inputs (see :data:`_GAP_BLOCK`) sit after setter ``i``.
+    A pad spans the next gadget's reach (``a + b - 1`` for consecutive
+    weights ``a, b``); a gap extends its pad when the ignored input's
+    block needs fresh cells beyond that reach.
     """
-    weights = _mux_weights(n)
     pads = [
         max(a + b - 1, a + (gaps[i] if gaps else 0))
         for i, (a, b) in enumerate(pairwise(weights))
@@ -219,6 +213,16 @@ def _mux_lookup(
         pad - (a + b - 1)
         for pad, a, b in zip(pads, weights[:-1], weights[1:], strict=True)
     )
+    return pads, extra
+
+
+def _mux_controls(truth_table: str, n: int, extra: int) -> tuple[list[int], int]:
+    """Return the control bits and their sentinel (the controls' parity).
+
+    With zero controls the printed row is ``popcount(r)`` plus the
+    separator phase, so each control is the table bit XOR that baseline;
+    a control flips every row but its own and the sentinel flips all.
+    """
     total = len(truth_table)
     # Cross the setter before the first gap so its right-hand cells are fresh.
     # Each extra step flips one separator bit and moves the final pointer once.
@@ -227,8 +231,13 @@ def _mux_lookup(
     controls = [
         int(bit) ^ base for bit, base in zip(truth_table, baseline, strict=True)
     ]
-    sentinel = sum(controls) & 1
+    return controls, sum(controls) & 1
 
+
+def _mux_field(
+    controls: list[int], sentinel: int, total: int, n: int, *, paired: bool
+) -> tuple[list[str], int, int]:
+    """Lay the control field; return (parts, strip start, field's top cell)."""
     field_lo = _MUX_FIELD
     field = "".join(map(str, reversed(controls))) + str(sentinel)
     # Fresh cells flip to one and never skip, so their walks need no ``x``;
@@ -238,21 +247,29 @@ def _mux_lookup(
     walk = "[x" if paired else "["
     parts = [walk * (field_lo - 1), _mux_init_bits(field + "0", paired=paired)]
     parts.extend((_MUX_PRESERVE_RIGHT, walk * (start - 1 - field_end)))
+    return parts, start, field_lo + total - 1
 
+
+def _mux_setters(
+    weights: tuple[int, ...], pads: list[int], gaps: tuple[int, ...]
+) -> list[str]:
+    """Emit each input's setter and weight gadget, pads and gaps between."""
+    parts: list[str] = []
     for i, weight in enumerate(weights):
         parts.append(_MINIFUCK_INPUT)
         parts.append(_mux_weight(weight))
-        if i + 1 < n:
+        if i + 1 < len(weights):
             # The next gadget reaches ``next_weight - 2`` left of its setter;
             # ordinary pads sum to 3T/2-n-2; gap extensions add at most O(n).
             gap = gaps[i] if gaps else 0
             parts.append("[x" * (pads[i] - gap) + _GAP_BLOCK * gap)
+    return parts
 
+
+def _mux_relay(start: int, extra: int, total: int, field_high: int) -> list[str]:
+    """Walk from the last setter to the pool frame and print the chosen bit."""
     pmax = start + 3 * total // 2 - 3 + extra
-    field_high = field_lo + total - 1
-    parts.extend(("<" * (pmax - field_high + 1), "[x"))
-    parts.append("<" * (field_high + 1))
-
+    parts = ["<" * (pmax - field_high + 1), "[x", "<" * (field_high + 1)]
     byte = _POOL_MASK ^ 1
     frame = _probe_frame(_SCULPT_POOL_CODE, byte)
     if frame is None:  # pragma: no cover - fixed arity-free pool frame
@@ -270,6 +287,29 @@ def _mux_lookup(
             _PRINT,
         )
     )
+    return parts
+
+
+def _mux_lookup(
+    truth_table: str, n: int, *, paired: bool = False, gaps: tuple[int, ...] = ()
+) -> str:
+    """Return the linear preloaded-strip mux.
+
+    The controls are written on fresh tape, and one left run maps row
+    ``r`` to control ``r``.  With zero controls the printed row is
+    ``popcount(r)`` plus the separator phase; a control flips every row but
+    its own and the sentinel flips all, so the selected output is the bit.
+    ``paired`` absorbs skips on fresh padding, allowing two-character breaks.
+    ``gaps[i]`` ignored inputs (see :data:`_GAP_BLOCK`) sit after setter ``i``.
+    """
+    weights = _mux_weights(n)
+    pads, extra = _mux_pads(weights, gaps)
+    controls, sentinel = _mux_controls(truth_table, n, extra)
+    parts, start, field_high = _mux_field(
+        controls, sentinel, len(truth_table), n, paired=paired
+    )
+    parts.extend(_mux_setters(weights, pads, gaps))
+    parts.extend(_mux_relay(start, extra, len(truth_table), field_high))
     return "".join(parts)
 
 

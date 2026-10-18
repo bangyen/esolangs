@@ -30,7 +30,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
         == generator.parent
         == new_language.ROOT / "src/esolangs/languages/tiny_lang"
     )
-    assert {path.name for path in packages} == {"__init__.py"}
+    assert {path.name for path in packages} == {"__init__.py", "language.toml"}
     assert test.parent == generator_test.parent == source.parent / "tests"
     assert (test.name, generator_test.name) == (
         "test_tiny_lang.py",
@@ -53,11 +53,9 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
 
 
 def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
-    curation = root / "ledgers/curation.toml"
-    curation.parent.mkdir(parents=True)
-    curation.write_text("[languages]\nKept = { backlinks = 60 }\n")
     new_language.scaffold("Tiny Lang", "other", generator=False)
-    assert curation.read_text().endswith('"Tiny Lang" = { unassessed = true }\n')
+    fragment = root / "src/esolangs/languages/tiny_lang/language.toml"
+    assert fragment.read_text().endswith("[curation]\nunassessed = true\n")
 
 
 def test_scaffold_refuses_overwrite(root: Path) -> None:
@@ -129,14 +127,6 @@ def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
     assert path.read_text() == "- Gonero stays.\n  Kept.\n"
 
 
-def test_remove_drops_a_catalogue_entry(tmp_path: Path) -> None:
-    """A per-language ``"Name" = "reason"`` row goes, its neighbours stay."""
-    path = tmp_path / "catalogue.toml"
-    path.write_text('[local]\n"Gone" = "its mechanism"\n"Kept" = "another"\n')
-    remove_language._drop_toml(path, "Gone")  # noqa: SLF001
-    assert path.read_text() == '[local]\n"Kept" = "another"\n'
-
-
 def test_remove_drops_a_link_bullet(tmp_path: Path) -> None:
     """A ``- [Name](url): ...`` curation bullet goes, its neighbour stays."""
     path = tmp_path / "limitations.md"
@@ -188,9 +178,7 @@ def test_remove_drops_a_bullet_with_a_fenced_example(tmp_path: Path) -> None:
 
 def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     new_language.scaffold("Tiny", "other", generator=False)
-    ledgers = root / "ledgers"
-    ledgers.mkdir(parents=True)
-    (ledgers / "curation.toml").write_text("[languages]\n")
+    assert (root / "src/esolangs/languages/tiny/language.toml").is_file()
     gaps = new_language._common_gaps("Tiny", "tiny")  # noqa: SLF001
     assert (
         "src/esolangs/languages/tiny/tests/test_tiny.py",
@@ -201,11 +189,9 @@ def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
 def test_finish_still_runs_the_gate_past_open_steps(
     root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    ledgers = root / "ledgers"
-    ledgers.mkdir(parents=True)
-    (ledgers / "curation.toml").write_text(
-        "[languages]\nTiny = { unassessed = true }\n"
-    )
+    fragment = root / "src/esolangs/languages/tiny/language.toml"
+    fragment.parent.mkdir(parents=True)
+    fragment.write_text("[curation]\nunassessed = true\n")
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
     ran = []
@@ -213,6 +199,43 @@ def test_finish_still_runs_the_gate_past_open_steps(
     assert new_language.finish("Tiny") == 1
     assert ran == [1]
     assert "curation unassessed" in capsys.readouterr().out
+
+
+def test_gate_runs_the_full_gate_not_a_scoped_one(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``finish`` promises the full gate; a scoped run skips untouched steps."""
+    import subprocess
+
+    regenerated: list[list[str]] = []
+    gated: list[list[str]] = []
+
+    def run(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        regenerated.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0)
+
+    class Gate:
+        returncode = 0
+
+        def __init__(self) -> None:
+            self.stdout: list[str] = []
+
+        def __enter__(self) -> "Gate":
+            return self
+
+        def __exit__(self, *_exc: object) -> None:
+            return None
+
+    def popen(cmd: list[str], **_kwargs: object) -> Gate:
+        gated.append(cmd)
+        return Gate()
+
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    assert new_language._gate() == 0  # noqa: SLF001
+    assert len(regenerated) == 3
+    assert gated == [[sys.executable, "scripts/verify/gate.py", "--full", "--quiet"]]
+    assert "+ scripts/verify/gate.py --full --quiet" in capsys.readouterr().out
 
 
 def test_check_with_open_steps_is_not_a_failure(
@@ -361,6 +384,21 @@ def test_stale_timing_matches_any_parametrize_component() -> None:
     assert not stale("x.py::t", names, gone)
 
 
+def test_stale_timing_matches_files_under_a_doomed_directory() -> None:
+    # The doomed set carries a package's tests directory, not its files:
+    # a node ID naming a file under it is stale, a sibling prefix is not.
+    gone = {"src/esolangs/languages/line/tests"}
+    stale = remove_language._stale_timing  # noqa: SLF001
+    assert stale(
+        "src/esolangs/languages/line/tests/test_boolean_line.py::t", set(), gone
+    )
+    assert stale("src/esolangs/languages/line/tests/sub/test_x.py::t", set(), gone)
+    assert not stale(
+        "src/esolangs/languages/line/tests2/test_boolean_line.py::t", set(), gone
+    )
+    assert not stale("src/esolangs/languages/line/generator.py::t", set(), gone)
+
+
 @pytest.mark.parametrize(
     "test_root", ["tests/generators", "src/esolangs/languages/tiny/tests"]
 )
@@ -471,11 +509,12 @@ def test_remove_cleans_language_package(
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")
+    # No global-ledger fixture: the deep arities, size baseline, catalogue,
+    # curation rows, and proof status live in the package's language.toml
+    # now, and removal must not look for global ledgers that no longer
+    # exist.  The root snapshot needs none either: timing pruning skips a
+    # missing file.
     for relative in (
-        "ledgers/curation.toml",
-        "ledgers/proof_status.toml",
-        "ledgers/generator_catalogue.toml",
-        "ledgers/deep_arities.toml",
         "docs/limitations.md",
         "docs/proofs/index.md",
         "src/esolangs/generation/wrap.py",
@@ -483,7 +522,6 @@ def test_remove_cleans_language_package(
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("")
-    (root / "ledgers/generator_sizes.json").write_text("{\n}\n")
     documents = (
         "README.md",
         "docs/CONTRIBUTING.md",
@@ -500,6 +538,7 @@ def test_remove_cleans_language_package(
     for relative in (
         "src/esolangs/languages/tiny/tests/cases.toml",
         "src/esolangs/languages/tiny/tests/proofs/helper.py",
+        "src/esolangs/languages/tiny/language.toml",
         "src/esolangs/languages/tiny/tiny.txt",
     ):
         path = root / relative
@@ -545,6 +584,9 @@ def test_remove_cleans_language_package(
     monkeypatch.setattr(subprocess, "run", run)
     remove_language.remove("Tiny")
     assert not any(path.exists() for path in owned)
+    # The language.toml went with the package, and no global ledger was
+    # consulted or created for its deep-arities entries.
+    assert not (root / "ledgers/deep_arities.toml").exists()
     assert namespace.exists()
     assert not (root / "src/esolangs/languages/tiny").exists()
     for relative in documents:

@@ -156,7 +156,122 @@ def _scan(frame: _Frame, opener: str, closer: str) -> tuple[str, int] | None:
     return (frame.code[start + 1 : pc - 1], pc)
 
 
-def _advance(state: _State, line: str | None = None) -> _State:  # noqa: C901
+class _Step(NamedTuple):
+    """One command offered to the dispatch handlers.
+
+    The state after the active frame's cursor moved past ``char``, that
+    advanced frame and frame stack (a bracket's scan starts from them),
+    and the line a ``,`` command arrived with.
+    """
+
+    state: _State
+    char: str
+    frame: _Frame
+    frames: _Frames
+    line: str | None
+
+    @property
+    def stack(self) -> tuple[int, ...]:
+        """The shared operand stack the command works on."""
+        return self.state.stack
+
+
+def _literal_step(step: _Step) -> _State | None:
+    """Push a digit (``0``-``9``) or a hex letter (``A``-``F``); else decline."""
+    char, stack = step.char, step.stack
+    if "0" <= char <= "9":
+        return step.state._replace(stack=(*stack, ord(char) - 48))
+    if "A" <= char <= "F":
+        return step.state._replace(stack=(*stack, ord(char) - 55))
+    return None
+
+
+def _stack_step(step: _Step) -> _State | None:
+    """Handle ``:``, ``~``, ``.``, ``o`` and ``c``; else decline."""
+    char, state, stack = step.char, step.state, step.stack
+    if char == ":":
+        return state._replace(stack=(*stack, _top(stack)))
+    if char == "~":
+        return state._replace(stack=(*stack[:-1], ~_top(stack)))
+    if char == ".":
+        # The print already happened in the shell; this only pops.
+        _top(stack)
+        return state._replace(stack=stack[:-1])
+    if char == "o":
+        return state._replace(stack=tuple(reversed(stack)))
+    if char == "c":
+        if len(stack) < 3:
+            return _abort(state)
+        return state._replace(stack=(*stack[:-3], *stack[-2:], stack[-3]))
+    return None
+
+
+def _transfer_step(step: _Step) -> _State | None:
+    """Handle ``,`` (push the read line) and ``;`` (call a scope); else decline."""
+    char, state, stack = step.char, step.state, step.stack
+    if char == ",":
+        read = tuple(ord(ch) for ch in (step.line or ""))
+        return state._replace(stack=(*stack, *read))
+    if char == ";":
+        scope = state.table.get(_top(stack), "")
+        return state._replace(stack=stack[:-1], frames=(*step.frames, _Frame(scope)))
+    return None
+
+
+def _bracket_step(step: _Step) -> _State | None:
+    """Handle ``(``/``[``/``{``: scan the body, then branch, loop or store it."""
+    char, state, stack = step.char, step.state, step.stack
+    if char not in "([{":
+        return None
+    found = _scan(step.frame, char, _CLOSER[char])
+    if found is None:
+        # The scan walked to the end without closing, and the original
+        # left the cursor there before aborting.
+        ended = (*step.frames[:-1], _at(step.frame, len(step.frame.code)))
+        return _abort(state._replace(frames=ended))
+    scope, pc = found
+    frames = (*step.frames[:-1], _at(step.frame, pc))
+    state = state._replace(frames=frames)
+    if char in "([":
+        if _top(stack):
+            body = _Frame(scope, loop=char == "[")
+            return state._replace(frames=(*frames, body))
+        return state
+    table = MappingProxyType({**state.table, _top(stack): scope})
+    return state._replace(table=table)
+
+
+def _operator_step(step: _Step) -> _State | None:
+    """Handle ``+``/``-``/``*``/``/``/``%`` and the swap ``v``; else decline."""
+    char, state, stack = step.char, step.state, step.stack
+    if char not in "+-*/%v":
+        return None
+    if len(stack) < 2:
+        return _abort(state)
+    two, one = stack[-1], stack[-2]
+    rest = stack[:-2]
+    if char == "v":
+        return state._replace(stack=(*rest, two, one))
+    # Both operands are consumed before the divisor is tested, so a
+    # zero-divisor abort leaves the stack without them.
+    if char in "/%" and two == 0:
+        return _abort(state._replace(stack=rest))
+    return state._replace(stack=(*rest, wrap_int32(_BINARY[char](one, two))))
+
+
+#: The command groups, in the order ``_advance`` offers each character to
+#: them; the groups partition the command set, so a character is handled by
+#: exactly one of them and every other character is ignored.
+_STEP_HANDLERS: tuple[Callable[[_Step], _State | None], ...] = (
+    _literal_step,
+    _stack_step,
+    _transfer_step,
+    _bracket_step,
+    _operator_step,
+)
+
+
+def _advance(state: _State, line: str | None = None) -> _State:
     """Return the state after executing one command of the active frame.
 
     Pure; ``.``'s value is read by the caller first, ``,``'s line arrives
@@ -174,62 +289,11 @@ def _advance(state: _State, line: str | None = None) -> _State:  # noqa: C901
     frame = _at(frame, frame.pc + 1)
     frames = (*state.frames[:-1], frame)
     state = state._replace(frames=frames)
-    stack = state.stack
-
-    if "0" <= char <= "9":
-        return state._replace(stack=(*stack, ord(char) - 48))
-    if "A" <= char <= "F":
-        return state._replace(stack=(*stack, ord(char) - 55))
-    if char == ":":
-        return state._replace(stack=(*stack, _top(stack)))
-    if char == "~":
-        return state._replace(stack=(*stack[:-1], ~_top(stack)))
-    if char == ".":
-        # The print already happened in the shell; this only pops.
-        _top(stack)
-        return state._replace(stack=stack[:-1])
-    if char == ",":
-        read = tuple(ord(ch) for ch in (line or ""))
-        return state._replace(stack=(*stack, *read))
-    if char == ";":
-        scope = state.table.get(_top(stack), "")
-        return state._replace(stack=stack[:-1], frames=(*frames, _Frame(scope)))
-    if char == "o":
-        return state._replace(stack=tuple(reversed(stack)))
-    if char == "c":
-        if len(stack) < 3:
-            return _abort(state)
-        return state._replace(stack=(*stack[:-3], *stack[-2:], stack[-3]))
-    if char in "([{":
-        found = _scan(frame, char, _CLOSER[char])
-        if found is None:
-            # The scan walked to the end without closing, and the original
-            # left the cursor there before aborting.
-            ended = (*frames[:-1], _at(frame, len(frame.code)))
-            return _abort(state._replace(frames=ended))
-        scope, pc = found
-        frames = (*frames[:-1], _at(frame, pc))
-        state = state._replace(frames=frames)
-        if char in "([":
-            if _top(stack):
-                body = _Frame(scope, loop=char == "[")
-                return state._replace(frames=(*frames, body))
-            return state
-        table = MappingProxyType({**state.table, _top(stack): scope})
-        return state._replace(table=table)
-    if char in "+-*/%v":
-        if len(stack) < 2:
-            return _abort(state)
-        two, one = stack[-1], stack[-2]
-        rest = stack[:-2]
-        if char == "v":
-            return state._replace(stack=(*rest, two, one))
-        # Both operands are consumed before the divisor is tested, so a
-        # zero-divisor abort leaves the stack without them.
-        if char in "/%" and two == 0:
-            return _abort(state._replace(stack=rest))
-        return state._replace(stack=(*rest, wrap_int32(_BINARY[char](one, two))))
-
+    step = _Step(state, char, frame, frames, line)
+    for handler in _STEP_HANDLERS:
+        result = handler(step)
+        if result is not None:
+            return result
     return state
 
 

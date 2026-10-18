@@ -280,21 +280,18 @@ def _is_wired_label(line: str, match: re.Match[str], wires: frozenset[str]) -> b
     )
 
 
-def _evaluate_function_body(
-    gate: _Gate, inputs: tuple[tuple[int, ...], ...], clock: _ClockStream | None
-) -> tuple[int, ...]:
-    """Evaluate one custom gate atomically for ``inputs``."""
-    from esolangs.languages.circuit_diagram.interpreter import _emitted, _Machine
+def _bind_function_inputs(
+    gate: _Gate, body: tuple[str, ...], inputs: tuple[tuple[int, ...], ...]
+) -> dict[str, int]:
+    """Check input widths against the body's rows; return its name bindings."""
     from esolangs.languages.circuit_diagram.interpreter._parse import (
         _LABEL_RUN,
         _WIRES,
         _width_integer,
     )
 
-    if gate.body is None:  # pragma: no cover - callers select custom gates
-        raise Hint.FUNCTION_BODY.error(f"{gate.kind!r} has no function body")
     bindings: dict[str, int] = {}
-    input_rows = [line for line in gate.body if line.lstrip().startswith("-")]
+    input_rows = [line for line in body if line.lstrip().startswith("-")]
     if len(input_rows) != len(inputs):  # pragma: no cover - arity checked earlier
         raise Hint.FUNCTION_ARITY.error(
             f"function {gate.kind!r} input count changed while running"
@@ -332,9 +329,20 @@ def _evaluate_function_body(
             raise Hint.INPUT_LABEL.error(
                 f"function {gate.kind!r} input label must be a number or one name"
             )
+    return bindings
+
+
+def _expand_function_body(
+    gate: _Gate, body: tuple[str, ...], bindings: dict[str, int]
+) -> list[str]:
+    """Substitute bound widths into every wired label in the body."""
+    from esolangs.languages.circuit_diagram.interpreter._parse import (
+        _LABEL_RUN,
+        _WIRES,
+    )
 
     expanded = []
-    for line in gate.body:
+    for line in body:
         pieces: list[str] = []
         end = 0
         for match in _LABEL_RUN.finditer(line):
@@ -348,6 +356,17 @@ def _evaluate_function_body(
             end = match.end()
         pieces.append(line[end:])
         expanded.append("".join(pieces))
+    return expanded
+
+
+def _run_function_machine(
+    gate: _Gate,
+    expanded: list[str],
+    inputs: tuple[tuple[int, ...], ...],
+    clock: _ClockStream | None,
+) -> tuple[int, ...]:
+    """Run the expanded body atomically and return its emitted bits."""
+    from esolangs.languages.circuit_diagram.interpreter import _emitted, _Machine
 
     declarations = [
         line
@@ -379,3 +398,14 @@ def _evaluate_function_body(
     if not output or set(output) - {"0", "1"}:
         raise Hint.RETURN_BITS.error(f"function {gate.kind!r} did not return bits")
     return tuple(int(bit) for bit in output)
+
+
+def _evaluate_function_body(
+    gate: _Gate, inputs: tuple[tuple[int, ...], ...], clock: _ClockStream | None
+) -> tuple[int, ...]:
+    """Evaluate one custom gate atomically for ``inputs``."""
+    if gate.body is None:  # pragma: no cover - callers select custom gates
+        raise Hint.FUNCTION_BODY.error(f"{gate.kind!r} has no function body")
+    bindings = _bind_function_inputs(gate, gate.body, inputs)
+    expanded = _expand_function_body(gate, gate.body, bindings)
+    return _run_function_machine(gate, expanded, inputs, clock)

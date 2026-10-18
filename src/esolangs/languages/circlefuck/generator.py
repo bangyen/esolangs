@@ -20,6 +20,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.circlefuck.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -103,4 +104,5 @@ LANGUAGE = Language(
     wrap=wrap_chars,
     eof="its input command is a no-op at EOF, as the spec says",
     empty_program="Circlefuck program cannot be empty",
+    proof_execution=(execution, True, (3, 5)),
 )

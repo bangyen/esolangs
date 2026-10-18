@@ -1,0 +1,28 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 179
+
+[proof_status]
+labels = ["parameterized lookup"]
+qualification = "the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below"
+scaling = "linear: 4T table cells, 4T walk appends, 5T + n steps"
+execution = "linear: worst 5T + n commands: input segments, then 3 per walk cell"
+workspace = "linear: worst 16T + 8 + bl(8T+n-2) + bl(2T+n+1) bits: a data queue of 2T bits"
+
+[generator_sizes]
+"00000001" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
+"00001100" = { commands = 23, commands_by_row = { "0" = 14, "1" = 14, "2" = 17, "3" = 17, "4" = 20, "5" = 20, "6" = 23, "7" = 23 }, source_units = 39 }
+"00110110" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
+"0110" = { commands = 22, commands_by_row = { "0" = 13, "1" = 16, "2" = 19, "3" = 22 }, source_units = 37 }
+"01101001" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
+"0110100110010110" = { commands = 84, commands_by_row = { "0" = 39, "1" = 42, "2" = 45, "3" = 48, "4" = 51, "5" = 54, "6" = 57, "7" = 60, "8" = 63, "9" = 66, "10" = 69, "11" = 72, "12" = 75, "13" = 78, "14" = 81, "15" = 84 }, source_units = 137 }
+"1101001101101101" = { commands = 84, commands_by_row = { "0" = 39, "1" = 42, "2" = 45, "3" = 48, "4" = 51, "5" = 54, "6" = 57, "7" = 60, "8" = 63, "9" = 66, "10" = 69, "11" = 72, "12" = 75, "13" = 78, "14" = 81, "15" = 84 }, source_units = 137 }
+"11111110" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
+
+[catalogue]
+folding_constant_local = "_program"  # delete inputs and a literal bit
+
+[schemes]
+folds_without_tree = true

@@ -311,65 +311,142 @@ class _Tree:
 
         Retired paired-roots levels emit their three-bit code, deferred
         definitions emit their flag flips, and everything else splits or
-        arms recursively into ``result``.
+        arms recursively into ``result``.  Each regime is a named phase
+        below, tried in this order; a phase that does not apply emits
+        nothing and returns ``None``.
         """
+        cost = self._retired_pair(level, lo, result, on, free)
+        if cost is not None:
+            return cost
+        cost = self._deferred_residual(level, lo, result, on)
+        if cost is not None:
+            return cost
+        mid = (lo + hi) // 2
+        bit, flag = STRIDE * self.perm[level], _flag_cell(level)
+        cost = self._agreed_halves(level, lo, result, on, free, bit, mid)
+        if cost is not None:
+            return cost
+        cost = self._constant_half(level, lo, hi, result, on, free, bit, mid)
+        if cost is not None:
+            return cost
+        return self._general_split(level, lo, hi, result, on, free, bit, flag, mid)
+
+    def _retired_pair(
+        self, level: int, lo: int, result: int, on: str, free: int
+    ) -> _Cost[int] | None:
+        """Emit a retired level's three-bit pair code, if it has one."""
+        if not (self.pair_phase and level == self.pair_depth):
+            return None
         start = self.builder.count
-        if self.pair_phase and level == self.pair_depth:
-            # A zero arm has passed its input's only loop; an ignored input
-            # is freed by clearing it. The nearest such cell holds bit 2.
-            # Its weighted distances sum s*2**(d-s) = O(2**d), so marks stay O(T).
-            word = int(self.truth_table[lo : lo + 4], 2)
-            canonical = min(word, word ^ 15)
-            if canonical in self.pairs and (not canonical & 4 or free >= 0):
-                if (self.truth_table[lo] == "1") != (on == "0"):
-                    self.builder.flip(result)
-                for mask, cell in (
-                    (1, _flag_cell(self.pair_depth)),
-                    (2, _flag_cell(self.pair_depth + 1)),
-                    (4, STRIDE * self.perm[free]),
-                ):
-                    if canonical & mask:
-                        self.builder.flip(cell)
-                return _Cost(self.builder.count - start, target=canonical)
+        # A zero arm has passed its input's only loop; an ignored input
+        # is freed by clearing it. The nearest such cell holds bit 2.
+        # Its weighted distances sum s*2**(d-s) = O(2**d), so marks stay O(T).
+        word = int(self.truth_table[lo : lo + 4], 2)
+        canonical = min(word, word ^ 15)
+        if canonical not in self.pairs or (canonical & 4 and free < 0):
+            return None
+        if (self.truth_table[lo] == "1") != (on == "0"):
+            self.builder.flip(result)
+        for mask, cell in (
+            (1, _flag_cell(self.pair_depth)),
+            (2, _flag_cell(self.pair_depth + 1)),
+            (4, STRIDE * self.perm[free]),
+        ):
+            if canonical & mask:
+                self.builder.flip(cell)
+        return _Cost(self.builder.count - start, target=canonical)
+
+    def _deferred_residual(
+        self, level: int, lo: int, result: int, on: str
+    ) -> _Cost[int] | None:
+        """Emit a deferred definition's flag flip, if this span is one."""
         key = (level, self.ids[level][lo >> (self.n - level)])
-        if key in self.selected:
-            # A complemented arm contributes its constant now; the common
-            # suffix contributes the function itself after band transfers.
-            if on == "0":
-                self.builder.flip(result)
-            self.builder.flip(_flag_cell(self.pending_levels[self.selected[key]]))
-            return _Cost(self.builder.count - start, target=self.selected[key])
-        bit, flag, mid = STRIDE * self.perm[level], _flag_cell(level), (lo + hi) // 2
+        if key not in self.selected:
+            return None
+        start = self.builder.count
+        # A complemented arm contributes its constant now; the common
+        # suffix contributes the function itself after band transfers.
+        if on == "0":
+            self.builder.flip(result)
+        self.builder.flip(_flag_cell(self.pending_levels[self.selected[key]]))
+        return _Cost(self.builder.count - start, target=self.selected[key])
+
+    def _agreed_halves(
+        self,
+        level: int,
+        lo: int,
+        result: int,
+        on: str,
+        free: int,
+        bit: int,
+        mid: int,
+    ) -> _Cost[int] | None:
+        """Descend one half only, if both halves are the same subtree."""
         below = self.ids[level + 1]
-        if below[lo >> (self.n - level - 1)] == below[mid >> (self.n - level - 1)]:
-            if self.pair_phase and level < self.pair_depth:
-                self.builder.loop(bit)
-                self.builder.end(bit)
-                free = level
-            extra = self.builder.count - start
-            return _Cost(extra, (self.arm(level, lo, mid, result, on, free),))
-        if self.constant(lo, mid) and not (self.pair_phase and level < self.pair_depth):
-            if self.truth_table[lo] == on:
-                self.builder.flip(result)
-                on = "1" if on == "0" else "0"
+        if below[lo >> (self.n - level - 1)] != below[mid >> (self.n - level - 1)]:
+            return None
+        start = self.builder.count
+        if self.pair_phase and level < self.pair_depth:
             self.builder.loop(bit)
-            body_start = self.builder.count
-            cost = self.arm(level, mid, hi, result, on, free)
-            arm_body = self.builder.count - body_start
             self.builder.end(bit)
-            # Loop scaffolding around the arm: everything but its body,
-            # plus the loop's opening bracket emitted before `start`.
-            arm_scaffold = self.builder.count - start - arm_body + 1
-            # Skipped path: the setup before the arm body, minus the
-            # loop's `*` clear, which runs only on entry.
-            skipped_setup = body_start - start - 1
-            return _Cost(
-                0,
-                (
-                    _Cost(arm_scaffold, (cost,)),
-                    _Cost(skipped_setup),
-                ),
-            )
+            free = level
+        extra = self.builder.count - start
+        return _Cost(extra, (self.arm(level, lo, mid, result, on, free),))
+
+    def _constant_half(
+        self,
+        level: int,
+        lo: int,
+        hi: int,
+        result: int,
+        on: str,
+        free: int,
+        bit: int,
+        mid: int,
+    ) -> _Cost[int] | None:
+        """Arm the upper half under the tested bit, if the lower is constant.
+
+        The constant is flipped in first and the upper arm built inverted,
+        so the node needs no flag of its own.
+        """
+        if not self.constant(lo, mid) or (self.pair_phase and level < self.pair_depth):
+            return None
+        start = self.builder.count
+        if self.truth_table[lo] == on:
+            self.builder.flip(result)
+            on = "1" if on == "0" else "0"
+        self.builder.loop(bit)
+        body_start = self.builder.count
+        cost = self.arm(level, mid, hi, result, on, free)
+        arm_body = self.builder.count - body_start
+        self.builder.end(bit)
+        # Loop scaffolding around the arm: everything but its body,
+        # plus the loop's opening bracket emitted before `start`.
+        arm_scaffold = self.builder.count - start - arm_body + 1
+        # Skipped path: the setup before the arm body, minus the
+        # loop's `*` clear, which runs only on entry.
+        skipped_setup = body_start - start - 1
+        return _Cost(
+            0,
+            (
+                _Cost(arm_scaffold, (cost,)),
+                _Cost(skipped_setup),
+            ),
+        )
+
+    def _general_split(
+        self,
+        level: int,
+        lo: int,
+        hi: int,
+        result: int,
+        on: str,
+        free: int,
+        bit: int,
+        flag: int,
+        mid: int,
+    ) -> _Cost[int]:
+        """Split on the level's bit, arming each half into ``result``."""
         zero_free = level if self.pair_phase and level < self.pair_depth else free
         return self.split(
             bit,

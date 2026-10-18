@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 2031
+
+[proof_status]
+labels = ["tree"]
+qualification = "folded decision tree; residuals defer through level flags or binary words; affine tables stream"
+scaling = "linear: decision_tree_program, span walk, leaf moves geometric"
+execution = "poly n: worst 69n + 44 commands, the AND table's all-ones row"
+workspace = "poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits"
+
+[generator_sizes]
+"00000001" = { commands = 251, commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 231, "5" = 231, "6" = 245, "7" = 251 }, source_units = 257 }
+"00001100" = { commands = 234, commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 238, "5" = 238, "6" = 234, "7" = 234 }, source_units = 245 }
+"00110110" = { commands = 248, commands_by_row = { "0" = 228, "1" = 228, "2" = 238, "3" = 238, "4" = 242, "5" = 248, "6" = 248, "7" = 248 }, source_units = 299 }
+"0110" = { commands = 182, commands_by_row = { "0" = 150, "1" = 166, "2" = 166, "3" = 182 }, source_units = 192 }
+"01101001" = { commands = 248, commands_by_row = { "0" = 200, "1" = 216, "2" = 216, "3" = 232, "4" = 216, "5" = 232, "6" = 232, "7" = 248 }, source_units = 263 }
+"0110100110010110" = { commands = 314, commands_by_row = { "0" = 250, "1" = 266, "2" = 266, "3" = 282, "4" = 266, "5" = 282, "6" = 282, "7" = 298, "8" = 266, "9" = 282, "10" = 282, "11" = 298, "12" = 282, "13" = 298, "14" = 298, "15" = 314 }, source_units = 334 }
+"1101001101101101" = { commands = 315, commands_by_row = { "0" = 303, "1" = 303, "2" = 302, "3" = 309, "4" = 288, "5" = 288, "6" = 299, "7" = 299, "8" = 299, "9" = 306, "10" = 313, "11" = 313, "12" = 309, "13" = 309, "14" = 308, "15" = 315 }, source_units = 408 }
+"11111110" = { commands = 248, commands_by_row = { "0" = 228, "1" = 228, "2" = 228, "3" = 228, "4" = 238, "5" = 238, "6" = 248, "7" = 248 }, source_units = 275 }

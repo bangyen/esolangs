@@ -26,6 +26,7 @@ from esolangs.generation.helpers import (
     stored_inputs,
 )
 from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
+from esolangs.languages.addsubjump.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -135,138 +136,177 @@ def _addsubjump_packed(truth_table: str, *, keep_ignored_inputs: bool = False) -
     return _packed_build(projected, weights)
 
 
-def _packed_build(truth_table: str, weights: list[int]) -> str:
-    """Decode packed essential rows while consuming every original input."""
-    chunk_width = max(sum(bool(weight) for weight in weights), 1)
-    # ``c`` is a literal destination (the wiki's ``goto c``), so a label or
-    # ``"next"`` resolves straight into the operand and an ``int`` is already
-    # one.  A computed jump is therefore a *write* to an instruction's own
-    # ``c`` cell, which is what :func:`branch_positive` does below.
-    instructions: list[_Instruction] = []
-    labels: dict[str, int] = {}
-    values: dict[str, int] = {
-        "ZERO": 0,
-        "ONE": 1,
-        "FOUR": 4,
-        "C48": 48,
-        "N": chunk_width,
-        "INDEX": 0,
-        "TMP": 0,
-        "COUNT": chunk_width,
-        "OFFSET": 0,
-        "TABLE": 0,
-        "SHIFT": 0,
-        "Q": 0,
-        "R": 0,
-        "OUT": _ASCII_ZERO,
-    }
-    trampolines = _TrampolineLabels()
+class _PackedBuilder:
+    """Builder state for the packed decoder: instructions and their labels.
 
-    def mark(name: str) -> None:
-        labels[name] = len(instructions)
+    The emit helpers and the build phases append to one instruction list,
+    mark its labels, and patch two of its operands once the chunk cells are
+    known; that shared state lives here instead of in closures over one
+    function's locals.
+    """
+
+    def __init__(self, truth_table: str, weights: list[int]) -> None:
+        self.truth_table = truth_table
+        self.weights = weights
+        self.chunk_width = max(sum(bool(weight) for weight in weights), 1)
+        # ``c`` is a literal destination (the wiki's ``goto c``), so a label
+        # or ``"next"`` resolves straight into the operand and an ``int``
+        # is already one.  A computed jump is therefore a *write* to an
+        # instruction's own ``c`` cell, which is what
+        # :meth:`branch_positive` does below.
+        self.instructions: list[_Instruction] = []
+        self.labels: dict[str, int] = {}
+        self.values: dict[str, int] = {
+            "ZERO": 0,
+            "ONE": 1,
+            "FOUR": 4,
+            "C48": 48,
+            "N": self.chunk_width,
+            "INDEX": 0,
+            "TMP": 0,
+            "COUNT": self.chunk_width,
+            "OFFSET": 0,
+            "TABLE": 0,
+            "SHIFT": 0,
+            "Q": 0,
+            "R": 0,
+            "OUT": _ASCII_ZERO,
+        }
+        self.trampolines = _TrampolineLabels()
+        # Instruction indices the packing phase patches afterwards.
+        self.load_operand_increment = 0
+        self.load_chunk = 0
+
+    def build(self) -> str:
+        """Emit the decoder's phases in order and pack its chunk cells."""
+        self.read_inputs()
+        self.select_chunk()
+        self.divide_chunk()
+        return self.pack_chunks()
+
+    def mark(self, name: str) -> None:
+        """Bind ``name`` to the next instruction's index."""
+        self.labels[name] = len(self.instructions)
 
     def emit(
-        a: int | str, b: int | str, target: str | int, d: int | str = "ZERO"
+        self, a: int | str, b: int | str, target: str | int, d: int | str = "ZERO"
     ) -> int:
-        instructions.append((a, b, target, d))
-        return len(instructions) - 1
+        """Append one instruction; return its index."""
+        self.instructions.append((a, b, target, d))
+        return len(self.instructions) - 1
 
-    def jump(target: str) -> None:
-        emit("ZERO", "ZERO", target)
+    def jump(self, target: str) -> None:
+        """Emit an unconditional jump to ``target``."""
+        self.emit("ZERO", "ZERO", target)
 
-    def clear(dst: str) -> None:
-        emit(dst, dst, "next", "ONE")
+    def clear(self, dst: str) -> None:
+        """Emit an instruction that zeroes the cell named ``dst``."""
+        self.emit(dst, dst, "next", "ONE")
 
-    def branch_positive(cell: str, positive: str, zero: str) -> None:
+    def branch_positive(self, cell: str, positive: str, zero: str) -> None:
         """Branch on ``cell > 0`` and restore the reusable jump cell."""
-        positive_trampoline, zero_trampoline = trampolines.branch_pair()
-        at = len(instructions)
+        positive_trampoline, zero_trampoline = self.trampolines.branch_pair()
+        at = len(self.instructions)
         # The jump cell is the ``c`` operand of the dispatch instruction
         # itself -- there is no indirect jump to hide it behind now.
         jump_cell = _cell(at + 1, _C_OPERAND)
-        emit(jump_cell, "FOUR", "next", cell)
-        # The trampolines are two instructions apart; their midpoint is the
-        # value from which adding/subtracting FOUR selects either one.
-        emit("ZERO", "ZERO", _cell(at + 3))
-        mark(positive_trampoline)
-        emit(jump_cell, "FOUR", "next")
-        emit("ZERO", "ZERO", positive)
-        mark(zero_trampoline)
-        emit(jump_cell, "FOUR", "next", "ONE")
-        emit("ZERO", "ZERO", zero)
+        self.emit(jump_cell, "FOUR", "next", cell)
+        # The trampolines are two instructions apart; their midpoint is
+        # the value from which adding/subtracting FOUR selects either one.
+        self.emit("ZERO", "ZERO", _cell(at + 3))
+        self.mark(positive_trampoline)
+        self.emit(jump_cell, "FOUR", "next")
+        self.emit("ZERO", "ZERO", positive)
+        self.mark(zero_trampoline)
+        self.emit(jump_cell, "FOUR", "next", "ONE")
+        self.emit("ZERO", "ZERO", zero)
 
-    # Only essential reads extend the Horner index; ignored reads reuse TMP.
-    for weight in weights:
-        clear("TMP")
-        emit("TMP", -1, "next")
-        if not weight:
-            continue
-        emit("TMP", "C48", "next", "ONE")
-        emit("INDEX", "INDEX", "next")
-        emit("INDEX", "TMP", "next")
+    def read_inputs(self) -> None:
+        """Read every input; essential ones extend the Horner index."""
+        # Only essential reads extend the Horner index; ignored reads
+        # reuse TMP.
+        for weight in self.weights:
+            self.clear("TMP")
+            self.emit("TMP", -1, "next")
+            if not weight:
+                continue
+            self.emit("TMP", "C48", "next", "ONE")
+            self.emit("INDEX", "INDEX", "next")
+            self.emit("INDEX", "TMP", "next")
 
-    mark("select_test")
-    branch_positive("INDEX", "select_step", "selected")
-    mark("select_step")
-    emit("INDEX", "ONE", "next", "ONE")
-    emit("COUNT", "ONE", "next", "ONE")
-    emit("OFFSET", "ONE", "next")
-    branch_positive("COUNT", "select_test", "advance_chunk")
-    mark("advance_chunk")
-    load_operand_increment = emit(0, "ONE", "next")
-    emit("COUNT", "N", "next")
-    clear("OFFSET")
-    jump("select_test")
+    def select_chunk(self) -> None:
+        """Walk INDEX down to zero, advancing the chunk pointer per chunk."""
+        self.mark("select_test")
+        self.branch_positive("INDEX", "select_step", "selected")
+        self.mark("select_step")
+        self.emit("INDEX", "ONE", "next", "ONE")
+        self.emit("COUNT", "ONE", "next", "ONE")
+        self.emit("OFFSET", "ONE", "next")
+        self.branch_positive("COUNT", "select_test", "advance_chunk")
+        self.mark("advance_chunk")
+        self.load_operand_increment = self.emit(0, "ONE", "next")
+        self.emit("COUNT", "N", "next")
+        self.clear("OFFSET")
+        self.jump("select_test")
 
-    mark("selected")
-    clear("TABLE")
-    load_chunk = emit("TABLE", "CHUNK0", "next")
-    clear("SHIFT")
-    emit("SHIFT", "OFFSET", "next")
-    emit("SHIFT", "ONE", "div_init")
+    def divide_chunk(self) -> None:
+        """Divide the selected chunk by two OFFSET+1 times; print the bit."""
+        self.mark("selected")
+        self.clear("TABLE")
+        self.load_chunk = self.emit("TABLE", "CHUNK0", "next")
+        self.clear("SHIFT")
+        self.emit("SHIFT", "OFFSET", "next")
+        self.emit("SHIFT", "ONE", "div_init")
 
-    # Divide the selected chunk by two OFFSET+1 times.  The final remainder
-    # is precisely the indexed truth-table bit.
-    mark("div_init")
-    clear("Q")
-    clear("R")
-    mark("div_test")
-    branch_positive("TABLE", "div_first", "division_complete")
-    mark("div_first")
-    emit("TABLE", "ONE", "next", "ONE")
-    branch_positive("TABLE", "div_pair", "div_odd")
-    mark("div_pair")
-    emit("TABLE", "ONE", "next", "ONE")
-    emit("Q", "ONE", "div_test")
-    mark("div_odd")
-    emit("R", "ONE", "division_complete")
+        # The final remainder is precisely the indexed truth-table bit.
+        self.mark("div_init")
+        self.clear("Q")
+        self.clear("R")
+        self.mark("div_test")
+        self.branch_positive("TABLE", "div_first", "division_complete")
+        self.mark("div_first")
+        self.emit("TABLE", "ONE", "next", "ONE")
+        self.branch_positive("TABLE", "div_pair", "div_odd")
+        self.mark("div_pair")
+        self.emit("TABLE", "ONE", "next", "ONE")
+        self.emit("Q", "ONE", "div_test")
+        self.mark("div_odd")
+        self.emit("R", "ONE", "division_complete")
 
-    mark("division_complete")
-    emit("SHIFT", "ONE", "next", "ONE")
-    branch_positive("SHIFT", "divide_again", "output")
-    mark("divide_again")
-    clear("TABLE")
-    emit("TABLE", "Q", "div_init")
-    mark("output")
-    emit("OUT", "R", "next")
-    emit(-1, "OUT", -8)  # print, then halt on the special address
+        self.mark("division_complete")
+        self.emit("SHIFT", "ONE", "next", "ONE")
+        self.branch_positive("SHIFT", "divide_again", "output")
+        self.mark("divide_again")
+        self.clear("TABLE")
+        self.emit("TABLE", "Q", "div_init")
+        self.mark("output")
+        self.emit("OUT", "R", "next")
+        self.emit(-1, "OUT", -8)  # print, then halt on the special address
 
-    # Pack m adjacent essential rows per cell. Each value and each cell address
-    # have O(log T) digits, while there are O(T/log T) cells.
-    chunks = [
-        sum(
-            int(bit) << offset
-            for offset, bit in enumerate(truth_table[start : start + chunk_width])
-        )
-        for start in range(0, len(truth_table), chunk_width)
-    ]
+    def pack_chunks(self) -> str:
+        """Pack the table into cells, resolve memory, and return the text."""
+        # Pack m adjacent essential rows per cell. Each value and each cell
+        # address have O(log T) digits, while there are O(T/log T) cells.
+        truth_table, chunk_width = self.truth_table, self.chunk_width
+        chunks = [
+            sum(
+                int(bit) << offset
+                for offset, bit in enumerate(truth_table[start : start + chunk_width])
+            )
+            for start in range(0, len(truth_table), chunk_width)
+        ]
 
-    values.update((f"CHUNK{i}", value) for i, value in enumerate(chunks))
-    memory = _memory(instructions, values, labels)
-    # Advancing this instruction's destination advances LOAD_CHUNK's b
-    # operand through the contiguous chunk cells.
-    memory[_cell(load_operand_increment)] = _cell(load_chunk, _B_OPERAND)
-    return " ".join(map(str, memory))
+        self.values.update((f"CHUNK{i}", value) for i, value in enumerate(chunks))
+        memory = _memory(self.instructions, self.values, self.labels)
+        # Advancing this instruction's destination advances LOAD_CHUNK's b
+        # operand through the contiguous chunk cells.
+        memory[_cell(self.load_operand_increment)] = _cell(self.load_chunk, _B_OPERAND)
+        return " ".join(map(str, memory))
+
+
+def _packed_build(truth_table: str, weights: list[int]) -> str:
+    """Decode packed essential rows while consuming every original input."""
+    return _PackedBuilder(truth_table, weights).build()
 
 
 def balance_addsubjump(table: str, default: str) -> str:
@@ -418,4 +458,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
+    proof_execution=(execution, True, (6,)),
+    proof_workspace=(workspace, False, (3, 5)),
 )

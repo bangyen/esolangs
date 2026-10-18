@@ -93,6 +93,11 @@ test-py *args:
 test-lint *args:
     {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)","dead definitions" {{args}}
 
+# CI's changed-line coverage gate (--partial --strict), reading the
+# .coverage a `pytest --cov --cov-branch` run left behind
+test-diff-coverage *args:
+    {{PYTHON}} scripts/verify/gate.py --only "diff coverage" {{args}}
+
 # emit repeatable generator size/time/command evidence as JSON
 benchmark language table *args:
     {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}

@@ -43,6 +43,7 @@ from __future__ import annotations
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.malbolge.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime.source_hints import with_hint
@@ -146,4 +147,5 @@ LANGUAGE = Language(
     # Loader whitespace is discarded before assigning memory addresses.
     wrap=wrap_chars,
     eof="an exhausted read is the value 59048, not an error",
+    proof_execution=(execution, True, (3, 6)),
 )

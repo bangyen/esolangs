@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 6
+
+[proof_status]
+labels = ["tree"]
+qualification = "inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop"
+scaling = "linear: the planar H-tree has `O(sqrt(T))` width and height"
+execution = "linear: worst 32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T"
+workspace = "poly n: worst 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n = 2"
+
+[generator_sizes]
+"00000001" = { commands = 59, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 51, "5" = 51, "6" = 59, "7" = 59 }, source_units = 621 }
+"00001100" = { commands = 39, commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 39, "5" = 39, "6" = 39, "7" = 39 }, source_units = 401 }
+"00110110" = { commands = 59, commands_by_row = { "0" = 51, "1" = 51, "2" = 51, "3" = 51, "4" = 59, "5" = 59, "6" = 59, "7" = 59 }, source_units = 629 }
+"0110" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37 }, source_units = 363 }
+"01101001" = { commands = 67, commands_by_row = { "0" = 67, "1" = 67, "2" = 67, "3" = 67, "4" = 67, "5" = 67, "6" = 67, "7" = 67 }, source_units = 781 }
+"0110100110010110" = { commands = 99, commands_by_row = { "0" = 99, "1" = 99, "2" = 99, "3" = 99, "4" = 99, "5" = 99, "6" = 99, "7" = 99, "8" = 99, "9" = 99, "10" = 99, "11" = 99, "12" = 99, "13" = 99, "14" = 99, "15" = 99 }, source_units = 2381 }
+"1101001101101101" = { commands = 99, commands_by_row = { "0" = 91, "1" = 91, "2" = 99, "3" = 99, "4" = 91, "5" = 91, "6" = 91, "7" = 91, "8" = 99, "9" = 99, "10" = 99, "11" = 99, "12" = 91, "13" = 91, "14" = 99, "15" = 99 }, source_units = 2381 }
+"11111110" = { commands = 59, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 51, "5" = 51, "6" = 59, "7" = 59 }, source_units = 621 }

@@ -239,9 +239,9 @@ class TestLaserFuck:
         [
             ("01", 3, 44),
             ("0001", 3, 56),
-            ("0110", 4, 56),
-            ("11111110", 4, 68),
-            ("01101001", 8, 68),
+            ("0110", 4, 57),
+            ("11111110", 4, 69),
+            ("01101001", 8, 70),
         ],
     )
     def test_the_grid_has_exact_dimensions(
@@ -255,8 +255,8 @@ class TestLaserFuck:
     @pytest.mark.parametrize(
         ("width", "rows", "columns"),
         [
-            (18, 47, 18),
-            (19, 36, 18),
+            (18, 51, 16),
+            (19, 36, 19),
             (27, 28, 26),
             (28, 25, 27),
             (35, 17, 34),
@@ -274,8 +274,8 @@ class TestLaserFuck:
     @pytest.mark.parametrize(
         ("table", "flip", "narrow", "wide"),
         [
-            ("11111110", 69, (6, 49), (4, 68)),
-            ("01101001", 69, (10, 49), (8, 68)),
+            ("11111110", 70, (6, 49), (4, 69)),
+            ("01101001", 71, (10, 49), (8, 70)),
         ],
     )
     def test_the_straight_layout_starts_at_its_exact_width(
@@ -326,15 +326,14 @@ class TestLaserFuck:
         assert boolean.laserfuck("11110000").count("x") == 2
         assert boolean.laserfuck("10010110").count("x") == 8
 
-    def test_a_table_that_folds_nothing_keeps_the_sized_sweep(self) -> None:
-        """Parity's leaves retire each input by its own bit, not flatly."""
+    def test_a_table_that_folds_nothing_keeps_the_flat_sweep(self) -> None:
+        """Parity's leaves retire every input with a flat two ``-``."""
         program = boolean.laserfuck("10010110")
         leaves = program.split("x")[:-1]
-        for path in range(8):
-            bits = [(path >> (2 - i)) & 1 for i in range(3)]
-            want = "".join("-" * (b + 1) + "<" for b in reversed(bits))
-            assert any(leaf.endswith(want) or want in leaf for leaf in leaves), (
-                f"no leaf retires {bits} with its sized run {want!r}"
+        assert len(leaves) == 8
+        for leaf in leaves:
+            assert leaf.endswith("--<--<--<") or leaf.endswith("--<--<--<+"), (
+                f"a leaf retires with a sized run: {leaf!r}"
             )
 
     def test_without_a_width_is_unchanged(self) -> None:
@@ -365,7 +364,7 @@ def test_overhead_funnel_floor_and_corpus_size() -> None:
     assert len(boolean.laserfuck("0110", 1)) == 569
     assert sum(len(boolean.laserfuck(format(v, "04b"), 1)) for v in range(16)) == 9104
     assert (
-        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 101511
+        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 104521
     )
 
 
@@ -394,7 +393,7 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
     )
 
     table = "0110"
-    legacy = _laserfuck_build(table, (0, 1), width)
+    legacy = _laserfuck_build(table, width)
     if max(map(len, legacy.splitlines())) > width:
         legacy = _laserfuck_raise_funnel(legacy)
     source = esolangs.generate("LaserFuck", table, width=width)
@@ -405,25 +404,25 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
             assert run_laserfuck(source, list(f"{row:02b}"), heading) == expected
 
 
-@pytest.mark.parametrize(("table", "perm"), [("0001", (1, 0)), ("10010110", (2, 0, 1))])
-def test_vertical_tree_places_permuted_inputs_in_stream_order(
-    table: str, perm: tuple[int, ...]
-) -> None:
-    from esolangs.generation.helpers import permute_truth_table
+@pytest.mark.parametrize(("table", "n"), [("0001", 2), ("10010110", 3)])
+def test_vertical_tree_places_inputs_in_stream_order(table: str, n: int) -> None:
+    """A direct vertical-tree build computes its table at every heading.
+
+    This is what the old permuted-input version protected once the
+    permutation itself is gone: the ``vertical_tree=True`` build at
+    width 1, raised through the funnel, reads its inputs in stream
+    order (input ``k`` in cell ``k + 1``) and computes every row.
+    """
     from esolangs.languages.laserfuck.generator import (
         _laserfuck_build,
         _laserfuck_raise_funnel,
     )
 
-    source = _laserfuck_build(
-        permute_truth_table(table, perm), perm, 1, vertical_tree=True
-    )
+    source = _laserfuck_build(table, 1, vertical_tree=True)
     source = _laserfuck_raise_funnel(source)
     for row, expected in enumerate(table):
         for heading in range(4):
-            assert (
-                run_laserfuck(source, list(f"{row:0{len(perm)}b}"), heading) == expected
-            )
+            assert run_laserfuck(source, list(f"{row:0{n}b}"), heading) == expected
 
 
 @pytest.mark.parametrize("width", [1, 40])

@@ -277,7 +277,169 @@ class _Clear:
 type _Effect = _Move | _SetValue | _AddValue | _FromCoord | _Clear
 
 
-def _advance(  # noqa: C901
+@dataclass(frozen=True)
+class _Context:
+    """Everything one command's handler may read about the run.
+
+    Bundles the run state ``_advance`` receives with the code, the
+    bracket map, the tape views, and the value the shell read for one of
+    the three reading commands, so each handler takes just this.
+    """
+
+    ind: int
+    comment: bool
+    axis: int
+    code: str
+    match: Mapping[int, int]
+    value: Callable[[], int]
+    coord: Callable[[int], int]
+    port: int | None
+
+    def at(
+        self,
+        ind: int | None = None,
+        *,
+        comment: bool | None = None,
+        axis: int | None = None,
+    ) -> _State:
+        """Return the run state, with the given fields replaced."""
+        return (
+            self.ind if ind is None else ind,
+            self.comment if comment is None else comment,
+            self.axis if axis is None else axis,
+        )
+
+
+#: What a per-command handler returns: the next state and the tape effect.
+type _Handler = Callable[[_Context], tuple[_State, _Effect | None]]
+
+
+def _move_right(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``>d``: step the axis pointer one place along dimension ``d``."""
+    dim, ind = _number(ctx.code, ctx.ind, None)
+    return (ctx.at(ind), _Move(dim, 1))
+
+
+def _move_left(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``<d``: step the axis pointer one place back along dimension ``d``."""
+    dim, ind = _number(ctx.code, ctx.ind, None)
+    return (ctx.at(ind), _Move(dim, -1))
+
+
+def _increment(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``+``: add one to the addressed byte."""
+    return (ctx.at(), _AddValue(1))
+
+
+def _decrement(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``-``: subtract one from the addressed byte."""
+    return (ctx.at(), _AddValue(-1))
+
+
+def _print(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``.``: no tape effect; the print already happened in the shell."""
+    return (ctx.at(), None)
+
+
+def _read_input(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``,`` / ``d`` / ``x``: store the value the shell read."""
+    return (ctx.at(), _SetValue(ctx.port if ctx.port is not None else 0))
+
+
+def _char_literal(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``:CH``: set the byte from the literal character that follows."""
+    if ctx.ind >= len(ctx.code):
+        raise syntax_error(
+            "':' must be followed by a character",
+            "follow : with one literal character, for example :A",
+        )
+    return (ctx.at(ctx.ind + 1), _SetValue(ord(ctx.code[ctx.ind])))
+
+
+def _hex_literal(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``=HEX``: set the byte from the two hex digits that follow."""
+    if ctx.ind + 2 > len(ctx.code):
+        raise syntax_error(
+            "'=' must be followed by two hex digits",
+            "follow = with exactly two hexadecimal digits, for example =41",
+        )
+    digits = ctx.code[ctx.ind : ctx.ind + 2]
+    if any(char not in "0123456789abcdefABCDEF" for char in digits):
+        raise syntax_error(
+            f"invalid hex literal {digits!r}",
+            "use hexadecimal digits 0-9 or A-F after =, for example =41",
+        )
+    return (ctx.at(ctx.ind + 2), _SetValue(int(digits, 16)))
+
+
+def _select_axis(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``$AXIS``: select which pointer the move and loop commands act on."""
+    wanted, ind = _number(ctx.code, ctx.ind, 2)
+    return (ctx.at(ind, axis=max(2, wanted)), None)
+
+
+def _value_loop_open(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``[``: skip past the matching ``]`` when the byte is zero."""
+    if ctx.value() == 0:
+        return (ctx.at(ctx.match[ctx.ind - 1] + 1), None)
+    return (ctx.at(), None)
+
+
+def _value_loop_close(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``]``: return to just after the matching ``[``."""
+    return (ctx.at(ctx.match[ctx.ind - 1]), None)
+
+
+def _coord_loop_open(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``{d``: skip past the matching ``}`` when the coordinate is zero."""
+    open_i = ctx.ind - 1
+    dim, ind = _number(ctx.code, ctx.ind, 0)
+    if ctx.coord(dim) == 0:
+        return (ctx.at(ctx.match[open_i] + 1), None)
+    return (ctx.at(ind), None)
+
+
+def _coord_loop_close(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``}``: return to just after the matching ``{``."""
+    return (ctx.at(ctx.match[ctx.ind - 1]), None)
+
+
+def _coord_read(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``?d``: write the dimension-``d`` coordinate into the byte."""
+    dim, ind = _number(ctx.code, ctx.ind, 0)
+    return (ctx.at(ind), _FromCoord(dim))
+
+
+def _coord_clear(ctx: _Context) -> tuple[_State, _Effect | None]:
+    """``!d``: clear the dimension-``d`` coordinate."""
+    dim, ind = _number(ctx.code, ctx.ind, 0)
+    return (ctx.at(ind), _Clear(dim))
+
+
+#: Per-command handlers, keyed by the command character.  A character
+#: absent here (and not ``*``) is not a command and is ignored.
+_HANDLERS: dict[str, _Handler] = {
+    ">": _move_right,
+    "<": _move_left,
+    "+": _increment,
+    "-": _decrement,
+    ".": _print,
+    ",": _read_input,
+    "d": _read_input,
+    "x": _read_input,
+    ":": _char_literal,
+    "=": _hex_literal,
+    "$": _select_axis,
+    "[": _value_loop_open,
+    "]": _value_loop_close,
+    "{": _coord_loop_open,
+    "}": _coord_loop_close,
+    "?": _coord_read,
+    "!": _coord_clear,
+}
+
+
+def _advance(
     state: _State,
     code: str,
     match: Mapping[int, int],
@@ -303,67 +465,11 @@ def _advance(  # noqa: C901
         return ((ind, c != "*", axis), None)
     if c == "*":
         return ((ind, True, axis), None)
-    if c == ">":
-        dim, ind = _number(code, ind, None)
-        return ((ind, comment, axis), _Move(dim, 1))
-    if c == "<":
-        dim, ind = _number(code, ind, None)
-        return ((ind, comment, axis), _Move(dim, -1))
-    if c == "+":
-        return ((ind, comment, axis), _AddValue(1))
-    if c == "-":
-        return ((ind, comment, axis), _AddValue(-1))
-    if c == ".":
-        # The print already happened in the shell.
+    handler = _HANDLERS.get(c)
+    if handler is None:
+        # any other character is not a command and is ignored
         return ((ind, comment, axis), None)
-    if c in ",dx":
-        return ((ind, comment, axis), _SetValue(port if port is not None else 0))
-    if c == ":":
-        if ind >= len(code):
-            raise syntax_error(
-                "':' must be followed by a character",
-                "follow : with one literal character, for example :A",
-            )
-        return ((ind + 1, comment, axis), _SetValue(ord(code[ind])))
-    if c == "=":
-        if ind + 2 > len(code):
-            raise syntax_error(
-                "'=' must be followed by two hex digits",
-                "follow = with exactly two hexadecimal digits, for example =41",
-            )
-        digits = code[ind : ind + 2]
-        if any(char not in "0123456789abcdefABCDEF" for char in digits):
-            raise syntax_error(
-                f"invalid hex literal {digits!r}",
-                "use hexadecimal digits 0-9 or A-F after =, for example =41",
-            )
-        literal = int(digits, 16)
-        return ((ind + 2, comment, axis), _SetValue(literal))
-    if c == "$":
-        wanted, ind = _number(code, ind, 2)
-        return ((ind, comment, max(2, wanted)), None)
-    if c == "[":
-        if value() == 0:
-            return ((match[ind - 1] + 1, comment, axis), None)
-        return ((ind, comment, axis), None)
-    if c == "]":
-        return ((match[ind - 1], comment, axis), None)
-    if c == "{":
-        open_i = ind - 1
-        dim, ind = _number(code, ind, 0)
-        if coord(dim) == 0:
-            return ((match[open_i] + 1, comment, axis), None)
-        return ((ind, comment, axis), None)
-    if c == "}":
-        return ((match[ind - 1], comment, axis), None)
-    if c == "?":
-        dim, ind = _number(code, ind, 0)
-        return ((ind, comment, axis), _FromCoord(dim))
-    if c == "!":
-        dim, ind = _number(code, ind, 0)
-        return ((ind, comment, axis), _Clear(dim))
-    # any other character is not a command and is ignored
-    return ((ind, comment, axis), None)
+    return handler(_Context(ind, comment, axis, code, match, value, coord, port))
 
 
 class _Machine:

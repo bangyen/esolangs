@@ -1,0 +1,32 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+
+[proof_status]
+labels = ["parameterized lookup"]
+qualification = "each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike"
+scaling = "linear: table walk; corridor weights sum to T"
+execution = "linear: worst 2L commands: one pass to the fixed point, one proving the repeat"
+workspace = "T log T: worst 2(n+1)T + 4 + bl(L-1) bits: corridor, answers, ant, cursor"
+
+[generator_sizes]
+"00000001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 57 }
+"00001100" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 33 }
+"00110110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 66 }
+"0110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3], source_units = 33 }
+"01101001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 66 }
+"0110100110010110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 129 }
+"1101001101101101" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 135 }
+"11111110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 75 }
+
+[catalogue]
+folding_constant_local = "_program"  # restore inputs and leave one answer cell
+
+[formula_arities]
+# A T-cell corridor and T - 1 answers at bl(x) + 2 bits each, the ant, ip.
+workspace = [3, 6]
+
+[schemes]
+folds_without_tree = true

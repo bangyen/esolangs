@@ -3,7 +3,7 @@
 Mask folds charge visits and quadratic layout work to 4T. Fixed seven/eight
 input bodies cost O(T); the retained-band rectangle bounds copying and
 rendering. With q classes, 2*max(prefix,tail)+ceil(log2 q)+5 bounds ticks;
-counted gates retain the existing written-state bound.
+the charged work and body bounds retain the written-state bound.
 With G gates, n+G wire bits, at most 2G+1 latch bits and halt give
 3G+n+2 <= 6T+25n+335 <= 7T+2n-9 for n>=17, independently of q.
 """
@@ -15,8 +15,6 @@ from esolangs.languages.circuit_diagram.generator.banks import (
     _POOLED_MASK_INPUTS,
     _assemble_banks,
     _bank_rectangle,
-    _class_gate_cap,
-    _gate_count,
     _online_bank_area_floor,
     _pool_budget,
 )
@@ -34,7 +32,7 @@ from esolangs.languages.circuit_diagram.generator.sparse_masks import (
 def sparse_class_bank_candidate(
     table: str, ceiling: int | None = None
 ) -> _Layout | None:
-    """Admit repeated classes by mask work, ticks, gates and retained area."""
+    """Admit repeated classes by mask work, ticks and retained area."""
     n = _validate_truth_table(table)
     tail = _atom_inputs(n)
     prefix = n - tail
@@ -61,7 +59,6 @@ def sparse_class_bank_candidate(
     parts: list[list[tuple[_Layout, list[int]]]] = []
     dimensions: list[tuple[int, int]] = []
     ands = sum("0" in word for word in positions)
-    gates = 2 * q - 1
     for word, rows in positions.items():
         mask = sparse_mask_model(rows, prefix, work=work)
         if mask is None:
@@ -74,9 +71,6 @@ def sparse_class_bank_candidate(
             models.append((body, list(range(prefix, n))))
         for model, _order in models:
             dimensions.append(model.bounds())
-            gates += _gate_count(model)
-        if gates > _class_gate_cap(len(table), n):
-            return None
         if _online_bank_area_floor(dimensions, n, prefix, q, ands) > budget:
             return None
         parts.append(models)

@@ -186,18 +186,41 @@ def _clockwise_banded(truth_table: str, split: int) -> str:
     reads = _head_widths(total, used)
     strips, width = 1 << split, 1 << (len(used) - split)
 
-    def lookup(head_reads: list[int], table: str) -> dict[tuple[int, int], str]:
-        grid = _Grid()
-        _layout_lookup(grid, head_reads, table)
-        return grid.cells
-
     strip_cells = [
-        lookup(reads[split:], indexed[h * width : (h + 1) * width])
+        _banded_lookup(reads[split:], indexed[h * width : (h + 1) * width])
         for h in range(strips)
     ]
-    # A strip keeps its heads, gadgets and table; its own entry descent,
-    # digit tail and exit turn give way to the shared ones.
     climb = _TABLE_ROWS + 1 + 2 * (len(reads) - split - 1)
+    span = _prune_strips(strip_cells, climb)
+    top, start = _merge_top(reads, split, strips, span)
+    first = _rail_top(top, trailing)
+
+    cells = dict(top)
+    for h, strip in enumerate(strip_cells):
+        offset = first + h * climb - 1
+        for (x, y), char in strip.items():
+            cells[x, y + offset] = char
+        cells[start + 2 * h, climb + offset] = "!"
+    grid = _Grid()
+    grid.cells = cells
+    return grid.render()
+
+
+def _banded_lookup(head_reads: list[int], table: str) -> dict[tuple[int, int], str]:
+    """Lay one lookup (the top or one strip) on a scratch grid; return its cells."""
+    grid = _Grid()
+    _layout_lookup(grid, head_reads, table)
+    return grid.cells
+
+
+def _prune_strips(strip_cells: list[dict[tuple[int, int], str]], climb: int) -> int:
+    """Strip-pruning phase: cut each strip to its body and give it its lane.
+
+    A strip keeps its heads, gadgets and table; its own entry descent,
+    digit tail and exit turn give way to the shared ones.  The lane sits
+    on row ``climb``.  Returns the strips' span: two columns clear of
+    their eastmost cell, where the top's drop columns must stay east of.
+    """
     for cells in strip_cells:
         for x, y in list(cells):
             if y == 0 or y >= climb or (x, y) == (0, _TABLE_ROWS):
@@ -209,14 +232,23 @@ def _clockwise_banded(truth_table: str, split: int) -> str:
         cells[1, _TABLE_ROWS] = "S"
         cells[0, _TABLE_ROWS] = "!"
         cells[0, _TABLE_ROWS - 1] = "+"
-    span = max(x for cells in strip_cells for x, _ in cells) + 2
+    return max(x for cells in strip_cells for x, _ in cells) + 2
 
-    raw = lookup(reads[:split], "0" * strips)
+
+def _merge_top(
+    reads: list[int], split: int, strips: int, span: int
+) -> tuple[dict[tuple[int, int], str], int]:
+    """Top-merge phase: cut the selector lookup down to the countdown row.
+
+    The top keeps its heads and gadgets.  Its table body and digit tail
+    go (each strip's lane prints the digit), and so do the four rows the
+    body held: nothing else crosses them but the descent and the climb.
+    Returns the top's cells and the first drop column: entry ``h`` drops
+    at ``start + 2 * h``, east of every strip.
+    """
+    raw = _banded_lookup(reads[:split], "0" * strips)
     start = min(x for (x, y), char in raw.items() if y == 1 and char == "!")
     digit = _TABLE_ROWS + 1 + 2 * (split - 1)
-    # The top keeps its heads and gadgets.  Its table body and digit tail
-    # go (each strip's lane prints the digit), and so do the four rows the
-    # body held: nothing else crosses them but the descent and the climb.
     top = {
         (x, y if y <= 1 else y - _TABLE_ROWS + 1): char
         for (x, y), char in raw.items()
@@ -224,7 +256,8 @@ def _clockwise_banded(truth_table: str, split: int) -> str:
         and (x, y) != (0, _TABLE_ROWS)
         and y < digit
     }
-    top[_DESCENT, digit - _TABLE_ROWS + 1] = top[_CLIMB, digit - _TABLE_ROWS + 1] = "R"
+    top[_DESCENT, digit - _TABLE_ROWS + 1] = "R"
+    top[_CLIMB, digit - _TABLE_ROWS + 1] = "R"
     # The columns drop past the top's own gadgets, which from eight strips
     # reach east of its table.
     start = max(start, span, max(x for x, _ in top) + 2)
@@ -232,22 +265,19 @@ def _clockwise_banded(truth_table: str, split: int) -> str:
         top[start + 2 * h, 1] = "!"
         if h + 1 < strips:
             top[start + 2 * h + 1, 1] = "-"
-    # The rail reads trailing inputs where no strip's ``!`` follows.
+    return top, start
+
+
+def _rail_top(top: dict[tuple[int, int], str], trailing: int) -> int:
+    """Rail phase: read the trailing inputs down the top's west edge.
+
+    The rail reads trailing inputs where no strip's ``!`` follows.
+    Returns the first row below the top, where the strips stack.
+    """
     first = max(max(y for _, y in top) + 1, _READS * trailing + 2)
     for y in range(1, _READS * trailing + 1):
         top[0, y] = "."
-
-    cells = dict(top)
-    for h, strip in enumerate(strip_cells):
-        offset = first + h * climb - 1
-        for (x, y), char in strip.items():
-            cells[x, y + offset] = char
-        cells[start + 2 * h, climb + offset] = "!"
-    rows = max(y for _, y in cells) + 1
-    grid = [[" "] * (max(x for x, _ in cells) + 1) for _ in range(rows)]
-    for (x, y), char in cells.items():
-        grid[y][x] = char
-    return "\n".join("".join(row).rstrip() for row in grid)
+    return first
 
 
 def _head_widths(total: int, used: list[int]) -> list[int]:

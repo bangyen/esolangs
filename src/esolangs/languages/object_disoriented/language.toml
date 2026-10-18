@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 6
+
+[proof_status]
+labels = ["tree"]
+qualification = "a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; equal halves drop the bit untested, constant subtables fold, and a repeated branch is a class written once"
+scaling = "linear: at most 39T + 21 characters: 35 a node, 4 a leaf"
+execution = "poly n: worst 67n + 34 commands: one tree path, 67 ops a level"
+workspace = "poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3) + 2bl(L)+bl(6n+8)+bl(6n+9)+bl(n)+19 bits: two frames and six cells a level"
+
+[generator_sizes]
+"00000001" = { commands = 235, commands_by_row = { "0" = 117, "1" = 117, "2" = 117, "3" = 117, "4" = 168, "5" = 168, "6" = 219, "7" = 235 }, source_units = 194 }
+"00001100" = { commands = 182, commands_by_row = { "0" = 117, "1" = 117, "2" = 117, "3" = 117, "4" = 170, "5" = 170, "6" = 182, "7" = 182 }, source_units = 165 }
+"00110110" = { commands = 233, commands_by_row = { "0" = 154, "1" = 154, "2" = 170, "3" = 170, "4" = 205, "5" = 221, "6" = 221, "7" = 233 }, source_units = 264 }
+"0110" = { commands = 166, commands_by_row = { "0" = 138, "1" = 154, "2" = 154, "3" = 166 }, source_units = 172 }
+"01101001" = { commands = 235, commands_by_row = { "0" = 191, "1" = 207, "2" = 207, "3" = 219, "4" = 207, "5" = 219, "6" = 219, "7" = 235 }, source_units = 250 }
+"0110100110010110" = { commands = 300, commands_by_row = { "0" = 244, "1" = 260, "2" = 260, "3" = 272, "4" = 260, "5" = 272, "6" = 272, "7" = 288, "8" = 260, "9" = 272, "10" = 272, "11" = 288, "12" = 272, "13" = 288, "14" = 288, "15" = 300 }, source_units = 328 }
+"1101001101101101" = { commands = 302, commands_by_row = { "0" = 209, "1" = 209, "2" = 258, "3" = 274, "4" = 221, "5" = 221, "6" = 237, "7" = 237, "8" = 258, "9" = 274, "10" = 274, "11" = 286, "12" = 237, "13" = 237, "14" = 286, "15" = 302 }, source_units = 381 }
+"11111110" = { commands = 233, commands_by_row = { "0" = 119, "1" = 119, "2" = 119, "3" = 119, "4" = 170, "5" = 170, "6" = 221, "7" = 233 }, source_units = 198 }

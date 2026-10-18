@@ -17,7 +17,6 @@ Decisions:
     sharing-heavy tables (:func:`_six_five_hoisted`).
 """
 
-import functools
 import string
 from collections.abc import Callable
 from typing import NamedTuple
@@ -102,7 +101,7 @@ def _six_five_halves(
 def six_five(truth_table: str) -> str:
     """Build a 6-5 program for ``truth_table`` (length ``2**n``, MSB first).
 
-    Node and leaf shapes: :func:`_six_five_node`, :func:`_six_five_leaf`.
+    Node and leaf shapes: ``_NodeEmitter.emit``, :func:`_six_five_leaf`.
     """
     # Identity and reverse: random n=7 10.8% (200 tables), parity/and/or 12-14%;
     # n >= 8 random exceeds the label budget either way, so 0%.
@@ -303,7 +302,7 @@ def _six_five_hoisted(
     tree = _Tree(truth_table, perm, constant, cell_of, ids, lazy, scratch)
 
     def emit(layout: _Layout) -> str:
-        return _six_five_node(layout, tree, 0, 0, 2 ** len(perm), pos, None)
+        return _NodeEmitter(layout, tree).emit(0, 0, 2 ** len(perm), pos, None)
 
     # One layout handles sharing both inside and beyond the plain-tree budget.
     # The old DAG precheck rejected layouts the emitter can fit: 50 seeded
@@ -417,28 +416,59 @@ class _Layout:
         return _SIX_FIVE_TEST + "8" + self._label(label) + left + right
 
 
+def _six_five_node_kind(
+    truth_table: str,
+    constant: Callable[[int, int], bool],
+    perm: tuple[int, ...],
+    cells: set[int] | dict[int, int],
+    level: int,
+    lo: int,
+    hi: int,
+) -> tuple[str, int]:
+    """Classify the span at ``level`` over rows ``[lo, hi)``; return (kind, mid).
+
+    ``leaf``: deep enough, or constant, so the span folds.  ``skip``: the
+    level's input is not in ``cells``, so only the zero half is descended.
+    ``copy``: the halves are constant 0 then 1, so the node prints its bit
+    with no test.  ``branch``: a real test over both halves.  The emitter
+    and the use counter share this one classification instead of each
+    re-walking the same leaf/skip/copy/branch decisions by hand; ``cells``
+    is the stored-input set for counting, the cell map for emitting.
+    """
+    mid = (lo + hi) // 2
+    if level == len(perm) or constant(lo, hi):
+        return "leaf", mid
+    if perm[level] not in cells:
+        return "skip", mid
+    if _six_five_halves(truth_table, constant, lo, hi):
+        return "copy", mid
+    return "branch", mid
+
+
 def _six_five_use_counts(
     truth_table: str, perm: tuple[int, ...], stored: set[int], *, raw_copies: bool
 ) -> dict[int, int]:
     """Count the tree paths that test each stored input, to find the lazy ones.
 
-    Mirrors the walk :func:`_six_five_node` will descend: a copy node
-    (``"01"`` halves) reads its input once per subtree it copies, counted
-    as two paths unless the winner chose its ``raw_copies`` form.  A stored
-    input tested on exactly one path is normalized at that node rather
-    than at its read.
+    Mirrors the walk ``_NodeEmitter.emit`` will descend, via the shared
+    :func:`_six_five_node_kind`: a copy node (``"01"`` halves) reads its
+    input once per subtree it copies, counted as two paths unless the
+    winner chose its ``raw_copies`` form.  A stored input tested on
+    exactly one path is normalized at that node rather than at its read.
     """
     constant = constant_span_test(truth_table)
     uses = dict.fromkeys(stored, 0)
 
     def tally(level: int, lo: int, hi: int) -> None:
-        if level == len(perm) or constant(lo, hi):
+        kind, mid = _six_five_node_kind(
+            truth_table, constant, perm, stored, level, lo, hi
+        )
+        if kind == "leaf":
             return
-        mid = (lo + hi) // 2
-        if perm[level] not in stored:
+        if kind == "skip":
             tally(level + 1, lo, mid)
             return
-        if _six_five_halves(truth_table, constant, lo, hi):
+        if kind == "copy":
             uses[perm[level]] += 1 if raw_copies else 2
             return
         uses[perm[level]] += 1
@@ -475,54 +505,79 @@ class _Tree(NamedTuple):
     scratch: int
 
 
-def _six_five_node(
-    layout: _Layout,
-    tree: _Tree,
-    level: int,
-    lo: int,
-    hi: int,
-    entry: int,
-    held: int | None,
-) -> str:
-    """Emit one node (or folded leaf) of the hoisted tree over ``layout``.
+class _NodeEmitter:
+    """Emit the nodes of one hoisted tree over one layout.
 
-    A node is ``7V``: ``7`` compares the cell to 31, a zero bit skips the
-    ``8n`` jump into the left subtree, a one bit jumps to the n-th ``4``.
-    ``entry`` is the cell the pointer stands on; ``held`` the value known
-    to be there.  A leaf prints from the cell it stands on (32 on the jump,
-    31 on the fall-through); the pointer's entry position is a function of
-    level alone.
+    Holds the two things every node needs -- the layout being laid out
+    over and the tree being read -- so a node call carries only the span
+    and the pointer state that actually change from node to node.
     """
-    truth_table, perm, constant, cell_of, ids, lazy, scratch = tree
-    n = len(perm)
-    if level == n or constant(lo, hi):
-        return _six_five_leaf(truth_table[lo], entry, held, scratch)
-    # A clobbered input has no cell to test.  Its bit cannot change the
-    # answer, so the two halves of this span are value-identical and
-    # descending into either is the same function -- take the zero half,
-    # which keeps the row span halving in step with the level.  Shared,
-    # any test whose halves agree is passed over the same way.
-    mid = (lo + hi) // 2
-    child = functools.partial(_six_five_node, layout, tree)
-    if perm[level] not in cell_of or layout.agrees(ids, level, lo):
-        return child(level + 1, lo, mid, entry, held)
-    cell = cell_of[perm[level]]
-    nav = _six_five_move(entry, cell)
-    if _six_five_halves(truth_table, constant, lo, hi):
-        # A read left raw prints as it came.
-        base = _ASCII_ZERO if perm[level] in lazy else _SIX_FIVE_HELD
-        return nav + _six_five_leaf("0", cell, base, scratch)
-    if perm[level] in lazy:
-        nav += _SIX_FIVE_TREE_NORMALIZE
-    # No inverted-bit print: from 31/32 it is 17 characters to a node's 14.
-    # A child's code is fixed by its rows and the cell it is entered from,
-    # the parent's, so that pair names it for sharing.
-    return nav + layout.branch(
-        layout.name(ids, level + 1, lo, cell, skip=True, leaf=(0,)),
-        lambda: child(level + 1, lo, mid, cell, _SIX_FIVE_HELD),
-        layout.name(ids, level + 1, mid, cell, skip=True, leaf=(1,)),
-        lambda: child(level + 1, mid, hi, cell, _SIX_FIVE_HELD + 1),
-    )
+
+    def __init__(self, layout: _Layout, tree: _Tree) -> None:
+        self.layout = layout
+        self.tree = tree
+
+    def emit(self, level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
+        """Emit one node (or folded leaf) of the hoisted tree.
+
+        A node is ``7V``: ``7`` compares the cell to 31, a zero bit skips
+        the ``8n`` jump into the left subtree, a one bit jumps to the
+        n-th ``4``.  ``entry`` is the cell the pointer stands on; ``held``
+        the value known to be there.  A leaf prints from the cell it
+        stands on (32 on the jump, 31 on the fall-through); the pointer's
+        entry position is a function of level alone.
+        """
+        tree = self.tree
+        kind, mid = _six_five_node_kind(
+            tree.truth_table,
+            tree.constant,
+            tree.perm,
+            tree.cell_of,
+            level,
+            lo,
+            hi,
+        )
+        if kind == "leaf":
+            return _six_five_leaf(tree.truth_table[lo], entry, held, tree.scratch)
+        # A clobbered input has no cell to test.  Its bit cannot change the
+        # answer, so the two halves of this span are value-identical and
+        # descending into either is the same function -- take the zero half,
+        # which keeps the row span halving in step with the level.  Shared,
+        # any test whose halves agree is passed over the same way.
+        if kind == "skip" or self.layout.agrees(tree.ids, level, lo):
+            return self.emit(level + 1, lo, mid, entry, held)
+        cell = tree.cell_of[tree.perm[level]]
+        nav = _six_five_move(entry, cell)
+        if kind == "copy":
+            # A read left raw prints as it came.
+            base = _ASCII_ZERO if tree.perm[level] in tree.lazy else _SIX_FIVE_HELD
+            return nav + _six_five_leaf("0", cell, base, tree.scratch)
+        return self._test_node(level, lo, mid, hi, cell, nav)
+
+    def _test_node(
+        self, level: int, lo: int, mid: int, hi: int, cell: int, nav: str
+    ) -> str:
+        """Emit a real ``7V`` branch node, both arms sharing by name."""
+        tree = self.tree
+        if tree.perm[level] in tree.lazy:
+            nav += _SIX_FIVE_TREE_NORMALIZE
+
+        def zero() -> str:
+            return self.emit(level + 1, lo, mid, cell, _SIX_FIVE_HELD)
+
+        def one() -> str:
+            return self.emit(level + 1, mid, hi, cell, _SIX_FIVE_HELD + 1)
+
+        # No inverted-bit print: from 31/32 it is 17 characters to a node's 14.
+        # A child's code is fixed by its rows and the cell it is entered from,
+        # the parent's, so that pair names it for sharing.
+        layout = self.layout
+        return nav + layout.branch(
+            layout.name(tree.ids, level + 1, lo, cell, skip=True, leaf=(0,)),
+            zero,
+            layout.name(tree.ids, level + 1, mid, cell, skip=True, leaf=(1,)),
+            one,
+        )
 
 
 def _six_five_move(frm: int, to: int) -> str:

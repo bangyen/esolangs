@@ -30,7 +30,7 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
     )
     assert boolean.false("0101010100110011") == "^1&$[^%^1&^%.]?0=[^%^%^1&.]?"
     for tables, arity, before, after in (
-        (three, 3, 12034, 10634),
+        (three, 3, 12034, 10622),
         (five_input_sample(), 5, 45372, 35721),
     ):
         plain = [len(false_plain(table, arity)) for table in tables]

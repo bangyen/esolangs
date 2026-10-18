@@ -15,6 +15,7 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table, input_weights
 from esolangs.generation.wrap import balance_score, balance_width
+from esolangs.languages.egl.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -83,4 +84,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     empty_program="EGL program must begin with 'width,height:'",
+    proof_workspace=(workspace, True, (3, 5)),
 )

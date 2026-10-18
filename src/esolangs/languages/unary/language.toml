@@ -1,0 +1,27 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 63
+bf_derivative = true
+
+[proof_status]
+labels = ["tree", "cap"]
+qualification = "complemented-byte decision tree; constants, projections and conjunction guards avoid flags"
+scaling = "lower bound: worst source length at least 2**T - 1; zero-count encoding"
+execution = "unmeasured: exempt as a cap row"
+workspace = "unmeasured: exempt as a cap row"
+evidence = "docs/limitations.md#unary"
+
+[proof_status.audit]
+totality = "Cap"
+generation_time = "Language lower bound"
+output_size = "Language lower bound"
+evidence = "docs/limitations.md#unary"
+
+[generator_sizes]
+"00" = { commands = 1, commands_by_row = { "0" = 1, "1" = 1 }, source_units = 13 }
+"0001" = { commands_by_row = { "0" = 4, "1" = 7, "2" = 4 }, commands_by_row_nulls = [3], source_units = 27452351 }
+"01" = { commands_by_row = { "0" = 2 }, commands_by_row_nulls = [1], source_units = 887 }
+"10" = { commands = 3, commands_by_row = { "1" = 3 }, commands_by_row_nulls = [0], source_units = 6839 }
+"11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 53431 }

@@ -311,7 +311,7 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
 def _drawn_plan(table, levels, n, wrap, vertical):
     """The replaced search: mark candidates, redraw, keep the ones that land."""
     from esolangs.generation.helpers import constant_span_test, subtree_ids
-    from esolangs.languages.back.generator import _WRAP_ROWS, _back_draw, _extent
+    from esolangs.languages.back.generator import _WRAP_ROWS, _BackContext, _extent
 
     constant, ids = constant_span_test(table), subtree_ids(table)
 
@@ -338,9 +338,14 @@ def _drawn_plan(table, levels, n, wrap, vertical):
         }
         if not tried:
             continue
-        grid, where = _back_draw(
-            table, levels, n, shared | tried, constant, vertical=vertical
-        )
+        grid, where = _BackContext(
+            truth_table=table,
+            levels=levels,
+            n=n,
+            constant=constant,
+            vertical=vertical,
+            shared=shared | tried,
+        ).draw()
         height, column = _extent(grid)[0], 3 * k + 2
         owner = {cell: node for node, cell in where.items()}
         for _, a in tried:
@@ -362,7 +367,7 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
     import random
 
     from esolangs.generation.helpers import constant_span_test, subtree_ids
-    from esolangs.languages.back.generator import _back_plan
+    from esolangs.languages.back.generator import _BackContext
 
     rng = random.Random(7)
     tables = ["0" * 64, "01" * 32, "0" * 32 + "1" * 32]
@@ -378,15 +383,15 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
         levels = len(table).bit_length() - 1
         for wrap in (False, True):
             for vertical in (False, True):
-                rule = _back_plan(
-                    vertical=vertical,
+                rule = _BackContext(
                     truth_table=table,
                     levels=levels,
                     n=levels,
+                    constant=constant_span_test(table),
+                    vertical=vertical,
                     wrap=wrap,
                     ids=subtree_ids(table),
-                    constant=constant_span_test(table),
-                )
+                ).plan()
                 assert rule == _drawn_plan(table, levels, levels, wrap, vertical)
                 kept += len(rule)
     assert kept > 500  # positive control: the corpus shares nodes

@@ -30,6 +30,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.bfstack.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
 
@@ -191,4 +192,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    proof_execution=(execution, True, (8, 9, 10)),
+    proof_workspace=(workspace, False, (3, 6)),
 )

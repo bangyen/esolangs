@@ -1,0 +1,92 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+linearity = 10
+workspace = 7
+
+[curation]
+backlinks = 2
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry"
+scaling = "linear: nine rows of street, ~1.8T columns"
+execution = "linear: worst 3T + 110n + 106 steps for n = 6, 7, then 4T + 14n + 650: one zero"
+workspace = "T log T: worst nT + 2n + 25 + bl(2T+57+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3)"
+
+[generator_sizes]
+"00000001" = { commands = 1242, commands_by_row = { "0" = 1224, "1" = 1224, "2" = 1224, "3" = 1224, "4" = 1231, "5" = 1231, "6" = 1238, "7" = 1242 }, source_units = 683 }
+"00001100" = { commands = 1235, commands_by_row = { "0" = 1224, "1" = 1224, "2" = 1224, "3" = 1224, "4" = 1231, "5" = 1231, "6" = 1235, "7" = 1235 }, source_units = 491 }
+"00110110" = { commands = 1250, commands_by_row = { "0" = 1227, "1" = 1227, "2" = 1231, "3" = 1231, "4" = 1238, "5" = 1242, "6" = 1246, "7" = 1250 }, source_units = 1055 }
+"0110" = { commands = 944, commands_by_row = { "0" = 932, "1" = 936, "2" = 940, "3" = 944 }, source_units = 591 }
+"01101001" = { commands = 1258, commands_by_row = { "0" = 1230, "1" = 1234, "2" = 1238, "3" = 1242, "4" = 1246, "5" = 1250, "6" = 1254, "7" = 1258 }, source_units = 1439 }
+"0110100110010110" = { commands = 1588, commands_by_row = { "0" = 1528, "1" = 1532, "2" = 1536, "3" = 1540, "4" = 1544, "5" = 1548, "6" = 1552, "7" = 1556, "8" = 1560, "9" = 1564, "10" = 1568, "11" = 1572, "12" = 1576, "13" = 1580, "14" = 1584, "15" = 1588 }, source_units = 3391 }
+"01101001100101101001011001101001" = { commands = 737, commands_by_row = { "0" = 665, "1" = 675, "16" = 689, "31" = 737 }, source_units = 2998 }
+"0110100110010110100101100110100110010110011010010110100110010110" = { commands = 927, commands_by_row = { "0" = 815, "1" = 825, "32" = 855, "63" = 927 }, source_units = 3889 }
+"1101001101101101" = { commands = 1572, commands_by_row = { "0" = 1525, "1" = 1525, "2" = 1532, "3" = 1536, "4" = 1537, "5" = 1537, "6" = 1541, "7" = 1541, "8" = 1548, "9" = 1552, "10" = 1556, "11" = 1560, "12" = 1561, "13" = 1561, "14" = 1568, "15" = 1572 }, source_units = 2495 }
+"11111110" = { commands = 1242, commands_by_row = { "0" = 1224, "1" = 1224, "2" = 1224, "3" = 1224, "4" = 1231, "5" = 1231, "6" = 1238, "7" = 1242 }, source_units = 683 }
+
+[catalogue]
+sharing_exempt = "a tree only through five inputs, where repeats hold at most 5.1% of nodes (n=5) before merge routing; from six an indexed street with no subtable"
+
+# Plain-rewrite audit record: each trick's saving measured in shipped
+# context at the largest arity where it runs (area; seeded random
+# tables, seed 184700+n, 200 per arity).  Prices are contextual --
+# joint removals were measured separately before landing.  Rows for
+# removed tricks stay as the record of why they left.
+[ablations]
+audited = "2026-10-18"
+
+[ablations.mouth_overlap]
+saving = 13.9
+arity = 8
+verdict = "kept"
+
+[ablations.tail_overlap]
+saving = 6.0
+arity = 8
+verdict = "removed: fixed ~51 columns, share decays with arity"
+
+[ablations.shared_lap_populate]
+saving = 16.7
+arity = 5
+verdict = "kept"
+
+[ablations.flat_race_candidate]
+saving = 42.4
+arity = 5
+verdict = "kept"
+
+[ablations.shared_kerb]
+saving = 22.2
+verdict = "kept: share of turned area, judged at the width floor"
+
+[ablations.lift]
+saving = 8.9
+arity = 5
+verdict = "removed: hallway shape only, nothing past its regime"
+
+[ablations.sibling_sharing]
+saving = 10.9
+arity = 5
+verdict = "kept: canonical, exempt from the bar"
+
+[ablations.constant_folding]
+saving = 31.3
+arity = 5
+verdict = "kept: canonical, exempt from the bar"
+
+[ablations.ignored_input_drop]
+saving = 49.6
+arity = 8
+verdict = "kept: canonical, exempt; saving on its own class"
+
+[ablations.tree_memoization]
+saving = 0.0
+verdict = "kept: performance only, no size effect"
+
+[ablations.snake_fold]
+saving = -12.8
+arity = 8
+verdict = "kept: a feature, not an optimization -- spends area on squareness for the balance contract"

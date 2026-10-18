@@ -21,6 +21,7 @@ Size:
 
 from collections import Counter
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from enum import Enum
 from itertools import pairwise
 
@@ -35,6 +36,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.flowchart.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -127,35 +129,43 @@ def _folded_walk[C, R](
     return descend(0, rows, 0, cursor)
 
 
-def _snake(
-    cells: dict[tuple[int, int], str],
-    x: int,
-    y: int,
-    nodes: Sequence[str | None],
-    cols: int,
-    step: int,
-    *,
-    slots: int,
-    pad: bool,
-) -> int:
-    """Paint ``nodes`` along a path folded into ``cols`` columns; return its exit.
+@dataclass(frozen=True)
+class _SnakeRun:
+    """The shape of one snaking path: where it starts and how it folds.
 
-    The path enters column 0 at ``(x, y)`` heading down and reads the columns
-    in turn, ``step`` apart (negative runs west): down, then up, joined by
-    ``└─┘`` below and ``┌─┐`` above.  A
-    column has ``slots`` node rows two apart; ``None`` is a bare rail.  With
-    ``pad`` the unused slots are rails (the path then ends at the bottom of
-    the last column when ``cols`` is odd, which the caller needs); without
-    it the path stops after its last node and its trailing rail is removed.
-    Returns the column the path leaves from.
+    The path enters column 0 at ``(x, y)`` heading down and reads the
+    columns in turn, ``step`` apart (negative runs west).  A column has
+    ``slots`` node rows two apart.  With ``pad`` the unused slots are
+    rails (the path then ends at the bottom of the last column when
+    ``cols`` is odd, which the caller needs); without it the path stops
+    after its last node and its trailing rail is removed.
     """
+
+    x: int
+    y: int
+    cols: int
+    step: int
+    slots: int
+    pad: bool
+
+
+def _snake(
+    cells: dict[tuple[int, int], str], run: _SnakeRun, nodes: Sequence[str | None]
+) -> int:
+    """Paint ``nodes`` along the path ``run`` describes; return its exit.
+
+    Columns are read down, then up, joined by ``└─┘`` below and ``┌─┐``
+    above; a ``None`` node is a bare rail.  Returns the column the path
+    leaves from.
+    """
+    x, y, step, slots = run.x, run.y, run.step, run.slots
     count = len(nodes)
-    for col in range(cols):
+    for col in range(run.cols):
         cx = x + step * col
         down = col % 2 == 0
         for slot in range(slots):
             index = col * slots + slot
-            if index >= count and not pad:
+            if index >= count and not run.pad:
                 break
             row = y + 2 * (slot if down else slots - 1 - slot)
             node = nodes[index] if index < count else None
@@ -164,8 +174,8 @@ def _snake(
             else:
                 _paint(cells, cx - len(node) // 2, row, node)
             cells[(cx, row + 1)] = cells[(cx, row - 1)] = "│"
-    for col in range(cols - 1):
-        if not pad and (col + 1) * slots >= count:
+    for col in range(run.cols - 1):
+        if not run.pad and (col + 1) * slots >= count:
             break
         cx = x + step * col
         down = col % 2 == 0
@@ -176,45 +186,62 @@ def _snake(
         corner = ("└", "┘") if down else ("┌", "┐")
         cells[(cx, row)] = corner[step < 0]
         cells[(cx + step, row)] = corner[step > 0]
-    return x + step * (cols - 1)
+    return x + step * (run.cols - 1)
 
 
-def _flowchart_cells(
-    truth_table: str, fold: int = 1, answer_cols: int = 1
-) -> dict[tuple[int, int], str]:
-    """Paint the decision tree onto a sparse ``(x, y) -> character`` grid.
+class _TreePainter:
+    """Painter state for the flat layout: the grid the walk paints onto.
 
-    Leaves first on a fixed pitch, switches collapsed upwards and centred
-    between their entry columns with rails to both.  Rows: ``( )``, rail,
-    then per level its reads and switch, each followed by a rail; each leaf
-    sets the register and drops onto a westward bus to the shared answer.
-    ``fold`` (odd) snakes every read chain over that many columns, and
-    ``answer_cols`` the answer column; ``1, 1`` is the plain tall drawing.
+    The walk (see :func:`_folded_walk`) hands each leaf and branch to this
+    painter; the state its phases share -- the cell map, the per-level row
+    plan, the leaf slots handed out so far -- lives here instead of in
+    closures over one function's locals.
     """
-    cells: dict[tuple[int, int], str] = {}
-    truth_table, costs, tail = _plan(truth_table)
-    constant = constant_span_test(truth_table)
-    n = len(costs)
-    lanes = [-(-cost // fold) for cost in costs]
-    # top[d] is level d's first read row; top[n] is where the tail's reads
-    # start and the leaves follow them.
-    top = [2]
-    for level in range(n):
-        top.append(top[-1] + 2 * lanes[level] + 2)
-    leaf_top = top[n] + 2 * -(-tail // fold)
-    reach = 4 * (fold - 1)
-    # A left child's chain runs west of its node and is entered at its east
-    # end, so siblings' entries face each other and the switch between them
-    # clears both; a right child's runs east.  Unfolded, all face east.
 
-    # Leaf slots are handed out left to right as the walk reaches each leaf,
-    # so a folded subtree takes one column band instead of the ``2**k`` its
-    # rows would have filled -- the drawing narrows rather than leaving a gap.
-    middles: list[int] = []
-    previous: list[tuple[int, bool]] = []
+    def __init__(self, truth_table: str, fold: int, answer_cols: int) -> None:
+        self.fold = fold
+        self.answer_cols = answer_cols
+        self.cells: dict[tuple[int, int], str] = {}
+        self.truth_table, self.costs, self.tail = _plan(truth_table)
+        self.constant = constant_span_test(self.truth_table)
+        self.n = len(self.costs)
+        self.lanes = [-(-cost // fold) for cost in self.costs]
+        # top[d] is level d's first read row; top[n] is where the tail's
+        # reads start and the leaves follow them.
+        self.top = [2]
+        for level in range(self.n):
+            self.top.append(self.top[-1] + 2 * self.lanes[level] + 2)
+        self.leaf_top = self.top[self.n] + 2 * -(-self.tail // fold)
+        self.reach = 4 * (fold - 1)
+        # Leaf slots are handed out left to right as the walk reaches each
+        # leaf, so a folded subtree takes one column band instead of the
+        # ``2**k`` its rows would have filled -- the drawing narrows rather
+        # than leaving a gap.
+        self.middles: list[int] = []
+        self.previous: list[tuple[int, bool]] = []
 
-    def paint_leaf(lo: int, depth: int, step: int) -> int:
+    def paint(self) -> dict[tuple[int, int], str]:
+        """Walk the folded tree, then join the leaves to the answer."""
+        # A left child's chain runs west of its node and is entered at its
+        # east end, so siblings' entries face each other and the switch
+        # between them clears both; a right child's runs east.  Unfolded,
+        # all face east.
+        root = _folded_walk(
+            len(self.truth_table),
+            self.constant,
+            self.paint_leaf,
+            self.paint_branch,
+            4,
+        )
+        _paint(self.cells, root - 1, 0, "( )")
+        self.cells[(root, 1)] = "│"
+        self._paint_bus()
+        left = min(x for x, _ in self.cells)
+        return {(x - left, y): c for (x, y), c in self.cells.items()}
+
+    def paint_leaf(self, lo: int, depth: int, step: int) -> int:
         """Draw the leaf for ``truth_table[lo]``; return its entry column."""
+        cells, previous, reach = self.cells, self.previous, self.reach
         mirrored = step < 0
         # Constant: no branch below can change the answer.  Leaves sit on the
         # bottom row whatever their depth, so the rail from the switch above
@@ -234,45 +261,45 @@ def _flowchart_cells(
                 + 3
                 + (reach if mirrored else 0),
             )
-            if was_mirrored and not mirrored and fold > 1:
+            if was_mirrored and not mirrored and self.fold > 1:
                 entry = max(entry, before + 7)
         previous.append((entry, mirrored))
         path: list[str | None] = []
-        for skipped in range(depth, n):
-            path += ["/ /"] * costs[skipped] + [None]
-        path += ["/ /"] * tail
-        slots = (leaf_top - top[depth]) // 2
+        for skipped in range(depth, self.n):
+            path += ["/ /"] * self.costs[skipped] + [None]
+        path += ["/ /"] * self.tail
+        slots = (self.leaf_top - self.top[depth]) // 2
         middle = entry
         if slots:
             middle = _snake(
                 cells,
-                entry,
-                top[depth],
+                _SnakeRun(
+                    entry, self.top[depth], self.fold, step, slots=slots, pad=True
+                ),
                 path,
-                fold,
-                step,
-                slots=slots,
-                pad=True,
             )
-        _paint(cells, middle - 1, leaf_top, _set(truth_table[lo]))
-        cells[(middle, leaf_top + 1)] = "│"
-        middles.append(middle)
+        _paint(cells, middle - 1, self.leaf_top, _set(self.truth_table[lo]))
+        cells[(middle, self.leaf_top + 1)] = "│"
+        self.middles.append(middle)
         return entry
 
-    def switch(depth: int, west: int, east: int, step: int) -> int:
+    def switch(self, depth: int, west: int, east: int, step: int) -> int:
         """Join two subtrees at ``depth``; return the column it is entered at."""
+        cells, top = self.cells, self.top
         switch_row = top[depth + 1] - 2
         middle = (west + east) // 2
-        entry = middle - step * (fold - 1)
+        entry = middle - step * (self.fold - 1)
         _snake(
             cells,
-            entry,
-            top[depth],
-            ["/ /"] * costs[depth],
-            fold,
-            step,
-            slots=lanes[depth],
-            pad=True,
+            _SnakeRun(
+                entry,
+                top[depth],
+                self.fold,
+                step,
+                slots=self.lanes[depth],
+                pad=True,
+            ),
+            ["/ /"] * self.costs[depth],
         )
         _paint(cells, middle - 1, switch_row, "< >")
         for x in range(west + 1, middle - 1):
@@ -286,6 +313,7 @@ def _flowchart_cells(
         return entry
 
     def paint_branch(
+        self,
         lo: int,
         hi: int,
         depth: int,
@@ -294,39 +322,55 @@ def _flowchart_cells(
     ) -> int:
         """Draw the subtrees for ``truth_table[lo:hi]``; return the entry."""
         half = (hi - lo) // 2
-        west = descend(lo, lo + half, depth + 1, -4 if fold > 1 else 4)
+        west = descend(lo, lo + half, depth + 1, -4 if self.fold > 1 else 4)
         east = descend(lo + half, hi, depth + 1, 4)
-        return switch(depth, west, east, step)
+        return self.switch(depth, west, east, step)
 
-    root = _folded_walk(len(truth_table), constant, paint_leaf, paint_branch, 4)
-    _paint(cells, root - 1, 0, "( )")
-    cells[(root, 1)] = "│"
-
-    # A pointer heading down onto ``┴`` turns clockwise, west, and one
-    # heading west runs straight through, so the bus flows west; it jogs
-    # round under the first leaf into the answer column.
-    bus = leaf_top + 2
-    base, last = min(middles), max(middles)
-    for x in range(base - 1, last):
-        cells[(x, bus)] = "─"
-    for middle in middles:
-        cells[(middle, bus)] = "┴"
-    cells[(last, bus)] = "┘"
-    cells[(base - 1, bus)] = "┌"
-    cells[(base - 1, bus + 1)] = "└"
-    cells[(base, bus + 1)] = "┐"
-    if answer_cols > 1:
-        slots = -(-len(_ANSWER) // answer_cols)
-        _snake(cells, base, bus + 2, _ANSWER, answer_cols, 6, slots=slots, pad=False)
-        last = len(_ANSWER) - 1
-        col, slot = divmod(last, slots)
-        row = bus + 2 + 2 * (slot if col % 2 == 0 else slots - 1 - slot)
-        del cells[(base + 6 * col, row + (1 if col % 2 == 0 else -1))]
+    def _paint_bus(self) -> None:
+        """Join every leaf to the answer column along the westward bus."""
+        cells, middles = self.cells, self.middles
+        # A pointer heading down onto ``┴`` turns clockwise, west, and one
+        # heading west runs straight through, so the bus flows west; it
+        # jogs round under the first leaf into the answer column.
+        bus = self.leaf_top + 2
+        base, last = min(middles), max(middles)
+        for x in range(base - 1, last):
+            cells[(x, bus)] = "─"
+        for middle in middles:
+            cells[(middle, bus)] = "┴"
+        cells[(last, bus)] = "┘"
+        cells[(base - 1, bus)] = "┌"
+        cells[(base - 1, bus + 1)] = "└"
         cells[(base, bus + 1)] = "┐"
-    else:
-        _answer_column(cells, base, bus + 2)
-    left = min(x for x, _ in cells)
-    return {(x - left, y): c for (x, y), c in cells.items()}
+        if self.answer_cols > 1:
+            slots = -(-len(_ANSWER) // self.answer_cols)
+            _snake(
+                cells,
+                _SnakeRun(base, bus + 2, self.answer_cols, 6, slots=slots, pad=False),
+                _ANSWER,
+            )
+            last = len(_ANSWER) - 1
+            col, slot = divmod(last, slots)
+            row = bus + 2 + 2 * (slot if col % 2 == 0 else slots - 1 - slot)
+            del cells[(base + 6 * col, row + (1 if col % 2 == 0 else -1))]
+            cells[(base, bus + 1)] = "┐"
+        else:
+            _answer_column(cells, base, bus + 2)
+
+
+def _flowchart_cells(
+    truth_table: str, fold: int = 1, answer_cols: int = 1
+) -> dict[tuple[int, int], str]:
+    """Paint the decision tree onto a sparse ``(x, y) -> character`` grid.
+
+    Leaves first on a fixed pitch, switches collapsed upwards and centred
+    between their entry columns with rails to both.  Rows: ``( )``, rail,
+    then per level its reads and switch, each followed by a rail; each leaf
+    sets the register and drops onto a westward bus to the shared answer.
+    ``fold`` (odd) snakes every read chain over that many columns, and
+    ``answer_cols`` the answer column; ``1, 1`` is the plain tall drawing.
+    """
+    return _TreePainter(truth_table, fold, answer_cols).paint()
 
 
 def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
@@ -805,4 +849,5 @@ LANGUAGE = Language(
     balance=_balance,
     eof="reads at input nodes, including the constant skip chain",
     empty_program="Flowchart program has no '( )' start node",
+    proof_workspace=(workspace, False, (3, 4)),
 )

@@ -115,11 +115,13 @@ def test_main_updates_all_registry_derived_docs(
     """The public generator command includes both contributor surfaces."""
     module = load_script()
     called = []
-    module.update_readme = lambda _root: called.append("readme")
-    module.update_usage = lambda _root: called.append("usage")
-    module.update_limitations = lambda _root: called.append("limitations")
+    # The stubs report a change, as a stale artifact would: docs_main only
+    # prints an "updated ..." line for an artifact that actually changed.
+    module.update_readme = lambda _root: called.append("readme") or True
+    module.update_usage = lambda _root: called.append("usage") or True
+    module.update_limitations = lambda _root: called.append("limitations") or True
     module.update_contributing = lambda _root: called.append("contributing")
-    module.update_language_request = lambda _root: called.append("request")
+    module.update_language_request = lambda _root: called.append("request") or True
     for relative in (
         "docs/proofs/index.md",
         "docs/roadmap.md",
@@ -130,7 +132,13 @@ def test_main_updates_all_registry_derived_docs(
         target.write_bytes((REPO_ROOT / relative).read_bytes())
     assert module.docs_main(output_root=tmp_path) == 0
     assert called == ["readme", "usage", "limitations", "contributing", "request"]
-    assert "language request template" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "language request template" in out
+    # The real exports and proof tables were copied in sync, so they earn
+    # no "updated" line -- only the summary counts them.
+    assert "updated the generated exports" not in out
+    assert "updated the generated tables of docs/proofs" not in out
+    assert "2 generated artifacts already up to date" in out
 
 
 def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
@@ -145,13 +153,29 @@ def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
     (tmp_path / "docs" / "limitations.md").write_text(limitations)
     catalog = REPO_ROOT / "docs" / "languages.md"
     (tmp_path / "docs" / "languages.md").write_text(catalog.read_text())
-    module.update_readme(tmp_path)
+    # In-sync copies are not rewritten, and the writers say so.
+    assert module.update_readme(tmp_path) is False
     assert (tmp_path / "docs" / "languages.md").read_text() == catalog.read_text()
-    module.update_usage(tmp_path)
-    module.update_limitations(tmp_path)
+    assert module.update_usage(tmp_path) is False
+    assert module.update_limitations(tmp_path) is False
     assert (tmp_path / "README.md").read_text() == readme
     assert (tmp_path / "docs" / "usage.md").read_text() == usage
     assert (tmp_path / "docs" / "limitations.md").read_text() == limitations
+
+
+def test_a_stale_section_is_rewritten_and_reports_a_change(tmp_path: Path) -> None:
+    """A stale writer changes the file once, then reports it up to date."""
+    module = load_script()
+    (tmp_path / "docs").mkdir()
+    readme = README.read_text()
+    start, end = _markers("PACKAGE-COUNT")
+    stale = readme.replace(_marked(readme, start, end), start + "\nstale\n" + end)
+    (tmp_path / "README.md").write_text(stale)
+    catalog = REPO_ROOT / "docs" / "languages.md"
+    (tmp_path / "docs" / "languages.md").write_text(catalog.read_text())
+    assert module.update_readme(tmp_path) is True
+    assert (tmp_path / "README.md").read_text() == readme
+    assert module.update_readme(tmp_path) is False
 
 
 def test_an_unheaded_category_names_where_to_add_it() -> None:
@@ -207,7 +231,7 @@ def test_language_listing_only_lists_available_interpreters(
     )
     rendered = module.render_languages_section()
     assert f"- [{REFERENCE}]" not in rendered
-    assert f"Show all {len(module.LANGUAGES) - 1} languages" in rendered
+    assert rendered.count("- [") == len(module.LANGUAGES) - 1
 
 
 # Standalone coverage run: 2.64s exceeds the fast band.

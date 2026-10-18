@@ -1,0 +1,36 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+workspace = 6
+
+[curation]
+backlinks = 5
+bf_derivative = true
+bf_derivative_predates = true
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer"
+scaling = "linear: bounded dependency scan and canonical residual IDs"
+execution = "linear: worst (2n+13)T + 94n + 89 + 2S to n = 7, S the codes of program characters 1..n"
+workspace = "linear: worst 6L + 12n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape"
+
+[generator_sizes]
+"00000001" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
+"00001100" = { commands = 902, commands_by_row = { "0" = 827, "1" = 839, "2" = 850, "3" = 862, "4" = 867, "5" = 879, "6" = 890, "7" = 902 }, source_units = 159 }
+"00110110" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
+"0110" = { commands = 617, commands_by_row = { "0" = 554, "1" = 577, "2" = 594, "3" = 617 }, source_units = 118 }
+"01101001" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
+"0110100110010110" = { commands = 1383, commands_by_row = { "0" = 1044, "1" = 1071, "2" = 1092, "3" = 1119, "4" = 1134, "5" = 1161, "6" = 1182, "7" = 1209, "8" = 1218, "9" = 1245, "10" = 1266, "11" = 1293, "12" = 1308, "13" = 1335, "14" = 1356, "15" = 1383 }, source_units = 234 }
+"1101001101101101" = { commands = 1383, commands_by_row = { "0" = 1044, "1" = 1071, "2" = 1092, "3" = 1119, "4" = 1134, "5" = 1161, "6" = 1182, "7" = 1209, "8" = 1218, "9" = 1245, "10" = 1266, "11" = 1293, "12" = 1308, "13" = 1335, "14" = 1356, "15" = 1383 }, source_units = 234 }
+"11111110" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
+
+[catalogue]
+folding_constant_local = "_program"  # read into an executed cell and print the tail
+
+[formula_arities]
+workspace = [3]
+
+[schemes]
+folds_without_tree = true

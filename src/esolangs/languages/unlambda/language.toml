@@ -1,0 +1,30 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+workspace = 6
+
+[curation]
+backlinks = 89
+
+[proof_status]
+labels = ["tree"]
+qualification = "each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate"
+scaling = "linear: 29 characters an internal node, four a leaf"
+execution = "poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node"
+workspace = "T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits: a shared subterm per frame"
+
+[generator_sizes]
+"00000001" = { commands = 243, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 243, "7" = 243 }, source_units = 113 }
+"00001100" = { commands = 192, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 192, "7" = 192 }, source_units = 96 }
+"00110110" = { commands = 243, commands_by_row = { "0" = 192, "1" = 192, "2" = 192, "3" = 192, "4" = 243, "5" = 243, "6" = 243, "7" = 243 }, source_units = 161 }
+"0110" = { commands = 166, commands_by_row = { "0" = 166, "1" = 166, "2" = 166, "3" = 166 }, source_units = 87 }
+"01101001" = { commands = 243, commands_by_row = { "0" = 243, "1" = 243, "2" = 243, "3" = 243, "4" = 243, "5" = 243, "6" = 243, "7" = 243 }, source_units = 163 }
+"0110100110010110" = { commands = 320, commands_by_row = { "0" = 320, "1" = 320, "2" = 320, "3" = 320, "4" = 320, "5" = 320, "6" = 320, "7" = 320, "8" = 320, "9" = 320, "10" = 320, "11" = 320, "12" = 320, "13" = 320, "14" = 320, "15" = 320 }, source_units = 315 }
+"1101001101101101" = { commands = 320, commands_by_row = { "0" = 269, "1" = 269, "2" = 320, "3" = 320, "4" = 269, "5" = 269, "6" = 269, "7" = 269, "8" = 320, "9" = 320, "10" = 320, "11" = 320, "12" = 269, "13" = 269, "14" = 320, "15" = 320 }, source_units = 274 }
+"11111110" = { commands = 243, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 243, "7" = 243 }, source_units = 113 }
+
+[formula_arities]
+execution = [3, 7]
+# Task, then 3n + 6 frames, each one shared subterm and its depth.
+workspace = [2, 3]

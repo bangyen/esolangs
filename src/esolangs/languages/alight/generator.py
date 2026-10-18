@@ -33,6 +33,7 @@ from esolangs.languages.alight.interpreter._dialect import (
 from esolangs.languages.alight.interpreter._dialect import (
     list_update as validate_list_update,
 )
+from esolangs.languages.alight.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -564,4 +565,5 @@ LANGUAGE = Language(
     eof="it raises its own error before the read is reached",
     underfed_raises=True,
     empty_program="empty program",
+    proof_workspace=(workspace, True, (3, 5)),
 )

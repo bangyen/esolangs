@@ -1,0 +1,25 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 19
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the table read at its essential inputs is one integer built by Horner's rule in base 8, and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer"
+scaling = "linear: at most four instructions an octal digit, 10n of lookup"
+execution = "linear: worst T + ⌈(T-1)/3⌉ + 10n + 9 commands: all ones but the last row, run once"
+workspace = "linear: at most 2T + n + 13 bits: the table, and Q in two registers"
+
+[generator_sizes]
+"00000001" = { commands = 44, commands_by_row = { "0" = 44, "1" = 44, "2" = 44, "3" = 44, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 263 }
+"00001100" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 197 }
+"00110110" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 47, "7" = 47 }, source_units = 281 }
+"0110" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33 }, source_units = 197 }
+"01101001" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 47, "7" = 47 }, source_units = 281 }
+"0110100110010110" = { commands = 63, commands_by_row = { "0" = 63, "1" = 63, "2" = 63, "3" = 63, "4" = 63, "5" = 63, "6" = 63, "7" = 63, "8" = 63, "9" = 63, "10" = 63, "11" = 63, "12" = 63, "13" = 63, "14" = 63, "15" = 63 }, source_units = 377 }
+"1101001101101101" = { commands = 66, commands_by_row = { "0" = 66, "1" = 66, "2" = 66, "3" = 66, "4" = 66, "5" = 66, "6" = 66, "7" = 66, "8" = 66, "9" = 66, "10" = 66, "11" = 66, "12" = 66, "13" = 66, "14" = 66, "15" = 66 }, source_units = 395 }
+"11111110" = { commands = 50, commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 50, "5" = 50, "6" = 50, "7" = 50 }, source_units = 299 }
+
+[catalogue]
+folding_constant_local = "read_at"  # one projected table bit, no lookup round

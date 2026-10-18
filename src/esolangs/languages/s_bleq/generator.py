@@ -19,6 +19,7 @@ from esolangs.generation.packed_decoder import (
     packed_decoder,
 )
 from esolangs.generation.wrap import wrap_grid
+from esolangs.languages.s_bleq.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -53,4 +54,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_grid,
     eof="a failed read leaves the cell alone and the program runs on",
+    proof_execution=(execution, True, (3, 6)),
 )

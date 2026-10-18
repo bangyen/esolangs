@@ -2,8 +2,9 @@
 
 The canonical set (``docs/CONTRIBUTING.md``) shares repeated subtrees.  A
 source scan for ``subtree_ids`` cannot tell sharing from folding (the helper
-does both), so this measures it: a generator outside ``[sharing.exempt]`` in
-``ledgers/generator_catalogue.toml`` builds a repeated-block table or parity
+does both), so this measures it: a generator outside the catalogue's
+sharing exemptions (each package's ``language.toml`` ``[catalogue]``)
+builds a repeated-block table or parity
 at most 0.90x its distinct-block or dense twin at some probed arity.
 Non-sharers measured 0.95x or more on every probe, sharers 0.88x or less.
 """
@@ -11,8 +12,6 @@ Non-sharers measured 0.95x or more on every probe, sharers 0.88x or less.
 from __future__ import annotations
 
 import random
-import tomllib
-from pathlib import Path
 
 import pytest
 
@@ -20,12 +19,11 @@ import esolangs
 from esolangs.generation.helpers import essential_inputs
 from esolangs.registry import LANGUAGES
 from esolangs.registry._language import Shape
+from scripts.docs.catalogue import load as _catalogue_load
 from tests.generators.source_support import generator_symbols as _source
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.source_support import source_units
 from tests.support.witness_tables import dense, parity
-
-CATALOGUE = Path(__file__).parents[2] / "ledgers" / "generator_catalogue.toml"
 
 #: Arities probed, smallest first; routes switch with size (Inject shares
 #: only through n=4, Back only from n=6, thisthat's DAG fires on parity).
@@ -34,8 +32,8 @@ _BAR = 0.90
 
 
 def _catalogue() -> tuple[dict[str, str], dict[str, str]]:
-    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["sharing"]
-    return data.get("local", {}), data.get("exempt", {})
+    sharing = _catalogue_load()["sharing"]
+    return sharing["local"], sharing["exempt"]
 
 
 def _tree_generators() -> set[str]:
@@ -97,5 +95,6 @@ def test_a_sharing_generator_shrinks_a_repeated_table(name: str) -> None:
         pytest.skip("sharing probe exceeds a proved language resource cap")
     pytest.fail(
         f"{name} shares nothing (parity/dense, repeated/distinct by arity: {seen}): "
-        "share repeated subtrees or add [sharing.exempt] with the reason"
+        "share repeated subtrees or record sharing_exempt with the reason "
+        "in its language.toml [catalogue]"
     )

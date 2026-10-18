@@ -14,6 +14,7 @@ from esolangs.languages.grapheme.interpreter import (
     INTEGER_CONVERSIONS,
     GraphemeDialect,
 )
+from esolangs.languages.grapheme.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.runtime.memory import format_integer
@@ -130,4 +131,6 @@ LANGUAGE = Language(
         "answers the all-zeros row; esolangs encode spells them",
     ),
     wrap=wrap_chars,
+    proof_execution=(execution, True, (3, 5)),
+    proof_workspace=(workspace, True, (3, 5)),
 )

@@ -298,8 +298,8 @@ def _join(parts: list[tuple[_Rope, int, int]]) -> tuple[_Rope, int, int]:
 
 def _apl_tree_layout(
     table: str, perm: tuple[int, ...], width: int
-) -> tuple[str, int | None]:
-    """Return the shorter split tree and its next frame-budget transition.
+) -> tuple[str, set[int]]:
+    """Return the shorter split tree and its frame-budget transitions.
 
     The reduced diagram drops ignored inputs and repeated halves; the inline
     tree stays a candidate since ``!`` sharing grew XOR-like n=3 tables by
@@ -311,13 +311,15 @@ def _apl_tree_layout(
     ]
     shared = _apl_repeated_expressions(_apl_reduced_ordered(table, perm))
     span = grid_width(shared)
-    laid.append((shared, span if span > width else None))
-    events = [point for _, point in laid if point is not None]
+    laid.append((shared, {span} if span > width else set()))
+    events: set[int] = set()
+    for _, points in laid:
+        events.update(points)
     best = min(
         (program for program, _ in laid),
         key=lambda x: (max(grid_width(x), width), len(x)),
     )
-    return best, min(events, default=None)
+    return best, events
 
 
 class _Splitter:
@@ -416,10 +418,9 @@ def _apl_split(
     perm: tuple[int, ...],
     width: int,
     build: Callable[[str, tuple[int, ...]], str],
-) -> tuple[str, int | None]:
+) -> tuple[str, set[int]]:
     """Split ``build``'s tree into definitions under the frame budget."""
-    program, events = _Splitter(table, perm, width, build).split()
-    return program, min(events, default=None)
+    return _Splitter(table, perm, width, build).split()
 
 
 #: Operator definitions computing XOR in five columns.  The generic
@@ -434,13 +435,11 @@ def _apl_narrow_layout(
     table: str, perm: tuple[int, ...], width: int
 ) -> tuple[str, int | None]:
     """Return the chosen spelling and its next frame or format fit."""
-    previous, next_width = _apl_tree_layout(table, perm, width)
+    previous, upcoming = _apl_tree_layout(table, perm, width)
     n = _validate_truth_table(table)
     if n > 3 or grid_width(previous) <= width:
-        return previous, next_width
-    events = [grid_width(previous)]
-    if next_width is not None:
-        events.append(next_width)
+        return previous, min(upcoming, default=None)
+    events = [grid_width(previous), *upcoming]
     # At most nine primitive definitions use one-character names below n=4.
     # Larger trees retain fresh-text splitting, avoiding O(T log T) names.
     reduced, selectors = _essential(table, perm)

@@ -1,0 +1,25 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 3
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the write row puts the essential inputs' table on the tape, one cell an entry, then each essential input's gadget tests its dequeued bit and a 0 walks the tape pointer left by that bit's weight, leaving it beside the indexed entry; an ignored input is read and never enqueued"
+scaling = "linear: five rows of about T + zeros + 9n columns"
+execution = "linear: at most 5T + 80n + 210 commands: the write row, each unary move out and back, the band"
+workspace = "linear: at most T + 10n + 56 bits: the tape, one bit a cell"
+
+[generator_sizes]
+"00000001" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
+"00001100" = { commands = 395, commands_by_row = { "0" = 413, "1" = 413, "2" = 405, "3" = 405, "4" = 403, "5" = 403, "6" = 395, "7" = 395 }, source_units = 469 }
+"00110110" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
+"0110" = { commands = 344, commands_by_row = { "0" = 362, "1" = 354, "2" = 352, "3" = 344 }, source_units = 419 }
+"01101001" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
+"0110100110010110" = { commands = 518, commands_by_row = { "0" = 572, "1" = 564, "2" = 562, "3" = 554, "4" = 558, "5" = 550, "6" = 548, "7" = 540, "8" = 550, "9" = 542, "10" = 540, "11" = 532, "12" = 536, "13" = 528, "14" = 526, "15" = 518 }, source_units = 659 }
+"1101001101101101" = { commands = 518, commands_by_row = { "0" = 572, "1" = 564, "2" = 562, "3" = 554, "4" = 558, "5" = 550, "6" = 548, "7" = 540, "8" = 550, "9" = 542, "10" = 540, "11" = 532, "12" = 536, "13" = 528, "14" = 526, "15" = 518 }, source_units = 659 }
+"11111110" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
+
+[catalogue]
+folding_constant_local = "_layout"  # no essential input: one table cell, no select gadget

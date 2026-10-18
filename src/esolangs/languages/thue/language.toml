@@ -1,0 +1,26 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 158
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per essential input and the last character is the answer; an ignored input's round reads its line and deletes it; the rules never overlap, so the language's random rule choice has nothing to choose"
+scaling = "linear: T state characters, at most 23 fixed rules plus expansions"
+execution = "linear: worst 2T + 3n - 2 rewrites: n rounds, each a marker sweep out and back"
+workspace = "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string"
+
+[generator_sizes]
+"00000001" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
+"00001100" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
+"00110110" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
+"0110" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12 }, source_units = 191 }
+"01101001" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
+"0110100110010110" = { commands = 42, commands_by_row = { "0" = 42, "1" = 42, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 42, "7" = 42, "8" = 42, "9" = 42, "10" = 42, "11" = 42, "12" = 42, "13" = 42, "14" = 42, "15" = 42 }, source_units = 203 }
+"1101001101101101" = { commands = 42, commands_by_row = { "0" = 42, "1" = 42, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 42, "7" = 42, "8" = 42, "9" = 42, "10" = 42, "11" = 42, "12" = 42, "13" = 42, "14" = 42, "15" = 42 }, source_units = 203 }
+"11111110" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
+
+[formula_arities]
+execution = [3, 6]
+workspace = [3, 6]

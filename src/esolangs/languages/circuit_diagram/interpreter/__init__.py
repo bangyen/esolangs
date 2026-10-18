@@ -74,8 +74,9 @@ Decisions:
       columns short.
 """
 
+from collections import OrderedDict
 from datetime import UTC, datetime
-from functools import lru_cache
+from threading import Lock
 from typing import NamedTuple, cast
 
 from esolangs.languages.circuit_diagram.interpreter._functions import (
@@ -122,8 +123,7 @@ class _Topology(NamedTuple):
     consumers: tuple[tuple[tuple[int, int], ...], ...]
 
 
-@lru_cache(maxsize=16)
-def _compile(code: tuple[str, ...]) -> _Topology:
+def _parse_topology(code: tuple[str, ...]) -> _Topology:
     """Return the :class:`_Topology` of ``code``."""
     main, definitions = _split_definitions(list(code))
     grid = _Grid(main)
@@ -143,6 +143,96 @@ def _compile(code: tuple[str, ...]) -> _Topology:
         {cell: wiring for wiring in wirings for cell in wiring.cells},
         tuple(map(tuple, fed)),
     )
+
+
+#: How much program text the compile cache retains, in characters, across
+#: all of its entries and in any single one.
+_MAX_CACHED_TEXT = 16_000_000
+
+#: How many programs the compile cache retains at once.
+_MAX_CACHED_PROGRAMS = 16
+
+
+class _CacheInfo(NamedTuple):
+    """The compile cache's counters, shaped like ``functools``' own."""
+
+    hits: int
+    misses: int
+    maxsize: int | None
+    currsize: int
+
+
+class _CompileCache:
+    """An LRU over :func:`_parse_topology`, bounded by retained text.
+
+    A plain ``functools.lru_cache(maxsize=16)`` bounds only the entry
+    count, so sixteen topologies of generated programs stay alive for the
+    rest of the process -- one measured program is 30M characters of code
+    and about a gigabyte of topology -- and whichever later compile is
+    first to evict one pays for freeing it (1.04 s of CPU measured for
+    that program, charged to a test whose own work is a millisecond).
+    Bounding the retained *text* instead caps what any single eviction
+    can cost, and a program past the bound is parsed per machine rather
+    than retained at all: the programs that large are built by the slow
+    and weekly executions, which run a handful of rows each and can pay
+    their own parses.
+    """
+
+    def __init__(self) -> None:
+        """Start an empty cache over :func:`_parse_topology`."""
+        self.__wrapped__ = _parse_topology
+        self._entries: OrderedDict[tuple[str, ...], tuple[_Topology, int]] = (
+            OrderedDict()
+        )
+        self._text = 0
+        self._hits = 0
+        self._misses = 0
+        self._lock = Lock()
+
+    def __call__(self, code: tuple[str, ...]) -> _Topology:
+        """Return ``code``'s topology, parsing and maybe retaining it."""
+        with self._lock:
+            entry = self._entries.pop(code, None)
+            if entry is not None:
+                self._entries[code] = entry
+                self._hits += 1
+                return entry[0]
+            self._misses += 1
+        topology = _parse_topology(code)
+        size = sum(map(len, code))
+        if size <= _MAX_CACHED_TEXT:
+            with self._lock:
+                replaced = self._entries.pop(code, None)
+                if replaced is not None:
+                    self._text -= replaced[1]
+                self._entries[code] = (topology, size)
+                self._text += size
+                while (
+                    len(self._entries) > _MAX_CACHED_PROGRAMS
+                    or self._text > _MAX_CACHED_TEXT
+                ):
+                    _, (_, evicted) = self._entries.popitem(last=False)
+                    self._text -= evicted
+        return topology
+
+    def cache_info(self) -> _CacheInfo:
+        """Return the hit/miss counters and the current entry count."""
+        with self._lock:
+            return _CacheInfo(
+                self._hits, self._misses, _MAX_CACHED_PROGRAMS, len(self._entries)
+            )
+
+    def cache_clear(self) -> None:
+        """Drop every retained topology and reset the counters."""
+        with self._lock:
+            self._entries.clear()
+            self._text = 0
+            self._hits = 0
+            self._misses = 0
+
+
+#: The shared compile cache every machine in this process runs through.
+_compile = _CompileCache()
 
 
 def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, ...]:

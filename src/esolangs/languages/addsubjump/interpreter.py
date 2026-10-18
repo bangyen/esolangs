@@ -151,62 +151,90 @@ def _defined_labels(lines: tuple[tuple[str, ...], ...]) -> set[str]:
     return out
 
 
+def _rewrite_token(token: str, mapping: dict[str, str]) -> str:
+    """Replace a symbol in ``token``, retaining a label offset."""
+    match = re.fullmatch(r"(.+?)([+-]\d+)?", token)
+    if match is None:
+        return token
+    name, offset = match.groups()
+    return mapping.get(name, name) + (offset or "")
+
+
+def _substitute_token(token: str, mapping: dict[str, str]) -> str:
+    """Rewrite a macro body token's label and value parts through ``mapping``."""
+    label, colon, value = token.partition(":")
+    label = _rewrite_token(label, mapping)
+    value = _rewrite_token(value, mapping) if colon else value
+    return label + colon + value
+
+
+class _LabelRenamer:
+    """Hands out the per-expansion names that make macro labels private.
+
+    The serial is mutable allocator state shared by every expansion of one
+    source, so no two expansions of a macro ever reuse a label name.
+    """
+
+    def __init__(self) -> None:
+        self._serial = 0
+
+    def rename(self, local: set[str]) -> dict[str, str]:
+        """Return a fresh private name for each of one expansion's labels."""
+        self._serial += 1
+        return {label: f"@M{self._serial}{label.lstrip('@')}" for label in local}
+
+
+def _expand_line(
+    line: list[str],
+    macros: dict[str, _Macro],
+    renamer: _LabelRenamer,
+    active: tuple[str, ...],
+) -> list[list[str]]:
+    """Expand one line's macro call, recursing into the substituted body.
+
+    Leading label definitions are peeled off first and re-attached to the
+    first expanded line (or kept alone when the body expands to nothing).
+    A line that does not call a macro passes through unchanged.
+    """
+    prefix: list[str] = []
+    while line and line[0].endswith(":"):
+        prefix.append(line.pop(0))
+    if not line or line[0] not in macros:
+        return [prefix + line]
+    name = line[0]
+    if name in active:
+        raise syntax_error(
+            f"recursive macro {name!r}",
+            "remove recursive macro calls; expansion must terminate",
+        )
+    macro = macros[name]
+    args = line[1:]
+    if len(args) != len(macro.params):
+        raise syntax_error(
+            f"macro {name!r} takes {len(macro.params)} arguments, got {len(args)}",
+            "pass the number of operands declared by the macro parameters",
+        )
+    values = dict(zip(macro.params, args, strict=True))
+    local = _defined_labels(macro.body) - set(macro.params)
+    mapping = {**values, **renamer.rename(local)}
+    expanded: list[list[str]] = []
+    for raw in macro.body:
+        replaced = [_substitute_token(token, mapping) for token in raw]
+        expanded += _expand_line(replaced, macros, renamer, (*active, name))
+    if prefix:
+        if not expanded:
+            expanded = [prefix]
+        else:
+            expanded[0] = prefix + expanded[0]
+    return expanded
+
+
 def _expand(lines: list[list[str]], macros: dict[str, _Macro]) -> list[list[str]]:
     """Expand macro calls, giving each expansion private labels."""
-    serial = 0
-
-    def rewrite(token: str, mapping: dict[str, str]) -> str:
-        """Replace a symbol in ``token``, retaining a label offset."""
-        match = re.fullmatch(r"(.+?)([+-]\d+)?", token)
-        if match is None:
-            return token
-        name, offset = match.groups()
-        return mapping.get(name, name) + (offset or "")
-
-    def one(line: list[str], active: tuple[str, ...]) -> list[list[str]]:
-        nonlocal serial
-        prefix: list[str] = []
-        while line and line[0].endswith(":"):
-            prefix.append(line.pop(0))
-        if not line or line[0] not in macros:
-            return [prefix + line]
-        name = line[0]
-        if name in active:
-            raise syntax_error(
-                f"recursive macro {name!r}",
-                "remove recursive macro calls; expansion must terminate",
-            )
-        macro = macros[name]
-        args = line[1:]
-        if len(args) != len(macro.params):
-            raise syntax_error(
-                f"macro {name!r} takes {len(macro.params)} arguments, got {len(args)}",
-                "pass the number of operands declared by the macro parameters",
-            )
-        values = dict(zip(macro.params, args, strict=True))
-        local = _defined_labels(macro.body) - set(macro.params)
-        serial += 1
-        renamed = {label: f"@M{serial}{label.lstrip('@')}" for label in local}
-        expanded: list[list[str]] = []
-        for raw in macro.body:
-            replaced = []
-            for token in raw:
-                label, colon, value = token.partition(":")
-                mapping = {**values, **renamed}
-                label = rewrite(label, mapping)
-                value = rewrite(value, mapping) if colon else value
-                replaced.append(label + colon + value)
-            expanded += one(replaced, (*active, name))
-        if prefix:
-            if not expanded:
-                expanded = [prefix]
-            else:
-                expanded[0] = prefix + expanded[0]
-        return expanded
-
+    renamer = _LabelRenamer()
     out: list[list[str]] = []
     for line in lines:
-        out += one(list(line), ())
+        out += _expand_line(list(line), macros, renamer, ())
     return out
 
 

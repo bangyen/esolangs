@@ -56,10 +56,10 @@ describes text bundling only.
 - Line retains its graph for repeated generated rows; stepping parses pixels.
 - Piet emits and executes pixels. Its packer tries up to 9 start-colour
   phases per lane (18 for duplicate lanes), averaging 1.9 tries on duplicates;
-  no lane-level rule picks the phase. The winner is the least phase no aligned
-  column forbids: n=2 `0110` and `1001` win phases 1 and 3 at lane 2 of 6, the
-  same end colour and direction. A spacer row needs no retry but costs 32-64%
-  area.
+  no lane-level rule picks the phase: the winner is the least phase no
+  aligned column forbids (n=2 `0110` and `1001` win phases 1 and 3 at lane 2
+  of 6, the same end colour and direction). A spacer row needs no retry but
+  costs 32-64% area.
 
 ## Source positions
 
@@ -67,10 +67,10 @@ VM instruction positions declare `ip_shape`: `offset`, `grid`, `line`, or
 `opaque`. `tests/test_vm_protocol.py` checks every language and rejects
 undeclared or misspelled values. Opaque positions have no source coordinate.
 
-- Line extraction accepts anti-aliased PNGs only when strokes retain a connected
-  dark core. The 3px scan fixture executes addition; a one-third-pixel shift of
-  a 1px stroke is rejected with 921 unaccounted pixels rather than silently
-  changing the program.
+- Line extraction accepts anti-aliased PNGs only when strokes retain a
+  connected dark core: the 3px scan fixture executes addition, and a
+  one-third-pixel shift of a 1px stroke is rejected with 921 unaccounted
+  pixels rather than silently changing the program.
 
 ## Boolean generators
 
@@ -138,22 +138,20 @@ Each missed the 10% bar:
   full 17-input truth table. Raw record addresses can overlap executing code,
   so relocation must precede capture. The reduced LAST-only layout is short by
   8,432 cells before adding the remaining query, selector and metadata. This is
-  a deficit for that construction, not an impossibility bound. See
-  [the construction summary](proofs/index.md#malbolge-bound).
+  a deficit for that construction, not an impossibility bound.
   The shipped cap remains sixteen.
 
-  A cheaper seventeen-input layout is checked but unbuilt (2026-10-13). The
-  sixteen-input readout gives two cells per 14-bit prefix, one each for the
-  last group bit `b` = 0 and 1. A third cell per prefix forces one low digit to its
-  missing value and moves that digit to the top. The three maps are disjoint, giving 49,152
-  cells and leaving 9,897 (one cell wraps; reorder the top digit). That
-  replaces the 8,377-10,449-cell address fold with two extra group-4 runs.
-  Six run-time pointer cells (`_D_POINTERS`) cut sixteen's main line from
-  5,505 to 4,038 cells; all 65,536 rows stay correct. Seven meanings per
-  cell need the address parity: `p` with `A` all-2 then all-1, then ten
-  rotations folded into an all-1 cell, gives it in 240 cells, 0 of 59,049
-  words wrong (scratch, executed). Swaps `v` {0,3,4}, `u` {1,2} make the
-  third cell's parity equal the first's for every prefix (model).
+  A cheaper seventeen-input layout is checked but unbuilt (2026-10-13):
+  a third cell per 14-bit prefix, one low digit forced to its missing
+  value and that digit moved to the top, makes three disjoint maps, giving
+  49,152 cells and leaving 9,897 (one cell wraps; reorder the top digit).
+  That replaces the 8,377-10,449-cell address fold with two extra group-4
+  runs. Six run-time pointer cells (`_D_POINTERS`) cut sixteen's main
+  line from 5,505 to 4,038 cells; all 65,536 rows stay correct. Seven
+  meanings per cell need the address parity, which `p` with `A` all-2
+  then all-1, then ten rotations folded into an all-1 cell, gives in 240
+  cells, 0 of 59,049 words wrong (scratch, executed). Swaps `v` {0,3,4},
+  `u` {1,2} make the third cell's parity equal the first's (model).
   Dispatch does not fit (2026-10-14, scratch, executed): the seven-class label
   window plus 14 hubs alone takes 5,155 main-line cells, leaving the line near
   7,200 against 6,562 before the third-cell fold and per-state transitions.
@@ -165,29 +163,27 @@ Each missed the 10% bar:
     (infeasible; 8 is feasible).
   - Eight meanings per cell are infeasible for odd-address read offsets
     1-11, 13, 15, 17, 21, 25, 31 and 47, so cells cap at seven.
-  - A three-read decoder exists. After the address, read the next input `c`.
-    For `c = 0` the label (`0 1 x n`) is a 7x7 table of (own cell, shared
-    cell). For `c = 1`, (own, shared) picks one of six contexts, and the other
-    cell's meaning picks the label. All 256 targets are covered; corrupting one
-    entry leaves 246. That is 22 dispatch blocks.
-  - A concrete third map: inputs 13-14 pick a low digit `j`, which is set to
-    its missing value, and group `j` moves to the top digit as one of 1..8.
-    For `j = 1`, swapping 1 and 2 in trit 0 of digit 0 stops one prefix
-    wrapping to cell 0. It gives 49,152 cells, no collision and 9,897 free
-    (model). The third cell's parity varies with the moved digit, while the
-    two `b` cells always have opposite parity.
+  - A three-read decoder exists: after the address, read the next input
+    `c`. For `c = 0` the label (`0 1 x n`) is a 7x7 table of (own cell,
+    shared cell); for `c = 1`, (own, shared) picks one of six contexts and
+    the other cell's meaning picks the label. All 256 targets are covered;
+    corrupting one entry leaves 246. That is 22 dispatch blocks.
+  - A concrete third map: inputs 13-14 pick a low digit `j`, set to its
+    missing value, and group `j` moves to the top digit as one of 1..8
+    (for `j = 1`, swapping 1 and 2 in trit 0 of digit 0 stops one prefix
+    wrapping to cell 0). It gives 49,152 cells, no collision and 9,897
+    free (model). The third cell's parity varies with the moved digit,
+    while the two `b` cells always have opposite parity.
 
   Navigation, not ops, is sixteen's cost: of 3,618 code cells, 427 are `p`,
   `*`, `/` or `i`, and 3,191 are `o` or `j` (`o` 2,558, `j` 633).
   Sweeps cannot cut the label window's share (2026-10-16, model): every
   sequence of up to five chained `p`/`*` sweeps over cells 34..127 leaves at
-  least 61 distinct values, so a class's pointers still need priming. Priming
-  is `p` twice per cell from `A` = all-1: the first leaves trits {0, 2}, the
-  second is `crazy(v, v)` = all-1, and it needs `A` equal to the cell's own
-  value, so the walk back (prime 799 cells for 72, seeds 554 for 68) stays.
-  Contiguous class runs would shorten seeding, but a run must be 22 cells
-  long to meet every table address's eight pointers, and seven classes need
-  154 > 94.
+  least 61 distinct values, so a class's pointers still need priming: `p`
+  twice per cell from `A` = all-1, and the walk back (prime 799 cells for
+  72, seeds 554 for 68) stays. Contiguous class runs would shorten seeding,
+  but a run must be 22 cells long to meet every table address's eight
+  pointers, and seven classes need 154 > 94.
 
   Counting bounds each family independently of mixer quality:
 
@@ -204,22 +200,21 @@ Each missed the 10% bar:
   eight valid decoded instructions at each occupied source cell -- the
   decipherment cycles with the cell index, and `_XLAT1` holds each instruction
   character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
-  2**177148` programs. There are `2**262144` truth tables on 18 inputs, and one
-  program computes at most one table, so some 18-input tables have no Malbolge
-  program. Malbolge is therefore a language exception, not merely a ceiling.
+  2**177148` programs against `2**262144` truth tables on 18 inputs, one
+  table per program: some 18-input tables have no Malbolge program.
+  Malbolge is therefore a language exception, not merely a ceiling.
 
   Seventeen -- the registry target -- needs the count under `2**131072`, a
   factor `2**46076` below it, and counting does not get there. A length cut
-  needs every answer to rest inside the first 43,690 cells, but cell 58,967
-  alone flips row 299 at ten inputs (`0` against `1`, both executed). An
-  alphabet cut needs 4 of the 8 characters at a cell to matter: single cells
-  realise 5 to 8 distinct behaviours (12 of 20 sampled walked-code cells at 5 or
-  more), and an every-line cap of `k` buys `log2(8/k)` bits in all -- one bit at
-  `k = 4`. What is left is a dependence cut: every table-computing program's
-  answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
-  8**K < 2**131072`. Per program it is false: `'o'*59046 + '/<v'` computes
-  the one-input identity and every cell flips it, so only a cut over one
-  normal-form program per table remains open.
+  needs every answer inside the first 43,690 cells, but cell 58,967 alone
+  flips row 299 at ten inputs (`0` against `1`, both executed). An alphabet
+  cut buys `log2(8/k)` bits in all -- one bit at `k = 4` -- against single
+  cells realising 5 to 8 distinct behaviours (12 of 20 sampled walked-code
+  cells at 5 or more). A dependence cut (answers resting on at most 24,434
+  cells, the largest `K` with `C(59049, K) * 8**K < 2**131072`) is false per
+  program: `'o'*59046 + '/<v'` computes the one-input identity and every
+  cell flips it, so only a cut over one normal-form program per table
+  remains open.
 
 - Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
   on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
@@ -233,9 +228,8 @@ Each missed the 10% bar:
   2.0). Exact Walsh-autocorrelation directions (top 8 per node, lowest
   weight first) emit 0.977x/0.988x on 200 random n=7/8 tables, but
   pure-Python generation grows 2.6x per input at n=11..12. An affine
-  Quine--McCluskey merge (each span group's most popular window-4 successor
-  difference) emits 1.060x on 200 random n=8 tables and 1.09-1.12x at
-  n=10..12, ~20x faster, with no clause bound.
+  Quine--McCluskey merge emits 1.060x on 200 random n=8 tables and
+  1.09-1.12x at n=10..12, ~20x faster, with no clause bound.
 
 The no-`i`/`j` model cannot express NOT. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in
@@ -271,10 +265,11 @@ establish an exponent.
 
 - FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
   language floor. The shipped generator gives equal subtables one state, so
-  it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
-  most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
-  versus 23.6 for the tree. The construction and the counting floor are in
-  [fractran](proofs/index.md#fractran-bound) and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
+  it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, at
+  most `n + 1` fractions fire a run, and at n=12 it emits 3.81 characters
+  per entry versus 23.6 for the tree. The construction and the counting
+  floor are in [fractran](proofs/index.md#fractran-bound) and
+  `src/esolangs/languages/fractran/tests/proof_fractran.py`.
 
 #### Sharing repeated subtables
 
@@ -303,9 +298,10 @@ requires a construction exemption rather than a sub-gate bound.
   unshared: 131 of 602 lane and parallel layouts at n=12 (random 64-bit leaf
   classes mixed with constant leaves). A per-class gutter line removes the
   rejection but shares no more (26 to 24 lane layouts) and grows shared
-  layouts ~5%: a crossed leaf or constant read row kills the gutter.
-  Recovery would save nothing: at n=12 the indexed leaf decoder emits 11-22x
-  less area than every shared layout, which `generate` never picks there.
+  layouts ~5%: a crossed leaf or constant read row kills the gutter, and
+  recovery would save nothing anyway: at n=12 the indexed leaf decoder
+  emits 11-22x less area than every shared layout, which `generate` never
+  picks there.
 - Boolfuck has sub-gate repeated-node potential: 2.3% of emitted size at n=5,
   pinned in `tests/generators/test_boolean_boolfuck.py`.
 - Home Row is a lookup that names no decision-tree node.
@@ -335,11 +331,11 @@ exempt with a reason. One shrinking probe does not establish complete sharing.
   complete state sharing, O(T) modeling and area-admitted output. On 200
   seeded eight-input tables, complete drawings total 7,929,032,800 scale-one
   pixels against 3,809,364,000 for the smaller fallback (108.15% larger);
-  51,200 native rows of the public PNGs pass. This
-  is the canonical average-larger exemption, not a physical area lower bound.
-  Partial-prefix cloning remains unshipped: its 2.19% aggregate planned gain
-  misses the bespoke gate; its native positive control passes all 256 rows,
-  from 33,700,800 to 32,865,600 pixels with the same 23-command maximum.
+  51,200 native rows of the public PNGs pass. This is the canonical
+  average-larger exemption, not a physical area lower bound. Partial-prefix
+  cloning remains unshipped: its 2.19% aggregate planned gain misses the
+  bespoke gate; its native positive control passes all 256 rows, from
+  33,700,800 to 32,865,600 pixels with the same 23-command maximum.
 - Polynomial declares `_polynomial_states`.
 - Piet is exempt: a strip has no jump, so a repeated subtable cannot be shared.
 
@@ -390,12 +386,12 @@ separate axes. Loading is intentionally excluded from execution time.
 - RAM0 also indexes addresses.
 
 The payload benchmark checks 96 tables and all 6,120 rows through eight
-inputs. It reports UTF-8 source bits, hidden control stacks, signed integer
-widths and the simultaneous peak of data, control, cursor and machine flags.
-Separate peaks need not coincide. Python overhead, static parser indexes
-and I/O state are excluded. Sampled peaks are measurements, not language-wide
-space bounds; construction bounds are asserted by the removed screen and
-controlled by executed checks in each language's own tests.
+inputs, reporting UTF-8 source bits, hidden control stacks, signed integer
+widths and the simultaneous peak of data, control, cursor and machine flags
+(separate peaks need not coincide; Python overhead, static parser indexes
+and I/O state are excluded). Sampled peaks are measurements, not
+language-wide space bounds; construction bounds are asserted by the removed
+screen and controlled by executed checks in each language's own tests.
 
 - BFStack has a sampled peak machine payload of 756 bits at eight inputs.
 - Subleq has a sampled peak machine payload of 3,066 bits at eight inputs.
@@ -411,9 +407,9 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   14,752 to 28,384 continuation bits.
 - Forþ keys every scope by heap index, but twin calls hold the count near
   `4.6T/n` (`S·n/T` 4.75, 4.86, 4.42 at n=8, 10, 12), so keys cost about
-  `4.6T` bits. The log factor needs a twin 50,625 or more scopes back, whose
-  20-character call misses `_FORTH_SUBTREE_FLOOR` (17): at least 20 inputs,
-  derived, not executed.
+  `4.6T` bits. The log factor needs a twin 50,625 or more scopes back,
+  whose 20-character call misses `_FORTH_SUBTREE_FLOOR` (17): at least 20
+  inputs, derived, not executed.
 
 - Malbolge:
   `test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
@@ -478,19 +474,20 @@ language is one (Painfuck adds +2/-1 steps, ROTfuck a rotating command set).
 
 The first-implementation route also excludes a language whose generator
 re-spells a collected generator: the construction transfers step for step
-by token substitution and uses nothing the older language lacks, so the
-language adds no generator. Same family is not enough; Rubic's tree branches
-on cube parity, not a jump. Adopted 2026-10-15, retroactively: Factor
-(brainfuck's flag tree as a prime product), HQ9+ with headers (Qoibl's packed
-literal), Parenthesys (Alight's indexed string) and Piet++ (Piet's strip,
-recoloured) were removed. Painfuck shares brainfuck's flag tree but stays: its
-moves use `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
+by token substitution and uses nothing the older language lacks. Same
+family is not enough; Rubic's tree branches on cube parity, not a jump.
+Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
+prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
+(Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
+removed. Painfuck shares brainfuck's flag tree but stays: its moves use
+`d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
 admissions are exempt: Subleq re-spells S\*bleq.
 
 Nor does the first-implementation route admit a page the wiki categorizes as
 a Brainfuck derivative: the family already holds brainfuck and ten collected
-derivatives. Adopted 2026-10-15 for candidates; `curation.toml` records the
-category as `bf_derivative`. The seven derivative first implementations that
+derivatives. Adopted 2026-10-15 for candidates; each package's
+`language.toml` records the category as `bf_derivative` in its `[curation]`
+section. The seven derivative first implementations that
 predate it stay, each the wiki's only implementation of its page.
 
 ### Recognition sources
@@ -498,95 +495,44 @@ predate it stay, each the wiki's only implementation of its page.
 Sources checked 2026-10-01 supply selections, not admission gates
 or popularity rankings.
 
-[Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code) has these
-named esolang chapters:
-
-- FRACTRAN is a named chapter.
-- Piet is a named chapter.
-- brainfuck is a named chapter.
-- Befunge is a named chapter.
-
-Filska and Firefly are the author's own creations; Forth, SNOBOL, and CLIPS
+[Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code) has
+named esolang chapters on FRACTRAN, Piet, brainfuck and Befunge. Filska
+and Firefly are the author's own creations; Forth, SNOBOL, and CLIPS
 belong to the separate atypical-language section.
 
 [Morr, *Esoteric Programming Languages*](https://blinry.org/esolangs/esolangs.pdf)
-selects these iconic examples with different properties, not an exhaustive canon:
+selects brainfuck, INTERCAL, Befunge, Malbolge and Shakespeare as iconic
+examples with different properties, not an exhaustive canon.
 
-- brainfuck is selected.
-- INTERCAL is selected.
-- Befunge is selected.
-- Malbolge is selected.
-- Shakespeare is selected.
+[LMU teaching notes](https://cs.lmu.edu/~ray/notes/esolangs/) give a
+brief themed, theoretical, golfing, multidimensional, and
+difficulty-oriented tour, selecting LOLCODE, Glowup Vibes, ArnoldC, Chef,
+Shakespeare, Rockstar, brainfuck, Binaryfuck, Lenguage, GolfScript, Pyth,
+CJam, Jelly, 05AB1E, Vyxal, Befunge, AsciiDots, Piet, Whitespace,
+Unreadable and Malbolge.
 
-[LMU teaching notes](https://cs.lmu.edu/~ray/notes/esolangs/) give a brief themed,
-theoretical, golfing, multidimensional, and difficulty-oriented tour:
-
-- LOLCODE is selected.
-- Glowup Vibes is selected.
-- ArnoldC is selected.
-- Chef is selected.
-- Shakespeare is selected.
-- Rockstar is selected.
-- brainfuck is selected.
-- Binaryfuck is selected.
-- Lenguage is selected.
-- GolfScript is selected.
-- Pyth is selected.
-- CJam is selected.
-- Jelly is selected.
-- 05AB1E is selected.
-- Vyxal is selected.
-- Befunge is selected.
-- AsciiDots is selected.
-- Piet is selected.
-- Whitespace is selected.
-- Unreadable is selected.
-- Malbolge is selected.
-
-[Esolang featured archive](https://esolangs.org/w/index.php?title=Esolang:Featured_languages&oldid=161213)
+The [Esolang featured archive](https://esolangs.org/w/index.php?title=Esolang:Featured_languages&oldid=161213)
 records administrator-selected features, not popularity endorsements:
-
-- Thue was featured.
-- Funciton was featured.
-- brainfuck was featured.
-- Deadfish was featured.
-- Emmental was featured.
-- Malbolge was featured.
-- Glass was featured.
-- /// was featured.
+Thue, Funciton, brainfuck, Deadfish, Emmental, Malbolge, Glass and ///
+were featured.
 
 ### Backlink counts
 
 The 2026-10-01 count gives Brainfuck 2,057 backlinks; 282 counted only the first
 API batch. Brainfuck-relative gates and the indeterminate band are retired.
 
-The 2026-10-01 fame audit recorded these backlink counts:
-
-- Befunge: 381 backlinks; clears the fame gate.
-- Underload: 167 backlinks; clears the fame gate.
-- Thue: 155 backlinks; clears the fame gate.
-- Malbolge: 129 backlinks; clears the fame gate.
-- INTERCAL: 103 backlinks; clears the fame gate.
-- FALSE: 91 backlinks; clears the fame gate.
-- Fish: 91 backlinks; clears the fame gate.
-- Unlambda: 89 backlinks; clears the fame gate.
-- Smallfuck: 66 backlinks; clears the fame gate.
-- FRACTRAN: 65 backlinks; clears the fame gate.
-- Brainloller: 26 backlinks; rejected.
-- Braincopter: 14 backlinks; rejected.
-- Piet: 65 backlinks; clears the fame gate.
-- Whitespace: 58 backlinks; below the fame gate.
-- Forth: 57 backlinks; below the fame gate.
-- Chicken: 55 backlinks; below the fame gate.
-- Shakespeare: 54 backlinks; below the fame gate.
-- LOLCODE: 47 backlinks; below the fame gate.
+The 2026-10-01 fame audit recorded these backlink counts. Clears the
+fame gate: Befunge 381, Underload 167, Thue 155, Malbolge 129,
+INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, FRACTRAN
+65, Piet 65. Below the fame gate: Whitespace 58, Forth 57, Chicken 55,
+Shakespeare 54, LOLCODE 47. Rejected: Brainloller 26, Braincopter 14.
 
 Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks.
 
 <!-- CURATION-CENSUS:START -->
 
-The 2026-10-06 census (`ledgers/curation.toml`) records each
+The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 21 clear the fame gate
 and 69 are first implementations.
 
@@ -622,15 +568,13 @@ Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
   A non-constant table's source is exactly 5 * 2^m + 2n + 1 characters for
   m essential inputs (5T + 2n + 1 when all are) and execution takes
   n + 3 + 2r steps; a constant table's source is n + 2.
-  Emission writes 2(T-1) padding zeros and 2T table productions without search:
-  O(T) build work. Tests execute 309 tables and 3,352 rows, exhaustive through
-  three inputs, then constants, parity and eight seeded random tables per arity
-  four through six. Probes sampled through n=14: at most 81,949 characters and
-  32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule and
-  nontermination controls passed.
+  Emission writes 2(T-1) padding zeros and 2T table productions without
+  search: O(T) build work. Tests execute 309 tables and 3,352 rows,
+  exhaustive through three inputs, then constants, parity and eight seeded
+  random tables per arity four through six; probes sampled through n=14
+  reach at most 81,949 characters and 32,783 steps. Published evolution,
+  zero-no-append, empty-data, empty-rule and nontermination controls passed.
 
-- Underload (167) clears the backlink gate.
-- INTERCAL (103) clears the backlink gate.
 - Emmental (43) is implemented elsewhere and fails the backlink gate;
   no intrinsic axis is established.
 - Prelude (13) is implemented elsewhere and fails the backlink gate;
@@ -639,10 +583,10 @@ Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
 The 2026-10-01 fame audit covered eight census candidates:
 
 - [Boolfuck](https://samuelhughes.com/boof/) (76): integrated with a
-  native decision tree over single-bit cells. Each input byte's low bit is
-  read onto its own cell and tested in place, with one flag interleaved
-  beside each bit, so every node costs O(1) commands and rendered size
-  stays linear in T. Little-endian bit I/O supplies zero at EOF and pads
+  native decision tree over single-bit cells: each input byte's low bit is
+  read onto its own cell and tested in place, one flag interleaved beside
+  each bit, so every node costs O(1) commands and rendered size stays
+  linear in T. Little-endian bit I/O supplies zero at EOF and pads
   partial output bytes.
 - [Subleq](https://esolangs.org/wiki/Subleq) (83): integrated with unbounded
   integers, direct jumps, `-1 B C` byte input (EOF raises), `A -1 C` byte
@@ -658,12 +602,8 @@ The 2026-10-01 fame audit covered eight census candidates:
   ignored inputs; a constant table is n + 9.  Build work is O(T).
 
 The constructions supply the bounds; dense size-difference ratios at
-n=8,10,12 are measurements. Each uses a 309-table, 3,352-row corpus.
-
-- Cyclic tag has a dense size-difference ratio of 3.997.
-- Boolfuck has a dense size-difference ratio of 3.981.
-- Subleq has a dense size-difference ratio of 1.994.
-- /// has a dense size-difference ratio of 4.000.
+n=8, 10, 12 are measurements over the same corpus: Cyclic tag 3.997,
+Boolfuck 3.981, Subleq 1.994, /// 4.000.
 
 - [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.
   No instruction reads input. `H` and `9` emit fixed non-Boolean text; `Q`

@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 from .cascade import (
     _C_INITS,
+    _ENTRY,
     _NEXT,
     _build_constants,
     _decoder_entry,
@@ -20,11 +21,11 @@ from .core import (
     _T_LABELS,
     _T_LOW,
     _T_SEEDS,
+    _HubRequest,
     _main_planner,
     _merge_code,
     _n_hub_pass,
     _options_of,
-    _Planner,
     _pointers,
     _prime,
     _seed_label_chains,
@@ -33,6 +34,7 @@ from .core import (
     _turn_hubs,
     _walker,
 )
+from .emitter import _Planner
 from .isa import (
     _apply,
     _first_free,
@@ -91,14 +93,8 @@ def _t_place(
     hub_cells: dict[str, int | tuple[int, ...]] = _T_HUB_CELLS,
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
     """Place the hubs of thirteen and fourteen inputs (see :func:`_t_hubs`)."""
-    return _t_hubs(
-        values,
-        label,
-        avoid,
-        hub_cells=hub_cells,
-        options_of=_options_of(values),
-        floor=_T_FLOOR,
-    )
+    request = _HubRequest(hub_cells, _options_of(values), _T_FLOOR)
+    return _t_hubs(values, label, avoid, request)
 
 
 @cache
@@ -161,7 +157,7 @@ def _thirteen() -> _Layout:
     parts = [main.code]
     for x in (0, 1):
         parts.append(_thirteen_path(0, x, targets, select, cell, helper, mem, data))
-    dec = _Planner(_NEXT + 1, 0, mem, data)
+    dec = _Planner(_NEXT + 1, 0, mem, data, ceiling=_ENTRY)
     _decoder_entry(dec, _NEXT + 1)
     dec.goto(select[1])
     dec.raw("i")
@@ -203,7 +199,7 @@ def _thirteen_path(
 
     Level 1 left ``a1`` at 48: two rounds give 69 and then 48 again.
     """
-    path = _Planner(targets[x][lvl] + 1, select[lvl] + 1, mem, data)
+    path = _Planner(targets[x][lvl] + 1, select[lvl] + 1, mem, data, ceiling=_ENTRY)
     spec = _W_PATHS[lvl][x]
     _ops(path, cell, spec.ops)
     for _ in range(1 if lvl == 0 else 2):

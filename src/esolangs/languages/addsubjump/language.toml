@@ -1,0 +1,28 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+# n=6 jumps 39 -> 965 commands; keep MIN_RUNGS above it.
+execution = 10
+workspace = 6
+
+[curation]
+backlinks = 5
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "packed `n`-bit cells selected by a self-modified operand"
+scaling = "linear: T/n packed cells of O(n) digits, O(n) decoder"
+execution = "linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10"
+workspace = "linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed"
+definitions = ["C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C", "Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23"]
+
+[generator_sizes]
+"00000001" = { commands = 23, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 20, "5" = 20, "6" = 23, "7" = 23 }, source_units = 344 }
+"00001100" = { commands = 17, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 237 }
+"00110110" = { commands = 23, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 452 }
+"0110" = { commands = 17, commands_by_row = { "0" = 16, "1" = 16, "2" = 17, "3" = 17 }, source_units = 287 }
+"01101001" = { commands = 24, commands_by_row = { "0" = 23, "1" = 23, "2" = 24, "3" = 24, "4" = 25, "5" = 25, "6" = 24, "7" = 24 }, source_units = 450 }
+"0110100110010110" = { commands = 32, commands_by_row = { "0" = 30, "1" = 30, "2" = 31, "3" = 31, "4" = 32, "5" = 32, "6" = 31, "7" = 31, "8" = 33, "9" = 33, "10" = 32, "11" = 32, "12" = 31, "13" = 31, "14" = 32, "15" = 32 }, source_units = 614 }
+"1101001101101101" = { commands = 31, commands_by_row = { "0" = 27, "1" = 27, "2" = 30, "3" = 30, "4" = 27, "5" = 27, "6" = 28, "7" = 28, "8" = 31, "9" = 31, "10" = 31, "11" = 31, "12" = 28, "13" = 28, "14" = 31, "15" = 31 }, source_units = 668 }
+"11111110" = { commands = 23, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 20, "5" = 20, "6" = 23, "7" = 23 }, source_units = 344 }

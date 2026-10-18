@@ -1,0 +1,26 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 82
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "shared direct-jump residual DAG or packed decoder with interned chunk payloads"
+scaling = "linear: O(T/n) residuals or packed chunks, O(n)-digit addresses or payloads"
+execution = "linear: at most 8T + (7n+5)(⌊T/n⌋-1) + 23n - 6 steps: bank selection adds two"
+workspace = "linear: at most max(T+2C+(C+2)bl(B+17+2C)+I·bl(B)+(2I-1)bl(B+17)+R, M·max(7,bl(M))+bl(M)+bl(n)) bits: decoder or tree, M=19+10n+6D"
+definitions = ["D = Σ[k=0..n-1] min(2^k, 2^(2^(n-k))-2), the nonconstant residual cap", "M = 19 + 10n + 6D, the shared-tree memory-cell cap", "I = 8n + 47, B = 3I, C = ⌈T/n⌉", "R = bl(3I-3) + 5bl(n) + 2n + 33 + max(n, bl(n)+1) + max(1, n-1), the registers"]
+
+[generator_sizes]
+"00000001" = { commands = 15, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 15, "5" = 15, "6" = 16, "7" = 15 }, source_units = 155 }
+"00001100" = { commands = 14, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 134 }
+"00110110" = { commands = 15, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 16, "5" = 15, "6" = 16, "7" = 15 }, source_units = 169 }
+"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 11 }, source_units = 123 }
+"01101001" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 16, "3" = 15, "4" = 17, "5" = 16, "6" = 15, "7" = 15 }, source_units = 169 }
+"0110100110010110" = { commands = 19, commands_by_row = { "0" = 19, "1" = 19, "2" = 20, "3" = 19, "4" = 21, "5" = 20, "6" = 19, "7" = 19, "8" = 22, "9" = 21, "10" = 20, "11" = 20, "12" = 19, "13" = 19, "14" = 20, "15" = 19 }, source_units = 219 }
+"1101001101101101" = { commands = 19, commands_by_row = { "0" = 18, "1" = 18, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 18, "7" = 18, "8" = 20, "9" = 20, "10" = 20, "11" = 19, "12" = 18, "13" = 18, "14" = 19, "15" = 19 }, source_units = 226 }
+"11111110" = { commands = 15, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 15, "5" = 15, "6" = 16, "7" = 15 }, source_units = 155 }
+
+[schemes]
+folds_without_tree = true

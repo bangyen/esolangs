@@ -1,0 +1,28 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 91
+
+[proof_status]
+labels = ["parameterized lookup"]
+qualification = "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it"
+scaling = "linear: at most 5T + 2n + 1 characters, weighted padding"
+execution = "linear: worst 2T + n + 1 steps: n input rules, 2 per row, 3 closers"
+workspace = "linear: worst 16T + 1 + bl(2T+n) bits: a queue of up to 2T - 1 bits"
+
+[generator_sizes]
+"00000001" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
+"00001100" = { commands = 12, commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 8, "4" = 10, "5" = 10, "6" = 12, "7" = 12 }, source_units = 27 }
+"00110110" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
+"0110" = { commands = 11, commands_by_row = { "0" = 5, "1" = 7, "2" = 9, "3" = 11 }, source_units = 25 }
+"01101001" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
+"0110100110010110" = { commands = 37, commands_by_row = { "0" = 7, "1" = 9, "2" = 11, "3" = 13, "4" = 15, "5" = 17, "6" = 19, "7" = 21, "8" = 23, "9" = 25, "10" = 27, "11" = 29, "12" = 31, "13" = 33, "14" = 35, "15" = 37 }, source_units = 89 }
+"1101001101101101" = { commands = 37, commands_by_row = { "0" = 7, "1" = 9, "2" = 11, "3" = 13, "4" = 15, "5" = 17, "6" = 19, "7" = 21, "8" = 23, "9" = 25, "10" = 27, "11" = 29, "12" = 31, "13" = 33, "14" = 35, "15" = 37 }, source_units = 89 }
+"11111110" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
+
+[catalogue]
+folding_constant_local = "_program"  # empty production deletes inputs and a literal bit
+
+[schemes]
+folds_without_tree = true

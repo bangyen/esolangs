@@ -2,9 +2,7 @@
 
 import contextlib
 import importlib
-import tomllib
 from collections.abc import Callable
-from pathlib import Path
 
 import pytest
 
@@ -16,6 +14,7 @@ from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
 from esolangs.registry._language import Shape
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _BranchingStepMachine, run_until_halt, run_until_halt_or_cycle
+from scripts.docs.proof_status import load as _load_proof_status
 from tests.support.generator_support import (
     assert_proved_resource_cap,
     evaluate_generated,
@@ -421,13 +420,11 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 #: Every generator is held to linear source growth but the ones the ledger
 #: bounds below by the language itself (its ``lower bound`` scaling rows).
 _LANGUAGE_SUPERLINEAR_SCALING = {
-    # The ledger's data, read from the package: the mutation bundle has no
-    # ``tests/proofs`` to parse it with.
-    row["generator"]
-    for row in tomllib.loads(
-        (Path(__file__).parents[2] / "ledgers/proof_status.toml").read_text("utf-8")
-    )["ledger"]
-    if row["scaling"].startswith("lower bound:")
+    # The ledger's data, aggregated from the packages' own fragments: the
+    # mutation bundle has no ``tests/proofs`` to parse it with.
+    row.generator
+    for row in _load_proof_status()[0]
+    if row.scaling.startswith("lower bound:")
 }
 _LINEAR_SCALING = sorted(
     name

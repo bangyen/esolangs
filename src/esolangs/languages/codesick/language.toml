@@ -1,0 +1,25 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 2
+
+[proof_status]
+labels = ["tree"]
+qualification = "each distinct subtable is one labelled node; it appends its marker to the unread bits, and a substring test for `0` before the marker reads the last bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump"
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "poly n: worst 3n + 1 steps: three a level, the leaf one"
+workspace = "poly n: at most 24n + 16 bits: the unread bits and one marker"
+
+[generator_sizes]
+"00000001" = { commands = 10, commands_by_row = { "0" = 3, "1" = 6, "2" = 3, "3" = 9, "4" = 3, "5" = 6, "6" = 3, "7" = 10 }, source_units = 277 }
+"00001100" = { commands = 7, commands_by_row = { "0" = 7, "1" = 8, "2" = 6, "3" = 7, "4" = 8, "5" = 9, "6" = 6, "7" = 7 }, source_units = 277 }
+"00110110" = { commands = 10, commands_by_row = { "0" = 5, "1" = 8, "2" = 6, "3" = 9, "4" = 5, "5" = 9, "6" = 6, "7" = 10 }, source_units = 433 }
+"0110" = { commands = 7, commands_by_row = { "0" = 5, "1" = 6, "2" = 6, "3" = 7 }, source_units = 277 }
+"01101001" = { commands = 10, commands_by_row = { "0" = 7, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 10 }, source_units = 433 }
+"0110100110010110" = { commands = 13, commands_by_row = { "0" = 9, "1" = 10, "2" = 10, "3" = 11, "4" = 10, "5" = 11, "6" = 11, "7" = 12, "8" = 10, "9" = 11, "10" = 11, "11" = 12, "12" = 11, "13" = 12, "14" = 12, "15" = 13 }, source_units = 589 }
+"1101001101101101" = { commands = 10, commands_by_row = { "0" = 9, "1" = 8, "2" = 10, "3" = 11, "4" = 10, "5" = 11, "6" = 11, "7" = 10, "8" = 10, "9" = 8, "10" = 11, "11" = 12, "12" = 11, "13" = 12, "14" = 12, "15" = 10 }, source_units = 753 }
+"11111110" = { commands = 10, commands_by_row = { "0" = 3, "1" = 6, "2" = 3, "3" = 9, "4" = 3, "5" = 6, "6" = 3, "7" = 10 }, source_units = 277 }
+
+[catalogue]
+folding_ignored_read = "a bit is exposed only by deleting the one read before it, so an ignored one costs a delete node per residual below it"

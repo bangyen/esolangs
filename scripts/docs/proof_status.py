@@ -8,11 +8,29 @@ from pathlib import Path
 from typing import Any
 
 from .anchors import anchors
+from .fragments import AggregateKey, cached, fingerprint
+from .writing import write_if_changed as _write_if_changed
 
 ROOT = Path(__file__).resolve().parents[2]
 
+#: Fragments are discovered in this checkout, even when ``ROOT`` is
+#: redirected to a scratch tree for evidence checks.
+_CHECKOUT = Path(__file__).resolve().parents[2]
+PACKAGES = _CHECKOUT / "src" / "esolangs" / "languages"
+FRAGMENT = "language.toml"
 
-MANIFEST = ROOT / "ledgers" / "proof_status.toml"
+_LEDGER_KEYS = frozenset(
+    {
+        "labels",
+        "qualification",
+        "scaling",
+        "execution",
+        "workspace",
+        "evidence",
+        "definitions",
+    }
+)
+_AUDIT_KEYS = frozenset({"totality", "generation_time", "output_size", "evidence"})
 
 
 @dataclass(frozen=True)
@@ -66,9 +84,139 @@ def _check_evidence(reference: str, *, precise: bool) -> None:
         raise ValueError(f"missing evidence anchor: {reference}")
 
 
-def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
-    """Return validated proof and audit rows from the manifest."""
-    return validate(tomllib.loads(path.read_text(encoding="utf-8")))
+def _fragment_row(
+    path: Path, row: dict[str, Any], keys: frozenset[str], group: str
+) -> dict[str, Any]:
+    """Return one fragment row after checking its keys and field types."""
+    unknown = set(row) - keys
+    if unknown:
+        raise ValueError(f"{path}: unknown proof_status {group} keys {sorted(unknown)}")
+    for key, value in row.items():
+        if key in {"labels", "definitions"}:
+            continue
+        if not isinstance(value, str):
+            raise ValueError(f"{path}: proof_status {group} {key} must be text")
+    return dict(row)
+
+
+#: Aggregates by (packages, generators, fragment fingerprint), and
+#: validated loads by (source, fingerprint).  The new-language check
+#: loads the full status once per registered language; uncached, each
+#: load re-parsed every fragment and re-checked every evidence anchor.
+_LoadKey = tuple[str, tuple[tuple[str, int, int], ...]]
+_AGGREGATES: dict[AggregateKey, dict[str, list[dict[str, Any]]]] = {}
+_LOADS: dict[_LoadKey, tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]] = {}
+
+
+def aggregate_fragments(
+    packages: Path, generators: list[tuple[str, str]]
+) -> dict[str, list[dict[str, Any]]]:
+    """Merge every package's proof_status section into ledger/audit rows.
+
+    ``generators`` is ``(name, package id)`` pairs in registry order, and
+    the rows come back in that order; a section in an unregistered package
+    raises ``ValueError``.
+    """
+    key = (packages, tuple(generators), fingerprint(packages))
+    return cached(_AGGREGATES, key, lambda: _aggregate_fragments(packages, generators))
+
+
+def _aggregate_fragments(
+    packages: Path, generators: list[tuple[str, str]]
+) -> dict[str, list[dict[str, Any]]]:
+    """Merge the proof_status sections, uncached; see :func:`aggregate_fragments`."""
+    data: dict[str, list[dict[str, Any]]] = {"ledger": [], "audit": []}
+    known = set()
+    for name, slug in generators:
+        known.add(slug)
+        path = packages / slug / FRAGMENT
+        if not path.is_file():
+            continue
+        section = tomllib.loads(path.read_text(encoding="utf-8")).get("proof_status")
+        if section is None:
+            continue
+        if not isinstance(section, dict):
+            raise ValueError(f"{path}: [proof_status] must be a table")
+        parts = {
+            "ledger": {k: v for k, v in section.items() if k != "audit"},
+            "audit": section.get("audit"),
+        }
+        for group, keys in (("ledger", _LEDGER_KEYS), ("audit", _AUDIT_KEYS)):
+            raw = parts[group]
+            if raw is None or raw == {}:
+                continue
+            if not isinstance(raw, dict):
+                raise ValueError(f"{path}: [proof_status] {group} must be a table")
+            row = _fragment_row(path, raw, keys, group)
+            data[group].append(row | {"generator": name})
+    if packages.is_dir():
+        for path in packages.glob(f"*/{FRAGMENT}"):
+            if path.parent.name in known:
+                continue
+            parsed = tomllib.loads(path.read_text(encoding="utf-8"))
+            if "proof_status" in parsed:
+                raise ValueError(
+                    f"{path}: package {path.parent.name!r} is not registered"
+                )
+    return data
+
+
+def _generators() -> list[tuple[str, str]]:
+    """Return ``(name, package id)`` for each Boolean generator, registry order."""
+    from esolangs.languages.generators import BOOLEAN
+    from esolangs.registry import LANGUAGES
+
+    return [(name, lang.id) for name, lang in LANGUAGES.items() if name in BOOLEAN]
+
+
+def load_data(path: Path | None = None) -> dict[str, list[dict[str, Any]]]:
+    """Return the raw ledger/audit rows, aggregated from the fragments.
+
+    ``path`` may name a root to aggregate instead of this checkout, or a
+    single TOML file in the former global shape.
+    """
+    if path is not None and path.is_file():
+        return tomllib.loads(path.read_text(encoding="utf-8"))
+    root = _CHECKOUT if path is None else path
+    return aggregate_fragments(root / "src/esolangs/languages", _generators())
+
+
+def load(
+    path: Path | None = None,
+) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
+    """Return validated proof and audit rows from the package fragments.
+
+    Cached per process against the fragment fingerprint (or the single
+    file's stamp): the validated rows are immutable, and any fragment
+    added, removed, or edited changes the key, so a process that
+    mutates the tree never reads a stale load.
+    """
+    key: _LoadKey
+    if path is not None and path.is_file():
+        stat = path.stat()
+        key = (str(path), ((path.name, stat.st_mtime_ns, stat.st_size),))
+    else:
+        root = _CHECKOUT if path is None else path
+        key = (str(root), fingerprint(root / "src/esolangs/languages"))
+    return cached(_LOADS, key, lambda: validate(load_data(path)))
+
+
+def _registry_ordered(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return ``rows`` sorted by their generator's registry position.
+
+    Generators outside the registry sort last, keeping their input order:
+    fragments carry no sequence of their own, so the registry is the one
+    canonical order every render shares.
+    """
+    position = {name: index for index, (name, _) in enumerate(_generators())}
+
+    def key(row: dict[str, Any]) -> int:
+        name = row.get("generator")
+        if not isinstance(name, str):
+            return len(position)
+        return position.get(name, len(position))
+
+    return sorted(rows, key=key)
 
 
 def validate(
@@ -77,7 +225,7 @@ def validate(
     """Return proof and audit rows from parsed manifest ``data``."""
     proofs = []
     audits = []
-    for row in data["ledger"]:
+    for row in _registry_ordered(data["ledger"]):
         labels = row["labels"]
         if (
             not isinstance(labels, list)
@@ -104,7 +252,7 @@ def validate(
                 tuple(definitions),
             )
         )
-    for row in data["audit"]:
+    for row in _registry_ordered(data["audit"]):
         totality = _text(row, "totality")
         costs = tuple(_text(row, key) for key in ("generation_time", "output_size"))
         if totality not in {"Total", "Cap", "Exception"} or any(
@@ -122,11 +270,11 @@ def validate(
             )
         )
     for rows in (proofs, audits):
-        names = [row.generator for row in rows]
+        names = [item.generator for item in rows]
         if len(names) != len(set(names)):
             raise ValueError("duplicate proof status generator")
-        for row in rows:
-            _check_evidence(row.evidence, precise=isinstance(row, ScalingRow))
+        for item in rows:
+            _check_evidence(item.evidence, precise=isinstance(item, ScalingRow))
     return tuple(proofs), tuple(audits)
 
 
@@ -153,7 +301,7 @@ def splice(text: str, name: str, body: str) -> str:
     return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
 
 
-def update_docs(root: Path = ROOT) -> None:
+def update_docs(root: Path = ROOT) -> bool:
     """Render the status tables and totals without changing surrounding prose."""
     proofs, audits = load()
     tables = (
@@ -195,6 +343,13 @@ def update_docs(root: Path = ROOT) -> None:
             ],
         ),
     )
+    changed = False
     for path, marker, lines in tables:
         text = path.read_text(encoding="utf-8")
-        path.write_text(splice(text, marker, "\n".join(lines)), encoding="utf-8")
+        changed = (
+            _write_if_changed(
+                path, splice(text, marker, "\n".join(lines)), encoding="utf-8"
+            )
+            or changed
+        )
+    return changed

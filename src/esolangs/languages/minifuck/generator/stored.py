@@ -8,7 +8,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.languages.minifuck.generator.pool import _READS
 from esolangs.languages.minifuck.generator.sim import _MINIFUCK_INPUT, PAIR
-from esolangs.languages.minifuck.generator.states import _emit
+from esolangs.languages.minifuck.generator.states import _emit_unframed
 
 # Two double flips preserve the crossed cell and cancel both neighbor carries.
 _RIGHT = "[x<[x<[x<[x"
@@ -29,9 +29,8 @@ class _Plan:
     def write(self, word: str, count: int = 1) -> None:
         if count < 0:
             raise ValueError("negative repetition")
-        if count:
-            self.words.append((word, count))
-            self.size += len(word) * count
+        self.words.append((word, count))
+        self.size += len(word) * count
 
     def shift(self, distance: int) -> None:
         self.write(_RIGHT if distance >= 0 else "<", abs(distance))
@@ -148,8 +147,8 @@ def plan(truth_table: str) -> _Plan:
     kept = essential_inputs(truth_table, n)
     table = read_at(truth_table, kept, n)
     result = _Plan()
-    # The empty byte emitter leaves ASCII 0 immediately before its final dot.
-    result.write(_emit([], 1)[2:-1] + "<" * 8)
+    # The empty byte walk leaves ASCII 0 immediately before its final dot.
+    result.write(_emit_unframed([], 1) + "<" * 8)
     inputs = {original: _FIRST + _STRIDE * i for i, original in enumerate(kept)}
     for original in range(n):
         cell = inputs.get(original, 9)

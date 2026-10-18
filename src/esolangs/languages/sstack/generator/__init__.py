@@ -24,11 +24,7 @@ Decisions:
 
 from itertools import pairwise
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    constant_span_test,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.shared_block import (
     BranchCost,
     ContinuationCost,
@@ -43,6 +39,8 @@ from esolangs.generation.shared_block import (
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_bank
+from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
+from esolangs.languages.sstack.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -107,38 +105,40 @@ def _sstack_shared(
     }
     if len(selected) != len(blocks) or any(key < 2 for _, key in selected):
         raise ValueError("definitions must name distinct nonconstant residuals")
-    constant = constant_span_test(table)
     out = [_PROLOGUE]
 
-    def build(remaining: int, lo: int, hi: int) -> ContinuationCost[int]:
-        depth = n - remaining
-        key = (depth, ids[depth][lo >> remaining])
-        if key in selected:
-            target = selected[key]
-            out.append(f'"{target + 1}/e"')
-            return ContinuationCost(1, target=target)
-        if constant(lo, hi):
-            out.append(";d;" * remaining + _LEAF[table[lo]])
-            return ContinuationCost(remaining + 1)
-        mid = (lo + hi) // 2
-        below = ids[depth + 1]
-        if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
-            out.append(";d;")
-            return ContinuationCost(1, (build(remaining - 1, lo, mid),))
-        out.append(";a;[a\\b/~a~")
-        one = build(remaining - 1, mid, hi)
-        out.append("][a\\c/~a~")
-        zero = build(remaining - 1, lo, mid)
-        out.append("]")
-        return ContinuationCost(6, (one, zero))
+    def hit(
+        depth: int, key: int, _lo: int, _remaining: int, _context: object
+    ) -> ContinuationCost[int] | None:
+        if (depth, key) not in selected:
+            return None
+        target = selected[depth, key]
+        out.append(f'"{target + 1}/e"')
+        return ContinuationCost(1, target=target)
 
-    prefix = build(n, 0, len(table))
+    def leaf(
+        _depth: int, _key: int, lo: int, remaining: int, _context: object
+    ) -> ContinuationCost[int]:
+        out.append(";d;" * remaining + _LEAF[table[lo]])
+        return ContinuationCost(remaining + 1)
+
+    walk: _TreeWalk[ContinuationCost[int]] = _TreeWalk(
+        ids,
+        out.append,
+        _Hooks(
+            hit=hit,
+            leaf=leaf,
+            skipped=lambda child: ContinuationCost(1, (child,)),
+            branched=lambda one, zero: ContinuationCost(6, (one, zero)),
+        ),
+    )
+    prefix = walk.walk(n, 0)
     stages = []
     for i, (depth, row) in enumerate(blocks):
         marker = f'"{i + 1}/b"'
         out.append(marker + "[e\\b/~e~~b~")
         del selected[depth, ids[depth][row >> (n - depth)]]
-        body = build(n - depth, row, row + (1 << (n - depth)))
+        body = walk.walk(n - depth, row)
         out.append(marker + "]~b~")
         stages.append((i, body))
     tails: dict[int | None, int] = {None: 0}
@@ -152,43 +152,50 @@ def _sstack_shared(
 def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str, int]:
     """Emit a tree and the maximum commands of normal and deferred paths."""
     n = _validate_truth_table(table)
-    constant = constant_span_test(table)
     ids = subtree_ids(table)
     out = [_PROLOGUE]
 
-    def build(
-        remaining: int, lo: int, hi: int, defer: tuple[int, int] | None
-    ) -> BranchCost:
-        """Emit ``table[lo:hi]``, jumping to ``defer``'s shared body where it recurs."""
-        depth = n - remaining
-        if (
-            defer is not None
-            and depth == defer[0]
-            and ids[depth][lo >> remaining] == ids[depth][defer[1] >> remaining]
-        ):
-            out.append('"49/e"')
-            return None, 1
-        if constant(lo, hi):
-            out.append(";d;" * remaining + _LEAF[table[lo]])
-            return remaining + 1, None
-        mid = (lo + hi) // 2
-        below = ids[depth + 1]
-        if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
-            out.append(";d;")
-            return add_cost(build(remaining - 1, lo, mid, defer), 1)
-        out.append(";a;[a\\b/~a~")
-        one = build(remaining - 1, mid, hi, defer)
-        out.append("][a\\c/~a~")
-        zero = build(remaining - 1, lo, mid, defer)
-        out.append("]")
-        return add_cost(merge_cost(one, zero), 6)
+    def hit(
+        depth: int,
+        key: int,
+        _lo: int,
+        remaining: int,
+        defer: tuple[int, int] | None,
+    ) -> BranchCost | None:
+        """Price a jump to ``defer``'s shared body where the span recurs there."""
+        if defer is None or depth != defer[0]:
+            return None
+        if key != ids[depth][defer[1] >> remaining]:
+            return None
+        out.append('"49/e"')
+        return None, 1
 
-    cost = build(n, 0, len(table), shared)
+    def leaf(
+        _depth: int,
+        _key: int,
+        lo: int,
+        remaining: int,
+        _defer: tuple[int, int] | None,
+    ) -> BranchCost:
+        out.append(";d;" * remaining + _LEAF[table[lo]])
+        return remaining + 1, None
+
+    walk: _TreeWalk[BranchCost] = _TreeWalk(
+        ids,
+        out.append,
+        _Hooks(
+            hit=hit,
+            leaf=leaf,
+            skipped=lambda child: add_cost(child, 1),
+            branched=lambda one, zero: add_cost(merge_cost(one, zero), 6),
+        ),
+    )
+    cost = walk.walk(n, 0, shared)
     if shared is not None:
         depth, row = shared
         out.append("[e\\b/~e~")
         # The shared body itself is emitted inline: nothing defers inside it.
-        body = build(n - depth, row, row + (1 << (n - depth)), None)
+        body = walk.walk(n - depth, row, None)
         out.append("]")
         cost = dispatch_cost(cost, normal_cost(body) + 4, 1)
     return "".join(out), normal_cost(cost) + 2
@@ -204,4 +211,5 @@ LANGUAGE = Language(
     ),
     # Whitespace is discarded anywhere, inside a token too.
     wrap=wrap_chars,
+    proof_workspace=(workspace, True, (3, 6)),
 )

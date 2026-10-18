@@ -35,6 +35,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.smu.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -113,4 +114,5 @@ LANGUAGE = Language(
     wrap=wrap_chars,
     # Every run pushes its input bit, and the spec's EOF bit is ``=``.
     eof="an exhausted read pushes the spec's '=' bit",
+    proof_workspace=(workspace, True, (2, 4)),
 )

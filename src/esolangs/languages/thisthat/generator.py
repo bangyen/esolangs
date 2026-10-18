@@ -29,6 +29,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.thisthat.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -120,6 +121,242 @@ class _Builder:
         return "\n".join("".join(row).rstrip() for row in rows)
 
 
+type _Point = tuple[int, int]
+#: One child of a tree node: its span, its point, and its walk context.
+type _Child = tuple[int, int, _Point, _Point]
+
+
+class _TreeEmitter:
+    """A planar decision tree: one walk, with each form's geometry as hooks.
+
+    The walk itself is the same for the streaming, strip and laid-out
+    trees: a leaf places its glyph, an exit diamond two steps away, and a
+    double wire between them; an internal node places its trunk glyph and
+    a router, wires the trunk, then connects each child with a single wire
+    and recurses.  What differs is only geometry and glyphs: where the
+    router sits, how far the children are pitched, when a span is a leaf,
+    and whether equal halves prune the second child.  A form's context is
+    whatever its hooks need (the stream's parent point, the layout's
+    incoming direction); its leaf exit defaults to its router point, which
+    only the stream overrides.
+    """
+
+    _trunk = "◧"
+
+    def __init__(self, builder: _Builder, table: str) -> None:
+        self._builder = builder
+        self._table = table
+
+    def run(self, level: int, lo: int, hi: int, point: _Point, context: _Point) -> None:
+        """Emit the node for ``table[lo:hi]`` at ``point`` and its subtree."""
+        builder = self._builder
+        if self._leaf(level, lo, hi):
+            builder.node(point, "■" if self._table[lo] == "1" else "□")
+            exit_point = self._exit(point, context)
+            builder.node(exit_point, "◇")
+            builder.connect(
+                _path(point, exit_point, self._leaf_axis(context)), "double"
+            )
+            return
+        router = self._router(point, context)
+        builder.node(point, self._trunk)
+        builder.node(router, self._router_glyph(level, lo))
+        builder.connect(_path(point, router, self._trunk_axis(context)), "double")
+        children = self._children(level, lo, hi, router)
+        for child_lo, child_hi, child_point, child_context in children:
+            builder.connect(
+                _path(router, child_point, self._child_axis(level)), "single"
+            )
+            self.run(level + 1, child_lo, child_hi, child_point, child_context)
+
+    def _leaf(self, level: int, lo: int, hi: int) -> bool:
+        raise NotImplementedError
+
+    def _exit(self, point: _Point, context: _Point) -> _Point:
+        return self._router(point, context)
+
+    def _router(self, point: _Point, context: _Point) -> _Point:
+        raise NotImplementedError
+
+    def _router_glyph(self, level: int, lo: int) -> str:
+        raise NotImplementedError
+
+    def _same(self, _level: int, _lo: int) -> bool:
+        return False
+
+    def _children(self, level: int, lo: int, hi: int, router: _Point) -> list[_Child]:
+        raise NotImplementedError
+
+    def _leaf_axis(self, context: _Point) -> Literal["horizontal", "vertical"]:
+        raise NotImplementedError
+
+    def _trunk_axis(self, context: _Point) -> Literal["horizontal", "vertical"]:
+        raise NotImplementedError
+
+    def _child_axis(self, _level: int) -> Literal["horizontal", "vertical"]:
+        return "vertical"
+
+
+class _StreamTree(_TreeEmitter):
+    """The streaming tree: routers mirrored across the node's column."""
+
+    _trunk = "◇"
+
+    def __init__(
+        self, builder: _Builder, table: str, ids: list[list[int]], depth: int
+    ) -> None:
+        super().__init__(builder, table)
+        self._ids = ids
+        self._depth = depth
+
+    def _leaf(self, level: int, _lo: int, _hi: int) -> bool:
+        return level == self._depth
+
+    def _exit(self, point: _Point, context: _Point) -> _Point:
+        # Past the leaf, away from its router: nodes touching connect nothing.
+        return (point[0], 2 * point[1] - context[1])
+
+    def _router(self, point: _Point, _context: _Point) -> _Point:
+        return (2 - point[0], point[1])
+
+    def _router_glyph(self, level: int, lo: int) -> str:
+        return "⬒" if self._same(level, lo) else "◒"
+
+    def _same(self, level: int, lo: int) -> bool:
+        index = lo >> (self._depth - level)
+        return self._ids[level + 1][2 * index] == self._ids[level + 1][2 * index + 1]
+
+    def _leaf_axis(self, _context: _Point) -> Literal["horizontal", "vertical"]:
+        return "vertical"
+
+    def _trunk_axis(self, _context: _Point) -> Literal["horizontal", "vertical"]:
+        return "horizontal"
+
+    def _children(self, level: int, lo: int, hi: int, router: _Point) -> list[_Child]:
+        same = self._same(level, lo)
+        half = (lo + hi) // 2
+        # The root's wider separation leaves its startup and wires clear of
+        # leaf outputs. Another level would overlap an ancestor's wire.
+        if level != 0:
+            pitch = 2
+        elif self._depth == 2:
+            pitch = 8
+        else:
+            pitch = 4
+        pairs = ((-1, lo, half),) if same else ((-1, lo, half), (1, half, hi))
+        return [
+            (child_lo, child_hi, (router[0], router[1] + sign * pitch), router)
+            for sign, child_lo, child_hi in pairs
+        ]
+
+
+class _StripTree(_TreeEmitter):
+    """The strip tree: exits two columns left, children pitched by span."""
+
+    def __init__(self, builder: _Builder, table: str, depth: int) -> None:
+        super().__init__(builder, table)
+        self._depth = depth
+
+    def _leaf(self, _level: int, lo: int, hi: int) -> bool:
+        return all(bit == self._table[lo] for bit in self._table[lo:hi])
+
+    def _router(self, point: _Point, _context: _Point) -> _Point:
+        return (point[0] - 2, point[1])
+
+    def _router_glyph(self, _level: int, _lo: int) -> str:
+        return "◒"
+
+    def _leaf_axis(self, _context: _Point) -> Literal["horizontal", "vertical"]:
+        return "horizontal"
+
+    def _trunk_axis(self, _context: _Point) -> Literal["horizontal", "vertical"]:
+        return "horizontal"
+
+    def _children(self, level: int, lo: int, hi: int, router: _Point) -> list[_Child]:
+        mid = (lo + hi) // 2
+        return [
+            (
+                child_lo,
+                child_hi,
+                (router[0], router[1] + sign * (1 << (self._depth - level))),
+                router,
+            )
+            for sign, child_lo, child_hi in ((-1, lo, mid), (1, mid, hi))
+        ]
+
+
+class _LayoutTree(_TreeEmitter):
+    """The laid-out tree: alternating axes, spans halving every two levels."""
+
+    def __init__(
+        self,
+        builder: _Builder,
+        table: str,
+        ids: list[list[int]],
+        depth: int,
+        *,
+        prune: bool = True,
+    ) -> None:
+        super().__init__(builder, table)
+        self._ids = ids
+        self._depth = depth
+        self._prune = prune
+        self._axes = ((1, 0), (0, 1))
+
+    def _span(self, level: int) -> int:
+        return 8 * (1 << ((self._depth - level - 1) // 2)) - 2
+
+    def _leaf(self, level: int, lo: int, hi: int) -> bool:
+        # A constant span is a leaf wherever it sits: what it has not
+        # popped is left on the stack.
+        return hi - lo == 1 or (
+            self._prune and self._ids[level][lo >> (self._depth - level)] < 2
+        )
+
+    def _router(self, point: _Point, context: _Point) -> _Point:
+        return (point[0] + 2 * context[0], point[1] + 2 * context[1])
+
+    def _router_glyph(self, level: int, lo: int) -> str:
+        if self._same(level, lo):
+            return "⬒"
+        return "◑" if self._axes[level % 2][0] else "◒"
+
+    def _same(self, level: int, lo: int) -> bool:
+        if not self._prune:
+            return False
+        index = lo >> (self._depth - level)
+        return self._ids[level + 1][2 * index] == self._ids[level + 1][2 * index + 1]
+
+    def _leaf_axis(self, context: _Point) -> Literal["horizontal", "vertical"]:
+        return _first_axis(context[0])
+
+    def _trunk_axis(self, context: _Point) -> Literal["horizontal", "vertical"]:
+        return _first_axis(context[0])
+
+    def _child_axis(self, level: int) -> Literal["horizontal", "vertical"]:
+        return _first_axis(self._axes[level % 2][0])
+
+    def _children(self, level: int, lo: int, hi: int, router: _Point) -> list[_Child]:
+        same = self._same(level, lo)
+        axis = self._axes[level % 2]
+        mid = (lo + hi) // 2
+        # The halves agree: pop the bit onto the column stack, which
+        # nothing pops, and go on into the one half both values share.
+        # Row 0 and column 0 share cell (0, 0); the push lands there only
+        # when the row is empty, and then the half is a leaf.  A loader
+        # discard could land there before the row fills, so it has none.
+        pairs = ((-1, lo, mid),) if same else ((-1, lo, mid), (1, mid, hi))
+        children: list[_Child] = []
+        for sign, child_lo, child_hi in pairs:
+            incoming = (sign * axis[0], sign * axis[1])
+            child = (
+                router[0] + self._span(level) * incoming[0],
+                router[1] + self._span(level) * incoming[1],
+            )
+            children.append((child_lo, child_hi, child, incoming))
+        return children
+
+
 def thisthat(truth_table: str, width: int | None = None) -> str:
     """Return a linear-area tree or a bounded DAG with shared residuals.
 
@@ -200,39 +437,7 @@ def _stream_tree(table: str) -> str:
     depth = _validate_truth_table(table)
     ids = subtree_ids(table)
     builder = _Builder()
-
-    def tree(
-        level: int, lo: int, hi: int, point: tuple[int, int], parent: tuple[int, int]
-    ) -> None:
-        if level == depth:
-            builder.node(point, "■" if table[lo] == "1" else "□")
-            # Past the leaf, away from its router: nodes touching connect nothing.
-            output = (point[0], 2 * point[1] - parent[1])
-            builder.node(output, "◇")
-            builder.connect(_path(point, output, "vertical"), "double")
-            return
-        router = (2 - point[0], point[1])
-        builder.node(point, "◇")
-        index = lo >> (depth - level)
-        same = ids[level + 1][2 * index] == ids[level + 1][2 * index + 1]
-        builder.node(router, "⬒" if same else "◒")
-        builder.connect(_path(point, router, "horizontal"), "double")
-        half = (lo + hi) // 2
-        # The root's wider separation leaves its startup and wires clear of
-        # leaf outputs. Another level would overlap an ancestor's wire.
-        if level != 0:
-            pitch = 2
-        elif depth == 2:
-            pitch = 8
-        else:
-            pitch = 4
-        children = ((-1, lo, half),) if same else ((-1, lo, half), (1, half, hi))
-        for sign, start, end in children:
-            child = (router[0], router[1] + sign * pitch)
-            builder.connect(_path(router, child, "vertical"), "single")
-            tree(level + 1, start, end, child, router)
-
-    tree(0, 0, len(table), (0, 0), (0, 1))
+    _StreamTree(builder, table, ids, depth).run(0, 0, len(table), (0, 0), (0, 1))
     builder.node((1, 1), "▣")
     builder.connect([(1, 1), (0, 1), (0, 0)], "single")
     return builder.render()
@@ -277,24 +482,7 @@ def _strip_tree(truth_table: str) -> str:
     table = read_at(truth_table, essential, n)
     depth = len(essential)
     builder = _Builder()
-
-    def tree(level: int, lo: int, hi: int, pop: tuple[int, int]) -> None:
-        output = (pop[0] - 2, pop[1])
-        if all(bit == table[lo] for bit in table[lo:hi]):
-            builder.node(pop, "■" if table[lo] == "1" else "□")
-            builder.node(output, "◇")
-            builder.connect(_path(pop, output, "horizontal"), "double")
-            return
-        builder.node(pop, "◧")
-        builder.node(output, "◒")
-        builder.connect(_path(pop, output, "horizontal"), "double")
-        mid = (lo + hi) // 2
-        for sign, child_lo, child_hi in ((-1, lo, mid), (1, mid, hi)):
-            child = (output[0], output[1] + sign * (1 << (depth - level)))
-            builder.connect(_path(output, child, "vertical"), "single")
-            tree(level + 1, child_lo, child_hi, child)
-
-    tree(0, 0, len(table), (0, 0))
+    _StripTree(builder, table, depth).run(0, 0, len(table), (0, 0), (0, 0))
     min_y = min(y for _, y in builder.cells())
     start = (0, min_y - 2 * n - 2 * len(essential) - 2)
     builder.node(start, "▣")
@@ -340,57 +528,10 @@ def _layout(
     ids = subtree_ids(truth_table) if essential else [[int(truth_table[0])]]
     depth = len(essential)
     builder = _Builder()
-    axes = ((1, 0), (0, 1))
-
-    def span(level: int) -> int:
-        return 8 * (1 << ((depth - level - 1) // 2)) - 2
-
-    def tree(
-        level: int,
-        lo: int,
-        hi: int,
-        pop: tuple[int, int],
-        incoming: tuple[int, int],
-    ) -> None:
-        index = lo >> (depth - level)
-        if hi - lo == 1 or (prune and ids[level][index] < 2):
-            # A constant span is a leaf wherever it sits: what it has not
-            # popped is left on the stack.
-            builder.node(pop, "■" if truth_table[lo] == "1" else "□")
-            output = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
-            builder.node(output, "◇")
-            builder.connect(_path(pop, output, _first_axis(incoming[0])), "double")
-            return
-        builder.node(pop, "◧")
-        router = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
-        axis = axes[level % 2]
-        mid = (lo + hi) // 2
-        children: tuple[tuple[int, int, int], ...] = (
-            (-1, lo, mid),
-            (1, mid, hi),
-        )
-        if prune and ids[level + 1][2 * index] == ids[level + 1][2 * index + 1]:
-            # The halves agree: pop the bit onto the column stack, which
-            # nothing pops, and go on into the one half both values share.
-            # Row 0 and column 0 share cell (0, 0); the push lands there only
-            # when the row is empty, and then the half is a leaf.  A loader
-            # discard could land there before the row fills, so it has none.
-            builder.node(router, "⬒")
-            children = children[:1]
-        else:
-            builder.node(router, "◑" if axis[0] else "◒")
-        builder.connect(_path(pop, router, _first_axis(incoming[0])), "double")
-        for sign, child_lo, child_hi in children:
-            child_incoming = (sign * axis[0], sign * axis[1])
-            child = (
-                router[0] + span(level) * child_incoming[0],
-                router[1] + span(level) * child_incoming[1],
-            )
-            builder.connect(_path(router, child, _first_axis(axis[0])), "single")
-            tree(level + 1, child_lo, child_hi, child, child_incoming)
-
     root = (0, 0)
-    tree(0, 0, len(truth_table), root, (0, 1))
+    _LayoutTree(builder, truth_table, ids, depth, prune=prune).run(
+        0, 0, len(truth_table), root, (0, 1)
+    )
     cells = builder.cells()
     min_x = min(x for x, _ in cells)
     min_y = min(y for _, y in cells)
@@ -625,4 +766,6 @@ LANGUAGE = Language(
     no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
     eof="an exhausted '◇' sends the spec's empty transfer",
     empty_program="thisthat needs at least one start node",
+    proof_execution=(execution, True, (3, 4)),
+    proof_workspace=(workspace, True, (3, 5)),
 )

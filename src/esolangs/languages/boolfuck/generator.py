@@ -42,6 +42,7 @@ from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_block import repeated_blocks
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.boolfuck.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -350,4 +351,6 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     eof="EOF supplies zero bits",
+    # Six to eight reach the AND/XOR gates (docs/proofs/boolfuck-gates.md).
+    proof_workspace=(workspace, False, (3, 6, 7, 8)),
 )

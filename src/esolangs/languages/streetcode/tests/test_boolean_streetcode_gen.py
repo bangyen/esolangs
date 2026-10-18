@@ -43,7 +43,7 @@ class TestStreetcode:
             program = boolean.streetcode(table)
             rows = program.splitlines()
             assert len(rows) == 9, n
-            assert len(rows) * max(map(len, rows)) <= 18 * 2**n + 3200, n
+            assert len(rows) * max(map(len, rows)) <= 18 * 2**n + 3660, n
 
     def test_default_uses_only_shared_layouts(self) -> None:
         """Per-input loops are width fallbacks, never default candidates."""

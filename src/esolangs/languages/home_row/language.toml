@@ -1,0 +1,25 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 15
+
+[proof_status]
+labels = ["parameterized tree"]
+qualification = "—"
+scaling = "linear: bounded dependency scan and canonical residual IDs"
+execution = "linear: worst 10T + 10n + 88 commands: every guarded leaf run, one equal pair of rows"
+workspace = "poly n: worst n + 32 + bl(27T/2+10n+6) bits: index cell and cursor"
+
+[generator_sizes]
+"00000001" = { commands = 163, commands_by_row = { "0" = 122, "1" = 131, "2" = 133, "3" = 142, "4" = 137, "5" = 146, "6" = 148, "7" = 163 }, source_units = 91 }
+"00001100" = { commands = 157, commands_by_row = { "0" = 117, "1" = 124, "2" = 126, "3" = 133, "4" = 137, "5" = 144, "6" = 150, "7" = 157 }, source_units = 89 }
+"00110110" = { commands = 183, commands_by_row = { "0" = 117, "1" = 126, "2" = 138, "3" = 147, "4" = 149, "5" = 168, "6" = 170, "7" = 183 }, source_units = 122 }
+"0110" = { commands = 147, commands_by_row = { "0" = 113, "1" = 132, "2" = 134, "3" = 147 }, source_units = 79 }
+"01101001" = { commands = 191, commands_by_row = { "0" = 116, "1" = 135, "2" = 137, "3" = 153, "4" = 157, "5" = 174, "6" = 176, "7" = 191 }, source_units = 133 }
+"0110100110010110" = { commands = 259, commands_by_row = { "0" = 119, "1" = 138, "2" = 140, "3" = 156, "4" = 160, "5" = 177, "6" = 179, "7" = 198, "8" = 186, "9" = 203, "10" = 205, "11" = 223, "12" = 225, "13" = 244, "14" = 246, "15" = 259 }, source_units = 219 }
+"1101001101101101" = { commands = 260, commands_by_row = { "0" = 121, "1" = 130, "2" = 139, "3" = 157, "4" = 160, "5" = 169, "6" = 181, "7" = 190, "8" = 185, "9" = 204, "10" = 206, "11" = 222, "12" = 227, "13" = 236, "14" = 245, "15" = 260 }, source_units = 220 }
+"11111110" = { commands = 162, commands_by_row = { "0" = 123, "1" = 132, "2" = 134, "3" = 143, "4" = 138, "5" = 147, "6" = 149, "7" = 162 }, source_units = 91 }
+
+[catalogue]
+folding_constant_local = "_program"  # direct constant input-discard sequence

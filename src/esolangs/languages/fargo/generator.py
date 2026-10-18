@@ -38,6 +38,7 @@ from esolangs.generation.helpers import (
     short_name,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.fargo.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -472,4 +473,5 @@ LANGUAGE = Language(
     # convention is therefore to feed the row index: the inputs
     # most-significant-first are its binary digits, so the 0,1 row of a
     # two-input table is the single line "1".
+    proof_execution=(execution, False, (3, 7)),
 )

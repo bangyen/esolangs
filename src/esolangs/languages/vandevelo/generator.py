@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from esolangs.generation.helpers import _validate_truth_table, short_name
 from esolangs.languages.vandevelo._cover import _cover, _flips
 from esolangs.languages.vandevelo._peel import _CANDIDATES, _points
+from esolangs.languages.vandevelo.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -222,4 +223,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     example=Example(expected="", slow_build=True),
+    proof_execution=(execution, False, (3, 5)),
 )

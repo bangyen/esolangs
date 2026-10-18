@@ -15,6 +15,7 @@ Decisions:
     a cost model (:func:`_top_level`), not a fixed count.
 """
 
+from collections.abc import Iterable
 from itertools import count, pairwise
 
 from esolangs.generation.helpers import (
@@ -26,6 +27,7 @@ from esolangs.generation.helpers import (
     input_weights,
     read_at,
 )
+from esolangs.languages.brainif.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -51,6 +53,25 @@ def _resolve(lines: list[str], width: int | None = None) -> str:
             for line in emitted
         ]
     return "\n".join(emitted)
+
+
+class _Lines:
+    """BrainIf lines under construction, with zero-width label markers."""
+
+    def __init__(self) -> None:
+        self.lines: list[str] = []
+
+    def mark(self, name: str) -> None:
+        """Append the zero-width marker ``@name``."""
+        self.lines.append(f"@{name}")
+
+    def add(self, line: str) -> None:
+        """Append one instruction line."""
+        self.lines.append(line)
+
+    def extend(self, lines: Iterable[str]) -> None:
+        """Append instruction lines in order."""
+        self.lines.extend(lines)
 
 
 #: The most levels the tree may branch on before the linear lookup takes
@@ -81,21 +102,42 @@ def _climb(verb: str) -> list[str]:
     return [f"if {value} {verb}" for value in range(_ASCII_ZERO)]
 
 
+def _zero_jump_tree(
+    out: _Lines, table: str, n: int, start: int, end: int, depth: int
+) -> None:
+    """Emit one zero-jump tree node and, recursively, its two subtrees."""
+    if depth == n:
+        out.add("if 0 goto @" + ("one" if table[start] == "1" else "zero"))
+        return
+    # A one moves onto the unread zero cell below it before jumping;
+    # a zero stays on its input until the ordinary left step.
+    label = f"branch_{start}_{end}"
+    out.extend(
+        [
+            "if 0 input",
+            f"if {_ASCII_ONE} left",
+            f"if 0 goto @{label}",
+            f"if {_ASCII_ZERO} left",
+        ]
+    )
+    middle = (start + end) // 2
+    _zero_jump_tree(out, table, n, start, middle, depth + 1)
+    out.mark(label)
+    _zero_jump_tree(out, table, n, middle, end, depth + 1)
+
+
 def _brainif_zero_jumps(table: str) -> str:
     """Route small trees through unread zero cells before each branch jump."""
     n = _validate_truth_table(table)
-    lines: list[str] = []
-
-    def mark(label: str) -> None:
-        lines.append(f"@{label}")
+    out = _Lines()
 
     # Cell0 stays zero for the output escape; cell1 holds 48, cell2 is
     # the final zero landing, and input cells lie above it. Two-input
     # addresses fit two digits; larger arities retain the scalable build
     # rather than O(T log T) jump text.
-    lines.extend(["if 0 right", "if 0 goto @init"])
-    mark("zero")
-    lines.extend(
+    out.extend(["if 0 right", "if 0 goto @init"])
+    out.mark("zero")
+    out.extend(
         [
             "if 0 left",
             f"if {_ASCII_ZERO} output",
@@ -103,8 +145,8 @@ def _brainif_zero_jumps(table: str) -> str:
             "if 0 goto @done",
         ]
     )
-    mark("one")
-    lines.extend(
+    out.mark("one")
+    out.extend(
         [
             "if 0 left",
             f"if {_ASCII_ZERO} inc",
@@ -113,35 +155,15 @@ def _brainif_zero_jumps(table: str) -> str:
             "if 0 goto @done",
         ]
     )
-    mark("init")
-    lines.extend(_climb("inc"))
-    lines.append(f"if {_ASCII_ZERO} right")
-    lines.extend("if 0 right" for _ in range(n))
+    out.mark("init")
+    out.extend(_climb("inc"))
+    out.add(f"if {_ASCII_ZERO} right")
+    out.extend("if 0 right" for _ in range(n))
 
-    def tree(start: int, end: int, depth: int) -> None:
-        if depth == n:
-            lines.append("if 0 goto @" + ("one" if table[start] == "1" else "zero"))
-            return
-        # A one moves onto the unread zero cell below it before jumping;
-        # a zero stays on its input until the ordinary left step.
-        label = f"branch_{start}_{end}"
-        lines.extend(
-            [
-                "if 0 input",
-                f"if {_ASCII_ONE} left",
-                f"if 0 goto @{label}",
-                f"if {_ASCII_ZERO} left",
-            ]
-        )
-        middle = (start + end) // 2
-        tree(start, middle, depth + 1)
-        mark(label)
-        tree(middle, end, depth + 1)
-
-    tree(0, len(table), 0)
-    mark("done")
-    lines.append("")
-    return _resolve(lines)
+    _zero_jump_tree(out, table, n, 0, len(table), 0)
+    out.mark("done")
+    out.add("")
+    return _resolve(out.lines)
 
 
 def _residual_layers(table: str) -> list[list[tuple[int, int]]]:
@@ -203,6 +225,77 @@ def _brainif_dag(table: str) -> str:
     return _resolve(lines)
 
 
+class _SpanBuilder:
+    """Recursive tree spans for one table, sharing equal spans at a level.
+
+    ``shared`` maps each span already emitted at a level to its label
+    number, assigned in first-emission order; ``labels`` numbers the
+    branch labels in the order spans split.
+    """
+
+    def __init__(self, truth_table: str, n: int, *, prune: bool) -> None:
+        self.truth_table = truth_table
+        self.n = n
+        self.prune = prune
+        self.labels = count()
+        self.shared: dict[tuple[int, str], int] = {}
+
+    def build(self, lo: int, hi: int, k: int) -> list[str]:
+        """Emit a table span, entered with the pointer on cell n-k+1."""
+        rest = self.n - (k - 1)
+        span = (k, self.truth_table[lo:hi])
+        # Entered on an unread cell (0), or on the answer byte (48) once
+        # every input is read, so one guarded jump reuses an equal span.
+        if self.prune and span in self.shared:
+            return [
+                f"if {_ASCII_ZERO if rest == 0 else 0} goto @out_{self.shared[span]}"
+            ]
+        body = self.span(lo, hi, k, rest)
+        if self.prune and len(body) > 1:
+            self.shared[span] = len(self.shared) + 1
+            body.insert(0, f"@out_{self.shared[span]}")
+        return body
+
+    def span(self, lo: int, hi: int, k: int, rest: int) -> list[str]:
+        """Emit one span's own lines, before any shared-label prefix."""
+        if rest == 0:
+            # The answer byte is 48: add one iff the entry is a 1 and join
+            # the trampoline line whose guard that byte passes.
+            if self.truth_table[lo] == "0":
+                return [f"if {_ASCII_ZERO} goto 2"]
+            return [
+                f"if {_ASCII_ZERO} increment",
+                f"if {_ASCII_ONE} goto 3",
+            ]
+        middle = (lo + hi) // 2
+        if self.truth_table[lo:middle] == self.truth_table[middle:hi] and (
+            self.prune or self.truth_table[lo:hi] == self.truth_table[lo] * (hi - lo)
+        ):
+            # The halves agree, so this input cannot change the answer: read
+            # it, step past it and build the one half both values share.
+            return [
+                "if 0 input",
+                f"if {_ASCII_ZERO} move left",
+                f"if {_ASCII_ONE} move left",
+                *self.build(lo, middle, k + 1),
+            ]
+        # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
+        # bit it selects is the table's usual most-significant-first one --
+        # the reads are in input order even though the pointer walks down.
+        label = next(self.labels)
+        sub0 = self.build(lo, middle, k + 1)
+        sub1 = self.build(middle, hi, k + 1)
+        return [
+            "if 0 input",
+            f"if {_ASCII_ONE} goto @branch_{label}",
+            f"if {_ASCII_ZERO} move left",
+            *sub0,
+            f"@branch_{label}",
+            f"if {_ASCII_ONE} move left",
+            *sub1,
+        ]
+
+
 def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]:
     """Emit symbolic tree entries with one shared output tail."""
     # Initial zero skips the two-line output trampoline.  Leaves return with
@@ -219,62 +312,7 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]
     entries.append(f"if {_ASCII_ZERO} move right")
     entries += ["if 0 move right" for _ in range(n - 1)]
 
-    labels = count()
-    shared: dict[tuple[int, str], int] = {}
-
-    def build(lo: int, hi: int, k: int) -> list[str]:
-        """Emit a table span, entered with the pointer on cell n-k+1."""
-        rest = n - (k - 1)
-        span = (k, truth_table[lo:hi])
-        # Entered on an unread cell (0), or on the answer byte (48) once
-        # every input is read, so one guarded jump reuses an equal span.
-        if prune and span in shared:
-            return [f"if {_ASCII_ZERO if rest == 0 else 0} goto @out_{shared[span]}"]
-        body = _span(lo, hi, k, rest)
-        if prune and len(body) > 1:
-            shared[span] = len(shared) + 1
-            body.insert(0, f"@out_{shared[span]}")
-        return body
-
-    def _span(lo: int, hi: int, k: int, rest: int) -> list[str]:
-        if rest == 0:
-            # The answer byte is 48: add one iff the entry is a 1 and join
-            # the trampoline line whose guard that byte passes.
-            if truth_table[lo] == "0":
-                return [f"if {_ASCII_ZERO} goto 2"]
-            return [
-                f"if {_ASCII_ZERO} increment",
-                f"if {_ASCII_ONE} goto 3",
-            ]
-        middle = (lo + hi) // 2
-        if truth_table[lo:middle] == truth_table[middle:hi] and (
-            prune or truth_table[lo:hi] == truth_table[lo] * (hi - lo)
-        ):
-            # The halves agree, so this input cannot change the answer: read
-            # it, step past it and build the one half both values share.
-            return [
-                "if 0 input",
-                f"if {_ASCII_ZERO} move left",
-                f"if {_ASCII_ONE} move left",
-                *build(lo, middle, k + 1),
-            ]
-        # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
-        # bit it selects is the table's usual most-significant-first one --
-        # the reads are in input order even though the pointer walks down.
-        label = next(labels)
-        sub0 = build(lo, middle, k + 1)
-        sub1 = build(middle, hi, k + 1)
-        return [
-            "if 0 input",
-            f"if {_ASCII_ONE} goto @branch_{label}",
-            f"if {_ASCII_ZERO} move left",
-            *sub0,
-            f"@branch_{label}",
-            f"if {_ASCII_ONE} move left",
-            *sub1,
-        ]
-
-    entries += build(0, len(truth_table), 1)
+    entries += _SpanBuilder(truth_table, n, prune=prune).build(0, len(truth_table), 1)
     # One shared tail: the answer cell already holds the byte to print, so
     # this is two lines rather than a climb per digit.
     entries.append("@out_0")
@@ -412,6 +450,70 @@ class _Strip:
         return sorted(out)
 
 
+def _emit_guarded(
+    out: _Lines, strip: _Strip, residue: int, modulus: int | None, suffix: str
+) -> None:
+    """Emit one guarded line per value the named cell may hold."""
+    out.extend(f"if {v} {suffix}" for v in strip.seen(residue, modulus))
+
+
+def _emit_strip_cells(out: _Lines, strip: _Strip, size: int) -> None:
+    """Emit the strip: the table, then one padding cell per input."""
+    # Padding takes the cheaper bit; the last cell needs no ``right``,
+    # since the walk starts there.
+    for index in range(size):
+        value = strip.at(index)
+        out.extend(f"if {passed} inc" for passed in range(value))
+        if index + 1 < size:
+            out.add(f"if {value} right")
+
+
+def _emit_linear_read(
+    out: _Lines, strip: _Strip, weights: list[int], size: int, i: int
+) -> None:
+    """Emit input ``i``'s read and the walk its zero branch takes."""
+    far, after = f"far_{i}", f"after_{i}"
+    # Every higher bit moves the pointer a multiple of the smallest
+    # higher weight, so the read cell's class is known modulo it.
+    known = next((w for w in reversed(weights[:i]) if w), None)
+    _emit_guarded(out, strip, size - 1 - i, known, "input")
+    if not weights[i]:
+        out.add(f"if {_ASCII_ZERO} left")
+        out.add(f"if {_ASCII_ONE} left")
+        return
+    out.add(f"if {_ASCII_ZERO} goto @{far}")
+    out.add(f"if {_ASCII_ONE} left")
+    _emit_guarded(out, strip, size - 2 - i, known, f"goto @{after}")
+    out.mark(far)
+    out.add(f"if {_ASCII_ZERO} left")
+    if i in strip.levels:
+        _emit_loop(out.lines, strip, i, size)
+    else:
+        for k in range(weights[i]):
+            _emit_guarded(out, strip, size - 2 - i - k, known, "left")
+    out.mark(after)
+
+
+def _emit_linear_output(out: _Lines, strip: _Strip) -> None:
+    """Emit the output tail for the selected cell the walk ends on."""
+    # The selected cell's value is its bit in the low place -- every
+    # marker value is even -- and the climbs converge, so neither the
+    # branch nor the climb cares which class the cell came from.
+    alphabet = strip.alphabet[0] | strip.alphabet[1]
+    for value in sorted(v for v in alphabet if v % 2):
+        out.add(f"if {value} goto @one_out")
+    for value in range(_ASCII_ZERO):
+        out.add(f"if {value} inc")
+    out.add(f"if {_ASCII_ZERO} output")
+    out.add(f"if {_ASCII_ZERO} goto @done")
+    out.mark("one_out")
+    for value in range(1, _ASCII_ONE):
+        out.add(f"if {value} inc")
+    out.add(f"if {_ASCII_ONE} output")
+    out.mark("done")
+    out.add("")
+
+
 def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     """Emit a linear spatial lookup for BrainIf.
 
@@ -446,66 +548,20 @@ def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     cells = truth_table + "0" * n
     size = len(cells)
     strip = _Strip(cells, weights)
-    lines: list[str] = []
-
-    def mark(name: str) -> None:
-        lines.append(f"@{name}")
-
-    def guard(residue: int, modulus: int | None, suffix: str) -> None:
-        """Emit one guarded line per value the named cell may hold."""
-        lines.extend(f"if {v} {suffix}" for v in strip.seen(residue, modulus))
-
-    # The table, then one padding cell per input.  Padding takes the cheaper
-    # bit; the last cell needs no ``right``, since the walk starts there.
-    for index in range(size):
-        value = strip.at(index)
-        lines.extend(f"if {passed} inc" for passed in range(value))
-        if index + 1 < size:
-            lines.append(f"if {value} right")
-
-    # A read overwrites the cell it lands on, so its guard is every value that
-    # cell's class admits.  The first step off it is one line, not two: the
-    # byte just read says which branch is running.  The read for level ``i``
-    # sits at ``size - 1 - i`` mod ``2**(n-i)`` -- exactly, for level 0.
+    out = _Lines()
+    # Phase 1: lay out the strip cells the selection walk will cross.
+    _emit_strip_cells(out, strip, size)
+    # Phase 2: read each input and walk its weight on a zero.  A read
+    # overwrites the cell it lands on, so its guard is every value that
+    # cell's class admits; the first step off it is one line, not two,
+    # because the byte just read says which branch is running.  The read
+    # for level ``i`` sits at ``size - 1 - i`` mod ``2**(n-i)`` --
+    # exactly, for level 0.
     for i in range(n):
-        far, after = f"far_{i}", f"after_{i}"
-        # Every higher bit moves the pointer a multiple of the smallest
-        # higher weight, so the read cell's class is known modulo it.
-        known = next((w for w in reversed(weights[:i]) if w), None)
-        guard(size - 1 - i, known, "input")
-        if not weights[i]:
-            lines.append(f"if {_ASCII_ZERO} left")
-            lines.append(f"if {_ASCII_ONE} left")
-            continue
-        lines.append(f"if {_ASCII_ZERO} goto @{far}")
-        lines.append(f"if {_ASCII_ONE} left")
-        guard(size - 2 - i, known, f"goto @{after}")
-        mark(far)
-        lines.append(f"if {_ASCII_ZERO} left")
-        if i in strip.levels:
-            _emit_loop(lines, strip, i, size)
-        else:
-            for k in range(weights[i]):
-                guard(size - 2 - i - k, known, "left")
-        mark(after)
-
-    # The walk ends on the selected cell, whose value is its bit in the low
-    # place -- every marker value is even -- and the climbs converge, so
-    # neither cares which class the cell came from.
-    alphabet = strip.alphabet[0] | strip.alphabet[1]
-    for value in sorted(v for v in alphabet if v % 2):
-        lines.append(f"if {value} goto @one_out")
-    for value in range(_ASCII_ZERO):
-        lines.append(f"if {value} inc")
-    lines.append(f"if {_ASCII_ZERO} output")
-    lines.append(f"if {_ASCII_ZERO} goto @done")
-    mark("one_out")
-    for value in range(1, _ASCII_ONE):
-        lines.append(f"if {value} inc")
-    lines.append(f"if {_ASCII_ONE} output")
-    mark("done")
-    lines.append("")
-    return _resolve(lines)
+        _emit_linear_read(out, strip, weights, size, i)
+    # Phase 3: print the selected cell the walk ends on.
+    _emit_linear_output(out, strip)
+    return _resolve(out.lines)
 
 
 def _emit_loop(lines: list[str], strip: _Strip, level: int, size: int) -> None:
@@ -542,4 +598,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="each line is one instruction and goto targets are line numbers",
+    proof_workspace=(workspace, True, (3, 6)),
 )

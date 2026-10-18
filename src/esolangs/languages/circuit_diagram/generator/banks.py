@@ -39,6 +39,24 @@ class _BankLayout(_RoutingLayout):
     ) -> None:
         """Copy into fresh rows below prior blocks, excluding external rails."""
         height, width = model.bounds()
+        buckets = self._copy_points(model, x, y, owner, omitted)
+        self._index_points(x, y, height, width, *buckets)
+        self._copy_runs(model, x, y, owner)
+
+    def _copy_points(
+        self,
+        model: _Layout,
+        x: int,
+        y: int,
+        owner: Callable[[int], int],
+        omitted: set[tuple[int, int]],
+    ) -> tuple[
+        dict[int, list[int]],
+        dict[int, list[int]],
+        dict[int, list[tuple[int, int]]],
+        dict[int, list[tuple[int, int]]],
+    ]:
+        """Copy a body's glyphs and junctions, bucketed by source coordinate."""
         glyph_x: dict[int, list[int]] = {}
         glyph_y: dict[int, list[int]] = {}
         junction_x: dict[int, list[tuple[int, int]]] = {}
@@ -63,6 +81,20 @@ class _BankLayout(_RoutingLayout):
             self.junctions[point] = signal
             junction_x.setdefault(a, []).append((b, signal))
             junction_y.setdefault(b, []).append((a, signal))
+        return glyph_x, glyph_y, junction_x, junction_y
+
+    def _index_points(
+        self,
+        x: int,
+        y: int,
+        height: int,
+        width: int,
+        glyph_x: dict[int, list[int]],
+        glyph_y: dict[int, list[int]],
+        junction_x: dict[int, list[tuple[int, int]]],
+        junction_y: dict[int, list[tuple[int, int]]],
+    ) -> None:
+        """Fold copied points into the row and column indexes, in order."""
         for a in range(width):
             for b in glyph_x.get(a, ()):
                 self._glyph_rows.setdefault(y + b, []).append(x + a)
@@ -73,6 +105,11 @@ class _BankLayout(_RoutingLayout):
                 self._glyph_cols.setdefault(x + a, []).append(y + b)
             for a, signal in junction_y.get(b, ()):
                 self._junction_cols.setdefault(x + a, []).append((y + b, signal))
+
+    def _copy_runs(
+        self, model: _Layout, x: int, y: int, owner: Callable[[int], int]
+    ) -> None:
+        """Copy a body's horizontal and vertical wire runs, translated."""
         for row, runs in model.horizontal.items():
             if y + row in self.horizontal:
                 raise AssertionError("bank rows must be fresh")
@@ -180,6 +217,15 @@ class _BankAssembler:
     def assemble(self) -> _Layout:
         """Build the bank layout: rails, bodies, feeds, then the output OR."""
         self._emit_input_rails()
+        for group, models in self._assembly_groups():
+            self._assemble_group(group, models)
+        self._route_feeds()
+        if len(self.parts) > 1:
+            return self._fold_online_returns()
+        return self._fold_term_results()
+
+    def _assembly_groups(self) -> list[tuple[int, list[tuple[_Layout, list[int]]]]]:
+        """Return the part groups in assembly order, shared suffix first."""
         groups = list(enumerate(self.parts))
         if self.shared_suffix is not None:
             groups.insert(
@@ -189,12 +235,7 @@ class _BankAssembler:
                     [(self.shared_suffix[0], list(range(self.prefix_inputs, self.n)))],
                 ),
             )
-        for group, models in groups:
-            self._assemble_group(group, models)
-        self._route_feeds()
-        if len(self.parts) > 1:
-            return self._fold_online_returns()
-        return self._fold_term_results()
+        return groups
 
     def _emit_input_rails(self) -> None:
         """Run the n input ports down the left edge and record their points."""
@@ -315,28 +356,31 @@ class _BankAssembler:
         source, signal = output
         if len(self.parts) > 1:
             self.layout.route(source, (self.temporary, source[1]), signal)
-            current = (self.temporary, source[1]), signal
-            depth = 0
-            while (pending := self.carry[depth]) is not None:
-                current = self.join_carry(pending, current)
-                self.carry[depth] = None
-                depth += 1
-            point, signal = current
-            if self.left_returns:
-                # Four rows clear the producing gate's lower input port.
-                landing = point[0], point[1] + 4
-                self.layout.route(point, landing, signal, "down")
-                slot = 2 * depth + 1, landing[1]
-                self.layout.route(landing, slot, signal, "across")
-            else:
-                slot = self.right + 22 + 2 * depth, point[1]
-                self.layout.route(point, slot, signal)
-            self.carry[depth] = slot, signal
+            self._stash_carry(((self.temporary, source[1]), signal))
         else:
             column = max(self.right + 22 + 2 * group, source[0])
             if source != (column, source[1]):
                 self.layout.route(source, (column, source[1]), signal)
             self.results.append(((column, source[1]), signal))
+
+    def _stash_carry(self, current: _Output) -> None:
+        """Fold ``current`` into the carry tree and park it in a free slot."""
+        depth = 0
+        while (pending := self.carry[depth]) is not None:
+            current = self.join_carry(pending, current)
+            self.carry[depth] = None
+            depth += 1
+        point, signal = current
+        if self.left_returns:
+            # Four rows clear the producing gate's lower input port.
+            landing = point[0], point[1] + 4
+            self.layout.route(point, landing, signal, "down")
+            slot = 2 * depth + 1, landing[1]
+            self.layout.route(landing, slot, signal, "across")
+        else:
+            slot = self.right + 22 + 2 * depth, point[1]
+            self.layout.route(point, slot, signal)
+        self.carry[depth] = slot, signal
 
     def _route_feeds(self) -> None:
         """Drop each input rail down to the body rows that read it."""
@@ -359,29 +403,9 @@ class _BankAssembler:
         return self.layout
 
     def _fold_term_results(self) -> _Layout:
-        """OR the queued term results pairwise and emit the output glyphs."""
+        """Emit the output glyphs for the one queued term result."""
         results = list(self.results)
-        # Each term arrives once; OR depth is bounded by the prefix arity.
-        row = self.y + 8
-        column = self.right + 22 + 2 * len(self.parts) + 4
-        while len(results) > 1:
-            following: list[tuple[tuple[int, int], int]] = []
-            for i in range(0, len(results), 2):
-                if i + 1 == len(results):
-                    following.append(results[i])
-                    continue
-                value = self.fresh()
-                self.layout.glyph(column, row, "o")
-                self.layout.junction(column + 1, row, value)
-                for j, (source, signal) in enumerate(results[i : i + 2]):
-                    self.layout.route(
-                        source, (column - 1, row - 1 if j == 0 else row + 1), signal
-                    )
-                following.append(((column + 1, row), value))
-                row += 4
-                column += 6
-            results = following
-        [(point, signal)] = results
+        [(point, _signal)] = results
         self.layout.glyph(point[0] + 1, point[1], "-")
         self.layout.glyph(point[0] + 2, point[1], ":")
         return self.layout

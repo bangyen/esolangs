@@ -430,8 +430,6 @@ def _balance(table: str, default: str) -> str:
     n = _validate_truth_table(table)
     flat = len(default.split("\n")[0])
     floor = _floor(table, n)
-    if floor >= flat:
-        return default
     widths = {floor, min(max(_tight_width(table, n), floor), flat - 1)}
     return min((_helix(table, n, w) for w in widths), key=balance_score)
 

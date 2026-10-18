@@ -29,13 +29,13 @@ class TestEvalBoolean:
         return _fill_eval(tpl, bits)
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
-        """A constant table pushes one result and only drains its inputs."""
+        """A constant table pushes one result; its staged inputs never drain."""
         from esolangs.languages import generators
 
         full = generators.eval("10010110")
         folded = generators.eval("11111111")
         assert len(folded) < len(full)
-        assert folded == _X * 3 + "`~;~~;~~;~."
+        assert folded == _X * 3 + "`."
 
     def test_folding_keeps_both_bits_equal_width(self) -> None:
         """Folding shrinks the template, never one instantiation."""

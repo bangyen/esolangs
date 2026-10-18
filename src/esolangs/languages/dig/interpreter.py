@@ -31,7 +31,9 @@ Decisions:
       1, as drawn; zeroing the mole would print ``111...``.
 """
 
+from collections.abc import Callable
 from functools import lru_cache
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -98,7 +100,159 @@ def _write(code: _Grid, row: int, col: int, value: int) -> _Grid:
     return (*code[:row], (*line[:col], value, *line[col + 1 :]), *code[row + 1 :])
 
 
-def _advance(  # noqa: C901
+class _Work(NamedTuple):
+    """What one underground work command may read, and where it sits.
+
+    ``value`` is the caller's read for ``=``/``~``, with ``None`` the empty
+    read.  A handler returns the grid and the mole it leaves behind: the
+    grid is a return because ``;`` rewrites the cell under the mole.
+    """
+
+    code: _Grid
+    row: int
+    col: int
+    char: str
+    size: int
+    mole: int
+    value: int | None
+
+
+#: What a work handler returns: the grid (``;`` may have rewritten it)
+#: and the mole after the command.
+type _WorkResult = tuple[_Grid, int]
+
+
+def _operand(work: _Work) -> int:
+    """Return the adjacent digit the work command uses as its operand."""
+    return _value(work.code, work.row, work.col, work.size)
+
+
+def _work_override(work: _Work) -> _WorkResult:
+    """Apply ``%``: load a space or a newline, keyed by the adjacent digit."""
+    # "Overrides current value with space when 0, and newline when
+    # 1."  The wiki stops there, unlike ``#``, which spells out its third
+    # case -- so the other eight digits are a gap in the spec, and the
+    # choice here is to leave the mole alone.
+    if (n := _operand(work)) == 1:
+        return work.code, 10
+    if n == 0:
+        return work.code, 32
+    return work.code, work.mole
+
+
+def _work_read(work: _Work) -> _WorkResult:
+    """Apply ``=``/``~``: the read the caller took becomes the mole."""
+    return work.code, work.value if work.value is not None else 0
+
+
+def _work_printed(work: _Work) -> _WorkResult:
+    """Apply ``:``: the shell already printed the mole, so clear it."""
+    return work.code, 0
+
+
+def _work_add(work: _Work) -> _WorkResult:
+    """Apply ``+``: add the adjacent digit to the mole."""
+    return work.code, work.mole + _operand(work)
+
+
+def _work_subtract(work: _Work) -> _WorkResult:
+    """Apply ``-``: subtract the adjacent digit from the mole."""
+    return work.code, work.mole - _operand(work)
+
+
+def _work_multiply(work: _Work) -> _WorkResult:
+    """Apply ``*``: multiply the mole by the adjacent digit."""
+    return work.code, work.mole * _operand(work)
+
+
+def _work_divide(work: _Work) -> _WorkResult:
+    """Apply ``/``: divide the mole by the adjacent digit, refusing zero."""
+    if (n := _operand(work)) == 0:
+        raise HaltError(
+            f"division by zero at row {work.row}, column {work.col}",
+            hint="ensure the divisor is nonzero before dividing",
+        )
+    return work.code, work.mole // n
+
+
+def _work_store(work: _Work) -> _WorkResult:
+    """Apply ``;``: copy the mole into the cell under it, and keep it."""
+    return _write(work.code, work.row, work.col, work.mole), work.mole
+
+
+#: The underground work commands, by cell.  Digits and letters are
+#: ranges rather than single cells, so :func:`_work_command` handles
+#: those two after consulting this table, plus any other cell, which is
+#: scenery that merely spends the armed counter.
+_WORK_HANDLERS: dict[str, Callable[[_Work], _WorkResult]] = {
+    "%": _work_override,
+    ":": _work_printed,
+    "+": _work_add,
+    "-": _work_subtract,
+    "*": _work_multiply,
+    "/": _work_divide,
+    ";": _work_store,
+    **dict.fromkeys("=~", _work_read),
+}
+
+
+def _work_command(work: _Work) -> _WorkResult:
+    """Execute the underground work command under the mole."""
+    handler = _WORK_HANDLERS.get(work.char)
+    if handler is not None:
+        return handler(work)
+    if work.char.isdigit():
+        return work.code, int(work.char)
+    if work.char.isalpha() or work.char in ".,!?":
+        return work.code, ord(work.char)
+    return work.code, work.mole
+
+
+def _steer(code: _Grid, row: int, col: int, size: int, move: int) -> int:
+    """Apply ``#``: rotate the heading by the adjacent digit."""
+    # The adjacent digit steers, and the wiki spells out all three
+    # cases: "Rotates Mole to left when value beside it is 0, and right
+    # when 1.  When it's neither of those, keep straight."  So the
+    # third arm is specified behaviour, not a fall-through.
+    if (n := _value(code, row, col, size)) == 1:
+        move += 1
+    elif n == 0:
+        move -= 1
+    # The modulo is required, not defensive: a grid that keeps
+    # turning drives the heading past the ends of _DIRECT.
+    return move % 4
+
+
+def _dig(code: _Grid, row: int, col: int, size: int) -> int:
+    """Apply ``$``: arm the underground counter from the adjacent digit."""
+    num = _value(code, row, col, size)
+    if num < 0:
+        raise HaltError(f"negative digging distance at row {row}, column {col}")
+    return num
+
+
+def _move_on(
+    code: _Grid,
+    row: int,
+    col: int,
+    move: int,
+    mole: int,
+    num: int,
+    size: int,
+    *,
+    done: bool,
+) -> _State:
+    """Return the state with the mole moved one cell along its heading."""
+    row += _DIRECT[move][0]
+    col += _DIRECT[move][1]
+
+    # Walking off the grid stops the program, without error.
+    if row < 0 or row >= len(code) or col < 0 or col >= size:
+        done = True
+    return (code, row, col, move, mole, num, done)
+
+
+def _advance(
     state: _State,
     size: int,
     value: int | None = None,
@@ -120,67 +274,18 @@ def _advance(  # noqa: C901
             mole = char
             num -= 1
     elif num:
-        if char == "%":
-            # "Overrides current value with space when 0, and newline when
-            # 1."  The wiki stops there, unlike ``#`` below, which spells
-            # out its third case -- so the other eight digits are a gap in
-            # the spec, and the choice here is to leave the mole alone.
-            if (n := _value(code, row, col, size)) == 1:
-                mole = 10
-            elif n == 0:
-                mole = 32
-        elif char in "=~":
-            mole = value if value is not None else 0
-        elif char == ":":
-            mole = 0  # the print itself already happened in the shell
-        elif char == "+":
-            mole += _value(code, row, col, size)
-        elif char == "-":
-            mole -= _value(code, row, col, size)
-        elif char == "*":
-            mole *= _value(code, row, col, size)
-        elif char == "/":
-            if (n := _value(code, row, col, size)) == 0:
-                raise HaltError(
-                    f"division by zero at row {row}, column {col}",
-                    hint="ensure the divisor is nonzero before dividing",
-                )
-            mole //= n
-        elif char == ";":
-            code = _write(code, row, col, mole)
-        elif char.isdigit():
-            mole = int(char)
-        elif char.isalpha() or char in ".,!?":
-            mole = ord(char)
+        code, mole = _work_command(_Work(code, row, col, char, size, mole, value))
         num -= 1
     elif char in "^>'<":
         move = "^>'<".find(char)
     elif char == "#":
-        # The adjacent digit steers, and the wiki spells out all three
-        # cases: "Rotates Mole to left when value beside it is 0, and right
-        # when 1.  When it's neither of those, keep straight."  So the
-        # third arm is specified behaviour, not a fall-through.
-        if (n := _value(code, row, col, size)) == 1:
-            move += 1
-        elif n == 0:
-            move -= 1
-        # The modulo is required, not defensive: a grid that keeps
-        # turning drives the heading past the ends of _DIRECT.
-        move %= 4
+        move = _steer(code, row, col, size, move)
     elif char == "$":
-        num = _value(code, row, col, size)
-        if num < 0:
-            raise HaltError(f"negative digging distance at row {row}, column {col}")
+        num = _dig(code, row, col, size)
     elif char == "@":
         return (code, row, col, move, mole, num, True)
 
-    row += _DIRECT[move][0]
-    col += _DIRECT[move][1]
-
-    # Walking off the grid stops the program, without error.
-    if row < 0 or row >= len(code) or col < 0 or col >= size:
-        done = True
-    return (code, row, col, move, mole, num, done)
+    return _move_on(code, row, col, move, mole, num, size, done=done)
 
 
 class _Machine:

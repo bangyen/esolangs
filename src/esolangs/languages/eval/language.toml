@@ -1,0 +1,29 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 3
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "fixed reversed stack order selects the indexed row"
+scaling = "linear: T literal plus halving `;` runs under T"
+execution = "linear: worst 2T + 13n + 1 commands: one per program character, then the final frame pop"
+workspace = "linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a stack"
+
+[generator_sizes]
+"00000001" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
+"00001100" = { commands = 40, commands_by_row = { "0" = 36, "1" = 36, "2" = 38, "3" = 38, "4" = 38, "5" = 38, "6" = 40, "7" = 40 }, source_units = 39 }
+"00110110" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
+"0110" = { commands = 35, commands_by_row = { "0" = 31, "1" = 33, "2" = 33, "3" = 35 }, source_units = 34 }
+"01101001" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
+"0110100110010110" = { commands = 85, commands_by_row = { "0" = 77, "1" = 79, "2" = 79, "3" = 81, "4" = 79, "5" = 81, "6" = 81, "7" = 83, "8" = 79, "9" = 81, "10" = 81, "11" = 83, "12" = 81, "13" = 83, "14" = 83, "15" = 85 }, source_units = 84 }
+"1101001101101101" = { commands = 85, commands_by_row = { "0" = 77, "1" = 79, "2" = 79, "3" = 81, "4" = 79, "5" = 81, "6" = 81, "7" = 83, "8" = 79, "9" = 81, "10" = 81, "11" = 83, "12" = 81, "13" = 83, "14" = 83, "15" = 85 }, source_units = 84 }
+"11111110" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
+
+[catalogue]
+sharing_exempt = "one literal table halved by position"
+folding_constant_local = "_eval_ordered"  # one projected table entry
+
+[schemes]
+folds_without_tree = true

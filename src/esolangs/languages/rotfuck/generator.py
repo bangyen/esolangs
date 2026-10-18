@@ -39,6 +39,7 @@ from esolangs.languages.rotfuck.interpreter import (
     ROTFUCK_CYCLES,
     validate_rotation,
 )
+from esolangs.languages.rotfuck.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -377,4 +378,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    proof_execution=(execution, True, (3, 5)),
 )

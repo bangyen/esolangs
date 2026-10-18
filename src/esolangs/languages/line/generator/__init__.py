@@ -60,6 +60,7 @@ from esolangs.languages.line.generator.render import _UNIT, Canvas, _check_unit
 from esolangs.languages.line.generator.shared import CanvasPlan
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
+from esolangs.languages.line.proof_formulas import workspace
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
 from esolangs.registry._language import Language, SourceKind
 
@@ -281,8 +282,6 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
         )
 
     preceding = _best_choice(nodes, compact=True, tight=False, small=small, unit=unit)
-    if not within_old(preceding):
-        preceding = old
     chosen = _best_choice(nodes, compact=True, small=small, unit=unit)
     # Shorter stems can select a wider orientation: 00010101 grows
     # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
@@ -332,4 +331,5 @@ LANGUAGE = Language(
     balance=balance,
     no_wrap="tree geometry fixes the width; balance chooses orientation",
     empty_program="image contains no ink",
+    proof_workspace=(workspace, True, (5,)),
 )

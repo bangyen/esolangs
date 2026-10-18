@@ -6,7 +6,7 @@ from math import gcd, lcm
 from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.languages.slow_acv_mammalian._sums import (
     _aim,
-    _crossing_head,
+    _crossing_pair,
     _leaf,
     _read_seeds,
     _seeds_onto,
@@ -71,14 +71,13 @@ class _Chain:
         head = (value - rest) % self.io_modulus
         tokens = []
         if head >= self.modulus:
-            first = _crossing_head(rest)
+            first, head = _crossing_pair(rest, value)
             tokens += self.set_head(state, first)
             state.acc = self.head(state) + rest
             tokens += ["DIGEST"]
             tokens += self.set_head(state, first + 1)
             state.acc ^= self.head(state) + rest
             tokens += ["DIGEST"]
-            head = ((value ^ 255) - rest) % 256
         tokens += self.set_head(state, head)
         state.acc ^= self.head(state) + rest
         return [*tokens, "DIGEST", *self.clear(state)]
@@ -195,12 +194,10 @@ class _Chain:
         )
         return prefix, arm
 
-    def level(
-        self, state: _State, weight: int, pos: int, pool: int | None
-    ) -> tuple[list[str], _State]:
-        prefix_size, arm_size = self.regions(state, weight, pos, pool)
-        landing = pos + prefix_size
-        cont = landing + arm_size
+    def read_node(
+        self, state: _State, landing: int
+    ) -> tuple[list[str], _State, _State]:
+        """Emit one read node up to its branch split: tokens, 0-exit, 1-exit."""
         tokens = self.clear(state)
         tokens += self.raise_to(state, landing + 15)
         start = state.rest[0]
@@ -217,9 +214,18 @@ class _Chain:
         zero, one = state.clone(), state.clone()
         zero.acc, one.acc = first, first + 1
         one.rest[0] += 1
-        jump, hop = self.jump(zero, cont)
-        tokens += jump
+        return tokens, zero, one
 
+    def bank_arm(
+        self,
+        one: _State,
+        zero: _State,
+        weight: int,
+        pool: int | None,
+        cont: int,
+        hop: int,
+    ) -> list[str]:
+        """Emit the 1-branch: bank ``weight``, then close the jump to ``cont``."""
         arm = self.clear(one)
         if pool is None:
             arm += self.route(one, self.weight, short=True)
@@ -245,6 +251,18 @@ class _Chain:
             expected.rest[pool] -= weight
         if one != expected:  # pragma: no cover - exact merge invariant
             raise AssertionError("branch states did not merge")
+        return arm
+
+    def level(
+        self, state: _State, weight: int, pos: int, pool: int | None
+    ) -> tuple[list[str], _State]:
+        prefix_size, arm_size = self.regions(state, weight, pos, pool)
+        landing = pos + prefix_size
+        cont = landing + arm_size
+        tokens, zero, one = self.read_node(state, landing)
+        jump, hop = self.jump(zero, cont)
+        tokens += jump
+        arm = self.bank_arm(one, zero, weight, pool, cont, hop)
         if len(tokens) > prefix_size or len(arm) > arm_size:  # pragma: no cover
             raise AssertionError("chain node exceeds its reserved regions")
         tokens += ["SEED"] * (prefix_size - len(tokens))
@@ -301,6 +319,24 @@ class _Chain:
                 tokens += self.clear(state)
         return tokens + self.route(state, 0, short=True)
 
+    def plant_tables(
+        self, state: _State, plan: list[tuple[int, int | None]], base: int
+    ) -> list[str]:
+        """Plant the print arrays and pools, then raise the weight array to ``base``."""
+        tokens: list[str] = []
+        for digit, array in enumerate(self.prints):
+            tokens += self.route(state, array, short=True)
+            tokens += self.append(state, 48 + digit)
+            tokens += self.clear(state)
+            tokens += self.route(state, 0, short=True)
+        for weight, pool in plan:
+            if pool is not None:
+                tokens += self.plant_pool(state, weight, pool)
+        tokens += self.route(state, self.weight, short=True)
+        tokens += self.raise_to(state, base)
+        tokens += self.route(state, 0, short=True)
+        return tokens
+
     def emit(
         self, plan: list[tuple[int, int | None]], table: int
     ) -> tuple[list[str], int]:
@@ -318,17 +354,7 @@ class _Chain:
         if len(tokens) > base:  # pragma: no cover - reserve bounds the jump
             raise AssertionError(f"the table jump overran its {base} tokens")
         tokens += ["SEED"] * (base + table - len(tokens))
-        for digit, array in enumerate(self.prints):
-            tokens += self.route(state, array, short=True)
-            tokens += self.append(state, 48 + digit)
-            tokens += self.clear(state)
-            tokens += self.route(state, 0, short=True)
-        for weight, pool in plan:
-            if pool is not None:
-                tokens += self.plant_pool(state, weight, pool)
-        tokens += self.route(state, self.weight, short=True)
-        tokens += self.raise_to(state, base)
-        tokens += self.route(state, 0, short=True)
+        tokens += self.plant_tables(state, plan, base)
         for weight, pool in plan:
             level, state = self.level(state, weight, len(tokens), pool)
             tokens += level

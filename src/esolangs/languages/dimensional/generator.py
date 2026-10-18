@@ -35,6 +35,7 @@ from esolangs.generation.wrap import (
     _dimensional,
     wrap_program,
 )
+from esolangs.languages.dimensional.proof_formulas import workspace
 from esolangs.registry._language import Language, Shape
 
 __all__ = ["dimensional"]
@@ -184,4 +185,5 @@ LANGUAGE = Language(
     shape=Shape.LOOKUP,
     wrap=_dimensional,
     balance=_balance,
+    proof_workspace=(workspace, True, (3, 4)),
 )

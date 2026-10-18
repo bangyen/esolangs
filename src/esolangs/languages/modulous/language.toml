@@ -1,0 +1,31 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 6
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard"
+scaling = "linear: T-character literal, one read block an input"
+execution = "linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded"
+workspace = "linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack"
+
+[generator_sizes]
+"00000001" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
+"00001100" = { commands = 33, commands_by_row = { "0" = 14, "1" = 14, "2" = 21, "3" = 21, "4" = 26, "5" = 26, "6" = 33, "7" = 33 }, source_units = 194 }
+"00110110" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
+"0110" = { commands = 31, commands_by_row = { "0" = 12, "1" = 19, "2" = 24, "3" = 31 }, source_units = 180 }
+"01101001" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
+"0110100110010110" = { commands = 101, commands_by_row = { "0" = 18, "1" = 25, "2" = 30, "3" = 37, "4" = 40, "5" = 47, "6" = 52, "7" = 59, "8" = 60, "9" = 67, "10" = 72, "11" = 79, "12" = 82, "13" = 89, "14" = 94, "15" = 101 }, source_units = 290 }
+"1101001101101101" = { commands = 101, commands_by_row = { "0" = 18, "1" = 25, "2" = 30, "3" = 37, "4" = 40, "5" = 47, "6" = 52, "7" = 59, "8" = 60, "9" = 67, "10" = 72, "11" = 79, "12" = 82, "13" = 89, "14" = 94, "15" = 101 }, source_units = 290 }
+"11111110" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
+
+[catalogue]
+folding_constant_local = "input_weights"  # one projected table entry
+
+[formula_arities]
+workspace = [3, 6]
+
+[schemes]
+folds_without_tree = true

@@ -1,0 +1,28 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 86
+
+[proof_status]
+labels = ["parameterized lookup"]
+qualification = "binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix"
+scaling = "linear: T fixed-size sweeps and 2T table characters"
+execution = "linear: worst 6T + n + 19 steps: rule parses, failed searches and substitutions"
+workspace = "linear: worst 8L + 56 + 8max(0,T-15) bits: the program string, rewritten in place"
+
+[generator_sizes]
+"00000001" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
+"00001100" = { commands = 50, commands_by_row = { "0" = 47, "1" = 47, "2" = 48, "3" = 48, "4" = 49, "5" = 49, "6" = 50, "7" = 50 }, source_units = 147 }
+"00110110" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
+"0110" = { commands = 45, commands_by_row = { "0" = 42, "1" = 43, "2" = 44, "3" = 45 }, source_units = 135 }
+"01101001" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
+"0110100110010110" = { commands = 119, commands_by_row = { "0" = 104, "1" = 105, "2" = 106, "3" = 107, "4" = 108, "5" = 109, "6" = 110, "7" = 111, "8" = 112, "9" = 113, "10" = 114, "11" = 115, "12" = 116, "13" = 117, "14" = 118, "15" = 119 }, source_units = 377 }
+"1101001101101101" = { commands = 119, commands_by_row = { "0" = 104, "1" = 105, "2" = 106, "3" = 107, "4" = 108, "5" = 109, "6" = 110, "7" = 111, "8" = 112, "9" = 113, "10" = 114, "11" = 115, "12" = 116, "13" = 117, "14" = 118, "15" = 119 }, source_units = 377 }
+"11111110" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
+
+[catalogue]
+folding_constant_local = "_CONSTANT"  # delete inputs and print the literal answer
+
+[schemes]
+folds_without_tree = true

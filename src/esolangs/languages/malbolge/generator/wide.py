@@ -20,8 +20,8 @@ from .cascade import (
     _reserved,
     _stubs,
     _table_char,
-    _Walker,
 )
+from .emitter import _Walker
 from .isa import _OPS, _WORDS, _apply, _g, _program, _render
 
 # ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ def _wide_code(
         _apply(state, 48 + x, select_ops)
         values.append(tuple(state[:2]))
 
-    dec = _Walker(_NEXT + 1, 0, frozen)
+    dec = _Walker(_NEXT + 1, 0, frozen, ceiling=_ENTRY)
     _decoder_entry(dec, _NEXT + 1)
     dec.set_d(b2)
     dec.raw("i")
@@ -117,7 +117,9 @@ def _wide_code(
     walkers = [dict(main.code), dict(dec.code)]
     for lvl, preload in ((0, ("a1",)), (1, ("a2", "a2"))):
         for x in (0, 1):
-            path = _Walker(values[x][lvl] + 1, (b2 if lvl else b) + 1, frozen)
+            path = _Walker(
+                values[x][lvl] + 1, (b2 if lvl else b) + 1, frozen, ceiling=_ENTRY
+            )
             spec = _W_PATHS[lvl][x]
             _ops(path, cell, spec.ops)
             for name in preload:

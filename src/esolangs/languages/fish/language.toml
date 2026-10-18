@@ -1,0 +1,28 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 91
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "the inputs form a Horner row index and `g` reads that column from the table row"
+scaling = "linear: T table cells, one g at the index"
+execution = "poly n: worst 9n + 9 commands, n Horner reads and one `g`"
+workspace = "poly n: worst n + 13 + bl(9n+8) + bl(n) bits: one stack, x"
+
+[generator_sizes]
+"00000001" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 45 }
+"00001100" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 29, "5" = 29, "6" = 29, "7" = 29 }, source_units = 34 }
+"00110110" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 45 }
+"0110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27 }, source_units = 32 }
+"01101001" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 45 }
+"0110100110010110" = { commands = 45, commands_by_row = { "0" = 45, "1" = 45, "2" = 45, "3" = 45, "4" = 45, "5" = 45, "6" = 45, "7" = 45, "8" = 45, "9" = 45, "10" = 45, "11" = 45, "12" = 45, "13" = 45, "14" = 45, "15" = 45 }, source_units = 62 }
+"1101001101101101" = { commands = 45, commands_by_row = { "0" = 45, "1" = 45, "2" = 45, "3" = 45, "4" = 45, "5" = 45, "6" = 45, "7" = 45, "8" = 45, "9" = 45, "10" = 45, "11" = 45, "12" = 45, "13" = 45, "14" = 45, "15" = 45 }, source_units = 62 }
+"11111110" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 45 }
+
+[catalogue]
+folding_constant_local = "input_weights"  # one projected grid cell
+
+[schemes]
+folds_without_tree = true

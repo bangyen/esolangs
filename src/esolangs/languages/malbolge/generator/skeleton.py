@@ -5,7 +5,8 @@ from __future__ import annotations
 from functools import cache
 from typing import NamedTuple
 
-from .isa import _OPS, _addr_of, _apply, _first_free, _g
+from .emitter import _Walker
+from .isa import _OPS, _addr_of, _apply, _g
 
 #: The mixer's five cells and the operation schedule applied once per input
 #: bit.  Cells are ``(kind, index)`` pairs (0 = ``p``, 1 = ``*``); the schedule
@@ -101,59 +102,43 @@ def _layout() -> _Layout:
     return _Layout(x, cells, vc, operands, {*cells, vc, operand_cell, *operands})
 
 
-class _Skeleton:
-    """Code emitter tracking ``d`` below the entry ``j`` at ``s``."""
+def _entry(layout: _Layout) -> int:
+    """Return the entry address ``S`` the skeleton's walker is bounded by.
 
-    def __init__(self, layout: _Layout) -> None:
-        # The entry ``j`` reads its own cell, so its address fixes ``X``: the
-        # character at ``S`` must be ``X - 2`` and decipher to ``j``.  ``S`` is
-        # set past every navigation cell so the initial walk sets their ``g``
-        # values before the mixer reads them.
-        self.s = 222 + (42 - layout.x - 222) % 94
-        self.code: dict[int, str] = dict.fromkeys(range(self.s), "o")
-        self.code[self.s] = "j"
-        self.c = self.s + 1
-        self.d = layout.x - 1
-        self.modified = layout.modified
-
-    def set_d(self, target: int) -> None:
-        """Emit ``o``s and a ``j`` so that ``d`` becomes ``target``."""
-        if self.d == target:
-            return
-        address = _first_free(target - 1, max(self.d, 34), self.s, self.modified)
-        while self.d < address:
-            self.code[self.c] = "o"
-            self.c += 1
-            self.d += 1
-        self.code[self.c] = "j"
-        self.c += 1
-        self.d = target
-
-    def emit(self, op: str, cell: int | None = None) -> None:
-        if cell is not None:
-            self.set_d(cell)
-        self.code[self.c] = op
-        self.c += 1
-        self.d += 1  # every Malbolge instruction increments ``d``
+    The entry ``j`` reads its own cell, so its address fixes ``X``: the
+    character at ``S`` must be ``X - 2`` and decipher to ``j``.  ``S`` is set
+    past every navigation cell so the initial walk sets their ``g`` values
+    before the mixer reads them.
+    """
+    return 222 + (42 - layout.x - 222) % 94
 
 
 def _skeleton_code(n: int, layout: _Layout) -> dict[int, str]:
     """Return the code: ``n`` mixer rounds, the preload, then the closing ``i``."""
-    sk = _Skeleton(layout)
+    entry = _entry(layout)
+    code: dict[int, str] = dict.fromkeys(range(entry), "o")
+    code[entry] = "j"
+    sk = _Walker(
+        entry + 1,
+        layout.x - 1,
+        layout.modified,
+        ceiling=entry,
+        floor=34,
+        code=code,
+    )
     for i in range(n):
-        sk.emit("/")
+        sk.raw("/")
         schedule = _SCHEDULE if i < n - 1 else _SCHEDULE + _POST
         for kind, index in schedule:
-            sk.emit(_OPS[kind], layout.cells[index])
+            sk.op(_OPS[kind], layout.cells[index])
         if i < n - 1:
             sk.set_d(layout.x - 1)
-    sk.emit("*", layout.value_cell)
+    sk.op("*", layout.value_cell)
     for _ in range(_PRELOAD_ROTATIONS - 1):
-        sk.set_d(layout.value_cell)
-        sk.emit("*", layout.value_cell)
+        sk.op("*", layout.value_cell)
     for cell in layout.operands:
         sk.set_d(cell)
-        sk.emit("p")
+        sk.raw("p")
     sk.set_d(layout.x)
     sk.code[sk.c] = "i"
     return sk.code

@@ -65,6 +65,7 @@ class TestCircuitDiagramShareScope:
         assert _area(_large_pool_layout(table)) < _area(_h_term_layout(table))
         _execute(table, code)
 
+    @pytest.mark.medium
     def test_shared_fold_growth_exceeds_the_linear_contract(self) -> None:
         """Same-parity size difference n=8->10 against the x4.4 contract."""
         shared = _area(_circuit_diagram_model(_dense(10), None)) / _area(

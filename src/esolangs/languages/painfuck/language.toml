@@ -1,0 +1,24 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 3
+bf_derivative = true
+bf_derivative_predates = true
+
+[proof_status]
+labels = ["tree"]
+qualification = "decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell"
+scaling = "linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1)"
+execution = "poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path"
+workspace = "poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n"
+
+[generator_sizes]
+"00000001" = { commands = 54, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 38, "5" = 38, "6" = 46, "7" = 54 }, source_units = 55 }
+"00001100" = { commands = 42, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 46, "5" = 46, "6" = 42, "7" = 42 }, source_units = 52 }
+"00110110" = { commands = 58, commands_by_row = { "0" = 36, "1" = 36, "2" = 46, "3" = 46, "4" = 42, "5" = 50, "6" = 51, "7" = 58 }, source_units = 94 }
+"0110" = { commands = 37, commands_by_row = { "0" = 22, "1" = 30, "2" = 30, "3" = 37 }, source_units = 48 }
+"01101001" = { commands = 54, commands_by_row = { "0" = 40, "1" = 48, "2" = 49, "3" = 56, "4" = 47, "5" = 54, "6" = 46, "7" = 54 }, source_units = 114 }
+"0110100110010110" = { commands = 84, commands_by_row = { "0" = 63, "1" = 71, "2" = 72, "3" = 79, "4" = 75, "5" = 82, "6" = 74, "7" = 82, "8" = 76, "9" = 83, "10" = 75, "11" = 83, "12" = 68, "13" = 76, "14" = 77, "15" = 84 }, source_units = 178 }
+"1101001101101101" = { commands = 79, commands_by_row = { "0" = 66, "1" = 66, "2" = 66, "3" = 74, "4" = 48, "5" = 48, "6" = 58, "7" = 58, "8" = 59, "9" = 67, "10" = 68, "11" = 75, "12" = 71, "13" = 71, "14" = 71, "15" = 79 }, source_units = 168 }
+"11111110" = { commands = 58, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 46, "5" = 46, "6" = 51, "7" = 58 }, source_units = 76 }

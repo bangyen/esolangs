@@ -38,7 +38,7 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     ``'0'`` or ``'1'``.
 
     Each placeholder stages one equal-width bit on the input stack; ignored
-    inputs are drained.
+    inputs are drained, except a constant's, which no halving step reads.
     """
     n = _validate_truth_table(truth_table)
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))
@@ -57,7 +57,13 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
     used_set = set(used)
     for level in range(n):
         if level not in used_set:
-            out.append("~;~")
+            # A constant's drains are dead weight: no halving step swaps
+            # back to the read stack, so staged inputs sit until ``.``
+            # (5n+2 -> 2n+2, measured n = 2..8).  With an essential input
+            # the drains stay -- dropping them would let a reordered
+            # build win (n = 3, 00001111: 24 vs 27), breaking no-reorder.
+            if used_set:
+                out.append("~;~")
             continue
         remaining //= 2
         out.extend(("~^=~?*", ";" * remaining, "~=~?*"))

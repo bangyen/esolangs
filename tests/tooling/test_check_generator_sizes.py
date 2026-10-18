@@ -1,14 +1,12 @@
 """Tests for the emitted-size and step-count baseline gate."""
 
 import hashlib
-import json
 from typing import Any
 
 import pytest
 
 import esolangs
 from checks.check_generator_sizes import (
-    BASELINE,
     BOUNDARIES,
     SCHEMA,
     TABLES,
@@ -16,6 +14,7 @@ from checks.check_generator_sizes import (
     boundary_tables,
     control_tables,
     differences,
+    recorded_baseline,
 )
 from scripts import benchmark as b
 from tests.support.reference import REFERENCE
@@ -97,10 +96,10 @@ class TestDifferences:
 
 
 class TestCommittedBaseline:
-    """The file in the tree is the corpus this gate claims to cover."""
+    """The fragments in the tree are the corpus this gate claims to cover."""
 
     def test_it_covers_every_language_and_table(self) -> None:
-        recorded = json.loads(BASELINE.read_text(encoding="utf-8"))
+        recorded = recorded_baseline()
         assert recorded["schema"] == SCHEMA
         assert recorded["records"]
         for name, rows in recorded["records"].items():
@@ -109,6 +108,29 @@ class TestCommittedBaseline:
             ), name
             for table, fields in rows.items():
                 assert fields["source_units"] > 0, (name, table)
+
+
+def test_update_does_not_rewrite_an_unchanged_baseline(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """``--update`` on an in-sync baseline reports it instead of rewriting it."""
+    from checks import check_generator_sizes as sizes
+
+    lang = sizes.LANGUAGES[REFERENCE]
+    packages = tmp_path / "packages"
+    (packages / lang.id).mkdir(parents=True)
+    fragment = packages / lang.id / "language.toml"
+    monkeypatch.setattr(sizes.generator_sizes, "PACKAGES", packages)
+    monkeypatch.setattr(sizes, "LANGUAGES", {REFERENCE: lang})
+    monkeypatch.setattr(sizes, "sweep", lambda **_kwargs: [dict(RECORD)])
+    assert sizes.main(["--update"]) == 0
+    assert "wrote the package-fragment baseline" in capsys.readouterr().out
+    before = (fragment.read_bytes(), fragment.stat().st_mtime_ns)
+    assert sizes.main(["--update"]) == 0
+    out = capsys.readouterr().out
+    assert "baseline unchanged: 1 generator measurements already recorded" in out
+    assert "wrote" not in out
+    assert (fragment.read_bytes(), fragment.stat().st_mtime_ns) == before
 
 
 def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:

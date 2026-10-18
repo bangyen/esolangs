@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, replace
 
-from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_head
+from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_pair
 
 
 @dataclass
@@ -27,14 +27,13 @@ class _State:
         if head == 255:
             # The final head is 254-2*value mod 256, hence even and
             # reachable despite the missing head 255.
-            first = _crossing_head(self.rest)
+            first, head = _crossing_pair(self.rest, value)
             tokens += self.seed((first - self.head) % 255)
             self.acc = self.head + self.rest
             tokens += ["DIGEST"]
             tokens += self.seed(1)
             self.acc ^= self.head + self.rest
             tokens += ["DIGEST"]
-            head = ((value ^ 255) - self.rest) % 256
         tokens += self.seed((head - self.head) % 255)
         self.acc ^= self.head + self.rest
         return [*tokens, "DIGEST"]
@@ -68,6 +67,32 @@ class _State:
         return [*tokens, "DIGEST", "LEAPFROG"]
 
 
+def _leaf_tokens(state: _State, digit: str) -> list[str]:
+    """Return one leaf's tokens: load its digit, print it, and jump to a halt."""
+    tokens = state.clear()
+    tokens += state.load(48 + int(digit))
+    # EXCRETE clears acc and leaves a nonzero last cell: the final
+    # LEAPFROG has a negative target and halts on both output digits.
+    return [*tokens, "PRONOUNCE", "EXCRETE", "LEAPFROG"]
+
+
+def _node_header(state: _State, one_pos: int) -> tuple[list[str], _State, _State]:
+    """Emit one read node up to its branch split: tokens, 0-exit, 1-exit."""
+    tokens = state.clear()
+    tokens += state.raise_to(one_pos + 15)
+    tokens += state.seed((-state.head) % 255)
+    start = state.rest
+    first_seeds = _aim(start)
+    first = start + first_seeds
+    tokens += state.seed(first_seeds)
+    tokens += ["DIGEST"]
+    tokens += state.seed(16)
+    tokens += ["DIGEST", "ACCEPT", "DIGEST", "LEAPFROG"]
+    zero = replace(state, acc=first)
+    one = replace(state, rest=start + 1, acc=first + 1)
+    return tokens, zero, one
+
+
 def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
     """Emit a fixed-layout tree for cell modulus 255 and either I/O modulus."""
     leaf_size = 512 if io_modulus == 255 else 1024
@@ -82,27 +107,12 @@ def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
 
     def build(rows: str, depth: int, pos: int, state: _State) -> list[str]:
         if not depth:
-            tokens = state.clear()
-            tokens += state.load(48 + int(rows))
-            tokens += ["PRONOUNCE", "EXCRETE", "LEAPFROG"]
-            # EXCRETE clears acc and leaves a nonzero last cell: the final
-            # LEAPFROG has a negative target and halts on both output digits.
+            tokens = _leaf_tokens(state, rows)
             return tokens + ["SEED"] * (sizes[0] - len(tokens))
 
         one_pos = pos + blocks[depth]
         zero_pos = one_pos + sizes[depth - 1]
-        tokens = state.clear()
-        tokens += state.raise_to(one_pos + 15)
-        tokens += state.seed((-state.head) % 255)
-        start = state.rest
-        first_seeds = _aim(start)
-        first = start + first_seeds
-        tokens += state.seed(first_seeds)
-        tokens += ["DIGEST"]
-        tokens += state.seed(16)
-        tokens += ["DIGEST", "ACCEPT", "DIGEST", "LEAPFROG"]
-        zero = replace(state, acc=first)
-        one = replace(state, rest=start + 1, acc=first + 1)
+        tokens, zero, one = _node_header(state, one_pos)
         tokens += zero.jump(zero_pos)
         if len(tokens) > blocks[depth]:  # pragma: no cover - fixed region bound
             raise AssertionError("decision node exceeds its reserved region")

@@ -1,0 +1,27 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 100
+
+[proof_status]
+labels = ["parameterized tree"]
+qualification = "equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree"
+scaling = "linear: reverse-depth numbering confines long names near the root"
+execution = "linear: at most 2n + 3 + Σ_{0<l<n} min(2^l, 2^(2^(n-l)) - 2) statements, one per named node"
+workspace = "linear: at most 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits, S the Execution bound: one keyed bit per variable"
+
+[generator_sizes]
+"00000001" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 213 }
+"00001100" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 169 }
+"00110110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 301 }
+"0110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5 }, source_units = 197 }
+"01101001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 325 }
+"0110100110010110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11, "8" = 11, "9" = 11, "10" = 11, "11" = 11, "12" = 11, "13" = 11, "14" = 11, "15" = 11 }, source_units = 453 }
+"1101001101101101" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 459 }
+"11111110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 213 }
+
+[catalogue]
+sharing_local = "_intercal_shared"  # named shared diagram variables
+folding_ignored_local = "_diagram"  # equal children replace their selector
+folding_constant_local = "_diagram"  # equal-child reduction to a constant id

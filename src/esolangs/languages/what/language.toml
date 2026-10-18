@@ -1,0 +1,27 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 0
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "Horner's rule reads each bit with `??` and doubles by `*`; the index counts down one `-` a row, so at change point `b` it wraps above `2^k` exactly when the row is below `b`, and `[2^k>` writes the answer slot; past 15 inputs `???` puts the high bits in the index slot's string, and a guard per `2^15`-row block reloads the index"
+scaling = "linear: one `-` a row and one test a change point"
+execution = "linear: worst 6T + 6n + 5 commands: alternating answers, every conditional true"
+workspace = "poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: the 256-slot tape"
+
+[generator_sizes]
+"00000001" = { commands = 41, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 41 }, source_units = 52 }
+"00001100" = { commands = 45, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 41, "5" = 41, "6" = 45, "7" = 45 }, source_units = 63 }
+"00110110" = { commands = 56, commands_by_row = { "0" = 40, "1" = 40, "2" = 44, "3" = 44, "4" = 48, "5" = 52, "6" = 52, "7" = 56 }, source_units = 88 }
+"0110" = { commands = 36, commands_by_row = { "0" = 28, "1" = 32, "2" = 32, "3" = 36 }, source_units = 53 }
+"01101001" = { commands = 61, commands_by_row = { "0" = 41, "1" = 45, "2" = 45, "3" = 49, "4" = 53, "5" = 57, "6" = 57, "7" = 61 }, source_units = 100 }
+"0110100110010110" = { commands = 100, commands_by_row = { "0" = 60, "1" = 64, "2" = 64, "3" = 68, "4" = 72, "5" = 76, "6" = 76, "7" = 80, "8" = 80, "9" = 84, "10" = 84, "11" = 88, "12" = 92, "13" = 96, "14" = 96, "15" = 100 }, source_units = 175 }
+"1101001101101101" = { commands = 100, commands_by_row = { "0" = 60, "1" = 60, "2" = 64, "3" = 68, "4" = 72, "5" = 72, "6" = 76, "7" = 76, "8" = 80, "9" = 84, "10" = 84, "11" = 88, "12" = 92, "13" = 92, "14" = 96, "15" = 100 }, source_units = 175 }
+"11111110" = { commands = 41, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 41 }, source_units = 52 }
+
+[catalogue]
+sharing_exempt = "threshold chain over the Horner index; no subtable is drawn"
+folding_ignored = "the Horner index reads every input; an ignored one still spaces the change points"
+folding_constant = "a constant table has no change point: the 7n + 12 char Horner prefix"

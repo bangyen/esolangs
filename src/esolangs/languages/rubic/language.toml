@@ -1,0 +1,25 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+
+[proof_status]
+labels = ["tree"]
+qualification = "every subtree undoes its `r2` store, so the cube is one of two states and each table expression is checked on both; equal halves read untested and constant subtables fold"
+scaling = "linear: at most 94T characters, subtree_ids folding"
+execution = "poly n: at most 20n + 7 commands: a node runs 20 at most"
+workspace = "poly n: at most (3n+4)·bl(L) + 3n + 175 bits: n+1 loop frames, the cube"
+
+[generator_sizes]
+"00000001" = { commands = 65, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 47, "5" = 47, "6" = 61, "7" = 65 }, source_units = 295 }
+"00001100" = { commands = 51, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 47, "5" = 47, "6" = 51, "7" = 51 }, source_units = 234 }
+"00110110" = { commands = 65, commands_by_row = { "0" = 42, "1" = 42, "2" = 46, "3" = 46, "4" = 58, "5" = 62, "6" = 61, "7" = 65 }, source_units = 436 }
+"0110" = { commands = 46, commands_by_row = { "0" = 37, "1" = 41, "2" = 42, "3" = 46 }, source_units = 253 }
+"01101001" = { commands = 65, commands_by_row = { "0" = 52, "1" = 56, "2" = 57, "3" = 61, "4" = 58, "5" = 62, "6" = 61, "7" = 65 }, source_units = 563 }
+"0110100110010110" = { commands = 85, commands_by_row = { "0" = 67, "1" = 71, "2" = 72, "3" = 76, "4" = 73, "5" = 77, "6" = 76, "7" = 80, "8" = 74, "9" = 78, "10" = 77, "11" = 81, "12" = 76, "13" = 80, "14" = 81, "15" = 85 }, source_units = 1183 }
+"1101001101101101" = { commands = 85, commands_by_row = { "0" = 57, "1" = 57, "2" = 72, "3" = 76, "4" = 62, "5" = 62, "6" = 66, "7" = 66, "8" = 74, "9" = 78, "10" = 77, "11" = 81, "12" = 66, "13" = 66, "14" = 81, "15" = 85 }, source_units = 934 }
+"11111110" = { commands = 65, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 47, "5" = 47, "6" = 61, "7" = 65 }, source_units = 295 }
+
+[catalogue]
+sharing_exempt = "no jump or call: code runs once per place it is written"

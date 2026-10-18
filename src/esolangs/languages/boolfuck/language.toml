@@ -1,0 +1,29 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+# Normalized gates start at nine; both three-rung parity windows need
+# fourteen.
+linearity = 14
+
+[curation]
+backlinks = 76
+bf_derivative = true
+
+[proof_status]
+labels = ["tree"]
+qualification = "each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes; repeated residuals use level flags or normalized AND/XOR bodies, and affine tables stream through one accumulator"
+scaling = "linear: geometric tree walk; affine tables use O(n) characters"
+execution = "poly n: worst 2n^2 + 27n + 8 commands; reads shuttle to scratch"
+workspace = "poly n: at most bl(L-1) + max(12, bl(2n-2)+10) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n) bits"
+evidence = "docs/proofs/boolfuck-gates.md"
+
+[generator_sizes]
+"00000001" = { commands = 107, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 86, "5" = 86, "6" = 101, "7" = 107 }, source_units = 110 }
+"00001100" = { commands = 89, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 93, "5" = 93, "6" = 89, "7" = 89 }, source_units = 98 }
+"00110110" = { commands = 104, commands_by_row = { "0" = 83, "1" = 83, "2" = 93, "3" = 93, "4" = 98, "5" = 104, "6" = 104, "7" = 104 }, source_units = 152 }
+"0110" = { commands = 47, commands_by_row = { "0" = 35, "1" = 41, "2" = 41, "3" = 47 }, source_units = 47 }
+"01101001" = { commands = 64, commands_by_row = { "0" = 46, "1" = 52, "2" = 52, "3" = 58, "4" = 52, "5" = 58, "6" = 58, "7" = 64 }, source_units = 63 }
+"0110100110010110" = { commands = 81, commands_by_row = { "0" = 57, "1" = 63, "2" = 63, "3" = 69, "4" = 63, "5" = 69, "6" = 69, "7" = 75, "8" = 63, "9" = 69, "10" = 69, "11" = 75, "12" = 69, "13" = 75, "14" = 75, "15" = 81 }, source_units = 79 }
+"1101001101101101" = { commands = 146, commands_by_row = { "0" = 133, "1" = 133, "2" = 132, "3" = 140, "4" = 116, "5" = 116, "6" = 128, "7" = 128, "8" = 128, "9" = 136, "10" = 143, "11" = 143, "12" = 139, "13" = 139, "14" = 138, "15" = 146 }, source_units = 234 }
+"11111110" = { commands = 104, commands_by_row = { "0" = 82, "1" = 82, "2" = 82, "3" = 82, "4" = 93, "5" = 93, "6" = 104, "7" = 104 }, source_units = 128 }

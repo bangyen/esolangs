@@ -31,8 +31,7 @@ Decisions:
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
-from functools import partial
+from dataclasses import dataclass, field
 from itertools import pairwise
 
 from esolangs.generation.helpers import (
@@ -45,6 +44,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.back.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -204,18 +204,25 @@ def _back_load(
 
 
 @dataclass
-class _BackDrawState:
-    """Tree-emitter state: the grid under construction and its cursors."""
+class _BackContext:
+    """One build's context: table geometry, its plan, and its draw state.
 
-    grid: _Grid
-    where: dict[_Node, tuple[int, int]]
-    next_row: int
-    vertical: bool
-    shared: set[_Node]
+    A single context is threaded through both phases instead of passing the
+    table, its geometry, and the plan from helper to helper: ``plan`` fills
+    ``shared``, then ``draw`` fills ``grid``/``where`` reading that plan.
+    """
+
+    truth_table: str
     levels: int
     n: int
-    truth_table: str
     constant: Callable[[int, int], bool]
+    vertical: bool = False
+    shared: set[_Node] = field(default_factory=set)
+    wrap: bool = False
+    ids: list[list[int]] = field(default_factory=list)
+    grid: _Grid = field(default_factory=dict)
+    where: dict[_Node, tuple[int, int]] = field(default_factory=dict)
+    next_row: int = 1
 
     def leaf(self, level: int, value: str, row: int, col: int) -> None:
         """Emit a leaf finisher at ``(row, col)``."""
@@ -251,131 +258,73 @@ class _BackDrawState:
         self.grid[(nrow, col + 2)] = ">"
         self.emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
+    def draw(self) -> tuple[_Grid, dict[_Node, tuple[int, int]]]:
+        """Draw the tree; return its cells and each node's cell by (level, block).
 
-def _back_draw(
-    truth_table: str,
-    levels: int,
-    n: int,
-    shared: set[_Node],
-    constant: Callable[[int, int], bool],
-    *,
-    vertical: bool,
-) -> tuple[_Grid, dict[_Node, tuple[int, int]]]:
-    """Draw the tree; return its cells and each node's cell by (level, block).
+        A node in ``shared`` draws no one-subtree: its mirror drops the beam
+        down the column to the next mirror below, the zero-side entry of the
+        next node on that level.
+        """
+        self.grid, self.where, self.next_row = {}, {}, 1
+        # Tree root at column 1, the beam arriving rightward.
+        self.emit(0, 0, 2**self.levels, 0, 1)
+        return self.grid, self.where
 
-    A node in ``shared`` draws no one-subtree: its mirror drops the beam down
-    the column to the next mirror below, the zero-side entry of the next
-    node on that level.
-    """
-    state = _BackDrawState(
-        grid={},
-        where={},
-        next_row=1,
-        vertical=vertical,
-        shared=shared,
-        levels=levels,
-        n=n,
-        truth_table=truth_table,
-        constant=constant,
-    )
-    # Tree root at column 1, the beam arriving rightward.
-    state.emit(0, 0, 2**levels, 0, 1)
-    return state.grid, state.where
+    def level_events(
+        self, events: list[int | None], level: int, block: int, k: int
+    ) -> None:
+        """Append what column ``3k + 2`` meets, in text order, to ``events``.
 
+        A level-``k`` node is its block number; ``None`` is a horizontal leaf
+        shallower than ``k`` whose finisher runs through the column (it ends
+        at column ``2 * level + n + 1 + bit``).  One-subtrees of ``shared``
+        nodes are cut, and nothing deeper than ``k`` reaches the column.
+        Rows are numbered in this order, so a beam falling down the column
+        meets the events in it.
+        """
+        size = 2 ** (self.levels - level)
+        low = block * size
+        if level == self.levels or self.constant(low, low + size):
+            if not self.vertical and (
+                2 * level + self.n + 1 + int(self.truth_table[low]) >= 3 * k + 2
+            ):
+                events.append(None)
+            return
+        if level == k:
+            events.append(block)
+            return
+        self.level_events(events, level + 1, 2 * block, k)
+        if (level, block) not in self.shared:
+            self.level_events(events, level + 1, 2 * block + 1, k)
 
-def _level_events(
-    events: list[int | None],
-    level: int,
-    block: int,
-    *,
-    k: int,
-    levels: int,
-    n: int,
-    truth_table: str,
-    constant: Callable[[int, int], bool],
-    shared: set[_Node],
-    vertical: bool,
-) -> None:
-    """Append what column ``3k + 2`` meets, in text order, to ``events``.
+    def plan(self) -> set[_Node]:
+        """Pick the nodes whose one-edge can fall onto an equal zero-side subtree.
 
-    A level-``k`` node is its block number; ``None`` is a horizontal leaf
-    shallower than ``k`` whose finisher runs through the column (it ends at
-    column ``2 * level + n + 1 + bit``).  One-subtrees of ``shared`` nodes are
-    cut, and nothing deeper than ``k`` reaches the column.  Rows are numbered
-    in this order, so a beam falling down the column meets the events in it.
-    """
-    size = 2 ** (levels - level)
-    low = block * size
-    if level == levels or constant(low, low + size):
-        if not vertical and 2 * level + n + 1 + int(truth_table[low]) >= 3 * k + 2:
-            events.append(None)
-        return
-    if level == k:
-        events.append(block)
-        return
-    walk = partial(
-        _level_events,
-        events,
-        level + 1,
-        k=k,
-        levels=levels,
-        n=n,
-        truth_table=truth_table,
-        constant=constant,
-        shared=shared,
-        vertical=vertical,
-    )
-    walk(2 * block)
-    if (level, block) not in shared:
-        walk(2 * block + 1)
-
-
-def _back_plan(
-    *,
-    vertical: bool,
-    truth_table: str,
-    levels: int,
-    n: int,
-    wrap: bool,
-    ids: list[list[int]],
-    constant: Callable[[int, int], bool],
-) -> set[_Node]:
-    """Pick the nodes whose one-edge can fall onto an equal zero-side subtree.
-
-    Level by level: a node qualifies when the next node on its level (in
-    text order) has an equal zero subtree and its beam, falling down column
-    ``3k + 2``, meets that node's mirror before anything else.  That is
-    decided from the walk's order alone (``_level_events``), not by drawing.
-    """
-    shared: set[_Node] = set()
-    for k in range(levels):
-        events: list[int | None] = []
-        _level_events(
-            events,
-            0,
-            0,
-            k=k,
-            levels=levels,
-            n=n,
-            truth_table=truth_table,
-            constant=constant,
-            shared=shared,
-            vertical=vertical,
-        )
-        order = [event for event in events if event is not None]
-        # The last node's beam falls off the bottom and wraps to the top,
-        # where the level's first mirror is the first in the column.  Its
-        # walk is about the rows it saves, but only from eight rows up:
-        # below that it is a few cells saved for a whole column walked.
-        ring = wrap and 2 ** (levels - k - 1) >= _WRAP_ROWS
-        follower = dict(pairwise([*order, *order[:1]] if ring else order))
-        landing = dict(pairwise([*events, *events[:1]] if ring else events))
-        shared.update(
-            (k, a)
-            for a, b in follower.items()
-            if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b] and landing[a] == b
-        )
-    return shared
+        Level by level: a node qualifies when the next node on its level (in
+        text order) has an equal zero subtree and its beam, falling down
+        column ``3k + 2``, meets that node's mirror before anything else.
+        That is decided from the walk's order alone (``level_events``), not
+        by drawing.
+        """
+        for k in range(self.levels):
+            events: list[int | None] = []
+            self.level_events(events, 0, 0, k)
+            order = [event for event in events if event is not None]
+            # The last node's beam falls off the bottom and wraps to the
+            # top, where the level's first mirror is the first in the
+            # column.  Its walk is about the rows it saves, but only from
+            # eight rows up: below that it is a few cells saved for a whole
+            # column walked.
+            ring = self.wrap and 2 ** (self.levels - k - 1) >= _WRAP_ROWS
+            follower = dict(pairwise([*order, *order[:1]] if ring else order))
+            landing = dict(pairwise([*events, *events[:1]] if ring else events))
+            self.shared.update(
+                (k, a)
+                for a, b in follower.items()
+                if self.ids[k + 1][2 * a + 1] == self.ids[k + 1][2 * b]
+                and landing[a] == b
+            )
+        return self.shared
 
 
 def _back_ordered(
@@ -423,26 +372,27 @@ def _back_ordered(
         cells[essential[i]] = level
 
     constant = constant_span_test(truth_table)
-    plan = partial(
-        _back_plan,
-        truth_table=truth_table,
-        levels=levels,
-        n=n,
-        wrap=wrap,
-        ids=subtree_ids(truth_table),
-        constant=constant,
-    )
+    ids = subtree_ids(truth_table)
 
-    def draw(shared: set[_Node], *, vertical: bool) -> _Grid:
-        return _back_draw(truth_table, levels, n, shared, constant, vertical=vertical)[
-            0
-        ]
+    def build(*, vertical: bool) -> _Grid:
+        """Plan then draw one layout, both phases sharing one context."""
+        context = _BackContext(
+            truth_table=truth_table,
+            levels=levels,
+            n=n,
+            constant=constant,
+            vertical=vertical,
+            wrap=wrap,
+            ids=ids,
+        )
+        context.plan()
+        return context.draw()[0]
 
-    grid = draw(plan(vertical=False), vertical=False)
+    grid = build(vertical=False)
     if width is not None and width > 0 and max(c for _, c in grid) + 3 > width:
         down = _back_load(list(range(n)), cells, weights, levels, n)
         wide = _descending_back(grid, down)
-        tall = _descending_back(draw(plan(vertical=True), vertical=True), down)
+        tall = _descending_back(build(vertical=True), down)
         return min((wide, tall), key=grid_width)
 
     # Reverse name order: the load is drawn bottom-up in column 0, so this
@@ -480,4 +430,5 @@ LANGUAGE = Language(
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
     empty_program="Back program cannot be empty",
     example=Example(pair=PAIR, expected="0 1 0"),
+    proof_execution=(execution, True, (3, 5, 6)),
 )

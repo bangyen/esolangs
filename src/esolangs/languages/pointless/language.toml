@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 0
+
+[proof_status]
+labels = ["tree"]
+qualification = "each distinct subtable is one function, pasted in where that is shorter; `,=` maps a character to its bit through the cells 48 and 49, and `[` tests the bit's cell; the one `!` seeds the 1s that make `+` an increment"
+scaling = "linear: O(T/n) nodes with O(n)-digit names"
+execution = "poly n: at most 26n + 311 steps: setup, then 26 a level; a pasted call saves one"
+workspace = "poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape"
+
+[generator_sizes]
+"00000001" = { commands = 383, commands_by_row = { "0" = 344, "1" = 344, "2" = 344, "3" = 344, "4" = 362, "5" = 362, "6" = 380, "7" = 383 }, source_units = 437 }
+"00001100" = { commands = 367, commands_by_row = { "0" = 344, "1" = 344, "2" = 344, "3" = 344, "4" = 360, "5" = 360, "6" = 367, "7" = 367 }, source_units = 398 }
+"00110110" = { commands = 385, commands_by_row = { "0" = 357, "1" = 357, "2" = 360, "3" = 360, "4" = 375, "5" = 378, "6" = 378, "7" = 385 }, source_units = 508 }
+"0110" = { commands = 360, commands_by_row = { "0" = 350, "1" = 353, "2" = 353, "3" = 360 }, source_units = 422 }
+"01101001" = { commands = 384, commands_by_row = { "0" = 371, "1" = 374, "2" = 374, "3" = 381, "4" = 374, "5" = 381, "6" = 381, "7" = 384 }, source_units = 504 }
+"0110100110010110" = { commands = 413, commands_by_row = { "0" = 393, "1" = 395, "2" = 395, "3" = 403, "4" = 395, "5" = 403, "6" = 403, "7" = 405, "8" = 395, "9" = 403, "10" = 403, "11" = 405, "12" = 403, "13" = 405, "14" = 405, "15" = 413 }, source_units = 585 }
+"1101001101101101" = { commands = 410, commands_by_row = { "0" = 376, "1" = 376, "2" = 398, "3" = 400, "4" = 382, "5" = 382, "6" = 385, "7" = 385, "8" = 397, "9" = 399, "10" = 398, "11" = 406, "12" = 386, "13" = 386, "14" = 408, "15" = 410 }, source_units = 632 }
+"11111110" = { commands = 385, commands_by_row = { "0" = 342, "1" = 342, "2" = 342, "3" = 342, "4" = 360, "5" = 360, "6" = 378, "7" = 385 }, source_units = 433 }

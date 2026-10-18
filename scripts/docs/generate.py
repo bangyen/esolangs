@@ -13,10 +13,13 @@ import inspect
 import pathlib
 import re
 import shlex
-import tomllib
 
 import esolangs
+from docs.catalogue import load as _catalogue_load
+from docs.curation import dates as _curation_dates
+from docs.curation import rows as _curation_rows
 from docs.proof_status import splice, update_docs
+from docs.writing import write_if_changed as _write_if_changed
 from esolangs.languages.generators import BOOLEAN
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 from esolangs.registry._language import Shape
@@ -40,8 +43,6 @@ def main() -> int:
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-CURATION = ROOT / "ledgers" / "curation.toml"
-CATALOGUE = ROOT / "ledgers" / "generator_catalogue.toml"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -125,14 +126,9 @@ def render_languages_section() -> str:
 
     Each language with an in-repo interpreter is grouped by the interpreter's
     category, sorted by display name, and linked to both its esolangs wiki
-    page and the interpreter's source file on GitHub.  The ``<summary>``
-    count is generated too, so it stays in sync.
+    page and the interpreter's source file on GitHub.
     """
-    count = sum(lang.interpreter is not None for lang in LANGUAGES.values())
-    out: list[str] = [
-        f"<summary>Show all {count} languages</summary>",
-        "",
-    ]
+    out: list[str] = []
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
     for name, lang in LANGUAGES.items():
         if lang.interpreter is None:
@@ -373,11 +369,12 @@ def render_curation_census_section() -> str:
     ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
-    census = tomllib.loads(CURATION.read_text(encoding="utf-8"))
-    fame = [entry["backlinks"] >= 60 for entry in census["languages"].values()]
+    census = _curation_rows()
+    fame = [entry["backlinks"] >= 60 for entry in census.values()]
+    checked = _curation_dates()["checked"]
     return "\n".join(
         [
-            f"The {census['checked']} census (`ledgers/curation.toml`) records each",
+            f"The {checked} census (`snapshot.json`) records each",
             f"language's backlinks and route: {fame.count(True)} clear the fame gate",
             f"and {fame.count(False)} are first implementations.",
         ]
@@ -390,7 +387,7 @@ def render_sharing_counts_section() -> str:
     ``test_boolean_sharing_catalogue.py`` measures every tree generator outside
     ``[sharing.exempt]``, so the remainder is that count.
     """
-    sharing = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["sharing"]
+    sharing = _catalogue_load()["sharing"]
     tree = sum(
         lang.boolean is not None and lang.shape is Shape.TREE
         for lang in LANGUAGES.values()
@@ -410,16 +407,16 @@ def render_sharing_counts_section() -> str:
     )
 
 
-def update_usage(root: pathlib.Path = ROOT) -> None:
+def update_usage(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the generated tables in docs/usage.md between their markers."""
     path = root / "docs" / "usage.md"
     text = path.read_text()
     text = splice(text, "INPUT-SHAPES", render_input_shapes_section())
     text = splice(text, "PUBLIC-API", render_api_section())
-    path.write_text(text)
+    return _write_if_changed(path, text)
 
 
-def update_limitations(root: pathlib.Path = ROOT) -> None:
+def update_limitations(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the generated paragraphs of docs/limitations.md."""
     path = root / "docs" / "limitations.md"
     text = path.read_text()
@@ -430,7 +427,7 @@ def update_limitations(root: pathlib.Path = ROOT) -> None:
         ("SHARING-COUNTS", render_sharing_counts_section),
     ):
         text = splice(text, name, render())
-    path.write_text(text)
+    return _write_if_changed(path, text)
 
 
 def update_contributing(root: pathlib.Path = ROOT) -> None:
@@ -440,7 +437,7 @@ def update_contributing(root: pathlib.Path = ROOT) -> None:
         raise ValueError(f"{path} does not name the registry's generator directory")
 
 
-def update_language_request(root: pathlib.Path = ROOT) -> None:
+def update_language_request(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the issue template's registry language count."""
     path = root / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
     text, replacements = re.subn(
@@ -450,10 +447,10 @@ def update_language_request(root: pathlib.Path = ROOT) -> None:
     )
     if replacements != 1:
         raise ValueError(f"expected one language count in {path}, found {replacements}")
-    path.write_text(text)
+    return _write_if_changed(path, text)
 
 
-def update_readme(root: pathlib.Path = ROOT) -> None:
+def update_readme(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the generated sections of README.md between their markers."""
     path = root / "README.md"
     text = path.read_text()
@@ -464,28 +461,53 @@ def update_readme(root: pathlib.Path = ROOT) -> None:
         ("XOR-EXAMPLE", render_xor_section),
     ):
         text = splice(text, name, render())
-    path.write_text(text)
+    changed = _write_if_changed(path, text)
     catalog = root / "docs" / "languages.md"
-    catalog.write_text(
-        splice(catalog.read_text(), "IMPLEMENTED", render_languages_section())
+    catalog_text = splice(
+        catalog.read_text(), "IMPLEMENTED", render_languages_section()
     )
+    return _write_if_changed(catalog, catalog_text) or changed
 
 
 def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     """Write every generated documentation section."""
-    update_exports(output_root)
-    print("updated the generated exports of esolangs.languages")
-    update_docs(output_root)
-    update_readme(output_root)
-    print("updated the generated sections of README.md")
-    update_usage(output_root)
-    print("updated the generated tables of docs/usage.md")
-    update_limitations(output_root)
-    print("updated the generated paragraphs of docs/limitations.md")
+    unchanged = 0
+
+    def report(line: str, *, changed: bool) -> None:
+        nonlocal unchanged
+        if changed:
+            print(line)
+        else:
+            unchanged += 1
+
+    report(
+        "updated the generated exports of esolangs.languages",
+        changed=update_exports(output_root),
+    )
+    report(
+        "updated the generated tables of docs/proofs/index.md",
+        changed=update_docs(output_root),
+    )
+    report(
+        "updated the generated sections of README.md",
+        changed=update_readme(output_root),
+    )
+    report(
+        "updated the generated tables of docs/usage.md",
+        changed=update_usage(output_root),
+    )
+    report(
+        "updated the generated paragraphs of docs/limitations.md",
+        changed=update_limitations(output_root),
+    )
     update_contributing(output_root)
     print("validated the registry facts in docs/CONTRIBUTING.md")
-    update_language_request(output_root)
-    print("updated the generated facts of the language request template")
+    report(
+        "updated the generated facts of the language request template",
+        changed=update_language_request(output_root),
+    )
+    if unchanged:
+        print(f"{unchanged} generated artifacts already up to date")
     return 0
 
 
@@ -554,13 +576,15 @@ def render(root: pathlib.Path = ROOT) -> str:
 
 def update_exports(
     output_root: pathlib.Path = ROOT, source_root: pathlib.Path = ROOT
-) -> None:
+) -> bool:
     """Rewrite the marked language export block under ``output_root``."""
     path = output_root / INIT
     text = path.read_text(encoding="utf-8")
     block = START + "\n" + render(source_root) + "\n" + END
     head, rest = text.split(START, 1)
-    path.write_text(head + block + rest.split(END, 1)[1], encoding="utf-8")
+    return _write_if_changed(
+        path, head + block + rest.split(END, 1)[1], encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":

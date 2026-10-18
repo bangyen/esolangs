@@ -595,8 +595,7 @@ def _loop_return_legs(
         return None
     pts.append((-arm_run + _DIAGONAL_APPROACH, _RETURN_STEM_T + _DIAGONAL_APPROACH))
     body = _axis_aligned_legs(pts)
-    if body is None:
-        return None
+    assert body is not None  # _ring_points steps are axis-aligned
     body.append(((-1, -1), _DIAGONAL_APPROACH))
     return [(_rotate(d, a_h), n) for d, n in body]
 

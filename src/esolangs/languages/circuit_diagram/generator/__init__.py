@@ -5,7 +5,10 @@ Each of ``n`` inputs arrives on its own line as a ``-`` input port (not one
 A left-to-right binary-carry fold combines adjacent cofactors: equal ones
 share a signal, ``0/1`` is the selector itself, the rest use a one- or
 three-gate mux rule.  The answer prints through ``:``.  A constant table is
-one self-fed ``x`` or ``X`` gate, the wiki's constant-output shape.
+one self-fed ``x`` or ``X`` gate, the wiki's constant-output shape.  A
+(negated) projection is one direct wire instead: every port is drawn,
+as each is read, but only the essential port's row runs on to the
+``:``, through a ``~`` when negated.
 
 Wires are a *model* of segments rendered to characters afterwards, not
 painted in draw order.  Every signal owns a vertical bus column, every gate a
@@ -38,6 +41,7 @@ Decisions:
 """
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from typing import Any, Literal, NamedTuple
 
 from esolangs.generation.helpers import (
@@ -52,6 +56,7 @@ from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,
     _resolve_order,
 )
+from esolangs.languages.circuit_diagram.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -76,6 +81,27 @@ _COMPETING_MODEL_MIN_INPUTS = 8
 _OUTPUT_GLYPH_COLUMNS = 2
 
 
+@dataclass
+class _BandState:
+    """The width-banding state a :class:`_Builder` carries between gates."""
+
+    # Set once a width is asked for: the width the bands stay inside, and
+    # the column a new band starts at.
+    limit: int | None = None
+    band_start: int = 0
+    # Every intermediate signal not yet read by its consumer, in creation
+    # order -- what a band carries.  Rails and complements are never here.
+    live: list[int] = field(default_factory=list)
+    # Reads a shared gate output still awaits; it is released on the last.
+    pending: dict[int, int] = field(default_factory=dict)
+    # Gate column groups that may be handed out again, and the group each
+    # recyclable signal was cut from.  Only a *gate's* output is ever
+    # entered here: selector rails are shared, while every mux result is
+    # read once by the carry that consumes it and then dies.
+    stride_of: dict[int, int] = field(default_factory=dict)
+    free_strides: _FreeColumns = field(default_factory=_FreeColumns)
+
+
 class _Builder:
     """Allocates buses and gate bands, and records their wiring.
 
@@ -95,21 +121,63 @@ class _Builder:
         self.next_signal = 0
         # signal id -> (column, topmost row the bus has reached)
         self.buses: dict[int, tuple[int, int]] = {}
-        # Gate column groups that may be handed out again, and the group each
-        # recyclable signal was cut from.  Only a *gate's* output is ever
-        # entered here: selector rails are shared, while every mux result is
-        # read once by the carry that consumes it and then dies.
-        self.free_strides = _FreeColumns()
-        self.stride_of: dict[int, int] = {}
-        # Set once a width is asked for: the column a new band starts at, and
-        # the width the bands stay inside.  ``live`` is every intermediate
-        # signal not yet read by its consumer, in creation order -- what a
-        # band carries.  Rails and complements are never reclaimed.
-        self.limit: int | None = None
-        self.band_start = 0
-        self.live: list[int] = []
-        # Reads a shared gate output still awaits; it is released on the last.
-        self.pending: dict[int, int] = {}
+        self._band_state = _BandState()
+
+    # The banding state lives on ``_band_state``; these properties keep the
+    # plain-attribute access the builder's callers (and tests) already use.
+    @property
+    def limit(self) -> int | None:
+        """The requested width the bands stay inside, if any."""
+        return self._band_state.limit
+
+    @limit.setter
+    def limit(self, value: int | None) -> None:
+        self._band_state.limit = value
+
+    @property
+    def band_start(self) -> int:
+        """The column a new band starts at."""
+        return self._band_state.band_start
+
+    @band_start.setter
+    def band_start(self, value: int) -> None:
+        self._band_state.band_start = value
+
+    @property
+    def live(self) -> list[int]:
+        """The intermediate signals a band would carry, in creation order."""
+        return self._band_state.live
+
+    @live.setter
+    def live(self, value: list[int]) -> None:
+        self._band_state.live = value
+
+    @property
+    def pending(self) -> dict[int, int]:
+        """Reads each shared gate output still awaits."""
+        return self._band_state.pending
+
+    @pending.setter
+    def pending(self, value: dict[int, int]) -> None:
+        self._band_state.pending = value
+
+    @property
+    def stride_of(self) -> dict[int, int]:
+        """The recyclable column group each gate output was cut from."""
+        return self._band_state.stride_of
+
+    @stride_of.setter
+    def stride_of(self, value: dict[int, int]) -> None:
+        self._band_state.stride_of = value
+
+    @property
+    def free_strides(self) -> _FreeColumns:
+        """The gate column groups that may be handed out again."""
+        return self._band_state.free_strides
+
+    @free_strides.setter
+    def free_strides(self, value: _FreeColumns) -> None:
+        self._band_state.free_strides = value
 
     def _new_signal(self) -> int:
         """Return a fresh signal id."""
@@ -168,17 +236,39 @@ class _Builder:
         only moves down, so a re-used column is entered below everything the
         last band left in it.
         """
+        self._carry_live_signals()
+        self._reset_band_columns()
+
+    def _carry_live_signals(self) -> None:
+        """Move every live signal to its own column at the band's left."""
         for offset, signal in enumerate(self.live):
             column = self.band_start + offset * _COL_STEP
             row = self._new_band()
             self._tap(signal, column, row)
             self.buses[signal] = (column, row)
+
+    def _reset_band_columns(self) -> None:
+        """Free every column behind the band and restart allocation left."""
         # A carried signal owns a column, not a gate group, so releasing it
         # gives nothing back.  It stays in ``live``: a later band must carry
         # it again, or that band hands its column to another signal.
         self.stride_of.clear()
         self.free_strides.clear()
         self.next_column = self.band_start + len(self.live) * _COL_STEP
+
+    def _gate_placement(self, *signals: int) -> tuple[int, int, int]:
+        """Reserve a gate group and band row reading ``signals``.
+
+        Past a requested width, :meth:`_band` carries the live signals left
+        before the group is chosen, so the inputs' columns are re-read after
+        it.  Returns ``(first column, gate column, band row)``.
+        """
+        after = max(self.buses[signal][0] for signal in signals)
+        if not self._room(after):
+            self._band()
+            after = max(self.buses[signal][0] for signal in signals)
+        first, column = self._gate_columns(after)
+        return first, column, self._new_band()
 
     def _room(self, after: int) -> bool:
         """Whether a gate reading up to ``after`` fits without a new band."""
@@ -253,10 +343,7 @@ class _Builder:
         inverts a dense table's result -- which is one gate past the whole
         network and was exactly the one that ran over the width.
         """
-        if not self._room(self.buses[source][0]):
-            self._band()
-        _, column = self._gate_columns(self.buses[source][0])
-        row = self._new_band()
+        _, column, row = self._gate_placement(source)
 
         # ``~`` reads the cell level with it, so the tap has to end on the
         # junction immediately to its left rather than short of it.
@@ -271,19 +358,18 @@ class _Builder:
         The group is taken before the inputs are read and they are released
         after, so a gate is never handed the group it reads out of.
         """
-        # Past a requested width, _band carries the live signals left before
-        # the group is chosen, so the inputs' columns are re-read after it.
-        if not self._room(max(self.buses[left][0], self.buses[right][0])):
-            self._band()
-        first, column = self._gate_columns(
-            max(self.buses[left][0], self.buses[right][0])
-        )
-        row = self._new_band()
+        first, column, row = self._gate_placement(left, right)
 
         self._tap(left, column - 1, row - 1)
         self._tap(right, column - 1, row + 1)
         self.layout.glyph(column, row, kind)
 
+        return self._drive_gate_output(column, row, first, left, right)
+
+    def _drive_gate_output(
+        self, column: int, row: int, first: int, left: int, right: int
+    ) -> int:
+        """Drive a placed gate's output bus, then release its two inputs."""
         signal = self._drive(column + 1, row)
         self.stride_of[signal] = first
         if self.limit is not None:
@@ -390,6 +476,13 @@ def _mux(
         return builder.gate("a", negated, _signal(zero))
     if zero == "1":
         return builder.gate("o", negated, _signal(one))
+    return _three_gate_mux(builder, selector, negated, zero, one)
+
+
+def _three_gate_mux(
+    builder: _Builder, selector: int, negated: int, zero: int, one: int
+) -> int:
+    """Return the full mux: ``(~selector AND zero) OR (selector AND one)``."""
     off = builder.gate("a", negated, zero)
     on = builder.gate("a", selector, one)
     return builder.gate("o", off, on)
@@ -484,6 +577,23 @@ def _essential_table(truth_table: str, n: int) -> tuple[list[int], str]:
     """Return the essential inputs (input 0 for a constant) and the table over them."""
     used = essential_inputs(truth_table, n) or [0]
     return used, truth_table if len(used) == n else read_at(truth_table, used, n)
+
+
+def _projection_wire(truth_table: str, inputs: int) -> str | None:
+    """Return the direct wire for a (negated) projection, else ``None``.
+
+    Every port is still drawn -- each is read, so a run still consumes
+    the shipped ``inputs`` bits -- but only the essential port's row
+    runs on: ``-:`` for a projection, ``-~-:`` for a negated one.  The
+    port grid costs n^2 + 3n characters for a projection (88 at n = 8)
+    and 130..162 for a negated one; the wire costs 2n, or 2n + 2
+    negated (16 and 18 at n = 8).
+    """
+    used, reduced = _essential_table(truth_table, inputs)
+    if len(used) != 1 or reduced not in ("01", "10"):
+        return None
+    wire = "-:" if reduced == "01" else "-~-:"
+    return "\n".join(wire if level == used[0] else "-" for level in range(inputs))
 
 
 def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
@@ -592,6 +702,11 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1
+    # A (negated) projection is one direct wire, not the whole port grid;
+    # below the wire's own width the fitted builds below decide as before.
+    wire = _projection_wire(truth_table, inputs)
+    if wire is not None and (width is None or grid_width(wire) <= width):
+        return wire
     # Constants need only the scalar clock gate, not a minterm lattice.
     if (
         width is None
@@ -645,4 +760,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     eof="resolves its inputs while laying the grid",
+    proof_execution=(execution, True, (3, 8)),
+    proof_workspace=(workspace, False, (3, 6)),
 )

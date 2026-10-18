@@ -1,0 +1,25 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "one 128-row array block, painted inside the `If` that selects it"
+scaling = "linear: one write per differing row, block-bounded index digits"
+execution = "linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n"
+workspace = "poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array"
+
+[generator_sizes]
+"00000001" = { commands = 35, commands_by_row = { "0" = 12, "1" = 13, "2" = 18, "3" = 19, "4" = 28, "5" = 29, "6" = 34, "7" = 35 }, source_units = 299 }
+"00001100" = { commands = 17, commands_by_row = { "0" = 10, "1" = 10, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 17, "7" = 17 }, source_units = 243 }
+"00110110" = { commands = 38, commands_by_row = { "0" = 15, "1" = 16, "2" = 21, "3" = 22, "4" = 31, "5" = 32, "6" = 37, "7" = 38 }, source_units = 329 }
+"0110" = { commands = 17, commands_by_row = { "0" = 10, "1" = 11, "2" = 16, "3" = 17 }, source_units = 242 }
+"01101001" = { commands = 38, commands_by_row = { "0" = 15, "1" = 16, "2" = 21, "3" = 22, "4" = 31, "5" = 32, "6" = 37, "7" = 38 }, source_units = 329 }
+"0110100110010110" = { commands = 81, commands_by_row = { "0" = 22, "1" = 23, "2" = 28, "3" = 29, "4" = 38, "5" = 39, "6" = 44, "7" = 45, "8" = 58, "9" = 59, "10" = 64, "11" = 65, "12" = 74, "13" = 75, "14" = 80, "15" = 81 }, source_units = 443 }
+"1101001101101101" = { commands = 144, commands_by_row = { "0" = 85, "1" = 86, "2" = 91, "3" = 92, "4" = 101, "5" = 102, "6" = 107, "7" = 108, "8" = 121, "9" = 122, "10" = 127, "11" = 128, "12" = 137, "13" = 138, "14" = 143, "15" = 144 }, source_units = 463 }
+"11111110" = { commands = 63, commands_by_row = { "0" = 40, "1" = 41, "2" = 46, "3" = 47, "4" = 56, "5" = 57, "6" = 62, "7" = 63 }, source_units = 329 }
+
+[schemes]
+folds_without_tree = true

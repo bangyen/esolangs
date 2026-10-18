@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -86,6 +87,7 @@ MANUAL_ONLY = frozenset(
         "duplicate-code check (pylint)",
         "deep proofs (verify band)",
         "exception leaks",
+        "diff coverage",
     }
 )
 
@@ -114,6 +116,17 @@ STEPS = [
     # this run covers src/ and scripts/ both from the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     ("pytest", [*PY, "-m", "pytest", "-q"]),
+    # CI's changed-line gate, with CI's flags: it judges only the lines and
+    # branches this branch added (its own merge-base diff, not the gate's
+    # scoping) against the `.coverage` a `pytest --cov --cov-branch` run
+    # left behind, and --strict makes missing evidence a failure rather
+    # than a skip.  Manual-only because a default gate run records no
+    # coverage, so the step could only ever fail or skip there; run it via
+    # `just test-diff-coverage` once a coverage run exists.
+    (
+        "diff coverage",
+        [*PY, "checks/check_diff_coverage.py", "--partial", "--strict"],
+    ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "checks/check_dead_definitions.py"]),
@@ -289,6 +302,173 @@ LEAK_STEP = "exception leaks"
 HEAVY_STEPS = frozenset({LEAK_STEP})
 LEAKSWEEP_JOBS = "6"
 OVERLAPPED_LEAKSWEEP_JOBS = "3"
+
+# The shape the root conftest gives a duration-band failure (manufactured in
+# tests/support/duration_policy.py): how long the test took, then the band it
+# blew.  The message is the failure's whole body in its FAILURES section, so
+# a match there is a reliable claim that the failure is a wall-clock overrun
+# and nothing else.
+_DURATION_FAILURE = re.compile(r"\d+\.\d{2}s exceeds the (?:fast|medium) band limit")
+
+# A FAILURES section header: the test's dotted name between underscore rules.
+_SECTION_HEADER = re.compile(r"^_+ (.+?) _+$")
+
+
+def _complete_log(output: str) -> str | None:
+    """Return the step's complete log text, when the excerpt names its path.
+
+    The captured output is a bounded tail of the step's log (see
+    ``verify.process.excerpt``); its ``[log]`` line names the persistent
+    complete log the tail was cut from, which is where the FAILURES
+    sections above the tail survive.
+    """
+    for line in output.splitlines():
+        if line.startswith("[log] "):
+            path = Path(line[len("[log] ") :].strip())
+            if not path.is_absolute():
+                path = ROOT / path
+            try:
+                return path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                return None
+    return None
+
+
+def _failure_sections(text: str) -> list[tuple[str, str]] | None:
+    """Return a pytest log's FAILURES sections as (title, body) pairs.
+
+    None when the log carries no FAILURES banner -- the sections were cut
+    off, or the run died before printing them -- because then no failure in
+    it can be classified at all.
+    """
+    lines = text.splitlines()
+    start = next(
+        (
+            i
+            for i, line in enumerate(lines)
+            if line.startswith("=") and " FAILURES " in line
+        ),
+        None,
+    )
+    if start is None:
+        return None
+    sections: list[tuple[str, list[str]]] = []
+    for line in lines[start + 1 :]:
+        if line.startswith("=") and "short test summary info" in line:
+            break
+        header = _SECTION_HEADER.match(line)
+        if header:
+            sections.append((header.group(1), []))
+        elif sections:
+            sections[-1][1].append(line)
+    return [(title, "\n".join(body)) for title, body in sections]
+
+
+def _section_matches(title: str, nodeid: str) -> bool:
+    """Whether a FAILURES header *title* names the summarized *nodeid*.
+
+    The header drops the file path and dots the separator the node id
+    colons: ``tests/x.py::TestA::test_b`` is headed ``TestA.test_b``.
+    """
+    return nodeid.endswith(("::" + title, "::" + title.replace(".", "::")))
+
+
+def _duration_only_ids(output: str) -> list[str] | None:
+    """Return the failed tests' ids when every failure is a duration overrun.
+
+    pytest's one-line summary names the failures but drops their reasons,
+    so the claim is read from the FAILURES sections instead: each names its
+    test in an underscore header and holds the failure's body, which for a
+    band failure is the violation text itself.  Anything unprovable -- an
+    ERROR line (a collection or teardown problem, which no duration
+    explains), a section without the signature, a section count that
+    disagrees with the summary -- returns None.
+    """
+    lines = output.splitlines()
+    if any(line.startswith("ERROR ") for line in lines):
+        return None
+    ids = [
+        line[len("FAILED ") :].partition(" - ")[0].strip()
+        for line in lines
+        if line.startswith("FAILED ")
+    ]
+    if not ids:
+        return None
+    sections = _failure_sections(_complete_log(output) or output)
+    if sections is None or len(sections) != len(ids):
+        return None
+    if not all(_DURATION_FAILURE.search(body) for _, body in sections):
+        return None
+    if not all(
+        any(_section_matches(title, nodeid) for title, _ in sections) for nodeid in ids
+    ):
+        return None
+    return ids
+
+
+def _rerun_alone(ids: list[str]) -> tuple[int, str]:
+    """Rerun the failed tests *ids* alone, serially; return exit and output.
+
+    Serial (``-n 0``) and unfiltered (``-m ""``, undoing the step's own mark
+    expression) so the rerun measures the tests, not the machine's load or
+    the gate's scoping.  Bounded by the pytest step's own deadline: a rerun
+    that needs longer has not exonerated anything.
+    """
+    result = run_bounded(
+        [*PY, "-m", "pytest", "-q", "-n", "0", "-m", "", *ids],
+        cwd=ROOT,
+        env=dict(os.environ, PYTHONPATH=str(ROOT / "src")),
+        capture_output=True,
+        timeout=STEP_DEADLINES[LONG_STEP],
+    )
+    return result.returncode, (result.stdout or "") + (result.stderr or "")
+
+
+def _load_verdict(
+    failures: list[tuple[str, int, str | None]],
+) -> list[tuple[str, int, str | None]]:
+    """Drop a pytest failure the solo rerun proves was load, or say so.
+
+    The duration bands are wall-clock limits, so a loaded machine -- this
+    gate's own overlap included -- pushes borderline tests past them without
+    anything being wrong with the code.  ``new_language.py`` learned to
+    separate those from real failures by rerunning the failures alone; the
+    gate reaches the same verdict itself here, because its summary is where
+    the reader actually meets the failure.
+
+    The verdict only engages when it cannot hide a real failure: every
+    failure must be provably a duration overrun (see
+    :func:`_duration_only_ids`), and a deadline's missing output leaves the
+    failures untouched.  When the solo rerun still fails, the failure stays
+    and the verdict names which tests are real, so the closing summary
+    below reads as load casualties plus those names rather than the whole
+    list.
+    """
+    entry = next((f for f in failures if f[0] == LONG_STEP), None)
+    if entry is None or entry[2] is None:
+        return failures
+    ids = _duration_only_ids(entry[2])
+    if ids is None:
+        return failures
+    returncode, rerun_output = _rerun_alone(ids)
+    if returncode == 0:
+        print(
+            f"[load] pytest: all {len(ids)} failed tests passed alone: the "
+            "failures were duration overruns under machine load, not code; "
+            "rerun the gate on a quiet machine before pushing"
+        )
+        return [failure for failure in failures if failure[0] != LONG_STEP]
+    still = [
+        line[len("FAILED ") :].partition(" - ")[0]
+        for line in rerun_output.splitlines()
+        if line.startswith("FAILED ")
+    ]
+    named = still or ids
+    print(
+        f"[load] pytest: {len(named)} of {len(ids)} failures still fail "
+        f"alone: {', '.join(named)}"
+    )
+    return failures
 
 
 def _ensure_dev_deps() -> None:
@@ -533,7 +713,7 @@ def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
                 "--duration-output",
                 str(output),
                 "--duration-input",
-                str(ROOT / "ledgers/slow_durations.json"),
+                str(ROOT / "snapshot.json"),
             ]
         )
     if not full and not verify_full():
@@ -660,6 +840,10 @@ def main() -> int:  # noqa: C901
         # done, the wall is how long the push actually waited for it.
         print(f"{total:5.1f}s  TOTAL (sum of steps)")
         print(f"{wall:5.1f}s  WALL  (elapsed, steps overlap)")
+    # Between the timings and the summary, where the reader meets a failure:
+    # a pytest failure made only of duration overruns gets its solo rerun
+    # here, and the verdict may remove it before the summary counts failures.
+    failures = _load_verdict(failures)
     print("=" * 40)
     # Last, below the timings: a failing run's tail is where the reader looks.
     for name, returncode, output in failures:

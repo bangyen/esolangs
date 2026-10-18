@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from esolangs.generation.helpers import subtree_ids
 from esolangs.generation.shared_block import _repeated_blocks
+from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
 
 _PROLOGUE = '"49/b""48/c"'
 _REFERENCES = '"1/f""2/g"'
@@ -96,7 +97,53 @@ def _decoder(
     return visit(width - 1, tuple(range(len(bodies))))
 
 
-def _prefix(
+def _silent(_item: str | int) -> None:
+    """Discard an emission: the pricing walk builds text nowhere."""
+
+
+def _prefix_hooks(
+    metrics: list[dict[int, _Metric]],
+    selected: dict[tuple[int, int], int],
+    width: int,
+    tails: dict[int, int],
+    stop_depth: int | None,
+    emit: _Emit,
+) -> _Hooks[_Metric]:
+    """Return the bank prefix's hooks: bank hits, bank-level leaves, pricing."""
+
+    def hit(
+        depth: int, key: int, _lo: int, _remaining: int, _context: object
+    ) -> _Metric | None:
+        if (depth, key) not in selected:
+            return None
+        target = selected[depth, key]
+        for bit in range(width):
+            emit(f'"{1 + (target >> bit & 1)}/e"')
+        return _Metric(5 * width, width + tails[target])
+
+    def leaf(
+        depth: int, key: int, lo: int, remaining: int, _context: object
+    ) -> _Metric:
+        if depth == stop_depth:
+            # ``lo`` is the bank span's first row: the body index itself.
+            emit(lo)
+        else:
+            emit(";d;" * remaining + (":b:" if key else ":c:"))
+        value = metrics[depth][key]
+        return _Metric(value.chars, value.commands + 2)
+
+    return _Hooks(
+        hit=hit,
+        leaf=leaf,
+        skipped=lambda child: _Metric(3 + child.chars, 1 + child.commands),
+        branched=lambda one, zero: _Metric(
+            21 + zero.chars + one.chars, 6 + max(zero.commands, one.commands)
+        ),
+        leaf_at=lambda depth, key: depth == stop_depth or key < 2,
+    )
+
+
+def _prefix_metric(
     ids: list[list[int]],
     metrics: list[dict[int, _Metric]],
     selected: dict[tuple[int, int], int],
@@ -104,45 +151,28 @@ def _prefix(
     tails: dict[int, int],
     *,
     stop_depth: int | None = None,
-    emit: _Emit | None = None,
 ) -> _Metric:
+    """Price the prefix tree down to ``stop_depth`` without emitting it."""
+    hooks = _prefix_hooks(metrics, selected, width, tails, stop_depth, _silent)
+    return _TreeWalk(ids, _silent, hooks).walk(len(ids) - 1, 0)
+
+
+def _emit_prefix(
+    ids: list[list[int]],
+    metrics: list[dict[int, _Metric]],
+    depth: int,
+    rows: tuple[int, ...],
+    emit: _Emit,
+) -> None:
+    """Emit the prefix tree for the bank at ``depth`` over ``rows``."""
     n = len(ids) - 1
-
-    def visit(level: int, block: int) -> _Metric:
-        key = ids[level][block]
-        if (level, key) in selected:
-            target = selected[level, key]
-            if emit is not None:
-                for bit in range(width):
-                    emit(f'"{1 + (target >> bit & 1)}/e"')
-            return _Metric(5 * width, width + tails[target])
-        if level == stop_depth or key < 2:
-            if emit is not None:
-                if level == stop_depth:
-                    emit(block << (n - level))
-                else:
-                    emit(";d;" * (n - level) + (":b:" if key else ":c:"))
-            value = metrics[level][key]
-            return _Metric(value.chars, value.commands + 2)
-        zero, one = ids[level + 1][2 * block : 2 * block + 2]
-        if zero == one:
-            if emit is not None:
-                emit(";d;")
-            left = visit(level + 1, 2 * block)
-            return _Metric(3 + left.chars, 1 + left.commands)
-        if emit is not None:
-            emit(";a;[a\\b/~a~")
-        right = visit(level + 1, 2 * block + 1)
-        if emit is not None:
-            emit("][a\\c/~a~")
-        left = visit(level + 1, 2 * block)
-        if emit is not None:
-            emit("]")
-        return _Metric(
-            21 + left.chars + right.chars, 6 + max(left.commands, right.commands)
-        )
-
-    return visit(0, 0)
+    width = (len(rows) - 1).bit_length()
+    selected = {ids[depth][row >> (n - depth)]: i for i, row in enumerate(rows)}
+    bodies = tuple(metrics[depth][key] for key in selected)
+    _, tails = _decoder(width, bodies)
+    by_depth = {(depth, key): target for key, target in selected.items()}
+    hooks = _prefix_hooks(metrics, by_depth, width, tails, depth, emit)
+    _TreeWalk(ids, emit, hooks).walk(n, 0)
 
 
 def _price(
@@ -150,7 +180,6 @@ def _price(
     metrics: list[dict[int, _Metric]],
     depth: int,
     rows: tuple[int, ...],
-    emit: _Emit | None = None,
 ) -> _Plan:
     n = len(ids) - 1
     width = (len(rows) - 1).bit_length()
@@ -158,14 +187,13 @@ def _price(
     bodies = tuple(metrics[depth][key] for key in selected)
     decoder_chars, tails = _decoder(width, bodies)
 
-    value = _prefix(
+    value = _prefix_metric(
         ids,
         metrics,
         {(depth, key): target for key, target in selected.items()},
         width,
         tails,
         stop_depth=depth,
-        emit=emit,
     )
     return _Plan(
         depth, rows, _Metric(22 + value.chars + decoder_chars, 4 + value.commands)
@@ -197,7 +225,7 @@ def _render(
         return bodies[key]
 
     out = [_PROLOGUE]
-    _price(
+    _emit_prefix(
         ids,
         metrics,
         depth,

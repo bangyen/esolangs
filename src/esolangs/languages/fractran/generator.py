@@ -36,6 +36,7 @@ from esolangs.generation.wrap import (
     wrap_space_delimited,
 )
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
+from esolangs.languages.fractran.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -257,4 +258,6 @@ LANGUAGE = Language(
     balance=_balance,
     empty_program="a FRACTRAN program needs a starting value",
     example=Example(setters=fractran_setters, expected="1"),
+    proof_execution=(execution, True, (3, 5)),
+    proof_workspace=(workspace, False, (3, 5)),
 )

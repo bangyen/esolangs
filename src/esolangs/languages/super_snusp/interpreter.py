@@ -142,7 +142,194 @@ def _combine(command: str, value: int, operand: int) -> int:
     return value << operand if command == "[" else value >> operand
 
 
-def _advance(  # noqa: C901
+class _Context(NamedTuple):
+    """What a per-command handler may read: the cell, stack, and shell inputs."""
+
+    command: str
+    value: int
+    values: tuple[int, ...]
+    pointer: int
+    heading: int
+    char_input: int | None
+    number_input: int | None
+    random_offset: int | None
+
+
+class _Outcome(NamedTuple):
+    """What a per-command handler changes; a ``None`` field stays as it was."""
+
+    write: int | None = None  # new value for the current cell
+    values: tuple[int, ...] | None = None
+    pointer: int | None = None
+    heading: int | None = None
+    steps: int = 1
+    effect: _Effect = None
+    digit: bool = False  # the command was a digit, so the next one extends it
+    done: bool = False  # halt in place instead of moving
+
+
+def _skip_next(_ctx: _Context) -> _Outcome:
+    return _Outcome(steps=2)
+
+
+def _halt(_ctx: _Context) -> _Outcome:
+    return _Outcome(done=True)
+
+
+def _emit_number(ctx: _Context) -> _Outcome:
+    return _Outcome(effect=("num", ctx.value))
+
+
+def _pop(ctx: _Context) -> _Outcome:
+    _top(ctx.values)
+    return _Outcome(values=ctx.values[:-1])
+
+
+def _remainder(ctx: _Context) -> _Outcome:
+    divisor = _top(ctx.values)
+    if not divisor:
+        raise HaltError(
+            "'%' takes the remainder by the stacked 0",
+            hint="push a nonzero divisor before taking a remainder",
+        )
+    rem = abs(ctx.value) % abs(divisor)
+    return _Outcome(write=-rem if ctx.value < 0 else rem)
+
+
+def _arithmetic(ctx: _Context) -> _Outcome:
+    return _Outcome(write=_combine(ctx.command, ctx.value, _top(ctx.values)))
+
+
+def _read_char(ctx: _Context) -> _Outcome:
+    if ctx.char_input is None:
+        raise HaltError(
+            "',' reads a character and there is no input left",
+            hint="supply another input value or stop reading at end of input",
+        )
+    return _Outcome(write=ctx.char_input)
+
+
+def _emit_char(ctx: _Context) -> _Outcome:
+    try:
+        chr(ctx.value)
+    except ValueError:
+        raise HaltError(
+            hint="keep character output values between 0 and 1114111"
+        ) from None
+    return _Outcome(effect=("char", ctx.value))
+
+
+def _reflect_ruld(ctx: _Context) -> _Outcome:
+    return _Outcome(heading=_RULD[ctx.heading])
+
+
+def _reflect_lurd(ctx: _Context) -> _Outcome:
+    return _Outcome(heading=_LURD[ctx.heading])
+
+
+def _random_between(ctx: _Context) -> _Outcome:
+    other = _top(ctx.values)
+    if ctx.random_offset is None:
+        raise HaltError(
+            "'=' needs a random draw and none was supplied",
+            hint="supply a randomness source for this operation",
+        )
+    low, high = sorted((ctx.value, other))
+    if not 0 <= ctx.random_offset <= high - low:
+        raise HaltError(
+            f"'=' was given the draw {ctx.random_offset}, outside the "
+            f"0..{high - low} its range {low}..{high} allows",
+            hint="supply a random draw within the stated range",
+        )
+    return _Outcome(write=low + ctx.random_offset, values=ctx.values[:-1])
+
+
+def _decrement(ctx: _Context) -> _Outcome:
+    return _Outcome(write=ctx.value - 1)
+
+
+def _increment(ctx: _Context) -> _Outcome:
+    return _Outcome(write=ctx.value + 1)
+
+
+def _move_left(ctx: _Context) -> _Outcome:
+    return _Outcome(pointer=ctx.pointer - 1)
+
+
+def _move_right(ctx: _Context) -> _Outcome:
+    return _Outcome(pointer=ctx.pointer + 1)
+
+
+def _skip_if_zero(ctx: _Context) -> _Outcome:
+    return _Outcome(steps=2 if ctx.value == 0 else 1)
+
+
+def _read_number(ctx: _Context) -> _Outcome:
+    if ctx.number_input is None:
+        raise HaltError(
+            "'@' reads a number and there is no input left",
+            hint="supply another input value or stop reading at end of input",
+        )
+    return _Outcome(write=ctx.number_input)
+
+
+def _negate(ctx: _Context) -> _Outcome:
+    return _Outcome(write=-ctx.value)
+
+
+def _skip_if_negative(ctx: _Context) -> _Outcome:
+    return _Outcome(steps=2 if ctx.value < 0 else 1)
+
+
+def _push(ctx: _Context) -> _Outcome:
+    return _Outcome(values=(*ctx.values, ctx.value))
+
+
+def _pop_to_cell(ctx: _Context) -> _Outcome:
+    return _Outcome(write=_top(ctx.values))
+
+
+def _invert(ctx: _Context) -> _Outcome:
+    return _Outcome(write=~ctx.value)
+
+
+def _letter(ctx: _Context) -> _Outcome:
+    return _Outcome(write=ord(ctx.command))
+
+
+def _no_op(_ctx: _Context) -> _Outcome:
+    return _Outcome()
+
+
+#: Per-command handlers; digits and letters are ranges, so `_advance`
+#: handles those two before consulting this table.
+_HANDLERS: dict[str, Callable[[_Context], _Outcome]] = {
+    "!": _skip_next,
+    "'": _halt,
+    "#": _emit_number,
+    "$": _pop,
+    "%": _remainder,
+    ",": _read_char,
+    ".": _emit_char,
+    "/": _reflect_ruld,
+    "\\": _reflect_lurd,
+    "=": _random_between,
+    "(": _decrement,
+    ")": _increment,
+    "<": _move_left,
+    ">": _move_right,
+    "?": _skip_if_zero,
+    "@": _read_number,
+    "_": _negate,
+    "`": _skip_if_negative,
+    "{": _push,
+    "}": _pop_to_cell,
+    "~": _invert,
+    **dict.fromkeys("&*+-:;[]^|", _arithmetic),
+}
+
+
+def _advance(
     state: _State,
     code: Sequence[str],
     char_input: int | None = None,
@@ -153,103 +340,46 @@ def _advance(  # noqa: C901
     (row, col, heading), (pointer, cells), values, last_digit, done = state
     if done:
         return state, None
-    command, value, effect, steps = code[row][col], _read(cells, pointer), None, 1
+    command = code[row][col]
+    value = _read(cells, pointer)
     if command in "0123456789":
-        cells = _write(cells, pointer, (10 * value if last_digit else 0) + int(command))
-        last_digit = True
+        outcome = _Outcome(
+            write=(10 * value if last_digit else 0) + int(command), digit=True
+        )
     else:
-        last_digit = False
-        if command == "!":
-            steps = 2
-        elif command == "'":
-            return state._replace(done=True, digit=False), None
-        elif command == "#":
-            effect = ("num", value)
-        elif command == "$":
-            _top(values)
-            values = values[:-1]
-        elif command == "%":
-            divisor = _top(values)
-            if not divisor:
-                raise HaltError(
-                    "'%' takes the remainder by the stacked 0",
-                    hint="push a nonzero divisor before taking a remainder",
-                )
-            rem = abs(value) % abs(divisor)
-            cells = _write(cells, pointer, -rem if value < 0 else rem)
-        elif command in "&*+-:;[]^|":
-            cells = _write(cells, pointer, _combine(command, value, _top(values)))
-        elif command == ",":
-            if char_input is None:
-                raise HaltError(
-                    "',' reads a character and there is no input left",
-                    hint="supply another input value or stop reading at end of input",
-                )
-            cells = _write(cells, pointer, char_input)
-        elif command == ".":
-            try:
-                chr(value)
-            except ValueError:
-                raise HaltError(
-                    hint="keep character output values between 0 and 1114111"
-                ) from None
-            effect = ("char", value)
-        elif command == "/":
-            heading = _RULD[heading]
-        elif command == "\\":
-            heading = _LURD[heading]
-        elif command == "=":
-            other = _top(values)
-            if random_offset is None:
-                raise HaltError(
-                    "'=' needs a random draw and none was supplied",
-                    hint="supply a randomness source for this operation",
-                )
-            low, high = sorted((value, other))
-            if not 0 <= random_offset <= high - low:
-                raise HaltError(
-                    f"'=' was given the draw {random_offset}, outside the "
-                    f"0..{high - low} its range {low}..{high} allows",
-                    hint="supply a random draw within the stated range",
-                )
-            cells = _write(cells, pointer, low + random_offset)
-            values = values[:-1]
-        elif command == "(":
-            cells = _write(cells, pointer, value - 1)
-        elif command == ")":
-            cells = _write(cells, pointer, value + 1)
-        elif command == "<":
-            pointer -= 1
-        elif command == ">":
-            pointer += 1
-        elif command == "?":
-            steps = 2 if value == 0 else 1
-        elif command == "@":
-            if number_input is None:
-                raise HaltError(
-                    "'@' reads a number and there is no input left",
-                    hint="supply another input value or stop reading at end of input",
-                )
-            cells = _write(cells, pointer, number_input)
-        elif command == "_":
-            cells = _write(cells, pointer, -value)
-        elif command == "`":
-            steps = 2 if value < 0 else 1
-        elif command == "{":
-            values = (*values, value)
-        elif command == "}":
-            cells = _write(cells, pointer, _top(values))
-        elif command == "~":
-            cells = _write(cells, pointer, ~value)
-        elif "A" <= command <= "Z" or "a" <= command <= "z":
-            cells = _write(cells, pointer, ord(command))
+        handler = _HANDLERS.get(command)
+        if handler is None:
+            is_letter = "A" <= command <= "Z" or "a" <= command <= "z"
+            handler = _letter if is_letter else _no_op
+        outcome = handler(
+            _Context(
+                command,
+                value,
+                values,
+                pointer,
+                heading,
+                char_input,
+                number_input,
+                random_offset,
+            )
+        )
+    if outcome.done:
+        return state._replace(done=True, digit=False), None
+    if outcome.write is not None:
+        cells = _write(cells, pointer, outcome.write)
+    if outcome.values is not None:
+        values = outcome.values
+    if outcome.pointer is not None:
+        pointer = outcome.pointer
+    if outcome.heading is not None:
+        heading = outcome.heading
     d_row, d_col = _DIRECTIONS[heading]
-    row += d_row * steps
-    col += d_col * steps
+    row += d_row * outcome.steps
+    col += d_col * outcome.steps
     done = not (0 <= row < len(code) and 0 <= col < len(code[0]))
     return _State(
-        (row, col, heading), (pointer, cells), values, last_digit, done
-    ), effect
+        (row, col, heading), (pointer, cells), values, outcome.digit, done
+    ), outcome.effect
 
 
 class _Machine:

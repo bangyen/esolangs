@@ -36,12 +36,11 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
+import generator_sizes  # noqa: E402
 from benchmark import evidence_session, measure  # noqa: E402
 
 import esolangs  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
-
-BASELINE = REPO_ROOT / "ledgers/generator_sizes.json"
 
 
 def benchmark_tables() -> tuple[str, ...]:
@@ -182,6 +181,17 @@ def collect() -> dict[str, Any]:
     return baseline(sweep())
 
 
+def recorded_baseline() -> dict[str, Any]:
+    """Return the committed baseline, aggregated from the package fragments."""
+    return {
+        "schema": SCHEMA,
+        "step_cap": STEP_CAP,
+        "records": generator_sizes.aggregate_fragments(
+            generator_sizes.PACKAGES, LANGUAGES.values()
+        ),
+    }
+
+
 def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     """Return one line per disagreement between a baseline and a measurement.
 
@@ -244,22 +254,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {args.timings}")
     measured = baseline(records)
     if args.update:
-        BASELINE.parent.mkdir(parents=True, exist_ok=True)
-        BASELINE.write_text(
-            json.dumps(measured, indent=1, sort_keys=True) + "\n", encoding="utf-8"
+        count = sum(len(rows) for rows in measured["records"].values())
+        changed = generator_sizes.write_fragments(
+            generator_sizes.PACKAGES, LANGUAGES.values(), measured["records"]
         )
-        print(f"wrote {BASELINE.relative_to(REPO_ROOT)}")
+        if changed:
+            print(
+                f"wrote the package-fragment baseline: {count} generator measurements"
+            )
+        else:
+            print(
+                f"baseline unchanged: {count} generator measurements already recorded"
+            )
         return 0
 
-    if not BASELINE.exists():
-        print(
-            f"no baseline at {BASELINE}; run "
-            "uv run python checks/check_generator_sizes.py --update",
-            file=sys.stderr,
-        )
-        return 1
-    recorded = json.loads(BASELINE.read_text(encoding="utf-8"))
-    lines = differences(recorded, measured)
+    lines = differences(recorded_baseline(), measured)
     if not lines:
         count = sum(len(rows) for rows in measured["records"].values())
         print(f"{count} generator measurements match the baseline")

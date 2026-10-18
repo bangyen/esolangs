@@ -93,6 +93,19 @@ class TestCiRedoesEveryLocalStep:
         ]
         assert not missing, f"steps CI does not run: {missing}"
 
+    def test_diff_coverage_step_matches_ci_and_is_manual_only(self) -> None:
+        verify = load_script()
+        assert "diff coverage" in verify.MANUAL_ONLY
+        cmd = dict(verify.STEPS)["diff coverage"]
+        assert cmd[-3:] == [
+            "checks/check_diff_coverage.py",
+            "--partial",
+            "--strict",
+        ]
+        assert "check_diff_coverage.py --partial --strict" in CI.read_text(
+            encoding="utf-8"
+        )
+
     def test_a_step_ci_does_not_run_is_reported(self) -> None:
         workflow = CI.read_text(encoding="utf-8") + (
             CI.with_name("weekly.yml").read_text(encoding="utf-8")
@@ -266,6 +279,126 @@ def test_a_failure_names_its_log_and_failing_tests(
     assert "test_10" not in summary
     assert "... and 2 more in the log" in summary
     assert "noise" not in summary
+
+
+def _run_gate(monkeypatch: pytest.MonkeyPatch, verify: Any, failures: list) -> int:
+    """Drive ``verify.main`` with ``_run_steps`` returning canned *failures*."""
+    monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
+    monkeypatch.setattr(
+        verify, "_parse_only_skip", lambda: (None, None, True, True, False, False)
+    )
+    monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
+    monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
+    monkeypatch.setattr(
+        verify, "run_bounded", lambda *_a, **_kw: subprocess.CompletedProcess([], 0)
+    )
+    result = (failures, [("pytest", 9.0)], 9.0)
+    with mock.patch.object(verify, "_run_steps", return_value=result):
+        return verify.main()
+
+
+def _pytest_output(*sections: tuple[str, str]) -> str:
+    """Assemble a pytest -q log: FAILURES sections, then the summary lines.
+
+    The summary's FAILED lines carry no reason -- pytest drops a
+    manufactured failure's message there -- so a duration violation's text
+    lives in its section.  The ``[log]`` path names no real file, so the
+    gate classifies from this excerpt rather than a complete log.
+    """
+    lines = ["[log] notes/verification/pytest-canned.log", "=== FAILURES ==="]
+    for title, body in sections:
+        lines += [f"____ {title} ____", body]
+    lines.append("=== short test summary info ===")
+    lines += [f"FAILED tests/t.py::{title}" for title, _ in sections]
+    return "\n".join(lines) + "\n"
+
+
+_DURATION_A = (
+    "test_a",
+    "1.23s exceeds the fast band limit of 1s; "
+    "optimize, delete, or mark this test medium. Under -n load ...",
+)
+_DURATION_B = (
+    "test_b",
+    "12.34s exceeds the medium band limit of 10s; "
+    "optimize, delete, or mark this test slow. Under -n load ...",
+)
+
+
+def test_solo_rerun_pass_turns_duration_failures_into_a_load_verdict(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    verify = load_script()
+    seen: list[list[str]] = []
+
+    def rerun_alone(ids: list[str]) -> tuple[int, str]:
+        seen.append(ids)
+        return 0, ""
+
+    monkeypatch.setattr(verify, "_rerun_alone", rerun_alone)
+    output = _pytest_output(_DURATION_A, _DURATION_B)
+    assert _run_gate(monkeypatch, verify, [("pytest", 1, output)]) == 0
+    assert seen == [["tests/t.py::test_a", "tests/t.py::test_b"]]
+    out = capsys.readouterr().out
+    assert "[load] pytest: all 2 failed tests passed alone" in out
+    assert "rerun the gate on a quiet machine before pushing" in out
+    tail = out.split("WALL")[1]
+    assert "[FAIL] pytest" not in tail
+    assert out.rstrip().endswith("all local checks passed")
+
+
+def test_solo_rerun_failure_keeps_the_step_failed_and_names_the_real_one(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    verify = load_script()
+    monkeypatch.setattr(
+        verify,
+        "_rerun_alone",
+        lambda _ids: (1, "FAILED tests/t.py::test_b\n"),
+    )
+    output = _pytest_output(_DURATION_A, _DURATION_B)
+    assert _run_gate(monkeypatch, verify, [("pytest", 1, output)]) == 1
+    out = capsys.readouterr().out
+    assert "[load] pytest: 1 of 2 failures still fail alone: tests/t.py::test_b" in out
+    assert "[FAIL] pytest: exit 1" in out.split("WALL")[1]
+    assert out.rstrip().endswith("1 check(s) failed")
+
+
+def test_real_failures_are_not_rerun(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    verify = load_script()
+
+    def rerun_alone(_ids: list[str]) -> tuple[int, str]:
+        raise AssertionError("a real failure must not engage the load verdict")
+
+    monkeypatch.setattr(verify, "_rerun_alone", rerun_alone)
+    output = _pytest_output(("test_a", "assert 1 == 2"))
+    assert _run_gate(monkeypatch, verify, [("pytest", 1, output)]) == 1
+    out = capsys.readouterr().out
+    assert "[load]" not in out
+    assert "[FAIL] pytest: exit 1" in out
+
+
+def test_failures_whose_sections_were_cut_are_not_rerun(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A bounded excerpt can keep the summary and lose the FAILURES sections.
+
+    Without the sections nothing proves the failures were duration overruns,
+    so the verdict must not engage -- the failure stands as reported.
+    """
+    verify = load_script()
+
+    def rerun_alone(_ids: list[str]) -> tuple[int, str]:
+        raise AssertionError("an unprovable failure must not engage the verdict")
+
+    monkeypatch.setattr(verify, "_rerun_alone", rerun_alone)
+    output = "[log] notes/verification/pytest-canned.log\nFAILED tests/t.py::test_a\n"
+    assert _run_gate(monkeypatch, verify, [("pytest", 1, output)]) == 1
+    out = capsys.readouterr().out
+    assert "[load]" not in out
+    assert "[FAIL] pytest: exit 1" in out
 
 
 @pytest.mark.medium

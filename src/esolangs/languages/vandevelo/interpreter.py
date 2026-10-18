@@ -30,7 +30,7 @@ Decisions:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -94,6 +94,51 @@ class _State:
     stack: tuple[_Frame, ...] = ()
     pending: bool | None = None
 
+    def seeded(self, expression: _Expr) -> _State:
+        """Return this state with ``expression`` as its only frame."""
+        return replace(self, stack=((expression, 0, None),))
+
+    def bound_next(self, name: str, value: _Value) -> _State:
+        """Return the next statement's state, with ``name`` bound to ``value``."""
+        return replace(
+            self,
+            ind=self.ind + 1,
+            part=0,
+            store=_bind(self.store, name, value),
+            stack=(),
+            pending=None,
+        )
+
+    def next_statement(self) -> _State:
+        """Return the state at the next statement, frames and result spent."""
+        return replace(self, ind=self.ind + 1, part=0, stack=(), pending=None)
+
+    def next_part(self) -> _State:
+        """Return the state at this statement's next ``::`` part."""
+        return replace(self, part=self.part + 1, stack=(), pending=None)
+
+    def descend(
+        self,
+        rest: tuple[_Frame, ...],
+        expression: _Expr,
+        stage: int,
+        operand: _Expr,
+        *,
+        left: bool | None = None,
+    ) -> _State:
+        """Return the state re-parking ``expression`` at ``stage`` under ``operand``."""
+        return replace(
+            self, stack=(*rest, (expression, stage, left), (operand, 0, None))
+        )
+
+    def expand(self, rest: tuple[_Frame, ...], stored: _Expr) -> _State:
+        """Return the state with a stored expression's frame over ``rest``."""
+        return replace(self, stack=(*rest, (stored, 0, None)))
+
+    def completed(self, rest: tuple[_Frame, ...], *, result: bool) -> _State:
+        """Return the state with ``result`` pending over the frames ``rest``."""
+        return replace(self, stack=rest, pending=result)
+
 
 def _statement(line: str) -> _Statement | None:
     """Parse a line after removing its comment."""
@@ -130,11 +175,94 @@ def _bind(store: _Store, name: str, value: _Value) -> _Store:
 def _finish_part(state: _State, statement: _Statement, *, value: bool) -> _State:
     """Return the state after completing one statement part."""
     if statement.target is not None:
-        stored = value != statement.negate
-        return _State(state.ind + 1, 0, _bind(state.store, statement.target, stored))
+        return state.bound_next(statement.target, value != statement.negate)
     if not value or state.part + 1 == len(statement.parts):
-        return _State(state.ind + 1, 0, state.store)
-    return _State(state.ind, state.part + 1, state.store)
+        return state.next_statement()
+    return state.next_part()
+
+
+def _start(state: _State, statement: _Statement) -> _State | None:
+    """Return the lazy-bind state, or ``None`` when evaluation must run."""
+    if statement.target is None or statement.strict:
+        return None
+    lazy_value = statement.parts[0]
+    if statement.negate:
+        lazy_value = _Expr("not", left=lazy_value)
+    return state.bound_next(statement.target, lazy_value)
+
+
+def _eval_var(
+    state: _State,
+    rest: tuple[_Frame, ...],
+    expression: _Expr,
+    *,
+    input_value: bool | None,
+) -> _State | bool:
+    """Evaluate a variable access: its value, or the state expanding its store."""
+    name = expression.name
+    if name == "Inp":
+        if input_value is None:
+            raise syntax_error(
+                "input value required for 'Inp'", "supply an input value for Inp"
+            )
+        return input_value
+    stored = _stored(state.store, name)
+    if stored is None:
+        raise syntax_error(
+            f"undefined variable: {name}",
+            "assign the variable before reading it with name?",
+        )
+    if isinstance(stored, bool):
+        return stored
+    return state.expand(rest, stored)
+
+
+def _eval_not(
+    state: _State,
+    rest: tuple[_Frame, ...],
+    expression: _Expr,
+    stage: int,
+) -> _State | bool:
+    """Evaluate a negation: descend into its operand, then flip its result."""
+    operand = expression.left
+    if operand is None:
+        raise syntax_error(
+            "negation has no operand", "put an expression after the negation"
+        )
+    if stage == 0:
+        return state.descend(rest, expression, 1, operand)
+    return not state.pending
+
+
+def _eval_compare(
+    state: _State,
+    rest: tuple[_Frame, ...],
+    expression: _Expr,
+    stage: int,
+    *,
+    left: bool | None,
+) -> _State | bool:
+    """Evaluate a comparison stage by stage: left operand, right, then test."""
+    if stage == 0:
+        operand = expression.left
+        if operand is None:
+            raise syntax_error(
+                "comparison has no left operand",
+                "put a variable access before == or !=",
+            )
+        return state.descend(rest, expression, 1, operand)
+    if stage == 1:
+        operand = expression.right
+        if operand is None:
+            raise syntax_error(
+                "comparison has no right operand",
+                "put a variable access after == or !=",
+            )
+        return state.descend(rest, expression, 2, operand, left=state.pending)
+    result = left == state.pending
+    if expression.kind == "ne":
+        result = not result
+    return result
 
 
 def _advance(
@@ -145,99 +273,26 @@ def _advance(
 ) -> _State:
     """Return the next evaluator state without mutating ``state``."""
     statement = statements[state.ind]
-    stack = state.stack
-    if not stack:
-        if statement.target is not None and not statement.strict:
-            lazy_value = statement.parts[0]
-            if statement.negate:
-                lazy_value = _Expr("not", left=lazy_value)
-            return _State(
-                state.ind + 1,
-                0,
-                _bind(state.store, statement.target, lazy_value),
-            )
-        stack = ((statement.parts[state.part], 0, None),)
+    if not state.stack:
+        lazy = _start(state, statement)
+        if lazy is not None:
+            return lazy
+        state = state.seeded(statement.parts[state.part])
 
-    expression, stage, left = stack[-1]
-    stack = stack[:-1]
-    kind = expression.kind
-    if kind == "var":
-        name = expression.name
-        if name == "Inp":
-            if input_value is None:
-                raise syntax_error(
-                    "input value required for 'Inp'", "supply an input value for Inp"
-                )
-            result = input_value
-        else:
-            stored = _stored(state.store, name)
-            if stored is None:
-                raise syntax_error(
-                    f"undefined variable: {name}",
-                    "assign the variable before reading it with name?",
-                )
-            if isinstance(stored, bool):
-                result = stored
-            else:
-                return _State(
-                    state.ind,
-                    state.part,
-                    state.store,
-                    (*stack, (stored, 0, None)),
-                    state.pending,
-                )
-    elif kind == "not":
-        operand = expression.left
-        if operand is None:
-            raise syntax_error(
-                "negation has no operand", "put an expression after the negation"
-            )
-        if stage == 0:
-            return _State(
-                state.ind,
-                state.part,
-                state.store,
-                (*stack, (expression, 1, None), (operand, 0, None)),
-                state.pending,
-            )
-        result = not state.pending
-    elif stage == 0:
-        operand = expression.left
-        if operand is None:
-            raise syntax_error(
-                "comparison has no left operand",
-                "put a variable access before == or !=",
-            )
-        return _State(
-            state.ind,
-            state.part,
-            state.store,
-            (*stack, (expression, 1, None), (operand, 0, None)),
-            state.pending,
-        )
-    elif stage == 1:
-        operand = expression.right
-        if operand is None:
-            raise syntax_error(
-                "comparison has no right operand",
-                "put a variable access after == or !=",
-            )
-        return _State(
-            state.ind,
-            state.part,
-            state.store,
-            (*stack, (expression, 2, state.pending), (operand, 0, None)),
-            state.pending,
-        )
+    expression, stage, left = state.stack[-1]
+    rest = state.stack[:-1]
+    if expression.kind == "var":
+        outcome = _eval_var(state, rest, expression, input_value=input_value)
+    elif expression.kind == "not":
+        outcome = _eval_not(state, rest, expression, stage)
     else:
-        result = left == state.pending
-        if kind == "ne":
-            result = not result
-
-    advanced = _State(state.ind, state.part, state.store, stack, pending=result)
-    if stack:
+        outcome = _eval_compare(state, rest, expression, stage, left=left)
+    if isinstance(outcome, _State):
+        return outcome
+    advanced = state.completed(rest, result=outcome)
+    if rest:
         return advanced
-    return _finish_part(advanced, statement, value=result)
+    return _finish_part(advanced, statement, value=outcome)
 
 
 def _needs_input(state: _State, statements: tuple[_Statement, ...]) -> bool:

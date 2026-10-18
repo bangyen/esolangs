@@ -7,9 +7,10 @@ three helpers satisfies the ignored piece.  ``docs/limitations.md`` records
 the exemptions.  This pins the presence proxy over every boolean generator --
 the shape test (``test_generator_shape_is_what_the_catalogue_says``) checks the
 behaviour for tree and reducing shapes, this catches a new generator that
-quietly drops the helper.  Exceptions live in
-``ledgers/generator_catalogue.toml`` ``[folding]`` so this file names no
-language.  A helper's presence is not its effect, so the last two tests
+quietly drops the helper.  Exceptions live in each package's
+``language.toml`` ``[catalogue]`` section (the ``folding_*`` keys), read
+through ``scripts/docs/catalogue.py``, so this file names no language.
+A helper's presence is not its effect, so the last two tests
 measure it at n=8: a constant table at most 0.6x a dense one (largest
 measured 0.50x), an ignored input at most half a real one (0.32x, against
 0.52x and 0.60x for the two in ``[folding.ignored_read]``).
@@ -17,13 +18,11 @@ measured 0.50x), an ignored input at most half a real one (0.32x, against
 
 from __future__ import annotations
 
-import tomllib
-from pathlib import Path
-
 import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
+from scripts.docs.catalogue import load as _catalogue_load
 from tests.generators.source_support import generator_symbols as _source
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.source_support import source_units
@@ -33,17 +32,15 @@ RESIDUALS = ("subtree_ids", "_residual_ids", "SubtreeDiagram")
 IGNORED = ("essential_inputs", "read_at", "constant_span_test", *RESIDUALS)
 CONSTANT = ("constant_span_test", *RESIDUALS)
 
-CATALOGUE = Path(__file__).parents[2] / "ledgers" / "generator_catalogue.toml"
-
 
 def _catalogue() -> tuple[dict[str, str], dict[str, str]]:
-    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["folding"]
-    return data.get("ignored", {}), data.get("constant", {})
+    folding = _catalogue_load()["folding"]
+    return folding["ignored"], folding["constant"]
 
 
 def _native() -> tuple[dict[str, str], dict[str, str]]:
-    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["folding"]
-    return data.get("ignored_local", {}), data.get("constant_local", {})
+    folding = _catalogue_load()["folding"]
+    return folding["ignored_local"], folding["constant_local"]
 
 
 def _generators() -> set[str]:
@@ -87,8 +84,7 @@ _N = 8
 
 
 def _folding(key: str) -> set[str]:
-    data = tomllib.loads(CATALOGUE.read_text(encoding="utf-8"))["folding"]
-    return set(data.get(key, {}))
+    return set(_catalogue_load()["folding"][key])
 
 
 def _lift(inner: str, at: int, n: int) -> str:

@@ -17,6 +17,7 @@ import platform
 import statistics
 import subprocess
 from collections import defaultdict
+from datetime import date
 from typing import Protocol
 
 import pytest
@@ -57,9 +58,20 @@ def collect_ids(marker: str) -> list[str]:
     return sorted({line.strip() for line in proc.stdout.splitlines() if "::" in line})
 
 
+def _timing_map(raw: object) -> object:
+    """Return the node-to-seconds map inside a timing payload.
+
+    A raw timing file is the map itself; the committed ``snapshot.json``
+    nests it under ``durations``, beside the ``collected`` dates.
+    """
+    if isinstance(raw, dict) and isinstance(raw.get("durations"), dict):
+        return raw["durations"]
+    return raw
+
+
 def load_durations(path: Path) -> dict[str, float]:
     """Return finite positive timings, refusing a corrupt timing file."""
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw = _timing_map(json.loads(path.read_text(encoding="utf-8")))
     if not isinstance(raw, dict) or any(
         not isinstance(key, str)
         or isinstance(value, bool)
@@ -70,6 +82,24 @@ def load_durations(path: Path) -> dict[str, float]:
     ):
         raise ValueError("durations must map node IDs to finite positive seconds")
     return {key: float(value) for key, value in raw.items()}
+
+
+_GRID_RATIO = math.sqrt(2)
+
+
+def quantize_duration(value: float) -> float:
+    """Round ``value`` up to the sqrt(2) grid the committed snapshot stores.
+
+    Shard balancing needs magnitudes, not 16 significant figures, and a
+    median that wobbles by a few percent under load used to rewrite its
+    entry on every refresh — churn, not signal.  On the grid (32 points
+    span this corpus) an entry changes only when the median itself moves
+    by 41% or more.  The epsilon keeps a median landing exactly on a grid
+    point (2.0s) from being bumped a step by float dust in the log.
+    """
+    if value <= 0:
+        return value
+    return _GRID_RATIO ** math.ceil(math.log(value, _GRID_RATIO) - 1e-9)
 
 
 def _fallback(durations: dict[str, float], nodes: list[str]) -> float:
@@ -220,6 +250,25 @@ def load_run(directory: Path, expected: set[str]) -> dict[str, float]:
     return result
 
 
+def _collected_dates(output: Path) -> dict[str, str]:
+    """Return the dates the snapshot at ``output`` already records.
+
+    A refresh rewrites the durations and stamps their date; the census
+    dates beside them are another producer's record and carry over.
+    """
+    try:
+        raw = json.loads(output.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(raw, dict) or not isinstance(raw.get("collected"), dict):
+        return {}
+    return {
+        key: value
+        for key, value in raw["collected"].items()
+        if isinstance(key, str) and isinstance(value, str)
+    }
+
+
 def refresh(runs: list[Path], ids: list[str], output: Path) -> None:
     """Write median timings only after every input run passes validation."""
     if not runs or not ids:
@@ -235,10 +284,13 @@ def refresh(runs: list[Path], ids: list[str], output: Path) -> None:
     if len(cohorts) != 1:
         raise ValueError("mixed timing environments or harness versions")
     durations = {
-        node: statistics.median(sample[node] for sample in samples)
+        node: quantize_duration(statistics.median(sample[node] for sample in samples))
         for node in sorted(set(ids))
     }
-    write_text(output, json.dumps(durations, indent=1) + "\n")
+    collected = _collected_dates(output)
+    collected["durations"] = date.today().isoformat()
+    snapshot = {"collected": collected, "durations": durations}
+    write_text(output, json.dumps(snapshot, indent=1) + "\n")
 
 
 def refresh_main(argv: list[str] | None = None) -> int:
@@ -248,7 +300,7 @@ def refresh_main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("ledgers/slow_durations.json"),
+        default=Path("snapshot.json"),
     )
     parser.add_argument("--marker", default="slow and not weekly")
     parser.add_argument("--shards", type=int, default=4)
@@ -408,10 +460,11 @@ def pytest_configure(config: pytest.Config) -> None:
         source = config.getoption("duration_input") or path
         if source is not None and config.getoption("duration_order"):
             try:
-                recorded = json.loads(source.read_text(encoding="utf-8"))
+                recorded = _timing_map(json.loads(source.read_text(encoding="utf-8")))
+                entries = recorded.items() if isinstance(recorded, dict) else ()
                 costs = {
                     node: float(seconds)
-                    for node, seconds in recorded.items()
+                    for node, seconds in entries
                     if isinstance(node, str)
                     and isinstance(seconds, (int, float))
                     and math.isfinite(seconds)

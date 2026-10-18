@@ -117,6 +117,50 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
     )
 
 
+#: Column the shared body's entry sits on, east of the decoder's descent.
+_BODY_ENTRY_COL = 11
+
+
+def _indexed_classes(table: str) -> tuple[list[str], str] | None:
+    """Return the distinct 64-entry leaf classes and each block's class label.
+
+    None unless the table holds two to ten classes, the range the prefix
+    decoder can label with one digit each.
+    """
+    blocks = [table[i : i + 64] for i in range(0, len(table), 64)]
+    unique = list(dict.fromkeys(blocks))
+    if not 2 <= len(unique) <= 10:
+        return None
+    indices = {block: str(i) for i, block in enumerate(unique)}
+    return unique, "".join(indices[block] for block in blocks)
+
+
+def _indexed_ledger_cost(decoder: _PrefixDecoder, classes: int) -> int:
+    """Charge entry, decoder, connection and shared-body legs to the ledger."""
+    # Entry, decoder, descent, east/down/west connection, shared body.
+    rows = 8
+    body_cost = (
+        _dig_flat_walk([4, 2, 1], [4, 2, 1])
+        - ((rows + 14) // 2 - 1)
+        + 9
+        + 3 * rows * (classes - 1)
+    )
+    return (
+        decoder.row_offset
+        + decoder.offset
+        + decoder.prefix_cost
+        + decoder.top
+        - 2
+        - (decoder.exit_row + decoder.row_offset)
+        + _BODY_ENTRY_COL
+        - (decoder.end + decoder.offset)
+        + 4
+        + _BODY_ENTRY_COL
+        - 9
+        + body_cost
+    )
+
+
 def _dig_indexed_shared(table: str, n: int) -> str | None:
     """Decode two to six prefix bits into shared six-input leaf classes.
 
@@ -127,42 +171,23 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
     bits = n - 6
     if bits not in (2, 3, 4, 5, 6):
         return None
-    blocks = [table[i : i + 64] for i in range(0, len(table), 64)]
-    unique = list(dict.fromkeys(blocks))
-    if not 2 <= len(unique) <= 10:
+    classes = _indexed_classes(table)
+    if classes is None:
         return None
-    indices = {block: str(i) for i, block in enumerate(unique)}
-    prefix = "".join(indices[block] for block in blocks)
+    unique, prefix = classes
     decoder = (
         _flat_prefix_decoder(bits, prefix)
         if bits > 4
         else _adder_prefix_decoder(bits, prefix)
     )
-    merge = 11
-    # Entry, decoder, descent, east/down/west connection, shared body.
-    rows = 8
-    body_cost = (
-        _dig_flat_walk([4, 2, 1], [4, 2, 1])
-        - ((rows + 14) // 2 - 1)
-        + 9
-        + 3 * rows * (len(unique) - 1)
-    )
-    cost = (
-        decoder.row_offset
-        + decoder.offset
-        + decoder.prefix_cost
-        + decoder.top
-        - 2
-        - (decoder.exit_row + decoder.row_offset)
-        + merge
-        - (decoder.end + decoder.offset)
-        + 4
-        + merge
-        - 9
-        + body_cost
-    )
-    if cost > _walk_bound(n):
+    if _indexed_ledger_cost(decoder, len(unique)) > _walk_bound(n):
         return None
+    return _assemble_indexed(decoder, unique)
+
+
+def _assemble_indexed(decoder: _PrefixDecoder, unique: list[str]) -> str:
+    """Place the decoder above the shared body, clear and render the grid."""
+    merge = _BODY_ENTRY_COL
 
     def place(point: tuple[int, int]) -> tuple[int, int]:
         return point[0] + decoder.row_offset, point[1] + decoder.offset

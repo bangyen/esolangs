@@ -191,46 +191,36 @@ def _trampoline(
     carried incrementally (each chunk appends exactly one
     ``_STASH_BYTE``); re-summing per iteration would be O(chunks**2).
     """
-    if io_modulus == 255:
-        return _trampoline_255(array, acc, target)
+    # One trampoline for both I/O moduli: stash chunks raise the sum by
+    # ``io_modulus - 1`` each, and only the closing hop's head solve differs
+    # (an XOR solve at 256, a plain residue at 255, whose entry first banks
+    # a nonzero accumulator so its chunks start from a clear one).
+    byte = io_modulus - 1
     cur, val, tokens = list(array), acc, []
+    if io_modulus == 255 and acc:
+        cur.append(acc % io_modulus)
+        tokens.append("EXCRETE")
+        val = 0
     rest_sum = sum(cur[1:])
     if target <= rest_sum:
         raise _UnreachableError("trampoline target is not past the running sum")
-    while rest_sum < target - _STASH_BYTE:
-        chunk, cur = _stash_chunk(cur, val)
+    while rest_sum < target - byte:
+        chunk, cur = _stash_chunk(cur, val, io_modulus=io_modulus)
         val = 0
-        rest_sum += _STASH_BYTE
+        rest_sum += byte
         tokens += chunk
     hop = target - rest_sum
-    if not 1 <= hop <= _STASH_BYTE:  # pragma: no cover - the window solve is exact
-        raise AssertionError(f"trampoline byte {hop} escaped 1..{_STASH_BYTE}")
-    count = (((val % _MODULUS) ^ hop) - (cur[0] + rest_sum)) % _MODULUS
-    tokens += [*["SEED"] * count, "DIGEST", "EXCRETE", "DIGEST", "LEAPFROG"]
-    out = [(cur[0] + count) % _MODULUS, *cur[1:], hop]
-    return tokens, out, sum(out)
-
-
-def _trampoline_255(
-    array: list[int], acc: int, target: int
-) -> tuple[list[str], list[int], int]:
-    """Reach target by appending residues after clearing the accumulator."""
-    cur, tokens = list(array), []
-    if acc:
-        cur.append(acc % 255)
-        tokens.append("EXCRETE")
-    rest = sum(cur[1:])
-    if target <= rest:
-        raise _UnreachableError("trampoline target is not past the running sum")
-    while rest < target - 254:
-        chunk, cur = _stash_chunk(cur, 0, io_modulus=255)
-        rest += 254
-        tokens += chunk
-    hop = target - rest
-    head = (hop - rest) % 255
-    tokens += ["SEED"] * ((head - cur[0]) % _MODULUS)
+    if io_modulus == 255:
+        head = (hop - rest_sum) % io_modulus
+        tokens += ["SEED"] * ((head - cur[0]) % _MODULUS)
+        out = [head, *cur[1:], hop]
+    else:
+        if not 1 <= hop <= byte:  # pragma: no cover - the window solve is exact
+            raise AssertionError(f"trampoline byte {hop} escaped 1..{byte}")
+        count = (((val % _MODULUS) ^ hop) - (cur[0] + rest_sum)) % _MODULUS
+        tokens += ["SEED"] * count
+        out = [(cur[0] + count) % _MODULUS, *cur[1:], hop]
     tokens += ["DIGEST", "EXCRETE", "DIGEST", "LEAPFROG"]
-    out = [head, *cur[1:], hop]
     return tokens, out, sum(out)
 
 
@@ -471,13 +461,7 @@ def _level(
     stash chunk buys ``s`` of it (255, or 254 under I/O 255) for three
     tokens once the residue settles.  :func:`_ballast` counts the chunks.
     """
-    tokens = _plant(st) if st.acc else []
-    pos += len(tokens)
-    for _ in range(_ballast(st, pos, _chain_bound(weight, pool, st.io_modulus))):
-        chunk, _ = _stash_chunk(st.arr0(), 0, io_modulus=st.io_modulus)
-        _replay(st, chunk)
-        tokens += chunk
-        pos += len(chunk)
+    tokens, pos = _node_prefix(st, weight, pool, pos)
     node_toks, _, _, landing = _node(st.arr0(), st.acc, io_modulus=st.io_modulus)
     node_end = pos + len(node_toks)
     zero, one = st.clone(), st.clone()
@@ -492,6 +476,20 @@ def _level(
     tokens += node_toks + t0
     tokens += ["SEED"] * (landing - node_end - len(t0))
     return tokens + arm_toks, z, cont
+
+
+def _node_prefix(
+    st: _Sums, weight: int, pool: int | None, pos: int
+) -> tuple[list[str], int]:
+    """Return a level's plant and ballast tokens, and the position after them."""
+    tokens = _plant(st) if st.acc else []
+    pos += len(tokens)
+    for _ in range(_ballast(st, pos, _chain_bound(weight, pool, st.io_modulus))):
+        chunk, _ = _stash_chunk(st.arr0(), 0, io_modulus=st.io_modulus)
+        _replay(st, chunk)
+        tokens += chunk
+        pos += len(chunk)
+    return tokens, pos
 
 
 def _ballast(st: _Sums, pos: int, chain: int) -> int:

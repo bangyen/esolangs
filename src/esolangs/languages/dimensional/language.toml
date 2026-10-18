@@ -1,0 +1,31 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[deep_arities]
+workspace = 7
+
+[curation]
+backlinks = 9
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1"
+scaling = "linear: 2T table characters plus at most a fixed gadget per input"
+execution = "linear: at most 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled"
+workspace = "T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+56) + bl(2n-1) bits"
+
+[generator_sizes]
+"00000001" = { commands = 112, commands_by_row = { "0" = 76, "1" = 76, "2" = 85, "3" = 85, "4" = 103, "5" = 103, "6" = 112, "7" = 112 }, source_units = 132 }
+"00001100" = { commands = 76, commands_by_row = { "0" = 67, "1" = 67, "2" = 67, "3" = 67, "4" = 76, "5" = 76, "6" = 76, "7" = 76 }, source_units = 103 }
+"00110110" = { commands = 114, commands_by_row = { "0" = 78, "1" = 78, "2" = 87, "3" = 87, "4" = 105, "5" = 105, "6" = 114, "7" = 114 }, source_units = 130 }
+"0110" = { commands = 76, commands_by_row = { "0" = 67, "1" = 67, "2" = 76, "3" = 76 }, source_units = 102 }
+"01101001" = { commands = 115, commands_by_row = { "0" = 79, "1" = 79, "2" = 88, "3" = 88, "4" = 106, "5" = 106, "6" = 115, "7" = 115 }, source_units = 132 }
+"0110100110010110" = { commands = 194, commands_by_row = { "0" = 95, "1" = 95, "2" = 104, "3" = 104, "4" = 122, "5" = 122, "6" = 131, "7" = 131, "8" = 158, "9" = 158, "10" = 167, "11" = 167, "12" = 185, "13" = 185, "14" = 194, "15" = 194 }, source_units = 166 }
+"1101001101101101" = { commands = 197, commands_by_row = { "0" = 98, "1" = 98, "2" = 107, "3" = 107, "4" = 125, "5" = 125, "6" = 134, "7" = 134, "8" = 161, "9" = 161, "10" = 170, "11" = 170, "12" = 188, "13" = 188, "14" = 197, "15" = 197 }, source_units = 168 }
+"11111110" = { commands = 117, commands_by_row = { "0" = 81, "1" = 81, "2" = 90, "3" = 90, "4" = 108, "5" = 108, "6" = 117, "7" = 117 }, source_units = 130 }
+
+[catalogue]
+folding_constant_local = "_program"  # reads and literal output
+
+[schemes]
+folds_without_tree = true

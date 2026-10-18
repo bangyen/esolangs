@@ -1,0 +1,26 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+
+[proof_status]
+labels = ["tree"]
+qualification = "a one-line compare read either flies its 1 child down a residue mod 82 through shared rungs or dismounts 85 lines onto its 0 child; a lane is any residue not in the air"
+scaling = "linear: each node's scans and dismount span a bounded number of lines"
+execution = "linear: at most L commands: every jump lands past its rung"
+workspace = "poly n: at most 8 + bl(L) + bl(n) bits: the accumulator, a line cursor, the input cursor"
+
+[generator_sizes]
+"00000001" = { commands = 89, commands_by_row = { "0" = 203, "1" = 125, "2" = 125, "3" = 47, "4" = 126, "5" = 48, "6" = 81, "7" = 89 }, source_units = 3235 }
+"00001100" = { commands = 68, commands_by_row = { "0" = 203, "1" = 125, "2" = 125, "3" = 47, "4" = 212, "5" = 134, "6" = 146, "7" = 68 }, source_units = 3254 }
+"00110110" = { commands = 38, commands_by_row = { "0" = 140, "1" = 62, "2" = 181, "3" = 103, "4" = 96, "5" = 104, "6" = 137, "7" = 38 }, source_units = 3762 }
+"0110" = { commands = 77, commands_by_row = { "0" = 86, "1" = 94, "2" = 127, "3" = 77 }, source_units = 2101 }
+"01101001" = { commands = 125, commands_by_row = { "0" = 76, "1" = 149, "2" = 117, "3" = 83, "4" = 118, "5" = 84, "6" = 52, "7" = 125 }, source_units = 3933 }
+"0110100110010110" = { commands = 113, commands_by_row = { "0" = 78, "1" = 135, "2" = 168, "3" = 69, "4" = 169, "5" = 70, "6" = 103, "7" = 176, "8" = 171, "9" = 72, "10" = 105, "11" = 113, "12" = 106, "13" = 114, "14" = 147, "15" = 113 }, source_units = 8158 }
+"1101001101101101" = { commands = 134, commands_by_row = { "0" = 294, "1" = 135, "2" = 82, "3" = 155, "4" = 148, "5" = 70, "6" = 254, "7" = 176, "8" = 85, "9" = 158, "10" = 126, "11" = 92, "12" = 192, "13" = 114, "14" = 61, "15" = 134 }, source_units = 8146 }
+"11111110" = { commands = 68, commands_by_row = { "0" = 289, "1" = 211, "2" = 211, "3" = 133, "4" = 212, "5" = 134, "6" = 102, "7" = 68 }, source_units = 3257 }
+
+[catalogue]
+sharing_exempt = "a stop sits on one lane, so two parents cannot land on one child"
+folding_ignored_read = "a read is itself a branch: both arms converge on one child, so an ignored input costs a read node per path"

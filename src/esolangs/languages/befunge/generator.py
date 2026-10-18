@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.befunge.proof_formulas import execution
 from esolangs.registry._language import Example, Language, Shape
 from esolangs.runtime.source_hints import with_hint
 
@@ -234,4 +235,5 @@ LANGUAGE = Language(
     # ``.`` writes the digit and a trailing space, so the committed
     # answer carries it and the sweep strips it.
     example=Example(expected="0 "),
+    proof_execution=(execution, True, (3, 9, 11)),
 )
