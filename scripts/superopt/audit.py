@@ -28,6 +28,7 @@ import importlib
 import signal
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from itertools import product
 
@@ -323,10 +324,14 @@ def corpus_for(name: str, *, arity3_size_cap: int = 2000) -> Corpus:
 
 
 def approx(n: int) -> str:
-    """A short magnitude for a candidate count too big to print exactly."""
+    """A short magnitude for a candidate count too big to print exactly.
+
+    Digits come from the bit length: ``str`` of a huge int is capped
+    at 4,300 digits by default, and these counts pass that easily.
+    """
     if n < 10**15:
         return f"{n:,}"
-    return f"~1e{len(str(n)) - 1}"
+    return f"~1e{int(n.bit_length() * 0.30103)}"
 
 
 def space_below(alphabet_size: int, size: int) -> int:
@@ -554,6 +559,7 @@ def audit_fleet(
     candidate_cap: int | None,
     wall_seconds: float,
     progress: bool = False,
+    on_result: Callable[[str, Corpus, list[Outcome]], None] | None = None,
 ) -> list[tuple[str, Corpus, list[Outcome]]]:
     """Audit languages cheapest-first until the global budget is spent.
 
@@ -639,6 +645,8 @@ def audit_fleet(
                     )
                 )
         results.append((name, corpus, outcomes))
+        if on_result is not None:
+            on_result(name, corpus, outcomes)
         if progress:
             kinds = [o.outcome for o in outcomes]
             print(

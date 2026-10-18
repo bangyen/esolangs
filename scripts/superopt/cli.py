@@ -24,7 +24,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .audit import Corpus, Outcome, Runner, audit_fleet, audit_language
+from .audit import Corpus, Outcome, Runner, approx, audit_fleet, audit_language
 from .machine import FULL_ALPHABET, SUFFIX_ALPHABET
 from .search import Stats, certify, search, search_bfs
 from .targets import SHIPPED_GADGET, SHIPPED_SUFFIX, full_spec, suffix_spec
@@ -92,7 +92,7 @@ def _record(
     for outcome in outcomes:
         row = asdict(outcome)
         if row["space"] > 10**15:
-            row["space"] = f"~1e{len(str(row['space'])) - 1}"
+            row["space"] = approx(row["space"])
         rows.append(row)
     return {
         "language": name,
@@ -143,6 +143,14 @@ def _audit_fleet(args: argparse.Namespace) -> int:
         wanted = {part.strip() for part in args.names.split(",")}
         names = [n for n in names if n in wanted]
     began = time.monotonic()
+    records: list[dict[str, Any]] = []
+
+    def collect(name: str, corpus: Corpus, outcomes: list[Outcome]) -> None:
+        # Rewrite the record file per language: a crashed or killed
+        # run keeps every language it finished.
+        records.append(_record(name, corpus, outcomes, Runner(name)))
+        Path(args.out).write_text(json.dumps(records, indent=1), encoding="utf-8")
+
     results = audit_fleet(
         names,
         args.arity,
@@ -150,13 +158,14 @@ def _audit_fleet(args: argparse.Namespace) -> int:
         candidate_cap=args.cap,
         wall_seconds=args.wall,
         progress=True,
+        on_result=collect,
     )
-    records = []
-    gaps = 0
-    for name, corpus, outcomes in results:
-        records.append(_record(name, corpus, outcomes, Runner(name)))
-        gaps += sum(1 for o in outcomes if o.outcome == "gap")
-    Path(args.out).write_text(json.dumps(records, indent=1), encoding="utf-8")
+    gaps = sum(
+        1
+        for _name, _corpus, outcomes in results
+        for o in outcomes
+        if o.outcome == "gap"
+    )
     counts: dict[str, int] = {}
     for record in records:
         for row in record["outcomes"]:
