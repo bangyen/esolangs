@@ -1,21 +1,15 @@
 """The trit gadget machine: the smallest model expressing the digits gadget.
 
-State is an accumulator ``A`` and three cells, every value a single trit
-(0..2): the Malbolge digit gadget's behaviour at trit 0, the resolution
-the repo's own minimality test (``test_gadget_suffix.py``) uses.  A
-program is a tuple of tokens; its cost is its token count.
-
-Tokens:
-
-- ``/`` -- read: ``A`` becomes the next input bit (0 or 1).
-- ``Kd`` -- constant: ``A`` becomes ``d``.
-- ``d`` -- apply: ``A`` and cell ``d`` both become ``crazy0(A, cell d)``,
-  Malbolge's ``p`` over that cell at trit 0.
-
-``crazy0(a, c)`` is the low trit of the interpreter's ``_crazy(a, c)``
-for single-trit arguments; a test pins this table against the
-interpreter, and pins the shipped gadget's closed form against
-:func:`run`, so the model cannot drift from the repo's.
+State is an accumulator ``A`` and three cells, every value a single
+trit (0..2): the Malbolge digit gadget's behaviour at trit 0, the
+resolution the repo's own minimality test (``test_gadget_suffix.py``)
+uses.  A program is a tuple of tokens; its cost is its token count.
+Tokens: ``/`` reads the next input bit into ``A``; ``Kd`` sets ``A``
+to ``d``; ``d`` runs Malbolge's ``p`` over cell ``d`` (``A`` and the
+cell both become ``crazy0(A, cell d)``).  ``crazy0(a, c)`` is the low
+trit of the interpreter's ``_crazy(a, c)`` for single-trit arguments;
+tests pin this table and the shipped gadget's closed form against
+the repo, so the model cannot drift from it.
 """
 
 from __future__ import annotations
@@ -28,10 +22,9 @@ FULL_ALPHABET: tuple[str, ...] = ("/", "0", "1", "2", "K0", "K1", "K2")
 #: The suffix alphabet: no reads (a prefix has already consumed them).
 SUFFIX_ALPHABET: tuple[str, ...] = ("0", "1", "2", "K0", "K1", "K2")
 
-#: A machine state: ``(A, cells)``.
+#: A machine state: ``(A, cells)``; ``ZERO`` is the zeroed start.
 type State = tuple[int, tuple[int, int, int]]
 
-#: The zeroed start state.
 ZERO: State = (0, (0, 0, 0))
 
 
