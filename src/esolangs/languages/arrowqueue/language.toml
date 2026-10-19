@@ -28,3 +28,21 @@ folding_constant_local = "_program"  # direct halt or circulating heading
 [formula_arities]
 execution = [1, 7]
 workspace = [1, 6]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_projection]
+saving = 72.4
+arity = 10
+verdict = "kept: canonical, exempt. An ignored input's stage is one inert setter row off the path and the cascade indexes the projected table alone. By area: 44.6% at n=8 and 48.2% at n=10 with one ignored input, 67.4% / 72.4% with two; 0.0% on random tables. The docstring's -46.8% / -70.5% at n=8 measures 44.6-45.0% / 67.4% on every construction tried; see the stale-figures list"
+
+[ablations.constant_tail_fold]
+saving = 55.0
+arity = 10
+verdict = "kept: the cascade's trailing constant span is not drawn -- a 0 tail is dropped (running off the grid halts) and a 1 tail is one drained ring that pops the markers the dropped rows would. On random tables the tails are ~2 entries (1.59% at n=6 falling to 0.11% at n=10 by area); on its class at n=10 a constant last quarter saves 17.4% (0-suffix) / 29.5% (1-suffix) and a constant last half 38.1% / 55.0%"
+
+[ablations.constant_direct_path]
+saving = 89.8
+arity = 10
+verdict = "kept: canonical, exempt. A constant table halts on an empty pop or circulates one right heading instead of cascading, with the input setters off those paths. Area at n=10: 11 vs 108 against the cascade build for the all-zero table (89.8%), 44 vs 120 for the all-one table (63.3%)"

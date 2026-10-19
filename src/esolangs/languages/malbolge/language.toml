@@ -34,3 +34,54 @@ folding_constant = "fixed-size source; a constant table is no smaller"
 [formula_arities]
 # Every word and register is below 3^10 < 2^16; measured ~394k bits.
 workspace = [2, 3]
+
+# Plain-rewrite audit record: each trick's saving measured in shipped
+# context at the largest arity where it runs (chars; seeded random
+# tables, seed 184700+n, 200 per arity).  Prices are contextual --
+# joint removals were measured separately before landing.  Rows for
+# removed tricks stay as the record of why they left.  The emitted
+# size is the full 59,049-cell store at every arity and table, so
+# every per-table trick prices at 0.0% by construction.
+[ablations]
+audited = "2026-10-18"
+
+[ablations.full_store_render]
+saving = 0.0
+arity = 16
+verdict = "kept: the source is the whole memory image by design; the untouched tail costs 44.7% at n=3..7 and 11.1% at n=15, ~0% at the largest arities"
+
+[ablations.tier_constructions]
+saving = 0.0
+verdict = "kept: feasibility -- stub, cascade, wide, thirteen, segments and digits tiers each unlock arities the previous cannot address; size is 59,049 at every tier"
+
+[ablations.shortest_path_planner]
+saving = 0.0
+verdict = "kept: not separately priceable -- typed into the 13+ tiers' emission, and no walker variant of those tiers exists"
+
+[ablations.searched_constants]
+saving = 0.0
+verdict = "kept: frozen one-time searches (the mixer schedule, the CP-SAT hub labels) -- construction constants, not per-table tricks"
+
+[ablations.constant_folding]
+saving = 0.0
+arity = 16
+verdict = "kept: canonical, exempt; does not apply -- a constant table is no smaller (59,049)"
+
+[ablations.ignored_input_drop]
+saving = 0.0
+arity = 16
+verdict = "kept: canonical, exempt; does not apply -- an extra input port adds no cells (59,049)"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.dirty_chunks]
+price = 3412.6
+workload = "traced"
+verdict = "kept: a per-step snapshot costs the writes, not 59,049 words"
+
+[interpreter_ablations.initial_memory_cache]
+price = 2.1
+workload = "run"
+verdict = "candidate: unmeasurable; the fill is ~55 ms per source against multi-second executions"

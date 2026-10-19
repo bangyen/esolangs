@@ -27,3 +27,36 @@ evidence = "docs/proofs/boolfuck-gates.md"
 "0110100110010110" = { commands = 81, commands_by_row = { "0" = 57, "1" = 63, "2" = 63, "3" = 69, "4" = 63, "5" = 69, "6" = 69, "7" = 75, "8" = 63, "9" = 69, "10" = 69, "11" = 75, "12" = 69, "13" = 75, "14" = 75, "15" = 81 }, source_units = 79 }
 "1101001101101101" = { commands = 146, commands_by_row = { "0" = 133, "1" = 133, "2" = 132, "3" = 140, "4" = 116, "5" = 116, "6" = 128, "7" = 128, "8" = 128, "9" = 136, "10" = 143, "11" = 143, "12" = 139, "13" = 139, "14" = 138, "15" = 146 }, source_units = 234 }
 "11111110" = { commands = 104, commands_by_row = { "0" = 82, "1" = 82, "2" = 82, "3" = 82, "4" = 93, "5" = 93, "6" = 104, "7" = 104 }, source_units = 128 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.affine_stream]
+saving = 84.8
+arity = 12
+verdict = "kept: an affine table streams through one input and an accumulator instead of the tree. 0.0% on random tables at every arity (a random table is never affine), 75.1% / 78.4% / 79.1% / 84.8% on random affine tables at n=8/9/10/12 and rising; parity at n=10 is 175 chars, and constant tables (affine with no coefficients) save 57.6% at n=8 rising to 68.1% at n=12"
+
+[ablations.normal_gates]
+saving = 29.1
+arity = 12
+verdict = "kept: two-input cofactors normalize to shared AND/XOR gates behind a prefix tree. Race marginal on random tables 21.5% / 25.7% / 26.9% / 29.1% at n=8/9/10/12 and rising (seed set 2: 26.2% / 29.4% at n=10/12). The comments' 40-table figures (9.6% / 13.1% / 23.3% at n=6/7/8, and 9.2% / 21.2% at n=7/8 in the entry point) measure 11.0% / 8.6% / 22.5% on a seeded 40-table reconstruction: same magnitude, not exact, corpora unstated; the n=5 figure (6.6%) describes a build the shipped code refuses below n=6"
+
+[ablations.shared_blocks]
+saving = 28.9
+arity = 12
+verdict = "kept: repeated residuals defer to unused level flags, admitted within the command bound. 0.0% on random tables at n=9/10/12 (1.0% at n=8) and about 0% on single-block tilings, where the tree's own collapse already covers the repeats; 21.5% / 24.9% / 28.9% / 28.9% on noisy affine tables at n=8/9/10/12, the class the Decisions name for the per-level blocks form"
+
+[ablations.command_bound]
+saving = -28.6
+arity = 12
+verdict = "kept: proof machinery, priced negative on purpose. The 2n^2 + 27n + 8 command bound is what the execution and workspace formulas certify, so the shared-blocks candidate is refused past it. Removing the bound would cut noisy affine programs by 28.6% (against the unbounded build) at n=12 and 12.5% at n=10, and B C C B tables by a seed-dependent 17.5-30.0% at n=7 (the docstring's 22.9% at n=7 and 9.8% at n=8 sit inside the spread of three 8-seed families, 0.7-10.6% at n=8; the seeds are unstated). About 0% on random tables at n>=9, where the bound never binds"
+
+[ablations.constant_fold]
+saving = 0.0
+arity = 12
+verdict = "kept: canonical, exempt, and emission-neutral in this dialect. Disabling the fold test for spans of 2 or more changes random totals by 0.2% at n=8 and 0.0% at n=9/10/12: a constant subtree's halves always agree, so the identical-halves collapse emits it through the same leaf path and the fold is only a descent shortcut. Its independent residue is the fold_zero guarded form, 5.4% / 6.7% on noisy affine at n=10/12"
+
+[ablations.identical_halves_collapse]
+saving = 32.7
+arity = 12
+verdict = "kept: canonical, exempt; a subtree whose halves are identical is emitted once, the input skipped for that subtree. Priced jointly with the constant fold (emission-neutral beside it, above) in the plain build: 31.6% / 32.4% / 32.7% on random tables at n=8/10/12, 69.8% on noisy affine, 95.7% on affine tables in plain context, 99.4% on constant tables"

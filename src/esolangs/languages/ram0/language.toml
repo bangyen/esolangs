@@ -20,3 +20,26 @@ workspace = "poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) b
 "0110100110010110" = { commands = 53, commands_by_row = { "0" = 49, "1" = 50, "2" = 51, "3" = 51, "4" = 52, "5" = 52, "6" = 51, "7" = 52, "8" = 53, "9" = 53, "10" = 52, "11" = 53, "12" = 51, "13" = 52, "14" = 53, "15" = 53 }, source_units = 158 }
 "1101001101101101" = { commands = 53, commands_by_row = { "0" = 46, "1" = 46, "2" = 50, "3" = 51, "4" = 48, "5" = 48, "6" = 48, "7" = 48, "8" = 51, "9" = 52, "10" = 52, "11" = 52, "12" = 48, "13" = 48, "14" = 52, "15" = 53 }, source_units = 169 }
 "11111110" = { commands = 38, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 34, "5" = 34, "6" = 38, "7" = 38 }, source_units = 91 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 72.9
+arity = 12
+verdict = "kept: canonical, exempt. A repeated subtree is emitted once and jumped to; an already-emitted one-subtree costs nothing, a zero-subtree one goto. Removing the sharing costs 56.7% at n=8 rising to 72.9% at n=12 on random tables, 99.0% on parity at n=12"
+
+[ablations.halves_agree_skip]
+saving = 1.8
+arity = 12
+verdict = "kept: canonical, exempt. A test whose halves agree is passed over for its surviving half. 3.6% at n=8 declining to 1.8% at n=12 on random tables, 3.0% / 1.7% with one ignored input, and 0.0% on parity, AND, OR and constant tables, where the agreeing tests sit at the leaves"
+
+[ablations.leaf_copy_jump]
+saving = 0.5
+arity = 12
+verdict = "kept: inside the sharing emission, an already-emitted leaf is jumped to only while its address text is shorter than re-emitting the leaf. 1.4% at n=8 declining to 0.5% at n=12 on random tables, 4.0% on AND; positive on every corpus, ~75 chars per table at n=12 in absolute terms. A clause of the sharing condition, not a separable mechanism; recorded, not a candidate"
+
+[ablations.test_address_order]
+saving = 30.4
+arity = 12
+verdict = "kept: the deepest, most repeated test sits in cell 0 and the root test in cell n-1, so the unary addresses make the frequent tests the cheap ones. Reversing the assignment costs 16.3% at n=8 rising to 30.4% at n=12 on random tables, 20.5% with one ignored input at n=12, 2.7% on parity, 0.0% on AND/OR. A numbering choice; the shipped order wins on the random corpus at the largest arities"

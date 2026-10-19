@@ -161,7 +161,7 @@ three kinds:
 | --- | --- | --- |
 | Gates | `proof_status`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | a check or proof test consumes the data as the claim itself; wrong data fails |
 | Reference | `curation`, `formula_arities` | census facts and extra probe arities; informs decisions, gates nothing |
-| Record | `ablations` | the plain-rewrite audit's verdicts; no consumer, kept so settled decisions are not relitigated |
+| Record | `ablations`, `interpreter_ablations` | the plain-rewrite and interpreter audits' verdicts; no consumer, kept so settled decisions are not relitigated |
 
 The registry connects the API and CLI to generators and interpreters:
 

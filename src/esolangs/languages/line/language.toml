@@ -31,3 +31,54 @@ evidence = "docs/proofs/line-sharing.md"
 
 [formula_arities]
 execution = [3, 5]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.small_tree_layout]
+saving = 51.3
+arity = 5
+verdict = "kept: clears at its n<=5 cap on random tables (55.3% at n=4)"
+
+[ablations.level_skip]
+saving = -19.9
+arity = 10
+verdict = "kept: fails the bar at the large arities -- +34.9% at n=5 through the small-tree layout, but costs area from n=6 (-12.2% at n=6, -17.9% at n=8, -2.9% at n=9); its command saving is a fixed ~1.45/row, 4.9% at n=6 declining to 2.9% at n=10, and the worst row is 5n with or without it; retirement candidate, Bangyen to decide"
+
+[ablations.projected_loader]
+saving = 30.7
+arity = 10
+verdict = "kept: canonical, exempt; saving on its core class (28.8% at n=7), 37.3% on constant tables at n=10, 3.9% on the one-ignored-input corpus at n=10 and declining there"
+
+[ablations.streaming_fold]
+saving = 99.1
+arity = 12
+verdict = "kept: clears on its named-function class (parity at n=12; 58.8-99.1% across parity/and/or/majority/threshold2 at n=12, growing with n); 0.0% on random tables at n>=8"
+
+[ablations.projected_streaming_fold]
+saving = 9.2
+arity = 12
+verdict = "kept: fails the bar as a separate mechanism -- 1.9-3.8% marginal on cores, 0.0-0.2% on the one-ignored corpus, and 9.2% on tiled tables at n=12 where it is the folds' whole price (the plain fold never wins there); the share is rising; retirement candidate, Bangyen to decide"
+
+[ablations.residual_sharing]
+saving = 9.9
+arity = 12
+verdict = "kept: canonical, exempt; no independent price -- _residual_ids merging is the tree's state graph, the skip's agreement test and the folds' join structure at once, so the figure is the joint de-merged measure on tiled tables (6.9% at n=8; 0.2-3.9% on random tables at n>=6)"
+
+[ablations.balance]
+saving = 0.0
+verdict = "kept: feasibility -- the balance entry point chooses orientation for squareness; no default-path effect"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.grey_rows_cache]
+price = 119.3
+workload = "run"
+verdict = "kept: id-keyed row/pixel caches; documented ~4x was one n=8 case, corpus says 2.2x"
+
+[interpreter_ablations.compiled_cache]
+price = 94.8
+workload = "run"
+verdict = "kept"

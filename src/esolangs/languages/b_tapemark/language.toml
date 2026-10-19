@@ -34,3 +34,21 @@ workspace = [3, 4]
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_projection]
+saving = 49.9
+arity = 11
+verdict = "kept: canonical, exempt; the table is copied at its essential inputs and an ignored input's stage crosses no |, so position does not matter. 0.0% by area on random tables at n=9/10/11, 49.6% / 49.8% / 49.9% on tables ignoring one input (either end) at n=9/10/11, 74.4% / 74.7% / 74.8% ignoring two; seed set 2 identical at n=10/11"
+
+[ablations.constant_fold]
+saving = 100.0
+arity = 11
+verdict = "kept: canonical, exempt; a constant table is one literal row of 2n+3 chars instead of the copied-table walk. 99.996% by area on constant tables at n=11 (25 cells against 628,218 per program), 99.99% at n=9/10; 0.0% elsewhere, where the branch is never taken"
+
+[ablations.blank_compaction]
+saving = 0.0
+arity = 11
+verdict = "kept: the render drops wholly blank rows and columns, but the wide layout has none to drop: 0.0% by area on every default-path corpus at n=9/10/11. Compaction is load-bearing only in the width and balance layouts, which the boolean entry point does not take; unpriced there"

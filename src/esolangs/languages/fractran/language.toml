@@ -20,3 +20,39 @@ workspace = "poly n: at most bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits
 "0110100110010110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 120 }
 "1101001101101101" = { commands = 6, commands_by_row = { "0" = 5, "1" = 6, "2" = 6, "3" = 6, "4" = 5, "5" = 6, "6" = 5, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 5, "13" = 6, "14" = 6, "15" = 6 }, source_units = 153 }
 "11111110" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 80 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.state_sharing]
+saving = 84.2
+arity = 12
+verdict = "kept: canonical, exempt. Equal subtables at one depth share one state prime, making the tree a reduced decision diagram. Removing the sharing costs 58.9% at n=6 rising to 84.2% at n=12 on random tables, 98.9% on parity at n=10"
+
+[ablations.halves_agree_skip]
+saving = 2.4
+arity = 12
+verdict = "kept: canonical, exempt. A node whose halves return the same state is that state; the input is never read there. 6.0% at n=6 declining to 2.4% at n=12 on random tables, 3-4% with one ignored input, and 0.0% on parity, AND and constant tables, where it never fires beyond the constant path"
+
+[ablations.constant_fold]
+saving = -0.9
+arity = 12
+verdict = "candidate: the constant_span_test early exit in _tree appends one leaf per depth at which a constant span roots (the walk keys nodes by (depth, subtable id)), while the halves-agree skip collapses a whole span to a single shared leaf. Removing the early exit shrinks or ties every corpus measured: -6.2% at n=6 to -0.9% at n=12 on random tables, -27.0% / -28.5% on AND at n=10/12, 0.0% on parity and constant tables. AND at n=10 builds 21 nodes shipped vs 12 without, clear fractions identical. See RETIREMENT-CANDIDATES entry 18"
+
+[ablations.guard_spelling]
+saving = -7.9
+arity = 12
+verdict = "candidate: a guard above SMALL_BASE is spelled as its factors (state*bit) so the interpreter's index receives it pre-factored. Spelling the integer product instead is smaller everywhere: -10.6% at n=6, -9.1% at n=10, -7.9% at n=12 on random tables, -7.7% on parity at n=10. The cost buys interpreter parse time, not size. See RETIREMENT-CANDIDATES entry 19"
+
+[ablations.state_prime_order]
+saving = 4.4
+arity = 12
+verdict = "kept: states take primes in post-order, so the root -- spelled in the starting value and in no fraction -- takes the largest state prime. Reversing the assignment (the small_root order generalized) costs 4.4-6.0% on random tables at n=10-12 but saves 0.2-3.7% on parity and AND. A numbering choice, not a removable mechanism; the shipped order wins on the random corpus at the largest arities"
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.cursor_index]
+price = -6.1
+workload = "traced"
+verdict = "candidate: zero-to-negative here; corpus programs halt in ~4-5 steps, so construction cannot amortize"

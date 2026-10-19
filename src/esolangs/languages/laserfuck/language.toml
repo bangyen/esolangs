@@ -13,7 +13,7 @@ bf_derivative_predates = true
 labels = ["finite lookup"]
 qualification = "weighted arms select one of `2**n` prewritten cells, cleaned in one sweep"
 scaling = "linear: three rows of linear appends, ~15T"
-execution = "linear: at most 18T + 56n + 5 commands past n = 4: one pass along the weighted row"
+execution = "linear: at most T + 297n + 687 steps for n = 5, 6, then 18T + 56n + 5"
 workspace = "linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells"
 
 [generator_sizes]
@@ -27,49 +27,52 @@ workspace = "linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape
 "11111110" = { commands = 1573, commands_by_row = { "0" = 1562, "1" = 1562, "2" = 1562, "3" = 1562, "4" = 1567, "5" = 1567, "6" = 1572, "7" = 1573 }, source_units = 271 }
 
 [catalogue]
-sharing_exempt = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixteen entries"
+sharing_exempt = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixty-four entries"
 
 [formula_arities]
 execution = [5]
 workspace = [5]
 
-# Plain-rewrite audit record: each trick's saving measured in shipped
-# context at the largest arity where it runs (chars; seeded random
-# tables, seed 184700+n, 200 per arity).  Prices are contextual --
-# joint removals were measured separately before landing.  Rows for
-# removed tricks stay as the record of why they left.
+# Plain-rewrite audit record, re-audited in area: each trick's saving
+# measured in shipped context at the largest arity where it runs
+# (area = rows x longest row; seeded random tables, seed 184700+n,
+# 200 per arity).  Prices are contextual -- joint removals were
+# measured separately before landing.  Rows for removed tricks stay
+# as the record of why they left.  The first audit priced these rows
+# in chars; those prices are superseded here and kept in
+# EXPERIMENT-laserfuck.md (this audit: EXPERIMENT-laserfuck-reaudit.md).
 [ablations]
 audited = "2026-10-18"
 
 [ablations.route_switch]
-saving = 67.4
+saving = 32.8
 arity = 8
-verdict = "kept"
+verdict = "kept, retuned 2026-10-18: threshold moved to 64 entries per the area crossover (tree serves n=5, 6); execution clause case-split with a derived tree bound"
 
 [ablations.equal_halves_skip]
 saving = 11.3
 arity = 4
-verdict = "kept: canonical, exempt from the bar"
+verdict = "kept: canonical, exempt from the bar; priced with the fold restored -- in current code the step chain is both, 35.7 combined"
 
 [ablations.ignored_input_arm_drop]
-saving = 43.8
+saving = 45.8
 arity = 8
 verdict = "kept: canonical, exempt; saving on its own class"
 
 [ablations.sized_leaf_retirement]
-saving = 2.2
+saving = 3.5
 arity = 4
-verdict = "removed: tree route only, weighted route unaffected"
+verdict = "removed: tree route only, weighted route unaffected; 3.5 in area, still under the bar"
 
 [ablations.reader_orientation_search]
 saving = 0.0
 arity = 4
-verdict = "kept: feasibility, not size -- vacuous on the default path, carries width compliance"
+verdict = "kept: feasibility, not size -- vacuous on the default path, carries width compliance; since the 2026-10-18 retune the width path races its fits by least area (-13.8% at n=3), and the bands property was re-stated coarse to match"
 
 [ablations.constant_folding]
 saving = 0.0
 arity = 4
-verdict = "kept: canonical, exempt; provably redundant given the skip (byte-identical without it)"
+verdict = "kept: canonical, exempt; no separate check in current code (dropped as byte-identical) -- the skip chain renders it"
 
 [ablations.width_machinery]
 saving = 0.0

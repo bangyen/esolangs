@@ -21,3 +21,31 @@ definitions = ["K = shared uppercase definitions, excluding NOT", "A = 4n+3, act
 "0110100110010110" = { commands = 115, commands_by_row = { "0" = 82, "1" = 70, "2" = 83, "3" = 90, "4" = 87, "5" = 86, "6" = 99, "7" = 95, "8" = 93, "9" = 84, "10" = 97, "11" = 101, "12" = 103, "13" = 99, "14" = 114, "15" = 115 }, source_units = 86 }
 "1101001101101101" = { commands = 75, commands_by_row = { "0" = 60, "1" = 60, "2" = 69, "3" = 61, "4" = 55, "5" = 55, "6" = 51, "7" = 51, "8" = 77, "9" = 69, "10" = 82, "11" = 85, "12" = 70, "13" = 70, "14" = 73, "15" = 75 }, source_units = 133 }
 "11111110" = { commands = 55, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 41, "5" = 41, "6" = 54, "7" = 55 }, source_units = 53 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.halves_agree_rule]
+saving = 55.7
+arity = 10
+verdict = "kept: canonical, exempt from the bar; a node whose halves agree is that half -- 12.2% on random tables at n=10, 55.7% on ignored-input classes at n=10, 77.5% on single-block tilings; it is also the essential drop, since the reads prefix binds every input and a dropped test drops no read"
+
+[ablations.complement_twin_rule]
+saving = -1.7
+arity = 10
+verdict = "kept: canonical sharing complex, but its marginal is negative on every corpus measured -- disabling it shrinks random tables by 1.7% at n=10 (0.1% at n=4, growing) and parity by 2.5% at every arity, where the reduced diagram is 2.5% larger than the plain tree and this rule is the whole growth; the canonical exemption lapses where a piece makes the average program larger on the tables it targets; retirement candidate, Bangyen to decide"
+
+[ablations.subtree_interning]
+saving = 0.0
+arity = 10
+verdict = "kept: canonical substrate, text-neutral alone -- with both reduction rules off, the reduced build reproduces the plain tree's totals digit for digit on every corpus measured; the reduction's whole price is the agree rule's minus the twin rule's drag (jointly 10.6% on random tables at n=10)"
+
+[ablations.constant_fold]
+saving = 65.7
+arity = 10
+verdict = "kept: canonical, exempt; priced jointly with the constant-arm forms inside the tree build -- 65.7% on random tables at n=10, 82.7% on half-constant and 88.6% on sparse corpora, 99.4% on and; the reduced build emits the same shapes"
+
+[ablations.repeated_expressions]
+saving = 48.5
+arity = 10
+verdict = "kept: clears the bar on random tables and rises with arity (35.7% at n=7, 43.6% at n=9, 48.5% at n=10); 97.5% on parity and 85.8% on majority at n=10; the in-code figure of 32-33% at n=7..9 (40 random tables) prices higher on the audit's 200-table corpus -- a stale-low sample figure, flagged in the batch 6 report"

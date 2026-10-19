@@ -27,3 +27,31 @@ execution = [3, 8]
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_projection]
+saving = 43.8
+arity = 12
+verdict = "kept: canonical, exempt. The branch tree is built over the essential inputs only; an ignored input is still read, but its kept bit drops into the scratch name. One ignored input saves 32.3% at n=10 and 43.8% at n=12, two ignored inputs 48.6% / 65.8%, rising"
+
+[ablations.constant_fold]
+saving = 6.9
+arity = 12
+verdict = "kept: canonical, exempt. A constant span collapses to a call to one of the two constant printers: 12.4% on constant-half tables at n=10 and 6.9% at n=12 (the share declines as the random half outgrows the folded half, but the absolute saving grows and it never goes negative; 0.0% on random tables). The fold is also the tree builder's base case past the projection, where a constant table has no subtree ids to index, so at that boundary it is correctness machinery, not an optimization"
+
+[ablations.subtree_sharing]
+saving = 43.1
+arity = 10
+verdict = "kept: canonical, exempt. A subtree repeated at its level becomes one shared function. 0.0% on random tables at every arity, as the Decisions say; on tables tiled from two distinct 128-entry blocks with every input essential, 20.1% at n=9 and 43.1% at n=10 — the Decisions' -20.5% / -42.8% reproduces. On periodic tilings it prices 0.0% in the shipped context: after the projection only two blocks remain and nothing repeats"
+
+[ablations.painted_block_bits]
+saving = 2.1
+arity = 12
+verdict = "kept: _BLOCK_BITS = 7 is a crossover constant, not a win at every arity. On random tables blocks of 5/6 beat 7 by 22.0% / 19.4% at n=9 and 6.6% / 10.3% at n=10, but at n=12 seven wins (+12.7% over 5, +2.1% over 6, as shares of the variants' totals). The comment's per-entry constants (2.78 at five, 2.39 at six, 2.22 at seven) are two-point slopes between n=10 and n=12 and reproduce (2.76 / 2.39 / 2.20 measured): the slope hides the shift register's fixed prologue, which doubles per block bit and is what smaller blocks save at n<=10. The comment also ties seven to the proof's linearity rungs, and some value must be chosen — a per-arity race would be a new mechanism, not a removal"
+
+[ablations.name_ordering]
+saving = 1.1
+arity = 12
+verdict = "kept: the input bits, the register and the two printers take the one-character names first because they repeat most; the block cells take what is left. Against the inverted allocation (cells first) the ordering saves 2.0% / 1.7% / 1.1% on random tables at n=9/10/12 — positive at every arity but declining in share, while the absolute saving grows (48 / 61 / 119 chars per table). It prices below the generator bar at the largest arity; it is recorded rather than proposed for removal because dropping it deletes no code, only the allocation order inside _Names"

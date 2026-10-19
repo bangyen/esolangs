@@ -25,3 +25,48 @@ workspace = "linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n =
 
 [formula_arities]
 workspace = [5]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_drop]
+saving = 49.9
+arity = 10
+verdict = "kept: canonical, exempt; saving on its one-ignored-input class (49.6% at n=8; second seed set confirms 49.8-49.9% at n=9/10); jointly with the degenerate column, 62.5% on degenerate tables at n=10"
+
+[ablations.degenerate_column]
+saving = 64.3
+arity = 1
+verdict = "kept: the only general construction at arity <= 1; saving against the paired-duplication build across the four unary tables (101-107 chars against 290-292)"
+
+[ablations.parity_columns]
+saving = -0.6
+arity = 16
+verdict = "kept: fails the bar as a separate mechanism -- the accumulator family jointly earns 97.4% on affine tables at n=16, but this specialization's marginal over routing affine tables through two_state/stored declines 5.9% (n=8) through 1.3% (n=12) to -0.6% (n=16), and two_state builds parity itself cheaper from n=8; retirement candidate, Bangyen to decide"
+
+[ablations.two_state]
+saving = 98.4
+arity = 12
+verdict = "kept: clears on its two-residual class (or at n=12; 98.1% at n=10, 21.8% on random tables at n=2); fits every affine table, whose residuals are the function or its complement"
+
+[ablations.stored_residuals]
+saving = 83.4
+arity = 12
+verdict = "kept: clears where it fires (and at n=12; 53.1% at n=10, threshold-2 33.9% and exactly-1 36.9% at n=12, 10.6% on the width-4 corpus at n=12) but fires scattered -- 0.0% on random, BDD-width-2/3, composed and majority/carry corpora"
+
+[ablations.lookup_threshold]
+saving = 0.0
+verdict = "kept: not a mechanism -- _mux delegates to _mux_lookup, so the builds on both sides of the threshold are byte-identical (verified at n=5 and n=8); the ladder the comment describes no longer exists"
+
+[ablations.width_machinery]
+saving = 0.0
+verdict = "kept: feasibility -- the width layouts, paired setters and the balance entry point; no default-path effect"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.bitvector_tape]
+price = 43.2
+workload = "traced"
+verdict = "kept: int bitvector over tuple tape"

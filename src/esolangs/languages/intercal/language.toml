@@ -25,3 +25,31 @@ workspace = "linear: at most 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits, S the Ex
 sharing_local = "_intercal_shared"  # named shared diagram variables
 folding_ignored_local = "_diagram"  # equal children replace their selector
 folding_constant_local = "_diagram"  # equal-child reduction to a constant id
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_interning]
+saving = 71.5
+arity = 12
+verdict = "kept: canonical, exempt. Subtables are interned level by level in _diagram, so a repeated subtree is one node: removing the interning costs 64.0% at n=10 and 71.5% at n=12 on random tables (shares of the ablated build), 79.5% / 83.8% on two-block tilings"
+
+[ablations.equal_half_collapse]
+saving = 3.7
+arity = 12
+verdict = "kept: canonical, exempt. A subtable whose halves are the same id is that id -- the constant-span fold and the ignored-input drop of _diagram. 17.4% at n=6 declining to 3.7% at n=12 on random tables as random diagrams stop collapsing; on its classes, 10.1% at n=10 and 5.5% at n=12 with one ignored input, 13.3% / 7.2% on constant-half tables"
+
+[ablations.node_naming]
+saving = 70.7
+arity = 12
+verdict = "kept: a node read by two or more parents is assigned to a spare variable once, when (count - 1) * inline > statement + count * spelled. Removing the naming costs 62.9% at n=10 and 70.7% at n=12 on random tables, 97.2% / 99.2% on parity, whose diagram is a chain of re-read nodes"
+
+[ablations.negation_naming]
+saving = 19.7
+arity = 12
+verdict = "kept: each level's ~selector is assigned once when per_level * (inline - spelled) > statement. Removing the naming costs 15.3% at n=8, 18.9% at n=10 and 19.7% at n=12 on random tables -- the docstring's 15.4% / 19.0% reproduces. Naming every used level unconditionally is within 0.79% of the rule at n=8 (the docstring's 0.8% reproduces), 0.27% at n=10, 0.12% at n=12"
+
+[ablations.input_order]
+saving = 0.0
+arity = 12
+verdict = "kept: the emitted size is exactly invariant under input permutation -- 0 of 256 tables at n=3 and 0 of 200 at n=5 change by one char under the greedy order, which does fire (94/256 and 124/200 non-identity permutations). The Decisions' greedy-cost figures (+2.14% on three inputs, +1.68% on the five-input sample) do not reproduce; see the stale-figures list"

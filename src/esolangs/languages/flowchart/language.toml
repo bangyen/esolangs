@@ -27,3 +27,31 @@ workspace = "T log T: at most (7T+20n+100)(bl(L)+4) + Σ_{j<T/2}(bl(j)+2) + 2bl(
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.run_compression]
+saving = 14.2
+arity = 12
+verdict = "kept: clears on random tables (13.9% at n=10, 14.2% at n=12; chars 12.3% at n=12); share proportional to the entry count; 0.0% on alternating tables, where no run exists"
+
+[ablations.essential_drop]
+saving = 93.8
+arity = 10
+verdict = "kept: canonical, exempt from the bar; saving on its ignored-input class at k=n/2 (48.2% at k=n-1); 0.0% on random tables"
+
+[ablations.constant_skip_chain]
+saving = 99.5
+arity = 12
+verdict = "kept: canonical, exempt; the deque's constant fold, saving on the constant class (66.5% at n=2, rising monotonically)"
+
+[ablations.constant_fold_tree]
+saving = 63.6
+arity = 8
+verdict = "kept: canonical, exempt; saving on the constant-span class, flat painter (52.6% stacked); 28.7% on random tables"
+
+[ablations.stacked_subtree_sharing]
+saving = 46.4
+arity = 10
+verdict = "kept: canonical, exempt; saving on the mosaic class (33.3% at n=9); negative on random tables, where the race's both-metrics test rejects the shared build"

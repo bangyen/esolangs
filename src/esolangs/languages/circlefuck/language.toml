@@ -34,3 +34,12 @@ workspace = [3]
 
 [schemes]
 folds_without_tree = true
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.parsed_cache]
+price = 1.9
+workload = "run"
+verdict = "candidate: unmeasurable"

@@ -90,3 +90,12 @@ verdict = "kept: performance only, no size effect"
 saving = -12.8
 arity = 8
 verdict = "kept: a feature, not an optimization -- spends area on squareness for the balance contract"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.compile_cache]
+price = 136.9
+workload = "run()"
+verdict = "kept: run() skips revalidating identical geometry"

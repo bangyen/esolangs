@@ -26,3 +26,16 @@ workspace = "poly n: worst 13 + bl(lines) + bl(n) bits: two cells, a line cursor
 [catalogue]
 sharing_local = "_brainif_dag"  # residual states emitted once
 folding_constant_local = "_brainif_dag"  # constant residual output tail
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.residual_dag_sharing]
+saving = 81.9
+arity = 12
+verdict = "kept: canonical sharing, exempt from the bar; the residual DAG's saving on random tables rises with arity (30.5% at n=5, 78.3% at n=11), 99.2% on parity at n=12"
+
+[ablations.layer_skip]
+saving = 6.4
+arity = 12
+verdict = "kept: canonical, exempt; the ignored-input layer skip earns 8.9% on mid-ignored tables at n=10 and ~0% at lead/trail, where sharing absorbs the kept layer; priced jointly with sharing removed it is worth a full layer on ignored classes (84-94% combined)"

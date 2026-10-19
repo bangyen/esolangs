@@ -20,3 +20,60 @@ workspace = "poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits"
 "0110100110010110" = { commands = 314, commands_by_row = { "0" = 250, "1" = 266, "2" = 266, "3" = 282, "4" = 266, "5" = 282, "6" = 282, "7" = 298, "8" = 266, "9" = 282, "10" = 282, "11" = 298, "12" = 282, "13" = 298, "14" = 298, "15" = 314 }, source_units = 334 }
 "1101001101101101" = { commands = 315, commands_by_row = { "0" = 303, "1" = 303, "2" = 302, "3" = 309, "4" = 288, "5" = 288, "6" = 299, "7" = 299, "8" = 299, "9" = 306, "10" = 313, "11" = 313, "12" = 309, "13" = 309, "14" = 308, "15" = 315 }, source_units = 408 }
 "11111110" = { commands = 248, commands_by_row = { "0" = 228, "1" = 228, "2" = 228, "3" = 228, "4" = 238, "5" = 238, "6" = 248, "7" = 248 }, source_units = 275 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.shared_flag_tree]
+saving = 16.7
+arity = 12
+verdict = "kept: canonical sharing, exempt from the bar; saving on random tables, flat from n=8 (49.5-52.3% on tiled tables to n=16, 53.2% on majority at n=8); the multiple form's marginal over the single form is 20.6% on majority at n=8 and 0.9-1.5% on random tables"
+
+[ablations.binary_bank]
+saving = 0.0
+arity = 16
+verdict = "kept: 0.0% race marginal on every corpus measured (random, affine, majority, mosaic, tiled to n=16) -- the in-code 14.8%/13.9% figures price its share of the shared tree's core on tiled tables, not what deleting it costs the shipped generator; retirement candidate, Bangyen to decide"
+
+[ablations.larger_suffix_bank]
+saving = 0.0
+arity = 16
+verdict = "kept: 0.0% race marginal on every corpus measured, jointly with the binary bank and individually (in-code core prices 10.3%/12.1% at n=14/16, 18.1%/15.9% with both banks off); retirement candidate, Bangyen to decide"
+
+[ablations.affine_stream]
+saving = 48.1
+arity = 12
+verdict = "kept: clears on its affine class (40.6% at n=8, share rising); 97.9% on the parity table at n=12; never fires on random tables"
+
+[ablations.plain_tree_merge]
+saving = 54.4
+arity = 12
+verdict = "kept: canonical, exempt; the equal-halves merge's saving within the plain build on leading-ignored tables (48.9% at n=8; ~9% on trailing-ignored, where the shared tree absorbs the repeats)"
+
+[ablations.plain_tree_fold]
+saving = 2.3
+arity = 12
+verdict = "kept: canonical, exempt; the constant-span fold's saving within the plain build on half-constant tables (flat at n=8..12; up to 7.7% on trailing-ignored tables)"
+
+[ablations.bare_read_header]
+saving = 0.2
+arity = 12
+verdict = "kept: a fixed saving per ignored input -- 2.9% at n=8 and 0.9% at n=10 for one ignored input, 4.5% at n=8 for two -- whose share tends to zero; fails the genuine-percentage stipulation at the judged arities; retirement candidate, Bangyen to decide"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.dirty_write_buffer]
+price = -9.4
+workload = "traced"
+verdict = "candidate-with-dispute: -9.4 traced, +17.5 run-to-halt; snapshot() commits the cell every step on the traced workload"
+
+[interpreter_ablations.compiled_peepholes]
+price = 61.4
+workload = "run()"
+verdict = "kept: run-collapse, clear and transfer ops priced jointly as one _compile design"
+
+[interpreter_ablations.compile_cache]
+price = 26.4
+workload = "run()"
+verdict = "kept: steady-state warm cache; each program runs on all 2^n rows"

@@ -32,3 +32,40 @@ folding_constant_local = "_constant_read"  # scratch reads and coprime answer ar
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.greedy_raise_chunks]
+saving = 30.9
+arity = 12
+verdict = "kept: clears on random tables (20.8% at n=10); 0.0% through n=7, where the base raise fits the two closing exact chunks and the greedy loop never fires"
+
+[ablations.essential_weight_projection]
+saving = 47.7
+arity = 10
+verdict = "kept: canonical, exempt from the bar; saving on its ignored-input class at k=n/2 (23.4% at k=n-1); 0.0% on random tables"
+
+[ablations.constant_read]
+saving = 99.8
+arity = 12
+verdict = "kept: canonical, exempt; saving on the constant class (97.1% at n=2, rising monotonically)"
+
+[ablations.small_weight_banking]
+saving = 91.1
+arity = 10
+verdict = "kept: the joint price against the all-solved build (82.0% at n=8); the pools alone price negative against a pools-removed build whose programs compute the wrong function from n=3 -- the multiples-of-stride invariant is load-bearing, so the pools are correctness machinery, not a size trick"
+
+[ablations.projection_race_255]
+saving = 21.8
+arity = 10
+verdict = "kept: canonical, exempt; the cell-255 dialect's projection race, saving on its ignored-input class at k=n/2 (11.5% at k=n-1, the docstring's cited figure)"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.tokens_cache]
+price = 1.5
+workload = "run"
+verdict = "candidate: unmeasurable; tokenization amortized over long executions"

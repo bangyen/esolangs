@@ -24,3 +24,16 @@ workspace = "linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 
 [formula_arities]
 execution = [5, 6]
 workspace = [5]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 90.1
+arity = 10
+verdict = "kept: canonical, exempt. A subtree repeated at its level is emitted once and reached by GOTO to its first copy (an INVERT GOTO stub where a zero-child falls in). 73.5% at n=6 rising to 90.1% at n=10 on random tables; on parity, 682 chars shipped vs 80,352 unshared at n=10. Exhaustive at n=4 the total saving is 50.36% and the per-table mean share 49.29% -- the Decisions' -49.3% under that convention -- with shipped longer on no table"
+
+[ablations.constant_fold]
+saving = 2.3
+arity = 10
+verdict = "kept: canonical, exempt. A constant subtable is a leaf (subtree_ids gives it the bit's id at every level) and a node whose halves agree drops its GOTO, the zero subtree being the only one. 8.5% at n=6 declining to 2.3% at n=10 on random tables, where subtrees are rarely constant; exhaustive 12.33% at n=4, 20.7% on AND at n=10, and exactly 0.0% on parity, which has no constant subtree and no agreeing halves"

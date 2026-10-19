@@ -31,3 +31,26 @@ evidence = "docs/proofs/index.md#exceptions-and-walls"
 
 [catalogue]
 folding_constant_local = "input_weights"  # one projected table cell
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.sqrt_width_layout]
+saving = -206.0
+arity = 8
+verdict = "candidate: the natural layout lays the table at width 2**(bitlen//2) (~sqrt(T)) under a ~5n+22-cell header. By area (rows x longest row) the same construction with the table at the grid's width 80 ships 400 per random table at n=8 against the layout's 1,224 (603 vs 240 at n=7, 522 vs 128 at n=6): the layout costs 2.5-4.1x the alternative's area and never wins by chars (tie at n=6, 2.1% / 1.2% worse at n=7/8). Scoped to the default path; narrow-width calls and the balance walk share the code. See RETIREMENT-CANDIDATES entry 20"
+
+[ablations.header_folding]
+saving = -7.1
+arity = 10
+verdict = "candidate: in the folded regime the header is snaked over folded rows, but at the default width it fits one row (78 cells at n=10 against 80 columns). Unfolded, the same layout ships area 1,120 against the folded 1,200 at n=10 and 640 against 720 at n=9 (-12.5% / -7.1% by area, -1.2% / -0.2% by chars). Scoped to unfolding when the header fits the chosen columns; folding remains the only route for narrower widths. See RETIREMENT-CANDIDATES entry 21"
+
+[ablations.essential_projection]
+saving = 36.4
+arity = 12
+verdict = "kept: canonical, exempt. Ignored inputs weigh 0 in the Horner fold and the table is read at its essential inputs: 94.0% by area on constant tables at n=10, 40.0% / 36.4% by area with one ignored input at n=10/12. The measured price flips sign at layout-regime boundaries (two ignored inputs at n=12: -36.4% by area, -40.4% by chars) because projection moves the table out of the six-bit packed regime into the folded text regime; the flips belong to the regimes, not the projection"
+
+[ablations.six_bit_packing]
+saving = 0.0
+arity = 13
+verdict = "kept: cap machinery, not priced. Above 2^10 cells the table is packed six bits per printable-ASCII cell (at n=13, 8,192 cells ship as ~1,366 data cells, area 1,600). The unpacked table cannot fit the fixed 80x25 torus at all, so no valid ablated build exists to price against"

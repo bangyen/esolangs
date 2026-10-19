@@ -4,12 +4,14 @@ The reader normalizes the input characters into cells 1..n; the tree tests
 them with ``>#v)`` nodes, one row per *one* edge, and each leaf retires the
 cells and adds ``+`` for a one.  Subtrees that agree become leaves, but equal
 subtrees are never shared.  Input order stays the identity (see
-:func:`_laserfuck_pool`).  Above sixteen entries (without a width) the
-weighted linear-space lookup replaces the tree.
+:func:`_laserfuck_pool`).  Above sixty-four entries (without a width)
+the weighted linear-space lookup replaces the tree.
 
 Size:
-    About 23T chars from n=5 (weighted lookup); n=4 random 1847: 557 chars,
-    n=10 random 1847: 24,605 chars, n=16 and: 1,443,471 chars.
+    About 23T chars from n=7 (weighted lookup); the tree under it:
+    n=4 random 1847: 557 chars, n=5 random 1847: 1,676 chars,
+    n=6 random 1847: 4,354 chars, n=10 random 1847: 24,605 chars,
+    n=16 and: 1,443,471 chars.
 
 Decisions:
     The narrowest-reader (width=1) layout is 21.3% shorter by length at n=4
@@ -29,6 +31,7 @@ from esolangs.generation.helpers import (
     narrowest_grid,
     subtree_ids,
 )
+from esolangs.languages.laserfuck.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -601,9 +604,56 @@ def _laserfuck_build(
     ``width`` bounds the columns.  When the flat reader will not fit,
     :func:`_laserfuck_rotate` stands it on end; below the width the *tree*
     needs, the grid comes out as wide as the tree.
+
+    Under a width, the admitted readers are all built, plus the upright
+    placement the pool keeps for at most eight entries, and the
+    least-area program that fits wins.  Ranking readers by their own
+    (height, span) box instead picks wider programs, because a reader's
+    height adds to the program's while its span often does not (the
+    width-path picks cost 16.0% of area at n=3 against the flat reader,
+    measured in the 2026-10-18 area re-audit); ranking by the box
+    itself is worse still (+38% of area when raced naively).  Most of
+    that cost is the upright placement never being raced when the
+    first build already fits, so it is a candidate here.  When no
+    candidate fits, the first admitted reader's build is returned, so
+    the pool's fallbacks see exactly today's build.  Ties keep the
+    (height, span) order of :func:`_laserfuck_reader_candidates`, the
+    upright placement last.
     """
     n = _validate_truth_table(truth_table)
-    reader = _laserfuck_reader(n, width, vertical_tree=vertical_tree)
+    tree = _laserfuck_tree(truth_table, n)
+    if width is None or vertical_tree:
+        reader = _laserfuck_reader(n, width, vertical_tree=vertical_tree)
+        return _laserfuck_assemble(reader, tree, width, vertical_tree=vertical_tree)
+    candidates = _laserfuck_reader_candidates(n)
+    fitting = [item for item in candidates if MARGIN + item.span + 2 <= width]
+    if not fitting:
+        fallback = min(candidates, key=lambda item: item.span)
+        return _laserfuck_assemble(fallback.reader, tree, width)
+    builds = [_laserfuck_assemble(item.reader, tree, width) for item in fitting]
+    if len(truth_table) <= 8:
+        upright = _laserfuck_reader(n, width, vertical_tree=True)
+        builds.append(_laserfuck_assemble(upright, tree, width, vertical_tree=True))
+    best = ""
+    best_area = 0
+    for program in builds:
+        if grid_width(program) > width:
+            continue
+        lines = program.split("\n")
+        size = len(lines) * max(len(line) for line in lines)
+        if not best or size < best_area:
+            best, best_area = program, size
+    return best if best else builds[0]
+
+
+def _laserfuck_assemble(
+    reader: _LaserReader,
+    tree: _LaserTree,
+    width: int | None,
+    *,
+    vertical_tree: bool = False,
+) -> str:
+    """Place one reader and the tree on a grid and render the program."""
     grid = _LaserGrid()
     _laserfuck_funnel(grid)
     # The rings go on rows 0 and 1; the beam leaves them still moving right
@@ -612,7 +662,6 @@ def _laserfuck_build(
         for index, char in enumerate(text):
             if char != " ":
                 grid.put(offset, MARGIN + index, char)
-    tree = _laserfuck_tree(truth_table, n)
     _laserfuck_attach_tree(grid, reader, tree, width, vertical_tree=vertical_tree)
     return grid.render()
 
@@ -645,7 +694,7 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     often not the shortest.
     """
     _validate_truth_table(truth_table)
-    if width is None and len(truth_table) > 16:
+    if width is None and len(truth_table) > 64:
         return _laserfuck_weighted(truth_table)
     return _laserfuck_pool(truth_table, width)
 
@@ -785,5 +834,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=balance_laserfuck,
+    proof_execution=(execution, False, (5, 7)),
     example=Example(expected="0", kwargs=(("seed", 0),)),
 )

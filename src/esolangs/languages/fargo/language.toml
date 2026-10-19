@@ -28,3 +28,31 @@ folding_constant_local = "_arm_expression"  # literal zero or one ANF coefficien
 
 [formula_arities]
 workspace = [6]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.davio_factoring]
+saving = 68.0
+arity = 10
+verdict = "kept: clears the bar on random tables and rises with arity (57.5% at n=8, 64.6% at n=9, 68.0% at n=10 against a plain ANF monomial build run through the same naming race); 99.2% on or at n=10, 87.9% on majority"
+
+[ablations.profitability_packing]
+saving = 51.5
+arity = 10
+verdict = "kept: clears the bar -- naming only the nodes whose sharing pays earns 51.3% at n=9 and 51.5% at n=10 over the name-everything form, and the naming race jointly earns 61.0% over the inline form at n=10; the docstring's figure reproduces on its table (name-all 3,728 chars halved to 1,810 at n=10 random 1847)"
+
+[ablations.subtree_interning]
+saving = 19.5
+arity = 10
+verdict = "kept: canonical sharing substrate, exempt; interning plus naming every distinct node is a wash against the inline form at n=8 (-0.5%) growing to 19.5% at n=10 -- the profitability test in the packing is what realizes the value on the default path"
+
+[ablations.arm_forms]
+saving = 63.3
+arity = 10
+verdict = "kept under the named-function rule: the complemented-literal and monotone-OR arms earn 63.3% on or at n=10 and 15.7% on majority at n=8, but 0.3% on random tables at n=9 and -0.2% at n=10; the forms are exact identities chosen by the Davio difference's shape, the or family's whole construction (container's zero-leaf inversion is the precedent shape)"
+
+[ablations.essential_descent]
+saving = 16.9
+arity = 10
+verdict = "kept: canonical, exempt; the recursion's zero-skip earns 21.6% on mid-ignored tables at n=8 and 16.9% at n=10, 4.4-5.5% on random tables -- positive on every corpus at both judged arities, though the share declines as tables grow"

@@ -35,3 +35,50 @@ evidence = "docs/proofs/index.md#polynomial-bound"
 [catalogue]
 sharing_local = "_polynomial_states"  # ordered BDD over equal residuals
 folding_constant = "a constant table is the k=0 state machine"
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.hybrid_race]
+saving = 91.1
+arity = 7
+verdict = "kept: against the pure tree on random tables (62.3% at n=4, rising monotonically); against the pure machine it earns 0.0% on random tables, where k=0 is nearly always already the winner -- the race is justified by the tree side; the pure-tree price at n=8 was not run (rendering is superlinear, verdict already monotone)"
+
+[ablations.span_labeling]
+saving = 24.5
+arity = 8
+verdict = "kept: bespoke; on random tables, share rising at every arity (18.4% at n=4 to 23.1% at n=7; second seed set confirms 22.9% at n=7)"
+
+[ablations.essential_reductions]
+saving = 78.5
+arity = 8
+verdict = "kept: canonical, exempt from the bar; saving on the trailing-ignored class (35.6% on the leading-ignored class; 0.0% on scattered-ignored tables, which the reductions cannot cut, and 0.0% on random tables)"
+
+[ablations.root_store_removal]
+saving = 13.5
+arity = 8
+verdict = "kept: bespoke; on the constant class, per-table 649 chars against 750 with the store kept -- the generator's cited figure; 15.9% at n=6; 0.0% off the constant class"
+
+[ablations.tree_constant_fold]
+saving = 12.1
+arity = 8
+verdict = "kept: canonical, exempt; saving on the constant-first-half span class (16.0% at n=7); 0.0% on random tables -- the fold fires on structure, not noise"
+
+[ablations.prime_sharing]
+saving = 9.0
+arity = 8
+verdict = "retired before this audit: sharing one prime across decode-ordered runs saved 11.0% at n=7 and 9.0% at n=8 (200 tables each), under the bar at both judged arities; recorded in the generator and not re-measured"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.parse_program_cache]
+price = 0.8
+workload = "run"
+verdict = "candidate: unmeasurable; parse is ~37 ms per source, executions dominate"
+
+[interpreter_ablations.factor_roots_cache]
+price = 46523.7
+workload = "run"
+verdict = "kept: execution re-factors the same tuples on every use; the cache makes it once per distinct tuple"

@@ -27,3 +27,29 @@ workspace = "linear: worst 24·2^m + 12m + 12 + bl(m) + bl(L-4·2^m-7m+1) bits, 
 [catalogue]
 sharing_exempt = "indexed table reduction, with no subtable branch"
 folding_constant_local = "_taglate_raw"  # smallest valid constant table
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_projection]
+saving = 74.6
+arity = 12
+verdict = "kept: canonical, exempt. A table is built over its essential inputs only and the rest are read and discarded. Two ignored inputs save 73.8% at n=10 and 74.6% at n=12; one ignored input saves 69.6% at odd n=11 but 0.0% at even n, where the parity widen below returns it. Tables with three essential inputs save 92.5% / 98.1% / 99.5% at n=8/10/12 against the full layout, five essential inputs 92.7% / 98.2% at n=10/12"
+
+[ablations.parity_widen]
+saving = 0.0
+arity = 12
+verdict = "kept: correctness machinery. An odd dependency set above one is widened by one adjacent ignored input, because the reduced program would otherwise ghost-pad itself and expect an input the stream does not carry. The widen costs 0.0% against the only feasible alternative: an odd-sized build pads to the same effective arity anyway (the full layouts at n=9 and n=10 are both 21,025 chars). Its visible effect is on the projection above: at even n a single ignored input is widened straight back, so that one saving is surrendered"
+
+[ablations.constant_shortcut]
+saving = 100.0
+arity = 12
+verdict = "kept: canonical, exempt. A constant table is one seed char, one read per input (plus the ghost), and the print: 99.94% at n=10 and 99.98% at n=12 against the full layout it would otherwise pay. The docstring's 'from 451 characters to 21' does not reproduce: 451 is the full layout at n=3/n=4, where the shortcut emits 7 chars; 21 is the size of the neighbouring example 11110000, which reproduces exactly"
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.program_cache]
+price = 15.3
+workload = "run"
+verdict = "kept"

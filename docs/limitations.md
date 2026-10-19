@@ -471,6 +471,10 @@ language: a fixed token map under which every program behaves the same adds
 no interpreter or generator, the ground that excludes Trivial brainfuck
 substitution as a family. Adopted 2026-10-14 for candidates; no collected
 language is one (Painfuck adds +2/-1 steps, ROTfuck a rotating command set).
+The test follows Felleisen's expressiveness criterion: a construct a local,
+compositional translation eliminates while preserving observable behaviour
+adds no expressive power (Felleisen, "On the Expressive Power of Programming
+Languages", 1991).
 
 The first-implementation route also excludes a language whose generator
 re-spells a collected generator: the construction transfers step for step
@@ -481,7 +485,9 @@ prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
 removed. Painfuck shares brainfuck's flag tree but stays: its moves use
 `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
-admissions are exempt: Subleq re-spells S\*bleq.
+admissions are exempt: S\*bleq, itself a re-spelling of Subleq, was
+collected first, and Subleq's generator re-spells S\*bleq's in turn;
+the fame route is what admits Subleq.
 
 Nor does the first-implementation route admit a page the wiki categorizes as
 a Brainfuck derivative: the family already holds brainfuck and ten collected
@@ -548,6 +554,11 @@ Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
 
 - Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis.
 - Deadfish (315) is interpreter-only because it has no input vocabulary.
+- Quassaunt (3): the `%%Multithread` extension the wiki lists apart from
+  the language is not implemented; the interpreter refuses it.
+- SendStuff (3): the extended language (`/` commands, `{}` node sets,
+  fragments, strings) is a separate version on the wiki and is not
+  implemented.
 
 - [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
   (94) clears the fame gate despite duplicating an earlier queue language's

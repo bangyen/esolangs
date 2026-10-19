@@ -31,3 +31,30 @@ folding_constant_local = "_program"  # one-entry rotated lookup
 
 [formula_arities]
 workspace = [3, 4]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_projection]
+saving = 51.0
+arity = 10
+verdict = "kept: canonical, exempt; the lookup is built over the essential inputs only and ignored inputs land on a dead cell. 0.0% on random tables (nothing to project), 20.0% / 65.5% on tables ignoring one or two inputs of 8, 33.4% / 51.0% at n=10, 79.3% / 89.7% on 16-row tiled tables at n=8/10, 95.8% / 97.4% on constant tables"
+
+[ablations.skip_race]
+saving = 21.9
+arity = 10
+verdict = "kept: each strip is built with plain steps and with a carried count across zero runs, and the shorter text wins; priced by race marginal (deletion cost). 0.0% on random tables at every arity — a carried count first beats plain steps at a gap of roughly 50 cells, which random tables effectively never contain — against 3.1% / 7.5% / 14.1% / 21.9% on zero-upper-half tables at n=7/8/9/10, rising (the in-code 3%/7.5%/14% at n=7/8/9 reproduces), 10.3% on constant-half tables at n=10, and 50.2% / 78.2% on AND at n=10/12"
+
+[ablations.radix_bits]
+saving = 0.0
+arity = 10
+verdict = "side measurement, not an ablation: _RADIX_BITS swept over 1-8 on 200 random tables per arity. The cost concentrates in the walks (each digit's walk text runs to about three times its stride, and the second digit's stride is 2 to the first digit's width), so the total resonates with digit boundaries: a single digit wins where it fits (7/8 bits at n<=8, totals 183,368 / 263,309 against shipped 316,768 / 396,709), 5 bits wins at n=9/10 (473,058 / 744,828 against shipped 540,258 / 812,028), and the shipped 6 wins on parity at n=12 (11,899 against 22,470 for 5). No fixed value dominates; the constant stands"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.opcode_table]
+price = -4.0
+workload = "traced"
+verdict = "candidate: no measurable earning; per-cycle dict build is paid per fresh machine"

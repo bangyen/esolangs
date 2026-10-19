@@ -21,3 +21,45 @@ workspace = "linear: worst L + bl(L) + bl(3n) bits: one tape bit per source char
 "0110100110010110" = { commands = 119, commands_by_row = { "0" = 82, "1" = 99, "2" = 96, "3" = 113, "4" = 103, "5" = 120, "6" = 97, "7" = 114, "8" = 103, "9" = 120, "10" = 97, "11" = 114, "12" = 88, "13" = 105, "14" = 102, "15" = 119 }, source_units = 289 }
 "1101001101101101" = { commands = 94, commands_by_row = { "0" = 61, "1" = 61, "2" = 64, "3" = 84, "4" = 54, "5" = 54, "6" = 68, "7" = 68, "8" = 71, "9" = 91, "10" = 88, "11" = 90, "12" = 71, "13" = 71, "14" = 74, "15" = 94 }, source_units = 218 }
 "11111110" = { commands = 46, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 29, "5" = 29, "6" = 35, "7" = 46 }, source_units = 46 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.deferred_level_residuals]
+saving = 72.3
+arity = 10
+verdict = "kept: canonical sharing, exempt from the bar; saving on the parity table (34.6% at n=8); 0.0% on random tables"
+
+[ablations.same_level_bank]
+saving = 58.9
+arity = 10
+verdict = "kept: canonical sharing, exempt; saving on the mosaic-4 class (18.8% at n=8); 14.2% on majority at n=10, 0.0% on random tables; jointly with the level residuals 81.4% on parity and 64.0% on mosaic-4 at n=10"
+
+[ablations.paired_roots]
+saving = 23.8
+arity = 11
+verdict = "kept: clears on random tables (15.8% at n=9, 20.5% at n=10, share rising)"
+
+[ablations.band_race]
+saving = 10.3
+arity = 11
+verdict = "kept: clears on random tables; the band-(3,5) race's saving over band 3 alone is flat at 9.8-10.4% from n=9 to n=11"
+
+[ablations.constant_folding]
+saving = 14.7
+arity = 8
+verdict = "kept: canonical, exempt; the constant-half split's saving on the half-constant class (the span>=2 fold's is 10.6%); both marginals fade to 0.2-1.0% at n=10 because the paired form wins on that class and prices the constant half itself"
+
+[ablations.agreed_halves]
+saving = 46.0
+arity = 10
+verdict = "kept: canonical, exempt; saving on the leading-ignored class (40.0% mid-ignored, 7.1% trailing-ignored, where the sharing plans pick up the repeats)"
+
+[ablations.tail_trim]
+saving = 0.0
+arity = 11
+verdict = "kept: a fixed ~5 chars per program (0.1% at n=8, 0.0% at n=10/11 on random tables) -- fails the bar and the genuine-percentage stipulation; retirement candidate, Bangyen to decide"
+
+[ablations.width_machinery]
+saving = 0.0
+verdict = "kept: feasibility -- the width layouts and the balance hook serve explicit widths only; no default-path effect"

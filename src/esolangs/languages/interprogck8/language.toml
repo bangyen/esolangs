@@ -24,3 +24,16 @@ workspace = "poly n: at most 8 + bl(L) + bl(n) bits: the accumulator, a line cur
 [catalogue]
 sharing_exempt = "a stop sits on one lane, so two parents cannot land on one child"
 folding_ignored_read = "a read is itself a branch: both arms converge on one child, so an ignored input costs a read node per path"
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.equal_halves_convergence]
+saving = 9.6
+arity = 12
+verdict = "kept: canonical, exempt. A read whose halves agree still consumes its digit, but both arms converge onto one laid child (the 0 walk runs through the 1 flight's stop). 9.3% at n=8 rising to 9.6% at n=12 on random tables; on its classes AND 95.3% / 98.4% at n=10/12, OR 94.8% / 98.2%, constant tables 99.1% / 99.7%, two ignored inputs 47.7% / 45.2%; exactly 0.0% on parity, whose halves are complements. The convergence is also how this generator absorbs ignored inputs and constants: there is no essential-input projection"
+
+[ablations.selective_rung_fill]
+saving = 27.8
+arity = 12
+verdict = "kept: filler lines are x (1 char) except where a flight hops or an acc-0 walk crosses a live lane, where a rung (12 chars) is required. Filling every odd line the tree's walks cross costs 30.5% at n=8 declining to 27.8% at n=12 on random tables, 43.0% on AND at n=10. The docstring's own corridor figure (1,207 chars/entry) prices a broader fill than the shipped walk rule negates; see the stale-figures entry F22 in RETIREMENT-CANDIDATES.md"

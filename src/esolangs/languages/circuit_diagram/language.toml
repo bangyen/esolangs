@@ -37,3 +37,72 @@ evidence = "docs/proofs/circuit-diagram-sharing.md"
 [catalogue]
 sharing_local = "_dag"  # hash-consed mux fold
 folding_constant = "both constants are one self-fed gate"
+
+# Plain-rewrite audit record: each trick's saving measured in shipped
+# context at the largest arity where it runs (area; seeded random
+# tables, seed 184700+n, 200 per arity).  Prices are contextual --
+# joint removals were measured separately before landing.  Rows for
+# removed tricks stay as the record of why they left.
+[ablations]
+audited = "2026-10-18"
+
+[ablations.column_recycling]
+saving = 79.5
+arity = 8
+verdict = "kept: share grows with arity (71.1% at n=7)"
+
+[ablations.constant_folding]
+saving = 53.1
+arity = 8
+verdict = "kept: canonical, exempt from the bar"
+
+[ablations.subtree_sharing]
+saving = 73.4
+arity = 8
+verdict = "kept: canonical, exempt; on its repeated-subtree class, 8.0% on random tables"
+
+[ablations.projection_wire]
+saving = 92.7
+arity = 8
+verdict = "kept: judged on its class; 0.0% on random tables"
+
+[ablations.competing_model_race]
+saving = 2.1
+arity = 9
+verdict = "kept: fails the bar by area (4.3% at n=8, 2.1% at n=9, negative at n=10) -- it selects by chars, where it earns ~14% at n=9..10"
+
+[ablations.transpose_folds]
+saving = 0.0
+arity = 9
+verdict = "kept: part of the race; 4.3% of area at n=8, 0.0% at n=9 on random tables"
+
+[ablations.bank_candidates]
+saving = 2.1
+arity = 9
+verdict = "kept: part of the race; 0.0% at n=8 on random tables, class wins at n=10..14 recorded in compete.py"
+
+[ablations.ignored_input_drop]
+saving = 0.1
+arity = 8
+verdict = "kept: canonical, exempt; near-redundant -- the fold's equal-cofactor collapse does the work"
+
+[ablations.width_machinery]
+saving = 0.0
+verdict = "kept: feasibility -- banding, narrow stride, affine chains; no default-path effect"
+
+[ablations.balance_machinery]
+saving = 0.0
+verdict = "kept: the squareness contract, not a size optimization"
+
+[ablations.fenwick_allocation]
+saving = 0.0
+verdict = "kept: performance only -- successor allocation for recycled columns, same columns handed out"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.compile_cache]
+price = 65.6
+workload = "run"
+verdict = "kept: also a memory bound -- retained text capped, so a 30M-char program's topology is never retained sixteenfold"

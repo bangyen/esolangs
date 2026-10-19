@@ -20,3 +20,31 @@ workspace = "poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked i
 "0110100110010110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27, "8" = 27, "9" = 27, "10" = 27, "11" = 27, "12" = 27, "13" = 27, "14" = 27, "15" = 27 }, source_units = 375 }
 "1101001101101101" = { commands = 27, commands_by_row = { "0" = 22, "1" = 22, "2" = 27, "3" = 27, "4" = 22, "5" = 22, "6" = 22, "7" = 22, "8" = 27, "9" = 27, "10" = 27, "11" = 27, "12" = 22, "13" = 22, "14" = 27, "15" = 27 }, source_units = 291 }
 "11111110" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 96 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.halves_agree_skip]
+saving = 54.9
+arity = 12
+verdict = "kept: canonical, exempt from the bar; one check realizes the essential drop and the constant fold -- 10.4% on random tables at n=10 (flat from n=5), 54.9% on leading-ignored tables at n=12, 78.5% on single-block mosaics at n=10, 8.3% on trailing-ignored tables at n=12"
+
+[ablations.early_constant_leaf]
+saving = 0.0
+arity = 10
+verdict = "kept: canonical fold, exempt; no separate price -- disabling it (leaf only at full depth) reproduces the no-bank totals digit for digit on every corpus measured, since a constant subtree's skip descent emits the same 3*remaining + 3 chars; its price is carried by the halves-agree skip"
+
+[ablations.single_block_deferral]
+saving = 0.0
+arity = 12
+verdict = "kept: canonical sharing, exempt; carries random tables at n=5..11 (5.0-7.0%, 9.5% on dense tables at n=10) and earns 0.0% at n=12, where the multi-block form takes over; the two routes are complementary across arities"
+
+[ablations.multi_block_deferral]
+saving = 5.7
+arity = 12
+verdict = "kept: canonical sharing, exempt; 0.3% on random tables at n=10 rising to 5.7% at n=12; all sharing routes jointly earn 10.6% on random tables at n=12 and 32.7% on trailing-ignored tables, where every route's individual marginal is ~0.0% (per table, at least two routes reach the same minimum)"
+
+[ablations.binary_bank]
+saving = 0.0
+arity = 12
+verdict = "kept: 0.0% race marginal on random tables at every arity n=4..12 (both seed sets) and on dense, mosaic and half-constant corpora; stays under the named-function rule -- 71.0% on parity at n=8 rising to 95.6% at n=16, a share growing with arity, and 26.5% on majority at n=10; its class is a level whose residuals repeat across the whole level"

@@ -99,3 +99,17 @@ ignored-input tables included).
   Streetcode's lift and tail overlap and LaserFuck's sized leaf retirement
   came out this way. The audit is repeatable per generator; Flowchart is
   the next candidate.
+- **The S*bleq variants are interpreter-only, and stay so unless they
+  are ever registered:** the interpreter runs the store targets `a`
+  (base), `ab` (S*bl*q) and `b` (Subl*q), each also in an indirect
+  form, but the generator emits base S*bleq only and no public path
+  selects a variant (no registry entry, no dialect setting -- they are
+  distinct languages, not readings of one spec). Not scheduled work:
+  if the variants are ever registered, generalizing the hoisted tree
+  and the packed decoder across the other two store targets belongs to
+  that project, execution-gated per variant and re-audited afterwards,
+  against the plain-rewrite sweep's S*bleq prices as the baseline. The
+  indirect forms would stay out of scope even then: their operands are
+  dereferenced, so a generated program can embed no literal address and
+  every operand would need a materialized pointer cell -- a different
+  construction, not a parameter of this one.

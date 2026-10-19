@@ -21,7 +21,7 @@ class TestLaserFuck:
 
     @pytest.mark.medium
     def test_weighted_table_executes_every_row(self) -> None:
-        """The linear default computes dense tables at every initial heading."""
+        """The default route computes dense tables at every initial heading."""
         for n in (5, 6):
             size = 1 << n
             tables = (
@@ -37,12 +37,13 @@ class TestLaserFuck:
 
     def test_an_ignored_input_crosses_no_arm(self) -> None:
         """The weighted lookup reads an ignored input but indexes the rest."""
-        # Five inputs, the middle one ignored: rows pair up across bit 2.
-        table = "".join("0110100110010110"[(r >> 3) << 2 | r & 3] for r in range(32))
+        # Seven inputs, the middle one ignored: rows pair up across bit 3.
+        base = "0110100110010110100110011001011001101001100101100110100110010110"
+        table = "".join(base[(r >> 4) << 3 | r & 7] for r in range(128))
         program = boolean.laserfuck(table)
-        assert program.count("#v)") == 4
-        for combo in range(32):
-            bits = [str((combo >> (4 - i)) & 1) for i in range(5)]
+        assert program.count("#v)") == 6
+        for combo in range(128):
+            bits = [str((combo >> (6 - i)) & 1) for i in range(7)]
             assert run_laserfuck(program, bits, 0) == table[combo]
 
     def test_input_reordering_folds_a_scattered_table(self) -> None:
@@ -220,19 +221,25 @@ class TestLaserFuck:
         assert "#/)" in wide[0], "the reader's last ring is on row 0"
         assert ">#v)" in wide[0], "and the tree's first node follows it there"
 
-    def test_widths_come_in_bands_not_a_cliff(self) -> None:
-        """Each reader block turns on its own, so widths degrade gradually."""
-        seen = {
-            max(len(line) for line in boolean.laserfuck("0110", width).split("\n"))
-            for width in (45, 40, 30, 25, 18)
-        }
-        assert len(seen) >= 4, f"expected several distinct widths, got {seen}"
-        # asking for less never gives more
+    def test_widths_resolve_to_coarse_bands(self) -> None:
+        """Width requests resolve to a small set of coarse bands."""
+        # Least-area selection buys area with banding: it cut n=3 width-pair
+        # area 13.8%, and in exchange one upright build serves every request
+        # from 18 to 30.  Balance-score selection kept finer bands but cost
+        # 12-21% more area, so the coarse bands are the accepted trade.
         widths = [
             max(len(line) for line in boolean.laserfuck("0110", w).split("\n"))
             for w in (45, 40, 30, 25, 18)
         ]
-        assert widths == sorted(widths, reverse=True)
+        assert widths == [43, 34, 10, 10, 10]
+        # asking for more never yields less, across the whole range, and
+        # every result is one of the five bands
+        scanned = [
+            max(len(line) for line in boolean.laserfuck("0110", w).split("\n"))
+            for w in range(8, 61)
+        ]
+        assert scanned == sorted(scanned)
+        assert set(scanned) == {7, 10, 34, 43, 57}
 
     @pytest.mark.parametrize(
         ("table", "rows", "columns"),
@@ -255,10 +262,10 @@ class TestLaserFuck:
     @pytest.mark.parametrize(
         ("width", "rows", "columns"),
         [
-            (18, 51, 16),
-            (19, 36, 19),
-            (27, 28, 26),
-            (28, 25, 27),
+            (18, 59, 10),
+            (19, 59, 10),
+            (27, 59, 10),
+            (28, 59, 10),
             (35, 17, 34),
             (44, 6, 43),
         ],
@@ -266,7 +273,7 @@ class TestLaserFuck:
     def test_the_width_steps_land_where_they_should(
         self, width: int, rows: int, columns: int
     ) -> None:
-        """XOR's layout at each width where the fit decision changes."""
+        """XOR's layout at each probed width, pinned."""
         grid = boolean.laserfuck("0110", width).split("\n")
         assert len(grid) == rows
         assert max(len(line) for line in grid) == columns

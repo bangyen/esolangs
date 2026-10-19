@@ -23,3 +23,79 @@ workspace = "linear: worst 8RC + bl(R-1) + bl(C-1) + bl(2n-1) + bl(n) + 10 bits 
 
 [catalogue]
 sharing_local = "_dig_indexed_shared"  # indexed six-input leaf classes
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_drop_tree]
+saving = 14.5
+arity = 4
+verdict = "kept: canonical, exempt from the bar; saving on its ignored-input class (35.9% at n=3)"
+
+[ablations.essential_drop_alternating]
+saving = 47.3
+arity = 9
+verdict = "kept: canonical, exempt; saving on its ignored-input class (44.9% at n=8); 0.0% on random tables"
+
+[ablations.leaf_input_selection]
+saving = 43.5
+arity = 9
+verdict = "kept: canonical, exempt; the leaf-extension component of the alternating drop -- the tree levels' own skips are the residual 6.7%"
+
+[ablations.leading_ignored_wrapper]
+saving = 15.5
+arity = 9
+verdict = "kept: canonical, exempt; saving on its leading-ignored class (37.1% at n=8 -- the share declines at n=9)"
+
+[ablations.constant_folding_tree]
+saving = 15.8
+arity = 4
+verdict = "kept: canonical, exempt; saving on the ignored-input class, 18.8% on random tables at n=3"
+
+[ablations.constant_span_alternating]
+saving = 25.4
+arity = 9
+verdict = "kept: canonical, exempt; saving on the half-constant class (20.0% at n=8)"
+
+[ablations.constant_column_race]
+saving = 68.4
+arity = 10
+verdict = "kept: canonical, exempt; saving on the constant-table class"
+
+[ablations.indexed_leaf_decoder]
+saving = 96.8
+arity = 12
+verdict = "kept: clears on its mosaic class (88.0% at n=10, 200 tables); refused by the execution ledger at n=11 with four or more classes (cost 395 against a bound of 384)"
+
+[ablations.lane_and_parallel_sharing]
+saving = 0.0
+arity = 10
+verdict = "kept: 0.0% marginal each on every mosaic measured, 0.0-6.5% jointly beyond the indexed route -- fails the bar as separate mechanisms, exempt only as canonical sharing realizations; retirement candidate, Bangyen to decide"
+
+[ablations.tree_max_race]
+saving = 34.3
+arity = 4
+verdict = "kept: clears on random tables; the value is the alternating layout's admission at n=4 (the unshared layout alone reproduces the total), not the sharing routes'"
+
+[ablations.length_keyed_races]
+saving = -2.3
+arity = 3
+verdict = "kept: the layout races select by length in an area-judged language; re-keying by area saves 2.3% at n=3 on random tables and ties at n>=4"
+
+[ablations.compaction]
+saving = 0.6
+arity = 8
+verdict = "kept: feasibility -- the travel-axis squeeze is inseparable from the execution-ledger gate in the same method, and the gate refuses shared builds worth as much as the squeeze saves"
+
+[ablations.width_machinery]
+saving = 0.0
+verdict = "kept: feasibility -- fit-width candidates, the quarter turn and the two-input XOR stencil; no default-path effect"
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.padded_grid_cache]
+price = -3.0
+workload = "run"
+verdict = "candidate: no measurable earning"

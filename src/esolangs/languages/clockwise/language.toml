@@ -29,3 +29,26 @@ workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_drop]
+saving = 50.9
+arity = 10
+verdict = "kept: canonical, exempt from the bar; the projection onto essential inputs earns 47.6% of area on one-ignored tables at n=8 rising to 50.9% at n=10 (trailing 39.9% to 43.8%, two trailing 60.5% to 66.4%); 0.0% on random tables at n>=5, where the layout is a fixed stencil and every input is essential"
+
+[ablations.constant_ring]
+saving = 99.9
+arity = 10
+verdict = "kept: canonical constant fold, exempt; a constant table's ring is 84 cells of area at n=10 against the lookup stencil's 74,900 (70 against 18,166 at n=8)"
+
+[ablations.coordinate_ring]
+saving = 95.2
+arity = 10
+verdict = "kept: clears the bar on its class -- a one-essential table's ring is 85 cells of area at n=10 against an average 1,774 for the projected lookup build over the same input (94.6% at n=8), the share rising with arity"
+
+[ablations.trailing_rail]
+saving = 0.0
+arity = 10
+verdict = "kept: not priced -- layout machinery. Trailing ignored inputs are read on the return rail after printing, the grid shifted down to separate the rail from the entry descent; both plain placements fail -- reads appended to the last head compute wrong functions (240 of 896 gated runs mismatch on trailing-ignored tables), and the unshifted left column is blocked by the corridor turn. The separation costs about 13% of area with one trailing input and 26% with two, against the (illegal) head-append box"

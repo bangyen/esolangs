@@ -23,3 +23,31 @@ workspace = "poly n: worst 25n + 154 + bl(2n+2) + 2bl(n) bits, n in 7..24"
 "0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 820 }
 "1101001101101101" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 808 }
 "11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 320 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.prune]
+saving = 13.4
+arity = 6
+verdict = "kept: canonical, exempt from the bar; the halves-agree settle earns 15.4% on random tables at n=5 and 49.2% on and at n=6"
+
+[ablations.sharing]
+saving = 29.8
+arity = 6
+verdict = "kept: canonical sharing, exempt; rises with arity on random tables (16.5% at n=5), 68.2% on parity at n=6; jointly with the prune, 53.1% at n=6"
+
+[ablations.zero_leaf_inversion]
+saving = 35.5
+arity = 6
+verdict = "kept: under the bar on random tables (0.9% at n=6) and dense-ones tables (1.6%), it stays under the named-function rule on the or family (31.4% at n=4 rising to 35.5% at n=6); the docstring's 12.7% figure prices a pre-prune build and is flagged in the audit report"
+
+[ablations.mirror_race]
+saving = 0.9
+arity = 12
+verdict = "kept: the mirrored step order earns 2.6% on random tables at n=7 falling to 0.9% at n=12, a winner's-curse shape; the in-code claim of 15-44% on two-block tilings does not reproduce (0.4-3.4% on the stated corpus shape, rebuilt and widened); fails the bar; retirement candidate, Bangyen to decide"
+
+[ablations.essential_projection]
+saving = 49.1
+arity = 12
+verdict = "kept: canonical, exempt; the threshold's projection is the identity on random tables (0.0%) and earns 49.1% on mid-ignored tables at n=12 (lead 3.4%, trail 3.7%, two ignored 8.2%)"

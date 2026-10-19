@@ -24,3 +24,31 @@ definitions = ["A = bl(12n+10) + bl(2n) + bl(n) + Σ_{i≤n+2}(bl(3i) + bl(3i+2)
 
 [formula_arities]
 execution = [5, 6]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 25.8
+arity = 4
+verdict = "kept: canonical, exempt. In the tree regime (n<=4) a subtree repeated at its level is written once, at its last occurrence, and each earlier one skips to it. Exhaustive at n=4 (all 65,536 tables): 25.8% of the unshared build's total, shipped longer on no table. The Decisions' -27.1% is the per-table mean of (shipped - unshared) / shipped, 27.14% measured"
+
+[ablations.halves_agree_passover]
+saving = 4.9
+arity = 4
+verdict = "kept: canonical, exempt. A tree node whose halves are the same subtree is passed over for its zero half. Exhaustive at n=4: totals 19,643,240 shipped vs 20,648,450 without, 4.9% of the ablated build"
+
+[ablations.essential_projection]
+saving = 70.8
+arity = 12
+verdict = "kept: canonical, exempt. In the halving regime (n>=5) an ignored input weighs 0 -- read, never tested -- and the table is embedded projected. 0.0% on random tables, where the projection is the identity; with one ignored input 41.8% at n=10 and 47.1% at n=12, with two 63.4% / 70.8%. A constant table is 180 chars shipped vs 3,809 unprojected at n=10"
+
+[ablations.regime_crossover]
+saving = 22.7
+arity = 6
+verdict = "kept: the tree builds n<=4 and the halving lookup builds above. Ordered-tree vs halving totals on 200 seeded random tables: ratio 0.836 at n=4 (tree wins), 1.009 at n=5, 1.227 at n=6 (halving wins by 22.7% of its build) -- the shipped split sits at the measured crossover. The Decisions' 1.04x at n=5 measures 1.009x on this corpus; the corpus behind 1.04 is unstated"
+
+[ablations.name_ordering]
+saving = 0.0
+arity = 12
+verdict = "kept: _Names gives deeper inputs the shortest names because they occur in more guards. It prices exactly 0.0% everywhere: exhaustive at n=4 the inverted order is identical on all 65,536 tables, and halving totals are identical at n=6..12. No default-path build needs more than 52 distinct labels, so every label is one character and the order cannot bind. Dropping it would delete no code, only the reversed() in one loop; recorded, not proposed for removal"

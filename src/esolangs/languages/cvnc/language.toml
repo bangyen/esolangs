@@ -20,3 +20,36 @@ workspace = "poly n: worst 17 + bl(2n-1) + bl(L) bits, n in 4..13"
 "0110100110010110" = { commands = 35, commands_by_row = { "0" = 27, "1" = 27, "2" = 29, "3" = 29, "4" = 39, "5" = 39, "6" = 36, "7" = 36, "8" = 56, "9" = 56, "10" = 53, "11" = 53, "12" = 33, "13" = 33, "14" = 35, "15" = 35 }, source_units = 103 }
 "1101001101101101" = { commands = 33, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 28, "7" = 28, "8" = 27, "9" = 27, "10" = 28, "11" = 28, "12" = 33, "13" = 33, "14" = 33, "15" = 33 }, source_units = 101 }
 "11111110" = { commands = 25, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 25, "5" = 25, "6" = 25, "7" = 25 }, source_units = 52 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 86.7
+arity = 10
+verdict = "kept: canonical sharing, exempt; a repeated subtree is entered by climbing to its first copy's syllable and jumping, where shorter. 17.5% / 19.6% on random tables at n=9/10 and rising, 82.4% / 86.7% on two-block 16-row tables, 96.1% / 98.4% on parity at n=10/12"
+
+[ablations.climb]
+saving = 19.7
+arity = 10
+verdict = "kept: the accumulator reaches a jump target by a closed form (nearer square root, square, step the rest) instead of one increment per syllable; 17.6% / 19.7% on random tables at n=9/10, 75.4% on two-block tables at n=10, 70.8% / 70.4% on parity at n=10/12. Its price overlaps subtree sharing's: each is measured with the other in place"
+
+[ablations.spelling_dp]
+saving = 18.9
+arity = 10
+verdict = "kept: commands are spelled as the fewest syllables by dynamic programming over the syllable options, against 19.8% / 18.9% on random tables at n=9/10 for a greedy first-option spelling, flat across arities, and 26.6% / 23.1% on parity at n=8/10"
+
+[ablations.constant_fold]
+saving = 11.8
+arity = 10
+verdict = "kept: canonical, exempt; a constant subtree folds to one leaf but keeps its reads. 12.6% / 11.8% on random tables at n=9/10 (seed set 2: 12.6% / 11.9%), 21.7% / 13.1% on constant-half tables at n=8/10, 74.8% on constant tables at n=10, 48.4% / 56.8% on OR at n=10/12"
+
+[ablations.essential_projection]
+saving = 35.7
+arity = 10
+verdict = "kept: canonical, exempt; a tree over the essential inputs only competes with the full tree and the shorter body wins. 0.0% on random tables (no ignored inputs to project away), 37.6% on tables ignoring inputs 1 and 5 of 8, 35.7% / 36.2% on mid-ignored tables at n=10 across both seed sets, 30.8% with two ignored, 37.4% on 16-row tiled tables at n=10; 0.0% where the ignored input trails, which costs the full tree nothing either"
+
+[ablations.leaf_accumulator_reuse]
+saving = 3.3
+arity = 10
+verdict = "kept: a leaf with no reads left reuses the accumulator's known value; 3.2% / 3.3% on random tables at n=9/10, flat — a genuine but sub-bar share, and the mechanism is a pass-through of a value the walk already carries, not a subsystem. On parity alone it swings 16.1% at n=10 to -7.0% at n=12; it does not make the average program larger on the tables it targets"

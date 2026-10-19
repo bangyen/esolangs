@@ -26,3 +26,12 @@ folding_constant = "a constant table is a one-bit literal"
 
 [schemes]
 folds_without_tree = true
+
+[interpreter_ablations]
+audited = "2026-10-18"
+benchmark = "interp-audit-2026-10-18/tracediff-n3"
+
+[interpreter_ablations.tokenized_cache]
+price = 161.6
+workload = "run"
+verdict = "kept"

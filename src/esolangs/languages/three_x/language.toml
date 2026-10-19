@@ -24,3 +24,41 @@ definitions = ["K(i) = 2bl(2^(i-1)·3^(2i-1)) + 1, a bound on the ith key's bits
 
 [catalogue]
 sharing_local = "_three_x_emit"  # defer repeated blocks behind flags
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.key_assignment]
+saving = 47.0
+arity = 10
+verdict = "kept: the cheapest key goes to the most-read name in _key_pieces; structural (kind, depth) order instead costs 44.2% at n=9 and 47.0% at n=10 on random tables, rising at every arity measured, and 28.9% on parity at n=10"
+
+[ablations.column_copy]
+saving = 17.2
+arity = 10
+verdict = "kept: a span equal to a bit under it, or to its complement, is one copy write; it earns 15.9% at n=9 and 17.2% at n=10 on random tables, rising, and 10.1% on parity at n=12. It loses where other mechanisms carry the table: -7.0% on 16-row tiled tables at n=10, where the block sharing prices 66.4% on its own class, and -5.8% at n=4"
+
+[ablations.block_sharing]
+saving = 66.4
+arity = 10
+verdict = "kept: canonical sharing, exempt; a repeated aligned block of at least four rows is written once behind a flag, chosen by _gain and raced against the plain tree. 0.0% on random tables, 55.2% / 66.4% on two-block 16-row tables at n=9/10, 79.9% on parity at n=10 and 90.3% at n=12"
+
+[ablations.equal_halves_skip]
+saving = 16.7
+arity = 10
+verdict = "kept: canonical, exempt; a node whose halves agree is its first half. 2.2% / 2.3% on random tables at n=9/10, 12.9% / 16.7% on two-block tables; jointly with the constant fold it earns 21.7% on random tables at n=10 where each alone prices 0.0% / 2.3%"
+
+[ablations.constant_fold]
+saving = 0.0
+arity = 10
+verdict = "kept: canonical, exempt; its marginal alone is 0.0% on every corpus measured, constants included, because the equal-halves skip and the column copy emit the same spans. Jointly with the skip it earns 21.7% on random tables at n=10, 56.5% on constant-half tables at n=10 and 94.4% on AND at n=10: the pair covers each other, neither price is a failure"
+
+[ablations.value_tracking]
+saving = 56.2
+arity = 12
+verdict = "kept: the emitter tracks the result's and flags' values and skips writes that would repeat them; 0.1% on random tables at n=10, but 33.3% on majority at n=10 and 56.2% at n=12, which keeps it under the named-function rule, and 9.2% on AND at n=10"
+
+[ablations.essential_projection]
+saving = 0.0
+arity = 10
+verdict = "kept: canonical, exempt; its size price is 0.0% at every arity and the emitted program is byte-identical with and without it on all 200 ignored-input tables at n=8 — the tree folds an ignored input anyway. It is build-time machinery, as its comment states (0.115 s against 0.972 s at n=12 with two ignored inputs), not a size mechanism"

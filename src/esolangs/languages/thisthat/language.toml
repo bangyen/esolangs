@@ -20,3 +20,30 @@ workspace = "poly n: worst 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n 
 "0110100110010110" = { commands = 99, commands_by_row = { "0" = 99, "1" = 99, "2" = 99, "3" = 99, "4" = 99, "5" = 99, "6" = 99, "7" = 99, "8" = 99, "9" = 99, "10" = 99, "11" = 99, "12" = 99, "13" = 99, "14" = 99, "15" = 99 }, source_units = 2381 }
 "1101001101101101" = { commands = 99, commands_by_row = { "0" = 91, "1" = 91, "2" = 99, "3" = 99, "4" = 91, "5" = 91, "6" = 91, "7" = 91, "8" = 99, "9" = 99, "10" = 99, "11" = 99, "12" = 91, "13" = 91, "14" = 99, "15" = 99 }, source_units = 2381 }
 "11111110" = { commands = 59, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 51, "5" = 51, "6" = 59, "7" = 59 }, source_units = 621 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.essential_drop]
+saving = 49.7
+arity = 10
+verdict = "kept: canonical, exempt from the bar; saving on its trailing-ignored class (45.1% mid-ignored, 2.8% leading-ignored, where the same-halves descent covers the root); 0.0% on random tables, whose area is a fixed stencil per arity"
+
+[ablations.same_halves_prune]
+saving = 0.0
+arity = 10
+verdict = "kept: 0.0% by area on every corpus at n>=8 (0.2-0.9% by chars on random and ignored classes, 5.6-7.5% by chars on mosaic/tiled) -- fails the bar as a separate mechanism, exempt only as the canonical essential realization; retirement candidate, Bangyen to decide"
+
+[ablations.constant_span_fold]
+saving = 13.7
+arity = 10
+verdict = "kept: canonical, exempt; saving on the half-constant class (13.1% at n=8, share flat; 0.0% on random tables)"
+
+[ablations.shared_dag]
+saving = 92.8
+arity = 12
+verdict = "kept: canonical sharing, exempt; saving on its mosaic-2 class (88.0% at n=10, 92.3% at n=11, 200 tables); parity 98.7% at n=12, tiled 32.7% at n=11; 0.0% on random tables; mosaic-4 admission earns 0.0% at n=9/10 and 28.7% only at n=12"
+
+[ablations.width_machinery]
+saving = 0.0
+verdict = "kept: feasibility -- rotation, the strip and streaming trees, the narrowest-grid race and the native-XOR case serve explicit widths only; no default-path effect"

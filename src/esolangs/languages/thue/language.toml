@@ -24,3 +24,16 @@ workspace = "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state stri
 [formula_arities]
 execution = [3, 6]
 workspace = [3, 6]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.queued_projection]
+saving = 60.4
+arity = 10
+verdict = "kept: canonical projection, exempt; when an input is ignored the table is laid out at its essential inputs and a queue of K/S rounds (K halves, S reads and deletes) runs one round per input, raced against the plain layout by length. 0.0% on random tables (the layout is never offered and the plain layout is exactly T + 187 chars whatever the table), 21.2% / 35.7% on tables ignoring one or two inputs of 8, 39.3% / 60.4% at n=10, 46.1% / 80.0% on 16-row tiled tables at n=8/10, 49.9% / 81.5% on constant tables; priced by race marginal"
+
+[ablations.constant_half_fold]
+saving = 32.2
+arity = 10
+verdict = "kept: a constant half of the table is stored once, with nine extra rules of about 110 chars restoring it, raced against the unfolded layouts by length; priced by race marginal. 1.8% on constant-half tables at n=8, 19.3% at n=9 and 32.2% at n=10 (the docstring's -19% / -32% and 'wins from nine inputs' reproduce), 32.2% on AND/OR at n=10 and 44.9% at n=12. The module docstring's balanced figures (-24% / -35%) do not reproduce under any current construction: 19.3% / 32.2% on the plain race, 0.0% under balance_thue, whose winner on constant-half tables is an unfolded chunked layout"

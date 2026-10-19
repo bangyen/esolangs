@@ -25,3 +25,51 @@ workspace = "linear: worst 2T + 7n + 9 + bl(n) bits past n = 6: a tape of 2T cel
 execution = [3, 7]
 # Seven-input witnesses now use shared trees; eight exercises the walk.
 workspace = [8]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 53.5
+arity = 7
+verdict = "kept: canonical sharing, exempt from the bar; saving on random tables (38.9% at n=5, rising), 96.3% on parity at n=10; the inside-budget jumped race carries n=5 (38.9%) and the past-budget shared layout carries n=6-7, the split set by which tables stay inside the 35-label budget"
+
+[ablations.order_race]
+saving = 11.2
+arity = 7
+verdict = "kept: the identity-and-reverse race clears the bar on random tables, flat at n=5..7 (11.6% on parity at n=7, 12.1% at n=10); all of it is the reverse candidate"
+
+[ablations.fallback_orders]
+saving = 0.0
+arity = 7
+verdict = "kept: the fallback round's greedy and first-reversed orders change no total on any corpus measured -- when the compact pair finds nothing, they find nothing either; 0.0% race marginal; retirement candidate, Bangyen to decide"
+
+[ablations.fewest_token_const]
+saving = 12.8
+arity = 7
+verdict = "kept: clears the bar on random tables (16.9% at n=6); fades on parity (9.2% at n=8, 7.5% at n=10), where its leaves are a shrinking share of the shared tree"
+
+[ablations.constant_fold]
+saving = 4.3
+arity = 10
+verdict = "kept: canonical, exempt; priced jointly with the copy node it enables -- 0.3% on random tables at n=7, 6.2% on and at n=7; sharing and the walk absorb most of its work"
+
+[ablations.essential_drop]
+saving = 6.7
+arity = 7
+verdict = "kept: canonical, exempt; the hoisted tree's drop earns 1.3-5.0% on ignored-input classes at n=7 and 6.7% on block tables -- untested levels are descended anyway and repeated spans are shared, so the drop's marginal is small; the walk's projection is totality machinery, not priced"
+
+[ablations.copy_node]
+saving = 9.0
+arity = 10
+verdict = "kept: under the bar on random tables (0.9% at n=7) and parity (4.8% at n=10); stays under the named-function rule on the and/or family (11.1%/10.5% at n=8), with its share in decline there too (9.0%/8.5% at n=10)"
+
+[ablations.raw_copies]
+saving = 4.3
+arity = 10
+verdict = "kept: re-emitting the winner with copied reads raw earns 0.0% on every corpus except and/or (6.2%/7.5% at n=7), with the share in clear decline -- a fixed three tokens per copied read; fails the bar and the genuine-percentage stipulation; retirement candidate, Bangyen to decide"
+
+[ablations.walk_preload_skip]
+saving = 32.2
+arity = 10
+verdict = "kept: the walk's preload stopping at the last 1 clears on its class (front-half tables, ones ending early: 31.3% at n=9) and earns 0.1% on random walk tables, whose last 1 sits near the final row"
