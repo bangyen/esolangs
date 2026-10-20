@@ -260,7 +260,7 @@ def test_mine_search_record_shape(tmp_path: Path) -> None:
     ):
         assert key in record, key
     json.dumps(record)  # the record must stream to JSONL as-is
-    assert record["shipped_size"] == 4
+    assert record["shipped_size"] == 3
     assert record["consumption"] == "verified"
     assert record["outcome"] in ("find", "no_find")
     assert 0 < record["evals"] <= 120
@@ -274,21 +274,24 @@ def test_mine_search_record_shape(tmp_path: Path) -> None:
 
 def test_mine_search_recovers_a_planted_gap() -> None:
     """Positive control for the tool itself (plan section 9): FALSE's
-    recorded gap ``0.^`` padded with a no-op pair must be recovered
-    to size <= 3 by a chain seeded from the padded program."""
+    recorded gap ``'0^=.`` on table 10, padded with a no-op pair, must
+    be recovered to size <= 5 by a chain seeded from the padded
+    program. (Table 10 is the live FALSE gap on current main: the
+    generator ships 16 chars there. The original table-00 plant is
+    dead -- main now ships the recorded find ``0.^`` itself.)"""
     runner = Runner("FALSE")
     corpus = corpus_for("FALSE")
     record = mine_search(
         runner,
         corpus.alphabet,
-        "00",
+        "10",
         class_label="control",
         phase="control",
         eval_budget=4000,
         restarts=1,
         seed=184_700,
-        start_program="0.^[]",
+        start_program="'0^=.[]",
     )
     assert record["outcome"] == "find"
     assert record["found_size"] is not None
-    assert record["found_size"] <= 3
+    assert record["found_size"] <= 5
