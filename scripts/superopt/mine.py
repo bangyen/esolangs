@@ -883,32 +883,51 @@ def class_table(n: int, class_label: str) -> str:
 
 # --- The control set (plan sections 2 and 5) -------------------------------
 
-#: Consumption-verified printing-mode gaps: (language, table, found size).
+#: Control 2 pairs: (language, table, recorded found size).  A pair is
+#: in scope only while its premise lives on current main: the shipped
+#: program is strictly larger than the recorded find, and the recorded
+#: find still certifies and consumption-matches on the current
+#: interpreter.  Re-scoped 2026-10-20 (verification log:
+#: notes/rescope-2026-10-20.log) after the first gate run failed on
+#: premises the fix phase had retired: FALSE 00 and 11, Caballo 11 and
+#: Circuit Diagram 01 now ship the recorded find itself (shipped ==
+#: found size), and Eval 00/11 ship at the found size, so six of the
+#: original ten pairs are un-rediscoverable by construction.  FALSE 01
+#: joins from the old Control 3: its v2 certificate was against the
+#: pre-#23 spelling (shipped ``^1&.`` at 4); #23 re-spelled the pair
+#: to 16 chars while ``^1&.`` still computes it (re-verified), so it is a
+#: live gap, not a minimal pair.  ArrowQueue 00 is promoted from the
+#: secondary set: its premise re-verified by certification (it is a
+#: termination-mode pair, so consumption is unmeasurable there, as
+#: the audit already flagged).
 CONTROL_GAPS: tuple[tuple[str, str, int], ...] = (
-    ("FALSE", "00", 3),
     ("FALSE", "10", 5),
-    ("FALSE", "11", 3),
+    ("FALSE", "01", 4),
     ("1 + i", "11", 5),
-    ("Caballo", "11", 2),
     ("Painfuck", "00", 2),
     ("Painfuck", "11", 3),
-    ("Circuit Diagram", "01", 2),
-    ("Eval", "00", 4),
-    ("Eval", "11", 4),
-)
-#: Termination-mode gaps with searchable structure; report-only.
-CONTROL_SECONDARY: tuple[tuple[str, str, int], ...] = (
     ("ArrowQueue", "00", 1),
-    ("Unary", "00", 0),
 )
+#: Termination-mode pairs kept report-only.  Unary 00's recorded find
+#: is the empty program; its current shipped form is a CompressedText
+#: object rather than text, so the miner records it unsupported.
+CONTROL_SECONDARY: tuple[tuple[str, str, int], ...] = (("Unary", "00", 0),)
 #: Audit-certified minimal pairs: the miner must record zero finds.
+#: A pair qualifies only while its current shipped program is
+#: byte-identical to the program the v2 audit certified (checked
+#: against the audit-era tree).  FALSE 01 was disqualified by the
+#: 2026-10-20 re-scope (re-spelled by #23; it is a Control 2 pair
+#: now); Bitwise Cyclic Tag 00 takes its place -- shipped ``0,$0``
+#: byte-identical in both trees, as are Smallfuck 00 and Taglate 00.
 CONTROL_MINIMAL: tuple[tuple[str, str], ...] = (
-    ("FALSE", "01"),
     ("Smallfuck", "00"),
     ("Taglate", "00"),
+    ("Bitwise Cyclic Tag", "00"),
 )
-#: Control 2 passes at this many rediscoveries out of len(CONTROL_GAPS).
-CONTROL_PASS_COUNT = 9
+#: Control 2's pass bar: at least 9 rediscoveries, or all-but-one of
+#: the qualifying pairs when fewer than 10 qualify (the 2026-10-20
+#: re-scope qualified 6, so the bar is 5).
+CONTROL_PASS_COUNT = 9 if len(CONTROL_GAPS) >= 10 else len(CONTROL_GAPS) - 1
 
 
 def harness_control(max_length: int = 6) -> bool:
