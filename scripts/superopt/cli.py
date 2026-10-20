@@ -13,6 +13,12 @@ Run from the repo root with ``PYTHONPATH=src:scripts``:
 - ``python -m superopt audit-fleet --arity 1`` -- the audit across
   the Boolean fleet, cheapest first, inside a global CPU budget;
   writes a JSON record per language to ``--out``.
+- ``python -m superopt mine-control`` -- the miner's control gate
+  (v1 harness check, gap rediscovery, negative control).
+- ``python -m superopt mine-one FALSE --arity 1 --table 00`` -- one
+  stochastic search (see :mod:`superopt.mine`).
+- ``python -m superopt mine-hunt Painfuck`` -- the pilot hunt over
+  one language's table set at n=2..4.
 """
 
 from __future__ import annotations
@@ -26,6 +32,7 @@ from typing import Any
 
 from .audit import Corpus, Outcome, Runner, approx, audit_fleet, audit_language
 from .machine import FULL_ALPHABET, SUFFIX_ALPHABET
+from .mine import Ledger, run_control, run_hunt, run_one
 from .search import Stats, certify, search, search_bfs
 from .targets import SHIPPED_GADGET, SHIPPED_SUFFIX, full_spec, suffix_spec
 
@@ -184,6 +191,29 @@ def _audit_fleet(args: argparse.Namespace) -> int:
     return 0
 
 
+def _mine_paths(args: argparse.Namespace) -> dict[str, Any]:
+    """The miner's on-disk paths, shared by the mine-* commands."""
+    return {
+        "ledger": Ledger(args.ledger),
+        "out_path": Path(args.out),
+        "finds_path": Path(args.finds),
+        "rejects_path": Path(args.rejects),
+        "checkpoint_dir": Path(args.checkpoint_dir),
+    }
+
+
+def _add_mine_args(command: argparse.ArgumentParser) -> None:
+    command.add_argument("--evals", type=int, default=50_000)
+    command.add_argument("--restarts", type=int, default=2)
+    command.add_argument("--seed", type=int, default=184_700)
+    command.add_argument("--wall", type=float, default=1800.0)
+    command.add_argument("--out", default="notes/miner-searches.jsonl")
+    command.add_argument("--finds", default="notes/miner-finds.jsonl")
+    command.add_argument("--rejects", default="notes/miner-rejects.jsonl")
+    command.add_argument("--ledger", default="notes/miner-ledger.json")
+    command.add_argument("--checkpoint-dir", default="notes/miner-checkpoints")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Dispatch one superoptimizer command."""
     parser = argparse.ArgumentParser(prog="superopt")
@@ -209,7 +239,56 @@ def main(argv: list[str] | None = None) -> int:
     fleet.add_argument("--wall", type=float, default=90.0)
     fleet.add_argument("--names", default=None)
     fleet.add_argument("--out", default="notes/audit-fleet.json")
+    mine_one = commands.add_parser("mine-one")
+    mine_one.add_argument("language")
+    mine_one.add_argument("--arity", type=int, required=True)
+    target = mine_one.add_mutually_exclusive_group(required=True)
+    target.add_argument("--table", default=None)
+    target.add_argument("--class", dest="class_label", default=None)
+    mine_one.add_argument("--resume", action="store_true")
+    _add_mine_args(mine_one)
+    mine_control = commands.add_parser("mine-control")
+    _add_mine_args(mine_control)
+    mine_control.set_defaults(evals=20_000)
+    mine_hunt = commands.add_parser("mine-hunt")
+    mine_hunt.add_argument("language")
+    mine_hunt.add_argument("--arities", default="2,3,4")
+    mine_hunt.add_argument("--budget", type=float, default=None)
+    mine_hunt.add_argument("--review-marker", default="notes/miner-review.json")
+    _add_mine_args(mine_hunt)
     args = parser.parse_args(argv)
+    if args.command == "mine-one":
+        return run_one(
+            language=args.language,
+            arity=args.arity,
+            table=args.table,
+            class_label=args.class_label,
+            eval_budget=args.evals,
+            restarts=args.restarts,
+            seed=args.seed,
+            wall_seconds=args.wall,
+            resume=args.resume,
+            **_mine_paths(args),
+        )
+    if args.command == "mine-control":
+        return run_control(
+            eval_budget=args.evals,
+            seed=args.seed,
+            wall_seconds=args.wall,
+            **_mine_paths(args),
+        )
+    if args.command == "mine-hunt":
+        return run_hunt(
+            language=args.language,
+            arities=tuple(int(part) for part in args.arities.split(",")),
+            eval_budget=args.evals,
+            restarts=args.restarts,
+            seed=args.seed,
+            wall_seconds=args.wall,
+            budget_cpu_s=args.budget,
+            review_marker=Path(args.review_marker),
+            **_mine_paths(args),
+        )
     if args.command == "control":
         return _control(args.max_length)
     if args.command == "novel":
