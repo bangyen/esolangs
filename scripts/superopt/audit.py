@@ -92,11 +92,24 @@ class Runner:
         self._module: object | None = None
         self._module_tried = False
 
-    def answer_row(self, program: Program, bits: list[int]) -> str:
+    def answer_row(
+        self,
+        program: Program,
+        bits: list[int],
+        *,
+        timeout: float = _ROW_TIMEOUT,
+        backstop: float = 2.0,
+    ) -> str:
         """One row's answer bit for a printing language.
 
         Mirrors ``_row_answerer``: templates fill per row with empty
         stdin, plain programs read ``encode_inputs(bits)``.
+
+        ``timeout`` is the run's own soft deadline and ``backstop``
+        how far past it the hard alarm sits; the defaults are the
+        audit's regime.  The miner's screen tier passes a tighter
+        pair (50 ms / 0.5 s) -- the same machinery at a cheaper
+        bound, never different semantics.
         """
         source: Program = program
         stdin = ""
@@ -111,13 +124,13 @@ class Runner:
         # a pair's whole wall (measured: the first fleet run stalled
         # inside a single pair past its budget).
         previous = signal.signal(signal.SIGALRM, _alarm)
-        signal.setitimer(signal.ITIMER_REAL, _ROW_TIMEOUT + 2.0)
+        signal.setitimer(signal.ITIMER_REAL, timeout + backstop)
         try:
             out = esolangs.run(
                 self.name,
                 source,
                 stdin=stdin,
-                timeout=_ROW_TIMEOUT,
+                timeout=timeout,
             )
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
