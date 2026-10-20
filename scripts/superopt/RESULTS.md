@@ -4,6 +4,39 @@ Runs of the tool in this directory, newest first. A claim appears here
 only when a program was executed or a search space exhausted; winners
 are certified against the full spec before they are recorded.
 
+## 2026-10-20 — the miner's control gate, re-scoped and passed
+
+The pilot's first control run (the original ten Control 2 pairs)
+failed on premises the fix phase had retired, not on the sampler:
+main had shipped several of the audit's finds itself, leaving only
+four pairs rediscoverable in principle.  The control set was
+therefore re-scoped against current main, every candidate verified
+by execution (log: `notes/rescope-2026-10-20.log`, uncommitted): a
+Control 2 pair qualifies only while its shipped program is strictly
+larger than the recorded find and the recorded find still certifies
+and consumption-matches; a Control 3 pair only while its shipped
+program is byte-identical to the one the v2 audit certified.
+
+Control 2 is now six pairs -- FALSE 10, FALSE 01 (promoted from
+Control 3: retirement candidate #23 re-spelled it from the certified
+4 chars to 16, and the certified program still computes it), 1 + i
+11, Painfuck 00, Painfuck 11, ArrowQueue 00 (promoted from the
+secondary set) -- with the bar at all-but-one, 5 of 6.  Control 3 is
+Smallfuck 00, Taglate 00 and Bitwise Cyclic Tag 00, bar zero finds.
+
+Gate result: Control 1 passed.  Control 2 rediscovered 5 of 6 --
+FALSE 01 `^1&.` (4), 1 + i 11 `Bi:*p` (5), Painfuck 00 `oq` (2),
+Painfuck 11 `ssb` (3), ArrowQueue 00 `$` (1) -- missing only FALSE
+10, whose best find `1^&a=.` at 6 chars is one over the pilot run's
+enumerated 5.  Control 3 recorded zero finds (Bitwise Cyclic Tag's
+20,000 evals cost 117.8 CPU-s; its interpreter is this set's slow
+tail).  Environment restarts killed the re-scoped gate's first
+attempt mid-run and its second just after the final ledger charge,
+losing the printed verdict; the verdict above is recounted from the
+streamed search records, which are the gate's own output.  Total
+control spend across all runs: 244.9 CPU-s of the pilot's 20 CPU-h
+cap.  The Painfuck hunt follows from this pass.
+
 ## 2026-10-18 — v2: the small-end audit (Boolean fleet at n=1)
 
 For each Boolean generator and each one-input truth table, is the
