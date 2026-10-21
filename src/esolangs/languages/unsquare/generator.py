@@ -11,7 +11,9 @@ Size:
     1,176 chars, n=10 random 1847: 2,173 chars.
 
 Decisions:
-    Run loops: -15% at n=7, -10% at n=6 (12 seeded tables).
+    Run loops: no saving on seeded random tables at n=6/7 (runs fall short
+    of the ~9-entry break-even); the saving lives on run-rich tables
+    ([ablations.run_loops]).
 """
 
 from itertools import groupby

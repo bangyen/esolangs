@@ -32,3 +32,21 @@ workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 495.8
+arity = 12
+verdict = "kept: canonical, exempt. The table is read on its essential inputs only. 0.00% on random tables at every arity; on the ignored classes at n=10/12, +87.6 / +95.2% (one ignored), +216.3 / +259.0% (two), +389.6 / +495.8% (three); constant tables +2,331.3 / +8,094.2%"
+
+[ablations.run_loops]
+saving = 95.2
+arity = 12
+verdict = "kept: a run of equal entries is pushed by a counted Horner loop when shorter than the literal run. 0.00-0.02% on random tables (runs are shorter than the loop's break-even); on run-rich classes at n=10/12, AND and OR +84.9 / +95.2%, half-constant +29.6 / +32.2%, sparse +13.2 / +13.8%, majority +7.7 / +11.1%. The Decisions figures for the loops do not reproduce on seeded tables (F27)"
+
+[ablations.twin_halves]
+saving = 13.9
+arity = 12
+verdict = "kept: the first aligned block of two identical halves shares one counted push body, when shorter and within an internal command bound. On deep twins (the block is half the table) +10.2% at n=8, +12.8% at n=10 and +13.9% at n=12; on fixed 32-entry blocks the share declines with the block's share of the table (+4.39% at n=6 to +0.11% at n=12), since exactly one block is shared. The internal command bound never binds (removing it measures 0.00% everywhere)"

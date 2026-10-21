@@ -22,9 +22,9 @@ Size:
     packs the same nodes into lines of a chosen width.
 
 Decisions:
-    The free choice among Davio0, Davio1 and monotone-OR arms (9.61% at n=8),
-    rotated orders (0.25% at n=8) and indexed-selector cost splits (7.61% at
-    n=5) fall under the 10% bar and are not built.
+    The free choice among Davio0, Davio1 and monotone-OR arms (1.3-2.1% at
+    n=8), rotated orders (0.9% at n=8) and indexed-selector cost splits
+    (3.5% at n=5) fall under the 10% bar and are not built.
 """
 
 from collections.abc import Callable

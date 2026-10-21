@@ -39,7 +39,7 @@ verdict = "kept: an affine table streams through one input and an accumulator in
 [ablations.normal_gates]
 saving = 29.1
 arity = 12
-verdict = "kept: two-input cofactors normalize to shared AND/XOR gates behind a prefix tree. Race marginal on random tables 21.5% / 25.7% / 26.9% / 29.1% at n=8/9/10/12 and rising (seed set 2: 26.2% / 29.4% at n=10/12). The comments' 40-table figures (9.6% / 13.1% / 23.3% at n=6/7/8, and 9.2% / 21.2% at n=7/8 in the entry point) measure 11.0% / 8.6% / 22.5% on a seeded 40-table reconstruction: same magnitude, not exact, corpora unstated; the n=5 figure (6.6%) describes a build the shipped code refuses below n=6"
+verdict = "kept: two-input cofactors normalize to shared AND/XOR gates behind a prefix tree. Race marginal on random tables 21.5% / 25.7% / 26.9% / 29.1% at n=8/9/10/12 and rising (seed set 2: 26.2% / 29.4% at n=10/12). The comments' 40-table figures (9.6% / 13.1% / 23.3% at n=6/7/8, and 9.2% / 21.2% at n=7/8 in the entry point) measure 11.0% / 8.6% / 22.5% on a seeded 40-table reconstruction: same magnitude, not exact, corpora unstated; the n=5 figure (6.6%) describes a build the shipped code refuses below n=6. 2026-10-20: the race starts at n=4, where the workspace proof does: on 25 tables a size (20 seeded random, Random(1000 + n), plus zeros, AND, parity, majority, one projection) the gates are never larger and save 8.9% / 3.5% at n=4/5, the 200-table five-input sample 85,789 -> 80,762"
 
 [ablations.shared_blocks]
 saving = 28.9

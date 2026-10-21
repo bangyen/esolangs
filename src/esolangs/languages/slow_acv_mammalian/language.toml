@@ -68,4 +68,4 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 [interpreter_ablations.tokens_cache]
 price = 1.5
 workload = "run"
-verdict = "candidate: unmeasurable; tokenization amortized over long executions"
+verdict = "removed 2026-10-20 (interpreter candidate I-7): +1.5% run with fully overlapping spreads in the audit, unmeasurable; tokenization amortized over long executions"

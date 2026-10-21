@@ -219,7 +219,7 @@ def _taglate_raw(truth_table: str) -> str:
 
     A table that ignores some inputs is emitted as the smaller table over
     the inputs it uses, with the ignored ones read and discarded: a constant
-    table goes from 451 characters to 21, ``11110000`` to 21 as well.  Odd
+    table goes from 451 characters to 7, ``11110000`` to 21.  Odd
     ``n`` above 1 feeds a leading ghost digit.
     """
     n = _validate_truth_table(truth_table)

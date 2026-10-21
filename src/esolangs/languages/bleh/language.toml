@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 2
+
+[proof_status]
+labels = ["tree"]
+qualification = "a function a shared node matches its input's character; a folded node or constant reads it as a statement"
+scaling = "linear: one function a shared node, one a constant a level"
+execution = "poly n: worst 8n + 5 steps: a call, a read and a match a level"
+workspace = "poly n: at most 67n + 303 bits: one argument thunk and its bits a level"
+
+[generator_sizes]
+"00000001" = { commands = 29, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 26, "5" = 26, "6" = 28, "7" = 29 }, source_units = 179 }
+"00001100" = { commands = 27, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 26, "5" = 26, "6" = 27, "7" = 27 }, source_units = 163 }
+"00110110" = { commands = 29, commands_by_row = { "0" = 25, "1" = 25, "2" = 26, "3" = 26, "4" = 27, "5" = 28, "6" = 28, "7" = 29 }, source_units = 263 }
+"0110" = { commands = 21, commands_by_row = { "0" = 19, "1" = 20, "2" = 20, "3" = 21 }, source_units = 143 }
+"01101001" = { commands = 29, commands_by_row = { "0" = 26, "1" = 27, "2" = 27, "3" = 28, "4" = 27, "5" = 28, "6" = 28, "7" = 29 }, source_units = 221 }
+"0110100110010110" = { commands = 37, commands_by_row = { "0" = 33, "1" = 34, "2" = 34, "3" = 35, "4" = 34, "5" = 35, "6" = 35, "7" = 36, "8" = 34, "9" = 35, "10" = 35, "11" = 36, "12" = 35, "13" = 36, "14" = 36, "15" = 37 }, source_units = 299 }
+"1101001101101101" = { commands = 37, commands_by_row = { "0" = 32, "1" = 32, "2" = 34, "3" = 35, "4" = 33, "5" = 33, "6" = 34, "7" = 34, "8" = 34, "9" = 35, "10" = 35, "11" = 36, "12" = 34, "13" = 34, "14" = 36, "15" = 37 }, source_units = 371 }
+"11111110" = { commands = 29, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 26, "5" = 26, "6" = 28, "7" = 29 }, source_units = 179 }

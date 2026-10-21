@@ -26,3 +26,11 @@ folding_constant_local = "input_weights"  # one projected grid cell
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 700.0
+arity = 12
+verdict = "kept: canonical, exempt. The only mechanism on the default path, priced by area (chars agree in direction): the table in the codebox is read on its essential inputs only, an ignored input read and dropped. The program is two rows, header over table, so the area is 2 x 2^k for k essential inputs and the price is 0.00% on random tables and every all-essential class; on its class the deletion costs are exact multiples at n=10 and n=12 — one ignored input +100.00%, two +300.00%, three +700.00%, constant tables +3,431.03% at n=10 and +12,312.12% at n=12"

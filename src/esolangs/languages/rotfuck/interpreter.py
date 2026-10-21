@@ -61,22 +61,18 @@ _COMMANDS = frozenset(ROTFUCK_CYCLES["forward"])
 type _State = tuple[tuple[int, ...], int, int, int]
 
 
-#: Each command's index in each cycle, so the rotation is an addition rather
-#: than a ``str.index`` scan.  The dict doubles as the membership test,
-#: since a comment is exactly a character it does not hold.
-_OPCODES = {
-    cycle: {ch: i for i, ch in enumerate(cycle)} for cycle in ROTFUCK_CYCLES.values()
-}
-
-
 def _at(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> str:
     """Return the effective command at ``i`` under rotation ``rot``.
 
-    Arithmetic on a precomputed opcode: the hottest function, and a cycle
-    scan was 46% of a generated program's runtime.
+    The index is a cycle scan: the 46% scan share the old comment cited
+    came from a different workload, and the table earned nothing
+    measurable on this repo's fresh-machine-per-row workload.
     """
-    code = _OPCODES[cycle].get(chars[i], -1)
-    return cycle[(code + rot) % 8] if code >= 0 else chars[i]
+    char = chars[i]
+    if char not in cycle:
+        # A comment: passed over without rotating.
+        return char
+    return cycle[(cycle.index(char) + rot) % 8]
 
 
 def _partner(

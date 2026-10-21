@@ -161,6 +161,7 @@ Build language-specific stdin with `encode_inputs`:
 | Dimensional | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Fargo | `row_index` | `0`/`1` | `'5\n'` |
 | Forþ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Freestajlo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
 | Inject | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Interprogck8 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
@@ -174,8 +175,8 @@ Build language-specific stdin with `encode_inputs`:
 | Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 44 that read stdin take one `0`/`1` character per bit -- `'101'`.
-The remaining 17 embed their inputs and read no stdin: `instantiate` fills them.
+The other 45 that read stdin take one `0`/`1` character per bit -- `'101'`.
+The remaining 18 embed their inputs and read no stdin: `instantiate` fills them.
 The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
 

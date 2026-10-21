@@ -12,13 +12,13 @@ from tests.support.generator_support import verify_generated
 from tests.support.witness_tables import witnesses
 
 
-def test_false_tests_the_low_bit_and_prints_a_constant_pair() -> None:
-    """``1&`` is the bit, and a node over two constant halves is a literal."""
+def test_false_tests_the_low_bit_and_splits_every_node() -> None:
+    """``1&`` is the bit; a node over two constant halves splits like any other."""
 
-    assert boolean.false("0110") == "^1&$[^'0=_.]?0=[^1&.]?"
-    assert boolean.false("0001") == "^1&$[^1&.]?0=[^%0.]?"
+    assert boolean.false("0110") == "^1&$[^1&$[0.]?0=[1.]?]?0=[^1&$[1.]?0=[0.]?]?"
+    assert boolean.false("0001") == "^1&$[^1&$[1.]?0=[0.]?]?0=[^%0.]?"
     total = sum(len(false_plain(f"{value:08b}", 3)) for value in range(256))
-    assert total == 12034
+    assert total == 18528
 
 
 def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
@@ -26,12 +26,14 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
 
     three = [format(value, "08b") for value in range(256)]
     assert boolean.false("01101001") == (
-        "[^'0=_.]a:^1&$[^1&$[^1&.]?0=a;?]?0=[^1&$a;?0=[^1&.]?]?"
+        "[^1&$[1.]?0=[0.]?]a:[^1&$[0.]?0=[1.]?]b:^1&$[^1&$a;?0=b;?]?0=[^1&$b;?0=a;?]?"
     )
-    assert boolean.false("0101010100110011") == "^1&$[^%^1&^%.]?0=[^%^%^1&.]?"
+    assert boolean.false("0101010100110011") == (
+        "^1&$[^%^1&$[^%1.]?0=[^%0.]?]?0=[^%^%^1&$[1.]?0=[0.]?]?"
+    )
     for tables, arity, before, after in (
-        (three, 3, 12034, 10622),
-        (five_input_sample(), 5, 45372, 35721),
+        (three, 3, 18528, 15362),
+        (five_input_sample(), 5, 65784, 41470),
     ):
         plain = [len(false_plain(table, arity)) for table in tables]
         shared = [len(boolean.false(table)) for table in tables]
@@ -83,16 +85,7 @@ def test_the_plain_tree_grows_by_a_line() -> None:
 
 def false_plain(truth_table: str, n: int) -> str:
     """Return the tree with every half written out where it is used."""
-    from esolangs.languages.false.generator import (
-        _FLIPPED,
-        _SAME,
-        _SKIP,
-        _TEST_ONE,
-    )
-
-    def pair(level: int, mid: int) -> str:
-        read = _SAME if truth_table[mid] == "1" else _FLIPPED
-        return read + _SKIP * (n - level - 1) + "."
+    from esolangs.languages.false.generator import _SKIP, _TEST_ONE
 
     return separated_tree_text(
         truth_table,
@@ -101,5 +94,4 @@ def false_plain(truth_table: str, n: int) -> str:
         between="]?0=[",
         close="]?",
         one_first=True,
-        pair=pair,
     )

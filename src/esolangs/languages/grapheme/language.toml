@@ -8,19 +8,42 @@ backlinks = 3
 labels = ["linear lookup"]
 qualification = "the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0"
 scaling = "linear: bounded dependency scan, one table literal, n read blocks"
-execution = "linear: worst 14n + 32 + d commands, d the digits of 2^T: one per program character"
-workspace = "linear: worst 16d + 112n + 312 + bl(14n+d+17) + 2bl(10^(d+1)+2^T-1) + bl(2n) + bl(n) bits, d the digits of 2^T"
+execution = "linear: at most 18n + 20 + d commands, d the digits of 2^T: one per program character"
+workspace = "linear: at most 16d + 144n + 208 + bl(18n+d+5) + 2bl(2·10^d) + bl(2n) + bl(n) bits, d digits of 2^T"
 
 [generator_sizes]
-"00000001" = { commands = 77, commands_by_row = { "0" = 77, "1" = 77, "2" = 77, "3" = 77, "4" = 77, "5" = 77, "6" = 77, "7" = 77 }, source_units = 77 }
-"00001100" = { commands = 64, commands_by_row = { "0" = 64, "1" = 64, "2" = 64, "3" = 64, "4" = 64, "5" = 64, "6" = 64, "7" = 64 }, source_units = 64 }
-"00110110" = { commands = 77, commands_by_row = { "0" = 77, "1" = 77, "2" = 77, "3" = 77, "4" = 77, "5" = 77, "6" = 77, "7" = 77 }, source_units = 77 }
-"0110" = { commands = 62, commands_by_row = { "0" = 62, "1" = 62, "2" = 62, "3" = 62 }, source_units = 62 }
-"01101001" = { commands = 77, commands_by_row = { "0" = 77, "1" = 77, "2" = 77, "3" = 77, "4" = 77, "5" = 77, "6" = 77, "7" = 77 }, source_units = 77 }
+"00000001" = { commands = 71, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 71, "5" = 71, "6" = 71, "7" = 71 }, source_units = 71 }
+"00001100" = { commands = 57, commands_by_row = { "0" = 57, "1" = 57, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 57, "7" = 57 }, source_units = 57 }
+"00110110" = { commands = 74, commands_by_row = { "0" = 74, "1" = 74, "2" = 74, "3" = 74, "4" = 74, "5" = 74, "6" = 74, "7" = 74 }, source_units = 74 }
+"0110" = { commands = 56, commands_by_row = { "0" = 56, "1" = 56, "2" = 56, "3" = 56 }, source_units = 56 }
+"01101001" = { commands = 73, commands_by_row = { "0" = 73, "1" = 73, "2" = 73, "3" = 73, "4" = 73, "5" = 73, "6" = 73, "7" = 73 }, source_units = 73 }
 "0110100110010110" = { commands = 93, commands_by_row = { "0" = 93, "1" = 93, "2" = 93, "3" = 93, "4" = 93, "5" = 93, "6" = 93, "7" = 93, "8" = 93, "9" = 93, "10" = 93, "11" = 93, "12" = 93, "13" = 93, "14" = 93, "15" = 93 }, source_units = 93 }
 "1101001101101101" = { commands = 93, commands_by_row = { "0" = 93, "1" = 93, "2" = 93, "3" = 93, "4" = 93, "5" = 93, "6" = 93, "7" = 93, "8" = 93, "9" = 93, "10" = 93, "11" = 93, "12" = 93, "13" = 93, "14" = 93, "15" = 93 }, source_units = 93 }
-"11111110" = { commands = 77, commands_by_row = { "0" = 77, "1" = 77, "2" = 77, "3" = 77, "4" = 77, "5" = 77, "6" = 77, "7" = 77 }, source_units = 77 }
+"11111110" = { commands = 74, commands_by_row = { "0" = 74, "1" = 74, "2" = 74, "3" = 74, "4" = 74, "5" = 74, "6" = 74, "7" = 74 }, source_units = 74 }
 
 [catalogue]
 sharing_exempt = "one integer table literal"
 folding_constant_local = "_program"  # one-entry integer lookup
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 349.5
+arity = 12
+verdict = "kept: canonical, exempt. The packed table is read on its essential inputs only; an ignored input is read and dropped with WM. The price is 0.00% on random tables at every arity; on its class the deletion costs at n=10/12: one ignored input +52.70 / +78.14%, two +112.83 / +195.67%, three +174.86 / +349.53%, constant tables +807.55 / +2,415.79%"
+
+[ablations.key_store]
+saving = 1.7
+arity = 12
+verdict = "removed 2026-10-20 (retirement candidate #31): 65 is spelled inline at each read (WFEFFMFSBT); the key-9 store (FEFFMFS pushed once, loaded by every read as WFIFDBT) netted 3 chars per essential input less the 11-char store block -- deletion cost +3.95% at n=10 and +1.74% at n=12 on random tables, linear in n against a 2^n program, so the share declines toward zero; where nothing reads the value the block was pure waste (constant tables: the removal is 19.30-24.44% smaller at every arity). Removed with no conditional-store repair"
+
+[ablations.table_lift]
+saving = -0.15
+arity = 12
+verdict = "removed 2026-10-20 (retirement candidate #32): _grapheme_table now lifts by the smallest multiple of 2^k whose sum with the packed value leads with 1, replacing the fixed target [10^(d+1), 10^(d+1) + 2^k) that made the literal always d+2 digits. The minimal lift was execution-gated clean in the audit and smaller on every corpus measured: -0.35% at n=10 and -0.15% at n=12 on random tables, -1.89 / -1.75% on constant tables; the fixed target overshot by a fixed ~2 letters a program, a fixed amount whose share tends to zero. The workspace proof formula still states the fixed lift's bound -- restatement pending the corpus pass"
+
+[ablations.digit_borrow]
+saving = 0.0
+arity = 12
+verdict = "recorded: a decimal 6 in a literal is spelled 16 with a borrow from the next digit. 6 is the one digit with no letter, so a 6-containing literal is unspellable without the borrow; there is no correct removal to price. Correctness machinery"

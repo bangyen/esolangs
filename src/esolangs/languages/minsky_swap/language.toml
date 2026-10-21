@@ -29,3 +29,11 @@ workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 286.3
+arity = 12
+verdict = "kept: canonical, exempt. The only mechanism on the default path: an ignored input pays a two-tilde stage instead of its unary weight block, and the tilde cascade spans the projected table. The program's length depends only on the essential inputs, so the price is 0.00% on random tables and every all-essential named table; on its class, one ignored input 93.1% at n=10 and 97.5% at n=12, two ignored 261.3% / 286.3%, three ignored 544.3% / 643.0%, constant tables 3,925.6% / 13,297.4%"

@@ -12,14 +12,14 @@ execution = "linear: worst 128 + 46·2^((n-6)/2) for even n, 128 + 64·2^((n-7)/
 workspace = "linear: worst 8RC + bl(R-1) + bl(C-1) + bl(2n-1) + bl(n) + 10 bits past n = 4: the R×C grid"
 
 [generator_sizes]
-"00000001" = { commands = 28, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 28, "7" = 28 }, source_units = 113 }
+"00000001" = { commands = 40, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 24, "5" = 24, "6" = 40, "7" = 40 }, source_units = 114 }
 "00001100" = { commands = 22, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 70 }
 "00110110" = { commands = 44, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 188 }
 "0110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27 }, source_units = 84 }
 "01101001" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 47, "7" = 47 }, source_units = 260 }
 "0110100110010110" = { commands = 129, commands_by_row = { "0" = 123, "1" = 125, "2" = 127, "3" = 129, "4" = 123, "5" = 125, "6" = 127, "7" = 129, "8" = 123, "9" = 125, "10" = 127, "11" = 129, "12" = 123, "13" = 125, "14" = 127, "15" = 129 }, source_units = 230 }
 "1101001101101101" = { commands = 129, commands_by_row = { "0" = 123, "1" = 125, "2" = 127, "3" = 129, "4" = 123, "5" = 125, "6" = 127, "7" = 129, "8" = 123, "9" = 125, "10" = 127, "11" = 129, "12" = 123, "13" = 125, "14" = 127, "15" = 129 }, source_units = 230 }
-"11111110" = { commands = 28, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 22, "5" = 22, "6" = 28, "7" = 28 }, source_units = 113 }
+"11111110" = { commands = 40, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 24, "5" = 24, "6" = 40, "7" = 40 }, source_units = 114 }
 
 [catalogue]
 sharing_local = "_dig_indexed_shared"  # indexed six-input leaf classes
@@ -70,17 +70,17 @@ verdict = "kept: clears on its mosaic class (88.0% at n=10, 200 tables); refused
 [ablations.lane_and_parallel_sharing]
 saving = 0.0
 arity = 10
-verdict = "kept: 0.0% marginal each on every mosaic measured, 0.0-6.5% jointly beyond the indexed route -- fails the bar as separate mechanisms, exempt only as canonical sharing realizations; retirement candidate, Bangyen to decide"
+verdict = "split by decision 2026-10-20 (retirement candidate #2): the parallel route is removed and the lane route kept as the canonical realization -- 0.0% marginal each on every mosaic measured, 0.0-6.5% jointly beyond the indexed route"
 
 [ablations.tree_max_race]
 saving = 34.3
 arity = 4
-verdict = "kept: clears on random tables; the value is the alternating layout's admission at n=4 (the unshared layout alone reproduces the total), not the sharing routes'"
+verdict = "kept: clears on random tables; the value is the alternating layout's admission at n=4 (the unshared layout alone reproduces the total), not the sharing routes'. Capped at n=4 until 2026-10-20; past it the trees win no random table but tables with one to three essential top inputs: 38.5-85.7% of length at n=5..10 (20 tables per cell, seed random.Random(n)), 0.8-19.8% with four"
 
 [ablations.length_keyed_races]
 saving = -2.3
 arity = 3
-verdict = "kept: the layout races select by length in an area-judged language; re-keying by area saves 2.3% at n=3 on random tables and ties at n>=4"
+verdict = "retired 2026-10-20: the layout races key by area, then length (_dig_size), as the bar judges grids; 2.2% of area over the 256 n=3 tables (+0.4% length), 0.2% at n=4, ties at n=5..8"
 
 [ablations.compaction]
 saving = 0.6
@@ -98,4 +98,4 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 [interpreter_ablations.padded_grid_cache]
 price = -3.0
 workload = "run"
-verdict = "candidate: no measurable earning"
+verdict = "removed 2026-10-20 (interpreter candidate I-6): -3.0% run with overlapping spreads in the audit; no measurable earning"

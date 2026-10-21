@@ -4,7 +4,7 @@ The literal (int mode, ~0.302 letters an entry) is indexed by Horner's rule
 run on the complemented input bits; it has no subtrees to fold or share.
 
 Size:
-    O(T) letters; n=10 random 1847: 481 chars, n=16 random 1847: 19,985 chars.
+    O(T) letters; n=10 random 1847: 498 chars, n=16 random 1847: 20,021 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
@@ -22,9 +22,6 @@ from esolangs.runtime.memory import format_integer
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
 #: with no letter is 6 -- ``F`` closes the mode.  16 with a borrow spells it.
 _GRAPHEME_DIGITS = "ZABCDE?GHIJKLMNOPQRSTUVWXY"
-
-#: Holds 65 at integer key 9.
-_GRAPHEME_CONST = 9
 
 
 def _grapheme_push65(dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> str:
@@ -61,8 +58,18 @@ def _grapheme_table(table: str) -> int:
     """Pack entry ``i`` at bit ``len(table) - 1 - i``, lifted to lead with 1."""
     span = 1 << len(table)
     value = int(table, 2)
-    lift: int = 10 ** (len(format_integer(span)) + 1)
-    return value + -(-(lift - value) // span) * span
+    # The minimal leading-1 lift: scan the bands [10^j, 2*10^j) upward for
+    # the first member of value's residue class. The old fixed target
+    # 10^(d+1) overshot it by a fixed ~2 letters a program on every corpus
+    # measured (candidate 32). The band at span's digit count is wider
+    # than span, so a member always lands there and the scan ends.
+    band = 1
+    while True:
+        base = max(value, band)
+        lifted = base + (value - base) % span
+        if lifted < 2 * band:
+            return lifted
+        band *= 10
 
 
 def grapheme(
@@ -93,17 +100,17 @@ def _program(
 
     one = _grapheme_literal(1, dialect)
     two = _grapheme_literal(2, dialect)
-    store65 = (
-        _grapheme_push65(dialect) + _grapheme_literal(_GRAPHEME_CONST, dialect) + "C"
-    )
-    read_bit = "W" + _grapheme_literal(_GRAPHEME_CONST, dialect) + "D" + "B" + "T"
+    # 65 is spelled inline at each read: the key-9 store that amortized it
+    # netted 3 chars an essential input against an 11-char block, a share
+    # declining toward zero against the 2^n literal (candidate 31).
+    read_bit = "W" + _grapheme_push65(dialect) + "B" + "T"
     drop_unread_line = "WM"
     square = "KS"
     double_unless_set = two + "B" + "S"
     shift = "R"
     low_bit = "K" + two + "LR" + two + "SLB"
 
-    pieces = [store65, one]
+    pieces = [one]
     for input_index in range(n):
         if input_index in reading:
             pieces.append(square + read_bit + double_unless_set)
@@ -131,6 +138,6 @@ LANGUAGE = Language(
         "answers the all-zeros row; esolangs encode spells them",
     ),
     wrap=wrap_chars,
-    proof_execution=(execution, True, (3, 5)),
-    proof_workspace=(workspace, True, (3, 5)),
+    proof_execution=(execution, False, (3, 5)),
+    proof_workspace=(workspace, False, (3, 5)),
 )

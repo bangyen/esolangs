@@ -33,7 +33,7 @@ audited = "2026-10-19"
 [ablations.packed_decoder]
 saving = 86.0
 arity = 10
-verdict = "kept: clears the bar on random tables and rises steeply (17.7% at n=6, 65.8% at n=8, 86.0% at n=10 against the tree candidate). On named functions the unrated tree candidate is smaller (and/or 889 against 1,547-1,609 at n=8) -- the route cutoff at 32 essential rows leaves that on the table, an observation recorded in the batch 7 report, not a failure of the decoder"
+verdict = "kept: clears the bar on random tables and rises steeply (17.7% at n=6, 65.8% at n=8, 86.0% at n=10 against the tree candidate). On named functions the unrated tree candidate is smaller (and/or 889 against 1,547-1,609 at n=8) -- the route cutoff at 32 essential rows left that on the table until 2026-10-20, when the tree began racing at every n: and 1,547 -> 889 and parity 1,609 -> 1,267 at n=8, and 1,847 -> 1,107 at n=10; random tables unchanged (0/20 tree wins at n=6..10)"
 
 [ablations.residual_tree_route]
 saving = 21.5

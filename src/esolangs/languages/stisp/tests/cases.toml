@@ -1,0 +1,77 @@
+language = "Stisp"
+oldid = 102557
+
+[[examples]]
+id = "simple"
+note = "the page's simple example; its trace ends in TRUE"
+source = '''
+x -> eq[x] = TRUE;
+x -> eq[y] = FALSE;
+BLUE -> eq[YELLOW] -> eq[FALSE]
+'''
+expected = "TRUE"
+
+[[examples]]
+id = "eval-cons"
+note = "the page's motivating example; its trace ends in (HELLO)"
+source = '''
+(CONS xh xt) -> eval[] = xh -> eval_cons[xt];
+(QUOTE x) -> eval[] = x;
+
+xh -> eval_cons[xt] = xh -> eval[] -> eval_cons_2[xt];
+h -> eval_cons_2[xt] = xt -> eval[] -> reverse_cons[h];
+
+t -> reverse_cons[h] = (h . t);
+
+(CONS (QUOTE HELLO) (QUOTE ())) -> eval[]
+'''
+expected = "(HELLO)"
+
+[[spec_triggers]]
+program = "A -> f[]"
+stdin = ""
+expect = "HaltError"
+claim = "a step no equation matches is a HaltError"
+
+[[spec_triggers]]
+program = "A ! B"
+stdin = ""
+expect = "ProgramError"
+claim = "a character outside the grammar is a ProgramError"
+
+[[spec_triggers]]
+program = "A -> f[] -> g[] = B; A"
+stdin = ""
+expect = "ProgramError"
+claim = "an equation's left side takes exactly one frame"
+
+[[spec_triggers]]
+program = "A -> f[] = y; A"
+stdin = ""
+expect = "ProgramError"
+claim = "a right-side variable must appear on the left side"
+
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "the final stack must be closed"
+
+[[spec_triggers]]
+program = "(A B . C)"
+stdin = ""
+expect = "ProgramError"
+claim = "a dot follows exactly one expression"
+
+[[spec_triggers]]
+program = "# only a comment"
+stdin = ""
+expect = "ProgramError"
+claim = "a program needs a final stack"
+
+[[spec_triggers]]
+program = "x->id[]=x;(A . (B . C))->id[]"
+stdin = ""
+expect = "output"
+output = "(A . (B . C))"
+claim = "- before > ends an identifier, and a cons ending in an atom prints as nested pairs"

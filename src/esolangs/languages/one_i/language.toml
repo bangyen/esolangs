@@ -23,3 +23,26 @@ workspace = "poly n: at most 4bl(L) + 40 bits: two functions, a decider and a fr
 
 [catalogue]
 sharing_exempt = "a deeper function literal needs a whole-stack roll to reuse"
+
+[ablations]
+audited = "2026-10-20"
+
+[ablations.constant_fold]
+saving = 43.96
+arity = 12
+verdict = "kept: canonical, exempt. A constant subtable prints its literal at once and drains the remaining bits with bare B, instead of descending to its rows. Removing the fold costs +43.97% at n=10 and +43.96% at n=12 on random tables, +187.91 / +207.73% on AND at n=10/12 and +453.33 / +470.59% on constant tables"
+
+[ablations.equal_halves_sharing]
+saving = 6.65
+arity = 12
+verdict = "kept: canonical, exempt. A node whose halves agree pushes one function literal and ':'s it, so its bit is read but never really tested. Removing the sharing costs +6.67% at n=10 and +6.65% at n=12 on random tables, and on the ignored-input classes at n=12 +10.75% (one), +9.40% (two), +11.15% (three); it is 0.00% on parity, where no halves agree"
+
+[ablations.last_level_forms]
+saving = 39.8
+arity = 12
+verdict = "kept: a last-level node prints Bp or 1 - b (ici*Bii**+p) instead of pushing two leaf literals for B? to choose between. Removing the short forms costs +39.88% at n=10 and +39.80% at n=12 on random tables and +81.92 / +81.84% on parity — above the bar outright, no exemption needed"
+
+[ablations.bare_b_drain]
+saving = 3.39
+arity = 12
+verdict = "recorded: the fold's drain spelling. After the constant prints, nothing reads the stack, so bare B replaces B$ — the Decisions figure (2n+5 -> n+5 a table) is the constant root's emission, verified: a constant table costs exactly n+5 chars. The B$ variant is execution-gated clean, so the price is real: spelling the drain B$ costs +3.60 / +3.44 / +3.41 / +3.39 / +3.39% on random tables at n=4/6/8/10/12 (one char per drained bit; the share is flat) and +70.59% on constant tables at n=12, where the program is nearly all drain. Part of the fold's realization, not a separate device"

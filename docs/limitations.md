@@ -141,39 +141,36 @@ Each missed the 10% bar:
   a deficit for that construction, not an impossibility bound.
   The shipped cap remains sixteen.
 
-  A cheaper seventeen-input layout is checked but unbuilt (2026-10-13):
-  a third cell per 14-bit prefix, one low digit forced to its missing
-  value and that digit moved to the top, makes three disjoint maps, giving
-  49,152 cells and leaving 9,897 (one cell wraps; reorder the top digit).
-  That replaces the 8,377-10,449-cell address fold with two extra group-4
-  runs. Six run-time pointer cells (`_D_POINTERS`) cut sixteen's main
-  line from 5,505 to 4,038 cells; all 65,536 rows stay correct. Seven
-  meanings per cell need the address parity, which `p` with `A` all-2
-  then all-1, then ten rotations folded into an all-1 cell, gives in 240
-  cells, 0 of 59,049 words wrong (scratch, executed). Swaps `v` {0,3,4},
-  `u` {1,2} make the third cell's parity equal the first's (model).
-  Dispatch does not fit (2026-10-14, scratch, executed): the seven-class label
-  window plus 14 hubs alone takes 5,155 main-line cells, leaving the line near
-  7,200 against 6,562 before the third-cell fold and per-state transitions.
+  A seventeen-input layout needs more than two table bits in almost every
+  cell, and the cell's character is the only per-row freedom: at address `h`
+  the loader admits the eight characters `33 + (k - h) % 94`, and `j` lands
+  the data pointer on window cell `T + 1`. Everything a decoder does after
+  that is a function of that cell, so eight distinct meanings per address
+  need the 94 window cells coloured so that no address's eight cells share a
+  class. That conflict graph (42 of the 93 offset differences) has
+  independence number 8 (`test_window_classes.py`, a 0.02 s bitset search):
+  at most eight cells per class, so eight classes reach 64 cells, not 94,
+  and a proper colouring needs twelve (SAT: twelve suffice, scratch). With
+  eight classes the best annealed assignment leaves about 1.2 duplicate
+  characters per address, 2.7 bits per cell where 2.67 are needed for
+  131,072 table bits in at most 49,152 addressable cells. The two earlier
+  layouts (2026-10-13/14, three cells per fourteen-bit prefix, and the
+  seven-class label window) assumed eight or seven clean meanings per cell;
+  the first also needs three pairwise disjoint 16,384-cell digit maps, and
+  any aligned four-trit window of three such maps carries at least 96 of
+  its 81 values, so no three are disjoint.
 
-  Decoder limits (2026-10-16, CP-SAT, scratch):
-
-  - No decoder reads only the `b` cell and the shared cell. Seven blocks of
-    seven cannot cover every pair of the 16 two-input leaves: `C(16,7,2) > 7`
-    (infeasible; 8 is feasible).
-  - Eight meanings per cell are infeasible for odd-address read offsets
-    1-11, 13, 15, 17, 21, 25, 31 and 47, so cells cap at seven.
-  - A three-read decoder exists: after the address, read the next input
-    `c`. For `c = 0` the label (`0 1 x n`) is a 7x7 table of (own cell,
-    shared cell); for `c = 1`, (own, shared) picks one of six contexts and
-    the other cell's meaning picks the label. All 256 targets are covered;
-    corrupting one entry leaves 246. That is 22 dispatch blocks.
-  - A concrete third map: inputs 13-14 pick a low digit `j`, set to its
-    missing value, and group `j` moves to the top digit as one of 1..8
-    (for `j = 1`, swapping 1 and 2 in trit 0 of digit 0 stops one prefix
-    wrapping to cell 0). It gives 49,152 cells, no collision and 9,897
-    free (model). The third cell's parity varies with the moved digit,
-    while the two `b` cells always have opposite parity.
+  Shared cells do not rescue the count (2026-10-20, model): the holes of the
+  sixteen-input map are reached by forcing one digit to its missing value,
+  so a hole cell is shared by eight prefixes and must be combined by XOR
+  across prefixes. That is a linear system only when each cell's eight
+  characters map to an affine flat of classes, which with twelve or more
+  classes means every address's eight classes form a 3-flat; annealing over
+  5- to 7-bit class words never got below 110 violated addresses of 94. The
+  one address-independent combination, the window-position difference of a
+  prefix's own and shared characters (a code run whose length is linear in
+  the landing cell), only exposes the parity of the op index, because
+  `Z_94` has a single character to `GF(2)`.
 
   Navigation, not ops, is sixteen's cost: of 3,618 code cells, 427 are `p`,
   `*`, `/` or `i`, and 3,191 are `o` or `j` (`o` 2,558, `j` 633).
@@ -295,8 +292,8 @@ requires a construction exemption rather than a sub-gate bound.
   indexed by one decimal digit over 2..6 prefix bits; a larger pool needs a
   multi-digit index. A finished sharing layout whose `_chain_lanes` corridor
   crosses another class's lane arrow or branch `$` is rejected and falls back
-  unshared: 131 of 602 lane and parallel layouts at n=12 (random 64-bit leaf
-  classes mixed with constant leaves). A per-class gutter line removes the
+  unshared: 131 of 602 shared layouts in the n=12 scan behind this entry
+  (random 64-bit leaf classes mixed with constant leaves). A per-class gutter line removes the
   rejection but shares no more (26 to 24 lane layouts) and grows shared
   layouts ~5%: a crossed leaf or constant read row kills the gutter, and
   recovery would save nothing anyway: at n=12 the indexed leaf decoder
@@ -311,9 +308,9 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
-of 57 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 19 are
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 39
+of 59 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 20 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -363,16 +360,13 @@ generators have the helper; its declared exceptions handle the case themselves
 #### Suffix banks
 
 The suffix bank defers each word's greatest repeat inside its own body, so a
-nested definition shares like a top-level one: the n=16 five-input fixture
-falls 4% (8485 -> 8131 characters) for one dispatch test.
+nested definition shares like a top-level one.
 
 A bank block must defer through a distinct unused flag at a level no
 shallower than its own: a shallower ancestor would rewrite the flag before
 dispatch.
 
 - Painfuck admits a bank at several depths; one cell per input level
-  is the whole pool.
-- brainfuck admits a bank at several depths; one cell per input level
   is the whole pool.
 
 #### Run time and memory
@@ -423,7 +417,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 90 languages.
+The collection has 93 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -540,7 +534,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 21 clear the fame gate
-and 69 are first implementations.
+and 72 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

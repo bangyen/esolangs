@@ -39,3 +39,10 @@ verdict = "kept: canonical sharing, exempt from the bar; the residual DAG's savi
 saving = 6.4
 arity = 12
 verdict = "kept: canonical, exempt; the ignored-input layer skip earns 8.9% on mid-ignored tables at n=10 and ~0% at lead/trail, where sharing absorbs the kept layer; priced jointly with sharing removed it is worth a full layer on ignored classes (84-94% combined)"
+
+[ablations.wide_tree_race]
+saving = 32.2
+arity = 8
+seed = "random.Random(n)"
+tables = 10
+verdict = "kept 2026-10-20: width requests past four essential inputs race the full tree against the linear lookup, keeping the tree where it fits and is shorter; at width 80 it is 28.2-32.2% shorter at n=5..8 and 59% at n=14 (the gate had shipped the lookup unmeasured). The lookup stays the narrow fallback (14-16 columns against the tree's 16)"

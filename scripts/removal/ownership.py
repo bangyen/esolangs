@@ -29,6 +29,7 @@ _EDITED = (
     "tests/proofs/test_execution_formulas.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_bands.py",
+    "tests/cli/test_cli_messages.py",
 )
 
 

@@ -10,10 +10,12 @@ Size:
     n=10 random 1847: 8,947 chars.
 
 Decisions:
-    Greedy input order costs +2.14% on three inputs and +1.68% on the
-    five-input sample.  Narrower rebuilds (unsimplified, per-operation names,
-    split mingles) were retired: at n=7..10 wrapping the natural program is
-    smaller at every width from 1 to 259, by 26.2% (n=7) to 32.3% (n=10).
+    Greedy input order costs +0.00% on three inputs and on the
+    five-input sample: the emitted size is invariant under input
+    permutation, so no order can cost or save anything.  Narrower rebuilds
+    (unsimplified, per-operation names, split mingles) were retired: at
+    n=7..10 wrapping the natural program is smaller summed over widths 1 to
+    259, by 27.0% (n=7) to 32.6% (n=10).
 """
 
 import re
@@ -230,8 +232,8 @@ def _negations(nodes: list[_Node], selectors: list[_Expr]) -> list[int | None]:
     """Name each level's ``~selector`` variable, or ``None`` to inline it.
 
     Numbered from the bottom level up, from the first spare ``.{n + 2}``.
-    Naming beats inlining every ``~selector`` by 15.4% at n=8, 19.0% at n=10
-    (random tables); always naming a used level is within 0.8% at n=8.
+    Naming beats inlining every ``~selector``, and always naming a used
+    level is a near-tie ([ablations.negation_naming]).
     """
     n = len(selectors)
     per_level = [0] * n

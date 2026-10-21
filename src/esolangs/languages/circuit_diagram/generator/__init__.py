@@ -35,9 +35,9 @@ Size:
     1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 669,345 chars.
 
 Decisions:
-    Sharing repeated subtrees, area vs the unshared build on 20 seeded
-    tables: tiled from two blocks 0.69 / 0.49 / 0.41 at n=5 / 6 / 7, from
-    four blocks 0.84 / 0.71 / 0.67, random tables 0.95 / 0.94 / 0.88.
+    Sharing repeated subtrees, area vs the unshared build, mean of 20 seeded
+    tables at n=5 / 6 / 7: random 0.93 / 0.91 / 0.92; two random 8-row blocks
+    tiled at random 0.83 / 0.48 / 0.35, four 0.84 / 0.62 / 0.47.
 """
 
 from collections.abc import Iterator
@@ -72,10 +72,10 @@ __all__ = ["circuit_diagram"]
 _COL_STEP = 2
 _ROW_STEP = 2
 
-# Layout competition only starts at eight inputs: below that, the
-# fixed-order folds and shared banks cannot beat the direct mux build
-# (see :func:`_competing_model_circuit`).
-_COMPETING_MODEL_MIN_INPUTS = 8
+# Layout competition starts at four inputs: it never grows a table there
+# ([ablations.competing_model_floor]), and it wins no n <= 3 table, where it
+# would only slow generation.
+_COMPETING_MODEL_MIN_INPUTS = 4
 # Columns the output dash and colon add past the final gate group, so
 # banding rebuilds this much narrower when the first attempt is too wide.
 _OUTPUT_GLYPH_COLUMNS = 2
@@ -670,7 +670,7 @@ def _narrowest_present(*forms: str | None) -> str:
 
 
 def _competing_model_circuit(truth_table: str, inputs: int) -> str:
-    """Return the smallest emitted-character circuit among the n>=8 layouts.
+    """Return the smallest emitted-character circuit among the n>=4 layouts.
 
     Three complete fixed-order folds compete by area against prefix
     H-layouts and shared class banks; sharing wins character ties.

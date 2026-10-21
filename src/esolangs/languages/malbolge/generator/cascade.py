@@ -68,9 +68,13 @@ _ENTRY = 420
 #: ``d`` after the entry ``j`` at ``_ENTRY``: the walked cell its character names.
 _START_D = 34 + (7 - _ENTRY) % 94
 #: Pointer-region cells (all inside ``34..127`` so a ``j`` can reach them):
-#: pair starts hold ``[P0, P1]``, NEXT cells hold all-1.  Found by annealing
-#: the residue cover: every ``h mod 94`` must admit a ``T`` of each label
-#: among the eight characters the loader accepts at ``h``.
+#: pair starts hold ``[P0, P1]``, NEXT cells hold all-1.  Every ``h mod 94``
+#: must admit a ``T`` of each label among the eight characters the loader
+#: accepts at ``h``.  The pairs are the fewest that do so beside the mixer,
+#: helper and NEXT cells -- seventeen, and the only cover of that size
+#: (``test_pointer_pairs.py``).  The NEXT cells were annealed with them: the
+#: fewest covering ``N`` would be the 23 cells ``76..98``, so no rule names
+#: this set, which skips 79 and adds 101 and 102.
 _PAIRS = (34, 36, 39, 41, 51, 53, 55, 59, 61, 63, 65, 67, 72, 105, 107, 109, 115)
 _NEXTS = (*range(76, 79), *range(80, 99), 101, 102)
 #: Helper inits: ``{0,1}``-trit cells become all-1 / 0 under ``A = 0`` and

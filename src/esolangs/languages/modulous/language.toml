@@ -29,3 +29,11 @@ workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 342.3
+arity = 12
+verdict = "kept: canonical, exempt. The only mechanism on the default path: the table is pushed on its essential inputs and an ignored input is read and popped at weight 0. The emitted size depends only on the arity and the essential count (every all-essential table totals 1,601 chars at n=10 and 4,777 at n=12), so the price is 0.00% on random tables; on its class at n=10/12, one ignored input +52.2 / +77.5%, two +110.9 / +193.3%, three +169.5 / +342.3%, constant tables +631.1 / +1,834.0%"

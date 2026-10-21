@@ -2,9 +2,11 @@
 
 Line's ``i`` reads a whole number and ``o`` prints one, so 0/1 is what ``IO``
 hands over and no ASCII offset enters.  Reads each input into its own cell,
-then walks a ``?`` tree testing only the inputs its subtree depends on: a
-level whose halves agree is skipped, so a constant is one leaf and an ignored
-input is read but never tested.  A leaf prints the cell it just tested, after
+then walks a ``?`` tree testing only the inputs its subtree depends on:
+through five inputs a level whose halves agree is skipped, so a constant is
+one leaf and an ignored input is read but never tested; from six inputs
+every level is tested, the skipped tree's extents growing past the tested
+tree's there.  A leaf prints the cell it just tested, after
 one ``+`` or ``-`` when the entry differs from that bit; a constant prints the
 unread cell ``n``.  Arms use measured subtree extents with one cell of
 clearance for forward-only subtrees, two otherwise.
@@ -18,15 +20,14 @@ Candidates compete by emitted area; the smallest wins:
   destination moves allow narrower nonterminal forks.
 - Input-order streaming: shares reads on stems, overwriting cell zero and
   draining constant tails; its fresh output cell stays within the original
-  tape.  The projected form drains ignored inputs on essential stems,
-  avoiding test-free layers.
+  tape.
 
 Complete folds win fallback area ties; larger drawings retain the smaller
 fallback.
 
 Size:
     Parity and and grow linearly in n, random in T; n=10 parity: 1,892,800
-    codels, n=10 and: 1,691,200 codels, n=8 random 1847: 19,359,600 codels.
+    codels, n=10 and: 1,691,200 codels, n=8 random 1847: 16,147,200 codels.
 """
 
 from __future__ import annotations
@@ -43,10 +44,7 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
-from esolangs.languages.line.generator.forward import (
-    projected_streaming_canvas,
-    streaming_canvas,
-)
+from esolangs.languages.line.generator.forward import streaming_canvas
 from esolangs.languages.line.generator.layout import (
     Node,
     _has_goto,
@@ -65,12 +63,19 @@ from esolangs.raster import Pixel, Raster, Rows, lazy_raster
 from esolangs.registry._language import Language, SourceKind
 
 
-def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
+def line_boolean(
+    truth_table: str, *, reverse: bool = False, skip: bool | None = None
+) -> Node:
     """Build a Line program computing ``truth_table`` (see module docstring).
 
     Returns a :class:`layout.Node` graph for :func:`render.render`; Line has no text.
+    ``skip`` descends a level whose residual halves agree without testing
+    it; the default scopes it to n <= 5: from n=6 the skipped tree's extents
+    grow past the tested tree's ([ablations.level_skip]).
     """
     n = _validate_truth_table(truth_table)
+    if skip is None:
+        skip = n <= _SMALL_MAX
     order = tuple(range(n - 1, -1, -1)) if reverse else tuple(range(n))
     if reverse:
         truth_table = permute_truth_table(truth_table, order)
@@ -80,7 +85,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     head = chain(*("i" + ">i" * (n - 1)))
 
     def fork(state: int, depth: int, pointer: int, known: int | None) -> Node:
-        while depth < n and children[state][0] == children[state][1]:
+        while skip and depth < n and children[state][0] == children[state][1]:
             state = children[state][0]
             depth += 1
         if depth == n:
@@ -108,7 +113,10 @@ def projected_boolean(truth_table: str, *, reverse: bool = False) -> Node | None
     if not kept:
         return chain(*("i" * n + ">" + "+" * int(truth_table[0]) + "o"))
     reduced = read_at(truth_table, kept, n)
-    return _project_loader(n, kept, line_boolean(reduced, reverse=reverse))
+    # The skip scope keys on the original table's arity, not the reduced one.
+    return _project_loader(
+        n, kept, line_boolean(reduced, reverse=reverse, skip=n <= _SMALL_MAX)
+    )
 
 
 def _project_loader(n: int, kept: list[int], node: Node) -> Node:
@@ -211,16 +219,13 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
         if other.area < best.area:
             best = other
     # Streaming saves 0% on random tables at n>=8 (0.45% at n=7) but 23-96% on
-    # parity, and, majority, thresholds and tiled tables (n=6..12); projected
-    # streaming 12-21% on parity, and and majority cores in 8..10 inputs with
-    # ignored ones, 1.3-4.3% on random ignored-input tables (n=7..10).
-    for build in (streaming_canvas, projected_streaming_canvas):
-        # A complete fold wins a fallback tie; a later fold retains the first tie.
-        fold = build(truth_table, best.area + int(not best.complete), unit=unit)
-        if fold is not None:
-            best = _Candidate(
-                fold[0], fold[1].area, partial(_planned_rows, fold[1]), complete=True
-            )
+    # parity, and, majority and thresholds (n=6..12).
+    # A complete fold wins a fallback tie.
+    fold = streaming_canvas(truth_table, best.area + 1, unit=unit)
+    if fold is not None:
+        best = _Candidate(
+            fold[0], fold[1].area, partial(_planned_rows, fold[1]), complete=True
+        )
     return lazy_raster(best.rows, best.node)
 
 
@@ -267,27 +272,33 @@ def _best_choice(
 
 
 def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
-    """Most balanced compact tree that never grows past the previous layout."""
+    """Most balanced compact tree over the previous and projected trees."""
     previous = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
     nodes = previous + [
         projected
         for reverse in (False, True)
         if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
     ]
-    old = _best_choice(previous, compact=False, small=small, unit=unit)
+    chosen = _ceilinged_choice(nodes, small=small, unit=unit)
+    if small:
+        return chosen
+    # Skipped trees stay candidates past five inputs: compact, they balance
+    # OR n=8 to 900x1880 where the tested tree gives 3480x4440.  Raced as a
+    # second pool so the area rules never make the tested choice worse.
+    skipped = [
+        line_boolean(truth_table, reverse=reverse, skip=True)
+        for reverse in (False, True)
+    ]
+    other = _ceilinged_choice(nodes + skipped, small=small, unit=unit)
+    return min(chosen, other, key=lambda choice: choice.score)
 
-    def within_old(choice: _Choice) -> bool:
-        return choice.score <= old.score and (
-            not small or choice.score.area <= old.score.area
-        )
 
+def _ceilinged_choice(nodes: list[Node], *, small: bool, unit: int) -> _Choice:
+    """Most balanced compact node, capped by the untightened layout's area."""
     preceding = _best_choice(nodes, compact=True, tight=False, small=small, unit=unit)
     chosen = _best_choice(nodes, compact=True, small=small, unit=unit)
-    # Shorter stems can select a wider orientation: 00010101 grows
-    # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
-    if not within_old(chosen):
-        chosen = old
-    # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
+    # Winning on side can still grow the area: 00011100 grows 248087 ->
+    # 274287 pixels without this (6 of the 256 n=3 tables).
     if chosen.score.area > preceding.score.area:
         chosen = preceding
     return chosen

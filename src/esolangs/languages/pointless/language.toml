@@ -12,11 +12,29 @@ execution = "poly n: at most 26n + 311 steps: setup, then 26 a level; a pasted c
 workspace = "poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape"
 
 [generator_sizes]
-"00000001" = { commands = 383, commands_by_row = { "0" = 344, "1" = 344, "2" = 344, "3" = 344, "4" = 362, "5" = 362, "6" = 380, "7" = 383 }, source_units = 437 }
-"00001100" = { commands = 367, commands_by_row = { "0" = 344, "1" = 344, "2" = 344, "3" = 344, "4" = 360, "5" = 360, "6" = 367, "7" = 367 }, source_units = 398 }
-"00110110" = { commands = 385, commands_by_row = { "0" = 357, "1" = 357, "2" = 360, "3" = 360, "4" = 375, "5" = 378, "6" = 378, "7" = 385 }, source_units = 508 }
+"00000001" = { commands = 383, commands_by_row = { "0" = 361, "1" = 361, "2" = 361, "3" = 361, "4" = 371, "5" = 371, "6" = 380, "7" = 383 }, source_units = 459 }
+"00001100" = { commands = 376, commands_by_row = { "0" = 361, "1" = 361, "2" = 361, "3" = 361, "4" = 368, "5" = 368, "6" = 376, "7" = 376 }, source_units = 428 }
+"00110110" = { commands = 386, commands_by_row = { "0" = 366, "1" = 366, "2" = 369, "3" = 369, "4" = 376, "5" = 379, "6" = 379, "7" = 386 }, source_units = 512 }
 "0110" = { commands = 360, commands_by_row = { "0" = 350, "1" = 353, "2" = 353, "3" = 360 }, source_units = 422 }
 "01101001" = { commands = 384, commands_by_row = { "0" = 371, "1" = 374, "2" = 374, "3" = 381, "4" = 374, "5" = 381, "6" = 381, "7" = 384 }, source_units = 504 }
 "0110100110010110" = { commands = 413, commands_by_row = { "0" = 393, "1" = 395, "2" = 395, "3" = 403, "4" = 395, "5" = 403, "6" = 403, "7" = 405, "8" = 395, "9" = 403, "10" = 403, "11" = 405, "12" = 403, "13" = 405, "14" = 405, "15" = 413 }, source_units = 585 }
-"1101001101101101" = { commands = 410, commands_by_row = { "0" = 376, "1" = 376, "2" = 398, "3" = 400, "4" = 382, "5" = 382, "6" = 385, "7" = 385, "8" = 397, "9" = 399, "10" = 398, "11" = 406, "12" = 386, "13" = 386, "14" = 408, "15" = 410 }, source_units = 632 }
-"11111110" = { commands = 385, commands_by_row = { "0" = 342, "1" = 342, "2" = 342, "3" = 342, "4" = 360, "5" = 360, "6" = 378, "7" = 385 }, source_units = 433 }
+"1101001101101101" = { commands = 411, commands_by_row = { "0" = 385, "1" = 385, "2" = 398, "3" = 401, "4" = 391, "5" = 391, "6" = 394, "7" = 394, "8" = 397, "9" = 400, "10" = 399, "11" = 406, "12" = 395, "13" = 395, "14" = 408, "15" = 411 }, source_units = 616 }
+"11111110" = { commands = 385, commands_by_row = { "0" = 358, "1" = 358, "2" = 358, "3" = 358, "4" = 368, "5" = 368, "6" = 378, "7" = 385 }, source_units = 457 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.halves_agree_skip]
+saving = 1.5
+arity = 12
+verdict = "kept: canonical family, exempt. Equal halves read the character and call the one child without the branch test. 2.9% at n=6 declining to 1.5% at n=12 on random tables, 2.4-3.6% on the ignored-input classes; 0.00% on parity, AND, OR, majority and constant tables, whose agreeing nodes sit over constant subtables"
+
+[ablations.inline_race]
+saving = 35.4
+arity = 12
+verdict = "kept: each function is pasted into its callers unless declaring it wins the cost model (uses times size against declaration plus call costs). 18.5% at n=6 rising to 36.0% at n=10 and 35.4% at n=12 on random tables; the docstring's 26% share at n=10 and its 8,558-char declaring-everything anchor both reproduce"
+
+[ablations.constant_functions]
+saving = -1.0
+arity = 12
+verdict = "removed 2026-10-20 (retirement candidate #27): a constant subtable got one shared body per (bit, depth) that read all its remaining characters, moved to the print cell and back. Building constant subtables through the general machinery instead (descending level by level to the printing leaf) makes programs smaller almost everywhere: random tables -2.1% at n=10 and -1.0% at n=12, AND -8.7% / -14.0%, OR -6.8% / -12.2%, majority -7.6% / -10.7%; only constant tables themselves cost more (+21.1% / +24.4%). The shipped body re-paid the away-and-back moves, proportional to depth, at every depth where a constant occurred; the descent pays them once, at the leaf. Constant subtables now descend through the general machinery"

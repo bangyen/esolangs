@@ -37,7 +37,7 @@ Decisions:
     dimensions the peel produces.  Ordering bare tests first saved 0.0% of
     characters and 8.8% of steps at n=7 and was retired.  Avoiding
     ``x? == Nil?`` (eight characters, four steps over a bare ``x?``) took
-    the three-input tables from 26,438 to 23,425 characters.  Tighter bank
+    the three-input tables from 25,922 to 23,425 characters.  Tighter bank
     caps force respelling (:func:`_bank_cap`).
 """
 
@@ -47,6 +47,7 @@ from itertools import islice
 from typing import TYPE_CHECKING, NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table, short_name
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.vandevelo._cover import _cover, _flips
 from esolangs.languages.vandevelo._peel import _CANDIDATES, _points
 from esolangs.languages.vandevelo.proof_formulas import execution
@@ -64,7 +65,7 @@ _RESERVED = {"Inp", "Nil", "l", "loop"}
 
 # Registers examined when a clause looks for one to reuse or morph: the
 # bank stays under this to n=13 (about 2**(n/2) live registers), so the
-# cap costs nothing measured; a cap of 48 cost 5--8% there.
+# cap costs nothing measured ([ablations.bank_cap]).
 _SCAN = 3 * _CANDIDATES
 
 
@@ -76,7 +77,8 @@ def _bank_cap(n: int) -> int:
     a factor of ``n`` on every reference.  ``n**2`` keeps a register name
     within twice an input name's length, always leaves a free register (a
     clause binds at most ``n - 1``), and never binds at measured sizes;
-    ``n`` or ``2 * n`` would cost 40% and 23% at n=13 in forced respelling.
+    ``n`` or ``2 * n`` would cost size in forced respelling
+    ([ablations.bank_cap]).
     """
     return n * n
 
@@ -206,9 +208,9 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
-def _balance(table: str, _default: str) -> str:
-    """Return the compact spelling; the default never won (n=1..8)."""
-    return vandevelo(table, 1)
+def _balance(table: str, default: str) -> str:
+    """Compare the default with the compact spelling."""
+    return min(default, vandevelo(table, 1), key=balance_score)
 
 
 LANGUAGE = Language(

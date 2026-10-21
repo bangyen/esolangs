@@ -529,8 +529,8 @@ def _class_bank_layout(
     # sparse masks can fit the workspace even when their worst-case bound cannot.
     # At n=9 the shared forest pays without a repeated class: it folds the
     # four distinct roots' internal seven-input residuals together (dense9
-    # executes in 258,216 characters; random n=9 tables save 10.3% over
-    # separate roots, 40 tables).
+    # executes in 258,216 characters; random n=9 tables save 40% of chars,
+    # 20% of area, over separate roots, 40 tables).
     if len(classes) >= 1 << (tail + 1) or not any(
         "0" in chunk
         and (chunks.count(chunk) > 1 or (shared and n == _FOREST_PAYS_ALONE_INPUTS))

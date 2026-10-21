@@ -6,18 +6,46 @@ backlinks = 5
 
 [proof_status]
 labels = ["tree"]
-qualification = "the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits; an equal subtree is emitted once"
+qualification = "the tree branches on every essential input down to single entries; an equal subtree is emitted once, and constant subtrees jump to one of two shared print gadgets"
 scaling = "linear: bounded dependency scan and canonical residual IDs"
-execution = "poly n: at most 49n + 3*2^k + (n-k) + 2 commands, k = bitlen(2n-1)"
-workspace = "linear: worst 55n + 11S + 95B + D + E + F + R bits: the memory tuple and registers"
-definitions = ["S = 2^k, m = n-k, c = 3⌈(n+18)/3⌉, P = c + 144n + 3k + 3S - 3", "B = Σ_{i<n} bl(18+i)", "D = Σ_{j<k} (2bl(18+m+j) + bl(P + 3(j-k+2) - 3·2^(k-1-j)))", "E = Σ_{l<m, u<2^l} (2bl(18+l) + bl(P + 3l + (2u+1)2^(m-l-1)(S+18) - 3ν(u))), ν = ones in binary", "F = Σ_{j<2^m} (22 + 6S + bl(x) + bl(x+9) + 2bl(x+10) + bl(x+14+S)), x = P+3m+j(S+18)-3ν(j)", "R = 3bl(P - 3 + 2^m(S+18)) + bl(n) + bl(c) + c + k + 8"]
+execution = "poly n: at most 50n + 3 commands"
+workspace = "linear: at most M + 5n + bl(C) + bl(n) + bl(n+2) bits: the memory tuple and registers"
+definitions = ["M = bits of the program's cells", "C = cell count"]
 
 [generator_sizes]
-"00000001" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }
-"00001100" = { commands = 107, commands_by_row = { "0" = 113, "1" = 113, "2" = 111, "3" = 111, "4" = 109, "5" = 109, "6" = 107, "7" = 107 }, source_units = 927 }
-"00110110" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }
-"0110" = { commands = 106, commands_by_row = { "0" = 112, "1" = 110, "2" = 108, "3" = 106 }, source_units = 919 }
-"01101001" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }
-"0110100110010110" = { commands = 208, commands_by_row = { "0" = 222, "1" = 220, "2" = 218, "3" = 216, "4" = 214, "5" = 212, "6" = 210, "7" = 208, "8" = 222, "9" = 220, "10" = 218, "11" = 216, "12" = 214, "13" = 212, "14" = 210, "15" = 208 }, source_units = 1824 }
-"1101001101101101" = { commands = 208, commands_by_row = { "0" = 222, "1" = 220, "2" = 218, "3" = 216, "4" = 214, "5" = 212, "6" = 210, "7" = 208, "8" = 222, "9" = 220, "10" = 218, "11" = 216, "12" = 214, "13" = 212, "14" = 210, "15" = 208 }, source_units = 1824 }
-"11111110" = { commands = 159, commands_by_row = { "0" = 173, "1" = 171, "2" = 169, "3" = 167, "4" = 165, "5" = 163, "6" = 161, "7" = 159 }, source_units = 1357 }
+"00000001" = { commands = 151, commands_by_row = { "0" = 149, "1" = 149, "2" = 149, "3" = 149, "4" = 150, "5" = 150, "6" = 151, "7" = 151 }, source_units = 1258 }
+"00001100" = { commands = 103, commands_by_row = { "0" = 102, "1" = 102, "2" = 102, "3" = 102, "4" = 103, "5" = 103, "6" = 103, "7" = 103 }, source_units = 866 }
+"00110110" = { commands = 151, commands_by_row = { "0" = 150, "1" = 150, "2" = 150, "3" = 150, "4" = 151, "5" = 151, "6" = 151, "7" = 151 }, source_units = 1290 }
+"0110" = { commands = 102, commands_by_row = { "0" = 102, "1" = 102, "2" = 102, "3" = 102 }, source_units = 874 }
+"01101001" = { commands = 151, commands_by_row = { "0" = 151, "1" = 151, "2" = 152, "3" = 152, "4" = 151, "5" = 151, "6" = 151, "7" = 151 }, source_units = 1286 }
+"0110100110010110" = { commands = 200, commands_by_row = { "0" = 200, "1" = 200, "2" = 200, "3" = 200, "4" = 201, "5" = 201, "6" = 202, "7" = 202, "8" = 200, "9" = 200, "10" = 201, "11" = 201, "12" = 200, "13" = 200, "14" = 200, "15" = 200 }, source_units = 1698 }
+"1101001101101101" = { commands = 200, commands_by_row = { "0" = 199, "1" = 199, "2" = 200, "3" = 200, "4" = 199, "5" = 199, "6" = 199, "7" = 199, "8" = 200, "9" = 200, "10" = 200, "11" = 200, "12" = 199, "13" = 199, "14" = 200, "15" = 200 }, source_units = 1710 }
+"11111110" = { commands = 151, commands_by_row = { "0" = 149, "1" = 149, "2" = 149, "3" = 149, "4" = 150, "5" = 150, "6" = 151, "7" = 151 }, source_units = 1258 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 8.4
+arity = 12
+verdict = "kept: canonical, exempt. Only essential inputs pay the 47-step normalization chain and a tree level; all n inputs are read either way. 0.00% on random tables at n=6..12; with one ignored input 6.1% at n=10 and 2.7% at n=12, with two ignored inputs 16.5% at n=10 and 8.4% at n=12"
+
+[ablations.subtree_sharing]
+saving = 353.7
+arity = 12
+verdict = "kept: canonical, exempt. A repeated subtree is emitted once and later copies jump to it. Its solo price was 0.00% on random tables at every arity in the shipped build, where the lookup leaf absorbed the bottom k levels; with the leaf removed (candidate 25) sharing carries those levels, collapsing them to the few distinct low subtrees. On structured tables it is the build: parity 97.6% at n=10 rising to 353.7% at n=12, majority 73.7% / 280.0%. Jointly with projection, the fold and the leaf removed (plain build), random tables cost 673.0% at n=10 and 1,030.9% at n=12"
+
+[ablations.constant_fold]
+saving = 4.2
+arity = 12
+verdict = "kept: canonical, exempt. A constant subtree jumps to one of the two shared print gadgets instead of an emitted subtree. Solo price 0.00% on random tables; 4.4% / 4.2% on AND and OR at n=10/12, 2.7% / 1.4% on half-constant tables, 2.7% / 4.7% on majority"
+
+[ablations.lookup_leaf]
+saving = -34.1
+arity = 12
+verdict = "removed (retirement candidate 25, 2026-10-20): the tree stopped k levels short (2**k >= 2n) and each leaf carried a 2**k-cell table indexed by an unrolled counter loop. Deleting the stop (k = 0, sharing kept) makes programs smaller on every corpus measured: random tables -15.6% at n=10 and -34.1% at n=12, sparse -30.2% / -51.3%, dense -28.8% / -52.2%, parity -9.1% / -7.7%. The docstring's Theta(T log T) defence priced the unshared tree; with sharing kept, the low levels collapse and the leaf's counter machinery plus printed cells cost more than the branches they replace. The tree now branches on every essential input. See RETIREMENT-CANDIDATES entry 25"
+
+[ablations.routing_race_figures]
+saving = 0.0
+arity = 4
+verdict = "recorded: the comment's routing-race example (0100010011111111 at 1345 vs 1371) half reproduces — 1371 is the shipped essential routing exactly, but 1345 arises under no flag combination of the current emitter; full routing measures 1,763 on this table, so the example's direction has reversed. The race itself is a rejected variant, not shipped, and was not priced. See the stale-figures entry F22"

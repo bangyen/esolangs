@@ -168,7 +168,6 @@ _INS = (
 _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 
-@functools.lru_cache(maxsize=16)
 def _tokens(code: str) -> tuple[str, ...]:
     """Return whitespace-delimited instructions; reject unknown words."""
     words = tuple(code.split())

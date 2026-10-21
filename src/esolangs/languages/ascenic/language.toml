@@ -31,3 +31,16 @@ evidence = "docs/proofs/index.md#ascenic-bound"
 sharing_exempt = "threshold scan over the Horner row code; no subtable is drawn"
 folding_ignored = "the Horner code reads every input; an ignored one still spaces the thresholds"
 folding_constant = "a constant table has no change point: the 6n + 13 line Horner prefix"
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.change_point_scan]
+saving = 0.0
+arity = 12
+verdict = "recorded: an LT/ADDS pair is emitted only where the answer changes. The dense removal (a pair at every row boundary) computes the wrong function — 120 mismatches in 256 gated runs at n=6 — because a pair at a non-change boundary flips the parity the extraction reads; there is no correct denser scan in this architecture. The placement is the encoding. Correctness machinery"
+
+[ablations.argument_floor]
+saving = 0.62
+arity = 12
+verdict = "recorded: every emitted argument is the smallest its constraint allows (LT thresholds exact, the rest the running minimum, parity-adjusted where required). Taking the free choices (each -2 build's start, base) 2 higher instead costs +2.00% at n=10 and +0.62% at n=12 on random tables, declining — the bumps are O(n) against Theta(T^2) chars. Nothing to remove: the minimum is the default, not a device"

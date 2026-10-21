@@ -10,8 +10,8 @@ Size:
 
 Decisions:
     A packed integer has no subtrees to fold or share.  A bounded ANF
-    evaluator beat the lookup by only 1.92% at its n=4 cap (polarity pass
-    1.59%), under the 10% bar.
+    evaluator beat the lookup by only 2.83% at its n=4 cap (all 65,536 tables;
+    0.80% without the polarity pass), under the 10% bar.
 """
 
 import re
@@ -32,7 +32,7 @@ __all__ = ["super_snusp"]
 _TWO_INPUT_SHORT = {
     # These executed forms reuse 48 both to decode each input and to encode
     # the answer, keeping the literal at the bottom of the stack.  n=2 is the
-    # only arity: 723 vs 907 characters over all 16 tables (20.3%), 72 vs 256
+    # only arity: 723 vs 907 characters over all 16 tables, 72 vs 256
     # (72%) on these five.
     "0000": "48{,-> ,-<}.",
     "0011": "48{,-> ,-<^.",
@@ -152,19 +152,11 @@ def _super_snusp_layout(flat: str, width: int | None) -> str:
     """Return the natural, vertical, or folded layout of ``flat``."""
     if width is None or len(flat) <= width:
         return flat
-    if 0 < width < 3:
+    if 0 < width < 4:
         # START may be absent (wiki); the bottom-right rightward entry
-        # meets a slash and climbs the complete straight evaluator.
+        # meets a slash and climbs the complete straight evaluator.  At width
+        # 3 this is 53% fewer characters than the fold (356 tables, n<=7).
         return "\n".join(reversed("/" + flat[1:]))
-    if width < 4:
-        pieces = []
-        for token in _super_snusp_tokens(flat):
-            if len(token) == 1:
-                pieces.append(token)
-            else:
-                # The only multi-digit literal emitted is 48.
-                pieces.append("6{8*")
-        flat = "".join(pieces)
     return _super_snusp_folded(flat, width)
 
 
@@ -187,8 +179,7 @@ def balance_super_snusp(flat: str) -> str:
         for width in range(side - 1, side + (4 + CELL_ASPECT) // 2 + 1)
     ]
     vertical = _super_snusp_layout(flat, 1)
-    narrow = _super_snusp_layout(flat, 3)
-    return min((flat, *folds, vertical, narrow), key=balance_score)
+    return min((flat, *folds, vertical), key=balance_score)
 
 
 def _balance(_table: str, default: str) -> str:

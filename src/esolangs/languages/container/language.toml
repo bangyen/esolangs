@@ -11,18 +11,21 @@ backlinks = 1
 labels = ["finite lookup"]
 qualification = "the table is the prefix sum of its own steps, summed against a row counter that is live for one tick"
 scaling = "linear: one line per step in the table, halting in 2n+2 ticks"
-execution = "poly n: worst 2n + 2 commands, a threshold build past n = 6"
-workspace = "poly n: worst 25n + 154 + bl(2n+2) + 2bl(n) bits, n in 7..24"
+execution = "poly n: worst 2n + 2 commands, either build"
+workspace = "linear: at most Σ (8|name| + bl(peak)) bits over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas"
 
 [generator_sizes]
-"00000001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 319 }
+"00000001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 313 }
 "00001100" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 257 }
-"00110110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 544 }
-"0110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6 }, source_units = 368 }
-"01101001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 594 }
-"0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 820 }
-"1101001101101101" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 808 }
-"11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 320 }
+"00110110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 337 }
+"0110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6 }, source_units = 252 }
+"01101001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 345 }
+"0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 458 }
+"1101001101101101" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 458 }
+"11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 313 }
+
+[catalogue]
+sharing_exempt = "the shared tree races a threshold sum, one line per table step with no subtable drawn, which wins most tables from n=3 (repeated B C C B tables included)"
 
 [ablations]
 audited = "2026-10-19"
@@ -45,9 +48,16 @@ verdict = "kept: under the bar on random tables (0.9% at n=6) and dense-ones tab
 [ablations.mirror_race]
 saving = 0.9
 arity = 12
-verdict = "kept: the mirrored step order earns 2.6% on random tables at n=7 falling to 0.9% at n=12, a winner's-curse shape; the in-code claim of 15-44% on two-block tilings does not reproduce (0.4-3.4% on the stated corpus shape, rebuilt and widened); fails the bar; retirement candidate, Bangyen to decide"
+verdict = "removed 2026-10-20 (retirement candidate #12): the mirrored step order earned 2.6% on random tables at n=7 falling to 0.9% at n=12, a winner's-curse shape, and 0.4-3.4% on the two-block tilings it was kept for -- the in-code claim of 15-44% there never reproduced; the threshold build now always takes the plain order"
 
 [ablations.essential_projection]
 saving = 49.1
 arity = 12
 verdict = "kept: canonical, exempt; the threshold's projection is the identity on random tables (0.0%) and earns 49.1% on mid-ignored tables at n=12 (lead 3.4%, trail 3.7%, two ignored 8.2%)"
+
+[ablations.tree_threshold_race]
+saving = 56.4
+arity = 6
+seed = "random.Random(n)"
+tables = 200
+verdict = "kept 2026-10-20: the shared tree races the threshold sum and the shorter ships (ties keep the tree, two ticks faster). Against the tree alone, 41.1% / 50.4% / 56.4% at n=4/5/6 on 200 seeded random tables, 110,437 -> 82,208 over the 256 n=3 tables; the tree keeps 41 of them (constants, projections). Before the race the n <= 6 gate shipped the tree unconditionally. The race was capped at n <= 6 until the workspace bound went per-program (2026-10-20); past it the tree wins no random table (0/200 at n=7..10) but structured ones at n=10: parity 7,593 -> 2,241, constants 829 -> 245, x0 756 -> 317, halfconst 4,255 -> 2,083"

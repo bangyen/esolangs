@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from contextlib import suppress
-from functools import lru_cache
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -130,9 +129,8 @@ def parse(code: str) -> list[int]:
     return cells
 
 
-@lru_cache(maxsize=16)
 def _parsed(code: str) -> tuple[int, ...]:
-    """Return the parsed tape in a reusable immutable form."""
+    """Return the parsed tape as a tuple."""
     return tuple(parse(code))
 
 

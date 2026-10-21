@@ -21,7 +21,6 @@ from esolangs.languages.six_five.generator import (
     _six_five_guarded,
     _six_five_hoisted,
     _six_five_markers,
-    _six_five_orders,
     _six_five_walk,
 )
 from tests.generators.boolean_runners import _run_from, _runner
@@ -156,8 +155,8 @@ class TestSixFive:
                 got = run_six_five(program, [str(b) for b in bits])
                 assert got == table[combo], f"inputs {bits}"
 
-    def test_greedy_order_can_be_the_only_renderable_one(self) -> None:
-        """Past the search cap, the greedy pick alone can carry a table."""
+    def test_the_alternating_table_is_one_shared_node(self) -> None:
+        """The alternating table is NOT of its last input: one node carries it."""
         n = 7
         alternating = ("10" * 128)[: 2**n]
         assert _six_five_markers(alternating) == 2**n - 1 > 35
@@ -167,7 +166,7 @@ class TestSixFive:
         assert _six_five_hoisted(alternating, tuple(range(n)))
 
         program = boolean.six_five(alternating)
-        # Greedy tests the last input first, and NOT of it is one node.
+        # NOT of the last input is one node, whichever order wins.
         assert _markers(program) == 1
         for combo in range(2**n):
             bits = row_bits(combo, n)
@@ -255,21 +254,22 @@ class TestSixFive:
 
     def test_a_read_one_node_uses_is_normalized_there(self) -> None:
         """A read tested at one node alone costs its -17 on that node's paths."""
-        # AND of x1 and x2, x2 tested first: no read is normalized up front,
-        # x2 steps back to its cell for -17, and x1 is copied as read.
-        program = _six_five_hoisted("00010001", (2, 1, 0), raw_copies=True)
-        assert program.startswith("B13B13B3" + _SIX_FIVE_TREE_NORMALIZE)
-        assert program.endswith("4" + "3" + "A0")
+        # AND of x1 and x2, x2 tested first.  x1 is tested at one node
+        # alone, so its read skips the -17 and its node pays it (the
+        # normalize before the test); x0 counts two paths (a copy node),
+        # so its read is normalized up front, and the copied bit prints
+        # from the held 31 (+17 as ``665``), not from the raw read.
+        program = _six_five_hoisted("00010001", (2, 1, 0))
+        assert program.startswith("B99213B13B3" + _SIX_FIVE_TREE_NORMALIZE)
+        assert program.endswith("4" + "3665A0")
         for value in range(256):
             table = format(value, "08b")
             for perm in permutations(range(3)):
                 permuted = permute_truth_table(table, perm)
-                plain = _six_five_hoisted(permuted, perm)
-                raw = _six_five_hoisted(permuted, perm, raw_copies=True)
-                assert len(raw) <= len(plain)
+                program = _six_five_hoisted(permuted, perm)
                 for combo in range(8):
                     bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
-                    assert run_six_five(raw, bits) == table[combo], (table, perm)
+                    assert run_six_five(program, bits) == table[combo], (table, perm)
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than its identity-order program."""
@@ -291,8 +291,10 @@ class TestSixFive:
         # stream build can do at every such node and the hoisted only where
         # the cell two on is blank; 155 once reads are held at 31/32, where
         # the hoisted builds' cheaper nodes beat the stream build's inverts;
-        # 209 once a tree jumps to the subtrees it repeats.
-        assert improved == 219  # the rest tie, keeping the old emission
+        # 209 once a tree jumps to the subtrees it repeats; 196 once the
+        # winner's raw-copy re-emission retired (candidate #11), down
+        # from 219: its and/or-shaped wins now tie the stream build.
+        assert improved == 196  # the rest tie, keeping the old emission
 
     def test_the_guarded_walk_has_linear_source(self) -> None:
         for n in range(1, 13):
@@ -334,21 +336,19 @@ class TestSixFiveSharing:
         assert _markers(program) == 4
 
 
-def test_retired_orders_remain_available_when_routine_orders_fail(
+def test_the_walk_carries_a_table_when_no_tree_order_fits(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Retirement preserves the alternative-order label-budget fallback."""
+    """With every tree order over the label budget, the walk takes over."""
     module = importlib.import_module("esolangs.languages.six_five.generator")
     table = "00000101"
-    routine = _six_five_orders(table, compact=True)
 
-    def limited(rows: str, order: tuple[int, ...], **kwargs: bool) -> str:
-        if order in routine:
-            return ""
-        return _six_five_hoisted(rows, order, **kwargs)
+    def over_budget(_rows: str, _order: tuple[int, ...], **_kwargs: bool) -> str:
+        return ""
 
-    monkeypatch.setattr(module, "_six_five_hoisted", limited)
+    monkeypatch.setattr(module, "_six_five_hoisted", over_budget)
     program = boolean.six_five(table)
+    assert program == _six_five_walk(table).removesuffix("0")
     for row in range(8):
         assert run_six_five(program, list(format(row, "03b"))) == table[row]
 

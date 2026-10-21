@@ -9,7 +9,7 @@ constant root), which indexes ``m``-bit cells.
 
 Size:
     Packed is O(T) cells over O(T/log T) words; n=4 parity: 614 chars,
-    n=10 random 1847: 2,043 chars, n=10 and: 1,847 chars.
+    n=10 random 1847: 2,043 chars, n=10 and: 1,107 chars.
 
 Decisions:
     Interning equal packed cells saves 0.00% at n=8: a running operand reads
@@ -108,17 +108,15 @@ def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program for ``truth_table`` (length ``2**n``, MSB first)."""
     packed = _addsubjump_packed(truth_table)
     if len(truth_table) == 32:
-        # Shared residuals save 18.9% of chars against packed alone at n=5
-        # (200 random tables).
+        # Shared residuals beat packed alone at n=5
+        # ([ablations.shared_residuals]).
         shared = _addsubjump_ordered(truth_table, tuple(range(5)), shared=True)
         return min((packed, shared), key=len)
     n = _validate_truth_table(truth_table)
-    if len(input_weights(truth_table, n)[1]) <= 32:
-        # Route by essential rows: the tree folds the ignored levels.  It saves
-        # 18.7% (n=6) and 20.6% (n=7) of chars with five essential inputs.
-        tree = _addsubjump_candidate(truth_table, tuple(range(n)))
-        return min((packed, tree), key=len)
-    return packed
+    # The tree folds the ignored levels: it wins with five essential inputs
+    # ([ablations.residual_tree_route]) and on named functions past them.
+    tree = _addsubjump_candidate(truth_table, tuple(range(n)))
+    return min((packed, tree), key=len)
 
 
 def _addsubjump_packed(truth_table: str, *, keep_ignored_inputs: bool = False) -> str:

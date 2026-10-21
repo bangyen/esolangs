@@ -31,7 +31,7 @@ evidence = "docs/proofs/circuit-diagram-sharing.md"
 "0110100110010110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 4128 }
 "01101001100101101001011001101001100101100110100101101001100101101001011001101001011010011001011001101001100101101001011001101001" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "64" = 15, "127" = 15 }, source_units = 16812 }
 "0110100110010110100101100110100110010110011010010110100110010110100101100110100101101001100101100110100110010110100101100110100110010110011010010110100110010110011010011001011010010110011010010110100110010110100101100110100110010110011010010110100110010110" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "128" = 17, "255" = 17 }, source_units = 22840 }
-"1101001101101101" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 3536 }
+"1101001101101101" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 3520 }
 "11111110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 452 }
 
 [catalogue]
@@ -106,3 +106,10 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 price = 65.6
 workload = "run"
 verdict = "kept: also a memory bound -- retained text capped, so a 30M-char program's topology is never retained sixteenfold"
+
+[ablations.competing_model_floor]
+saving = 12.1
+arity = 5
+seed = "random.Random(1000 + n)"
+tables = 25
+verdict = "kept 2026-10-20: the competing model (fixed-order folds, prefix H-layouts, shared banks, flat retained) now races from n=4, not n=8, against the claim that it could not beat the direct build below eight. On 25 tables a size (20 seeded random plus zeros, AND, parity, majority, one projection) it is never larger and saves 3.8% / 12.1% / 8.3% / 5.5% of chars at n=4/5/6/7 (13.1% on the random tables at n=5); on 10 tables a size from random.Random(n), 9.8% / 10.8% / 6.2% / 7.2%. It wins no n <= 3 table (0 of 632 corpus programs change), so the floor is 4. Programs stay inside the n <= 7 bounds (2n + 1 commands, 7T/2 + 2n - 5 bits): all n <= 3 tables and 13 a size at n=4..7, every row"

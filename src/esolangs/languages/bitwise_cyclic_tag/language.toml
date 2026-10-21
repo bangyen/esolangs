@@ -26,3 +26,16 @@ folding_constant_local = "_program"  # delete inputs and a literal bit
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.constant_fold]
+saving = 120.0
+arity = 12
+verdict = "kept: canonical, exempt. A constant table deletes the embedded inputs and answers with a literal (n+3 chars). Routing constants through the indexed walk instead costs +123.08% at n=10 and +120.00% at n=12 on constant tables (the walk with no essential inputs is 2n+9 chars); against the plain walk with the projection also removed, +63076.92 / +218520.00%"
+
+[ablations.input_projection]
+saving = 695.8
+arity = 12
+verdict = "kept: canonical, exempt. input_weights reads the table at its essential inputs only; an ignored input weighs 0, so its command is a bare 0 and it appends nothing. Embedding the full table at full positional weights instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +99.49 / +99.85%, two +296.96 / +299.09%, three +685.93 / +695.75%"

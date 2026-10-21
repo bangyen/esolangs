@@ -17,8 +17,8 @@ Size:
     n=8 and: 661 chars, n=10 and: 798 chars, n=10 random 1847: 6,679 chars.
 
 Decisions:
-    The opposite answer polarity was dropped: +3.19% (3-input total) and
-    +2.60% (seeded 5-input sample).
+    The opposite answer polarity was dropped: +2.94% (3-input total) and
+    +2.46-2.71% (seeded 5-input samples).
 """
 
 import re
@@ -54,15 +54,14 @@ __all__ = ["packlang"]
 #: Inputs the array block spans.  It bounds the index digits every painted
 #: row pays, and the rows a fill loop has to walk.  Essential as a cap: one
 #: 512-row array (n=9) did not terminate in 30 s (Char index wraps).  The
-#: value is flat: 5/6/8 differ from 7 by +1.2%/-1.2%/+2.7% at n=10 (random).
+#: value is flat on random tables ([ablations.block_cap]).
 _BLOCK = 7
 
 #: The smallest block :func:`_blocks` tries; below it index digits dominate.
 _MIN_BLOCK = 4
 
 #: Fills cheaper than this many writes are not worth the loop that fills.
-#: Dropping fill+punch costs +2.4% at n=8 random but +66% (n=8, 80% ones)
-#: and +125% (n=10, 90% ones).
+#: Dropping fill+punch costs most on dense tables ([ablations.fill_punch]).
 _FILL_COST = 3
 
 #: The package name shortens below this many columns.
@@ -202,7 +201,7 @@ def _paint_blocks(
     filled = False
     # A block equal to an earlier one is remapped onto it: the index is
     # decremented to the first copy's number before any block tests it
-    # (-38.5% at n=9, -62.0% at n=10 with two distinct blocks).
+    # ([ablations.block_aliasing]).
     ids = subtree_ids(painted)[depth] if blocks > 1 else []
     first: dict[int, int] = {}
     remaps: list[str] = []
@@ -259,8 +258,8 @@ def _writes(rows: str, *, runs: bool) -> tuple[list[str], bool]:
 
     Candidates: single writes, a fill with the zeros punched out, and (with
     ``runs``) a loop per run of ones.  ``q`` costs a declaration, so the
-    caller builds both.  Run loops: -19.9%/-32.7%/-35.8% at n=7/8/9 on
-    constant-leaf tables, 0% on random.
+    caller builds both.  Run loops pay on constant-leaf
+    tables, not random ones ([ablations.run_loops]).
     """
     ones = rows.count("1")
     singles = [f"INCR t({row});" for row, bit in enumerate(rows) if bit == "1"]

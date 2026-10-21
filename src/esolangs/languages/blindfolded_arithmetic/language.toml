@@ -13,7 +13,7 @@ workspace = "linear: at most 2T + n + 13 bits: the table, and Q in two registers
 
 [generator_sizes]
 "00000001" = { commands = 44, commands_by_row = { "0" = 44, "1" = 44, "2" = 44, "3" = 44, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 263 }
-"00001100" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 197 }
+"00001100" = { commands = 34, commands_by_row = { "0" = 34, "1" = 34, "2" = 34, "3" = 34, "4" = 34, "5" = 34, "6" = 34, "7" = 34 }, source_units = 203 }
 "00110110" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 47, "7" = 47 }, source_units = 281 }
 "0110" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33 }, source_units = 197 }
 "01101001" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 47, "7" = 47 }, source_units = 281 }
@@ -23,3 +23,16 @@ workspace = "linear: at most 2T + n + 13 bits: the table, and Q in two registers
 
 [catalogue]
 folding_constant_local = "read_at"  # one projected table bit, no lookup round
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.projection]
+saving = 93.9
+arity = 12
+verdict = "kept: canonical, exempt. The table integer is built from the table read at the essential inputs only, and an ignored input's bit is divided out of the row unused. Building the integer from the full table and dividing by every input instead costs +82.54% at n=10 and +93.87% at n=12 on one-ignored tables, +215.37 / +267.04% on two-ignored tables, and 0.00% on random tables"
+
+[ablations.register_reuse]
+saving = 0.6
+arity = 12
+verdict = "removed (retirement candidate 34): the divisor 2 is rebuilt into c at every lookup round; the two flag that kept it across rounds until an essential input's divisor computation overwrote it is gone. The audit measured rebuilding at +1.58% at n=10 and +0.57% at n=12 on tables ignoring the three low inputs, +0.65 / +0.21% on two-low-ignored and scattered-ignored tables, 0.00% on random tables: one fixed 6-char instruction per firing, declining everywhere. See RETIREMENT-CANDIDATES entry 34"

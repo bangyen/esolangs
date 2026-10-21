@@ -58,9 +58,9 @@ def _residual(target: _Target, ceiling: int | None) -> _Layout | None:
 
 
 # Measured by area, leave-one-out, n=8..14 (3-30 tables per class): folded and
-# sparse never produced a model; residual saves 20.7% (14.7% of chars) on
-# tables tiled from two blocks at n=10, 0% elsewhere; bundled saves 12.5% of
-# chars on random tables at n=10 (area +7%) and 60% of area at n=14.
+# sparse never produced a model; residual saves 12.0% (19.8% of chars) on
+# tables tiled from two blocks at n=10, 0% elsewhere; bundled saves 79% of
+# area (86% of chars) on random tables at n=10 and 60% of area at n=14.
 # Order is the tie-break: an earlier candidate keeps an equal-area win.  The
 # interval models count characters before rendering, so a node cap cannot
 # hide a smaller complete fold.

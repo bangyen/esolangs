@@ -27,6 +27,8 @@ sharing_local = "_three_x_emit"  # defer repeated blocks behind flags
 
 [ablations]
 audited = "2026-10-19"
+# Source figures that match a verdict but measure something else (the greedy input order, not equal_halves_skip).
+unrelated = ["2.2%"]
 
 [ablations.key_assignment]
 saving = 47.0

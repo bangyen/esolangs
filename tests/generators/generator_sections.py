@@ -6,6 +6,7 @@ The shape is the ``_GENERATOR`` stub in ``scripts/new_language.py``.
 import random
 import re
 
+from scripts.stale_figures import FIGURE
 from tests.interpreters.spec_sections import section
 
 #: The sections, in the order a docstring gives them; ``Size:`` is required.
@@ -20,10 +21,6 @@ ANCHOR = re.compile(
 )
 
 _ENTRY = re.compile(r"^    (\w+):")
-
-#: A measured figure: a percentage, a decimal, or an integer of 3+ digits.
-#: Shorter integers (``n=10``, ``2**n``) recur legitimately.
-FIGURE = re.compile(r"\d+(?:\.\d+)?%|\d+\.\d+|\d{1,3}(?:,\d{3})+|\d{3,}")
 
 
 def figures(text: str) -> set[str]:

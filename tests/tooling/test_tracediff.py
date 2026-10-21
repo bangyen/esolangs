@@ -22,9 +22,9 @@ def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:
     new = tracediff._load(_INTERPRETER, "tracediff_new")  # noqa: SLF001
     assert tracediff.differences(same, new, programs) == []
     source = _INTERPRETER.read_text(encoding="utf-8")
-    assert "(acc + 1) % 256" in source
+    assert "(tape[ptr] + 1) % 256" in source
     broken = tmp_path / "mutant.py"
-    broken.write_text(source.replace("(acc + 1) % 256", "(acc + 2) % 256"))
+    broken.write_text(source.replace("(tape[ptr] + 1) % 256", "(tape[ptr] + 2) % 256"))
     mutant = tracediff._load(broken, "tracediff_mutant")  # noqa: SLF001
     assert tracediff.differences(same, mutant, programs)
 

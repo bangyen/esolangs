@@ -42,4 +42,17 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 [interpreter_ablations.parsed_cache]
 price = 1.9
 workload = "run"
-verdict = "candidate: unmeasurable"
+verdict = "removed 2026-10-20 (interpreter candidate I-8): +1.9% run with overlapping spreads in the audit, unmeasurable"
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.constant_fold]
+saving = 3118.8
+arity = 12
+verdict = "kept: canonical, exempt, and load-bearing. A constant table reads its inputs and prints the literal after the @, n + 4 chars. The strict removal has no buildable plain route: the general path indexes places[0] of an empty list when no input is essential. Priced against the nearest buildable route, constants as a two-entry lookup on input 0: +2,992.9% at n=10 and +3,118.8% at n=12 (14 to 433 and 16 to 515 chars)"
+
+[ablations.projection]
+saving = 72.8
+arity = 12
+verdict = "kept: canonical, exempt. The tape tail is the table read at the essential inputs only, and the base-128 index folds only those bits. Emitting the full table and folding every input instead costs +44.04% at n=10 and +72.76% at n=12 on one-ignored tables, +85.62 / +172.24% on two-ignored tables, and 0.00% on random tables"

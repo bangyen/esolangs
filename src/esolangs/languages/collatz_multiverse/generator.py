@@ -7,8 +7,8 @@ prints one constant.  The shortest build over the essential inputs wins.
 
 Size:
     O(T): one line per four-row cell plus four decoder lines per distinct
-    cell.  n=10 parity: 8,247 chars, n=10 and: 6,684 chars, n=10 random 1847:
-    12,389 chars.
+    cell.  n=10 parity: 8,374 chars, n=10 and: 6,684 chars, n=10 random 1847:
+    12,466 chars.
 
 Decisions:
     Cells of eight rows: more decoder lines than the ``T / 8`` they save
@@ -40,10 +40,6 @@ __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 #: distinct cell: at most 64 for four, but up to 2048 for eight.
 _CM_CHUNK = 4
 
-#: Cell-constant names: one character, and none a register spelled elsewhere.
-#: Fifteen, one per nonzero code a four-row cell can take.
-_CM_ALIAS = "abcefghijlmnpqr"
-
 #: The shortest line that does nothing -- ``z`` is the zero register.
 _CM_PAD = "z=zx+z,NOT PRINT."
 
@@ -66,19 +62,18 @@ def _cm_cells(
     drops ``v`` into the cell the writing line's own number addresses: one
     line a cell, no pointer to advance.  ``capture`` takes the address one
     below the first cell -- a line rather than a built constant, padded odd so
-    the reader can sum even weights into it.  A ``None`` value is left at its
-    default, free in a trailing run.
+    the reader can sum even weights into it.  A ``None`` value gets a pad
+    line, trailing runs included: dropping a block's trailing pads saved a
+    fixed ~74 chars a program, a share that tends to zero
+    ([ablations.trailing_pad_drop]).
     """
     if (len(lines) + 1) % 2 == 0:
         lines.append(_CM_PAD)
     lines.append(f"{capture}=zx+lineNumber,NOT PRINT.")
-    block = [
+    lines += [
         f"{array}[lineNumber]=zx+{value},NOT PRINT." if value else _CM_PAD
         for value in values
     ]
-    while block and block[-1] == _CM_PAD:
-        block.pop()
-    lines += block
 
 
 def _cm_codes(counts: Counter[int]) -> dict[int, int]:
@@ -87,21 +82,18 @@ def _cm_codes(counts: Counter[int]) -> dict[int, int]:
     A cell's code, not its bits, is what the table stores and the decoder is
     indexed by, so a table with ``m`` distinct cells needs ``4 m`` decoder
     lines whatever their values -- ``1000`` is value 1 but ``0001`` is 8,
-    and a decoder spanning the values paid 32 lines to reach it.  Code 0 is
-    the cell nothing writes, so it goes to the empty cell when there is one
-    (its cells cost a pad) and else to the most frequent.  The top code's
-    decoder entries past its highest set bit are trailing pads and drop, so
-    it goes to the cell whose highest set bit is lowest.  Putting the empty
-    cell on top instead saves 1.09% at n=8, under the 10% bar.
+    and a decoder spanning the values paid 32 lines to reach it.  The top
+    code goes to the non-empty cell whose highest set bit is lowest; the
+    remaining codes follow the frequency ranking, code 0 first.
+    Preferring the empty cell for code 0 lost on every corpus measured
+    ([ablations.coded_cells]).  Putting the empty cell on top instead loses 2.6% at
+    n=8 (13 random tables).
     """
     ranked = sorted(counts, key=lambda v: (-counts[v], v))
-    head = []
-    if 0 in counts:
-        ranked.remove(0)
-        head = [0]
-    top = min(ranked, key=lambda v: (v.bit_length(), -counts[v]))
+    pool = [value for value in ranked if value != 0] or ranked
+    top = min(pool, key=lambda v: (v.bit_length(), -counts[v]))
     ranked.remove(top)
-    return {value: code for code, value in enumerate([*head, *ranked, top])}
+    return {value: code for code, value in enumerate([*ranked, top])}
 
 
 def _cm_narrow_constants(needed: set[int]) -> list[str]:
@@ -162,7 +154,7 @@ def _cm_build(
         *(address_scale * _CM_CHUNK * code for code, _ in stored),
     }
     lines = _cm_emit_constants(needed, narrow=narrow)
-    names = _cm_emit_aliases(lines, stored, uses, address_scale, narrow=narrow)
+    names = {value: f"k{address_scale * _CM_CHUNK * code}" for code, value in stored}
     _cm_emit_decoder(lines, codes, narrow=narrow)
     _cm_emit_cells(lines, chunks, names, narrow=narrow)
     _cm_emit_address(lines, n, order, high, address_scale)
@@ -174,37 +166,6 @@ def _cm_emit_constants(needed: set[int], *, narrow: bool) -> list[str]:
     if narrow:
         return _cm_narrow_constants(needed)
     return _cm_constants(needed, zero="z")
-
-
-def _cm_emit_aliases(
-    lines: list[str],
-    stored: list[tuple[int, int]],
-    uses: Counter[int],
-    address_scale: int,
-    *,
-    narrow: bool,
-) -> dict[int, str]:
-    """Aliases phase: name each stored value for the cells phase.
-
-    A cell names its code's constant, or a one-letter alias of it when the
-    alias line is cheaper than the characters the alias saves.  Returns
-    the name each stored value's cells are written with.
-    """
-    # The narrow cursor owns r throughout both array blocks.
-    alias_pool = _CM_ALIAS.replace("r", "u") if narrow else _CM_ALIAS
-    names: dict[int, str] = {}
-    aliased = 0
-    for code, value in stored:
-        constant = f"k{address_scale * _CM_CHUNK * code}"
-        alias = alias_pool[aliased]
-        line = f"{alias}=zx+{constant},NOT PRINT."
-        if uses[value] * (len(constant) - 1) > len(line) + 1:
-            lines.append(line)
-            aliased += 1
-            names[value] = alias
-        else:
-            names[value] = constant
-    return names
 
 
 def _cm_emit_decoder(lines: list[str], codes: dict[int, int], *, narrow: bool) -> None:

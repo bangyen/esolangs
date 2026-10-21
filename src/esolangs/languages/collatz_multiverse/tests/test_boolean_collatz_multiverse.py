@@ -52,6 +52,17 @@ class TestCollatzMultiverse:
                     bits = row_bits(combo, n)
                     assert run_collatz_multiverse(program, bits) == shape[combo]
 
+    def test_code_zero_follows_the_frequency_ranking(self) -> None:
+        """The empty cell takes code 0 only when the ranking gives it."""
+        from collections import Counter
+
+        from esolangs.languages.collatz_multiverse.generator import _cm_codes
+
+        codes = _cm_codes(Counter({0: 1, 8: 10, 1: 5}))
+        assert codes[8] == 0
+        assert codes[0] == 1
+        assert codes[1] == 2
+
     def test_numbered_cells_halve_the_three_input_total(self) -> None:
         """The plain build against the shipped one over every varied table."""
         from esolangs.languages.collatz_multiverse.generator import _cm_build
@@ -59,7 +70,7 @@ class TestCollatzMultiverse:
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (494847, 265454)
+        assert (plain, built) == (497493, 275732)
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
@@ -271,11 +282,11 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
         (
             "0100001010101000011000010000010010111100100010000000101100100001",
             30,
-            2399,
+            2471,
         ),
         # A width request tries a rotated selector order from three inputs.
-        ("01000010", 30, 849),
-        # An alias line that only breaks even is not emitted.
+        ("01000010", 30, 921),
+        # A wide table of long zero runs and dense blocks, pinned end to end.
         (
             "00000000000000000000011100000111011101110111011101110111011101110000011100000000000000000111011101110111011100000111011100000111",
             None,

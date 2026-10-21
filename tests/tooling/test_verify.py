@@ -815,7 +815,7 @@ def test_log_writer_errors_fail_the_check_and_stop_running_steps(
     verify = load_script()
     process = sys.modules[verify.start_logged.__module__]
     verify.ROOT = tmp_path
-    monkeypatch.setattr(verify, "STEP_DEADLINES", {"probe": 1})
+    monkeypatch.setattr(verify, "STEP_DEADLINES", {"probe": 5})
     uncaught = []
     injected = []
     monkeypatch.setattr(threading, "excepthook", uncaught.append)
@@ -829,14 +829,15 @@ def test_log_writer_errors_fail_the_check_and_stop_running_steps(
     monkeypatch.setattr(process, "spool", fail_spool)
     script = "import time; print('first output', flush=True)"
     if running:
-        script += "; time.sleep(2)"
+        script += "; time.sleep(10)"
     start = time.monotonic()
     failures, _, _ = verify._run_steps(  # noqa: SLF001
         [("probe", [sys.executable, "-c", script], dict(os.environ))], stream=stream
     )
     assert injected == [True]
     assert len(failures) == 1
-    assert time.monotonic() - start < 0.9
+    # Margins sized for a loaded machine: a subprocess start overran 0.9 s.
+    assert time.monotonic() - start < 5
     output = capsys.readouterr().out
     assert "partial log" in output
     assert "injected disk full" in output

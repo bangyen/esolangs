@@ -47,8 +47,8 @@ def test_constants_test_nothing() -> None:
     assert len(thisthat("0" * 8)) == 49  # 1,169 before
 
 
-def test_only_dependent_levels_are_tested() -> None:
-    """A level whose halves agree is popped onto the column stack, not tested."""
+def test_every_kept_level_is_tested_at_every_node() -> None:
+    """Only the loader's drop skips a test; agreeing halves are tested too."""
 
     def tests(table: str) -> int:
         program = _tree(table)
@@ -56,10 +56,10 @@ def test_only_dependent_levels_are_tested() -> None:
 
     assert tests("00001111") == 1  # the first input alone
     assert tests("01010101") == 1  # the last input alone
-    assert tests("00010011") == 4  # the full tree has 7
-    # The second input is tested under x0 = 0 and popped under x0 = 1.
-    assert tests("00010101") == 4  # 7 unpruned
-    assert "⬒" in _tree("00010101").split("\n", 1)[1]
+    assert tests("00010011") == 4  # constant spans fold to leaves
+    # The second input is tested under both values of the first.
+    assert tests("00010101") == 6
+    assert "⬒" not in _tree("00010101")
     for table in ("00110011", "00010101", "01011010"):
         for row, expected in enumerate(table):
             assert _run(table, row) == (expected, 3)
@@ -74,7 +74,7 @@ def test_pruning_never_grows_a_table() -> None:
             size = len(thisthat(table))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 158_308
+    assert sum(len(thisthat(table)) for table in tables) == 164_548
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
 

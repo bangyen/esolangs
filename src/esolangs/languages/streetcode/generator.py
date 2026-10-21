@@ -6,35 +6,36 @@ per-input strip walks a cell by 48 (an ASCII digit to a bit, a fresh cell
 to a digit); its hallway loop spends the 48 as unary cells, 30 rows by 4
 columns.
 
-From six inputs the tree goes away: the table is written one cell per
-entry and the inputs address it (:func:`_streetcode_flat`), which is nine
-rows of street however many entries there are. The tree folds constant
+From six inputs the canonical shape is flat: the table is written one cell
+per entry and the inputs address it (:func:`_streetcode_flat`), which is
+nine rows of street however many entries there are; the tree races it by
+area where it folds ([ablations.flat_tree_race]). The tree folds constant
 subtrees and draws equal nonconstant sibling cofactors once, advancing CP
 past their selector. Nonadjacent repeats still have separate drawings: they
 hold 2.4% of tree nodes at n=4 and 5.1% at n=5 (200 random tables), an
 upper bound on sharing before the routing that would merge two paths.
 
 Size:
-    O(T) from six inputs, nine rows; n=4 parity: 3,391 chars, n=10 random
-    1847: 21,421 chars, n=10 parity: 21,421 chars.
+    O(T) area from six inputs, at most the flat street's; n=4 parity: 3,391
+    chars, n=10 random 1847: 21,421 chars, n=10 parity: 21,421 chars.
 
 Decisions:
-    A half-turn rotation only strips trailing blanks (0.0% by area at n=2-8,
-    worse at n=5), so it is not tried.  When no shape fits ``width``, a
-    clockwise turn of the indexed street gives a nine-column floor, seven with
-    its room floors shared with the kerb.  Being one cell per entry, it has no
-    constant halves or repeats to fold or share; ignored inputs still drop.  A
-    tree one column past ``width`` falls to it (11x38 -> 258x9 at
-    ``width=40``): a shape switch, not a missing piece.
+    A half-turn rotation only strips trailing blanks (0.0% by area at n=2-8),
+    so it is not tried.  When no shape fits ``width``, a clockwise turn of the
+    indexed street gives a nine-column floor, seven with its room floors
+    shared with the kerb.  Being one cell per entry, it has no constant halves
+    or repeats to fold or share; ignored inputs still drop.  A tree one column
+    past ``width`` falls to it (``00000011``: 12x41 -> 165x9 at ``width=40``):
+    a shape switch, not a missing piece.
 
-    ``balance`` snakes the indexed street into strips (409x9 -> 88x48 at
+    ``balance`` snakes the indexed street into strips (460x9 -> 98x48 at
     n=6 random).  Blocks stand two blank rows apart and cuts keep four clear
     columns each side, so no foreign wall is within a car's three-cell
     reading; that keeps the fold sound without a drive check (the
     oracle is in the tests).  The gaps cost area against the old shared-sill
-    fold: 38x88 -> 48x88 at n=6, 47x96 -> 54x105 at n=7, 59x112 -> 66x134
+    fold: 80x45 -> 98x48 at n=6, 91x47 -> 110x54 at n=7, 112x51 -> 126x66
     at n=8.  From n=9 the rooms chain into one uncuttable block about ``T/2``
-    wide (n=11: 1017 columns), which caps the gain near 4x.
+    wide (n=11: 1021 columns), which caps the gain near 4x.
 """
 
 from collections.abc import Callable, Iterator
@@ -46,11 +47,12 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
+    grid_area,
     grid_width,
     input_weights,
 )
 from esolangs.generation.token_balance import CELL_ASPECT
-from esolangs.generation.wrap import balance_score, shortest
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.streetcode.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -198,7 +200,7 @@ def _streetcode_tree_span(
 
 def _streetcode_shared_half(table: str) -> list[str] | None:
     """Draw equal nonconstant sibling cofactors once, skipping their selector."""
-    # At n=3, emitted grid area falls from 225308 to 220764 cells over all
+    # At n=3, emitted grid area falls from 258856 to 228946 cells over all
     # tables; none grows. Two label columns preserve the two-lane street.
     half = len(table) // 2
     child = table[:half]
@@ -747,22 +749,50 @@ def _streetcode_folded(flat: str) -> str:
     return _streetcode_fold(flat, target, east=True)[0]
 
 
-# Arity from which the flat lookup is the only shape.  Random tables at n=5
-# are 46% smaller flat (509645 vs 940336 chars over 200), and 53% at n=6.
+# Arity from which the flat lookup is the canonical shape.  Random tables at
+# n=5 are 38% smaller flat (599555 vs 961692 chars over 200), and 64% at n=6;
+# the tree still wins tables that fold ([ablations.flat_tree_race]).
 _FLAT_FROM = 6
 
 
-def _tree_shapes(
-    truth_table: str, n: int, tree: list[str], *, hallway: bool
-) -> list[str]:
-    """Return the tree shapes below ``_FLAT_FROM`` inputs, hallway first if asked.
+def _smallest(*programs: str) -> str:
+    """Return the smallest grid by area, then length; ties keep the earlier."""
+    return min(programs, key=lambda program: (grid_area(program), len(program)))
 
-    The flat lookup joins the race at the last such arity.
+
+def _tree_leaves(table: str) -> int:
+    """Count the leaves :func:`_streetcode_tree` draws, four rows each."""
+    half = len(table) // 2
+    child = table[:half]
+    if child == table[half:] and len(set(child)) == 2:
+        return _tree_leaves(child)
+    return sum(
+        1 if len(set(part)) == 1 else _tree_leaves(part)
+        for part in (child, table[half:])
+    )
+
+
+def _tree_may_win(truth_table: str, n: int, flat: str) -> bool:
+    """Whether the tree's area floor (leaf rows by setup width) is below flat's."""
+    setup = len(_streetcode_shared(n)[0])
+    return 4 * _tree_leaves(truth_table) * (setup + 1) < grid_area(flat)
+
+
+def _tree_shapes(truth_table: str, n: int, *, hallway: bool) -> list[str]:
+    """Return the tree shapes, hallway first if asked, and the flat lookup.
+
+    The flat lookup joins the race at the last tree arity and is canonical
+    from ``_FLAT_FROM``, where the tree is drawn only if its area floor wins.
     """
     # The per-input loops trade rows for columns, so only width selection
     # needs them.  The shared lap is strictly shorter through every table at
     # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
     # decisively as the input count grows.
+    if n >= _FLAT_FROM:
+        flat = _streetcode_flat(truth_table, n)
+        if not _tree_may_win(truth_table, n, flat):
+            return [flat]
+    tree = _streetcode_tree(truth_table)
     programs = [_streetcode_hallway_program(n, tree)] if hallway else []
     programs.append(_streetcode_shared_program(n, tree))
     # At five the flat lookup wins on dense and parity tables and loses on
@@ -770,6 +800,8 @@ def _tree_shapes(
     # 3251 against 2534 and the odd rungs stop growing linearly.
     if n == _FLAT_FROM - 1:
         programs.append(_streetcode_flat(truth_table, n))
+    if n >= _FLAT_FROM:
+        programs.append(flat)
     return programs
 
 
@@ -779,21 +811,15 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``width`` chooses among the shapes rather than reflowing (rows are streets).
     """
     n = _validate_truth_table(truth_table)
-    if n >= _FLAT_FROM:
-        flat = _streetcode_flat(truth_table, n)
-        if width is None or grid_width(flat) <= width:
-            return flat
-        return _streetcode_narrow(flat, width)
-    tree = _streetcode_tree(truth_table)
-    programs = _tree_shapes(truth_table, n, tree, hallway=width is not None)
+    programs = _tree_shapes(truth_table, n, hallway=width is not None)
     if width is not None:
         fitting = [p for p in programs if grid_width(p) <= width]
         if fitting:
-            return shortest(*fitting)
+            return _smallest(*fitting)
         # The indexed street has nine rows at every arity; rotating it
         # makes those the width floor while preserving right-hand driving.
         return _streetcode_narrow(_streetcode_flat(truth_table, n), width)
-    return shortest(*programs)
+    return _smallest(*programs)
 
 
 def _balance(table: str, default: str) -> str:
@@ -807,7 +833,7 @@ def _balance(table: str, default: str) -> str:
     if n >= _FLAT_FROM:
         folded = _streetcode_folded(_streetcode_flat(table, n))
         return min([default, folded], key=balance_score)
-    shapes = _tree_shapes(table, n, _streetcode_tree(table), hallway=True)
+    shapes = _tree_shapes(table, n, hallway=True)
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]
@@ -830,5 +856,5 @@ LANGUAGE = Language(
     balance=_balance,
     empty_program="Streetcode program cannot be empty",
     proof_execution=(execution, True, (6, 8)),
-    proof_workspace=(workspace, True, (6, 7)),
+    proof_workspace=(workspace, False, (6, 7)),
 )

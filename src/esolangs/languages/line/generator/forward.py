@@ -5,12 +5,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 
-from esolangs.generation.helpers import (
-    _residual_ids,
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-)
+from esolangs.generation.helpers import _residual_ids, _validate_truth_table
 
 from .layout import Node, _Cursor, chain, chain_onto
 from .render import _UNIT
@@ -61,21 +56,14 @@ def streaming_canvas(
     table: str, old_area: int, *, unit: int = _UNIT
 ) -> tuple[Node, CanvasPlan] | None:
     """Read in input order on shared stems, overwriting cell zero."""
-    return _fold_canvas(table, old_area, projected=False, unit=unit)
-
-
-def projected_streaming_canvas(
-    table: str, old_area: int, *, unit: int = _UNIT
-) -> tuple[Node, CanvasPlan] | None:
-    """Share essential residuals while draining ignored reads on their stems."""
-    return _fold_canvas(table, old_area, projected=True, unit=unit)
+    return _fold_canvas(table, old_area, unit=unit)
 
 
 def _fold_canvas(
-    table: str, old_area: int, *, projected: bool, unit: int
+    table: str, old_area: int, *, unit: int
 ) -> tuple[Node, CanvasPlan] | None:
     """Return a complete fold within 5n commands that beats ``old_area``, else None."""
-    dag = _load_dag(table, projected=projected)
+    dag = _load_dag(table)
     if dag is None:
         return None
     root = (0, dag.levels[0][0])
@@ -86,41 +74,29 @@ def _fold_canvas(
     if sum(len(edges) for edges in incoming) == len(first):  # no shared join
         return None
     layout = _layout_dag(dag, seen, first, incoming)
-    start = layout.forks[root][0] - dag.reader_height(0), layout.forks[root][1]
+    start = layout.forks[root][0] - 10, layout.forks[root][1]
     router = _Router(dag, layout, [], {})
     head = router.build(root)
-    # original_n reads, at most n tests and n joins, three output operations
-    # and a halt: original_n+2n+4 <= 5original_n for n >= 2.  Constant
-    # residuals drain inputs; only original cells zero and one are used.
-    # Projection adds fewer than 5(original_n-n) commands and never enlarges
-    # the original tape.  Moving an arm's '<' onto its destination changes
-    # no path's command count.
+    # n reads, at most n tests and n joins, three output operations
+    # and a halt: n+2n+4 <= 5n for n >= 2.  Constant residuals drain
+    # inputs; only cells zero and one are used.  Moving an arm's '<'
+    # onto its destination changes no path's command count.
     plan = stroke_plan(router.strokes, start, (1, 0), old_area, unit)
     return None if plan is None else (head, plan)
 
 
 @dataclass(frozen=True, slots=True)
 class _Dag:
-    """Residual DAG over the kept inputs, plus the read counts between them."""
+    """Residual DAG over the inputs, interned per depth."""
 
-    original_n: int
-    kept: list[int]
+    n: int
     children: dict[int, tuple[int, int]]
     constants: dict[int, int | None]
     levels: list[list[int]]
 
-    @property
-    def n(self) -> int:
-        return len(self.kept)
-
     def reads_at(self, depth: int) -> str:
-        if depth == self.n:
-            return "i" * (self.original_n - self.kept[-1] - 1)
-        return "i" * (self.kept[depth] - (self.kept[depth - 1] if depth else -1))
-
-    def reader_height(self, depth: int) -> int:
-        # Each native read advances six units; retain four before the fork.
-        return 10 + 6 * (len(self.reads_at(depth)) - 1) if depth < self.n else 10
+        # One read per level; the terminal state reads nothing itself.
+        return "i" if depth < self.n else ""
 
     def is_fork(self, residual: int) -> bool:
         return self.children[residual][0] != self.children[residual][1]
@@ -136,17 +112,13 @@ class _Layout:
     join: dict[Edge, tuple[int, int]]
 
 
-def _load_dag(table: str, *, projected: bool) -> _Dag | None:
-    """Return the residual DAG over all inputs (essential ones if ``projected``)."""
-    original_n = _validate_truth_table(table)
-    kept = essential_inputs(table, original_n) if projected else list(range(original_n))
-    if projected and len(kept) == original_n:
+def _load_dag(table: str) -> _Dag | None:
+    """Return the residual DAG over all inputs."""
+    n = _validate_truth_table(table)
+    if n < 2:
         return None
-    if len(kept) < 2:
-        return None
-    reduced = read_at(table, kept, original_n) if projected else table
-    levels, children, constants = _residual_ids(reduced, len(kept))
-    return _Dag(original_n, kept, children, constants, levels)
+    levels, children, constants = _residual_ids(table, n)
+    return _Dag(n, children, constants, levels)
 
 
 def _visit(
@@ -235,7 +207,6 @@ def _level_lanes(
 
 
 def _place_level(
-    dag: _Dag,
     layout: _Layout,
     incoming: list[tuple[Edge, State]],
     first: dict[State, Edge],
@@ -251,8 +222,8 @@ def _place_level(
         layout, first, depth, level, extras, columns
     )
     # Disjoint arrival/join spans reuse rows. At n=22 majority, scale 1,
-    # this emits 87,270,400 pixels versus 123,110,400 (29.1%); both native
-    # programs pass 37 rows with the same 98-command maximum.
+    # this emits 25,568,000 pixels versus 42,112,000 (39.3%); both native
+    # programs pass 37 rows with the same 58-command maximum.
     # In the original mode, all 81 adjacent arm-shape pairs at pitch 20 keep
     # opcode ink at least one unit apart (20px > the 15px star probe).
     # Entry/join lanes contain no opcodes and use two-unit spacing: at a
@@ -266,12 +237,7 @@ def _place_level(
             columns[residual],
         )
         forks[state] = (
-            base
-            + 20
-            + 2 * arrival_count
-            + 2 * lane_count
-            + dag.reader_height(depth)
-            - 10,
+            base + 20 + 2 * arrival_count + 2 * lane_count,
             columns[residual],
         )
     for edge, dest in extras:
@@ -299,7 +265,7 @@ def _layout_dag(
     layout = _Layout(_stem_gaps(members), {}, {}, {})
     base = 0
     for depth, level in enumerate(members):
-        base = _place_level(dag, layout, incoming[depth], first, depth, level, base)
+        base = _place_level(layout, incoming[depth], first, depth, level, base)
     return layout
 
 
@@ -325,7 +291,9 @@ class _Router:
         reader = chain(*dag.reads_at(depth))
         chain_onto(reader, node)
         self.graph[state] = reader
-        self._stem(y - dag.reader_height(depth), x, dag.reads_at(depth))
+        # The reader stem starts ten units above the fork: six for the
+        # one read, four retained before it.
+        self._stem(y - 10, x, dag.reads_at(depth))
         for bit in (0, 1) if is_fork else (0,):
             self._arm(state, node, bit)
         return self.graph[state]
@@ -394,7 +362,7 @@ class _Router:
             cursor.advance((0, sign), abs(dx))
             cursor.advance(
                 (1, 0),
-                layout.forks[dest][0] - dag.reader_height(dest[0]) - cursor.y,
+                layout.forks[dest][0] - 10 - cursor.y,
             )
         else:
             cursor.advance((0, sign), abs(dx) - 1)

@@ -25,3 +25,11 @@ workspace = "linear: at most 8L bits: the two stacks hold the program's tokens"
 sharing_exempt = "a block nests its subtrees, so a repeated subtable is copied"
 folding_ignored_local = "_skip"  # equal halves drop their bit unread by a swap
 folding_constant_local = "_skip"  # n bit-dropping levels, then a literal leaf
+
+[ablations]
+audited = "2026-10-20"
+
+[ablations.equal_halves_skip]
+saving = 45.56
+arity = 12
+verdict = "kept: canonical, exempt. A level whose halves agree drops its character with ! c and emits the one child (14 chars) instead of the 37-char node template with both children copied. Removing the skip costs +45.59% at n=10 and +45.56% at n=12 on random tables (second seed set +45.66 / +45.50%), and at n=10/12: one ignored input +153.65 / +149.31%, three +678.79 / +678.51%, half-constant +188.17 / +188.61%, majority +95.41 / +109.08%. The skip chain is also the constant fold: a constant costs O(n) shipped against the plain build's +49,711.84 / +168,256.67%. Parity measures 0.00% (it has no equal halves; shipped parity is the plain build, exactly 37T - 31). The plain build is this removal itself; the memo in _contents is build-time only and changes no emitted char"

@@ -1,20 +1,23 @@
 """Minifuck Boolean program generator: input substitution into a positional template.
 
-Races the positional decoder against byte-accumulator forms.  Affine and
-two-residual candidates keep their state in output bit 7; ignored setters
+Races the positional decoder against byte-accumulator forms.
+Two-residual candidates keep their state in output bit 7; ignored setters
 write beyond the output byte.  A positional strip supplies the size floor.
 The simulator laws are pinned differentially against the interpreter.
 
 Size:
-    Parity is O(n) through the affine column, other tables O(T).
-    n=16 parity: 489 chars, n=10 random 1847: 40,501 chars.
+    Parity is O(n) through the two-residual diagram, other tables O(T).
+    n=16 parity: 458 chars, n=10 random 1847: 40,501 chars.
 
 Decisions:
-    Random n=16 affine (5 masks): 521-569 characters against 2,561-157,791
-    positional.
+    Seeded n=16 affine (100 tables): 488-764 characters against
+    815-315,474 positional.  An affine table's residuals are the function
+    or its complement, so :func:`two_state` always fits it; the parity
+    columns race only under an explicit width.
     :func:`two_state` allows at most two residuals per level, :func:`stored`
-    each residual once within the positional length; each wins up to ~90% on
-    tables it fits (stored from n=12).
+    each residual once within the positional length.  Where they fit,
+    :func:`two_state` saves 95-100% (n=8-16) and :func:`stored` 20-98% (and/or
+    from n=10, parity from n=12, symmetric tables from n=14).
 """
 
 import re
@@ -200,12 +203,12 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
     positional = _lookup_layout(truth_table, n, natural, width)
+    if width is None:
+        return _race_states(truth_table, n, positional, width)
     mask = _affine_mask(truth_table)
     if mask is None:
         return _race_states(truth_table, n, positional, width)
     shared = _parity_columns(n, int(truth_table[0]), mask=mask, paired=True)
-    if width is None:
-        return min(natural, shared, key=len)
     shared = _wrap_template(shared, n, width)
     if grid_width(shared) > width:
         shared = _parity_columns(n, int(truth_table[0]), mask=mask)

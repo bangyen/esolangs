@@ -20,3 +20,41 @@ workspace = "linear: at most 3L bits: the self-modified program, decimal cells"
 "0110100110010110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 11, "4" = 13, "5" = 12, "6" = 11, "7" = 11, "8" = 14, "9" = 13, "10" = 12, "11" = 12, "12" = 11, "13" = 11, "14" = 12, "15" = 11 }, source_units = 214 }
 "1101001101101101" = { commands = 11, commands_by_row = { "0" = 10, "1" = 10, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 10, "7" = 10, "8" = 12, "9" = 12, "10" = 12, "11" = 11, "12" = 10, "13" = 10, "14" = 11, "15" = 11 }, source_units = 222 }
 "11111110" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 9, "5" = 9, "6" = 10, "7" = 9 }, source_units = 152 }
+
+[ablations]
+audited = "2026-10-20"
+
+[ablations.packed_decoder]
+saving = 137.42
+arity = 12
+verdict = "kept: the packed contestant in the generator's race. Deleting it (tree for every table) costs +19.65% at n=10 and +137.42% at n=12 on random tables (second seed set +19.76 / +137.36%), +75.32% on one-ignored and +55.95% on half-constant tables at n=12. It wins every random race at n=10/12 and none at n<=8, where the tree wins all 200"
+
+[ablations.shared_tree]
+saving = 738.21
+arity = 12
+verdict = "kept: the tree contestant, and the only build at or below 16 rows. Deleting it (packed for every table) costs +281.02% at n=6 and +90.68% at n=8 on random tables, and at n=12 +738.21% on parity, +1,385.06% on OR, +367.59% on majority; on random tables at n=10/12 the packed build ships instead, so the deletion cost there is 0.00%"
+
+[ablations.constant_path]
+saving = 132.61
+arity = 12
+verdict = "kept: canonical, exempt. A constant table takes _sbleq_constant (3n + 3 cells: read every input, print the literal) instead of the tree; routing constants through the tree costs +183.33% at n=4 down to +132.61% at n=12 on constant tables"
+
+[ablations.subtree_sharing]
+saving = 16.41
+arity = 12
+verdict = "kept: canonical, exempt. Inside the tree build (subtree_ids / subtree_slot in the shared branch decoder): a repeated subtree is jumped to, not repeated. Removing sharing from the tree costs +16.41% on AND and +60.37% on OR at n=12 (the unshared tree still wins those races), +57.38% on random tables at n=4 where no race intervenes, and +486.42% on parity at n=6; on most other classes the unshared tree grows past the packed build and the race caps the routed price at the packed alternative"
+
+[ablations.equal_halves_skip]
+saving = 4.49
+arity = 8
+verdict = "kept: canonical, exempt. Inside the tree build: subtree_slot passes over a test whose halves agree. Removing the skip costs +4.62% at n=6 and +4.49% at n=8 on random tables (the arities where the tree ships on random tables), +28.39 / +18.46% on three-ignored tables at n=6/8 and +5.00% at n=12, where the tree still ships on that class"
+
+[ablations.input_projection]
+saving = 29.61
+arity = 12
+verdict = "kept: canonical, exempt. Inside the packed build: an ignored input is read into a scratch cell and never joins the index, and the table is packed over the essential inputs only. Removing projection costs +29.61% on one-ignored and +18.12% on two-ignored tables at n=12 (the classes where the packed build ships); it is 0.00% wherever every input is essential"
+
+[ablations.tree_rows_threshold]
+saving = 0.0
+arity = 4
+verdict = "recorded: the 16-row cutoff below which the packed build is not tried costs nothing measurable. At 16 rows the packed build loses to the tree by at least 1,099 chars on every one of 400 seeded random tables (deleting the tree there costs +569.31%), and the tree still wins all 200 random races at 32 rows"

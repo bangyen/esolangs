@@ -14,8 +14,8 @@ Size:
 
 Decisions:
     Sharing runs of equal rows through ``js`` clamped decrements saves, at n=7,
-    33.3% on random, 39.8% on tiled, 29.7% with one half constant and 57.4%
-    with constant blocks.
+    56.48% on random, 54.66% on tiled, 120.15% with one half constant and
+    29.67% with constant blocks (deletion costs, 200 tables a class).
 """
 
 from itertools import groupby

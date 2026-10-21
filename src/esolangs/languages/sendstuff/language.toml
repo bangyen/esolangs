@@ -20,3 +20,21 @@ workspace = "poly n: at most (n+1)(bl(L)+10) + bl(n) bits: a pending frame for e
 "0110100110010110" = { commands = 18, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 18, "13" = 18, "14" = 18, "15" = 18 }, source_units = 226 }
 "1101001101101101" = { commands = 18, commands_by_row = { "0" = 15, "1" = 15, "2" = 18, "3" = 18, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 15, "13" = 15, "14" = 18, "15" = 18 }, source_units = 272 }
 "11111110" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 184 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 927.3
+arity = 12
+verdict = "kept: canonical, exempt. Every distinct subtable is one named node, defined once and sent to by name. Expanding every occurrence into its own node instead costs +678.73% at n=10 and +927.27% at n=12 on random tables (second seed set +680.30 / +929.26%) and at n=10/12: parity +11956.22 / +42260.07% (each level reuses the same two subtrees), majority +3688.04 / +11008.14%, three ignored inputs +750.88 / +1234.29%, half-constant +577.47 / +785.07%"
+
+[ablations.equal_halves_chain]
+saving = 0.6
+arity = 12
+verdict = "kept: canonical, exempt. A node whose halves agree reads its bit and sends on to the one child. Branching to both children instead costs +1.00% at n=10 and +0.60% at n=12 on random tables, and no class above +1.66% at those arities: inside a shared diagram the branch body names the same child twice, so the chain is worth only the difference of the bodies. Parity, AND and OR measure 0.00% (their agreeing halves are constant subtrees, taken by the fold)"
+
+[ablations.constant_chain]
+saving = 36.1
+arity = 12
+verdict = "kept: canonical, exempt. A constant subtable is a chain reading the remaining inputs into Constant 48 or 49. Branching on constants instead costs +33.65% at n=10 and +36.10% at n=12 on constant tables, +15.61 / +16.60% on AND and OR (whose agreeing halves are constants), and +0.68 / +0.28% on random tables. The plain build (no sharing, no chain, no fold) costs +986.83% at n=10 and +1317.35% at n=12 on random tables, +26526.54 / +95869.29% on constant tables"

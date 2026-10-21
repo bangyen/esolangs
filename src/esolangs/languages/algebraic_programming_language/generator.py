@@ -67,7 +67,8 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
 def _apl_shared_ordered(table: str, perm: tuple[int, ...]) -> str:
     """Compare the reduced diagram with its repeated expressions named once.
 
-    Repeated expressions save 32-33% of chars at n=7..9 (40 random tables).
+    Repeated expressions save more as n grows
+    ([ablations.repeated_expressions]).
     Bounded shared frames, a third candidate, were strictly best on 0 of 3,785
     tables (n=2..10; random, ignored, tiled, sparse, threshold, named): retired.
     """

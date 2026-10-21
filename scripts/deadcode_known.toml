@@ -1,0 +1,197 @@
+# Unreached generator code, triaged: see scripts/deadcode.py.
+
+"befunge/generator.py" = [
+    "arm: if len(header) <= columns: -> flat = [header]",
+    "line: flat = [header]",
+    "line: flat.extend(table[base : base + columns] for base in range(0, count, columns))",
+    "line: return \"\\n\".join(flat)",
+]
+
+"bfstack/generator.py" = [
+    "line: data, control, pc, _cursor = state",
+    "line: return data, control, pc, 0",
+]
+
+"boolfuck/generator.py" = [
+    "arm: if kind is None: -> raise ValueError(\"constant cofactor reached a pending gate\")",
+    "line: raise ValueError(\"constant cofactor reached a pending gate\")",
+]
+
+"brainfuck/generator.py" = [
+    "arm: if len(candidate) < len(plain): -> return plain",
+]
+
+"brainif/generator.py" = [
+    "arm: if any((i - j) % (2 * weights[i]) == weights[i] for j in self.levels): -> break",
+    "line: break",
+]
+
+"circuit_diagram/generator/__init__.py" = [
+    "arm: if zero == one: -> return zero",
+    "line: return zero",
+    "line: self._band_state.free_strides = value",
+    "line: self._band_state.live = value",
+    "line: self._band_state.pending = value",
+    "line: self._band_state.stride_of = value",
+]
+
+"circuit_diagram/generator/banks.py" = [
+    "arm: if gates + 2 * len(classes) - 1 > _class_gate_cap(len(table), n): -> return None",
+    "line: return None",
+    "line: return self._mapping[junction]",
+]
+
+"circuit_diagram/generator/folded_banks.py" = [
+    "arm: if height * width > budget: -> return None",
+    "line: return None",
+]
+
+"circuit_diagram/generator/hpool.py" = [
+    "arm: if index not in self.order: -> signal = self.serial.fresh()",
+    "line: layout.input_port(8 * index, 2, signal)",
+    "line: signal = self.serial.fresh()",
+]
+
+"circuit_diagram/generator/source_size.py" = [
+    "arm: if height == 0: -> return 0",
+    "line: return 0",
+]
+
+"circuit_diagram/generator/sparse_banks.py" = [
+    "arm: if _online_bank_area_floor(dimensions, n, prefix, q, ands) > budget: -> return None",
+    "arm: if budget is None: -> return None",
+    "line: return None",
+    "line: return None #2",
+]
+
+"circuit_diagram/generator/sparse_masks.py" = [
+    "arm: if not self.work.spend(self.comparisons): -> return None",
+    "arm: if zero is None: -> return None",
+    "line: return None",
+    "line: return None #2",
+]
+
+"container/generator.py" = [
+    "arm: for index in count(): -> <exit>",
+]
+
+"crement/generator.py" = [
+    "arm: if grid_width(narrowed) > width: -> return narrowed",
+    "line: return narrowed",
+]
+
+"dig/generator/_layout.py" = [
+    "arm: if fits(high, 1) and fits(low, 0): -> bits = min(_DIG_LEAF_BITS, n)",
+    "arm: if key in self.owners and not self._route_entry(point, key, lanes): -> return False",
+    "arm: if lane in self.cells: -> return False",
+    "arm: if sharing and not tree.bridge_entries(): -> return None",
+    "arm: if sharing: -> raise",
+    "arm: if sharing: -> return None",
+    "line: except AssertionError:",
+    "line: if sharing:",
+    "line: raise",
+    "line: return False",
+    "line: return False #2",
+    "line: return None",
+    "line: return None #2",
+]
+
+"false/generator.py" = [
+    "arm: case _Split(zero, one): -> <exit>",
+]
+
+"flowchart/generator.py" = [
+    "arm: if column is None: -> last_row[column] = entry",
+    "arm: if index >= count and not run.pad: -> break",
+    "arm: if not run.pad and (col + 1) * slots >= count: -> break",
+    "line: break",
+    "line: break #2",
+]
+
+"forbin/generator.py" = [
+    "arm: for candidate in count(): -> <exit>",
+]
+
+"interprogck8/generator.py" = [
+    "arm: if n > _MAX_INPUTS: -> raise with_hint(",
+    "line: raise with_hint(",
+]
+
+"line/generator/__init__.py" = [
+    "arm: if chosen.score.area > preceding.score.area: -> chosen = preceding",
+    "arm: if node.next is None: -> raise ValueError(\"projected Line tree has no decision body\")",
+    "line: chosen = preceding",
+    "line: raise ValueError(\"projected Line tree has no decision body\")",
+]
+
+"line/generator/forward.py" = [
+    "arm: if steps < 0: -> raise ValueError(\"forward route runs backward\")",
+    "arm: if value is None: -> raise ValueError(\"streaming terminal residual is not constant\")",
+    "line: raise ValueError(\"forward route runs backward\")",
+    "line: raise ValueError(\"streaming terminal residual is not constant\")",
+]
+
+"line/generator/render.py" = [
+    "arm: if factor < 1: -> raise ValueError(f\"scale factor must be at least 1, got {factor}\")",
+    "line: raise ValueError(f\"scale factor must be at least 1, got {factor}\")",
+]
+
+"malbolge/generator/segments.py" = [
+    "arm: elif op.kind == \"snap\": -> raise ValueError(op.kind)",
+    "arm: elif op.kind == \"snap\": -> raise ValueError(op.kind) #2",
+    "line: raise ValueError(op.kind)",
+    "line: raise ValueError(op.kind) #2",
+]
+
+"minifuck/generator/__init__.py" = [
+    "arm: if len(default) <= len(positional): -> candidates.extend(shared for shared in forms if len(shared) <= len(positional))",
+]
+
+"minifuck/generator/stored.py" = [
+    "arm: if control == target: -> raise ValueError(\"control and target must be distinct\")",
+    "arm: if count < 0: -> raise ValueError(\"negative repetition\")",
+    "arm: if target in (left, right): -> raise ValueError(\"controls and target must be distinct\")",
+    "line: raise ValueError(\"control and target must be distinct\")",
+    "line: raise ValueError(\"controls and target must be distinct\")",
+    "line: raise ValueError(\"negative repetition\")",
+]
+
+"object_disoriented/generator.py" = [
+    "arm: for chars in product(_NAME_CHARS, repeat=size): -> for size in count(1):",
+    "arm: for size in count(1): -> <exit>",
+    "arm: if (name := \"\".join(chars)) != \"main\": -> for chars in product(_NAME_CHARS, repeat=size):",
+]
+
+"quassaunt/generator.py" = [
+    "arm: if limit < longest: -> for limit in _LIMITS:",
+]
+
+"rotfuck/generator.py" = [
+    "arm: if piece is None: -> raise _UnplaceableError(\"no neutral pad is hidden from every open seek\")",
+    "line: raise _UnplaceableError(\"no neutral pad is hidden from every open seek\")",
+]
+
+"sstack/generator/_binary.py" = [
+    "arm: if len(program) != plan.metric.chars: -> raise ValueError(\"emitted SStack bank disagrees with its size price\")",
+    "line: raise ValueError(\"emitted SStack bank disagrees with its size price\")",
+]
+
+"streetcode/generator.py" = [
+    "arm: for i, segment in enumerate(segments): -> ymin = min(row for row, _ in canvas)",
+]
+
+"subleq/generator.py" = [
+    "line: data, pc, _cursor = state",
+    "line: return data, (), pc, 0",
+]
+
+"thisthat/generator.py" = [
+    "arm: if grid_width(narrow_shared) <= max(width, grid_width(narrow_plain)) and ( -> return narrow_plain",
+    "line: return False",
+    "line: return narrow_plain",
+]
+
+"underload/generator.py" = [
+    "arm: if _underload_layout_tokens(template) == _underload_layout_tokens(narrow): -> return True",
+    "line: return True",
+]

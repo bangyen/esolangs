@@ -15,9 +15,9 @@ Size:
     chars, n=12 random 1847: 61,217 chars, n=16 parity: 18,921 chars.
 
 Decisions:
-    Popping before descent reduces three dense n=16 tables from mean
-    1,345,047 to 955,490 characters (-28.96%); both builds executed five rows
-    per table within the command and workspace bounds.  Binary banks: a
+    Popping before descent is the one-shot loop skeleton every form
+    shares, so it carries no ablation price; a pop-after variant changes
+    the loop's semantics, not just its text.  Binary banks: a
     64-state n=16 control shrinks 23,897 -> 20,360 characters (-14.80%), with
     8,192 old/new native rows.
 """

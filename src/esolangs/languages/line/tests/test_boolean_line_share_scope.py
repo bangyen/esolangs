@@ -41,8 +41,8 @@ class TestLineReturnScope:
         ("n", "shared_counts"),
         [
             (5, (0, 0, 0, 0)),
-            pytest.param(6, (2, 1, 1, 0), marks=pytest.mark.slow),
-            pytest.param(7, (1, 0, 1, 1), marks=pytest.mark.slow),
+            pytest.param(6, (0, 0, 0, 0), marks=pytest.mark.slow),
+            pytest.param(7, (1, 1, 0, 0), marks=pytest.mark.slow),
             (8, (0, 0, 0, 0)),
         ],
     )
@@ -52,7 +52,7 @@ class TestLineReturnScope:
         start: int,
         shared_counts: tuple[int, ...],
     ) -> None:
-        """7 of 800 seeded tables share; execute every admitted input row."""
+        """2 of 800 seeded tables share; execute every admitted input row."""
         tables = _sample(n, 200, seed=11 + n)[start : start + 50]
         gotos = 0
         for table in tables:

@@ -4,13 +4,12 @@ A node reads with ``^``, keeps the bit with ``1&``, and runs the matching
 half as a ``[...]?`` lambda; a leaf prints its bit with ``.`` after reading
 the inputs below it with ``^%``, which a caller's next program would
 otherwise be handed; the leaf a fold chain reaches from the root prints
-first and reads bare ``^``.  A node over two constant halves is its own
-literal.
+first and reads bare ``^``.
 The reduced diagram (:func:`_shared`) shares repeated halves.
 
 Size:
-    O(n) for parity, O(T) for random tables; n=10 parity: 278 chars,
-    n=10 random 1847: 3,173 chars.
+    O(n) for parity, O(T) for random tables; n=10 parity: 300 chars,
+    n=10 random 1847: 3,205 chars.
 """
 
 from __future__ import annotations
@@ -40,17 +39,7 @@ from esolangs.registry._language import Language
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
 _TEST_ONE = "^1&$["
 _SKIP = "^%"
-#: The printed bit of a node whose halves are the constants ``0`` and ``1``,
-#: and of one whose halves are ``1`` and ``0``: ``'0=`` is ``-1`` on a zero.
-_SAME = "^1&"
-_FLIPPED = "^'0=_"
 Key = tuple[int, int]  # (level, subtable id)
-
-
-class _Literal(NamedTuple):
-    """A node over two constants: the read that recovers its bit."""
-
-    read: str
 
 
 class _Fold(NamedTuple):
@@ -74,12 +63,8 @@ def false(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     program = _shared(truth_table, n)
-    # The only two-character atom is the ASCII-zero push; multiplication
-    # spells that value with single-character operands when width is one.
     if width is None:
         return program
-    if width == 1:
-        program = program.replace("'0", "6 8*")
     return wrap_program(program, "false", width)
 
 
@@ -102,7 +87,7 @@ def _shared(truth_table: str, n: int) -> str:
     26 variables, handed out deepest first, cap the stores.
     """
     ids = subtree_ids(truth_table)
-    nodes: dict[Key, _Literal | _Fold | _Split] = {}
+    nodes: dict[Key, _Fold | _Split] = {}
     uses: dict[Key, int] = {}
     inner: dict[Key, int] = {}  # of those uses, the ones that are a body
     found: list[list[Key]] = [[] for _ in range(n + 1)]
@@ -119,10 +104,6 @@ def _shared(truth_table: str, n: int) -> str:
                 continue  # a leaf, or a node already seen at this level
             zero = (depth + 1, ids[depth + 1][2 * place])
             one = (depth + 1, ids[depth + 1][2 * place + 1])
-            if zero[1] < 2 and one[1] < 2:  # a literal: no lambda halves
-                read = _SAME if one[1] == 1 else _FLIPPED
-                nodes[key] = _Literal(read)
-                continue
             if zero == one:  # the test changes nothing: drop the bit, run it
                 nodes[key] = _Fold(zero)
                 inner[zero] = inner.get(zero, 0) + 1
@@ -144,8 +125,6 @@ def _shared(truth_table: str, n: int) -> str:
         if node < 2:
             return _SKIP * (n - level) + str(node) + "."
         match nodes[key]:
-            case _Literal(read):
-                return read + _SKIP * (n - level - 1) + "."
             case _Fold(child):
                 return _SKIP + (names[child] + ";!" if child in names else text[child])
             case _Split(zero, one):
@@ -167,14 +146,14 @@ def _shared(truth_table: str, n: int) -> str:
 
 def _root_text(
     key: Key,
-    nodes: dict[Key, _Literal | _Fold | _Split],
+    nodes: dict[Key, _Fold | _Split],
     names: dict[Key, str],
     render: Callable[[Key], str],
     n: int,
 ) -> str:
     """Render the root, draining bare at the end of a fold chain.
 
-    A leaf or literal reached from the root through folds only is the
+    A leaf reached from the root through folds only is the
     last text the program runs, so it prints first and reads the
     remaining inputs with bare ``^`` instead of ``^%`` (a constant
     table: 2n+2 -> n+2, measured n = 2..8).  Under a split the same end
@@ -192,16 +171,12 @@ def _root_text(
     if sub < 2:
         parts.append(str(sub) + "." + "^" * (n - level))
         return "".join(parts)
-    node = nodes[key]
-    if isinstance(node, _Literal):
-        parts.append(node.read + "." + "^" * (n - level - 1))
-    else:
-        parts.append(render(key))
+    parts.append(render(key))
     return "".join(parts)
 
 
 def _balance(_table: str, default: str) -> str:
-    """Compare ordinary token fits; the alternate zero push never won."""
+    """Compare the default with its balanced token fit."""
     tokens = re.findall(_FALSE_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
     return min(default, _join_tokens(tokens, width, ""), key=balance_score)

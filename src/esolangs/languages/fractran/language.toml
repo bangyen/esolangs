@@ -12,14 +12,14 @@ execution = "poly n: worst n + 2: a step a level or unread set bit, the leaf, th
 workspace = "poly n: at most bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start"
 
 [generator_sizes]
-"00000001" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 80 }
-"00001100" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 4, "7" = 5 }, source_units = 61 }
-"00110110" = { commands = 5, commands_by_row = { "0" = 4, "1" = 5, "2" = 4, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 102 }
+"00000001" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 69 }
+"00001100" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 4, "7" = 5 }, source_units = 56 }
+"00110110" = { commands = 5, commands_by_row = { "0" = 4, "1" = 5, "2" = 4, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 91 }
 "0110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 53 }
 "01101001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 88 }
 "0110100110010110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 120 }
-"1101001101101101" = { commands = 6, commands_by_row = { "0" = 5, "1" = 6, "2" = 6, "3" = 6, "4" = 5, "5" = 6, "6" = 5, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 5, "13" = 6, "14" = 6, "15" = 6 }, source_units = 153 }
-"11111110" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 80 }
+"1101001101101101" = { commands = 6, commands_by_row = { "0" = 5, "1" = 6, "2" = 6, "3" = 6, "4" = 5, "5" = 6, "6" = 5, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 5, "13" = 6, "14" = 6, "15" = 6 }, source_units = 141 }
+"11111110" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 69 }
 
 [ablations]
 audited = "2026-10-19"
@@ -37,7 +37,7 @@ verdict = "kept: canonical, exempt. A node whose halves return the same state is
 [ablations.constant_fold]
 saving = -0.9
 arity = 12
-verdict = "candidate: the constant_span_test early exit in _tree appends one leaf per depth at which a constant span roots (the walk keys nodes by (depth, subtable id)), while the halves-agree skip collapses a whole span to a single shared leaf. Removing the early exit shrinks or ties every corpus measured: -6.2% at n=6 to -0.9% at n=12 on random tables, -27.0% / -28.5% on AND at n=10/12, 0.0% on parity and constant tables. AND at n=10 builds 21 nodes shipped vs 12 without, clear fractions identical. See RETIREMENT-CANDIDATES entry 18"
+verdict = "removed 2026-10-20 (retirement candidate #18): the constant_span_test early exit in _tree appended one leaf per depth at which a constant span roots (the walk keys nodes by (depth, subtable id)), while the halves-agree skip collapses a whole span to a single shared leaf. Removing it shrinks or ties every corpus measured: -6.2% at n=6 to -0.9% at n=12 on random tables, -27.0% / -28.5% on AND at n=10/12, 0.0% on parity and constant tables. AND at n=10 built 21 nodes shipped vs 12 without, clear fractions identical. See RETIREMENT-CANDIDATES entry 18"
 
 [ablations.guard_spelling]
 saving = -7.9

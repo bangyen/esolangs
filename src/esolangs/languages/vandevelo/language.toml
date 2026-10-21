@@ -38,3 +38,41 @@ evidence = "docs/proofs/index.md#vandevelo-identifier-and-fallback-audit"
 sharing_exempt = "sum of affine-coset guards, with no subtable branch; B C C B shrinks for its x0 xor x1 structure (0.59x), B C C D barely (0.89x at n=8)"
 folding_ignored_local = "_constraints"  # affine guards retain independent tests
 folding_constant_local = "_affine_coset"  # a full or empty guard set
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.peel_cover]
+saving = 87.3
+arity = 12
+verdict = "kept: the affine-cube peel cover of the 1-set, against a point cover (one clause per 1-row): 79.9% at n=8 rising to 84.9% at n=10 and 87.3% at n=12 on random tables, 99.5% / 99.9% on parity at n=10/12. On AND the peel finds the single cube itself (179 chars by both routes)"
+
+[ablations.register_bank]
+saving = 40.6
+arity = 12
+verdict = "kept: clauses bind input parities into registers (exact reuse, morphing the nearest recent register one toggle at a time, LRU respell at the n^2 cap). Binding everything fresh costs 25.1% at n=8 rising to 40.6% at n=12 on random tables, 37.8% / 45.6% on majority at n=10/12"
+
+[ablations.register_morphing]
+saving = 1.4
+arity = 12
+verdict = "kept: morphing an existing register one toggle at a time in place of a fresh bind, with exact reuse kept: 7.6% at n=8 and 7.2% at n=10 on random tables, declining to 1.4% at n=12, where exact reuse carries the bank. A sub-mechanism of the register bank above"
+
+[ablations.polarity_flips]
+saving = 16.2
+arity = 12
+verdict = "kept: an input mostly tested for 0 is read negated, shedding == Nil? tests. 1.55% on random tables at n=8 (recorded 1.5%), declining to 0.3% at n=12; judged on its sparse class, 15.7% / 15.3% / 16.2% on single-minterm tables at n=8/10/12 (recorded 14.8-17.6%) and 24.4% / 25.9% on minterms with at most one 1-bit (recorded 24-32%). Every recorded figure reproduces"
+
+[ablations.implied_test_pruning]
+saving = 0.0
+arity = 12
+verdict = "candidate: drops a clause's test when an earlier one-test clause implies it for every row reaching the clause. 0.0% on random tables at every arity and on every named class; on constructions of its union class it saves 0.0% (axis-cube unions, half-space unions), 0.2% (general affine-cube unions) and 6.0% / 4.6% at n=8/10 on the richest firing shape (a half-space with cubes planted in its complement). The docstring's 10.7% / 12.1% class figures reproduce on no construction tried. See RETIREMENT-CANDIDATES entry 22"
+
+[ablations.coset_bypasses]
+saving = 0.0
+arity = 12
+verdict = "kept: an affine table bypasses the peel as one coset (or, for an affine complement, as its failed equations). Removing the bypasses changes no measured size: the peel reaches byte-identical covers on every affine class priced (AND, parity, majority, constant tables). A build-time shortcut, not a size mechanism"
+
+[ablations.bank_cap]
+saving = 2.3
+arity = 13
+verdict = "kept: the bank allows n^2 live registers; tightening the cap to 48 costs 1.9% / 2.3% at n=13 (30 tables, both seed sets), a cap of n costs 24.0% / 24.1% and 2n costs 12.6% / 13.0%. The recorded figures for these caps (5-8%, 40%, 23%) measure at roughly half; see the stale-figures entry F23 in RETIREMENT-CANDIDATES.md"

@@ -91,7 +91,7 @@ class TestDimensional:
             for i, c in enumerate(program)
             if c in "><" and not program[i + 1 :][:1].isdigit()
         ]
-        assert len(bare) == 3, program
+        assert len(bare) == 4, program  # two painted ones, two d> reads
 
     def test_the_table_costs_two_characters_an_entry(self) -> None:
         """One painted cell an entry, whichever bit, until a zero run is a loop."""
@@ -103,15 +103,10 @@ class TestDimensional:
         parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.dimensional(parity)) < 10_000
 
-    def test_a_sparse_table_pays_only_for_its_prefix(self) -> None:
-        """An unvisited cell already reads 0, so painting stops at the last one."""
-        early = "1" + "0" * 15
-        late = "0" * 15 + "1"
-        assert len(boolean.dimensional(early)) < len(boolean.dimensional(late))
-
+    def test_a_sparse_table_with_trailing_zeros_executes(self) -> None:
+        """Trailing zeros are painted like any other run; every row answers."""
         table = "0" * 9 + "1" + "0" * 6
         program = generate("Dimensional", table)
-        assert len(program) <= 155
         for row, expected in enumerate(table):
             stdin = "\n".join(format(row, "04b"))
             assert (

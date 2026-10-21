@@ -803,21 +803,22 @@ def _flowchart_deque(truth_table: str) -> str:
     return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
 
 
-def _balance(table: str, _default: str) -> str:
-    """Return the squarest tree: read chains and answer snaked over columns.
+def _balance(table: str, default: str) -> str:
+    """Return the squarest of the default and trees snaked over columns.
 
     Candidates are the flat tree folded over 1, 3 or 5 columns per chain
     (``_snake``) and up to 6 for the answer.  Only nine of the 18 pairs ever
-    won (68 random tables n=1..7, then 844 incl. tiled and constant-leaf
-    tables to n=10: the nine give byte-identical output).  Folding trades
-    height for width, so it fades from n=6, where the leaf row (~4.6 columns a
-    leaf) is already the wider side: mean side 272 vs 274 at n=6, 558 vs 559
-    at n=7.  The deque (2 rows), the stacked fallback and the constant-input
-    deque never beat the flat tree: 0 wins of ~1.5k tables at n=1..12
-    (exhaustive to n=3).
+    won on 68 random tables n=1..7; dropping the other nine lengthens one
+    tiled n=7 table by 11 characters (0.04%).  Folding trades height for
+    width, so it fades from n=6, where the leaf row (~4.6 columns a leaf) is
+    already the wider side: mean side 272 vs 274 at n=6, 558 vs 559 at n=7.
+    The deque (2 rows), the stacked fallback and the constant-input deque
+    never beat the flat tree: 0 wins of ~1.5k tables at n=1..12 (exhaustive
+    to n=3).
     """
     return min(
-        (
+        default,
+        *(
             _flowchart_render(_flowchart_cells(table, fold, cols))
             for fold, cols in (
                 (1, 2),

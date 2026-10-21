@@ -42,7 +42,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import wrap_tokens
+from esolangs.generation.wrap import balance_score, wrap_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -106,8 +106,8 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
             "(" + tree(level_of[name], name, None) + ")" + tree(level, key, name)
             for name in diagram.repeated_near(key, _REACH)
         )
-        # Race kept: against the first candidate only it saves 33% on majority
-        # (n=8,10), 11-15% on threshold-3, 2% on random tables.
+        # Race kept: it saves 47-60% on majority (n=8,10), 41-49% on
+        # threshold-3, 11% on random tables.
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
     body = tree(0, diagram.ids[0][0], None)
@@ -153,7 +153,8 @@ def _underload_layout_tokens(template: str) -> list[str]:
 def _balance(table: str, default: str) -> str:
     """Balance the selectors at their token fit; the other forms never won."""
     normal = re.findall(_token_pattern(len(PAIR[0])), default)
-    return underload(table, balanced_token_width(normal, minimum=5))
+    balanced = underload(table, balanced_token_width(normal, minimum=5))
+    return min(default, balanced, key=balance_score)
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:

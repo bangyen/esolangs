@@ -25,3 +25,36 @@ workspace = "poly n: at most n + 7 + bl(n) + (d+1)bl(L) bits, d = max(n-7,0) + â
 "0110100110010110" = { commands = 329, commands_by_row = { "0" = 262, "1" = 311, "2" = 312, "3" = 279, "4" = 314, "5" = 286, "6" = 291, "7" = 325, "8" = 318, "9" = 300, "10" = 305, "11" = 329, "12" = 312, "13" = 331, "14" = 332, "15" = 329 }, source_units = 323 }
 "1101001101101101" = { commands = 330, commands_by_row = { "0" = 299, "1" = 304, "2" = 270, "3" = 310, "4" = 277, "5" = 286, "6" = 313, "7" = 318, "8" = 291, "9" = 316, "10" = 317, "11" = 308, "12" = 319, "13" = 324, "14" = 317, "15" = 330 }, source_units = 318 }
 "11111110" = { commands = 237, commands_by_row = { "0" = 226, "1" = 231, "2" = 232, "3" = 237, "4" = 234, "5" = 239, "6" = 240, "7" = 237 }, source_units = 239 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 27.3
+arity = 12
+verdict = "kept: canonical, exempt. Each block packs over its essential inputs only (input_weights); an ignored input is read and popped. 0.00% on random tables at n=8/10/12; with one ignored input 34.4% at n=8, 27.4% at n=10 and 27.3% at n=12, and 13.5% on two-block tables at n=8 whose blocks ignore inputs"
+
+[ablations.decoder_value_race]
+saving = 21.6
+arity = 12
+verdict = "kept: each block's decoder lists the rarer value's rows in its subtraction cascade (the inverted form lists ones and presets the result cell). Priced by deletion: always listing zeros costs 1.0% on random tables at n=8/10/12, 7.5% / 8.6% / 8.7% on majority, and on sparse tables (10% ones) 22.4% at n=8, 21.7% at n=10 and 21.6% at n=12; 0.00% on dense tables, where the direct form is the winner the race picks anyway"
+
+[ablations.two_block_classifier]
+saving = 28.4
+arity = 12
+verdict = "kept: a wide node whose four quarters are two distinct blocks classifies its two prefix bits once and writes each block once, raced against the plain split at every node. Priced by deletion: 0.00% on random tables; on two-block tables 12.0% at n=8 rising to 28.0% at n=10 and 28.4% at n=12; on parity 24.2% / 61.1% / 80.2%, on AND 13.2% / 14.9% / 16.1%, on OR 6.2% / 10.2% / 12.8%. The in-code 12-49% range does not hold at both ends on the named functions; see the stale-figures entry F21"
+
+[ablations.halves_agree_skip]
+saving = 0.6
+arity = 10
+verdict = "kept: canonical family, exempt. A wide node whose halves agree reads and pops the split input and builds one half. Its solo price is 0.00% on random tables and at most 0.6% (leading-ignored tables at n=10): where halves agree the quarters repeat too, so the two-block classifier wins the same tables, and constant halves are folded first. Jointly with the classifier and constant spans removed, leading-ignored tables cost 50.9% at n=10 and 50.6% at n=12"
+
+[ablations.constant_spans]
+saving = 0.8
+arity = 8
+verdict = "kept: canonical, exempt. A constant span inside the wide build folds to a constant leaf. Its solo price is 0.8% at n=8 declining to 0.1% at n=12 on half-constant tables: the halves-agree skip and the block projection absorb a constant span almost as cheaply. Jointly (plain build) half-constant tables cost 42.7% at n=8 rising to 48.2% at n=12"
+
+[ablations.decoder_figures]
+saving = 0.0
+arity = 12
+verdict = "recorded: the decoder docstring's listing figures (17,091 chars at twelve inputs for a mostly-zero table, 4,801 for the all-one table) reproduce under no reading tried: the shipped programs for the n=12 AND and OR tables are 1,135 and 1,072 chars, the decoder's own cascades on those tables are 12,292 / 4,105 and 10 / 12,293, and the decoder never sees twelve inputs (blocks cap at seven essential inputs). See the stale-figures entry F20"

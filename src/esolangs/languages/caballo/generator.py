@@ -30,9 +30,10 @@ def caballo(truth_table: str) -> str:
 
     def node(depth: int, k: int) -> None:
         if ids[depth][k] < 2:
-            # The pops empty the stack, where ``q`` is a round trip
-            # (push a zero, the strip eats it), so ``i`` alone leaves
-            # [1]; the ``q`` costs 1 char per constant subtable.
+            # The pops empty the stack, where ``q`` would be a round
+            # trip (push a zero, the strip eats it), so ``i`` alone
+            # leaves [1]; the leaf costs one ``p`` per remaining level
+            # plus the answer char.
             out.append("p" * (n - depth) + ("i" if ids[depth][k] else ""))
             return
         zero, one = ids[depth + 1][2 * k], ids[depth + 1][2 * k + 1]

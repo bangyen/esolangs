@@ -262,7 +262,7 @@ def _skip(distance: int, *, fresh: bool) -> str:
     Plain ``>`` steps, or a count carried ``isqrt(room / 3)`` cells a step.  The count
     sits on the current cell when it is ``fresh`` (zero), else one cell on, and
     must land on a zero cell before the destination.  A zero upper half
-    shrinks the program 3%/7.5%/14% at n=7/8/9 (12 seeded tables).
+    shrinks the program ([ablations.skip_race]).
     """
     best = ">" * distance
     start = "" if fresh else ">"

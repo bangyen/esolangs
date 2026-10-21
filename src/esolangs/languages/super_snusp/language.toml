@@ -27,3 +27,21 @@ folding_constant_local = "_emit_lookup"  # projected literal table
 [formula_arities]
 execution = [5, 6]
 workspace = [5]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 48.3
+arity = 12
+verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the packed integer is built over the essential inputs only; an ignored input is read into cell 1 and left for the next read or >0 to overwrite. 0.00% on random tables at n=8/10/12; with one ignored input 37.3% at n=8 rising to 44.9% at n=10 and 48.3% at n=12, with two ignored 57.4% / 67.7% / 72.6%, and on constant tables 91.5% / 97.0% / 99.1%"
+
+[ablations.two_input_short_forms]
+saving = 20.3
+arity = 2
+verdict = "kept: five fixed short forms at n=2 reuse 48 to decode each input and encode the answer, keeping the literal at the bottom of the stack. Over all 16 two-input tables they save 20.3% (723 against 907 chars), and 72 against 256 chars on the five tables themselves; both recorded figures reproduce exactly. The forms fire only at n=2 and cost nothing at any other arity"
+
+[ablations.plain_build]
+saving = 48.3
+arity = 12
+verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (48.3% at n=12 on the one-ignored corpus, 0.00% on random tables). The packed build itself -- one * per entry plus one ) per one entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and were not priced"

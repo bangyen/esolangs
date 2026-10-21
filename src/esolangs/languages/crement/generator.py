@@ -13,11 +13,11 @@ level is named, not re-emitted, and a node with equal halves is skipped.
 
 Size:
     At most ``5 n + 2`` executed commands over ``3 (2**n - 1) + 2 n + 3`` lines;
-    n=10 parity: 659 chars, n=10 random 1847: 6,363 chars.
+    n=10 parity: 633 chars, n=10 random 1847: 6,283 chars.
 
 Decisions:
-    Sharing cuts the 256 three-input tables from 39,156 to 37,862 characters
-    (3.3%) and 200 seeded five-input tables from 114,791 to 83,070 (27.6%).
+    Sharing cuts the 256 three-input tables from 38,884 to 37,120 characters
+    (4.5%) and 200 seeded five-input tables from 109,525 to 81,574 (25.5%).
 """
 
 from collections.abc import Callable, Iterator
@@ -144,15 +144,14 @@ def _crement_ordered(
         zero = walk(level + 1, 2 * block)
         one = walk(level + 1, 2 * block + 1)
 
-        # A child emitted here is named relative to the patch, as ``@+k``;
-        # a gadget or earlier copy takes the shorter spelling.
-        def data(target: int, line: int) -> str:
-            return f"@+{target - 1 - line}" if target > at else str(target - 1)
+        # A child is named by its absolute line, one less as ``+A`` data.
+        def data(target: int) -> str:
+            return str(target - 1)
 
         cell = tester[level]
         rel = at - first
-        lines[rel] = f"+A {cell} {data(one, at)}"
-        lines[rel + 1] = f"+A {cell + 1} {data(zero, at + 1)}"
+        lines[rel] = f"+A {cell} {data(one)}"
+        lines[rel + 1] = f"+A {cell + 1} {data(zero)}"
         lines[rel + 2] = f"+J {cell} 1"
         return at
 

@@ -27,25 +27,21 @@ depth has a different remaining-read obligation. Mandatory reads on a
 constant or test-free descent do not duplicate its eventual selector or
 output stem: those are still interned at their own depth.
 
-The projected streaming construction first removes globally ignored
-inputs, then reads every input in order, draining ignored ones on the
-essential stems. Nonconstant residuals again have one state per depth and
-identity. With fewer than two essential inputs, the projected tree already
-has no repeated nonconstant subtree to share. In the streaming construction, let $E$ be the
+In the streaming construction, let $E$ be the
 number of distinct edges and $S$ the number of reachable states. Every
 non-root state has an incoming edge, so $E-(S-1)$ is precisely the sum of
 incoming multiplicities beyond the first. The no-joins exit therefore means
 there is no remaining merge to draw, not that a residual-count cap was hit.
 
-Default generation compares the streaming and projected streaming folds
-with the existing tree and projection fallback. Neither
-has a node-count or sharing cutoff. No input-order search is performed. A
-joint ablation of the earlier seven-geometry race (forward, destination,
-streaming, centered, median, packed, projected) kept these two: on
-symmetric tables the streaming fold alone loses at most 2.5 percent against
-the race (n=5 to 10), on random tables at most 9.3 percent (n=6, 7; none at
-n=8), and on structured cores with ignored inputs the projected fold is
-needed (+25 percent mean at twelve inputs without it).
+Default generation compares the streaming fold with the existing tree
+and projection fallback. It has no node-count or sharing cutoff. No
+input-order search is performed. A joint ablation of the earlier
+seven-geometry race (forward, destination, streaming, centered, median,
+packed, projected) kept the streaming fold: on symmetric tables it alone
+loses at most 2.5 percent against the race (n=5 to 10), and on random
+tables at most 9.3 percent (n=6, 7; none at n=8). The projected variant
+was removed in 2026-10: priced as a separate mechanism it reached only
+8.00/8.96 percent on tiled tables at n=14, under the 10 percent bar.
 
 Each geometry computes its exact bounding rectangle from stroke endpoints
 before allocating pixels. Cardinal and 45-degree segments attain their
@@ -130,8 +126,7 @@ zero cell one, optionally adds one, and outputs. Induction on the residual
 table therefore gives the intended answer after exactly $n$ reads. Both
 cells lie within the original tape for $n\ge2$, and every stored value
 remains a bit. There are at most $n$ tests and $n-1$ join transitions; three
-terminal operations and the halt give at most $3n+4\le5n$ commands. Projection adds
-only the original ignored reads.
+terminal operations and the halt give at most $3n+4\le5n$ commands.
 
 Let $K$ count actual conditional forks in a complete fold. At the last
 selector level, only identity and complement are nonconstant, and the

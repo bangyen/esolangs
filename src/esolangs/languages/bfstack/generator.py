@@ -77,8 +77,8 @@ def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
     """Return the decoder, and whether the result must start at 1.
 
     Lists the rarer value (the inverted form lists ones); ties keep direct.
-    Listing zeros for a mostly-zero table cost 17,091 characters at twelve
-    inputs against 4,801 for the all-one table.
+    Listing zeros for a mostly-zero table costs 12,292 characters at
+    twelve inputs against 4,105 listing ones (the twelve-input AND table).
     """
     zeros = [k + 1 for k, ch in enumerate(truth_table) if ch == "0"]
     ones = [k + 1 for k, ch in enumerate(truth_table) if ch == "1"]
@@ -166,8 +166,9 @@ def bfstack(truth_table: str) -> str:
             # The one arm clears the sentinel below the bit. Both arms restore
             # their stack depth, so the zero arm runs only when the bit was zero.
             plain = ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
-        # The classifier saves 12-49% of chars on tables of two repeated blocks
-        # (n=8..12), recursive ones and named functions, 0% on random tables.
+        # The classifier saves 12-28% of chars on tables of two repeated blocks
+        # (n=8..12), 6-80% on named functions (OR at n=8 to parity at n=12),
+        # 0% on random tables.
         shared = classified(level, lo, hi)
         return plain if shared is None or len(plain) <= len(shared) else shared
 

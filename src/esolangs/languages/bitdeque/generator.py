@@ -16,8 +16,9 @@ Size:
 Decisions:
     A deque's ``EJECT``/``INJECT`` work the head, so any bit reaches an end at
     two commands per position: measured, not modelled.  Sharing: n=4, all
-    65,536 tables, -49.3%, none longer.  A linear discard lookup raced the tree
-    and won on 0 of 215 tables (random, parity, and, majority; n=5..9): retired.
+    65,536 tables, none longer ([ablations.subtree_sharing]).  A linear
+    discard lookup raced the tree and won on 0 of 215 tables (random, parity,
+    and, majority; n=5..9): retired.
 """
 
 import re

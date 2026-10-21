@@ -13,8 +13,8 @@ level flags or banks, admitted under a command bound; inline text stays a
 candidate.
 
 Size:
-    Shared residuals shrink dense tables: three seeded dense n=16 tables
-    average 831,265 -> 650,200 characters (-21.78%), five rows executed per
+    Shared residuals shrink dense tables: three seeded 90%-ones n=16 tables
+    average 488,239 -> 409,056 characters (-16.2%), five rows executed per
     table; n=10 parity: 1,005 chars, n=10 random 1847: 10,160 chars.
 """
 
@@ -25,7 +25,6 @@ from esolangs.generation.helpers import (
 from esolangs.generation.shared_block import (
     repeated_bank,
     repeated_block,
-    repeated_blocks,
     repeated_mixed_bank,
 )
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
@@ -75,7 +74,7 @@ def _move(start: int, target: int) -> str:
     the tree reaches the result cell in ``1 + target // 2`` characters
     however far right it has walked, instead of one per cell walked back.
     """
-    # Restart wins on skewed tables: n-input OR 17.8/18.9/20.1% at n=7/8/9; random 0.6%.
+    # Restart wins on skewed tables ([ablations.restart_move]).
     relative = _reach(start, target)
     absolute = "d" + _reach(0, target)
     return relative if len(relative) <= len(absolute) else absolute
@@ -87,7 +86,7 @@ def painfuck(truth_table: str) -> str:
 
 
 def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
-    """Return the shortest of inline text, one residual, levels and banks.
+    """Return the shortest of inline text, one residual and banks.
 
     Banks are same-level, or the mixed union of one-per-depth picks with the
     greatest bank; all stay under a command bound.
@@ -100,11 +99,11 @@ def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     n = len(perm)
     bound = (3 * n * n + 3) // 4 + 20 * n + 4
     forms = [(plain, 0), (candidate, commands)]
-    # Levels and banks over one residual: random n=8 6.0% (n=7..9 5.4-6.0%), but
-    # parity n=8 -77%/-20% (levels/banks) and majority -44%/-23%.
-    plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = [
-        (repeated_blocks(table), ())
-    ]
+    # Banks over one residual.  Per form against the residual form at
+    # n=8: mixed bank -76.9% parity, -44.0% majority; banks -39.9/-37.4%.
+    # (The levels plan was removed 2026-10-20: at the verdict arities it
+    # earned ~nothing — see [ablations.levels_plan] in language.toml.)
+    plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = []
     plans.extend(repeated_bank(table, ranked=ranked) for ranked in (False, True))
     plans.append(repeated_mixed_bank(table))
     for blocks, flags in dict.fromkeys(plans):

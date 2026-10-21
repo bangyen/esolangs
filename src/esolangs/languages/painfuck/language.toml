@@ -22,3 +22,36 @@ workspace = "poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, lo
 "0110100110010110" = { commands = 84, commands_by_row = { "0" = 63, "1" = 71, "2" = 72, "3" = 79, "4" = 75, "5" = 82, "6" = 74, "7" = 82, "8" = 76, "9" = 83, "10" = 75, "11" = 83, "12" = 68, "13" = 76, "14" = 77, "15" = 84 }, source_units = 178 }
 "1101001101101101" = { commands = 79, commands_by_row = { "0" = 66, "1" = 66, "2" = 66, "3" = 74, "4" = 48, "5" = 48, "6" = 58, "7" = 58, "8" = 59, "9" = 67, "10" = 68, "11" = 75, "12" = 71, "13" = 71, "14" = 71, "15" = 79 }, source_units = 168 }
 "11111110" = { commands = 58, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 46, "5" = 46, "6" = 51, "7" = 58 }, source_units = 76 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.shared_residuals]
+saving = 15.9
+arity = 12
+verdict = "kept: canonical, exempt. Repeated residuals share through level flags or banks, raced over the inline tree under a command bound. Deleting the whole race (the inline tree alone) costs +18.4% at n=8, +17.2% at n=10 and +15.9% at n=12 on random tables; at n=12, parity +4,237.6%, half-constant +2,417.5%, majority +1,026.8%"
+
+[ablations.bank_plans]
+saving = 4.3
+arity = 12
+verdict = "kept: the two repeated_bank plans and the mixed bank are the sharing family's working member. Race marginal +3.7 / +3.8 / +4.3% on random tables at n=8/10/12; on classes at n=10/12, majority +83.0 / +159.2%, parity +24.0 / +21.4%, ignored classes +16.6..+19.7%, half-constant +24.2 / +21.9%"
+
+[ablations.one_residual_form]
+saving = 0.0
+arity = 12
+verdict = "candidate: the second tree built over the single repeated_block residual and entered in the form race. Its deletion cost is 0.00% on every corpus measured (1,000 random tables at n=8/10/12, both seed sets, and all 28 structured tables): the banks cover its ground, and it costs a full extra tree build on every table. It is the race's only single-block form, but no measured table is one where it wins. See RETIREMENT-CANDIDATES entry 29"
+
+[ablations.levels_plan]
+saving = 0.0
+arity = 12
+verdict = "removed 2026-10-20 (retirement candidate #30): the repeated_blocks plan entered in the form race on every table. Audit deletion cost was 0.00% on every corpus except mosaic at n=10 (+1.02%). Re-priced 2026-10-20 on fleet-canonical classes: fleet-corpus tiled +5.09% at n=8 (one table), +0.00% at n=10 and +0.83% at n=12; fleet tiled draws +0.30/+0.27/+0.14% at n=8/10/12; random and all other classes +0.00%. At the two largest arities it earns ~nothing, and its one real win fades with arity. The -77% parity figure once credited to it in the generator's comment belongs to the mixed bank (F25)"
+
+[ablations.restart_move]
+saving = 0.05
+arity = 12
+verdict = "kept: _move emits the shorter of walking to the target and a d-restart, per move; a spelling choice that cannot lose. +0.59% at n=8, +0.18% at n=10 and +0.05% at n=12 on random tables; on OR +26.8% at n=10 and +29.6% at n=12. Its comment figures reproduce (OR shares 17.77 / 18.90 / 20.12% at n=7/8/9 against the claimed 17.8/18.9/20.1; random 0.6% at n=8)"
+
+[ablations.command_bound]
+saving = 0.0
+arity = 12
+verdict = "recorded: forms over the command bound (3n^2+3)//4 + 20n + 4 are excluded from the race. Deleting the bound changes no output on any corpus measured (0.00% everywhere, parity and majority included): it never binds as shipped. It is the execution formula's premise, not a size mechanism"

@@ -551,111 +551,17 @@ def test_disjoint_and_interleaved_groups_choose_bounded_routes(
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("ignored", [0, 1, 2])
-def test_parallel_lanes_consume_ignored_prefix_inputs(ignored: int) -> None:
+def test_seventeen_input_mosaic_executes() -> None:
     import random
 
-    from esolangs.languages.dig.generator import _dig_parallel_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
-    table = "".join(blocks[int(bit)] for bit in "1230301230121230") * (1 << ignored)
-    n = 10 + ignored
-    program = _dig_parallel_shared(table, n)
-    assert program is not None
-    rows = program.splitlines()
-    assert (len(rows), max(map(len, rows)), len(program)) == (69, 75, 4479 - ignored)
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 292:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, n)
-        worst = max(worst, steps)
-    assert worst == 292
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("second", ["2301012301232301", "1230301230121230"[::-1]])
-def test_parallel_rows_keep_vertical_leaf_stamps_rigid(second: str) -> None:
-    import random
-
-    from esolangs.languages.dig.generator import _dig_parallel_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
-    table = "".join(blocks[int(bit)] for bit in "1230301230121230" + second)
-    program = _dig_parallel_shared(table, 11)
-    assert program is not None
-    rows = program.splitlines()
-    assert (len(rows), max(map(len, rows)), len(program)) == (151, 72, 9716)
-    worst = 0
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "011b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 384:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 11)
-        worst = max(worst, steps)
-    assert worst == 375
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("constant", range(4))
-@pytest.mark.parametrize("value", ["0", "1"])
-def test_parallel_gutters_preserve_constant_leaf_reads(
-    constant: int, value: str
-) -> None:
-    import random
-
-    from esolangs.languages.dig.generator import _dig_parallel_shared
-    from esolangs.languages.dig.interpreter import _Machine
-    from esolangs.runtime.io import ScriptedIO
-
-    rng = random.Random(2026)
-    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
-    blocks[constant] = value * 64
-    table = "".join(blocks[int(bit)] for bit in "1230301230121230")
-    program = _dig_parallel_shared(table, 10)
-    assert program is not None
-    rows = program.splitlines()
-    for row, expected in enumerate(table):
-        io = ScriptedIO("\n".join(format(row, "010b")) + "\n")
-        machine = _Machine(rows, io)
-        steps = 0
-        while not machine.halted and steps <= 312:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert (io.getvalue(), io.reads) == (expected, 10)
-
-
-@pytest.mark.medium
-def test_parallel_gutter_refuses_a_tenth_armed_cell() -> None:
-    import random
-
-    from esolangs.languages.dig.generator import _dig_parallel_shared
     from esolangs.languages.dig.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
     base = "".join(blocks[int(bit)] for bit in "1230301230121230")
-    # Seven ignored inputs at the horizontal branch arm fill its counter;
-    # the added gutter would require ten commands from a single digit.
+    # A four-class mosaic seen through seven ignored prefix inputs.
     table = "".join(base[((row >> 15) << 8) | (row & 255)] for row in range(1 << 17))
-    assert _dig_parallel_shared(table, 17) is None
     rows = boolean.dig(table).splitlines()
     for row in (0, table.index("1"), len(table) - 1):
         io = ScriptedIO("\n".join(format(row, "017b")) + "\n")
@@ -737,7 +643,7 @@ def test_constant_columns_use_grid_area_and_read_every_input(
     assert max(map(len, rows)) == 1
     assert len(rows) < len(previous) * max(map(len, previous))
     if n == 8:
-        assert (len(rows), len(previous) * max(map(len, previous))) == (16, 51)
+        assert (len(rows), len(previous) * max(map(len, previous))) == (16, 32)
     for row in range(1 << n):
         io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
         machine = _Machine(rows, io)
@@ -928,3 +834,29 @@ def test_compaction_keeps_the_line_between_a_reader_and_a_digit(axis: int) -> No
     held = [(at(0, 0), at(0, 1), frozenset({at(4, 0)}))]
     assert _compaction_lines(cells, held, axis) == [0, 4, 8]
     assert _compaction_lines({**cells, at(4, 0): "#"}, reads, axis) == [0, 4, 8]
+
+
+@pytest.mark.medium
+def test_shared_leaves_around_constant_spans_keep_the_execution_bound() -> None:
+    """A shared layout's constant read rows count toward the 220-step ledger."""
+    from esolangs.languages.dig.generator import _dig_lane_shared
+    from esolangs.languages.dig.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    leaf = "01101001" * 8
+    table = "0" * 64 + leaf + leaf + "0" * 64
+    program = _dig_lane_shared(table, 8)
+    assert program is not None
+    rows = program.splitlines()
+    worst = 0
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, "08b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= 220:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, 8)
+        worst = max(worst, steps)
+    assert worst <= 220

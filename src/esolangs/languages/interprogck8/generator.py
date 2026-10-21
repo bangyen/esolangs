@@ -27,10 +27,11 @@ on the line the zeroed 0 walk passes through, onto one child.
 Size:
     O(T) at every arity: a node's read gap, dismount and stop gap span at
     most 82, 85 and 2 * 82 lines, a leaf's scan 66, and no line exceeds the
-    65-character read; a dense table is 210 lines an entry from ``n = 8`` to
-    17.  Rungs on live lanes make characters per entry creep with ``n`` (550
-    at ``n = 8``, 785 at 17), under the corridor filling every odd line,
-    1,207 at both.  Each flight is laid once and a printer lane once from its
+    65-character read; a dense table is 169 lines an entry from ``n = 8`` to
+    12.  Rungs on live lanes make characters per entry creep with ``n``
+    (550 at ``n = 8`` to 594 at 12 on parity), under the corridor filling
+    every odd line the walks cross, 719--761 at ``n = 8``.  Each flight is
+    laid once and a printer lane once from its
     earliest launch, so building is O(T); a run visits each line at most once,
     since every jump is forward.
     n=10 random 1847: 532,117 chars, n=10 parity: 586,697 chars,

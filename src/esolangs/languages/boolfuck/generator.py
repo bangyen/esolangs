@@ -24,9 +24,9 @@ Decisions:
     Dropping the single-block, bank and mixed-bank candidates costs at most
     6.2% over 200 tables per class at n=9 and n=12 (jointly); dropping the
     per-level blocks form loses 19.8% (noisy affine), so it stays.
-    Shared blocks past the 2n^2 + 27n + 8 command bound are refused: on
-    B C C B tables (8 seeds) that costs 22.9% at n=7 and 9.8% at n=8, so a
-    repeated table can build larger than a distinct one.
+    Shared blocks past the 2n^2 + 27n + 8 command bound are refused: a
+    repeated table can build larger than a distinct one
+    ([ablations.command_bound]).
 """
 
 from typing import Literal
@@ -261,9 +261,9 @@ def normal_gates(table: str) -> str | None:
     # give 2*n*n + 25*n + 26, at most the existing bound exactly when n>=9;
     # below it each table's count is checked.  Native extreme paths attain it
     # at n=9 (413) and n=16 (938).  Workspace holds from n=4
-    # (docs/proofs/boolfuck-gates.md); gates save 6.6% at n=5, under the 10%
-    # bar, and 9.6%, 13.1%, 23.3% at n=6, 7, 8 (40 tables).
-    if n < 6:
+    # (docs/proofs/boolfuck-gates.md), so the race starts there: the gates
+    # clear the bar from n=6 ([ablations.normal_gates]) and never lose below.
+    if n < 4:
         return None
     x = 2 * (n - 2)
     kinds = {_normal(table[row : row + 4])[0] for row in range(0, len(table), 4)} - {
@@ -294,7 +294,6 @@ def normal_gates(table: str) -> str | None:
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
     programs = [_boolfuck_tree(truth_table)[0]]
-    # normal_gates saves 9.2% of chars at n=7 and 21.2% at n=8 (40 random tables).
     for candidate in (affine_stream(truth_table), normal_gates(truth_table)):
         if candidate is not None:
             programs.append(candidate)

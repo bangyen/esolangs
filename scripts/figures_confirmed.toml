@@ -1,0 +1,74 @@
+# Decisions: figures re-measured and found to hold; see stale_figures.py.
+
+["abcdirection/generator.py"]
+"replaced (9,983,952 cells at ``n = 6``)." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["addsubjump/generator.py"]
+"Interning equal packed cells saves 0.00% at n=8: a running operand reads" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["alight/generator.py"]
+"# 2 chars: 0.47% at n=8, retired.)" = "c89c9d061f41050be04083635c299840931049cf"
+"# tables: without the guard n=8 at width 300 is 83% larger (0% at 50-160" = "c89c9d061f41050be04083635c299840931049cf"
+
+["befunge/generator.py"]
+"# Single-digit column counts save twelve literal cells (10.5% of area at" = "c89c9d061f41050be04083635c299840931049cf"
+
+["bitdeque/generator.py"]
+"65,536 tables, -49.3%, none longer.  A linear discard lookup raced the tree" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"and won on 0 of 215 tables (random, parity, and, majority; n=5..9): retired." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["blindfolded_arithmetic/generator.py"]
+"and accumulator fit beside ``i``; base 2 costs 9,851 chars at n=10" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["brainfuck/generator.py"]
+"Flags cut n=10 sparse from 2,646 to 754 chars; folding and shared output" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"cut n=10 XOR from 77,939 to 18,495; the affine stream cut n=16 parity" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"from 672,691 to 1,186." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["brainif/generator.py"]
+"The residual DAG cuts the three-input total from 319,576 to 291,524" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"characters and steps from 134,984 to 74,440.  The looped levels follow" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["codesick/generator.py"]
+"An ignored input keeps a delete node per residual: 0.52x a real one at n=8." = "7944da977cabc44eae442618bde864ff14daca83"
+
+["collatz_multiverse/generator.py"]
+"code, and the empty cell on top code, lose or fall under the 10% bar" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["cvnc/generator.py"]
+"Hoisting the reads into the deque to test in any order saves 4.87% at n=8," = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"under the 10% bar, and is not built." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["dig/generator/__init__.py"]
+"alone (seeded n=7/8/9 area, one half constant: -14.7% / -20.0% / -25.4%;" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"class to one six-input body; full-input parity uses 720 cells and 227" = "7944da977cabc44eae442618bde864ff14daca83"
+"commands at n=9, four-class n=10 controls 1,152 cells and 291 commands." = "7944da977cabc44eae442618bde864ff14daca83"
+"execution ledger (n=8 A B B A: 1,155 cells, 208 commands); groups whose" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["dimensional/generator.py"]
+"characters, 2.2% at n=8: not worth the special case." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["minsky_swap/generator.py"]
+"of addresses.  A zero tail stays: trimming it failed 60/134." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["modulous/generator.py"]
+"read be the counter saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"the 10% bar." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["rotfuck/generator.py"]
+"a cell against 2.5 for an entry." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["slashes/generator.py"]
+"undecoded (116 of 126 wrong)." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["sstack/generator/__init__.py"]
+"64-state n=16 control shrinks 23,897 -> 20,360 characters (-14.80%), with" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"8,192 old/new native rows." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["super_snusp/generator.py"]
+"# (72%) on these five." = "c89c9d061f41050be04083635c299840931049cf"
+"# only arity: 723 vs 907 characters over all 16 tables (20.3%), 72 vs 256" = "c89c9d061f41050be04083635c299840931049cf"
+
+["three_x/generator.py"]
+"(at most 5 characters each) and is within 1.4% of that greedy loop on" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"emission.  It gives up the 46 of 65,536 n=4 tables a greedy trial found" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"

@@ -1,4 +1,4 @@
-"""Container's tree route (``n <= 6``) and its wide threshold route."""
+"""Container's tree route and its threshold route."""
 
 import itertools
 import random
@@ -177,8 +177,10 @@ class TestContainer:
     def test_only_dependent_levels_are_tested(self) -> None:
         """A level whose halves agree is read but never tested."""
 
+        from esolangs.languages.container.generator import _container_tree
+
         def tests(table: str) -> int:
-            program = boolean.container(table)
+            program = _container_tree(table, share=True)
             return program.count("IN>=") + program.count(">=IN")
 
         assert tests("00001111") == 1  # the first input alone
@@ -201,12 +203,15 @@ class TestContainer:
                     _container_tree(table, prune=False)
                 )
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.container(t)) for t in tables) == 110_437
+        # The threshold sum wins 215 of them: 110,437 for the tree alone.
+        assert sum(len(boolean.container(t)) for t in tables) == 82_208
         assert sum(len(_container_tree(t, prune=False)) for t in tables) == 154_833
 
     def test_no_line_restores_what_nothing_reads(self) -> None:
         """Unsigned deltas, no leaf decay, no output restore, a static ``OUT``."""
-        program = boolean.container("01101001")
+        from esolangs.languages.container.generator import _container_tree
+
+        program = _container_tree("01101001", share=True)
         assert "+" not in program
         assert "OUT=48:" in program
         # Parity's tree: only the root and the nodes above the leaves decay,
@@ -233,14 +238,14 @@ class TestContainerSharing:
 
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
-        """Return unshared and shipped character totals."""
+        """Return unshared and shared tree character totals."""
         from esolangs.languages.container.generator import _container_tree
 
         before = after = 0
         for table in tables:
             plain = len(_container_tree(table))
-            shipped = len(boolean.container(table))
-            before, after = before + plain, after + shipped
+            shared = len(_container_tree(table, share=True))
+            before, after = before + plain, after + shared
         return before, after
 
     def test_three_input_total(self) -> None:
@@ -255,8 +260,10 @@ class TestContainerSharing:
 
     def test_a_relay_feeds_the_other_side_s_copy(self) -> None:
         """Four-input parity relays its repeated nodes and runs every row."""
+        from esolangs.languages.container.generator import _container_tree
+
         table = "0110100110010110"
-        program = boolean.container(table)
+        program = _container_tree(table, share=True)
         assert len(program) == 820  # 1,136 unshared
         kills = [line for line in program.splitlines() if line.endswith(">=1")]
         assert sum(line.startswith("-2 ") and "T" not in line for line in kills) == 4
@@ -297,20 +304,16 @@ def _swept_balance(table: str, default: str) -> str:
     """The retired balance: narrow at every rule-fit and decimal-budget threshold."""
     from itertools import pairwise
 
-    from esolangs.generation.helpers import _validate_truth_table, grid_width
+    from esolangs.generation.helpers import grid_width
     from esolangs.generation.wrap import balance_score
     from esolangs.languages.container.generator import (
-        _TREE_MAX_N,
         _container_threshold,
         _narrow_rule_parts,
         _narrow_rules,
     )
 
-    n = _validate_truth_table(table)
     span = grid_width(default)
-    programs = [default]
-    if n <= _TREE_MAX_N:
-        programs.append(_container_threshold(table))
+    programs = [default, _container_threshold(table)]
     thresholds = {1}
     for program in programs:
         boundaries = {1, span}

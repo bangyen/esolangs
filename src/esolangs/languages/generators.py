@@ -37,6 +37,8 @@ from esolangs.languages.bitwise_cyclic_tag.generator import (
     LANGUAGE as _BITWISE_CYCLIC_TAG_LANGUAGE,
 )
 from esolangs.languages.bitwise_cyclic_tag.generator import bitwise_cyclic_tag
+from esolangs.languages.bleh.generator import LANGUAGE as _BLEH_LANGUAGE
+from esolangs.languages.bleh.generator import bleh
 from esolangs.languages.blindfolded_arithmetic.generator import (
     LANGUAGE as _BLINDFOLDED_ARITHMETIC_LANGUAGE,
 )
@@ -97,6 +99,8 @@ from esolangs.languages.forbin.generator import LANGUAGE as _FORBIN_LANGUAGE
 from esolangs.languages.forbin.generator import forbin
 from esolangs.languages.fractran.generator import LANGUAGE as _FRACTRAN_LANGUAGE
 from esolangs.languages.fractran.generator import fractran
+from esolangs.languages.freestajlo.generator import LANGUAGE as _FREESTAJLO_LANGUAGE
+from esolangs.languages.freestajlo.generator import freestajlo
 from esolangs.languages.grapheme.generator import LANGUAGE as _GRAPHEME_LANGUAGE
 from esolangs.languages.grapheme.generator import grapheme
 from esolangs.languages.home_row.generator import LANGUAGE as _HOME_ROW_LANGUAGE
@@ -165,6 +169,8 @@ from esolangs.languages.smu.generator import LANGUAGE as _SMU_LANGUAGE
 from esolangs.languages.smu.generator import smu
 from esolangs.languages.sstack.generator import LANGUAGE as _SSTACK_LANGUAGE
 from esolangs.languages.sstack.generator import sstack
+from esolangs.languages.stisp.generator import LANGUAGE as _STISP_LANGUAGE
+from esolangs.languages.stisp.generator import stisp
 from esolangs.languages.streetcode.generator import LANGUAGE as _STREETCODE_LANGUAGE
 from esolangs.languages.streetcode.generator import streetcode
 from esolangs.languages.subleq.generator import LANGUAGE as _SUBLEQ_LANGUAGE
@@ -209,6 +215,7 @@ _LANGUAGES = (
     _BIT_TILDE_LANGUAGE,
     _BITDEQUE_LANGUAGE,
     _BITWISE_CYCLIC_TAG_LANGUAGE,
+    _BLEH_LANGUAGE,
     _BLINDFOLDED_ARITHMETIC_LANGUAGE,
     _BOOLFUCK_LANGUAGE,
     _BRAINFUCK_LANGUAGE,
@@ -236,6 +243,7 @@ _LANGUAGES = (
     _FOR_THORN_LANGUAGE,
     _FORBIN_LANGUAGE,
     _FRACTRAN_LANGUAGE,
+    _FREESTAJLO_LANGUAGE,
     _GRAPHEME_LANGUAGE,
     _HOME_ROW_LANGUAGE,
     _HOT_LANGUAGE,
@@ -268,6 +276,7 @@ _LANGUAGES = (
     _SMALLFUCK_LANGUAGE,
     _SMU_LANGUAGE,
     _SSTACK_LANGUAGE,
+    _STISP_LANGUAGE,
     _STREETCODE_LANGUAGE,
     _SUBLEQ_LANGUAGE,
     _SUFFOLK_LANGUAGE,
@@ -300,6 +309,7 @@ __all__ = [
     "bit_tilde",
     "bitdeque",
     "bitwise_cyclic_tag",
+    "bleh",
     "blindfolded_arithmetic",
     "boolfuck",
     "brainfuck",
@@ -327,6 +337,7 @@ __all__ = [
     "for_thorn",
     "forbin",
     "fractran",
+    "freestajlo",
     "grapheme",
     "home_row",
     "hot",
@@ -359,6 +370,7 @@ __all__ = [
     "smallfuck",
     "smu",
     "sstack",
+    "stisp",
     "streetcode",
     "subleq",
     "suffolk",

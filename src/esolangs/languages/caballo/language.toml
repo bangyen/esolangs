@@ -23,3 +23,16 @@ workspace = "poly n: at most 4n² + 16n·bl(L) + 96 bits: a sum frame's base a l
 
 [catalogue]
 sharing_exempt = "no names or jumps: code runs once per place it is written"
+
+[ablations]
+audited = "2026-10-20"
+
+[ablations.equal_halves_skip]
+saving = 12.44
+arity = 12
+verdict = "kept: canonical, exempt. A node whose halves agree pops its input untested and recurses once. Branching to both children instead costs +12.51% at n=10 and +12.44% at n=12 on random tables (second seed set +12.47 / +12.38%), and at n=10/12: one ignored input +17.36 / +13.90%, two +8.19 / +11.80%, three +4.85 / +10.22%, half-constant +9.60 / +12.66%. Parity, AND, OR and the constants measure 0.00% (their agreeing nodes are constant subtables, taken by the fold)"
+
+[ablations.constant_fold]
+saving = 0.0
+arity = 12
+verdict = "recorded: canonical, exempt, with no separable price in the shipped context. Removing the fold while the skip stays is byte-identical on every table tried (124 seeded and named tables at n=6/10): a constant subtable's skip chain emits the fold's own string, one p per level plus the answer char. The fold's value is joint with the skip: the plain build (neither) costs +53.10% at n=10 and +53.07% at n=12 on random tables, and on constant tables +143,120.00 / +477,650.00%, AND +7,600.54 / +24,296.17%, majority +110.29 / +125.83%"

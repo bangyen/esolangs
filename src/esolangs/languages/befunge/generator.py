@@ -5,8 +5,8 @@ with Horner's rule, and ``g`` fetches the answer from a table the instruction
 pointer never walks: one cell per entry through ten inputs, six per cell above.
 
 Size:
-    O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 64
-    chars, n=10 random 1847: 1,118 chars, n=13 random 1847: 1,545 chars.
+    O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 65
+    chars, n=10 random 1847: 1,115 chars, n=13 random 1847: 1,545 chars.
 
 Raises:
     GeneratorCapError: more than thirteen inputs, past the 80x25 grid.
@@ -41,6 +41,13 @@ MAX_INPUTS = 13
 _BOUND_NARROW = 22
 _BOUND_WIDE = 34
 _BOUND_PACKED = 64
+
+#: Projected-count cap for the natural layout: a table whose projection
+#: onto its essential inputs has at most this many entries is laid out
+#: at its natural width instead of the grid's 80.  It saves area at
+#: counts 1 and 2 and loses at counts 4 and 8, so the wide layout keeps
+#: every larger table ([ablations.sqrt_width_layout]).
+_NATURAL_LAYOUT_MAX_COUNT = 2
 
 
 def _check_cap(n: int) -> None:
@@ -84,12 +91,61 @@ def _header(reads: str, width: str, offset: str) -> str:
     )
 
 
+def _natural_befunge(truth_table: str) -> str:
+    """Return a Befunge grid at the table's natural width.
+
+    The pre-#20 default build, kept whole for the smallest
+    projections: a straight header over a power-of-two table width
+    near ``sqrt(T)``; an over-wide header folds
+    (:func:`_fold_header`).
+    """
+    n = _validate_truth_table(truth_table)
+    _check_cap(n)
+    # An ignored input is read and popped; the table indexes the rest.
+    weights, table = input_weights(truth_table, n)
+    reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
+    count = len(table)
+    # The natural grid: a straight header over a power-of-two table width near
+    # ``sqrt(T)``; an over-wide header folds (:func:`_fold_header`).
+    shift = count.bit_length() // 2
+    table_width = 1 << shift
+    # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
+    build_width = "1" + "2*" * shift
+    rows = [_header(reads, build_width, "1")]
+    rows.extend(
+        table[base : base + table_width] for base in range(0, count, table_width)
+    )
+    plain = "\n".join(rows)
+    if max(map(len, rows)) <= 80 and len(rows) <= 25:
+        return plain
+    # At most two decimal digits per coordinate on the 80x25 torus.
+    # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
+    # Single-digit column counts save twelve literal cells (10.5% of area at
+    # n=6, widths 4-8; unreachable at n>=7); the narrow bound applies only
+    # when it proves that the count remains single-digit.
+    header_bound = len(reads) + _BOUND_NARROW
+    columns = max(80, 4, _min_columns(count, header_bound))
+    if columns >= 10:
+        header_bound = len(reads) + _BOUND_WIDE
+        columns = min(80, max(80, 4, _min_columns(count, header_bound)))
+    header_rows = _header_rows(header_bound, columns)
+    literal = _literal(columns)
+    header = _header(reads, literal, _literal(header_rows))
+    folded = _fold_header(header, columns, header_rows)
+    folded.extend(table[base : base + columns] for base in range(0, count, columns))
+    return "\n".join(folded)
+
+
 def befunge(truth_table: str, width: int | None = None) -> str:
     """Return a Befunge grid computing ``truth_table``, at most ``width`` wide."""
     n = _validate_truth_table(truth_table)
     _check_cap(n)
     # An ignored input is read and popped; the table indexes the rest.
     weights, table = input_weights(truth_table, n)
+    if width is None and len(table) <= _NATURAL_LAYOUT_MAX_COUNT:
+        # The smallest projections take the natural layout (see the
+        # cap's note); an explicit width keeps the wide build.
+        return _natural_befunge(truth_table)
     reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
     if len(table) > 1 << 10:
         return _packed_befunge(table, reads, width)
@@ -101,12 +157,23 @@ def befunge(truth_table: str, width: int | None = None) -> str:
             header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
             return "\n".join(header)
     count = len(table)
-    # The natural grid: a straight header over a power-of-two table width near
-    # ``sqrt(T)``; an over-wide header folds (:func:`_fold_header`).
-    shift = count.bit_length() // 2
-    table_width = 1 << shift
-    # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
-    build_width = "1" + "2*" * shift
+    if width is None:
+        # The default build lays the table at the grid's width: at the
+        # natural sqrt width the header sets the longest row while the
+        # narrow table multiplies the row count, costing 2.5-4.1x the
+        # wide layout's area at n=6..8 (retirement candidate 20).  An
+        # explicit width still tries the natural layout first.
+        table_width = 80
+        build_width = _literal(80)
+    else:
+        # The natural grid: a straight header over a power-of-two table
+        # width near ``sqrt(T)``; an over-wide header folds
+        # (:func:`_fold_header`).
+        shift = count.bit_length() // 2
+        table_width = 1 << shift
+        # ``1`` then ``2*`` shift times is ``2**shift``; both are single
+        # commands.
+        build_width = "1" + "2*" * shift
     rows = [_header(reads, build_width, "1")]
     rows.extend(
         table[base : base + table_width] for base in range(0, count, table_width)
@@ -126,8 +193,17 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     if columns >= 10:
         header_bound = len(reads) + _BOUND_WIDE
         columns = min(80, max(width, 4, _min_columns(count, header_bound)))
-    header_rows = _header_rows(header_bound, columns)
     literal = _literal(columns)
+    header = _header(reads, literal, "1")
+    if len(header) <= columns:
+        # The header fits on one row: folding it over two rows adds a
+        # full row of area and buys nothing at n=9/10, where 78 header
+        # cells fit the 80 columns ([ablations.header_folding]).  Narrower
+        # widths still fold below.
+        flat = [header]
+        flat.extend(table[base : base + columns] for base in range(0, count, columns))
+        return "\n".join(flat)
+    header_rows = _header_rows(header_bound, columns)
     header = _header(reads, literal, _literal(header_rows))
     folded = _fold_header(header, columns, header_rows)
     folded.extend(table[base : base + columns] for base in range(0, count, columns))

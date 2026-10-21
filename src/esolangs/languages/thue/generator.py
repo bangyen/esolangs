@@ -19,11 +19,13 @@ Size:
 
 Decisions:
     A named repeated block, expanded before lookup, saved 0% on random tables
-    and at most 6% at n=14 on block-repeating ones, so it is gone.
+    and 7.9% at n=12 on exact repeats of a 2^10-row block, but 10.2% / 11.5%
+    at n=14 with 2^11 / 2^12-row blocks, so it races the lookup.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from math import isqrt
 from string import ascii_letters
 
@@ -33,6 +35,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     grid_width,
     read_at,
+    subtree_ids,
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
@@ -121,9 +124,14 @@ def thue(truth_table: str, width: int | None = None) -> str:
     out at the rest; the queue's five rules lose below that saving.  Plain
     and queued layouts compete on every path, nearest the width first.
     """
-    _validate_truth_table(truth_table)
+    n = _validate_truth_table(truth_table)
     tables = _tables(truth_table)
     layouts = [_thue_layout(*layout, width) for layout in tables]
+    layouts.extend(
+        shared
+        for layout in tables
+        if (shared := _shared_layout(*layout, n)) is not None
+    )
     limit = _width_limit(width)
 
     def overshoot(layout: str) -> int:
@@ -271,6 +279,56 @@ def _alphabet(rounds: str | None, extra: tuple[str, ...]) -> str:
     if extra:
         return _FOLD_NAME_ALPHABET
     return _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
+
+
+def _shared_layout(
+    table: str, rounds: str | None, extra: tuple[str, ...], n: int
+) -> str | None:
+    """Expand one named aligned block through a unique frontier before lookup."""
+    entries = _thue_entries(table)
+    if len(entries) < 2:
+        return None
+    ids = subtree_ids(entries.translate(str.maketrans("ab", "01")))
+    best: tuple[int, int, int] | None = None
+    saved = 0
+    for depth, layer in enumerate(ids[:-1]):
+        span = 1 << (len(ids) - 1 - depth)
+        counts = Counter(layer)
+        for index, state in enumerate(layer):
+            copies = counts[state]
+            saving = (copies - 1) * span - copies - 31
+            if state >= 2 and copies > 1 and saving > saved:
+                best, saved = (index * span, span, copies), saving
+    if best is None:
+        return None
+    row, span, copies = best
+    length = len(entries)
+    # Expand, then return R across the expanded table. Lookup itself costs
+    # at most 2L+8n+32, including queued reads and the constant-half rules.
+    startup = length + (length - copies * span) + copies + 1
+    if (
+        2 * length + 8 * n + 32 + startup > 2 * (1 << n) + 2 * n - 1
+        or length + n + 8 > 1 << n
+    ):
+        return None
+    alphabet = _alphabet(rounds, extra)
+    front, name = alphabet[0], alphabet[1]
+    body = entries[row : row + span]
+    encoded = "".join(
+        name if entries[i : i + span] == body else entries[i : i + span]
+        for i in range(0, length, span)
+    )
+    base = _QUEUED_RULES if rounds is not None else _RULES
+    rules = [
+        *base.splitlines()[:-1],
+        *extra,
+        f"{front}a::=a{front}",
+        f"{front}b::=b{front}",
+        f"{front}{name}::={body}{front}",
+        f"{front}E::=RE",
+        "::=",
+    ]
+    return "\n".join([*rules, "L" + (rounds or "") + front + encoded + "E"])
 
 
 def _thue_entries(truth_table: str) -> str:

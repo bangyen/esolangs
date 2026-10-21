@@ -102,7 +102,7 @@ def bits_of(value: int) -> str:
 # keep a trait nobody rechecked.  The duplication is the check.
 #
 # Parsing the interpreters for the shape instead does not work either: the
-# dump sites are uniform (all eight guard on the halt inside ``step``) but
+# dump sites are uniform (each guards on the halt inside ``step``) but
 # the *timing* is not visible in that shape -- A Painter Ant has the same
 # guarded ``step`` and is deliberately absent here, because ``interrupt``
 # is external and its ``halted`` is always False.  The sweep also needs
@@ -119,6 +119,7 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
         "LaserFuck",
         "ArrowQueue",
         "Back",
+        "Stisp",
     }
 )
 

@@ -11,9 +11,10 @@ backlinks = 2
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry"
-scaling = "linear: nine rows of street, ~1.8T columns"
-execution = "linear: worst 3T + 110n + 106 steps for n = 6, 7, then 4T + 14n + 650: one zero"
-workspace = "T log T: worst nT + 2n + 25 + bl(2T+57+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3)"
+scaling = "linear: nine rows of street by ~1.8T columns, or a smaller tree"
+execution = "linear: worst 290n + 312 + H + W steps from n = 2 for an H×W tree, else F"
+definitions = ["F = 3T + 110n + 106 to n = 7, then 4T + 14n + 650: the flat street"]
+workspace = "T log T: at most nT + 2n + 25 + bl(2T+57+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3)"
 
 [generator_sizes]
 "00000001" = { commands = 1242, commands_by_row = { "0" = 1224, "1" = 1224, "2" = 1224, "3" = 1224, "4" = 1231, "5" = 1231, "6" = 1238, "7" = 1242 }, source_units = 683 }
@@ -57,6 +58,13 @@ verdict = "kept"
 saving = 42.4
 arity = 5
 verdict = "kept"
+
+[ablations.flat_tree_race]
+saving = 54.4
+arity = 8
+seed = "random.Random(n)"
+tables = 20
+verdict = "kept 2026-10-20: from n=6 the tree races the flat street by area, drawn only when its floor (4 rows a leaf by the setup width) is below flat's. Random tables unchanged; by area at n=6..10, and 51-74%, one zero 57-83%, top-3-input tables 17-42%, top-2 9-39%, constants 28% at n=6 falling to 0% by n=9. Mixed sample 9.4% / 3.2% at n=6 / 8"
 
 [ablations.shared_kerb]
 saving = 22.2

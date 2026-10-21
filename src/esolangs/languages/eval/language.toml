@@ -27,3 +27,16 @@ folding_constant_local = "_eval_ordered"  # one projected table entry
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 96.7
+arity = 12
+verdict = "kept: canonical, exempt. The staged literal is the table read at the essential inputs (a constant's is one bit, which is also the fold); an ignored input is drained with ~;~ and no halving step runs for it. Staging the full table instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +90.05 / +96.70%, two +247.92 / +281.54%, three +501.66 / +622.15%, a half-constant table +3412.90 / +11494.44%"
+
+[ablations.constant_drain_skip]
+saving = 138.5
+arity = 12
+verdict = "kept: a constant's ignored inputs are not drained — no halving step swaps back to the read stack, so the staged inputs sit until the final pop. Draining them anyway costs +136.36% at n=10 and +138.46% at n=12 on constant tables (2n+2 chars against 5n+2). Part of the canonical constant fold"

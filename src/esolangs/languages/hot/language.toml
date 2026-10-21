@@ -25,3 +25,21 @@ workspace = "linear: at most 24L bits: at most three live copies of the term, 8 
 sharing_exempt = "no names: binding a repeated subtree by abstraction adds S and K to every pair above it"
 folding_ignored_local = "_tree"  # equal halves fold to K of one half
 folding_constant_local = "_tree"  # a constant table folds to K chains over one leaf
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.equal_halves_fold]
+saving = 49.3
+arity = 12
+verdict = "kept: canonical, exempt. Equal halves emit K half instead of the pair node; this one fold is also the constant fold and the ignored-input drop, whose halves agree at that level. Removing it costs +46.72% at n=10 and +49.31% at n=12 on random tables (second seed set +46.65 / +48.98%) and at n=10/12: constants +2011.70 / +6855.07%, AND and OR +1520.11 / +5063.13%, three ignored inputs +482.61 / +608.06%, half-constant +181.35 / +204.40%, sparse +145.28 / +158.96%; parity 0.00% (no equal halves above the leaves). The plain build (this fold and the identity leaf both removed) costs +62.69 / +66.12% on random tables"
+
+[ablations.identity_leaf]
+saving = 14.2
+arity = 12
+verdict = "kept: the (hi, lo) == (1, 0) leaf is spelled 0K instead of the pair node. Spelling the pair node instead costs +13.46% at n=10 and +14.24% at n=12 on random tables, +24.48 / +25.48% on parity, whose bottom pairs are all the identity or its mirror, and +22.34 / +23.50% on majority"
+
+[ablations.minimal_grouping]
+saving = 8.2
+arity = 12
+verdict = "kept: a leaf argument goes bare instead of parenthesized. Grouping every argument costs +7.74% at n=10 and +8.15% at n=12 on random tables, +8.45 / +9.06% on one-ignored tables; the share is arity-stable, not a fixed amount"

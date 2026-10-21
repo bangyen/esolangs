@@ -53,7 +53,7 @@ def test_fractran_shares_equal_subtables() -> None:
     # A root, two nodes a level below it, two leaves: two fractions a node.
     assert len(parity.split()) - 1 == 2 * (2 * 5 - 1) + 2
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(len(boolean.fractran(t)) for t in tables) == 21_674
+    assert sum(len(boolean.fractran(t)) for t in tables) == 19_678
 
 
 def _fractran_steps(template: str, n: int) -> int:

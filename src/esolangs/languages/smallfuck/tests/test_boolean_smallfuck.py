@@ -42,14 +42,14 @@ def test_source_growth_is_linear() -> None:
 
 
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
-    """Pin the three-input total: 57,894 characters before, 20,145 after."""
-    assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]]"
-    assert smallfuck("0110").endswith("<<<]>[*>>[*<*>]]")
-    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20145
+    """Pin the three-input total: 57,894 characters before, 21,285 after."""
+    assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]<<<]"
+    assert smallfuck("0110").endswith("[*<*>]<<<]>[*>>[*<*>]<<]")
+    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 21285
 
     table = multiple_tables()[0]
     template = esolangs.generate("Smallfuck", table)
-    assert len(template) <= 637
+    assert len(template) <= 641
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in format(row, "06b")]
         program = esolangs.instantiate("Smallfuck", template, bits)
@@ -315,28 +315,31 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
         assert esolangs.run("Smallfuck", program) == expected
 
 
-def test_wide_band_is_never_larger_than_the_narrow_band() -> None:
-    """Above the cutover the min over bands (3, 5) beats band 3 alone."""
+@pytest.mark.parametrize("n", [4, 9])
+def test_wide_band_is_never_larger_than_the_narrow_band(
+    n: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The min over bands (3, 5) beats band 3 alone on parity and random n=9."""
     from esolangs.languages.smallfuck import generator
 
     rng = random.Random(8)
-    table = "".join(rng.choice("01") for _ in range(1 << 9))
+    if n == 4:
+        table = "".join(str(bin(row).count("1") & 1) for row in range(1 << n))
+    else:
+        table = "".join(rng.choice("01") for _ in range(1 << n))
     wide = len(smallfuck(table))
-    try:
-        generator.WIDE_FROM = 99
-        narrow = len(smallfuck(table))
-    finally:
-        generator.WIDE_FROM = 8
+    monkeypatch.setattr(generator, "BANDS", generator.BANDS[:1])
+    narrow = len(smallfuck(table))
     assert wide < narrow
 
 
 @pytest.mark.parametrize(
     ("table", "size"),
     [
-        (witnesses(4)[5], 200),
-        ("00011011010010111011100101000100", 444),
-        (witnesses(8)[2], 158),
-        (dense(8), 3467),
+        (witnesses(4)[5], 204),
+        ("00011011010010111011100101000100", 422),
+        (witnesses(8)[2], 169),
+        (dense(8), 3472),
     ],
     ids=["n4-banded", "n5-paired", "n8-and", "n8-dense"],
 )

@@ -314,7 +314,7 @@ def test_tighter_lattice_balance_keeps_the_area_ceiling() -> None:
             canvas.width,
         ),
     )
-    assert ceiling.width * ceiling.height == 5_116_800
+    assert ceiling.width * ceiling.height == 14_160_000
     image = esolangs.generate("Line", table, balance=True)
     assert len(image.rows) * len(image.rows[0]) <= ceiling.width * ceiling.height
     assert _evaluate("Line", image.to_png(), inputs=6) == table
@@ -410,3 +410,11 @@ def test_balance_keeps_the_shared_graph_when_it_is_squarer_and_smaller() -> None
     )
     default = esolangs.generate("Line", table)
     assert esolangs.generate("Line", table, balance=True).rows == default.rows
+
+
+def test_balanced_or_keeps_the_skipped_tree_past_five_inputs() -> None:
+    """Eight-input OR balances to 900x1880; the tested tree alone gives 3480x4440."""
+    table = "0" + "1" * 255
+    balanced = esolangs.generate("Line", table, balance=True)
+    assert (len(balanced.rows[0]), len(balanced.rows)) == (900, 1880)
+    assert _evaluate("Line", balanced, inputs=8) == table

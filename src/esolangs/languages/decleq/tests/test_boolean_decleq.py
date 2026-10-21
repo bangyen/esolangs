@@ -15,20 +15,23 @@ run_decleq = _runner("decleq")
 
 class TestDecleq:
     def test_essential_bits_get_one_chain_each(self) -> None:
-        """Each essential bit is decremented 47 times, then tested once."""
-        for table, essential in (("0110", {0, 1}), ("11110000", {0})):
+        """An essential bit is decremented 47 times, then tested at each node.
+
+        ``0110`` tests its second input under both halves of the first.
+        """
+        for table, tests in (("0110", (1, 2)), ("11110000", (1, 0, 0))):
             n = len(table).bit_length() - 1
             program = boolean.decleq(table)
             cells = [int(tok) for tok in program.split()]
             instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
             assert sum(1 for ins in instrs if ins[0] == -1) == n  # one read each
             for i in range(n):
-                rc = 18 + i
+                rc = 17 + i
                 decs = sum(1 for ins in instrs if ins[0] == ins[1] == rc)
-                assert decs == (48 if i in essential else 0), (table, i)
+                assert decs == (47 + tests[i] if tests[i] else 0), (table, i)
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant subtree above the table level is a one-instruction leaf."""
+        """A constant subtree is a one-instruction jump to a print gadget."""
         halves = "1" * 16 + "0" * 16
         parity = "".join(str(bin(row).count("1") & 1) for row in range(32))
 
@@ -36,14 +39,15 @@ class TestDecleq:
             cells = [int(tok) for tok in boolean.decleq(table).split()]
             return cells.count(-2)
 
-        # The two gadgets print; a table leaf carries one more print each.  The
-        # halves table has one essential input, routed at table level: one leaf.
-        assert outputs(halves) == 3
-        assert outputs(parity) == 4
+        # Only the two gadgets print, and no operand can be -2 (operands are
+        # addresses, read cells and the two ASCII constants), so every program
+        # carries exactly two.
+        assert outputs(halves) == 2
+        assert outputs(parity) == 2
         assert len(boolean.decleq(halves)) < len(boolean.decleq(parity))
 
     def test_size_is_linear_in_the_table(self) -> None:
-        """The per-entry cost falls with arity: no leaf names a wide address."""
+        """The per-entry cost falls with arity: shared low levels stay narrow."""
         per_entry = [len(boolean.decleq(_parity(n))) / 2**n for n in (8, 10, 12)]
         assert per_entry[0] > per_entry[1] > per_entry[2]
         assert per_entry[2] < 8
@@ -55,7 +59,7 @@ class TestDecleq:
             got = run_decleq(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
 
-    def test_folded_leaves_still_print_correctly(self) -> None:
+    def test_folded_tables_still_print_correctly(self) -> None:
         """Every folded table still prints its entry for every input."""
         for table in ("11111111", "11110000", "11001100", "00001111"):
             program = boolean.decleq(table)
@@ -83,11 +87,8 @@ class TestDecleq:
         cells = [int(tok) for tok in boolean.decleq("01101001").split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
         assert [c for a, _b, c in instrs if a == -1] == [0, 0, 0]  # the reads
-        for rc in (18, 19, 20):  # each chain, then its one branch
+        for rc in (17, 18, 19):  # each chain, then its one branch
             assert instrs.count([rc, rc, 0]) == 47
-        assert instrs.count([17, 17, 0]) == 4 + 2 + 1  # the index weights
-        tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.decleq(t)) for t in tables) == 326_910
 
 
 def test_mixed_digit_operands_share_one_grid_cell() -> None:

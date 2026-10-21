@@ -14,10 +14,10 @@ Size:
     n=16 and: 1,443,471 chars.
 
 Decisions:
-    The narrowest-reader (width=1) layout is 21.3% shorter by length at n=4
-    but doubles the area (-106.7%), so it is not tried.  A greedy input
-    order did not pay (measured in :func:`_laserfuck_pool`), so the
-    identity order is built instead.
+    The narrowest-reader (width=1) layout is 13.1% shorter by length at n=4
+    (random 1847) but triples the area (-225.9%), so it is not tried.  A
+    greedy input order did not pay (measured in :func:`_laserfuck_pool`), so
+    the identity order is built instead.
 """
 
 from functools import cache

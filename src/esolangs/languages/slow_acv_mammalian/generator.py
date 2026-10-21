@@ -101,10 +101,10 @@ _LEAF_UNIT = 8
 _FREE = len(_POOLS) + 1
 
 #: Fewest inputs at which the cell-255 chain beats the tree, by I/O modulus:
-#: parity 63845 vs 95678 characters at n=3 with I/O 255, 80245 vs 83749 at
-#: n=2 with I/O 256.  One input fewer, the tree wins: by 5.2% over every n=2
-#: table with I/O 255, and identity and NOT shrink 50-64% at n=1.
-_CHAIN_MIN_INPUTS = {255: 3, 256: 2}
+#: parity 65757 vs 95678 characters at n=3 with I/O 255, 121547 vs 191028
+#: with I/O 256.  One input fewer, the tree wins every table: 41949 vs 47427
+#: at n=2 with I/O 255, 83749 vs 87642 with I/O 256.
+_CHAIN_MIN_INPUTS = {255: 3, 256: 3}
 
 #: Leaf slot of the I/O-255 chain above :data:`_FREE` inputs: the longest
 #: leaf is seven tokens, and its weights step by 255 instead of 256, so 32

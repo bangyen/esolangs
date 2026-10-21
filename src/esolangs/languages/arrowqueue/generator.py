@@ -10,16 +10,16 @@ ignored cascade inputs.
 Size:
     O(T) rows of one (``0``) or two (``1``) lines; n=10 and: 3,447 chars (was
     5,500 at three lines a row).
-    Narrow paths drop ignored inputs for area -46.8% / -70.5% at n=8, 1 / 2
-    ignored.
+    Narrow paths drop ignored inputs for area
+    ([ablations.essential_projection]).
     Balanced, the cascade folds into side-by-side strips (``_folded``): one
     line an entry, every exit local.  Mean rendered side vs the unfolded
     candidates: 68.6 -> 26.7 at n=3, 275.6 -> 41.8 at n=6, 878.6 -> 65.9 at
     n=8; none worse over all n<=3 and 30 random tables each at n=4..8.
 
 Decisions:
-    The decision tree (``n <= 4``) was at most 3.9% smaller at n=4 and kept
-    ignored inputs.
+    The decision tree (``n <= 4``) was never smaller at n=4 (0.0% by area, 200
+    random tables) and kept ignored inputs.
 """
 
 from math import isqrt

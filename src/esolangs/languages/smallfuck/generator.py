@@ -10,12 +10,12 @@ bit).
 
 Size:
     O(T) for dense tables, about n**2 for parity and linear in n for ``and``;
-    n=10 random 1847: 11,071 chars, n=10 parity: 2,424 chars, n=10 and: 196
+    n=10 random 1847: 11,076 chars, n=10 parity: 2,426 chars, n=10 and: 213
     chars.
 
 Decisions:
     Splits stay in input order: a greedy order saves 1.1% at n=8, under the
-    10% bar.  A tiled n=16 table shrinks 1,743 -> 802 characters (-54%)
+    10% bar.  A tiled n=16 table shrinks 1,747 -> 803 characters (-54%)
     against the plain tree; the test executes it on 128 rows.  Inline text and
     the existing command bound guard the admission of deferred residuals.
 """
@@ -56,12 +56,11 @@ PAIR = ("x>>>", "*>>>")
 #: removes leaf flips at n >= 8 and the argmin then depends on the class.
 #: Measured chars an entry over 1..6: random n=3..7 best 3; random n=8..11
 #: best 5 (6.0, 10.2, 10.2, 10.0% under 3); parity n=8, 10, tiled n=10 and
-#: sparse n=10 best 3, and majority n=8 best 3 but n=10 best 4.  From
-#: ``WIDE_FROM`` the build is the smaller of the two named bands, so it is
-#: never worse than 3; below it 5 never won, so only 3 is built.
+#: sparse n=10 best 3, and majority n=8 best 3 but n=10 best 4.  The build
+#: is the smaller of the two named bands, so it is never worse than 3;
+#: below n=8, 5 still wins parity n=4..6 (8-14%).
 BAND = 3
 BANDS = (BAND, 5)
-WIDE_FROM = 8
 
 #: Cells per level: input ``3 i``, flag ``3 k + 1``, band result ``3 k + 2``.
 STRIDE = len(PAIR[0]) - 1
@@ -149,9 +148,10 @@ def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     plans = dict.fromkeys(
         [(repeated_blocks(table), ()), repeated_bank(table, ranked=False)]
     )
-    # Paired roots: random +15.9/+20.5/+23.2% at n=9/10/11 (12 tables), 0% below 8.
+    # Paired roots: random +15.9/+20.5/+23.2% at n=9/10/11 (12 tables),
+    # +5.7% at n=8, 0% below.
     paired = _paired_roots(table)
-    for band in BANDS if n >= WIDE_FROM else BANDS[:1]:
+    for band in BANDS:
         forms.append(_smallfuck_tree(table, perm, band=band))
         for blocks, flags in plans:
             if blocks:
@@ -514,7 +514,7 @@ class _Tree:
         decoder = _PairDecoder(self, skipped, delta, bits, guards)
         model = decoder.decode(0, (0, *self.pairs))
         decoder.price(model)
-        program = _trim_tail("".join(self.builder.code))
+        program = "".join(self.builder.code)
         return program, len(PAIR[0]) * self.n + prefix.evaluate(decoder.pair_tails) + 1
 
 
@@ -683,21 +683,8 @@ def _smallfuck_tree(
             tails = {target: value + skipped for target, value in tails.items()}
             tails[i] = commands
         cost = len(PAIR[0]) * n + prefix.evaluate(tails) + 1
-    program = _trim_tail("".join(builder.code))
+    program = "".join(builder.code)
     return program, cost
-
-
-def _trim_tail(code: str) -> str:
-    """Drop the moves among the ``]`` that end the program.
-
-    A ``]`` falls through only on a zero cell, so the next ``]`` needs no
-    move to find one, and after the last nothing reads the pointer.
-    """
-    stop = len(code.rstrip("<>]"))
-    first = code.find("]", stop)
-    if first < 0:
-        return code
-    return code[:first] + "]" * code.count("]", first)
 
 
 def _balance(table: str, default: str) -> str:

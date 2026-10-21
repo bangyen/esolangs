@@ -23,3 +23,21 @@ workspace = "poly n: worst n + 32 + bl(27T/2+10n+6) bits: index cell and cursor"
 
 [catalogue]
 folding_constant_local = "_program"  # direct constant input-discard sequence
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.constant_fold]
+saving = 193.9
+arity = 12
+verdict = "kept: canonical, exempt. A constant table discards all setters and prints a literal after the setup. Routing constants through the one-input lookup instead costs +175.8% at n=10 and +193.9% at n=12 (45 to 125 and 49 to 145 chars)"
+
+[ablations.projection]
+saving = 99.2
+arity = 12
+verdict = "kept: canonical, exempt. The leaf chain covers the table read at the essential inputs only; an ignored input keeps a zero-weight gate line and adds no leaves. Building the chain over the full table instead costs +97.25% at n=10 and +99.18% at n=12 on one-ignored tables, +283.83 / +295.12% on two-ignored tables, and 0.00% on random tables"
+
+[ablations.run_sharing]
+saving = 63.2
+arity = 12
+verdict = "kept: a maximal run of equal rows is one leaf behind js clamped decrements instead of one leaf a row. Giving every row its own leaf costs +62.75% at n=10 and +63.19% at n=12 on random tables (confirmation set +63.34%), +34.57 / +34.87% on parity and +318.48 / +328.97% on AND. The Decisions note's n=7 figures for this mechanism do not reproduce on their stated shapes; see RETIREMENT-CANDIDATES entry F29"

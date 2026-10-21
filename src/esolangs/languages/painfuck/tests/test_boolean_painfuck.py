@@ -45,7 +45,7 @@ def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
     import esolangs
     from esolangs.debugger import make_vm
     from esolangs.generation.helpers import permute_truth_table
-    from esolangs.generation.shared_block import repeated_bank, repeated_blocks
+    from esolangs.generation.shared_block import repeated_bank
     from esolangs.languages.painfuck.generator import _painfuck_shared
     from scripts.benchmark import WrittenState
 
@@ -53,8 +53,7 @@ def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
     served = 0
     for perm in (tuple(range(n)), tuple(reversed(range(n)))):
         ordered = permute_truth_table(table, perm)
-        plans = [(repeated_blocks(ordered), ())]
-        plans.extend(repeated_bank(ordered, ranked=ranked) for ranked in (False, True))
+        plans = [repeated_bank(ordered, ranked=ranked) for ranked in (False, True)]
         for blocks, flags in dict.fromkeys(plans):
             if len(blocks) < 2:
                 continue

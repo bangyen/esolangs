@@ -13,17 +13,19 @@ execution = "poly n: at most 9n^2 + 100n + 20 commands, one tree path"
 workspace = "linear: worst L + bl(L) + bl(3n) bits: one tape bit per source character"
 
 [generator_sizes]
-"00000001" = { commands = 45, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 28, "5" = 28, "6" = 34, "7" = 45 }, source_units = 45 }
-"00001100" = { commands = 34, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 29, "5" = 29, "6" = 34, "7" = 34 }, source_units = 34 }
-"00110110" = { commands = 67, commands_by_row = { "0" = 30, "1" = 30, "2" = 35, "3" = 35, "4" = 48, "5" = 59, "6" = 56, "7" = 67 }, source_units = 95 }
-"0110" = { commands = 34, commands_by_row = { "0" = 23, "1" = 28, "2" = 29, "3" = 34 }, source_units = 44 }
-"01101001" = { commands = 62, commands_by_row = { "0" = 40, "1" = 51, "2" = 50, "3" = 61, "4" = 53, "5" = 64, "6" = 51, "7" = 62 }, source_units = 137 }
-"0110100110010110" = { commands = 119, commands_by_row = { "0" = 82, "1" = 99, "2" = 96, "3" = 113, "4" = 103, "5" = 120, "6" = 97, "7" = 114, "8" = 103, "9" = 120, "10" = 97, "11" = 114, "12" = 88, "13" = 105, "14" = 102, "15" = 119 }, source_units = 289 }
-"1101001101101101" = { commands = 94, commands_by_row = { "0" = 61, "1" = 61, "2" = 64, "3" = 84, "4" = 54, "5" = 54, "6" = 68, "7" = 68, "8" = 71, "9" = 91, "10" = 88, "11" = 90, "12" = 71, "13" = 71, "14" = 74, "15" = 94 }, source_units = 218 }
-"11111110" = { commands = 46, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 29, "5" = 29, "6" = 35, "7" = 46 }, source_units = 46 }
+"00000001" = { commands = 51, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 31, "5" = 31, "6" = 40, "7" = 51 }, source_units = 51 }
+"00001100" = { commands = 37, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 32, "5" = 32, "6" = 37, "7" = 37 }, source_units = 37 }
+"00110110" = { commands = 67, commands_by_row = { "0" = 32, "1" = 32, "2" = 37, "3" = 37, "4" = 48, "5" = 59, "6" = 56, "7" = 67 }, source_units = 97 }
+"0110" = { commands = 34, commands_by_row = { "0" = 25, "1" = 30, "2" = 29, "3" = 34 }, source_units = 46 }
+"01101001" = { commands = 62, commands_by_row = { "0" = 45, "1" = 56, "2" = 53, "3" = 64, "4" = 53, "5" = 64, "6" = 51, "7" = 62 }, source_units = 142 }
+"0110100110010110" = { commands = 116, commands_by_row = { "0" = 79, "1" = 96, "2" = 93, "3" = 110, "4" = 105, "5" = 122, "6" = 97, "7" = 114, "8" = 105, "9" = 122, "10" = 97, "11" = 114, "12" = 85, "13" = 102, "14" = 99, "15" = 116 }, source_units = 270 }
+"1101001101101101" = { commands = 94, commands_by_row = { "0" = 65, "1" = 65, "2" = 68, "3" = 88, "4" = 58, "5" = 58, "6" = 72, "7" = 72, "8" = 71, "9" = 91, "10" = 88, "11" = 90, "12" = 71, "13" = 71, "14" = 74, "15" = 94 }, source_units = 222 }
+"11111110" = { commands = 52, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 32, "5" = 32, "6" = 41, "7" = 52 }, source_units = 52 }
 
 [ablations]
 audited = "2026-10-19"
+# Source figures that match a verdict but measure something else (the per-level plan, not band_race).
+unrelated = ["10.4%"]
 
 [ablations.deferred_level_residuals]
 saving = 72.3
@@ -58,7 +60,7 @@ verdict = "kept: canonical, exempt; saving on the leading-ignored class (40.0% m
 [ablations.tail_trim]
 saving = 0.0
 arity = 11
-verdict = "kept: a fixed ~5 chars per program (0.1% at n=8, 0.0% at n=10/11 on random tables) -- fails the bar and the genuine-percentage stipulation; retirement candidate, Bangyen to decide"
+verdict = "removed 2026-10-20 (retirement candidate #7): a fixed ~5 chars per program (0.1% at n=8, 0.0% at n=10/11 on random tables) -- fails the bar and the genuine-percentage stipulation; the tail is now the builder's own text, moves among the closing brackets included"
 
 [ablations.width_machinery]
 saving = 0.0

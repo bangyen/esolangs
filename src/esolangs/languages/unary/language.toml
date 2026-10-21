@@ -25,3 +25,21 @@ evidence = "docs/limitations.md#unary"
 "01" = { commands_by_row = { "0" = 2 }, commands_by_row_nulls = [1], source_units = 887 }
 "10" = { commands = 3, commands_by_row = { "1" = 3 }, commands_by_row_nulls = [0], source_units = 6839 }
 "11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 53431 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.constant_fold]
+saving = 7212.0
+arity = 1
+verdict = "kept: canonical, exempt. A constant table reads its inputs and halts, or sets one cell and loops. Routing constants through the general tree path costs +7,211.99% at n=1 (13 to 434,231 and 53,431 to 3,473,591 zeros), and at n=2..5 the removal builds no constant table at all: the tree path's zero count passes the 256 Mi generation cap. The fold is what makes constants generatable"
+
+[ablations.single_input_form]
+saving = 0.0
+arity = 2
+verdict = "kept: a table one input decides is spelled as reads up to that input, a skip to read the rest, an optional complement and the loop. Its price is buildability, not size: at n=1 the identity is spelled identically by the AND form (887 zeros either way) while the negation (6,839 zeros) is unbuildable without the form, and at n=2 all four single-input tables (7,031 to 3,429,047 zeros) and at n=4/5 the single-input tables are unbuildable without it"
+
+[ablations.and_form]
+saving = 0.0
+arity = 2
+verdict = "kept: the all-but-one-zero table is spelled as nested guards around one loop. At n=2 it is 27,452,351 zeros shipped and unbuildable through the general tree path, whose zero count passes the cap; at n=3 the shipped form itself is over the cap, so n=2 is the largest arity where the form runs"

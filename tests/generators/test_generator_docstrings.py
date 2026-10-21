@@ -11,6 +11,7 @@ import io
 import pathlib
 import re
 import tokenize
+import tomllib
 
 import pytest
 
@@ -197,6 +198,72 @@ def test_a_module_docstring_figure_is_said_once() -> None:
             path.relative_to(root).as_posix(): path.read_text() for path in paths
         }
         if found := _repeats(_doc(name), sources):
+            repeats[name] = found
+    assert repeats == {}
+
+
+_SAVING = re.compile(r"\d+\.\d+%")
+_CITED = re.compile(r"\[ablations\.(\w+)\]")
+
+
+def _ablation_repeats(verdicts: dict[str, str], sources: dict[str, str]) -> list[str]:
+    """Return ``path:line figure`` for each nonzero verdict saving said again.
+
+    A citation names a key that is not in ``verdicts`` reports as ``key?``.
+    """
+    told = {
+        figure
+        for verdict in verdicts.values()
+        for figure in _SAVING.findall(verdict)
+        if float(figure[:-1])
+    }
+    found = []
+    for path, source in sources.items():
+        doc = ast.get_docstring(ast.parse(source))
+        for line, text in [*_notes(source), *([(1, doc)] if doc else [])]:
+            found += [f"{path}:{line} {f}" for f in set(_SAVING.findall(text)) & told]
+            found += [
+                f"{path}:{line} {key}?"
+                for key in _CITED.findall(text)
+                if key not in verdicts
+            ]
+    return sorted(found)
+
+
+def test_the_ablation_check_catches_a_saving_said_twice() -> None:
+    """Positive control; a zero saving and a cited key do not count."""
+    source = (
+        '"""Saves 9.61%."""\n# 0.0% here; see [ablations.fold]\n# [ablations.gone]\n'
+    )
+    assert _ablation_repeats(
+        {"fold": "kept: 9.61%, 0.0% on AND"}, {"g.py": source}
+    ) == [
+        "g.py:1 9.61%",
+        "g.py:3 gone?",
+    ]
+
+
+def test_an_ablation_saving_is_said_once() -> None:
+    """A source line cites ``[ablations.<key>]`` instead of restating its figure."""
+    repeats = {}
+    for name in _generated():
+        root = _LANGUAGES_DIR / LANGUAGES[name].id
+        table = tomllib.loads((root / "language.toml").read_text())
+        verdicts = {
+            key: entry.get("verdict", "")
+            for key, entry in table.get("ablations", {}).items()
+            if isinstance(entry, dict)
+        }
+        sources = {
+            path.relative_to(root).as_posix(): path.read_text() for path in _files(name)
+        }
+        # A figure that matches a verdict but measures something else.
+        distinct = set(table.get("ablations", {}).get("unrelated", []))
+        if found := [
+            f
+            for f in _ablation_repeats(verdicts, sources)
+            if f.split()[1] not in distinct
+        ]:
             repeats[name] = found
     assert repeats == {}
 

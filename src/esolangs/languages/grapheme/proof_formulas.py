@@ -2,8 +2,11 @@
 
 
 def execution(n: int, _: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
-    return 14 * n + 32 + len(str(2**2**n))
+    """One command a character: 18 an input, a 17-letter frame, ``F…F``.
+
+    The minimal lift has at most ``d + 1`` digits, ``d`` those of 2^T.
+    """
+    return 18 * n + 20 + len(str(2**2**n))
 
 
 def _grapheme(n: int, _: str) -> int:
@@ -11,8 +14,15 @@ def _grapheme(n: int, _: str) -> int:
     bl = int.bit_length
     t = 2**n
     d = len(str(2**t))
-    lifted = bl(10 ** (d + 1) + 2**t - 1)
-    return 16 * d + 112 * n + 312 + bl(14 * n + d + 17) + 2 * lifted + bl(2 * n) + bl(n)
+    return (
+        16 * d
+        + 144 * n
+        + 208
+        + bl(18 * n + d + 5)
+        + 2 * bl(2 * 10**d)
+        + bl(2 * n)
+        + bl(n)
+    )
 
 
 def workspace(n: int, p: str) -> int:

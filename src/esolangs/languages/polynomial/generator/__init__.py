@@ -20,8 +20,8 @@ Raises:
     instructions (dense n=11 needs 2447).
 
 Decisions:
-    Dense n == 6 renders 1.9x shorter with ``*=``/``//=`` than with the
-    ``-= 1; if == 0`` builder, n == 7 2.1x.
+    Dense n == 6 renders 1.9x shorter on ``+=`` and ``if > 0`` than on the
+    old ``-= 1; if == 0`` builder, n == 7 1.9x.
 """
 
 from collections.abc import Iterator
@@ -177,7 +177,7 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     """Expand an instruction list into its ``f(x) = ...`` polynomial.
 
     One prime per instruction.  Sharing a prime across decode-ordered runs
-    was retired: 11.0% at n=7 (200 tables), 9.0% at n=8 (200), under the bar.
+    was retired under the bar ([ablations.prime_sharing]).
     """
     factors = _polynomial_factors(instrs)
     estimate = estimate_generation(factors)

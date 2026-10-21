@@ -19,7 +19,7 @@ Size:
 
 Decisions:
     The identity is ``0K`` (``0 K y -> y``), not ``SKK``: with the ``(1, 0)``
-    fold, n=10 parity is 14,640 chars against 19,247.
+    fold, n=10 parity is 14,640 chars against 15,696.
 """
 
 from esolangs.generation.helpers import _validate_truth_table

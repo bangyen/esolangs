@@ -43,7 +43,7 @@ def test_public_eight_input_affine_layouts_execute_every_row(
     for width, balance in ((None, False), (1, False), (4, False), (None, True)):
         template = esolangs.generate("Minifuck", table, width=width, balance=balance)
         if mask == 255 and bias == 0 and width is None and not balance:
-            assert len(template) == 257
+            assert len(template) == 256
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in range(n - 1, -1, -1)]
             source = esolangs.instantiate("Minifuck", template, bits)

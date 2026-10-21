@@ -1,14 +1,13 @@
 """thisthat Boolean program generator: a bistack-routed planar decision tree.
 
 A loader reads each input and pushes essential bits to the bistack; each node
-pops one and routes by a ``◒``/``◑`` router, ignored inputs only read, and a
-node with equal halves pops its bit onto the column stack and takes one half.
-A bounded DAG replaces the tree when smaller; narrow widths try rotation,
-strips and streaming trees.
+pops one and routes by a ``◒``/``◑`` router, ignored inputs only read.  Every
+kept input is tested at every node.  A bounded DAG replaces the tree when
+smaller; narrow widths try rotation, strips and streaming trees.
 
 Size:
     Linear area in T for the plain tree; n=8 parity: 6,379 chars, n=10 and:
-    113,005 chars, n=10 random 1847: 238,413 chars.
+    113,005 chars, n=10 random 1847: 240,317 chars.
 
 Decisions:
     Greedy input order saves 0.2% at n=8 and swapping the root's arms 0.5%,
@@ -316,16 +315,8 @@ class _LayoutTree(_TreeEmitter):
     def _router(self, point: _Point, context: _Point) -> _Point:
         return (point[0] + 2 * context[0], point[1] + 2 * context[1])
 
-    def _router_glyph(self, level: int, lo: int) -> str:
-        if self._same(level, lo):
-            return "⬒"
+    def _router_glyph(self, level: int, _lo: int) -> str:
         return "◑" if self._axes[level % 2][0] else "◒"
-
-    def _same(self, level: int, lo: int) -> bool:
-        if not self._prune:
-            return False
-        index = lo >> (self._depth - level)
-        return self._ids[level + 1][2 * index] == self._ids[level + 1][2 * index + 1]
 
     def _leaf_axis(self, context: _Point) -> Literal["horizontal", "vertical"]:
         return _first_axis(context[0])
@@ -337,15 +328,9 @@ class _LayoutTree(_TreeEmitter):
         return _first_axis(self._axes[level % 2][0])
 
     def _children(self, level: int, lo: int, hi: int, router: _Point) -> list[_Child]:
-        same = self._same(level, lo)
         axis = self._axes[level % 2]
         mid = (lo + hi) // 2
-        # The halves agree: pop the bit onto the column stack, which
-        # nothing pops, and go on into the one half both values share.
-        # Row 0 and column 0 share cell (0, 0); the push lands there only
-        # when the row is empty, and then the half is a leaf.  A loader
-        # discard could land there before the row fills, so it has none.
-        pairs = ((-1, lo, mid),) if same else ((-1, lo, mid), (1, mid, hi))
+        pairs = ((-1, lo, mid), (1, mid, hi))
         children: list[_Child] = []
         for sign, child_lo, child_hi in pairs:
             incoming = (sign * axis[0], sign * axis[1])
@@ -502,11 +487,10 @@ def _strip_tree(truth_table: str) -> str:
 
 
 def _tree(truth_table: str, *, prune: bool = True) -> str:
-    """Build the tree; ``prune=False`` tests every input at every node.
+    """Build the tree; ``prune=False`` keeps every input and unfolds spans.
 
-    Ignored inputs are read and dropped.  A node whose halves agree pops its
-    bit onto the unpopped column stack.  Kept inputs are tested in input
-    order; the root's arms are not swapped.
+    Ignored inputs are read and dropped.  Kept inputs are tested in input
+    order at every node; the root's arms are not swapped.
     """
     n = _validate_truth_table(truth_table)
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))

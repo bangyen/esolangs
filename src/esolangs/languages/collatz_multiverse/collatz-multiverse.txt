@@ -19,6 +19,7 @@ z=zx+z,NOT PRINT.
 D[lineNumber]=zx+k1,NOT PRINT.
 z=zx+z,NOT PRINT.
 s=zx+lineNumber,NOT PRINT.
+z=zx+z,NOT PRINT.
 w0=zx+input,NOT PRINT.
 w1=zx+input,NOT PRINT.
 s=k1x+k1,NOT PRINT.

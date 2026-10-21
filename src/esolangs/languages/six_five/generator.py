@@ -8,7 +8,7 @@ inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
 
 Size:
     O(T) worst case, small for structured tables; n=10 parity: 197 chars,
-    n=10 and: 132 chars, n=10 random 1847: 5,292 chars.
+    n=10 and: 138 chars, n=10 random 1847: 5,292 chars.
 
 Decisions:
     The positional walk spends exactly ``n`` labels.  Counting tree labels
@@ -23,8 +23,6 @@ from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
-    _GREEDY_ORDER_MAX_ARITY,
-    _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
     input_weights,
@@ -105,13 +103,7 @@ def six_five(truth_table: str) -> str:
     """
     # Identity and reverse: random n=7 10.8% (200 tables), parity/and/or 12-14%;
     # n >= 8 random exceeds the label budget either way, so 0%.
-    orders = _six_five_orders(truth_table, compact=True)
-    best = _six_five_chosen(truth_table, orders)
-    if not best:
-        remaining = dict.fromkeys(
-            order for order in _six_five_orders(truth_table) if order not in orders
-        )
-        best = _six_five_chosen(truth_table, remaining)
+    best = _six_five_chosen(truth_table, _six_five_orders(truth_table))
     if not best:
         # Every order overflowed the budget even shared, so the table has
         # too many distinct subtrees for any tree-shaped emission.  The walk
@@ -122,27 +114,11 @@ def six_five(truth_table: str) -> str:
     return best.removesuffix("0")
 
 
-def _six_five_orders(
-    truth_table: str, *, compact: bool = False
-) -> dict[tuple[int, ...], None]:
-    """Return identity and reverse, or all four for label-budget fallback.
-
-    The other two are fold-greedy and first-then-reversed.
-    """
+def _six_five_orders(truth_table: str) -> dict[tuple[int, ...], None]:
+    """Return the two raced orders: identity and reverse."""
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
-    if compact:
-        return dict.fromkeys((identity, tuple(reversed(identity))))
-    return dict.fromkeys(
-        (
-            identity,
-            _greedy_input_order(truth_table, n)
-            if n <= _GREEDY_ORDER_MAX_ARITY
-            else identity,
-            tuple(reversed(identity)),
-            (0, *reversed(range(1, n))),
-        )
-    )
+    return dict.fromkeys((identity, tuple(reversed(identity))))
 
 
 def _six_five_chosen(truth_table: str, orders: dict[tuple[int, ...], None]) -> str:
@@ -151,7 +127,6 @@ def _six_five_chosen(truth_table: str, orders: dict[tuple[int, ...], None]) -> s
     Each order's tree may jump to its repeated subtrees.
     """
     best = ""
-    best_order: tuple[str, tuple[int, ...]] = (truth_table, ())
     for perm in orders:
         table = (
             truth_table
@@ -162,12 +137,7 @@ def _six_five_chosen(truth_table: str, orders: dict[tuple[int, ...], None]) -> s
         # An empty candidate means this order overflowed the label budget,
         # so it is skipped rather than winning on length 0.
         if candidate and (not best or len(candidate) < len(best)):
-            best, best_order = candidate, (table, perm)
-    if best:
-        # Only the winner prints a lone copied read raw: that shrinks it and
-        # its steps, and choosing with it could hand a shorter, slower order
-        # the win.
-        best = _six_five_hoisted(*best_order, raw_copies=True)
+            best = candidate
     return best
 
 
@@ -265,8 +235,6 @@ def _six_five_reads(
 def _six_five_hoisted(
     truth_table: str,
     perm: tuple[int, ...],
-    *,
-    raw_copies: bool = False,
 ) -> str:
     """Emit the read-up-front 6-5 program for one input order.
 
@@ -289,7 +257,7 @@ def _six_five_hoisted(
     constant = constant_span_test(truth_table)
     # An input the tree tests at one node alone is normalized there, not at
     # its read: the same three tokens, run only on the paths through it.
-    uses = _six_five_use_counts(truth_table, perm, stored, raw_copies=raw_copies)
+    uses = _six_five_use_counts(truth_table, perm, stored)
     lazy = set() if shared else {i for i, used in uses.items() if used == 1}
     reads, cell_of, pos, slot = _six_five_reads(n, stored, lazy)
     # A clobbered read leaves 48/49 under the pointer, so the cell the reads
@@ -446,15 +414,15 @@ def _six_five_node_kind(
 
 
 def _six_five_use_counts(
-    truth_table: str, perm: tuple[int, ...], stored: set[int], *, raw_copies: bool
+    truth_table: str, perm: tuple[int, ...], stored: set[int]
 ) -> dict[int, int]:
     """Count the tree paths that test each stored input, to find the lazy ones.
 
     Mirrors the walk ``_NodeEmitter.emit`` will descend, via the shared
     :func:`_six_five_node_kind`: a copy node (``"01"`` halves) reads its
-    input once per subtree it copies, counted as two paths unless the
-    winner chose its ``raw_copies`` form.  A stored input tested on
-    exactly one path is normalized at that node rather than at its read.
+    input once per subtree it copies, counted as two paths.  A stored
+    input tested on exactly one path is normalized at that node rather
+    than at its read.
     """
     constant = constant_span_test(truth_table)
     uses = dict.fromkeys(stored, 0)
@@ -469,7 +437,7 @@ def _six_five_use_counts(
             tally(level + 1, lo, mid)
             return
         if kind == "copy":
-            uses[perm[level]] += 1 if raw_copies else 2
+            uses[perm[level]] += 2
             return
         uses[perm[level]] += 1
         tally(level + 1, lo, mid)
@@ -549,9 +517,10 @@ class _NodeEmitter:
         cell = tree.cell_of[tree.perm[level]]
         nav = _six_five_move(entry, cell)
         if kind == "copy":
-            # A read left raw prints as it came.
-            base = _ASCII_ZERO if tree.perm[level] in tree.lazy else _SIX_FIVE_HELD
-            return nav + _six_five_leaf("0", cell, base, tree.scratch)
+            # A copy node's input counts two paths, so it is never lazy:
+            # its read was normalized at the read, and the leaf prints
+            # the held bit from 31/32.
+            return nav + _six_five_leaf("0", cell, _SIX_FIVE_HELD, tree.scratch)
         return self._test_node(level, lo, mid, hi, cell, nav)
 
     def _test_node(

@@ -1,41 +1,30 @@
 """Executed command and snapshot-bit bounds."""
 
+from esolangs.runtime.memory import parse_int_memory
+
 
 def execution(n: int, _: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
-    k = (2 * n - 1).bit_length()
-    return 49 * n + 3 * (1 << k) + 2 + n - k
+    """An input reads, normalizes in 47, branches and jumps; then print, halt."""
+    return 50 * n + 3
 
 
-def _decleq(n: int, _: str) -> int:
-    """The memory tuple and registers; the letters are the ledger's."""
-    bl = int.bit_length
+def _bits(value: int) -> int:
+    return (value.bit_length() or 1) + (value < 0)
 
-    def ones(x: int) -> int:
-        return bin(x).count("1")
 
-    k = min(n, bl(2 * n - 1))
-    s, m, c = 1 << k, n - k, -(-(n + 18) // 3) * 3
-    p = c + 144 * n + 3 * k + 3 * s - 3
-    b = sum(bl(18 + i) for i in range(n))
-    d = sum(
-        2 * bl(18 + m + j) + bl(p + 3 * (j - k + 2) - 3 * (1 << (k - 1 - j)))
-        for j in range(k)
+def workspace(n: int, program: str) -> int:
+    """The program's cells, then what a run can add to them.
+
+    A read cell goes from 0 to a byte below 64 (+5 bits an input); the
+    pointer stays below the cell count, the input cursor at most ``n``; cell
+    0, the unconditional decrements' target, falls by at most one a level.
+    """
+    cells = parse_int_memory(program)
+    initial = sum(_bits(cell) for cell in cells)
+    return (
+        initial
+        + 5 * n
+        + len(cells).bit_length()
+        + n.bit_length()
+        + (n + 2).bit_length()
     )
-    e = sum(
-        2 * bl(18 + lv)
-        + bl(p + 3 * lv + (2 * u + 1) * (1 << (m - lv - 1)) * (s + 18) - 3 * ones(u))
-        for lv in range(m)
-        for u in range(1 << lv)
-    )
-    xs = [p + 3 * m + j * (s + 18) - 3 * ones(j) for j in range(1 << m)]
-    f = sum(
-        22 + 6 * s + bl(x) + bl(x + 9) + 2 * bl(x + 10) + bl(x + 14 + s) for x in xs
-    )
-    r = 3 * bl(p - 3 + (1 << m) * (s + 18)) + bl(n) + bl(c) + c + k + 8
-    return 55 * n + 11 * s + 95 * b + d + e + f + r
-
-
-def workspace(n: int, p: str) -> int:
-    """The stated workspace bound, evaluated for n and the program."""
-    return _decleq(n, p)

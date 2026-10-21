@@ -95,4 +95,4 @@ def test_delegation_exposes_an_immutable_state() -> None:
     machine.step()
     assert isinstance(before, tuple)
     assert before != machine.state
-    assert before == (0, 0, (0,), 0, False)
+    assert before == (0, 0, (0,))

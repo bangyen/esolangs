@@ -108,6 +108,12 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     )
     if name == "BFStack" and n >= 7:
         tables += (_bfstack_worst(n),)
+    if name == "AddSubJump":
+        # The packed decoder's worst now that the tree takes the lone zero:
+        # ones but rows 8 mod 9 and the last, reaching it at n = 6.
+        tables += (
+            "".join("0" if r % 9 == 8 or r == width - 1 else "1" for r in range(width)),
+        )
     if name == "Bitdeque":
         tables += ("10" + "01" * (width // 2 - 1),)
     if name == "ArrowQueue":

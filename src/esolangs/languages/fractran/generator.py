@@ -9,7 +9,7 @@ text's length, which the interpreter's index factors and buckets by state.
 
 Size:
     Theta(T) text, at most ``n + 1`` fractions fire a run; n=10 parity: 364
-    chars, n=10 random 1847: 4,524 chars.
+    chars, n=10 random 1847: 4,466 chars.
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ from esolangs.factor_primes import prime_segments
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    constant_span_test,
     layout_width,
     same_tokens,
     subtree_ids,
@@ -47,7 +46,7 @@ PAIR = ("0", "1")
 
 @dataclass(frozen=True)
 class _Leaf:
-    """A folded subtable: the answer, and the level it stops reading at."""
+    """A leaf of the diagram: the answer, and the level it stops reading at."""
 
     answer: str
     depth: int
@@ -70,7 +69,6 @@ def _primes(count: int) -> list[int]:
 
 def _tree(truth_table: str, n: int) -> list[_Leaf | _Node]:
     """Return the decision diagram, post-order, root last."""
-    constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
     seen: dict[tuple[int, int], int] = {}
     nodes: list[_Leaf | _Node] = []
@@ -79,7 +77,10 @@ def _tree(truth_table: str, n: int) -> list[_Leaf | _Node]:
         # Equal subtables at one depth share one state: a DAG, not a tree.
         key = (depth, ids[depth][lo >> (n - depth)])
         if key not in seen:
-            if constant(lo, hi):
+            if depth == n:
+                # No early exit on a constant span: the halves-agree skip
+                # collapses one to a single shared leaf, while an early
+                # leaf per depth cost size on AND ([ablations.constant_fold]).
                 nodes.append(_Leaf(truth_table[lo], depth))
             else:
                 mid = (lo + hi) // 2

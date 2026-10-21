@@ -332,3 +332,17 @@ def test_width_requests_keep_their_exact_size(
 ) -> None:
     """The nearest layout to the width, then the shortest, fixes the source size."""
     assert len(generate("Thue", table, width=width)) == size
+
+
+@pytest.mark.medium
+def test_an_exactly_repeated_block_builds_below_the_block_alone() -> None:
+    """Four copies of a 2^10-row block at n=12 build under the block's own lookup."""
+    rng = random.Random(7)
+    block = "".join(rng.choice("01") for _ in range(1 << 10))
+    table = block * 4
+    program = thue(table)
+    assert len(program) < len(thue(block))
+    for row in rng.sample(range(1 << 12), 16):
+        io = ScriptedIO("".join(f"{bit}\n" for bit in _bits(row, 12)))
+        run_thue(program, io, Seeded(0))
+        assert io.getvalue() == table[row], row

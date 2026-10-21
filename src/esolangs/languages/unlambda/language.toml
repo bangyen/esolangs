@@ -28,3 +28,21 @@ workspace = "T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits
 execution = [3, 7]
 # Task, then 3n + 6 frames, each one shared subterm and its depth.
 workspace = [2, 3]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_binding]
+saving = 21.9
+arity = 12
+verdict = "kept: canonical, exempt. A repeated subtree within _REACH levels is bound once and referenced by i inside the nodes built around it. Deleting every binding candidate costs +21.84% at n=8, +21.68% at n=10 and +21.85% at n=12 on random tables, and on structured classes at n=12: parity +336.44%, majority +280.35%, threshold-3 +144.07%"
+
+[ablations.halves_agree_fold]
+saving = 13.9
+arity = 12
+verdict = "kept: canonical, exempt. A node whose halves agree reads and runs the one half; it is also the projection's realization (no separate projection step). Deleting the collapse costs +13.47 / +13.91 / +13.89% on random tables at n=8/10/12 and +131.63% on one-ignored tables at n=10; 0.00% on parity, majority and threshold-3, whose halves never agree"
+
+[ablations.binding_race]
+saving = 1.9
+arity = 12
+verdict = "kept: bound races every repeated subtree within reach and keeps the shortest binding. Taking the first candidate instead costs +1.84 / +1.83 / +1.87% on random tables at n=8/10/12, but +51.64 / +50.26 / +70.04% on majority and +24.70 / +16.45 / +14.93% on threshold-3. The race takes a min over a superset, so it cannot lose. Its comment figures reproduce under the share-of-the-first-candidate reading (majority 34.1 / 33.4% at n=8/10 against the claimed 33-34%)"

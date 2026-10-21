@@ -8,18 +8,18 @@ backlinks = 3
 labels = ["linear lookup"]
 qualification = "the write row puts the essential inputs' table on the tape, one cell an entry, then each essential input's gadget tests its dequeued bit and a 0 walks the tape pointer left by that bit's weight, leaving it beside the indexed entry; an ignored input is read and never enqueued"
 scaling = "linear: five rows of about T + zeros + 9n columns"
-execution = "linear: at most 5T + 80n + 210 commands: the write row, each unary move out and back, the band"
+execution = "linear: at most 5T + 108n + 226 commands: the write row, each unary move out and back, the band"
 workspace = "linear: at most T + 10n + 56 bits: the tape, one bit a cell"
 
 [generator_sizes]
-"00000001" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
-"00001100" = { commands = 395, commands_by_row = { "0" = 413, "1" = 413, "2" = 405, "3" = 405, "4" = 403, "5" = 403, "6" = 395, "7" = 395 }, source_units = 469 }
-"00110110" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
-"0110" = { commands = 344, commands_by_row = { "0" = 362, "1" = 354, "2" = 352, "3" = 344 }, source_units = 419 }
-"01101001" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
-"0110100110010110" = { commands = 518, commands_by_row = { "0" = 572, "1" = 564, "2" = 562, "3" = 554, "4" = 558, "5" = 550, "6" = 548, "7" = 540, "8" = 550, "9" = 542, "10" = 540, "11" = 532, "12" = 536, "13" = 528, "14" = 526, "15" = 518 }, source_units = 659 }
-"1101001101101101" = { commands = 518, commands_by_row = { "0" = 572, "1" = 564, "2" = 562, "3" = 554, "4" = 558, "5" = 550, "6" = 548, "7" = 540, "8" = 550, "9" = 542, "10" = 540, "11" = 532, "12" = 536, "13" = 528, "14" = 526, "15" = 518 }, source_units = 659 }
-"11111110" = { commands = 430, commands_by_row = { "0" = 462, "1" = 454, "2" = 452, "3" = 444, "4" = 448, "5" = 440, "6" = 438, "7" = 430 }, source_units = 534 }
+"00000001" = { commands = 500, commands_by_row = { "0" = 532, "1" = 524, "2" = 522, "3" = 514, "4" = 518, "5" = 510, "6" = 508, "7" = 500 }, source_units = 634 }
+"00001100" = { commands = 465, commands_by_row = { "0" = 483, "1" = 483, "2" = 475, "3" = 475, "4" = 473, "5" = 473, "6" = 465, "7" = 465 }, source_units = 569 }
+"00110110" = { commands = 500, commands_by_row = { "0" = 532, "1" = 524, "2" = 522, "3" = 514, "4" = 518, "5" = 510, "6" = 508, "7" = 500 }, source_units = 634 }
+"0110" = { commands = 402, commands_by_row = { "0" = 420, "1" = 412, "2" = 410, "3" = 402 }, source_units = 499 }
+"01101001" = { commands = 500, commands_by_row = { "0" = 532, "1" = 524, "2" = 522, "3" = 514, "4" = 518, "5" = 510, "6" = 508, "7" = 500 }, source_units = 634 }
+"0110100110010110" = { commands = 623, commands_by_row = { "0" = 677, "1" = 669, "2" = 667, "3" = 659, "4" = 663, "5" = 655, "6" = 653, "7" = 645, "8" = 655, "9" = 647, "10" = 645, "11" = 637, "12" = 641, "13" = 633, "14" = 631, "15" = 623 }, source_units = 809 }
+"1101001101101101" = { commands = 623, commands_by_row = { "0" = 677, "1" = 669, "2" = 667, "3" = 659, "4" = 663, "5" = 655, "6" = 653, "7" = 645, "8" = 655, "9" = 647, "10" = 645, "11" = 637, "12" = 641, "13" = 633, "14" = 631, "15" = 623 }, source_units = 809 }
+"11111110" = { commands = 500, commands_by_row = { "0" = 532, "1" = 524, "2" = 522, "3" = 514, "4" = 518, "5" = 510, "6" = 508, "7" = 500 }, source_units = 634 }
 
 [catalogue]
 folding_constant_local = "_layout"  # no essential input: one table cell, no select gadget
@@ -35,7 +35,7 @@ verdict = "kept: canonical, exempt; projecting the table onto its essential inpu
 [ablations.tooth_packing]
 saving = 1.5
 arity = 12
-verdict = "retirement candidate (batch 8): packing two reads per tooth prices 19.6% on random tables at n=5 in clear decline to 2.6% at n=11 and 1.5% at n=12 — the read block is O(n) columns against an O(2^n) table, so the share tends to zero. The absolute saving still grows (~484 cells a program at n=12) and on half-ignored tables, where the reads dominate, it earns 26.9-28.2%; the dispute is recorded in the candidates file"
+verdict = "removed 2026-10-20 (retirement candidate #14): packing two reads per tooth priced 19.6% on random tables at n=5 in clear decline to 2.6% at n=11 and 1.5% at n=12 — the read block is O(n) columns against an O(2^n) table, so the share tends to zero. The absolute saving still grew (~484 cells a program at n=12) and on half-ignored tables, where the reads dominate, it earned 26.9-28.2%; the dispute is recorded in the candidates file. Reads now go one to a tooth in both the flat layout and the balance helix, which share _teeth. Restored 2026-10-20 capped at n <= 3: 10.1% / 16.8% / 16.2% by area at n=1/2/3 on exhaustive small tables, and reverted the same day: a cap chosen where a trick still pays is judged at n=7..8 (CONTRIBUTING)"
 
 [interpreter_ablations]
 audited = "2026-10-18"

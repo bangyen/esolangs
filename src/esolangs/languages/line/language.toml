@@ -43,7 +43,7 @@ verdict = "kept: clears at its n<=5 cap on random tables (55.3% at n=4)"
 [ablations.level_skip]
 saving = -19.9
 arity = 10
-verdict = "kept: fails the bar at the large arities -- +34.9% at n=5 through the small-tree layout, but costs area from n=6 (-12.2% at n=6, -17.9% at n=8, -2.9% at n=9); its command saving is a fixed ~1.45/row, 4.9% at n=6 declining to 2.9% at n=10, and the worst row is 5n with or without it; retirement candidate, Bangyen to decide"
+verdict = "removed at n>=6 (retirement candidate #3, executed 2026-10-20): kept through n<=5, where it earns 20.0-35.1% through the small-tree layout; from n=6 the tested tree replaces it (-12.2% at n=6, -17.9% at n=8, -19.9% at n=10 on random tables); its command saving was a fixed ~1.45/row, 4.9% at n=6 declining to 2.9% at n=10, under the execution bar, and the worst row is 5n with or without it"
 
 [ablations.projected_loader]
 saving = 30.7
@@ -58,7 +58,7 @@ verdict = "kept: clears on its named-function class (parity at n=12; 58.8-99.1% 
 [ablations.projected_streaming_fold]
 saving = 9.2
 arity = 12
-verdict = "kept: fails the bar as a separate mechanism -- 1.9-3.8% marginal on cores, 0.0-0.2% on the one-ignored corpus, and 9.2% on tiled tables at n=12 where it is the folds' whole price (the plain fold never wins there); the share is rising; retirement candidate, Bangyen to decide"
+verdict = "removed (retirement candidate #4, executed 2026-10-20): 1.9-3.8% marginal on cores, 0.0-0.2% on the one-ignored corpus, ~0% on random and named tables; on tiled tables, its best class, the share plateaued under the bar -- 9.2% at n=12, 8.00%/8.96% at n=14 on the two seed sets"
 
 [ablations.residual_sharing]
 saving = 9.9

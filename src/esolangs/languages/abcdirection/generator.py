@@ -7,7 +7,7 @@ inputs walk the tape pointer to the answer; the grid draws no tree.
   fresh cell becomes 1), then a ``D`` after a 0 entry (dequeue the empty
   queue: 0).  Entry ``r`` lands ``r`` cells right of entry 0, and a last
   ``C`` steps onto the *dead* cell right of the final entry.
-- **Read.**  Every input byte's eight bits go into the dead cell, two per
+- **Read.**  Every input byte's eight bits go into the dead cell, one per
   *tooth*, a short up-column of reads; an essential input's value bit is
   enqueued as it lands, and an ignored input is read and dropped.
 - **Select.**  The ``j``-th essential input is dequeued into the dead cell
@@ -33,12 +33,12 @@ a drop has room above it) and drop to the next lap where a ``B`` precedes a
 landing.  Teeth alternate ``rise`` and plain to stay in five rows without
 wrapping.  The width is the narrowest the widest atom (a gadget, ``run + 8``)
 allows or where ``width == 2 * height`` (``_tight_width``), whichever is
-squarer; the flat layout stays a candidate.  ``n = 2``: 83x5 flat, 37x16
+squarer; the flat layout stays a candidate.  ``n = 2``: 99x5 flat, 40x16
 balanced.
 
 Size:
-    O(T) cells, 7.69 a row at ``n = 12``; n=6 random 1847: 1,079 chars,
-    n=10 random 1847: 8,199 chars (1,075 cells at ``n = 6``).
+    O(T) cells, 7.69 a row at ``n = 12``; n=6 random 1847: 1,299 chars,
+    n=10 random 1847: 8,599 chars (1,075 cells at ``n = 6``).
 
 Decisions:
     Constant subtrees are not folded nor repeated ones shared: every row
@@ -211,23 +211,19 @@ def _print(grid: _Grid, w: _Walker) -> None:
 
 
 def _teeth(essential: set[int], n: int) -> list[tuple[int, bool]]:
-    """Each tooth's read count and whether it enqueues.
+    """Each tooth's read count and whether it enqueues: one read a tooth.
 
-    Reads go two to a tooth, and an essential input's value bit closes its
-    tooth so the enqueue follows it: ``v j j | j j | j j | j v | ...``.
-    An ignored input is read like any other bit and never enqueued.
+    An essential input's value bit enqueues as it lands; an ignored input
+    is read like any other bit and never enqueued.  Packing two reads a
+    tooth (an essential value bit closing its tooth early) was removed in
+    2026-10: priced by area on random tables it fell steadily with n
+    ([ablations.tooth_packing]) -- the read block is O(n) columns
+    against an O(2**n) table (retirement candidate #14).
     """
-    teeth: list[tuple[int, bool]] = []
-    pending = 0
-    for index in range(_BITS * n):
-        pending += 1
-        value = index % _BITS == 0 and index // _BITS in essential
-        if value or pending == 2:
-            teeth.append((pending, value))
-            pending = 0
-    if pending:
-        teeth.append((pending, False))
-    return teeth
+    return [
+        (1, index % _BITS == 0 and index // _BITS in essential)
+        for index in range(_BITS * n)
+    ]
 
 
 def _layout(table: str, n: int) -> str:
@@ -431,7 +427,7 @@ def _balance(table: str, default: str) -> str:
     flat = len(default.split("\n")[0])
     floor = _floor(table, n)
     widths = {floor, min(max(_tight_width(table, n), floor), flat - 1)}
-    return min((_helix(table, n, w) for w in widths), key=balance_score)
+    return min(default, *(_helix(table, n, w) for w in widths), key=balance_score)
 
 
 def abcdirection(truth_table: str) -> str:

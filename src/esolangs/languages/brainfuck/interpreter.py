@@ -25,18 +25,20 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.brackets import match_brackets as matches
 from esolangs.runtime.io import IO
 
-#: ``(ind, ptr, tape, acc, dirty)``: an immutable value, rebound per step.
-#: ``acc`` is the true cell under the pointer; while ``dirty``, ``tape[ptr]``
-#: is stale and :func:`_committed` (every path that leaves the cell) fixes it.
-#: One rebuild per run of ``+``/``-`` instead of one per command: 58% of
-#: executed commands are ``+``/``-``, in runs averaging 3.8, max 49.
-#: ``snapshot`` and ``tape`` commit first, so one logical state has one
-#: spelling and the cycle detector's hash sees a repeat as a repeat.
+#: ``(ind, ptr, tape)``: an immutable value, rebound per step.  ``tape[ptr]``
+#: is always the true cell: ``+``/``-`` write through, so one logical state
+#: has one spelling and the cycle detector's hash sees a repeat as a repeat.
+#: A buffered cell (an ``acc``/``dirty`` pair, one rebuild per run of
+#: ``+``/``-`` instead of one per command) earned 17.5% run-to-halt but
+#: cost 9.4% on the traced workload, whose ``snapshot()`` every step
+#: commits the cell anyway; the traced workload is the one this repo's
+#: verification drivers impose, so the buffer was removed (interpreter
+#: candidate I-1).
 #: A plain tuple: ``NamedTuple.__new__`` is Python-level, 2.7x slower to
 #: build, and this is built once per step.  Code and bracket map are
 #: parameters, not fields, so the cycle detector stores no constants.
 #: Order starts ``ind, ptr, tape`` because ``snapshot`` returns those three.
-type _State = tuple[int, int, tuple[int, ...], int, bool]
+type _State = tuple[int, int, tuple[int, ...]]
 type _Op = tuple[int, int]
 
 _ADD = 0
@@ -54,19 +56,10 @@ _JUMP_OR_IO = {".": _OUTPUT, ",": _INPUT, "[": _OPEN, "]": _CLOSE}
 def _written(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
     """Return ``tape`` with cell ``ptr`` set to ``value``.
 
-    Affordable because the buffer means a run of ``+``/``-`` reaches this
-    once, and a tape is the handful of cells touched (nine to eighteen).
+    One rebuild per write; a tape is the handful of cells touched (nine
+    to eighteen), so the rebuild stays small.
     """
     return (*tape[:ptr], value, *tape[ptr + 1 :])
-
-
-def _committed(state: _State) -> tuple[int, ...]:
-    """Return ``state``'s tape with the buffered cell written back if stale.
-
-    The one place the buffer's invariant is discharged.
-    """
-    _, ptr, tape, acc, dirty = state
-    return _written(tape, ptr, acc) if dirty else tape
 
 
 # :func:`_advance` is pure over an immutable ``_State`` and ``snapshot`` returns it
@@ -79,37 +72,28 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     state built at the end: per-branch rebuilds made this ~5.6x slower than
     the mutable original, against ~2x.
     """
-    ind, ptr, tape, acc, dirty = state
+    ind, ptr, tape = state
     char = code[ind]
     if char == "+":
-        # Buffered; the tape is untouched.
-        acc = (acc + 1) % 256
-        dirty = True
+        tape = _written(tape, ptr, (tape[ptr] + 1) % 256)
     elif char == "-":
-        acc = (acc - 1) % 256
-        dirty = True
+        tape = _written(tape, ptr, (tape[ptr] - 1) % 256)
     elif char == ">":
-        # Leaving the cell: commit first.  Past the right end grows by one.
-        tape = _committed(state)
-        dirty = False
+        # Past the right end grows by one.
         ptr += 1
         if ptr == len(tape):
             tape = (*tape, 0)
-        acc = tape[ptr]
     elif char == "<":
-        # Leaving the cell: commit first.  Past the left end grows by one,
-        # and the pointer stays at index 0, now the new cell.
-        tape = _committed(state)
-        dirty = False
+        # Past the left end grows by one, and the pointer stays at index 0,
+        # now the new cell.
         if ptr:
             ptr -= 1
         else:
             tape = (0, *tape)
-        acc = tape[ptr]
-    elif (char == "[" and acc == 0) or (char == "]" and acc != 0):
-        # Tests ``acc`` (the truth).  Lands on the partner; +1 steps past it.
+    elif (char == "[" and tape[ptr] == 0) or (char == "]" and tape[ptr] != 0):
+        # Lands on the partner; +1 steps past it.
         ind = brackets[ind]
-    return (ind + 1, ptr, tape, acc, dirty)
+    return (ind + 1, ptr, tape)
 
 
 class _Machine:
@@ -121,14 +105,13 @@ class _Machine:
         self.brackets = matches(code)
         # ``halted`` is read twice per command; take the length once.
         self.size = len(code)
-        self.state: _State = (0, 0, (0,), 0, False)
+        self.state: _State = (0, 0, (0,))
 
-    # Views for ``factor.py``.  ``tape`` and ``snapshot`` commit first: an
-    # observer never sees the stale window (see ``_State``).
+    # Views for ``factor.py``.
 
     @property
     def tape(self) -> tuple[int, ...]:
-        return _committed(self.state)
+        return self.state[2]
 
     @property
     def ptr(self) -> int:
@@ -146,7 +129,7 @@ class _Machine:
     def halted(self) -> bool:
         return self.state[0] >= self.size
 
-    # VM view.  ``memory`` goes through ``tape``, so it commits too.
+    # VM view.
 
     @property
     def ip(self) -> int:
@@ -160,28 +143,28 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # Committed tape plus input cursor (a repeat that ignores consumed
-        # input is not a cycle).  ``acc``/``dirty`` would give one state two hashes.
+        # Tape plus input cursor (a repeat that ignores consumed input is
+        # not a cycle).
         ind, ptr = self.state[0], self.state[1]
-        return (ind, ptr, _committed(self.state), self.io.progress())
+        return (ind, ptr, self.state[2], self.io.progress())
 
     def step(self) -> None:
         """Execute one command, advancing the code position.
 
-        The shell does ``.`` and ``,`` through the write buffer (``acc`` is the
-        cell's true value).
+        The shell does ``.`` and ``,``; ``,``'s value is written through
+        before :func:`_advance` steps past it.
         """
         state = self.state
         if state[0] >= self.size:
             return
-        ind, ptr, tape, acc, _dirty = state
+        ind, ptr, tape = state
         char = self.code[ind]
         if char == ".":
-            self.io.print_char(chr(acc))
+            self.io.print_char(chr(tape[ptr]))
         elif char == ",":
             # ``input_char`` is a whole code point.  Unreduced, ``,.`` echoed
             # an emoji while ``,+.`` printed ``\x01``.  CVNC does the same.
-            state = (ind, ptr, tape, self.io.input_char() % 256, True)
+            state = (ind, ptr, _written(tape, ptr, self.io.input_char() % 256))
         self.state = _advance(state, self.code, self.brackets)
 
 

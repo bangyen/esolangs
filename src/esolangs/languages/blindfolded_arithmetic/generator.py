@@ -17,6 +17,10 @@ Decisions:
     Base 8 is the widest Horner base whose digit registers (1, 2, 4), radix
     and accumulator fit beside ``i``; base 2 costs 9,851 chars at n=10
     parity.
+
+    The divisor 2 is rebuilt into ``c`` every round: keeping it across
+    rounds saved one 6-char instruction per firing — a fixed amount
+    against a Theta(T) program ([ablations.register_reuse]).
 """
 
 from esolangs.generation.helpers import (
@@ -57,13 +61,10 @@ def _lookup(n: int, essential: list[int]) -> list[str]:
     """
     code = ["i=i-a", "e=a+a"]
     left = len(essential)
-    two = False  # whether ``c`` already holds 2
     for k in range(n - 1, (essential or [n])[0] - 1, -1):
-        if not two:
-            code.append("c=a+a")
+        code.append("c=a+a")
         if k not in essential:
             code.append("i=i/c")
-            two = True
             continue
         code += [
             "d=i/c",
@@ -75,7 +76,6 @@ def _lookup(n: int, essential: list[int]) -> list[str]:
             "c=c+a",  # 1, or Q = 2**2**m for the mth essential input up
             "b=b/c",
         ]
-        two = False
         left -= 1
         if left:
             code.append("e=e*e")

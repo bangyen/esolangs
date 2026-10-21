@@ -32,7 +32,6 @@ Decisions:
 """
 
 from collections.abc import Callable
-from functools import lru_cache
 from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -66,9 +65,8 @@ type _Grid = tuple[tuple[_Cell, ...], ...]
 type _State = tuple[_Grid, int, int, int, int, int, bool]
 
 
-@lru_cache(maxsize=8)
 def _padded_grid(code: tuple[str, ...]) -> _Grid:
-    """Return reusable initial rows; stores replace tuples rather than edit them."""
+    """Return the initial rows padded to one width; stores replace tuples."""
     size = max(map(len, code))
     return tuple(tuple(line.ljust(size)) for line in code)
 

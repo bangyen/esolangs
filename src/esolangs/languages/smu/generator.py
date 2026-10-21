@@ -6,11 +6,9 @@ the half to run next.  Bytes arrive low bit first, so the input's value is
 the first bit of its byte; seven skip programs ``k`` pushed above the half
 drop the byte's other bits, one run each, and ``()`` is the node's own
 (empty) output.  A leaf ``z``/``o`` drops its bit and outputs the eight bits
-of ``'0'``/``'1'``.  A constant subtree folds to a leaf wrapped in one pad
-``(X)m`` per skipped level: ``m`` stores X under both bit names, so every
-table reads all its bytes.  A node whose halves are equal, as at an input
-the table ignores, is a pad of its one half.  Source: 5 characters a node,
-3 a pad.
+of ``'0'``/``'1'``.  A node whose halves are equal, as at an input the
+table ignores, is a pad of its one half; a constant subtree is pads all
+the way down to its leaf.  Source: 5 characters a node, 3 a pad.
 
 Equal subtables at one level are one subtree, and a subtree two parents
 reach is a macro of its own when that is shorter: defined once, named at
@@ -18,22 +16,24 @@ each use.
 
 Size:
     O(T) worst case, never longer than the plain tree; O(n) steps, one run
-    per input bit.  n=10 parity: 258 chars, n=10 and: 291 chars, n=10
-    random 1847: 1,758 chars.
+    per input bit.  n=10 parity: 258 chars, n=10 and: 207 chars, n=10
+    random 1847: 1,650 chars.
 
 Decisions:
     Inlining a kept macro never saves: its test only gets easier as its
     uses multiply.
+
+    A constant span is not folded to a padded leaf: the folded text is
+    embedded whole at every parent and a folded leaf has no children, so
+    it can never be a macro; the pad descent shares one constant subtree
+    per level instead, and measures smaller on random tables
+    ([ablations.constant_fold]).
 """
 
 from collections import Counter
 from string import ascii_letters
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    constant_span_test,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.smu.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
@@ -63,7 +63,6 @@ def _name(index: int) -> str:
 def smu(truth_table: str) -> str:
     """Return a Smu program printing ``truth_table``'s row for its input bytes."""
     n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)
     kids: dict[tuple[int, int], tuple[tuple[int, int], ...]] = {}
     text: dict[tuple[int, int], str] = {}
@@ -72,7 +71,7 @@ def smu(truth_table: str) -> str:
         key = (level, ids[level][lo >> (n - level)])
         if key in kids:
             return key
-        if level == n or constant(lo, hi):
+        if level == n:
             pads = n - level
             kids[key] = ()
             text[key] = "(" * pads + "zo"[truth_table[lo] == "1"] + ")m" * pads

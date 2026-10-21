@@ -34,6 +34,7 @@ don't edit by hand.
 | `bitdeque/bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
 | `bitwise_cyclic_tag/bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
 | `bit_tilde/bit~.txt` | bit~ | `0001` | `01` | 01 | '0' |
+| `bleh/bleh.txt` | Bleh | `0001` | `01` | 01 | '0' |
 | `blindfolded_arithmetic/blindfolded-arithmetic.txt` | Blindfolded Arithmetic | `0001` | `01` | 2 | '0' |
 | `boolfuck/boolfuck.txt` | Boolfuck | `0001` | `01` | 01 | '0' |
 | `brainfuck/brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
@@ -61,6 +62,7 @@ don't edit by hand.
 | `forbin/forbin.txt` | Forbin | `0001` | `01` | 01 | '0' |
 | `for_thorn/forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
 | `fractran/fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
+| `freestajlo/freestajlo.txt` | Freestajlo | `0001` | `01` | 0 1 | '0' |
 | `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `hot/hot.txt` | Hot | `0001` | `01` | 01 | '0' |
@@ -92,6 +94,7 @@ don't edit by hand.
 | `smallfuck/smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `smu/smu.txt` | Smu | `0001` | `01` | 01 | '0' |
 | `sstack/sstack.txt` | SStack | `0001` | `01` | 01 | '0' |
+| `stisp/stisp.txt` | Stisp | `0001` | `01` | embedded 01 | '0' |
 | `streetcode/streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
 | `subleq/subleq.txt` | Subleq | `0001` | `01` | 01 | '0' |
 | `suffolk/suffolk.txt` | Suffolk | `0001` | `01` | 01 | '0' |
@@ -134,6 +137,7 @@ don't edit by hand.
 - **slashes** -- Inputs fill the binary row index before unary selection; constant tables delete the input letters and print their answer.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
+- **stisp** -- Stisp has no input or output: each input is the atom 0 or 1 in its frame, and the result, printed at halt, is the answer atom
 - **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **unary** -- Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.

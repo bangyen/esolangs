@@ -12,20 +12,48 @@ labels = ["linear lookup"]
 qualification = "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1"
 scaling = "linear: 2T table characters plus at most a fixed gadget per input"
 execution = "linear: at most 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled"
-workspace = "T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+56) + bl(2n-1) bits"
+workspace = "T log T: worst Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+56) + bl(2n-1) bits"
 
 [generator_sizes]
-"00000001" = { commands = 112, commands_by_row = { "0" = 76, "1" = 76, "2" = 85, "3" = 85, "4" = 103, "5" = 103, "6" = 112, "7" = 112 }, source_units = 132 }
-"00001100" = { commands = 76, commands_by_row = { "0" = 67, "1" = 67, "2" = 67, "3" = 67, "4" = 76, "5" = 76, "6" = 76, "7" = 76 }, source_units = 103 }
-"00110110" = { commands = 114, commands_by_row = { "0" = 78, "1" = 78, "2" = 87, "3" = 87, "4" = 105, "5" = 105, "6" = 114, "7" = 114 }, source_units = 130 }
-"0110" = { commands = 76, commands_by_row = { "0" = 67, "1" = 67, "2" = 76, "3" = 76 }, source_units = 102 }
-"01101001" = { commands = 115, commands_by_row = { "0" = 79, "1" = 79, "2" = 88, "3" = 88, "4" = 106, "5" = 106, "6" = 115, "7" = 115 }, source_units = 132 }
-"0110100110010110" = { commands = 194, commands_by_row = { "0" = 95, "1" = 95, "2" = 104, "3" = 104, "4" = 122, "5" = 122, "6" = 131, "7" = 131, "8" = 158, "9" = 158, "10" = 167, "11" = 167, "12" = 185, "13" = 185, "14" = 194, "15" = 194 }, source_units = 166 }
-"1101001101101101" = { commands = 197, commands_by_row = { "0" = 98, "1" = 98, "2" = 107, "3" = 107, "4" = 125, "5" = 125, "6" = 134, "7" = 134, "8" = 161, "9" = 161, "10" = 170, "11" = 170, "12" = 188, "13" = 188, "14" = 197, "15" = 197 }, source_units = 168 }
-"11111110" = { commands = 117, commands_by_row = { "0" = 81, "1" = 81, "2" = 90, "3" = 90, "4" = 108, "5" = 108, "6" = 117, "7" = 117 }, source_units = 130 }
+"00000001" = { commands = 114, commands_by_row = { "0" = 78, "1" = 78, "2" = 87, "3" = 87, "4" = 105, "5" = 105, "6" = 114, "7" = 114 }, source_units = 134 }
+"00001100" = { commands = 79, commands_by_row = { "0" = 70, "1" = 70, "2" = 70, "3" = 70, "4" = 79, "5" = 79, "6" = 79, "7" = 79 }, source_units = 107 }
+"00110110" = { commands = 117, commands_by_row = { "0" = 81, "1" = 81, "2" = 90, "3" = 90, "4" = 108, "5" = 108, "6" = 117, "7" = 117 }, source_units = 134 }
+"0110" = { commands = 79, commands_by_row = { "0" = 70, "1" = 70, "2" = 79, "3" = 79 }, source_units = 106 }
+"01101001" = { commands = 117, commands_by_row = { "0" = 81, "1" = 81, "2" = 90, "3" = 90, "4" = 108, "5" = 108, "6" = 117, "7" = 117 }, source_units = 134 }
+"0110100110010110" = { commands = 197, commands_by_row = { "0" = 98, "1" = 98, "2" = 107, "3" = 107, "4" = 125, "5" = 125, "6" = 134, "7" = 134, "8" = 161, "9" = 161, "10" = 170, "11" = 170, "12" = 188, "13" = 188, "14" = 197, "15" = 197 }, source_units = 170 }
+"1101001101101101" = { commands = 199, commands_by_row = { "0" = 100, "1" = 100, "2" = 109, "3" = 109, "4" = 127, "5" = 127, "6" = 136, "7" = 136, "8" = 163, "9" = 163, "10" = 172, "11" = 172, "12" = 190, "13" = 190, "14" = 199, "15" = 199 }, source_units = 170 }
+"11111110" = { commands = 120, commands_by_row = { "0" = 84, "1" = 84, "2" = 93, "3" = 93, "4" = 111, "5" = 111, "6" = 120, "7" = 120 }, source_units = 134 }
 
 [catalogue]
 folding_constant_local = "_program"  # reads and literal output
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 268.1
+arity = 12
+verdict = "kept: canonical, exempt. An ignored input weighs 0 in the doubled-bit index (read bare, overwritten) and the painted table is the projected one. 0.00% on random tables at n=6..12; with one ignored input 83.1% at n=10 and 94.2% at n=12, with two ignored inputs 216.8% at n=10 and 268.1% at n=12"
+
+[ablations.constant_path]
+saving = 9.4
+arity = 12
+verdict = "kept: canonical, exempt. A constant table is spelled as a literal program and never painted. Solo price 11.5% / 9.7% on constant tables at n=10 and 11.1% / 9.4% at n=12; most of a constant table's saving is the projection's (it has no essential inputs) — jointly with projection removed a constant table costs +3,680% at n=10"
+
+[ablations.zero_run_loops]
+saving = 1614.7
+arity = 12
+verdict = "kept: a zero run of nine or more is spelled as a counter loop at a balanced stride instead of bare steps. 0.02-0.07% on random tables; on the long-run classes it is the build: AND 514.4% at n=10 and 1,614.7% at n=12, half-constant 66.8% / 85.4%, sparse 26.3% / 30.6%, majority 15.6% / 20.6%. The in-code shares (83.7% on AND at n=10, 73% on a threshold, 13.5% on majority, share of the plainer build) all reproduce"
+
+[ablations.count_doubling]
+saving = 12.9
+arity = 12
+verdict = "kept: inside a counted loop the count is spelled by whichever of unary and doubling through the spare dimension is shorter, so it never makes a program larger. 0.00% on random tables and most named tables; on AND, the longest-count class, 4.3% at n=10 rising to 12.9% at n=12 and 25.9% at n=14. The in-code shares (11.4% at n=12 and 20.6% at n=14 on AND, 13.4% on a threshold at n=14, share of the plainer build) all reproduce"
+
+[ablations.trailing_zero_skip]
+saving = 0.1
+arity = 12
+verdict = "removed 2026-10-20 (retirement candidate #26): painting stopped at the last one, since unvisited cells read 0. Deletion cost on random tables fell 1.29% at n=6 to 0.17% at n=10 and 0.05% at n=12; on its own classes (support in the first half / first quarter) 8.1% / 4.5% and 17.1% / 11.8% at n=10/12, both in clear decline — with the skip removed the trailing run is painted by the counter-loop spelling, whose cost grows slower than the program, so the saved share tended to zero on every class. The whole table is now painted"

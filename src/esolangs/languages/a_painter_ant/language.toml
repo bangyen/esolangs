@@ -30,3 +30,21 @@ workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.constant_fold]
+saving = 15800.0
+arity = 12
+verdict = "kept: canonical, exempt. A constant table restores each input to one white origin and leaves it black or white. Routing constants through the indexed corridor over the full table instead costs +4700.00 / +4942.86% at n=10 and +15800.00 / +16448.00% at n=12 (all-zero / all-one)"
+
+[ablations.input_projection]
+saving = 99.7
+arity = 12
+verdict = "kept: canonical, exempt. The corridor covers the table read at the essential inputs only; an ignored input gets no walk. Building it over the full table instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +99.09 / +99.74%, two +294.69 / +298.40%, three +676.42 / +692.54%, a half-constant table +8516.67 / +29852.08%"
+
+[ablations.trailing_run_trim]
+saving = 790.7
+arity = 12
+verdict = "kept: the corridor ends where the trailing run of equal answers starts; a walk halts at the corridor's end and every index past it shares that answer. Painting the full corridor instead costs +768.42 / +790.73% at n=10/12 on OR and dense tables and +480.26 / +494.21% on sparse tables; on random tables only +0.08 / +0.02%, since a random trailing run is ~2 rows. The saving is proportional to the trailing run, not a fixed amount"

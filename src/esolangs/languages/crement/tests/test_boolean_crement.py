@@ -106,7 +106,7 @@ class TestCrementTree:
             for n in range(1, 11)
         ]
         sizes = [len(crement(table)) for table in tables]
-        assert sizes == [34, 48, 130, 288, 431, 710, 1266, 2146, 3510, 6632]
+        assert sizes == [34, 48, 128, 278, 416, 681, 1229, 2102, 3456, 6551]
         ratios = [b / a for a, b in pairwise(sizes)]
         assert all(r <= 2.25 for r in ratios[2:]), ratios
         assert all(1.6 <= r <= 2 for r in ratios[-3:]), ratios
@@ -128,7 +128,7 @@ class TestCrementTree:
             after = len(crement(table))
             assert after <= before, table
             old, new = old + before, new + after
-        assert (old, new) == {2: (1444, 1352), 3: (43596, 37862)}[n]
+        assert (old, new) == {2: (1416, 1330), 3: (42580, 37120)}[n]
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
         """One node per level: a halting row runs ``5 n + 2`` commands at most."""
@@ -160,11 +160,11 @@ class TestCrementSharing:
     def test_three_input_total(self) -> None:
         """All 256 three-input tables: 43,596 to 37,862 characters, 13.2%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (43596, 37862)
+        assert self._totals(tables) == (42580, 37120)
 
     def test_five_input_sample_total(self) -> None:
         """200 seeded five-input tables: 127,301 to 84,600 characters, 33.5%."""
-        assert self._totals(five_input_sample()) == (127301, 84600)
+        assert self._totals(five_input_sample()) == (122316, 81574)
 
     def test_a_shared_copy_is_patched_by_whoever_enters(self) -> None:
         """Parity's repeated subtrees run from both parents, every row."""

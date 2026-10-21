@@ -25,3 +25,16 @@ workspace = "poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: t
 sharing_exempt = "threshold chain over the Horner index; no subtable is drawn"
 folding_ignored = "the Horner index reads every input; an ignored one still spaces the change points"
 folding_constant = "a constant table has no change point: the 7n + 12 char Horner prefix"
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.change_point_runs]
+saving = 85.5
+arity = 12
+verdict = "kept: the chain emits one test per change point and carries the countdown between change points in a run of '-' (one per row up to the last change). A test at every row instead costs +84.62% at n=10 and +85.53% at n=12 on random tables (second seed set +84.79 / +85.10%) and at n=10/12: parity, the least run-rich class, +44.05 / +44.33%; OR +13985.26 / +48827.52%; constants +16218.29 / +55453.12%; three ignored inputs +612.51 / +625.39%; sparse +299.55 / +322.46%. The generator has no separate projection or constant fold: a constant table is one block start and no change points"
+
+[ablations.block_reload]
+saving = 0.0
+arity = 12
+verdict = "recorded: past 15 inputs, blocks of 2^15 rows reload the index behind a sentinel 65535 and a guard on the high bits. It never fires at the audited arities (n <= 12), and without it the countdown wraps at 2^15, so there is no correct removal to price. Correctness machinery"

@@ -125,6 +125,18 @@ tracediff language *args:
 gendiff language *args:
     {{PYTHON}} scripts/gendiff.py "{{language}}" {{args}}
 
+# generator lines and branch arms no test reaches, vs scripts/deadcode_known.toml
+deadcode *args:
+    {{PYTHON}} scripts/deadcode.py {{args}}
+
+# generator Decisions: figures, ranked by package commits since each was written
+stale-figures *args:
+    {{PYTHON}} -m scripts.stale_figures {{args}}
+
+# seeded generator mutants against their tests (sweep in a worktree)
+mutants *args:
+    {{PYTHON}} scripts/mutants.py {{args}}
+
 # Merge downloaded artifacts, one complete CI run per directory.
 refresh-ci-timings *args:
     {{PYTHON}} scripts/ci/shard.py refresh {{args}}

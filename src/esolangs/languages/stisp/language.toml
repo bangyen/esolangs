@@ -1,0 +1,22 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 1
+
+[proof_status]
+labels = ["parameterized tree"]
+qualification = "the inputs are atoms in n frames, and an equation per edge of the reduced diagram rewrites the head node"
+scaling = "linear: one or two equations a shared node, O(log T) digits each"
+execution = "poly n: worst n rewrites: one frame an input"
+workspace = "poly n: at most 16n + 8bl(T) bits: the frames and the node atom"
+
+[generator_sizes]
+"00000001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 89 }
+"00001100" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 69 }
+"00110110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 129 }
+"0110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2 }, source_units = 83 }
+"01101001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 129 }
+"0110100110010110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 175 }
+"1101001101101101" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 195 }
+"11111110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 89 }

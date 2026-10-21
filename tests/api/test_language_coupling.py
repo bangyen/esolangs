@@ -38,6 +38,7 @@ MANAGED = frozenset(
         "tests/api/test_language_coupling.py",
         "tests/tooling/test_new_language.py",
         "tests/proofs/test_bands.py",
+        "tests/cli/test_cli_messages.py",
     }
 )
 

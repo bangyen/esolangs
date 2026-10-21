@@ -1,15 +1,16 @@
 """Container Boolean program generator: a tick-timed tree, or a threshold sum.
 
-Up to six inputs, the empty container reads one bit per pulse and a pruned,
-shared tree of containers survives bit by bit to a leaf that adds its entry
-to ``OUT`` at tick ``2n`` (see :func:`_container_tree`).  Above six, each bit
-latches into its own container and one gate dip adds the binary weights to a
-row counter, so ``OUT`` is a prefix sum with one line per step in the table
+The shorter of two programs ships.  In the tree, the empty container reads
+one bit per pulse and a pruned, shared tree of containers survives bit by bit
+to a leaf that adds its entry to ``OUT`` at tick ``2n`` (see
+:func:`_container_tree`).  In the threshold sum, each bit latches into its own
+container and one gate dip adds the binary weights to a row counter, so
+``OUT`` is a prefix sum with one line per step in the table
 (:func:`_container_threshold`, halting in ``2n + 2`` ticks).
 
 Size:
     Tree up to 2**n lines in the worst case, threshold one line per table
-    step; n=6 random 1847: 1,923 chars, n=10 parity: 7,593 chars.
+    step; n=6 random 1847: 835 chars, n=10 parity: 2,241 chars.
 """
 
 from collections.abc import Iterable, Iterator
@@ -38,9 +39,6 @@ from esolangs.registry._language import Language
 #: ``T`` at index 45 and ``IN`` at 754 -- both inside the name count of a
 #: wide table, so the collision is live rather than defensive.
 _RESERVED = frozenset({"EXIT", "IN", "OUT", "PRINT", "T"})
-
-#: Largest ``n`` built as a tree; wider tables use the threshold sum.
-_TREE_MAX_N = 6
 
 
 def _free_names(taken: Iterable[str]) -> Iterator[str]:
@@ -198,9 +196,10 @@ def _container_tree(
     The last block costs one line per leaf the table sends to 1, so a dense
     table is summed from its **zero** leaves instead: ``OUT`` starts at 49
     and each surviving zero leaf subtracts one, printing ``49 - S``.  The
-    clamp at zero never bites, since the value stays at 48 or 49.  Worth up
-    to 12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
-    sixteen, before pruning).  A leaf that does not answer is never read, so
+    clamp at zero never bites, since the value stays at 48 or 49.  Its share
+    of the shipped program is largest on the OR class
+    ([ablations.zero_leaf_inversion]).  A leaf that does not answer is never
+    read, so
     it is not emitted, and a gate no emitted child names is not declared.
 
     ``share`` folds a node into the first live node at its depth with the
@@ -351,21 +350,14 @@ class _TreeEmitter:
         return "\n".join(lines)
 
 
-def _threshold_deltas(truth_table: str, n: int, *, mirror: bool) -> list[int]:
-    """Return the step deltas of the table under one input-weight order.
+def _threshold_deltas(truth_table: str) -> list[int]:
+    """Return the step deltas of the table under the plain input-weight order.
 
-    Input ``i`` carries weight ``2**i`` when ``mirror`` (so the row index is
-    the bit-reversal of the table index) and ``2**(n-1-i)`` otherwise.  Entry
-    ``r`` is ``row[r] - row[r-1]``, with entry 0 the base value, so the table
+    Input ``i`` carries weight ``2**(n-1-i)``.  Entry ``r`` is
+    ``row[r] - row[r-1]``, with entry 0 the base value, so the table
     is the prefix sum and only the nonzero entries cost a line.
     """
-
-    def row(index: int) -> int:
-        if mirror:
-            index = int(f"{index:0{n}b}"[::-1], 2)
-        return int(truth_table[index])
-
-    values = [row(index) for index in range(2**n)]
+    values = [int(bit) for bit in truth_table]
     return [values[0], *(b - a for a, b in pairwise(values))]
 
 
@@ -380,13 +372,14 @@ def _container_threshold(truth_table: str) -> str:
     a single tick, the same ``value >= gate`` conjunction the tree uses.
     ``OUT`` is the prefix sum ``base + sum(d[r] for r if row >= r)``, one
     ``+-1 C>=r`` line per nonzero ``d``, every one firing in the single tick
-    the counter is live.  Whichever of the two weight orders has fewer steps
-    wins: the mirror turns a table that depends only on the last input
-    (``"01" * 2**(n-1)``, every row a step) into one line.
+    the counter is live.  The deltas are taken in the plain weight order
+    only: a mirrored (bit-reversed) order raced it until the 2026-10 audit
+    priced it under the bar and falling with n, even on the two-block
+    tilings it was kept for ([ablations.mirror_race]) (retirement candidate #12).
     """
     n = _validate_truth_table(truth_table)
-    weights, truth_table, essential = _threshold_weights(truth_table, n)
-    mirror, deltas, steps = _threshold_choice(truth_table, essential)
+    weights, truth_table, _essential = _threshold_weights(truth_table, n)
+    deltas, steps = _threshold_steps(truth_table)
 
     identifiers = _free_names(_RESERVED)
     counter, gate = next(identifiers), next(identifiers)
@@ -395,9 +388,7 @@ def _container_threshold(truth_table: str) -> str:
 
     lines = _threshold_pulse_lines(n)
     lines += _threshold_window_lines(windows, latches, n)
-    lines += _threshold_counter_lines(
-        gate, counter, weights, essential, latches, n, mirror=mirror
-    )
+    lines += _threshold_counter_lines(gate, counter, weights, latches, n)
     lines += _threshold_output_lines(counter, deltas, steps, n)
     return "\n".join(lines)
 
@@ -414,18 +405,13 @@ def _threshold_weights(truth_table: str, n: int) -> tuple[list[int], str, int]:
     return weights, truth_table, sum(map(bool, weights))
 
 
-def _threshold_choice(
-    truth_table: str, essential: int
-) -> tuple[bool, list[int], list[tuple[int, int]]]:
-    """Return the cheaper of the plain and mirrored step orders."""
-    # The mirror saves 15-44% of chars on tables tiled from two blocks (n=7..12,
-    # 4 or 16 blocks, 20 tables each) and 0.6-2.8% on random ones.
-    mirrored = _threshold_deltas(truth_table, essential, mirror=True)
-    plain = _threshold_deltas(truth_table, essential, mirror=False)
-    mirror = sum(map(bool, mirrored[1:])) < sum(map(bool, plain[1:]))
-    deltas = mirrored if mirror else plain
+def _threshold_steps(
+    truth_table: str,
+) -> tuple[list[int], list[tuple[int, int]]]:
+    """Return the plain order's step deltas and their nonzero steps."""
+    deltas = _threshold_deltas(truth_table)
     steps = [(row, delta) for row, delta in enumerate(deltas) if row and delta]
-    return mirror, deltas, steps
+    return deltas, steps
 
 
 def _threshold_pulse_lines(n: int) -> list[str]:
@@ -464,11 +450,8 @@ def _threshold_counter_lines(
     gate: str,
     counter: str,
     weights: list[int],
-    essential: int,
     latches: list[str],
     n: int,
-    *,
-    mirror: bool,
 ) -> list[str]:
     """Return the dipping gate, the counter and its weighted latch rules."""
     # The gate rests at 2 and dips to 1 for tick ``2n`` alone, so a latch at
@@ -483,8 +466,6 @@ def _threshold_counter_lines(
     ]
     for k, weight in enumerate(weights):
         if weight:
-            # The mirror reverses the essential inputs' ranks.
-            weight = (1 << (essential - 1)) // weight if mirror else weight
             lines.append(f"+{weight} {latches[k]}>={gate}")
     return lines
 
@@ -555,16 +536,17 @@ def _narrow_rules(program: str, width: int) -> str:
 
 def container(truth_table: str, width: int | None = None) -> str:
     """Build Container rules; narrow widths factor constants and deltas."""
-    n = _validate_truth_table(truth_table)
-    if n <= _TREE_MAX_N:
-        program = _container_tree(truth_table, share=True)
-    else:
-        program = _container_threshold(truth_table)
+    # The tree wins constants, projections and structured tables, the
+    # threshold most other tables from n=3: 41 of the 256 n=3 tables keep the
+    # tree, ties included (it halts two ticks sooner).
+    program = min(
+        _container_tree(truth_table, share=True),
+        _container_threshold(truth_table),
+        key=len,
+    )
     if width is None or grid_width(program) <= width:
         return program
     narrow = _narrow_rules(program, width)
-    if n > _TREE_MAX_N:
-        return narrow
     return min(
         narrow,
         _narrow_rules(_container_threshold(truth_table), width),
@@ -574,10 +556,7 @@ def container(truth_table: str, width: int | None = None) -> str:
 
 def balance_container(table: str, default: str) -> str:
     """Return the squarest of the default and its narrowings at the square width."""
-    n = _validate_truth_table(table)
-    programs = [default]
-    if n <= _TREE_MAX_N:
-        programs.append(_container_threshold(table))
+    programs = [default, _container_threshold(table)]
     # Narrowing at w costs no characters until a rule stops fitting, so the
     # square side is isqrt(CELL_ASPECT * characters); the threshold program
     # and the narrowest width are the named alternatives.
@@ -604,5 +583,5 @@ LANGUAGE = Language(
     # Wiki: the empty container sets IN "with EOF returning 0".
     eof="an exhausted read sets IN to the spec's 0",
     proof_execution=(execution, True, (3, 7)),
-    proof_workspace=(workspace, True, (7,)),
+    proof_workspace=(workspace, False, (3, 7)),
 )

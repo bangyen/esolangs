@@ -19,8 +19,9 @@ Size:
 Decisions:
     A subtree repeated at its level is written once, at its last occurrence,
     and each earlier one is a ``skip`` over a block closing just before it
-    (jumps run forward only): n=4, all 65,536 tables, -27.1%, none longer.
-    At n=5 the shared tree is 1.04x the halving lookup, so the n<=4
+    (jumps run forward only): n=4, all 65,536 tables, none longer
+    ([ablations.subtree_sharing]).  At n=5 the shared tree is 1.01x the halving lookup,
+    so the n<=4
     crossover stays.  A node whose halves agree is passed over.
 """
 
@@ -35,6 +36,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.inject.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -167,7 +169,8 @@ def inject(truth_table: str, width: int | None = None) -> str:
     """Build an Inject program computing ``truth_table``.
 
     Reads ``n`` lines and writes the entry plus a newline.  The split order
-    is input order (a greedy reorder saved 1.7% at n=4, 60 random tables).
+    is input order (the greedy order never departs from identity at n=4,
+    so no reorder saving arises).
     Width selects a chunked lookup with an O(n) floor; complete commands
     never split.
     """
@@ -261,9 +264,9 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return "\n".join([*head, *body, *tail])
 
 
-def _balance(_table: str, default: str) -> str:
-    """Return the normal program; the banded lookup never won (n=1..8)."""
-    return default
+def _balance(table: str, default: str) -> str:
+    """Race the banded lookup: up to 18% smaller at n=3..4, never elsewhere."""
+    return min(default, _inject_banded(table), key=balance_score)
 
 
 LANGUAGE = Language(

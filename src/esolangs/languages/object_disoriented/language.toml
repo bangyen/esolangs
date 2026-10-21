@@ -6,7 +6,7 @@ backlinks = 6
 
 [proof_status]
 labels = ["tree"]
-qualification = "a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; equal halves drop the bit untested, constant subtables fold, and a repeated branch is a class written once"
+qualification = "a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; constant subtables fold, and a repeated branch is a class written once"
 scaling = "linear: at most 39T + 21 characters: 35 a node, 4 a leaf"
 execution = "poly n: worst 67n + 34 commands: one tree path, 67 ops a level"
 workspace = "poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3) + 2bl(L)+bl(6n+8)+bl(6n+9)+bl(n)+19 bits: two frames and six cells a level"
@@ -20,3 +20,21 @@ workspace = "poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3)
 "0110100110010110" = { commands = 300, commands_by_row = { "0" = 244, "1" = 260, "2" = 260, "3" = 272, "4" = 260, "5" = 272, "6" = 272, "7" = 288, "8" = 260, "9" = 272, "10" = 272, "11" = 288, "12" = 272, "13" = 288, "14" = 288, "15" = 300 }, source_units = 328 }
 "1101001101101101" = { commands = 302, commands_by_row = { "0" = 209, "1" = 209, "2" = 258, "3" = 274, "4" = 221, "5" = 221, "6" = 237, "7" = 237, "8" = 258, "9" = 274, "10" = 274, "11" = 286, "12" = 237, "13" = 237, "14" = 286, "15" = 302 }, source_units = 381 }
 "11111110" = { commands = 233, commands_by_row = { "0" = 119, "1" = 119, "2" = 119, "3" = 119, "4" = 170, "5" = 170, "6" = 221, "7" = 233 }, source_units = 198 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 302.6
+arity = 12
+verdict = "kept: canonical, exempt. A branch written as an object at least twice becomes a class written once, named by an estimated cost model, and the shared build is kept only when shorter than the plain tree. Deleting it (the plain build) costs +138.4% at n=8, +217.4% at n=10 and +302.6% at n=12 on random tables; at n=12, parity +16,251.7%, half-constant +7,689.3%, majority +3,725.1%, sparse +314.5%, dense +302.2%; 0.00% on AND, OR and constant tables, where the shipped build names nothing"
+
+[ablations.halves_agree_skip]
+saving = -0.4
+arity = 12
+verdict = "removed 2026-10-20 (retirement candidate #28): a node whose halves agreed dropped its bit untested and inlined the one child. Forcing the branch makes programs smaller on random tables: -0.66% at n=10 and -0.42% at n=12 (second seed set -0.59 / -0.41), -0.62 / -0.83 / -0.97% on the ignored classes at n=12; exactly 0.00% on parity, AND, OR, majority, half-constant and constant tables. The skip pasted the child into the parent's text, so that use did not count toward the class-naming threshold in _shared_names; both halves are now emitted as objects, so a repeated child is written once and fetched twice"
+
+[ablations.constant_fold]
+saving = 0.0
+arity = 12
+verdict = "recorded: not a separable mechanism. A constant subtable's leaf spelling (read the remaining bytes, print the bit) is exactly the per-level descent summed (measured 2026-10-19, against the then-shipped skip), so removing the leaf case alone changed no length on any corpus (0.00% everywhere). It bites only jointly: the plain build (sharing, skip and fold removed) costs +480.5% at n=12 on random tables"

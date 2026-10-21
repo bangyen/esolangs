@@ -15,14 +15,37 @@ execution = "poly n: at most min(12n + 69, 10n + 99) commands, 26 stored lambdas
 workspace = "poly n: at most (2n+56)(n+4) + n + 1 + bl(n) bits: 26 lambdas"
 
 [generator_sizes]
-"00000001" = { commands = 24, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 24, "5" = 24, "6" = 24, "7" = 24 }, source_units = 38 }
-"00001100" = { commands = 17, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 26 }
-"00110110" = { commands = 25, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 24, "5" = 24, "6" = 25, "7" = 25 }, source_units = 40 }
-"0110" = { commands = 15, commands_by_row = { "0" = 14, "1" = 14, "2" = 15, "3" = 15 }, source_units = 22 }
-"01101001" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 29, "3" = 29, "4" = 29, "5" = 29, "6" = 28, "7" = 28 }, source_units = 54 }
-"0110100110010110" = { commands = 47, commands_by_row = { "0" = 46, "1" = 46, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 46, "7" = 46, "8" = 47, "9" = 47, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 47, "15" = 47 }, source_units = 86 }
-"1101001101101101" = { commands = 38, commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 30, "5" = 30, "6" = 30, "7" = 30, "8" = 38, "9" = 38, "10" = 39, "11" = 39, "12" = 38, "13" = 38, "14" = 38, "15" = 38 }, source_units = 88 }
-"11111110" = { commands = 25, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 24, "5" = 24, "6" = 25, "7" = 25 }, source_units = 40 }
+"00000001" = { commands = 32, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 24, "5" = 24, "6" = 32, "7" = 32 }, source_units = 50 }
+"00001100" = { commands = 24, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 24, "5" = 24, "6" = 24, "7" = 24 }, source_units = 38 }
+"00110110" = { commands = 32, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 32, "5" = 32, "6" = 32, "7" = 32 }, source_units = 76 }
+"0110" = { commands = 22, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22 }, source_units = 44 }
+"01101001" = { commands = 40, commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40 }, source_units = 76 }
+"0110100110010110" = { commands = 58, commands_by_row = { "0" = 58, "1" = 58, "2" = 58, "3" = 58, "4" = 58, "5" = 58, "6" = 58, "7" = 58, "8" = 58, "9" = 58, "10" = 58, "11" = 58, "12" = 58, "13" = 58, "14" = 58, "15" = 58 }, source_units = 108 }
+"1101001101101101" = { commands = 50, commands_by_row = { "0" = 42, "1" = 42, "2" = 50, "3" = 50, "4" = 41, "5" = 41, "6" = 41, "7" = 41, "8" = 50, "9" = 50, "10" = 50, "11" = 50, "12" = 42, "13" = 42, "14" = 50, "15" = 50 }, source_units = 124 }
+"11111110" = { commands = 32, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 24, "5" = 24, "6" = 32, "7" = 32 }, source_units = 50 }
 
 [formula_arities]
 workspace = [3, 5]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 55.8
+arity = 12
+verdict = "kept: canonical, exempt. A repeated half is stored once in a variable and fetched as x; wherever it repeats, under a gain test (k uses save k * len(text) against len(text) + 4; 26 variables, deepest first). Removing the stores costs 43.0% at n=8 rising to 53.5% at n=10 and 55.8% at n=12 on random tables, 96.8% / 99.0% on parity at n=10/12, 91.1% / 96.4% on majority"
+
+[ablations.halves_agree_fold]
+saving = 1.9
+arity = 12
+verdict = "kept: canonical family, exempt. A node whose halves agree drops its bit with ^% and runs the half bare. 2.5% at n=8 declining to 1.9% at n=12 on random tables, 3.0% / 1.9% with one ignored input; 0.0% on parity, AND, OR and majority, whose agreeing tests sit over constant spans the tree already folds to leaves"
+
+[ablations.literal_pairs]
+saving = 0.4
+arity = 12
+verdict = "removed 2026-10-20 (retirement candidate #23): a node over two constant halves was spelled directly as its recovering read (^1& for identity, ^'0=_ for negation) instead of a split over the two leaves. 3.3% at n=8 declining to 1.1% at n=10 and 0.4% at n=12 on random tables, 9.3% / 7.3% / 6.0% on parity, 7.1% / 5.2% / 4.0% on AND and OR: under the bar at both verdict arities on every corpus and declining on each. Restored 2026-10-20 capped at n <= 3: 57.9% / 42.5% / 30.9% at n=1/2/3, in clear decline on exhaustive small tables, and reverted the same day: a cap chosen where a trick still pays is judged at n=7..8 (CONTRIBUTING)"
+
+[ablations.root_drain]
+saving = 46.2
+arity = 12
+verdict = "kept: a leaf reached from the root through folds only prints first and reads the remaining inputs with bare ^ instead of ^%, so a constant table costs n+2 instead of 2n+2 (44.4% / 45.5% / 46.2% at n=8/10/12, two constant tables). 0.00% on every other corpus: the drain fires only when a root fold chain ends at a leaf, i.e. constant tables"

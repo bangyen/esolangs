@@ -12,7 +12,8 @@ Size:
 
 Decisions:
     Sharing a repeated block or subtree: tables tiled from two random
-    128-entry blocks shrink n=9 -20.5%, n=10 -42.8%; random tables unchanged.
+    128-entry blocks shrink, random tables are unchanged
+    ([ablations.subtree_sharing]).
 """
 
 import re
@@ -31,7 +32,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
+from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
 from esolangs.languages.forbin.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -43,8 +44,8 @@ _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
 #: Inputs answered by the shift register rather than by a branch.  A block
 #: costs two characters an entry (the literal and its comma) against the
 #: twenty-odd a tree leaf costs, so the per-entry constant falls as this
-#: rises while the register's fixed prologue doubles with it: 2.78 at five,
-#: 2.39 at six, 2.22 at seven.  Seven is the last value that still measures
+#: rises while the register's fixed prologue doubles with it: 2.76 at five,
+#: 2.39 at six, 2.20 at seven.  Seven is the last value that still measures
 #: cleanly -- at eight the block is wider than the whole table at ``n = 7``,
 #: which is a rung ``tests/proofs/deep/linearity.py`` fits a line through.
 _BLOCK_BITS = 7
@@ -280,7 +281,7 @@ def _balance(table: str, default: str) -> str:
     """Return the disjoint-guard spelling below the statement span."""
     tokens = forbin(table, 1).split()
     width = balanced_token_width(tokens, " ", maximum=grid_width(default) - 1)
-    return _join_tokens(tokens, width, " ")
+    return min(default, _join_tokens(tokens, width, " "), key=balance_score)
 
 
 LANGUAGE = Language(

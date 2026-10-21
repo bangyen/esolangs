@@ -1,0 +1,239 @@
+language = "Bleh"
+oldid = 165348
+
+[[examples]]
+id = "hello"
+source = '''
+^: std::io;
+
+main := io::print "Hello, World!";
+'''
+expected = "Hello, World!"
+
+[[examples]]
+id = "cat"
+source = '''
+^: std::io;
+
+// Check if there's output to read and pass into printLoop
+main := printLoop io::hasNext();
+
+// If input is 0 (no output left to read), end. Otherwise print the next input byte and loop.
+printLoop
+: 0 = 0
+: 1 = {
+  io::print io::next(); // Print the next input byte
+  printLoop io::hasNext(); // Call printLoop again
+};
+'''
+stdin = "ab\ncé"
+expected = "ab\ncé"
+
+[[examples]]
+id = "truth-machine-0"
+source = '''
+^: std::io;
+main := choice io::next();
+choice
+: "0" = print0()
+: .. = spin()
+;
+print0 := io::debug 0;
+spin := {
+  io::debug 1;
+  spin() // Tail-recursion should be optimized so this doesn't overflow call stack
+};
+'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+note = "prints 1 forever in constant space"
+source = '''
+^: std::io;
+main := choice io::next();
+choice
+: "0" = print0()
+: .. = spin()
+;
+print0 := io::debug 0;
+spin := {
+  io::debug 1;
+  spin()
+};
+'''
+stdin = "1"
+stop = "steps"
+max_steps = 100
+expected = "11111"
+
+[[examples]]
+id = "simple-numbers-repaired"
+note = """the page's sum with bitCarry and bitSum given the carry C as their
+third argument, the only bit their three patterns can take; the page's
+two-argument calls match no branch (spec trigger below)"""
+source = '''
+^: std::io;
+NOT
+:   0 = 1
+: [_] = 0
+;
+AND
+:   0,   _ = 0
+: [_], [x] = x
+;
+OR
+:   1,   _ = 1
+: [_], [x] = x
+;
+XOR
+: [x], [x] = 0
+: [_], [_] = 1
+;
+bitSum  : [a], [b], [c] = XOR(a, XOR(b, c));
+bitCarry: [a], [b], [c] = OR(AND(a, b), AND(c, XOR(a, b)));
+sum
+:          A,          B      = sum(A, B, 0)
+: [R1.., D1], [R2.., D2], [C] = [sum(R1, R2, bitCarry(D1, D2, C)), bitSum(D1, D2, C)]
+:   [R.., D],         [], [C] = [sum(R, [], AND(D, C)), XOR(D, C)]
+:         [],   [R.., D], [C] = [sum(R, [], AND(D, C)), XOR(D, C)]
+:         [],         [],   1 = 1
+:         [],         [],   0 = []
+;
+main := io::debug(sum(101, 11), 0, sum(1111, 1));
+'''
+expected = "1000010000"
+
+[[spec_triggers]]
+program = '''
+^: std::io;
+AND
+:   0,   _ = 0
+: [_], [x] = x
+;
+OR
+:   1,   _ = 1
+: [_], [x] = x
+;
+XOR
+: [x], [x] = 0
+: [_], [_] = 1
+;
+bitSum  : [a], [b], [c] = XOR(a, XOR(b, c));
+bitCarry: [a], [b], [c] = OR(AND(a, b), AND(c, XOR(a, b)));
+sum
+:          A,          B      = sum(A, B, 0)
+: [R1.., D1], [R2.., D2], [C] = [sum(R1, R2, bitCarry(D1, D2)), bitSum(D1, D2)]
+:   [R.., D],         [], [C] = [sum(R, [], AND(D, C)), XOR(D, C)]
+:         [],   [R.., D], [C] = [sum(R, [], AND(D, C)), XOR(D, C)]
+:         [],         [],   1 = 1
+:         [],         [],   0 = []
+;
+main := io::debug sum(101, 11);
+'''
+stdin = ""
+expect = "HaltError"
+claim = "the page's sum calls three-pattern functions with two arguments, which no branch matches"
+
+[[spec_triggers]]
+program = "^: std::io; main := io::debug AND(0, crash()); crash; AND : 0, _ = 0 : [_], [x] = x;"
+stdin = ""
+expect = "output"
+output = "0"
+claim = "_ does not force its argument, so AND short-circuits"
+
+[[spec_triggers]]
+program = "^: std::io; main := f(1, 0, 10, 1); f : x.. = io::debug x;"
+stdin = ""
+expect = "output"
+output = "10101"
+claim = "x.. at the top matches any number of arguments, concatenated"
+
+[[spec_triggers]]
+program = "^: std::io; main := f(1011); f : x[a, b..] = io::debug(a, [], b, x);"
+stdin = ""
+expect = "output"
+output = "10111011"
+claim = "x[a, b..] binds a=1, b=011, x=1011"
+
+[[spec_triggers]]
+program = "^: std::io; main := io::debug [];"
+stdin = ""
+expect = "output"
+output = "[]"
+claim = "debug prints the empty bitstring as []"
+
+[[spec_triggers]]
+program = "^: std::io; main := f(io::next(), io::next()); f : _, x = io::debug x;"
+stdin = "ab"
+expect = "output"
+output = "01100001"
+claim = "an argument is read when first forced, not when passed"
+
+[[spec_triggers]]
+program = "^: std::io; main := io::debug(io::next(), io::hasNext());"
+stdin = ""
+expect = "output"
+output = "0"
+claim = "next at EOF is empty and hasNext is 0"
+
+[[spec_triggers]]
+program = "main := f(1); f : 0 = 0;"
+stdin = ""
+expect = "HaltError"
+claim = "a call no branch matches crashes"
+
+[[spec_triggers]]
+program = "^: std::io; main := io::print 1;"
+stdin = ""
+expect = "HaltError"
+claim = "print of bits that are not UTF-8 bytes is a HaltError"
+
+[[spec_triggers]]
+program = "^: std::io; main := io::next(1);"
+stdin = ""
+expect = "HaltError"
+claim = "next takes no arguments"
+
+[[spec_triggers]]
+program = "main := 1 @"
+stdin = ""
+expect = "ProgramError"
+claim = "a character outside the grammar is a ProgramError"
+
+[[spec_triggers]]
+program = "main := g();"
+stdin = ""
+expect = "ProgramError"
+claim = "calling an undefined function is a ProgramError"
+
+[[spec_triggers]]
+program = "main := x;"
+stdin = ""
+expect = "ProgramError"
+claim = "an unbound variable is a ProgramError"
+
+[[spec_triggers]]
+program = "main := 1; main := 0;"
+stdin = ""
+expect = "ProgramError"
+claim = "a second function of one name is a ProgramError"
+
+[[spec_triggers]]
+program = "^: lib; main := 1;"
+stdin = ""
+expect = "ProgramError"
+claim = "an import other than std::io is a ProgramError"
+
+[[spec_triggers]]
+program = "f := 1;"
+stdin = ""
+expect = "ProgramError"
+claim = "a program needs a main function"
+
+[[spec_triggers]]
+program = "^: std::io; main := io::next;"
+stdin = ""
+expect = "ProgramError"
+claim = "a qualified name without arguments is not a variable"

@@ -1,10 +1,10 @@
 """Dig Boolean program generator: a mole walks a decision tree.
 
 Each tree level is a ``$3~;#`` block that reads a bit, stores it and turns on
-it; leaves print the answer.  Up to four inputs the tree is laid out in one
-band or two that turn round, and at four it races the alternating layout;
-above, that flat-leaf layout, its shared variants and the indexed leaf
-decoder compete by length and grid area.
+it; leaves print the answer.  The tree is laid out in one band or two that
+turn round; from four inputs it races the alternating layout, whose
+flat-leaf layout, shared variants and indexed leaf decoder compete by
+length and grid area.
 
 Size:
     Area O(T) past four inputs; n=10 parity: 614 chars, n=10 random 1847:
@@ -12,21 +12,19 @@ Size:
 
 Decisions:
     Above four inputs the alternating layout beat plain trees on every random
-    table measured, 1.9-5.1x smaller at n=5..8.
+    table measured, 2.1-6.5x smaller by area at n=5..8; the trees win when
+    one to three inputs are essential.
 
     A constant span at any level is a row of reads and a print, its box sized
-    alone (seeded n=7/8/9 area, one half constant: -14.7% / -20.0% / -25.4%;
-    constant 64-entry blocks -12.3% / -34.2% / -24.3%; random unchanged).
+    alone ([ablations.constant_span_alternating]).
     Aligned repeated leaves join along spare rows or columns, retaining the
     last copy and compacting unused external space.  Paths must fit the
     execution ledger (n=8 A B B A: 1,155 cells, 208 commands); groups whose
-    corridors collide or exceed it remain unshared.  Two parallel lanes admit
-    interleaved classes (n=10: 5,175 cells, 292 commands), stretching branch
-    counters around their gutter.  A prefix lookup can instead index up to
-    seven shared leaf classes at n=8..12, adding eight rows per class to one
-    six-input body; full-input parity uses 720 cells and 227 commands at n=9,
-    four-class n=10 controls 1,152 cells and 291 commands.  Narrow widths can
-    use the indexed leaf decoder.
+    corridors collide or exceed it remain unshared.  A prefix lookup can
+    index up to seven shared leaf classes at n=8..12, adding eight rows per
+    class to one six-input body; full-input parity uses 720 cells and 227
+    commands at n=9, four-class n=10 controls 1,152 cells and 291 commands.
+    Narrow widths can use the indexed leaf decoder.
 """
 
 from collections.abc import Callable
@@ -76,9 +74,8 @@ _DIG_STRIDE = len(_DIG_BRANCH)
 _DIG_BAND = _DIG_STRIDE + 1
 
 
-# Largest n built as plain decision trees; above it the alternating layout
-# (flat leaves) wins, at it the two race, and below it the layout cannot be
-# built (n=2, 3).
+# Largest n built as plain decision trees alone; from it the two race, and
+# below it the alternating layout cannot be built (n=2, 3).
 _DIG_TREE_MAX = 4
 
 
@@ -334,19 +331,6 @@ def _dig_lane_shared(truth_table: str, n: int) -> str | None:
     return _dig_layout(truth_table, n, sharing=True)
 
 
-def _dig_parallel_shared(truth_table: str, n: int) -> str | None:
-    """Join interleaved leaf classes on two lanes separated by a gutter.
-
-    Stretch branch counters around gutters, preserve rigid leaf stamps,
-    and reject collisions or paths past the existing execution ledger.
-    """
-    return (
-        _dig_layout(truth_table, n, sharing=True, parallel=True)
-        if n > _DIG_LEAF_BITS
-        else None
-    )
-
-
 def _dig_size(program: str) -> tuple[int, int]:
     """Rank grid area first, then text length for ties."""
     return grid_area(program), len(program)
@@ -427,14 +411,14 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
     built = _dig_build(truth_table, n, width, share=share)
     essential = essential_inputs(truth_table, n)
     if width is None and not essential:
-        # The n=8 column uses 16 cells against the row's 51, despite more text.
+        # The n=8 column uses 16 cells against the row's 32, despite more text.
         column = _dig_discards(n, truth_table[0] + ":") + "\n@"
         return min(built, column, key=_dig_size)
     if width is not None:
         return built
     wrapped = _dig_discarded(truth_table, n, essential, share=share)
-    # Grids are measured by area: the n=10 parity-prefix wrapper used
-    # 2,736 cells against the integrated reader's 2,627, despite less text.
+    # Grids are measured by area: on n=9 parity of eight inputs the wrapper
+    # uses 15 cells more than the integrated reader despite 23 fewer chars.
     return built if wrapped is None else min(built, wrapped, key=_dig_size)
 
 
@@ -463,10 +447,9 @@ def _dig_build(
         return _dig_indexed_choice(truth_table, n, current) if share else current
 
     lane = _dig_lane_shared(truth_table, n) if share else None
-    parallel = _dig_parallel_shared(truth_table, n) if share else None
-    if width is None and n > _DIG_TREE_MAX:
-        layouts = filter(None, (lane, parallel, _dig_alternating(truth_table, n)))
-        return settle(min(layouts, key=len))
+    if width is None and n > _DIG_TREE_MAX and not share:
+        layouts = filter(None, (lane, _dig_alternating(truth_table, n)))
+        return settle(min(layouts, key=_dig_size))
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
         return flat
@@ -474,12 +457,12 @@ def _dig_build(
     # the eastbound one starts its last block, which is what fixes the
     # split rather than any search: the halves are as even as that allows.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
-    trees = min((flat, banded), key=len)
-    if width is None and n == _DIG_TREE_MAX and share:
-        return _dig_race_at_tree_max(truth_table, n, trees, lane, parallel, settle)
+    trees = min((flat, banded), key=_dig_size)
+    if width is None and n >= _DIG_TREE_MAX and share:
+        return _dig_race_at_tree_max(truth_table, n, trees, lane, settle)
     if width is None:
         return trees
-    return _dig_fit_width(truth_table, n, width, flat, banded, lane, parallel, settle)
+    return _dig_fit_width(truth_table, n, width, flat, banded, lane, settle)
 
 
 def _dig_race_at_tree_max(
@@ -487,16 +470,16 @@ def _dig_race_at_tree_max(
     n: int,
     trees: str,
     lane: str | None,
-    parallel: str | None,
     settle: Callable[[str], str],
 ) -> str:
-    """Race the trees against the alternating layouts at four inputs.
+    """Race the trees against the alternating layouts from four inputs.
 
-    Both build at n=4 and neither dominates: over all 65,536 tables racing
-    them saves 30.7% of length (33.2% of area) against the trees alone.
+    Neither dominates: at n=4 racing saves 30.7% of length (33.2% of area)
+    over all 65,536 tables against the trees alone; above it the trees win
+    tables with few essential inputs ([ablations.tree_max_race]).
     """
-    layouts = filter(None, (lane, parallel, _dig_alternating(truth_table, n)))
-    return min(trees, settle(min(layouts, key=len)), key=len)
+    layouts = filter(None, (lane, _dig_alternating(truth_table, n)))
+    return min(trees, settle(min(layouts, key=_dig_size)), key=_dig_size)
 
 
 def _dig_fit_width(
@@ -506,7 +489,6 @@ def _dig_fit_width(
     flat: str,
     banded: str,
     lane: str | None,
-    parallel: str | None,
     settle: Callable[[str], str],
 ) -> str:
     """Pick the shortest layout fitting ``width``, else the narrowest one."""
@@ -515,7 +497,7 @@ def _dig_fit_width(
             return flat
         if grid_width(banded) <= width:
             return banded
-    candidates = tuple(filter(None, (flat, banded, lane, parallel)))
+    candidates = tuple(filter(None, (flat, banded, lane)))
     fitting = [p for p in candidates if grid_width(p) <= width]
     if n > _DIG_TREE_MAX:
         # Width 40 used 11,250 banded cells on the n=8 repeated-leaf case;
@@ -524,7 +506,7 @@ def _dig_fit_width(
         if grid_width(alternating) <= width:
             fitting.append(alternating)
     if fitting:
-        return settle(min(fitting, key=len))
+        return settle(min(fitting, key=_dig_size))
     # A bounded flat width keeps the rotated entry padding O(T).
     if n <= _DIG_TREE_MAX:
         candidates += (_dig_quarter_turn(flat),)

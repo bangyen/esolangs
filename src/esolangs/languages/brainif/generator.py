@@ -74,9 +74,9 @@ class _Lines:
         self.lines.extend(lines)
 
 
-#: The most levels the tree may branch on before the linear lookup takes
-#: over.  An ignored level only reads, so a wide table that depends on at most
-#: this many inputs stays a tree however many it reads.
+#: The most levels the tree branches on before the linear lookup joins it.
+#: An ignored level only reads, so a wide table that depends on at most this
+#: many inputs stays a tree however many it reads.
 _TREE_LEVELS = 4
 
 
@@ -90,6 +90,12 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     if width is not None:
         plain = _brainif_tree(truth_table, width)
         n = _validate_truth_table(truth_table)
+        if len(essential_inputs(truth_table, n)) > _TREE_LEVELS:
+            # The lookup is the narrow fallback; where the tree fits it is
+            # 25-59% shorter at n=3..14 ([ablations.wide_tree_race]).
+            tree = _resolve(_brainif_tree_entries(truth_table, n, prune=True), width)
+            if grid_width(tree) <= width and len(tree) < len(plain):
+                return tree
         if n <= 2 and grid_width(plain) > width:
             # Two-digit output jumps overflow a narrow width; zero jumps are shorter.
             return _brainif_zero_jumps(truth_table)

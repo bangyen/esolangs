@@ -161,7 +161,7 @@ three kinds:
 | --- | --- | --- |
 | Gates | `proof_status`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | a check or proof test consumes the data as the claim itself; wrong data fails |
 | Reference | `curation`, `formula_arities` | census facts and extra probe arities; informs decisions, gates nothing |
-| Record | `ablations`, `interpreter_ablations` | the plain-rewrite and interpreter audits' verdicts; no consumer, kept so settled decisions are not relitigated |
+| Record | `ablations`, `interpreter_ablations` | the plain-rewrite and interpreter audits' verdicts, kept so settled decisions are not relitigated; source cites `[ablations.<key>]` instead of restating a verdict's figure (tested), and a new entry records `seed` and `tables` so it reproduces |
 
 The registry connects the API and CLI to generators and interpreters:
 
@@ -297,7 +297,13 @@ requirements:
   aimed at a table class (ignored inputs, constants) is judged on that class;
   2D grids are judged by area, rows times the longest row. The n=3 total is
   context only: greedy order searches saved 8-15% there but at most 2.2% at
-  n >= 7, and were retired. A saving still growing at n=8 is measured on
+  n >= 7, and were retired.  A cap counts
+  only where the construction stops or the trick loses past it (cite the
+  loss: Line's level skip saves 20-35% at n <= 5 and costs 12.2% at n=6).
+  A cap set where the trick still saves, only less, is no cap: it is judged
+  at n=7..8 (FALSE's literal pairs, 6-5's fallback orders, Minifuck's
+  parity race and ABCDirection's tooth packing were restored that way and
+  retired again). A saving still growing at n=8 is measured on
   past it, to its peak. Named functions (parity, majority, and/or,
   thresholds) are reported apart; 10% on one keeps a rule for that family,
   not the whole race. Smallfuck's residual forms saved 2.2% on random tables
@@ -341,7 +347,9 @@ Judge a module by what the language does not demand.
 - A race, candidate or n-specific branch cites its saving at the largest n
   where it runs, measured jointly with its siblings: Line's five extra folds
   each saved 0% alone, yet streaming alone lost 25% on lifted cores until
-  projected streaming stayed beside it. Under 10% it goes: Circuit Diagram's
+  projected streaming stayed beside it — and the projected form itself
+  later went, priced at 8.00/8.96% on its best class at n=14. Under 10%
+  it goes: Circuit Diagram's
   cofactor bank won 0.00% at n=8..11, Back's bend 0-2.7%.
 - An index, cache or batch carries timings at three sizes; a replacement
   must grow the same way.

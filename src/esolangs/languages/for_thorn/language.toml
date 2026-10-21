@@ -23,3 +23,31 @@ workspace = "T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the 
 
 [formula_arities]
 execution = [3, 7]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 0.0
+arity = 12
+verdict = "kept: canonical, exempt. Near-inert in this spelling: an ignored input's drop read (,0*+) costs the same 5 chars as a real read, so deleting the projection costs +0.00% on random tables at every arity and at most +0.34 / +0.12 / +0.04% on two-ignored tables at n=8/10/12. Its real effect rides on the constant fold"
+
+[ablations.subtree_sharing]
+saving = 255.9
+arity = 12
+verdict = "kept: canonical, exempt. A repeated subtree is emitted once; a later scope subtracts its distance back and calls the twin. Deleting every twin call costs +132.46% at n=8, +187.82% at n=10 and +255.92% at n=12 on random tables, +14,911.36% on parity and +3,310.39% on majority at n=12"
+
+[ablations.subtree_floor]
+saving = 0.0
+arity = 12
+verdict = "recorded: a twin call is kept only when shorter than _FORTH_SUBTREE_FLOOR. Deleting the rule changes nothing: the no-floor build is byte-identical to the shipped build on all 744 tables checked, so every twin call that arises is already under the floor. The rule never binds"
+
+[ablations.constant_fold]
+saving = 39.3
+arity = 12
+verdict = "kept: canonical, exempt, and load-bearing for the sharing. A constant span carries subtree id 0/1 at every depth, so with the fold off a constant span twin-calls a dispatching scope emitted for a different depth (976 wrong of 2,048 gate executions). Priced in the share-off context where removal is defined: +39.29 / +39.18 / +39.30% on random tables at n=8/10/12 over the no-share build, +135.62% on majority and +99,853.66% on constant tables at n=12"
+
+[ablations.input_order]
+saving = 0.0
+arity = 12
+verdict = "recorded: the tree tests the last bit first because each scope is entered with its bit below its index; the order is a property of the construction, not a choice. Dropping the permutation computes wrong functions (623 wrong of 2,048 gate executions). Correctness machinery; no price"

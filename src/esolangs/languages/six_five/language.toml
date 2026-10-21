@@ -7,13 +7,13 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks"
-scaling = "linear, time n log: greedy order scoring, capped at n <= 10"
+scaling = "linear, time n log: two raced orders over canonical subtree IDs"
 execution = "linear: worst L commands: loop-free, each token runs at most once; constant tables run every token"
 workspace = "linear: worst 2T + 7n + 9 + bl(n) bits past n = 6: a tape of 2T cells"
 
 [generator_sizes]
-"00000001" = { commands = 20, commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 20, "4" = 17, "5" = 23, "6" = 17, "7" = 20 }, source_units = 34 }
-"00001100" = { commands = 17, commands_by_row = { "0" = 15, "1" = 15, "2" = 17, "3" = 17, "4" = 15, "5" = 15, "6" = 17, "7" = 17 }, source_units = 23 }
+"00000001" = { commands = 26, commands_by_row = { "0" = 20, "1" = 26, "2" = 20, "3" = 26, "4" = 20, "5" = 26, "6" = 20, "7" = 26 }, source_units = 40 }
+"00001100" = { commands = 20, commands_by_row = { "0" = 21, "1" = 21, "2" = 20, "3" = 20, "4" = 21, "5" = 21, "6" = 20, "7" = 20 }, source_units = 29 }
 "00110110" = { commands = 28, commands_by_row = { "0" = 23, "1" = 26, "2" = 23, "3" = 28, "4" = 23, "5" = 26, "6" = 23, "7" = 28 }, source_units = 54 }
 "0110" = { commands = 19, commands_by_row = { "0" = 17, "1" = 19, "2" = 17, "3" = 19 }, source_units = 36 }
 "01101001" = { commands = 27, commands_by_row = { "0" = 26, "1" = 28, "2" = 27, "3" = 27, "4" = 26, "5" = 29, "6" = 28, "7" = 27 }, source_units = 57 }
@@ -42,7 +42,7 @@ verdict = "kept: the identity-and-reverse race clears the bar on random tables, 
 [ablations.fallback_orders]
 saving = 0.0
 arity = 7
-verdict = "kept: the fallback round's greedy and first-reversed orders change no total on any corpus measured -- when the compact pair finds nothing, they find nothing either; 0.0% race marginal; retirement candidate, Bangyen to decide"
+verdict = "removed 2026-10-20 (retirement candidate #10): 0.0% race marginal on every corpus measured (random n=5..7, parity, and/or, majority, ignored-input and block classes, both seed sets) -- when the compact identity/reverse pair finds nothing, the greedy and first-reversed orders overflow the 35-label budget too. Restored 2026-10-20 capped at n <= 2: jointly 6 chars on one n=1 table and 48 chars over n=2, 0.0% at n=3 on exhaustive small tables, and reverted the same day: a cap chosen where a trick still pays is judged at n=7..8 (CONTRIBUTING)"
 
 [ablations.fewest_token_const]
 saving = 12.8
@@ -67,7 +67,7 @@ verdict = "kept: under the bar on random tables (0.9% at n=7) and parity (4.8% a
 [ablations.raw_copies]
 saving = 4.3
 arity = 10
-verdict = "kept: re-emitting the winner with copied reads raw earns 0.0% on every corpus except and/or (6.2%/7.5% at n=7), with the share in clear decline -- a fixed three tokens per copied read; fails the bar and the genuine-percentage stipulation; retirement candidate, Bangyen to decide"
+verdict = "removed 2026-10-20 (retirement candidate #11): re-emitting the winner with copied reads raw earned 0.0% on every corpus except and/or (6.2%/7.5% at n=7), with the share in clear decline to 4.3%/5.3% at n=10 -- a fixed three tokens per copied read; fails the bar and the genuine-percentage stipulation. Restored 2026-10-20 capped at n <= 2: jointly 6 chars on one n=1 table and 48 chars over n=2, 0.0% at n=3 on exhaustive small tables, and reverted the same day: a cap chosen where a trick still pays is judged at n=7..8 (CONTRIBUTING)"
 
 [ablations.walk_preload_skip]
 saving = 32.2

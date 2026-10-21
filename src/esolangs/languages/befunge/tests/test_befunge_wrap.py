@@ -43,8 +43,17 @@ def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -
 
 def test_befunge_keeps_a_header_that_already_fits() -> None:
     table = "01101001"
-    assert befunge(table, 80) == befunge(table)
-    assert befunge(table, 5) != befunge(table)
+    wide = befunge(table, 80)
+    # The natural build: one header row over the 4-wide table, unfolded.
+    assert len(wide.splitlines()) == 3
+    assert befunge(table, 5) != wide
+
+
+def test_befunge_default_lays_the_table_at_the_grid_width() -> None:
+    # Candidate 20: the default path no longer tries the sqrt width.
+    rows = befunge(_seeded(8)).splitlines()
+    assert len(rows) == 5  # header + 256 cells at 80 per row
+    assert max(map(len, rows)) == 80
 
 
 @pytest.mark.parametrize("width", [None, 1, 80, 1000])

@@ -18,16 +18,14 @@ Size:
 Decisions:
     A node whose one-subtree equals the zero-subtree of the next node on its
     level draws none: the beam falls down the column onto that node's mirror
-    and turns east into the zero side.  Straight-fall area (rows x longest
-    row), n=6/7: random -21.9% / -23.6%, tiled from two random blocks -17.5% /
-    -35.8%, constant half 0% / -13.1%; n <= 5 is unchanged, the load column
+    and turns east into the zero side.  Straight-fall area: see
+    [ablations.fall_through_sharing]; n <= 5 is unchanged, the load column
     setting the height.  The column wraps, so the level's last node reaches
-    its first from eight rows up; over the next-node fall alone, n=9 (200
-    tables each): random and constant half 0%, eight blocks drawn from two
-    random ones -10.2% of characters (-15.6% of area), from two 32-row blocks
-    -2.9%.  A bend of the first nonadjacent repeat through column 1 was
-    retired: it saved at most 2.7% of characters on average at n=7..10 (best
-    single table 14.7%).
+    its first from eight rows up; over the next-node fall alone it is inert
+    on random tables and pays on blocks drawn from two random ones
+    ([ablations.wrap_race]).  A bend of the first
+    nonadjacent repeat through column 1 was retired: it saved at most 2.7% of
+    characters on average at n=7..10 (best single table 14.7%).
 """
 
 from collections.abc import Callable
@@ -411,7 +409,7 @@ def _back_ordered(
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the default with the parity column; other layouts never won."""
+    """Compare the default with one column; wider layouts never won."""
     return min(default, back(table, 1), key=balance_score)
 
 

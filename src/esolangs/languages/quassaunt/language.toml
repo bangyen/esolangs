@@ -20,3 +20,21 @@ workspace = "linear: at most 24L bits: the running code, the stored code and the
 "0110100110010110" = { commands = 138, commands_by_row = { "0" = 138, "1" = 138, "2" = 138, "3" = 138, "4" = 138, "5" = 138, "6" = 138, "7" = 138, "8" = 138, "9" = 138, "10" = 138, "11" = 138, "12" = 138, "13" = 138, "14" = 138, "15" = 138 }, source_units = 1680 }
 "1101001101101101" = { commands = 153, commands_by_row = { "0" = 144, "1" = 144, "2" = 153, "3" = 153, "4" = 144, "5" = 144, "6" = 144, "7" = 144, "8" = 153, "9" = 153, "10" = 153, "11" = 153, "12" = 144, "13" = 144, "14" = 153, "15" = 153 }, source_units = 2188 }
 "11111110" = { commands = 107, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 107, "7" = 107 }, source_units = 1110 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.subtree_sharing]
+saving = 483.1
+arity = 12
+verdict = "kept: canonical, exempt. Every distinct subtable is stored once under its id and evaluated by name. Storing every tree position under its own name instead costs +237.05% at n=8, +339.87% at n=10 and +483.14% at n=12 on random tables, and +23,604.68% on parity at n=12; only +2.80% on constant tables, where the chain collapse still descends a single path"
+
+[ablations.halves_agree_fold]
+saving = 0.9
+arity = 12
+verdict = "kept: canonical, exempt. A node whose halves agree (or whose subtable is constant) takes a chain body that reads the input and evaluates the one child; it is also how an ignored input is absorbed, there being no separate projection step. Deleting the collapse costs +3.32 / +1.71 / +0.92% on random tables at n=8/10/12, but +45.91 / +46.74 / +47.31% on constant tables and +9.25 / +8.24 / +7.41% on majority"
+
+[ablations.balance_wrap]
+saving = 0.0
+arity = 12
+verdict = "recorded: _balance is the language's balance hook in the framework layout layer, not part of the boolean generator's output at default settings; not priced. Its piece-limit comment figure (a side 2.2% smaller on average over 50 tables at n=2..6) does not reproduce: the measured rendered-side gain is about 54% on average under two seed constructions. See RETIREMENT-CANDIDATES entry F28"

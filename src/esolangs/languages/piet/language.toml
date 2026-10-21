@@ -24,3 +24,21 @@ workspace = "linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits pas
 [catalogue]
 sharing_exempt = "a strip has no jump, so a repeated subtable cannot be shared"
 folding_constant = "literal products collapse a constant"
+
+[ablations]
+audited = "2026-10-20"
+
+[ablations.literal_product]
+saving = 25753.12
+arity = 12
+verdict = "kept: a one-hot or one-cold table is a product of literals, returned as the sole candidate instead of a lookup. Deleting it costs +25,753.12% on one-hot and +19,990.32% on one-cold tables at n=12, +31,715.38% on AND (a one-hot table) and +15,871.79% on OR, and +50.00 / +51.72% on constant tables, which reach it after projection to one entry"
+
+[ablations.halved_lookup]
+saving = 56.55
+arity = 12
+verdict = "kept: the race contestant for a table whose one half is constant — the stored half is looked up and the first essential bit rolled back in. Deleting it costs +56.55% on half-constant, +56.31% on second-half-constant and +28.05% on first-half-one tables at n=12; it is 0.00% on random tables at every arity, as its docstring says"
+
+[ablations.input_projection]
+saving = 664.76
+arity = 12
+verdict = "kept: canonical, exempt. Only the essential inputs index the table; an ignored input is read and popped, and the stored table is projected onto the rest. Removing projection costs +98.61% on one-ignored, +292.04% on two-ignored and +664.76% on three-ignored tables at n=12, and +27,480.00 / +21,375.86% on constant tables, whose projected form is a single entry"

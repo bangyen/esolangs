@@ -8,15 +8,15 @@ character into ``X = 52 + 2d`` and ``=`` maps it to its bit; ``[`` tests
 ``tape[bit]``, so ``[>-<->>"one"<<]`` runs only on 1, clearing ``X`` and
 the flag ``X + 1``, and ``>[->"zero"<]<`` runs on the flag left at 1.  Each
 distinct subtable (``subtree_ids``) is one function entered and left at its
-``X``; equal halves skip the branch, and a constant subtable reads its
-remaining characters and prints from cell 50 or 51.
+``X``; equal halves skip the branch, and a constant subtable descends
+level by level to a leaf that prints from cell 50 or 51.
 
 A function stays declared only where that is shorter than pasting its body
 at each call (:func:`_inlined`).
 
 Size:
     O(T) size and build time, 26n + 311 steps at most; n=10 parity: 1,060
-    chars, n=10 random 1847: 6,388 chars (8,558 declaring every function;
+    chars, n=10 random 1847: 6,253 chars (8,558 declaring every function;
     26% less over five random tables at n=10, 11% at n=3, no added steps).
 """
 
@@ -62,11 +62,23 @@ class _Functions:
         self.bodies: dict[str, str] = {}
 
     def constant(self, sub: int, depth: int) -> str:
-        """Name the constant function for ``sub`` at ``depth``, building it once."""
+        """Name the constant function for ``sub`` at ``depth``, building it once.
+
+        Built like any other node: both children are the same constant one
+        level down, so the body is the skip spelling, until the last level,
+        whose leaf moves to the print cell, prints, and returns. The descent
+        pays the away-and-back moves once, at the leaf; a read-all body paid
+        them at every depth where a constant subtable occurred.
+        """
         key = f"c{sub}d{depth}"
         if key not in self.bodies:
-            away = _X + 2 * depth - _OUT - sub
-            self.bodies[key] = "," * (self._n - depth) + "<" * away + "." + ">" * away
+            self.bodies[key] = ""  # reserve: children are named first
+            if depth == self._n:
+                away = _X + 2 * depth - _OUT - sub
+                body = "<" * away + "." + ">" * away
+            else:
+                body = f',>>"{self.constant(sub, depth + 1)}"<<'
+            self.bodies[key] = body
         return key
 
     def build(self, depth: int, k: int) -> None:

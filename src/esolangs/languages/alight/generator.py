@@ -148,8 +148,8 @@ def _alight_flat_compact(
 ) -> str:
     """Return the shorter straight lookup, with the index in ``at`` itself.
 
-    Against the ``set i`` fold of ``_alight_units`` it is 10.3% shorter at n=8
-    (13.8% at n=7), so the default path never builds units.
+    Against the ``set i`` fold of ``_alight_units`` it is shorter
+    ([ablations.flat_compact_form]), so the default path never builds units.
 
     An input ``essential`` marks False is read into ``r``, which the lookup
     overwrites, and ``truth_table`` is indexed by the rest.

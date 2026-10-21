@@ -5,17 +5,17 @@ A bare ``>`` takes its dimension from the byte it stands on (the interpreter's
 pointer by the bit read: dimension 1 for a one, 0 for a zero.  ``{d`` loops on
 a *coordinate* (its ``{`` arm), so the index doubles.
 
-The table is painted, two characters an entry: a trailing zero run is left
-unpainted (unvisited cells read 0); an interior run of zeros is a counter
-loop where that is shorter, any other entry is painted one by one.
+The table is painted in full, two characters an entry: a run of zeros is
+a counter loop where that is shorter, any other entry is painted one by
+one.
 
 Size:
-    O(T) for dense tables, O(n) for and; n=10 random 1847: 2,302 chars,
-    n=10 and: 375 chars, n=10 majority: 1,993 chars.
+    O(T) for dense tables, O(n) for and; n=10 random 1847: 2,306 chars,
+    n=10 and: 377 chars, n=10 majority: 1,995 chars.
 
 Decisions:
-    The bare leaf-coordinate form (width 1, n<=2) is 189-437 characters against
-    the shared index form's 102-161, kept only because the index form wraps no
+    The bare leaf-coordinate form (width 1, n<=2) is 97-217 characters against
+    the shared index form's 82-106, kept only because the index form wraps no
     narrower than two columns.  Skipping the first read's doubling saves 16
     characters, 2.2% at n=8: not worth the special case.
 """
@@ -33,6 +33,7 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
     _dimensional,
+    balance_score,
     wrap_program,
 )
 from esolangs.languages.dimensional.proof_formulas import workspace
@@ -82,14 +83,12 @@ def _paint(truth_table: str) -> str:
 
     Two characters an entry either way: ``>1`` for a zero, ``+`` and a bare
     ``>`` for a one, whose ``+`` leaves the 1 that names the index axis.
-    Painting stops at the last one, since an unvisited cell already reads 0.
     A long run of zeros is a counter loop (:func:`_advance`); ones are not,
     as a cell is keyed by every nonzero coordinate, counter included.
     """
-    last = truth_table.rfind("1")
     cells = [
         _advance(len(run)) if bit == "0" else "+>" * len(run)
-        for bit, group in groupby(truth_table[:last])
+        for bit, group in groupby(truth_table)
         for run in ["".join(group)]
     ]
     return f">{_PLANE}" + "".join(cells) + f"+!{_INDEX}<{_PLANE}"
@@ -97,8 +96,8 @@ def _paint(truth_table: str) -> str:
 
 def _count(count: int) -> str:
     """Return commands making dimension 4 hold ``count``, doubling through 5."""
-    # Doubling saves nothing on random tables (n=7..10), 11.4% (n=12) and 20.6%
-    # (n=14) of chars on and, 13.4% on a threshold at n=14.
+    # Doubling saves nothing on random tables, but grows with n on long
+    # counts ([ablations.count_doubling]).
     unary = f">{_COUNTER}" * count
     if count < 2:
         return unary
@@ -109,8 +108,8 @@ def _count(count: int) -> str:
 def _advance(length: int) -> str:
     """Move along dimension 1 using unary, counted, or balanced-stride commands."""
     bare = f">{_INDEX}" * length
-    # The loop saves 83.7% of chars on and at n=10, 73% on a threshold, 13.5% on
-    # majority, 0% on random tables.  Nine is the first zero run that a counted
+    # The loop is the build on long-run classes, inert on random tables
+    # ([ablations.zero_run_loops]).  Nine is the first zero run that a counted
     # loop shortens.
     if length < 9:
         return bare
@@ -170,10 +169,10 @@ def _dimensional_bare(table: str, n: int) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Return the token-balanced layout; the default and one column never won."""
+    """Compare the default with the token-balanced layout; one column never won."""
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
-    return _program(table, width)
+    return min(default, _program(table, width), key=balance_score)
 
 
 LANGUAGE = Language(

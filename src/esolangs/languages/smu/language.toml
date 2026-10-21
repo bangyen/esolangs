@@ -21,3 +21,26 @@ definitions = ["E = 95T - 80, the macro-expanded program with no constant subtre
 "0110100110010110" = { commands = 217, commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 217, "5" = 217, "6" = 217, "7" = 217, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 217, "13" = 217, "14" = 217, "15" = 217 }, source_units = 150 }
 "1101001101101101" = { commands = 217, commands_by_row = { "0" = 219, "1" = 219, "2" = 217, "3" = 217, "4" = 219, "5" = 219, "6" = 219, "7" = 219, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 219, "13" = 219, "14" = 217, "15" = 217 }, source_units = 159 }
 "11111110" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 123 }
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.constant_fold]
+saving = -5.8
+arity = 12
+verdict = "removed (retirement candidate 33): a constant span no longer folds to a leaf wrapped in one pad per skipped level; constant spans descend the pad chain instead, so a recurring constant subtree is one shared subtree that can be defined as a macro. The folded leaf had no children, so it could never be defined as a macro, and its text was embedded whole at every parent. The audit measured the descent smaller: -8.75% at n=10 and -5.78% at n=12 on random tables, -8.79% on majority at n=12, 0.00% on parity and constant tables. See RETIREMENT-CANDIDATES entry 33"
+
+[ablations.halves_agree_pad]
+saving = 1.1
+arity = 12
+verdict = "kept: canonical, exempt. A node whose halves agree is a pad of its one half; it is also how an ignored input is absorbed, there being no separate projection step. Deleting the collapse costs +1.29% at n=10 and +1.07% at n=12 on random tables, +2.87 / +0.99% on one-ignored tables"
+
+[ablations.macro_sharing]
+saving = 225.5
+arity = 12
+verdict = "kept: canonical, exempt. A multiply-used subtree is defined once as a macro and named at each use, shortest names to the most-used. Deleting every macro costs +164.46% at n=10 and +225.48% at n=12 on random tables, +8,289.80% on parity at n=12"
+
+[ablations.profitability_test]
+saving = 1.2
+arity = 12
+verdict = "kept: a macro is defined only when (uses-1)*len(text) > (uses+2)*len(name). Defining every multiply-used subtree regardless costs +0.00% at n=8/10 and +1.17% at n=12 on random tables: the test binds only at the largest arity and earns its keep there"

@@ -19,6 +19,7 @@ Errors:
 from esolangs.compressed import CompressedText
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
 from esolangs.languages.brainfuck.interpreter import _State as _BFState
+from esolangs.languages.brainfuck.interpreter import _written
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._source import ProgramSource, _read_container, text_source
@@ -28,8 +29,8 @@ from esolangs.runtime.source_hints import syntax_error
 
 def _at_eof(state: _BFState) -> _BFState:
     """Return the comma successor with Unary's zero EOF value."""
-    ind, ptr, tape, _acc, _dirty = state
-    return ind + 1, ptr, tape, 0, True
+    ind, ptr, tape = state
+    return ind + 1, ptr, _written(tape, ptr, 0)
 
 
 def load_source(source: ProgramSource) -> str | CompressedText:

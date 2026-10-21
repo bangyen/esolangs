@@ -26,3 +26,16 @@ folding_constant_local = "_CONSTANT"  # delete inputs and print the literal answ
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.constant_fold]
+saving = 409.5
+arity = 12
+verdict = "kept: canonical, exempt. A constant table deletes its input letters and prints the literal answer, n + 9 chars. Routing constants through the general path instead costs +442.1% at n=10 and +409.5% at n=12 (19 to 103 and 21 to 107 chars)"
+
+[ablations.projection]
+saving = 99.8
+arity = 12
+verdict = "kept: canonical, exempt. The table is read at the essential inputs only; an ignored input's slot is X-marked and its bit deleted by the _IGNORE rule before the unary sweep. Emitting the full table over all inputs costs +99.18% at n=10 and +99.79% at n=12 on one-ignored tables, +295.44 / +298.82% on two-ignored tables, and 0.00% on random tables, where every input is essential"

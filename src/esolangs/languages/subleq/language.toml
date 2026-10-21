@@ -24,3 +24,41 @@ definitions = ["D = Σ[k=0..n-1] min(2^k, 2^(2^(n-k))-2), the nonconstant residu
 
 [schemes]
 folds_without_tree = true
+
+[ablations]
+audited = "2026-10-20"
+
+[ablations.packed_decoder]
+saving = 182.02
+arity = 12
+verdict = "kept: the packed contestant in the generator's race. Deleting it (tree for every table) costs +68.83% at n=10 and +182.02% at n=12 on random tables (second seed set +68.91 / +182.00%), +133.33% on one-ignored and +98.21% on half-constant tables at n=12. It wins every random race at n=10/12 and none at n<=8, where the tree wins all 200"
+
+[ablations.shared_tree]
+saving = 678.12
+arity = 12
+verdict = "kept: the tree contestant. Deleting it (packed for every table) costs +321.69% at n=4, +139.20% at n=6 and +21.42% at n=8 on random tables, and at n=12 +461.50% on parity, +678.12% on OR, +317.25% on AND and +229.37% on majority; on random tables at n=10/12 the packed build ships instead, so the deletion cost there is 0.00%"
+
+[ablations.constant_shortcut]
+saving = 0.0
+arity = 12
+verdict = "recorded: a constant table returns the packed build directly, skipping the race. Size-neutral — routing constants through the race changes no output, because the packed build wins constant tables anyway; the tree alone on a constant table costs +282.05% at n=10 and +290.22% at n=12. The shortcut only saves the tree build"
+
+[ablations.subtree_sharing]
+saving = 36.67
+arity = 12
+verdict = "kept: canonical, exempt. Inside the tree build (subtree_ids / subtree_slot in the shared branch decoder): an emitted subtree is jumped to, not repeated. Removing sharing costs +15.49% on AND and +36.67% on OR at n=12, where the unshared tree still ships; on parity and majority it grows past the packed build, so the routed price caps at the packed alternative (+461.50 / +229.37%); on random tables +56.87% at n=4 and +132.99% at n=6, capped at n=8 (+21.42%)"
+
+[ablations.equal_halves_skip]
+saving = 3.87
+arity = 8
+verdict = "kept: canonical, exempt. Inside the tree build: subtree_slot passes over a test whose halves agree. Removing the skip costs +2.26% at n=4, +4.00% at n=6 and +3.87% at n=8 on random tables (the arities where the tree ships on random tables), +4.21 / +3.95% on two/three-ignored tables at n=10, where the tree still ships on those classes"
+
+[ablations.constant_fold]
+saving = 1.41
+arity = 12
+verdict = "kept: canonical, exempt. Inside the tree build: a constant subtree resolves to a leaf slot and prints, instead of branching down to its rows. Removing the fold (a branch whose two outcomes both reach the leaf) costs +1.41% on AND and +0.87% on majority at n=12, +2.03% on three-ignored tables at n=10, and +2.37 / +1.40 / +0.45% on random tables at n=4/6/8"
+
+[ablations.input_projection]
+saving = 66.52
+arity = 12
+verdict = "kept: canonical, exempt. Inside the packed build: an ignored input is read into TMP and never joins the index, and the table is packed over the essential inputs only. Removing projection costs +34.98% on one-ignored and +66.52% on two-ignored tables at n=12 (direct: the unprojected build still ships); on three-ignored tables it grows past the tree, so the routed price caps at +22.52%. It is 0.00% wherever every input is essential"

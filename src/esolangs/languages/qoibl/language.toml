@@ -35,3 +35,16 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 price = 161.6
 workload = "run"
 verdict = "kept"
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 42.2
+arity = 12
+verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the table is packed over the essential inputs only; an ignored read drains into a variable the packed literal overwrites. 0.00% on random tables at n=8/10/12 (projection almost never fires there); with one ignored input 19.4% at n=8 rising to 31.6% at n=10 and 42.2% at n=12, with two ignored 31.0% / 48.3% / 63.7%, and on constant tables 51.7% / 67.1% / 84.0% (a constant packs as a two-row table)"
+
+[ablations.plain_build]
+saving = 42.2
+arity = 12
+verdict = "recorded: the plain build is the projection removed (every input at its positional weight, the full table packed) and nothing else: the Horner squaring that accumulates 2**index is essential with only + - * / available, the ignored-read drain target and the bit-plus-one store are workspace correctness, and the Horner literal chunking is a width path, not the default sized path. Plain and shipped are byte-identical on every table whose inputs are all essential"

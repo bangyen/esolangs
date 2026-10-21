@@ -7,10 +7,10 @@ the eighth in ``t`` (``iiiiiiicit``).  ``f t X`` runs ``X`` only on a 1, and
 ``N`` (``fpz cbs``) acts as a 1 until a 1 bit calls it and ``s`` becomes
 ``z``, so ``clN.afta`` leaves the negation in ``a`` and ``fan X0`` runs
 ``X0`` only on a 0.  Each branch is an object ``n ... rz zz``, so its ``t``
-and ``a`` are its own.  A node whose halves agree drops its bit untested; a
-constant subtable drops the rest and prints the last bit (``lI.``, the
-input's own 1, or ``z``).  A branch written as an object twice or more is
-a class ``dS. ... rzzz``, written once and used as ``lS.``.
+and ``a`` are its own.  A constant subtable drops the rest and prints the
+last bit (``lI.``, the input's own 1, or ``z``).  A branch written as an
+object twice or more is a class ``dS. ... rzzz``, written once and used as
+``lS.``.
 
 Size:
     T-1 nodes at most: size and build time O(T); n=8 parity: 640 chars,
@@ -18,7 +18,8 @@ Size:
 
 Decisions:
     Shared branches, against the plain tree (8 seeded tables each): dense
-    -58.1% at n=8, -68.1% at n=10; parity 9,748 -> 640 chars at n=8.
+    -51.6..-55.6% at n=8 across six draws, -68.1% at n=10; parity 9,748 ->
+    640 chars at n=8.
 """
 
 from collections.abc import Callable, Iterator
@@ -66,9 +67,6 @@ def _body(
     """One node's code; ``obj(depth, k)`` writes a branch object."""
     if ids[depth][k] < 2:
         return "i" * 8 * (n - depth) + ("olI." if ids[depth][k] else "oz")
-    zero, one = ids[depth + 1][2 * k], ids[depth + 1][2 * k + 1]
-    if zero == one:
-        return "iiiiiiii" + _body(ids, n, depth + 1, 2 * k, obj)
     return (
         " iiiiiiicitclN.afta ft"
         + obj(depth + 1, 2 * k + 1)
@@ -117,10 +115,7 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
                 plain[depth][node] = 8 * (n - depth) + (4 if node else 2)
                 continue
             zero, one = ids[depth + 1][2 * k], ids[depth + 1][2 * k + 1]
-            if zero == one:
-                plain[depth][node] = 8 + plain[depth + 1][zero]
-            else:
-                plain[depth][node] = 35 + plain[depth + 1][one] + plain[depth + 1][zero]
+            plain[depth][node] = 35 + plain[depth + 1][one] + plain[depth + 1][zero]
     names: dict[tuple[int, int], str] = {}
     fresh = _names()
     candidate = next(fresh)
@@ -144,11 +139,8 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
             if node < 2:
                 continue
             zero, one = ids[depth + 1][2 * k], ids[depth + 1][2 * k + 1]
-            if zero == one:
-                below.setdefault(zero, [0, 0])[1] += texts
-            else:
-                below.setdefault(zero, [0, 0])[0] += texts
-                below.setdefault(one, [0, 0])[0] += texts
+            below.setdefault(zero, [0, 0])[0] += texts
+            below.setdefault(one, [0, 0])[0] += texts
         uses = below
     return names
 
