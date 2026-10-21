@@ -133,24 +133,30 @@ def test_audit_space_accounting() -> None:
 
 def test_audit_false_corpus() -> None:
     """The corpus alphabet covers every char the generator emits at
-    small arity, and the n=1 sizes are the measured shipped sizes."""
+    small arity, and the n=1 sizes are the measured shipped sizes.
+    Restated 2026-10-21 for the current tree: candidate #23's removal
+    stands and its capped restore was retired again (5e57525c2), so
+    the pair tables ship 16 while the constant tables ship the
+    3-char spellings the v2 audit once reported as gaps."""
     corpus = corpus_for("FALSE")
-    assert corpus.sizes[1] == {"00": 4, "01": 4, "10": 6, "11": 4}
-    assert set("^%01.&=[]_'?:;a$") <= set(corpus.alphabet)
+    assert corpus.sizes[1] == {"00": 3, "01": 16, "10": 16, "11": 3}
+    # The pair spelling's ' and _ left the emitted alphabet with it.
+    assert set(corpus.alphabet) == set("!$%&.01:;=?[]^ab")
 
 
 @pytest.mark.medium  # ~8k interpreter executions through the public API
 def test_audit_pilot_certificates() -> None:
-    """The FALSE pilot (RESULTS.md, v2): ``01`` is certified minimal at
-    4 and the two constant tables have the recorded 1-char gaps.  The
-    budget here still covers each of those outcomes; the n=1 NOT space
-    (1.1M strings) is over 20x this cap, so that pair must price out,
-    never certify."""
+    """FALSE n=1 outcomes on the current tree (restated 2026-10-21).
+    The v2 pilot ran on the pre-#23 tree, where ``01`` was certified
+    minimal at 4 and the constant tables had 1-char gaps.  Since
+    then #23's removal landed and its capped restore was retired
+    again (5e57525c2): the constant tables now ship the 3-char
+    spellings and certify, while the pair tables ship 16 and their
+    shorter programs sit in the n=1 NOT space (1.1M strings, over
+    20x this cap), so they must price out, never certify."""
     _, outcomes = audit_language("FALSE", 1, candidate_cap=20_000, wall_seconds=60)
     by_table = {o.table: o for o in outcomes}
-    assert by_table["01"].outcome == "certified"
-    assert by_table["00"].outcome == "gap"
-    assert by_table["00"].found == "0.^"
-    assert by_table["11"].outcome == "gap"
-    assert by_table["11"].found == "1.^"
+    assert by_table["00"].outcome == "certified"
+    assert by_table["11"].outcome == "certified"
+    assert by_table["01"].outcome == "priced_out"
     assert by_table["10"].outcome == "priced_out"
