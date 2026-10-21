@@ -42,7 +42,8 @@ from verify.process import (
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.registry import LANGUAGES
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._describe import LanguageInfo
 from esolangs.runtime._validate import check_timeout
 from esolangs.runtime.io import ScriptedIO
@@ -584,7 +585,10 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("language")
-    parser.add_argument("truth_table")
+    parser.add_argument(
+        "truth_table",
+        help="one output bit per input row, 2**n of them: 0110 is two-input XOR",
+    )
     parser.add_argument("--repeat", type=int, default=3)
     parser.add_argument("--row", type=int)
     parser.add_argument("--step-cap", type=int, default=2_000_000)
@@ -603,6 +607,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
         parser.error("--repeat and --step-cap must be positive")
+    # Here, not in the worker: a typo there surfaced as a traceback.
+    try:
+        args.language = resolve(args.language)
+        _validate_truth_table(args.truth_table)
+    except ValueError as exc:
+        parser.error(str(exc))
     row = len(args.truth_table) - 1 if args.row is None else args.row
     if not 0 <= row < len(args.truth_table):
         parser.error(f"--row must be in [0, {len(args.truth_table) - 1}]")

@@ -20,7 +20,6 @@ mentions left in prose for a hand edit.
 from __future__ import annotations
 
 import argparse
-import difflib
 import itertools
 import keyword
 import shlex
@@ -607,25 +606,23 @@ def _gate() -> int:
     return 0
 
 
-def _misspelled(name: str) -> list[str]:
-    """Registered names close to ``name``, if it was never started.
+def _registered_name(name: str) -> str:
+    """Return ``name`` as the registry spells it, or unchanged if new.
 
-    A typo otherwise reads as a new language: ``check "Brainfuk"`` asked to
-    register it in ``_INTERPRETER_ONLY``, and ``check "befunge"`` asked to
-    re-register Befunge under the wrong case.
+    Raises :class:`UnknownLanguageError` for a never-started name close to a
+    registered one: a typo otherwise reads as a new language, and ``check
+    "Brainfuk"`` asked to register it in ``_INTERPRETER_ONLY``.
     """
-    from esolangs.registry import LANGUAGES, canonical_id
+    from esolangs.exceptions import UnknownLanguageError
+    from esolangs.registry import canonical_id, resolve
 
-    if name in LANGUAGES:
-        return []
-    lower = {other.lower(): other for other in LANGUAGES}
-    if name.lower() in lower:
-        return [lower[name.lower()]]
-    if (ROOT / "src/esolangs/languages" / canonical_id(name)).exists():
-        return []
-    return [
-        lower[m] for m in difflib.get_close_matches(name.lower(), lower, cutoff=0.8)
-    ]
+    try:
+        return resolve(name)
+    except UnknownLanguageError as exc:
+        started = (ROOT / "src/esolangs/languages" / canonical_id(name)).exists()
+        if exc.suggestions and not started:
+            raise
+        return name
 
 
 def _report(name: str, gaps: list[Gap]) -> None:
@@ -656,13 +653,11 @@ def main(argv: list[str] | None = None) -> int:
     measure.add_argument("name")
     measure.add_argument("--max-n", type=int, default=5)
     args = parser.parse_args(argv)
-    if args.command in {"check", "finish", "bounds"} and (
-        near := _misspelled(args.name)
-    ):
-        parser.error(
-            f"no language {args.name!r}; did you mean {' or '.join(map(repr, near))}?"
-            " (a new one starts with: just new-language)"
-        )
+    if args.command in {"check", "finish", "bounds"}:
+        try:
+            args.name = _registered_name(args.name)
+        except ValueError as exc:
+            parser.error(f"{exc}; a new one starts with: just new-language")
     if args.command == "bounds":
         # Steps feed the ledger's Execution cell, bits its Workspace cell
         # (peak written state); chars/row stays flat for an O(T) generator.

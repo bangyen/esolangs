@@ -9,16 +9,18 @@ rejections in [limitations](limitations.md).
 
 New here? This is the whole path, end to end. Each step points at the
 section that spells out its rules, so read those when a step asks for more
-than this page says.
+than this page says; the rest of the page is reference, not a prerequisite.
 
 1. **Set up once, then run the quick suite.**
 
    ```bash
-   just install-dev
+   just install-dev   # needs just >= 1.37; ends with the doctor
    just test-quick
    ```
 
-   (See [Development](#development) for the full set of suites.)
+   Something off? `python scripts/doctor.py` names each missing piece and
+   its fix, and runs without `just`, which older than 1.37 cannot read the
+   justfile. (See [Development](#development) for the full set of suites.)
 2. **Pick the work.** Improve an existing language, or add a new one. A new
    language must add something no language here covers yet: a construction,
    a branch mechanism, an answer convention, or an input interface

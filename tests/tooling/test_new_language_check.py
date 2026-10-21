@@ -26,19 +26,19 @@ def test_an_unregistered_language_is_told_to_register() -> None:
 _LONGEST = max(LANGUAGES, key=len)
 
 
-@pytest.mark.parametrize("typed", [_LONGEST[:-1], _LONGEST.swapcase()])
 def test_a_misspelled_name_is_refused_with_a_suggestion(
-    typed: str, capsys: pytest.CaptureFixture[str]
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """A typo or wrong case would otherwise read as a new language to register."""
+    """A typo would otherwise read as a new language to register."""
     with pytest.raises(SystemExit):
-        new_language.main(["check", typed])
-    assert repr(_LONGEST) in capsys.readouterr().err
+        new_language.main(["check", _LONGEST[:-1]])
+    assert _LONGEST in capsys.readouterr().err
 
 
-def test_a_misspelled_name_is_refused_with_a_suggestion_only_for_typos() -> None:
-    assert new_language._misspelled("Not A Language") == []  # noqa: SLF001
-    assert new_language._misspelled(_LONGEST) == []  # noqa: SLF001
+def test_a_name_resolves_like_the_api_and_a_new_one_passes() -> None:
+    registered = new_language._registered_name  # noqa: SLF001
+    assert registered(_LONGEST.swapcase()) == _LONGEST
+    assert registered("Not A Language") == "Not A Language"
 
 
 def test_a_generator_language_needs_no_hand_sample() -> None:

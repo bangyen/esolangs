@@ -423,7 +423,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--random", type=int, default=RANDOM_PROGRAMS)
     parser.add_argument("--speed", action="store_true", help="also compare steps/s")
     args = parser.parse_args(argv)
-    name = resolve(args.language)
+    try:
+        name = resolve(args.language)
+    except ValueError as exc:
+        parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
     split = LANGUAGES[name].split
     new = importlib.import_module(INTERPRETERS[name])

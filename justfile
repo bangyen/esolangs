@@ -16,6 +16,7 @@ PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python
 help:
     @echo "Start here:"
     @echo "  just install-dev  Install dependencies and enable the pre-push gate"
+    @echo "  just doctor       Diagnose the setup (python scripts/doctor.py without just)"
     @echo "  just test-quick   Fast feedback while editing"
     @echo "  just test-mid     Fast + medium tests"
     @echo "  just test         Required checks before committing (branch-scoped)"
@@ -28,6 +29,11 @@ help:
     @echo "Slow tests also run in CI; weekly probes run in the weekly workflow."
     @echo ""
     @just --list --unsorted
+
+# check just, uv, dev dependencies and the pre-push hook; print each fix
+[group('start')]
+doctor:
+    {{PYTHON}} scripts/doctor.py
 
 # install tooling
 [group('start')]
@@ -46,6 +52,7 @@ install-dev:
     # Enable the pre-push gate (scripts/verify/gate.py) so every push runs the
     # local check: lint, types, and pytest.
     git config core.hooksPath .githooks
+    {{PYTHON}} scripts/doctor.py
 
 # Scoped to the files this branch touched; widens to everything when the diff
 # is unreadable or shared machinery moved.  Use `just test-full` to force the

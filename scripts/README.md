@@ -1,11 +1,13 @@
 # scripts/
 
-Development tools. Run them through `just` (`just help` lists every recipe);
-each script's `--help` prints its full docstring. `checks/` holds the gate's
-own checks, which `just test` runs for you.
+Development tools. Run them through `just` >= 1.37 (`just help` lists every
+recipe; `just --completions zsh` completes them, also bash and fish); each
+script's `--help` prints its full docstring. `checks/` holds the gate's own
+checks, which `just test` runs for you.
 
 | Recipe | Script | Use it to |
 | --- | --- | --- |
+| `doctor` | `doctor.py` | name what the setup lacks, with the fix; runs without `just` |
 | `test`, `test-quick`, `test-mid`, `test-full`, ... | `verify/gate.py` | run the local gate; `--list` names its steps |
 | `new-language`, `check-language`, `finish-language`, `remove-language` | `new_language.py` | add or remove a language; `bounds` measures worst cases |
 | `docs`, `examples` | `docs/generate.py` | regenerate generated doc sections and committed examples |

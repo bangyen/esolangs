@@ -120,7 +120,10 @@ def main(argv: list[str] | None = None) -> int:
     sys.path.insert(0, str(ROOT / "src"))
     from esolangs.registry import resolve
 
-    name = resolve(args.language)
+    try:
+        name = resolve(args.language)
+    except ValueError as exc:
+        parser.error(str(exc))
     with tempfile.TemporaryDirectory() as scratch:
         old_src = _checkout(args.old, Path(scratch) / "old")
         old, old_time = _dump(old_src, name, args.max_n)
