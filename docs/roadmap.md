@@ -38,6 +38,14 @@ evidence, not optimization tasks.
   n=8 by hand, executed). A language-wide bound has to handle conditional
   reads, whose offset histories give one guard line exponentially many
   effective cosets, so it is open in both directions.
+  Without conditional reads it is an affine-subspace question (2026-10-21):
+  a dimension-`d` guard needs `n - d` distinct names, so a dense table whose
+  1-set holds no flat above `O(n)` points forces `Omega(T log n)`. Gowers
+  norms force flats of only about `n` points; random sets hold `n log n`.
+  Shipped text is flat at about 8 characters an entry through n=15, since
+  names stay one character to n=62. Guards that are graphs of affine maps
+  from fixed inputs reach 0.73x shipped at n=13, but only with
+  candidate scans growing faster than `T`; a fixed cap of 64 gives 0.98x at n=14.
 
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
