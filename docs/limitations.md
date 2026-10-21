@@ -181,7 +181,12 @@ process; no rule reproduces it:
   eight admissible characters for the fold's 628 low gotos alone floors
   at 3.6 cells a hit (2,254 model cells against 3,725 for the shipped
   contents, which the planner prices at 5,355); over the 31 unpinned
-  cells, 4.8. The fold's low navigation can lose at most about a
+  cells, 4.8. That floor is tight and optimistic: 63 million moves over
+  four seeds in a C port of the same model reach 2,231-2,253 (3.55-3.59
+  a hit), and the planner's `goto` is already an exact breadth-first
+  search, its 1.44x gap to the model being operated cells that hold
+  accumulators rather than their startup characters, so the pinned 4.8
+  is the honest figure. The fold's low navigation can lose at most about a
   thousand cells. Priced together: the teleport oracles leave 2,743
   non-navigation cells in the decoder and 682 in the fold, so the
   complement affords 5,516 cells for their 1,994 gotos, 2.77 a hit, under
