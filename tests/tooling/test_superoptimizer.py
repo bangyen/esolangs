@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
 from superopt.audit import Runner, audit_language, corpus_for, space_below
 from superopt.machine import CRAZY0, FULL_ALPHABET, SUFFIX_ALPHABET, run
+from superopt.mine import CONTROL_GAPS
 from superopt.search import Stats, certify, evaluate, order_rows, search, search_bfs
 from superopt.targets import (
     INPUTS,
@@ -22,6 +23,11 @@ from superopt.targets import (
 
 from esolangs.languages.malbolge.generator.digits import _GADGET
 from esolangs.languages.malbolge.interpreter import _crazy
+
+#: The audit's pinned language: the first language in the miner's
+#: shipped control records (scripts/superopt/control.json).  Its n=1
+#: corpus and audit outcomes below are the regression pins.
+AUDIT_LANGUAGE = CONTROL_GAPS[0][0]
 
 
 def test_crazy0_matches_the_interpreter() -> None:
@@ -103,8 +109,8 @@ def test_audit_runner_reproduces_shipped_false() -> None:
     shipped FALSE programs must certify against their tables."""
     import esolangs
 
-    runner = Runner("FALSE")
-    lang = esolangs.Language("FALSE")
+    runner = Runner(AUDIT_LANGUAGE)
+    lang = esolangs.Language(AUDIT_LANGUAGE)
     for table in ("00", "01", "10", "11"):
         shipped = lang.generate(table)
         assert runner.certify(shipped, table)
@@ -116,7 +122,7 @@ def test_audit_runner_reproduces_shipped_false() -> None:
 def test_audit_consumption_oracle() -> None:
     """A program that computes a constant without reading is not a gap:
     the shipped program reads its input once per row, ``1.`` never."""
-    runner = Runner("FALSE")
+    runner = Runner(AUDIT_LANGUAGE)
     assert runner.reads("^%1.", "11") == (1, 1)
     assert runner.reads("1.", "11") == (0, 0)
     correct, _ = runner.check("1.", "11")
@@ -138,7 +144,7 @@ def test_audit_false_corpus() -> None:
     stands and its capped restore was retired again (5e57525c2), so
     the pair tables ship 16 while the constant tables ship the
     3-char spellings the v2 audit once reported as gaps."""
-    corpus = corpus_for("FALSE")
+    corpus = corpus_for(AUDIT_LANGUAGE)
     assert corpus.sizes[1] == {"00": 3, "01": 16, "10": 16, "11": 3}
     # The pair spelling's ' and _ left the emitted alphabet with it.
     assert set(corpus.alphabet) == set("!$%&.01:;=?[]^ab")
@@ -154,7 +160,9 @@ def test_audit_pilot_certificates() -> None:
     spellings and certify, while the pair tables ship 16 and their
     shorter programs sit in the n=1 NOT space (1.1M strings, over
     20x this cap), so they must price out, never certify."""
-    _, outcomes = audit_language("FALSE", 1, candidate_cap=20_000, wall_seconds=60)
+    _, outcomes = audit_language(
+        AUDIT_LANGUAGE, 1, candidate_cap=20_000, wall_seconds=60
+    )
     by_table = {o.table: o for o in outcomes}
     assert by_table["00"].outcome == "certified"
     assert by_table["11"].outcome == "certified"

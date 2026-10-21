@@ -16,31 +16,41 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
 from superopt.audit import Runner, corpus_for
-from superopt.mine import (
-    CONTROL_CAP_CPU_S,
+from superopt.kernel import (
     OPERATORS,
     SCREEN_ROW_TIMEOUT,
+    Score,
+    painfuck_admissible,
+    painfuck_decoded,
+    propose,
+    score_program,
+    temperature,
+)
+from superopt.mine import (
+    CONTROL_CAP_CPU_S,
+    CONTROL_GAPS,
+    PILOT_LANGUAGES,
     TOTAL_CAP_CPU_S,
     Ledger,
-    Score,
     _decode_rng,
     _encode_rng,
     class_table,
     hunt_tables,
     mine_search,
     named_tables,
-    painfuck_admissible,
-    painfuck_decoded,
-    propose,
     review_required,
-    score_program,
-    temperature,
 )
 
 from esolangs.exceptions import ExecutionTimeoutError
 
 ALPHABET = tuple("ab^%01.")
 SEED_PROGRAM = "^%01.ab"
+
+#: The recorded gap the recovery test plants, from the miner's shipped
+#: control records (scripts/superopt/control.json, via superopt.mine):
+#: (language, table, recorded found size).  The real-runner fixtures
+#: below run against that record's language.
+GAP_LANGUAGE, GAP_TABLE, GAP_FOUND_SIZE = CONTROL_GAPS[0]
 
 
 def _rng() -> random.Random:
@@ -150,7 +160,7 @@ def test_score_false_shipped_and_wrong() -> None:
     """Against the real FALSE runner: the shipped program scores
     clean on its table, and a constant-wrong program is charged
     for every row (the audit's early exit would stop at one)."""
-    runner = Runner("FALSE")
+    runner = Runner(GAP_LANGUAGE)
     assert score_program(runner, "^%1.", "11") == Score(0, 0)
     assert score_program(runner, "0.", "11") == Score(2, 0)
     assert score_program(runner, "0.^", "00") == Score(0, 0)
@@ -183,15 +193,23 @@ def test_ledger_accounting_and_caps(tmp_path: Path) -> None:
     path = tmp_path / "ledger.json"
     ledger = Ledger(path)
     ledger.charge(
-        phase="hunt", language="Painfuck", cpu_s=100.0, evals=10, command="mine-hunt"
+        phase="hunt",
+        language=PILOT_LANGUAGES[0],
+        cpu_s=100.0,
+        evals=10,
+        command="mine-hunt",
     )
     ledger.charge(
-        phase="control", language="FALSE", cpu_s=50.0, evals=5, command="mine-control"
+        phase="control",
+        language=PILOT_LANGUAGES[1],
+        cpu_s=50.0,
+        evals=5,
+        command="mine-control",
     )
     reloaded = Ledger(path)
     assert reloaded.total() == 150.0
     assert reloaded.total(phase="control") == 50.0
-    assert reloaded.total(language="Painfuck") == 100.0
+    assert reloaded.total(language=PILOT_LANGUAGES[0]) == 100.0
     assert reloaded.remaining_total() == TOTAL_CAP_CPU_S - 150.0
     assert reloaded.remaining_control() == CONTROL_CAP_CPU_S - 50.0
     assert TOTAL_CAP_CPU_S == 20 * 3600
@@ -201,13 +219,17 @@ def test_ledger_accounting_and_caps(tmp_path: Path) -> None:
 def test_review_gate(tmp_path: Path) -> None:
     """A second hunt language waits on the review; the first doesn't."""
     ledger = Ledger(tmp_path / "ledger.json")
-    assert not review_required(ledger, "Painfuck")
+    assert not review_required(ledger, PILOT_LANGUAGES[0])
     ledger.charge(
-        phase="hunt", language="Painfuck", cpu_s=1.0, evals=1, command="mine-hunt"
+        phase="hunt",
+        language=PILOT_LANGUAGES[0],
+        cpu_s=1.0,
+        evals=1,
+        command="mine-hunt",
     )
-    assert not review_required(ledger, "Painfuck")
-    assert review_required(ledger, "FALSE")
-    assert review_required(ledger, "Boolfuck")
+    assert not review_required(ledger, PILOT_LANGUAGES[0])
+    assert review_required(ledger, PILOT_LANGUAGES[1])
+    assert review_required(ledger, PILOT_LANGUAGES[2])
 
 
 def test_hunt_table_set_shape() -> None:
@@ -229,8 +251,8 @@ def test_hunt_table_set_shape() -> None:
 def test_mine_search_record_shape(tmp_path: Path) -> None:
     """A toy-budget search returns the plan's record, JSON-clean,
     inside its evaluation budget."""
-    runner = Runner("FALSE")
-    corpus = corpus_for("FALSE")
+    runner = Runner(GAP_LANGUAGE)
+    corpus = corpus_for(GAP_LANGUAGE)
     record = mine_search(
         runner,
         corpus.alphabet,
@@ -279,12 +301,12 @@ def test_mine_search_recovers_a_planted_gap() -> None:
     program. (Table 10 is the live FALSE gap on current main: the
     generator ships 16 chars there. The original table-00 plant is
     dead -- main now ships the recorded find ``0.^`` itself.)"""
-    runner = Runner("FALSE")
-    corpus = corpus_for("FALSE")
+    runner = Runner(GAP_LANGUAGE)
+    corpus = corpus_for(GAP_LANGUAGE)
     record = mine_search(
         runner,
         corpus.alphabet,
-        "10",
+        GAP_TABLE,
         class_label="control",
         phase="control",
         eval_budget=4000,
@@ -294,4 +316,4 @@ def test_mine_search_recovers_a_planted_gap() -> None:
     )
     assert record["outcome"] == "find"
     assert record["found_size"] is not None
-    assert record["found_size"] <= 5
+    assert record["found_size"] <= GAP_FOUND_SIZE
