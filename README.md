@@ -89,10 +89,10 @@ templates, answers, debugging and benchmarking.
 
 <!-- XOR-EXAMPLE:START -->
 
-`esolangs generate 6-5 0110` emits 36 characters computing XOR:
+`esolangs generate FALSE 0110` emits 20 characters computing XOR:
 
 ```
-B99213B9927V813665A0437V82666A04655A
+^1&a:^1&b:b;a;+b&1&.
 ```
 
 Feeding it the two adjacent input characters prints their XOR.

@@ -14,17 +14,14 @@ random table the diagram pays some twelve characters a node to
 share halves that never recur -- and the diagram keeps the tables
 whose halves do repeat.  The shorter text wins per table, ties to
 the diagram, so no table grows.  A formula is evaluated whole,
-where the diagram executes one path.  An expression-form program
-can also print -1 for 1, when a combine leaves FALSE's -1 true
-value on the stack at print time.  ``esolangs.read_answer`` reads
-the last printed character and tolerates that, but the reader
-contract the suite checks for reader-checked languages wants the
-printed digit exactly; the conflict is one of the open landing
-questions recorded in the branch notes.
+where the diagram executes one path.  A combine can leave FALSE's
+-1 true value on the stack where the answer is 1, so the value is
+masked with ``1&`` before the print: the printed digit is exactly
+the answer bit.
 
 Size:
-    O(n) for parity, O(T) for random tables; n=10 parity: 98 chars,
-    n=10 random 1847: 2,159 chars.
+    O(n) for parity, O(T) for random tables; n=10 parity: 100 chars,
+    n=10 random 1847: 2,161 chars.
 """
 
 from __future__ import annotations
@@ -249,6 +246,9 @@ def _expression(truth_table: str, n: int, ess: list[int]) -> str:
 
     A formula is evaluated whole, where the diagram executes one
     path; the race in :func:`false` keeps whichever text is shorter.
+    The body's value can be -1 where the answer is 1 (a combine's
+    true value), so ``1&`` masks it to the bit before ``.`` prints:
+    +2 chars on every expression-form program.
     """
     # Project the table onto its essential inputs, in original order.
     projected: list[str] = []
@@ -263,7 +263,7 @@ def _expression(truth_table: str, n: int, ess: list[int]) -> str:
 
     search = _ExpressionSearch(letters)
     prologue = "".join(f"^1&{letters[i]}:" if i in letters else "^%" for i in range(n))
-    return prologue + search.text(sub, tuple(ess)) + "."
+    return prologue + search.text(sub, tuple(ess)) + "1&."
 
 
 class _ExpressionSearch:
