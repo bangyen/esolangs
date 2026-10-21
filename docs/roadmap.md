@@ -42,6 +42,11 @@ evidence, not optimization tasks.
   a dimension-`d` guard needs `n - d` distinct names, so a dense table whose
   1-set holds no flat above `O(n)` points forces `Omega(T log n)`. Gowers
   norms force flats of only about `n` points; random sets hold `n log n`.
+  Each guard is one term of a DNF of parities, whose worst-case size
+  Cohen and Shinkar (ITCS 2016, ECCC TR14-099) bound between
+  `Omega(2**n/(n log n))` and `O(2**n/n)`: the same `log n` gap, open
+  since 2014. Closing it here needs an affine disperser for dimension
+  `log2 n + O(1)` with a dense 1-set, or a cover beating their Theorem 1.2.
   Shipped text is flat at about 8 characters an entry through n=15, since
   names stay one character to n=62. Guards that are graphs of affine maps
   from fixed inputs reach 0.73x shipped at n=13, but only with
