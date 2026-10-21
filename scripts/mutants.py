@@ -137,7 +137,7 @@ def candidates(package: str, count: int) -> list[Mutant]:
     return kept
 
 
-def _keyword(package: str) -> str:
+def registry_keyword(package: str) -> str:
     """Return the ``-k`` expression selecting the package's registry tests."""
     sys.path.insert(0, str(ROOT / "src"))
     from esolangs.registry import LANGUAGES as REGISTRY
@@ -160,7 +160,7 @@ def _pytest(package: str, *, stop: bool) -> list[str]:
         f"src/esolangs/languages/{package}",
         "tests",
         "-k",
-        _keyword(package),
+        registry_keyword(package),
     ]
 
 
@@ -204,8 +204,15 @@ def _in_worktree() -> bool:
 def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> int:
     """Run every package's mutants; return 1 if a baseline fails."""
     began = time.monotonic()
+    # A baseline alone may take minutes with nothing printed; say what runs.
+    print(
+        f"{len(packages)} package(s), up to {per_language} mutants each, "
+        f"{budget / 3600:g} h budget; records append to {out}",
+        flush=True,
+    )
     with out.open("a", encoding="utf-8") as sink:
         for package in packages:
+            print(f"{package}: baseline test run (15 min cap)", flush=True)
             start = time.monotonic()
             status, output = _run(_pytest(package, stop=False), 900)
             baseline = time.monotonic() - start
@@ -246,6 +253,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                     mutant["old"],
                     "->",
                     mutant["new"],
+                    flush=True,
                 )
     _clear_bytecode()
     return 0

@@ -7,8 +7,12 @@ so unrelated edits do not churn ``deadcode_known.toml``; a scan exits 1 on any
 entry the baseline lacks.  ``--update`` rewrites the baseline after triage:
 each kept entry is reachable only past the tested arities or is a guard.
 
-A whole-tree run takes about as long as ``just test-full`` plus coverage
-overhead; give it 600 s.
+A whole-tree run took 574 s wall on 2026-10-21.  Named languages scan only
+their generators, under their package tests and the registry tests matching
+their names (the selection ``mutants.py`` uses): 7-33 s each for Befunge,
+Minifuck, Line and Underload, whose entries matched the whole-tree run's
+exactly.  Another language's tests can still reach code that selection
+misses, so confirm a scoped entry with a whole-tree run before triage.
 """
 
 from __future__ import annotations
@@ -24,30 +28,49 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from mutants import registry_keyword
+
+from esolangs.registry import LANGUAGES as REGISTRY
+from esolangs.registry import resolve
+
 ROOT = Path(__file__).resolve().parent.parent
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
 KNOWN = Path(__file__).parent / "baselines/deadcode_known.toml"
 
 
-def _collect(data: Path) -> None:
-    """Run the whole suite under branch coverage into ``data``."""
+def _collect(data: Path, packages: list[str]) -> None:
+    """Run the suite, or ``packages``' tests, under branch coverage into ``data``."""
     env = {**os.environ, "COVERAGE_FILE": str(data)}
     cmd = [sys.executable, "-m", "pytest", "-q", "-m", "", "-n", "4"]
     cmd += ["--cov", "--cov-branch", "--cov-report="]
+    if packages:
+        cmd += [f"src/esolangs/languages/{p}" for p in packages]
+        cmd += [
+            "tests",
+            "-k",
+            " or ".join(f"({registry_keyword(p)})" for p in packages),
+        ]
+        print(f"scanning {', '.join(packages)} under coverage", flush=True)
+    else:
+        # A first run otherwise sits silent for minutes.
+        print(
+            "scanning every band under coverage, about 10 min; "
+            "name a language to scan one, --data FILE to keep the run",
+            flush=True,
+        )
     subprocess.run(cmd, cwd=ROOT, env=env, check=False)
 
 
-def _report(data: Path) -> dict[str, dict[str, Any]]:
+def _report(data: Path, packages: list[str]) -> dict[str, dict[str, Any]]:
     """Return coverage's JSON ``files`` table for generator sources."""
+    include = ",".join(
+        f"*/languages/{p}/generator.py,*/languages/{p}/generator/**"
+        for p in packages or ["*"]
+    )
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "cov.json"
         cmd = [sys.executable, "-m", "coverage", "json", "-q", "-o", str(out)]
-        cmd += [
-            "--data-file",
-            str(data),
-            "--include",
-            "*/languages/*/generator.py,*/languages/*/generator/**",
-        ]
+        cmd += ["--data-file", str(data), "--include", include]
         subprocess.run(cmd, cwd=ROOT, check=True)
         files: dict[str, dict[str, Any]] = json.loads(out.read_text())["files"]
     return files
@@ -100,16 +123,25 @@ def main() -> int:
         help=".coverage file: read it, or collect into it if missing",
     )
     parser.add_argument("--update", action="store_true", help="rewrite the baseline")
+    parser.add_argument("languages", nargs="*", help="scan only these")
     args = parser.parse_args()
+    try:
+        packages = [REGISTRY[resolve(n)].id.replace("-", "_") for n in args.languages]
+    except ValueError as exc:
+        parser.error(str(exc))
+    if packages and args.update:
+        parser.error("--update rewrites the whole-tree baseline: name no languages")
     data = args.data or Path(tempfile.mkdtemp()) / ".coverage"
     if not data.exists():
-        _collect(data)
-    found = _entries(_report(data))
+        _collect(data, packages)
+    found = _entries(_report(data, packages))
     if args.update:
         _dump(found)
         print(f"{sum(map(len, found.values()))} entries in {len(found)} files")
         return 0
     known = _load()
+    if packages:
+        known = {k: v for k, v in known.items() if k.split("/")[0] in packages}
     new = {rel: sorted(found[rel] - known.get(rel, set())) for rel in sorted(found)}
     new = {rel: es for rel, es in new.items() if es}
     gone = sum(len(es - found.get(rel, set())) for rel, es in known.items())

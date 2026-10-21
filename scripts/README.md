@@ -15,7 +15,7 @@ checks, which `just test` runs for you.
 | `sizes` | `checks/check_generator_sizes.py` | hold every generator to its committed size baseline |
 | `tracediff` | `tracediff.py` | prove an interpreter refactor changes no step |
 | `gendiff` | `gendiff.py` | prove a generator refactor changes no byte |
-| `deadcode` | `deadcode.py` | list generator code no test reaches |
+| `deadcode` | `deadcode.py` | list generator code no test reaches; name a language to scan one |
 | `mutants` | `mutants.py` | seed generator mutants; survivors are untested behaviour |
 | `stale-figures` | `stale_figures.py` | rank measured figures by churn since |
 | `refresh-ci-timings` | `ci/shard.py` | merge CI timing artifacts |

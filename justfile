@@ -8,6 +8,13 @@ export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() +
 # Keep Pylint's statistics writable in sandboxed worktrees too.
 export PYLINTHOME := env_var_or_default("PYLINTHOME", justfile_directory() + "/.cache/pylint")
 
+# Byte-compile dependencies when uv creates the venv.  A fresh worktree's venv
+# otherwise compiles sympy on first import -- ~1.3 s of CPU charged to
+# whichever 1 s fast-band test touches it first, which then failed once per
+# worktree.  Only then: on an existing venv it re-checks all 3276 files and
+# prints a line on every `uv run` (0.06 s -> 0.22 s).
+export UV_COMPILE_BYTECODE := env_var_or_default("UV_COMPILE_BYTECODE", if path_exists(justfile_directory() + "/.venv") == "true" { "0" } else { "1" })
+
 # Auto-detect uv - falls back to plain python if not available
 PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
 
@@ -23,7 +30,7 @@ help:
     @echo "  just test-full    Whole-tree checks, including slow tests, before release"
     @echo "  just test-full-parallel  The same gate on every core (idle machine only)"
     @echo ""
-    @echo 'New language: just new-language "Name" --category tape_based'
+    @echo 'New language: just new-language "Name" (asks its category)'
     @echo 'Then: just check-language "Name"; when ready: just finish-language "Name"'
     @echo "Guide: docs/CONTRIBUTING.md; what each script does: scripts/README.md"
     @echo "Slow tests also run in CI; weekly probes run in the weekly workflow."
@@ -42,7 +49,7 @@ install-dev:
     set -euo pipefail
     if command -v uv >/dev/null 2>&1; then
         echo "Using uv..."
-        uv sync --group dev
+        uv sync --group dev --compile-bytecode
     else
         echo "Using pip..."
         # `--group` (PEP 735 dependency groups) needs pip 25.1.
@@ -117,7 +124,7 @@ test-lint *args:
 test-diff-coverage *args:
     {{PYTHON}} scripts/verify/gate.py --only "diff coverage" {{args}}
 
-# create interpreter, generator and test stubs; pass e.g. --category tape_based
+# create interpreter, generator and test stubs; asks the category unless --category
 [group('languages')]
 new-language name *args:
     {{PYTHON}} scripts/new_language.py start "{{name}}" {{args}}
@@ -178,7 +185,7 @@ tracediff language *args:
 gendiff language *args:
     {{PYTHON}} scripts/gendiff.py "{{language}}" {{args}}
 
-# generator lines and branch arms no test reaches, vs scripts/baselines/deadcode_known.toml
+# generator code no test reaches, vs scripts/baselines/deadcode_known.toml; languages narrow it
 [group('maintenance')]
 deadcode *args:
     {{PYTHON}} scripts/deadcode.py {{args}}

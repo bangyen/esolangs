@@ -387,7 +387,7 @@ Judge a module by what the language does not demand.
 Adding a language, step by step. Work in order; at any point,
 `just check-language` from step 2 tells you what is still missing.
 
-1. `just new-language "Name" --category tape_based` (the matching category;
+1. `just new-language "Name"` (it asks the matching category, or pass `--category`;
    `--interpreter-only` for a fame admission) writes the interpreter,
    generator and test stubs, and records the language as
    `unassessed = true` in the `[curation]` section of its package's

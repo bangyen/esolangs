@@ -1,6 +1,7 @@
 """``new_language.py check`` agrees with the suite on every registered language."""
 
 import inspect
+import io
 from pathlib import Path
 
 import pytest
@@ -41,6 +42,39 @@ def test_a_name_resolves_like_the_api_and_a_new_one_passes() -> None:
     registered = new_language._registered_name  # noqa: SLF001
     assert registered(_LONGEST.swapcase()) == _LONGEST
     assert registered("Not A Language") == "Not A Language"
+
+
+class _Terminal(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
+def _scaffolded(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    made: list[str] = []
+    monkeypatch.setattr(
+        new_language, "scaffold", lambda _, c, **__: made.append(c) or []
+    )
+    return made
+
+
+def test_start_without_a_category_lists_them(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    made = _scaffolded(monkeypatch)
+    with pytest.raises(SystemExit):
+        new_language.main(["start", "Not A Language"])
+    err = capsys.readouterr().err
+    assert all(category in err for category in new_language.CATEGORIES)
+    assert not made
+
+
+def test_start_on_a_terminal_asks_for_the_category(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    made = _scaffolded(monkeypatch)
+    monkeypatch.setattr("sys.stdin", _Terminal("tape_based\n"))
+    assert new_language.main(["start", "Not A Language"]) == 0
+    assert made == ["tape_based"]
 
 
 def test_a_generator_language_needs_no_hand_sample() -> None:

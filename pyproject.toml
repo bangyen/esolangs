@@ -293,9 +293,3 @@ exclude_lines = [
 partial_branches = [
     "pragma: no branch",
 ]
-
-[tool.uv]
-# Byte-compile dependencies at sync.  A fresh worktree's venv otherwise
-# compiles sympy on first import -- ~1.3 s of CPU charged to whichever 1 s
-# fast-band test touches it first, which then failed once per worktree.
-compile-bytecode = true

@@ -54,6 +54,29 @@ CATEGORIES = (
 )
 
 
+def _category_menu() -> str:
+    """Return one line per category with its two best-known members."""
+    from esolangs.registry import LANGUAGES
+
+    lines = []
+    for category in CATEGORIES:
+        members = sorted(
+            (n for n, lang in LANGUAGES.items() if lang.category == category),
+            key=lambda n: -_curation(n).get("backlinks", 0),
+        )
+        lines.append(f"  {category:<15} e.g. {', '.join(members[:2]) or '-'}")
+    return "\n".join(lines)
+
+
+def _ask_category() -> str | None:
+    """Prompt for a category on a terminal; None when there is none to ask."""
+    if not sys.stdin.isatty():
+        return None
+    print(f"category? (pass --category to skip this)\n{_category_menu()}")
+    answer = input("> ").strip()
+    return answer if answer in CATEGORIES else None
+
+
 def _slug(name: str) -> str:
     """Return the registry's id for ``name``, refused unless importable."""
     from esolangs.registry import LANGUAGES, canonical_id
@@ -641,7 +664,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     start = sub.add_parser("start", help="write the stubs")
     start.add_argument("name")
-    start.add_argument("--category", choices=CATEGORIES, required=True)
+    start.add_argument("--category", choices=CATEGORIES, help="asked if omitted")
     start.add_argument(
         "--interpreter-only",
         action="store_true",
@@ -725,6 +748,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"removed {args.name}; {len(leftover)} mention(s) to review")
         print("\n".join(leftover))
         return 0
+    args.category = args.category or _ask_category()
+    if args.category is None:
+        parser.error(f"--category is one of:\n{_category_menu()}")
     try:
         paths = scaffold(args.name, args.category, generator=not args.interpreter_only)
     except (ValueError, FileExistsError) as exc:
