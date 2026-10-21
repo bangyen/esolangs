@@ -164,57 +164,6 @@ def test_reorder_permutation_preserves_the_function() -> None:
             assert permuted[row] == table[original]
 
 
-def test_greedy_order_never_grows_a_wide_program() -> None:
-    """The identity candidate keeps the greedy heuristic from growing output."""
-    from esolangs.languages.brainfuck.generator import _bf_ordered
-
-    n = 8
-    table = "0" * (2**n - 1) + "1"
-    assert len(boolean.brainfuck(table)) <= len(_bf_ordered(table, tuple(range(n))))
-
-
-def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
-    """A greedily-ordered program still computes its table."""
-    from esolangs.generation.helpers import _greedy_input_order
-    from esolangs.languages.brainfuck.interpreter import run
-    from tests.interpreters.runner import run_program
-
-    n = 7
-    table = "01" * 64
-    assert _greedy_input_order(table, n) != tuple(range(n)), (
-        "this table must exercise a non-identity greedy order"
-    )
-    program = boolean.brainfuck(table)
-    for combo in range(2**n):
-        bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-        stdin = "".join(f"{bit}" for bit in bits)
-        got = run_program(run, program, stdin)
-        assert got == table[combo], f"inputs {bits}"
-
-
-def test_the_greedy_order_is_the_documented_one() -> None:
-    """What the heuristic picks, per table, not merely that it is valid."""
-    from esolangs.generation.helpers import _greedy_input_order
-
-    # Tables the heuristic reorders, and the order it picks.
-    assert _greedy_input_order("00000101", 3) == (0, 2, 1)
-    assert _greedy_input_order("00010001", 3) == (1, 2, 0)
-
-    # Tables no split helps: ties keep the lowest index, giving the identity.
-    for table in ("00011011", "01000111", "00111100", "01101001"):
-        assert _greedy_input_order(table, 3) == (0, 1, 2), table
-
-    # And the wide table the run-it test above uses, pinned positively.
-    assert _greedy_input_order("01" * 64, 7) == (6, 0, 1, 2, 3, 4, 5)
-
-    reordered = sum(
-        1
-        for value in range(256)
-        if _greedy_input_order(format(value, "08b"), 3) != (0, 1, 2)
-    )
-    assert reordered == 94
-
-
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows."""
     from itertools import permutations

@@ -20,11 +20,15 @@ evidence, not optimization tasks.
 - Unary has a documented language lower bound.
 - Befunge has a finite-source totality exception.
 
-- **Malbolge:** generation at seventeen inputs is open (2026-10-20): a
-  table cell cannot carry eight address-independent meanings, since the
-  window conflict graph has independence number 8 and needs twelve classes
-  ([limitations](limitations.md)). Reopen only with a decoder whose
-  per-cell meaning is not a function of the window cell.
+- **Malbolge:** generation at seventeen inputs is open (2026-10-21): a
+  table cell cannot carry eight address-independent meanings (window
+  conflict graph: independence number 8, twelve classes), lockstep
+  adjacent-cell reads reach 110 of 512 triples a phase, and the
+  seven-meaning build's 1,994 gotos have 2.77 cells each in the
+  complement against a 3.6-cell routing floor
+  ([limitations](limitations.md)). Reopen only with a layout that needs a
+  quarter fewer gotos at that floor, or a decoder whose per-cell meaning
+  is not a function of the window cell.
 - **Vandevelo:** settle structural output scaling; generation time follows,
   since it includes writing the program and the shipped source is
   `Omega(T log n)` ([the audit](proofs/index.md#vandevelo-identifier-and-fallback-audit)).
@@ -39,26 +43,6 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
-## Loop-less constructions
-
-Searches and searched tables that a named rule has not yet replaced
-([code shape](CONTRIBUTING.md#code-shape)). Keep each search as the test
-oracle when it goes.
-
-- **Malbolge:** the mixer, label, readout and digit tables were found by
-  annealing, CP-SAT and breadth-first search (`skeleton.py`, `cascade.py`,
-  `core.py`, `wide.py`, `segments.py`, `digits.py`). The mixers are chaotic:
-  random inits pass 2/300 under the shipped schedule, random schedules 0/300.
-  `_PAIRS` is now a rule, the unique minimum cover (`test_pointer_pairs.py`);
-  `_NEXTS` stays searched, one cell above the minimum `N` cover. Generation still breadth-first navigates (`core.py` `goto`: targets
-  above 127 need multi-hop pointer paths) and places handlers and hub stubs
-  first-fit. `digits.py`'s 16-op gadget is the unique minimum (closed form;
-  `test_gadget_suffix.py`). `_D_INITS`'s gadget outputs are a rule, the
-  lexicographically first of 2,464 completing sequences
-  (`test_digit_inits.py`); which init values spell them is a placement
-  tie-break. Smallest trits exhaust a `g` value's walked addresses; first-fit
-  over completing values builds and executes but takes 17.6 s.
-
 ## Engineering
 
 Dead-code leads, unmeasured against the
@@ -66,27 +50,15 @@ Dead-code leads, unmeasured against the
 A removal must leave the generated corpus byte-identical (tiled, constant and
 ignored-input tables included).
 
-- **Lines no fast, medium or slow test reaches**, and none of a corpus (n<=7,
-  seven width/balance configs) or reachability sweeps (n<=10, widths
-  1..100) did either:
-  - Circuit Diagram: `hpool.py`'s input port, the `return None` exits in
-    `sparse_masks.py` and the work-budget exits in `folded_banks.py`, and
-    `source_size.py`'s `return 0`.
-- **Generator mutant sweeps:** `just mutants rank` lists the largest generators
-  `scripts/mutants_swept.toml` does not record (painfuck, unsquare, grapheme,
-  fish, ... on 2026-10-20); sweep and triage them in batches of ten.
-- **`Decisions:` figures** cannot be re-run (each needs its rejected option
-  rebuilt). `just stale-figures` ranks the 99 docstring figure lines by
-  package commits since each was written; the top one (Dimensional, 27) was
-  stale. Re-measure from the top. Figures in comments are not ranked.
 - **Plain-rewrite audits are one-off:** Streetcode and LaserFuck were each
   audited once -- write the plain canonical construction, price every
   bespoke trick against it, and remove the ones whose saving is a fixed
   amount rather than a genuine percentage (see
   [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)):
-  Streetcode's lift and tail overlap and LaserFuck's sized leaf retirement
-  came out this way. The audit is repeatable per generator; Flowchart is
-  the next candidate.
+  Streetcode's lift and tail overlap, LaserFuck's sized leaf retirement and
+  Dig's default banded tree came out this way. Flowchart and Circlefuck kept
+  every trick and Ascenic has none (2026-10-21). The audit is repeatable per
+  generator.
 - **The S*bleq variants are interpreter-only, and stay so unless they
   are ever registered:** the interpreter runs the store targets `a`
   (base), `ab` (S*bl*q) and `b` (Subl*q), each also in an indirect

@@ -52,17 +52,15 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Indexed execution and literal scanning have different costs.
   Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
   and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
-- Malbolge: <a id="malbolge-bound"></a> the shipped hashed cascade reaches
-  fourteen inputs, positional addressing reaches fifteen and sixteen, and
-  seventeen remains open. Finite source space excludes some eighteen-input
+- Malbolge: <a id="malbolge-bound"></a> positional addressing reaches
+  sixteen inputs at every arity, and seventeen remains open. Finite source space excludes some eighteen-input
   tables, so mathematical totality is impossible. The load law allows at most
   two final rows per answer cell; a one-cell-per-row-pair construction cannot
   cover seventeen in the 59,049-cell store. This is not a universal seventeen-input
   obstruction. Table-free memoized planning and one-pass fill are separate:
   fill is `Theta(T+59049)`, with exactly half a cell assignment per row in the
-  positional build. Prefix sharing makes generation `Theta(T+59049)` through
-  ten inputs. Wider cold planners are separate searches; their finite-domain
-  measurements do not prove an asymptotic generation bound.
+  positional build. Prefix sharing over the gadget groups makes the readout
+  map `Theta(T)` at every arity, so generation is `Theta(T+59049)`.
   A native three-field capture control ran from reset over all 4,096 legal
   record-and-neighbor glyph combinations at one fixed record address: 59,049
   characters, 3,187 instruction cells and at most 3,607 steps. It preserved
@@ -439,7 +437,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Interprogck8 | tree | a one-line compare read either flies its 1 child down a residue mod 82 through shared rungs or dismounts 85 lines onto its 0 child; a lane is any residue not in the air | linear: each node's scans and dismount span a bounded number of lines | linear: at most L commands: every jump lands past its rung | poly n: at most 8 + bl(L) + bl(n) bits: the accumulator, a line cursor, the input cursor |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T | linear: at most T + 297n + 687 steps for n = 5, 6, then 18T + 56n + 5 | linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells |
 | Line | tree | finite decision trees preserve totality; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: complete residual models and area-admitted rasters cost O(T) | poly n: worst 5n commands; complete folds retain this bound | poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4 |
-| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
+| Malbolge | exception | finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; below sixteen the unused reads are held at 0; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound)) | measured: fixed 59049-cell store through n <= 16 | unmeasured: at most 6,217 commands at n=1 to 5,691 at n=16: main code through its closing i, then at most 204 | poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag |
 | Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: shared tape text admitted within the positional mux budget | linear: at most L commands: straight-line, the cursor never moves back | linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n = 4: a tape bit-integer |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`) | linear: cascade routes to two shared leaves, one-digit targets | linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down | poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
@@ -514,11 +512,10 @@ Symbols the formula cells use:
   computes at most one table, so some 18-input tables have no Malbolge program;
   no generator can be total under this interpreter's language semantics.  The shipped
   construction reaches sixteen inputs, one below that wall:
-  [summary](#malbolge-bound) measures why the hashed cascade stopped at
-  fourteen (the depth a truth table forces climbs past any decoder pass count as the
-  answer-cell load rises), gives the positional build that covers fifteen and sixteen with
-  no collisions, and shows why seventeen is beyond any build spending a cell per row
-  pair.  Whether some 17-input table has no program is open.
+  [summary](#malbolge-bound) gives the positional build that covers every
+  arity with no collisions and shows why seventeen is beyond any build
+  spending a cell per row pair.  Whether some 17-input table has no program
+  is open.
 
 The former exception, `%^2^-1`, left with its language. Every row outside
 these exceptions is `Total`, or theoretically total past the resource

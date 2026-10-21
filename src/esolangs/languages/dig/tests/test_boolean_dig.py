@@ -16,7 +16,7 @@ run_dig = _runner("dig", lines=True, newline=True)
 
 class TestDig:
     def test_four_input_parity_keeps_the_compact_layout(self) -> None:
-        """Dropping the banded candidate grew this program from 436 to 706."""
+        """Four-input parity races the alternating layout: 230 chars."""
         table = "0110100110010110"
         program = boolean.dig(table)
         assert len(program) <= 436

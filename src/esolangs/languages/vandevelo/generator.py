@@ -18,8 +18,7 @@ input names long; a full bank respells its least recently used free
 register, and a clause scans the :data:`_SCAN` most recently used.  A test
 for 0 is ``x? == Nil?``, so guards avoid it: a register's last toggle takes
 the polarity the clause wants, an input mostly tested for 0 is read negated
-(``~!>``) when the rows reaching those tests agree, and a test every
-reaching row passes is dropped.
+(``~!>``) when the rows reaching those tests agree.
 
 Size:
     O(T log n) chars (identifier length is O(log n); removing that factor
@@ -37,8 +36,9 @@ Decisions:
     dimensions the peel produces.  Ordering bare tests first saved 0.0% of
     characters and 8.8% of steps at n=7 and was retired.  Avoiding
     ``x? == Nil?`` (eight characters, four steps over a bare ``x?``) took
-    the three-input tables from 25,922 to 23,425 characters.  Tighter bank
-    caps force respelling (:func:`_bank_cap`).
+    the three-input tables from 25,922 to 23,425 characters, both with the
+    since-removed implied-test pruning; without it they total 23,749.
+    Tighter bank caps force respelling (:func:`_bank_cap`).
 """
 
 from __future__ import annotations

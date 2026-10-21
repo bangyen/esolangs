@@ -1,8 +1,7 @@
-"""Malbolge's boolean generator: a source stub per row, no initializer."""
+"""Malbolge's boolean generator: a source cell per row pair, no initializer."""
 
 from __future__ import annotations
 
-import importlib
 from collections.abc import Sequence
 
 import pytest
@@ -10,21 +9,11 @@ import pytest
 from esolangs import generate
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages import generators as boolean
-from esolangs.languages.malbolge.generator.cascade import (
-    _cascade,
-)
+from esolangs.languages.malbolge.generator import digits as _digits
+from esolangs.languages.malbolge.generator.core import _table_char
 from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
 from esolangs.runtime.io import ScriptedIO
-from tests.support.witness_tables import dense, parity, row_bits
-
-_cascade_mod = importlib.import_module("esolangs.languages.malbolge.generator.cascade")
-_segments_mod = importlib.import_module(
-    "esolangs.languages.malbolge.generator.segments"
-)
-_thirteen_mod = importlib.import_module(
-    "esolangs.languages.malbolge.generator.thirteen"
-)
-_wide_mod = importlib.import_module("esolangs.languages.malbolge.generator.wide")
+from tests.support.witness_tables import dense, row_bits
 
 
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
@@ -63,7 +52,7 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
 
 @pytest.mark.slow
 def test_ten_inputs_execute_every_row() -> None:
-    """Execute every direct-stub row at the last arity before the cascade."""
+    """Execute every row of a dense ten-input table."""
     table = dense(10)
     assert _rows(table) == list(table)
 
@@ -73,151 +62,12 @@ def test_program_is_the_full_store() -> None:
     assert len(boolean.malbolge("0110")) == 3**10
 
 
-def _second_level_rows() -> list[int]:
-    _, level, _, _ = _cascade()
-    return [row for row, lvl in enumerate(level) if lvl == 1]
-
-
-def test_cascade_leaves_128_pairs_to_the_second_decoder() -> None:
-    """The first readout resolves 1792 rows; the second separates the rest."""
-    assert len(_second_level_rows()) == 256
-
-
-def test_eleven_input_tables_differ_in_one_cell_per_row() -> None:
-    """Every row owns one answer cell; the rows a pair shares point at NEXT."""
-    zeros = boolean.malbolge("0" * 2**11)
-    ones = boolean.malbolge("1" * 2**11)
-    assert len(zeros) == len(ones) == 3**10
-    assert sum(a != b for a, b in zip(zeros, ones, strict=True)) == 2**11
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("shape", [dense, parity])
-def test_eleven_inputs_sampled(shape: object) -> None:
-    """Every eighth row and every second-level row of the two shapes."""
-    table = shape(11)
-    rows = sorted({*range(0, 2**11, 8), *_second_level_rows()})
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
-def _wide_second_level_rows() -> list[int]:
-    _, level, _, _ = _wide_mod._wide()  # noqa: SLF001
-    return [2 * row + x for x in (0, 1) for row, lvl in enumerate(level[x]) if lvl]
-
-
-def test_twelve_inputs_split_the_last_off_the_cascade() -> None:
-    """560 of 4096 rows collide at level 1; both halves reach the decoder."""
-    rows = _wide_second_level_rows()
-    assert len(rows) == 560
-    assert {row & 1 for row in rows} == {0, 1}
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("shape", [dense, parity])
-def test_twelve_inputs_sampled(shape: object) -> None:
-    """Every sixteenth row and every second-level row of the two shapes."""
-    table = shape(12)
-    rows = sorted({*range(0, 2**12, 16), *_wide_second_level_rows()})
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
-def _thirteen_second_level_rows() -> list[int]:
-    _, _, level, _, _ = _thirteen_mod._thirteen()  # noqa: SLF001
-    return [
-        4 * row + 2 * x + last
-        for x in (0, 1)
-        for row, lvl in enumerate(level[x])
-        if lvl
-        for last in (0, 1)
-    ]
-
-
-def test_thirteen_inputs_label_every_residue() -> None:
-    """Each table cell's residue admits all five single-cell labels."""
-    _, _, level, tables, labels = _thirteen_mod._thirteen()  # noqa: SLF001
-    for x in (0, 1):
-        for row, h in enumerate(tables[0][x]):
-            wanted = "N01xn" if level[x][row] else "01xn"
-            for label in wanted:
-                _cascade_mod._table_char(h, label, labels)  # noqa: SLF001
-
-
-@pytest.mark.weekly
-@pytest.mark.cost_evidence(
-    "thirteen-input sampled rows cover every second-level cascade row"
-)
-@pytest.mark.parametrize("shape", [dense, parity])
-def test_thirteen_inputs_sampled(shape: object) -> None:
-    """Every thirty-second row and every second-level row of the two shapes."""
-    table = shape(13)
-    rows = sorted({*range(0, 2**13, 32), *_thirteen_second_level_rows()})
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
-def _fourteen_rows(levels: set[int]) -> list[int]:
-    """Rows of the fourteen-input table whose copy resolves at one of ``levels``."""
-    _, _, level, _, _ = _segments_mod._fourteen()  # noqa: SLF001
-    return [
-        8 * row + 2 * copy + last
-        for copy in range(4)
-        for row, lvl in enumerate(level[copy])
-        if lvl in levels
-        for last in (0, 1)
-    ]
-
-
-def test_fourteen_inputs_resolve_in_three_levels() -> None:
-    """7,427 copies own their level-1 cell; 685 resolve at level 2, 80 at 3."""
-    _, _, level, _, _ = _segments_mod._fourteen()  # noqa: SLF001
-    counts = [sum(lvl == k for per_copy in level for lvl in per_copy) for k in range(3)]
-    assert counts == [7427, 685, 80]
-
-
-def test_fourteen_inputs_level_three_has_its_own_region() -> None:
-    """Level-3 cells sit in 13122..19682; levels 1 and 2 at 19683 or above."""
-    _, _, level, tables, _ = _segments_mod._fourteen()  # noqa: SLF001
-    for copy in range(4):
-        for row, k in enumerate(level[copy]):
-            for lvl in range(k + 1):
-                h = tables[lvl][copy][row]
-                assert 13122 < h < 19683 if lvl == 2 else h > 19683
-
-
-def test_fourteen_inputs_label_every_residue() -> None:
-    """Each cell a copy reads admits N and the four single-cell answers."""
-    _, _, level, tables, labels = _segments_mod._fourteen()  # noqa: SLF001
-    for copy in range(4):
-        for row, k in enumerate(level[copy]):
-            for lvl in range(k + 1):
-                h = tables[lvl][copy][row]
-                for label in "N01xn":
-                    _cascade_mod._table_char(h, label, labels)  # noqa: SLF001
-
-
-def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
-    """The decoder's cells, once run, decode to nops and then an ``i``."""
-    start = _segments_mod._F_DECODER  # noqa: SLF001
-    cells = ((start, "j"), (start + 1, "j"))
-    second = [_segments_mod._second_pass(op, a) for a, op in cells]  # noqa: SLF001
-    second += [_segments_mod._second_pass("o", start + 2 + k) for k in range(8)]  # noqa: SLF001
-    assert second == ["o"] * 9 + ["i"]
-
-
-@pytest.mark.weekly
-@pytest.mark.cost_evidence(
-    "fourteen-input sampled rows exercise every third-level cascade row"
-)
-@pytest.mark.parametrize("shape", [dense, parity])
-def test_fourteen_inputs_sampled(shape: object) -> None:
-    """Every 64th row, every level-3 row and every fourth level-2 row."""
-    table = shape(14)
-    rows = sorted(
-        {*range(0, 2**14, 64), *_fourteen_rows({2}), *_fourteen_rows({1})[::4]}
-    )
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
-_digits = importlib.import_module("esolangs.languages.malbolge.generator.digits")
+@pytest.mark.parametrize("n", [1, 4, 11])
+def test_tables_differ_in_one_cell_per_row_pair(n: int) -> None:
+    """Every row pair owns one answer cell; nothing else depends on the table."""
+    zeros = boolean.malbolge("0" * 2**n)
+    ones = boolean.malbolge("1" * 2**n)
+    assert sum(a != b for a, b in zip(zeros, ones, strict=True)) == 2 ** (n - 1)
 
 
 def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
@@ -236,12 +86,22 @@ def test_digit_readouts_hold_three_bits_per_digit() -> None:
     assert 0 not in {s // 9**4 for s in readouts}
 
 
+def test_held_reads_fill_groups_from_the_last() -> None:
+    """``16 - n`` reads are held, three per group from the last, leading first."""
+    for n in range(1, 17):
+        held = [_digits._held(n, group) for group in range(5)]  # noqa: SLF001
+        assert sum(held) == 16 - n
+        assert held == sorted(held)
+        assert sum(0 < h < 3 for h in held) <= 1
+
+
 @pytest.mark.medium
-def test_fifteen_inputs_reuse_sixteens_cells() -> None:
-    """The constant read makes fifteen's cells a subset of sixteen's."""
-    fifteen = set(_digits._digits(15)[2])  # noqa: SLF001
-    assert len(fifteen) == 2**14
-    assert fifteen <= set(_digits._readouts_cells())  # noqa: SLF001
+@pytest.mark.parametrize("n", range(1, 16))
+def test_lower_arities_reuse_sixteens_cells(n: int) -> None:
+    """Held reads make each arity's cells a subset of sixteen's."""
+    cells = set(_digits._digits(n)[2])  # noqa: SLF001
+    assert len(cells) == 2 ** (n - 1)
+    assert cells <= set(_digits._readouts_cells())  # noqa: SLF001
 
 
 @pytest.mark.medium
@@ -251,7 +111,15 @@ def test_digit_builds_label_every_cell(n: int) -> None:
     _, _, tables, labels = _digits._digits(n)  # noqa: SLF001
     for h in tables:
         for label in "01xn":
-            _cascade_mod._table_char(h, label, labels)  # noqa: SLF001
+            _table_char(h, label, labels)
+
+
+def test_label_rule_admits_every_label_at_every_residue() -> None:
+    """The label rule covers all 94 residues, not only today's table cells."""
+    _, _, _, labels = _digits._digits(16)  # noqa: SLF001
+    for h in range(94):
+        for label in "01xn":
+            _table_char(h, label, labels)
 
 
 @pytest.mark.weekly
@@ -286,20 +154,26 @@ def test_a_value_meaning_needs_sixteen_characters() -> None:
         assert witness & {(i - h) % 94 for i in indices}
 
 
-@pytest.mark.parametrize("n", range(11, 17))
-def test_public_high_arity_routes_execute_boundary_rows(n: int) -> None:
+@pytest.mark.parametrize("n", range(1, 17))
+def test_boundary_rows_execute_at_every_arity(n: int) -> None:
     table = dense(n)
-    rows = [0, 1, 2**n - 2, 2**n - 1]
+    rows = sorted({0, 1, 2**n - 2, 2**n - 1})
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-def test_fourteen_rejects_colliding_final_level(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(_segments_mod, "_L3_CELL_A", 0)
-    monkeypatch.setattr(_segments_mod, "_L3_CELL_B", 0)
-    with pytest.raises(AssertionError, match="a row never resolves"):
-        _segments_mod._f_tables.__wrapped__()  # noqa: SLF001
+@pytest.mark.medium
+@pytest.mark.parametrize("n", range(1, 17))
+def test_every_answer_label_executes_at_every_arity(n: int) -> None:
+    """A table of one repeated pair puts every row on one label's stubs.
+
+    Dense tables miss labels: an ``n`` operand cell overwritten by a working
+    cell passed them but failed n=14's last ``not x`` pair.
+    """
+    half = 2 ** (n - 1)
+    rows = sorted({0, 1, half, half + 1, 2 * half - 2, 2 * half - 1} - {2 * half})
+    for pair in ("00", "11", "01", "10"):
+        table = pair * half
+        assert _rows(table, rows) == [table[row] for row in rows]
 
 
 def test_first_free_matches_the_cell_scan() -> None:

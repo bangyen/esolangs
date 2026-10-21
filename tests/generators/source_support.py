@@ -20,7 +20,6 @@ _PRIMITIVES = frozenset(
         "_residual_ids",
         "SubtreeDiagram",
         "in_input_order",
-        "_greedy_input_order",
         "permute_truth_table",
         "_validate_truth_table",
         "_validate_shape",

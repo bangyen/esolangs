@@ -6,6 +6,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.helpers import input_weights
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fish.generator import _folded, balance_fish, fish
 from esolangs.languages.fish.interpreter import run
@@ -34,8 +35,20 @@ def test_folded_lookup_executes_every_three_input_table(width: int) -> None:
 
 
 def test_source_growth_is_linear_in_the_table() -> None:
-    sizes = [len(fish("01" * (1 << (n - 1)))) for n in range(1, 13)]
+    # One-input "01" is parity, which takes the one-column program.
+    sizes = [len(fish("01" * (1 << (n - 1)))) for n in range(2, 13)]
     assert all(right <= 2 * left for left, right in pairwise(sizes))
+
+
+@pytest.mark.parametrize("width", [None, 1, 3, 40])
+def test_parity_uses_the_column_at_every_width(width: int | None) -> None:
+    for n in (1, 4, 10):
+        table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+        for bits in (table, table.translate(str.maketrans("01", "10"))):
+            program = fish(bits, width)
+            assert max(map(len, program.splitlines())) == 1
+            assert len(program.splitlines()) == 2 * n + 4 + (bits[0] == "1") * 2
+            assert _evaluate("Fish", program, inputs=n) == bits
 
 
 @pytest.mark.medium
@@ -43,11 +56,13 @@ def test_source_growth_is_linear_in_the_table() -> None:
 def test_fish_balance_matches_all_power_of_two_folds(table) -> None:
     default = fish(table)
     balanced = balance_fish(table, default)
-    header, reduced = default.split("\n")
+    n = len(table).bit_length() - 1
+    weights, reduced = input_weights(table, n)
+    reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
     # Folds run past the table's width: it then sits in one row.
     layouts = [default, fish(table, 1)] + [
-        _folded(header[1:-8], reduced, 1 << exponent)
-        for exponent in range(len(default).bit_length())
+        _folded(reads, reduced, 1 << exponent)
+        for exponent in range(len(reads).bit_length() + 1)
     ]
     optimum = min(layouts, key=balance_score)
     assert balance_score(balanced) == balance_score(optimum)

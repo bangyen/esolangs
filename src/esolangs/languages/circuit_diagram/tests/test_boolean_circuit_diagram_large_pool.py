@@ -126,3 +126,12 @@ def test_public_growth_executes_positive_controls(family, arities) -> None:
         _execute(table, code, rows)
         sizes.append(len(code))
     assert 0 < sizes[2] - sizes[1] <= 4.4 * (sizes[1] - sizes[0])
+
+
+def test_large_pool_parks_an_ignored_input_port() -> None:
+    table = dense(9)
+    model = _large_pool_layout(table, input_order=list(range(9)), port_inputs=10)
+    assert model is not None
+    # The tenth port is read and dropped: each row's bit holds for both of its values.
+    full = "".join(table[row >> 1] for row in range(1 << 10))
+    _execute(full, model.render(), [0, 1, 2, 511, 512, 1022, 1023])

@@ -37,32 +37,7 @@ def _cover(truth_table: str, n: int) -> list[_Clause]:
                 for index, (mask, value) in enumerate(equations)
             ]
     cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
-    return _pruned(
-        [_Clause(_constraints(base, dirs, n), len(dirs)) for base, dirs in cubes]
-    )
-
-
-def _pruned(cover: list[_Clause]) -> list[_Clause]:
-    """Drop the tests every row reaching their clause passes.
-
-    Random tables: 0.0% of characters.  Unions of cubes and axis half-spaces,
-    which the peel covers with one-test clauses: 10.7% at n=8, 12.1% at n=10.
-
-    A clause left with one test hangs every row that reaches it on that
-    test's side, so every row reaching a later clause is on the other, and
-    a later test of that side is spent text and steps.  A clause left with
-    no test is ``loop?`` alone, which is right: every row reaching it is in
-    its cube.
-    """
-    implied: set[tuple[int, int]] = set()
-    out = []
-    for clause in cover:
-        kept = [test for test in clause.tests if test not in implied]
-        out.append(_Clause(kept, clause.dim))
-        if len(kept) == 1:
-            w, value = kept[0]
-            implied.add((w, value ^ 1))
-    return out
+    return [_Clause(_constraints(base, dirs, n), len(dirs)) for base, dirs in cubes]
 
 
 def _flips(cover: list[_Clause], n: int) -> int:

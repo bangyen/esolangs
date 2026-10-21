@@ -26,7 +26,7 @@
 "from 672,691 to 1,186." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
 ["brainif/generator.py"]
-"The residual DAG cuts the three-input total from 319,576 to 291,524" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"The residual DAG cuts the three-input total from 319,576 to 291,524" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 "characters and steps from 134,984 to 74,440.  The looped levels follow" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
 ["codesick/generator.py"]
@@ -34,6 +34,9 @@
 
 ["collatz_multiverse/generator.py"]
 "code, and the empty cell on top code, lose or fall under the 10% bar" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["crement/generator.py"]
+"Sharing cuts the 256 three-input tables from 38,884 to 37,120 characters" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 
 ["cvnc/generator.py"]
 "Hoisting the reads into the deque to test in any order saves 4.87% at n=8," = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
@@ -46,7 +49,16 @@
 "execution ledger (n=8 A B B A: 1,155 cells, 208 commands); groups whose" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
 ["dimensional/generator.py"]
+"The bare leaf-coordinate form (width 1, n<=2) is 97-217 characters against" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 "characters, 2.2% at n=8: not worth the special case." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+"the shared index form's 82-106, kept only because the index form wraps no" = "498ae85700bb5ed78eb17065c56a123e7516c756"
+
+["hot/generator.py"]
+"fold, n=10 parity is 14,640 chars against 15,696." = "498ae85700bb5ed78eb17065c56a123e7516c756"
+
+["line/generator/__init__.py"]
+"# 274287 pixels without this (6 of the 256 n=3 tables)." = "498ae85700bb5ed78eb17065c56a123e7516c756"
+"# Winning on side can still grow the area: 00011100 grows 248087 ->" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 
 ["minsky_swap/generator.py"]
 "of addresses.  A zero tail stays: trimming it failed 60/134." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
@@ -55,20 +67,35 @@
 "read be the counter saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 "the 10% bar." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
+["object_disoriented/generator.py"]
+"640 chars at n=8." = "498ae85700bb5ed78eb17065c56a123e7516c756"
+
 ["rotfuck/generator.py"]
 "a cell against 2.5 for an entry." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
 ["slashes/generator.py"]
 "undecoded (116 of 126 wrong)." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
+["smallfuck/generator.py"]
+"10% bar.  A tiled n=16 table shrinks 1,747 -> 803 characters (-54%)" = "498ae85700bb5ed78eb17065c56a123e7516c756"
+
 ["sstack/generator/__init__.py"]
 "64-state n=16 control shrinks 23,897 -> 20,360 characters (-14.80%), with" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 "8,192 old/new native rows." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
+["streetcode/generator.py"]
+"# At n=3, emitted grid area falls from 258856 to 228946 cells over all" = "498ae85700bb5ed78eb17065c56a123e7516c756"
+"past ``width`` falls to it (``00000011``: 12x41 -> 165x9 at ``width=40``):" = "498ae85700bb5ed78eb17065c56a123e7516c756"
+"wide (n=11: 1021 columns), which caps the gain near 4x." = "498ae85700bb5ed78eb17065c56a123e7516c756"
+
 ["super_snusp/generator.py"]
-"# (72%) on these five." = "c89c9d061f41050be04083635c299840931049cf"
+"# (72%) on these five." = "498ae85700bb5ed78eb17065c56a123e7516c756"
 "# only arity: 723 vs 907 characters over all 16 tables (20.3%), 72 vs 256" = "c89c9d061f41050be04083635c299840931049cf"
+"# only arity: 723 vs 907 characters over all 16 tables, 72 vs 256" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 
 ["three_x/generator.py"]
 "(at most 5 characters each) and is within 1.4% of that greedy loop on" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 "emission.  It gives up the 46 of 65,536 n=4 tables a greedy trial found" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
+["vandevelo/generator.py"]
+"the three-input tables from 25,922 to 23,425 characters.  Tighter bank" = "498ae85700bb5ed78eb17065c56a123e7516c756"

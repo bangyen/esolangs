@@ -1,10 +1,10 @@
-"""Malbolge's machine helpers: address arithmetic, rendering and the mixer ops."""
+"""Malbolge's machine helpers: address arithmetic and rendering."""
 
 from __future__ import annotations
 
 from collections.abc import Container
 
-from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2, _crazy
+from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2
 
 _WORDS = 3**10
 #: Weight of the top trit, which ``_rot`` moves the low trit to.
@@ -15,8 +15,6 @@ _ALL2 = 59048
 _CONSTS = (0, _ALL1, _ALL2)
 #: The eight instructions a cell can hold, in the order ``_table_char`` tries.
 _ACTIVE = "ji*p</vo"
-#: ``_ops`` kinds: 0 is ``p``, 1 is ``*``.
-_OPS = "p*"
 
 
 def _f(address: int) -> int:
@@ -69,23 +67,5 @@ def _first_free(value: int, lo: int, hi: int, blocked: Container[int] = ()) -> i
     raise AssertionError(f"no address for value {value}")
 
 
-def _addr_of(value: int, avoid: tuple[int, ...], low: int = 34) -> int:
-    """Return an address whose ``g`` value is ``value``, clear of ``avoid``.
-
-    Addresses below ``low`` are skipped because ``value - 1`` has to be a
-    source character too, so the address the navigation reaches must exceed
-    the value it names.
-    """
-    return _first_free(value, low, 127, avoid)
-
-
 def _rot(value: int) -> int:
     return value // 3 + (value % 3) * _ROTATE
-
-
-def _apply(cells: list[int], a: int, ops: tuple[tuple[int, int], ...]) -> int:
-    """Run ``ops`` over ``cells`` in place, returning the final ``A``."""
-    for kind, index in ops:
-        value = _crazy(a, cells[index]) if kind == 0 else _rot(cells[index])
-        a = cells[index] = value
-    return a

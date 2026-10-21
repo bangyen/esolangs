@@ -331,8 +331,9 @@ def _laserfuck_assemble_reader(
         row += placed.exit_row
         col += placed.exit_col
 
-    # Bucket by row and fill gaps: probing the bounding rectangle is
-    # 5.8M dict lookups on a mostly-blank six-input grid.
+    # Bucket by row and fill gaps rather than probing the bounding
+    # rectangle: a six-input build's eight reader rectangles total 6,644
+    # cells (2026-10-21; 5.8M under an earlier, mostly-blank layout).
     height = max(r for r, _ in cells) + 1
     rows: list[list[tuple[int, str]]] = [[] for _ in range(height)]
     for (r, c), char in cells.items():

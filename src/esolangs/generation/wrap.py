@@ -36,16 +36,6 @@ if TYPE_CHECKING:
 DEFAULT_WIDTH = 80
 
 
-def shortest(*candidates: str) -> str:
-    """Return the shortest of ``candidates``, preferring the earlier on a tie.
-
-    Several generators build every shape (ring vs fold, minterm sum vs tree)
-    and emit the smallest; ties keep the first, so pass the canonical shape
-    first for stable output.
-    """
-    return min(candidates, key=len)
-
-
 def wrap_space_delimited(program: str, width: int) -> str:
     """Wrap a whitespace-delimited program, never splitting a token.
 

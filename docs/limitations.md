@@ -122,15 +122,30 @@ Each missed the 10% bar:
   8.48% of area at n=7, under the 10% bar. Width requests still try four.
 - brainfuck lacks a cheaper jump, call, or label.
 
+### Searches kept
+
+Malbolge's generator keeps one table-independent search, run once per
+process; no rule reproduces it:
+
+- Navigation (`emitter.py` `goto`, breadth-first shortest paths). The main
+  line ends at cell 6,013 at n=1 (5,487 at n=16), over 5,089 path cells;
+  the code must end below 6,561, where the hubs and stubs start. Closed-form
+  navigation -- a forward walk, a `j` through the cell at `d`, or a walk to
+  the next unwritten cell with `g = t - 1`, then one more hop -- ends at
+  13,501 at n=1 (12,816 at n=16). The label priming alone takes 2,653 path
+  cells against 609: its `p p` returns to the cell it just wrote 74 times,
+  a forward-only pass leaves `A` equal to the cell just written, and no row
+  of `crazy` is constant, so it cannot bring the next cell to the same value.
+
 ### Largest input counts
 
 - Malbolge:
-  Malbolge's source-embedded generator covers sixteen inputs. Through ten, a
-  five-cell mixer maps rows to gap-3 addresses with three-cell answer stubs.
-  Eleven through fourteen use collision-resolving pointer cascades; fifteen and
-  sixteen use positional readouts, one cell per row pair. The representative
-  dense, parity, constant tables were executed exhaustively at each shipped
-  arity. Construction details and measurements are in
+  Malbolge's source-embedded generator covers sixteen inputs with one
+  positional build: the first `n - 1` inputs fill a readout word three bits
+  per two-trit digit, one cell per row pair, and the answer stub reads the
+  last; below sixteen the unused reads are held at `0`, so every arity's
+  cells are a subset of sixteen's. Boundary rows execute at every arity and
+  every row at ten. Construction details and measurements are in
   [construction summary](proofs/index.md#malbolge-bound).
 
   Seventeen remains open. Native capture, semantic readout, footer dispatch and
@@ -140,6 +155,44 @@ Each missed the 10% bar:
   8,432 cells before adding the remaining query, selector and metadata. This is
   a deficit for that construction, not an impossibility bound.
   The shipped cap remains sixteen.
+
+  The seven-meaning integration was re-measured end to end (2026-10-21,
+  `notes/malbolge17-refund/`, tooling from `09ab2fad:scripts/malbolge17/`).
+  Navigation (`o`/`j`) is 93-94% of its emitted cells; a walked cell holding
+  `target - 1` lets one `j` land `D` on a hot cell, which cut the address
+  fold from 10,420 to 7,234 cells and the integrated decoder from 13,177 to
+  12,303, every control passing (16,384 address rows, 5,488 decoder cases).
+  Fold and decoder together, code and data, occupy 19,549 cells against the
+  9,897-cell table complement: a 9,652-cell deficit. It is a navigation
+  deficit, not a design one: pricing every `goto` to a cell at or above 34
+  at one cell leaves fold 1,404 and decoder 4,015 (+956 data), a 6,375-cell
+  union under the complement (the earlier 13,228 figure teleported only
+  targets at or above 128). The slack is in the window 34..127: the fold
+  spends 5,355 of its 7,234 cells on 630 gotos there (8.5 a hit; targets
+  45, 34, 37, 38 and 97 cost 2,256), and its greedy pointer selection
+  stops after twelve: with the tail moved out of the parity-reducer's way
+  (C2190 to C40096) every further candidate builds but none shrinks the
+  fold, since a pointer takes a window cell the labels and reducer used and
+  the reducer grows by more than the pointer saves. The pointer mechanism
+  is saturated at 7,234 (`notes/malbolge17-refund/`, 2026-10-21). Nor
+  can the window's contents be rechosen to approach one cell a hit: `D`
+  moves only to `D + 1` or `mem[D] + 1`, so routing is a walk on a
+  94-node out-degree-2 graph, and annealing all 94 contents over their
+  eight admissible characters for the fold's 628 low gotos alone floors
+  at 3.6 cells a hit (2,254 model cells against 3,725 for the shipped
+  contents, which the planner prices at 5,355); over the 31 unpinned
+  cells, 4.8. The fold's low navigation can lose at most about a
+  thousand cells. Priced together: the teleport oracles leave 2,743
+  non-navigation cells in the decoder and 682 in the fold, so the
+  complement affords 5,516 cells for their 1,994 gotos, 2.77 a hit, under
+  the 3.6 floor (unions 11,559 at 3.6 a hit, 13,953 at 4.8; a target
+  above 127 costs a window walk plus one `j` besides). The three-cell,
+  seven-meaning family is closed unless a layout needs a quarter fewer
+  gotos at the floor cost. Low pointer cells in
+  the decoder's window are blocked: every window cell is a
+  neighbour-escape landing, so a freed cell needs a chain-built pointer
+  whose probe cell names an N cell, and the chain vocabulary reaches too
+  few values.
 
   A seventeen-input layout needs more than two table bits in almost every
   cell, and the cell's character is the only per-row freedom: at address `h`
@@ -159,6 +212,18 @@ Each missed the 10% bar:
   the first also needs three pairwise disjoint 16,384-cell digit maps, and
   any aligned four-trit window of three such maps carries at least 96 of
   its 81 values, so no three are disjoint.
+
+  Reading adjacent cells does not escape the window (2026-10-21, exhaustive):
+  `v[h+1] - v[h]` is phase-free, but a decoder reaches it only through
+  back-to-back `*`/`p` reads, since `D` advances once per instruction.
+  Over all 730 such chains (`*` then `p`; `p` after each of the 729
+  constants that touch a character's di-trits, then `p`), the best
+  three-cell read lands on 110 distinct cells at its worst phase against the
+  256 a byte needs (two cells: 38 of 64), no triple lands phase-free, and
+  every chain's state space is at most 243 cells, since `crazy` acts per
+  di-trit (`notes/malbolge17-refund/scripts/chain_sep.py`, 9.7 s; the
+  identity control scores 512). Mixing a per-window-cell constant instead is
+  the measured landing decoder above.
 
   Shared cells do not rescue the count (2026-10-20, model): the holes of the
   sixteen-input map are reached by forcing one digit to its missing value,
@@ -237,7 +302,7 @@ Shipped limits, in inputs:
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; that positional readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/index.md#malbolge-bound)). |
+| Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/index.md#malbolge-bound)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 ### Size lower bounds
@@ -406,12 +471,10 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   inputs, derived, not executed.
 
 - Malbolge:
-  `test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
-  and every second-level cascade row. Both are needed: at eleven inputs,
-  corrupting `_cascade_program`’s level-0 answers fails 117 stride rows and
-  **0** second-level rows. Corrupting second-level answers fails 127
-  second-level rows and only 18 stride rows. Only the stride sample covers
-  the 1792 level-0 rows.
+  `test_boolean_malbolge.py` executes the boundary rows at every arity,
+  every row at ten, and every 128th row at fifteen and sixteen weekly.
+  No row shares a cell, so a row's answer is wrong only if its own cell
+  is: a corrupted cell fails exactly the rows that read it.
 
 ## Curation
 

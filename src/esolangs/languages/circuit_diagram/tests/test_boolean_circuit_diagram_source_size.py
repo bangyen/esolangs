@@ -94,3 +94,8 @@ def test_giant_horizontal_run_is_counted_without_render(
     # Height stays four rows however long the run is; only its right end and
     # three empty rows above it contribute.
     assert layout_source_size(layout) == width + 4
+
+
+def test_empty_layout_has_no_source() -> None:
+    layout = _Layout()
+    assert layout_source_size(layout) == len(layout.render()) == 0

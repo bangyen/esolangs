@@ -1,10 +1,10 @@
 """Dig Boolean program generator: a mole walks a decision tree.
 
 Each tree level is a ``$3~;#`` block that reads a bit, stores it and turns on
-it; leaves print the answer.  The tree is laid out in one band or two that
-turn round; from four inputs it races the alternating layout, whose
-flat-leaf layout, shared variants and indexed leaf decoder compete by
-length and grid area.
+it; leaves print the answer.  The tree is laid out in one band, or under
+``width`` two that turn round; from four inputs it races the alternating
+layout, whose flat-leaf layout, shared variants and indexed leaf decoder
+compete by length and grid area.
 
 Size:
     Area O(T) past four inputs; n=10 parity: 614 chars, n=10 random 1847:
@@ -451,17 +451,18 @@ def _dig_build(
         layouts = filter(None, (lane, _dig_alternating(truth_table, n)))
         return settle(min(layouts, key=_dig_size))
     flat = _dig_grid(truth_table, n, None)
+    if width is None:
+        # The banded tree only fits widths: as a default candidate its share
+        # declines to nothing ([ablations.banded_default]).
+        if n >= _DIG_TREE_MAX and share:
+            return _dig_race_at_tree_max(truth_table, n, flat, lane, settle)
+        return flat
     if n < 2:
         return flat
     # The turn has to leave the westbound band room to finish left of where
     # the eastbound one starts its last block, which is what fixes the
     # split rather than any search: the halves are as even as that allows.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
-    trees = min((flat, banded), key=_dig_size)
-    if width is None and n >= _DIG_TREE_MAX and share:
-        return _dig_race_at_tree_max(truth_table, n, trees, lane, settle)
-    if width is None:
-        return trees
     return _dig_fit_width(truth_table, n, width, flat, banded, lane, settle)
 
 

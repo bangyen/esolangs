@@ -136,13 +136,6 @@
     "line: raise ValueError(f\"scale factor must be at least 1, got {factor}\")",
 ]
 
-"malbolge/generator/segments.py" = [
-    "arm: elif op.kind == \"snap\": -> raise ValueError(op.kind)",
-    "arm: elif op.kind == \"snap\": -> raise ValueError(op.kind) #2",
-    "line: raise ValueError(op.kind)",
-    "line: raise ValueError(op.kind) #2",
-]
-
 "minifuck/generator/__init__.py" = [
     "arm: if len(default) <= len(positional): -> candidates.extend(shared for shared in forms if len(shared) <= len(positional))",
 ]

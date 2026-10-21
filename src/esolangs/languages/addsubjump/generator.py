@@ -81,7 +81,8 @@ def _memory(
     """Resolve operands and literal jumps, allocating names in mention order."""
     base = _WORD * len(instructions)
     # A dict, not a list: list ``in`` + ``.index`` per operand was 2.4s of a
-    # 3.8s six-input build.
+    # 3.8s six-input build (2026-10-11); one is now 0.2 ms, tree and packed
+    # candidates both (2026-10-21).
     address = {
         name: base + index
         for index, name in enumerate(dict.fromkeys(values if names is None else names))
@@ -355,7 +356,8 @@ def _addsubjump_ordered(
     # a forward-reference name to the instruction index it will land on.
     targets: dict[str, int] = {}
     # Operand names in mention order, recorded at emit: re-scanning every
-    # operand cost 3.5M ``isinstance`` calls on a six-input build.
+    # operand cost 3.5M ``isinstance`` calls on a six-input build
+    # (2026-10-11; a whole one is now 1,168 calls).
     named: list[str] = []
 
     def emit(a: _Operand, b: _Operand, c: _Operand, d: int) -> int:

@@ -6,7 +6,6 @@ from importlib import import_module
 
 import pytest
 
-from esolangs.generation.wrap import shortest
 from esolangs.languages import generators as boolean
 from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
@@ -54,7 +53,7 @@ class TestStreetcode:
                 table = format(value, f"0{1 << n}b")
                 tree = module._streetcode_tree(table)  # noqa: SLF001
                 shared = module._streetcode_shared_program(n, tree)  # noqa: SLF001
-                assert boolean.streetcode(table) == shortest(shared)
+                assert boolean.streetcode(table) == shared
 
     @pytest.mark.parametrize("table", ["01100110", "00010101"])
     def test_equal_siblings_share_one_drawing(self, table: str) -> None:

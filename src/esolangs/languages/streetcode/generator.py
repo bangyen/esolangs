@@ -28,12 +28,12 @@ Decisions:
     past ``width`` falls to it (``00000011``: 12x41 -> 165x9 at ``width=40``):
     a shape switch, not a missing piece.
 
-    ``balance`` snakes the indexed street into strips (460x9 -> 98x48 at
+    ``balance`` snakes the indexed street into strips (456x9 -> 98x48 at
     n=6 random).  Blocks stand two blank rows apart and cuts keep four clear
     columns each side, so no foreign wall is within a car's three-cell
     reading; that keeps the fold sound without a drive check (the
     oracle is in the tests).  The gaps cost area against the old shared-sill
-    fold: 80x45 -> 98x48 at n=6, 91x47 -> 110x54 at n=7, 112x51 -> 126x66
+    fold: 80x45 -> 98x48 at n=6, 91x47 -> 110x54 at n=7, 112x51 -> 127x66
     at n=8.  From n=9 the rooms chain into one uncuttable block about ``T/2``
     wide (n=11: 1021 columns), which caps the gain near 4x.
 """

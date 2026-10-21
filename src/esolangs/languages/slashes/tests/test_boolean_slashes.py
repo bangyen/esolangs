@@ -7,7 +7,7 @@ from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
 from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import wrap_program
-from esolangs.languages.slashes.generator import _is_unfilled_template
+from esolangs.languages.slashes.generator import _DECODE, _UNARY, _is_unfilled_template
 from esolangs.runtime._evaluate import _evaluate
 from scripts.benchmark import WrittenState
 from tests.support.witness_tables import witnesses
@@ -57,6 +57,22 @@ def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit) -> 
 @pytest.mark.parametrize("suffix", ["", "0", "$", "$2", "$x0", "ab0"])
 def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix) -> None:
     assert not _is_unfilled_template("/a///b//" + suffix)
+
+
+def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
+    # Two X in a three-character slot list once shifted by -1 and raised.
+    program = _UNARY + _DECODE + "$XX>qAqB"
+    assert not _is_unfilled_template(program)
+    assert isinstance(esolangs.run("///", program), str)
+
+
+def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
+    template = esolangs.generate("///", "0011")  # slots "$X$": one ignored
+    assert template.endswith("$X$>qAqB")
+    assert _is_unfilled_template(template)
+    body = template.removesuffix("$X$>qAqB")
+    assert not _is_unfilled_template(body + "$X1>qAqB")  # a filled slot
+    assert not _is_unfilled_template(body + "$X$>qAXB")  # a foreign cell
 
 
 def test_partly_filled_constant_still_requires_its_remaining_input() -> None:

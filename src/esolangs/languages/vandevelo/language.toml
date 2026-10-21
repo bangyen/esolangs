@@ -65,7 +65,7 @@ verdict = "kept: an input mostly tested for 0 is read negated, shedding == Nil? 
 [ablations.implied_test_pruning]
 saving = 0.0
 arity = 12
-verdict = "candidate: drops a clause's test when an earlier one-test clause implies it for every row reaching the clause. 0.0% on random tables at every arity and on every named class; on constructions of its union class it saves 0.0% (axis-cube unions, half-space unions), 0.2% (general affine-cube unions) and 6.0% / 4.6% at n=8/10 on the richest firing shape (a half-space with cubes planted in its complement). The docstring's 10.7% / 12.1% class figures reproduce on no construction tried. See RETIREMENT-CANDIDATES entry 22"
+verdict = "removed 2026-10-21 (retirement candidate #22): dropped a clause's test when an earlier one-test clause implied it for every row reaching the clause. 0.0% on random tables at n=5..10 (0.27% at n=4). On its union class the share declines with arity, which fails the bar: half-space unions with width-3 cubes planted in the complement save 15.5% / 13.8% / 10.6% / 10.1% at n=8/10/12/14 (40 tables a cell, 200 at n=12), width-4 cubes 10.4% / 9.4% / 8.4% at n=8/10/12, axis-cube unions 5.0% / 2.7% / 1.8%. The re-price's own constructions (axis-cube 8.2% / 4.9% / 5.1%, planted 10.8% / 11.9% / 10.0%) decline the same way; its clause-width argument does not hold, since width-2 planted cubes never fire. The docstring's 10.7% / 12.1% class figures reproduced on no construction tried"
 
 [ablations.coset_bypasses]
 saving = 0.0

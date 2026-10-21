@@ -98,6 +98,9 @@ def test_sparse_mask_dag_aborts_over_budget_with_a_positive_control() -> None:
     short = _SparseWork(spent - 1)
     assert _sparse_mask_dag(rows, 6, short) is None
     assert short.used > short.limit
+    # Every tighter budget aborts wherever it runs out, never with a partial DAG.
+    for limit in range(spent):
+        assert _sparse_mask_dag(rows, 6, _SparseWork(limit)) is None
 
 
 def test_sparse_mask_model_returns_none_over_budget() -> None:

@@ -153,7 +153,8 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # dropped on the stack rather than stored.  The tree would fold an
     # ignored input anyway (identical output over 39 tables, n=2..8, on the
     # default, width and balance paths); reducing first is for build time,
-    # 0.115 s against 0.972 s at n=12 with two ignored inputs.
+    # 0.115 s against 0.972 s at n=12 with two ignored inputs (the reduced
+    # build is 0.008 s, 2026-10-21).
     essential = essential_inputs(truth_table, n) or [0]
     table = truth_table
     if len(essential) < n:

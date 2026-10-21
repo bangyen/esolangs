@@ -476,9 +476,6 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     return {perm[k] for k in range(n) if _depends_on(truth_table, 1 << (n - 1 - k))}
 
 
-_GREEDY_ORDER_MAX_ARITY = 10
-
-
 def in_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
@@ -486,72 +483,6 @@ def in_input_order(
     """Build a validated table in input order."""
     n = _validate_truth_table(truth_table)
     return build(truth_table, tuple(range(n)))
-
-
-def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
-    """Pick an input order one level at a time.
-
-    Score each unchosen input by the constant subtrees it creates among
-    the live blocks; ties keep the lowest index so an unhelped table
-    yields the identity.
-
-    A block's scoreboard comes from one pass over its rows: the AND and OR
-    of the row indices holding a ``1`` and of those holding a ``0``.  Input
-    ``i``'s zero half is constant iff every ``1`` row, or every ``0`` row,
-    has bit ``i`` set (an empty class vacuously does), and its one half iff
-    every row of one class has it clear.  So a level costs ``O(live rows)``
-    however many inputs are scored, ``O(n * 2**n)`` in all; each level must
-    still read every live row, so parity cannot do better.
-    """
-    full = (1 << n) - 1
-
-    def summarize(rows: list[int]) -> tuple[list[int], int, int, int, int]:
-        one_and = zero_and = full
-        one_or = zero_or = 0
-        for r in rows:
-            if truth_table[r] == "1":
-                one_and &= r
-                one_or |= r
-            else:
-                zero_and &= r
-                zero_or |= r
-        return rows, one_and, one_or, zero_and, zero_or
-
-    # Each live block is its rows plus the four aggregates.
-    stats = [summarize(list(range(2**n)))]
-    order: list[int] = []
-    remaining = list(range(n))
-    # The loop always leaves by the ``break`` below: picking every input
-    # separates every row, so ``stats`` is empty on the last pass at the
-    # latest, and ``remaining`` is never the condition that ends it.
-    while remaining:  # pragma: no branch - always exits via the break
-        best_input = remaining[0]
-        best_score = -1
-        for i in remaining:
-            bit = 1 << (n - 1 - i)
-            score = 0
-            for _, one_and, one_or, zero_and, zero_or in stats:
-                score += bool((one_and | zero_and) & bit)
-                score += bool(~(one_or & zero_or) & bit)
-            if score > best_score:
-                best_input, best_score = i, score
-        order.append(best_input)
-        remaining.remove(best_input)
-        bit = 1 << (n - 1 - best_input)
-        split = []
-        for rows, one_and, one_or, zero_and, zero_or in stats:
-            # A block that is already constant needs no further splitting.
-            if not (one_and | zero_and) & bit:
-                split.append(summarize([r for r in rows if not r & bit]))
-            if not ~(one_or & zero_or) & bit:
-                split.append(summarize([r for r in rows if r & bit]))
-        stats = split
-        if not stats:
-            # Everything below folds; the rest of the order cannot matter, so
-            # keep it ascending to stay closest to the identity.
-            order.extend(remaining)
-            break
-    return tuple(order)
 
 
 def affine_form(table: str, n: int) -> tuple[int, list[int]] | None:

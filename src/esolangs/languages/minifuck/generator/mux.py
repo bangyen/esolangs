@@ -29,7 +29,7 @@ from esolangs.languages.minifuck.generator.sim import (
 # gadget folds it into the prefix-XOR and every weight collapses to 1), and
 # gadgets must not overlap (weight ``k`` writes at most ``k - 3`` cells
 # left).  Replaced four searches: 15.0s at n=4, failing at n=5 after 191s;
-# this is 0.004s at 5.  448 of 448 rows correct at n=5,6,7.
+# this is 0.1 ms at 5 (2026-10-21).  448 of 448 rows correct at n=5,6,7.
 
 # Pool codes were designed against ``_walk_to``'s uniform wake, marks to
 # ~cell 14.  The pool is cells 0..7; the guard is the first cell past it and

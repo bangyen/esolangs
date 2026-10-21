@@ -6,9 +6,9 @@ backlinks = 130
 
 [proof_status]
 labels = ["exception"]
-qualification = "finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound))"
+qualification = "finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; below sixteen the unused reads are held at 0; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound))"
 scaling = "measured: fixed 59049-cell store through n <= 16"
-execution = "unmeasured: worst 478n + 1459 steps for n ≤ 10; eleven to sixteen are separate builds"
+execution = "unmeasured: at most 6,217 commands at n=1 to 5,691 at n=16: main code through its closing i, then at most 204"
 workspace = "poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag"
 
 [proof_status.audit]
@@ -18,14 +18,14 @@ output_size = "Linear"
 evidence = "docs/proofs/index.md#malbolge-bound"
 
 [generator_sizes]
-"00000001" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
-"00001100" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
-"00110110" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
-"0110" = { commands = 2415, commands_by_row = { "0" = 2415, "1" = 2415, "2" = 2415, "3" = 2415 }, source_units = 59049 }
-"01101001" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
-"0110100110010110" = { commands = 3371, commands_by_row = { "0" = 3371, "1" = 3371, "2" = 3371, "3" = 3371, "4" = 3371, "5" = 3371, "6" = 3371, "7" = 3371, "8" = 3371, "9" = 3371, "10" = 3371, "11" = 3371, "12" = 3371, "13" = 3371, "14" = 3371, "15" = 3371 }, source_units = 59049 }
-"1101001101101101" = { commands = 3371, commands_by_row = { "0" = 3371, "1" = 3371, "2" = 3371, "3" = 3371, "4" = 3371, "5" = 3371, "6" = 3371, "7" = 3371, "8" = 3371, "9" = 3371, "10" = 3371, "11" = 3371, "12" = 3371, "13" = 3371, "14" = 3371, "15" = 3371 }, source_units = 59049 }
-"11111110" = { commands = 2893, commands_by_row = { "0" = 2893, "1" = 2893, "2" = 2893, "3" = 2893, "4" = 2893, "5" = 2893, "6" = 2893, "7" = 2893 }, source_units = 59049 }
+"00000001" = { commands = 5945, commands_by_row = { "0" = 5945, "1" = 5945, "2" = 5945, "3" = 5945, "4" = 5945, "5" = 5945, "6" = 5945, "7" = 5945 }, source_units = 59049 }
+"00001100" = { commands = 5945, commands_by_row = { "0" = 5945, "1" = 5945, "2" = 5945, "3" = 5945, "4" = 6137, "5" = 6137, "6" = 5945, "7" = 5945 }, source_units = 59049 }
+"00110110" = { commands = 6141, commands_by_row = { "0" = 5945, "1" = 5945, "2" = 6137, "3" = 6137, "4" = 5945, "5" = 5945, "6" = 6141, "7" = 6141 }, source_units = 59049 }
+"0110" = { commands = 6166, commands_by_row = { "0" = 5979, "1" = 5979, "2" = 6166, "3" = 6166 }, source_units = 59049 }
+"01101001" = { commands = 5945, commands_by_row = { "0" = 5945, "1" = 5945, "2" = 6132, "3" = 6132, "4" = 6132, "5" = 6132, "6" = 5945, "7" = 5945 }, source_units = 59049 }
+"0110100110010110" = { commands = 6094, commands_by_row = { "0" = 5907, "1" = 5907, "2" = 6094, "3" = 6094, "4" = 6094, "5" = 6094, "6" = 5907, "7" = 5907, "8" = 6103, "9" = 6103, "10" = 5907, "11" = 5907, "12" = 5907, "13" = 5907, "14" = 6094, "15" = 6094 }, source_units = 59049 }
+"1101001101101101" = { commands = 5907, commands_by_row = { "0" = 6099, "1" = 6099, "2" = 5907, "3" = 5907, "4" = 5907, "5" = 5907, "6" = 6099, "7" = 6099, "8" = 5907, "9" = 5907, "10" = 6094, "11" = 6094, "12" = 6099, "13" = 6099, "14" = 5907, "15" = 5907 }, source_units = 59049 }
+"11111110" = { commands = 6141, commands_by_row = { "0" = 6137, "1" = 6137, "2" = 6137, "3" = 6137, "4" = 6137, "5" = 6137, "6" = 6141, "7" = 6141 }, source_units = 59049 }
 
 [catalogue]
 folding_ignored = "fixed-size source; an extra input port adds no cells"
@@ -52,15 +52,15 @@ verdict = "kept: the source is the whole memory image by design; the untouched t
 
 [ablations.tier_constructions]
 saving = 0.0
-verdict = "kept: feasibility -- stub, cascade, wide, thirteen, segments and digits tiers each unlock arities the previous cannot address; size is 59,049 at every tier"
+verdict = "kept: one positional build serves every arity; size is 59,049 throughout"
 
 [ablations.shortest_path_planner]
 saving = 0.0
-verdict = "kept: not separately priceable -- typed into the 13+ tiers' emission, and no walker variant of those tiers exists"
+verdict = "kept: not separately priceable -- typed into the build's emission, and no walker variant of it exists"
 
 [ablations.searched_constants]
 saving = 0.0
-verdict = "kept: frozen one-time searches (the mixer schedule, the CP-SAT hub labels) -- construction constants, not per-table tricks"
+verdict = "kept: no frozen table remains -- the labels, gadget outputs, gadget values, seeds, hubs, stubs and operands are closed forms; only navigation is searched, once per process, no rule reproducing it (limitations)"
 
 [ablations.constant_folding]
 saving = 0.0

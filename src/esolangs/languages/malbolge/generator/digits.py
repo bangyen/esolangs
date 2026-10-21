@@ -1,11 +1,9 @@
-"""Malbolge's fifteen- and sixteen-input builds: an address with no collisions.
+"""Malbolge's boolean build: a positional address, so no row collides.
 
-The builds through fourteen inputs fold the row into a hashed readout and
-resolve the rows that share a cell with an ``N`` cascade, and the cascade's
-depth is what stops them.  These builds hash nothing.  A readout word has ten
-trits, five two-trit *digits*, and three input bits have eight values, so a
-digit can hold three bits outright: fifteen address bits fill the word and
-every row owns its own cell, with no ``N`` label and no decoder.
+A readout word has ten trits, five two-trit *digits*, and three input bits
+have eight values, so a digit can hold three bits outright: fifteen address
+bits fill the word and every row pair owns its own cell, with no hashing, no
+shared cells and no decoder.
 
 A 16-op *gadget* over three fresh walked cells reads three inputs and leaves
 them injectively in trit 0 of cells 1 and 2 (``u`` and ``v``); ``crazy`` works
@@ -16,124 +14,112 @@ The accumulator ``S`` then takes one digit per group: ``p`` over ``S`` with
 is 2), ``*`` again.  At trits already holding digits the constants are 2 and
 1 -- ``crazy``'s two bijective rows -- so no earlier digit is lost, and the
 cells' walked ``g`` values are chosen so that every untouched trit of ``S``
-arrives at trit 0 holding exactly the 1 or 2 it needs.  After five groups
+arrives at trit 0 holding exactly the 1 or 2 it needs (:func:`_d_outputs`,
+:func:`_d_inits`).  After five groups
 ``S`` is back in its own alignment: digit ``k`` is input group ``k``.
 
 Each digit misses one of its nine values.  A ``swap12`` on group 4's ``v``
 and on group 1's ``u`` and a final ``swap01`` of the whole word make the top
 digit miss ``(0, 0)`` and digit 1 miss ``(2, 2)``: every readout lies in
 6561..59039, so the code fits below the table and no cell wraps past 59048.
-Fifteen inputs run the same build with group 4's first read replaced by the
-constant ``'0'``, so their cells are a subset of sixteen's.
 
-The row's cell ``S + 1`` holds a label character as at thirteen inputs, and
-the answer stub reads the last input.  Only the labels ``0 1 x n`` exist, and
-at 55% occupancy their hubs are placed by seed chains searched to land in
-holes; the ``n`` stub's large operand is a dedicated pointer-region cell.
+Fewer than sixteen inputs hold ``16 - n`` of the fifteen reads at the
+constant ``'0'``: three per group from the last group, a group's leading
+reads first.  A held read is ``p`` with ``A = all-2`` over a cell holding 69
+(``crazy(all-2, 69) == 48``), which leaves 48 there and 69 again after the
+next such ``p``, so one cell serves every held read.  Every build's cells are
+then a subset of sixteen's, and the hubs and stubs are placed once for all.
+
+The row's cell ``S + 1`` holds a label character naming one of four answers
+as a function of the last input -- ``0``, ``1``, ``x`` or ``not x`` -- and
+the answer stub reads that input.  Hubs and stubs sit where a missing
+digit keeps every table cell out (:mod:`.core`).
 Seventeen inputs would need 65,536 cells, more than the store.
 """
 
 from __future__ import annotations
 
 from functools import cache
+from itertools import product
 from typing import NamedTuple
 
 from esolangs.languages.malbolge.interpreter import _crazy
 
-from .cascade import (
-    _build_constants,
-    _table_char,
-)
 from .core import (
     _ANSWER,
     _K_CELL,
+    _OPERAND_CHAIN,
+    _SEED_CHAIN,
     _T_HELPERS,
-    _T_HUB_CELLS,
+    _T_HUB_LABELS,
     _T_LABELS,
     _T_LOW,
+    _Build,
+    _build_constants,
     _chain,
     _emit_chain,
-    _HubRequest,
+    _hub_layout,
     _main_planner,
     _merge_code,
-    _options_of,
+    _operand_cells,
     _pointers,
     _prime,
+    _s01,
+    _seed_g,
     _seed_label_chains,
-    _t_hubs,
+    _stub_builds,
     _t_jump,
-    _turn_hubs,
+    _table_char,
     _walker,
+    _write_hubs,
 )
 from .emitter import _Planner
 from .isa import (
     _CONSTS,
     _WORDS,
-    _g,
     _program,
     _render,
     _rot,
 )
 
-#: The largest input count the generator builds.
+#: The largest input count the generator builds: fifteen positional reads
+#: and the last input read by the stub.
 _DIGITS_N = 16
+#: Reads per gadget group.
+_READS = 3
 
 #: The gadget: ``/`` reads an input, ``K`` sets ``A`` to 0 / all-1 / all-2 and
 #: a digit names the cell a ``p`` runs over.  The unique shortest injective
 #: suffix after the wipe prefix (``test_suffix_is_unique_shortest``); cells 1, 2
 #: are ``u = 1+x-y-xyz``, ``v = (2-x)(1-z)+zxy`` mod 3 (trit 0).
 _GADGET = tuple("/ 0 / 1 K2 0 K2 1 / 2 0 1 0 K1 0 2".split())  # noqa: SIM905
-#: Per group, the ``g`` values of the three gadget cells.  Trits 1..3 of each
-#: were solved for so that ``S``'s untouched trits arrive right and the
-#: digits' constants stay 2 (``v``) and 1 (``u``); trits 4..9 need 0 or 1.
-_D_INITS = (
-    (63, 64, 34),
-    (58, 82, 88),
-    (108, 120, 111),
-    (46, 39, 60),
-    (48, 49, 79),
-)
+#: Gadget groups, one digit each.
+_D_GROUPS = 5
+#: Trits 1..3 of the reads ``'0'`` and ``'1'`` (48, 49), which agree there.
+_READ_TRITS = (1, 2, 1)
+#: A trit of ``S`` already holding a digit, in :func:`_fold`.
+_DIGIT = -1
+#: A group's ``(u, v)`` at trits 1, 2 and 3.
+type _Choice = tuple[tuple[int, int], ...]
 #: The groups whose ``v`` and ``u`` are ``swap12``-ed before they are folded in.
 _D_SWAP_V = 4
 _D_SWAP_U = 1
-#: Label seeds: a walked ``g`` value and the chain that makes it the first
-#: pointer value; a label's cells then alternate it and its 0/1 swap.
-_D_SEEDS = {
-    "0": (109, "rot K2"),
-    "1": (116, "rot K2"),
-    "x": (118, "rot K2"),
-    "n": (80, "rot rot K0 K2"),
-}
-#: Pointer-region cells the ``n`` stubs ``j`` to, and the chain on each.
-_D_OPERANDS = {86: "rot K2", 101: "rot K2"}
-#: Stubs, hub characters and the navigation's data cells sit at or above this.
-_D_FLOOR = 6000
-
-#: Pointer cells built at run time, ``cell -> (value, chain)``.  A ``j`` on a
-#: cell worth ``v`` lands on ``v + 1``, so a low cell holding a working address
-#: lets the planner jump straight to it instead of walking the whole
-#: ``128..419`` region: each entry saves far more ``o`` cells than its chain
-#: costs.  The cells and values were searched; the chain runs
-#: through :func:`_emit_chain`'s ``rot``/``K0``/``K1``/``K2`` ops.
-_D_POINTERS: dict[int, tuple[int, str]] = {
-    68: (297, "rot rot rot rot rot rot rot rot K2"),
-    70: (221, "K2"),
-    74: (141, "rot rot rot rot rot rot rot rot rot"),
-    91: (163, "K2"),
-    116: (172, "K2"),
-    123: (216, "K2 K1"),
-}
-
-#: Placement override for the walked working cells, keyed by allocation order
-#: (helpers, the five gadget groups, ``s``/``z``, the two twos and to-48 cells,
-#: then the four label seeds).  A cell whose preferred address is taken falls
-#: back to the first free one, so the map only steers the layout.
-_D_LAYOUT: dict[int, int] = {4: 328, 7: 132, 20: 144, 21: 135}
+#: Stubs, hub characters and the navigation's data cells sit at or above
+#: this, the code below: no readout has top digit ``(0, 0)``.
+_D_FLOOR = 3**8
+#: The labelled pointer cells.
+_D_LABEL = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
+#: Each label's seed ``g`` (:func:`~.core._seed_g`).
+_D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 
 
-def _top_bit_held(n: int, group: int) -> bool:
-    """Whether fifteen inputs hold group 4's first read at the constant ``'0'``."""
-    return n < _DIGITS_N and group == len(_D_INITS) - 1
+def _held(n: int, group: int) -> int:
+    """Return how many of ``group``'s leading reads ``n`` inputs hold at ``'0'``.
+
+    ``16 - n`` reads are held in all, three per group from the last group.
+    """
+    spare = _DIGITS_N - n - _READS * (_D_GROUPS - 1 - group)
+    return max(0, min(_READS, spare))
 
 
 def _swap12(value: int) -> int:
@@ -141,21 +127,163 @@ def _swap12(value: int) -> int:
     return _crazy(2, value)
 
 
+def _trit_gadget(cells: tuple[int, ...], read: int) -> tuple[int, int]:
+    """Return ``(u, v)`` at one trit from the cells' trits and the reads' trit."""
+    c, a = list(cells), 0
+    for op in _GADGET:
+        if op == "/":
+            a = read
+        elif op[0] == "K":
+            a = int(op[1])
+        else:
+            a = c[int(op)] = _crazy(a, c[int(op)]) % 3
+    return c[1], c[2]
+
+
+def _fold(s: tuple[int, ...], choice: _Choice, group: int) -> tuple[int, ...] | None:
+    """Return ``S``'s trits after ``group`` folds in, or ``None`` if it fails.
+
+    ``choice`` is the cells' ``(u, v)`` at trits 1..3; above, every trit
+    pattern of 0s and 1s gives the digit constants ``(1, 2)``.  The fold
+    needs ``S_0 = 1``, the rotated trit 0 to be 2, ``v_k = 2`` under each
+    digit of ``S`` and ``u_k = 1`` under each digit of the rotated ``S``.
+    """
+    u = [0, *(uv[0] for uv in choice), *[1] * 6]
+    v = [0, *(uv[1] for uv in choice), *[2] * 6]
+    # swap12 is crazy(2, .): A's trits above 0 are 0, which keeps 1s and 2s.
+    if group == _D_SWAP_V:
+        v = [_crazy(0, x) % 3 for x in v]
+    if group == _D_SWAP_U:
+        u = [_crazy(0, x) % 3 for x in u]
+    if s[0] != 1 or any(x == _DIGIT and v[k] != 2 for k, x in enumerate(s) if k):
+        return None
+    s1 = [
+        _DIGIT,
+        *(x if x == _DIGIT else _crazy(v[k], x) % 3 for k, x in enumerate(s) if k),
+    ]
+    r = s1[1:] + s1[:1]
+    if r[0] != 2 or any(x == _DIGIT and u[k] != 1 for k, x in enumerate(r) if k):
+        return None
+    s2 = [
+        _DIGIT,
+        *(x if x == _DIGIT else _crazy(x, u[k]) % 3 for k, x in enumerate(r) if k),
+    ]
+    return tuple(s2[1:] + s2[:1])
+
+
+def _d_choice(s: tuple[int, ...], group: int) -> _Choice:
+    """Return ``group``'s ``(u, v)`` at trits 1..3, solving each trit's equation.
+
+    The fold maps ``S_k`` to ``crazy(crazy(v_{k+2}, S_{k+2}), u_{k+1})`` at
+    ``k - 2``.  Trit 3 keeps the digit constants.  Trit 1 turns ``S_1`` to 2
+    (``v_1 = 1`` under a 2, else 2) and takes ``u_1 = 2`` only when ``S_2 = 2``,
+    which no ``v_2`` sends to 0.  Trit 2 makes the next ``S_0`` 1 and the next
+    ``S_1`` 1, or 2 when ``S_3 = 2``, from which 1 is out of reach.  Digits of
+    ``S`` need ``v = 2`` above them and ``u = 1`` one trit lower.
+    """
+    swap_u, swap_v = group == _D_SWAP_U, group == _D_SWAP_V
+    us = [_crazy(0, a) % 3 if swap_u else a for a in range(3)]
+    vs = [_crazy(0, a) % 3 if swap_v else a for a in range(3)]
+    _, s1, s2, s3 = s[:4]
+    trit1 = (0, 1) if s1 == 2 else (2, 2) if s2 == 2 else (1, 2)
+    if s2 == _DIGIT:
+        v2 = vs.index(2)
+    else:
+        target = 2 if us[trit1[0]] == 2 else 0
+        v2 = [_crazy(v, s2) % 3 for v in vs].index(target)
+    if s3 == _DIGIT:
+        u2 = us.index(1)
+    else:
+        a = _crazy(vs[2], s3) % 3
+        u2 = [_crazy(a, u) % 3 for u in us].index(2 if s3 == 2 else 1)
+    return trit1, (u2, v2), (1, 2)
+
+
+@cache
+def _d_outputs() -> tuple[_Choice, ...]:
+    """Return each group's ``(u, v)`` at trits 1..3 (:func:`_d_choice`).
+
+    ``S`` starts all-1 (29524) and must end all digits; the test checks the
+    result is one of the 2,464 sequences that complete.
+    """
+    s: tuple[int, ...] | None = (1,) * 10
+    outputs: list[_Choice] = []
+    for group in range(_D_GROUPS):
+        assert s is not None, group
+        outputs.append(_d_choice(s, group))
+        s = _fold(s, outputs[-1], group)
+    assert s is not None
+    assert all(x == _DIGIT for x in s), s
+    return tuple(outputs)
+
+
+def _helper_cells(used: set[int]) -> dict[str, int]:
+    """Allocate the helper cells, each the least free one of its ``g`` value."""
+    low, walked = _walker(used, 34), _walker(used)
+    helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
+    for name, value in _T_HELPERS.items():
+        helper[name] = (walked if name == "z0" else low)(value)
+    return helper
+
+
+@cache
+def _preimages(read: int) -> dict[tuple[int, int], list[tuple[int, ...]]]:
+    """Return each gadget output's cell trit triples at ``read``, descending."""
+    preimages: dict[tuple[int, int], list[tuple[int, ...]]] = {}
+    for cells in reversed(list(product(range(3), repeat=3))):
+        preimages.setdefault(_trit_gadget(cells, read), []).append(cells)
+    return preimages
+
+
+@cache
+def _d_inits() -> tuple[tuple[int, ...], ...]:
+    """Return per group the ``g`` values of its three gadget cells.
+
+    Trits 1..3 give :func:`_d_outputs`: the ``j``-th group to need an output
+    at a read trit takes that output's ``j``-th preimage, cycling, so few
+    cells share trits 1..3.  Trit 0 is 0 or 1, since a 2 lets two reads
+    collide, and any such triple misses ``(2, 2)`` as the swaps need.  A
+    cell's slot, the count of earlier cells sharing its trits 1..3, picks
+    trit 0 and then trit 4 inside 33..126.  The least-address-sum triples
+    took 2.8-4.7% fewer steps, but only by search.
+    """
+    uses: dict[tuple[int, tuple[int, int]], int] = {}
+    slots: dict[int, int] = {}
+    inits = []
+    for outputs in _d_outputs():
+        trits = []
+        for read, uv in zip(_READ_TRITS, outputs, strict=True):
+            preimages, j = _preimages(read)[uv], uses.get((read, uv), 0)
+            trits.append(preimages[j % len(preimages)])
+            uses[read, uv] = j + 1
+        group = []
+        for cell in range(_READS):
+            low = sum(t[cell] * 3**k for k, t in enumerate(trits, 1))
+            values = [v for v in (low, low + 1, low + 81, low + 82) if 33 <= v <= 126]
+            group.append(values[slots.get(low, 0)])
+            slots[low] = slots.get(low, 0) + 1
+        inits.append(tuple(group))
+    return tuple(inits)
+
+
 @cache
 def _readouts(n: int) -> tuple[int, ...]:
     """Return each ``n - 1``-bit prefix's readout, by prefix.
 
     Built group by group over the distinct states, so each group's work is
-    done once per state rather than once per row.  Fifteen's constant read is
-    a group-4 top bit held at 0.
+    done once per state rather than once per row; a held read is ``'0'``.
     """
     states = [29524]
-    for group, init in enumerate(_D_INITS):
-        held = _top_bit_held(n, group)
+    for group, init in enumerate(_d_inits()):
+        held = _held(n, group)
+        free = _READS - held
         following = []
         for s in states:
-            for bits in range(4 if held else 8):
-                reads = iter(48 + ((bits >> k) & 1) for k in (2, 1, 0))
+            for bits in range(1 << free):
+                reads = iter(
+                    [48] * held
+                    + [48 + ((bits >> k) & 1) for k in reversed(range(free))]
+                )
                 cells, a = list(init), 0
                 for op in _GADGET:
                     if op == "/":
@@ -174,28 +302,8 @@ def _readouts(n: int) -> tuple[int, ...]:
     return tuple(_crazy(s, 29524) for s in states)
 
 
-def _hubs(
-    values: dict[int, int], label: dict[int, str], avoid: set[int]
-) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
-    """Return hub and stub data, stub code and rotations per hub.
-
-    As :func:`~esolangs.languages.malbolge.generator.core._t_hubs` with stubs placed in
-    ``_D_FLOOR..``, and the ``n`` stubs flipping through the prepared operand
-    cells rather than a hub value.
-    """
-    operand = {f: _chain(_g(f), ops) for f, ops in _D_OPERANDS.items()}
-    request = _HubRequest(
-        _T_HUB_CELLS,
-        _options_of(operand),
-        _D_FLOOR,
-        ceiling=_WORDS - 10,
-        hub_floor=_D_FLOOR,
-    )
-    return _t_hubs(values, label, avoid, request)
-
-
 class _Digits(NamedTuple):
-    """Fifteen/sixteen inputs' build: code, data, table cell per prefix, labels."""
+    """One arity's build: code, data, table cell per prefix, labels."""
 
     code: dict[int, str]
     data: dict[int, int]
@@ -213,95 +321,99 @@ def _digits(n: int) -> _Digits:
     tables = tuple(s + 1 for s in _readouts(n))
     if len(set(tables)) != len(tables) or max(tables) >= _WORDS:
         raise AssertionError("readouts collide or wrap")
-    # Sixteen's cells hold fifteen's, so both avoid the same set.
+    # Sixteen's cells hold every arity's, so every build avoids the same set.
     cells_of_tables = set(_readouts_cells())
     cells = _allocate_cells()
-    values, pointer = _pointers(
-        cells.label,
-        [(lab, _chain(value, ops)) for lab, (value, ops) in _D_SEEDS.items()],
-    )
-    data, stubs, hub_turns = _hubs(values, cells.label, cells_of_tables)
+    _, pointer = _pointers(_D_LABEL, _seed_values().items())
+    data, stubs = _hub_layout(_hubs(), cells_of_tables, _D_FLOOR)
 
     main, _ = _main_planner(data)
-    _emit_digit_setup(main, cells, pointer, hub_turns)
+    _emit_digit_setup(main, cells)
     _emit_digit_groups(main, n, cells)
-    _emit_digit_jump(main, cells)
+    _emit_digit_jump(main, cells, pointer)
     code_end = main.c
 
     code = _merge_code(
         (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
     )
-    labels = {p - 1: lab for p, lab in cells.label.items()}
+    labels = {p - 1: lab for p, lab in _D_LABEL.items()}
     return _Digits(code, data, tables, labels)
 
 
 class _DCells(NamedTuple):
-    """The digit build's walked cells, allocated in load-bearing order."""
+    """The digit build's working cells."""
 
     helper: dict[str, int]
     gadget: list[list[int]]
     s_cell: int
     z_cell: int
-    twos: list[int]
-    to_48: list[int]
+    two: int
+    to_48: int
     seeds: dict[str, int]
-    label: dict[int, str]
+    builds: list[_Build]
+    builders: list[int]
+    operand: int
 
 
 def _allocate_cells() -> _DCells:
-    """Allocate the walked cells: helpers, gadget groups, ``s``/``z``, seeds.
+    """Allocate the working cells, each the least free one of its ``g`` value.
 
-    The walker hands out the first free cell of the wanted ``g`` value, so
-    this order fixes every address that follows; ``_D_LAYOUT`` only steers
-    it.  The label cells are reserved, not allocated.
+    Cells dead before the labels are written -- the setup helpers, the
+    gadget's, ``s`` and ``two`` -- take pointer cells, where every ``j``
+    through an unwritten cell lands, so a back jump is a short walk.  ``g``
+    has period 94, so a value has one cell there.  The rest take walked
+    cells ``128..``, past the operand cells.  With every cell walked, n=16's
+    main line ends at 9,977 against 5,487 and n=1's at 16,414 against
+    6,013, past the tables.
     """
-    label = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
-    used = {*_T_LOW, *label, *_D_OPERANDS}
-    walked = _walker(used, _D_LAYOUT)
-    helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
-    for name, value in _T_HELPERS.items():
-        helper[name] = walked(value)
-    gadget = [[walked(v) for v in init] for init in _D_INITS]
-    s_cell, z_cell = walked(), walked()
-    twos = [walked(38) for _ in range(2)]  # ``crazy(all-1, 38) == 2``
-    to_48 = [walked(69) for _ in range(2)]  # ``crazy(all-2, 69) == 48``
-    seeds = {lab: walked(value) for lab, (value, _) in _D_SEEDS.items()}
-    return _DCells(helper, gadget, s_cell, z_cell, twos, to_48, seeds, label)
+    operands = _operand_cells()
+    used = {*_T_LOW, *(cell for cells in operands.values() for cell in cells)}
+    helper = _helper_cells(used)
+    low, walked = _walker(used, 34), _walker(used)
+    gadget = [[low(v) for v in init] for init in _d_inits()]
+    s_cell, z_cell = low(), walked()
+    # ``p`` under ``A = all-1`` takes 38 to 2 and keeps 2.
+    two = low(38)
+    # ``p`` under ``A = all-2`` swaps 69 and 48.
+    to_48 = walked(69)
+    seeds = {lab: walked(g) for lab, g in _D_SEEDS.items()}
+    builds = _stub_builds(_hubs())
+    builders = [walked(g) for g, _, _ in builds]
+    # Every operand stub shares the middle cell.
+    operand = operands["1"][1]
+    return _DCells(
+        helper, gadget, s_cell, z_cell, two, to_48, seeds, builds, builders, operand
+    )
 
 
-def _emit_digit_setup(
-    main: _Planner,
-    cells: _DCells,
-    pointer: dict[int, int],
-    hub_turns: dict[int, int],
-) -> None:
-    """Emit the setup: constants, priming, shortcuts, seed chains, hub turns."""
+def _emit_digit_setup(main: _Planner, cells: _DCells) -> None:
+    """Emit the setup: the constants, then priming the working cells."""
     helper = cells.helper
     _build_constants(main, helper)
     _prime(
         main,
         helper,
-        (
-            helper["all1"],
-            helper["all2"],
-            cells.s_cell,
-            cells.z_cell,
-            *sorted(cells.label),
-        ),
+        (helper["all1"], helper["all2"], cells.s_cell, cells.z_cell),
     )
-    for f, (value, ops) in sorted(_D_POINTERS.items()):
-        _emit_chain(main, f, ops, helper)
-        main.mem[f] = value
+
+
+def _emit_labels(main: _Planner, cells: _DCells, pointer: dict[int, int]) -> None:
+    """Emit the label cells, the hubs' stub addresses and the middle operand.
+
+    Run after the gadget, so the pointer region holds walked ``g`` values
+    and dead working cells until the last stub needs it.  ``p`` twice under
+    ``A = all-1`` sends any cell to all-1.
+    """
+    helper = cells.helper
+    main.op("*", helper["all1"])
+    for p in sorted(_D_LABEL):
+        main.op("p", p)
+        main.op("p", p)
     _seed_label_chains(
-        main,
-        helper,
-        {lab: ops for lab, (_, ops) in _D_SEEDS.items()},
-        cells.seeds,
-        cells.label,
+        main, helper, dict.fromkeys(_D_SEEDS, _SEED_CHAIN), cells.seeds, _D_LABEL
     )
-    _turn_hubs(main, pointer, hub_turns)
-    for f, ops in sorted(_D_OPERANDS.items()):
-        _emit_chain(main, f, ops, helper)
+    _write_hubs(main, helper, pointer, cells.builds, cells.builders)
+    _emit_chain(main, cells.operand, _OPERAND_CHAIN, helper)
 
 
 def _emit_swap12(main: _Planner, target: int, two: int, helper: dict[str, int]) -> None:
@@ -311,24 +423,32 @@ def _emit_swap12(main: _Planner, target: int, two: int, helper: dict[str, int]) 
     main.op("p", target)
 
 
+def _emit_zero(main: _Planner, cells: _DCells) -> None:
+    """Emit ``A = '0'``: ``p`` under ``A = all-2`` over the to-48 cell.
+
+    One ``p`` while it holds 69, two once it holds 48.
+    """
+    for _ in range(1 if main.mem[cells.to_48] == 69 else 2):
+        main.op("*", cells.helper["all2"])
+        main.op("p", cells.to_48)
+
+
 def _emit_gadget_reads(
     main: _Planner, n: int, group: int, cell: list[int], cells: _DCells
 ) -> None:
     """Emit one group's gadget ops over its three cells.
 
-    A held top bit (fifteen inputs, last group) replaces the first read
-    with the constant ``'0'``, folded in through the second to-48 cell.
+    A held read is the constant ``'0'`` (:func:`_emit_zero`).
     """
     helper = cells.helper
-    first = True
+    held = _held(n, group)
     for op in _GADGET:
         if op == "/":
-            if first and _top_bit_held(n, group):
-                main.op("*", helper["all2"])
-                main.op("p", cells.to_48[1])
+            if held:
+                held -= 1
+                _emit_zero(main, cells)
             else:
                 main.raw("/")
-            first = False
         elif op[0] == "K":
             main.op("*", helper[_K_CELL[op]])
         else:
@@ -346,27 +466,37 @@ def _emit_digit_groups(main: _Planner, n: int, cells: _DCells) -> None:
     for group, cell in enumerate(cells.gadget):
         _emit_gadget_reads(main, n, group, cell, cells)
         if group == _D_SWAP_V:
-            _emit_swap12(main, cell[2], cells.twos[1], helper)
+            _emit_swap12(main, cell[2], cells.two, helper)
         main.op("p", s)
         if group == _D_SWAP_U:
-            _emit_swap12(main, cell[1], cells.twos[0], helper)
+            _emit_swap12(main, cell[1], cells.two, helper)
         main.op("*", s)
         main.op("p", cell[1])
         main.op("*", cell[1])
         s = cell[1]
 
 
-def _emit_digit_jump(main: _Planner, cells: _DCells) -> None:
-    """Emit the finish: prime the readout cell at 48 and jump to the row's stub."""
+def _emit_digit_jump(main: _Planner, cells: _DCells, pointer: dict[int, int]) -> None:
+    """Emit the finish: the readout, the labels, then the jump to the row's stub."""
     main.op("p", cells.z_cell)
-    main.op("*", cells.helper["all2"])
-    main.op("p", cells.to_48[0])
+    _emit_labels(main, cells, pointer)
+    _emit_zero(main, cells)
     _t_jump(main, cells.z_cell, 0)
 
 
 @cache
 def _readouts_cells() -> tuple[int, ...]:
     return tuple(s + 1 for s in _readouts(_DIGITS_N))
+
+
+def _seed_values() -> dict[str, int]:
+    """Return each label's seed chain value, the second hub its cells name."""
+    return {lab: _chain(g, _SEED_CHAIN) for lab, g in _D_SEEDS.items()}
+
+
+def _hubs() -> dict[str, tuple[int, ...]]:
+    """Return each label's two hubs: its seed value and that value's 0/1 swap."""
+    return {lab: tuple(sorted((a, _s01(a)))) for lab, a in _seed_values().items()}
 
 
 def _digits_program(truth_table: str, n: int) -> str:

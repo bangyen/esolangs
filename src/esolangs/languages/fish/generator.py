@@ -8,10 +8,10 @@ answer from the table's digits by coordinates and ``n`` prints it.  For n=2:
     0110
 
 Narrow widths fold the table into a block of columns, which the fish reaches
-by snaking down; at width 1 or 2 a parity table needs no table at all.
+by snaking down.  A parity table needs no table at all.
 
 Size:
-    O(T), independent of the table at default width; n=16 parity: 65,690 chars,
+    O(T), independent of the table at default width; n=16 parity: 71 chars,
     n=10 random 1847: 1,124 chars.
 
 Decisions:
@@ -33,10 +33,11 @@ from esolangs.registry._language import Language, Shape
 def fish(truth_table: str, width: int | None = None) -> str:
     """Return a Fish lookup grid; lookup folds need three columns; parity uses one."""
     n = _validate_truth_table(truth_table)
-    if width is not None and width < 3:
-        bias = _parity_bias(truth_table)
-        if bias is not None:
-            return _parity(n, bias)
+    # A one-column parity program fits any width; at n=10 it is 24 cells
+    # against the lookup's 2,050 (default) and 3,435 (width 3).
+    bias = _parity_bias(truth_table)
+    if bias is not None:
+        return _parity(n, bias)
     # An ignored input is read and dropped; the table indexes the rest.
     weights, truth_table = input_weights(truth_table, n)
     reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
@@ -114,8 +115,6 @@ def balance_fish(truth_table: str, default: str) -> str:
     candidates.extend(
         _folded(reads, table, 1 << k) for k in range(len(reads).bit_length() + 1)
     )
-    if _parity_bias(truth_table) is not None:
-        candidates.append(fish(truth_table, 1))
     return min(candidates, key=balance_score)
 
 

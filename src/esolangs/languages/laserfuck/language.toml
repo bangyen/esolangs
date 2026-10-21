@@ -2,7 +2,9 @@
 # only their own section and skip this file when it is absent.
 
 [deep_arities]
-workspace = 9
+# The weighted route starts at n = 7 (74 -> 1,503 bits on parity), so the
+# fit needs n = 7..11 for its five rungs; n = 10, 11 add 1.9 s.
+workspace = 11
 
 [curation]
 backlinks = 1

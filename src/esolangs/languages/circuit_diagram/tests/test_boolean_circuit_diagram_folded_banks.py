@@ -71,6 +71,30 @@ def test_unrepeated_classes_and_empty_area_reject() -> None:
     assert folded_class_bank_candidate(table) is None
 
 
+def _with_all_one_class() -> tuple[str, list[tuple[int, int]]]:
+    table, pairs = _classes(7, 257)
+    return "1" * 128 + table[128:], pairs
+
+
+@pytest.mark.medium
+def test_a_ceiling_below_the_bank_area_rejects() -> None:
+    table, _ = _with_all_one_class()
+    model = folded_class_bank_candidate(table)
+    assert model is not None
+    height, width = model.bounds()
+    assert folded_class_bank_candidate(table, height * width - 1) is None
+
+
+@pytest.mark.weekly
+@pytest.mark.cost_evidence("an all-one class folds without a residual pool")
+def test_all_one_class_executes() -> None:
+    table, pairs = _with_all_one_class()
+    model = folded_class_bank_candidate(table)
+    assert model is not None
+    rows = [0, 127, 128, (256 << 7) + pairs[256][0], 131071]
+    assert _execute(table, model.render(), rows) <= 2 * 17 + 2
+
+
 def test_excess_fold_work_rejects_before_model_construction(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.folded_banks"

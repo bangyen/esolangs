@@ -25,3 +25,10 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def test_equal_subtables_share_one_node() -> None:
     # Parity: one node per (level, parity), not one per row prefix.
     assert codesick("0110100110010110").count(" codesick in #") == 7
+
+
+@pytest.mark.parametrize("table", ["01", "0011", "00001111", "0110"])
+def test_only_a_constant_table_spends_the_missing_test(table: str) -> None:
+    # Root ids 0 and 1 are the constants; any other root reads through its node.
+    assert not codesick(table).startswith('codesick in "" *')
+    assert codesick("0" * len(table)).startswith('codesick in "" *')

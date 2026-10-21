@@ -1,22 +1,17 @@
-"""The code emitters every Malbolge build shares.
+"""The code emitter of the Malbolge build.
 
-All three emitters write into a ``code`` dict at a code pointer ``c`` while
-a data pointer ``d`` tracks where execution will point: every instruction
-advances both by one.  They differ only in how ``d`` is steered to a target
-cell.  :class:`_Walker` walks ``d`` up the walked region and jumps off a
-cell whose value names the target; :class:`_Planner` instead knows the
-walked cells' values, so it steers ``d`` along a shortest path of steps and
-value jumps, and it tracks the accumulator and the walked cells' contents
-across the writes it emits.
+The emitter writes into a ``code`` dict at a code pointer ``c`` while a data
+pointer ``d`` tracks where execution will point: every instruction advances
+both by one.  :class:`_Planner` knows the walked cells' values, so it steers
+``d`` along a shortest path of steps and value jumps, and it tracks the
+accumulator and the walked cells' contents across the writes it emits.
 """
 
 from __future__ import annotations
 
-from collections.abc import Container
-
 from esolangs.languages.malbolge.interpreter import _crazy
 
-from .isa import _ACTIVE, _char_for, _first_free, _rot
+from .isa import _ACTIVE, _char_for, _rot
 
 
 def _valid_chars(address: int) -> list[int]:
@@ -36,48 +31,6 @@ class _Emitter:
         self.code[self.c] = op
         self.c += 1
         self.d += 1
-
-
-class _Walker(_Emitter):
-    """Emitter steering ``d`` by an ``o`` run and a ``j`` off a walked cell.
-
-    ``blocked`` holds the cells ``d`` must not land on (they are written, so
-    their walked values are not what they seem); the jump cell is the first
-    unblocked address in ``max(d, floor) <= a < ceiling`` whose walked value
-    is ``target - 1``.
-    """
-
-    def __init__(
-        self,
-        start: int,
-        d: int,
-        blocked: Container[int],
-        *,
-        ceiling: int,
-        floor: int = 0,
-        code: dict[int, str] | None = None,
-    ) -> None:
-        super().__init__(start, d, code)
-        self.blocked = blocked
-        self.ceiling = ceiling
-        self.floor = floor
-
-    def set_d(self, target: int) -> None:
-        """Walk ``d`` up to a cell whose value is ``target - 1``, then ``j``."""
-        if self.d == target:
-            return
-        address = _first_free(
-            target - 1, max(self.d, self.floor), self.ceiling, self.blocked
-        )
-        while self.d < address:
-            self.raw("o")
-        self.raw("j")
-        self.d = target
-
-    def op(self, op: str, target: int) -> None:
-        """Steer ``d`` to ``target`` and emit ``op`` there."""
-        self.set_d(target)
-        self.raw(op)
 
 
 class _Planner(_Emitter):

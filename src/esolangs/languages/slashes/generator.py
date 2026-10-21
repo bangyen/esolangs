@@ -93,10 +93,8 @@ def _is_unfilled_template(code: str) -> bool:
     size = len(table) // 2
     ignored = slots.count("X")
     head = _IGNORE if ignored else ""
-    return (
-        size == 1 << (len(slots) - 2 * ignored)
-        and prefix == head + _UNARY + _SWEEP * size
-    )
+    read = len(slots) - 2 * ignored  # negative: more X than slots, not ours
+    return read >= 0 and size == 1 << read and prefix == head + _UNARY + _SWEEP * size
 
 
 LANGUAGE = Language(

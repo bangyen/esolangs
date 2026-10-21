@@ -64,16 +64,24 @@ def test_a_register_binds_the_polarity_its_test_wants() -> None:
     assert lines[4:] == ["d ~> c?", "d ~> d? == b?", "d? :: a? :: loop?"]
 
 
-def test_a_test_implied_by_an_earlier_half_space_is_dropped(
+def test_a_test_implied_by_an_earlier_half_space_is_kept(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Rows past ``a? :: loop?`` all have ``a`` at 0; nothing tests it again."""
+    """Rows past ``a? :: loop?`` all have ``a`` at 0; clauses test it anyway.
+
+    The pruning that dropped such tests was removed (retirement
+    candidate #22): it saved 0.0% on random tables at every arity.
+    """
     import importlib
 
     module = importlib.import_module("esolangs.languages.vandevelo._cover")
     monkeypatch.setattr(module, "_affine_coset", lambda *_: None)
     lines = vandevelo("01111111").splitlines()
-    assert lines[4:] == ["a? :: loop?", "c? :: loop?", "b? :: loop?"]
+    assert lines[4:] == [
+        "a? :: loop?",
+        "c? :: a? == Nil? :: loop?",
+        "c? == Nil? :: b? :: a? == Nil? :: loop?",
+    ]
 
 
 def _steps(program: str, bits: tuple[int, ...]) -> int:
@@ -89,13 +97,13 @@ def _steps(program: str, bits: tuple[int, ...]) -> int:
 
 
 def test_three_input_steps_and_sizes() -> None:
-    """Negated reads, register polarity and pruning, over all 256 tables."""
+    """Negated reads and register polarity, over all 256 tables."""
     size = steps = 0
     for index in range(256):
         program = vandevelo(format(index, "08b"))
         size += len(program)
         steps += sum(_steps(program, bits) for bits in product(range(2), repeat=3))
-    assert (size, steps) == (23425, 23430)
+    assert (size, steps) == (23749, 23982)
 
 
 def test_parity_is_a_single_hyperplane() -> None:

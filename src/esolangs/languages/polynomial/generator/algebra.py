@@ -46,6 +46,8 @@ _PACKED_MIN_FACTORS = 160
 # the same -- the two balance near a group the size of the threshold above.
 # Measured on dense n=10 (1382 factors): 4 groups 5.77s, 8 groups 5.02s,
 # 16 groups 4.91s, and the leaves are 1.88s / 0.52s / 0.14s of that.
+# Re-measured 2026-10-21 on the deep band's dense n=10 (1363 factors):
+# 2.46s / 2.18s / 2.14s, the whole build 2.26s.
 #
 # The *count* is rounded down to a power of two so the merge tree is
 # balanced.  An odd count leaves a node unpaired, which is carried up and
