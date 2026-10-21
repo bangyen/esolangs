@@ -27,9 +27,16 @@ from esolangs.registry._language import Shape
 
 def main() -> int:
     """Dispatch one generation command."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("target", choices=("docs", "examples"))
-    parser.add_argument("args", nargs=argparse.REMAINDER)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "target",
+        choices=("docs", "examples"),
+        help="docs: the generated README and docs sections; examples: the "
+        "committed example programs",
+    )
+    parser.add_argument(
+        "args", nargs=argparse.REMAINDER, help="passed to examples (see its --help)"
+    )
     args = parser.parse_args()
     if args.target == "docs":
         if args.args:

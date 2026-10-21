@@ -26,7 +26,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
-KNOWN = Path(__file__).with_name("deadcode_known.toml")
+KNOWN = Path(__file__).parent / "baselines/deadcode_known.toml"
 
 
 def _collect(data: Path) -> None:
@@ -92,7 +92,7 @@ def _dump(found: dict[str, set[str]]) -> None:
 def main() -> int:
     """Scan, then report entries the baseline lacks (exit 1) or rewrite it."""
     parser = argparse.ArgumentParser(
-        description="Unreached generator code vs a baseline."
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         "--data",

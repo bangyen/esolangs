@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from scripts import new_language, remove_language
+from scripts import new_language
+from scripts.removal import language as remove_language
 from tests.support.reference import REFERENCE
 
 

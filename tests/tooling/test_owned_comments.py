@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.removal_mentions import drop_owned_comments
+from scripts.removal.mentions import drop_owned_comments
 
 
 def test_cohort_removal_preserves_code_and_unowned_comments(tmp_path: Path) -> None:
@@ -37,7 +37,7 @@ def test_invalid_comment_ownership_aborts(tmp_path: Path, owners: str) -> None:
 
 
 def test_library_binding_does_not_hide_language_calls(tmp_path: Path) -> None:
-    from scripts.removal_mentions import mention_edit
+    from scripts.removal.mentions import mention_edit
 
     path = tmp_path / "sample.py"
     name = "Sequence"
@@ -64,7 +64,7 @@ def test_adjacent_declarations_keep_the_other_cohort(tmp_path: Path) -> None:
 
 
 def test_arithmetic_literal_keeps_real_language_calls_visible(tmp_path: Path) -> None:
-    from scripts.removal_mentions import mention_edit
+    from scripts.removal.mentions import mention_edit
 
     name = "3" + "x"
     path = tmp_path / "sample.py"
@@ -78,7 +78,7 @@ def test_arithmetic_literal_keeps_real_language_calls_visible(tmp_path: Path) ->
 def test_proof_ownership_preserves_shared_index_and_evidence(
     tmp_path, monkeypatch
 ) -> None:
-    from scripts import remove_language
+    from scripts.removal import language as remove_language
 
     monkeypatch.setattr(remove_language, "ROOT", tmp_path)
     proofs = tmp_path / "docs/proofs"

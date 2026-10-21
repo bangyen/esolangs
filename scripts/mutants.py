@@ -35,7 +35,7 @@ from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parent.parent
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
-SWEPT = Path(__file__).with_name("mutants_swept.toml")
+SWEPT = Path(__file__).parent / "baselines/mutants_swept.toml"
 SWAP = {
     "+": "-",
     "-": "+",
@@ -265,7 +265,9 @@ def rank(count: int) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     """Parse the subcommand and run it."""
-    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     commands = parser.add_subparsers(dest="command", required=True)
     ranked = commands.add_parser("rank", help="largest generators not yet swept")
     ranked.add_argument("--count", type=int, default=10)

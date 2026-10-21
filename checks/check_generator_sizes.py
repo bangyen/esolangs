@@ -35,11 +35,12 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.append(str(REPO_ROOT))  # for the sibling checks.generator_sizes
 
-import generator_sizes  # noqa: E402
 from benchmark import evidence_session, measure  # noqa: E402
 
 import esolangs  # noqa: E402
+from checks import generator_sizes  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
 
 

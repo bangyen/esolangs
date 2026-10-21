@@ -20,6 +20,7 @@ mentions left in prose for a hand edit.
 from __future__ import annotations
 
 import argparse
+import difflib
 import itertools
 import keyword
 import shlex
@@ -38,9 +39,9 @@ ROOT = Path(__file__).parents[1]
 # this runs as a script or is imported as ``scripts.new_language``.
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
-import remove_language as removal  # noqa: E402
 from docs.curation import fragment_row as _curation_fragment  # noqa: E402
 from docs.proof_status import load as _proof_status_load  # noqa: E402
+from removal import language as removal  # noqa: E402
 
 CATEGORIES = (
     "grid_based",
@@ -606,6 +607,27 @@ def _gate() -> int:
     return 0
 
 
+def _misspelled(name: str) -> list[str]:
+    """Registered names close to ``name``, if it was never started.
+
+    A typo otherwise reads as a new language: ``check "Brainfuk"`` asked to
+    register it in ``_INTERPRETER_ONLY``, and ``check "befunge"`` asked to
+    re-register Befunge under the wrong case.
+    """
+    from esolangs.registry import LANGUAGES, canonical_id
+
+    if name in LANGUAGES:
+        return []
+    lower = {other.lower(): other for other in LANGUAGES}
+    if name.lower() in lower:
+        return [lower[name.lower()]]
+    if (ROOT / "src/esolangs/languages" / canonical_id(name)).exists():
+        return []
+    return [
+        lower[m] for m in difflib.get_close_matches(name.lower(), lower, cutoff=0.8)
+    ]
+
+
 def _report(name: str, gaps: list[Gap]) -> None:
     print(f"{name}: {len(gaps)} step(s) left")
     for gap in gaps:
@@ -616,7 +638,9 @@ def _report(name: str, gaps: list[Gap]) -> None:
 def main(argv: list[str] | None = None) -> int:
     """Dispatch ``start``, ``check``, ``finish`` or ``remove``."""
     argv = list(sys.argv[1:] if argv is None else argv)
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     start = sub.add_parser("start", help="write the stubs")
     start.add_argument("name")
@@ -632,6 +656,13 @@ def main(argv: list[str] | None = None) -> int:
     measure.add_argument("name")
     measure.add_argument("--max-n", type=int, default=5)
     args = parser.parse_args(argv)
+    if args.command in {"check", "finish", "bounds"} and (
+        near := _misspelled(args.name)
+    ):
+        parser.error(
+            f"no language {args.name!r}; did you mean {' or '.join(map(repr, near))}?"
+            " (a new one starts with: just new-language)"
+        )
     if args.command == "bounds":
         # Steps feed the ledger's Execution cell, bits its Workspace cell
         # (peak written state); chars/row stays flat for an O(T) generator.

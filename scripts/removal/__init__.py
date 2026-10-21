@@ -1,1 +1,1 @@
-"""The phases behind ``scripts/remove_language.py``."""
+"""The phases behind ``new_language.py remove``; ``language`` is the entry point."""

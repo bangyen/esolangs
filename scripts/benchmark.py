@@ -580,7 +580,9 @@ def measure(
 
 def main(argv: list[str] | None = None) -> int:
     """Print JSON evidence; fail if any requested row is wrong or undecided."""
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("language")
     parser.add_argument("truth_table")
     parser.add_argument("--repeat", type=int, default=3)

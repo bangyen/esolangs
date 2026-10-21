@@ -101,7 +101,9 @@ def differences(old: Outputs, new: Outputs) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     """Print the first differences and the counts; return the exit status."""
-    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("language")
     parser.add_argument("--old", default="main", help="git revision (default main)")
     parser.add_argument("--mutant", type=Path, help="broken generator module copy")

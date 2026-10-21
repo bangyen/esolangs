@@ -1,7 +1,8 @@
 """Eval through the shared API, CLI and machinery."""
 
 import esolangs.debugger as debugger_api
-from scripts import new_language, remove_language
+from scripts import new_language
+from scripts.removal import language as remove_language
 from tests.support.reference import REFERENCE
 
 

@@ -17,19 +17,20 @@ import types
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+ROOT = Path(__file__).parents[2]
+# scripts/ holds this `removal` package, like `verify` and `docs`; the phases
+# import as top-level `removal.*` however this module was reached.
+if str(Path(__file__).parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parents[1]))
+
 if TYPE_CHECKING:
-    from removal_mentions import drop_owned_comments, mention_edit
+    from removal.mentions import drop_owned_comments, mention_edit
 else:
     _mentions = importlib.import_module(
-        f"{__package__ + '.' if __package__ else ''}removal_mentions"
+        f"{__package__ + '.' if __package__ else 'removal.'}mentions"
     )
     mention_edit = _mentions.mention_edit
     drop_owned_comments = _mentions.drop_owned_comments
-
-ROOT = Path(__file__).parents[1]
-# scripts/ holds the sibling `removal` package, like `verify` and `docs`.
-if str(Path(__file__).parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).parent))
 
 from removal import documents as _documents  # noqa: E402
 from removal import entries as _entries  # noqa: E402
@@ -364,7 +365,5 @@ def _leftover_mentions(name: str, patterns: list[str]) -> list[str]:
     return [
         f"[{_mention_edit(line, name)}] {line}"
         for line in grep.stdout.splitlines()
-        if not line.startswith(
-            ("scripts/remove_language.py:", "scripts/removal/", "docs/CHANGELOG.md:")
-        )
+        if not line.startswith(("scripts/removal/", "docs/CHANGELOG.md:"))
     ]

@@ -23,6 +23,24 @@ def test_an_unregistered_language_is_told_to_register() -> None:
     assert 'Language("Not A Language"' in gap.fix
 
 
+_LONGEST = max(LANGUAGES, key=len)
+
+
+@pytest.mark.parametrize("typed", [_LONGEST[:-1], _LONGEST.swapcase()])
+def test_a_misspelled_name_is_refused_with_a_suggestion(
+    typed: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A typo or wrong case would otherwise read as a new language to register."""
+    with pytest.raises(SystemExit):
+        new_language.main(["check", typed])
+    assert repr(_LONGEST) in capsys.readouterr().err
+
+
+def test_a_misspelled_name_is_refused_with_a_suggestion_only_for_typos() -> None:
+    assert new_language._misspelled("Not A Language") == []  # noqa: SLF001
+    assert new_language._misspelled(_LONGEST) == []  # noqa: SLF001
+
+
 def test_a_generator_language_needs_no_hand_sample() -> None:
     import esolangs
     from tests.support import samples

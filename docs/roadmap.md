@@ -13,7 +13,7 @@ workspace contracts.
 
 The [scaling status](proofs/index.md#scaling-status) records current verdicts.
 Edit the `[proof_status]` section of the language's own `language.toml` and run
-`python scripts/docs/generate.py docs` to update it. Proved limits remain
+`just docs` to update it. Proved limits remain
 evidence, not optimization tasks.
 
 - Polynomial has a documented language lower bound.

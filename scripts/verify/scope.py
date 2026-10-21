@@ -206,10 +206,13 @@ def _feed(digest: _Digest, value: bytes) -> None:
     digest.update(value)
 
 
+# Steps whose certificate covers imported tool sources, and those modules.
+_RUNTIME_MODULES = {"python checks": ("ast", "PIL.Image", "pylint.lint")}
+
+
 def runtime_digest(step: str) -> str:
     """Hash the interpreter, dependency inventory and the check's tool sources."""
-    modules = {"python checks": ("ast", "PIL.Image", "pylint.lint")}
-    for name in modules[step]:
+    for name in _RUNTIME_MODULES[step]:
         importlib.import_module(name)
     digest = hashlib.sha256()
     _feed(digest, sys.version.encode())
@@ -410,7 +413,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/runtime/",
         "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
-        "scripts/generator_sizes.py",
+        "checks/generator_sizes.py",
     ),
     "deep proofs (verify band)": (
         "src/esolangs/languages/arrowqueue/generator.py",
@@ -707,4 +710,11 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
 
 
 if __name__ == "__main__":
-    print(runtime_digest(sys.argv[1]))
+    import argparse
+
+    _parser = argparse.ArgumentParser(
+        description="Print a step's runtime digest (gate.py runs this; not for "
+        "direct use)."
+    )
+    _parser.add_argument("step", choices=sorted(_RUNTIME_MODULES))
+    print(runtime_digest(_parser.parse_args().step))

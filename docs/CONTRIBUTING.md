@@ -61,12 +61,12 @@ No `just`? Every recipe is a thin wrapper over a script, so run the
 script in the project env (`uv run` or `.venv/bin/python`): `just test`
 is `python scripts/verify/gate.py`, and `just check-language` /
 `just finish-language` are `python scripts/new_language.py check` /
-`finish`.
+`finish`. `scripts/README.md` maps every recipe to its script.
 
 Run `just test` before committing; use `just test-full` for release-scale
 changes (`test-full` includes slow tests; weekly probes run separately with
 `just test-py`, or in scheduled CI). Regenerate committed examples with
-`python scripts/docs/generate.py examples`.
+`just examples`, generated doc sections with `just docs`.
 
 `gate.py` is the local gate. Its steps: generated-docs freshness,
 pre-commit (lint, format, and comment density — at least two code lines
@@ -187,7 +187,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   at the end of its generator module, and generated exports collect those
   explicitly for the registry. Only interpreter-only languages are listed
   in `registry/_table.py`. `esolangs.languages.generators`'s imports come
-  from the declarations (`scripts/docs/generate.py`, run by `generate.py docs`
+  from the declarations (`scripts/docs/generate.py`, run by `just docs`
   and by `check`).
 - Interpreters and generators live in `src/esolangs/languages/<id>/`, each
   as a module or package. Shared generator helpers live in
@@ -202,7 +202,8 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   step-capable machine to the debugger and the hang proofs.
 - Each language’s `tests/` holds its unit and integration suites, fixtures
   and proofs; packaged examples live beside its modules. Shared contracts and
-  proof infrastructure live in `tests/`; `scripts/` holds development tools.
+  proof infrastructure live in `tests/`; `scripts/` holds development tools
+  (`scripts/README.md`) and `checks/` the gate's checks.
 
 ## Interpreter conventions
 

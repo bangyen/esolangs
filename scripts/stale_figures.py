@@ -23,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
-CONFIRMED = Path(__file__).with_name("figures_confirmed.toml")
+CONFIRMED = Path(__file__).parent / "baselines/figures_confirmed.toml"
 #: A measured figure: a percentage, a decimal, or an integer of 3+ digits.
 #: Shorter integers (``n=10``, ``2**n``) recur legitimately.
 FIGURE = re.compile(r"\d+(?:\.\d+)?%|\d+\.\d+|\d{1,3}(?:,\d{3})+|\d{3,}")
@@ -119,7 +119,9 @@ def _confirm(where: str) -> None:
 
 def main() -> int:
     """Print figures as ``changes  path:line  text``, most-changed first."""
-    parser = argparse.ArgumentParser(description="Rank Decisions: figures.")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--top", type=int, default=0, help="print only N rows")
     parser.add_argument("--confirm", nargs="+", default=[], metavar="PATH:LINE")
     args = parser.parse_args()
