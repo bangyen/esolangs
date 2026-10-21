@@ -5,8 +5,10 @@ from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs.registry import LANGUAGES
 from scripts import new_language
+from tests.support import samples
 from tests.support.pick import first
 
 
@@ -42,9 +44,10 @@ def test_a_name_resolves_like_the_api_and_a_new_one_passes() -> None:
 
 
 def test_a_generator_language_needs_no_hand_sample() -> None:
-    import esolangs
-    from tests.support import samples
-
+    # samples is imported above, like every other user: imported here, its
+    # one-off cost (a fresh venv's first PIL load, 0.95 s of 2.89 s cold)
+    # was charged to this 1 s fast-band test, which then failed once per
+    # new worktree.
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     program, stdin = samples._generated(name)  # noqa: SLF001
     assert esolangs.read_answer(name, esolangs.run(name, program, stdin=stdin)) == "1"
