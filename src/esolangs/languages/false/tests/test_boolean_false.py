@@ -3,8 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs.languages import generators as boolean
-from esolangs.languages.false.generator import false
+from esolangs.languages.false.generator import _shared, false
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import assert_emissions_grow_by_a_line
 from tests.generators.sample_tables import five_input_sample
@@ -15,8 +14,8 @@ from tests.support.witness_tables import witnesses
 def test_false_tests_the_low_bit_and_splits_every_node() -> None:
     """``1&`` is the bit; a node over two constant halves splits like any other."""
 
-    assert boolean.false("0110") == "^1&$[^1&$[0.]?0=[1.]?]?0=[^1&$[1.]?0=[0.]?]?"
-    assert boolean.false("0001") == "^1&$[^1&$[1.]?0=[0.]?]?0=[^%0.]?"
+    assert _shared("0110", 2) == "^1&$[^1&$[0.]?0=[1.]?]?0=[^1&$[1.]?0=[0.]?]?"
+    assert _shared("0001", 2) == "^1&$[^1&$[1.]?0=[0.]?]?0=[^%0.]?"
     total = sum(len(false_plain(f"{value:08b}", 3)) for value in range(256))
     assert total == 18528
 
@@ -25,10 +24,10 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
     """The reduced diagram cuts both totals and lengthens no table."""
 
     three = [format(value, "08b") for value in range(256)]
-    assert boolean.false("01101001") == (
+    assert _shared("01101001", 3) == (
         "[^1&$[1.]?0=[0.]?]a:[^1&$[0.]?0=[1.]?]b:^1&$[^1&$a;?0=b;?]?0=[^1&$b;?0=a;?]?"
     )
-    assert boolean.false("0101010100110011") == (
+    assert _shared("0101010100110011", 4) == (
         "^1&$[^%^1&$[^%1.]?0=[^%0.]?]?0=[^%^%^1&$[1.]?0=[0.]?]?"
     )
     for tables, arity, before, after in (
@@ -36,7 +35,7 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
         (five_input_sample(), 5, 65784, 41470),
     ):
         plain = [len(false_plain(table, arity)) for table in tables]
-        shared = [len(boolean.false(table)) for table in tables]
+        shared = [len(_shared(table, arity)) for table in tables]
         assert (sum(plain), sum(shared)) == (before, after)
         assert all(s <= p for s, p in zip(shared, plain, strict=True))
     for n in (4, 6):
@@ -51,7 +50,7 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
     import random
 
     table = format(random.Random(0).getrandbits(512), "0512b")
-    program = boolean.false(table)
+    program = _shared(table, 9)
     assert all(f"]{name}:" in program for name in "abcdefghijklmnopqrstuvwxyz")
     assert verify_generated("FALSE", table)
 
