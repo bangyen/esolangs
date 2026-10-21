@@ -47,6 +47,14 @@ evidence, not optimization tasks.
   `Omega(2**n/(n log n))` and `O(2**n/n)`: the same `log n` gap, open
   since 2014. Closing it here needs an affine disperser for dimension
   `log2 n + O(1)` with a dense 1-set, or a cover beating their Theorem 1.2.
+  Conversely, a cover counting each flat once per `ceil(log2 n)` of its
+  dimension, weight `W`, gives a program of `O(n log n (W + 1))` characters
+  without conditional reads (executed through n=9), so an `omega(T)` bound
+  needs a cover bound beyond counting. Random tables are `O(T)`: with
+  probability `1 - 2/log n` the 1-set is at most `220*2**n/(n log n)` flats of
+  dimension at most `log n + log log n` (phased transversal greedy with a
+  random translation per block; two referee passes). That proof needs
+  `log n >= 2**20` and gives no algorithm, so the worst case stays open.
   Shipped text is flat at about 8 characters an entry through n=15, since
   names stay one character to n=62. Guards that are graphs of affine maps
   from fixed inputs reach 0.73x shipped at n=13, but only with
