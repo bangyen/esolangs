@@ -409,10 +409,11 @@ Adding a language, step by step. Work in order; at any point,
    `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
    `timeout=5`, never a bare `run`.
 3. Record generator evidence with `just benchmark "Name" TABLE`; compare
-   `source_units` and `commands`, not wall-clock time. `python
-   scripts/new_language.py bounds "Name"` prints the worst steps and
-   written bits per arity, with the table reaching each: a cell's "worst"
-   must equal them exactly, else it says "at most".
+   source units and commands, not wall-clock time (`--json` for the full
+   record). `just bounds "Name"` prints the worst steps and written bits
+   per arity, with the table reaching each, then a `[proof_status]`
+   section to paste: a cell's "worst" must equal them exactly, else it
+   says "at most".
 4. `just finish-language "Name"` regenerates examples, docs and the size
    baseline, then runs the full `verify/gate.py` over the whole tree
    (the `--full` run, like `just test-full`), not the branch-scoped

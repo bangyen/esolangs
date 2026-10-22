@@ -256,6 +256,25 @@ def test_check_with_open_steps_is_not_a_failure(
     assert "1 step(s) left" in capsys.readouterr().out
 
 
+def test_check_reruns_once_its_export_registers_a_language(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The registry loaded before the export was written lacks the language."""
+    import types
+
+    fake = types.ModuleType("docs.generate")
+    fake.update_exports = lambda *_: True
+    monkeypatch.setitem(sys.modules, "docs.generate", fake)
+
+    def execv(_: str, args: list[str]) -> None:
+        raise SystemExit(args)
+
+    monkeypatch.setattr(new_language.os, "execv", execv)
+    with pytest.raises(SystemExit) as rerun:
+        new_language.main(["check", "Tiny"])
+    assert rerun.value.code == [sys.executable, new_language.__file__, "check", "Tiny"]
+
+
 @pytest.mark.usefixtures("root")
 @pytest.mark.parametrize("interpreter_only", [False, True])
 def test_start_prints_the_matching_contributor_workflow(

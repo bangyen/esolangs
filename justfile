@@ -31,7 +31,8 @@ help:
     @echo "  just test-full-parallel  The same gate on every core (idle machine only)"
     @echo ""
     @echo 'New language: just new-language "Name" (asks its category)'
-    @echo 'Then: just check-language "Name"; when ready: just finish-language "Name"'
+    @echo 'Then: just check-language "Name" and just bounds "Name";'
+    @echo 'when ready: just finish-language "Name"'
     @echo "Guide: docs/CONTRIBUTING.md; what each script does: scripts/README.md"
     @echo "Slow tests also run in CI; weekly probes run in the weekly workflow."
     @echo ""
@@ -39,6 +40,7 @@ help:
 
 # check just, uv, dev dependencies and the pre-push hook; print each fix
 [group('start')]
+[no-exit-message]
 doctor:
     {{PYTHON}} scripts/doctor.py
 
@@ -66,11 +68,13 @@ install-dev:
 # whole tree.  Pass --quiet to suppress successful step output.
 [group('test')]
 [doc('required checks before a commit: lint, types, pytest (branch-scoped)')]
+[no-exit-message]
 test *args:
     {{PYTHON}} scripts/verify/gate.py {{args}}
 
 # local checks over the whole tree, including slow tests
 [group('test')]
+[no-exit-message]
 test-full *args:
     {{PYTHON}} scripts/verify/gate.py --full {{args}}
 
@@ -81,6 +85,7 @@ test-full *args:
 # when the box is also loaded -- see the test-quick note.
 [group('test')]
 [doc('test-full on every core; idle machine only')]
+[no-exit-message]
 test-full-parallel *args:
     PYTEST_ADDOPTS="-n auto" {{PYTHON}} scripts/verify/gate.py --full {{args}}
 
@@ -92,11 +97,13 @@ test-full-parallel *args:
 # about 6s more wall.
 [group('test')]
 [doc('inner loop: pre-commit + fast pytest band, quiet')]
+[no-exit-message]
 test-quick *args:
     PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify/gate.py --quiet --only pre-commit,pytest {{args}}
 
 # pytest fast and medium bands only; use just test before a commit
 [group('test')]
+[no-exit-message]
 test-mid *args:
     PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
@@ -109,11 +116,13 @@ test-mid *args:
 
 # pytest only, in full -- including the `slow` band
 [group('test')]
+[no-exit-message]
 test-py *args:
     {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
 # lint + duplicate-code + dead definitions
 [group('test')]
+[no-exit-message]
 test-lint *args:
     {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)","dead definitions" {{args}}
 
@@ -121,41 +130,55 @@ test-lint *args:
 # .coverage a `pytest --cov --cov-branch` run left behind
 [group('test')]
 [doc("CI's changed-line coverage gate, over an existing .coverage")]
+[no-exit-message]
 test-diff-coverage *args:
     {{PYTHON}} scripts/verify/gate.py --only "diff coverage" {{args}}
 
 # create interpreter, generator and test stubs; asks the category unless --category
 [group('languages')]
+[no-exit-message]
 new-language name *args:
     {{PYTHON}} scripts/new_language.py start "{{name}}" {{args}}
 
 # list every integration step a language still lacks
 [group('languages')]
+[no-exit-message]
 check-language name:
     {{PYTHON}} scripts/new_language.py check "{{name}}"
 
 # regenerate examples, docs and size baselines, then run the full gate
 [group('languages')]
+[no-exit-message]
 finish-language name:
     {{PYTHON}} scripts/new_language.py finish "{{name}}"
 
+# worst steps and bits per arity, and a [proof_status] section to paste
+[group('languages')]
+[no-exit-message]
+bounds name *args:
+    {{PYTHON}} scripts/new_language.py bounds "{{name}}" {{args}}
+
 # delete a language everywhere check looks, then list prose mentions left
 [group('languages')]
+[no-exit-message]
 remove-language name:
     {{PYTHON}} scripts/new_language.py remove "{{name}}"
 
 # regenerate the generated README and docs sections
 [group('languages')]
+[no-exit-message]
 docs:
     {{PYTHON}} scripts/docs/generate.py docs
 
 # regenerate the committed example programs; pass a set name to limit it
 [group('languages')]
+[no-exit-message]
 examples *args:
     {{PYTHON}} scripts/docs/generate.py examples {{args}}
 
-# emit repeatable generator size/time/command evidence as JSON
+# measure one generated program: size, commands, answers (--json for all of it)
 [group('evidence')]
+[no-exit-message]
 benchmark language table *args:
     {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
 
@@ -164,6 +187,7 @@ benchmark language table *args:
 # to re-record a change so the diff carries it.  Also checked in CI.
 # check emitted sizes and step counts against the committed baseline
 [group('evidence')]
+[no-exit-message]
 sizes *args:
     {{PYTHON}} checks/check_generator_sizes.py {{args}}
 
@@ -173,6 +197,7 @@ sizes *args:
 # --speed to fail a copy more than 10% slower.
 # diff an interpreter's step-by-step behaviour against another revision
 [group('evidence')]
+[no-exit-message]
 tracediff language *args:
     {{PYTHON}} scripts/tracediff.py "{{language}}" {{args}}
 
@@ -182,27 +207,32 @@ tracediff language *args:
 # 10% slower.
 # diff a generator's programs against another revision
 [group('evidence')]
+[no-exit-message]
 gendiff language *args:
     {{PYTHON}} scripts/gendiff.py "{{language}}" {{args}}
 
 # generator code no test reaches, vs scripts/baselines/deadcode_known.toml; languages narrow it
 [group('maintenance')]
+[no-exit-message]
 deadcode *args:
     {{PYTHON}} scripts/deadcode.py {{args}}
 
 # generator Decisions: figures, ranked by package commits since each was written
 [group('maintenance')]
+[no-exit-message]
 stale-figures *args:
     {{PYTHON}} scripts/stale_figures.py {{args}}
 
 # seeded generator mutants against their tests (sweep in a worktree)
 [group('maintenance')]
+[no-exit-message]
 mutants *args:
     {{PYTHON}} scripts/mutants.py {{args}}
 
 # Merge downloaded artifacts, one complete CI run per directory.
 [group('maintenance')]
 [doc('merge downloaded CI timing artifacts, one run per directory')]
+[no-exit-message]
 refresh-ci-timings *args:
     {{PYTHON}} scripts/ci/shard.py refresh {{args}}
 

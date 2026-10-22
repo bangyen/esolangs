@@ -1,9 +1,11 @@
 """``new_language.py check`` agrees with the suite on every registered language."""
 
+import dataclasses
 import importlib
 import inspect
 import io
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -105,6 +107,83 @@ def test_start_on_a_terminal_asks_for_the_category(
     monkeypatch.setattr("sys.stdin", _Terminal("tape_based\n"))
     assert new_language.main(["start", "Not A Language"]) == 0
     assert made == ["tape_based"]
+
+
+@pytest.mark.parametrize(
+    ("values", "cell"),
+    [
+        ([15, 20, 25], "poly n: worst 5n commands"),
+        ([4, 5, 6], "poly n: worst n + 1 commands"),
+        ([7, 7, 7], "poly n: worst 7 commands"),
+        ([1, 4, 7], "poly n: worst 3n - 8 commands"),
+        ([10, 15], "FILL: at most <formula in n, T, L> commands"),
+        ([10, 15, 21], "FILL: at most <formula in n, T, L> commands"),
+    ],
+)
+def test_bounds_fits_a_line_through_three_arities(values: list[int], cell: str) -> None:
+    # n = 1 and 2 sit off the line: the formula tests start at n = 3.
+    rows = [(1, 999), (2, 0), *zip(range(3, 6), values, strict=False)]
+    assert new_language._fit(rows, "commands") == cell  # noqa: SLF001
+
+
+def _measured(monkeypatch: pytest.MonkeyPatch, *, ledger: bool) -> None:
+    rows, other = new_language._proof_status_load()  # noqa: SLF001
+    if not ledger:
+        rows = [row for row in rows if row.generator != _LONGEST]
+    monkeypatch.setattr(new_language, "_proof_status_load", lambda: (rows, other))
+    monkeypatch.setattr(
+        new_language,
+        "bounds",
+        lambda _, ns: [(n, 5 * n + 28, n * n, 2, "01", "10") for n in ns],
+    )
+    assert new_language.main(["bounds", _LONGEST]) == 0
+
+
+def test_bounds_drafts_a_section_that_parses(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _measured(monkeypatch, ledger=False)
+    out = capsys.readouterr().out
+    section = tomllib.loads(out[out.index("[proof_status]") :])["proof_status"]
+    assert section["execution"] == "poly n: worst 5n + 28 commands"
+    # n * n is no line: left for the author.
+    assert section["workspace"].startswith("FILL")
+    assert "tree" in section["labels"][0]
+
+
+def test_bounds_on_a_ledger_row_prints_only_what_it_fits(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _measured(monkeypatch, ledger=True)
+    out = capsys.readouterr().out
+    assert "[proof_status]" not in out
+    assert "FILL" not in out
+    assert 'execution = "poly n: worst 5n + 28 commands"' in out
+
+
+def test_bounds_on_a_stub_says_to_implement_it(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def stub(*_: object) -> None:
+        raise NotImplementedError
+
+    monkeypatch.setattr(new_language, "bounds", stub)
+    assert new_language.main(["bounds", _LONGEST]) == 1
+    assert "implement the generator first" in capsys.readouterr().err
+
+
+def test_a_pasted_section_with_fill_left_is_a_gap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows, other = new_language._proof_status_load()  # noqa: SLF001
+    row = next(row for row in rows if row.generator == _LONGEST)
+    rows = [
+        dataclasses.replace(row, scaling="FILL: linear") if r is row else r
+        for r in rows
+    ]
+    monkeypatch.setattr(new_language, "_proof_status_load", lambda: (rows, other))
+    (gap,) = new_language._ledger_gaps(_LONGEST)  # noqa: SLF001
+    assert gap.fix == "replace each FILL in [proof_status]"
 
 
 def test_a_generator_language_needs_no_hand_sample() -> None:

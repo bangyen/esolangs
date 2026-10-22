@@ -58,6 +58,16 @@ def test_valid_multiline_protocol_runs_all_rows() -> None:
         entry["actual_answer"] == entry["expected_answer"]
         for entry in record["executions"]
     )
+    record["executions"][0] |= {"matches": False, "actual_answer": "1"}
+    record["peak_stack_items"] = 3
+    head, wrong, peak, tail = benchmark.summary(record).splitlines()
+    assert head.startswith(
+        f"{record['language']} 01: 1/2 rows correct, {record['source_units']} "
+    )
+    assert head.endswith(f"worst {record['worst_row_commands']} commands")
+    assert wrong == "  row 0: answered '1', expected '0', halted"
+    assert peak == "  peak stack items 3"
+    assert tail == "--json for the full record"
 
 
 def test_total_deadline_cannot_be_extended_by_valid_row_phases() -> None:

@@ -11,8 +11,9 @@ every integration point the language still lacks, with the file and entry
 to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
-``bounds`` measures what the proof ledger's cells state.  ``finish``
-regenerates every committed artifact and runs the full ``verify/gate.py`` gate.
+``bounds`` measures what the proof ledger's cells state and drafts them.
+``finish`` regenerates every committed artifact and runs the full
+``verify/gate.py`` gate.
 ``remove`` deletes what ``check`` asks for, regenerates, and lists the
 mentions left in prose for a hand edit.
 """
@@ -22,6 +23,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import keyword
+import os
 import shlex
 import subprocess
 import sys
@@ -395,26 +397,18 @@ def _ledger_gaps(name: str) -> list[Gap]:
     """List the ledger row and the formula tests its stated bounds need."""
     rows, _ = _proof_status_load()
     row = next((item for item in rows if item.generator == name), None)
+    toml = f"src/esolangs/languages/{_slug(name)}/language.toml"
     if row is None:
         return [
             Gap(
-                f"src/esolangs/languages/{_slug(name)}/language.toml",
+                toml,
                 "add a [proof_status] section: "
-                'labels = ["tree"], qualification, scaling, execution and '
-                "workspace (evidence defaults to "
-                "docs/proofs/index.md#generator-ledger); copy a section with "
-                "the same construction and see Symbols in docs/proofs/index.md; "
-                'each cell is "<class>: <clause>", e.g. "linear: ..." or '
-                '"poly n: worst 7n + 3 commands ..."; '
-                "a clause after `worst`/`at most` takes at most "
-                f"{removal.tests_attr('proofs._ledger', 'FORMULA_CLAUSE_WORDS')}"
-                " words, "
-                "any other "
-                f"{removal.tests_attr('proofs._ledger', 'LINEAR_CLAUSE_WORDS')}; "
-                f"`python scripts/new_language.py bounds {name!r}` measures the "
-                "worst steps and bits to state",
+                f"`just bounds {shlex.quote(name)}` measures the worst cases "
+                "and prints one to paste; replace each FILL",
             )
         ]
+    if "FILL" in repr(row):
+        return [Gap(toml, "replace each FILL in [proof_status]")]
     if not row.execution.split(": ", 1)[-1].startswith(("worst ", "at most ")):
         return []
     gaps = []
@@ -564,6 +558,59 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     return rows
 
 
+def _fit(values: list[tuple[int, int]], unit: str) -> str:
+    """Return ``worst an + b <unit>`` if ``values`` lie on a line, else FILL."""
+    # The formula tests check a "worst" cell from n = 3, so the fit does too;
+    # two points always lie on a line, so it takes three.
+    values = [(n, v) for n, v in values if n >= 3]
+    slopes = {b[1] - a[1] for a, b in itertools.pairwise(values)}
+    if len(values) < 3 or len(slopes) != 1:
+        return f"FILL: at most <formula in n, T, L> {unit}"
+    (slope,) = slopes
+    base = values[0][1] - slope * values[0][0]
+    formula = {0: "", 1: "n"}.get(slope, f"{slope}n")
+    if not formula:
+        formula = str(base)
+    elif base:
+        formula += f" {'-' if base < 0 else '+'} {abs(base)}"
+    return f"poly n: worst {formula} {unit}"
+
+
+def _print_bounds(name: str, max_n: int) -> None:
+    """Print the worst cases per arity and the ledger cells they support."""
+    # Steps feed the ledger's Execution cell, bits its Workspace cell
+    # (peak written state); chars/row stays flat for an O(T) generator.
+    rows = bounds(name, range(1, max_n + 1))
+    print("n  Execution  Workspace  chars/row  witness tables (steps, bits)")
+    for n, steps, bits, per_row, by_steps, by_bits in rows:
+        print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")
+    print('"worst" must equal these columns from n = 3; otherwise write "at most"')
+    cells = [
+        f'execution = "{_fit([(r[0], r[1]) for r in rows], "commands")}"'
+        "  # or steps, rewrites: the interpreter's unit",
+        f'workspace = "{_fit([(r[0], r[2]) for r in rows], "bits")}"',
+    ]
+    rows_, _ = _proof_status_load()
+    if any(row.generator == name for row in rows_):
+        print("\n".join(cell for cell in cells if "FILL" not in cell))
+        return
+    ledger = "proofs._ledger"
+    labels = sorted(removal.tests_attr(ledger, "SCHEME_LABELS").values())
+    scaling = sorted(removal.tests_attr(ledger, "SCALING_CLASSES"))
+    print(
+        f"\n# append to src/esolangs/languages/{_slug(name)}/language.toml and "
+        "replace each FILL;\n# docs/proofs/index.md defines the labels under "
+        '"Proof schemes" and the ledger rows show the style',
+        "[proof_status]",
+        f'labels = ["FILL: {", ".join(labels)}"]  # plus "cap" or "exception"',
+        'qualification = "FILL: how the program computes the table, one sentence"',
+        f'scaling = "FILL: {" | ".join(scaling)}: in at most '
+        f'{removal.tests_attr(ledger, "LINEAR_CLAUSE_WORDS")} words"',
+        *cells,
+        sep="\n",
+    )
+
+
 def finish(name: str) -> int:
     """Regenerate every committed artifact, then run the full gate.
 
@@ -696,38 +743,26 @@ def main(argv: list[str] | None = None) -> int:
     measure.add_argument("--max-n", type=int, default=5)
     args = parser.parse_args(argv)
     if args.command in {"check", "finish", "bounds"}:
+        # A new LANGUAGE is registered by the export this writes, but
+        # docs.generate imports the package first, so its registry predates
+        # the export: rerun on the new one.  The first check after `start`
+        # otherwise asked for the LANGUAGE the stub already had.
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from docs.generate import update_exports
+
+        if update_exports(ROOT, ROOT):
+            os.execv(sys.executable, [sys.executable, __file__, *argv])
         try:
             args.name = _registered_name(args.name)
         except ValueError as exc:
             parser.error(f"{exc}; a new one starts with: just new-language")
     if args.command == "bounds":
-        # Steps feed the ledger's Execution cell, bits its Workspace cell
-        # (peak written state); chars/row stays flat for an O(T) generator.
-        print("n  Execution  Workspace  chars/row  witness tables (steps, bits)")
-        rows = bounds(args.name, range(1, args.max_n + 1))
-        for n, steps, bits, per_row, by_steps, by_bits in rows:
-            print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")
-        # "worst" claims these exact maxima from the cell's first n (3, or
-        # one past "past n = k"); a looser bound is "at most".
-        print('"worst" must equal these columns; otherwise write "at most"')
-        for values, cell, unit in (
-            ([(r[0], r[1]) for r in rows], "execution", "<unit>"),
-            ([(r[0], r[2]) for r in rows], "workspace", "bits"),
-        ):
-            slopes = {b[1] - a[1] for a, b in itertools.pairwise(values)}
-            if len(slopes) == 1:
-                (slope,) = slopes
-                base = values[0][1] - slope * values[0][0]
-                sign = "-" if base < 0 else "+"
-                print(f'{cell} = "...: worst {slope}n {sign} {abs(base)} {unit}"')
+        try:
+            _print_bounds(args.name, args.max_n)
+        except NotImplementedError:
+            print(f"{args.name}: implement the generator first", file=sys.stderr)
+            return 1
         return 0
-    if args.command in {"check", "finish"}:
-        # Before anything imports the package: a new LANGUAGE is registered
-        # by the export this writes.
-        sys.path.insert(0, str(ROOT / "scripts"))
-        from docs.generate import update_exports
-
-        update_exports(ROOT, ROOT)
     if args.command == "check":
         gaps = check(args.name)
         if gaps:
