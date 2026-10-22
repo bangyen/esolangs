@@ -19,9 +19,10 @@ aggregate; no flow has to remember to invalidate.
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable, Iterable
+import tomllib
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from esolangs.registry import Language
@@ -77,3 +78,44 @@ def aggregate[T](
     stamp = tuple((lang.id, lang.name) for lang in langs)
     key = (packages, stamp, fingerprint(packages))
     return cached(cache, key, lambda: build(packages, langs))
+
+
+def registry() -> tuple[Language, ...]:
+    """Return the registered languages, in registry order."""
+    from esolangs.registry import LANGUAGES
+
+    return tuple(LANGUAGES.values())
+
+
+def section(path: Path, name: str) -> dict[str, Any] | None:
+    """Return ``path``'s ``[name]`` table, or None when it has none."""
+    table = tomllib.loads(path.read_text(encoding="utf-8")).get(name)
+    if table is None:
+        return None
+    if not isinstance(table, dict):
+        raise ValueError(f"{path}: [{name}] must be a table")
+    return table
+
+
+def sections(
+    packages: Path, languages: Iterable[Language], name: str
+) -> Iterator[tuple[Language, Path, dict[str, Any]]]:
+    """Yield each registered package's ``[name]`` table, in registry order.
+
+    A repeated language id, or the section in an unregistered package,
+    raises ``ValueError``.
+    """
+    seen: set[str] = set()
+    for lang in languages:
+        if lang.id in seen:
+            raise ValueError(f"duplicate language id: {lang.id}")
+        seen.add(lang.id)
+        path = packages / lang.id / FRAGMENT
+        if path.is_file() and (table := section(path, name)) is not None:
+            yield lang, path, table
+    if packages.is_dir():
+        for path in packages.glob(f"*/{FRAGMENT}"):
+            if path.parent.name not in seen and section(path, name) is not None:
+                raise ValueError(
+                    f"{path}: package {path.parent.name!r} is not registered"
+                )

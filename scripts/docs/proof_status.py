@@ -306,7 +306,6 @@ def update_docs(root: Path = ROOT) -> bool:
     proofs, audits = load()
     tables = (
         (
-            root / "docs/proofs/index.md",
             "PROOF-STATUS",
             [
                 "| Generator | Proof | Qualification | Scaling | Execution | "
@@ -328,9 +327,8 @@ def update_docs(root: Path = ROOT) -> bool:
                 ],
             ],
         ),
-        (root / "docs/proofs/index.md", "PROOF-TOTALS", [render_totals(proofs)]),
+        ("PROOF-TOTALS", [render_totals(proofs)]),
         (
-            root / "docs/proofs/index.md",
             "SCALING-STATUS",
             [
                 "| Language | Totality | Generation time | Output size |",
@@ -343,13 +341,8 @@ def update_docs(root: Path = ROOT) -> bool:
             ],
         ),
     )
-    changed = False
-    for path, marker, lines in tables:
-        text = path.read_text(encoding="utf-8")
-        changed = (
-            _write_if_changed(
-                path, splice(text, marker, "\n".join(lines)), encoding="utf-8"
-            )
-            or changed
-        )
-    return changed
+    path = root / "docs/proofs/index.md"
+    text = path.read_text(encoding="utf-8")
+    for marker, lines in tables:
+        text = splice(text, marker, "\n".join(lines))
+    return _write_if_changed(path, text, encoding="utf-8")

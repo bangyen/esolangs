@@ -80,14 +80,8 @@ def _stale_timing(key: str, names: set[str], gone_paths: set[str]) -> bool:
     match = re.search(r"\[([^\]]*)\]", key)
     if match is None:
         return False
-    param = match.group(1)
-    return any(
-        param == n
-        or param.startswith(n + "-")
-        or param.endswith("-" + n)
-        or f"-{n}-" in param
-        for n in names
-    )
+    param = f"-{match.group(1)}-"
+    return any(f"-{n}-" in param for n in names)
 
 
 def _drop_from_series(path: Path, name: str, tail: str) -> None:

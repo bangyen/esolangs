@@ -8,34 +8,21 @@ no file or no ``[curation]`` section is skipped.
 from __future__ import annotations
 
 import json
-import tomllib
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .fragments import AggregateKey, aggregate
+from .fragments import AggregateKey, aggregate, registry, section, sections
 
 if TYPE_CHECKING:
     from esolangs.registry import Language
 
 ROOT = Path(__file__).resolve().parents[2]
-PACKAGES = ROOT / "src" / "esolangs" / "languages"
-FRAGMENT = "language.toml"
 
 _FIELDS = frozenset(
     {"backlinks", "bf_derivative", "bf_derivative_predates", "unassessed"}
 )
 _COLLECTED = {"checked": "curation", "bf_derivatives_checked": "bf_derivatives"}
-
-
-def _section(path: Path) -> dict[str, Any] | None:
-    """Return ``path``'s curation section, or None when it has none."""
-    table = tomllib.loads(path.read_text(encoding="utf-8")).get("curation")
-    if table is None:
-        return None
-    if not isinstance(table, dict):
-        raise ValueError(f"{path}: [curation] must be a table")
-    return table
 
 
 def _validate(path: Path, row: dict[str, Any]) -> dict[str, Any]:
@@ -87,45 +74,23 @@ def _aggregate_fragments(
     packages: Path, languages: Iterable[Language]
 ) -> dict[str, dict[str, Any]]:
     """Merge the curation sections, uncached; see :func:`aggregate_fragments`."""
-    rows: dict[str, dict[str, Any]] = {}
-    seen: set[str] = set()
-    for lang in languages:
-        if lang.id in seen:
-            raise ValueError(f"duplicate language id: {lang.id}")
-        seen.add(lang.id)
-        path = packages / lang.id / FRAGMENT
-        if not path.is_file():
-            continue
-        row = _section(path)
-        if row is not None:
-            rows[lang.name] = _validate(path, row)
-    if packages.is_dir():
-        for path in packages.glob(f"*/{FRAGMENT}"):
-            if path.parent.name not in seen and _section(path) is not None:
-                raise ValueError(
-                    f"{path}: package {path.parent.name!r} is not registered"
-                )
-    return rows
+    return {
+        lang.name: _validate(path, row)
+        for lang, path, row in sections(packages, languages, "curation")
+    }
 
 
 def fragment_row(path: Path) -> dict[str, Any]:
     """Return one package fragment's validated curation row, or {}."""
     if not path.is_file():
         return {}
-    row = _section(path)
+    row = section(path, "curation")
     return {} if row is None else _validate(path, row)
-
-
-def _registry() -> tuple[Language, ...]:
-    """Return the registered languages, in registry order."""
-    from esolangs.registry import LANGUAGES
-
-    return tuple(LANGUAGES.values())
 
 
 def rows(root: Path = ROOT) -> dict[str, dict[str, Any]]:
     """Return every language's curation row, keyed by name."""
-    return aggregate_fragments(root / "src/esolangs/languages", _registry())
+    return aggregate_fragments(root / "src/esolangs/languages", registry())
 
 
 def dates(root: Path = ROOT) -> dict[str, str]:
