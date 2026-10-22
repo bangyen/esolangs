@@ -111,6 +111,25 @@ def test_missing_local_main_uses_remote_main() -> None:
     assert run.call_args_list[1].args[0][-1] == "origin/main...HEAD"
 
 
+def test_whole_tree_pre_commit_reaches_untracked_files() -> None:
+    """``--all-files`` skips files never added; a new language is all such."""
+    scope = load_script()
+    listed = subprocess.CompletedProcess(
+        [], 0, stdout=b"pyproject.toml\0conftest.py\0gone.py\0"
+    )
+    cmd = ["pre_commit", "run", "--all-files"]
+    with mock.patch.object(scope.subprocess, "run", return_value=listed) as run:
+        assert scope.whole_tree_cmd(cmd) == [
+            "pre_commit",
+            "run",
+            "--files",
+            "pyproject.toml",
+            "conftest.py",
+        ]
+    assert "--others" in run.call_args.args[0]
+    assert scope.whole_tree_cmd(["pre_commit", "run", "--files", "x"])[-1] == "x"
+
+
 @pytest.mark.parametrize("bad", [False, True])
 def test_nul_paths_and_rename_sources_are_preserved(bad) -> None:
     scope = load_script()

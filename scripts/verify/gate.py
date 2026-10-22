@@ -46,6 +46,7 @@ from verify.scope import (  # noqa: E402
     _scoped_cmd,
     local_tooling_deselections,
     verify_full,
+    whole_tree_cmd,
 )
 
 # language-owners: ["Line"]
@@ -783,6 +784,8 @@ def main() -> int:  # noqa: C901
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
+        elif name == MUTATES_TREE:
+            cmd = whole_tree_cmd(cmd)
         step_env = env
         if name == MUTATES_TREE:
             # Skip the config's mypy hook: the very next step runs mypy over
