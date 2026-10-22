@@ -1,9 +1,10 @@
 """The Scaling column's size bounds hold at small n, over every row.
 
-A cell stating ``at most <formula> characters`` (or ``lines``/``rows``) is
-measured on the generated text: characters are ``len``, lines and rows are
-newline-separated.  Two such bounds were false while nothing measured them:
-one 14T where parity reaches 15T - 14, one 6n + 3T rows reaching 17 at n=1.
+A cell stating ``at most <formula> characters`` (or ``lines``/``rows``; a
+``worst`` one must also be reached) is measured on the generated text:
+characters are ``len``, lines and rows are newline-separated.  Two such
+bounds were false while nothing measured them: one 14T where parity reaches
+15T - 14, one 6n + 3T rows reaching 17 at n=1.
 """
 
 import re
@@ -17,7 +18,7 @@ from tests.proofs.test_execution_formulas import _tables
 from tests.support.generator_support import CHECK
 
 #: A stated size bound: the unit follows its formula.
-_SIZE = re.compile(r"^at most (.+?) (characters|lines|rows)\b")
+_SIZE = re.compile(r"^(?:at most|worst) (.+?) (characters|lines|rows)\b")
 
 FORMULAS = ledger_formulas(lambda row: row.scaling_clause, {}, {})
 _UNIT = {

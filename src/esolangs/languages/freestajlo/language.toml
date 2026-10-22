@@ -9,7 +9,8 @@ labels = ["linear lookup"]
 qualification = "the table is one `\"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies; past the crossover the literal packs six entries a character and the row splits into that depth and a bit"
 scaling = "linear: a T- or T/6-character literal, four characters an input"
 execution = "poly n: at most 4n + 17 commands: the literal, the reads and folds, the decode and print"
-workspace = "linear: at most 6T + 4n + 12 bits: the literal's codes on the stack"
+workspace = "linear: worst max(P, W) bits: the literal's codes on the stack, plain or packed"
+definitions = ["P = 6t + 7 + bl(t+2) + bl(2n+2m) + bl(2n), m = min(n, 4), t = 2^m", "W = 7⌊T/6⌋ + 7 + bl(⌈T/6⌉+4) + max(16, 2n+3) + bl(4n+18) + bl(2n), 0 below n = 5"]
 
 [catalogue]
 folding_constant_local = "freestajlo"  # one projected table entry, no index

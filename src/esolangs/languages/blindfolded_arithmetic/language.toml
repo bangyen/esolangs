@@ -7,9 +7,9 @@ backlinks = 19
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer built by Horner's rule in base 8, and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer"
-scaling = "linear: at most four instructions an octal digit, 10n of lookup"
-execution = "linear: worst T + ⌈(T-1)/3⌉ + 10n + 9 commands: all ones but the last row, run once"
-workspace = "linear: at most 2T + n + 13 bits: the table, and Q in two registers"
+scaling = "linear: worst 6T + 6⌈T/3⌉ + 60n + 53 characters: six an instruction"
+execution = "linear: worst T + ⌈T/3⌉ + 10n + 9 commands: all ones but the first row, run once"
+workspace = "linear: worst 2T + 6 + bl(T+⌈T/3⌉+10n+6) bits past n = 2: b and its even copy"
 
 [generator_sizes]
 "00000001" = { commands = 44, commands_by_row = { "0" = 44, "1" = 44, "2" = 44, "3" = 44, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 263 }

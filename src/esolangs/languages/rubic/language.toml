@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["tree"]
 qualification = "every subtree undoes its `r2` store, so the cube is one of two states and each table expression is checked on both; equal halves read untested and constant subtables fold"
-scaling = "linear: at most 94T characters, subtree_ids folding"
+scaling = "linear: worst 155T/2 - 57 characters: parity, no node folds; subtree_ids folding"
 execution = "poly n: at most 20n + 7 commands: a node runs 20 at most"
 workspace = "poly n: at most (3n+4)·bl(L) + 3n + 175 bits: n+1 loop frames, the cube"
 

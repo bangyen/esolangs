@@ -7,7 +7,7 @@ backlinks = 1
 [proof_status]
 labels = ["tree"]
 qualification = "a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched"
-scaling = "linear: at most 21T/2 - 10 characters, ten a node"
+scaling = "linear: worst 37T/4 - 10 characters past n = 1: ten a node"
 execution = "poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b"
 workspace = "poly n: at most 4bl(L) + 40 bits: two functions, a decider and a frame"
 

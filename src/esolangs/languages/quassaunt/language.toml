@@ -8,8 +8,9 @@ backlinks = 3
 labels = ["tree"]
 qualification = "each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched"
 scaling = "linear: O(T/n) nodes with O(n)-digit names"
-execution = "linear: at most 5⌊L/57⌋ + 21n + 9 steps: five a stored node, 21 a level"
+execution = "linear: worst 5N + 21n + 9 steps: five a stored node, 21 a level"
 workspace = "linear: at most 24L bits: the running code, the stored code and the stack, each within the source"
+definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables"]
 
 [generator_sizes]
 "00000001" = { commands = 107, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 107, "7" = 107 }, source_units = 1110 }

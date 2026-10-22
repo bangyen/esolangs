@@ -9,7 +9,7 @@ labels = ["tree"]
 qualification = "the tree branches on every essential input down to single entries; an equal subtree is emitted once, and constant subtrees jump to one of two shared print gadgets"
 scaling = "linear: bounded dependency scan and canonical residual IDs"
 execution = "poly n: at most 50n + 3 commands"
-workspace = "linear: at most M + 5n + bl(C) + bl(n) + bl(n+2) bits: the memory tuple and registers"
+workspace = "linear: worst M + 5n + bl(C) + bl(n) + 1 bits, one more on a constant: memory and registers"
 definitions = ["M = bits of the program's cells", "C = cell count"]
 
 [generator_sizes]

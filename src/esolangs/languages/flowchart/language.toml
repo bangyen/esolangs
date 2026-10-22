@@ -12,7 +12,7 @@ backlinks = 8
 labels = ["finite lookup"]
 qualification = "a pair of answers per deque, and the input walks the deque cursor to the pair it wants"
 scaling = "linear: T pushes, `T/2 - 1` cursor steps, two rows"
-execution = "linear: at most 3T + 9n + 4 nodes: preload T plus runs, then 8n of selection reads"
+execution = "linear: worst 3T + 9n + 3 nodes past n = 1: preload T plus T - 1 runs"
 workspace = "T log T: at most (7T+20n+100)(bl(L)+4) + Σ_{j<T/2}(bl(j)+2) + 2bl(L) + n + 2bl(n) + 32 bits: exit-memory keys, deques"
 
 [generator_sizes]

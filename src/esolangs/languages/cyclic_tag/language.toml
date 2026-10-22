@@ -7,7 +7,7 @@ backlinks = 91
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it"
-scaling = "linear: at most 5T + 2n + 1 characters, weighted padding"
+scaling = "linear: worst 5T + 2n + 1 characters, weighted padding"
 execution = "linear: worst 2T + n + 1 steps: n input rules, 2 per row, 3 closers"
 workspace = "linear: worst 16T + 1 + bl(2T+n) bits: a queue of up to 2T - 1 bits"
 

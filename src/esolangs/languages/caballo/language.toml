@@ -7,7 +7,7 @@ backlinks = 1
 [proof_status]
 labels = ["tree"]
 qualification = "the inputs are the initial stack; each node is the wiki's conditional, `d` dropping a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack survives; equal halves pop untested and constant subtables fold"
-scaling = "linear: at most 15T - 14 characters, subtree_ids folding"
+scaling = "linear: worst 21T/2 - 14 characters past n = 1: subtree_ids folding"
 execution = "poly n: worst n(n+1)/2 + 14n - 2 commands: empty groups skip whole"
 workspace = "poly n: at most 4n² + 16n·bl(L) + 96 bits: a sum frame's base a level"
 
