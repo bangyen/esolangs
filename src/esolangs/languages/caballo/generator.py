@@ -9,7 +9,7 @@ one stack survives at weight 1 and the output is never drawn at random.
 
 Size:
     T-1 nodes at most, appended into one buffer: size and build time O(T);
-    n=10 and: 186 chars, n=10 random 1847: 9,838 chars.
+    n=10 and: 171 chars, n=10 random 1847: 7,663 chars.
 
 Decisions:
     Repeated subtrees are not shared: Caballo has no names or jumps, so code
@@ -40,6 +40,13 @@ def caballo(truth_table: str) -> str:
         if zero == one:
             out.append("p")
             node(depth + 1, 2 * k)
+            return
+        # The root keeps its conditional: an empty program is no program.
+        if depth == n - 1 and depth:
+            # The last bit is the stack: [1] already answers 1 and a 0
+            # strips to [].  The complement drops a 1 bit's stack and
+            # turns a 0 into [1] ([ablations.last_level_forms]).
+            out.append("" if (zero, one) == (0, 1) else "(d+(1+di-)i)")
             return
         out.append("(dip")
         node(depth + 1, 2 * k + 1)

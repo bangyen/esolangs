@@ -8,18 +8,18 @@ backlinks = 1
 labels = ["tree"]
 qualification = "the inputs are the initial stack; each node is the wiki's conditional, `d` dropping a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack survives; equal halves pop untested and constant subtables fold"
 scaling = "linear: at most 15T - 14 characters, subtree_ids folding"
-execution = "poly n: worst n(n+1)/2 + 14n + 1 commands: empty groups skip whole"
+execution = "poly n: worst n(n+1)/2 + 14n - 2 commands: empty groups skip whole"
 workspace = "poly n: at most 4n² + 16n·bl(L) + 96 bits: a sum frame's base a level"
 
 [generator_sizes]
-"00000001" = { commands = 47, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 33, "5" = 33, "6" = 47, "7" = 47 }, source_units = 46 }
+"00000001" = { commands = 32, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 32, "5" = 32, "6" = 32, "7" = 32 }, source_units = 31 }
 "00001100" = { commands = 34, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 34, "5" = 34, "6" = 34, "7" = 34 }, source_units = 33 }
-"00110110" = { commands = 46, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 75 }
-"0110" = { commands = 31, commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31 }, source_units = 44 }
-"01101001" = { commands = 46, commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 102 }
-"0110100110010110" = { commands = 61, commands_by_row = { "0" = 61, "1" = 61, "2" = 61, "3" = 61, "4" = 61, "5" = 61, "6" = 61, "7" = 61, "8" = 61, "9" = 61, "10" = 61, "11" = 61, "12" = 61, "13" = 61, "14" = 61, "15" = 61 }, source_units = 218 }
-"1101001101101101" = { commands = 62, commands_by_row = { "0" = 48, "1" = 48, "2" = 62, "3" = 62, "4" = 48, "5" = 48, "6" = 48, "7" = 48, "8" = 61, "9" = 61, "10" = 61, "11" = 61, "12" = 48, "13" = 48, "14" = 62, "15" = 62 }, source_units = 165 }
-"11111110" = { commands = 49, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 35, "5" = 35, "6" = 49, "7" = 49 }, source_units = 48 }
+"00110110" = { commands = 42, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 31, "5" = 31, "6" = 42, "7" = 42 }, source_units = 57 }
+"0110" = { commands = 27, commands_by_row = { "0" = 16, "1" = 16, "2" = 27, "3" = 27 }, source_units = 26 }
+"01101001" = { commands = 31, commands_by_row = { "0" = 31, "1" = 31, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 31, "7" = 31 }, source_units = 66 }
+"0110100110010110" = { commands = 57, commands_by_row = { "0" = 46, "1" = 46, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 46, "7" = 46, "8" = 57, "9" = 57, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 57, "15" = 57 }, source_units = 146 }
+"1101001101101101" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 48, "5" = 48, "6" = 48, "7" = 48, "8" = 46, "9" = 46, "10" = 57, "11" = 57, "12" = 47, "13" = 47, "14" = 47, "15" = 47 }, source_units = 117 }
+"11111110" = { commands = 46, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 35, "5" = 35, "6" = 46, "7" = 46 }, source_units = 45 }
 
 [catalogue]
 sharing_exempt = "no names or jumps: code runs once per place it is written"
@@ -36,3 +36,10 @@ verdict = "kept: canonical, exempt. A node whose halves agree pops its input unt
 saving = 0.0
 arity = 12
 verdict = "recorded: canonical, exempt, with no separable price in the shipped context. Removing the fold while the skip stays is byte-identical on every table tried (124 seeded and named tables at n=6/10): a constant subtable's skip chain emits the fold's own string, one p per level plus the answer char. The fold's value is joint with the skip: the plain build (neither) costs +53.10% at n=10 and +53.07% at n=12 on random tables, and on constant tables +143,120.00 / +477,650.00%, AND +7,600.54 / +24,296.17%, majority +110.29 / +125.83%"
+
+[ablations.last_level_forms]
+saving = 20.1
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: a last level with leaves 01 emits nothing, since the bit is the stack ([1], or a 0 the strip empties), and with 10 emits (d+(1+di-)i), against the 15-char conditional: 22.3% on random tables at n=4, 20.4% at n=5, 19.9-20.1% at n=6..12 (20 tables at 12), flat; parity 31.2%, majority 27.8%, and 10.6% at n=8. Exhaustive n<=3: 252 tables change (the root keeps its conditional, so n=1 never empties), none grows, every changed program executed; random samples executed at n=4..10"
