@@ -114,9 +114,7 @@ def _hoist_macros(code: str) -> tuple[str, dict[str, str]]:
         kept.append(code[pos:at])
         name = _DEFINITION.match(code, at + 1)
         assert name is not None
-        open_at = name.end()
-        while open_at < len(code) and code[open_at].isspace():
-            open_at += 1
+        open_at = _skip_space(code, name.end())
         if not name.group() or open_at >= len(code) or code[open_at] != "(":
             raise ValueError(f"SendStuff macro definition at {at} needs @name(...)")
         end = _balanced(code, open_at, f"macro {name.group()!r}")
@@ -161,9 +159,7 @@ class _Expander:
             name = _MACRO_NAME.match(text, bang + 1)
             if name is None:
                 raise ValueError(f"SendStuff macro call at {bang} has no name")
-            arg_at = name.end()
-            while arg_at < len(text) and text[arg_at].isspace():
-                arg_at += 1
+            arg_at = _skip_space(text, name.end())
             if text.startswith(":", arg_at):
                 end = text.find(";", arg_at)
                 if end < 0:

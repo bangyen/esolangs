@@ -572,7 +572,10 @@ class _Machine:
         if not self.frames:
             return cells
         for _name, value in self.frame.store:
-            cells.extend(value) if isinstance(value, tuple) else cells.append(value)
+            if isinstance(value, tuple):
+                cells.extend(value)
+            else:
+                cells.append(value)
         return cells
 
     @property

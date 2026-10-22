@@ -249,13 +249,11 @@ def _scan_c_run(prog: str, ind: int, n: int) -> tuple[str, int, int]:
         rep *= 7
         if c != "c":
             break
-    adds = 0
     if c == "t":
         adds = 1
         while ind < n and prog[ind] == "t":
             ind += 1
             adds += 1
-    if adds:
         rep **= (3 ** (adds + 1) - 1) // 2
         c = prog[ind] if ind < n else _NUL
         ind += 1
@@ -271,14 +269,12 @@ def _scan_t_run(prog: str, ind: int) -> tuple[str, int]:
     after a jump repeats the text before it.
     """
     rep = 1
-    found = False
     while ind > 0:
         ind -= 1
         if prog[ind] != "t":
-            found = True
-            break
+            return prog[ind], rep
         rep *= 3
-    return (prog[ind] if found else _NUL, rep)
+    return _NUL, rep
 
 
 class _After(Enum):

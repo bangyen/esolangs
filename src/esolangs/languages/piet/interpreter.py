@@ -83,9 +83,12 @@ Point = tuple[int, int]
 _INTEGER = re.compile(r"[+-]?[0-9]+")
 
 
+_STANDARD = frozenset({*COLOURS, WHITE, BLACK})
+
+
 def _colour(pixel: Pixel) -> Pixel:
     """Return a standard colour, treating non-standard colours as white."""
-    return pixel if pixel in COLOURS or pixel in {WHITE, BLACK} else WHITE
+    return pixel if pixel in _STANDARD else WHITE
 
 
 #: ``(current, dp, cc, stack, halted)``: the codel the pointer is in, the

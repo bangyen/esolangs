@@ -200,6 +200,8 @@ type _State = tuple[_Task, _Kont | None, str | None, bool]
 #: ``` ``?c f v `` would keep ``f`` instead of running it, and a program
 #: written against the language would take the wrong branch.
 _SUCCESS = _Cmd("i")
+_READ = _Cmd("@")
+_DELAY = _Cmd("d")
 _FAILURE = _Cmd("v")
 _COMMANDS: dict[str, _Term] = {
     name: _Cmd(name) for name in ("k", "s", "i", "v", "c", "d", "e", "@", "|")
@@ -379,7 +381,7 @@ def _advance(
             return (_Ret(term.value), kont, char, False), None
         return (_Ret(term), kont, char, False), None
     if isinstance(task, _Apply):
-        if task.f == _Cmd("@"):
+        if task.f == _READ:
             # The specification makes both ?x and | see no character at EOF.
             char = None if at_eof else read_char
         return _apply(task.f, task.a, kont, char, read_ok=not at_eof)
@@ -387,7 +389,7 @@ def _advance(
         return (task, kont, char, True), None
     frame, rest = kont.frame, kont.rest
     if isinstance(frame, _Arg):
-        if task.value == _Cmd("d"):
+        if task.value == _DELAY:
             # The delay: the argument is not evaluated at all.
             return (_Ret(_Promise(frame.term)), rest, char, False), None
         return (_Eval(frame.term), _Kont(_Fun(task.value), rest), char, False), None
@@ -436,7 +438,7 @@ class _Machine:
         if self.halted:
             return
         task = self.state[0]
-        reading = isinstance(task, _Apply) and task.f == _Cmd("@")
+        reading = isinstance(task, _Apply) and task.f == _READ
         read_char: str | None = None
         at_eof = False
         if reading:

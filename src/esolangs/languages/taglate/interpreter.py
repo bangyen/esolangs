@@ -26,6 +26,7 @@ Decisions:
       example, so the cat prints nothing.
 """
 
+import re
 from collections.abc import Iterable
 from functools import lru_cache
 
@@ -34,24 +35,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
 
-_SINGLE = frozenset("abcdefhijt")
+_TOKEN = re.compile(r"g[yz]|[abcdefhijt]")
 
 
 def _tokens(commands: str) -> list[str]:
     """Split a command string into tokens; ``gy``/``gz`` are two-char."""
-    res: list[str] = []
-    i = 0
-    while i < len(commands):
-        c = commands[i]
-        if c == "g" and i + 1 < len(commands) and commands[i + 1] in "yz":
-            res.append(commands[i : i + 2])
-            i += 2
-        elif c in _SINGLE:
-            res.append(c)
-            i += 1
-        else:
-            i += 1
-    return res
+    return _TOKEN.findall(commands)
 
 
 def _match(tokens: list[str]) -> dict[int, int]:

@@ -36,6 +36,7 @@ from esolangs.exceptions import ArgumentError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import trunc_div
 from esolangs.runtime.source_hints import syntax_error
 
 #: The register names, in the order of :attr:`_Machine.memory`.
@@ -76,12 +77,6 @@ def _parse(code: str) -> tuple[tuple[_Instruction, ...], tuple[int, ...]]:
     return tuple(program), tuple(offsets)
 
 
-def _quotient(dividend: int, divisor: int) -> int:
-    """Return ``dividend / divisor`` truncated toward zero."""
-    quotient = abs(dividend) // abs(divisor)
-    return quotient if (dividend < 0) == (divisor < 0) else -quotient
-
-
 def _advance(state: _State, instruction: _Instruction, count: int) -> _State | None:
     """Return the state after ``instruction``, or ``None`` when it halts."""
     registers, ind = state
@@ -96,7 +91,7 @@ def _advance(state: _State, instruction: _Instruction, count: int) -> _State | N
     elif y == 0:
         return None
     else:
-        value = _quotient(x, y)
+        value = trunc_div(x, y)
     changed = (*registers[:target], value, *registers[target + 1 :])
     return changed, (ind + 1) % count
 

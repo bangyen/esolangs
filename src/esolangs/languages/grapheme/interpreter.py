@@ -3,11 +3,6 @@
 Each uppercase letter is a command; the stack holds unbounded integers,
 strings and functions, with an untyped variable map.  ``E``/``F``/``H``
 toggle string/int/function mode, accumulating characters into a value
-pushed when the mode ends.
-
-Each uppercase letter is a command; the stack holds unbounded integers,
-strings and functions, with an untyped variable map.  ``E``/``F``/``H``
-toggle string/int/function mode, accumulating characters into a value
 pushed when the mode ends.  A literal still open at the end of the code is
 pushed.  ``G``/``I``/``Q``/``Z`` run a function in a fresh normal-mode
 context sharing stack and variables.  "each one representing a command":

@@ -409,18 +409,19 @@ class _Machine:
             return
 
         value: int | None = None
-        if self.num and char == "=":
-            value = self.io.input_char()
-            self._input_reads += 1
-        elif self.num and char == "~":
-            temp = self.io.input_token()
-            self._input_reads += 1
-            value = parse_integer(temp)
-        elif self.num and char == ":":
-            if self.mole < 10:
-                self.io.print_str(format_integer(self.mole))
-            else:
-                self.io.print_char(chr(self.mole))
+        if self.num:
+            if char == "=":
+                value = self.io.input_char()
+                self._input_reads += 1
+            elif char == "~":
+                temp = self.io.input_token()
+                self._input_reads += 1
+                value = parse_integer(temp)
+            elif char == ":":
+                if self.mole < 10:
+                    self.io.print_str(format_integer(self.mole))
+                else:
+                    self.io.print_char(chr(self.mole))
 
         self._restore(_advance(self._state, self.size, value))
 

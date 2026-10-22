@@ -112,18 +112,15 @@ class _Machine:
         self.io = io
         self.prog, nums = _parse(code)
 
-        # Each tilde's jump target is fixed by its position in the code
-        # line: the Nth tilde jumps to the Nth number on the jump line, and
-        # targets are 1-based (so a jump to N runs the (N-1)th command).
-        self.targets: dict[int, int] = {}
-        for i, ch in enumerate(self.prog):
-            if ch == "~":
-                if len(self.targets) >= len(nums):
-                    raise syntax_error(
-                        "unmatched '~' with no jump target",
-                        "supply one 1-based jump target on the second line for each ~",
-                    )
-                self.targets[i] = nums[len(self.targets)]
+        # The Nth tilde jumps to the Nth number on the jump line; targets
+        # are 1-based (so a jump to N runs the (N-1)th command).
+        tildes = [i for i, ch in enumerate(self.prog) if ch == "~"]
+        if len(tildes) > len(nums):
+            raise syntax_error(
+                "unmatched '~' with no jump target",
+                "supply one 1-based jump target on the second line for each ~",
+            )
+        self.targets: dict[int, int] = dict(zip(tildes, nums, strict=False))
 
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.

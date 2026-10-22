@@ -2,8 +2,9 @@
 
 import pytest
 
-from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine, _quotient
+from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.memory import trunc_div
 
 
 @pytest.mark.parametrize(
@@ -13,7 +14,7 @@ from esolangs.runtime.io import ScriptedIO
 def test_division_truncates_toward_zero(
     dividend: int, divisor: int, quotient: int
 ) -> None:
-    assert _quotient(dividend, divisor) == quotient
+    assert trunc_div(dividend, divisor) == quotient
 
 
 def test_an_empty_program_is_refused_before_reading() -> None:

@@ -65,13 +65,13 @@ def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
     ``length`` need only be shorter than the shortest real segment; the
     default is three quarters of :data:`UNIT`.
     """
-    lit = set()
-    for idx, (dy, dx) in enumerate(_DIRS):
+    return {
+        idx
+        for idx, (dy, dx) in enumerate(_DIRS)
         if all(
             _band_lit(mask, y + dy * i, x + dx * i, idx) for i in range(1, length + 1)
-        ):
-            lit.add(idx)
-    return lit
+        )
+    }
 
 
 # Ink depth _snap requires before trusting an offset: a single pixel of ink

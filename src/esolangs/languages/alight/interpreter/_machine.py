@@ -193,22 +193,14 @@ class _Expressions:
                 return node, pending
             return _Val("val", self.evaluate(node)), None
         if isinstance(expr, _List):
-            items: list[_Expr] = []
-            rest = list(expr.items)
-            while rest:
-                item, pending = self.reduce(rest.pop(0))
-                items.append(item)
-                if pending is not None:
-                    return _List("list", [*items, *rest]), pending
+            items, pending = self._reduce_all(expr.items)
+            if pending is not None:
+                return _List("list", items), pending
             return _Val("val", self.evaluate(_List("list", items))), None
         if isinstance(expr, _Call):
-            args: list[_Expr] = []
-            rest = list(expr.args)
-            while rest:
-                arg, pending = self.reduce(rest.pop(0))
-                args.append(arg)
-                if pending is not None:
-                    return _Call("call", expr.name, [*args, *rest]), pending
+            args, pending = self._reduce_all(expr.args)
+            if pending is not None:
+                return _Call("call", expr.name, args), pending
             if expr.name not in _BUILTINS:
                 return _Call("call", expr.name, args), expr.name
             # A builtin with every argument resolved: run it now and keep the
@@ -220,6 +212,16 @@ class _Expressions:
                 result = result.updated
             return _Val("val", result), None
         assert_never(expr)
+
+    def _reduce_all(self, exprs: list[_Expr]) -> tuple[list[_Expr], str | None]:
+        """Reduce ``exprs`` in order, stopping at the first pending call."""
+        done: list[_Expr] = []
+        for i, item in enumerate(exprs):
+            reduced, pending = self.reduce(item)
+            done.append(reduced)
+            if pending is not None:
+                return [*done, *exprs[i + 1 :]], pending
+        return done, None
 
     def evaluate(self, expr: _Expr) -> _Value:
         """Evaluate a parsed expression in this frame's namespace.

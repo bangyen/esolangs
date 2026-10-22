@@ -140,20 +140,19 @@ def _scan(frame: _Frame, opener: str, closer: str) -> tuple[str, int] | None:
     start = frame.pc - 1
     pc = frame.pc
     match = 1
-    while True:
-        if pc >= len(frame.code):
-            return None
-        inner = frame.code[pc]
+    code = frame.code
+    while pc < len(code):
+        inner = code[pc]
         pc += 1
         if inner == opener:
             match += 1
         elif inner == closer:
             match -= 1
-        # Tested after the advance, so the cursor ends one *past* the
-        # closing bracket rather than on it.
-        if match == 0:
-            break
-    return (frame.code[start + 1 : pc - 1], pc)
+            # Tested after the advance, so the cursor ends one *past* the
+            # closing bracket rather than on it.
+            if match == 0:
+                return (code[start + 1 : pc - 1], pc)
+    return None
 
 
 class _Step(NamedTuple):

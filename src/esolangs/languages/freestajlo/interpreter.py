@@ -160,8 +160,7 @@ class _Parser:
 
     def _block(self, command: str) -> None:
         """Compile the ``{...}`` that must come next."""
-        self._skip()
-        if self.code[self.pos : self.pos + 1] != "{":
+        if not self._next_is_block():
             raise syntax_error(
                 f"Freestajlo {command!r} needs a {{block}}", f"write {command}{{...}}"
             )
