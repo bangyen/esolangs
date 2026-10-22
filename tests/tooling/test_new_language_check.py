@@ -2,9 +2,11 @@
 
 import dataclasses
 import importlib
+import inspect
 import io
 import subprocess
 import tomllib
+from pathlib import Path
 
 import pytest
 
@@ -228,3 +230,17 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     program, stdin = samples._generated(name)  # noqa: SLF001
     assert esolangs.read_answer(name, esolangs.run(name, program, stdin=stdin)) == "1"
+
+
+def test_sources_names_the_interpreter_and_generator() -> None:
+    for name, lang in LANGUAGES.items():
+        if lang.interpreter is None or lang.boolean is None:
+            continue
+        found = new_language.sources(name)
+        interpreter = f"src/esolangs/languages/{lang.id}/interpreter"
+        # A package interpreter is its directory.
+        assert found[0] in {f"{interpreter}.py", interpreter}, name
+        generator = Path(inspect.getfile(lang.boolean))
+        if generator.name == "__init__.py":
+            generator = generator.parent
+        assert found[1] == generator.relative_to(new_language.ROOT).as_posix(), name
