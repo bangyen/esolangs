@@ -17,14 +17,14 @@ execution = "linear: worst (2n+13)T + 94n + 89 + 2S to n = 7, S the codes of pro
 workspace = "linear: worst 6L + 12n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape"
 
 [generator_sizes]
-"00000001" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
+"00000001" = { commands = 895, commands_by_row = { "0" = 826, "1" = 851, "2" = 849, "3" = 874, "4" = 847, "5" = 872, "6" = 870, "7" = 895 }, source_units = 166 }
 "00001100" = { commands = 902, commands_by_row = { "0" = 827, "1" = 839, "2" = 850, "3" = 862, "4" = 867, "5" = 879, "6" = 890, "7" = 902 }, source_units = 159 }
 "00110110" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
-"0110" = { commands = 617, commands_by_row = { "0" = 554, "1" = 577, "2" = 594, "3" = 617 }, source_units = 118 }
-"01101001" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
-"0110100110010110" = { commands = 1383, commands_by_row = { "0" = 1044, "1" = 1071, "2" = 1092, "3" = 1119, "4" = 1134, "5" = 1161, "6" = 1182, "7" = 1209, "8" = 1218, "9" = 1245, "10" = 1266, "11" = 1293, "12" = 1308, "13" = 1335, "14" = 1356, "15" = 1383 }, source_units = 234 }
+"0110" = { commands = 596, commands_by_row = { "0" = 552, "1" = 575, "2" = 573, "3" = 596 }, source_units = 114 }
+"01101001" = { commands = 895, commands_by_row = { "0" = 826, "1" = 851, "2" = 849, "3" = 874, "4" = 847, "5" = 872, "6" = 870, "7" = 895 }, source_units = 166 }
+"0110100110010110" = { commands = 1134, commands_by_row = { "0" = 1038, "1" = 1065, "2" = 1063, "3" = 1090, "4" = 1061, "5" = 1088, "6" = 1086, "7" = 1113, "8" = 1059, "9" = 1086, "10" = 1084, "11" = 1111, "12" = 1082, "13" = 1109, "14" = 1107, "15" = 1134 }, source_units = 220 }
 "1101001101101101" = { commands = 1383, commands_by_row = { "0" = 1044, "1" = 1071, "2" = 1092, "3" = 1119, "4" = 1134, "5" = 1161, "6" = 1182, "7" = 1209, "8" = 1218, "9" = 1245, "10" = 1266, "11" = 1293, "12" = 1308, "13" = 1335, "14" = 1356, "15" = 1383 }, source_units = 234 }
-"11111110" = { commands = 981, commands_by_row = { "0" = 830, "1" = 855, "2" = 874, "3" = 899, "4" = 912, "5" = 937, "6" = 956, "7" = 981 }, source_units = 174 }
+"11111110" = { commands = 895, commands_by_row = { "0" = 826, "1" = 851, "2" = 849, "3" = 874, "4" = 847, "5" = 872, "6" = 870, "7" = 895 }, source_units = 166 }
 
 [catalogue]
 folding_constant_local = "_program"  # read into an executed cell and print the tail
@@ -56,3 +56,10 @@ verdict = "kept: canonical, exempt, and load-bearing. A constant table reads its
 saving = 72.8
 arity = 12
 verdict = "kept: canonical, exempt. The tape tail is the table read at the essential inputs only, and the base-128 index folds only those bits. Emitting the full table and folding every input instead costs +44.04% at n=10 and +72.76% at n=12 on one-ignored tables, +85.62 / +172.24% on two-ignored tables, and 0.00% on random tables"
+
+[ablations.symmetric_count]
+saving = 44.9
+arity = 8
+seed = "named symmetric tables"
+tables = 7
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each banked bit into one index digit and deletes that many of n + 1 entries, raced by length against the base-128 Horner index. Parity, majority, and, or, at-least-2 and exactly-1 all 6.0% at n=4, 13.5% at n=6, 21.5% at n=7, 44.9% at n=8, 65.6% at n=10, 85.2% at n=12; a symmetric table with an ignored input 19.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
