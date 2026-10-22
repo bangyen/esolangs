@@ -12,21 +12,21 @@ bf_derivative = true
 
 [proof_status]
 labels = ["tree"]
-qualification = "each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes; repeated residuals use level flags or normalized AND/XOR bodies, and affine tables stream through one accumulator"
-scaling = "linear: geometric tree walk; affine tables use O(n) characters"
-execution = "poly n: worst 2n^2 + 27n + 8 commands; reads shuttle to scratch"
+qualification = "each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes; repeated residuals use level flags or normalized AND/XOR bodies, affine tables stream through one accumulator, and symmetric tables stream their bytes into a unary population count and decide from the count alone"
+scaling = "linear: geometric tree walk; affine tables O(n) characters; symmetric O(n), O(n^2) worst"
+execution = "poly n: at most max(2n^2 + 27n + 8, 4n^2 + 30n + 15) commands; symmetric tables stream a unary count"
 workspace = "poly n: at most bl(L-1) + max(12, bl(2n-2)+10) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n) bits"
 evidence = "docs/proofs/boolfuck-gates.md"
 
 [generator_sizes]
-"00000001" = { commands = 107, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 86, "5" = 86, "6" = 101, "7" = 107 }, source_units = 110 }
+"00000001" = { commands = 124, commands_by_row = { "0" = 54, "1" = 68, "2" = 68, "3" = 88, "4" = 68, "5" = 88, "6" = 88, "7" = 124 }, source_units = 105 }
 "00001100" = { commands = 89, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 93, "5" = 93, "6" = 89, "7" = 89 }, source_units = 98 }
 "00110110" = { commands = 104, commands_by_row = { "0" = 83, "1" = 83, "2" = 93, "3" = 93, "4" = 98, "5" = 104, "6" = 104, "7" = 104 }, source_units = 152 }
 "0110" = { commands = 47, commands_by_row = { "0" = 35, "1" = 41, "2" = 41, "3" = 47 }, source_units = 47 }
 "01101001" = { commands = 64, commands_by_row = { "0" = 46, "1" = 52, "2" = 52, "3" = 58, "4" = 52, "5" = 58, "6" = 58, "7" = 64 }, source_units = 63 }
 "0110100110010110" = { commands = 81, commands_by_row = { "0" = 57, "1" = 63, "2" = 63, "3" = 69, "4" = 63, "5" = 69, "6" = 69, "7" = 75, "8" = 63, "9" = 69, "10" = 69, "11" = 75, "12" = 69, "13" = 75, "14" = 75, "15" = 81 }, source_units = 79 }
 "1101001101101101" = { commands = 146, commands_by_row = { "0" = 133, "1" = 133, "2" = 132, "3" = 140, "4" = 116, "5" = 116, "6" = 128, "7" = 128, "8" = 128, "9" = 136, "10" = 143, "11" = 143, "12" = 139, "13" = 139, "14" = 138, "15" = 146 }, source_units = 234 }
-"11111110" = { commands = 104, commands_by_row = { "0" = 82, "1" = 82, "2" = 82, "3" = 82, "4" = 93, "5" = 93, "6" = 104, "7" = 104 }, source_units = 128 }
+"11111110" = { commands = 125, commands_by_row = { "0" = 55, "1" = 69, "2" = 69, "3" = 89, "4" = 69, "5" = 89, "6" = 89, "7" = 125 }, source_units = 106 }
 
 [ablations]
 audited = "2026-10-19"
@@ -49,7 +49,7 @@ verdict = "kept: repeated residuals defer to unused level flags, admitted within
 [ablations.command_bound]
 saving = -28.6
 arity = 12
-verdict = "kept: proof machinery, priced negative on purpose. The 2n^2 + 27n + 8 command bound is what the execution and workspace formulas certify, so the shared-blocks candidate is refused past it. Removing the bound would cut noisy affine programs by 28.6% (against the unbounded build) at n=12 and 12.5% at n=10, and B C C B tables by a seed-dependent 17.5-30.0% at n=7 (the docstring's 22.9% at n=7 and 9.8% at n=8 sit inside the spread of three 8-seed families, 0.7-10.6% at n=8; the seeds are unstated). About 0% on random tables at n>=9, where the bound never binds"
+verdict = "kept: proof machinery, priced negative on purpose. The 2n^2 + 27n + 8 command bound is what the execution and workspace formulas certify, so the shared-blocks candidate is refused past it. Removing the bound would cut noisy affine programs by 28.6% (against the unbounded build) at n=12 and 12.5% at n=10, and B C C B tables by a seed-dependent 17.5-30.0% at n=7 (the docstring's 22.9% at n=7 and 9.8% at n=8 sit inside the spread of three 8-seed families, 0.7-10.6% at n=8; the seeds are unstated). About 0% on random tables at n>=9, where the bound never binds. 2026-10-21: the execution formula now states the max of this bound and the count build's exact worst, 4n^2 + 30n + 15 ([ablations.popcount_stream]); the admission bound itself is unchanged"
 
 [ablations.constant_fold]
 saving = 0.0
@@ -60,3 +60,8 @@ verdict = "kept: canonical, exempt, and emission-neutral in this dialect. Disabl
 saving = 32.7
 arity = 12
 verdict = "kept: canonical, exempt; a subtree whose halves are identical is emitted once, the input skipped for that subtree. Priced jointly with the constant fold (emission-neutral beside it, above) in the plain build: 31.6% / 32.4% / 32.7% on random tables at n=8/10/12, 69.8% on noisy affine, 95.7% on affine tables in plain context, 99.4% on constant tables"
+
+[ablations.popcount_stream]
+saving = 94.6
+arity = 12
+verdict = "kept as a class rule, landed 2026-10-21: a symmetric table (its output depends only on the inputs' popcount) streams its bytes into a unary count track and decides from the count alone, raced per table against the other builds. Removing it costs 0.0% on random tables at n=10/12 (seeds 184700 / 777000) -- the class does not occur there, 0 of 600 tables -- and 85.1% / 94.6% within the symmetric class at n=10/12, 19.2% / 18.5% on structured+named; majority falls 26,656 -> 356 chars at n=12. Symmetry is a property of the table, active at every arity, and the within-class share rises with arity. Its executed commands are exact (4n^2 + 30n + 15 worst), past the tree's bound, so the execution formula states the max of the two. Priced from the superoptimizer pilot's Boolfuck review: the miner's finds attacked the I/O shell and died, and this accumulation construction was its unpriced loose thread"

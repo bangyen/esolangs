@@ -4,7 +4,12 @@ import random
 
 import pytest
 
-from esolangs.languages.boolfuck.generator import affine_stream, boolfuck, normal_gates
+from esolangs.languages.boolfuck.generator import (
+    affine_stream,
+    boolfuck,
+    normal_gates,
+    popcount_stream,
+)
 from esolangs.languages.boolfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -12,7 +17,9 @@ from scripts.benchmark import WrittenState
 
 def _execute(table: str, program: str, rows: range | list[int]) -> int:
     n = len(table).bit_length() - 1
-    command_bound = 2 * n * n + 27 * n + 8
+    # The ledger's execution clause: the tree's bound, or the count
+    # build's exact worst where a symmetric table streams its count.
+    command_bound = max(2 * n * n + 27 * n + 8, 4 * n * n + 30 * n + 15)
     workspace = (
         (len(program) - 1).bit_length()
         + max(12, (2 * n - 2).bit_length() + 10)
@@ -69,10 +76,30 @@ def test_cap_affine_stream_uses_constant_space(bias: int) -> None:
     _execute(table, program, [0, 1, 32767, 32768, 65534, 65535])
 
 
-@pytest.mark.parametrize("n", [2, 3, 4, 6, 9, 10, 16])
-def test_public_and_still_attains_the_existing_execution_bound(n: int) -> None:
+@pytest.mark.parametrize("n", [2])
+def test_public_and_still_attains_the_tree_execution_bound(n: int) -> None:
+    # Where the tree still wins AND, its all-ones row attains the bound
+    # the ledger's first term states.
     table = "0" * ((1 << n) - 1) + "1"
     assert _execute(table, boolfuck(table), [(1 << n) - 1]) == 2 * n * n + 27 * n + 8
+
+
+@pytest.mark.parametrize("n", [3, 4, 5, 6, 9, 10, 16])
+def test_public_and_executes_the_count_build_at_its_exact_cost(n: int) -> None:
+    # Where the count build wins AND, its all-ones row costs the read
+    # phase at full popcount plus the one flip at count n.
+    table = "0" * ((1 << n) - 1) + "1"
+    assert _execute(table, boolfuck(table), [(1 << n) - 1]) == 3 * n * n + 26 * n + 19
+
+
+@pytest.mark.parametrize("n", [3, 6, 9, 12])
+def test_count_build_attains_the_restated_execution_bound(n: int) -> None:
+    # The alternating-bits table flips at every count with f[0] set:
+    # the count build's worst row, attaining the ledger's second term.
+    table = "".join(str((row.bit_count() + 1) & 1) for row in range(1 << n))
+    program = popcount_stream(table)
+    assert program is not None
+    assert _execute(table, program, [(1 << n) - 1]) == 4 * n * n + 30 * n + 15
 
 
 # One code per _normal class: constants 0 and 15, literal 3, xor 6, and-type 11.

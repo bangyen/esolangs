@@ -12,13 +12,17 @@ residuals defer to unused level flags, emitted once in depth order after the
 prefix tree, only when text shrinks within the command bound.  At n>=6,
 two-input cofactors normalize to shared AND/XOR gates; input flips and output
 bias distinguish their functions without extra flags.  Affine tables stream
-through two data cells, toggling the accumulator once per selected bit.  R
-prints as bit 0 of the answer byte; bits 1..3 print from a cleared flag cell,
-4..5 after flipping it, 6..7 cleared again: ``'0'``/``'1'`` in exactly 8 prints.
+through two data cells, toggling the accumulator once per selected bit.
+Symmetric tables stream their bytes into a unary count track and decide
+from the count alone.  R prints as bit 0 of the answer byte; bits 1..3
+print from a cleared flag cell, 4..5 after flipping it, 6..7 cleared
+again: ``'0'``/``'1'`` in exactly 8 prints.
 
 Size:
     Affine tables are O(n), other tables O(T); n=10 parity: 175 chars,
     n=10 random 1847: 7,353 chars, n=16 random 1847: 462,301 chars.
+    A symmetric table costs the count build's 25n read phase plus its
+    decision walk: n=12 majority: 356 chars, against the tree's 26,656.
 
 Decisions:
     Dropping the single-block, bank and mixed-bank candidates costs at most
@@ -26,7 +30,10 @@ Decisions:
     per-level blocks form loses 19.8% (noisy affine), so it stays.
     Shared blocks past the 2n^2 + 27n + 8 command bound are refused: a
     repeated table can build larger than a distinct one
-    ([ablations.command_bound]).
+    ([ablations.command_bound]).  The count build is a class rule for
+    symmetric tables, not a race-wide win: 0.0% on random tables at
+    n=10/12, where the class does not occur, and a within-class saving
+    that rises with arity ([ablations.popcount_stream]).
 """
 
 from typing import Literal
@@ -68,6 +75,74 @@ def affine_stream(table: str) -> str | None:
         parts.append("," + ("[+>+<]" if coefficient else "") + "<,,,,,,,>")
     # Ignored reads can leave cell 0 set; clear it before the ASCII high bits.
     parts.append("[+]>;<;;;+;;+;;")
+    return "".join(parts)
+
+
+#: One input's read-and-count block (25 chars) for popcount_stream: the
+#: value bit lands on R (cell 0), the byte's other seven bits land on A
+#: (cell 1; the last pad bit is 0, so A ends the block cleared), and a
+#: set bit extends the unary count track (cells 2..n+1) by one cell.
+_COUNT_BLOCK = (
+    ",>"  # value bit to R, step to A
+    ",,,,,,,"  # the seven pad bits, discarded on A
+    "<"  # back to R
+    "[+"  # a set bit: clear R, then count it
+    ">>"  # to the track's first cell
+    "[>]"  # scan right over the counted prefix
+    "+"  # set the frontier cell
+    "[<]"  # scan back left; A = 0 stops it
+    ">"  # to the track's first cell
+    "<<]"  # back to R; the cleared bit ends the loop
+)
+
+
+def _decision_bits(table: str, n: int) -> list[int] | None:
+    """Return f[0..n], the output at each popcount, if table is symmetric."""
+    bits = [-1] * (n + 1)  # every popcount 0..n occurs, so no -1 survives
+    for row, bit in enumerate(table):
+        count = row.bit_count()
+        if bits[count] < 0:
+            bits[count] = int(bit)
+        elif bits[count] != int(bit):
+            return None
+    return bits
+
+
+def popcount_stream(table: str) -> str | None:
+    """Stream a symmetric table's bytes into a unary count; decide by count.
+
+    A symmetric table's output depends only on how many inputs are set,
+    so its decision bits describe it whole.  One block per input reads
+    the byte and extends the count track for a set bit; the decision
+    walks the track once, flipping the answer cell where the bits flip.
+    Threshold-shaped bits flip once or twice (27n + O(1) chars, majority
+    356 at n=12); bits that flip at every count pay the walk's O(n^2)
+    and lose to affine_stream, as the race expects.
+
+    Executed commands are exact, not fitted.  At popcount p the read
+    phase costs 3p^2 + 11p + 13n + 14 (the m-th set bit scans an
+    m-cell prefix out and back), a flip at count j costs 2j + 5 when
+    it fires and 1 when skipped, and a set f[0] costs 1; the worst is
+    the all-ones row of the alternating-bits table, 4n^2 + 30n + 15,
+    past the tree's bound -- the ledger states the max of the two.
+    """
+    n = _validate_truth_table(table)
+    bits = _decision_bits(table, n)
+    if bits is None:
+        return None
+    parts = [_COUNT_BLOCK * n, ">"]
+    if bits[0]:
+        parts.append("+")
+    parts.append(">")
+    for j in range(1, n + 1):
+        if bits[j] ^ bits[j - 1]:
+            # On the track's j-1 cell; the answer sits j cells left.
+            parts.append("[+" + "<" * j + "+" + ">" * j + "]")
+        parts.append(">")
+    parts.append("<" * (n + 1))  # guard cell back to the answer cell
+    parts.append(";")
+    parts.append("<")
+    parts.append(";;;+;;+;;")
     return "".join(parts)
 
 
@@ -294,7 +369,11 @@ def normal_gates(table: str) -> str | None:
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
     programs = [_boolfuck_tree(truth_table)[0]]
-    for candidate in (affine_stream(truth_table), normal_gates(truth_table)):
+    for candidate in (
+        affine_stream(truth_table),
+        normal_gates(truth_table),
+        popcount_stream(truth_table),
+    ):
         if candidate is not None:
             programs.append(candidate)
     blocks = repeated_blocks(truth_table)
