@@ -42,14 +42,15 @@ class TestQoibl:
     def test_narrow_horner_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
         assert (
-            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 508676
+            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 493428
         )
 
     def test_the_table_is_one_literal(self) -> None:
         """The whole table rides in a single binary literal, bit k for row k."""
-        program = boolean.qoibl("0001")
-        # 0b1000: row 3 is the only one set, and it is bit 3.
-        assert program.count(" yeee ") == 1
+        program = boolean.qoibl("0010")
+        # 0b100: row 2 is the only one set, and it is bit 2 (its
+        # complement, 0b1011, packs no shorter, so it is not flipped).
+        assert program.count(" yee ") == 1
         assert program.endswith("tt")
 
     def test_the_reads_are_one_statement_each(self) -> None:
