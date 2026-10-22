@@ -13,11 +13,12 @@ arm ``k?...`` turns index ``k`` into its row's bit, then
 
 which prints a bit and leaves the index negative for good, or takes a hundred
 off it for the next block.  The loops' jump targets come before any block, so
-they cost O(log n) digits each.
+they cost O(log n) digits each.  A symmetric table skips the doubling and
+switches over m + 1 rows ([ablations.symmetric_count]).
 
 Size:
     O(T): 7.06 chars a row at n=16, plus O(n log n) for the loops; n=4
-    parity: 440 chars, n=10 random 1847: 8,002 chars.
+    parity: 238 chars, n=10 random 1847: 8,002 chars.
 
 Decisions:
     A hundred rows a block, the most whose arm integers stay two digits:
@@ -30,6 +31,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
+    symmetric_weights,
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -55,6 +57,19 @@ def switchcase(truth_table: str) -> str:
     """Build a SwitchCase program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
+    programs = [
+        _program(n, essential, read_at(truth_table, essential, n), doubling=True)
+    ]
+    symmetric = symmetric_weights(truth_table, n)
+    if symmetric is not None:
+        # A symmetric table adds its bits into one index over m + 1 rows
+        # ([ablations.symmetric_count]).
+        programs.append(_program(n, essential, symmetric[1], doubling=False))
+    return min(programs, key=len)
+
+
+def _program(n: int, essential: list[int], table: str, *, doubling: bool) -> str:
+    """Return the reads, the index loops and the blocks over ``table``."""
     kept = set(essential)
     cases = ["$_\n0?=A=B=x"]
     doubled = 0
@@ -63,18 +78,21 @@ def switchcase(truth_table: str) -> str:
         if i not in kept:
             continue
         cur, nxt = ("A", "B") if doubled % 2 == 0 else ("B", "A")
-        doubled += 1
-        # Cases are numbered from 1: the next one appended is len + 1.
-        double = len(cases) + 1
-        cases += [
-            f"${cur}\n0?'{double + 3}\n!-1",
-            f"${nxt}\n0?+2\n!+2",
-            f"$_\n0?'{double}",
-        ]
+        if doubling:
+            doubled += 1
+            # Cases are numbered from 1: the next one appended is len + 1.
+            double = len(cases) + 1
+            cases += [
+                f"${cur}\n0?'{double + 3}\n!-1",
+                f"${nxt}\n0?+2\n!+2",
+                f"$_\n0?'{double}",
+            ]
+        else:
+            nxt = cur
         carry = len(cases) + 1
         cases += [f"$x\n48?'{carry + 3}\n!-1", f"${nxt}\n0?+1\n!+1", f"$_\n0?'{carry}"]
     index = "B" if doubled % 2 else "A"
-    cases += _blocks(read_at(truth_table, essential, n), index)
+    cases += _blocks(table, index)
     return "\n".join(cases) + "\n"
 
 
