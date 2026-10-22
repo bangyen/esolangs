@@ -10,16 +10,18 @@ flag, tests the bit and clears the flag inside, then tests the flag for the
 zero side, so exactly one side fires and both cells end zero.  The answer
 accumulates in cell ``2n``, printed once.  Repeated residuals share through
 level flags or banks, admitted under a command bound; inline text stays a
-candidate.
+candidate.  An affine table sums its bits and prints the sum mod 2
+([ablations.parity_sum]).
 
 Size:
     Shared residuals shrink dense tables: three seeded 90%-ones n=16 tables
     average 488,239 -> 409,056 characters (-16.2%), five rows executed per
-    table; n=10 parity: 1,005 chars, n=10 random 1847: 10,160 chars.
+    table; n=10 parity: 132 chars, n=10 random 1847: 10,160 chars.
 """
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
+    affine_form,
     in_input_order,
 )
 from esolangs.generation.shared_block import (
@@ -82,7 +84,26 @@ def _move(start: int, target: int) -> str:
 
 def painfuck(truth_table: str) -> str:
     """Return a Painfuck program for an MSB-first ``2**n`` truth table."""
-    return in_input_order(truth_table, _painfuck_ordered)
+    tree = in_input_order(truth_table, _painfuck_ordered)
+    form = affine_form(truth_table, _validate_truth_table(truth_table))
+    if form is None or not any(form[1]):
+        return tree
+    return min(tree, _parity_sum(*form), key=len)
+
+
+def _parity_sum(bias: int, coefficients: list[int]) -> str:
+    """Sum the counted bits, two cells a step, and print the sum mod 2.
+
+    Each read lands two right of the running sum, which ``asrpsllb`` moves
+    onto it; an ignored read is zeroed.  ``rlqh`` halves a copy beside it,
+    and ``aslssrlb`` subtracts the half twice ([ablations.parity_sum]).
+    """
+    code = []
+    for k, counted in enumerate(coefficients):
+        read = "i" + ("" if counted else "z")
+        code.append(read if k == 0 else f"r{read}llasrpsllbr")
+    code.append(("ps" if bias else "") + "rlqhaslssrlblo")
+    return _encode("".join(code))
 
 
 def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
