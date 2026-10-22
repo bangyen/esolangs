@@ -129,6 +129,15 @@ def _take(stack: _Stack, count: int) -> list[_Value] | None:
     return out
 
 
+def _flat(stack: _Stack) -> tuple[_Value, ...]:
+    """The stack's values, top first."""
+    out = []
+    while stack is not None:
+        out.append(stack[0])
+        stack = stack[1]
+    return tuple(out)
+
+
 def _drop(stack: _Stack, count: int) -> _Stack:
     for _ in range(count):
         assert stack is not None
@@ -240,8 +249,13 @@ class _Machine:
         return (_depth(self.state[0]), _depth(self.state[1]))
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        """Return the complete internal state, hashable for cycle detection.
+
+        The stacks go out flat: comparing ``(top, rest)`` cells recurses once
+        a cell, and a 930-deep stack overflowed it.
+        """
+        forward, backward, *flags = self.state
+        return (_flat(forward), _flat(backward), *flags, self.io.progress())
 
     def step(self) -> None:
         """Run one step, reading first when it is a reading swap."""
