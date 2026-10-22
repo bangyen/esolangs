@@ -24,6 +24,8 @@ Decisions:
     undecoded (116 of 126 wrong).
 """
 
+import re
+
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -86,9 +88,7 @@ def _is_unfilled_template(code: str) -> bool:
         or slots.strip(TEMPLATE_CHAR + "abX")
     ):
         return False
-    if len(table) % 2 or any(
-        table[i : i + 2] not in ("qA", "qB") for i in range(0, len(table), 2)
-    ):
+    if not re.fullmatch(r"(?:q[AB])*", table):
         return False
     size = len(table) // 2
     ignored = slots.count("X")

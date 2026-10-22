@@ -134,11 +134,9 @@ def _stash_chunk(
     if io_modulus == 255:
         if acc:
             raise AssertionError("the modulo-255 chunk starts from a clear accumulator")
-        cur = list(array)
-        tokens = []
-        head = (io_modulus - 1 - sum(cur[1:])) % io_modulus
-        tokens += ["SEED"] * ((head - cur[0]) % _MODULUS) + ["DIGEST", "EXCRETE"]
-        return tokens, [head, *cur[1:], io_modulus - 1]
+        head = (io_modulus - 1 - sum(array[1:])) % io_modulus
+        tokens = ["SEED"] * ((head - array[0]) % _MODULUS) + ["DIGEST", "EXCRETE"]
+        return tokens, [head, *array[1:], io_modulus - 1]
     count = (((acc % _MODULUS) ^ _STASH_BYTE) - sum(array)) % _MODULUS
     return (
         [*["SEED"] * count, "DIGEST", "EXCRETE"],
@@ -313,7 +311,7 @@ def _w_greedy_chunk(st: _Sums) -> list[str]:
         if count >= _GREEDY_COUNTS:  # pragma: no cover
             raise AssertionError("no 17-step residue in [238, 254]")
         return _digest_excrete(st, count)
-    return _digest_excrete(st, _greedy_step((st.hw + st.nw) % _MODULUS)[0])
+    return _digest_excrete(st, _greedy_step((st.hw + st.nw) % _MODULUS))
 
 
 def _w_raise(st: _Sums, amount: int) -> list[str]:
@@ -334,10 +332,9 @@ def _w_raise(st: _Sums, amount: int) -> list[str]:
     return tokens
 
 
-def _greedy_step(r: int) -> tuple[int, int]:
-    """Return the first 17-step hit in [239, 255], without wrapping."""
-    count = max(0, -(-(_GREEDY_MIN - r) // _W_STEP))
-    return count, r + _W_STEP * count
+def _greedy_step(r: int) -> int:
+    """Return the steps to the first 17-step hit in [239, 255], without wrapping."""
+    return max(0, -(-(_GREEDY_MIN - r) // _W_STEP))
 
 
 def _jump(st: _Sums, target: int) -> list[str]:

@@ -28,6 +28,7 @@ Decisions:
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from math import isqrt
 from string import ascii_lowercase
 
@@ -45,6 +46,7 @@ from esolangs.registry._language import Language
 __all__ = ["fargo"]
 
 
+@dataclass(kw_only=True)
 class _Grain[T]:
     """One granularity of the Davio-choice recursion: scalar ints or word lists.
 
@@ -54,28 +56,15 @@ class _Grain[T]:
     coefficients.
     """
 
-    def __init__(
-        self,
-        *,
-        initial_half: Callable[[T, int], int],
-        split: Callable[[T, int], tuple[T, T]],
-        is_zero: Callable[[T], bool],
-        weight: Callable[[T], int],
-        is_one: Callable[[T, int], bool],
-        needs_weight: bool,
-        xor: Callable[[T, T], T],
-        child: Callable[[T, int], None],
-        downgrade: Callable[[T, int], bool],
-    ) -> None:
-        self.initial_half = initial_half
-        self.split = split
-        self.is_zero = is_zero
-        self.weight = weight
-        self.is_one = is_one
-        self.needs_weight = needs_weight
-        self.xor = xor
-        self.child = child
-        self.downgrade = downgrade
+    initial_half: Callable[[T, int], int]
+    split: Callable[[T, int], tuple[T, T]]
+    is_zero: Callable[[T], bool]
+    weight: Callable[[T], int]
+    is_one: Callable[[T, int], bool]
+    needs_weight: bool
+    xor: Callable[[T, T], T]
+    child: Callable[[T, int], None]
+    downgrade: Callable[[T, int], bool]
 
 
 def _arm[T](choice: int, low: T, one: T, high: T) -> tuple[T, str, T]:
@@ -331,7 +320,6 @@ def _packed_program(expression: str, n: int, width: int) -> str:
                 uses[child - lits] += 1
     if root >= lits:
         uses[root - lits] += 1
-    named = [False] * len(unique)
     names: dict[int, str] = {}
     inline = [0] * len(unique)  # length of a node's text inlined
 
@@ -339,10 +327,9 @@ def _packed_program(expression: str, n: int, width: int) -> str:
         if child < lits:
             return len(f"{child:b}")
         k = child - lits
-        return len(names[k]) if named[k] else inline[k]
+        return len(names[k]) if k in names else inline[k]
 
     def name(k: int) -> None:
-        named[k] = True
         names[k] = short_name(len(names), ascii_lowercase)
 
     for k, (_, children) in enumerate(unique):
@@ -351,7 +338,7 @@ def _packed_program(expression: str, n: int, width: int) -> str:
         for child in sorted(children, key=size, reverse=True):
             if 1 + sum(1 + size(c) for c in children) <= budget:
                 break
-            if child >= lits and not named[child - lits]:
+            if child >= lits and child - lits not in names:
                 name(child - lits)
         inline[k] = 1 + sum(1 + size(c) for c in children)
         # A shared node is named only where that is shorter: each use of a
@@ -370,10 +357,10 @@ def _packed_program(expression: str, n: int, width: int) -> str:
 
     def argument(reference: int) -> str:
         k = reference - lits
-        return names[k] if reference >= lits and named[k] else text(reference)
+        return names[k] if reference >= lits and k in names else text(reference)
 
     # Lettered in line order; a decision only needed each name's length.
-    order = [k for k in range(len(unique)) if named[k]]
+    order = sorted(names)
     names = {k: short_name(i, ascii_lowercase) for i, k in enumerate(order)}
     lines = [f"{names[k]} {text(k + lits)}" for k in order]
     return "\n".join([*lines, f"% 0 {argument(root)}", "$", ""])

@@ -678,7 +678,8 @@ def _join_jumps(
         if column is None:
             column = len(last_row)
             last_row.append(entry)
-        last_row[column] = entry
+        else:
+            last_row[column] = entry
         x = spine + 4 + column
         for y in range(top + 1, entry):
             put(x, y, "│")

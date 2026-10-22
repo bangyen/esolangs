@@ -101,6 +101,20 @@ class _Builder:
         self.put(turn, y + 1, "\\")
         self.put(turn, y + 4, "/")
 
+    def climb(self, y: int, depth: int) -> None:
+        """Turn up at ``(0, y)`` into the ``2 * depth`` climb above the copy."""
+        self.put(0, y, "\\")
+        for step in range(1, 2 * depth + 1):
+            self.put(0, -step, "|")
+        self.put(0, -2 * depth - 1, "\\")
+        self.put(-1, -2 * depth - 1, "/")
+
+    def finish(self, y: int, depth: int) -> None:
+        """Close on row ``y``: the ``/``, the printing ``+`` run and ``!``."""
+        self.put(-1, y, "/")
+        self.row(-depth - 1, y, "+" + "|" * (depth - 1))
+        self.put(-depth - 2, y, "!")
+
     def render(self, *, reflect: bool = False) -> str:
         """Render without wholly blank rows and columns.
 
@@ -227,11 +241,7 @@ def _b_tapemark_program(
     # blank, and a stage needs blank cells to read and copy into: so the
     # pointer climbs clear and the stages walk it back down a row apiece,
     # landing on the table again exactly as they run out.
-    builder.put(0, 0, "\\")
-    for step in range(1, 2 * depth + 1):
-        builder.put(0, -step, "|")
-    builder.put(0, -2 * depth - 1, "\\")
-    builder.put(-1, -2 * depth - 1, "/")
+    builder.climb(0, depth)
 
     for stage, weight in enumerate(weights):
         builder.stage(-1, 1 + _STAGE_ROWS * stage, weight)
@@ -239,9 +249,7 @@ def _b_tapemark_program(
     # A stage adds one to the pointer whichever way it branches, so the
     # walk overshoots the addressed row by one per stage but the first.
     tail = 1 + _STAGE_ROWS * depth
-    builder.put(-1, tail, "/")
-    builder.row(-depth - 1, tail, "+" + "|" * (depth - 1))
-    builder.put(-depth - 2, tail, "!")
+    builder.finish(tail, depth)
     program = builder.render(reflect=width is not None)
     if width is None or grid_width(program) <= width:
         return program
@@ -289,11 +297,7 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
         builder.put(east, row + 1, "\\")
         builder.put(east, row + 2, "/")
     last = 2 * (strips - 1)
-    builder.put(0, last, "\\")
-    for step in range(1, 2 * depth + 1):
-        builder.put(0, -step, "|")
-    builder.put(0, -2 * depth - 1, "\\")
-    builder.put(-1, -2 * depth - 1, "/")
+    builder.climb(last, depth)
 
     top = last + 1
     for weight in weights:
@@ -316,9 +320,7 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
                 builder.put(start + length, top + 4 + inserted, "/")
         top += _STAGE_ROWS + inserted
 
-    builder.put(-1, top, "/")
-    builder.row(-depth - 1, top, "+" + "|" * (depth - 1))
-    builder.put(-depth - 2, top, "!")
+    builder.finish(top, depth)
     return builder.render()
 
 

@@ -1,12 +1,11 @@
 """Home Row Boolean program generator: a weighted index counted down a leaf chain.
 
-Each input adds its binary weight to an index cell; guarded leaves then count
-the index down onto a zero cell, printing at the selected row and skipping the
-rest.  Setters clear or preserve a fresh one; position-stable l/s/l gates add
-binary weights without nested loops.  Ignored inputs keep a zero-weight gate; a
-constant table discards all setters and prints a literal.  No goto and ``l``
-re-runs only its own block: leaves run once down a linear chain, so a
-non-adjacent repeat is never reached twice.
+Each input adds its binary weight to an index cell; guarded leaves count it
+down onto a zero cell, printing at the selected row and skipping the rest.
+Setters clear or preserve a fresh one; position-stable l/s/l gates add binary
+weights without nested loops.  Ignored inputs keep a zero-weight gate; a
+constant table discards all setters and prints a literal.  No goto, and ``l``
+re-runs only its own block: no leaf of the linear chain is reached twice.
 
 Size:
     Up to 2**n leaves in a linear chain; n=10 and: 3,209 chars, n=10 random
@@ -18,7 +17,7 @@ Decisions:
     29.67% with constant blocks (deletion costs, 200 tables a class).
 """
 
-from itertools import groupby
+from itertools import accumulate, groupby
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -39,11 +38,8 @@ _SETUP = "aaaaaalsffaaaaaaaaffflf"
 
 def _runs(rows: str) -> list[tuple[int, str]]:
     """Return ``(end, run)`` for each maximal run of equal characters in ``rows``."""
-    out: list[tuple[int, str]] = []
-    for _, group in groupby(rows):
-        run = "".join(group)
-        out.append(((out[-1][0] if out else 0) + len(run), run))
-    return out
+    runs = ["".join(group) for _, group in groupby(rows)]
+    return list(zip(accumulate(map(len, runs)), runs, strict=True))
 
 
 def home_row(truth_table: str) -> str:

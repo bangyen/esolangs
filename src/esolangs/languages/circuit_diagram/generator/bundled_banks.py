@@ -50,8 +50,7 @@ def bundled_class_bank_candidate(
             _suffix_forest(words, tail) if any("0" in word for word in words) else None
         )
         inner_parts = []
-        for index in range(start, start + len(words)):
-            used, reduced = masks[index]
+        for used, reduced in masks[start : start + 4]:
             models = []
             if "0" in reduced:
                 model = _circuit_diagram_model(
@@ -62,7 +61,7 @@ def bundled_class_bank_candidate(
         bands = [m for models in inner_parts for m, _ports in models]
         if forest is not None:
             bands.append(forest[0])
-        ands = sum("0" in word for word in words) if forest is not None else 0
+        ands = sum("0" in word for word in words)
         gates += sum(_gate_count(m) for m in bands) + ands + len(words) - 1
         if gates > len(table) + n:
             return None

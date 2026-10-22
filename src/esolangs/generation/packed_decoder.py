@@ -13,7 +13,7 @@ def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
     """Read every input and print the literal in the output's unused third cell."""
     # The reader writes into executed cell 0; the variant discards the write to -2:
     # subtracting cell 0's -2 keeps each ASCII read positive, so it falls through.
-    cells = [value for _ in range(inputs) for value in (-1 if direct else -2, 0, 0)]
+    cells = [-1 if direct else -2, 0, 0] * inputs
     literal = 3 * inputs + 2
     output = (literal, -1) if direct else (-3, literal)
     cells.extend((*output, _ASCII_ZERO + int(bit)))
@@ -101,8 +101,8 @@ def packed_decoder(
     memory, address = layout(asm, [*values], data_names)
     for name, value in values.items():
         memory[address[name]] = value
-    for i, value in enumerate(chunks):
-        memory[address[f"CHUNK{i}"]] = value
+    for name, value in zip(data_names, chunks, strict=True):
+        memory[address[name]] = value
     _patch_loads(memory, loads, direct=direct)
     return " ".join(map(str, memory))
 

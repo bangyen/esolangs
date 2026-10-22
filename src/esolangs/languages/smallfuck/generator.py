@@ -687,15 +687,12 @@ def _smallfuck_tree(
     prefix = tree.arm(-1, 0, len(truth_table), ANSWER, "1")
     if pairs:
         return tree.emit_paired_roots(prefix)
-    empty_tails: dict[int | None, int] = {
-        None: 0,
-        **dict.fromkeys(range(len(blocks)), 0),
-    }
+    empty_tails = dict.fromkeys([None, *range(len(blocks))], 0)
     cost = len(PAIR[0]) * n + prefix.evaluate(empty_tails)
-    stages = []
-    for i, (depth, row) in enumerate(blocks):
-        body_cost, active, skipped = tree.emit_definition(i, depth, row)
-        stages.append((i, body_cost, active, skipped))
+    stages = [
+        (i, *tree.emit_definition(i, depth, row))
+        for i, (depth, row) in enumerate(blocks)
+    ]
     if shared_blocks:
         tails: dict[int | None, int] = {None: 0}
         for i, body, active, skipped in reversed(stages):

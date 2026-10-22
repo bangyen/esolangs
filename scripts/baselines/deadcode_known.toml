@@ -1,10 +1,8 @@
 # Unreached generator code, triaged: see scripts/deadcode.py.
 
 "befunge/generator.py" = [
-    "arm: if len(header) <= columns: -> flat = [header]",
-    "line: flat = [header]",
-    "line: flat.extend(table[base : base + columns] for base in range(0, count, columns))",
-    "line: return \"\\n\".join(flat)",
+    "arm: if len(header) <= columns: -> return \"\\n\".join(_rows(header, table, columns))",
+    "line: return \"\\n\".join(_rows(header, table, columns))",
 ]
 
 "bfstack/generator.py" = [
@@ -29,10 +27,6 @@
 "circuit_diagram/generator/__init__.py" = [
     "arm: if zero == one: -> return zero",
     "line: return zero",
-    "line: self._band_state.free_strides = value",
-    "line: self._band_state.live = value",
-    "line: self._band_state.pending = value",
-    "line: self._band_state.stride_of = value",
 ]
 
 "circuit_diagram/generator/banks.py" = [
@@ -162,7 +156,6 @@
 
 "thisthat/generator.py" = [
     "arm: if grid_width(narrow_shared) <= max(width, grid_width(narrow_plain)) and ( -> return narrow_plain",
-    "line: return False",
     "line: return narrow_plain",
 ]
 

@@ -271,7 +271,7 @@ def _hub_layout(
             lab = hub_label[v]
             data[v + 2] = min(_valid_chars(v + 2))
             stub = _T_STUBS.get(lab) or _operand_stub(data[v + 2] + 1, operands[lab])
-            stubs.update({address + 1 + i: op for i, op in enumerate(stub)})
+            stubs.update(enumerate(stub, address + 1))
             reserved += [v + 1, v + 2, *range(address, address + 1 + len(stub))]
     if len(set(reserved)) != len(reserved) or set(reserved) & avoid:
         raise AssertionError("a hub or stub collides")
@@ -326,12 +326,12 @@ def _merge_code(
     """
     code = dict.fromkeys(range(_ENTRY), "o")
     for part in parts:
-        if set(part) & set(code):
-            raise AssertionError(f"code overlaps at {min(set(part) & set(code))}")
+        if clash := part.keys() & code.keys():
+            raise AssertionError(f"code overlaps at {min(clash)}")
         code.update(part)
-    if set(data) & set(code):
+    if data.keys() & code.keys():
         raise AssertionError("a data cell overlaps code")
-    hits = tables & (set(code) | set(data))
+    hits = tables & (code.keys() | data.keys())
     if hits or min(tables) <= code_end or (ceiling is not None and code_end >= ceiling):
         raise AssertionError("a table cell collides with code")
     return code

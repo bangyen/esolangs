@@ -72,9 +72,8 @@ def smu(truth_table: str) -> str:
         if key in kids:
             return key
         if level == n:
-            pads = n - level
             kids[key] = ()
-            text[key] = "(" * pads + "zo"[truth_table[lo] == "1"] + ")m" * pads
+            text[key] = "zo"[truth_table[lo] == "1"]
         else:
             mid = (lo + hi) // 2
             zero, one = walk(level + 1, lo, mid), walk(level + 1, mid, hi)

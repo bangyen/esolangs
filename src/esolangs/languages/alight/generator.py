@@ -13,6 +13,7 @@ Size:
     literal has no subtrees to fold or share.
 """
 
+from collections import deque
 from collections.abc import Callable
 from math import isqrt, prod
 from typing import NamedTuple
@@ -160,9 +161,7 @@ def _alight_flat_compact(
         return _flatten(_constant_units(truth_table, n))
     names = [chr(code) for code in range(ord("a"), ord("z") + 1) if code != ord("r")]
     names.extend(f"a{index}" for index in range(m - len(names)))
-    expr = names[0]
-    for name in names[1:m]:
-        expr += f"*2+{name}"
+    expr = "*2+".join(names[:m])
     # Every input is its character code; the final half selects Alight's
     # half-integer list slot.  (Folding it into the offset, ``-N.5``, saved
     # 2 chars: 0.47% at n=8, retired.)
@@ -191,7 +190,7 @@ def _alight_folded(units: list[list[str]], width: int) -> str:
     limit = max(width, longest + len(_ALIGHT_EAST_TURN) + 1)
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
-    pending = list(units)
+    pending = deque(units)
     # Every pass places a command; the pass that empties ``pending`` breaks.
     while True:
         turn = _ALIGHT_EAST_TURN if step == 1 else _ALIGHT_WEST_TURN
@@ -206,7 +205,7 @@ def _alight_folded(units: list[list[str]], width: int) -> str:
                 break
             taken.append(piece)
             used += len(piece)
-            pending.pop(0)
+            pending.popleft()
         for i, char in enumerate("".join(taken)):
             cells[row, col + i * step] = char
         col += step * used

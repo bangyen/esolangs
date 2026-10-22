@@ -45,16 +45,9 @@ def _program(truth_table: str) -> str:
         return "0," + TEMPLATE_CHAR * n + truth_table[0]
     # An ignored input appends nothing either way: its command is a bare ``0``.
     weights, table = input_weights(truth_table, n)
-    parts = []
-    for weight in weights:
-        parts.append("10" * (2 * weight))
-        parts.append("0")
-    parts.append("1" + _SENTINEL)
-    parts.append("0")
-    for answer in table:
-        parts.append("1" + answer + "00")
-    data = TEMPLATE_CHAR * n + _SENTINEL
-    return f"{''.join(parts)},{data}"
+    reads = "".join("10" * (2 * weight) + "0" for weight in weights)
+    rows = "".join("1" + answer + "00" for answer in table)
+    return f"{reads}1{_SENTINEL}0{rows},{TEMPLATE_CHAR * n}{_SENTINEL}"
 
 
 LANGUAGE = Language(

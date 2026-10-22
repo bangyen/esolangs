@@ -90,9 +90,7 @@ def _h_blocks(inputs: int) -> dict[int, _Block]:
         if remaining < 2:
             return
         child_size = _h_size(remaining - 2)
-        for bits, child in zip(
-            range(4), block.quadrants(child_size, child_size), strict=True
-        ):
+        for bits, child in enumerate(block.quadrants(child_size, child_size)):
             blocks[4 * prefix + bits] = child
             descend(4 * prefix + bits, remaining - 2, child)
 

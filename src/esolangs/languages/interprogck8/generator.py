@@ -174,15 +174,15 @@ def _printers(layout: _Layout, start: int) -> tuple[int, dict[int, int]]:
     # The 35-line window must start past the first odd 0-lane line.
     code = one_stop + 1 + (_PRINT_LANE[0] - _PRINT_LANE[1]) % _PRINT_STRIDE
     layout.walk(one_stop + 1, code, set())
-    for i, op in enumerate(one_code):
-        layout.put(code + i, op)
+    for line, op in enumerate(one_code, code):
+        layout.put(line, op)
     hop = code + len(one_code)  # the adjusters and the rung of the escape
     zero_start = hop + 20
     zero_stop = zero_start + (_PRINT_LANE[0] - zero_start) % _PRINT_STRIDE
     layout.put(zero_stop, "NnNn")
     zero_code = ["@id"] * 4 + ["@nd"] * 8 + ["div"]
-    for i, op in enumerate(zero_code):
-        layout.put(zero_stop + 1 + i, op)
+    for line, op in enumerate(zero_code, zero_stop + 1):
+        layout.put(line, op)
     end = zero_stop + 1 + len(zero_code)
     layout.put(end, "x")  # the escape lands here, never past the last line
     rung = hop + 19
@@ -190,8 +190,8 @@ def _printers(layout: _Layout, start: int) -> tuple[int, dict[int, int]]:
     if distance != 44:  # the spacing and printer lanes fix it
         raise AssertionError(f"printer escape spans {distance} lines, not 44")
     spell = ["@id"] * 4 + ["@nd"] * 4
-    for i, op in enumerate(spell):
-        layout.put(hop + i, op)
+    for line, op in enumerate(spell, hop):
+        layout.put(line, op)
     for line in range(hop + len(spell), rung):
         layout.put(line, "x")  # walked under the escape's acc: no rung
     layout.put(rung, _RUNG)

@@ -46,8 +46,7 @@ def _blocks(table: str, index: str) -> list[str]:
     for start in range(0, len(table), BLOCK):
         arms = []
         for k, bit in enumerate(table[start : start + BLOCK]):
-            delta = int(bit) - k
-            arms.append(f"{k}?{'-' if delta < 0 else '+'}{abs(delta)}")
+            arms.append(f"{k}?{int(bit) - k:+d}")
         cases.append(f"${index}\n" + "\n".join(arms))
         cases.append(f"${index}\n0?@-2\n1?@-2\n!-{BLOCK}")
     return cases

@@ -157,6 +157,19 @@ def _prefix_metric(
     return _TreeWalk(ids, _silent, hooks).walk(len(ids) - 1, 0)
 
 
+def _bank(
+    ids: list[list[int]],
+    metrics: list[dict[int, _Metric]],
+    depth: int,
+    rows: tuple[int, ...],
+) -> tuple[int, dict[tuple[int, int], int], tuple[_Metric, ...]]:
+    """Return the label width, the ``(depth, residual)`` labels and the bodies."""
+    width = (len(rows) - 1).bit_length()
+    shift = len(ids) - 1 - depth
+    selected = {(depth, ids[depth][row >> shift]): i for i, row in enumerate(rows)}
+    return width, selected, tuple(metrics[depth][key] for _, key in selected)
+
+
 def _emit_prefix(
     ids: list[list[int]],
     metrics: list[dict[int, _Metric]],
@@ -165,14 +178,10 @@ def _emit_prefix(
     emit: _Emit,
 ) -> None:
     """Emit the prefix tree for the bank at ``depth`` over ``rows``."""
-    n = len(ids) - 1
-    width = (len(rows) - 1).bit_length()
-    selected = {ids[depth][row >> (n - depth)]: i for i, row in enumerate(rows)}
-    bodies = tuple(metrics[depth][key] for key in selected)
+    width, selected, bodies = _bank(ids, metrics, depth, rows)
     _, tails = _decoder(width, bodies)
-    by_depth = {(depth, key): target for key, target in selected.items()}
-    hooks = _prefix_hooks(metrics, by_depth, width, tails, depth, emit)
-    _TreeWalk(ids, emit, hooks).walk(n, 0)
+    hooks = _prefix_hooks(metrics, selected, width, tails, depth, emit)
+    _TreeWalk(ids, emit, hooks).walk(len(ids) - 1, 0)
 
 
 def _price(
@@ -181,20 +190,9 @@ def _price(
     depth: int,
     rows: tuple[int, ...],
 ) -> _Plan:
-    n = len(ids) - 1
-    width = (len(rows) - 1).bit_length()
-    selected = {ids[depth][row >> (n - depth)]: i for i, row in enumerate(rows)}
-    bodies = tuple(metrics[depth][key] for key in selected)
+    width, selected, bodies = _bank(ids, metrics, depth, rows)
     decoder_chars, tails = _decoder(width, bodies)
-
-    value = _prefix_metric(
-        ids,
-        metrics,
-        {(depth, key): target for key, target in selected.items()},
-        width,
-        tails,
-        stop_depth=depth,
-    )
+    value = _prefix_metric(ids, metrics, selected, width, tails, stop_depth=depth)
     return _Plan(
         depth, rows, _Metric(22 + value.chars + decoder_chars, 4 + value.commands)
     )
@@ -206,9 +204,8 @@ def _render(
     n = len(ids) - 1
     depth, rows = plan.depth, plan.rows
     remaining = n - depth
-    width = (len(rows) - 1).bit_length()
-    selected = {ids[depth][row >> remaining]: i for i, row in enumerate(rows)}
     metrics = _inline_metrics(ids)
+    width, _, bank_bodies = _bank(ids, metrics, depth, rows)
     bodies: dict[int, str] = {}
 
     def body(row: int) -> str:
@@ -237,7 +234,7 @@ def _render(
     def emit(item: str | int) -> None:
         out.append(item if isinstance(item, str) else body(rows[item]))
 
-    _decoder(width, tuple(metrics[depth][key] for key in selected), emit)
+    _decoder(width, bank_bodies, emit)
     program = "".join(out)
     if len(program) != plan.metric.chars:
         raise ValueError("emitted SStack bank disagrees with its size price")

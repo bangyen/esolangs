@@ -288,10 +288,7 @@ class _PackedBuilder:
         # address have O(log T) digits, while there are O(T/log T) cells.
         truth_table, chunk_width = self.truth_table, self.chunk_width
         chunks = [
-            sum(
-                int(bit) << offset
-                for offset, bit in enumerate(truth_table[start : start + chunk_width])
-            )
+            int(truth_table[start : start + chunk_width][::-1], 2)
             for start in range(0, len(truth_table), chunk_width)
         ]
 

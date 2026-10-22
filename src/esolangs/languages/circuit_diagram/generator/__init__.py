@@ -41,7 +41,6 @@ Decisions:
 """
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
 from typing import Any, Literal, NamedTuple
 
 from esolangs.generation.helpers import (
@@ -81,27 +80,6 @@ _COMPETING_MODEL_MIN_INPUTS = 4
 _OUTPUT_GLYPH_COLUMNS = 2
 
 
-@dataclass
-class _BandState:
-    """The width-banding state a :class:`_Builder` carries between gates."""
-
-    # Set once a width is asked for: the width the bands stay inside, and
-    # the column a new band starts at.
-    limit: int | None = None
-    band_start: int = 0
-    # Every intermediate signal not yet read by its consumer, in creation
-    # order -- what a band carries.  Rails and complements are never here.
-    live: list[int] = field(default_factory=list)
-    # Reads a shared gate output still awaits; it is released on the last.
-    pending: dict[int, int] = field(default_factory=dict)
-    # Gate column groups that may be handed out again, and the group each
-    # recyclable signal was cut from.  Only a *gate's* output is ever
-    # entered here: selector rails are shared, while every mux result is
-    # read once by the carry that consumes it and then dies.
-    stride_of: dict[int, int] = field(default_factory=dict)
-    free_strides: _FreeColumns = field(default_factory=_FreeColumns)
-
-
 class _Builder:
     """Allocates buses and gate bands, and records their wiring.
 
@@ -121,63 +99,18 @@ class _Builder:
         self.next_signal = 0
         # signal id -> (column, topmost row the bus has reached)
         self.buses: dict[int, tuple[int, int]] = {}
-        self._band_state = _BandState()
-
-    # The banding state lives on ``_band_state``; these properties keep the
-    # plain-attribute access the builder's callers (and tests) already use.
-    @property
-    def limit(self) -> int | None:
-        """The requested width the bands stay inside, if any."""
-        return self._band_state.limit
-
-    @limit.setter
-    def limit(self, value: int | None) -> None:
-        self._band_state.limit = value
-
-    @property
-    def band_start(self) -> int:
-        """The column a new band starts at."""
-        return self._band_state.band_start
-
-    @band_start.setter
-    def band_start(self, value: int) -> None:
-        self._band_state.band_start = value
-
-    @property
-    def live(self) -> list[int]:
-        """The intermediate signals a band would carry, in creation order."""
-        return self._band_state.live
-
-    @live.setter
-    def live(self, value: list[int]) -> None:
-        self._band_state.live = value
-
-    @property
-    def pending(self) -> dict[int, int]:
-        """Reads each shared gate output still awaits."""
-        return self._band_state.pending
-
-    @pending.setter
-    def pending(self, value: dict[int, int]) -> None:
-        self._band_state.pending = value
-
-    @property
-    def stride_of(self) -> dict[int, int]:
-        """The recyclable column group each gate output was cut from."""
-        return self._band_state.stride_of
-
-    @stride_of.setter
-    def stride_of(self, value: dict[int, int]) -> None:
-        self._band_state.stride_of = value
-
-    @property
-    def free_strides(self) -> _FreeColumns:
-        """The gate column groups that may be handed out again."""
-        return self._band_state.free_strides
-
-    @free_strides.setter
-    def free_strides(self, value: _FreeColumns) -> None:
-        self._band_state.free_strides = value
+        # Width banding: the width bands stay inside, once asked for, and the
+        # column a new band starts at.
+        self.limit: int | None = None
+        self.band_start = 0
+        # Unread intermediate signals, in creation order: what a band carries.
+        self.live: list[int] = []
+        # Reads a shared gate output still awaits; it is released on the last.
+        self.pending: dict[int, int] = {}
+        # Recyclable column groups.  Only a *gate's* output enters here:
+        # rails are shared, and a mux result dies at its one read.
+        self.stride_of: dict[int, int] = {}
+        self.free_strides = _FreeColumns()
 
     def _new_signal(self) -> int:
         """Return a fresh signal id."""
@@ -320,9 +253,7 @@ class _Builder:
         row = self.next_row
         self.next_row += _ROW_STEP
 
-        self.layout.glyph(0, row, "-")
-        self.layout.run_horizontal(0, column, row, signal)
-        self.layout.junction(column, row, signal)
+        self.layout.input_port(row, column, signal)
         self.buses[signal] = (column, row)
         return signal
 

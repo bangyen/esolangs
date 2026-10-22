@@ -15,6 +15,7 @@ from esolangs.languages.circuit_diagram.generator.banks import (
     _POOLED_MASK_INPUTS,
     _assemble_banks,
     _bank_rectangle,
+    _chunks,
     _online_bank_area_floor,
     _pool_budget,
 )
@@ -40,10 +41,9 @@ def sparse_class_bank_candidate(
         return None
     size = 1 << tail
     positions: dict[str, list[int]] = {}
-    for start in range(0, len(table), size):
-        word = table[start : start + size]
+    for row, word in enumerate(_chunks(table, size)):
         if "1" in word:
-            positions.setdefault(word, []).append(start // size)
+            positions.setdefault(word, []).append(row)
     q = len(positions)
     if q < 2 or not any(
         "0" in word and len(rows) > 1 for word, rows in positions.items()

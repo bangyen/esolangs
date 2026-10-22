@@ -223,7 +223,7 @@ def _streetcode_tree_memo(table: str) -> tuple[str, ...]:
 
 def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:
     """Join two finished subtrees with their shared branching hall."""
-    width = max(max(len(row) for row in top), max(len(row) for row in bot))
+    width = max(map(len, [*top, *bot]))
     top = [row.ljust(width) for row in top]
     bot = [row.ljust(width) for row in bot]
     height = len(top)
@@ -322,8 +322,7 @@ def _streetcode_shared_lap(body: str) -> list[str]:
     k = max(0, len(body) - 6)
     grid = [list(row.format(gap=" " * k, dash="-" * k)) for row in _SHARED_ROWS]
     cells = [(4, 5 + k), (5, 5 + k)] + [(5, c) for c in range(4 + k, 1, -1)] + [(4, 2)]
-    for i, char in enumerate(body):
-        r, c = cells[i]
+    for (r, c), char in zip(cells, body, strict=False):
         grid[r][c] = char
     return ["".join(row) for row in grid]
 
@@ -382,11 +381,9 @@ def _streetcode_shared(n: int) -> list[str]:
     left = head
     for block in blocks:
         for r, row in enumerate(block):
-            for c, char in enumerate(row):
-                grid[3 + r][left + c] = char
+            grid[3 + r][left : left + len(row)] = row
         left += len(block[0])
-    for i, char in enumerate(tail):
-        grid[2][left + i] = char
+    grid[2][left : left + len(tail)] = tail
     return ["".join(row) for row in grid]
 
 

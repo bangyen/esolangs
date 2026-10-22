@@ -15,6 +15,8 @@ Size:
     n=4 parity: 299 chars, n=10 random 1847: 9,557 chars.
 """
 
+from itertools import pairwise
+
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._contracts import BooleanContract
@@ -30,12 +32,10 @@ def bleh(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
     # Each level's nodes with their halves, in first-occurrence order.
-    kids: list[dict[int, tuple[int, int]]] = []
-    for level in range(n):
-        below = ids[level + 1]
-        kids.append({})
-        for k, node in enumerate(ids[level]):
-            kids[level].setdefault(node, (below[2 * k], below[2 * k + 1]))
+    kids = [
+        {node: (below[2 * k], below[2 * k + 1]) for k, node in enumerate(above)}
+        for above, below in pairwise(ids)
+    ]
 
     def ref(node: int, level: int) -> str:
         """Return the expression that reads on from ``level`` at ``node``."""

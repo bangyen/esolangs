@@ -126,19 +126,17 @@ def _six_five_chosen(truth_table: str, orders: dict[tuple[int, ...], None]) -> s
 
     Each order's tree may jump to its repeated subtrees.
     """
-    best = ""
-    for perm in orders:
-        table = (
+    candidates = (
+        _six_five_hoisted(
             truth_table
             if perm == tuple(range(len(perm)))
-            else permute_truth_table(truth_table, perm)
+            else permute_truth_table(truth_table, perm),
+            perm,
         )
-        candidate = _six_five_hoisted(table, perm)
-        # An empty candidate means this order overflowed the label budget,
-        # so it is skipped rather than winning on length 0.
-        if candidate and (not best or len(candidate) < len(best)):
-            best = candidate
-    return best
+        for perm in orders
+    )
+    # An empty candidate overflowed the label budget: it must not win on length 0.
+    return min(filter(None, candidates), key=len, default="")
 
 
 def _six_five_walk(truth_table: str) -> str:

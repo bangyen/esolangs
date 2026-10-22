@@ -133,9 +133,10 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
         cursor += 1
     else:
         chars.append(_FILLER_VOWEL)
-    options = [("".join(chars), cursor)]
+    text = "".join(chars)
+    options = [(text, cursor)]
     if cursor < total and _is_consonant(tokens[cursor]):
-        options.append(("".join(chars) + tokens[cursor], cursor + 1))
+        options.append((text + tokens[cursor], cursor + 1))
     return options
 
 

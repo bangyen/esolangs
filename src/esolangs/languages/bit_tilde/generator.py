@@ -11,6 +11,8 @@ Size:
     chars.
 """
 
+from itertools import pairwise
+
 from esolangs.generation.helpers import (
     _validate_truth_table,
     affine_form,
@@ -57,6 +59,11 @@ def _program(truth_table: str) -> str:
     return min(lookup, _xor_window(*form), key=len)
 
 
+def _plant(cells: list[int]) -> str:
+    """Walk right to each ascending cell and flip it with ``~``."""
+    return "".join(">" * (b - a) + "~" for a, b in pairwise([0, *cells]))
+
+
 def _xor_window(bias: int, coefficients: list[int]) -> str:
     """XOR every counted input into one window and fix it up to ASCII.
 
@@ -66,11 +73,7 @@ def _xor_window(bias: int, coefficients: list[int]) -> str:
     """
     reads = "".join(")" if c else ">" * 8 + ")" + "<" * 8 for c in coefficients)
     flips = ([2, 3] if sum(coefficients) % 2 == 0 else []) + ([7] if bias else [])
-    out, pos = [reads], 0
-    for cell in flips:
-        out.append(">" * (cell - pos) + "~")
-        pos = cell
-    return "".join([*out, "<" * pos, "("])
+    return reads + _plant(flips) + "<" * max(flips, default=0) + "("
 
 
 def _lookup(truth_table: str, n: int) -> str:
@@ -90,12 +93,8 @@ def _lookup(truth_table: str, n: int) -> str:
         start - 2 * index - 2 for index, bit in enumerate(table) if bit == mark
     )
 
-    prog: list[str] = []
-    pos = 0
-    for cell in sorted(planted):
-        prog.append(">" * (cell - pos) + "~")
-        pos = cell
-    prog.append(">" * (start - pos))
+    cells = sorted(planted)
+    prog = [_plant(cells), ">" * (start - cells[-1])]
 
     depth = {stream: level for level, stream in enumerate(used)}
     for i in range(n):

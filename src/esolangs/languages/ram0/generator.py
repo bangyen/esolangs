@@ -46,14 +46,10 @@ def ram0(truth_table: str, width: int | None = None) -> str:
 
     Only final ``z`` is the answer.
     """
-    if width is None:
-        return in_input_order(truth_table, _ram0_shared)
-
     if width == 1 and len(truth_table) <= 8:  # three inputs
-        program = _ram0_nand(truth_table)
-    else:
-        program = in_input_order(truth_table, _ram0_shared)
-    return wrap_space_delimited(program, width)
+        return wrap_space_delimited(_ram0_nand(truth_table), width)
+    program = in_input_order(truth_table, _ram0_shared)
+    return program if width is None else wrap_space_delimited(program, width)
 
 
 def _address(k: int, op: str) -> list[str]:

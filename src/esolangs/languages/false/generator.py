@@ -35,6 +35,7 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
+    read_at,
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
@@ -189,10 +190,7 @@ def _root_text(
         parts.append(_SKIP)
         key = node.child
     level, sub = key
-    if sub < 2:
-        parts.append(str(sub) + "." + "^" * (n - level))
-        return "".join(parts)
-    parts.append(render(key))
+    parts.append(str(sub) + "." + "^" * (n - level) if sub < 2 else render(key))
     return "".join(parts)
 
 
@@ -251,14 +249,7 @@ def _expression(truth_table: str, n: int, ess: list[int]) -> str:
     +2 chars on every expression-form program.
     """
     # Project the table onto its essential inputs, in original order.
-    projected: list[str] = []
-    for sub_row in range(1 << len(ess)):
-        row = 0
-        for jj, pos in enumerate(ess):
-            if (sub_row >> (len(ess) - 1 - jj)) & 1:
-                row |= 1 << (n - 1 - pos)
-        projected.append(truth_table[row])
-    sub = "".join(projected)
+    sub = read_at(truth_table, ess, n)
     letters = {pos: chr(ord("a") + pos) for pos in ess}
 
     search = _ExpressionSearch(letters)
@@ -359,8 +350,7 @@ class _ExpressionSearch:
                 self.text(a, rest) + "$" + self.text(b, rest) + "+b&" + fetch + "&+b&"
             )
             options.append((self.size(a, rest) + self.size(b, rest) + 10, text))
-        options.sort(key=lambda pair: pair[0])
-        return options[0][1]
+        return min(options, key=lambda pair: pair[0])[1]
 
 
 def _balance(_table: str, default: str) -> str:

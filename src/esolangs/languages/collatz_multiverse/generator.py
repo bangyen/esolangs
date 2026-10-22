@@ -67,7 +67,7 @@ def _cm_cells(
     fixed ~74 chars a program, a share that tends to zero
     ([ablations.trailing_pad_drop]).
     """
-    if (len(lines) + 1) % 2 == 0:
+    if len(lines) % 2:
         lines.append(_CM_PAD)
     lines.append(f"{capture}=zx+lineNumber,NOT PRINT.")
     lines += [

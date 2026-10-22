@@ -20,7 +20,11 @@ Decisions:
     An ignored input keeps a delete node per residual: 0.52x a real one at n=8.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    reflected_table,
+    subtree_ids,
+)
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -29,9 +33,7 @@ from esolangs.registry._language import Language
 def codesick(truth_table: str) -> str:
     """Build a Codesick program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    rows = range(len(truth_table))
-    reverse = [int(format(row, f"0{n}b")[::-1], 2) if n else 0 for row in rows]
-    ids = subtree_ids("".join(truth_table[reverse[row]] for row in rows))
+    ids = subtree_ids(reflected_table(truth_table, n))
     lines: dict[int, list[str]] = {}
     frontier = {0}
     for depth in range(n + 1):

@@ -250,13 +250,13 @@ def _strides(groups: list[int]) -> list[int]:
     return out
 
 
-def _walk(stride: int) -> str:
+def _walk(stride: int, toward: str = "<", back: str = ">") -> str:
     """Brainfuck carrying the count under the pointer ``stride`` cells left per unit.
 
     Each step moves the count to the next carrier down and drops one, so it
     leaves the pointer ``stride * count`` cells lower on a zero carrier.
     """
-    left, right = "<" * stride, ">" * stride
+    left, right = toward * stride, back * stride
     return f"[[-{left}+{right}]{left}-]"
 
 
@@ -278,7 +278,7 @@ def _skip(distance: int, *, fresh: bool) -> str:
     if stride < 2 or room // stride < 2:
         return best
     count = room // stride
-    walk = f"[[-{'>' * stride}+{'<' * stride}]{'>' * stride}-]"
+    walk = _walk(stride, ">", "<")
     left = distance - len(start) - stride * count
     candidate = start + "+" * count + walk + ">" * left
     return min(best, candidate, key=len)
@@ -355,10 +355,9 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
         lookups.append((symmetric[1], _count(n, used)))
     texts = []
     for entries, select in lookups:
-        strips = [_strip(entries, skips=False)]
-        if (skipped := _strip(entries, skips=True)) != strips[0]:
-            strips.append(skipped)
-        for strip in strips:
+        for strip in dict.fromkeys(
+            (_strip(entries, skips=False), _strip(entries, skips=True))
+        ):
             out = _Builder(cycle)
             out.emit(_parse(strip + select + "<" + "+" * _ASCII_ZERO + "."))
             texts.append(out.text())
