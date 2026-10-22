@@ -84,9 +84,9 @@ ignored-input tables included).
   amount rather than a genuine percentage (see
   [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)):
   Streetcode's lift and tail overlap, LaserFuck's sized leaf retirement and
-  Dig's default banded tree came out this way. Flowchart and Circlefuck kept
-  every trick and Ascenic has none (2026-10-21). The audit is repeatable per
-  generator.
+  Dig's default banded tree came out this way, and four of SStack's six
+  sharing routes (2026-10-21). Flowchart and Circlefuck kept every trick and
+  Ascenic has none (2026-10-21). The audit is repeatable per generator.
 - **The S*bleq variants are interpreter-only, and stay so unless they
   are ever registered:** the interpreter runs the store targets `a`
   (base), `ab` (S*bl*q) and `b` (Subl*q), each also in an indirect
