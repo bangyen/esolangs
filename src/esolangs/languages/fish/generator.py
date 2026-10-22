@@ -83,7 +83,7 @@ def _column(least: int) -> tuple[int, str]:
     """
     k = -(-least // 15)
     if k <= 15:
-        return 15 * k, "f" + "0123456789abcdef"[k] + "*"
+        return 15 * k, f"f{k:x}*"
     m = least.bit_length()
     return 1 << m, "1" + "2*" * m
 
@@ -142,13 +142,13 @@ def _folded(reads: str, truth_table: str, columns: int) -> str:
 
     if rows_for(1) <= 15:
         height = rows_for(1)
-        literal = "0123456789abcdef"[height]
+        literal = f"{height:x}"
     elif rows_for(3) <= 225:
         need = rows_for(3)
         first = isqrt(need - 1) + 1
         second = -(-need // first)
         height = first * second
-        literal = "0123456789abcdef"[first] + "0123456789abcdef"[second] + "*"
+        literal = f"{first:x}{second:x}*"
     else:
         height = 1 << (2 * len(body) // columns + 32).bit_length()
         literal = "1" + "2*" * (height.bit_length() - 1)

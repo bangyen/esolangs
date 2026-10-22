@@ -446,10 +446,9 @@ def _dig_build(
         """Try the indexed decoder against the cheapest layout so far."""
         return _dig_indexed_choice(truth_table, n, current) if share else current
 
-    lane = _dig_lane_shared(truth_table, n) if share else None
     if width is None and n > _DIG_TREE_MAX and not share:
-        layouts = filter(None, (lane, _dig_alternating(truth_table, n)))
-        return settle(min(layouts, key=_dig_size))
+        return _dig_alternating(truth_table, n)
+    lane = _dig_lane_shared(truth_table, n) if share else None
     flat = _dig_grid(truth_table, n, None)
     if width is None:
         # The banded tree only fits widths: as a default candidate its share

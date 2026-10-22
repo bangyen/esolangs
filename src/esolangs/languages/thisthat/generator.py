@@ -180,9 +180,6 @@ class _TreeEmitter:
     def _router_glyph(self, level: int, lo: int) -> str:
         raise NotImplementedError
 
-    def _same(self, _level: int, _lo: int) -> bool:
-        return False
-
     def _children(self, level: int, lo: int, hi: int, router: _Point) -> list[_Child]:
         raise NotImplementedError
 
@@ -574,10 +571,9 @@ def _build_dag(ids: list[list[int]], m: int) -> _Dag:
                 child = (-1, state) if state < 2 else (level + 1, state)
                 if child[0] < 0:
                     terminal.add(child)
-                else:
-                    if child not in representatives:
-                        representatives[child] = row
-                        pending[level + 1].append(child)
+                elif child not in representatives:
+                    representatives[child] = row
+                    pending[level + 1].append(child)
                 if side == 0 or zero_id != one_id:
                     incoming[child] += 1
                 kids.append(child)

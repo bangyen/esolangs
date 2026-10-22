@@ -152,9 +152,7 @@ def _apl_repeated_expressions(program: str) -> str:
         return program
 
     definitions = [
-        f"{names[index]}={_render_dag(nodes, names, index)}"
-        for index in range(len(nodes))
-        if index in names
+        f"{names[index]}={_render_dag(nodes, names, index)}" for index in sorted(names)
     ]
     return "\n".join(
         [_NOT_TIGHT, *definitions, prefix + _render_dag(nodes, names, len(nodes) - 1)]

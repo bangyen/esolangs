@@ -108,9 +108,9 @@ class Canvas:
             return self
         out = Canvas(self.width * factor, self.height * factor)
         for y, row in enumerate(self.pixels):
-            wide = bytearray()
-            for level in row:
-                wide += bytes([level]) * factor
+            wide = bytearray(len(row) * factor)
+            for k in range(factor):
+                wide[k::factor] = row
             for k in range(factor):
                 out.pixels[y * factor + k] = bytearray(wide)
         return out

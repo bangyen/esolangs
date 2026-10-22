@@ -21,10 +21,12 @@ Decisions:
 """
 
 from functools import cache
+from itertools import zip_longest
 from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
+    grid_area,
     grid_width,
     input_weights,
     move_text,
@@ -244,11 +246,8 @@ def _laserfuck_reader_blocks(n: int) -> list[list[str]]:
     padded = [line.ljust(width) for line in rows]
     starts = [col for col, char in enumerate(padded[0]) if char == "}"]
     return [
-        [
-            line[start : starts[index + 1] if index + 1 < len(starts) else width]
-            for line in padded
-        ]
-        for index, start in enumerate(starts)
+        [line[start:stop] for line in padded]
+        for start, stop in zip(starts, [*starts[1:], width], strict=True)
     ]
 
 
@@ -635,16 +634,8 @@ def _laserfuck_build(
     if len(truth_table) <= 8:
         upright = _laserfuck_reader(n, width, vertical_tree=True)
         builds.append(_laserfuck_assemble(upright, tree, width, vertical_tree=True))
-    best = ""
-    best_area = 0
-    for program in builds:
-        if grid_width(program) > width:
-            continue
-        lines = program.split("\n")
-        size = len(lines) * max(len(line) for line in lines)
-        if not best or size < best_area:
-            best, best_area = program, size
-    return best if best else builds[0]
+    fits = [program for program in builds if grid_width(program) <= width]
+    return min(fits, key=grid_area) if fits else builds[0]
 
 
 def _laserfuck_assemble(
@@ -667,19 +658,15 @@ def _laserfuck_assemble(
     return grid.render()
 
 
+_FUNNEL = ((0, 1, "}"), (0, 2, "}"), (1, 0, "|"), (1, 1, "o"), (1, 2, "^"), (2, 1, "_"))
+
+
 def _laserfuck_funnel(grid: _LaserGrid) -> None:
     """Draw the start funnel: every heading ends up on row 0 moving right.
 
     Cell (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
     """
-    for row, col, char in (
-        (0, 1, "}"),
-        (0, 2, "}"),
-        (1, 0, "|"),
-        (1, 1, "o"),
-        (1, 2, "^"),
-        (2, 1, "_"),
-    ):
+    for row, col, char in _FUNNEL:
         grid.put(row, col, char)
 
 
@@ -736,17 +723,7 @@ def _laserfuck_four_columns(table: str) -> str:
         return row + len(text)
 
     # The original heading funnel enters a separate vertical read column.
-    for row, col, char in (
-        (0, 1, "}"),
-        (0, 2, "}"),
-        (0, 3, "v"),
-        (1, 0, "|"),
-        (1, 1, "o"),
-        (1, 2, "^"),
-        (2, 1, "_"),
-        (3, 3, "{"),
-        (3, 2, "v"),
-    ):
+    for row, col, char in (*_FUNNEL, (0, 3, "v"), (3, 3, "{"), (3, 2, "v")):
         cells[row, col] = char
     end = vertical(4, 2, (">," + "-" * _LASER_BIAS) * n + "<" * n)
 
@@ -802,8 +779,7 @@ def balance_laserfuck(table: str, default: str) -> str:
         events.update((margin + candidate.span + 2, margin + exit_column + span + 1))
     boundaries = sorted(events)
     widths = set(boundaries)
-    for index, start in enumerate(boundaries):
-        stop = boundaries[index + 1] if index + 1 < len(boundaries) else None
+    for start, stop in zip_longest(boundaries, boundaries[1:]):
         form = _laserfuck_build(table, start)
         # Reader and tree geometry is fixed within this interval. Only the
         # source's own fit can switch its startup funnel or narrow fallback.

@@ -1,7 +1,6 @@
 """Alternating tree layouts and bounded sharing routes for Dig."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import NamedTuple
 
 from esolangs.generation.helpers import constant_span_test, essential_inputs, read_at
@@ -280,13 +279,6 @@ class _LeafKey(NamedTuple):
     lane: int
 
 
-@dataclass
-class _LanePlan:
-    """The sharing decision: which leaf owners survive."""
-
-    owners: dict[_LeafKey, _Point]
-
-
 def _sharing_lane_groups(
     entries: dict[_Point, _LeafKey],
     owners: dict[_LeafKey, _Point],
@@ -337,15 +329,14 @@ def _plan_shared_lanes(
     *,
     lane_axis: int,
     travel_axis: int,
-) -> _LanePlan | None:
+) -> dict[_LeafKey, _Point] | None:
     """Plan shared lanes for a dry-run tree; None when nothing can share."""
     by_end, starts = _sharing_lane_groups(entries, owners, travel_axis)
     shared = _assign_shared_lanes(by_end, starts, lane_axis=lane_axis)
     if not shared:
         return None
     # Leave unmatched copies painted, even if their contents coincide.
-    kept = {key: owner for key, owner in owners.items() if key in shared}
-    return _LanePlan(kept)
+    return {key: owner for key, owner in owners.items() if key in shared}
 
 
 class _AlternatingTree:
@@ -593,7 +584,7 @@ class _AlternatingTree:
         )
         if plan is None:
             return False
-        self.owners = plan.owners
+        self.owners = plan
         return True
 
     def bridge_entries(self) -> bool:

@@ -378,7 +378,7 @@ def _container_threshold(truth_table: str) -> str:
     tilings it was kept for ([ablations.mirror_race]) (retirement candidate #12).
     """
     n = _validate_truth_table(truth_table)
-    weights, truth_table, _essential = _threshold_weights(truth_table, n)
+    weights, truth_table = _threshold_weights(truth_table, n)
     deltas, steps = _threshold_steps(truth_table)
 
     identifiers = _free_names(_RESERVED)
@@ -393,8 +393,8 @@ def _container_threshold(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def _threshold_weights(truth_table: str, n: int) -> tuple[list[int], str, int]:
-    """Return the input weights, the projected table and its essential count."""
+def _threshold_weights(truth_table: str, n: int) -> tuple[list[int], str]:
+    """Return the input weights and the projected table."""
     # An ignored input is latched like any other but adds no weight, so the
     # steps are those of the table over the rest.  A constant keeps them all.
     weights, projected = input_weights(truth_table, n)
@@ -402,7 +402,7 @@ def _threshold_weights(truth_table: str, n: int) -> tuple[list[int], str, int]:
         truth_table = projected
     else:
         weights = [1 << (n - 1 - k) for k in range(n)]
-    return weights, truth_table, sum(map(bool, weights))
+    return weights, truth_table
 
 
 def _threshold_steps(

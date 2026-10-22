@@ -210,8 +210,7 @@ def _mux_pads(weights: tuple[int, ...], gaps: tuple[int, ...]) -> tuple[list[int
         for i, (a, b) in enumerate(pairwise(weights))
     ]
     extra = sum(
-        pad - (a + b - 1)
-        for pad, a, b in zip(pads, weights[:-1], weights[1:], strict=True)
+        pad - (a + b - 1) for pad, (a, b) in zip(pads, pairwise(weights), strict=True)
     )
     return pads, extra
 

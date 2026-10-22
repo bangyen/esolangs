@@ -139,21 +139,21 @@ def _polynomial_candidates(
     ignored-input reads included; the caller drops them.
     """
 
-    def hybrids(
+    def hybrid(
         table: str, arity: int, before: int = 0, after: int = 0
-    ) -> Iterator[tuple[list[list[int]], int]]:
+    ) -> tuple[list[list[int]], int]:
         # The fewest instructions, ties to the larger ``k``.  Choosing among
         # the near-cheapest by rendered length saved 0.0% (random n=4..8).
         cheapest = min(
             (_polynomial_hybrid(table, level) for level in range(arity, -1, -1)),
             key=len,
         )
-        yield (
+        return (
             [_READ] * before + cheapest + [_READ] * after,
             len(cheapest) + before + after,
         )
 
-    yield from hybrids(truth_table, n)
+    yield hybrid(truth_table, n)
 
     # An ignored input still costs a level of branching, so drain a
     # *leading* ignored run before building (a later one drained out of
@@ -166,11 +166,11 @@ def _polynomial_candidates(
     tail = n - 1 - essential[-1]
     if tail:
         cut = read_at(truth_table, list(range(n - tail)), n)
-        yield from hybrids(cut, n - tail, after=tail)
+        yield hybrid(cut, n - tail, after=tail)
     lead = next((i for i in range(n) if i in essential), n)
     if lead:
         reduced = read_at(truth_table, list(range(lead, n)), n)
-        yield from hybrids(reduced, n - lead, before=lead)
+        yield hybrid(reduced, n - lead, before=lead)
 
 
 def _polynomial_assemble(instrs: list[list[int]]) -> str:

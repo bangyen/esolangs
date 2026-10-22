@@ -21,8 +21,7 @@ from itertools import groupby
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    essential_inputs,
-    read_at,
+    input_weights,
     subtree_ids,
 )
 from esolangs.generation.wrap import wrap_chars
@@ -107,23 +106,17 @@ def unsquare(truth_table: str) -> str:
     Index ``2**m - 1`` against ``2**m`` cells prevents underflow.  A constant
     half costs about log of its length (:func:`_run`).
     """
-    return _program(truth_table, share=True)
-
-
-def _program(truth_table: str, *, share: bool) -> str:
-    """Return the lookup, optionally sharing its push initializer."""
     n = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, n)
-    reduced = read_at(truth_table, used, n)
+    weights, reduced = input_weights(truth_table, n)
     bits = reduced[::-1]
     cells, _ = _runs(bits)
-    shared = _shared_pushes(bits, n, len(used)) if share and len(bits) > 1 else None
+    kept = n - weights.count(0)
+    shared = _shared_pushes(bits, n, kept) if len(bits) > 1 else None
     if shared is not None and len(shared) < len(cells):
         cells = shared
     blocks: list[str] = []
-    for index in range(n):
-        if index in used:
-            weight = 1 << (len(used) - 1 - used.index(index))
+    for weight in weights:
+        if weight:
             # ``>-<`` subtracts 2 to reach the input character's parity; ``x``
             # doubles it, ``>`` pops only for 1, ``OA`` zeroes it for the ``<``.
             blocks.append("iA>-<x>" + "A" * weight + "OA<")

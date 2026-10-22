@@ -107,15 +107,20 @@ def _natural_befunge(truth_table: str) -> str:
     # ``sqrt(T)``.  At counts up to _NATURAL_LAYOUT_MAX_COUNT that is the
     # header over one row, and the header is at most 49 cells (n=13), so it
     # never needs the 80x25 fold the wide build has.
+    table_width, build_width = _natural_width(count)
+    return "\n".join(_rows(_header(reads, build_width, "1"), table, table_width))
+
+
+def _natural_width(count: int) -> tuple[int, str]:
+    """Return the power-of-two table width near ``sqrt(count)`` and its push."""
     shift = count.bit_length() // 2
-    table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
-    build_width = "1" + "2*" * shift
-    rows = [_header(reads, build_width, "1")]
-    rows.extend(
-        table[base : base + table_width] for base in range(0, count, table_width)
-    )
-    return "\n".join(rows)
+    return 1 << shift, "1" + "2*" * shift
+
+
+def _rows(header: str, table: str, step: int) -> list[str]:
+    """Return ``header`` over ``table`` cut into rows of ``step`` cells."""
+    return [header, *(table[at : at + step] for at in range(0, len(table), step))]
 
 
 def befunge(truth_table: str, width: int | None = None) -> str:
@@ -151,15 +156,8 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         # The natural grid: a straight header over a power-of-two table
         # width near ``sqrt(T)``; an over-wide header folds
         # (:func:`_fold_header`).
-        shift = count.bit_length() // 2
-        table_width = 1 << shift
-        # ``1`` then ``2*`` shift times is ``2**shift``; both are single
-        # commands.
-        build_width = "1" + "2*" * shift
-    rows = [_header(reads, build_width, "1")]
-    rows.extend(
-        table[base : base + table_width] for base in range(0, count, table_width)
-    )
+        table_width, build_width = _natural_width(count)
+    rows = _rows(_header(reads, build_width, "1"), table, table_width)
     plain = "\n".join(rows)
     if width is None:
         width = 80
@@ -182,9 +180,7 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         # full row of area and buys nothing at n=9/10, where 78 header
         # cells fit the 80 columns ([ablations.header_folding]).  Narrower
         # widths still fold below.
-        flat = [header]
-        flat.extend(table[base : base + columns] for base in range(0, count, columns))
-        return "\n".join(flat)
+        return "\n".join(_rows(header, table, columns))
     header_rows = _header_rows(header_bound, columns)
     header = _header(reads, literal, _literal(header_rows))
     folded = _fold_header(header, columns, header_rows)

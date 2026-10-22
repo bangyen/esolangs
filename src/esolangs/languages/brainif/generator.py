@@ -508,8 +508,7 @@ def _emit_linear_output(out: _Lines, strip: _Strip) -> None:
     alphabet = strip.alphabet[0] | strip.alphabet[1]
     for value in sorted(v for v in alphabet if v % 2):
         out.add(f"if {value} goto @one_out")
-    for value in range(_ASCII_ZERO):
-        out.add(f"if {value} inc")
+    out.extend(_climb("inc"))
     out.add(f"if {_ASCII_ZERO} output")
     out.add(f"if {_ASCII_ZERO} goto @done")
     out.mark("one_out")

@@ -83,10 +83,7 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
 
         chars = {shift(p): c for p, c in chars.items()}
         turns = {shift(p): h for p, h in turns.items()}
-        reads = [
-            (shift(at), shift(want), frozenset(shift(p) for p in pending))
-            for at, want, pending in reads
-        ]
+        reads = _remap_reads(reads, shift)
         chars[-1, 0], chars[0, cut], chars[-1, cut] = "7", "$", "4"
         hold = _hold_column(chars)
         chars[0, hold] = str(hold - exit_at[1] - 1)

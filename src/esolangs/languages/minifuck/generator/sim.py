@@ -14,6 +14,7 @@ stays the definition and the tests pin every law to it differentially from
 arbitrary states.  What to emit lives in :mod:`esolangs.languages.minifuck.generator`.
 """
 
+import re
 from collections.abc import Callable
 from functools import lru_cache
 
@@ -30,6 +31,7 @@ from esolangs.generation.helpers import TEMPLATE_CHAR
 # hands the loop a callable.  Measured on the real emission mix, that is 29%
 # off the dispatch.
 _Runs = list[tuple["Callable[[_Sim, int], None]", int]]
+_RUN = re.compile(r"(?:\[x)+|\[+|<+|\.|[^\[<.]+")
 
 
 @lru_cache(maxsize=512)
@@ -41,37 +43,17 @@ def _runs(code: str) -> _Runs:
     returned list is never mutated.
     """
     parsed: _Runs = []
-    i, n = 0, len(code)
-    while i < n:
-        ch = code[i]
-        if ch == "[":
-            j = i
-            while j + 1 < n and code[j] == "[" and code[j + 1] == "x":
-                j += 2
-            if j > i:
-                parsed.append((_Sim.run_walk, (j - i) // 2))
-                i = j
-                continue
-            j = i
-            while j < n and code[j] == "[":
-                j += 1
-            parsed.append((_Sim.run_brackets, j - i))
-            i = j
-        elif ch == "<":
-            j = i
-            while j < n and code[j] == "<":
-                j += 1
-            parsed.append((_Sim.run_left, j - i))
-            i = j
-        elif ch == ".":
+    for run in _RUN.findall(code):
+        if run.startswith("[x"):
+            parsed.append((_Sim.run_walk, len(run) // 2))
+        elif run[0] == "[":
+            parsed.append((_Sim.run_brackets, len(run)))
+        elif run[0] == "<":
+            parsed.append((_Sim.run_left, len(run)))
+        elif run == ".":
             parsed.append((_Sim.run_dot, 1))
-            i += 1
         else:
-            j = i
-            while j < n and code[j] not in "[<.":
-                j += 1
-            parsed.append((_Sim.run_comment, j - i))
-            i = j
+            parsed.append((_Sim.run_comment, len(run)))
     return parsed
 
 

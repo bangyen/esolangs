@@ -404,8 +404,7 @@ class _BankAssembler:
 
     def _fold_term_results(self) -> _Layout:
         """Emit the output glyphs for the one queued term result."""
-        results = list(self.results)
-        [(point, _signal)] = results
+        [(point, _signal)] = self.results
         self.layout.glyph(point[0] + 1, point[1], "-")
         self.layout.glyph(point[0] + 2, point[1], ":")
         return self.layout

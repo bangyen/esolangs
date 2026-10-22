@@ -180,6 +180,14 @@ class _Emitter:
         self.move(cell)
         self.emit("[+]")
 
+    def read_inputs(self, n: int) -> None:
+        """Read ``n`` bytes: each value bit to cell ``2i``, the rest to scratch."""
+        for i in range(n):
+            self.move(2 * i)
+            self.emit(",")
+            self.move(_SCRATCH)
+            self.emit("," * 7)
+
     def printer(self) -> None:
         self.move(self.result)
         self.emit(";")
@@ -347,11 +355,7 @@ def normal_gates(table: str) -> str | None:
     gates = [kind for kind in ("and", "xor") if kind in kinds]
     flags = {kind: x + 1 + 2 * i for i, kind in enumerate(gates)}
     e = _Emitter(result=2 * n, carrier=x + 1)
-    for i in range(n):
-        e.move(2 * i)
-        e.emit(",")
-        e.move(_SCRATCH)
-        e.emit("," * 7)
+    e.read_inputs(n)
     header_cost = e.count
     tree = _GateTree(table, flags, e)
     prefix = tree.node(0, 0, len(table))
@@ -392,12 +396,7 @@ def _boolfuck_tree(
     # Cell 1 carries the answer's constant bits: every flag is 0 again there.
     out = _Emitter(result=2 * n, carrier=1)
 
-    # Read phase: value bit of byte i to cell 2i, other 7 bits to scratch.
-    for i in range(n):
-        out.move(2 * i)
-        out.emit(",")
-        out.move(_SCRATCH)
-        out.emit("," * 7)
+    out.read_inputs(n)
 
     # Decision tree over the stored bits.
     read_cost = out.count

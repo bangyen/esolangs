@@ -145,13 +145,10 @@ def _crement_ordered(
         one = walk(level + 1, 2 * block + 1)
 
         # A child is named by its absolute line, one less as ``+A`` data.
-        def data(target: int) -> str:
-            return str(target - 1)
-
         cell = tester[level]
         rel = at - first
-        lines[rel] = f"+A {cell} {data(one)}"
-        lines[rel + 1] = f"+A {cell + 1} {data(zero)}"
+        lines[rel] = f"+A {cell} {one - 1}"
+        lines[rel + 1] = f"+A {cell + 1} {zero - 1}"
         lines[rel + 2] = f"+J {cell} 1"
         return at
 

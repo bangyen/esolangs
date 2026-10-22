@@ -182,7 +182,6 @@ class _Candidate(NamedTuple):
     node: Node
     area: int
     rows: Callable[[], Rows]
-    complete: bool = False
 
 
 def _planned_rows(plan: CanvasPlan) -> Rows:
@@ -223,9 +222,7 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     # A complete fold wins a fallback tie.
     fold = streaming_canvas(truth_table, best.area + 1, unit=unit)
     if fold is not None:
-        best = _Candidate(
-            fold[0], fold[1].area, partial(_planned_rows, fold[1]), complete=True
-        )
+        best = _Candidate(fold[0], fold[1].area, partial(_planned_rows, fold[1]))
     return lazy_raster(best.rows, best.node)
 
 

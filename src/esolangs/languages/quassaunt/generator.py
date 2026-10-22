@@ -46,7 +46,7 @@ def quassaunt(truth_table: str) -> str:
             sub, here = ids[depth][k], name(depth, k)
             if here in nodes:
                 continue
-            zero, one = (2 * k, 2 * k + 1) if depth < n else (0, 0)
+            zero, one = 2 * k, 2 * k + 1
             if depth == n:
                 body = f"@@{sub}?%%Printtoconsole"
             elif sub < 2 or ids[depth + 1][zero] == ids[depth + 1][one]:
