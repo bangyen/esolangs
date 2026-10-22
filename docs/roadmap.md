@@ -30,7 +30,8 @@ evidence, not optimization tasks.
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
 - **Open worst-case bounds** (2026-10-22): these `at most` cells have a
-  route to `worst`. Layout-race and table-data cells stay `at most`.
+  route to `worst`. The 33 without one are in
+  [limitations](limitations.md#run-time-and-memory).
   - Partial range: SendStuff workspace past n = 10 (its witness falls one
     short from n = 11), What!? workspace past n = 15, Circuit Diagram
     execution past n = 12, 1 + i workspace outside n = 6..13.
