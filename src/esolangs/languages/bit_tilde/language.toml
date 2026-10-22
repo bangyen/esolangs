@@ -15,15 +15,14 @@ workspace = "linear: worst 2T + 49 + bl(2T+41) + bl(5T+18n+74) + bl(n) bits: 2T 
 "00000001" = { commands = 182, commands_by_row = { "0" = 173, "1" = 172, "2" = 170, "3" = 169, "4" = 166, "5" = 165, "6" = 163, "7" = 182 }, source_units = 162 }
 "00001100" = { commands = 136, commands_by_row = { "0" = 140, "1" = 140, "2" = 139, "3" = 139, "4" = 157, "5" = 157, "6" = 136, "7" = 136 }, source_units = 136 }
 "00110110" = { commands = 165, commands_by_row = { "0" = 176, "1" = 175, "2" = 193, "3" = 192, "4" = 169, "5" = 188, "6" = 186, "7" = 165 }, source_units = 165 }
-"0110" = { commands = 129, commands_by_row = { "0" = 133, "1" = 152, "2" = 150, "3" = 129 }, source_units = 129 }
-"01101001" = { commands = 185, commands_by_row = { "0" = 176, "1" = 195, "2" = 193, "3" = 172, "4" = 189, "5" = 168, "6" = 166, "7" = 185 }, source_units = 165 }
-"0110100110010110" = { commands = 219, commands_by_row = { "0" = 245, "1" = 264, "2" = 262, "3" = 241, "4" = 258, "5" = 237, "6" = 235, "7" = 254, "8" = 250, "9" = 229, "10" = 227, "11" = 246, "12" = 223, "13" = 242, "14" = 240, "15" = 219 }, source_units = 219 }
+"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11 }, source_units = 11 }
+"01101001" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 4 }
+"0110100110010110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13, "8" = 13, "9" = 13, "10" = 13, "11" = 13, "12" = 13, "13" = 13, "14" = 13, "15" = 13 }, source_units = 13 }
 "1101001101101101" = { commands = 241, commands_by_row = { "0" = 267, "1" = 266, "2" = 244, "3" = 263, "4" = 240, "5" = 239, "6" = 257, "7" = 256, "8" = 232, "9" = 251, "10" = 249, "11" = 228, "12" = 245, "13" = 244, "14" = 222, "15" = 241 }, source_units = 221 }
 "11111110" = { commands = 168, commands_by_row = { "0" = 199, "1" = 198, "2" = 196, "3" = 195, "4" = 192, "5" = 191, "6" = 189, "7" = 168 }, source_units = 168 }
 
 [catalogue]
-sharing_exempt = "planted lookup entries, with no subtable branch"
-folding_constant_local = "_program"  # one planted projected answer
+folding_constant_local = "_lookup"  # one planted projected answer
 
 [schemes]
 folds_without_tree = true
@@ -35,3 +34,10 @@ audited = "2026-10-19"
 saving = 9428.6
 arity = 12
 verdict = "kept: canonical, exempt. The planted table is the one read at the essential inputs (a constant's is one entry, which is also the fold). Planting the full table instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +90.78 / +97.16%, two +250.97 / +283.74%, three +504.92 / +629.69%, constant tables +2636.48 / +9428.57% (all-zero) and +3259.38 / +11701.70% (all-one)"
+
+[ablations.xor_window]
+saving = 98.8
+arity = 8
+seed = "named and random affine tables"
+tables = 8
+verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) XORs each counted input byte into one window, flips cells 2 and 3 back for an even count and cell 7 for the bias, and prints it, about n + 9 chars, raced by length against the planted lookup. Parity 94.1% at n=4, 96.8% at n=6, 99.0% at n=7, 98.8% at n=8, 99.6% at n=10 (21 chars at n=12); random affine tables 23-76% at n=4..10. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 28 tables change, none grows, every changed program executed; named and affine tables executed through n=12"

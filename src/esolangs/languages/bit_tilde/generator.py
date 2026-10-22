@@ -1,17 +1,23 @@
 """bit~ Boolean program generator: planted table entries addressed by Horner jumps.
 
 Entries are planted left to right, so a skip loop has no terminator ahead of
-it: a constant or repeated span costs a ``>`` per cell.
+it: a constant or repeated span costs a ``>`` per cell.  An affine table
+XORs its inputs into one window instead ([ablations.xor_window]).
 
 Size:
     O(T) cells, two per entry; n=10 random 1847: 4,863 chars, n=10 and: 4,352
     chars.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    affine_form,
+    essential_inputs,
+    read_at,
+)
 from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 
 __all__ = ["bit_tilde"]
 
@@ -38,9 +44,32 @@ def bit_tilde(truth_table: str) -> str:
 
 
 def _program(truth_table: str) -> str:
-    """Build the planted lookup, including a one-entry constant table."""
+    """Build the planted lookup, or the XOR window for an affine table."""
     n = _validate_truth_table(truth_table)
+    lookup = _lookup(truth_table, n)
+    if (form := affine_form(truth_table, n)) is None:
+        return lookup
+    return min(lookup, _xor_window(*form), key=len)
 
+
+def _xor_window(bias: int, coefficients: list[int]) -> str:
+    """XOR every counted input into one window and fix it up to ASCII.
+
+    k digits XOR to ``0011000b`` for odd k and ``0000000b`` for even, so an
+    even count flips cells 2 and 3 back; the bias flips cell 7.  An ignored
+    input is read into a scratch window ([ablations.xor_window]).
+    """
+    reads = "".join(")" if c else ">" * 8 + ")" + "<" * 8 for c in coefficients)
+    flips = ([2, 3] if sum(coefficients) % 2 == 0 else []) + ([7] if bias else [])
+    out, pos = [reads], 0
+    for cell in flips:
+        out.append(">" * (cell - pos) + "~")
+        pos = cell
+    return "".join([*out, "<" * pos, "("])
+
+
+def _lookup(truth_table: str, n: int) -> str:
+    """Build the planted lookup, including a one-entry constant table."""
     used = essential_inputs(truth_table, n)
     table = read_at(truth_table, used, n)
     width = len(used)
@@ -82,6 +111,8 @@ LANGUAGE = Language(
     "bit_tilde",
     category="tape_based",
     boolean=bit_tilde,
+    # Not a tree: planted entries a Horner jump addresses.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),
