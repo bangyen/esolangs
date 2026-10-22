@@ -17,14 +17,14 @@ execution = "poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7"
 workspace = "poly n: at most n + 7 + bl(n) + (d+1)bl(L) bits, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2: brackets"
 
 [generator_sizes]
-"00000001" = { commands = 238, commands_by_row = { "0" = 227, "1" = 232, "2" = 233, "3" = 238, "4" = 235, "5" = 240, "6" = 241, "7" = 238 }, source_units = 240 }
+"00000001" = { commands = 230, commands_by_row = { "0" = 223, "1" = 228, "2" = 228, "3" = 233, "4" = 228, "5" = 233, "6" = 233, "7" = 230 }, source_units = 232 }
 "00001100" = { commands = 184, commands_by_row = { "0" = 173, "1" = 173, "2" = 178, "3" = 178, "4" = 171, "5" = 171, "6" = 184, "7" = 184 }, source_units = 179 }
 "00110110" = { commands = 246, commands_by_row = { "0" = 211, "1" = 220, "2" = 241, "3" = 246, "4" = 229, "5" = 248, "6" = 249, "7" = 246 }, source_units = 245 }
-"0110" = { commands = 177, commands_by_row = { "0" = 160, "1" = 179, "2" = 180, "3" = 177 }, source_units = 179 }
-"01101001" = { commands = 253, commands_by_row = { "0" = 211, "1" = 239, "2" = 240, "3" = 228, "4" = 242, "5" = 235, "6" = 240, "7" = 253 }, source_units = 244 }
-"0110100110010110" = { commands = 329, commands_by_row = { "0" = 262, "1" = 311, "2" = 312, "3" = 279, "4" = 314, "5" = 286, "6" = 291, "7" = 325, "8" = 318, "9" = 300, "10" = 305, "11" = 329, "12" = 312, "13" = 331, "14" = 332, "15" = 329 }, source_units = 323 }
+"0110" = { commands = 180, commands_by_row = { "0" = 170, "1" = 167, "2" = 167, "3" = 180 }, source_units = 175 }
+"01101001" = { commands = 239, commands_by_row = { "0" = 211, "1" = 229, "2" = 229, "3" = 226, "4" = 229, "5" = 226, "6" = 226, "7" = 239 }, source_units = 232 }
+"0110100110010110" = { commands = 297, commands_by_row = { "0" = 277, "1" = 269, "2" = 269, "3" = 287, "4" = 269, "5" = 287, "6" = 287, "7" = 284, "8" = 269, "9" = 287, "10" = 287, "11" = 284, "12" = 287, "13" = 284, "14" = 284, "15" = 297 }, source_units = 289 }
 "1101001101101101" = { commands = 330, commands_by_row = { "0" = 299, "1" = 304, "2" = 270, "3" = 310, "4" = 277, "5" = 286, "6" = 313, "7" = 318, "8" = 291, "9" = 316, "10" = 317, "11" = 308, "12" = 319, "13" = 324, "14" = 317, "15" = 330 }, source_units = 318 }
-"11111110" = { commands = 237, commands_by_row = { "0" = 226, "1" = 231, "2" = 232, "3" = 237, "4" = 234, "5" = 239, "6" = 240, "7" = 237 }, source_units = 239 }
+"11111110" = { commands = 229, commands_by_row = { "0" = 222, "1" = 227, "2" = 227, "3" = 232, "4" = 227, "5" = 232, "6" = 232, "7" = 229 }, source_units = 231 }
 
 [ablations]
 audited = "2026-10-19"
@@ -58,3 +58,10 @@ verdict = "kept: canonical, exempt. A constant span inside the wide build folds 
 saving = 0.0
 arity = 12
 verdict = "recorded: the decoder docstring's listing figures (17,091 chars at twelve inputs for a mostly-zero table, 4,801 for the all-one table) reproduce under no reading tried: the shipped programs for the n=12 AND and OR tables are 1,135 and 1,072 chars, the decoder's own cascades on those tables are 12,292 / 4,105 and 10 / 12,293, and the decoder never sees twelve inputs (blocks cap at seven essential inputs). See the stale-figures entry F20"
+
+[ablations.symmetric_count]
+saving = 60.0
+arity = 8
+seed = "named symmetric tables"
+tables = 7
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 takes the byte-indexed decoder over that count (1 + count fits the byte at any width, so the seven-input block limit does not bind), raced by length against the shipped build. Parity 43.9% at n=7, 60.0% at n=8, 76.9% at n=10, 86.7% at n=12; majority 43.3% / 68.2% / 90.4% / 97.1%; at-least-2 and exactly-1 60.3% at n=8; and 28.4%, or 23.1% at n=8; a symmetric table with an ignored input 36.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"

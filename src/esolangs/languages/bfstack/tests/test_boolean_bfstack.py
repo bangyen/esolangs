@@ -78,7 +78,7 @@ class TestBfstack:
 
     def test_encode_decode_structure(self) -> None:
         """The program encodes the inputs, tests the zero rows, and prints."""
-        program = boolean.bfstack("0110")
+        program = boolean.bfstack("1101")  # asymmetric: the weighted encoder
         assert program.startswith(">>+,")  # result cell, accumulator, first input
         assert program.count(",") == 2  # one read per input
         assert program.endswith("+" * 48 + ".")  # print 48 + result
@@ -105,7 +105,7 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
 
 
 def test_small_tables_do_not_grow_and_execute() -> None:
-    """The n=3 total drops from 58,948 to 58,934 characters."""
+    """The n=3 total is 58,758 characters."""
     from esolangs.languages.bfstack.generator import _bfstack_small
 
     total = 0
@@ -118,4 +118,4 @@ def test_small_tables_do_not_grow_and_execute() -> None:
                 total += len(program)
             for row, expected in enumerate(table):
                 assert run_bfstack(program, list(format(row, f"0{n}b"))) == expected
-    assert total == 58_934
+    assert total == 58_758
