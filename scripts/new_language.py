@@ -552,6 +552,26 @@ def _dirty() -> set[str]:
     return {line[3:] for line in status.splitlines()}
 
 
+def sources(name: str) -> list[str]:
+    """Return the language's interpreter and generator source paths."""
+    from esolangs.registry import LANGUAGES
+
+    lang = LANGUAGES[name]
+    modules = [f"esolangs.languages.{lang.id}.interpreter"] if lang.interpreter else []
+    if lang.boolean is not None:
+        modules.append(lang.boolean.__module__)
+    found = []
+    for module in dict.fromkeys(modules):
+        base = ROOT / "src" / module.replace(".", "/")
+        # A module is ``base.py``; a package is its directory.
+        found += [
+            str(path.relative_to(ROOT))
+            for path in (base.with_suffix(".py"), base)
+            if path.is_file() or (path / "__init__.py").is_file()
+        ]
+    return found
+
+
 def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str]]:
     """Return ``(n, worst steps, worst bits, size, steps' table, bits' table)``.
 
