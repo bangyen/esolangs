@@ -12,14 +12,14 @@ execution = "linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ c
 workspace = "poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor"
 
 [generator_sizes]
-"00000001" = { commands = 38, commands_by_row = { "0" = 13, "1" = 18, "2" = 20, "3" = 25, "4" = 24, "5" = 29, "6" = 31, "7" = 38 }, source_units = 112 }
+"00000001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 92 }
 "00001100" = { commands = 26, commands_by_row = { "0" = 14, "1" = 14, "2" = 19, "3" = 19, "4" = 23, "5" = 23, "6" = 26, "7" = 26 }, source_units = 85 }
 "00110110" = { commands = 36, commands_by_row = { "0" = 13, "1" = 18, "2" = 22, "3" = 27, "4" = 24, "5" = 31, "6" = 33, "7" = 36 }, source_units = 112 }
-"0110" = { commands = 22, commands_by_row = { "0" = 10, "1" = 17, "2" = 19, "3" = 22 }, source_units = 74 }
-"01101001" = { commands = 38, commands_by_row = { "0" = 13, "1" = 20, "2" = 22, "3" = 25, "4" = 26, "5" = 29, "6" = 31, "7" = 38 }, source_units = 112 }
-"0110100110010110" = { commands = 58, commands_by_row = { "0" = 16, "1" = 23, "2" = 25, "3" = 28, "4" = 29, "5" = 32, "6" = 34, "7" = 41, "8" = 37, "9" = 40, "10" = 42, "11" = 49, "12" = 46, "13" = 53, "14" = 55, "15" = 58 }, source_units = 170 }
+"0110" = { commands = 20, commands_by_row = { "0" = 10, "1" = 17, "2" = 17, "3" = 20 }, source_units = 69 }
+"01101001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 20, "2" = 20, "3" = 23, "4" = 20, "5" = 23, "6" = 23, "7" = 30 }, source_units = 92 }
+"0110100110010110" = { commands = 36, commands_by_row = { "0" = 16, "1" = 23, "2" = 23, "3" = 26, "4" = 23, "5" = 26, "6" = 26, "7" = 33, "8" = 23, "9" = 26, "10" = 26, "11" = 33, "12" = 26, "13" = 33, "14" = 33, "15" = 36 }, source_units = 115 }
 "1101001101101101" = { commands = 60, commands_by_row = { "0" = 18, "1" = 23, "2" = 23, "3" = 30, "4" = 27, "5" = 32, "6" = 36, "7" = 41, "8" = 35, "9" = 42, "10" = 44, "11" = 47, "12" = 48, "13" = 53, "14" = 53, "15" = 60 }, source_units = 170 }
-"11111110" = { commands = 36, commands_by_row = { "0" = 15, "1" = 20, "2" = 22, "3" = 27, "4" = 26, "5" = 31, "6" = 33, "7" = 36 }, source_units = 112 }
+"11111110" = { commands = 28, commands_by_row = { "0" = 15, "1" = 20, "2" = 20, "3" = 25, "4" = 20, "5" = 25, "6" = 25, "7" = 28 }, source_units = 92 }
 
 [catalogue]
 folding_constant_local = "input_weights"  # zero projected index weights
@@ -37,3 +37,10 @@ audited = "2026-10-19"
 saving = 286.3
 arity = 12
 verdict = "kept: canonical, exempt. The only mechanism on the default path: an ignored input pays a two-tilde stage instead of its unary weight block, and the tilde cascade spans the projected table. The program's length depends only on the essential inputs, so the price is 0.00% on random tables and every all-essential named table; on its class, one ignored input 93.1% at n=10 and 97.5% at n=12, two ignored 261.3% / 286.3%, three ignored 544.3% / 643.0%, constant tables 3,925.6% / 13,297.4%"
+
+[ablations.symmetric_count]
+saving = 85.8
+arity = 8
+seed = "named symmetric tables"
+tables = 7
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 is indexed by their count, one + per input and n + 1 cascade rows, raced by length against the weighted build. Parity, majority, and, or, at-least-2 and exactly-1 all 32.4% at n=4, 64.2% at n=6, 76.9% at n=7, 85.8% at n=8, 95.3% at n=10, 98.6% at n=12; a symmetric table with an ignored input 75.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"

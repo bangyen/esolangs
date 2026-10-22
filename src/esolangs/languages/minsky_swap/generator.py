@@ -3,8 +3,9 @@
 Each input is a run (``++`` or ``**``) then a stage ``~ ~ * +...+ *`` adding
 ``2**(n-1-i)`` to ``reg[1]``; a ``*`` then points at ``reg[1]`` and ``2**n``
 ``~``s route the index to one of two shared leaves.  A row is one ``~``, so
-no span shrinks.  A ``width`` the program exceeds switches to RMSN, one
-command per line.
+no span shrinks; a symmetric table adds 1 an input and routes its n + 1
+counts instead ([ablations.symmetric_count]).  A ``width`` the program
+exceeds switches to RMSN, one command per line.
 
 Size:
     O(T): one ``~`` per row; n=8 random 1847: 1,460 chars, n=10 random 1847:
@@ -24,6 +25,7 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
     same_up_to_wrapping,
+    symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
@@ -48,8 +50,27 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     A ``width`` the program exceeds switches to RMSN.
     """
     n = _validate_truth_table(truth_table)
-    weights, table = input_weights(truth_table, n)
+    # A symmetric table counts its inputs, one ``+`` each, into n + 1 rows
+    # ([ablations.symmetric_count]).
+    builds = [_cascade(*input_weights(truth_table, n))]
+    if (symmetric := symmetric_weights(truth_table, n)) is not None:
+        builds.append(_cascade(*symmetric))
+    tokens, resolved = min(builds, key=lambda build: len(_render(*build)))
+    program = _render(tokens, resolved)
+    if width is None or grid_width(program) <= width:
+        return program
+    if n <= 2 and width < 10:
+        return _rmsn_small(truth_table, n)
+    return _rmsn_expand(tokens, resolved)
 
+
+def _render(tokens: list[str], resolved: list[int]) -> str:
+    """Return the compact program: the commands, then the jump targets."""
+    return " ".join(tokens) + "\n" + " ".join(map(str, resolved))
+
+
+def _cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
+    """Return the stages adding each input's weight, then the ``~`` cascade."""
     # Two shared leaves sit behind a line-1 ``~`` that jumps over them at
     # start: line 2 halts (a ``~`` targeting one past the end), lines 3-5
     # (``+ * ~``) set ``reg[1]`` first.
@@ -89,13 +110,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     pos += len(table)
 
     end = pos + 1
-    resolved = [end if t is None else t for t in targets]
-    program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
-    if width is None or grid_width(program) <= width:
-        return program
-    if n <= 2 and width < 10:
-        return _rmsn_small(truth_table, n)
-    return _rmsn_expand(tokens, resolved)
+    return tokens, [end if t is None else t for t in targets]
 
 
 def _rmsn_small(truth_table: str, n: int) -> str:
