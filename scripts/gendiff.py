@@ -95,7 +95,7 @@ def _mutated(mutant: Path, name: str, scratch: Path) -> Path:
 
 
 def differences(old: Outputs, new: Outputs) -> list[str]:
-    """Return the requests whose program or error differs, in order."""
+    """Return the requests whose program or error differs."""
     return [key for key in old.keys() | new.keys() if old.get(key) != new.get(key)]
 
 

@@ -527,14 +527,11 @@ def quick_tests(name: str) -> list[str]:
             "tests/interpreters/test_input_convention.py"
             f"::test_running_out_of_input_reaches_the_caller[{stem}]"
         )
-    arities = [
-        min(formulas[name][2])
-        for table in ("execution", "workspace")
-        for formulas in (
-            removal.tests_attr(f"proofs.test_{table}_formulas", "FORMULAS"),
-        )
-        if name in formulas
-    ]
+    arities = []
+    for table in ("execution", "workspace"):
+        formulas = removal.tests_attr(f"proofs.test_{table}_formulas", "FORMULAS")
+        if name in formulas:
+            arities.append(min(formulas[name][2]))
     if arities:
         nodes.append(
             "tests/proofs/test_workspace_formulas.py::"
@@ -553,23 +550,6 @@ def _dirty() -> set[str]:
         check=True,
     ).stdout
     return {line[3:] for line in status.splitlines()}
-
-
-def sources(name: str) -> list[str]:
-    """Return the language's interpreter and generator source paths."""
-    from esolangs.registry import LANGUAGES
-
-    lang = LANGUAGES[name]
-    modules = [f"esolangs.languages.{lang.id}.interpreter"] if lang.interpreter else []
-    if lang.boolean is not None:
-        modules.append(lang.boolean.__module__)
-    return [
-        str(path.relative_to(ROOT))
-        for module in dict.fromkeys(modules)
-        for base in (ROOT / "src" / module.replace(".", "/"),)
-        for path in (base.with_suffix(".py"), base)
-        if path.is_file() or (path / "__init__.py").is_file()
-    ]
 
 
 def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str]]:

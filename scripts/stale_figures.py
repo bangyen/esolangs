@@ -37,11 +37,12 @@ def _git(*args: str) -> str:
 
 def _decision_lines(path: Path) -> list[int]:
     """Return 1-based lines of the module docstring's ``Decisions:`` section."""
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    source = path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
     doc = tree.body[0] if tree.body else None
     if not (isinstance(doc, ast.Expr) and isinstance(doc.value, ast.Constant)):
         return []
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = source.splitlines()
     found, inside = [], False
     for number in range(doc.lineno, (doc.end_lineno or doc.lineno) + 1):
         text = lines[number - 1]

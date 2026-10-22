@@ -143,6 +143,15 @@ def _source_size(program: esolangs.Program) -> int:
     return sum(len(row) for row in program.rows)
 
 
+def _utf8_bits(program: esolangs.Program) -> int | None:
+    """Return a text program's UTF-8 size in bits; None for a raster."""
+    if isinstance(program, esolangs.CompressedText):
+        return 8 * sum(len(chunk.encode("utf-8")) for chunk in program.chunks())
+    if isinstance(program, str):
+        return 8 * len(program.encode("utf-8"))
+    return None
+
+
 def _integer_bits(value: int) -> int:
     """Count magnitude bits (one for zero) and a sign bit for negatives."""
     return (value.bit_length() or 1) + (value < 0)
@@ -157,7 +166,7 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     if value is None:
         return 0
     if isinstance(value, int):
-        return (value.bit_length() or 1) + (value < 0)
+        return _integer_bits(value)
     if isinstance(value, float):
         return 64
     if isinstance(value, _TEXT_TYPES):
@@ -242,7 +251,7 @@ class WrittenState:
 
     def sample(self, state: object) -> None:
         """Record one snapshot."""
-        parts = state if isinstance(state, tuple) else (state,)
+        parts = self._parts(state)
         memo, peaks, written = self._memo, self._peaks, self._written
         start, previous, counts = self._start, self._last, self._now
         if len(parts) != len(start):
@@ -518,12 +527,7 @@ def _measure(
         "inputs": len(table).bit_length() - 1,
         "source_kind": facts["source_kind"],
         "source_units": _source_size(program),
-        "source_utf8_bits": 8
-        * sum(len(chunk.encode("utf-8")) for chunk in program.chunks())
-        if isinstance(program, esolangs.CompressedText)
-        else 8 * len(program.encode("utf-8"))
-        if isinstance(program, str)
-        else None,
+        "source_utf8_bits": _utf8_bits(program),
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
         "step_cap": step_cap,
@@ -800,21 +804,16 @@ class Worker:
             if check_log and self.log_overflow.is_set():
                 raise RuntimeError("benchmark diagnostic byte limit exceeded")
 
-    def measure(  # noqa: C901
+    def measure(
         self,
         arguments: dict[str, Any],
         identity: dict[str, Any],
         generation_timeout: float | None,
-        *,
-        total_timeout: float | None = None,
     ) -> dict[str, Any]:
         """Measure one request through the worker, killing its tree on a deadline."""
         process = self.start()
         phase, limit = "generation", generation_timeout
         deadline = None if limit is None else time.monotonic() + limit
-        total_deadline = (
-            None if total_timeout is None else time.monotonic() + total_timeout
-        )
         generated = False
         executed = 0
         expected = (
@@ -845,27 +844,9 @@ class Worker:
                 remaining = (
                     None if deadline is None else max(0.0, deadline - time.monotonic())
                 )
-                if total_deadline is not None:
-                    total_remaining = max(0.0, total_deadline - time.monotonic())
-                    if total_remaining == 0:
-                        raise esolangs.ExecutionTimeoutError(
-                            "benchmark total work deadline exceeded"
-                        )
-                    remaining = (
-                        total_remaining
-                        if remaining is None
-                        else min(remaining, total_remaining)
-                    )
                 try:
                     line = self.messages.get(timeout=remaining)
                 except queue.Empty:
-                    if (
-                        total_deadline is not None
-                        and time.monotonic() >= total_deadline
-                    ):
-                        raise esolangs.ExecutionTimeoutError(
-                            "benchmark total work deadline exceeded"
-                        ) from None
                     raise esolangs.ExecutionTimeoutError(
                         f"benchmark {phase} deadline exceeded ({limit:g}s)"
                     ) from None
