@@ -6,9 +6,9 @@ backlinks = 1
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table is one `\"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies"
-scaling = "linear: T-character literal, at most four characters an input"
-execution = "poly n: worst 4n commands: the literal, the reads and folds, the pick and the print"
+qualification = "the table is one `\"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies; past the crossover the literal packs six entries a character and the row splits into that depth and a bit"
+scaling = "linear: a T- or T/6-character literal, four characters an input"
+execution = "poly n: at most 4n + 17 commands: the literal, the reads and folds, the decode and print"
 workspace = "linear: at most 6T + 4n + 12 bits: the literal's codes on the stack"
 
 [catalogue]
@@ -40,3 +40,10 @@ arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: canonical constant fold, exempt; a constant pushes 'c, drops every input and prints with no index, against the full literal indexed by every input: 93.4% at n=8, 97.8% at n=10, 99.3% at n=12; fires only on the two constant tables"
+
+[ablations.packed_literal]
+saving = 81.9
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: six entries a printable character (codes 35-98, skipping the closing quote and DEL), raced by length against the plain literal: 15.1% on random tables at n=5, 56.1% at n=7, 67.5% at n=8, 78.4% at n=10, 81.9% at n=12, tending to 5/6; parity, majority and and at n=8 289 to 94 chars. Never fires through n=4 (exhaustive, no table changes); every random table at n=5..8 executed, 20 at n=9..10, 3 at n=12"
