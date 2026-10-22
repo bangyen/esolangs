@@ -12,8 +12,9 @@ Size:
     5,500 at three lines a row).
     Narrow paths drop ignored inputs for area
     ([ablations.essential_projection]).
-    Balanced, the cascade folds into side-by-side strips (``_folded``): one
-    line an entry, every exit local.  Mean rendered side vs the unfolded
+    Unbounded, the cascade or its fold into side-by-side strips
+    (``_folded``: one line an entry, every exit local), whichever has the
+    smaller area ([ablations.area_default]).  Mean rendered side vs the unfolded
     candidates: 68.6 -> 26.7 at n=3, 275.6 -> 41.8 at n=6, 878.6 -> 65.9 at
     n=8; none worse over all n<=3 and 30 random tables each at n=4..8.
 
@@ -27,6 +28,7 @@ from math import isqrt
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    grid_area,
     input_weights,
     read_at,
 )
@@ -64,8 +66,14 @@ _DRAINED_RING = ["*+ +~+", "** +~+"]
 
 
 def arrowqueue(truth_table: str, width: int | None = None) -> str:
-    """Build an ArrowQueue template that halts iff the table entry is ``0``."""
-    return _program(truth_table, width)
+    """Build an ArrowQueue template that halts iff the table entry is ``0``.
+
+    Unbounded, the smaller by area of the unfolded cascade and the folds.
+    """
+    program = _program(truth_table, width)
+    if width is None and len(set(truth_table)) > 1:
+        return min([program, *_folds(truth_table)], key=grid_area)
+    return program
 
 
 def _program(truth_table: str, width: int | None = None) -> str:
