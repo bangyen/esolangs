@@ -1,4 +1,3 @@
-(dip(dip
-i+(1+di-
-)p)+(1+d
-i-)pp)
+(dip+
+(1+di
+-)pp)
