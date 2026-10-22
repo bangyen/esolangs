@@ -688,6 +688,29 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     return sorted(paths)
 
 
+def whole_tree_cmd(cmd: list[str]) -> list[str]:
+    """Return *cmd* with ``--all-files`` widened to files not yet added.
+
+    ``--all-files`` lists git's index, so a new language's untracked package
+    passed ``finish-language``'s full gate, then failed ruff and the
+    prose-density hook at its first commit (2026-10-21).
+    """
+    if "--all-files" not in cmd:
+        return cmd
+    got = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        capture_output=True,
+        cwd=ROOT,
+        check=False,
+        timeout=60,
+    )
+    if got.returncode != 0:
+        return cmd
+    names = dict.fromkeys(os.fsdecode(f) for f in got.stdout.split(b"\0") if f)
+    files = [f for f in names if (ROOT / f).is_file()]
+    return [c for c in cmd if c != "--all-files"] + ["--files", *files]
+
+
 def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | None:
     """Narrow *cmd* to the branch's files, or ``None`` if it has nothing to do.
 
