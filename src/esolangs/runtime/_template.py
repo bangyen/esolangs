@@ -39,6 +39,8 @@ from esolangs.runtime.io import IO
 type _State = tuple[int, int]
 
 
+# Keep the name, even for a one-step language: the purity test
+# (tests/interpreters/test_transition_purity.py) finds the core by it.
 def _advance(
     state: _State, code: str, byte: int | None = None
 ) -> tuple[_State, str | None]:

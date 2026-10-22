@@ -21,14 +21,14 @@ mentions left in prose for a hand edit.
 from __future__ import annotations
 
 import argparse
-import itertools
 import keyword
 import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Container
+from collections.abc import Callable, Container
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -581,22 +581,96 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     return rows
 
 
+#: Terms a fitted cell may combine, as the ledger's notation spells them.
+_TERMS: dict[str, Callable[[int], int]] = {
+    "T": lambda n: 2**n,
+    "n^2": lambda n: n * n,
+    "n": lambda n: n,
+    "bl(n)": int.bit_length,
+}
+#: Fewest terms first, so the simplest exact formula wins.
+_BASES = (
+    ("n",),
+    ("bl(n)",),
+    ("T",),
+    ("T", "n"),
+    ("n", "bl(n)"),
+    ("T", "bl(n)"),
+    ("n^2", "n"),
+    ("T", "n", "bl(n)"),
+)
+
+
+def _solve(rows: list[list[Fraction]], *, spare: bool = True) -> list[Fraction] | None:
+    """Return the unique exact solution of the augmented ``rows``, or None.
+
+    With ``spare``, None too when no row is left over to confirm it: k + 1
+    unknowns fit any k + 1 points, so an exact fit is evidence only past that.
+    """
+    unknowns = len(rows[0]) - 1
+    rows = [row[:] for row in rows]
+    for col in range(unknowns):
+        pivot = next((r for r in range(col, len(rows)) if rows[r][col]), None)
+        if pivot is None:
+            return None
+        rows[col], rows[pivot] = rows[pivot], rows[col]
+        rows[col] = [x / rows[col][col] for x in rows[col]]
+        for r, row in enumerate(rows):
+            if r != col and row[col]:
+                rows[r] = [
+                    x - row[col] * y for x, y in zip(row, rows[col], strict=True)
+                ]
+    if (spare and len(rows) == unknowns) or any(row[-1] for row in rows[unknowns:]):
+        return None
+    return [row[-1] for row in rows[:unknowns]]
+
+
+def _spelled(terms: tuple[str, ...], coefficients: list[int]) -> str:
+    """Return ``3T + n - 2`` for ``(T, n)`` and ``[3, 1, -2]``."""
+    parts: list[str] = []
+    for term, c in zip((*terms, ""), coefficients, strict=True):
+        if not c:
+            continue
+        magnitude = f"{'' if abs(c) == 1 and term else abs(c)}{term}"
+        sign = "-" if c < 0 else "+"
+        parts.append(f"{sign} {magnitude}" if parts else f"{'-' * (c < 0)}{magnitude}")
+    return " ".join(parts) or "0"
+
+
 def _fit(values: list[tuple[int, int]], unit: str) -> str:
-    """Return ``worst an + b <unit>`` if ``values`` lie on a line, else FILL."""
-    # The formula tests check a "worst" cell from n = 3, so the fit does too;
-    # two points always lie on a line, so it takes three.
+    """Return the simplest exact ``worst`` cell through ``values``, else FILL.
+
+    Integer combinations of ``_TERMS`` plus a constant, from n = 3 (where
+    the formula tests start), each confirmed by a point it was not solved
+    from and re-read through the tests' own parser.
+    """
+    parse = removal.tests_attr("proofs._formula", "parse")
     values = [(n, v) for n, v in values if n >= 3]
-    slopes = {b[1] - a[1] for a, b in itertools.pairwise(values)}
-    if len(values) < 3 or len(slopes) != 1:
-        return f"FILL: at most <formula in n, T, L> {unit}"
-    (slope,) = slopes
-    base = values[0][1] - slope * values[0][0]
-    formula = {0: "", 1: "n"}.get(slope, f"{slope}n")
-    if not formula:
-        formula = str(base)
-    elif base:
-        formula += f" {'-' if base < 0 else '+'} {abs(base)}"
-    return f"poly n: worst {formula} {unit}"
+    for terms in _BASES:
+        rows = [
+            [Fraction(_TERMS[t](n)) for t in terms] + [Fraction(1), Fraction(v)]
+            for n, v in values
+        ]
+        solution = _solve(rows)
+        # Determined without n = 3 too: over 3..6 bl(n) is 2, 3, 3, 3, a
+        # free value at n = 3, and its 5 such fits on the ledger all missed
+        # n = 7; the 47 that survive this held.
+        if (
+            solution is None
+            or _solve(rows[1:], spare=False) is None
+            or any(c.denominator != 1 for c in solution)
+        ):
+            continue
+        coefficients = [int(c) for c in solution]
+        clause = f"worst {_spelled(terms, coefficients)} {unit}"
+        formula = parse(clause)[0]
+        if all(formula(n, "") == v for n, v in values):
+            grows = "T" in terms and coefficients[terms.index("T")]
+            return f"{'linear' if grows else 'poly n'}: {clause}"
+    return (
+        f"FILL: at most <formula in n, T, L> {unit}"
+        "  # more points (--max-n) fit more terms"
+    )
 
 
 def _print_bounds(name: str, max_n: int) -> None:
@@ -786,7 +860,7 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_parser(command).add_argument("name")
     measure = sub.add_parser("bounds", help="worst steps and bits per arity")
     measure.add_argument("name")
-    measure.add_argument("--max-n", type=int, default=5)
+    measure.add_argument("--max-n", type=int, default=6)
     args = parser.parse_args(argv)
     if args.command in {"check", "finish", "bounds", "remove"}:
         # A new LANGUAGE is registered by the export this writes, but

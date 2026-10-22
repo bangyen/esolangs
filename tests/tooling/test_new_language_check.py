@@ -109,6 +109,12 @@ def test_start_on_a_terminal_asks_for_the_category(
     assert made == ["tape_based"]
 
 
+_FILL = (
+    "FILL: at most <formula in n, T, L> commands"
+    "  # more points (--max-n) fit more terms"
+)
+
+
 @pytest.mark.parametrize(
     ("values", "cell"),
     [
@@ -116,13 +122,24 @@ def test_start_on_a_terminal_asks_for_the_category(
         ([4, 5, 6], "poly n: worst n + 1 commands"),
         ([7, 7, 7], "poly n: worst 7 commands"),
         ([1, 4, 7], "poly n: worst 3n - 8 commands"),
-        ([10, 15], "FILL: at most <formula in n, T, L> commands"),
-        ([10, 15, 21], "FILL: at most <formula in n, T, L> commands"),
+        # The walkthrough's hand-derived workspace: bl(n) is 2, 3, 3, 3 over
+        # 3..6, a free value at n = 3, so it takes n = 8 to confirm.
+        ([4, 5, 5, 5], _FILL),
+        ([4, 5, 5, 5, 5, 6], "poly n: worst bl(n) + 2 commands"),
+        (
+            [4 * 2**n + 79 * n + 22 for n in range(3, 7)],
+            "linear: worst 4T + 79n + 22 commands",
+        ),
+        ([n * n - n for n in range(3, 7)], "poly n: worst n^2 - n commands"),
+        # Two unknowns fit any two points; three need a fourth to confirm.
+        ([10, 15], _FILL),
+        ([10, 15, 21], _FILL),
+        ([3, 1, 4, 1], _FILL),
     ],
 )
-def test_bounds_fits_a_line_through_three_arities(values: list[int], cell: str) -> None:
-    # n = 1 and 2 sit off the line: the formula tests start at n = 3.
-    rows = [(1, 999), (2, 0), *zip(range(3, 6), values, strict=False)]
+def test_bounds_fits_the_simplest_exact_formula(values: list[int], cell: str) -> None:
+    # n = 1 and 2 sit off the fit: the formula tests start at n = 3.
+    rows = [(1, 999), (2, 0), *zip(range(3, 9), values, strict=False)]
     assert new_language._fit(rows, "commands") == cell  # noqa: SLF001
 
 
@@ -134,7 +151,7 @@ def _measured(monkeypatch: pytest.MonkeyPatch, *, ledger: bool) -> None:
     monkeypatch.setattr(
         new_language,
         "bounds",
-        lambda _, ns: [(n, 5 * n + 28, n * n, 2, "01", "10") for n in ns],
+        lambda _, ns: [(n, 5 * n + 28, 3**n, 2, "01", "10") for n in ns],
     )
     assert new_language.main(["bounds", _LONGEST]) == 0
 
@@ -146,7 +163,7 @@ def test_bounds_drafts_a_section_that_parses(
     out = capsys.readouterr().out
     section = tomllib.loads(out[out.index("[proof_status]") :])["proof_status"]
     assert section["execution"] == "poly n: worst 5n + 28 commands"
-    # n * n is no line: left for the author.
+    # 3**n fits no combination of the terms: left for the author.
     assert section["workspace"].startswith("FILL")
     assert "tree" in section["labels"][0]
 
