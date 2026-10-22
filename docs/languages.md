@@ -107,6 +107,7 @@ Languages whose data is the program itself, rewritten as it runs.
 - [Crement](https://esolangs.org/wiki/Crement) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/crement/interpreter.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/inject/interpreter.py))
 - [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/malbolge/interpreter.py))
+- [Sonata](https://esolangs.org/wiki/Sonata) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sonata/interpreter.py))
 - [Thue](https://esolangs.org/wiki/Thue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/thue/interpreter.py))
 
 ### Variable-based Languages
@@ -118,6 +119,7 @@ Languages that store data in named variables the program declares.
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/forbin/interpreter/__init__.py))
 - [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/intercal/interpreter/__init__.py))
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/packlang/interpreter/__init__.py))
+- [SwitchCase](https://esolangs.org/wiki/SwitchCase) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/switchcase/interpreter.py))
 
 ### Other Languages
 
@@ -128,6 +130,7 @@ Languages that don't fit into the above categories.
 - [Codesick](https://esolangs.org/wiki/Codesick) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/codesick/interpreter.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fargo/interpreter.py))
 - [Hot](https://esolangs.org/wiki/Hot) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/hot/interpreter.py))
+- [Kiss](https://esolangs.org/wiki/Kiss) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/kiss/interpreter.py))
 - [Nope.](https://esolangs.org/wiki/Nope.) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/nope/interpreter.py)) *(interpreter-only)*
 - [Object disoriented](https://esolangs.org/wiki/Object_disoriented) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/object_disoriented/interpreter.py))
 - [SendStuff](https://esolangs.org/wiki/SendStuff) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sendstuff/interpreter.py))

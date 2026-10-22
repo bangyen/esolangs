@@ -1,0 +1,38 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 2
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them"
+scaling = "linear: the projected table plus 4n + 101 chars"
+execution = "linear: worst T + n + 3 steps: a doubling an input, a strip a row"
+workspace = "linear: worst 16T + 10 bits: the string at its longest, an index of T - 1 units beside the table"
+
+[ablations]
+audited = "2026-10-21"
+
+[ablations.essential_projection]
+saving = 48.3
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: canonical, exempt; one projection rule keeping the essential bits against doubling for every input over the full table: 0.0% on random tables, 33.4-48.3% one-ignored at n=8-12, 69.7-97.0% on constants; never larger. Plain-rewrite audit: no other bespoke tricks; pairwise halving of the table instead is the collected rewriting construction, and one-rewrite doubling (_U_U) is what that construction cannot do"
+
+[catalogue]
+folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @#c
+
+[generator_sizes]
+"00000001" = { commands = 14, commands_by_row = { "0" = 7, "1" = 8, "2" = 9, "3" = 10, "4" = 11, "5" = 12, "6" = 13, "7" = 14 }, source_units = 121 }
+"00001100" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 115 }
+"00110110" = { commands = 14, commands_by_row = { "0" = 7, "1" = 8, "2" = 9, "3" = 10, "4" = 11, "5" = 12, "6" = 13, "7" = 14 }, source_units = 121 }
+"0110" = { commands = 9, commands_by_row = { "0" = 6, "1" = 7, "2" = 8, "3" = 9 }, source_units = 113 }
+"01101001" = { commands = 14, commands_by_row = { "0" = 7, "1" = 8, "2" = 9, "3" = 10, "4" = 11, "5" = 12, "6" = 13, "7" = 14 }, source_units = 121 }
+"0110100110010110" = { commands = 23, commands_by_row = { "0" = 8, "1" = 9, "2" = 10, "3" = 11, "4" = 12, "5" = 13, "6" = 14, "7" = 15, "8" = 16, "9" = 17, "10" = 18, "11" = 19, "12" = 20, "13" = 21, "14" = 22, "15" = 23 }, source_units = 133 }
+"1101001101101101" = { commands = 23, commands_by_row = { "0" = 8, "1" = 9, "2" = 10, "3" = 11, "4" = 12, "5" = 13, "6" = 14, "7" = 15, "8" = 16, "9" = 17, "10" = 18, "11" = 19, "12" = 20, "13" = 21, "14" = 22, "15" = 23 }, source_units = 133 }
+"11111110" = { commands = 14, commands_by_row = { "0" = 7, "1" = 8, "2" = 9, "3" = 10, "4" = 11, "5" = 12, "6" = 13, "7" = 14 }, source_units = 121 }
+
+[schemes]
+folds_without_tree = true

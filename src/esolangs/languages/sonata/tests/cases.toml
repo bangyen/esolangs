@@ -1,0 +1,65 @@
+language = "Sonata"
+oldid = 103718
+
+[[examples]]
+id = "apple"
+note = "the page's apple->orange rule transforms apple into orange"
+source = "apple->orange"
+stdin = "apple"
+expected = "orange"
+
+[[examples]]
+id = "apple-substring"
+note = "the page: apple->orange does not transform 1apple2, whose whole string it fails to match"
+source = "apple->orange"
+stdin = "1apple2"
+expected = "1apple2"
+
+[[examples]]
+id = "two-tag-collatz"
+note = "the page's 2-tag system computes the Collatz sequence of 3 in unary, ending at a"
+source = '''
+a^X_Y->_Ybc
+b^X_Y->_Ya
+c^X_Y->_Yaaa
+'''
+stdin = "aaa"
+expected = "a"
+
+[[spec_triggers]]
+program = "_Aa_Bb->_A,_B"
+stdin = "aabb"
+expect = "output"
+output = ",,"
+claim = "m-vars bind the shortest substrings left to right: aabb gives ,ab, then ,,"
+
+[[spec_triggers]]
+program = "x->y\nx->z"
+stdin = "x"
+expect = "output"
+output = "y"
+claim = "rules are searched top to bottom"
+
+[[spec_triggers]]
+program = "apple"
+stdin = ""
+expect = "ProgramError"
+claim = "a rule is lhs->rhs"
+
+[[spec_triggers]]
+program = "a^->b"
+stdin = ""
+expect = "ProgramError"
+claim = "a ^ prefixes a variable's name"
+
+[[spec_triggers]]
+program = "^A^A->x"
+stdin = "aa"
+expect = "ProgramError"
+claim = "a left side binds each name once"
+
+[[spec_triggers]]
+program = "a->^B"
+stdin = "a"
+expect = "ProgramError"
+claim = "a right side uses only variables its left side binds"

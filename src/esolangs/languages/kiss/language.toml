@@ -1,0 +1,36 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 3
+
+[proof_status]
+labels = ["tree"]
+qualification = "a node is S over its two halves, which S reads a bit to choose; a node whose halves agree reads it through SS(SKK)"
+scaling = "linear: 5 characters a node or 9 a skip, 2 a leaf"
+execution = "poly n: worst 4n - 1 rewrites: four a skip level, then a read, the output and the halt"
+workspace = "linear: at most 16L bits: a skip holds its subtree twice, 8 bits a combinator"
+
+[ablations]
+audited = "2026-10-21"
+
+[ablations.halves_agree_skip]
+saving = 6.6
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: canonical, exempt; SS(SKK)X above the leaves against S(X)(X): 6.6% on random tables at n=8, 10 and 12, 43.3-45.4% one-ignored, 96.0-99.6% on constants; never larger once leaf pairs stay written twice (84 of 200 random n=8 tables grew when the skip also covered them). Plain-rewrite audit: no other bespoke tricks; equal subtrees cannot be shared without abstraction, whose S and K would wrap every node above"
+
+[catalogue]
+sharing_exempt = "no names: an SK term can bind a repeated subtree only by abstraction, whose S and K wrap every node above it"
+folding_ignored_read = "a read is itself the branch: S reads on every path, so an ignored input keeps a read node per path below it, and an SK term cannot name the subtree they share"
+
+[generator_sizes]
+"00000001" = { commands = 5, commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 8, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 46 }
+"00001100" = { commands = 5, commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 8, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 46 }
+"00110110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 51 }
+"0110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 23 }
+"01101001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 51 }
+"0110100110010110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 107 }
+"1101001101101101" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 107 }
+"11111110" = { commands = 5, commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 8, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 46 }

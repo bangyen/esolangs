@@ -113,6 +113,8 @@ from esolangs.languages.intercal.generator import LANGUAGE as _INTERCAL_LANGUAGE
 from esolangs.languages.intercal.generator import intercal
 from esolangs.languages.interprogck8.generator import LANGUAGE as _INTERPROGCK8_LANGUAGE
 from esolangs.languages.interprogck8.generator import interprogck8
+from esolangs.languages.kiss.generator import LANGUAGE as _KISS_LANGUAGE
+from esolangs.languages.kiss.generator import kiss
 from esolangs.languages.laserfuck.generator import LANGUAGE as _LASERFUCK_LANGUAGE
 from esolangs.languages.laserfuck.generator import laserfuck
 from esolangs.languages.line.generator import LANGUAGE as _LINE_LANGUAGE
@@ -167,6 +169,8 @@ from esolangs.languages.smallfuck.generator import LANGUAGE as _SMALLFUCK_LANGUA
 from esolangs.languages.smallfuck.generator import smallfuck
 from esolangs.languages.smu.generator import LANGUAGE as _SMU_LANGUAGE
 from esolangs.languages.smu.generator import smu
+from esolangs.languages.sonata.generator import LANGUAGE as _SONATA_LANGUAGE
+from esolangs.languages.sonata.generator import sonata
 from esolangs.languages.sstack.generator import LANGUAGE as _SSTACK_LANGUAGE
 from esolangs.languages.sstack.generator import sstack
 from esolangs.languages.stisp.generator import LANGUAGE as _STISP_LANGUAGE
@@ -179,6 +183,8 @@ from esolangs.languages.suffolk.generator import LANGUAGE as _SUFFOLK_LANGUAGE
 from esolangs.languages.suffolk.generator import suffolk
 from esolangs.languages.super_snusp.generator import LANGUAGE as _SUPER_SNUSP_LANGUAGE
 from esolangs.languages.super_snusp.generator import super_snusp
+from esolangs.languages.switchcase.generator import LANGUAGE as _SWITCHCASE_LANGUAGE
+from esolangs.languages.switchcase.generator import switchcase
 from esolangs.languages.taglate.generator import LANGUAGE as _TAGLATE_LANGUAGE
 from esolangs.languages.taglate.generator import taglate
 from esolangs.languages.thisthat.generator import LANGUAGE as _THISTHAT_LANGUAGE
@@ -248,6 +254,7 @@ _LANGUAGES = (
     _INJECT_LANGUAGE,
     _INTERCAL_LANGUAGE,
     _INTERPROGCK8_LANGUAGE,
+    _KISS_LANGUAGE,
     _LASERFUCK_LANGUAGE,
     _LINE_LANGUAGE,
     _MALBOLGE_LANGUAGE,
@@ -273,12 +280,14 @@ _LANGUAGES = (
     _SLOW_ACV_MAMMALIAN_LANGUAGE,
     _SMALLFUCK_LANGUAGE,
     _SMU_LANGUAGE,
+    _SONATA_LANGUAGE,
     _SSTACK_LANGUAGE,
     _STISP_LANGUAGE,
     _STREETCODE_LANGUAGE,
     _SUBLEQ_LANGUAGE,
     _SUFFOLK_LANGUAGE,
     _SUPER_SNUSP_LANGUAGE,
+    _SWITCHCASE_LANGUAGE,
     _TAGLATE_LANGUAGE,
     _THISTHAT_LANGUAGE,
     _THREE_X_LANGUAGE,
@@ -341,6 +350,7 @@ __all__ = [
     "inject",
     "intercal",
     "interprogck8",
+    "kiss",
     "laserfuck",
     "line",
     "malbolge",
@@ -366,12 +376,14 @@ __all__ = [
     "slow_acv_mammalian",
     "smallfuck",
     "smu",
+    "sonata",
     "sstack",
     "stisp",
     "streetcode",
     "subleq",
     "suffolk",
     "super_snusp",
+    "switchcase",
     "taglate",
     "thisthat",
     "three_x",
