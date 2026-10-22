@@ -67,7 +67,7 @@ class TestSixFive:
         assert program.endswith("A0")
         # The right half is NOT of the last input, with nothing left to
         # read: a node, whose leaves add 18 to the 31 and 16 to the 32.
-        assert boolean.six_five("0110").endswith("7V82666A04655A")
+        assert boolean.six_five("0110").endswith("7V83666A04655A")
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -254,14 +254,12 @@ class TestSixFive:
 
     def test_a_read_one_node_uses_is_normalized_there(self) -> None:
         """A read tested at one node alone costs its -17 on that node's paths."""
-        # AND of x1 and x2, x2 tested first.  x1 is tested at one node
-        # alone, so its read skips the -17 and its node pays it (the
-        # normalize before the test); x0 counts two paths (a copy node),
-        # so its read is normalized up front, and the copied bit prints
-        # from the held 31 (+17 as ``665``), not from the raw read.
+        # AND of x1 and x2, x2 tested first.  Each is tested at one node
+        # alone, so no read pays the -17; each node does (the normalize
+        # before its test).
         program = _six_five_hoisted("00010001", (2, 1, 0))
-        assert program.startswith("B99213B13B3" + _SIX_FIVE_TREE_NORMALIZE)
-        assert program.endswith("4" + "3665A0")
+        assert program.startswith("B13B13B3" + _SIX_FIVE_TREE_NORMALIZE)
+        assert program.count(_SIX_FIVE_TREE_NORMALIZE) == 2
         for value in range(256):
             table = format(value, "08b")
             for perm in permutations(range(3)):
@@ -293,8 +291,9 @@ class TestSixFive:
         # the hoisted builds' cheaper nodes beat the stream build's inverts;
         # 209 once a tree jumps to the subtrees it repeats; 196 once the
         # winner's raw-copy re-emission retired (candidate #11), down
-        # from 219: its and/or-shaped wins now tie the stream build.
-        assert improved == 196  # the rest tie, keeping the old emission
+        # from 219: its and/or-shaped wins now tie the stream build; 198
+        # once the copy node retired.
+        assert improved == 198  # the rest tie, keeping the old emission
 
     def test_the_guarded_walk_has_linear_source(self) -> None:
         for n in range(1, 13):
@@ -333,7 +332,7 @@ class TestSixFiveSharing:
         """AND's 0 leaves are one: each later test jumps to the first."""
         program = boolean.six_five("0" * 15 + "1")
         assert program.count("665A0") == 1
-        assert _markers(program) == 4
+        assert _markers(program) == 5
 
 
 def test_the_walk_carries_a_table_when_no_tree_order_fits(

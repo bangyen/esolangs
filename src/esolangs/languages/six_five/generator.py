@@ -7,8 +7,8 @@ past the label budget (35), falls back to a positional walk
 inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
 
 Size:
-    O(T) worst case, small for structured tables; n=10 parity: 197 chars,
-    n=10 and: 138 chars, n=10 random 1847: 5,292 chars.
+    O(T) worst case, small for structured tables; n=10 parity: 207 chars,
+    n=10 and: 145 chars, n=10 random 1847: 5,292 chars.
 
 Decisions:
     The positional walk spends exactly ``n`` labels.  Counting tree labels
@@ -81,19 +81,6 @@ def _six_five_markers(table: str) -> int:
         return 1 + count(lo, mid) + count(mid, hi)
 
     return count(0, len(table))
-
-
-def _six_five_halves(
-    table: str, constant: Callable[[int, int], bool], lo: int, hi: int
-) -> bool:
-    """Whether the span is constant 0 then constant 1.
-
-    Such a node copies the first bit: both arms print from the tested cell
-    with one text (0 from 31, 1 from 32), so it needs no test and spends no
-    label.
-    """
-    mid = (lo + hi) // 2
-    return table[lo] + table[mid] == "01" and constant(lo, mid) and constant(mid, hi)
 
 
 def six_five(truth_table: str) -> str:
@@ -383,7 +370,6 @@ class _Layout:
 
 
 def _six_five_node_kind(
-    truth_table: str,
     constant: Callable[[int, int], bool],
     perm: tuple[int, ...],
     cells: set[int] | dict[int, int],
@@ -395,19 +381,16 @@ def _six_five_node_kind(
 
     ``leaf``: deep enough, or constant, so the span folds.  ``skip``: the
     level's input is not in ``cells``, so only the zero half is descended.
-    ``copy``: the halves are constant 0 then 1, so the node prints its bit
-    with no test.  ``branch``: a real test over both halves.  The emitter
-    and the use counter share this one classification instead of each
-    re-walking the same leaf/skip/copy/branch decisions by hand; ``cells``
-    is the stored-input set for counting, the cell map for emitting.
+    ``branch``: a real test over both halves.  The emitter and the use
+    counter share this one classification instead of each re-walking the
+    same leaf/skip/branch decisions by hand; ``cells`` is the stored-input
+    set for counting, the cell map for emitting.
     """
     mid = (lo + hi) // 2
     if level == len(perm) or constant(lo, hi):
         return "leaf", mid
     if perm[level] not in cells:
         return "skip", mid
-    if _six_five_halves(truth_table, constant, lo, hi):
-        return "copy", mid
     return "branch", mid
 
 
@@ -417,25 +400,18 @@ def _six_five_use_counts(
     """Count the tree paths that test each stored input, to find the lazy ones.
 
     Mirrors the walk ``_NodeEmitter.emit`` will descend, via the shared
-    :func:`_six_five_node_kind`: a copy node (``"01"`` halves) reads its
-    input once per subtree it copies, counted as two paths.  A stored
-    input tested on exactly one path is normalized at that node rather
-    than at its read.
+    :func:`_six_five_node_kind`.  A stored input tested on exactly one path
+    is normalized at that node rather than at its read.
     """
     constant = constant_span_test(truth_table)
     uses = dict.fromkeys(stored, 0)
 
     def tally(level: int, lo: int, hi: int) -> None:
-        kind, mid = _six_five_node_kind(
-            truth_table, constant, perm, stored, level, lo, hi
-        )
+        kind, mid = _six_five_node_kind(constant, perm, stored, level, lo, hi)
         if kind == "leaf":
             return
         if kind == "skip":
             tally(level + 1, lo, mid)
-            return
-        if kind == "copy":
-            uses[perm[level]] += 2
             return
         uses[perm[level]] += 1
         tally(level + 1, lo, mid)
@@ -495,7 +471,6 @@ class _NodeEmitter:
         """
         tree = self.tree
         kind, mid = _six_five_node_kind(
-            tree.truth_table,
             tree.constant,
             tree.perm,
             tree.cell_of,
@@ -513,13 +488,7 @@ class _NodeEmitter:
         if kind == "skip" or self.layout.agrees(tree.ids, level, lo):
             return self.emit(level + 1, lo, mid, entry, held)
         cell = tree.cell_of[tree.perm[level]]
-        nav = _six_five_move(entry, cell)
-        if kind == "copy":
-            # A copy node's input counts two paths, so it is never lazy:
-            # its read was normalized at the read, and the leaf prints
-            # the held bit from 31/32.
-            return nav + _six_five_leaf("0", cell, _SIX_FIVE_HELD, tree.scratch)
-        return self._test_node(level, lo, mid, hi, cell, nav)
+        return self._test_node(level, lo, mid, hi, cell, _six_five_move(entry, cell))
 
     def _test_node(
         self, level: int, lo: int, mid: int, hi: int, cell: int, nav: str
