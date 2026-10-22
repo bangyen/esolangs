@@ -178,7 +178,7 @@ def _import_names(tree: ast.AST) -> set[str]:
 def _within(path: str, doomed: set[Path]) -> bool:
     """Whether repo-relative ``path`` is one of, or inside one of, ``doomed``."""
     full = ROOT / path
-    return any(full == d or d in full.parents for d in doomed)
+    return any(full.is_relative_to(d) for d in doomed)
 
 
 def _is_test(path: str) -> bool:
@@ -204,7 +204,7 @@ def _orphans(doomed: set[Path], users: dict[str, set[str]]) -> set[Path]:
         for path in (ROOT / "src/esolangs").rglob("*.py")
         if not path.name.startswith("__")
         and not _is_test(path.relative_to(ROOT).as_posix())
-        and not any(path == d or d in path.parents for d in doomed)
+        and not any(path.is_relative_to(d) for d in doomed)
         and users.get(_module_of(path))
     }
     while True:
@@ -239,14 +239,13 @@ def _owner_id(filename: str, ids: set[str]) -> str | None:
     ``piet_plus_plus.toml`` is Piet++'s, not Piet's: the id must end the name
     or leave ``.``, ``_`` or ``-`` after it.
     """
-    best: str | None = None
-    for ident in ids:
-        rest = filename[len(ident) :] if filename.startswith(ident) else None
-        if rest is None or (rest and rest[0] not in "._-"):
-            continue
-        if best is None or len(ident) > len(best):
-            best = ident
-    return best
+    owners = [
+        ident
+        for ident in ids
+        if filename.startswith(ident)
+        and filename[len(ident) : len(ident) + 1] in ("", ".", "_", "-")
+    ]
+    return max(owners, key=len, default=None)
 
 
 def _gone_modules(doomed: set[Path]) -> set[str]:

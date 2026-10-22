@@ -39,22 +39,14 @@ from removal.documents import (  # noqa: E402, F401
     _drop_bullets,
     _drop_doc_entries,
     _drop_from_series,
-    _drop_json,
     _prune_fixtures,
     _stale_timing,
 )
-from removal.entries import (  # noqa: E402, F401
-    _container_items,
+from removal.entries import (  # noqa: E402
     _drop_dead_code,
     _drop_entries,
     _drop_inline_items,
-    _drop_matching_items,
-    _inline_items,
     _names_used,
-    _outermost,
-    _str_value,
-    _top_level_name,
-    _whole_statement,
 )
 from removal.ownership import (  # noqa: E402, F401
     _EDITED,
@@ -63,11 +55,9 @@ from removal.ownership import (  # noqa: E402, F401
     _drop_language_statement,
     _gone,
     _gone_modules,
-    _import_names,
     _import_users,
     _imported,
     _is_test,
-    _module_of,
     _module_path,
     _orphans,
     _owned_evidence,
@@ -98,10 +88,6 @@ class _RootModule(types.ModuleType):
 
 
 sys.modules[__name__].__class__ = _RootModule
-
-#: Where a language's own test and script files live.
-
-_TREES = ("tests", "scripts")
 
 
 def tests_attr(module: str, attr: str) -> Any:
@@ -228,16 +214,19 @@ def remove(name: str) -> list[str]:
         if lang.wrap
         else None
     )
-    exclusive = False
-    if wrapper is not None and not any(
-        other is not lang and other.wrap is lang.wrap for other in LANGUAGES.values()
-    ):
-        exclusive = not any(
+    exclusive = (
+        wrapper is not None
+        and not any(
+            other is not lang and other.wrap is lang.wrap
+            for other in LANGUAGES.values()
+        )
+        and not any(
             wrapper in used
             for relative, used in used_by_file.items()
             if relative.startswith("src/")
             and relative != "src/esolangs/generation/wrap.py"
         )
+    )
     for relative in shared:
         _drop_dead_code(ROOT / relative, external_for(relative))
     subprocess.run(

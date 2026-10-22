@@ -230,19 +230,44 @@ def _drop_entries(  # noqa: C901
     return len(spans)
 
 
-def _drop_matching_items(
-    path: Path,
-    extract: Callable[
-        [ast.AST, Callable[[ast.AST], tuple[int, int]]],
-        tuple[list[tuple[int, int, str | None]], bytes] | None,
-    ],
-    wanted: set[str],
-) -> int:
-    """Cut each container item whose value is in ``wanted``, one per pass.
+def _str_value(node: ast.AST) -> str | None:
+    """Return the node's value if it is a string constant."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
 
-    ``extract(node, span)`` returns the ``(lo, hi, value)`` items and the
-    empty-container spelling for a node it recognizes, else None.  One cut
-    per pass because the byte offsets shift after each write.
+
+#: How each container spells itself once every item is cut.
+_EMPTY = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}
+
+
+def _items(
+    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
+) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
+    """Return a container's ``(start, end, string value)`` items and empty spelling.
+
+    None for anything but a dict, list, set or tuple, or a dict with a
+    ``**`` entry.
+    """
+    if isinstance(node, ast.Dict) and None not in node.keys:
+        items = [
+            (span(k)[0], span(v)[1], _str_value(k))
+            for k, v in zip(node.keys, node.values, strict=True)
+            if k is not None
+        ]
+        return items, b"{}"
+    if isinstance(node, ast.List | ast.Set | ast.Tuple):
+        return [(*span(e), _str_value(e)) for e in node.elts], _EMPTY[type(node)]
+    return None
+
+
+def _drop_inline_items(path: Path, keys: set[str]) -> int:
+    """Cut each item keyed by ``keys`` that shares its line with others.
+
+    ``frozenset({"A Painter Ant", "Suffolk"})`` holds two languages on one
+    line, which :func:`_drop_entries` leaves.  Cut by column instead, with
+    the separating comma; a container left empty is spelled empty.  One
+    cut per pass because the byte offsets shift after each write.
     """
     cuts = 0
     while True:
@@ -262,12 +287,12 @@ def _drop_matching_items(
 
         cut: tuple[int, int, bytes] | None = None
         for node in ast.walk(ast.parse(source)):
-            extracted = extract(node, span)
+            extracted = _items(node, span)
             if extracted is None:
                 continue
             items, empty = extracted
             for i, (lo, hi, value) in enumerate(items):
-                if value not in wanted:
+                if value not in keys:
                     continue
                 if len(items) == 1:
                     cut = (*span(node), empty)
@@ -283,59 +308,6 @@ def _drop_matching_items(
         lo, hi, text = cut
         path.write_bytes(source[:lo] + text + source[hi:])
         cuts += 1
-
-
-def _str_value(node: ast.AST) -> str | None:
-    """Return the node's value if it is a string constant."""
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
-    return None
-
-
-#: How each container spells itself once every item is cut.
-
-_EMPTY = {ast.List: b"[]", ast.Set: b"set()", ast.Tuple: b"()"}
-
-
-def _container_items(
-    node: ast.AST,
-    span: Callable[[ast.AST], tuple[int, int]],
-    value_of: Callable[[ast.AST], str | None],
-    sequences: tuple[type[ast.AST], ...],
-) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
-    """Extract ``(start, end, value)`` items from a dict or one of ``sequences``.
-
-    Returns the items and the container's empty spelling, or None for any
-    other node or a dict with a ``**`` entry.
-    """
-    if isinstance(node, ast.Dict) and None not in node.keys:
-        items = [
-            (span(k)[0], span(v)[1], value_of(k))
-            for k, v in zip(node.keys, node.values, strict=True)
-            if k is not None
-        ]
-        return items, b"{}"
-    if isinstance(node, ast.List | ast.Set | ast.Tuple) and isinstance(node, sequences):
-        items = [(*span(e), value_of(e)) for e in node.elts]
-        return items, _EMPTY[type(node)]
-    return None
-
-
-def _inline_items(
-    node: ast.AST, span: Callable[[ast.AST], tuple[int, int]]
-) -> tuple[list[tuple[int, int, str | None]], bytes] | None:
-    """Extract string-constant items from a dict, list, set, or tuple."""
-    return _container_items(node, span, _str_value, (ast.List, ast.Set, ast.Tuple))
-
-
-def _drop_inline_items(path: Path, keys: set[str]) -> int:
-    """Cut each item keyed by ``keys`` that shares its line with others.
-
-    ``frozenset({"A Painter Ant", "Suffolk"})`` holds two languages on one
-    line, which :func:`_drop_entries` leaves.  Cut by column instead, with
-    the separating comma; a container left empty is spelled empty.
-    """
-    return _drop_matching_items(path, _inline_items, keys)
 
 
 def _top_level_name(node: ast.stmt) -> str | None:

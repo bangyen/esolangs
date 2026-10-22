@@ -13,6 +13,8 @@ from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.runtime._program import Program
 
+from .writing import write_if_changed
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
@@ -135,12 +137,10 @@ def write_boolean_manifest() -> None:
     """
     path = LANGUAGES_DIR / "EXAMPLES.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    text = boolean_manifest_text()
-    if path.exists() and path.read_text(encoding="utf-8") == text:
-        print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
-        return
-    path.write_text(text, encoding="utf-8")
-    print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
+    changed = write_if_changed(path, boolean_manifest_text(), encoding="utf-8")
+    print(
+        f"{'wrote    ' if changed else 'unchanged'} {path.relative_to(LANGUAGES_DIR)}"
+    )
 
 
 SETS = {

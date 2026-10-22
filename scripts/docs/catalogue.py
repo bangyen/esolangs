@@ -18,20 +18,16 @@ A package with no file or no ``[catalogue]`` section is skipped.
 
 from __future__ import annotations
 
-import tomllib
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .fragments import AggregateKey, aggregate
+from .fragments import AggregateKey, aggregate, registry, sections
 
 if TYPE_CHECKING:
     from esolangs.registry import Language
 
 ROOT = Path(__file__).resolve().parents[2]
-PACKAGES = ROOT / "src" / "esolangs" / "languages"
-FRAGMENT = "language.toml"
-SECTION = "catalogue"
 
 #: The section's flat keys, in order, and the (section, group) each feeds.
 _GROUPS = {
@@ -55,16 +51,6 @@ _CONTRADICTIONS = (
     ("folding_ignored_read", "folding_ignored_local"),
     ("folding_constant", "folding_constant_local"),
 )
-
-
-def _section(path: Path) -> dict[str, Any] | None:
-    """Return ``path``'s catalogue section, or None when it has none."""
-    table = tomllib.loads(path.read_text(encoding="utf-8")).get(SECTION)
-    if table is None:
-        return None
-    if not isinstance(table, dict):
-        raise ValueError(f"{path}: [{SECTION}] must be a table")
-    return table
 
 
 def _validate(path: Path, row: dict[str, Any]) -> dict[str, str]:
@@ -109,39 +95,16 @@ def _aggregate_fragments(
     groups: dict[str, dict[str, dict[str, str]]] = {}
     for section, group in _GROUPS.values():
         groups.setdefault(section, {})[group] = {}
-    seen: set[str] = set()
-    for lang in languages:
-        if lang.id in seen:
-            raise ValueError(f"duplicate language id: {lang.id}")
-        seen.add(lang.id)
-        path = packages / lang.id / FRAGMENT
-        if not path.is_file():
-            continue
-        row = _section(path)
-        if row is None:
-            continue
+    for lang, path, row in sections(packages, languages, "catalogue"):
         for key, value in _validate(path, row).items():
             section, group = _GROUPS[key]
             rows = groups[section][group]
             if lang.name in rows:
                 raise ValueError(f"duplicate language name: {lang.name}")
             rows[lang.name] = value
-    if packages.is_dir():
-        for path in packages.glob(f"*/{FRAGMENT}"):
-            if path.parent.name not in seen and _section(path) is not None:
-                raise ValueError(
-                    f"{path}: package {path.parent.name!r} is not registered"
-                )
     return groups
-
-
-def _registry() -> tuple[Language, ...]:
-    """Return the registered languages, in registry order."""
-    from esolangs.registry import LANGUAGES
-
-    return tuple(LANGUAGES.values())
 
 
 def load(root: Path = ROOT) -> dict[str, dict[str, dict[str, str]]]:
     """Return every catalogue group, keyed by section, group, and name."""
-    return aggregate_fragments(root / "src/esolangs/languages", _registry())
+    return aggregate_fragments(root / "src/esolangs/languages", registry())
