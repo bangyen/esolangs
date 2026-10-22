@@ -6,8 +6,12 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.languages.smallfuck.generator import PAIR, smallfuck
+from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, in_input_order
+from esolangs.languages.smallfuck.generator import (
+    PAIR,
+    _smallfuck_ordered,
+    smallfuck,
+)
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
 from tests.support.generator_support import multiple_tables, run_filled
@@ -42,10 +46,12 @@ def test_source_growth_is_linear() -> None:
 
 
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
-    """Pin the three-input total: 57,894 characters before, 21,285 after."""
+    """Pin the three-input total: 57,894 characters before, 20,956 after."""
     assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]<<<]"
-    assert smallfuck("0110").endswith("[*<*>]<<<]>[*>>[*<*>]<<]")
-    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 21285
+    # XOR takes the chain; the tree it would build still ends this way.
+    tree = in_input_order("0110", _smallfuck_ordered)
+    assert tree.endswith("[*<*>]<<<]>[*>>[*<*>]<<]")
+    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20956
 
     table = multiple_tables()[0]
     template = esolangs.generate("Smallfuck", table)
@@ -327,9 +333,10 @@ def test_wide_band_is_never_larger_than_the_narrow_band(
         table = "".join(str(bin(row).count("1") & 1) for row in range(1 << n))
     else:
         table = "".join(rng.choice("01") for _ in range(1 << n))
-    wide = len(smallfuck(table))
+    # The tree itself: parity takes the XOR chain past it.
+    wide = len(in_input_order(table, _smallfuck_ordered))
     monkeypatch.setattr(generator, "BANDS", generator.BANDS[:1])
-    narrow = len(smallfuck(table))
+    narrow = len(in_input_order(table, _smallfuck_ordered))
     assert wide < narrow
 
 
