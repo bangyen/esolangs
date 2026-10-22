@@ -12,14 +12,14 @@ execution = "linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 pe
 workspace = "linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack"
 
 [generator_sizes]
-"00000001" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
+"00000001" = { commands = 36, commands_by_row = { "0" = 15, "1" = 22, "2" = 22, "3" = 29, "4" = 22, "5" = 29, "6" = 29, "7" = 36 }, source_units = 229 }
 "00001100" = { commands = 33, commands_by_row = { "0" = 14, "1" = 14, "2" = 21, "3" = 21, "4" = 26, "5" = 26, "6" = 33, "7" = 33 }, source_units = 194 }
 "00110110" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
-"0110" = { commands = 31, commands_by_row = { "0" = 12, "1" = 19, "2" = 24, "3" = 31 }, source_units = 180 }
-"01101001" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
-"0110100110010110" = { commands = 101, commands_by_row = { "0" = 18, "1" = 25, "2" = 30, "3" = 37, "4" = 40, "5" = 47, "6" = 52, "7" = 59, "8" = 60, "9" = 67, "10" = 72, "11" = 79, "12" = 82, "13" = 89, "14" = 94, "15" = 101 }, source_units = 290 }
+"0110" = { commands = 26, commands_by_row = { "0" = 12, "1" = 19, "2" = 19, "3" = 26 }, source_units = 179 }
+"01101001" = { commands = 36, commands_by_row = { "0" = 15, "1" = 22, "2" = 22, "3" = 29, "4" = 22, "5" = 29, "6" = 29, "7" = 36 }, source_units = 229 }
+"0110100110010110" = { commands = 46, commands_by_row = { "0" = 18, "1" = 25, "2" = 25, "3" = 32, "4" = 25, "5" = 32, "6" = 32, "7" = 39, "8" = 25, "9" = 32, "10" = 32, "11" = 39, "12" = 32, "13" = 39, "14" = 39, "15" = 46 }, source_units = 279 }
 "1101001101101101" = { commands = 101, commands_by_row = { "0" = 18, "1" = 25, "2" = 30, "3" = 37, "4" = 40, "5" = 47, "6" = 52, "7" = 59, "8" = 60, "9" = 67, "10" = 72, "11" = 79, "12" = 82, "13" = 89, "14" = 94, "15" = 101 }, source_units = 290 }
-"11111110" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 233 }
+"11111110" = { commands = 36, commands_by_row = { "0" = 15, "1" = 22, "2" = 22, "3" = 29, "4" = 22, "5" = 29, "6" = 29, "7" = 36 }, source_units = 229 }
 
 [catalogue]
 folding_constant_local = "input_weights"  # one projected table entry
@@ -37,3 +37,10 @@ audited = "2026-10-19"
 saving = 342.3
 arity = 12
 verdict = "kept: canonical, exempt. The only mechanism on the default path: the table is pushed on its essential inputs and an ignored input is read and popped at weight 0. The emitted size depends only on the arity and the essential count (every all-essential table totals 1,601 chars at n=10 and 4,777 at n=12), so the price is 0.00% on random tables; on its class at n=10/12, one ignored input +52.2 / +77.5%, two +110.9 / +193.3%, three +169.5 / +342.3%, constant tables +631.1 / +1,834.0%"
+
+[ablations.symmetric_count]
+saving = 34.5
+arity = 8
+seed = "named symmetric tables"
+tables = 7
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds 1 an input and pushes n + 1 entries, raced by length against the weighted build. Parity, majority, and, or, at-least-2 and exactly-1 all 3.8% at n=4, 13.5% at n=6, 22.3% at n=7, 34.5% at n=8, 63.8% at n=10, 85.8% at n=12; a symmetric table with an ignored input 21.7% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"

@@ -3,6 +3,8 @@
 ``PSH STR`` pushes the table so entry 0 is on top.  Each input is read and
 added into a counter at its weight (an ignored input is read and popped), then
 a ``JMP`` loop discards one entry per count and prints the entry left on top.
+A symmetric table counts its inputs at weight 1 over n + 1 entries
+([ablations.symmetric_count]).
 
 Size:
     T + a few dozen characters per input; one loop step per row index.
@@ -22,6 +24,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     grid_width,
     input_weights,
+    symmetric_weights,
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
@@ -54,7 +57,14 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # the row index read MSB first, which is what the weights below build.  A
     # pushed zero is the counter; an ignored input is read and popped, and the
     # table is indexed by the rest.
-    weights, truth_table = input_weights(truth_table, n)
+    builds = [input_weights(truth_table, n), symmetric_weights(truth_table, n)]
+    return min(
+        (_lookup(*build, width) for build in builds if build is not None), key=len
+    )
+
+
+def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
+    """Return the literal push, the weighted reads and the discard walk."""
     reads = ["[PSH INT 0]"]
     for weight in weights:
         if weight:
