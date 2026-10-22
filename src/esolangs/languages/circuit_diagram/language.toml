@@ -79,7 +79,7 @@ verdict = "kept: part of the race; 4.3% of area at n=8, 0.0% at n=9 on random ta
 [ablations.bank_candidates]
 saving = 2.1
 arity = 9
-verdict = "kept: part of the race; 0.0% at n=8 on random tables, class wins at n=10..14 recorded in compete.py"
+verdict = "kept: part of the race; 0.0% at n=8 on random tables, class wins at n=10..14 recorded in compete.py. Re-priced 2026-10-22 (plain-rewrite audit), leave-one-out on 20 random, tiled, one-ignored and half-constant tables plus and/parity/majority at n=4..10: pool is the only candidate that builds at n <= 8; folded and sparse are guarded to n >= 17 (mask prefix past eight), where on 2-1000-class tables they tie and beat bundled by 3-22% of area, and sparse alone builds 1000 dense classes -- every candidate is live on its class"
 
 [ablations.ignored_input_drop]
 saving = 0.1

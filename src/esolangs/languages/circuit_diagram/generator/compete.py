@@ -57,10 +57,10 @@ def _residual(target: _Target, ceiling: int | None) -> _Layout | None:
     return _residual_class_bank_candidate(target.table, ceiling)
 
 
-# Measured by area, leave-one-out, n=8..14 (3-30 tables per class): folded and
-# sparse never produced a model; residual saves 12.0% (19.8% of chars) on
-# tables tiled from two blocks at n=10, 0% elsewhere; bundled saves 79% of
-# area (86% of chars) on random tables at n=10 and 60% of area at n=14.
+# By area, leave-one-out: residual saves 12.0% on two-block tiled tables at
+# n=10; bundled 79% on random tables at n=10, 60% at n=14.  Folded and sparse
+# first build at n=17 (mask prefix past eight): on 2-1000 repeated classes they
+# tie and beat bundled by 3-22%; sparse alone builds 1000 dense classes.
 # Order is the tie-break: an earlier candidate keeps an equal-area win.  The
 # interval models count characters before rendering, so a node cap cannot
 # hide a smaller complete fold.
