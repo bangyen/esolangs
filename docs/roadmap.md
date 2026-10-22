@@ -34,6 +34,32 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
+## Language candidates
+
+Unimplemented wiki pages shortlisted for the first-implementation route
+(2026-10-22): their specs read whole once the standing conventions (EOF,
+empty-stack pops, output framing, cell width) fill the gaps. None is
+admitted yet. Each needs a prototype audit first: an interpreter matching
+every example on its page, a linear generator executed over every table at
+small n, and a re-spelling comparison with the nearest collected generators
+([curation](limitations.md#curation)). BASICER, CARP and IEBEL jump by
+line number, so a plain tree costs T log T; they need equal subtrees shared.
+
+- **Ready for the audit:** Pilas (two lockstep stack lines; `{...}` runs
+  while the top is zero), Aprknia (one stack; `*` pushes five results),
+  lol waht i cant edit talk pages (while-equal blocks over variables),
+  IEBEL (equality-branch OISC; its truth machine forces `b` as a register
+  for the controls and a literal for the load) and BASICER (`GOTO` menus
+  read the input and branch in one step).
+- **Re-spelling risk:** CARP's decrement-and-branch tree is Decleq's
+  without the input normalization, and CreativeScript v2's arithmetic
+  (integer division, forced by its own `==` program) invites Blindfolded
+  Arithmetic's shifted literal or APL's `x`/`!x` selection. Each needs a
+  construction neither collected generator uses.
+- **No linear construction yet:** NOR machine (reaching an operand rotates
+  the queue), Balik (a 2D tree in O(T) area) and Tiangou (markers set as
+  they run, so jumps go backward only).
+
 ## Engineering
 
 Dead-code leads, unmeasured against the
