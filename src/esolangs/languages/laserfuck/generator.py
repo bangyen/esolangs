@@ -33,7 +33,7 @@ from esolangs.generation.helpers import (
     narrowest_grid,
     subtree_ids,
 )
-from esolangs.languages.laserfuck.proof_formulas import execution
+from esolangs.languages.laserfuck.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -811,6 +811,7 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=balance_laserfuck,
-    proof_execution=(execution, False, (5, 7)),
+    proof_execution=(execution, True, (5, 6, 7)),
+    proof_workspace=(workspace, True, (5, 6, 7)),
     example=Example(expected="0", kwargs=(("seed", 0),)),
 )

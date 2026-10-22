@@ -7,7 +7,7 @@ backlinks = 6
 [proof_status]
 labels = ["tree"]
 qualification = "a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; constant subtables fold, and a repeated branch is a class written once"
-scaling = "linear: at most 39T + 21 characters: 35 a node, 4 a leaf"
+scaling = "linear: at most 38T + 20 characters: 35 a node, 3 a leaf"
 execution = "poly n: worst 67n + 34 commands: one tree path, 67 ops a level"
 workspace = "poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3) + 2bl(L)+bl(6n+8)+bl(6n+9)+bl(n)+19 bits: two frames and six cells a level"
 

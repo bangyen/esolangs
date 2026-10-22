@@ -57,6 +57,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.abcdirection.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -447,4 +448,5 @@ LANGUAGE = Language(
     eof="EOF supplies zero bits",
     empty_program="program must contain a line with DDDDDD",
     no_wrap="a newline adds a grid row and moves every vertical path",
+    proof_execution=(execution, True, (3, 7)),
 )

@@ -151,5 +151,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_grid,
     proof_execution=(execution, False, (3, 6)),
-    proof_workspace=(workspace, False, (3, 4)),
+    proof_workspace=(workspace, True, (3, 4)),
 )

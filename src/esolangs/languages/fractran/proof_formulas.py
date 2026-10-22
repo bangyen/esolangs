@@ -7,8 +7,10 @@ def execution(n: int, _: str) -> int:
 
 
 def _diagram_cap(n: int) -> int:
-    """Distinct subtables each depth can hold: the maximal state count."""
-    return sum(min(1 << d, 1 << (1 << (n - d))) for d in range(n + 1))
+    """The maximal state count: two leaves, then each depth's unequal-halves cap."""
+    return 2 + sum(
+        min(1 << d, (1 << (1 << (n - d))) - (1 << (1 << (n - d - 1)))) for d in range(n)
+    )
 
 
 def _primes(count: int) -> list[int]:

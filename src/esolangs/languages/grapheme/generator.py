@@ -138,6 +138,6 @@ LANGUAGE = Language(
         "answers the all-zeros row; esolangs encode spells them",
     ),
     wrap=wrap_chars,
-    proof_execution=(execution, False, (3, 5)),
-    proof_workspace=(workspace, False, (3, 5)),
+    proof_execution=(execution, True, (3, 5)),
+    proof_workspace=(workspace, True, (3, 5)),
 )

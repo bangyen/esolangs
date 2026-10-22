@@ -15,8 +15,8 @@ bf_derivative_predates = true
 labels = ["finite lookup"]
 qualification = "weighted arms select one of `2**n` prewritten cells, cleaned in one sweep"
 scaling = "linear: three rows of linear appends, ~15T"
-execution = "linear: at most T + 297n + 687 steps for n = 5, 6, then 18T + 56n + 5"
-workspace = "linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells"
+execution = "linear: worst T + 296n + 682 steps for n = 5, 6, then 18T + 56n + 4"
+workspace = "linear: worst 8n + 26 bits at n = 5, 6, then 12T + 2n + 11 + 2bl(n)"
 
 [generator_sizes]
 "00000001" = { commands = 1574, commands_by_row = { "0" = 1561, "1" = 1561, "2" = 1561, "3" = 1561, "4" = 1566, "5" = 1566, "6" = 1571, "7" = 1574 }, source_units = 269 }

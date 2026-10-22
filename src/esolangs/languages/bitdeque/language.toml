@@ -8,7 +8,7 @@ backlinks = 5
 labels = ["parameterized lookup"]
 qualification = "head/tail discards leave the indexed entry in the deque"
 scaling = "linear: the shared tree"
-execution = "linear: at most 3T + 9n - 3 commands past n=4: load 2T, stage walk; unreached, n=5 worst 47"
+execution = "poly n: worst 7n + 8 commands past n = 2: prelude, load 2n, four a level, leaf n + 6"
 workspace = "linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 1 bits; unreached"
 
 [generator_sizes]

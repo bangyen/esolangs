@@ -9,7 +9,7 @@ labels = ["tree"]
 qualification = "the table is a tree of Church pairs, equal halves folded to `K`, applied to the bits that one fixed reader stage an input takes from `A`"
 scaling = "linear: 14 characters a pair, 75 a reader stage"
 execution = "poly n: worst 35n + 45 rewrites: a pair a level, then the answer stage"
-workspace = "linear: at most 24L bits: at most three live copies of the term, 8 bits a combinator"
+workspace = "linear: worst max(88T+232n+235, 132T+24n-53) + bl(n) bits past n = 1: two copies early, three at the end"
 
 [generator_sizes]
 "00000001" = { commands = 146, commands_by_row = { "0" = 139, "1" = 139, "2" = 139, "3" = 139, "4" = 144, "5" = 144, "6" = 145, "7" = 146 }, source_units = 368 }

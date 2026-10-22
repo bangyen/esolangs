@@ -68,6 +68,132 @@ def _bfstack_worst(n: int) -> str:
     return table
 
 
+def _morse(a: str, b: str, n: int) -> str:
+    """Blocks ``a``, ``b`` in Thue-Morse order: halves both maximal, distinct."""
+    for _ in range(n - 2):
+        a, b = a + b, b + a
+    return a
+
+
+# language-owners: ["Bitdeque"]
+def _bitdeque_worst(n: int) -> str:
+    """Every level's zero child an already-placed subtree, read permuted.
+
+    ``Z_k = Z_{k+1} F_{k+1}`` places ``F_{k+1}`` before ``F_k = F_{k+1} W_k``;
+    constants of both kinds keep the last level general, and the tree reads
+    ``table[r ^ mask]``, odd levels complemented.  Three inputs cannot fit
+    both constant kinds: its table is the exhaustive argmax.
+    """
+    if n == 3:
+        return "10110010"
+    z, f = "01", "10"
+    for k in range(n - 2, 0, -1):
+        z, f = z + f, f + str((n - k) % 2) * 2 ** (n - k - 1)
+    seen = z + f
+    mask = sum(1 << (n - 1 - level) for level in range(1, n, 2))
+    return "".join(seen[r ^ mask] for r in range(1 << n))
+
+
+# language-owners: ["Collatz Multiverse"]
+def _collatz_worst(n: int) -> str:
+    """Four-row cells holding the base-16 digit sum of their index: 16 differ."""
+    return "".join(
+        f"{sum(int(d, 16) for d in f'{j:x}') % 16:04b}" for j in range(1 << (n - 2))
+    )
+
+
+# language-owners: ["Dimensional"]
+def _dimensional_worst(n: int) -> str:
+    """Zero runs of 9 between single ones, one or two of 12 or 15 to fit.
+
+    A counted run of l >= 9 costs 2l + e(l) against 2l, e(l)/(l+1) at most
+    2/5 and only at l = 9; the base runs make T + 1 cells reach the knapsack's
+    floor((2T+1)/5).
+    """
+    base = {0: [15], 1: [12], 2: [12] * 5, 3: [12, 15]}[n % 4]
+    runs = base + [9] * ((2**n + 1 - sum(r + 1 for r in base)) // 10)
+    table = "1".join("0" * r for r in runs)
+    return table + "1" * (2**n - len(table))
+
+
+# language-owners: ["Freestajlo"]
+def _freestajlo_worst(n: int) -> str:
+    """Sixteen plain entries to n = 6, the others ignored; then 7-bit words."""
+    if n <= 2:
+        return ("10", "0010")[n - 1]
+    if n <= 4:
+        return "10" * (2 ** (n - 1) - 1) + "01"
+    if n <= 6:
+        return "".join(c * 2 ** (n - 4) for c in "10" * 7 + "01")
+    return "0110" + "1" * (2**n - 4)
+
+
+# language-owners: ["Grapheme"]
+def _grapheme_worst(n: int) -> tuple[str, ...]:
+    """The longest lift, 10^(d-1) - 1, and the largest: the top valid residue."""
+    t = 1 << n
+    span = 1 << t
+    d = len(str(span))
+    covered = []
+    for j in range(d):
+        lo = 10**j % span
+        hi = lo + 10**j
+        covered += [(lo, hi)] if hi <= span else [(lo, span), (0, hi - span)]
+    v = 10**d % span - 1
+    while (hit := next((lo for lo, hi in covered if lo <= v < hi), None)) is not None:
+        v = hit - 1 if hit else span - 1
+    return f"{10 ** (d - 1) - 1:0{t}b}", f"{v:0{t}b}"
+
+
+# language-owners: ["Quassaunt"]
+def _quassaunt_worst(n: int) -> str:
+    """Height-k blocks pairing every value, so each level is full or all distinct."""
+    k = 0
+    while 1 << (k + 1) <= n - k - 1:
+        k += 1
+    size = 1 << (1 << k)
+    blocks = []
+    for j in range(1 << (n - k - 1)):
+        c, a = divmod(2 * j, size)
+        blocks += [a, (a + 1 + c) % size]
+    return "".join(f"{v:0{1 << k}b}" for v in blocks)
+
+
+# language-owners: ["LaserFuck"]
+def _laserfuck_worst(n: int) -> tuple[str, ...]:
+    """The tree's: nodes all distinct, the all-ones row ending on a one.
+
+    Past n = 6 the lookup's: T - 1 ones in steps, one-hot in bits.
+    """
+    width = 1 << n
+    if n < 7:
+        return ("".join(str((row.bit_count() + n + 1) & 1) for row in range(width)),)
+    return "0" + "1" * (width - 1), "1" + "0" * (width - 1)
+
+
+#: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
+_WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
+    "1 + i": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
+    "Bitdeque": lambda n: (_bitdeque_worst(n),) if n >= 3 else (),
+    # All ones but row 0: T - 1 ones and the top octal digit.
+    "Blindfolded Arithmetic": lambda n: ("0" + "1" * (2**n - 1),),
+    # Balanced, row 0 a planted one: the longest prologue, and a mark.
+    "bit~": lambda n: ("1" * (2 ** (n - 1) - 1) + "01" + "0" * (2 ** (n - 1) - 1),),
+    "Caballo": lambda n: (_morse("1110", "1011", n),) if n >= 2 else (),
+    "Collatz Multiverse": lambda n: (_collatz_worst(n),) if n >= 2 else (),
+    "Dimensional": lambda n: (_dimensional_worst(n),) if n >= 4 else (),
+    "Fackward": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
+    # T - 1 runs: alternating but one equal pair.
+    "Flowchart": lambda n: ("10" * (2 ** (n - 1) - 1) + "01",),
+    "Freestajlo": lambda n: (_freestajlo_worst(n),),
+    "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
+    "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
+    # Equal halves under parity: the root skip doubles a 3T/2 - 1 term.
+    "Kiss": lambda n: (_parity(n - 1) * 2,) if n >= 2 else (),
+    "Quassaunt": lambda n: (_quassaunt_worst(n),),
+}
+
+
 def _tables(name: str, n: int) -> tuple[str, ...]:
     """Structured and random tables, with named worst-case witnesses."""
     width = 1 << n
@@ -86,7 +212,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         return (_parity(n),)
     if name == "LaserFuck" and n >= 5:
         # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
-        return (_parity(n), _dense(n), "0" * width, "1" * width)
+        return (_parity(n), _dense(n), "0" * width, "1" * width, *_laserfuck_worst(n))
     if name == "BFStack" and n >= 10:
         # Lower arities sweep the generic families; this named witness reaches
         # the combined classifier/odd-prefix bound without repeating them.
@@ -121,6 +247,8 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         # ROTfuck's was NAND's, and Minsky Swap's and EGL's parity, until
         # symmetric tables took the count.
         tables += ("1" * (width - 2) + "01",)
+    if name in _WITNESSES:
+        tables += _WITNESSES[name](n)
     if name == "Home Row":
         # Alternating but for one equal pair: every input essential, T - 2 leaves.
         tables += ("10" * (width // 2 - 1) + "01",)

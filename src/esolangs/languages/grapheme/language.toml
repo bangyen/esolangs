@@ -8,8 +8,9 @@ backlinks = 3
 labels = ["linear lookup"]
 qualification = "the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0"
 scaling = "linear: bounded dependency scan, one table literal, n read blocks"
-execution = "linear: at most 18n + 20 + d commands, d the digits of 2^T: one per program character"
-workspace = "linear: at most 16d + 144n + 208 + bl(18n+d+5) + 2bl(2·10^d) + bl(2n) + bl(n) bits, d digits of 2^T"
+execution = "linear: worst 17n + 20 + d commands, d the digits of 2^T: one per program character"
+workspace = "linear: worst 16d + 136n + 195 + bl(17n+d+5) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n) bits"
+definitions = ["λ = the largest lift of d + 1 digits, d those of 2^T"]
 
 [generator_sizes]
 "00000001" = { commands = 71, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 71, "5" = 71, "6" = 71, "7" = 71 }, source_units = 71 }
