@@ -268,6 +268,19 @@ def test_an_ablation_saving_is_said_once() -> None:
     assert repeats == {}
 
 
+def test_every_generator_has_an_audit_record() -> None:
+    """A dated ``[ablations]`` record; Bleh, Freestajlo and Stisp shipped without."""
+    missing = [
+        name
+        for name in _generated()
+        if "audited"
+        not in tomllib.loads(
+            (_LANGUAGES_DIR / LANGUAGES[name].id / "language.toml").read_text()
+        ).get("ablations", {})
+    ]
+    assert missing == []
+
+
 def _size(program: esolangs.Program) -> tuple[int, str]:
     """Return the emitted size as ``scripts/benchmark.py`` counts it."""
     if isinstance(program, (str, esolangs.CompressedText)):

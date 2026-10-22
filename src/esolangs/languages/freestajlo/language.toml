@@ -23,3 +23,20 @@ folding_constant_local = "freestajlo"  # one projected table entry, no index
 "0110100110010110" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16, "8" = 16, "9" = 16, "10" = 16, "11" = 16, "12" = 16, "13" = 16, "14" = 16, "15" = 16 }, source_units = 33 }
 "1101001101101101" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16, "8" = 16, "9" = 16, "10" = 16, "11" = 16, "12" = 16, "13" = 16, "14" = 16, "15" = 16 }, source_units = 33 }
 "11111110" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 21 }
+
+[ablations]
+audited = "2026-10-21"
+
+[ablations.essential_projection]
+saving = 49.5
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: canonical, exempt; the literal holds the table read at the essential inputs and an ignored input is read and dropped (;#): 45.0% with one ignored input at n=8 rising to 49.5% at n=12, 93.4-99.3% on constants, 0.0% where every input is essential. Plain-rewrite audit: no bespoke tricks"
+
+[ablations.constant_read]
+saving = 99.3
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: canonical constant fold, exempt; a constant pushes 'c, drops every input and prints with no index, against the full literal indexed by every input: 93.4% at n=8, 97.8% at n=10, 99.3% at n=12; fires only on the two constant tables"
