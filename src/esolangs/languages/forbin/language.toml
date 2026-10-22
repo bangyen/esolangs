@@ -7,7 +7,7 @@ backlinks = 5
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry"
-scaling = "linear: two characters an entry, halvings sum to `2 * 128`"
+scaling = "linear: worst N characters: two an entry, distinct nonconstant blocks"
 execution = "poly n: worst 2 max(n - 7, 0) + 2 commands"
 workspace = "linear: worst 32n + 71 + 2bl(n) + G bits for n ≤ 48: main's locals in both frame and scope"
 definitions = ["G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-7, 0), the loop cursor"]

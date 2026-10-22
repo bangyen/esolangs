@@ -7,7 +7,7 @@ backlinks = 1
 [proof_status]
 labels = ["tree"]
 qualification = "each folding pass removes at least one pending unit"
-scaling = "linear: one `*` per entry"
+scaling = "linear: worst 2T + 19n + 21 characters: one \"*\" an entry"
 execution = "linear: worst 2T + 19n + 21 commands past n = 4: one straight line, all ones but one row"
 workspace = "linear: worst T + 2n + 12 + bl(L) + bl(n) bits past n = 4: the packed-table cell"
 

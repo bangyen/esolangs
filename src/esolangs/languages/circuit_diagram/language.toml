@@ -18,7 +18,7 @@ backlinks = 5
 labels = ["tree"]
 qualification = "complete residual folds or a strictly smaller emitted fallback"
 scaling = "linear: emitted text; fixed-order residual DAGs costed before rendering"
-execution = "poly n: worst 2n + 1 commands; at most 2n + 2 past n = 12: parity, the longest gate path"
+execution = "poly n: worst 2n + 1 commands: parity, the longest gate path"
 workspace = "linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses"
 evidence = "docs/proofs/circuit-diagram-sharing.md"
 

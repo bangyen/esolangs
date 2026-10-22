@@ -9,7 +9,8 @@ labels = ["tree"]
 qualification = "a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched"
 scaling = "linear: worst 37T/4 - 10 characters past n = 1: ten a node"
 execution = "poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b"
-workspace = "poly n: worst 3n + 52 + bl(2n-1) bits for n = 6..13, else at most 4bl(L) + 40"
+workspace = "poly n: worst W bits, n = 2..20: frame, stack and input position"
+definitions = ["W = 51, 61, 64, 70 at n = 2..5; 3n+52+bl(2n-1) to 13; 3n+48+bl(n+2)+bl(2n-1) to 20"]
 
 [generator_sizes]
 "00000001" = { commands = 14, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 18, "5" = 18, "6" = 14, "7" = 14 }, source_units = 35 }

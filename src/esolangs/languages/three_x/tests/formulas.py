@@ -1,5 +1,7 @@
 """3x key and workspace bounds."""
 
+from esolangs.languages.three_x.generator import _COMPLEMENT
+
 bl = int.bit_length
 
 
@@ -11,10 +13,11 @@ def _key(i: int) -> int:
 def _three_x(n: int, p: str) -> int:
     """Read cursor, guard positions and residues, keys and values.
 
-    Every guard met leaves one 3-bit item; N bounds the names: n bits, n
-    complements, the result, and T/24 flags (a shared block covers 24 rows).
+    Every guard met leaves one 3-bit item; N bounds the names: the result,
+    n bits, the complements the program stores (two snippets each) and the
+    flags (one guard each, a shared block covers 24 rows).
     """
-    names = 2 * n + 1 + 2**n // 24
+    names = 1 + n + str(p).count(_COMPLEMENT) // 2 + min(str(p).count("("), 2**n // 24)
     return (
         n * bl(len(p))
         + bl(2 * n - 1)

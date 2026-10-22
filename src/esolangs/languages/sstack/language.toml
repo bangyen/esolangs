@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["tree"]
 qualification = "each input byte is compared with stacked '1' and '0', then popped before descent; the empty test stack ends both one-shot loops; a constant subtree reads its remaining inputs and prints; repeated residuals use guarded labels"
-scaling = "linear: 21 characters an internal node, three a leaf"
+scaling = "linear: at most 24T-9 characters: 21 a node, 3 a leaf, 12 prologue"
 execution = "poly n: at most 7n + 3 commands, six a tree node plus guarded dispatch"
 workspace = "poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes"
 

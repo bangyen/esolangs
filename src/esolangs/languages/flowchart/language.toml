@@ -11,7 +11,7 @@ backlinks = 8
 [proof_status]
 labels = ["finite lookup"]
 qualification = "a pair of answers per deque, and the input walks the deque cursor to the pair it wants"
-scaling = "linear: T pushes, `T/2 - 1` cursor steps, two rows"
+scaling = "linear: worst 16T+72n+38 characters past n = 1: four a run"
 execution = "linear: worst 3T + 9n + 3 nodes past n = 1: preload T plus T - 1 runs"
 workspace = "T log T: worst F bits past n = 2: 7T + 18n + 5 exit-memory cells, the deques, the counters"
 definitions = ["F = Σ over exit-memory cells of 4 + bl(column), plus deque keys and counters"]

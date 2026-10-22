@@ -398,5 +398,5 @@ LANGUAGE = Language(
     balance=balance_collatz_multiverse,
     no_wrap="each line is one complete register assignment",
     proof_execution=(execution, True, (3, 5, 6, 8)),
-    proof_workspace=(workspace, False, (3, 6)),
+    proof_workspace=(workspace, True, (3, 4, 5, 6, 9)),
 )

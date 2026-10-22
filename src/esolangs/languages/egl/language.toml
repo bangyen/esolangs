@@ -7,7 +7,7 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "row 1 is painted with the table and each essential input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell"
-scaling = "linear: T painted cells, guard weights sum to T - 1"
+scaling = "linear: worst 3T + 52n + digits(T) + 6 characters: painted row"
 execution = "linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weights sum to T-1"
 workspace = "linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T"
 

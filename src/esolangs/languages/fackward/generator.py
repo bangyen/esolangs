@@ -10,7 +10,7 @@ the character it reads, or its complement ([ablations.last_level_forms]).
 Each function is released one pass before it runs, so nothing fires early.
 
 Size:
-    At most 49T/2 - 34 chars without equal halves, O(n) for a constant;
+    At most 45T/2 - 31 chars (reached) without equal halves, O(n) for a constant;
     repeated subtables are copied; 40n - 28 steps at most; n=10 parity:
     22,241 chars, n=10 random 1847: 19,531 chars.
 """

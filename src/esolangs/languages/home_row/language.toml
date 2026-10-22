@@ -7,7 +7,7 @@ backlinks = 15
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "—"
-scaling = "linear: bounded dependency scan and canonical residual IDs"
+scaling = "linear: worst 27T/2 + 10n + 6 characters past n = 1: runs"
 execution = "linear: worst 10T + 10n + 88 commands: every guarded leaf run, one equal pair of rows"
 workspace = "poly n: worst n + 32 + bl(27T/2+10n+6) bits: index cell and cursor"
 

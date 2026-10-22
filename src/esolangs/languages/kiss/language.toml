@@ -7,7 +7,7 @@ backlinks = 3
 [proof_status]
 labels = ["tree"]
 qualification = "a node is S over its two halves, which S reads a bit to choose; a node whose halves agree reads it through SS(SKK)"
-scaling = "linear: 5 characters a node or 9 a skip, 2 a leaf"
+scaling = "linear: worst 7T-5 characters: 5 a node, 2 a leaf"
 execution = "poly n: worst 4n - 1 rewrites: four a skip level, then a read, the output and the halt"
 workspace = "linear: worst 24T + 2bl(n) + 17 bits past n = 1: a root skip holds its half twice"
 

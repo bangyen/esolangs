@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["finite lookup"]
 qualification = "one table block halved by `O(n)` conditional substitutions"
-scaling = "linear: T literal, `.` halvings sum to 2T"
+scaling = "linear: worst 3T+71n+27 characters past n = 4: to n = 16"
 execution = "poly n: worst 8n + 10 commands past n = 4, halving per level"
 workspace = "linear: worst 24T + 516n + 169 + A bits for n = 5..16: the program text after n reads"
 definitions = ["A = bl(12n+10) + bl(2n) + bl(n) + Σ_{i≤n+2}(bl(3i) + bl(3i+2)) + Σ_{2n+5≤m≤6n+4} bl(m)"]

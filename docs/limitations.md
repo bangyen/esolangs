@@ -489,23 +489,25 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Thirty-three ledger cells stay `at most` with no route to `worst`
+Thirty-seven ledger cells stay `at most` with no route to `worst`
 (2026-10-22; open ones are on the [roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
-  with the winner. ArrowQueue execution and scaling, BFStack, Circuit
-  Diagram workspace, Container, CVNC, Fargo both, For Thorn execution,
+  with the winner. ArrowQueue execution (proved 11T + 32n + 92) and
+  scaling, B-tapemark both, BFStack, Boolfuck workspace, Circuit Diagram
+  workspace, Container, CVNC, Fargo both, For Thorn execution,
   Minifuck, Object Disoriented scaling, Piet both, Smallfuck, Streetcode.
 - Address widths: the peak sums the bit-lengths of table-dependent
-  positions, which cross powers of two by layout. AddSubJump, Crement
-  workspace, Painfuck workspace (slack 1 at n = 3..6, never 0), Pointless
+  positions, which cross powers of two by layout. AddSubJump, Caballo
+  workspace, Crement workspace, Interprogck8 execution (mod-82/66
+  lanes), Painfuck workspace (slack 1 at n = 3..6, never 0), Pointless
   workspace, ROTfuck, S-BLEQ, Underload workspace.
 - Coincident peaks: the bound adds component maxima no single row reaches
   together, and the exact peak needs a per-row profile. ABCDirection,
   Algebraic Programming Language workspace, FALSE workspace (15x loose),
   For Thorn workspace, Object Disoriented workspace (4x), Packlang,
-  Polynomial, Slow ACV, SStack (exact at n = 5 and 8 only), Unlambda both.
+  Polynomial, SStack (exact at n = 5 and 8 only), Unlambda both.
 
 ## Curation
 

@@ -10,8 +10,8 @@ backlinks = 90
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: 12 characters an internal node, two a leaf"
-execution = "linear: at most L commands: expression text executed whole; diagram one path"
+scaling = "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15"
+execution = "linear: at most 9T/2 + 5n - 7 commands past n = 3: expression text executed whole; diagram one path"
 workspace = "poly n: at most (2n+56)(n+4) + n + 1 + bl(n) bits: 26 lambdas"
 
 [generator_sizes]

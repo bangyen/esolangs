@@ -7,7 +7,7 @@ backlinks = 1
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "an ignored input's run lands on the cell the next load fills, and a `-` after it leaves the cell empty"
-scaling = "linear: leaf moves sum geometrically, sparse row render"
+scaling = "linear: at most N characters: load column, one row a node"
 execution = "linear: worst max(R,6n-1) + R + 3n + 6 commands, R = 3T/4+1 rows: load column, then all-ones path"
 workspace = "poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits"
 

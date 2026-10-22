@@ -7,9 +7,10 @@ backlinks = 100
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree"
-scaling = "linear: reverse-depth numbering confines long names near the root"
-execution = "linear: at most 2n + min(T/8 + 2, T/16 + 14) statements: n + 3 fixed, named negations, shared nodes"
-workspace = "linear: at most 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits, S the Execution bound: one keyed bit per variable"
+scaling = "linear: at most U characters past n = 2: priced per level"
+execution = "linear: worst 2n + min(T/8 + 2, T/16 + 14) statements for n = 5..7, at most it elsewhere: shared nodes"
+workspace = "linear: worst 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits for n = 5..7, at most it elsewhere"
+definitions = ["S = the Execution bound"]
 
 [generator_sizes]
 "00000001" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 213 }

@@ -29,19 +29,32 @@ evidence, not optimization tasks.
   ([limitations](limitations.md)). Reopen only with a layout that needs a
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
-- **Open worst-case bounds** (2026-10-22): these `at most` cells have a
-  route to `worst`. The 33 without one are in
+- **Open worst-case bounds** (2026-10-22): these cells have a route to
+  `worst`. The 37 `at most` cells without one are in
   [limitations](limitations.md#run-time-and-memory).
-  - Partial range: SendStuff workspace past n = 10 (its witness falls one
-    short from n = 11), What!? workspace past n = 15, Circuit Diagram
-    execution past n = 12, 1 + i workspace outside n = 6..13.
-  - Measured, not proved: B-tapemark folds never exceed the narrow
-    staircase and ArrowQueue's fold term (both measured to n = 11), and
-    Painfuck's plain-tree side (20n - 3).
-  - SMU scaling is exact only for n = 7..10; the scaling notation takes
-    one case.
-  - Algebraic Programming Language execution is worst only per program's K.
-  - Malbolge's 199-step stub tail is observed, not derived.
+  - Partial range: SMU scaling past n = 10 (two-letter macro names from
+    n = 12 break the rule), 1 + i workspace past n = 20, What!? execution
+    and scaling past n = 15, INTERCAL execution and workspace outside
+    n = 5..7, Inject scaling past n = 16, S-BLEQ scaling outside n = 11..18,
+    BrainIf scaling below n = 3.
+  - Proved, not reached: FALSE execution; Malbolge,
+    Quassaunt, Subleq and 3x workspace; Algebraic Programming Language,
+    Back, Bitdeque, Boolfuck, Container, Decleq, Fargo, FALSE, INTERCAL,
+    Packlang, Painfuck, RAM0, SendStuff, 6-5, SStack, Streetcode, Suffolk,
+    Underload and Unlambda scaling.
+  - Algebraic Programming Language execution: `max(21, ⌈65n/2⌉ + 3n - 27)`
+    is exact through n = 4 (exhaustive), unproved past it.
+- **Unformulated scaling** (2026-10-22): 20 cells state a mechanism, no
+  size formula. Bleh, Quassaunt and Stisp have a bound only as a per-level
+  optimisation (not a rule); CVNC's unshared 8T + 12 is beaten by sharing
+  on 12,926 of 65,536 four-input tables. Brainfuck, Dig, For Thorn,
+  Interprogck8, Minifuck, Pointless, ROTfuck, Smallfuck, Subleq, Thisthat,
+  3x and AddSubJump (n <= 5) race routes or layouts; Line, Piet and Circuit
+  Diagram need a raster unit; Polynomial is a lower bound. Slow ACV's three
+  cells are prose too: candidate bounds hold to n = 20 but are unproved.
+- **Unmeasured classes:** Befunge, Malbolge and Polynomial execution carry
+  formulas; Unary execution and workspace do not (`max(n, min(n + 4, 8))`
+  commands is exact on the nine-command budget, unapplied).
 
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression

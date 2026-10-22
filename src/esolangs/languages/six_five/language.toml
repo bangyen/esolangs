@@ -7,7 +7,7 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks"
-scaling = "linear, time n log: two raced orders over canonical subtree IDs"
+scaling = "linear, time n log: at most N characters: two raced orders over canonical subtree IDs"
 execution = "linear: worst L commands: loop-free, each token runs at most once; constant tables run every token"
 workspace = "linear: worst 2T + 7n + 9 + bl(n) bits past n = 6: a tape of 2T cells"
 
