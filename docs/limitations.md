@@ -134,7 +134,7 @@ Each missed the 10% bar:
   bottom-up, so reordering can save at most 0.08-0.40% in Bleh, Stisp,
   SendStuff and Codesick; re-laying BitDeque's jump targets at most 5.8%.
 - Defaulting to the smaller-area balance layout (2026-10-22; shipped for
-  Piet and ArrowQueue):
+  Piet, ArrowQueue and B-tapemark):
   - Clockwise's narrow route wins every random table but saves a fixed
     ten-odd rows of a 2n + 15-row grid: 34.1% at n=7, 32.0% at n=8, 27.0%
     at n=11. Its banded strips rise (22.0% to 27.1% at n=7..8), never win
