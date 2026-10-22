@@ -199,7 +199,11 @@ def test_a_module_docstring_figure_is_said_once() -> None:
         }
         if found := _repeats(_doc(name), sources):
             repeats[name] = found
-    assert repeats == {}
+    # A bare dict compare truncates in pytest's diff; list every hit.
+    assert repeats == {}, (
+        "the module docstring states these figures; drop the repeat at "
+        f"each path:line -- {repeats}"
+    )
 
 
 _SAVING = re.compile(r"\d+\.\d+%")
@@ -265,7 +269,10 @@ def test_an_ablation_saving_is_said_once() -> None:
             if f.split()[1] not in distinct
         ]:
             repeats[name] = found
-    assert repeats == {}
+    assert repeats == {}, (
+        "cite [ablations.<key>] at each path:line instead of restating its "
+        f"saving ('key?' is a citation of an unknown key) -- {repeats}"
+    )
 
 
 def test_every_generator_has_an_audit_record() -> None:

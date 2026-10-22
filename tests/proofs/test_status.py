@@ -20,8 +20,9 @@ def test_rendering_preserves_committed_tables(
     monkeypatch.setattr(status, "ROOT", tmp_path)
     before = {path: path.read_bytes() for path in tmp_path.rglob("*.md")}
     # In-sync tables are not rewritten, and update_docs reports no change.
-    assert status.update_docs(tmp_path) is False
-    assert {path: path.read_bytes() for path in before} == before
+    stale = "proof tables are stale; run uv run python scripts/docs/generate.py docs"
+    assert status.update_docs(tmp_path) is False, stale
+    assert {path: path.read_bytes() for path in before} == before, stale
 
 
 @pytest.mark.parametrize(

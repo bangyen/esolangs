@@ -120,6 +120,13 @@ test-mid *args:
 test-py *args:
     {{PYTHON}} scripts/verify/gate.py --only pytest {{args}}
 
+# named tests or node ids, serial, any band (`-p no:xdist` breaks addopts' -n)
+[group('test')]
+[no-exit-message]
+[positional-arguments]
+test-one +nodes:
+    {{PYTHON}} -m pytest -q -n 0 -m "" "$@"
+
 # lint + duplicate-code + dead definitions
 [group('test')]
 [no-exit-message]

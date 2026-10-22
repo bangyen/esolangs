@@ -106,8 +106,16 @@ class TestSamplesCoverEveryLanguage:
 def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
     """Run the halt and snapshot contract on one machine; return where it settled."""
     vm = make_vm(language, program, stdin=stdin)
-    assert vm.self_halts == (language not in NEVER_SELF_HALTS)
-    assert vm.dumps_on_the_post_halt_step == (language in DUMPS_ON_THE_POST_HALT_STEP)
+    assert vm.self_halts == (language not in NEVER_SELF_HALTS), (
+        f"{language}: self_halts is {vm.self_halts}; NEVER_SELF_HALTS in "
+        "tests/support/samples.py lists exactly the languages where it is False"
+    )
+    assert vm.dumps_on_the_post_halt_step == (
+        language in DUMPS_ON_THE_POST_HALT_STEP
+    ), (
+        f"{language}: DUMPS_ON_THE_POST_HALT_STEP in tests/support/samples.py "
+        "must list it exactly when the VM says it dumps after halting"
+    )
     machine = _machine_of(vm)
     assert machine is not None, f"{language}'s adapter wraps no state object"
     hash(machine.snapshot())
