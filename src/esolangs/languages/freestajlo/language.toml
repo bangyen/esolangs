@@ -15,14 +15,14 @@ workspace = "linear: at most 6T + 4n + 12 bits: the literal's codes on the stack
 folding_constant_local = "freestajlo"  # one projected table entry, no index
 
 [generator_sizes]
-"00000001" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 21 }
+"00000001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 13 }
 "00001100" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10 }, source_units = 15 }
 "00110110" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 21 }
-"0110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8 }, source_units = 13 }
-"01101001" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 21 }
-"0110100110010110" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16, "8" = 16, "9" = 16, "10" = 16, "11" = 16, "12" = 16, "13" = 16, "14" = 16, "15" = 16 }, source_units = 33 }
+"0110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6 }, source_units = 10 }
+"01101001" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 13 }
+"0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 16 }
 "1101001101101101" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16, "8" = 16, "9" = 16, "10" = 16, "11" = 16, "12" = 16, "13" = 16, "14" = 16, "15" = 16 }, source_units = 33 }
-"11111110" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 21 }
+"11111110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 13 }
 
 [ablations]
 audited = "2026-10-21"
@@ -47,3 +47,10 @@ arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: six entries a printable character (codes 35-98, skipping the closing quote and DEL), raced by length against the plain literal: 15.1% on random tables at n=5, 56.1% at n=7, 67.5% at n=8, 78.4% at n=10, 81.9% at n=12, tending to 5/6; parity, majority and and at n=8 289 to 94 chars. Never fires through n=4 (exhaustive, no table changes); every random table at n=5..8 executed, 20 at n=9..10, 3 at n=12"
+
+[ablations.symmetric_count]
+saving = 70.2
+arity = 8
+seed = "named symmetric tables"
+tables = 7
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 sums its reads (;+) and picks one of n + 1 literal entries, raced by length against the plain and packed literals. Against the packed literal: parity, majority, and, or, at-least-2 and exactly-1 all 51.5% at n=4, 59.3% at n=6, 63.8% at n=7, 70.2% at n=8, 85.2% at n=10, 94.7% at n=12; a symmetric table with an ignored input 62.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=12. Replaces the family-D change-point compare (and/or only, 80-96% against the plain literal): the count covers and/or, every threshold and parity with one mechanism"

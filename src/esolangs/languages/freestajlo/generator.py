@@ -2,20 +2,26 @@
 
 ``"..."`` pushes the table read at the essential inputs, row 0 on top; ``;``
 reads each into the row by Horner's rule (``2*;+``), ``;#`` drops an ignored
-one, and ``&.`` prints the entry that deep.  AND is ``"0001";2*;+&.``.  From
+one, and ``&.`` prints the entry that deep.  a AND NOT b is ``"0010";2*;+&.``.  From
 about 32 rows a packed literal is shorter: six entries a printable character,
 and the row splits into the character ``&`` copies and the bit printed
-([ablations.packed_literal]).
+([ablations.packed_literal]).  A symmetric table sums its reads instead and
+picks one of n + 1 entries ([ablations.symmetric_count]).
 
 Size:
-    T/6 + 4n + 20 chars past the crossover; n=4 parity: 33 chars, n=10
+    T/6 + 4n + 20 chars past the crossover; n=4 parity: 16 chars, n=10
     random 1847: 230 chars.
 
 Decisions:
     A literal shares nothing; a constant is ``'c``, printed with no index.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+    symmetric_weights,
+)
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry._language import Language, Shape
 
@@ -44,7 +50,14 @@ def freestajlo(truth_table: str) -> str:
         reads[i] = "2*;+" if k else ";"
     plain = f'"{reduced}"' + "".join(reads) + "&."
     packed = f'"{_pack(reduced)}"' + "".join(reads) + _DECODE
-    return min(plain, packed, key=len)
+    forms = [plain, packed]
+    if (symmetric := symmetric_weights(truth_table, n)) is not None:
+        # The count picks one of n + 1 entries ([ablations.symmetric_count]).
+        counts = [";#" for _ in range(n)]
+        for k, i in enumerate(used):
+            counts[i] = ";+" if k else ";"
+        forms.append(f'"{symmetric[1]}"' + "".join(counts) + "&.")
+    return min(forms, key=len)
 
 
 def _pack(table: str) -> str:
