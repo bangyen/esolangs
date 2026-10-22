@@ -55,6 +55,24 @@ evidence, not optimization tasks.
 - **Unmeasured classes:** Befunge, Malbolge and Polynomial execution carry
   formulas; Unary execution and workspace do not (`max(n, min(n + 4, 8))`
   commands is exact on the nine-command budget, unapplied).
+- **Argued, not derived** (2026-10-22): four `worst` cells rest on an
+  argument past the executed range. Clockwise scaling (an essential-input
+  subset sweep to n = 9), Codesick and Forbin scaling ("fewer nodes never
+  win" and the shrink argument, past n = 8), Circuit Diagram execution
+  (parity as the fold past n = 16, from size growth). Derive each, or scope
+  it to the executed range.
+- **Derived, not executed:** Forþ workspace's log factor needs a twin call
+  50,625 or more scopes back, at least 20 inputs
+  ([limitations](limitations.md#run-time-and-memory)); 1 + i workspace past
+  n = 20 and What!? past n = 19 were not built.
+- **Loose bounds:** FALSE workspace (15x) and Object Disoriented workspace
+  (4x) sum component peaks no row reaches together. A per-row profile
+  tightens them without a route to `worst`.
+- **Open mathematics:** Polynomial's worst-case length constant
+  `C_P(n)*n/T**2` is bracketed only within a factor 12.5, and whether the
+  limit exists is open ([proofs](proofs/index.md#polynomial-bound)). Whether
+  some 17-input Malbolge table has no program is open; the Malbolge row
+  above is the constructive side ([proofs](proofs/index.md#malbolge-bound)).
 
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
