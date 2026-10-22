@@ -30,20 +30,17 @@ evidence, not optimization tasks.
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
-  `worst`. The 37 `at most` cells without one are in
+  `worst`. The 55 `at most` cells without one are in
   [limitations](limitations.md#run-time-and-memory).
-  - Partial range: SMU scaling past n = 10 (two-letter macro names from
-    n = 12 break the rule), 1 + i workspace past n = 20, What!? execution
-    and scaling past n = 15, INTERCAL execution and workspace outside
-    n = 5..7, Inject scaling past n = 16, S-BLEQ scaling outside n = 11..18,
-    BrainIf scaling below n = 3.
-  - Proved, not reached: FALSE execution; Malbolge,
-    Quassaunt, Subleq and 3x workspace; Algebraic Programming Language,
-    Back, Bitdeque, Boolfuck, Container, Decleq, Fargo, FALSE, INTERCAL,
-    Packlang, Painfuck, RAM0, SendStuff, 6-5, SStack, Streetcode, Suffolk,
-    Underload and Unlambda scaling.
+  - Partial range: SMU scaling past n = 15 (the lower macros take
+    two-letter names from n = 16), 1 + i workspace past n = 23,
+    INTERCAL execution and workspace past n = 12 (level n - 3's 240 pairs
+    cap the named nodes) and scaling outside n = 3..10, Inject scaling
+    past n = 49 (two-letter input names).
+  - Proved, not reached: Back, Bitdeque and Boolfuck scaling.
   - Algebraic Programming Language execution: `max(21, ⌈65n/2⌉ + 3n - 27)`
-    is exact through n = 4 (exhaustive), unproved past it.
+    is exact through n = 4 (exhaustive); parity reaches it to n = 10 and
+    searches to n = 8 never beat it, unproved past n = 4.
 - **Unformulated scaling** (2026-10-22): 20 cells state a mechanism, no
   size formula. Bleh, Quassaunt and Stisp have a bound only as a per-level
   optimisation (not a rule); CVNC's unshared 8T + 12 is beaten by sharing
@@ -55,16 +52,18 @@ evidence, not optimization tasks.
 - **Unmeasured classes:** Befunge, Malbolge and Polynomial execution carry
   formulas; Unary execution and workspace do not (`max(n, min(n + 4, 8))`
   commands is exact on the nine-command budget, unapplied).
-- **Argued, not derived** (2026-10-22): four `worst` cells rest on an
+- **Argued, not derived** (2026-10-22): six `worst` cells rest on an
   argument past the executed range. Clockwise scaling (an essential-input
   subset sweep to n = 9), Codesick and Forbin scaling ("fewer nodes never
   win" and the shrink argument, past n = 8), Circuit Diagram execution
-  (parity as the fold past n = 16, from size growth). Derive each, or scope
-  it to the executed range.
+  (parity as the fold past n = 16, from size growth), INTERCAL scaling
+  n = 5..10 (an integer program over level shapes, every level non-empty)
+  and Suffolk scaling past n = 8 (the one-pair family enumerated at n = 7, 8,
+  sampled at 9, 10). Derive each, or scope it to the executed range.
 - **Derived, not executed:** Forþ workspace's log factor needs a twin call
   50,625 or more scopes back, at least 20 inputs
-  ([limitations](limitations.md#run-time-and-memory)); 1 + i workspace past
-  n = 20 and What!? past n = 19 were not built.
+  ([limitations](limitations.md#run-time-and-memory)); What!? past n = 19
+  (execution past 17) and S*bleq scaling past n = 21 were not built.
 - **Loose bounds:** FALSE workspace (15x) and Object Disoriented workspace
   (4x) sum component peaks no row reaches together. A per-row profile
   tightens them without a route to `worst`.

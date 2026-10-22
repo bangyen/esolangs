@@ -291,6 +291,6 @@ LANGUAGE = Language(
     balance=balance_intercal,
     empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     example=Example(pair=PAIR, char=TEMPLATE_CHAR, expected="_\n\n"),
-    proof_execution=(execution, True, (5, 6, 7)),
-    proof_workspace=(workspace, True, (5, 6, 7)),
+    proof_execution=(execution, True, (3, 4, 5, 6, 7, 8)),
+    proof_workspace=(workspace, True, (3, 4, 5, 6, 7, 8)),
 )

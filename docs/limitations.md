@@ -489,25 +489,39 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Thirty-seven ledger cells stay `at most` with no route to `worst`
+Fifty-five ledger cells stay `at most` with no route to `worst`
 (2026-10-22; open ones are on the [roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
   with the winner. ArrowQueue execution (proved 11T + 32n + 92) and
-  scaling, B-tapemark both, BFStack, Boolfuck workspace, Circuit Diagram
-  workspace, Container, CVNC, Fargo both, For Thorn execution,
-  Minifuck, Object Disoriented scaling, Piet both, Smallfuck, Streetcode.
+  scaling, B-tapemark both, BFStack workspace, Boolfuck workspace,
+  Circuit Diagram workspace, Container scaling (the threshold build loses
+  to the tree from n = 6: 883 against 1,076) and workspace, CVNC
+  execution, FALSE scaling and execution (reached at n = 4, 5 only; at
+  n = 6 diagram 292 against expression 293), Fargo all three, For Thorn
+  execution, Minifuck execution, Object Disoriented scaling, Piet both,
+  Smallfuck execution, Streetcode both; scaling for Algebraic Programming
+  Language (54 against 56 at n = 2, 144 against 190 at n = 4,
+  exhaustive), Packlang, Painfuck (232 against 243 at n = 4), 6-5,
+  SStack (24T - 9 exact to n = 4), Underload (exact at n = 4 only) and
+  Unlambda (to n = 2); S*bleq scaling below n = 11.
 - Address widths: the peak sums the bit-lengths of table-dependent
-  positions, which cross powers of two by layout. AddSubJump, Caballo
-  workspace, Crement workspace, Interprogck8 execution (mod-82/66
-  lanes), Painfuck workspace (slack 1 at n = 3..6, never 0), Pointless
-  workspace, ROTfuck, S-BLEQ, Underload workspace.
-- Coincident peaks: the bound adds component maxima no single row reaches
-  together, and the exact peak needs a per-row profile. ABCDirection,
-  Algebraic Programming Language workspace, FALSE workspace (15x loose),
-  For Thorn workspace, Object Disoriented workspace (4x), Packlang,
-  Polynomial, SStack (exact at n = 5 and 8 only), Unlambda both.
+  positions, which cross powers of two by layout. AddSubJump, Caballo,
+  Crement, Pointless, ROTfuck, S-BLEQ and Underload workspace;
+  Interprogck8 execution (mod-82/66 lanes); Painfuck workspace (slack 1
+  at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
+  exhaustive); 3x workspace (keys sized by use rank; 1.7x loose);
+  Malbolge workspace (about 470 data-dependent re-encipher widths, the
+  bound now 1.03x).
+- Coincident peaks: the bound adds component maxima no single row or
+  table reaches together, and the exact peak needs a per-row profile or
+  a joint optimisation. ABCDirection, Algebraic Programming Language,
+  FALSE (15x loose), For Thorn, Object Disoriented (4x) and Packlang
+  workspace; Polynomial both; SStack execution (exact at n = 5 and 8
+  only); Unlambda execution and workspace; RAM0 scaling (a repeat goto
+  needs a zero child already built); SendStuff scaling (a constant child
+  replaces the branching node the bound also prices).
 
 ## Curation
 

@@ -6,7 +6,11 @@ def execution(n: int, _: str) -> int:
 
     Edges into levels 1..l number Q_l - 1 + M_l <= 2Q_{l-1}, so r levels
     below the root name at most 2^(r-1); the last two levels hold 2 and 12.
+    Exact for n <= 12; n <= 4 (exhaustive) name 0, 0, 2, 3 nodes, and past
+    n = 12 the 240 pairs of level n - 3 cap it below this bound.
     """
+    if n <= 4:
+        return (4, 5, 8, 11)[n - 1]
     return 2 * n + min(((1 << n) >> 3) + 2, ((1 << n) >> 4) + 14)
 
 

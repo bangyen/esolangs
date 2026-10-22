@@ -124,5 +124,5 @@ LANGUAGE = Language(
     wrap=wrap_space_delimited,
     balance=_balance,
     proof_execution=(execution, True, (3, 6)),
-    proof_workspace=(workspace, False, (3, 4, 5)),
+    proof_workspace=(workspace, True, (3, 4, 5, 6)),
 )

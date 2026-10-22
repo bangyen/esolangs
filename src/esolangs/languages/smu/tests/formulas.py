@@ -4,10 +4,28 @@
 def _chars(n: int, _: str) -> int:
     """C: 95 + per level 5 a node, 3 a pad, plus 2D + E or 4(E - D) of macro names.
 
-    Exact to n = 10 (the rule fails from n = 12); past it, 6T + 90 bounds.
+    From n = 12 the 256 eight-bit subtables are each named, one-letter names
+    going to the most used; exact to n = 15, past it 6T + 90 bounds.
     """
-    if n > 10:
+    if n > 15:
         return 6 * (1 << n) + 90
+    if n > 11:
+        uses = 1 << (n - 11)  # parents of each eight-bit subtable
+        # Names go by use: the 4-bit tables (31 uses) first; the 2-bit tables
+        # (7) are one-letter only while uses < 7, else the 8-bit tables take
+        # the remaining 27 or 31 one-letter names.
+        short, tail = (27, 1) if uses < 7 else (31, 2)
+
+        def unequal(letters: int) -> int:
+            """A 7-character subtable inline or as a macro, whichever is shorter."""
+            return min(7 * uses, 7 + (uses + 2) * letters)
+
+        def pad(letters: int) -> int:
+            return min(4 * uses, 4 + (uses + 2) * letters)
+
+        lower = 8 * tail + 22 + 104 + 28 * tail  # the 2- and 4-bit macros
+        named = 16 * pad(1) + (short - 16) * unequal(1) + (256 - short) * unequal(2)
+        return 95 + 5 * ((1 << (n - 3)) - 1) + lower + named
     total, edges = 95, 1
     for j in range(n):
         s = 1 << (n - j)
@@ -21,4 +39,4 @@ def _chars(n: int, _: str) -> int:
     return total + edges
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 5, 7, 9, 10))}
+FORMULAS = {"scaling": (_chars, True, (3, 5, 7, 9, 10, 11, 12, 13, 14, 15))}

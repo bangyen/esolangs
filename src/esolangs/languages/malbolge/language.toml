@@ -9,8 +9,8 @@ labels = ["exception"]
 qualification = "finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; below sixteen the unused reads are held at 0; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound))"
 scaling = "measured: worst 59049 characters: the fixed 3^10-cell store, every n <= 16"
 execution = "unmeasured: worst 6,208 commands at n=1 to 5,686 at n=16: main code through its closing i, then the longest stub, 199"
-workspace = "poly n: at most the source's bits + 10E + 49 + bl(n) bits: E the Execution bound, 10 per step"
-definitions = ["E = the Execution bound"]
+workspace = "poly n: at most B + E + 10(P+199) + 49 + bl(n) bits: a bit a step, ten a write"
+definitions = ["B = the source's bits", "E = the Execution bound", "P = the `*` and `p` cells before the main code's closing i"]
 
 [proof_status.audit]
 totality = "Exception"

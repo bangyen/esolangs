@@ -28,8 +28,17 @@ _UNIT = {
 }
 
 
+#: From 19 inputs one build passes the fast band (S*bleq's packed decoder, 1.8 s).
+_MEDIUM_FROM = 19
+
+
 @pytest.mark.parametrize(
-    ("name", "n"), [(name, n) for name in sorted(FORMULAS) for n in FORMULAS[name][2]]
+    ("name", "n"),
+    [
+        pytest.param(name, n, marks=[pytest.mark.medium] if n >= _MEDIUM_FROM else [])
+        for name in sorted(FORMULAS)
+        for n in FORMULAS[name][2]
+    ],
 )
 def test_size_formulas_hold(name: str, n: int) -> None:
     formula, exact, _ = FORMULAS[name]
