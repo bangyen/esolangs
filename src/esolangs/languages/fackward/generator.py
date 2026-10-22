@@ -5,13 +5,14 @@ the far end.  A level deblocks to ``[B] )``, quiet, so the bit arrives and
 the next pass deblocks ``B``: ``~ / c`` turns ``/ c 49`` into the bit,
 ``~ $ b`` makes ``b`` copies of a ``~`` that swaps the child blocks, ``!``
 drops one and ``)`` runs the other.  Leaves print and halt; equal halves
-drop the character with ``! c``.  Each function is released one pass
-before it runs, so nothing fires early.
+drop the character with ``! c``.  A last level whose leaves differ prints
+the character it reads, or its complement ([ablations.last_level_forms]).
+Each function is released one pass before it runs, so nothing fires early.
 
 Size:
-    37T - 31 chars without equal halves, O(n) for a constant; repeated
-    subtables are copied; 40n + 4 steps at most; n=10 parity: 37,857
-    chars, n=10 random 1847: 26,349 chars.
+    At most 49T/2 - 34 chars without equal halves, O(n) for a constant;
+    repeated subtables are copied; 40n - 28 steps at most; n=10 parity:
+    22,241 chars, n=10 random 1847: 19,531 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table
@@ -30,11 +31,18 @@ def _skip(child: str) -> str:
     return f")[![{child}])]"
 
 
+#: A last level whose leaves differ prints the read character itself, or
+#: ``2352 / c``, which swaps 48 and 49 (2352 = 48 * 49), and halts.
+_LAST = {"01": ")[[H])]", "10": ")[2352/[H])]"}
+
+
 def _contents(table: str, memo: dict[str, str]) -> str:
     """The block contents of ``table``'s level, leaves printing and halting."""
     if table not in memo:
         if len(table) == 1:
             memo[table] = f"H{48 + int(table)}"
+        elif table in _LAST:
+            memo[table] = _LAST[table]
         else:
             half = len(table) // 2
             zero = _contents(table[:half], memo)
