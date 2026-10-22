@@ -40,12 +40,12 @@ def test_constant_reads_into_scratch_and_prints_a_literal(n: int, bit: str) -> N
 
 
 def test_size_is_table_content_only() -> None:
-    """Two tables of one arity and one popcount render to the same length.
+    """Two asymmetric tables of one arity and one popcount render alike in length.
 
     Both read every input: an ignored one is a bare ``x`` and drops the table
-    to the rest's.
+    to the rest's.  A symmetric table (parity) takes the count route instead.
     """
-    assert len(tools.egl("01101001")) == len(tools.egl("01110001"))
+    assert len(tools.egl("01011001")) == len(tools.egl("01110001"))
 
 
 def test_wrapped_programs_still_compute_the_table() -> None:

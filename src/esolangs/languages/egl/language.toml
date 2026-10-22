@@ -12,14 +12,21 @@ execution = "linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weight
 workspace = "linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T"
 
 [generator_sizes]
-"00000001" = { commands = 177, commands_by_row = { "0" = 164, "1" = 167, "2" = 168, "3" = 171, "4" = 170, "5" = 173, "6" = 174, "7" = 177 }, source_units = 181 }
+"00000001" = { commands = 169, commands_by_row = { "0" = 160, "1" = 163, "2" = 163, "3" = 166, "4" = 163, "5" = 166, "6" = 166, "7" = 169 }, source_units = 173 }
 "00001100" = { commands = 118, commands_by_row = { "0" = 111, "1" = 111, "2" = 114, "3" = 114, "4" = 115, "5" = 115, "6" = 118, "7" = 118 }, source_units = 122 }
 "00110110" = { commands = 180, commands_by_row = { "0" = 167, "1" = 170, "2" = 171, "3" = 174, "4" = 173, "5" = 176, "6" = 177, "7" = 180 }, source_units = 184 }
-"0110" = { commands = 118, commands_by_row = { "0" = 111, "1" = 114, "2" = 115, "3" = 118 }, source_units = 122 }
-"01101001" = { commands = 180, commands_by_row = { "0" = 167, "1" = 170, "2" = 171, "3" = 174, "4" = 173, "5" = 176, "6" = 177, "7" = 180 }, source_units = 184 }
-"0110100110010110" = { commands = 252, commands_by_row = { "0" = 229, "1" = 232, "2" = 233, "3" = 236, "4" = 235, "5" = 238, "6" = 239, "7" = 242, "8" = 239, "9" = 242, "10" = 243, "11" = 246, "12" = 245, "13" = 248, "14" = 249, "15" = 252 }, source_units = 257 }
+"0110" = { commands = 115, commands_by_row = { "0" = 109, "1" = 112, "2" = 112, "3" = 115 }, source_units = 119 }
+"01101001" = { commands = 170, commands_by_row = { "0" = 161, "1" = 164, "2" = 164, "3" = 167, "4" = 164, "5" = 167, "6" = 167, "7" = 170 }, source_units = 174 }
+"0110100110010110" = { commands = 224, commands_by_row = { "0" = 212, "1" = 215, "2" = 215, "3" = 218, "4" = 215, "5" = 218, "6" = 218, "7" = 221, "8" = 215, "9" = 218, "10" = 218, "11" = 221, "12" = 218, "13" = 221, "14" = 221, "15" = 224 }, source_units = 228 }
 "1101001101101101" = { commands = 254, commands_by_row = { "0" = 231, "1" = 234, "2" = 235, "3" = 238, "4" = 237, "5" = 240, "6" = 241, "7" = 244, "8" = 241, "9" = 244, "10" = 245, "11" = 248, "12" = 247, "13" = 250, "14" = 251, "15" = 254 }, source_units = 259 }
-"11111110" = { commands = 183, commands_by_row = { "0" = 170, "1" = 173, "2" = 174, "3" = 177, "4" = 176, "5" = 179, "6" = 180, "7" = 183 }, source_units = 187 }
+"11111110" = { commands = 171, commands_by_row = { "0" = 162, "1" = 165, "2" = 165, "3" = 168, "4" = 165, "5" = 168, "6" = 168, "7" = 171 }, source_units = 175 }
+
+[ablations.symmetric_count]
+saving = 62.3
+arity = 8
+seed = "named symmetric tables"
+tables = 5
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 walks one cell a 1 over m + 1 painted entries, raced by length against the weighted build. At n=7 / 8 / 10: parity 43.5% / 58.2% / 82.0%, majority 43.5% / 56.7% / 81.2%, and 38.4% / 52.8% / 78.6%, or 47.8% / 62.3% / 84.4%, exactly-2 40.2% / 54.1% / 79.0%; a symmetric table with an ignored input 43.5% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
 [catalogue]
 folding_constant_local = "_program"  # scratch reads beside a literal answer cell
