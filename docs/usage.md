@@ -172,7 +172,6 @@ Build language-specific stdin with `encode_inputs`:
 | Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Unary | `char_stream` | `\x00`/`ÿ` | `'ÿ\x00ÿ'` |
-| Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
 The other 45 that read stdin take one `0`/`1` character per bit -- `'101'`.

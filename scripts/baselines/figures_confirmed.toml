@@ -96,6 +96,3 @@
 ["three_x/generator.py"]
 "(at most 5 characters each) and is within 1.4% of that greedy loop on" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 "emission.  It gives up the 46 of 65,536 n=4 tables a greedy trial found" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
-
-["vandevelo/generator.py"]
-"the three-input tables from 25,922 to 23,425 characters.  Tighter bank" = "498ae85700bb5ed78eb17065c56a123e7516c756"

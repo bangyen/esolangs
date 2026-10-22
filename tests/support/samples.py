@@ -234,7 +234,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Underload": ("(Hi)S", ""),
     "Unlambda": ("`.Ai", ""),
     "Unsquare": ("Io", ""),
-    "Vandevelo": ("Nil?", ""),
 }
 
 

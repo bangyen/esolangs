@@ -106,7 +106,6 @@ don't edit by hand.
 | `underload/underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda/unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |
 | `unsquare/unsquare.txt` | Unsquare | `0001` | `01` | 01 | '0' |
-| `vandevelo/vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
 | `what/what.txt` | What!? | `0001` | `01` | 0 1 | '0' |
 
 ## Notes
@@ -141,4 +140,3 @@ don't edit by hand.
 - **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **unary** -- Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.
-- **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops

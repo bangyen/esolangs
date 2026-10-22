@@ -193,7 +193,7 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
         assert diverges("Crement", source, "") is (expected == "1")
 
 
-# language-owners: ["ArrowQueue", "Vandevelo"]
+# language-owners: ["ArrowQueue"]
 # The shared verifier's timeout floor was measured across 123, ArrowQueue,
 # Crement and Vandevelo on 0110, 0001, 10010110 and 00010111: 0.000s,
 # every halting row sub-millisecond; its 1s bound has 1000x headroom.

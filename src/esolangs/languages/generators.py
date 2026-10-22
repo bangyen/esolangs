@@ -195,8 +195,6 @@ from esolangs.languages.unlambda.generator import LANGUAGE as _UNLAMBDA_LANGUAGE
 from esolangs.languages.unlambda.generator import unlambda
 from esolangs.languages.unsquare.generator import LANGUAGE as _UNSQUARE_LANGUAGE
 from esolangs.languages.unsquare.generator import unsquare
-from esolangs.languages.vandevelo.generator import LANGUAGE as _VANDEVELO_LANGUAGE
-from esolangs.languages.vandevelo.generator import vandevelo
 from esolangs.languages.what.generator import LANGUAGE as _WHAT_LANGUAGE
 from esolangs.languages.what.generator import what
 
@@ -289,7 +287,6 @@ _LANGUAGES = (
     _UNDERLOAD_LANGUAGE,
     _UNLAMBDA_LANGUAGE,
     _UNSQUARE_LANGUAGE,
-    _VANDEVELO_LANGUAGE,
     _WHAT_LANGUAGE,
 )
 
@@ -383,7 +380,6 @@ __all__ = [
     "underload",
     "unlambda",
     "unsquare",
-    "vandevelo",
     "what",
 ]
 # END GENERATED EXPORTS

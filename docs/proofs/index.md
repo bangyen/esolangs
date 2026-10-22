@@ -71,25 +71,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   unverified; the shipped cap stays sixteen.
   Controls: `src/esolangs/languages/malbolge/tests/`; archived
   seventeen-input tools are available at `09ab2fad:scripts/malbolge17/`.
-- Vandevelo: <a id="vandevelo-sparse-bound"></a> the shipped fixed-candidate
-  sparse construction has worst-case `Omega(T log n)` characters, not `O(T)`.
-  For `n>=100`, take `m` as the largest odd integer at most `T/n` and output
-  one exactly on unsigned inputs below `m`. Both affine shortcuts reject the
-  odd cardinalities, and the sparse route is selected. Each cube has dimension
-  at most 48, so at least `T/(2n*2**48)` disjoint cubes are required. Every
-  guard retains at least `n/2` independent equations and distinct identifiers;
-  the 66-character identifier alphabet forces
-  `L_n >= (T/2**51)*floor(log_66(n/4))`. Writing the source also forces
-  super-linear character work. This does not bound every legal program,
-  executed command count, or a construction with a growing candidate limit;
-  universal linear source and generation remain open. A read inside a guard
-  multiplexes later reads: `a ~> Inp?`, `a? :: Inp?`, `b ~> Inp?` binds
-  `b = a ? x3 : x2`, so values need not be affine and coset-cover arguments
-  bound only programs without such reads. The finite odd-prefix
-  controls at eight and nine inputs executed 768 rows, using five/nine ones,
-  cube dimensions `(2,0)`/`(3,0)` and 204/221 characters. Those measurements
-  check the route, not the asymptotic bound. Controls remain in
-  `src/esolangs/languages/vandevelo/tests/`.
+
 - Ascenic: <a id="ascenic-bound"></a> worst-case source is `Theta(T**2)`
   characters for both the language and generator. Arguments rise strictly
   and are unary, so `L` lines cost at least `L(L+1)/2` characters, and a
@@ -370,9 +352,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 - Fargo's T-dependent work was hidden by parity.
 - Forþ's T-dependent work was hidden by parity.
 - INTERCAL's T-dependent work was hidden by parity.
-- Vandevelo's T-dependent work was hidden by parity. It is exempt from the
-  increments: registers grow ~sqrt(T) until an n*n cap binds at n=14, past
-  what the band can step.
 - S*bleq's T-dependent work was hidden by parity.
 - 6-5's T-dependent work was hidden by parity.
 - SLOW ACV MAMMALIAN read x1.43 on the increments.
@@ -470,7 +449,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: at most 7n + 11T - 4 characters: 7 an input | poly n: at most 14n - 1 commands, one path of n selections | linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, stack |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf | poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node | T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits: a shared subterm per frame |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row | linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops | linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1 table cells on the stack |
-| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build is measured flat, but child-rebuild scans are bounded only by q**2 a node and core work by O(T*sqrt(n)) | linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped | poly n: at most n * n registers; sqrt T below the cap |
 | What!? | linear lookup | Horner's rule reads each bit with `??` and doubles by `*`; the index counts down one `-` a row, so at change point `b` it wraps above `2^k` exactly when the row is below `b`, and `[2^k>` writes the answer slot; past 15 inputs `???` puts the high bits in the index slot's string, and a guard per `2^15`-row block reloads the index | linear: one `-` a row and one test a change point | linear: worst 6T + 6n + 5 commands: alternating answers, every conditional true | poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: the 256-slot tape |
 
 Symbols the formula cells use:
@@ -554,7 +532,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 88 theoretical totality arguments and
+Accordingly, this ledger records 87 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
@@ -608,233 +586,6 @@ by maximality of `r`; every input-forgetting realization needs that width.
   the next read. The controls are in `tests/proofs/test_research_tracks.py`.
 
 
-## Identifier and fallback audit
-
-- Vandevelo: <a id="vandevelo-identifier-and-fallback-audit"></a>
-
-  The construction bounds register upkeep by `O(T)` lines, but identifiers
-  cost `O(log n)` characters per occurrence. Command count is proved linear
-  below. The build's charge leaves child rebuilds unbounded, and
-  dual-basis core work has only a super-linear aggregate bound. The
-  audit marks size `Measured`, keeping its regression gate without claiming
-  an asymptotic proof.
-
-  The audit counts identifier characters. The default corpus executes 66
-  tables through six inputs and 2,772 rows across original and renamed
-  programs. The seeded pair-sampling fallback it once counted is gone:
-  dropping it changed 0 of 200 random tables at each n=6..10. Through five
-  inputs an exact scan of all directions replaces it: no three-input table
-  grows, and the four-input tables total 0.05% less.
-
-  The tested naming rule assigns the shortest existing names to the most
-  frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
-  12-input dense table, source shrinks from 32,269 to 31,942 characters
-  (1.01%); its 4,414 identifier occurrences occupy 5,273 characters before
-  renaming. Sixteen evenly spaced input rows, including both endpoints,
-  execute under both spellings and match the table. The Vandevelo profiler that
-  measured it was removed; it ran with `--min-inputs 12 --max-inputs 12
-  --random-cases 1 --sample-rows 16`.
-  The rule misses the 5% shipping threshold and retains growing identifier
-  lengths, so it remains an experiment. Neither gap is closed by this audit.
-
-  The clause bound holds for every table. Its proof needs one direction
-  per level holding half the pigeonhole average, on two chains: the first,
-  which sets the opening phase, and the certified one, which alone may drop
-  it. `_assure` checks that at every level of both. When no candidate
-  qualifies, it finds one in `O(|S| * (j + 1))` work. Bucket the coset
-  representatives by all but `a` free coordinates, with `2**a >= 2**(m+1)/q`
-  in a quotient of dimension `m` holding `q` cosets. Cauchy--Schwarz puts
-  `(2**a - 1)` times the threshold inside buckets, so about `2*q` pair
-  differences reach it by pigeonhole. Such a direction gives
-  quotient density `eps' >= eps**2/4`, so `log2(1/eps) + 2` at most doubles
-  a level, and the chain's cubes exceed `n/(2*(log2(1/eps) + 2))` points.
-  Over the density bands `(2**-(i+1), 2**-i]` that is under `16*2**n/n`
-  dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
-  `2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
-  never computed, so output is byte-identical. With candidates disabled,
-  it alone keeps n=8 and n=10 random tables under
-  `T/n` clauses (`tests/generators/test_boolean_vandevelo.py`).
-
-  Commands per row are therefore linear. A halting row fails one part of
-  each guard, and every value is a strict boolean. So a register toggle
-  costs five commands, a part at most five, and an input read one. Upkeep
-  is at most the constraints' total weight, `4*n*C + 4*T` with `C` clauses,
-  and parts are at most `n*C`. With `C <= 17*2**n/n`, a row runs under
-  `25*n*C + 20*T + n + 1 = O(T)` commands, so the execution-time cell is
-  Linear. The affine, coset and complement paths emit at most `n` parts
-  in all.
-
-  Generation time is measured flat but not proved linear. A node holds one
-  representative per coset of its span, so its work is its coset count,
-  which at least halves a level. That retires the near-full wall: with `k`
-  zeros the first chain keeps two cosets for `n - log2(k) - 1` levels, and
-  nodes that held points paid at least `T*(n - log2(k) - 2)`. Output is
-  byte-identical. Element visits per entry at n=10..14: three zeros
-  2,700--3,200 (was 16,800--23,600), eight zeros 3,400--3,800 (was
-  19,000--28,400), density 0.9 2,400--2,700 (was 7,700--8,700), dense
-  500--900 (was 940--1,920), quadratic forms 110--120 (was 220--320).
-  Best-of-three time, three zeros, n=11..15: 290--332 us a row, against
-  1,237--1,696 at n=11..14 before; dense 76--108.
-
-  Generation time cannot be linear before output size is. It includes
-  writing the result, and the result is only `O(T log n)` characters, the
-  identifier gap above. Even counted in word operations, four build terms
-  escape the charge. A child rebuilt after it empties scans its parent's
-  `q` cosets, and a rebuild need follow only one parent coset's removal,
-  so these scans are bounded only by `q**2` a node. `certify` rebuilds the
-  same way, and the clause bound needs it to. The children built under one
-  node total at most its cosets, so cosets built cost at most the level
-  above a level, `O(T*n)` a chain. Halving needs both halves of each child
-  coset to leave together, and a cube harvested across the chain's span
-  removes one. Measured, the levels do halve: three zeros at n=14 build
-  12.96, 6.47, 3.23 and 1.61 `T` cosets at levels one to four. Rebuilding
-  in `extend` only after a node loses three quarters would make the bound
-  geometric. Over a 433-table corpus through n=13 that costs 2.5% of
-  emitted size, and 4--6% at n=11..13. Certification now discards pairless
-  candidates on every call but refills a pool only when removals reach a
-  quarter of the current size. If `r` cosets left since the last refill,
-  its representative scan costs `q <= 4*r`; summing over disjoint refresh
-  epochs charges those scans to removals. `_assure` still runs at every
-  level, preserving the half-average guarantee. Across 354 tables through
-  n=9, refresh calls fell from 14,298 to 13,992; their summed node sizes
-  fell from 110,943 to 108,907 cosets. No program grew and both builds
-  matched all 3,590 executed rows. The exact `_assure` fallback sorts its
-  representatives, costing `O(q log q)` per call; repeated assurance and
-  child rebuilding remain uncharged. A separate untried fix keeps a
-  level while its direction holds half the average, rebuilding only on a
-  crossing. Historically, `certify`
-  inclusive is 0.003s of a 0.53s build at n=13 and 0.184s of 6.27s at n=16,
-  under 3%, so the fix moves no gate: the axis is proof-shaped, and the
-  refresh cost it would trim is mostly `extend` and `run` -- 17% at n=16.
-  `_nearest`'s sparse fallback lists points. Listing
-  representatives costs cosets but moves sizes from -9% to +14% a table,
-  +0.9% in total. The fourth term, the core build, is below.
-
-  The dual-basis completion's other terms charge to the output. Column
-  extraction costs `n*dim` a clause and the echelon reduction at most `n` a
-  dual, while the clause's guard alone writes `n - dim` parts of `O(log n)`
-  characters. Cubes of dimension above `2*log2(n)` pay from their own
-  `2**dim` points. So these terms are linear in `T` plus the output, and the
-  character-level time gap coincides with the identifier gap. Measured on
-  seed 0, n=12..16: 2.0--2.5 `T` for columns and 0.75--0.91 `T` for
-  reduction.
-
-  The core build stores distinct pair sums and queries each distinct nonzero
-  column against the core, preserving the old triple cache's first witness.
-  A later core input cannot precede that witness, so repeated columns reuse
-  it. With `u <= min(n, 2**dim - 1)` distinct columns and core size `c`,
-  work is `O(n + u*c)` and cache entries are `O(u + c**2)`. Since
-  `c <= 1 + sqrt(2*2**dim)`, the disjoint cubes and `C <= 17*T/n` give
-  `sum(n*c) <= 17*T + sqrt(34)*T*sqrt(n)` by Cauchy--Schwarz. Cache
-  insertions and witness-cache upkeep total `O(T)`. Core queries stop once
-  the ascending core passes the current witness's last input: later triples
-  cannot precede it. On all 276 tables through three inputs and 24 seeded
-  tables per arity at n=4..8, this reduces pair lookups from 3,744 to 3,615
-  with byte-identical emitted programs. The queries still have only an
-  `O(T*sqrt(n))` bound. The former triple cache cost `c**3/3` a clause. A core with no relation of weight four or less can hold all `n`
-  inputs: the extended-BCH columns `(1, x, x**3)` over GF(16) do, with
-  `dim = 9`. Half the cosets of that subspace at n=16 reach a 16-input core,
-  but the peel merges coset pairs into cubes of dimension 10--12. That gives
-  12 clauses and `0.13*T` work in the former triple cache. Any two cosets of a subspace form a
-  cube of one dimension more. Blocking that merge leaves a Sidon set of
-  cosets, too sparse to matter, and globally popular directions do not see
-  planted cubes. On random tables the greedy core stops at about
-  `(6*2**dim)**(1/3)` inputs: at most 6 to n=16, and a flat `0.43*T` in
-  the former cache. No executed table exceeds a constant; the new query
-  bound is still super-linear.
-
-  What linear text would take. While no guard part reads `Inp`, every value
-  is affine and a guard hangs on one coset. A coset of codimension `c` needs
-  `c` parts with independent values, so at least `c` distinct live names
-  and at least `c*(log65(c) - 1)` characters. `O(T)` text therefore needs
-  cubes of `Omega(n log n)` points on average. A random set of density 1/2
-  holds cosets only up to `2**d ~ (d+1)*(n-d)`, about `n*log2(n)` points
-  (first moment). So the cover must stay within a constant factor of the
-  largest coset, where the chain above finds `n/(4*log2(1/eps))`. That is
-  the greedy-versus-maximum gap of cliques in random graphs, and no
-  polynomial search is known to close it. The one way to repeat a name
-  within a line is a lazy `r -> Inp?`, which reads afresh on each access.
-  A guard that fails midway has then consumed a data-dependent prefix and
-  misaligns every later read. Alignment survives only if each row passes
-  at most one reading gate, and then each gate class gets one prefix
-  pattern. Neither route is a lower bound: no language-wide `Omega(T log
-  n)` is proved, and counting gives only `Omega(T)`.
-
-  Both routes meet an open problem. A guard is one term of a DNF of
-  parities, so the minimum term count is Cohen and Shinkar's `DNF+(f)`
-  ([ECCC TR14-099](https://eccc.weizmann.ac.il/report/2014/099/)). They
-  prove `DNF+(f) <= O(2**n/n)` for every `f`, tight only up to `O(log n)`.
-  A random `f` has `2**n/(n*log n)` w.h.p., and no function is known to
-  need more. Take tables whose cubes have dimension at most
-  `2*log2(n) - 2*log2(log2(n))`. A term there costs about `n - k` distinct
-  names, about `log65(n)` characters each. The short-relation basis keeps
-  its upkeep at `O(n)` names from `O(n**2)` identifiers. So a coset program
-  costs `Theta(DNF+(f) * n * log n)` characters. Linear output for every
-  table therefore needs `DNF+ = O(2**n/(n log n))` for all `f`. A
-  super-linear lower bound on any such table needs `DNF+(f) = omega(2**n/(n
-  log n))`. Either one settles the open factor. Guards that read `Inp` only
-  add programs, so they make a lower bound harder, not easier. The size
-  cell stays `Measured`.
-
-  The open factor depends on one extremal function. Let `D(n, delta)` be
-  the least, over sets of density `delta`, of the largest affine flat
-  inside. Cohen and Shinkar's chain gives `D >= log2(n) - log2(log2(1/delta))
-  - 2`, and random sets give `D <= log2(n) + log2(log2(n)) + O(1)`. If
-  `D(n, 1/2) <= log2(n) + c`, that set's indicator needs `Omega(2**n/n)`
-  terms and their upper bound is tight. If `D(n, delta) >= log2(n) +
-  log2(log2(n)) - log2(log2(1/delta)) - O(1)` for every `delta`, the peel
-  gives `O(2**n/(n log n))` for every table. SAT data (Glucose, every affine
-  `d`-flat forbidden, `0` in the set) on the largest density with no
-  `d`-flat:
-
-  | n | `d=3` | `d=4` |
-  | --- | --- | --- |
-  | 4 | 11/16, exact | |
-  | 5 | 18/32, exact | |
-  | 6 | at least 29/64; 32/64 undecided at 300 s | |
-  | 7 | at least 44/128 | 64/128 reached |
-  | 8 | | 128/256 reached |
-
-  An independent recursive flat finder confirms the `n=7` and `n=8`
-  half-density sets have largest flat 3. It recovers a planted 3-flat and
-  gives 1 on the Sidon set `{0,2,3,4,8,13}`; the same SAT model at `d=2`
-  gives the known Sidon maxima 6, 7, 9 and 12 for n=4..7. So `D(7, 1/2) <=
-  3` and `D(8, 1/2) <= 3 = log2(8)`. Random half-density sets reach 4 in
-  six of ten draws at n=7 and in five of five at n=8. The algebraic set
-  `{x : Tr(1/x) = 1}` in GF(2**n) reaches 2, 3, 3, 4 and 4 at n=5..9, no
-  better than random. So at n=7 and 8 the extremal sets sit a dimension
-  below random, the side that would make `Omega(2**n/n)` the truth. These
-  sizes cannot separate `log n` from `log n + log log n`, and the SAT sets
-  (degree 6 and 7, no translation symmetry) suggest no family.
-
-  The lower side has better constants than the chain. Bastioni, Giannoni and
-  Lobillo-Olmedo (arXiv 2605.05455, section 6) count affine 2-planes by
-  Fourier, at least `(s**4/2**n - 3s**2 + 2s)/24`, and quotient by the most
-  popular 2-dimensional direction. Mixing that step with the chain's
-  one-dimensional step, from the Sidon base `s(s-1)/2 <= 2**n - 1`, forces
-  a 3-flat in every half-density set from n=7, a 4-flat from n=12, a 5-flat
-  from n=21 and a 6-flat from n=38. That is about `log2(n) + 0.2` against the
-  chain's `log2(n) - 2`, the same rate with a better constant. With the
-  SAT-exact bases above a 3-flat is forced from n=6. Since `D` cannot drop
-  as `n` grows (one hyperplane half keeps density `1/2`), this pins
-  `D(6, 1/2) = D(7, 1/2) = D(8, 1/2) = 3`. There the extremal value sits on
-  the density-increment bound, a dimension below random.
-
-  A Delsarte bound moves the 4-flat threshold to n=11. A Sidon set of
-  size `N` in `F_2^9` gives the even code of the columns `(1, a)`: dimension
-  at least `N - 10` and no words of weight 2 or 4. At `N = 32` an exact
-  rational dual certificate bounds such codes by 3,710,516.55, below
-  `2**22`, so every 32 points of `F_2^9` hold a 2-flat. A 1024-point set in
-  `F_2^11` has a difference `v` with `|S & (S+v)| >= 1024*1023/2047`, so at
-  least 512 (the count is even), which leaves 256 cosets in `F_2^10`. The same
-  step leaves 32 in `F_2^9`. That 2-flat lifts twice, so `D(11, 1/2) >= 4`.
-  `D(9, 1/2)` and `D(10, 1/2)` are 3 or 4. At n=9 four local searches
-  (Metropolis, steepest tabu, noise, clause weighting) all stall at 530 to
-  620 4-flats. Every linear group tried with at most 44 orbits admits no
-  invariant 256-point set without a 4-flat, 12 groups in all. Groups with
-  60 to 80 orbits, Frobenius among them, were undecided at the time
-  limit.
-
 ## Scaling status
 
 These verdicts describe shipped generators and exemptions from the measured
@@ -850,6 +601,5 @@ size regression. Open generator-linearity work lives in the
 | Malbolge | Exception | Open | Linear |
 | Polynomial | Cap | Language lower bound | Language lower bound |
 | Unary | Cap | Language lower bound | Language lower bound |
-| Vandevelo | Total | Open | Measured |
 
 <!-- SCALING-STATUS:END -->

@@ -119,7 +119,6 @@ answer convention, or input interface:
 Languages that show the axes in use:
 
 - BFStack uses a minterm sum.
-- Vandevelo uses a minterm sum and answers by termination.
 - Fargo uses ANF/XOR-of-products and a bit-addressable input index.
 - LaserFuck uses a grid walk.
 - A Painter Ant uses a grid walk and answers by landing colour.

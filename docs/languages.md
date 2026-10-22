@@ -118,7 +118,6 @@ Languages that store data in named variables the program declares.
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/forbin/interpreter/__init__.py))
 - [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/intercal/interpreter/__init__.py))
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/packlang/interpreter/__init__.py))
-- [Vandevelo](https://esolangs.org/wiki/Vandevelo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/vandevelo/interpreter.py))
 
 ### Other Languages
 

@@ -288,20 +288,6 @@ process; no rule reproduces it:
   values in 33..126, and the input pair `(49, 48)` is unreachable, so NOT is
   not expressible at any length.
 
-- Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
-  on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
-  time is therefore superlinear for the shipped construction. A replacement
-  with universal O(T) size and generation time remains open; no language-wide
-  impossibility was proved. See [the bound summary](proofs/index.md#vandevelo-sparse-bound).
-- Vandevelo's cover is the deterministic greedy popular-difference peel;
-  measured deterministic alternatives do not beat it by 10%. An axis-cube
-  merge emits 2.1x its text at n=8 (5.6x on n=10 majority), losing on cube
-  count, not guard cost (rand8: 63 clauses at mean dimension 0.8 vs 23 at
-  2.0). Exact Walsh-autocorrelation directions (top 8 per node, lowest
-  weight first) emit 0.977x/0.988x on 200 random n=7/8 tables, but
-  pure-Python generation grows 2.6x per input at n=11..12. An affine
-  Quine--McCluskey merge emits 1.060x on 200 random n=8 tables and
-  1.09-1.12x at n=10..12, ~20x faster, with no clause bound.
 
 Shipped limits, in inputs:
 
@@ -379,8 +365,8 @@ requires a construction exemption rather than a sub-gate bound.
 <!-- SHARING-COUNTS:START -->
 
 A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 39
-of 59 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 20 are
+of 58 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 19 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -485,7 +471,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 93 languages.
+The collection has 92 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -517,8 +503,12 @@ Below 60, a language is admitted only as a first implementation: when the
 repo adds it, no implementation exists but the maintainer's. Its page is in
 the Unimplemented category, or the edit that first tagged it Implemented is
 User:Bangyen's. An intrinsic axis can choose between such candidates; it
-admits nothing alone and removes nothing. A stalled generator row stays open
-on the [roadmap](roadmap.md); the language stays.
+admits nothing alone and removes nothing. Scaling removes: an uncapped
+generator whose `O(T)` generation time and emitted size are neither proved
+nor ruled out by a language lower bound takes its language with it
+(Polynomial, Unary and Ascenic keep theirs on proved bounds; Malbolge's cap
+leaves no asymptotic question). Adopted 2026-10-21; Vandevelo was removed
+under it.
 
 A route admits a language only when its specification fixes the core
 semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
@@ -602,7 +592,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 21 clear the fame gate
-and 72 are first implementations.
+and 71 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
@@ -611,6 +601,9 @@ and 72 are first implementations.
 Funge-98 (31, two dozen implementations) was removed on 2026-10-06. The six
 languages implemented elsewhere before the 2026-09-27 rule (123, BF-PDA, BIO,
 Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
+Vandevelo (3) was removed on 2026-10-21 under the scaling rule: its shipped
+source is `O(T log n)` characters and no bound for every program is known
+either way.
 
 ### Notes on individual languages
 

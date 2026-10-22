@@ -207,7 +207,6 @@ n/a = unsupported):
 | RAM0 | 18 | 35 | $ $ $ $ |
 | Fackward | 11 | 43 | $ $ $ $ |
 | SStack | 15 | 39 | $ $ $ $ |
-| Vandevelo | 21 | 36 | $ $ $ $ |
 | Home Row | 8 | 53 | $ $ $ $ |
 | Minsky Swap | 15 | 46 | $ $ $ $ |
 | Super SNUSP | 21 | 44 | $ $ $ $ |
