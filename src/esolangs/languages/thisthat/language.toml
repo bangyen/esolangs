@@ -7,7 +7,7 @@ backlinks = 6
 [proof_status]
 labels = ["tree"]
 qualification = "inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop"
-scaling = "linear: the planar H-tree has `O(sqrt(T))` width and height"
+scaling = "linear: worst N cells past n = 2: an H-tree of `O(sqrt(T))` sides"
 execution = "linear: worst 32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T"
 workspace = "poly n: worst 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n = 2"
 

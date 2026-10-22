@@ -14,6 +14,8 @@ one-column accumulator in cell ``n`` (earlier cells stay scratch).
 
 Size:
     O(T) cells; n=8 random 1847: 2,443 chars, n=10 random 1847: 7,807 chars.
+    Area, rows x longest row: the comb's is Theta(nT) (3n + 5 wide, 3T/4 + 1
+    tall); a smaller folded build (``_back_htree``) caps it at 27.5T from n=6.
 
 Decisions:
     A node whose one-subtree equals the zero-subtree of the next node on its
@@ -23,7 +25,9 @@ Decisions:
     setting the height.  The column wraps, so the level's last node reaches
     its first from eight rows up; over the next-node fall alone it is inert
     on random tables and pays on blocks drawn from two random ones
-    ([ablations.wrap_race]).  A bend of the first
+    ([ablations.wrap_race]).  The fold replaces the comb only when its area is
+    smaller (ties keep the comb): from n=7, on tables whose one-edges share
+    little.  It spends characters, up to its area, for area.  A bend of the first
     nonadjacent repeat through column 1 was retired: it saved at most 2.7% of
     characters on average at n=7..10 (best single table 14.7%).
 """
@@ -36,6 +40,7 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    grid_rank,
     grid_width,
     input_weights,
     move_text,
@@ -55,6 +60,8 @@ _Grid = dict[tuple[int, int], str]
 PAIR = ("-", "+")
 _BACK_INPUT = TEMPLATE_CHAR
 _WRAP_ROWS = 8
+#: Subtrees this short stay combs; taller ones fold (25-28 cells per leaf).
+_FOLD_BASE = 5
 _MIRROR = {"/": "\\", "\\": "/"}
 
 
@@ -138,6 +145,103 @@ def _back_parity(truth_table: str, n: int) -> str | None:
     return "\n".join([*rows, "*"])
 
 
+def _back_htree(table: str, weights: list[int]) -> str:
+    r"""Fold the decision tree into an H-tree of combs, under a row of load.
+
+    A subtree of at most ``_FOLD_BASE`` levels is the plain comb (``+\>``
+    chains, one row per one-edge).  A taller node is ``+ / >`` on row ``m`` of
+    its rectangle, entered heading east: the zero side skips the mirror, runs
+    on and turns south into the zero-child below; a one turns north, runs a
+    wire along row 0 and drops into the one-child above.  Both children are
+    entered heading south (a transposed frame), so orientation alternates per
+    level and a rectangle is ``3 + max(H0, H1)`` wide and ``W0 + W1 + 2``
+    tall: area O(T).  The load runs along row 0 and turns south into the
+    transposed root.  Every wire crosses only blank cells, so the beam
+    executes nothing off its path.
+    """
+    levels = len(table).bit_length() - 1
+    n = len(weights)
+    essential = [i for i, weight in enumerate(weights) if weight]
+    cells = [levels] * n
+    for level, i in enumerate(essential):
+        cells[i] = level
+    units = _back_load(list(range(n)), cells, weights, levels, n)
+    constant = constant_span_test(table)
+
+    def leaf(level: int, lo: int) -> bool:
+        return level == levels or constant(lo, lo + (1 << (levels - level)))
+
+    # (width, height, entry row) of a subtree drawn heading east from its
+    # west edge; a comb block enters at its top-left.
+    dims: dict[_Node, tuple[int, int, int]] = {}
+
+    def measure(level: int, lo: int) -> tuple[int, int, int]:
+        if leaf(level, lo):
+            box = (n - level + 1 + (table[lo] == "1"), 1, 0)
+        else:
+            half = 1 << (levels - level - 1)
+            w0, h0, _ = measure(level + 1, lo)
+            w1, h1, _ = measure(level + 1, lo + half)
+            if levels - level <= _FOLD_BASE:
+                box = (3 + max(w0, w1), h0 + h1, 0)
+            else:
+                box = (3 + max(h0, h1), w0 + w1 + 2, w1 + 1)
+        dims[level, lo] = box
+        return box
+
+    width, _, entry = measure(0, 0)
+    out: _Grid = {}
+
+    def emit(level: int, lo: int, row0: int, col0: int, *, swap: bool) -> None:
+        """Draw a subtree whose frame maps (r, c) to the grid, transposed or not."""
+
+        def put(r: int, c: int, char: str) -> None:
+            out[row0 + (c if swap else r), col0 + (r if swap else c)] = char
+
+        def sub(child: int, r: int, c: int, *, turn: bool) -> None:
+            """Draw a child with its corner at (r, c), turned to enter south."""
+            at = (row0 + c, col0 + r) if swap else (row0 + r, col0 + c)
+            emit(level + 1, child, *at, swap=swap != turn)
+
+        if leaf(level, lo):
+            code = ">" * (n - level) + ("-" if table[lo] == "1" else "") + "*"
+            for k, char in enumerate(code):
+                put(0, k, char)
+            return
+        half = 1 << (levels - level - 1)
+        _, _, m = dims[level, lo]
+        _, h0, m0 = dims[level + 1, lo]
+        _, _, m1 = dims[level + 1, lo + half]
+        if levels - level <= _FOLD_BASE:
+            # Comb: the zero side runs on, the one side starts h0 rows down.
+            for c, char in enumerate("+\\>"):
+                put(0, c, char)
+            put(h0, 1, "\\")
+            put(h0, 2, ">")
+            sub(lo, 0, 3, turn=False)
+            sub(lo + half, h0, 3, turn=False)
+            return
+        for c, char in enumerate("+/>"):
+            put(m, c, char)
+        put(m, 3 + m0, "\\")
+        put(m - 1, 1, ">")
+        put(0, 1, "/")
+        put(0, 3 + m1, "\\")
+        sub(lo, m + 1, 3, turn=True)
+        sub(lo + half, 1, 3, turn=True)
+
+    # Root transposed: its entry cell is (0, entry) heading south.  Row 0
+    # carries the load, then a mirror above the entry turns the beam down.
+    left = max(0, len(units) - entry)
+    emit(0, 0, 1, left, swap=True)
+    out.update({(0, k): unit for k, unit in enumerate(units)})
+    out[0, left + entry] = "\\"
+    rows: list[dict[int, str]] = [{} for _ in range(1 + width)]
+    for (r, c), char in out.items():
+        rows[r][c] = char
+    return _render(rows)
+
+
 def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> str:
     """Build a Back template; ``truth_table`` has length ``2**n``, MSB first."""
     n = _validate_truth_table(truth_table)
@@ -146,15 +250,21 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
         # A constant already folds to one leaf; it keeps every input.
         weights, table = [1] * n, truth_table
     levels = len(table).bit_length() - 1
-    # A wrapped fall only removes rows; the shorter build, the plain one on a
-    # tie, is the guard that no table grows.
+    # A wrapped fall only removes rows; the smaller build (by area, or length
+    # under a width request), the plain one on a tie, guards that none grows.
     program = min(
         (
             _back_ordered(table, tuple(range(levels)), width, weights, wrap=w)
             for w in ((False, True) if wrap else (False,))
         ),
-        key=len,
+        key=len if width is not None else grid_rank,
     )
+    if wrap and width is None and len(table) > 1 << _FOLD_BASE:
+        program = min(
+            program,
+            _back_htree(table, weights),
+            key=grid_rank,
+        )
     if width is not None and width > 0 and grid_width(program) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
@@ -429,4 +539,5 @@ LANGUAGE = Language(
     empty_program="Back program cannot be empty",
     example=Example(pair=PAIR, expected="0 1 0"),
     proof_execution=(execution, True, (3, 5, 6)),
+    grid=True,
 )

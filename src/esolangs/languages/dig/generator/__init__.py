@@ -337,11 +337,11 @@ def _dig_size(program: str) -> tuple[int, int]:
 
 
 def _dig_indexed_choice(table: str, n: int, current: str) -> str:
-    """Swap in the indexed leaf decoder if it shrinks area."""
+    """Swap in the indexed leaf decoder if it shrinks area, then length."""
     candidate = _dig_indexed_shared(table, n)
     if candidate is None:
         return current
-    return candidate if grid_area(candidate) < grid_area(current) else current
+    return candidate if _dig_size(candidate) < _dig_size(current) else current
 
 
 def _dig_quarter_turn(program: str) -> str:
@@ -551,4 +551,5 @@ LANGUAGE = Language(
     empty_program="Dig program cannot be empty",
     proof_execution=(execution, True, (7,)),
     proof_workspace=(workspace, True, (5,)),
+    grid=True,
 )

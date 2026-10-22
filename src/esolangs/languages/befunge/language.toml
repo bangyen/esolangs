@@ -7,7 +7,7 @@ backlinks = 382
 [proof_status]
 labels = ["exception"]
 qualification = "six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables"
-scaling = "linear: worst N characters: T table cells, one g at the index"
+scaling = "linear: worst N cells past n = 6: 80 columns, one header row"
 execution = "unmeasured: worst 5n + 28 steps to n=10, 5n + 67 to 13"
 workspace = "poly n: worst 2n + bl(5n+28) + bl(2n-1) + 10 bits to n = 10, then 2n + bl(2n-1) + 23"
 

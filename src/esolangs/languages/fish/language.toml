@@ -7,9 +7,9 @@ backlinks = 91
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the inputs form a Horner row index and `g` reads that column from the table row"
-scaling = "linear: worst T + 9n + 10 characters, packed past n = 5"
-execution = "poly n: worst 9n + 9 commands to n = 5, then 9n + 33 + 2c: Horner reads, one lookup"
-workspace = "poly n: worst bl(9n+8) + n + 13 + bl(n) bits to n = 5, then bl(S-1)+bl(s)+bl(n)+71"
+scaling = "linear: worst F cells: two rows to n = 3, then one row"
+execution = "poly n: worst 9n + 9 commands to n = 3, then 9n + 33 + 2c: Horner reads, one lookup"
+workspace = "poly n: worst bl(9n+8) + n + 13 + bl(n) bits to n = 3, then bl(S-1)+bl(s)+bl(n)+71"
 definitions = ["c = 3 to n = 20, then 1 + 2bl(column): the packed column literal's characters", "S = 9n + 33 + 2c commands run; s = the packed column, 15⌈(9n+39)/15⌉ to n = 20"]
 
 [generator_sizes]
@@ -19,7 +19,7 @@ definitions = ["c = 3 to n = 20, then 1 + 2bl(column): the packed column literal
 "0110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8 }, source_units = 15 }
 "01101001" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10 }, source_units = 19 }
 "0110100110010110" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12, "8" = 12, "9" = 12, "10" = 12, "11" = 12, "12" = 12, "13" = 12, "14" = 12, "15" = 12 }, source_units = 23 }
-"1101001101101101" = { commands = 45, commands_by_row = { "0" = 45, "1" = 45, "2" = 45, "3" = 45, "4" = 45, "5" = 45, "6" = 45, "7" = 45, "8" = 45, "9" = 45, "10" = 45, "11" = 45, "12" = 45, "13" = 45, "14" = 45, "15" = 45 }, source_units = 62 }
+"1101001101101101" = { commands = 75, commands_by_row = { "0" = 75, "1" = 75, "2" = 75, "3" = 75, "4" = 75, "5" = 75, "6" = 75, "7" = 75, "8" = 75, "9" = 75, "10" = 75, "11" = 75, "12" = 75, "13" = 75, "14" = 75, "15" = 75 }, source_units = 84 }
 "11111110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 32 }
 
 [ablations.symmetric_count]
@@ -48,4 +48,4 @@ saving = 89.8
 arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
-verdict = "kept, priced by area: one row holding the code, six powers of two and the table packed six entries a printable cell (codes 35-98), against the two-row header over table. Area 4.7% on random tables at n=6, 48.0% at n=7, 67.0% at n=8, 84.8% at n=10, 89.8% at n=12 (20 tables), rising; characters fall too (33.8% at n=7, 72.2% at n=10). Taken only when no larger in area and in characters, so n<=5 is unchanged (packing saved 5.6-6.6% of area there but cost 17-35% more characters). Majority and and at n=8 halve; parity keeps its column. Exhaustive n<=3 unchanged; random samples executed at n=4..12. Supersedes a plain single row (table after the header, 14.8% at n=7), which packing beats from n=6"
+verdict = "kept, priced by area: one row holding the code, six powers of two and the table packed six entries a printable cell (codes 35-98), against the two-row header over table. Area 4.7% on random tables at n=6, 48.0% at n=7, 67.0% at n=8, 84.8% at n=10, 89.8% at n=12 (20 tables), rising; characters fall too (33.8% at n=7, 72.2% at n=10). Taken whenever smaller in area (characters break ties), so from n=4 (packing saves 5.6-6.6% of area at n=4..5 but costs 17-35% more characters). Majority and and at n=8 halve; parity keeps its column. Exhaustive n<=3 unchanged; random samples executed at n=4..12. Supersedes a plain single row (table after the header, 14.8% at n=7), which packing beats from n=6"

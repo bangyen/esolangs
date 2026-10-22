@@ -48,6 +48,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     grid_area,
+    grid_rank,
     grid_width,
     input_weights,
 )
@@ -754,7 +755,7 @@ _FLAT_FROM = 6
 
 def _smallest(*programs: str) -> str:
     """Return the smallest grid by area, then length; ties keep the earlier."""
-    return min(programs, key=lambda program: (grid_area(program), len(program)))
+    return min(programs, key=grid_rank)
 
 
 def _tree_leaves(table: str) -> int:
@@ -854,4 +855,5 @@ LANGUAGE = Language(
     empty_program="Streetcode program cannot be empty",
     proof_execution=(execution, True, (6, 8)),
     proof_workspace=(workspace, False, (6, 7)),
+    grid=True,
 )

@@ -82,6 +82,9 @@ class Language:
     #: Source that looks like a file path is still source.
     path_like_source: bool = False
     source_kind: SourceKind = SourceKind.TEXT
+    #: The source is a 2D grid, judged by area (rows times the longest row):
+    #: the default build races by area and Scaling states ``cells``.
+    grid: bool = False
     compressed_source: bool = False
     extra: str = ""
     # The Boolean generator, its limits, and how its programs read inputs

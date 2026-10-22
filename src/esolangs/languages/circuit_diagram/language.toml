@@ -69,7 +69,7 @@ verdict = "kept: judged on its class; 0.0% on random tables"
 [ablations.competing_model_race]
 saving = 2.1
 arity = 9
-verdict = "kept: fails the bar by area (4.3% at n=8, 2.1% at n=9, negative at n=10) -- it selects by chars, where it earns ~14% at n=9..10"
+verdict = "kept: races folds by (area, chars): saves 0.7% / 0.6% of area at n=7 / 8 (200 seeded tables), 3.9% on n=10 parity, 8.1% on n=10 random 1847, at 0.9% more chars"
 
 [ablations.transpose_folds]
 saving = 0.0

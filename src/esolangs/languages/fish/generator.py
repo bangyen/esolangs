@@ -9,13 +9,13 @@ answer from the table's digits by coordinates and ``n`` prints it.  For n=2:
 
 Narrow widths fold the table into a block of columns, which the fish reaches
 by snaking down.  A parity table needs no table at all, and another symmetric
-one adds its bits over m + 1 entries ([ablations.symmetric_count]).  From n=6 the
+one adds its bits over m + 1 entries ([ablations.symmetric_count]).  From n=4 the
 default is one row: the code, six powers of two, and the table packed six
 entries a cell ([ablations.packed_row]).
 
 Size:
     O(T), independent of the table at default width: about T/6 cells past
-    n=5; n=16 parity: 71 chars, n=10 random 1847: 312 chars.
+    n=3; n=16 parity: 71 chars, n=10 random 1847: 312 chars.
 
 Decisions:
     A table has no subtrees to fold or share.
@@ -26,6 +26,7 @@ from math import isqrt
 from esolangs.generation.helpers import (
     _parity_bias,
     _validate_truth_table,
+    grid_rank,
     input_weights,
     symmetric_weights,
 )
@@ -55,9 +56,9 @@ def fish(truth_table: str, width: int | None = None) -> str:
             # ([ablations.symmetric_count]).
             counts = "".join("i68*-+" if weight else "i~" for weight in symmetric[0])
             plain = "0" + counts + "1g68*-n;\n" + symmetric[1]
-        # Packed wins on area from n=4 but costs characters below n=6.
-        smaller = _area(packed) <= _area(plain) and len(packed) <= len(plain)
-        return packed if smaller else plain
+        # Packed wins on area from n=4 but costs characters below n=6; area
+        # decides, characters break ties.
+        return min(packed, plain, key=grid_rank)
     if max(len(header), len(truth_table)) <= width:
         return header + "\n" + truth_table
     columns = 1 << (min(max(1, width - 2), len(truth_table)).bit_length() - 1)
@@ -68,12 +69,6 @@ def fish(truth_table: str, width: int | None = None) -> str:
 #: 64 printable codes from 35 skip DEL ([ablations.packed_row]).
 _WORD = 6
 _BASE = 35
-
-
-def _area(program: str) -> int:
-    """Return the codebox area, rows times the longest row."""
-    rows = program.split("\n")
-    return len(rows) * max(map(len, rows))
 
 
 def _column(least: int) -> tuple[int, str]:
@@ -200,4 +195,5 @@ LANGUAGE = Language(
     no_wrap="a row is a codebox row and the lookup table is indexed by column",
     eof="an exhausted 'i' is the spec's -1",
     empty_program="Fish program cannot be empty",
+    grid=True,
 )

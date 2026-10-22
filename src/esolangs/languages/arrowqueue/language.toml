@@ -7,7 +7,7 @@ backlinks = 3
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages"
-scaling = "linear: at most 2T + 6n + 7 rows, the constant tail folded"
+scaling = "linear: worst A cells: the least-area cascade or fold, T - 1 leaves"
 execution = "linear: at most 11T + 32n + 92 commands: Horner doubling 8 a marker, a row 1, fold corridors"
 workspace = "linear: worst T + 11 + bl(T+6n+8) bits: a queue of T + 6 bits, the row, the column"
 

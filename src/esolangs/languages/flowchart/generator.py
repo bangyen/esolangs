@@ -852,4 +852,5 @@ LANGUAGE = Language(
     eof="reads at input nodes, including the constant skip chain",
     empty_program="Flowchart program has no '( )' start node",
     proof_workspace=(workspace, True, (3, 4, 5)),
+    grid=True,
 )

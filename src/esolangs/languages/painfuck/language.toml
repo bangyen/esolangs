@@ -9,7 +9,7 @@ bf_derivative_predates = true
 [proof_status]
 labels = ["tree"]
 qualification = "decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell"
-scaling = "linear: at most 63T/4+3n-21 characters past n = 3: to n = 15"
+scaling = "linear: at most 31T/2+3n-21 characters past n = 3: to n = 15"
 execution = "poly n: worst 4n^2 + 9n + 5 - 6⌊n/2⌋ commands past n = 2: parity sum's loops; trees ≤ 22n"
 workspace = "poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n"
 

@@ -23,7 +23,7 @@ from math import isqrt
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    grid_area,
+    grid_rank,
     grid_width,
     input_weights,
 )
@@ -227,7 +227,7 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
         return program
     # Judged by area: the wide strip or the least of the closed-form layouts.
     # No width sweep, so O(T).  See [ablations.area_default].
-    return min([program, *_closed_forms(truth_table)], key=grid_area)
+    return min([program, *_closed_forms(truth_table)], key=grid_rank)
 
 
 def _b_tapemark_program(
@@ -382,4 +382,5 @@ LANGUAGE = Language(
     balance=_balance,
     empty_program="B-tapemark program needs exactly one start marker",
     proof_workspace=(workspace, False, (3, 4)),
+    grid=True,
 )

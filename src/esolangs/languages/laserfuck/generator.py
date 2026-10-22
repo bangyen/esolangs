@@ -814,4 +814,5 @@ LANGUAGE = Language(
     proof_execution=(execution, True, (5, 6, 7)),
     proof_workspace=(workspace, True, (5, 6, 7)),
     example=Example(expected="0", kwargs=(("seed", 0),)),
+    grid=True,
 )

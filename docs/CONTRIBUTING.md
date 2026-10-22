@@ -297,7 +297,8 @@ requirements:
   runs: seeded random tables at n=7..8, or at its cap if it stops earlier,
   and 200 tables when the result is within two points of the bar. A trick
   aimed at a table class (ignored inputs, constants) is judged on that class;
-  2D grids are judged by area, rows times the longest row. The n=3 total is
+  2D grids (`grid=True`) are judged by area, rows times the longest row: their
+  default build races by `grid_rank` and Scaling counts cells. The n=3 total is
   context only: greedy order searches saved 8-15% there but at most 2.2% at
   n >= 7, and were retired.  A cap counts
   only where the construction stops or the trick loses past it (cite the

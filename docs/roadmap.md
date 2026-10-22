@@ -40,13 +40,14 @@ evidence, not optimization tasks.
   - Algebraic Programming Language execution: `max(21, ⌈65n/2⌉ + 3n - 27)`
     is exact through n = 4 (exhaustive); parity reaches it to n = 10 and
     searches to n = 8 never beat it, unproved past n = 4.
-- **Unformulated scaling** (2026-10-22): 20 cells state a mechanism, no
+- **Unformulated scaling** (2026-10-22): 18 cells state a mechanism, no
   size formula. Bleh, Quassaunt and Stisp have a bound only as a per-level
   optimisation (not a rule); CVNC's unshared 8T + 12 is beaten by sharing
-  on 12,926 of 65,536 four-input tables. Brainfuck, Dig, For Thorn,
-  Interprogck8, Minifuck, Pointless, ROTfuck, Smallfuck, Subleq, Thisthat,
-  3x and AddSubJump (n <= 5) race routes or layouts; Line, Piet and Circuit
-  Diagram need a raster unit; Polynomial is a lower bound. Slow ACV's three
+  on 12,926 of 65,536 four-input tables. Brainfuck, For Thorn,
+  Interprogck8, Minifuck, Pointless, ROTfuck, Smallfuck, Subleq, 3x and
+  AddSubJump (n <= 5) race routes or layouts; Circuit Diagram's area
+  follows its fold DAG and class counts (621T cells at n = 8, 1,100T at
+  n = 11 on random tables); Line and Piet need a raster unit; Polynomial is a lower bound. Slow ACV's three
   cells are prose too: candidate bounds hold to n = 20 but are unproved.
 - **Unmeasured classes:** Befunge, Malbolge and Polynomial execution carry
   formulas; Unary execution and workspace do not (`max(n, min(n + 4, 8))`

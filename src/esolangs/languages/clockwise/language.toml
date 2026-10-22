@@ -7,19 +7,19 @@ backlinks = 4
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit"
-scaling = "linear: worst 16T + 9n^2 + 40n + 58 characters: five table rows"
-execution = "linear: worst 10T + 20n + 30 steps: the pointer's path to the last row"
-workspace = "poly n: worst 57n + 50 + bl(2n+14) + bl(2^(n+1)+9n+1) bits: 7n-character queue"
+scaling = "linear: worst 30T + 48n + 24 cells: six rows, gadgets abreast"
+execution = "linear: worst 16T + 22n + 4 steps: the pointer's path to the last row"
+workspace = "poly n: worst 57n + 53 + bl(5*2^n+8n+3) bits: 7n-character queue"
 
 [generator_sizes]
-"00000001" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 387 }
-"00001100" = { commands = 120, commands_by_row = { "0" = 102, "1" = 102, "2" = 106, "3" = 106, "4" = 116, "5" = 116, "6" = 120, "7" = 120 }, source_units = 246 }
-"00110110" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 385 }
-"0110" = { commands = 110, commands_by_row = { "0" = 92, "1" = 96, "2" = 106, "3" = 110 }, source_units = 236 }
-"01101001" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 387 }
-"0110100110010110" = { commands = 270, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196, "8" = 218, "9" = 222, "10" = 232, "11" = 236, "12" = 252, "13" = 256, "14" = 266, "15" = 270 }, source_units = 616 }
-"1101001101101101" = { commands = 270, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196, "8" = 218, "9" = 222, "10" = 232, "11" = 236, "12" = 252, "13" = 256, "14" = 266, "15" = 270 }, source_units = 618 }
-"11111110" = { commands = 170, commands_by_row = { "0" = 118, "1" = 122, "2" = 132, "3" = 136, "4" = 152, "5" = 156, "6" = 166, "7" = 170 }, source_units = 385 }
+"00000001" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 390 }
+"00001100" = { commands = 112, commands_by_row = { "0" = 94, "1" = 94, "2" = 98, "3" = 98, "4" = 108, "5" = 108, "6" = 112, "7" = 112 }, source_units = 228 }
+"00110110" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 388 }
+"0110" = { commands = 112, commands_by_row = { "0" = 94, "1" = 98, "2" = 108, "3" = 112 }, source_units = 228 }
+"01101001" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 390 }
+"0110100110010110" = { commands = 348, commands_by_row = { "0" = 222, "1" = 226, "2" = 236, "3" = 240, "4" = 256, "5" = 260, "6" = 270, "7" = 274, "8" = 296, "9" = 300, "10" = 310, "11" = 314, "12" = 330, "13" = 334, "14" = 344, "15" = 348 }, source_units = 660 }
+"1101001101101101" = { commands = 348, commands_by_row = { "0" = 222, "1" = 226, "2" = 236, "3" = 240, "4" = 256, "5" = 260, "6" = 270, "7" = 274, "8" = 296, "9" = 300, "10" = 310, "11" = 314, "12" = 330, "13" = 334, "14" = 344, "15" = 348 }, source_units = 662 }
+"11111110" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 388 }
 
 [catalogue]
 folding_constant_local = "_constant_ring"  # read rotation and literal output

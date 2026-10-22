@@ -185,8 +185,20 @@ def _laserfuck_worst(n: int) -> tuple[str, ...]:
     """
     width = 1 << n
     if n < 7:
-        return ("".join(str((row.bit_count() + n + 1) & 1) for row in range(width)),)
+        # Also the area's: parity ending on a one at row 0, every node distinct.
+        return (
+            "".join(str((row.bit_count() + n + 1) & 1) for row in range(width)),
+            "".join(str(1 - row.bit_count() % 2) for row in range(width)),
+        )
     return "0" + "1" * (width - 1), "1" + "0" * (width - 1)
+
+
+# language-owners: ["thisthat"]
+def _thisthat_worst(n: int) -> str:
+    """Input pairs 01 or 10 by a bit of Knuth's hash: a full tree, nothing shared."""
+    return "".join(
+        "01" if k * 2654435761 >> 16 & 1 else "10" for k in range(1 << n - 1)
+    )
 
 
 # language-owners: ["Bitdeque"]
@@ -621,6 +633,9 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
     "BrainIf": lambda n: (_brainif_worst(n) if n >= 2 else "11",),
     "BFStack": lambda n: (_bfstack_chars_worst(n),),
+    "thisthat": lambda n: (_thisthat_worst(n),) if n >= 3 else (),
+    # Below five its generic families miss the area worst by a column.
+    "LaserFuck": lambda n: _laserfuck_worst(n) if n < 5 else (),
     "Bitdeque": lambda n: (_bitdeque_worst(n), _bitdeque_tokens(n)) if n >= 3 else (),
     # Parity with row 0 flipped: a symmetric count table, one flip short.
     "Boolfuck": lambda n: (

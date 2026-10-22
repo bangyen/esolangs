@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["finite lookup"]
 qualification = "packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it"
-scaling = "linear: worst P characters, n = 11..21: packed chunks of n bits"
+scaling = "linear: worst P characters, n = 11..21; below, at most min(tree, P)"
 execution = "linear: worst 3n + 2 instructions to n = 9, the tree route: n reads, 2n - 1 tests"
 workspace = "linear: at most 3L bits: the self-modified program, decimal cells"
 
