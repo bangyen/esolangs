@@ -3,7 +3,8 @@
 The whole table is a literal, bit ``k`` holding row ``k``; each input read
 squares and multiplies ``power`` so it ends as ``2**index`` (the row index
 accumulates in the exponent by Horner's rule), and the printed character is
-``'0'`` plus the low bit of ``literal // power``.
+``'0'`` plus the low bit of ``literal // power``, or ``'1'`` minus it when
+the complement packs shorter ([ablations.polarity_flip]).
 
 Size:
     O(T) characters for the literal, O(n) statements;
@@ -81,7 +82,14 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     zero = _qoibl_enc(_ASCII_ZERO)
     two = _qoibl_enc(2)
     packed = sum(int(bit) << index for index, bit in enumerate(truth_table))
-    lines = _read_statements(weights, power, row, zero, two, packed)
+    # Trailing zeros of the literal are free, trailing ones are not: pack the
+    # complement when it is shorter and print '1' minus the bit instead
+    # ([ablations.polarity_flip]).
+    flipped = ((1 << len(truth_table)) - 1) ^ packed
+    flip = flipped.bit_length() < packed.bit_length()
+    if flip:
+        packed, zero = flipped, _qoibl_enc(_ASCII_ZERO + 1)
+    lines = _read_statements(weights, power, row, zero, two, packed, flip=flip)
     program = "\n".join(lines)
     if width is None:
         return program
@@ -94,9 +102,19 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
 
 
 def _read_statements(
-    weights: list[int], power: str, row: str, zero: str, two: str, packed: int
+    weights: list[int],
+    power: str,
+    row: str,
+    zero: str,
+    two: str,
+    packed: int,
+    *,
+    flip: bool = False,
 ) -> list[str]:
-    """Emit one assignment per input read, then unpack the row and print it."""
+    """Emit one assignment per input read, then unpack the row and print it.
+
+    With ``flip`` the literal is the complement and ``zero`` is ``'1'``.
+    """
     # The input digit is 48 or 49, so minus 47 it is 2**bit: multiplying it
     # in appends the new bit to the row index accumulating in the exponent.
     two_to_bit = _arith(_INPUT, _SUB, _qoibl_enc(_ASCII_ZERO - 1))
@@ -130,18 +148,13 @@ def _read_statements(
             counted = True
     # ``row = packed // power``: shift the table right by the row index.
     lines.append(_assign(row, _arith(_qoibl_enc(packed), _DIV, _read_var(power))))
-    # Print ``'0' + (row mod 2)``: the selected row's bit as a character.
-    lines.append(
-        _print(
-            _arith(
-                _read_var(row),
-                _ADD,
-                _arith(
-                    zero, _SUB, _arith(two, _MUL, _arith(_read_var(row), _DIV, two))
-                ),
-            )
-        )
-    )
+    # Print ``'0' + (row mod 2)``, or ``'1' - (row mod 2)`` flipped.
+    halves = _arith(two, _MUL, _arith(_read_var(row), _DIV, two))
+    if flip:
+        answer = _arith(zero, _SUB, _arith(_read_var(row), _SUB, halves))
+    else:
+        answer = _arith(_read_var(row), _ADD, _arith(zero, _SUB, halves))
+    lines.append(_print(answer))
     return lines
 
 

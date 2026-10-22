@@ -12,13 +12,13 @@ execution = "poly n: worst n + 2 commands, one statement per input"
 workspace = "linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1"
 
 [generator_sizes]
-"00000001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 265 }
+"00000001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
 "00001100" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 226 }
 "00110110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
 "0110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 196 }
-"01101001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 265 }
+"01101001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
 "0110100110010110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 336 }
-"1101001101101101" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 337 }
+"1101001101101101" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 336 }
 "11111110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
 
 [catalogue]
@@ -48,3 +48,10 @@ verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights 
 saving = 42.2
 arity = 12
 verdict = "recorded: the plain build is the projection removed (every input at its positional weight, the full table packed) and nothing else: the Horner squaring that accumulates 2**index is essential with only + - * / available, the ignored-read drain target and the bit-plus-one store are workspace correctness, and the Horner literal chunking is a width path, not the default sized path. Plain and shipped are byte-identical on every table whose inputs are all essential"
+
+[ablations.polarity_flip]
+saving = 30.6
+arity = 8
+seed = "random.Random(184700 + n) and named tables"
+tables = 200
+verdict = "kept under the named-function rule: when the complemented table packs to fewer bits (a trailing run of ones, which the literal pays for while trailing zeros are free), the literal is the complement and the print is '1' minus the bit, same statement count. Or 12.3% at n=6, 19.8% at n=7, 30.6% at n=8, 59.2% at n=10, rising; at-least-3 2.9-14.7% at n=6..10; majority 1.4-2.3%, and 0.1-0.2%; random tables 0.05-0.19%. Exhaustive n<=3: 138 tables change, none grows, every changed program executed; random samples and named tables executed through n=8"
