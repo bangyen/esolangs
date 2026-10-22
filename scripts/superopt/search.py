@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import time
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .machine import CRAZY0, State, run, step
 
@@ -95,13 +95,16 @@ def _accepts(
     return True
 
 
-def evaluate(program: tuple[str, ...], spec: Spec, stats: Stats | None = None) -> bool:
-    """Run ``program`` on every row and judge it with early exit."""
-    finals = tuple(
+def _finals(program: tuple[str, ...], spec: Spec) -> tuple[State, ...]:
+    return tuple(
         run(program, bits, start)
         for start, bits in zip(spec.starts, spec.inputs, strict=True)
     )
-    return _accepts(finals, spec, order_rows(spec), stats)
+
+
+def evaluate(program: tuple[str, ...], spec: Spec, stats: Stats | None = None) -> bool:
+    """Run ``program`` on every row and judge it with early exit."""
+    return _accepts(_finals(program, spec), spec, order_rows(spec), stats)
 
 
 def certify(program: tuple[str, ...], spec: Spec) -> bool:
@@ -110,11 +113,7 @@ def certify(program: tuple[str, ...], spec: Spec) -> bool:
     Independent of the search filter: every row is run with the plain
     simulator, all observables are collected, and only then judged.
     """
-    finals = tuple(
-        run(program, bits, start)
-        for start, bits in zip(spec.starts, spec.inputs, strict=True)
-    )
-    observables = [_observable(f, spec.observe) for f in finals]
+    observables = [_observable(f, spec.observe) for f in _finals(program, spec)]
     if spec.distinct and len(set(observables)) != len(observables):
         return False
     return all(
@@ -261,11 +260,11 @@ class BfsResult:
     capped: bool
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class _Node:
     reads: int
     rows: tuple[int, ...]
-    program: bytes = field(default=b"", compare=False)
+    program: bytes = b""
 
 
 def search_bfs(

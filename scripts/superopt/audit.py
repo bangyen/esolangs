@@ -280,6 +280,12 @@ class Corpus:
 #: reports ``truncated`` -- its alphabet may be missing characters, so
 #: its certificates hold over the collected alphabet only.
 _CORPUS_TIMEOUT = 150.0
+# A pair whose space exceeds this many times the candidate cap is priced out.
+_CAP_MULTIPLE = 20
+_UNSUPPORTED = (
+    "generate produced no char-sized program at this arity (a Raster, or a refusal)"
+)
+_NO_ALPHABET = "no alphabet extractable: every emitted program is >= 20,000 chars"
 _ARITY3_TIMEOUT = 30.0
 
 
@@ -501,7 +507,7 @@ def audit_language(
     *,
     candidate_cap: int | None,
     wall_seconds: float,
-    bounded_multiple: int = 20,
+    bounded_multiple: int = _CAP_MULTIPLE,
 ) -> tuple[Corpus, list[Outcome]]:
     """Audit every table of one language at one arity.
 
@@ -521,8 +527,7 @@ def audit_language(
                     table,
                     corpus.sizes[arity].get(table, -1),
                     "priced_out",
-                    note="no alphabet extractable: every emitted program "
-                    "is >= 20,000 chars",
+                    note=_NO_ALPHABET,
                 )
             )
         return corpus, outcomes
@@ -538,8 +543,7 @@ def audit_language(
                     table,
                     -1,
                     "unsupported",
-                    note="generate produced no char-sized program at this "
-                    "arity (a Raster, or a refusal)",
+                    note=_UNSUPPORTED,
                 )
             )
             continue
@@ -613,8 +617,7 @@ def audit_fleet(
                         -1,
                         "unsupported",
                         space=space,
-                        note="generate produced no char-sized program at this "
-                        "arity (a Raster, or a refusal)",
+                        note=_UNSUPPORTED,
                     )
                 )
             elif not corpus.alphabet:
@@ -625,8 +628,7 @@ def audit_fleet(
                         corpus.sizes[arity].get(table, -1),
                         "priced_out",
                         space=space,
-                        note="no alphabet extractable: every emitted program "
-                        "is >= 20,000 chars",
+                        note=_NO_ALPHABET,
                     )
                 )
             elif time.monotonic() - began > budget_seconds:
@@ -640,7 +642,7 @@ def audit_fleet(
                         note="global budget spent before this pair",
                     )
                 )
-            elif candidate_cap is not None and space > 20 * candidate_cap:
+            elif candidate_cap is not None and space > _CAP_MULTIPLE * candidate_cap:
                 outcomes.append(
                     Outcome(
                         runner.name,
@@ -649,7 +651,7 @@ def audit_fleet(
                         "priced_out",
                         space=space,
                         note=f"space {approx(space)} strings below shipped size "
-                        "exceeds 20x the candidate cap",
+                        f"exceeds {_CAP_MULTIPLE}x the candidate cap",
                     )
                 )
             else:

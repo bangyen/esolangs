@@ -228,6 +228,10 @@ def _certify_candidate(
     return True, ""
 
 
+def _gap_pct(shipped: str, size: int) -> float:
+    return round(100.0 * (len(shipped) - size) / len(shipped), 1)
+
+
 def _append_jsonl(path: Path | None, record: dict[str, Any]) -> None:
     if path is None:
         return
@@ -264,9 +268,7 @@ def _restore_state(
     if state["found"] is not None:
         record["found"] = state["found"]
         record["found_size"] = state["found_size"]
-        record["gap_pct"] = round(
-            100.0 * (len(shipped) - state["found_size"]) / len(shipped), 1
-        )
+        record["gap_pct"] = _gap_pct(shipped, state["found_size"])
     record["alt"] = state["alt"]
 
 
@@ -468,9 +470,7 @@ def mine_search(
                 state["found_size"] = len(program)
                 record["found"] = program
                 record["found_size"] = len(program)
-                record["gap_pct"] = round(
-                    100.0 * (len(shipped) - len(program)) / len(shipped), 1
-                )
+                record["gap_pct"] = _gap_pct(shipped, len(program))
                 _append_jsonl(
                     finds_path,
                     {
@@ -589,14 +589,13 @@ def _run_chains(
                 state["best_cost"] = current_cost
                 state["best_program"] = state["current"]
         save_checkpoint()
-        bounded = False
         while state["step"] < per_restart:
             if (
                 state["evals"] % 256 == 0
                 and time.monotonic() - wall_began > wall_seconds
             ):
-                bounded = True
-                break
+                save_checkpoint()
+                return True
             proposal = propose(state["current"], alphabet, rng)
             scored = score_program(runner, proposal, table)
             state["evals"] += 1
@@ -617,9 +616,6 @@ def _run_chains(
                 state["current_score"] = scored
             if state["evals"] % CHECKPOINT_EVERY == 0:
                 save_checkpoint()
-        if bounded:
-            save_checkpoint()
-            return True
         state["restart"] += 1
         state["step"] = 0
         state["rng"] = None
@@ -846,15 +842,12 @@ def run_control(
             return False
         return True
 
-    rediscovered = 0
-    for language, table, found_size in CONTROL_GAPS:
-        if not caps_ok():
-            return 2
-        record = _run_search(
+    def probe(language: str, table: str, label: str) -> dict[str, Any]:
+        return _run_search(
             contexts,
             language=language,
             table=table,
-            class_label="control",
+            class_label=label,
             phase="control",
             eval_budget=eval_budget,
             restarts=2,
@@ -868,6 +861,12 @@ def run_control(
             ledger=ledger,
             command="mine-control",
         )
+
+    rediscovered = 0
+    for language, table, found_size in CONTROL_GAPS:
+        if not caps_ok():
+            return 2
+        record = probe(language, table, "control")
         if record["outcome"] == "find" and record["found_size"] <= found_size:
             rediscovered += 1
     print(
@@ -877,24 +876,7 @@ def run_control(
     for language, table, found_size in CONTROL_SECONDARY:
         if not caps_ok():
             return 2
-        record = _run_search(
-            contexts,
-            language=language,
-            table=table,
-            class_label="control-secondary",
-            phase="control",
-            eval_budget=eval_budget,
-            restarts=2,
-            seed=seed,
-            wall_seconds=wall_seconds,
-            checkpoint_dir=checkpoint_dir,
-            resume=False,
-            out_path=out_path,
-            finds_path=finds_path,
-            rejects_path=rejects_path,
-            ledger=ledger,
-            command="mine-control",
-        )
+        record = probe(language, table, "control-secondary")
         hit = record["outcome"] == "find" and record["found_size"] <= found_size
         verdict = "rediscovered" if hit else "not rediscovered"
         print(f"  secondary {language} {table}: {verdict} (report only)")
@@ -902,24 +884,7 @@ def run_control(
     for language, table in CONTROL_MINIMAL:
         if not caps_ok():
             return 2
-        record = _run_search(
-            contexts,
-            language=language,
-            table=table,
-            class_label="control-minimal",
-            phase="control",
-            eval_budget=eval_budget,
-            restarts=2,
-            seed=seed,
-            wall_seconds=wall_seconds,
-            checkpoint_dir=checkpoint_dir,
-            resume=False,
-            out_path=out_path,
-            finds_path=finds_path,
-            rejects_path=rejects_path,
-            ledger=ledger,
-            command="mine-control",
-        )
+        record = probe(language, table, "control-minimal")
         if record["outcome"] == "find":
             manufactured += 1
     print(f"control 3 (no manufactured gaps): {manufactured} finds (bar: 0)")

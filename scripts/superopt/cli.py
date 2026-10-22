@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -158,7 +159,7 @@ def _audit_fleet(args: argparse.Namespace) -> int:
         records.append(_record(name, corpus, outcomes, Runner(name)))
         Path(args.out).write_text(json.dumps(records, indent=1), encoding="utf-8")
 
-    results = audit_fleet(
+    audit_fleet(
         names,
         args.arity,
         budget_seconds=args.budget,
@@ -167,19 +168,11 @@ def _audit_fleet(args: argparse.Namespace) -> int:
         progress=True,
         on_result=collect,
     )
-    gaps = sum(
-        1
-        for _name, _corpus, outcomes in results
-        for o in outcomes
-        if o.outcome == "gap"
-    )
-    counts: dict[str, int] = {}
-    for record in records:
-        for row in record["outcomes"]:
-            counts[row["outcome"]] = counts.get(row["outcome"], 0) + 1
+    counts = Counter(row["outcome"] for r in records for row in r["outcomes"])
     print(
-        f"fleet n={args.arity}: {len(records)} languages, outcomes {counts}, "
-        f"{gaps} gaps, {time.monotonic() - began:.0f}s wall; wrote {args.out}"
+        f"fleet n={args.arity}: {len(records)} languages, "
+        f"outcomes {dict(counts)}, {counts['gap']} gaps, "
+        f"{time.monotonic() - began:.0f}s wall; wrote {args.out}"
     )
     for record in records:
         for row in record["outcomes"]:
