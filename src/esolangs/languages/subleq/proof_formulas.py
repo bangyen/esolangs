@@ -20,7 +20,18 @@ def _subleq(n: int, _: str) -> int:
 
     residuals = sum(min(1 << k, (1 << (1 << (n - k))) - 2) for k in range(n))
     memory = 19 + 10 * n + 6 * residuals
-    return max(packed, memory * max(7, bl(memory)) + bl(memory) + bl(n))
+    # The tree's image: prefix, n reads of nine cells, a branch, a jump and
+    # pointers per residual; a run rewrites only the inputs and scratch.
+    width, read = bl(memory), bl(n + 6)
+    tree = (
+        45
+        + 15 * n
+        + 4 * width
+        + 3 * n * (read + width)
+        + residuals * (4 + read + 2 * width)
+        + bl(n)
+    )
+    return max(packed, tree)
 
 
 def workspace(n: int, p: str) -> int:

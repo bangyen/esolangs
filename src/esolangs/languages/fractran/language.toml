@@ -9,7 +9,7 @@ labels = ["parameterized tree"]
 qualification = "the bits are the exponents of `n` primes in the starting value, a decision tree gives equal subtables one state prime, and the first-match rule is the else-branch"
 scaling = "linear: worst C = 2 + Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits"
 execution = "poly n: worst n + 2: a step a level or unread set bit, the leaf, the halt"
-workspace = "poly n: at most bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start"
+workspace = "poly n: worst bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start"
 
 [generator_sizes]
 "00000001" = { commands = 5, commands_by_row = { "0" = 3, "1" = 4, "2" = 4, "3" = 5, "4" = 4, "5" = 5, "6" = 5, "7" = 5 }, source_units = 69 }

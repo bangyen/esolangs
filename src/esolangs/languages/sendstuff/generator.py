@@ -17,6 +17,7 @@ Size:
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.sendstuff.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -69,4 +70,5 @@ LANGUAGE = Language(
     contract=BooleanContract(input_shape="char_stream"),
     wrap=_wrap,
     eof="an exhausted Input or InputNumber sends nothing, as the spec says",
+    proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
 )

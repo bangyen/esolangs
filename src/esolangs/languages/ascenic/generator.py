@@ -24,6 +24,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.languages.ascenic.proof_formulas import workspace
 from esolangs.registry._language import Language
 
 _PRINT, _INPUT, _PUSH, _ADD, _MUL, _DIV, _MOD = 1, 2, 3, 4, 6, 7, 8
@@ -97,4 +98,5 @@ LANGUAGE = Language(
     boolean=ascenic,
     random=True,
     no_wrap="a line's length is its opcode and argument",
+    proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
 )

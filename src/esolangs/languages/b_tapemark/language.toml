@@ -12,8 +12,9 @@ backlinks = 2
 labels = ["finite lookup"]
 qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on"
 scaling = "linear: 3T copy cells, T pointer steps, one stage per input"
-execution = "linear: at most 15T + 62n + 9 steps: narrow staircase 13T, stages 2w + 35, fold turns"
-workspace = "T log T: at most (8T+32n+5)(8+2bl(8T+32n+5)) + (T+4n)(10+2bl(38T+156n+23)) + 4bl(38T+156n+23) + bl(n) + 12 bits: program cells, data marks"
+execution = "linear: at most 15T + 33n + 11 steps: the narrow staircase, the largest layout"
+workspace = "T log T: at most P + W(8+2c) + 4c + bl(n) + 5 bits: program cells, written data marks"
+definitions = ["P = Σ over the program's cells of 8 + max(1,bl(x)) + max(1,bl(y))", "W = the program's * and - cells", "c = 1 + bl(max(w, h) + 15T + 33n + 11), w and h the program's width and height"]
 
 [generator_sizes]
 "00000001" = { commands = 211, commands_by_row = { "0" = 230, "1" = 225, "2" = 225, "3" = 220, "4" = 221, "5" = 216, "6" = 216, "7" = 211 }, source_units = 304 }
@@ -30,7 +31,6 @@ folding_constant_local = "b_tapemark"  # direct read-and-print constant
 
 [formula_arities]
 execution = [3, 6]
-workspace = [3, 4]
 
 [schemes]
 folds_without_tree = true

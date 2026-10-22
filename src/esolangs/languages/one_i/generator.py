@@ -17,6 +17,7 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.one_i.proof_formulas import workspace
 from esolangs.registry._language import Language
 
 _CONSTANT = ("iic+", "ici*")
@@ -47,4 +48,5 @@ LANGUAGE = Language(
     category="stack_based",
     boolean=one_i,
     wrap=wrap_chars,
+    proof_workspace=(workspace, True, (6, 7, 8, 9)),
 )

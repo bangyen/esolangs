@@ -8,8 +8,9 @@ backlinks = 4
 labels = ["tree"]
 qualification = "a one-line compare read either flies its 1 child down a residue mod 82 through shared rungs or dismounts 85 lines onto its 0 child; a lane is any residue not in the air"
 scaling = "linear: each node's scans and dismount span a bounded number of lines"
-execution = "linear: at most L commands: every jump lands past its rung"
-workspace = "poly n: at most 8 + bl(L) + bl(n) bits: the accumulator, a line cursor, the input cursor"
+execution = "linear: at most 86n + ⌊R/66⌋ + 290 commands to n = 15, then 168n + ⌊R/66⌋ + 290"
+workspace = "poly n: worst 7 + bl(R) + bl(2n) bits: the accumulator, a line cursor, the input cursor"
+definitions = ["R = the program's lines"]
 
 [generator_sizes]
 "00000001" = { commands = 89, commands_by_row = { "0" = 203, "1" = 125, "2" = 125, "3" = 47, "4" = 126, "5" = 48, "6" = 81, "7" = 89 }, source_units = 3235 }

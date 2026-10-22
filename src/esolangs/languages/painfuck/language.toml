@@ -10,7 +10,7 @@ bf_derivative_predates = true
 labels = ["tree"]
 qualification = "decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell"
 scaling = "linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1)"
-execution = "poly n: at most 4n^2 + 20n + 8 commands: one tree path, or the parity sum's loops"
+execution = "poly n: worst 4n^2 + 9n + 5 - 6⌊n/2⌋ commands past n = 2: the parity sum's loops"
 workspace = "poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n"
 
 [generator_sizes]

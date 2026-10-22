@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -69,4 +70,5 @@ LANGUAGE = Language(
     wrap=TokenWrapper(_TOKEN),
     empty_program="a Stisp program needs a stack expression",
     example=Example(pair=PAIR),
+    proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
 )

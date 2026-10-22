@@ -10,7 +10,7 @@ backlinks = 9
 [proof_status]
 labels = ["linear lookup"]
 qualification = "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1"
-scaling = "linear: 2T table characters plus at most a fixed gadget per input"
+scaling = "linear: worst 2T + 20n + 58 characters: two per entry"
 execution = "linear: worst 11T + ⌊(2T+1)/5⌋ - 4n + 45 commands past n = 3: zero runs of nine loop"
 workspace = "T log T: worst Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+56) + bl(2n-1) bits"
 

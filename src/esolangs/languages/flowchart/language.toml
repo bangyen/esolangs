@@ -13,7 +13,8 @@ labels = ["finite lookup"]
 qualification = "a pair of answers per deque, and the input walks the deque cursor to the pair it wants"
 scaling = "linear: T pushes, `T/2 - 1` cursor steps, two rows"
 execution = "linear: worst 3T + 9n + 3 nodes past n = 1: preload T plus T - 1 runs"
-workspace = "T log T: at most (7T+20n+100)(bl(L)+4) + Σ_{j<T/2}(bl(j)+2) + 2bl(L) + n + 2bl(n) + 32 bits: exit-memory keys, deques"
+workspace = "T log T: worst F bits past n = 2: 7T + 18n + 5 exit-memory cells, the deques, the counters"
+definitions = ["F = Σ over exit-memory cells of 4 + bl(column), plus deque keys and counters"]
 
 [generator_sizes]
 "00000001" = { commands = 46, commands_by_row = { "0" = 49, "1" = 49, "2" = 48, "3" = 48, "4" = 47, "5" = 47, "6" = 46, "7" = 46 }, source_units = 362 }

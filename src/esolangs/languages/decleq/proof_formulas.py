@@ -3,11 +3,6 @@
 from esolangs.runtime.memory import parse_int_memory
 
 
-def execution(n: int, _: str) -> int:
-    """An input reads, normalizes in 47, branches and jumps; then print, halt."""
-    return 50 * n + 3
-
-
 def _bits(value: int) -> int:
     return (value.bit_length() or 1) + (value < 0)
 

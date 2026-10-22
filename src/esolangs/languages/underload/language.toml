@@ -7,8 +7,8 @@ backlinks = 167
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate"
-scaling = "linear: at most 7n + 10T - 3 characters: 7 an input"
-execution = "poly n: at most 14n - 1 commands, one path of n selections"
+scaling = "linear: at most 7n + 17T/2 - 3 characters past n = 3"
+execution = "poly n: worst 12n + 3 + 2⌊(n-1)/2⌋ commands past n = 2: n slots, 11 a level, carries"
 workspace = "linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, stack"
 
 [generator_sizes]

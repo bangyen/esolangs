@@ -9,7 +9,7 @@ labels = ["parameterized lookup"]
 qualification = "one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages"
 scaling = "linear: at most 2T + 6n + 7 rows, the constant tail folded"
 execution = "linear: at most 12T + 32n + 92 commands: Horner doubling 8 a marker, 2 a row, plus fold corridors"
-workspace = "linear: at most T + 12 + bl(3T+6n+5) bits: a queue of T markers"
+workspace = "linear: worst T + 11 + bl(T+6n+8) bits: a queue of T + 6 bits, the row, the column"
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 80, "1" = 81, "2" = 90, "3" = 91, "4" = 108, "5" = 109, "6" = 118 }, commands_by_row_nulls = [7], source_units = 168 }

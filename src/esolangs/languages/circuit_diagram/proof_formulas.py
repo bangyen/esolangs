@@ -2,8 +2,11 @@
 
 
 def execution(n: int, _: str) -> int:
-    """At n=8 the large pool is one atom: no prefix/footer tick; parity reaches 17."""
-    return 2 * n + 1 + (n > 8)
+    """Parity's gate path 2n - 1 and two ticks; pool and bundles stay within it.
+
+    Past n = 12 the class banks are bounded only by their admission arithmetic.
+    """
+    return 2 * n + 1 + (n > 12)
 
 
 # Latches never clear: 3T - 6 + n flat slots, 6T - 10 + n under the
