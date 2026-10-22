@@ -687,6 +687,37 @@ def _fit(values: list[tuple[int, int]], unit: str) -> str:
     )
 
 
+def size_anchors(name: str) -> list[str]:
+    """Return one line per ``Size:`` anchor in the generator's docstring.
+
+    Each is re-measured as ``test_the_size_anchor_is_what_generate_emits``
+    does; Sonata's and SwitchCase's went stale twice while being built.
+    """
+    import importlib
+    import inspect
+
+    import esolangs
+    from esolangs.registry import LANGUAGES
+
+    boolean = LANGUAGES[name].boolean
+    if boolean is None:
+        return []
+    doc = inspect.cleandoc(importlib.import_module(boolean.__module__).__doc__ or "")
+    sections = "generators.generator_sections"
+    named_table = removal.tests_attr(sections, "named_table")
+    lines = []
+    for n, table, size, unit in removal.tests_attr(sections, "anchors")(doc):
+        program = esolangs.generate(name, named_table(n, table))
+        got = (
+            len(program)
+            if isinstance(program, (str, esolangs.CompressedText))
+            else sum(len(row) for row in program.rows)
+        )
+        verdict = "ok" if got == size else f"STALE: emits {got:,}"
+        lines.append(f"  n={n} {table}: {size:,} {unit}  {verdict}")
+    return lines
+
+
 def _print_bounds(name: str, max_n: int) -> None:
     """Print the worst cases per arity and the ledger cells they support."""
     # Steps feed the ledger's Execution cell, bits its Workspace cell
@@ -696,6 +727,13 @@ def _print_bounds(name: str, max_n: int) -> None:
     for n, steps, bits, per_row, by_steps, by_bits in rows:
         print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")
     print('"worst" must equal these columns from n = 3; otherwise write "at most"')
+    print(
+        "measured on the interpreter and generator as they stand: re-run after "
+        "changing either, then just finish-language to refresh the example "
+        "and [generator_sizes]"
+    )
+    if anchors := size_anchors(name):
+        print("docstring Size: anchors", *anchors, sep="\n")
     cells = [
         f'execution = "{_fit([(r[0], r[1]) for r in rows], "commands")}"'
         "  # or steps, rewrites: the interpreter's unit",
