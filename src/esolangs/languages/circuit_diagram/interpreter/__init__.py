@@ -547,18 +547,13 @@ class _Machine:
         """
         for text in _emitted(self.values, self.topology):
             self.io.print_str(text)
-        state = (self.values, self.latches)
         sampled: list[int] = []
         while True:
             try:
-                (self.values, self.latches), halted = _generation(
-                    state, self.topology, _BufferedClock(tuple(sampled))
-                )
+                self._generate(_BufferedClock(tuple(sampled)))
                 break
             except _ClockNeededError:
                 sampled.append(self.clock.read())
-        if halted:
-            self.halted = True
 
     def snapshot(self) -> tuple[object, ...]:
         """Return events, latches, halt and the runtime clock-read cursor."""

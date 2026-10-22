@@ -48,6 +48,7 @@ from collections import defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from itertools import product
+from math import prod
 from types import MappingProxyType
 from typing import ClassVar, Literal
 
@@ -728,9 +729,7 @@ class _Machine:
                 count = sum(pointer.channel == channel for pointer in arrived)
                 if count > 1:
                     radices.append(count)
-        branch_count = 1
-        for radix in radices:
-            branch_count *= radix
+        branch_count = prod(radices)
         if branch_count > limit:
             raise with_hint(
                 TimeoutError(
@@ -748,7 +747,7 @@ class _Machine:
             halted,
             set_ended,
         )
-        choices = product(*(range(radix) for radix in radices)) if radices else [()]
+        choices = product(*(range(radix) for radix in radices))
         successors = []
         for branch_choices in choices:
             new_core, _effects = _advance(core, grid, draws=tuple(branch_choices))

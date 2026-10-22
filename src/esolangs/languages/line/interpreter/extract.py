@@ -12,6 +12,7 @@ star-probe: a 4-way crossing is not a local per-pixel question.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 from math import gcd
 
 from esolangs.raster import png
@@ -365,8 +366,7 @@ def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
     along that leg.
     """
     runs: list[tuple[int, int]] = []
-    for i in range(len(vertices) - 1):
-        v0, v1 = vertices[i], vertices[i + 1]
+    for v0, v1 in pairwise(vertices):
         if v0.heading is None:
             raise AssertionError("walker produced a vertex without a heading")
         length = max(abs(v1.y - v0.y), abs(v1.x - v0.x))
@@ -565,8 +565,7 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
     """
     canvas = Mask(*mask.shape)
     for vertices in vertex_lists:
-        for i in range(len(vertices) - 1):
-            v0, v1 = vertices[i], vertices[i + 1]
+        for v0, v1 in pairwise(vertices):
             if v0.heading is None:
                 raise AssertionError("walker produced a vertex without a heading")
             dy, dx = _DIRS[v0.heading]
@@ -637,11 +636,9 @@ if __name__ == "__main__":
     import sys
 
     def _leg_pixels(vertices: list[Vertex]) -> int:
-        total = 0
-        for i in range(len(vertices) - 1):
-            v0, v1 = vertices[i], vertices[i + 1]
-            total += max(abs(v1.y - v0.y), abs(v1.x - v0.x))
-        return total
+        return sum(
+            max(abs(v1.y - v0.y), abs(v1.x - v0.x)) for v0, v1 in pairwise(vertices)
+        )
 
     def _describe(stroke: Stroke, indent: str = "") -> None:
         ops = [c.op for c in classify_ops(stroke.vertices)]

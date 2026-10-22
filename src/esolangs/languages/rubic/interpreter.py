@@ -172,19 +172,21 @@ def parse(code: str) -> _Program:
         match.append(-1)
         if token == "(":
             opens.append(len(ops))
+            ops.append(("(", "", 0, 0))
         elif token == ")":
             if not opens:
                 raise ValueError("Rubic ')' has no matching '('")
             partner = opens.pop()
             match[partner], match[-1] = len(ops), partner
-        elif token in _TURNS or token == "!":
-            pass
+            ops.append((")", "", 0, 0))
+        elif token in _TURNS:
+            ops.append(("t", token, 0, 0))
+        elif token == "!":
+            ops.append(("!", "", 0, 0))
         elif token[0] in ".+-*/%":
             ops.append((token[0], "", *_colour_pair(token[1:])))
-            continue
         else:
             raise ValueError(f"{token!r} is not a Rubic command")
-        ops.append(("t", token, 0, 0) if token in _TURNS else (token, "", 0, 0))
     if opens:
         raise ValueError("Rubic '(' is never closed")
     return _Program(tuple(ops), tuple(offsets), tuple(match))

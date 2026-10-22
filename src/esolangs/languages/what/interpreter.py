@@ -50,6 +50,7 @@ Decisions:
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from operator import add, floordiv, mul, sub
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime import persistent
@@ -209,6 +210,9 @@ def _holds(token: _Token, cur: int, here: str) -> bool:
     return not base if ";" in ops else base
 
 
+_ARITH = {"+": add, "-": sub, "*": mul, "/": floordiv}
+
+
 def _advance(
     state: _State, tokens: list[_Token], value: int | str | None = None
 ) -> tuple[_State, int | str | None]:
@@ -257,13 +261,7 @@ def _advance(
         prev = persistent.get(ints, ptr - 1)
         if kind == "/" and prev == 0:
             raise HaltError("What!?: division by zero")
-        result = {
-            "+": cur + prev,
-            "-": cur - prev,
-            "*": cur * prev,
-            "/": cur // prev if prev else 0,
-        }[kind]
-        ints = persistent.put(ints, ptr, result % _WORD)
+        ints = persistent.put(ints, ptr, _ARITH[kind](cur, prev) % _WORD)
     elif kind == ")":
         if cur:
             nxt = token.arg + 1

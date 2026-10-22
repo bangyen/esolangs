@@ -177,14 +177,12 @@ class _Compiler:
         stmts, ret = body
         ops: list[_Op] = []
         for stmt in stmts:
+            self.value(stmt[1], ops)  # type: ignore[arg-type]
             if stmt[0] == "c":
-                self.value(stmt[1], ops)  # type: ignore[arg-type]
                 ops.append(("copy", stmt[2]))
             elif stmt[0] == "o":
-                self.value(stmt[1], ops)  # type: ignore[arg-type]
                 ops.append(("out", 0))
             else:
-                self.value(stmt[1], ops)  # type: ignore[arg-type]
                 ops.append(("drop", 0))
         self.value(ret, ops)
         ops.append(("ret", 0))

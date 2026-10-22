@@ -231,24 +231,21 @@ def _read_kinds(line: str) -> tuple[str, ...]:
     The kind belongs to the *argument*, not the line: ``{values/=$py/=u/=}``
     parses a dice literal for the first and takes a byte for the second.
     """
-    if line == "$py":
-        return ("pips",)
-    if line == "u":
-        return ("ord",)
-    if line.startswith("[") and line.endswith("]"):
-        return tuple("pips" for p in line[1:-1].split(" ") if p == "$py")
     args = _split_args(line)
     if args is None:
-        return ()
-    kinds: list[str] = []
-    for arg in args:
-        if arg == "$py":
-            kinds.append("pips")
-        elif arg == "u":
-            kinds.append("ord")
-        elif arg.startswith("[") and arg.endswith("]"):
-            kinds += ["pips" for p in arg[1:-1].split(" ") if p == "$py"]
-    return tuple(kinds)
+        return _arg_kinds(line)
+    return tuple(kind for arg in args for kind in _arg_kinds(arg))
+
+
+def _arg_kinds(arg: str) -> tuple[str, ...]:
+    """How one argument reads input; ``()`` for a literal."""
+    if arg == "$py":
+        return ("pips",)
+    if arg == "u":
+        return ("ord",)
+    if arg.startswith("[") and arg.endswith("]"):
+        return tuple("pips" for p in arg[1:-1].split(" ") if p == "$py")
+    return ()
 
 
 def _accumulate(

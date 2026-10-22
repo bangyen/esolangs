@@ -129,11 +129,6 @@ def parse(code: str) -> list[int]:
     return cells
 
 
-def _parsed(code: str) -> tuple[int, ...]:
-    """Return the parsed tape as a tuple."""
-    return tuple(parse(code))
-
-
 def find(code: Sequence[int], ind: int, ptr: int) -> int | None:
     """Return the matching bracket for ``ind``.
 
@@ -235,7 +230,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code``; an empty program is malformed."""
         self.io = io
-        cells = list(_parsed(code))
+        cells = parse(code)
         if not cells:
             raise syntax_error(
                 "Circlefuck program cannot be empty",

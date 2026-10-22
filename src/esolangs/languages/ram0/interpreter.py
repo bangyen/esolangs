@@ -99,20 +99,19 @@ def change(z: int, n: int, ram: _Ram, op: str, index: _Index) -> tuple[int, int,
 def _advance(state: _State, op: str, index: _Index) -> _State:
     """Return the state after executing one token.
 
-    ``C`` skips the next token when ``z`` is zero; a digit is a 1-based goto
-    landing on ``int(op) - 2`` so the shared increment carries it.
+    ``C`` skips the next token when ``z`` is zero; a digit is a 1-based goto.
     """
     ind = state.ind
-    if op.isdigit() and not int(op):
-        raise HaltError(
-            f"goto {op} at command {ind + 1}: commands count from 1",
-            hint="jump to a command number of 1 or more",
-        )
+    if op.isdigit():
+        if not int(op):
+            raise HaltError(
+                f"goto {op} at command {ind + 1}: commands count from 1",
+                hint="jump to a command number of 1 or more",
+            )
+        return state._replace(ind=int(op) - 1)
     z, n, ram = change(state.z, state.n, state.ram, op, index)
     if op == "C" and not z:
         ind += 1
-    elif op.isdigit():
-        ind = int(op) - 2
     return state._replace(ind=ind + 1, z=z, n=n, ram=ram)
 
 

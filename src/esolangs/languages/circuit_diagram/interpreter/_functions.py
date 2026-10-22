@@ -280,15 +280,26 @@ def _is_wired_label(line: str, match: re.Match[str], wires: frozenset[str]) -> b
     )
 
 
+def _wired_labels(gate: _Gate, line: str) -> list[re.Match[str]]:
+    """Return ``line``'s wired label runs that are not definition names."""
+    from esolangs.languages.circuit_diagram.interpreter._parse import (
+        _LABEL_RUN,
+        _WIRES,
+    )
+
+    return [
+        match
+        for match in _LABEL_RUN.finditer(line)
+        if match.group() not in gate.definitions
+        if _is_wired_label(line, match, _WIRES)
+    ]
+
+
 def _bind_function_inputs(
     gate: _Gate, body: tuple[str, ...], inputs: tuple[tuple[int, ...], ...]
 ) -> dict[str, int]:
     """Check input widths against the body's rows; return its name bindings."""
-    from esolangs.languages.circuit_diagram.interpreter._parse import (
-        _LABEL_RUN,
-        _WIRES,
-        _width_integer,
-    )
+    from esolangs.languages.circuit_diagram.interpreter._parse import _width_integer
 
     bindings: dict[str, int] = {}
     input_rows = [line for line in body if line.lstrip().startswith("-")]
@@ -297,12 +308,7 @@ def _bind_function_inputs(
             f"function {gate.kind!r} input count changed while running"
         )
     for line, value in zip(input_rows, inputs, strict=True):
-        labels = [
-            match
-            for match in _LABEL_RUN.finditer(line)
-            if match.group() not in gate.definitions
-            if _is_wired_label(line, match, _WIRES)
-        ]
+        labels = _wired_labels(gate, line)
         if not labels:
             if len(value) != 1:
                 raise Hint.SINGLE_INPUT_WIRE.error(
@@ -336,20 +342,11 @@ def _expand_function_body(
     gate: _Gate, body: tuple[str, ...], bindings: dict[str, int]
 ) -> list[str]:
     """Substitute bound widths into every wired label in the body."""
-    from esolangs.languages.circuit_diagram.interpreter._parse import (
-        _LABEL_RUN,
-        _WIRES,
-    )
-
     expanded = []
     for line in body:
         pieces: list[str] = []
         end = 0
-        for match in _LABEL_RUN.finditer(line):
-            if match.group() in gate.definitions:
-                continue
-            if not _is_wired_label(line, match, _WIRES):
-                continue
+        for match in _wired_labels(gate, line):
             pieces.append(line[end : match.start()])
             terms = match.group().split("+")
             pieces.append("+".join(str(bindings.get(term, term)) for term in terms))

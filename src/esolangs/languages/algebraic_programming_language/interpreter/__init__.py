@@ -209,7 +209,7 @@ class _Machine:
     @property
     def halted(self) -> bool:
         """Whether every line has been executed and no frame is live."""
-        return self.line >= len(self.lines) and not self.frames
+        return self.line >= len(self.lines) and not self.state.frames
 
     #: ``ip`` starts with a line number rather than a cell or an offset,
     #: with each open frame's index after it.

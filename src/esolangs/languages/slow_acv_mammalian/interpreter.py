@@ -26,9 +26,8 @@ Decisions:
       page says EXCRETE and PRONOUNCE are "modulo 255").
 """
 
-import functools
-import operator
 from dataclasses import dataclass
+from itertools import chain
 
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -99,7 +98,7 @@ def _total(
         return tuple(seeded)
 
     size = [len(arr) for arr in arrays]
-    flat: list[int] = functools.reduce(operator.iadd, (list(a) for a in arrays), [])
+    flat = list(chain.from_iterable(arrays))
     m = len(flat)
 
     for k in range(m // 2):

@@ -479,7 +479,7 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
                 ('enclose the string in double quotes, for example [PSH STR "text"]'),
             )
         m = quoted.group(1) if quoted.group(1) is not None else quoted.group(2)
-        return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
+        return ((*stk, *map(ord, reversed(m))), var, ind)
     if kind.startswith("VAR"):
         # The store names its target the same way every other variable op
         # does, so it rejects an unknown name the same way too: ``PRT`` and
@@ -533,7 +533,7 @@ def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Co
     if "INT" in mod:
         # input_token returns a nonempty token or raises at EOF.
         return ((*stk, int(text)), var, ind)
-    return ((*stk, *[ord(c) for c in text][::-1]), var, ind)
+    return ((*stk, *map(ord, reversed(text))), var, ind)
 
 
 def _end(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:

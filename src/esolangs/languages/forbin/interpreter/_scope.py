@@ -159,15 +159,12 @@ def _bind(
     literal (or a nested function) reaches the enclosing variable.
     """
     scope: int | None = frame.scope
-    while scope is not None:
-        node = scopes[scope]
-        if name in node.locals:
-            updated = replace(node, locals=_frozen({**node.locals, name: value}))
-            return MappingProxyType({**scopes, scope: updated})
-        scope = node.parent
-    node = scopes[frame.scope]
+    while scope is not None and name not in scopes[scope].locals:
+        scope = scopes[scope].parent
+    target = frame.scope if scope is None else scope
+    node = scopes[target]
     updated = replace(node, locals=_frozen({**node.locals, name: value}))
-    return MappingProxyType({**scopes, frame.scope: updated})
+    return MappingProxyType({**scopes, target: updated})
 
 
 def _read_bit(ctx: _Ctx) -> tuple[int, _Ctx]:

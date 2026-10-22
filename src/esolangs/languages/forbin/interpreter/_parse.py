@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Literal, NoReturn
 
 from esolangs.runtime.source_hints import syntax_error
@@ -121,10 +122,7 @@ class _Parser:
             self.pos += 1
             return ("lit", int(c))
         if c == "{":  # a bare {code} block is a function literal (no args)
-            body, nested = self._block()
-            fn = _Function("", [])
-            fn.body, fn.nested = body, nested
-            return ("fnlit", fn)
+            return ("fnlit", self._function("", []))
         if c == "(":
             self.pos += 1
             save = self.pos
@@ -135,23 +133,31 @@ class _Parser:
                 params.append(self._ident())
             if self._peek() == "@":  # anonymous function literal
                 self._expect("@")
-                body, nested = self._block()
+                fn = self._function("", params)
                 self._expect(")")
-                fn = _Function("", params)
-                fn.body, fn.nested = body, nested
                 return ("fnlit", fn)
             self.pos = save
             callee: _Var = ("var", self._ident())
-            args: list[_ValueNode] = []
-            while self._peek() != ")":
-                if args:
-                    self._expect(",")
-                args.append(self._value())
-            self._expect(")")
-            return ("call", callee, args)
+            return ("call", callee, self._until_close(self._value))
         if not self._at_ident():
             self._fail(f"unexpected character {c!r}")
         return ("var", self._ident())
+
+    def _function(self, name: str, params: list[str]) -> _Function:
+        """Parse the ``{...}`` body of a function named ``name``."""
+        fn = _Function(name, params)
+        fn.body, fn.nested = self._block()
+        return fn
+
+    def _until_close[T](self, item: Callable[[], T]) -> list[T]:
+        """Parse comma-separated ``item``s up to and including ``)``."""
+        out: list[T] = []
+        while self._peek() != ")":
+            if out:
+                self._expect(",")
+            out.append(item())
+        self._expect(")")
+        return out
 
     def _values(self) -> list[_ValueNode]:
         values = [self._value()]
@@ -172,13 +178,7 @@ class _Parser:
 
     def _pattern_group(self) -> _Pattern:
         self._expect("(")
-        pats: list[_Star | _ValuePat] = []
-        while self._peek() != ")":
-            if pats:
-                self._expect(",")
-            pats.append(self._pattern())
-        self._expect(")")
-        return ("group", pats)
+        return ("group", self._until_close(self._pattern))
 
     def _for_spec(self) -> _ForSpec:
         if self._peek() == "(":
@@ -193,25 +193,12 @@ class _Parser:
         self._expect(":")
         if self._peek() == "(":
             self.pos += 1
-            items: list[_Pattern] = []
             if len(vars_) > 1 and self._peek() != "(":
-                shorthand: list[_Star | _ValuePat] = []
-                while self._peek() != ")":
-                    if shorthand:
-                        self._expect(",")
-                    shorthand.append(self._pattern())
-                self._expect(")")
-                group: _Group = ("group", shorthand)
+                group: _Group = ("group", self._until_close(self._pattern))
                 iteration: _Iter = ("iter", vars_, [group])
                 return iteration
-            while self._peek() != ")":
-                if items:
-                    self._expect(",")
-                if len(vars_) == 1:
-                    items.append(self._pattern())
-                else:
-                    items.append(self._pattern_group())
-            self._expect(")")
+            item = self._pattern if len(vars_) == 1 else self._pattern_group
+            items: list[_Pattern] = self._until_close(item)
             return ("iter", vars_, items)
         start = self._value()
         self._skip_ws()
@@ -253,9 +240,7 @@ class _Parser:
                 name, params = self._header()
                 self._skip_ws()
                 if self._peek() == "{":
-                    fn = _Function(name, params)
-                    fn.body, fn.nested = self._block()
-                    nested[name] = fn
+                    nested[name] = self._function(name, params)
                     continue
                 self.pos = save
             stmts.append(self._statement())
@@ -333,6 +318,4 @@ class _Parser:
                 initializer = self._statement()
                 self.initializers.append(initializer)
                 continue
-            fn = _Function(name, params)
-            fn.body, fn.nested = self._block()
-            funcs[fn.name] = fn
+            funcs[name] = self._function(name, params)

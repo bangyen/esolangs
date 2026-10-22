@@ -230,21 +230,19 @@ def _peel_prime_power_roots(
             break
         candidate = base
         for _exponent in range(_PEEL_MAX_EXPONENT):
-            if screen is not None and not screen(candidate):
-                candidate *= base
-                continue
-            while len(coefficients) > 1:
-                # Horner: the polynomial's value at ``candidate``.
-                value = 0
-                for coefficient in coefficients:
-                    value = value * candidate + coefficient
-                if value:
-                    break
-                found.append(candidate)
-                # Synthetic division by an exact root, so it stays exact.
-                deflated = [coefficients[0]]
-                for coefficient in coefficients[1:-1]:
-                    deflated.append(coefficient + deflated[-1] * candidate)
-                coefficients = deflated
+            if screen is None or screen(candidate):
+                while len(coefficients) > 1:
+                    # Horner: the polynomial's value at ``candidate``.
+                    value = 0
+                    for coefficient in coefficients:
+                        value = value * candidate + coefficient
+                    if value:
+                        break
+                    found.append(candidate)
+                    # Synthetic division by an exact root, so it stays exact.
+                    deflated = [coefficients[0]]
+                    for coefficient in coefficients[1:-1]:
+                        deflated.append(coefficient + deflated[-1] * candidate)
+                    coefficients = deflated
             candidate *= base
     return found, coefficients

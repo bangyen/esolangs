@@ -118,6 +118,7 @@ class _Machine:
                     "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
                 )
         self.grid: dict[tuple[int, int], int] = {}
+        self._view = MappingProxyType(self.grid)
         # ``snapshot``'s grid, rebuilt only after a paint changes a cell: past
         # pass 1 almost none do, so a per-step snapshot stops costing O(grid).
         self._frozen: frozenset[tuple[tuple[int, int], int]] | None = None
@@ -188,7 +189,7 @@ class _Machine:
         # ``run`` never steps an empty program; this guards direct callers.
         if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
-        self._restore(_advance(self._state, MappingProxyType(self.grid), self.prog))
+        self._restore(_advance(self._state, self._view, self.prog))
 
     def render(self) -> str:
         """Render the visited bounding box, marking the ant's cell.

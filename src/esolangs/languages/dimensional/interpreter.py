@@ -158,8 +158,7 @@ class _Tape:
 
 def _matches(code: str) -> dict[int, int]:
     """Map each bracket to its partner, ignoring comment regions."""
-    stack_b: list[int] = []
-    stack_c: list[int] = []
+    stacks: dict[str, list[int]] = {"[": [], "{": []}
     res: dict[int, int] = {}
     comment = False
     operand_end = 0
@@ -178,26 +177,18 @@ def _matches(code: str) -> dict[int, int]:
             _advance((i + 1, False, 2), code, {}, lambda: 0, lambda _d: 0)
         elif char == "*":
             comment = True
-        elif char == "[":
-            stack_b.append(i)
-        elif char == "]":
-            if not stack_b:
-                raise unmatched("]", i)
-            open_i = stack_b.pop()
+        elif char in "[{":
+            stacks[char].append(i)
+        elif char in "]}":
+            stack = stacks["[" if char == "]" else "{"]
+            if not stack:
+                raise unmatched(char, i)
+            open_i = stack.pop()
             res[open_i] = i
             res[i] = open_i
-        elif char == "{":
-            stack_c.append(i)
-        elif char == "}":
-            if not stack_c:
-                raise unmatched("}", i)
-            open_i = stack_c.pop()
-            res[open_i] = i
-            res[i] = open_i
-    if stack_b:
-        raise unmatched("[", stack_b[-1])
-    if stack_c:
-        raise unmatched("{", stack_c[-1])
+    for opener, stack in stacks.items():
+        if stack:
+            raise unmatched(opener, stack[-1])
     return res
 
 

@@ -43,6 +43,7 @@ Decisions:
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from operator import add, and_, mul, or_, sub
 from string import ascii_lowercase
 
 from esolangs.exceptions import HaltError
@@ -195,18 +196,17 @@ def _literal(code: str, pc: int, end: int) -> tuple[int, int]:
     return value, stop
 
 
+_WRAPPED = {"+": add, "-": sub, "*": mul, "&": and_, "|": or_}
+
+
 def _binary(char: str, stack: tuple[_Value, ...]) -> tuple[_Value, ...]:
     """Return ``stack`` with the top two replaced by ``char``'s result."""
     right, rest = _pop(stack)
     left, rest = _pop(rest)
     two = _number(right, f"{char!r}")
     one = _number(left, f"{char!r}")
-    if char == "+":
-        return (*rest, wrap_int32(one + two))
-    if char == "-":
-        return (*rest, wrap_int32(one - two))
-    if char == "*":
-        return (*rest, wrap_int32(one * two))
+    if char in _WRAPPED:
+        return (*rest, wrap_int32(_WRAPPED[char](one, two)))
     if char == "/":
         if two == 0:
             raise HaltError(
@@ -214,10 +214,6 @@ def _binary(char: str, stack: tuple[_Value, ...]) -> tuple[_Value, ...]:
                 hint="ensure the divisor is nonzero before dividing",
             )
         return (*rest, wrap_int32(trunc_div(one, two)))
-    if char == "&":
-        return (*rest, wrap_int32(one & two))
-    if char == "|":
-        return (*rest, wrap_int32(one | two))
     if char == ">":
         return (*rest, -1 if one > two else 0)
     # The caller admits only the eight operators above and ``=``.

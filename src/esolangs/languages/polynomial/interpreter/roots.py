@@ -99,10 +99,8 @@ def _remainder_roots(coefficients: list[int]) -> list[_Root]:
     rest = coefficients[start:]
     if len(rest) <= 1:
         return []
-    zeros = 0
-    while not rest[-1]:
-        rest = rest[:-1]
-        zeros += 1
+    zeros = next(i for i, c in enumerate(reversed(rest)) if c)
+    rest = rest[: len(rest) - zeros]
     reals: list[_Root] = [_Root(0, 0)] * zeros
     pairs: list[_Root] = []
     for real, imag in sorted(_dense_gaussian_roots(rest)):
