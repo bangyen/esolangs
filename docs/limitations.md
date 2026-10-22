@@ -283,6 +283,11 @@ process; no rule reproduces it:
   cell flips it, so only a cut over one normal-form program per table
   remains open.
 
+  Malbolge without `i`/`j` cannot express NOT. Straight-line `c == d` from
+  the reset state gives a `p` its own cell's instruction character, one of 94
+  values in 33..126, and the input pair `(49, 48)` is unreachable, so NOT is
+  not expressible at any length.
+
 - Vandevelo's fixed sparse-candidate cap forces Ω(T log n) emitted characters
   on an explicit odd-prefix family, where T = 2ⁿ. Character-level generation
   time is therefore superlinear for the shipped construction. A replacement
@@ -298,16 +303,11 @@ process; no rule reproduces it:
   Quine--McCluskey merge emits 1.060x on 200 random n=8 tables and
   1.09-1.12x at n=10..12, ~20x faster, with no clause bound.
 
-The no-`i`/`j` model cannot express NOT. Straight-line `c == d` from the reset
-state gives a `p` its own cell's instruction character, one of 94 values in
-33..126, and the input pair `(49, 48)` is unreachable, so NOT is not
-expressible at any length.
-
 Shipped limits, in inputs:
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/index.md#malbolge-bound)). |
+| Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell, seven-meaning packing is closed at the routing floor (above; [scaling](proofs/index.md#malbolge-bound)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 ### Size lower bounds

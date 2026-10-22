@@ -237,14 +237,14 @@ tests can treat all languages alike. Start from
   language with no stack writes no `stack`.
 - Writes the language as a pure transition (`_advance`) over an immutable
   state, with `step` as the shell doing the I/O; a store that cannot be
-  threaded cheaply returns effects instead (`grapheme.py`).
+  threaded cheaply returns effects instead (`grapheme/interpreter.py`).
 - Follows explicit specification rules. Examples resolve omissions only when
   consistent with those rules; internal consistency alone does not establish
   author intent. Records contradictions rather than silently repairing them.
   When explicit rules conflict, records the conflict and justifies the chosen
   interpretation. Documents and tests any intentional deviation; documenting
   a deviation does not make it spec-conformant.
-- Documents spec-gap decisions in its docstring (`suffolk.py`); never defines
+- Documents spec-gap decisions in its docstring (`suffolk/interpreter.py`); never defines
   away invalid operations.
 - Provides a `__main__` block calling `run(data, IO())`.
 
