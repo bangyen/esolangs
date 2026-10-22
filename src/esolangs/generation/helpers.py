@@ -464,6 +464,24 @@ def input_weights(truth_table: str, n: int) -> tuple[list[int], str]:
     return weights, read_at(truth_table, essential, n)
 
 
+def symmetric_weights(truth_table: str, n: int) -> tuple[list[int], str] | None:
+    """Weight 1 per essential input and the table by popcount, if it is symmetric.
+
+    A table that depends only on how many essential inputs are 1 (parity,
+    majority, thresholds, and/or) is indexed by their sum: ``m + 1`` entries
+    against ``2**m``.  None for asymmetric tables and fewer than two inputs.
+    """
+    essential = essential_inputs(truth_table, n)
+    if len(essential) < 2:
+        return None
+    by_count: dict[int, str] = {}
+    for row, entry in enumerate(read_at(truth_table, essential, n)):
+        if by_count.setdefault(row.bit_count(), entry) != entry:
+            return None
+    weights = [int(i in essential) for i in range(n)]
+    return weights, "".join(by_count[k] for k in range(len(essential) + 1))
+
+
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     """Return the *stream* inputs a decision tree over ``perm`` has to keep.
 
