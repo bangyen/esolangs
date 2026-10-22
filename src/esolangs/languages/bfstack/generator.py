@@ -7,8 +7,8 @@ blocks instead classifies its two prefix bits and branches once, so each
 block is written once.
 
 Size:
-    O(T) chars; parity and and are linear in n.  n=10 parity: 2,729 chars,
-    n=10 and: 923 chars, n=10 random 1847: 6,983 chars.
+    O(T) chars; parity and and are linear in n.  n=10 parity: 631 chars,
+    n=10 and: 624 chars, n=10 random 1847: 6,983 chars.
 
 Decisions:
     No call or goto (loops nest) and the stack hides all but its top, so a
@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     constant_span_test,
     essential_inputs,
     input_weights,
+    symmetric_weights,
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.bfstack.proof_formulas import execution, workspace
@@ -90,17 +91,21 @@ def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
     return direct, False
 
 
-def _bfstack_small(truth_table: str, n: int) -> str:
+def _bfstack_small(
+    truth_table: str, n: int, build: tuple[list[int], str] | None = None
+) -> str:
     """Return a byte-indexed decoder over the essential inputs.
 
     At most ``_BLOCK_INPUTS`` essential inputs; an ignored input weighs nothing.
     """
-    return _bfstack_class(truth_table, n) + "+" * _ASCII_ZERO + "."
+    return _bfstack_class(truth_table, n, build) + "+" * _ASCII_ZERO + "."
 
 
-def _bfstack_class(prefix: str, bits: int) -> str:
+def _bfstack_class(
+    prefix: str, bits: int, build: tuple[list[int], str] | None = None
+) -> str:
     """Return the classifier: ``prefix`` read as a table, left as 0/1 on top."""
-    weights, projected = input_weights(prefix, bits)
+    weights, projected = build or input_weights(prefix, bits)
     decoder, preset = _bfstack_decoder(projected)
     return _bfstack_encoder(weights, preset=preset) + decoder + "<"
 
@@ -111,6 +116,20 @@ def _constant_leaf(reads: int, bit: str) -> str:
 
 
 def bfstack(truth_table: str) -> str:
+    """Build a BFStack program; a symmetric table indexes its input count.
+
+    The count fits the byte index at any width, so the block limit does not
+    apply ([ablations.symmetric_count]).
+    """
+    plain = _bfstack_plain(truth_table)
+    n = _validate_truth_table(truth_table)
+    symmetric = symmetric_weights(truth_table, n)
+    if symmetric is None or len(symmetric[1]) > 255:
+        return plain
+    return min(plain, _bfstack_small(truth_table, n, symmetric), key=len)
+
+
+def _bfstack_plain(truth_table: str) -> str:
     """Build a BFStack program, routing wide tables into blocks.
 
     The byte index is ``1 + row``; eight inputs wrap its nonzero sentinel
