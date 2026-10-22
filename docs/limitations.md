@@ -605,6 +605,18 @@ Vandevelo (3) was removed on 2026-10-21 under the scaling rule: its shipped
 source is `O(T log n)` characters and no bound for every program is known
 either way.
 
+Four languages left on 2026-09-18 with linearity unproved and no language
+lower bound, and stay out under the scaling rule:
+
+- %^2^-1: the planner hit a totality wall (30631e3bc).
+- Interprogck8: `DownAccLines` reach and non-nesting capture blocked the
+  generator (30631e3bc).
+- WII2D: its 256-domain cost policy had no readout rule (30631e3bc).
+- COD: the template build was `Theta(T**2)` (03131147d). A read-mode
+  decision tree, re-attempted 2026-10-21 and executed, reaches
+  `Theta(T log T)` area: 84,510 cells at n=8 against the removed build's
+  942,668 characters.
+
 ### Notes on individual languages
 
 - Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis.
