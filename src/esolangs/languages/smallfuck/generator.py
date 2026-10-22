@@ -8,10 +8,12 @@ the band transfers, and repeated two-input functions share a decoder
 (complements share a three-bit code; a retired zero-arm input holds its high
 bit).
 
+An affine table folds its counted input cells down a chain into cell 2
+([ablations.xor_chain]).
+
 Size:
-    O(T) for dense tables, about n**2 for parity and linear in n for ``and``;
-    n=10 random 1847: 11,076 chars, n=10 parity: 2,426 chars, n=10 and: 213
-    chars.
+    O(T) for dense tables, linear in n for parity and ``and``; n=10 random
+    1847: 11,076 chars, n=10 parity: 170 chars, n=10 and: 213 chars.
 
 Decisions:
     Splits stay in input order: a greedy order saves 1.1% at n=8, under the
@@ -28,6 +30,7 @@ from typing import Any
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    affine_form,
     constant_span_test,
     in_input_order,
     mark_runs,
@@ -118,13 +121,30 @@ class _Builder:
 def smallfuck(truth_table: str, width: int | None = None) -> str:
     """Return a Smallfuck template whose final tape cell 2 is the answer."""
     natural = in_input_order(truth_table, _smallfuck_ordered)
+    n = _validate_truth_table(truth_table)
+    if (form := affine_form(truth_table, n)) is not None and any(form[1]):
+        natural = min(natural, _xor_chain(n, *form), key=len)
     if width is None or width <= 0:
         return natural
-    n = _validate_truth_table(truth_table)
     if width < len(PAIR[0]):
         natural = (TEMPLATE_CHAR + ">>>") * n + natural[len(PAIR[0]) * n :]
     marked = mark_runs(natural, TEMPLATE_CHAR, smallfuck_setters(natural, n))
     return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)
+
+
+def _xor_chain(n: int, bias: int, coefficients: list[int]) -> str:
+    """Fold each counted input cell down into the next, ending in cell 2.
+
+    ``[*...*...]`` clears a set cell and flips the one below, so the chain
+    leaves the XOR of the counted inputs in cell 2; the bias flips it once
+    more ([ablations.xor_chain]).
+    """
+    cells = [3 * i for i, c in enumerate(coefficients) if c]
+    out = [TEMPLATE_CHAR * len(PAIR[0]) * n, "<" * (3 * n - cells[-1])]
+    for here, below in pairwise([*reversed(cells), 2]):
+        down, up = move_text(here, below, ">", "<"), move_text(below, here, ">", "<")
+        out.append(f"[*{down}*{up}]{down}")
+    return "".join(out) + ("*" if bias else "")
 
 
 def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
