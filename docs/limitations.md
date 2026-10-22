@@ -121,6 +121,18 @@ Each missed the 10% bar:
 - Circuit Diagram's default path builds the identity order: four orders save
   8.48% of area at n=7, under the 10% bar. Width requests still try four.
 - brainfuck lacks a cheaper jump, call, or label.
+- Forbin's block size as a rule of n (`(n+2)//2`, at most 7) saves 50.4% at
+  n=7 and 37.3% at n=8 but 10.3% at n=10 and 0% from n=12: it trims the
+  register's fixed prologue, a share in decline. Uncapped it returns only
+  1.1% at n=14 and 4.0% at n=16, toward a 7% limit.
+- EGL spelling the ASCII-zero subtraction as a loop (21 characters for 48)
+  saves a fixed 27 an input: 27.2% at n=7, 20.3% at n=8, 8.7% at n=10.
+- Container's threshold path writing deltas unsigned saves a flat 4.7-5.4%.
+- Object Disoriented's last-level short forms save 2.9% at n=7 and 0.6% at
+  n=10; parity 7.8% at n=8.
+- Cheapest names to the most-used nodes: `subtree_ids` already numbers
+  bottom-up, so reordering can save at most 0.08-0.40% in Bleh, Stisp,
+  SendStuff and Codesick; re-laying BitDeque's jump targets at most 5.8%.
 
 ### Searches kept
 
