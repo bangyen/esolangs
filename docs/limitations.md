@@ -489,7 +489,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Fifty-five ledger cells stay `at most` with no route to `worst`
+Fifty-seven ledger cells stay `at most` with no route to `worst`
 (2026-10-22; open ones are on the [roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
@@ -505,13 +505,15 @@ Fifty-five ledger cells stay `at most` with no route to `worst`
   Language (54 against 56 at n = 2, 144 against 190 at n = 4,
   exhaustive), Packlang, Painfuck (232 against 243 at n = 4), 6-5,
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4 only) and
-  Unlambda (to n = 2); S*bleq scaling below n = 11.
+  Unlambda (to n = 2); Boolfuck scaling past n = 7 (the gates take its
+  worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11.
 - Address widths: the peak sums the bit-lengths of table-dependent
   positions, which cross powers of two by layout. AddSubJump, Caballo,
   Crement, Pointless, ROTfuck, S-BLEQ and Underload workspace;
   Interprogck8 execution (mod-82/66 lanes); Painfuck workspace (slack 1
   at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
-  exhaustive); 3x workspace (keys sized by use rank; 1.7x loose);
+  exhaustive); Bitdeque scaling (GOTO digits by layout; 358 against
+  400 at n = 4, exhaustive); 3x workspace (keys sized by use rank; 1.7x loose);
   Malbolge workspace (about 470 data-dependent re-encipher widths, the
   bound now 1.03x).
 - Coincident peaks: the bound adds component maxima no single row or
