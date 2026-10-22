@@ -8,8 +8,8 @@ backlinks = 3
 labels = ["parameterized lookup"]
 qualification = "one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages"
 scaling = "linear: at most 2T + 6n + 7 rows, the constant tail folded"
-execution = "linear: worst 10T + 6n + 26 commands: Horner doubling 8 a marker, then at most 2 a row"
-workspace = "linear: worst T + 11 + bl(3T+6n+5) bits: a queue of T markers"
+execution = "linear: at most 12T + 32n + 92 commands: Horner doubling 8 a marker, 2 a row, plus fold corridors"
+workspace = "linear: at most T + 12 + bl(3T+6n+5) bits: a queue of T markers"
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 80, "1" = 81, "2" = 90, "3" = 91, "4" = 108, "5" = 109, "6" = 118 }, commands_by_row_nulls = [7], source_units = 168 }
@@ -18,7 +18,7 @@ workspace = "linear: worst T + 11 + bl(3T+6n+5) bits: a queue of T markers"
 "0110" = { commands = 74, commands_by_row = { "0" = 66, "3" = 74 }, commands_by_row_nulls = [1, 2], source_units = 131 }
 "01101001" = { commands_by_row = { "0" = 80, "3" = 93, "5" = 112, "6" = 121 }, commands_by_row_nulls = [1, 2, 4, 7], source_units = 201 }
 "0110100110010110" = { commands = 200, commands_by_row = { "0" = 94, "3" = 107, "5" = 126, "6" = 135, "9" = 164, "10" = 173, "12" = 192, "15" = 200 }, commands_by_row_nulls = [1, 2, 4, 7, 8, 11, 13, 14], source_units = 299 }
-"1101001101101101" = { commands_by_row = { "2" = 106, "4" = 125, "5" = 126, "8" = 163, "11" = 176, "14" = 205 }, commands_by_row_nulls = [0, 1, 3, 6, 7, 9, 10, 12, 13, 15], source_units = 324 }
+"1101001101101101" = { commands_by_row = { "2" = 177, "4" = 159, "5" = 160, "8" = 238, "11" = 266, "14" = 276 }, commands_by_row_nulls = [0, 1, 3, 6, 7, 9, 10, 12, 13, 15], source_units = 341 }
 "11111110" = { commands = 121, commands_by_row = { "7" = 121 }, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6], source_units = 231 }
 
 [catalogue]
@@ -41,6 +41,11 @@ verdict = "kept: canonical, exempt. An ignored input's stage is one inert setter
 saving = 55.0
 arity = 10
 verdict = "kept: the cascade's trailing constant span is not drawn -- a 0 tail is dropped (running off the grid halts) and a 1 tail is one drained ring that pops the markers the dropped rows would. On random tables the tails are ~2 entries (1.59% at n=6 falling to 0.11% at n=10 by area); on its class at n=10 a constant last quarter saves 17.4% (0-suffix) / 29.5% (1-suffix) and a constant last half 38.1% / 55.0%"
+
+[ablations.area_default]
+saving = 27.6
+arity = 10
+verdict = "kept: the default is the smaller by area of the unfolded cascade and the four folds (ties keep the cascade; constants keep their direct build). Total area over 200 random tables: 11.2% at n=6, 13.0% at n=7, 18.5% at n=8, 27.6% at n=10. Execution grows past the cascade's 10T + 6n + 26: a folded run adds only corridor cells, none touching the queue. A strip's exit corridor is at most used + 20 cells (1 turn, 4 left, 2 + used up, 11 across, 2 down) and the blocks run as in the cascade, so the corridors add at most the lines T + 6n + 9 plus 20 a non-last strip. At most n + 1 such strips hold a stage or the middle (one block each at worst); the leaf-only ones hold at least cap - 1 of at most T + 1 lines, cap >= 7 the strip height less 3 and cap - 1 >= 8 from n=4. Steps are so at most 11T + 32n + 56 + 20(T + 2)/(cap - 1), which 12T + 32n + 92 covers at every n (tightest at n=5, cap 11; below T from n=8). Workspace: queue and heading bits are the cascade's, and row plus column bits are at most bl(area) + 1 <= bl(3T+6n+5) + 4, one more than the cascade's, hence T + 12"
 
 [ablations.constant_direct_path]
 saving = 89.8

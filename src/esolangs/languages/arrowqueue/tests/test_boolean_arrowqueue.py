@@ -43,8 +43,11 @@ class TestParameterizedArrowQueue:
         """At most 2T + 6n + 7 lines; a lone zero second to last reaches it.
 
         Measured exhaustively through n=3, and to n=8 over these families.
+        The cascade reaches it; past n=3 the default folds the witness
+        into fewer, wider rows.
         """
         from esolangs.languages import generators
+        from esolangs.languages.arrowqueue.generator import _program
 
         width = 2**n
         bound = 2 * width + 6 * n + 7
@@ -58,7 +61,7 @@ class TestParameterizedArrowQueue:
             rows = generators.arrowqueue(table).count("\n") + 1
             assert rows <= bound, f"{table}: {rows} > {bound}"
         witness = "1" * (width - 2) + "01"
-        assert generators.arrowqueue(witness).count("\n") + 1 == bound
+        assert _program(witness).count("\n") + 1 == bound
 
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
