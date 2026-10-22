@@ -95,6 +95,13 @@ def _bitdeque_worst(n: int) -> str:
     return "".join(seen[r ^ mask] for r in range(1 << n))
 
 
+# language-owners: ["Boolfuck"]
+def _boolfuck_flip(n: int) -> str:
+    """Parity with row 5 flipped: not affine, not symmetric, 12 under the tree max."""
+    table = _parity(n)
+    return table[:5] + str(1 - int(table[5])) + table[6:]
+
+
 # language-owners: ["Collatz Multiverse"]
 def _collatz_worst(n: int) -> str:
     """Cells: the codes' values in order, lowest nonzero last and repeated."""
@@ -619,6 +626,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Boolfuck": lambda n: (
         "1" + _parity(n)[1:],
         *(("0000000010010110",) if n == 4 else ()),
+        *((_boolfuck_flip(n),) if n >= 3 else ()),
     ),
     # All ones but row 0: T - 1 ones and the top octal digit.
     "Blindfolded Arithmetic": lambda n: ("0" + "1" * (2**n - 1),),

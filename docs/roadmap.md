@@ -30,14 +30,13 @@ evidence, not optimization tasks.
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
-  `worst`. The 55 `at most` cells without one are in
+  `worst`. The 57 `at most` cells without one are in
   [limitations](limitations.md#run-time-and-memory).
   - Partial range: SMU scaling past n = 15 (the lower macros take
     two-letter names from n = 16), 1 + i workspace past n = 23,
     INTERCAL execution and workspace past n = 12 (level n - 3's 240 pairs
     cap the named nodes) and scaling outside n = 3..10, Inject scaling
     past n = 49 (two-letter input names).
-  - Proved, not reached: Back, Bitdeque and Boolfuck scaling.
   - Algebraic Programming Language execution: `max(21, ⌈65n/2⌉ + 3n - 27)`
     is exact through n = 4 (exhaustive); parity reaches it to n = 10 and
     searches to n = 8 never beat it, unproved past n = 4.
