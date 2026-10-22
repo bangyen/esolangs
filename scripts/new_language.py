@@ -446,6 +446,14 @@ def check(name: str) -> list[Gap]:
     return gaps
 
 
+def _escaped(nodes: list[str]) -> list[str]:
+    r"""Return ``nodes`` with non-ASCII escaped, as pytest spells its ids.
+
+    ``Forþ``'s ids read ``For\xfe``: unescaped, pytest found none of them.
+    """
+    return [node.encode("unicode_escape").decode("ascii") for node in nodes]
+
+
 def quick_tests(name: str) -> list[str]:
     """Return the seconds-long tests that ``finish`` would otherwise fail late.
 
@@ -467,10 +475,25 @@ def quick_tests(name: str) -> list[str]:
         "::test_interpreter_docstrings_follow_the_template",
         "tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
+        "tests/interpreters/test_spec_triggers.py"
+        "::test_every_errors_entry_has_a_trigger",
+        "tests/interpreters/test_transition_purity.py"
+        f"::test_interpreter_core_is_pure_for_its_sample[{name}]",
     ]
     if lang.boolean is None:
-        return nodes
+        return _escaped(nodes)
     nodes += ["tests/proofs/test_ledger.py", "tests/proofs/test_schemes.py"]
+    catalogue = "tests/generators/test_boolean_canonical_catalogue.py::"
+    folding = removal.tests_attr(
+        "generators.test_boolean_canonical_catalogue", "_folding"
+    )
+    nodes.append(catalogue + "test_the_catalogue_covers_exactly_the_exceptions")
+    if name not in folding("constant"):
+        nodes.append(catalogue + f"test_a_constant_table_folds[{name}]")
+    if name not in folding("ignored") | folding("ignored_read"):
+        nodes.append(
+            catalogue + f"test_an_ignored_input_costs_under_half_a_real_one[{name}]"
+        )
     if lang.shape is not Shape.LOOKUP:
         # A tree generator must fold an input the table ignores.
         nodes.append(
@@ -503,7 +526,7 @@ def quick_tests(name: str) -> list[str]:
             "tests/proofs/test_workspace_formulas.py::"
             f"test_execution_and_workspace_formulas_hold[{name}-{min(arities)}]"
         )
-    return nodes
+    return _escaped(nodes)
 
 
 def _dirty() -> set[str]:
@@ -622,7 +645,11 @@ def finish(name: str) -> int:
         print("running the gate anyway, to list every other failure")
     gate = _gate()
     if _curation(name).get("unassessed"):
-        print(f"{name}: curation unassessed; record its backlinks before merging")
+        print(
+            f"{name}: curation unassessed; before merging, replace "
+            "`unassessed = true` in its language.toml with backlinks = <the "
+            'wiki\'s "What links here" count>'
+        )
     return 1 if gaps else gate
 
 
@@ -632,8 +659,27 @@ def _curation(name: str) -> dict[str, Any]:
     return _curation_fragment(path)
 
 
+#: The gate's CI-only checks (MANUAL_ONLY) that need no coverage run; the
+#: size baseline is left out because ``_gate`` has just re-recorded it.
+#: Without them a green finish could still fail CI.
+_CI_ONLY = (
+    "generated docs",
+    "dead definitions",
+    "duplicate-code check (pylint)",
+    "exception leaks",
+    "deep proofs (verify band)",
+)
+
+
+def _ci_only() -> int:
+    """Run the checks the gate leaves to CI; return the exit status."""
+    cmd = ["scripts/verify/gate.py", "--quiet", "--only", ",".join(_CI_ONLY)]
+    print("+", " ".join(cmd), flush=True)
+    return subprocess.run([sys.executable, *cmd], cwd=ROOT, check=False).returncode
+
+
 def _gate() -> int:
-    """Regenerate, run the gate, and rerun its failures alone."""
+    """Regenerate, run the gate and CI's checks, and rerun failures alone."""
     python = [sys.executable]
     for cmd in (
         [*python, "scripts/docs/generate.py", "examples"],
@@ -658,7 +704,7 @@ def _gate() -> int:
             if line.startswith("FAILED "):
                 failed.append(line[7:].split(" - ")[0].strip())
     if not gate.returncode:
-        return 0
+        return _ci_only()
     if not failed:
         return 1  # not a pytest failure
     # A loaded machine pushes borderline tests past their duration band.
@@ -742,11 +788,12 @@ def main(argv: list[str] | None = None) -> int:
     measure.add_argument("name")
     measure.add_argument("--max-n", type=int, default=5)
     args = parser.parse_args(argv)
-    if args.command in {"check", "finish", "bounds"}:
+    if args.command in {"check", "finish", "bounds", "remove"}:
         # A new LANGUAGE is registered by the export this writes, but
         # docs.generate imports the package first, so its registry predates
         # the export: rerun on the new one.  The first check after `start`
-        # otherwise asked for the LANGUAGE the stub already had.
+        # otherwise asked for the LANGUAGE the stub already had, and `remove`
+        # of a stub never checked raised KeyError.
         sys.path.insert(0, str(ROOT / "scripts"))
         from docs.generate import update_exports
 
@@ -755,6 +802,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             args.name = _registered_name(args.name)
         except ValueError as exc:
+            if args.command == "remove":
+                parser.error(str(exc))
             parser.error(f"{exc}; a new one starts with: just new-language")
     if args.command == "bounds":
         try:
@@ -790,6 +839,8 @@ def main(argv: list[str] | None = None) -> int:
             leftover = removal.remove(args.name)
         except ValueError as exc:
             parser.error(str(exc))
+        except KeyError:
+            parser.error(f"{args.name} is not registered; nothing to remove")
         print(f"removed {args.name}; {len(leftover)} mention(s) to review")
         print("\n".join(leftover))
         return 0

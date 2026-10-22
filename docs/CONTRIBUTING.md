@@ -417,7 +417,8 @@ Adding a language, step by step. Work in order; at any point,
 4. `just finish-language "Name"` regenerates examples, docs and the size
    baseline, then runs the full `verify/gate.py` over the whole tree
    (the `--full` run, like `just test-full`), not the branch-scoped
-   default the other recipes use. That is the gate: `just
+   default the other recipes use, then the checks the gate leaves to CI
+   except diff coverage. That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.
    Added lines need 90% statement and branch coverage per file; the
    report separates them from older gaps. It takes minutes, so run it in

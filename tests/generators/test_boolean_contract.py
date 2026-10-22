@@ -241,7 +241,8 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     assert folds >= 0.05, (
         f"{name} is a tree (the default shape) but folds only {folds:.1%} on "
         "a table that ignores inputs: fold equal subtrees, or declare "
-        "shape=Shape.REDUCING or Shape.LOOKUP on its LANGUAGE, with the reason"
+        "shape=Shape.REDUCING or Shape.LOOKUP on its LANGUAGE, with the reason "
+        "(from esolangs.registry._language import Shape)"
     )
 
 

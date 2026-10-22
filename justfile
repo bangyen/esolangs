@@ -30,7 +30,7 @@ help:
     @echo "  just test-full    Whole-tree checks, including slow tests, before release"
     @echo "  just test-full-parallel  The same gate on every core (idle machine only)"
     @echo ""
-    @echo 'New language: just new-language "Name" (asks its category)'
+    @echo 'New language: just new-language "Name" --category <one it lists>'
     @echo 'Then: just check-language "Name" and just bounds "Name";'
     @echo 'when ready: just finish-language "Name"'
     @echo "Guide: docs/CONTRIBUTING.md; what each script does: scripts/README.md"

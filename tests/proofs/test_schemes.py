@@ -110,7 +110,9 @@ def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
     documented = set(ledger.no_tree_route)
     assert measured_without | _FOLDS_WITHOUT_TREE == documented, (
         f"lookup rows measuring no tree route: {sorted(measured_without)}; "
-        f"the ledger documents: {sorted(documented)}"
+        f"the ledger documents: {sorted(documented)}.  A new one is a "
+        '`- Name: why` bullet under "These generators keep no unconstrained '
+        'tree route" in docs/proofs/index.md'
     )
 
 

@@ -61,11 +61,15 @@ def test_the_catalogue_covers_exactly_the_exceptions() -> None:
     """The only generators without a helper are the declared ones."""
     ignored, constant = _catalogue()
     ignored_local, constant_local = _native()
-    assert _lacking(IGNORED) == set(ignored) | set(ignored_local), sorted(
-        _lacking(IGNORED) - set(ignored) - set(ignored_local)
+    assert _lacking(IGNORED) == set(ignored) | set(ignored_local), (
+        f"{sorted(_lacking(IGNORED) - set(ignored) - set(ignored_local))}: fold "
+        f"an ignored input with one of {IGNORED}, or say why not with "
+        "folding_ignored = '<reason>' under [catalogue] in its language.toml"
     )
-    assert _lacking(CONSTANT) == set(constant) | set(constant_local), sorted(
-        _lacking(CONSTANT) - set(constant) - set(constant_local)
+    assert _lacking(CONSTANT) == set(constant) | set(constant_local), (
+        f"{sorted(_lacking(CONSTANT) - set(constant) - set(constant_local))}: "
+        f"fold a constant span with one of {CONSTANT}, or say why not with "
+        "folding_constant = '<reason>' under [catalogue] in its language.toml"
     )
 
 
@@ -110,7 +114,10 @@ def _size(name: str, table: str) -> int:
 @pytest.mark.parametrize("name", sorted(_generators() - _folding("constant")))
 def test_a_constant_table_folds(name: str) -> None:
     ratio = min(_size(name, bit * 2**_N) for bit in "01") / _size(name, dense(_N))
-    assert ratio <= 0.6, f"{name}: constant table {ratio:.2f}x dense at n={_N}"
+    assert ratio <= 0.6, (
+        f"{name}: constant table {ratio:.2f}x dense at n={_N}; fold it, or "
+        "folding_constant = '<reason>' under [catalogue] in its language.toml"
+    )
 
 
 @pytest.mark.medium
@@ -123,4 +130,8 @@ def test_an_ignored_input_costs_under_half_a_real_one(name: str) -> None:
     base = _size(name, inner)
     real = _size(name, dense(_N)) - base
     costs = [_size(name, _lift(inner, at, _N - 1)) - base for at in (0, 3, _N - 1)]
-    assert max(costs) <= max(real, 0) / 2, (name, real, costs)
+    assert max(costs) <= max(real, 0) / 2, (
+        f"{name}: an ignored input costs {costs} units against {real} for a "
+        "real one; fold it, or folding_ignored = '<reason>' under [catalogue] "
+        "in its language.toml"
+    )

@@ -222,7 +222,10 @@ def test_interpreter_core_is_pure_for_its_sample(language: str) -> None:
             if vm.halted:
                 break
             vm.step()
-    assert audit.observed, "sample must actually reach its pure core"
+    assert audit.observed, (
+        f"{language}'s sample must reach its pure core: step through one of "
+        f"{sorted(_CORE_NAMES)}, as the scaffolded _advance does"
+    )
     assert not audit.mutations, audit.mutations
     assert not audit.mutable_states, audit.mutable_states
     assert not audit.effects, audit.effects

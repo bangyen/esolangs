@@ -186,6 +186,14 @@ def test_a_pasted_section_with_fill_left_is_a_gap(
     assert gap.fix == "replace each FILL in [proof_status]"
 
 
+def test_quick_tests_spell_ids_as_pytest_does() -> None:
+    """Pytest escapes ``þ``; an unescaped id was "not found" and aborted check."""
+    name = next(name for name in LANGUAGES if not name.isascii())
+    ids = new_language.quick_tests(name)
+    assert all(node.isascii() for node in ids)
+    assert any(name.encode("unicode_escape").decode() in node for node in ids)
+
+
 def test_a_generator_language_needs_no_hand_sample() -> None:
     # samples is imported above, like every other user: imported here, its
     # one-off cost (a fresh venv's first PIL load, 0.95 s of 2.89 s cold)

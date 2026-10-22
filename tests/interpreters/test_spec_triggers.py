@@ -101,7 +101,10 @@ def test_every_errors_entry_has_a_trigger() -> None:
         covered |= set(data.get("untriggerable", {}))  # type: ignore[call-overload]
         if gaps := _entries(name) - covered:
             missing[name] = sorted(gaps)
-    assert missing == {}
+    assert missing == {}, (
+        f"{missing}: give each entry a [[spec_triggers]] program in "
+        "languages/<id>/tests/cases.toml, or a reason under [spec_untriggerable]"
+    )
 
 
 def test_untriggerable_entries_are_still_documented() -> None:

@@ -234,7 +234,9 @@ def test_gate_runs_the_full_gate_not_a_scoped_one(
     monkeypatch.setattr(subprocess, "run", run)
     monkeypatch.setattr(subprocess, "Popen", popen)
     assert new_language._gate() == 0  # noqa: SLF001
-    assert len(regenerated) == 3
+    # Three regenerations, then the checks the gate leaves to CI.
+    assert len(regenerated) == 4
+    assert "dead definitions" in regenerated[-1][-1]
     assert gated == [[sys.executable, "scripts/verify/gate.py", "--full", "--quiet"]]
     assert "+ scripts/verify/gate.py --full --quiet" in capsys.readouterr().out
 
@@ -254,6 +256,19 @@ def test_check_with_open_steps_is_not_a_failure(
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
     assert new_language.main(["check", "Tiny"]) == 0
     assert "1 step(s) left" in capsys.readouterr().out
+
+
+def test_removing_an_unregistered_name_is_a_usage_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import types
+
+    fake = types.ModuleType("docs.generate")
+    fake.update_exports = lambda *_: None
+    monkeypatch.setitem(sys.modules, "docs.generate", fake)
+    with pytest.raises(SystemExit):
+        new_language.main(["remove", "Not A Language"])
+    assert "not registered; nothing to remove" in capsys.readouterr().err
 
 
 def test_check_reruns_once_its_export_registers_a_language(
