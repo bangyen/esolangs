@@ -2,10 +2,12 @@
 
 Horner's rule folds the essential bits into base-128 index cells that delete
 the entries before the named one; ``.`` prints the rest, or a constant's tail.
-One character an entry.
+One character an entry; a symmetric table counts its bits into one digit
+over n + 1 entries ([ablations.symmetric_count]).
 
 Size:
-    O(T) chars; n=10 parity: 1,704 chars, n=16 and: 66,823 chars.
+    O(T) chars; n=10 random 1847: 1,704 chars, n=10 parity: 586 chars,
+    n=16 and: 1,024 chars.
 
 Decisions:
     No entry can drop without clamping the index, and a literal deleted into
@@ -18,6 +20,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
+    symmetric_weights,
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.circlefuck.proof_formulas import execution
@@ -76,7 +79,23 @@ def _program(truth_table: str) -> str:
     # (the tape is a ring).  Only the table grows.
     prog.append(read_at(truth_table, essential, n)[::-1])
     prog.append("0" * cells)
-    return "".join(prog)
+    plain = "".join(prog)
+    symmetric = symmetric_weights(truth_table, n)
+    if symmetric is None or len(symmetric[1]) > 1 << _DIGIT_BITS:
+        return plain
+    return min(plain, _counted(n, *symmetric), key=len)
+
+
+def _counted(n: int, weights: list[int], table: str) -> str:
+    """Count the essential bits into one digit and delete that many entries.
+
+    A symmetric table's entries are indexed by the count, n + 1 of them
+    ([ablations.symmetric_count]); each bit walks home to cell 0.
+    """
+    prog = ["<[-]>", _READ * n]
+    for i in reversed(range(n)):
+        prog.append("<" + (f"[-{'<' * (i + 1)}+{'>' * (i + 1)}]" if weights[i] else ""))
+    return "".join([*prog, "<", _deleter(0), "<.@", table[::-1], "0"])
 
 
 def _deleter(digit: int) -> str:
