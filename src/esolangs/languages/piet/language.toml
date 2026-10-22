@@ -7,9 +7,9 @@ backlinks = 65
 [proof_status]
 labels = ["finite lookup"]
 qualification = "each table entry is pushed and an input index selects its output; literal products replace conjunction tables"
-scaling = "linear: one bounded-width strip with O(T) codels"
-execution = "linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation"
-workspace = "linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack"
+scaling = "linear: O(T) codels in a strip or a smaller-area fold"
+execution = "linear: at most 5T + 11n + 31 steps past n = 3: one block per operation, six per fold turn"
+workspace = "linear: at most T + 2n + 12 + 2bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack"
 
 [generator_sizes]
 "00000001" = { commands = 7, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 7, "5" = 7, "6" = 7, "7" = 7 }, source_units = 24 }
@@ -42,3 +42,10 @@ verdict = "kept: the race contestant for a table whose one half is constant — 
 saving = 664.76
 arity = 12
 verdict = "kept: canonical, exempt. Only the essential inputs index the table; an ignored input is read and popped, and the stored table is projected onto the rest. Removing projection costs +98.61% on one-ignored, +292.04% on two-ignored and +664.76% on three-ignored tables at n=12, and +27,480.00 / +21,375.86% on constant tables, whose projected form is a single entry"
+
+[ablations.area_default]
+saving = 71.5
+arity = 10
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: the default is the strip or a packed fold, whichever has less area (the strip on a tie). The fold is drawn once at the balance path's dense width isqrt(2C - 1) + 9, C the operations' codels, and packed: the same totals as balance's width sweep, which grew superlinearly (n=14: 3.3 s against 0.68 s), so no sweep. Total area over 200 random tables falls 38.3% at n=6, 51.8% at n=7, 61.7% at n=8 and 71.5% at n=10 (22.0% at n=5, 1.2% at n=4, none at n=3, where no fold is smaller); every program is executed, exhaustively through n=3 and sampled through n=7. Execution bound, derived: steps = blocks entered, one per operation of the bounded list (at most 2T+6n+14 blocks, push(T) rebuilt by doubling; the half-lookup is shorter past n=3) plus 2 for the halt, plus a turn gadget per extra lane, 6 blocks emitted and 5 packed (four gadget blocks and the landing; white is crossed in the step that leaves the landing). Lanes: a folded image is strictly smaller than the strip (width at most 3T+5n+16, 3 rows), every extra lane costs one row packed and two emitted, and a multi-lane image is 16 (packed) or 11 (emitted) wide, because the first lane stops within 2 cells of its room. So lanes less one are at most H-5 packed and (H-3)/2 emitted for height H < 3(3T+5n+16)/W, and the extra steps are below 15(3T+5n+16)/16, giving 5T+11n+31. Measured worst steps 7, 30, 42, 107, 158, 290, 404 against 2T+4n+14 of the old strip bound (n=1..7), all within the new bound. Workspace: the same stack plus at most 4 bits of gadget operands, the position bl(x)+bl(y) with x < the strip width and y < 3/11 of it, dp 2 and cc 2 bits"

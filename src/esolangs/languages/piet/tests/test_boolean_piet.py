@@ -126,13 +126,32 @@ def test_ignored_inputs_are_read_but_not_indexed() -> None:
     assert esolangs.run("Piet", generate("0" * 8), stdin="1\n1\n1\n") == "0"
 
 
+def _codels(program: Raster) -> int:
+    """The area, which is what the default minimises."""
+    return len(program.rows) * len(program.rows[0])
+
+
+def test_the_default_is_the_smaller_of_strip_and_fold() -> None:
+    """The strip wins a tie, a fold only by strictly less area; folds from n=5."""
+    from esolangs.languages.piet.generator import _generate
+
+    rng = random.Random(11)
+    for bits in (2, 4, 5, 6):
+        table = "".join(rng.choice("01") for _ in range(1 << bits))
+        flat, chosen = _generate(table), generate(table)
+        assert chosen is flat or _codels(chosen) < _codels(flat)
+        if bits >= 5:
+            assert _codels(chosen) < _codels(flat)
+        assert _evaluate("Piet", chosen, inputs=bits) == table
+
+
 def test_a_constant_half_is_folded_and_runs() -> None:
     """All four constant-half shapes at n=5 beat the plain lookup and execute."""
     rng = random.Random(3)
     half = "".join(rng.choice("01") for _ in range(16))
-    plain = len(generate(half + "".join(rng.choice("01") for _ in range(16))).rows[0])
+    plain = _codels(generate(half + "".join(rng.choice("01") for _ in range(16))))
     for table in (half + "0" * 16, half + "1" * 16, "0" * 16 + half, "1" * 16 + half):
-        assert len(generate(table).rows[0]) < plain
+        assert _codels(generate(table)) < plain
         assert _evaluate("Piet", generate(table), inputs=5) == table
 
 
