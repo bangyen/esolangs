@@ -14,7 +14,7 @@ constant.  ``f`` is an appended ``F``, which hands ``B`` and ``A``; ``a (a
 applied to the bits picks ``D`` or ``C`` between the opening 1 and closing 0.
 
 Size:
-    Theta(T) text worst case: 14 chars a pair and 75 a reader stage;
+    Theta(T) text worst case: 18 chars a pair and 73 a reader stage;
     n=4 parity: 594 chars, n=10 parity: 14,640.
 
 Decisions:

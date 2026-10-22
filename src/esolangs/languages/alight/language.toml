@@ -7,7 +7,7 @@ backlinks = 6
 [proof_status]
 labels = ["finite lookup"]
 qualification = "inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches"
-scaling = "linear: one T-character literal, O(n) Horner reads"
+scaling = "linear: worst T + 16n + 38 + digits(48(T-1)) characters: one literal"
 execution = "poly n: worst 2n + 5 commands, n Horner reads and one `at`"
 workspace = "poly n: worst 72n + 762 + bl(6n+12) + bl(n) bits, n in 2..25"
 

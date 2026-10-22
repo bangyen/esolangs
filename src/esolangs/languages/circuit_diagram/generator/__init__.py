@@ -55,7 +55,7 @@ from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,
     _resolve_order,
 )
-from esolangs.languages.circuit_diagram.proof_formulas import execution, workspace
+from esolangs.languages.circuit_diagram.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -691,6 +691,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     eof="resolves its inputs while laying the grid",
-    proof_execution=(execution, True, (3, 8)),
     proof_workspace=(workspace, False, (3, 6)),
 )

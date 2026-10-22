@@ -7,7 +7,7 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them"
-scaling = "linear: the projected table plus 4n + 101 chars"
+scaling = "linear: worst T + 4n + 101 characters: projected table plus reads"
 execution = "linear: worst T + n + 3 steps: a doubling an input, a strip a row"
 workspace = "linear: worst 16T + 10 bits: the string at its longest, an index of T - 1 units beside the table"
 

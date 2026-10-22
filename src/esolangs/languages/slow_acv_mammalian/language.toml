@@ -14,8 +14,8 @@ backlinks = 1
 labels = ["linear lookup"]
 qualification = "a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf"
 scaling = "linear: every address solved in closed form, the leaf table first"
-execution = "poly n: n read nodes after a fixed dispatch and leaf"
-workspace = "poly n: each command adds at most one byte; commands are poly n"
+execution = "linear: one 3-command chunk per 254 table cells on the all-ones row"
+workspace = "linear: about 8 bits per 254-valued cell"
 
 [generator_sizes]
 "00000001" = { commands = 2656, commands_by_row = { "0" = 2641, "1" = 2646, "2" = 2646, "3" = 2651, "4" = 2645, "5" = 2650, "6" = 2650, "7" = 2656 }, source_units = 24423 }

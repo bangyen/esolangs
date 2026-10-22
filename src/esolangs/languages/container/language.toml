@@ -10,7 +10,7 @@ backlinks = 1
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the table is the prefix sum of its own steps, summed against a row counter that is live for one tick"
-scaling = "linear: one line per step in the table, halting in 2n+2 ticks"
+scaling = "linear: at most the threshold build on 0 0 (1 0)^(T/2-1) characters"
 execution = "poly n: worst 2n + 2 commands, either build"
 workspace = "linear: at most Σ (8|name| + bl(peak)) bits over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas"
 

@@ -7,9 +7,10 @@ backlinks = 130
 [proof_status]
 labels = ["exception"]
 qualification = "finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; below sixteen the unused reads are held at 0; the cap is sixteen, and seventeen is open ([summary](#malbolge-bound))"
-scaling = "measured: fixed 59049-cell store through n <= 16"
-execution = "unmeasured: at most 6,217 commands at n=1 to 5,691 at n=16: main code through its closing i, then at most 204"
-workspace = "poly n: at most 16·3^10 + 49 + bl(n) bits: ten-trit words, three registers, halt flag"
+scaling = "measured: worst 59049 characters: the fixed 3^10-cell store, every n <= 16"
+execution = "unmeasured: worst 6,208 commands at n=1 to 5,686 at n=16: main code through its closing i, then the longest stub, 199"
+workspace = "poly n: at most the source's bits + 10E + 49 + bl(n) bits: E the Execution bound, 10 per step"
+definitions = ["E = the Execution bound"]
 
 [proof_status.audit]
 totality = "Exception"

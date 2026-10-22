@@ -7,7 +7,7 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "loops build the row index from the essential inputs, and a switch a hundred rows turns its own rows' index into the bit"
-scaling = "linear: one arm a row, two jump loops an essential input"
+scaling = "linear: worst N characters: one arm a row, jump loops an input"
 execution = "linear: worst 8T + 4⌈T/100⌉ + 7n steps: the index loops, four a block"
 workspace = "poly n: worst 2n + bl(7n - 4) + bl(n) + 46 bits past n = 2: the last doubling loop"
 

@@ -38,7 +38,18 @@ def _workspace(n: int, _: str) -> int:
     return bl(_execution(n, "") - 1) + bl(_packed(n)[0]) + bl(n) + 71
 
 
+def _scaling(n: int, _: str) -> int:
+    """Characters: header and table to n = 5, then the packed row.
+
+    The packed row is its column, 6 powers and T/6 cells.
+    """
+    if n <= 5:
+        return (1 << n) + 9 * n + 10
+    return _packed(n)[0] + 6 - (-(1 << n) // 6)
+
+
 FORMULAS = {
     "execution": (_execution, True, (3, 4, 5, 6, 7)),
     "workspace": (_workspace, True, (3, 4, 5, 6, 7)),
+    "scaling": (_scaling, True, (3, 4, 5, 6, 7)),
 }

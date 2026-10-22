@@ -7,7 +7,7 @@ backlinks = 3
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the write row puts the essential inputs' table on the tape, one cell an entry, then each essential input's gadget tests its dequeued bit and a 0 walks the tape pointer left by that bit's weight, leaving it beside the indexed entry; an ignored input is read and never enqueued"
-scaling = "linear: five rows of about T + zeros + 9n columns"
+scaling = "linear: worst 10T+85n+44+10⌈d/3⌉+5max(0,8n+35-T) characters: five rows"
 execution = "linear: worst 5T + 97n + 150 + d + 6⌈d/3⌉ + max(0, 8n+35-T) commands: row 0 of AND"
 workspace = "linear: at most T + 10n + 56 bits: the tape, one bit a cell"
 definitions = ["d = (2n + 4) mod 5, the rows the read block drops"]

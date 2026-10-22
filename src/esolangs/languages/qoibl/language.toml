@@ -7,7 +7,7 @@ backlinks = 3
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is one binary literal, divided by the power of two the reads build"
-scaling = "linear: T-bit literal, one squaring statement per input"
+scaling = "linear: worst T+64n+64 characters: T-1 bit literal, 64 an input"
 execution = "poly n: worst n + 2 commands, one statement per input"
 workspace = "linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1"
 

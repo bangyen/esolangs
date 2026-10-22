@@ -7,7 +7,7 @@ backlinks = 5
 [proof_status]
 labels = ["tree"]
 qualification = "the tree branches on every essential input down to single entries; an equal subtree is emitted once, and constant subtrees jump to one of two shared print gadgets"
-scaling = "linear: bounded dependency scan and canonical residual IDs"
+scaling = "linear: at most B characters: six cells per distinct subtree"
 execution = "poly n: worst 50n + 2 commands past n = 1: 47 a chain, n - 2 copy jumps"
 workspace = "linear: worst M + 5n + bl(C) + bl(n) + 1 bits, one more on a constant: memory and registers"
 definitions = ["M = bits of the program's cells", "C = cell count"]

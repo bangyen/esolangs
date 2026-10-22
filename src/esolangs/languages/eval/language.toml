@@ -7,7 +7,7 @@ backlinks = 3
 [proof_status]
 labels = ["linear lookup"]
 qualification = "fixed reversed stack order selects the indexed row"
-scaling = "linear: T literal plus halving `;` runs under T"
+scaling = "linear: worst 2T + 13n characters: T literal plus halving `;` runs"
 execution = "linear: worst 2T + 13n + 1 commands: one per program character, then the final frame pop"
 workspace = "linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a stack"
 

@@ -7,7 +7,7 @@ backlinks = 0
 [proof_status]
 labels = ["tree"]
 qualification = "Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump"
-scaling = "lower bound: tight language and generated Theta(T**2) ([summary](#ascenic-bound))"
+scaling = "lower bound: worst N characters: generated Θ(T**2), N the alternating table's size ([summary](#ascenic-bound))"
 execution = "linear: worst 2T + 7n + 3 - 2⌊n/2⌋ commands: alternating answers, two lines a change"
 workspace = "poly n: worst bl(2T+6n+3+n mod 2) + max(bl(a)+bl(a+2)+n+1, bl((b+2T-2)(b+2T-1))) + bl(2n-1) bits: index, stack, cursor"
 definitions = ["a = 8n - 7 + 2(n mod 2), the last Horner push; b = a + 6"]

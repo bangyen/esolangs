@@ -48,5 +48,5 @@ LANGUAGE = Language(
     category="stack_based",
     boolean=one_i,
     wrap=wrap_chars,
-    proof_workspace=(workspace, True, (6, 7, 8, 9)),
+    proof_workspace=(workspace, True, (2, 3, 4, 5, 6, 7, 8, 9)),
 )

@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike"
-scaling = "linear: table walk; corridor weights sum to T"
+scaling = "linear: worst 9T + 3n - 6 characters: corridor weights sum to T"
 execution = "linear: worst 2L commands: one pass to the fixed point, one proving the repeat"
 workspace = "T log T: worst 2(n+1)T + 4 + bl(L-1) bits: corridor, answers, ant, cursor"
 

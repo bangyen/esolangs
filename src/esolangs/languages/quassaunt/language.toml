@@ -9,8 +9,8 @@ labels = ["tree"]
 qualification = "each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched"
 scaling = "linear: O(T/n) nodes with O(n)-digit names"
 execution = "linear: worst 5N + 21n + 9 steps: five a stored node, 21 a level"
-workspace = "linear: at most 16L + 400bl(L) bits: the root's words, the stored code, a short stack"
-definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables"]
+workspace = "linear: at most 16L - 328D + 32w + bl(5D+6) + bl(n) + 2483 bits: frames, globals exact; stack two bodies"
+definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "D = the program's definitions", "w = the longest name, max(digits(D+1), 1+digits(n))"]
 
 [generator_sizes]
 "00000001" = { commands = 107, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 107, "7" = 107 }, source_units = 1110 }

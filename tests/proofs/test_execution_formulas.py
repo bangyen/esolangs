@@ -97,10 +97,13 @@ def _bitdeque_worst(n: int) -> str:
 
 # language-owners: ["Collatz Multiverse"]
 def _collatz_worst(n: int) -> str:
-    """Four-row cells holding the base-16 digit sum of their index: 16 differ."""
-    return "".join(
-        f"{sum(int(d, 16) for d in f'{j:x}') % 16:04b}" for j in range(1 << (n - 2))
-    )
+    """Cells: the codes' values in order, lowest nonzero last and repeated."""
+    m = min(16, 1 << (n - 2))
+    kept = sorted(range(16), key=lambda v: (v.bit_count(), v))[16 - m :]
+    top = min(v for v in kept if v)
+    values = [*(v for v in sorted(kept) if v != top), top]
+    cells = [*values, *[top] * ((1 << (n - 2)) - m)]
+    return "".join(f"{v & 1}{v >> 1 & 1}{v >> 2 & 1}{v >> 3}" for v in cells)
 
 
 # language-owners: ["Dimensional"]
@@ -219,19 +222,32 @@ def _codesick_worst(n: int) -> str:
 
 
 def _sendstuff_worst(n: int) -> str:
-    """Equal halves last but one pair, unequal ones by last bit: late indices."""
+    """Every size-s table once, the path nodes last: late indices at every level.
+
+    Tables are ordered by which aligned ``0..01`` blocks of smaller sizes they
+    hold (none first), then descending; repeats pair cyclically, first
+    occurrences keeping that order.
+    """
     s = _first_fit(n, lambda s: (1 << s) - (1 << (s // 2)))
-    rows = [f"{k:0{s}b}" for k in range(1 << s)]
-    same = [y for y in rows if y[: s // 2] == y[s // 2 :]]
-    diff = sorted((y for y in rows if y not in same), key=lambda y: (y[-1], y))
-    order = [same[-1], same[0], *same[1:-1][::-1], *diff]
-    if 1 << n == len(order) * s:
-        return "".join([order[1], order[0], *order[2:]])
-    count = len(order)
-    return "".join(
-        order[(i + 1 + i // count) % count] + order[i % count]
-        for i in range((1 << n) // s // 2)
-    )
+    count, slots = 1 << s, (1 << n) // s
+
+    def key(t: str) -> tuple[list[bool], int]:
+        flags = []
+        z = s // 2
+        while z:
+            r = "0" * (z - 1) + "1"
+            flags.append(any(t[i : i + z] == r for i in range(0, s, z)))
+            z //= 2
+        return flags, -int(t, 2)
+
+    order = sorted((f"{k:0{s}b}" for k in range(count)), key=key)
+    if slots == count:
+        return "".join(order)
+    m = count - 1
+    out = []
+    for k in range(slots // 2 - 1):
+        out += [order[k % m], order[(k + 1 + k // m) % m]]
+    return "".join(out) + order[0] + order[-1]
 
 
 # language-owners: ["Crement"]
@@ -299,10 +315,270 @@ def _low_one(n: int) -> str:
     return "0" * ((1 << n) - 2) + "10"
 
 
+# language-owners: ["1 + i"]
+def _one_i_swapped(m: int) -> str:
+    """The largest m-input table: halves swapped, then doubled, from ``0010``."""
+    table = "0010"
+    while len(table) < 1 << m:
+        half = len(table) // 2
+        table = table[half:] + table[:half] + table
+    return table
+
+
+def _one_i_worst(n: int) -> str:
+    """The all-ones path past maximal zero siblings, a constant at its end."""
+    if n <= 13:
+        return _one_i_swapped(n)
+    if n <= 24:
+        return "".join(_one_i_swapped(n - 1 - i) for i in range(4)) + "0" * 2 ** (n - 4)
+    return _one_i_swapped(n - 1) + "0" * 2 ** (n - 1)
+
+
+# language-owners: ["INTERCAL"]
+#: Distinct-halved pairs of 2-bit tables, the x / ~x pairs first.
+_IC_PAIRS = [
+    ("01", "10"),
+    ("10", "01"),
+    ("00", "01"),
+    ("01", "00"),
+    ("11", "01"),
+    ("01", "11"),
+    ("00", "10"),
+    ("10", "00"),
+    ("11", "10"),
+    ("10", "11"),
+    ("00", "11"),
+    ("11", "00"),
+]
+#: Diagram nodes per level of the worst table, n = 5..7.
+_IC_WIDTHS = {5: (1, 2, 4, 4, 2), 6: (1, 2, 4, 8, 8, 2), 7: (1, 2, 4, 8, 10, 10, 2)}
+
+
+def _intercal_worst(n: int) -> str:
+    """Diagram with the most named nodes: full unnamed top, lower nodes read twice."""
+    widths = _IC_WIDTHS[n]
+    level = [a + b for a, b in _IC_PAIRS[: widths[n - 2]]]
+    for w in reversed(widths[: n - 2]):
+        k = len(level)
+        # Walk up then back: each node twice, every pair distinct.
+        edges = (list(range(k)) + list(range(k - 1, -1, -1)))[: 2 * w]
+        level = [level[edges[2 * i]] + level[edges[2 * i + 1]] for i in range(w)]
+    return level[0]
+
+
+# language-owners: ["Malbolge"]
+def _malbolge_stub(n: int) -> str:
+    """The all-``1`` label, or from n = 3 the all-``n`` one: the longest stub."""
+    return "1" * (1 << n) if n < 3 else "10" * (1 << (n - 1))
+
+
+# language-owners: ["Collatz Multiverse"]
+def _collatz_chars_worst(n: int) -> str:
+    """Four-row cells holding the most popcount-heavy values, each once, then 1s."""
+    cells = 1 << (n - 2)
+    if cells <= 16:
+        values = sorted(sorted(range(16), key=lambda v: (-v.bit_count(), -v))[:cells])
+    else:
+        values = [*range(16), *[1] * (cells - 16)]
+    return "".join(str(v >> j & 1) for v in values for j in range(4))
+
+
+# language-owners: ["BrainIf"]
+def _brainif_worst(n: int) -> str:
+    """Top-down: layer d's c_d pairs cover layer d-1's symbols; expand through them."""
+    counts, prev = [], 2
+    for d in range(n):
+        prev = min(prev * prev, 1 << (n - 1 - d))
+        counts.append(prev)
+    pairs, a = [], 2
+    for d in range(n):
+        cover = [(2 * j, (2 * j + 1) % a) for j in range((a + 1) // 2)]
+        seen = set(cover)
+        listed = list(dict.fromkeys(cover))
+        for x in range(a):
+            for y in range(a):
+                if len(listed) < counts[d] and (x, y) not in seen:
+                    seen.add((x, y))
+                    listed.append((x, y))
+        pairs.append(listed[: counts[d]])
+        a = counts[d]
+    seq = [0]
+    for d in range(n - 1, -1, -1):
+        seq = [s for x in seq for s in pairs[d][x]]
+    return "".join(map(str, seq))
+
+
+# language-owners: ["S*bleq"]
+def _sbleq_worst(n: int) -> str:
+    """Chunks of n bits, each a d-digit decimal, in a fixed pseudo-random order."""
+    chunks, rest = divmod(1 << n, n)
+    low = 10 ** (len(str((1 << n) - 1)) - 1)
+    span = (1 << n) - low
+    bits = [f"{low + (j * 0x9E3779B1) % span:0{n}b}"[::-1] for j in range(chunks)]
+    return "".join(bits) + "1" * rest
+
+
+# language-owners: ["Suffolk"]
+def _suffolk_worst(n: int) -> str:
+    """Alternating first half, a second half with one equal adjacent pair."""
+    h = 1 << (n - 1)
+    seq = [1]
+    for i in range(1, h):
+        seq.append(seq[-1] if i == 1 else 1 - seq[-1])
+    return "01" * (h // 2) + "".join(map(str, seq[::-1]))
+
+
+# language-owners: ["BFStack"]
+#: Marker pair positions in the 128-row block: one pair per quarter.
+_BFSTACK_MARKS = (13, 14, 29, 30, 45, 46, 61, 62)
+
+
+def _bfstack_block(i: int, e: int) -> str:
+    """2^e rows, half zeros, last row 0 (pairs 01/10 by the bits of i).
+
+    At e = 7 the four quarters differ by marker pairs.
+    """
+    pairs = 2 ** (e - 1)
+    if e < 7:
+        return "".join(
+            ("10" if (i >> j) & 1 else "01") if j < pairs - 1 else "10"
+            for j in range(pairs)
+        )
+    free = [j for j in range(63) if j not in _BFSTACK_MARKS]
+    bits = ["0"] * 64
+    for k, j in enumerate(free):
+        bits[j] = str((i >> k) & 1)
+    for q in range(4):  # marker pairs 00, 01, 10, 11, one per quarter
+        bits[_BFSTACK_MARKS[2 * q]] = str(q >> 1)
+        bits[_BFSTACK_MARKS[2 * q + 1]] = str(q & 1)
+    bits[63] = "1"
+    return "".join("10" if b == "1" else "01" for b in bits)
+
+
+def _bfstack_chars_worst(n: int) -> str:
+    """Distinct maximal blocks of up to 128 rows under a tree of blocks."""
+    e = min(n, 7)
+    return "".join(_bfstack_block(i, e) for i in range(2 ** (n - e)))
+
+
+# language-owners: ["Smu"]
+def _smu_worst(n: int) -> str:
+    """Every level filled to capacity: unequal subtables first, then equal ones."""
+    if n == 1:
+        return "01"
+
+    def size(d: int) -> int:
+        return 1 << (n - d)
+
+    def unequal(d: int) -> int:
+        return (1 << size(d)) - (1 << (size(d) // 2))
+
+    ds = next(d for d in range(n) if unequal(d) <= 1 << d)
+    s = size(ds)
+    count = 1 << s
+    rows = [f"{k:0{s}b}" for k in range(count)]
+    rows = [y for y in rows if y[: s // 2] != y[s // 2 :]] + [
+        y for y in rows if y[: s // 2] == y[s // 2 :]
+    ]
+    if (1 << ds) <= count:
+        return "".join(rows[: 1 << ds])
+    out = []
+    for i in range(1 << (ds - 1)):
+        out += [rows[i % count], rows[(i + 1 + i // count) % count]]
+    return "".join(out)
+
+
+# language-owners: ["Codesick"]
+def _codesick_chars_worst(n: int) -> str:
+    """Saturated quasi-reduced diagram, heaviest id digits at the transition."""
+    zero, one = -2, -1  # constants; non-negative values are ranks within a level
+    nodes = [min(1 << d, (1 << (1 << (n - d))) - 2) for d in range(n)]
+    first = next(d for d in range(n) if (1 << (1 << (n - d))) - 2 <= 1 << d)
+    start, low_id = [0] * (n + 1), 2
+    for d in range(n - 1, -1, -1):
+        start[d] = low_id
+        low_id += nodes[d]
+    kids: list[list[tuple[int, int]]] = []
+    for d in range(n):
+        if d < first - 1:  # each child is fresh
+            kids.append([(2 * p, 2 * p + 1) for p in range(nodes[d])])
+        elif d >= first:  # every pair over the level below, by largest rank
+            alphabet = [zero, one, *range(nodes[d + 1] if d + 1 < n else 0)]
+            pairs = [(a, b) for a in alphabet for b in alphabet if not (a == b < 0)]
+            kids.append(sorted(pairs, key=lambda p: (max(p), p)))
+        else:  # transition level: cover low ids, then high ids, then heaviest pairs
+
+            def width(r: int) -> int:
+                return len(str(start[first] + r))
+
+            ranks = range(nodes[first])
+            low = [r for r in ranks if width(r) == width(0)]
+            high = [r for r in ranks if width(r) > width(0)] or low
+            if high is low:
+                low = []
+            used: list[tuple[int, int]] = []
+            seeds = []
+            for group in (low, high):
+                for i in range(0, len(group), 2):
+                    seeds.append(
+                        (group[i], group[i + 1] if i + 1 < len(group) else group[0])
+                    )
+            for pair in seeds:
+                if pair not in used and not pair[0] == pair[1] < 0:
+                    used.append(pair)
+            every = [(a, b) for a in ranks for b in ranks]
+            every += [(a, c) for a in ranks for c in (zero, one)]
+            every += [(c, a) for a in ranks for c in (zero, one)]
+            every += [(zero, one), (one, zero)]
+
+            def weight(x: int) -> int:
+                return width(x) if x >= 0 else 1
+
+            every.sort(key=lambda p: -(weight(p[0]) + weight(p[1])))
+            for pair in every:
+                if len(used) == nodes[d]:
+                    break
+                if pair not in used and not pair[0] == pair[1] < 0:
+                    used.append(pair)
+            kids.append(used)
+    row = [0]
+    for d in range(n):
+        row = [x for r in row for x in ((r, r) if r < 0 else kids[d][r])]
+    bits = "".join("1" if x == one else "0" for x in row)
+    return "".join(bits[int(f"{r:0{n}b}"[::-1], 2)] for r in range(1 << n))
+
+
+# language-owners: ["Befunge"]
+def _befunge_worst(n: int) -> str:
+    """Parity of the top k inputs; k = 10 at n = 11, 12.
+
+    There an ignored input beats packing.
+    """
+    k = 10 if n in (11, 12) else n
+    return "".join(str((i >> (n - k)).bit_count() & 1) for i in range(1 << n))
+
+
+# language-owners: ["SwitchCase"]
+def _switchcase_worst(n: int) -> str:
+    """A lone one at row T - 2, or T - 3 where row 510 would be an arm of k = 10."""
+    t = 1 << n
+    row = t - 2 if (t - 2) % 100 != 10 else t - 3
+    return "".join("1" if r == row else "0" for r in range(t))
+
+
+# language-owners: ["Circlefuck", "Modulous"]
+def _row_one(n: int) -> str:
+    """Row 1 only: every input essential, not symmetric."""
+    return "01" + "0" * ((1 << n) - 2)
+
+
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
-    "1 + i": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
+    "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
+    "Ascenic": lambda n: ("01" * (1 << n - 1),),
+    "BrainIf": lambda n: (_brainif_worst(n),) if n >= 3 else (),
+    "BFStack": lambda n: (_bfstack_chars_worst(n),),
     "Bitdeque": lambda n: (_bitdeque_worst(n), _bitdeque_tokens(n)) if n >= 3 else (),
     # Parity with row 0 flipped: a symmetric count table, one flip short.
     "Boolfuck": lambda n: (
@@ -313,9 +589,14 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Blindfolded Arithmetic": lambda n: ("0" + "1" * (2**n - 1),),
     # Balanced, row 0 a planted one: the longest prologue, and a mark.
     "bit~": lambda n: ("1" * (2 ** (n - 1) - 1) + "01" + "0" * (2 ** (n - 1) - 1),),
+    "Circlefuck": lambda n: (_row_one(n),),
     "Caballo": lambda n: (_morse("1110", "1011", n),) if n >= 2 else (),
-    "Codesick": lambda n: (_codesick_worst(n),) if n >= 2 else (),
-    "Collatz Multiverse": lambda n: (_collatz_worst(n),) if n >= 2 else (),
+    "Codesick": lambda n: (
+        (_codesick_worst(n), _codesick_chars_worst(n)) if n >= 2 else ()
+    ),
+    "Collatz Multiverse": lambda n: (
+        (_collatz_worst(n), _collatz_chars_worst(n)) if n >= 3 else ()
+    ),
     "Crement": lambda n: (_crement_worst(n),) if n >= 3 else (),
     # A one closing each block of 2^k: n - 2 copy jumps in a row.
     "Decleq": lambda n: (
@@ -325,11 +606,14 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Fackward": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
     # T - 1 runs: alternating but one equal pair.
     "Flowchart": lambda n: ("10" * (2 ** (n - 1) - 1) + "01",),
+    "EGL": lambda n: ("10" + "1" * ((1 << n) - 2),),
     "FRACTRAN": lambda n: (_unequal_first(n),) if n >= 2 else (),
+    "Befunge": lambda n: (_befunge_worst(n),),
     "Fish": lambda n: (_low_one(n),),
     "Freestajlo": lambda n: (_freestajlo_worst(n), _low_one(n)),
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
+    "INTERCAL": lambda n: (_intercal_worst(n),) if 5 <= n <= 7 else (),
     # Equal halves under parity: the root skip doubles a 3T/2 - 1 term.
     "Kiss": lambda n: (_parity(n - 1) * 2,) if n >= 2 else (),
     # 1 xor parity, the last input ignored at even n: the longest loop sums.
@@ -338,8 +622,14 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
     "Quassaunt": lambda n: (_quassaunt_worst(n),),
+    "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
+    "Sonata": lambda n: (_low_one(n),),
     "Stisp": lambda n: (_unequal_first(n),) if n >= 2 else (),
+    "Suffolk": lambda n: (_suffolk_worst(n),) if n >= 3 else (),
+    "SwitchCase": lambda n: (_switchcase_worst(n),),
+    "Smu": lambda n: (_smu_worst(n),),
+    "Modulous": lambda n: (_row_one(n),),
     "Subleq": lambda n: (_subleq_worst(n),) if n >= 3 else (),
     "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
 }
@@ -356,11 +646,13 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         # Its worst in both columns, n = 6..8: one zero, the last entry.
         return ("1" * (width - 1) + "0",)
     if name == "Malbolge":
-        # Straight-line code: all 10 tables tie at every n measured.
-        return (_dense(n),)
+        # Straight-line code: all 10 tables tie at every n measured; the
+        # all-ones or alternating label reaches the longest stub.
+        return (_dense(n), _malbolge_stub(n))
     if name == "Befunge":
-        # Straight-line code over the inputs that matter; parity has all.
-        return (_parity(n),)
+        # Straight-line code over the inputs that matter; parity has all, and
+        # the longest scaling text needs a layout parity misses at n = 11, 12.
+        return (_parity(n), _befunge_worst(n))
     if name == "LaserFuck" and n >= 5:
         # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
         return (_parity(n), _dense(n), "0" * width, "1" * width, *_laserfuck_worst(n))

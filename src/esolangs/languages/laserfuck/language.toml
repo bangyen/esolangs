@@ -14,7 +14,7 @@ bf_derivative_predates = true
 [proof_status]
 labels = ["finite lookup"]
 qualification = "weighted arms select one of `2**n` prewritten cells, cleaned in one sweep"
-scaling = "linear: three rows of linear appends, ~15T"
+scaling = "linear: worst N characters: a tree to n = 6, then three rows"
 execution = "linear: worst T + 296n + 682 steps for n = 5, 6, then 18T + 56n + 4"
 workspace = "linear: worst 8n + 26 bits at n = 5, 6, then 12T + 2n + 11 + 2bl(n)"
 

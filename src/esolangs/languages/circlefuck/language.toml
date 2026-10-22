@@ -12,7 +12,7 @@ bf_derivative_predates = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer"
-scaling = "linear: bounded dependency scan and canonical residual IDs"
+scaling = "linear: worst N characters: the table, 40n of reads, digit-cell walks"
 execution = "linear: worst (2n+13)T + 94n + 89 + 2S to n = 7, S the codes of program characters 1..n"
 workspace = "linear: worst 6L + 12n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape"
 

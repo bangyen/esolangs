@@ -7,7 +7,7 @@ backlinks = 0
 [proof_status]
 labels = ["tree"]
 qualification = "a level is a block whose quiet pass reads the bit; `/ c 49` makes it 0 or 1, that many `~` swap the two child blocks, `!` drops one and `)` runs the other; equal halves fold"
-scaling = "linear: one block a node; a subtable repeated under two parents is copied"
+scaling = "linear: worst 45T/2 - 31 characters past n = 1: block per node"
 execution = "poly n: worst 40n - 28 steps: 40 a level, the last printing what it reads"
 workspace = "linear: worst 159T - 225 + bl(n) bits past n = 1: the two stacks hold the program's tokens"
 

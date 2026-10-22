@@ -7,7 +7,7 @@ backlinks = 1
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is one `\"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies; past the crossover the literal packs six entries a character and the row splits into that depth and a bit"
-scaling = "linear: a T- or T/6-character literal, four characters an input"
+scaling = "linear: worst min(T + 4n + 1, ⌈T/6⌉ + 4n + 19) characters"
 execution = "poly n: worst 4n commands to n = 4, then 4n + 17: the literal, the reads and folds, the decode"
 workspace = "linear: worst max(P, W) bits: the literal's codes on the stack, plain or packed"
 definitions = ["P = 6t + 7 + bl(t+2) + bl(2n+2m) + bl(2n), m = min(n, 4), t = 2^m", "W = 7⌊T/6⌋ + 7 + bl(⌈T/6⌉+4) + max(16, 2n+3) + bl(4n+18) + bl(2n), 0 below n = 5"]

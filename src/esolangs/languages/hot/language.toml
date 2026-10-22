@@ -7,7 +7,7 @@ backlinks = 11
 [proof_status]
 labels = ["tree"]
 qualification = "the table is a tree of Church pairs, equal halves folded to `K`, applied to the bits that one fixed reader stage an input takes from `A`"
-scaling = "linear: 14 characters a pair, 75 a reader stage"
+scaling = "linear: worst 27T/2 + 73n + 86 characters past n = 1: pairs"
 execution = "poly n: worst 35n + 45 rewrites: a pair a level, then the answer stage"
 workspace = "linear: worst max(88T+232n+235, 132T+24n-53) + bl(n) bits past n = 1: two copies early, three at the end"
 

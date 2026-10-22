@@ -29,20 +29,44 @@ def execution(n: int, _: str) -> int:
     return (1 << n) // 4 + 3 * n + 4 * m + 10 + 2 * len(_constants(n))
 
 
-def workspace(n: int, p: str) -> int:
-    """Registers by name and value, the two arrays by entry, the pointer, input.
+def _cell_values(n: int) -> list[int]:
+    """Cell value at each code 0..m-1 of the worst table.
 
-    Constants k<v> hold v; negativeOne, z, s, t, o and the weights w_i are the
-    rest.  A holds at most T/4 cells, D one entry a set bit of the m codes.
+    The m values with most set bits (ties to the larger value); codes follow
+    ascending value, the lowest nonzero value taking the top code.
+    """
+    m = min(16, 1 << (n - 2))
+    kept = sorted(range(16), key=lambda v: (v.bit_count(), v))[16 - m :]
+    top = min(v for v in kept if v)
+    return [*(v for v in sorted(kept) if v != top), top]
+
+
+def workspace(n: int, _: str) -> int:
+    """End state of the all-ones row of the worst table, per snapshot part.
+
+    Registers: the constants closure, negativeOne, z, o, s (the last cell's
+    line), t (decoder base + 4 m + 0 for code m-1, select 3) and the weights.
+    Arrays: A holds every cell but the first (code 0 is a pad); D one entry per
+    set bit of the m cell values.  Then ip and the input counter (2n - 1).
     """
     bl = int.bit_length
-    lines = len(p) // 17  # every line has at least 17 characters
-    lam = bl(lines)
-    m = min(16, 1 << (n - 2))
-    high = n - 2
-    regs = sum(8 * (1 + len(str(k))) + bl(k) for k in _constants(n) | {1, 2})
-    regs += 90 + 9 + 2 * (8 + lam) + 14
+    cells, high = 1 << (n - 2), n - 2
+    values = _cell_values(n)
+    m = len(values)
+    consts = _constants(n)
+    cap_d = 2 * len(consts) + 5  # the decoder's capture line
+    cap_s = cap_d + 4 * m + 2  # the cells' capture line
+    lines = cells + 3 * n + 4 * m + 2 * len(consts) + 10
+    regs = sum(8 * (1 + len(str(k))) + bl(k) for k in consts | {1, 2})
+    regs += 90 + 9 + 14 + 16 + bl(cap_s + cells) + bl(cap_d + 4 * m)
     regs += sum(8 * (1 + len(str(i))) for i in range(n))
     regs += (high * (high + 1) // 2 - 1 if high >= 2 else 0) + 6
-    arrays = 8 + (1 << (n - 2)) * (lam + bl(4 * (m - 1))) + 8 + (2 * m + 6) * (lam + 1)
-    return regs + arrays + bl(lines + 1) + bl(2 * n)
+    a = 8 + sum(bl(cap_s + 1 + i) for i in range(1, cells))
+    a += sum(bl(4 * c) for c in range(1, m)) + (cells - m) * bl(4 * (m - 1))
+    d = 8 + sum(
+        bl(cap_d + 1 + 4 * c + j) + 1
+        for c, v in enumerate(values)
+        for j in range(4)
+        if v >> j & 1
+    )
+    return regs + a + d + bl(lines + 1) + bl(2 * n - 1)

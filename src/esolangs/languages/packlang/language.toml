@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["linear lookup"]
 qualification = "one 128-row array block, painted inside the `If` that selects it"
-scaling = "linear: one write per differing row, block-bounded index digits"
+scaling = "linear: at most N characters: one write per differing row"
 execution = "linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n"
 workspace = "poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array"
 

@@ -19,7 +19,7 @@ Size:
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.languages.quassaunt.proof_formulas import execution
+from esolangs.languages.quassaunt.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -124,4 +124,5 @@ LANGUAGE = Language(
     wrap=wrap_space_delimited,
     balance=_balance,
     proof_execution=(execution, True, (3, 6)),
+    proof_workspace=(workspace, False, (3, 4, 5)),
 )

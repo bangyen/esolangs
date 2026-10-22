@@ -7,9 +7,9 @@ backlinks = 3
 [proof_status]
 labels = ["tree"]
 qualification = "each distinct subtable is one named node reached by reference; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched"
-scaling = "linear: O(T/n) nodes with O(n)-digit names"
+scaling = "linear: at most C characters: one definition a distinct subtable, longest ids"
 execution = "poly n: worst 4n + 2 steps: four sends a level, root and leaf one each"
-workspace = "poly n: worst 10n + 12 + bl(n) + Σ_{d<n} bl(N_d) bits, N_d by V_j: exact to n = 10; bound after"
+workspace = "poly n: worst 10n + 12 + bl(n) + Σ_{d<n} bl(N_d) bits past n = 2, N_d by V_j: pending frames"
 definitions = ["N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last depth-d Input", "V_j = 4b + min(2^j - b, 2^(s/2)), b = min(2^j, 2^s - 2^(s/2)), s = 2^(n-j)"]
 
 [generator_sizes]
