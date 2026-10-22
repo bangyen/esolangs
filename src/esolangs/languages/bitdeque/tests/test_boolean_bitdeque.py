@@ -64,9 +64,12 @@ class TestParameterizedBitdeque:
         template = generators.bitdeque("0000")
         assert "POP" in template
         assert "GOTO" in template
-        template = generators.bitdeque("01101001")
+        template = generators.bitdeque("0011")
         assert template.startswith("GOTO 4 INVERT GOTO 5 GOTO ")
         assert f"{template} ".count("GOTO 1 ") == 2
+        # No constant above the leaves: each last level halts through it.
+        template = generators.bitdeque("01101001")
+        assert f"{template} ".count("GOTO 1 ") == 4
 
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 11, 40, 80])
@@ -95,7 +98,7 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
             len(esolangs.generate("Bitdeque", format(value, "08b"), width=1))
             for value in range(256)
         )
-        == 118538
+        == 115963
     )
 
 
@@ -106,7 +109,7 @@ def test_bitdeque_width_eleven_is_the_normal_load() -> None:
     sizes = [
         len(esolangs.generate("Bitdeque", "0110", width=width)) for width in (10, 11)
     ]
-    assert sizes == [342, 174]
+    assert sizes == [308, 140]
 
 
 @pytest.mark.parametrize("width", [1, 9, 40, 80])

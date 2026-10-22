@@ -10,8 +10,8 @@ subtrees are one leaf and a repeated subtree at its level is reached by
 ``GOTO``.
 
 Size:
-    O(n) for parity and and, O(T) for dense tables; n=10 parity: 682 chars,
-    n=10 and: 479 chars, n=10 random 1847: 5,470 chars.
+    O(n) for parity and and, O(T) for dense tables; n=10 parity: 580 chars,
+    n=10 and: 441 chars, n=10 random 1847: 5,470 chars.
 
 Decisions:
     A deque's ``EJECT``/``INJECT`` work the head, so any bit reaches an end at
@@ -128,6 +128,11 @@ class _BitdequeTreeBuilder:
     ids: list[list[int]]
     rotations: list[list[str]]
     placed: dict[int, int] = field(default_factory=dict)
+    #: Print the last bit itself, or its complement, at a last level whose
+    #: leaves differ.  Only while at most one constant kind sits above the
+    #: leaves: with both placed, a node reaches them by two ``GOTO`` stubs,
+    #: which is shorter ([ablations.last_level_forms]).
+    last_forms: bool = False
 
     def leaf(self, answer: str) -> list[str]:
         """Emit a leaf for ``answer``."""
@@ -164,6 +169,9 @@ class _BitdequeTreeBuilder:
         if key < 2:
             return self.leaf(self.seen[block << (self.n - level)])
         zero_key, one_key = self.ids[level + 1][2 * block : 2 * block + 2]
+        if self.last_forms and level == self.n - 1:
+            flip = [] if (zero_key, one_key) == (0, 1) else ["INVERT"]
+            return ["POP", *flip, "PUSH", "GOTO 1", "INVERT", "GOTO 1"]
         rotation = self.rotations[level]
         if zero_key == one_key and zero_key not in self.placed:
             return [*rotation, *self.walk(level + 1, 2 * block, at + len(rotation))]
@@ -211,8 +219,14 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree.  Commands count from 1 and the load occupies ``2n`` of them
     # ahead of the tree, so the ``GOTO`` operands are right after substitution.
+    ids = subtree_ids(seen)
+    constants = {key for level in ids[:n] for key in level if key < 2}
     builder = _BitdequeTreeBuilder(
-        n=n, seen=seen, ids=subtree_ids(seen), rotations=rotations
+        n=n,
+        seen=seen,
+        ids=ids,
+        rotations=rotations,
+        last_forms=len(constants) < 2,
     )
     tree = builder.build(len(prelude) + load_len + 1)
     end = len(prelude) + load_len + len(tree) + 1
