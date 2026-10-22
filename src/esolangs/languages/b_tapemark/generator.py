@@ -6,11 +6,14 @@ mark it ends on.  Constant roots read all inputs into disposable marks and
 print a literal answer without that walk.
 
 Size:
-    O(T) source and construction in both layouts; the narrow XOR2 needs
-    nine columns.  n=10 parity: 6,809 chars, n=10 random 1847: 6,809 chars.
-    ``balance`` snakes the copy and the weight runs into strips
-    (:func:`_b_tapemark_folded`): n=6 random 202 -> 118 on a side, n=10
-    3086 -> 243; the stages' seven rows apiece floor the height.
+    O(T) source and construction in every layout; the narrow XOR2 needs
+    nine columns.  The default is the least by area of the wide strip, the
+    narrow staircase and the closed-form strips (``balance``'s candidates,
+    no width sweep): n=10 parity: 10,565 chars, n=10 random 1847: 10,565
+    chars, a 127 x 204 grid against the strip's 93 x 3,086 (6,809 chars of
+    ragged rows).  ``balance`` snakes the copy and the weight runs into
+    strips (:func:`_b_tapemark_folded`): n=6 random 202 -> 118 on a side,
+    n=10 3086 -> 243; the stages' seven rows apiece floor the height.
 """
 
 from __future__ import annotations
@@ -18,7 +21,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from math import isqrt
 
-from esolangs.generation.helpers import _validate_truth_table, grid_width, input_weights
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    grid_area,
+    grid_width,
+    input_weights,
+)
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -213,7 +221,12 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
         # Each vertical | moves to a fresh mark; the final mirror turns right
         # so the literal digit prints rather than comparing the data mark.
         return "v\n" + "-\n|\n" * depth + "\\" + answer + "!"
-    return _b_tapemark_program(truth_table, width)
+    program = _b_tapemark_program(truth_table, width)
+    if width is not None:
+        return program
+    # Judged by area: the wide strip or the least of the closed-form layouts.
+    # No width sweep, so O(T).  See [ablations.area_default].
+    return min([program, *_closed_forms(truth_table)], key=grid_area)
 
 
 def _b_tapemark_program(
@@ -324,15 +337,9 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
     return builder.render()
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare the original grid, its reflection and the narrow staircase."""
-    if len(set(table)) == 1:
-        return min(default, b_tapemark(table, 1), key=balance_score)
-    candidates = [
-        default,
-        b_tapemark(table, grid_width(default)),
-        b_tapemark(table, 1),
-    ]
+def _closed_forms(table: str) -> list[str]:
+    """Return the narrow staircase and the formula's folded strips (not constant)."""
+    candidates = [b_tapemark(table, 1)]
     depth = len(table).bit_length() - 1
     # A run row as wide as a copy row (3 per entry, less the stage's 12
     # columns west of it) won at n=7..10 in a full grid; below that the
@@ -345,6 +352,19 @@ def _balance(table: str, default: str) -> str:
     for copy in {best, best * 17 // 20}:
         for run in {max(1, 3 * copy - 12), len(table)}:
             candidates.append(_b_tapemark_folded(table, max(1, copy), run))
+    return candidates
+
+
+def _balance(table: str, default: str) -> str:
+    """Compare the original grid, its reflection and the closed-form layouts."""
+    if len(set(table)) == 1:
+        return min(default, b_tapemark(table, 1), key=balance_score)
+    flat = _b_tapemark_program(table)
+    candidates = [
+        default,
+        b_tapemark(table, grid_width(flat)),
+        *_closed_forms(table),
+    ]
     return min(candidates, key=balance_score)
 
 
