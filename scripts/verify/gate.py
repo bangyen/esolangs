@@ -420,6 +420,15 @@ def _section_matches(title: str, nodeid: str) -> bool:
     return nodeid.endswith(("::" + title, "::" + title.replace(".", "::")))
 
 
+def _failed_ids(lines: list[str]) -> list[str]:
+    """Node ids of pytest's ``FAILED <id> - <reason>`` summary lines."""
+    return [
+        line[len("FAILED ") :].partition(" - ")[0].strip()
+        for line in lines
+        if line.startswith("FAILED ")
+    ]
+
+
 def _duration_only_ids(output: str) -> list[str] | None:
     """Return the failed tests' ids when every failure is a duration overrun.
 
@@ -434,11 +443,7 @@ def _duration_only_ids(output: str) -> list[str] | None:
     lines = output.splitlines()
     if any(line.startswith("ERROR ") for line in lines):
         return None
-    ids = [
-        line[len("FAILED ") :].partition(" - ")[0].strip()
-        for line in lines
-        if line.startswith("FAILED ")
-    ]
+    ids = _failed_ids(lines)
     if not ids:
         return None
     sections = _failure_sections(_complete_log(output) or output)
@@ -505,11 +510,7 @@ def _load_verdict(
             "rerun the gate on a quiet machine before pushing"
         )
         return [failure for failure in failures if failure[0] != LONG_STEP]
-    still = [
-        line[len("FAILED ") :].partition(" - ")[0]
-        for line in rerun_output.splitlines()
-        if line.startswith("FAILED ")
-    ]
+    still = _failed_ids(rerun_output.splitlines())
     named = still or ids
     print(
         f"[load] pytest: {len(named)} of {len(ids)} failures still fail "
@@ -614,22 +615,20 @@ def _run_steps(  # noqa: C901
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
-        key = None
-        if clean_cache is not None and name in CACHED_STEPS:
-            key = cache_keys.get(name)
-            if key is not None:
-                cached = clean_cache.load(key)
-                if cached is not None:
-                    print(f"[cache] {name}: identical verified inputs")
-                    record(name, time.monotonic() - start, 0, cached)
-                    return
+        key = cache_keys.get(name)
+        if key is not None:
+            assert clean_cache is not None
+            if (cached := clean_cache.load(key)) is not None:
+                print(f"[cache] {name}: identical verified inputs")
+                record(name, time.monotonic() - start, 0, cached)
+                return
         captured, returncode = _wait_with_heartbeat(
             start_logged(cmd, name, step_env, ROOT, stream=stream),
             name,
             start,
         )
         record(name, time.monotonic() - start, returncode, captured)
-        if key is not None and returncode == 0 and captured is not None:
+        if key is not None and captured is not None:
             assert clean_cache is not None
             clean_cache.remember(key, captured, returncode)
 
@@ -787,14 +786,15 @@ def main() -> int:  # noqa: C901
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.
     unaffected, why = (None, "--only given") if only else _scope_plan(full=full)
-    changed = [] if only or full or verify_full() else list(_scope_changed_files())
+    whole = only is not None or full or verify_full()
+    changed = [] if whole else list(_scope_changed_files())
     if unaffected is None:
         print(f"scope: full run ({why})")
     else:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    if only is not None or full or verify_full():
+    if whole:
         env["VERIFY_CLEAN_CACHE"] = "0"
     # Probe PY rather than the running interpreter: verify/gate.py may be launched
     # by a different python than the one it runs the steps with (e.g.

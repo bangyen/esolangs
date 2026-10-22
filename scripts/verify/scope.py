@@ -12,6 +12,7 @@ import importlib
 import importlib.metadata
 import json
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable
@@ -55,6 +56,20 @@ SHARED_TOOLING = (
     ".pre-commit-config.yaml",
     "justfile",
     "conftest.py",
+)
+# Files any tooling integration may read: a change here keeps them all.
+_TOOLING_ROOTS = frozenset(
+    {
+        *SHARED_TOOLING,
+        "uv.lock",
+        ".coveragerc",
+        "tests/__init__.py",
+        "tests/tooling/script_support.py",
+        "setup.cfg",
+        "pytest.ini",
+        "tox.ini",
+        "snapshot.json",
+    }
 )
 
 
@@ -143,18 +158,7 @@ TOOLING_INTEGRATIONS = {
 def local_tooling_deselections(changed: list[str]) -> list[str]:
     """Defer unrelated tooling integrations to the unchanged CI test bands."""
     if not changed or any(
-        path in SHARED_TOOLING
-        or path
-        in {
-            "uv.lock",
-            ".coveragerc",
-            "tests/__init__.py",
-            "tests/tooling/script_support.py",
-            "setup.cfg",
-            "pytest.ini",
-            "tox.ini",
-        }
-        or path == "snapshot.json"
+        path in _TOOLING_ROOTS
         or path.startswith("tests/support/fixtures/")
         or (path.startswith("tests/tooling/") and Path(path).name == "conftest.py")
         for path in changed
@@ -317,9 +321,7 @@ class VerifiedCache:
             except (OSError, subprocess.SubprocessError):
                 return None
             runtime = result.stdout.strip()
-            if len(runtime) != 64 or any(
-                char not in "0123456789abcdef" for char in runtime
-            ):
+            if not re.fullmatch(r"[0-9a-f]{64}", runtime):
                 return None
             self.runtimes[query_key] = (query, env, runtime)
         return self._key(step, cmd, env, self.runtimes[query_key][2])
@@ -608,16 +610,17 @@ def _generator_test_scope(module: str) -> list[str] | None:
         *((ROOT / "tests").rglob("*.py")),
         *((ROOT / "src/esolangs/languages").glob("*/tests/**/*.py")),
     ):
-        path = test.relative_to(ROOT).as_posix()
+        parts = test.relative_to(ROOT).parts
+        path = "/".join(parts)
         if not _is_collected(path):
             continue
-        test_owner = _named_owner(test.stem, owners)
-        # Only language-local directories follow this naming convention.
-        local = test.parent.name in {"generators", "interpreters", "languages"}
-        relative = test.relative_to(ROOT).parts
-        if relative[:3] == ("src", "esolangs", "languages") and "tests" in relative:
-            local = True
-            test_owner = relative[3]
+        test_owner: str | None
+        if parts[:3] == ("src", "esolangs", "languages") and "tests" in parts:
+            local, test_owner = True, parts[3]
+        else:
+            # Only language-local directories follow this naming convention.
+            local = test.parent.name in {"generators", "interpreters", "languages"}
+            test_owner = _named_owner(test.stem, owners)
         if local and test_owner is not None and test_owner not in dependents:
             text = test.read_text(encoding="utf-8").lower()
             if not any(needle.lower() in text for needle in needles):
@@ -707,7 +710,11 @@ def whole_tree_cmd(cmd: list[str]) -> list[str]:
     if got.returncode != 0:
         return cmd
     names = dict.fromkeys(os.fsdecode(f) for f in got.stdout.split(b"\0") if f)
-    files = [f for f in names if (ROOT / f).is_file()]
+    return _with_files(cmd, [f for f in names if (ROOT / f).is_file()])
+
+
+def _with_files(cmd: list[str], files: list[str]) -> list[str]:
+    """Re-aim a pre-commit ``--all-files`` command at *files*."""
     return [c for c in cmd if c != "--all-files"] + ["--files", *files]
 
 
@@ -721,7 +728,7 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
         files = [f for f in changed if (ROOT / f).is_file()]
         if not files:
             return None
-        return [c for c in cmd if c != "--all-files"] + ["--files", *files]
+        return _with_files(cmd, files)
     if name == "pytest":
         paths = _pytest_scope(changed)
         if not paths:
