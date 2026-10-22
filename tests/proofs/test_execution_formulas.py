@@ -116,9 +116,10 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         )
     if name == "Bitdeque":
         tables += ("10" + "01" * (width // 2 - 1),)
-    if name in {"ArrowQueue", "ROTfuck"}:
+    if name in {"ArrowQueue", "Minsky Swap", "ROTfuck"}:
         # Their worst, exhaustive through n=3: a lone zero, second to last.
-        # ROTfuck's was NAND's until symmetric tables took the counted walk.
+        # ROTfuck's was NAND's, and Minsky Swap's parity at n=5, until
+        # symmetric tables took the count.
         tables += ("1" * (width - 2) + "01",)
     if name == "Home Row":
         # Alternating but for one equal pair: every input essential, T - 2 leaves.
