@@ -207,18 +207,64 @@ def _located(output: str | None) -> list[str]:
     lines = (output or "").splitlines()
     log = [f"  {line}" for line in lines if line.startswith("[log] ")]
     tests = [line for line in lines if line.startswith(("FAILED ", "ERROR "))]
+    tests += _failed_hooks(lines)
     shown = [f"  {line}" for line in tests[:_SHOWN_FAILURES]]
     if len(tests) > _SHOWN_FAILURES:
         shown.append(f"  ... and {len(tests) - _SHOWN_FAILURES} more in the log")
     return log + shown
 
 
-def _rerun_hint(name: str) -> list[str]:
+def _failed_hooks(lines: list[str]) -> list[str]:
+    """Return ``hook: first line it printed`` for each failed pre-commit hook.
+
+    Six sessions grepped the log for a cause the summary only linked to.
+    """
+    found = []
+    for i, line in enumerate(lines):
+        if not line.endswith(".Failed"):
+            continue
+        hook = line.removesuffix("Failed").rstrip(".")
+        detail = ""
+        for text in lines[i + 1 : i + 12]:
+            if text.endswith(("Passed", "Failed", "Skipped")):
+                break  # the next hook: this one printed nothing of its own
+            if text.strip() and not text.startswith("- "):
+                detail = text.strip()
+                break
+        found.append(f"{hook}: {detail}" if detail else hook)
+    return found
+
+
+#: Pytest failures that mean a committed artifact is stale.  A generator
+#: change once surfaced them one cluster per ~150 s run, a dozen runs in a
+#: row (2026-10-20); the fix is the whole regeneration, in this order.
+STALE_ARTIFACT_TESTS = (
+    "tests/tooling/test_examples.py",
+    "tests/tooling/test_make_languages_doc.py",
+    "tests/proofs/test_status.py",
+    "test_the_size_anchor_is_what_generate_emits",
+)
+REGENERATE = (
+    "uv run python scripts/docs/generate.py docs",
+    "uv run python scripts/docs/generate.py examples",
+    "uv run python checks/check_generator_sizes.py --update  "
+    "(only if the size change is intended; a docstring Size: anchor is by hand)",
+)
+
+
+def _rerun_hint(name: str, output: str | None = None) -> list[str]:
     """Return the commands that rerun, and any that fix, failed step *name*."""
     if name == "verification inputs":
         return ["  rerun: uv run python scripts/verify/gate.py"]
     rerun = f"  rerun: uv run python scripts/verify/gate.py --only {shlex.quote(name)}"
-    return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
+    fixes = FIXES.get(name, ())
+    if name == LONG_STEP and any(
+        line.startswith(("FAILED ", "ERROR "))
+        and any(t in line for t in STALE_ARTIFACT_TESTS)
+        for line in (output or "").splitlines()
+    ):
+        fixes = REGENERATE
+    return [rerun, *(f"  fix:   {fix}" for fix in fixes)]
 
 
 def _parse_only_skip() -> tuple[
@@ -610,12 +656,18 @@ def _run_steps(  # noqa: C901
                 run_serial(name, cmd, step_env)
         for future in futures:
             future.result()
+    rest = [s for s in runnable if s[0] != MUTATES_TREE]
     if any(name == MUTATES_TREE for name, *_ in failed):
         clean_cache = None
         cache_keys.clear()
+        # The cheap steps still report, but pytest would spend ~150 s on a
+        # tree the hooks just rewrote and the fix will rewrite again: six
+        # sessions waited it out for a one-line ruff fix.
+        if any(s[0] == LONG_STEP for s in rest):
+            print(f"[skip] {LONG_STEP}: {MUTATES_TREE} failed; fix it and rerun")
+            rest = [s for s in rest if s[0] != LONG_STEP]
 
     # Phase 2: launch the long step, then run the cheap ones in its shadow.
-    rest = [s for s in runnable if s[0] != MUTATES_TREE]
     long_step = next((s for s in rest if s[0] == LONG_STEP), None)
     shadow = [s for s in rest if s[0] != LONG_STEP and s[0] not in HEAVY_STEPS]
     heavy = [s for s in rest if s[0] in HEAVY_STEPS]
@@ -853,7 +905,7 @@ def main() -> int:  # noqa: C901
         print(
             f"[FAIL] {name}: {_cause(returncode)}",
             *_located(output),
-            *_rerun_hint(name),
+            *_rerun_hint(name, output),
             sep="\n",
         )
     if failures:

@@ -140,7 +140,10 @@ def test_every_row_carries_a_measured_cell(
             if clause.startswith(("worst ", "at most "))
             else LINEAR_CLAUSE_WORDS
         )
-        assert words <= limit, f"{row.generator}: {column} clause is {words} words"
+        assert words <= limit, (
+            f"{row.generator}: {column} clause is {words} words, limit {limit}; "
+            f"shorten {column} under [proof_status] in its language.toml"
+        )
 
 
 def test_every_definition_names_a_symbol_its_cells_use() -> None:

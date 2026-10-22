@@ -130,14 +130,16 @@ def test_main_updates_all_registry_derived_docs(
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
-    assert module.docs_main(output_root=tmp_path) == 0
-    assert called == ["readme", "usage", "limitations", "contributing", "request"]
+    status = module.docs_main(output_root=tmp_path)
     out = capsys.readouterr().out
+    stale = f"docs are stale; run uv run python scripts/docs/generate.py docs\n{out}"
+    assert status == 0, stale
+    assert called == ["readme", "usage", "limitations", "contributing", "request"]
     assert "language request template" in out
     # The real exports and proof tables were copied in sync, so they earn
     # no "updated" line -- only the summary counts them.
-    assert "updated the generated exports" not in out
-    assert "updated the generated tables of docs/proofs" not in out
+    assert "updated the generated exports" not in out, stale
+    assert "updated the generated tables of docs/proofs" not in out, stale
     assert "2 generated artifacts already up to date" in out
 
 

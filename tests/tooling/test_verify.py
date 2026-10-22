@@ -1030,3 +1030,54 @@ def test_colocated_test_changes_run_directly_and_helpers_widen(
         == verify.WHOLE_SUITE
     )
     assert verify._pytest_scope(["conftest.py"]) == verify.WHOLE_SUITE  # noqa: SLF001
+
+
+def test_a_failed_pre_commit_skips_pytest_but_not_the_cheap_steps(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Six sessions waited ~150 s of pytest for a one-line ruff fix."""
+    verify = load_script()
+
+    def wait(_process, name, _start):
+        return "", int(name == "pre-commit")
+
+    monkeypatch.setattr(verify, "_wait_with_heartbeat", wait)
+    monkeypatch.setattr(
+        verify.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: mock.Mock(stdout=io.TextIOWrapper(io.BytesIO())),
+    )
+    runnable = [(name, [name], {}) for name in ("pre-commit", "pytest", "mypy")]
+    failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+    assert [name for name, *_ in failures] == ["pre-commit"]
+    assert {name for name, _ in timings} == {"pre-commit", "mypy"}
+    assert "[skip] pytest: pre-commit failed" in capsys.readouterr().out
+
+
+def test_a_failed_hook_names_its_cause_in_the_summary() -> None:
+    verify = load_script()
+    output = (
+        "[log] notes/verification/pre-commit-x.log\n"
+        "check yaml.......Passed\n"
+        "ruff (legacy alias).......Failed\n"
+        "- hook id: ruff\n- exit code: 1\n\n"
+        "E501 Line too long (95 > 88)\n   --> gate.py:240:89\n"
+        "check-yaml.......Failed\n"
+        "- hook id: check-yaml\n"
+        "check-toml.......Passed\n"
+    )
+    assert verify._located(output) == [  # noqa: SLF001
+        "  [log] notes/verification/pre-commit-x.log",
+        "  ruff (legacy alias): E501 Line too long (95 > 88)",
+        "  check-yaml",
+    ]
+
+
+def test_a_stale_artifact_failure_prints_the_whole_regeneration() -> None:
+    verify = load_script()
+    stale = "FAILED tests/tooling/test_examples.py::test_x[kiss] - stale\n"
+    hint = "\n".join(verify._rerun_hint("pytest", stale))  # noqa: SLF001
+    assert hint.index("generate.py docs") < hint.index("generate.py examples")
+    assert "check_generator_sizes.py --update" in hint
+    other = "FAILED tests/t.py::test_y - boom\n"
+    assert "fix:" not in "\n".join(verify._rerun_hint("pytest", other))  # noqa: SLF001
