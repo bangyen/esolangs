@@ -1,0 +1,129 @@
+language = "SwitchCase"
+oldid = 122261
+
+[[examples]]
+id = "hello-world"
+note = "the page's Hello World walks _ through each character's code"
+source = '''
+$_
+0?+72.
+$_
+72?+29.
+$_
+101?+7.
+$_
+108?+0.
+$_
+108?+3.
+$_
+111?-67.
+$_
+44?-12.
+$_
+32?+55.
+$_
+87?+24.
+$_
+111?+3.
+$_
+114?-6.
+$_
+108?-8.
+$_
+100?-67.
+'''
+expected = "Hello, World!"
+
+[[examples]]
+id = "truth-machine-0"
+note = "the page's truth machine prints 0 once"
+source = '''
+$_
+0?#
+$_
+0?@
+1?@
+$_
+1?'2
+'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+note = "the page's truth machine prints 1 forever"
+source = '''
+$_
+0?#
+$_
+0?@
+1?@
+$_
+1?'2
+'''
+stdin = "1"
+stop = "steps"
+max_steps = 40
+expected = "111"
+
+[[spec_triggers]]
+program = "$_\n1?+5@\n!+7@"
+stdin = ""
+expect = "output"
+output = "7"
+claim = "the commands after ! run when no integer matches"
+
+[[spec_triggers]]
+program = "$_\n0?=A\n$A\n0?+3\n$A\n3?@"
+stdin = ""
+expect = "output"
+output = "3"
+claim = "=name defines a variable, initially zero"
+
+[[spec_triggers]]
+program = "$_\n0?,\n$_\n65?.\n"
+stdin = ""
+expect = "InputExhaustedError"
+claim = ", reads a character"
+
+[[spec_triggers]]
+program = "$_\n0?#"
+stdin = "x"
+expect = "ArgumentError"
+claim = "# reads an integer"
+
+[[spec_triggers]]
+program = "$y\n0?@"
+stdin = ""
+expect = "HaltError"
+claim = "only _ exists at the start"
+
+[[spec_triggers]]
+program = "$_\n0?'9"
+stdin = ""
+expect = "HaltError"
+claim = "'k jumps to the k-th switch case"
+
+[[spec_triggers]]
+program = "$_\n0?-1."
+stdin = ""
+expect = "HaltError"
+claim = ". outputs the variable as a character"
+
+[[spec_triggers]]
+program = "$_\n0?+1\n0?+2"
+stdin = ""
+expect = "ProgramError"
+claim = "duplicate integers before the question mark are forbidden"
+
+[[spec_triggers]]
+program = "$_\n!+1"
+stdin = ""
+expect = "ProgramError"
+claim = "there must be at least one ? part"
+
+[[spec_triggers]]
+program = "0?+1"
+stdin = ""
+expect = "ProgramError"
+claim = "you must use control flow to execute commands"

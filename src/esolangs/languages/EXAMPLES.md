@@ -69,6 +69,7 @@ don't edit by hand.
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
 | `interprogck8/interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
+| `kiss/kiss.txt` | Kiss | `0001` | `01` | 01 | '0' |
 | `laserfuck/laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line/line.png` | Line | `0001` | `01` | 0 1 | '0' |
 | `malbolge/malbolge.txt` | Malbolge | `0001` | `01` | 01 | '0' |
@@ -93,12 +94,14 @@ don't edit by hand.
 | `slow_acv_mammalian/slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck/smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `smu/smu.txt` | Smu | `0001` | `01` | 01 | '0' |
+| `sonata/sonata.txt` | Sonata | `0001` | `01` | 01 | '=0' |
 | `sstack/sstack.txt` | SStack | `0001` | `01` | 01 | '0' |
 | `stisp/stisp.txt` | Stisp | `0001` | `01` | embedded 01 | '0' |
 | `streetcode/streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
 | `subleq/subleq.txt` | Subleq | `0001` | `01` | 01 | '0' |
 | `suffolk/suffolk.txt` | Suffolk | `0001` | `01` | 01 | '0' |
 | `super_snusp/super-snusp.txt` | Super SNUSP | `0001` | `01` | 01 | '0' |
+| `switchcase/switchcase.txt` | SwitchCase | `0001` | `01` | 01 | '0' |
 | `taglate/taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
 | `thisthat/thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
 | `thue/thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
@@ -136,6 +139,7 @@ don't edit by hand.
 - **slashes** -- Inputs fill the binary row index before unary selection; constant tables delete the input letters and print their answer.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
+- **sonata** -- Sonata's input is its initial string and its output the final one, = and the answer
 - **stisp** -- Stisp has no input or output: each input is the atom 0 or 1 in its frame, and the result, printed at halt, is the answer atom
 - **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change

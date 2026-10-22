@@ -1,0 +1,38 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 2
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "loops build the row index from the essential inputs, and a switch a hundred rows turns its own rows' index into the bit"
+scaling = "linear: one arm a row, two jump loops an essential input"
+execution = "linear: worst 8T + 4⌈T/100⌉ + 7n steps: the index loops, four a block"
+workspace = "poly n: at most 2n + bl(L) + bl(n) + 53 bits: the index, x and the case position"
+
+[ablations]
+audited = "2026-10-21"
+
+[ablations.essential_projection]
+saving = 48.6
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: canonical, exempt; index loops and blocks over the essential inputs against every input: 0.0% on random tables, 39.5-48.6% one-ignored at n=8-12, 95.3-99.5% on constants; never larger. Plain-rewrite audit: the one bespoke trick, leaving out an arm where the index already is the bit, saved 5.1-6.6% at n=8-12 and was retired under the 10% bar; the per-row countdown cascade (14.0 chars a row) was not shipped"
+
+[catalogue]
+folding_constant_local = "_blocks"  # no essential input: one block over the one-row table
+
+[generator_sizes]
+"00000001" = { commands = 89, commands_by_row = { "0" = 33, "1" = 41, "2" = 49, "3" = 57, "4" = 65, "5" = 73, "6" = 81, "7" = 89 }, source_units = 309 }
+"00001100" = { commands = 53, commands_by_row = { "0" = 29, "1" = 29, "2" = 37, "3" = 37, "4" = 45, "5" = 45, "6" = 53, "7" = 53 }, source_units = 220 }
+"00110110" = { commands = 89, commands_by_row = { "0" = 33, "1" = 41, "2" = 49, "3" = 57, "4" = 65, "5" = 73, "6" = 81, "7" = 89 }, source_units = 309 }
+"0110" = { commands = 50, commands_by_row = { "0" = 26, "1" = 34, "2" = 42, "3" = 50 }, source_units = 210 }
+"01101001" = { commands = 89, commands_by_row = { "0" = 33, "1" = 41, "2" = 49, "3" = 57, "4" = 65, "5" = 73, "6" = 81, "7" = 89 }, source_units = 309 }
+"0110100110010110" = { commands = 160, commands_by_row = { "0" = 40, "1" = 48, "2" = 56, "3" = 64, "4" = 72, "5" = 80, "6" = 88, "7" = 96, "8" = 104, "9" = 112, "10" = 120, "11" = 128, "12" = 136, "13" = 144, "14" = 152, "15" = 160 }, source_units = 440 }
+"1101001101101101" = { commands = 160, commands_by_row = { "0" = 40, "1" = 48, "2" = 56, "3" = 64, "4" = 72, "5" = 80, "6" = 88, "7" = 96, "8" = 104, "9" = 112, "10" = 120, "11" = 128, "12" = 136, "13" = 144, "14" = 152, "15" = 160 }, source_units = 439 }
+"11111110" = { commands = 89, commands_by_row = { "0" = 33, "1" = 41, "2" = 49, "3" = 57, "4" = 65, "5" = 73, "6" = 81, "7" = 89 }, source_units = 309 }
+
+[schemes]
+folds_without_tree = true

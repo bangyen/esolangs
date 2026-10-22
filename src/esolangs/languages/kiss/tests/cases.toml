@@ -1,0 +1,61 @@
+language = "Kiss"
+oldid = 159488
+
+[[examples]]
+id = "cat-0"
+note = "the page's cat with a single bit echoes 0"
+source = "S (K K) (S K)"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "cat-1"
+note = "the page's cat with a single bit echoes 1"
+source = "S (K K) (S K)"
+stdin = "1"
+expected = "1"
+
+[[spec_triggers]]
+program = "S K (K K)"
+stdin = "1"
+expect = "output"
+output = "0"
+claim = "S a b reads a bit and continues as b on 1"
+
+[[spec_triggers]]
+program = "S K K (S K)"
+stdin = ""
+expect = "output"
+output = "1"
+claim = "S a b c rewrites to a c (b c) before any I/O"
+
+[[spec_triggers]]
+program = "K (S K) K"
+stdin = ""
+expect = "output"
+output = "1"
+claim = "K a b rewrites to a"
+
+[[spec_triggers]]
+program = "S (K K) (S K)"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "a read past the input string is an error"
+
+[[spec_triggers]]
+program = "S (K K) (S K)"
+stdin = "2"
+expect = "ArgumentError"
+claim = "the input is a binary string"
+
+[[spec_triggers]]
+program = "K (K"
+stdin = ""
+expect = "ProgramError"
+claim = "parentheses must balance"
+
+[[spec_triggers]]
+program = "K I"
+stdin = ""
+expect = "ProgramError"
+claim = "the only combinators are K and S"
