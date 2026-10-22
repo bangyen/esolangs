@@ -15,9 +15,12 @@ resume one past the phase.  A body is padded to seven modulo eight with
 no-op runs (:meth:`_Builder._pad`), each command placed to hide from every open
 seek.
 
+A symmetric table sums its bits on the carrier and walks n + 1 entries
+([ablations.symmetric_count]).
+
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
-    strides; n=10 random 1847: 4,061 chars, n=10 and: 1,769 chars.
+    strides; n=10 random 1847: 4,061 chars, n=10 and: 758 chars.
 
 Decisions:
     A repeated block is not shared: a brainfuck copy is at least 19 commands
@@ -32,6 +35,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
+    symmetric_weights,
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.rotfuck.interpreter import (
@@ -346,18 +350,38 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     # Ignored inputs are still read but do not enter the index.
     used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    strips = [_strip(table, skips=False)]
-    if (skipped := _strip(table, skips=True)) != strips[0]:
-        strips.append(skipped)
+    lookups = [(table, _select(n, used, _groups(len(used))))]
+    if (symmetric := symmetric_weights(truth_table, n)) is not None:
+        lookups.append((symmetric[1], _count(n, used)))
     texts = []
-    for strip in strips:
-        bf = (
-            strip + _select(n, used, _groups(len(used))) + "<" + "+" * _ASCII_ZERO + "."
-        )
-        out = _Builder(cycle)
-        out.emit(_parse(bf))
-        texts.append(out.text())
+    for entries, select in lookups:
+        strips = [_strip(entries, skips=False)]
+        if (skipped := _strip(entries, skips=True)) != strips[0]:
+            strips.append(skipped)
+        for strip in strips:
+            out = _Builder(cycle)
+            out.emit(_parse(strip + select + "<" + "+" * _ASCII_ZERO + "."))
+            texts.append(out.text())
     return min(texts, key=len)
+
+
+def _count(n: int, used: list[int]) -> str:
+    """Brainfuck summing the essential bits on the carrier, then one walk.
+
+    A symmetric table is indexed by that count ([ablations.symmetric_count]);
+    an ignored input lands above, as in :func:`_select`.
+    """
+    digit = "-" * _ASCII_ZERO
+    chosen = set(used)
+    out = []
+    for cursor in range(n):
+        if cursor not in chosen:
+            out.append(">,<")
+        elif cursor == used[0]:
+            out.append("," + digit)
+        else:
+            out.append(f">,{digit}[-<+>]<")
+    return "".join(out) + _walk(2)
 
 
 def _dialect(rotation: str = "backward") -> None:

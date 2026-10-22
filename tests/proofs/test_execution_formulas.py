@@ -116,8 +116,9 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         )
     if name == "Bitdeque":
         tables += ("10" + "01" * (width // 2 - 1),)
-    if name == "ArrowQueue":
-        # Its worst, exhaustive through n=3: a lone zero, second to last.
+    if name in {"ArrowQueue", "ROTfuck"}:
+        # Their worst, exhaustive through n=3: a lone zero, second to last.
+        # ROTfuck's was NAND's until symmetric tables took the counted walk.
         tables += ("1" * (width - 2) + "01",)
     if name == "Home Row":
         # Alternating but for one equal pair: every input essential, T - 2 leaves.

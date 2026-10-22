@@ -13,18 +13,18 @@ bf_derivative_predates = true
 labels = ["finite lookup"]
 qualification = "every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count"
 scaling = "linear: bounded dependency scan and canonical residual IDs"
-execution = "linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: NAND's all-ones row, walks quadratic per digit"
+execution = "linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: a lone zero second to last"
 workspace = "linear: at most 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n) bits: 2T + 7 cells"
 
 [generator_sizes]
-"00000001" = { commands = 890, commands_by_row = { "0" = 226, "1" = 250, "2" = 330, "3" = 386, "4" = 538, "5" = 626, "6" = 770, "7" = 890 }, source_units = 298 }
+"00000001" = { commands = 364, commands_by_row = { "0" = 212, "1" = 252, "2" = 252, "3" = 308, "4" = 236, "5" = 292, "6" = 292, "7" = 364 }, source_units = 268 }
 "00001100" = { commands = 326, commands_by_row = { "0" = 166, "1" = 166, "2" = 190, "3" = 190, "4" = 270, "5" = 270, "6" = 326, "7" = 326 }, source_units = 214 }
 "00110110" = { commands = 893, commands_by_row = { "0" = 229, "1" = 253, "2" = 333, "3" = 389, "4" = 541, "5" = 629, "6" = 773, "7" = 893 }, source_units = 301 }
-"0110" = { commands = 324, commands_by_row = { "0" = 164, "1" = 188, "2" = 268, "3" = 324 }, source_units = 212 }
-"01101001" = { commands = 893, commands_by_row = { "0" = 229, "1" = 253, "2" = 333, "3" = 389, "4" = 541, "5" = 629, "6" = 773, "7" = 893 }, source_units = 301 }
-"0110100110010110" = { commands = 2784, commands_by_row = { "0" = 304, "1" = 328, "2" = 408, "3" = 464, "4" = 616, "5" = 704, "6" = 848, "7" = 968, "8" = 1224, "9" = 1376, "10" = 1584, "11" = 1768, "12" = 2048, "13" = 2264, "14" = 2536, "15" = 2784 }, source_units = 400 }
+"0110" = { commands = 238, commands_by_row = { "0" = 158, "1" = 198, "2" = 182, "3" = 238 }, source_units = 198 }
+"01101001" = { commands = 365, commands_by_row = { "0" = 213, "1" = 253, "2" = 253, "3" = 309, "4" = 237, "5" = 293, "6" = 293, "7" = 365 }, source_units = 269 }
+"0110100110010110" = { commands = 507, commands_by_row = { "0" = 267, "1" = 307, "2" = 307, "3" = 363, "4" = 307, "5" = 363, "6" = 363, "7" = 435, "8" = 291, "9" = 347, "10" = 347, "11" = 419, "12" = 347, "13" = 419, "14" = 419, "15" = 507 }, source_units = 339 }
 "1101001101101101" = { commands = 2786, commands_by_row = { "0" = 306, "1" = 330, "2" = 410, "3" = 466, "4" = 618, "5" = 706, "6" = 850, "7" = 970, "8" = 1226, "9" = 1378, "10" = 1586, "11" = 1770, "12" = 2050, "13" = 2266, "14" = 2538, "15" = 2786 }, source_units = 402 }
-"11111110" = { commands = 896, commands_by_row = { "0" = 232, "1" = 256, "2" = 336, "3" = 392, "4" = 544, "5" = 632, "6" = 776, "7" = 896 }, source_units = 304 }
+"11111110" = { commands = 366, commands_by_row = { "0" = 214, "1" = 254, "2" = 254, "3" = 310, "4" = 238, "5" = 294, "6" = 294, "7" = 366 }, source_units = 270 }
 
 [catalogue]
 folding_constant_local = "_program"  # one-entry rotated lookup
@@ -58,3 +58,10 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 price = -4.0
 workload = "traced"
 verdict = "removed 2026-10-20 (interpreter candidate I-3): -4.0% traced with overlapping spreads in the audit; the per-cycle dict build is paid per fresh machine while the scans it replaces are short; differential 0 divergences vs main on 5,193 tracediff-corpus programs (2,965 halt cleanly)"
+
+[ablations.symmetric_count]
+saving = 68.7
+arity = 8
+seed = "named symmetric tables"
+tables = 7
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 sums its bits on the carrier and walks a strip of n + 1 entries, raced by length against the Horner-digit lookup. Parity 65.2% at n=7, 68.7% at n=8, 81.2% at n=10, 92.4% at n=12; majority 65.2/68.1/80.6/92.1%; or and at-least-2 70.3-70.4% at n=8; and 58.6%, exactly-1 63.6% at n=8; a symmetric table with an ignored input 64.4% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed, and under the forward rotation; named tables executed through n=8, parity at n=10"
