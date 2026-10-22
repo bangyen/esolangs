@@ -73,8 +73,10 @@ class TestTheSpecIsReachable:
         }
         leaks = {name: found for name, found in leaks.items() if found}
         assert not leaks, (
+            f"a spec is its interpreter's and generator's module docstrings; "
             f"move these into comments beside the code they explain "
-            f"(docs/CONTRIBUTING.md): {leaks}"
+            f"(docs/CONTRIBUTING.md), or reword a language token that only "
+            f"looks private (`_name`, a Sphinx role, a repo path): {leaks}"
         )
 
     def test_roles_render_and_the_leak_check_fires(

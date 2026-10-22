@@ -247,7 +247,11 @@ def test_boolean_example(name: str) -> None:
         # rendering ``expected`` for this one advertised "outputs nothing"
         # for a program that prints two bytes.
         return
-    assert got == expected
+    assert got == expected, (
+        f"{name} prints {got!r} on the example row; if that is its whole "
+        "correct output, declare it as example=Example(expected=...) in the "
+        "generator's LANGUAGE"
+    )
 
 
 class TestTheWritersWriteWhatTheBuildersBuild:

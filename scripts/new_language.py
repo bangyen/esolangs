@@ -475,14 +475,28 @@ def quick_tests(name: str) -> list[str]:
         "::test_interpreter_docstrings_follow_the_template",
         "tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
-        "tests/interpreters/test_spec_triggers.py"
-        "::test_every_errors_entry_has_a_trigger",
+        # Whole modules or functions: each runs the registry in ~1-4 s, and
+        # Kiss/Sonata/SwitchCase first failed all of these inside finish's
+        # 250 s gate (2026-10-21).
+        "tests/interpreters/test_spec_triggers.py",
+        "tests/api/test_catalog_contracts.py::TestTheSpecIsReachable",
         "tests/interpreters/test_transition_purity.py"
         f"::test_interpreter_core_is_pure_for_its_sample[{name}]",
     ]
     if lang.boolean is None:
         return _escaped(nodes)
-    nodes += ["tests/proofs/test_ledger.py", "tests/proofs/test_schemes.py"]
+    nodes += [
+        "tests/proofs/test_ledger.py",
+        "tests/proofs/test_schemes.py",
+        "tests/generators/test_boolean_sharing_catalogue.py",
+        "tests/generators/test_generator_docstrings.py"
+        "::test_the_size_anchor_is_what_generate_emits",
+        "tests/generators/test_boolean_contract.py"
+        "::test_every_table_reads_the_same_number_of_inputs",
+        "tests/generators/test_boolean_canonical_catalogue.py"
+        "::test_native_mechanisms_are_referenced",
+        "tests/runtime/test_answer_plumbing.py::TestWhatHappensWhenAProgramIsUnderfed",
+    ]
     catalogue = "tests/generators/test_boolean_canonical_catalogue.py::"
     folding = removal.tests_attr(
         "generators.test_boolean_canonical_catalogue", "_folding"
@@ -932,7 +946,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"next: implement the {implementation} in the created source files")
     print("conventions: docs/CONTRIBUTING.md#interpreter-conventions")
-    print(f"then: just check-language {shlex.quote(args.name)}")
+    # Registration happens there, not here: until then `bounds`, `esolangs`
+    # and the registry raise UnknownLanguageError for the new name.
+    print(f"then: just check-language {shlex.quote(args.name)} (registers it)")
     return 0
 
 

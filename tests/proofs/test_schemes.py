@@ -112,7 +112,9 @@ def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
         f"lookup rows measuring no tree route: {sorted(measured_without)}; "
         f"the ledger documents: {sorted(documented)}.  A new one is a "
         '`- Name: why` bullet under "These generators keep no unconstrained '
-        'tree route" in docs/proofs/index.md'
+        'tree route" in docs/proofs/index.md; one documented but folding '
+        "anyway also needs `[schemes] folds_without_tree = true` in its "
+        "language.toml"
     )
 
 
