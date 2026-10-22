@@ -34,8 +34,6 @@ from esolangs.generation.shared_block import (
     normal_cost,
     repeated_bank,
     repeated_block,
-    repeated_blocks,
-    repeated_definitions,
 )
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_bank
@@ -56,18 +54,9 @@ def sstack(truth_table: str) -> str:
     candidate, commands = _sstack_tree(truth_table, shared)
     n = _validate_truth_table(truth_table)
     forms = [(plain, 0), (candidate, commands)]
-    branching = repeated_definitions(truth_table, branching_only=True)
-    branched = set(branching)
-    levels = repeated_blocks(truth_table)
-    definitions = (
-        repeated_definitions(truth_table),
-        branching,
-        levels,
-        tuple(block for block in levels if block in branched),
-        repeated_bank(truth_table, ranked=False)[0],
-        repeated_bank(truth_table)[0],
-    )
-    for blocks in dict.fromkeys(definitions):
+    # Only the two same-level banks race ([ablations.multi_block_deferral]).
+    banks = (repeated_bank(truth_table, ranked=False)[0], repeated_bank(truth_table)[0])
+    for blocks in dict.fromkeys(banks):
         if len(blocks) > 1:
             result = _sstack_shared(truth_table, blocks)
             if result is not None:

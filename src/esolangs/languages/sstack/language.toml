@@ -42,7 +42,9 @@ verdict = "kept: canonical sharing, exempt; carries random tables at n=5..11 (5.
 [ablations.multi_block_deferral]
 saving = 5.7
 arity = 12
-verdict = "kept: canonical sharing, exempt; 0.3% on random tables at n=10 rising to 5.7% at n=12; all sharing routes jointly earn 10.6% on random tables at n=12 and 32.7% on trailing-ignored tables, where every route's individual marginal is ~0.0% (per table, at least two routes reach the same minimum)"
+verdict = "kept: canonical sharing, exempt; 0.3% on random tables at n=10 rising to 5.7% at n=12; all sharing routes jointly earn 10.6% on random tables at n=12 and 32.7% on trailing-ignored tables. Plain-rewrite audit 2026-10-21 (seed 184700+n, 200 random tables at n=7..14): of the six multi-block routes only the two same-level banks race. The other four (every repeat, branching-only, per-level, branching per-level) never beat the banks by more than 0.016% (levels at n=11) and by 0.000% at n=12..14, where the banks alone reproduce the six-route total exactly (5.72-5.77% joint). Retired: through n=4 exhaustively no table changes; on 3,320 random, ignored-input and half-constant tables at n=5..12, 33 change, total growth at most 0.028% (n=7), every changed program executed on every row"
+seed = "random.Random(184700 + n)"
+tables = 200
 
 [ablations.binary_bank]
 saving = 0.0

@@ -143,10 +143,9 @@ def test_shared_residual_executes_within_ledger() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("branching", [False, True])
-def test_multiple_definitions_preserve_inputs_commands_and_workspace(branching) -> None:
+def test_multiple_definitions_preserve_inputs_commands_and_workspace() -> None:
     from esolangs.debugger import make_vm
-    from esolangs.generation.shared_block import repeated_definitions
+    from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_shared
     from esolangs.languages.sstack.interpreter import _parse
     from scripts.benchmark import WrittenState
@@ -154,7 +153,7 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace(branching) 
     n = 8
     a, b = "0001" * 16, "0110" * 16
     table = a + b + b + a
-    blocks = repeated_definitions(table, branching_only=branching)
+    blocks = tuple((depth, row) for depth, row, _ in _repeated_blocks(table))
     assert len(blocks) > 1
     program, limit = _sstack_shared(table, blocks)
     bound = 6 * n + 12 + len(_parse(program)).bit_length() + n.bit_length()
@@ -179,7 +178,7 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace(branching) 
 @pytest.mark.medium
 def test_six_bit_labels_include_the_ascii_constants_and_last_label() -> None:
     from esolangs.debugger import make_vm
-    from esolangs.generation.shared_block import repeated_definitions
+    from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_shared
     from esolangs.languages.sstack.interpreter import _parse
     from scripts.benchmark import WrittenState
@@ -187,7 +186,8 @@ def test_six_bit_labels_include_the_ascii_constants_and_last_label() -> None:
     n = 11
     rng = random.Random(77319)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
-    blocks = repeated_definitions(table)[:63]
+    found = tuple((depth, row) for depth, row, _ in _repeated_blocks(table))
+    blocks = found[:63]
     assert len(blocks) == 63
     program, limit = _sstack_shared(table, blocks)
     bound = 6 * n + 12 + len(_parse(program)).bit_length() + n.bit_length()
@@ -209,7 +209,7 @@ def test_six_bit_labels_include_the_ascii_constants_and_last_label() -> None:
         assert commands <= limit
         assert written.bits <= bound
     assert {48, 49, 63} <= seen
-    assert _sstack_shared(table, (*blocks, repeated_definitions(table)[63])) is None
+    assert _sstack_shared(table, (*blocks, found[63])) is None
     assert _sstack_shared(table, ()) is None
 
 

@@ -24,23 +24,6 @@ class ContinuationCost[KeyT]:
         )
 
 
-def repeated_definitions(
-    table: str, *, branching_only: bool = False
-) -> tuple[tuple[int, int], ...]:
-    """Return every repeated nonconstant residual in increasing depth order."""
-    found = _repeated_blocks(table)
-    if not branching_only:
-        return tuple((depth, row) for depth, row, _ in found)
-    ids = subtree_ids(table)
-    n = len(ids) - 1
-    return tuple(
-        (depth, row)
-        for depth, row, _ in found
-        if ids[depth + 1][row >> (n - depth - 1)]
-        != ids[depth + 1][(row >> (n - depth - 1)) + 1]
-    )
-
-
 def repeated_block(table: str) -> tuple[int, int] | None:
     """Return (depth, first row) with greatest repeated-span saving, or None."""
     found = _repeated_blocks(table)
