@@ -8,7 +8,8 @@ answer from the table's digits by coordinates and ``n`` prints it.  For n=2:
     0110
 
 Narrow widths fold the table into a block of columns, which the fish reaches
-by snaking down.  A parity table needs no table at all.  From n=6 the
+by snaking down.  A parity table needs no table at all, and another symmetric
+one adds its bits over m + 1 entries ([ablations.symmetric_count]).  From n=6 the
 default is one row: the code, six powers of two, and the table packed six
 entries a cell ([ablations.packed_row]).
 
@@ -26,6 +27,7 @@ from esolangs.generation.helpers import (
     _parity_bias,
     _validate_truth_table,
     input_weights,
+    symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
 from esolangs.registry._contracts import BooleanContract
@@ -41,11 +43,18 @@ def fish(truth_table: str, width: int | None = None) -> str:
     if bias is not None:
         return _parity(n, bias)
     # An ignored input is read and dropped; the table indexes the rest.
+    original = truth_table
     weights, truth_table = input_weights(truth_table, n)
     reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
     header = "0" + reads + "1g68*-n;"
     if width is None:
         plain, packed = header + "\n" + truth_table, _packed(reads, truth_table)
+        symmetric = symmetric_weights(original, n)
+        if symmetric is not None:
+            # A symmetric table adds its bits and indexes m + 1 entries
+            # ([ablations.symmetric_count]).
+            counts = "".join("i68*-+" if weight else "i~" for weight in symmetric[0])
+            plain = "0" + counts + "1g68*-n;\n" + symmetric[1]
         # Packed wins on area from n=4 but costs characters below n=6.
         smaller = _area(packed) <= _area(plain) and len(packed) <= len(plain)
         return packed if smaller else plain
