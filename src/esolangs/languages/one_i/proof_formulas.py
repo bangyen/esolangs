@@ -13,8 +13,10 @@ def workspace(n: int, _: str) -> int:
         s = 37 * 2 ** (n - 2) - 3 * n - 31
         return 40 + (bl(s) or 1) + bl(s + 10) + bl(s + 13) + io
     if n <= 24:
-        # a depth-3 node with maximal zero siblings (n+4 bits) pushes a constant
-        # one level down: frame pc n+2, 4 bits of frame pc become bl(n+2)
+        # Peaks add per component: stack 2n+44 (bit, two literals of 16 + n+4
+        # bits; offsets stay under 37T/4 < 2^(n+4)) + frame n+4+bl(n+2) (a
+        # depth-4 constant at an n+4 bit offset, body n+3 ops with the `$$`),
+        # executed to n = 23; 4(n-1) of a depth-1 constant overtakes at n = 25.
         return 3 * n + 48 + bl(n + 2) + io
     # a constant half (bare B x (n-1), 4 bits each) outweighs the node terms
     return 5 * n - 1 + bl(n + 5) + io

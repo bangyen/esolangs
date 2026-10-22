@@ -163,6 +163,13 @@ def _quassaunt_worst(n: int) -> str:
     return "".join(f"{v:0{1 << k}b}" for v in blocks)
 
 
+# language-owners: ["Quassaunt"]
+def _quassaunt_stack(n: int) -> str:
+    """Equal halves, each ending in 0110: a chain's local, then the heaviest ``If``."""
+    half = "0" * ((1 << n - 1) - 4) + "0110"
+    return half + half
+
+
 # language-owners: ["LaserFuck"]
 def _laserfuck_worst(n: int) -> tuple[str, ...]:
     """The tree's: nodes all distinct, the all-ones row ending on a one.
@@ -350,20 +357,48 @@ _IC_PAIRS = [
     ("00", "11"),
     ("11", "00"),
 ]
-#: Diagram nodes per level of the worst table, n = 5..7.
-_IC_WIDTHS = {5: (1, 2, 4, 4, 2), 6: (1, 2, 4, 8, 8, 2), 7: (1, 2, 4, 8, 10, 10, 2)}
+#: The same pairs, those reading ``10`` (named after ``01``, so never shorter) first.
+_IC_CHAR_PAIRS = [_IC_PAIRS[i] for i in (0, 1, 6, 7, 8, 9, 2, 3, 4, 5, 10, 11)]
+#: Diagram nodes per level of the worst-statement table, n = 3..8; past it a full
+#: tree to level n - 5, then two levels of its width, 12 and 2.
+_IC_WIDTHS = {
+    3: (1, 2, 2),
+    4: (1, 2, 3, 2),
+    5: (1, 2, 4, 4, 2),
+    6: (1, 2, 4, 8, 8, 2),
+    7: (1, 2, 4, 8, 10, 10, 2),
+    8: (1, 2, 4, 8, 16, 16, 12, 2),
+}
+
+
+def _intercal_diagram(widths: tuple[int, ...], pairs: list[tuple[str, str]]) -> str:
+    """The table of a diagram with ``widths`` nodes a level over 12 + 2 bottom ones."""
+    n = len(widths)
+    level = [a + b for a, b in pairs[: widths[n - 2]]]
+    for w in reversed(widths[: n - 2]):
+        k = len(level)
+        if w >= k:  # every node twice or more, every pair distinct
+            edges = [j for i in range(w) for j in (i % k, (i + 1 + i // k) % k)]
+        else:  # up then back (an odd k ends on k - 1 so no pair repeats a node)
+            back = (
+                range(k - 1, -1, -1) if k % 2 == 0 else [*range(k - 2, -1, -1), k - 1]
+            )
+            edges = [*range(k), *back][: 2 * w]
+        level = [level[edges[2 * i]] + level[edges[2 * i + 1]] for i in range(w)]
+    return level[0]
 
 
 def _intercal_worst(n: int) -> str:
     """Diagram with the most named nodes: full unnamed top, lower nodes read twice."""
-    widths = _IC_WIDTHS[n]
-    level = [a + b for a, b in _IC_PAIRS[: widths[n - 2]]]
-    for w in reversed(widths[: n - 2]):
-        k = len(level)
-        # Walk up then back: each node twice, every pair distinct.
-        edges = (list(range(k)) + list(range(k - 1, -1, -1)))[: 2 * w]
-        level = [level[edges[2 * i]] + level[edges[2 * i + 1]] for i in range(w)]
-    return level[0]
+    w = 1 << max(n - 5, 0)
+    widths = _IC_WIDTHS.get(n) or (*(1 << i for i in range(n - 4)), w, w, 12, 2)
+    return _intercal_diagram(widths, _IC_PAIRS)
+
+
+def _intercal_chars_worst(n: int) -> str:
+    """Diagram with the most nodes: a full tree to level n - 3, then 12 and 2."""
+    widths = (*(1 << i for i in range(n - 2)), min(1 << (n - 2), 12), 2)
+    return _intercal_diagram(widths, _IC_CHAR_PAIRS)
 
 
 # language-owners: ["Malbolge"]
@@ -577,7 +612,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
-    "BrainIf": lambda n: (_brainif_worst(n),) if n >= 3 else (),
+    "BrainIf": lambda n: (_brainif_worst(n) if n >= 2 else "11",),
     "BFStack": lambda n: (_bfstack_chars_worst(n),),
     "Bitdeque": lambda n: (_bitdeque_worst(n), _bitdeque_tokens(n)) if n >= 3 else (),
     # Parity with row 0 flipped: a symmetric count table, one flip short.
@@ -613,7 +648,9 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Freestajlo": lambda n: (_freestajlo_worst(n), _low_one(n)),
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
-    "INTERCAL": lambda n: (_intercal_worst(n),) if 5 <= n <= 7 else (),
+    "INTERCAL": lambda n: (
+        (_intercal_worst(n), _intercal_chars_worst(n)) if 3 <= n <= 12 else ()
+    ),
     # Equal halves under parity: the root skip doubles a 3T/2 - 1 term.
     "Kiss": lambda n: (_parity(n - 1) * 2,) if n >= 2 else (),
     # 1 xor parity, the last input ignored at even n: the longest loop sums.
@@ -621,12 +658,17 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Quassaunt": lambda n: (_quassaunt_worst(n),),
+    "Quassaunt": lambda n: (_quassaunt_worst(n), _quassaunt_stack(n)),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
     "Sonata": lambda n: (_low_one(n),),
     "Stisp": lambda n: (_unequal_first(n),) if n >= 2 else (),
-    "Suffolk": lambda n: (_suffolk_worst(n),) if n >= 3 else (),
+    # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
+    "Suffolk": lambda n: (
+        (_suffolk_worst(n), *(("10" + _suffolk_worst(n)[2:],) if n >= 7 else ()))
+        if n >= 3
+        else ()
+    ),
     "SwitchCase": lambda n: (_switchcase_worst(n),),
     "Smu": lambda n: (_smu_worst(n),),
     "Modulous": lambda n: (_row_one(n),),

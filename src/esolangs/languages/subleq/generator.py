@@ -52,5 +52,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
-    proof_workspace=(workspace, False, (3, 5)),
+    proof_workspace=(workspace, True, (3, 5, 9)),
 )

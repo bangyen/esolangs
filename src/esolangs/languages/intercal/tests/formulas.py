@@ -5,8 +5,8 @@ def _digits(x: int) -> int:
     return len(str(x))
 
 
-def _chars(n: int, _: str) -> int:
-    """U: nodes priced per level, named nodes at most X, statements at most 2n + X.
+def _bound(n: int, _: str) -> int:
+    """V: nodes priced per level, named nodes at most X, statements at most 2n + X.
 
     X = min(T/8 + 2, T/16 + 14), the Execution bound's named nodes.
     """
@@ -46,4 +46,40 @@ def _chars(n: int, _: str) -> int:
     return total + (6 + _digits(n + 1)) + (10 + _digits(n + 1)) + 7
 
 
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7))}
+def _chars(n: int, program: str) -> int:
+    """U: the most nodes, a full tree to level n - 3 over 12 and 2; exact for n <= 10.
+
+    A node named costs two edges that a fresh node would use, so only the 2
+    bottom nodes and the pair nodes the spare edges reach are read twice.
+    """
+    if not 3 <= n <= 10:
+        return _bound(n, program)
+    pair = min(1 << (n - 2), 12)
+    count = [*(1 << level for level in range(n - 2)), pair, 2]
+    twice = max(0, min(12, (1 << (n - 2)) - 12))
+    spare = max(0, (1 << (n - 2)) - pair - twice)
+    named, negs = 2 + twice, n - 3
+    first = n + 2 + negs
+    statements = n + 3 + negs + named
+    polite = max(1, (statements + 4) // 5)
+    total = 0
+    for level in range(n):
+        sel = 1 + _digits(n - level)
+        if 2 <= level <= n - 2 and count[level] >= 3:
+            neg = _digits(2 * n - level)  # numbered bottom-up from n + 2
+            total += count[level] * (28 + neg + sel) + 16 + neg + sel
+        else:
+            total += count[level] * (38 + 2 * sel)
+    # Level n - 2 pairs, dearest first: A B, B A, B and a constant, A and one.
+    a, b = 1 + _digits(first), 1 + _digits(first + 1)
+    pairs = sorted([a + b] * 2 + [b + 2] * 4 + [a + 2] * 4 + [4] * 2, reverse=True)
+    total += sum(pairs[:pair]) + 8  # the 2 bottom nodes read only constants
+    total += (2 * twice) * (1 + _digits(first + 2)) + spare * b
+    total += sum(5 + _digits(first + i) for i in range(named))  # ".k <- "
+    total += sum(7 + _digits(n - i) for i in range(n))  # ".k <- @@"
+    # Result, READ OUT, GIVE UP, statement keywords, spaces and newlines.
+    total += (5 + _digits(n + 1)) + (10 + _digits(n + 1)) + 7
+    return total + 4 * statements + 4 * polite - 1
+
+
+FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8, 9, 10))}

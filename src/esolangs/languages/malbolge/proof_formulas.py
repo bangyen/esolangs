@@ -17,12 +17,14 @@ def execution(n: int, program: str) -> int:
 
 
 def workspace(n: int, program: str) -> int:
-    """The source's bits, 10 bits per step, three registers, halt flag, input count.
+    """Source bits, a bit a step, ten a `*`/`p` write, registers, flag, input count.
 
-    Every cell starts printable (6 or 7 bits: the build fills the store).  A step
-    re-enciphers the cell at c (stays 33..126: +1 bit at most) and `*`/`p` writes
-    the cell at d (<= 59048: 16 bits, +10 at most); a cell grows once per
-    visit but is bounded by its first write, so the total growth is <= 10 per step.
+    Main code runs each cell once, so its writes are those before the closing
+    ``i``; a stub runs at most 199 steps, each at most one write.
     """
     bits = sum(len(bin(ord(c))) - 2 for c in program if not c.isspace())
-    return bits + 10 * execution(n, program) + 49 + n.bit_length()
+    end = next(a for a, char in enumerate(program) if _op(ord(char), a) == "i")
+    writes = sum(
+        1 for a, c in enumerate(program[: end + 1]) if _op(ord(c), a) in ("*", "p")
+    )
+    return bits + execution(n, program) + 10 * (writes + 199) + 49 + n.bit_length()

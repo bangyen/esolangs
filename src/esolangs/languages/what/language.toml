@@ -7,10 +7,10 @@ backlinks = 0
 [proof_status]
 labels = ["linear lookup"]
 qualification = "Horner's rule reads each bit with `??` and doubles by `*`; the index counts down one `-` a row, so at change point `b` it wraps above `2^k` exactly when the row is below `b`, and `[2^k>` writes the answer slot; past 15 inputs `???` puts the high bits in the index slot's string, and a guard per `2^15`-row block reloads the index"
-scaling = "linear: worst 13T + 7n - 1 characters: to n = 15"
-execution = "linear: worst 6T + 6n + 5 commands: alternating answers, every conditional true, to n = 15"
+scaling = "linear: worst S characters: a change point costs 12 and a dash"
+execution = "linear: worst E commands: alternating answers, every conditional true, the last row"
 workspace = "poly n: worst 256 + k(k-1) + max(20, 2k-2+[n>15]) + 8(n-k) + bl(tokens) + bl(2k+1) + bl(2n-1) bits: the 256-slot tape"
-definitions = ["k = min(n, 15), the low inputs a Horner loop reads", "tokens = 6T + 6n + 5 to n = 15, else 6T + 9·2^(n-15) + n + 134"]
+definitions = ["k = min(n, 15), the low inputs a Horner loop reads", "E = 6T + 6n + 5 to n = 15, else 2T + 2^17 + n + 143", "tokens = 6T + 6n + 5 to n = 15, else 6T + 9·2^(n-15) + n + 134"]
 
 [generator_sizes]
 "00000001" = { commands = 41, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 41 }, source_units = 52 }

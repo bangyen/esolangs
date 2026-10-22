@@ -30,7 +30,9 @@ def _chars(n: int, _: str) -> int:
         # Reads and two `if 4x goto ` heads a node.
         chars += nodes[d] * ((10 if d == n - 1 else 26) + 22)
         if d == 0:
-            chars += 4 * len(str(out0)) + 4 * len(str(out1))
+            # Distinct pairs, the most `out_1` targets first: 2, 3, then 4 of 4.
+            ones = min(nodes[0] + 1, 4)
+            chars += (2 * nodes[0] - ones) * len(str(out0)) + ones * len(str(out1))
             continue
         below = nodes[d - 1]
         spread = _digit_sum(start[d - 1], lines[d - 1], below)
@@ -46,4 +48,4 @@ def _chars(n: int, _: str) -> int:
     return chars + sum(nodes[d] * lines[d] for d in range(n)) + 54 - 1
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5))}
+FORMULAS = {"scaling": (_chars, True, (1, 2, 3, 4, 5))}
