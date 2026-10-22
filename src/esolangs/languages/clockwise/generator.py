@@ -10,11 +10,14 @@ accumulator and emit the seven answer bits on a closed two-column ring.  A
 ``width`` exceeded rotates the program counterclockwise (two columns for
 n <= 2, else ``2*n + 5``).  ``balance`` may instead split the table into
 strips the first inputs select (:func:`_clockwise_banded`): n=6 random
-184 -> 106 on a side, n=9 1107 -> 270.
+184 -> 106 on a side, n=9 1107 -> 270.  The default races the stacked
+lookup against :func:`_clockwise_flat`, which lays the gadgets in one band
+(six rows, ``5T + 8n + 4`` wide): area ``30T + 48n + 24`` where the stack
+costs ``(2T + 9n + 2)(2n + 15)``.
 
 Size:
-    O(T) cells; n=8 random 1847: 5,048 chars, n=10 random 1847: 17,740 chars,
-    n=12 random 1847: 67,368 chars.
+    O(T) cells; n=8 random 1847: 7,572 chars, n=10 random 1847: 29,172 chars,
+    n=12 random 1847: 115,284 chars.
 """
 
 from math import ceil
@@ -23,6 +26,7 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
+    grid_area,
     grid_width,
     read_at,
 )
@@ -152,8 +156,79 @@ class _Layout(NamedTuple):
     return_gap: int
 
 
+def _clockwise_flat(truth_table: str) -> str:
+    """Lay the gadgets in one two-row band, each east of the last: O(T) area.
+
+    Gadget ``l`` returns west and climbs.  Instead of the next head above it,
+    the pointer climbs one row more, runs east over the gadget's top, drops
+    past its east end, turns back under it and climbs into the next head on
+    the same two rows, so the stack of ``n`` gadget rows becomes one band.
+    The digit run opens row 0.  Rows: 0 start and wire, 1-2 gadgets, 3 wire
+    dip, 1-5 table.  Trailing inputs are read on the return row west of the
+    table, or down a left rail when that stretch is too short.
+    """
+    total = _validate_truth_table(truth_table)
+    used = essential_inputs(truth_table, total)
+    trailing = total - used[-1] - 1
+    indexed = read_at(truth_table, used, total)
+    reads = _head_widths(total, used)
+    # The table starts east of the digit run, every head and every gadget.
+    corner = len(_DIGIT) - 1
+    start = corner + sum(r + 1 + 3 * 2 ** (i + 1) for i, r in enumerate(reads[:-1]))
+    start += reads[-1] + 3
+    on_return = _READS * trailing < start
+    top = 1 if on_return or not trailing else _READS * trailing - 1
+    grid = _Grid()
+    for i, char in enumerate(_DIGIT):
+        grid.place(i, 0, char)
+    grid.place(corner + 1, 0, "R")
+    # The descent is column corner + 1; the U-turn closes under the first head.
+    grid.place(corner + 1, top + 2, "R")
+    grid.place(corner, top + 2, "R")
+
+    for level, count in enumerate(reads[:-1]):
+        grid.lay_head(corner, top, count)
+        base = corner + count + 3
+        groups = 1 << (level + 1)
+        grid.place(base - 1, top + 1, "R")
+        for group in range(groups):
+            grid.place(base + 3 * group, top, "!")
+            grid.place(base + 3 * group, top + 1, "!")
+            if group + 1 < groups:
+                grid.place(base + 3 * group + 1, top, "-")
+                grid.place(base + 3 * group + 1, top + 1, "+")
+                grid.place(base + 3 * group + 2, top + 1, "+")
+        east = base + 3 * (groups - 1)
+        for x, y in ((base - 1, top - 1), (east + 2, top - 1)):
+            grid.place(x, y, "R")
+        grid.place(east + 2, top + 2, "R")
+        grid.place(east + 1, top + 2, "R")
+        corner = east + 1
+
+    grid.lay_head(corner, top, reads[-1])
+    for entry, bit in enumerate(indexed):
+        x = start + 2 * entry
+        grid.place(x, top, "!")
+        if bit == "1":
+            grid.place(x, top + 1, "+")
+        grid.place(x, top + 2, ";")
+        grid.place(x, top + 3, "S")
+        grid.place(x, top + 4, "!")
+        if entry + 1 < len(indexed):
+            grid.place(x + 1, top, "-")
+            grid.place(x + 1, top + 4, "+")
+    grid.place(0, top + 4, "R")
+    if on_return:
+        for x in range(1, _READS * trailing + 1):
+            grid.place(x, top + 4, ".")
+    else:
+        for y in range(1, top + 4):
+            grid.place(0, y, "." if y <= _READS * trailing else "+")
+    return grid.render()
+
+
 def _clockwise_program(truth_table: str, width: int | None = None) -> str:
-    """Build the indexed lookup, retaining the previous constant layout."""
+    """Build the indexed lookup; unbounded width also races the flat band."""
     total = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, total)
     trailing = total - used[-1] - 1
@@ -163,7 +238,11 @@ def _clockwise_program(truth_table: str, width: int | None = None) -> str:
     digit = _layout_lookup(grid, reads, indexed)
     return_gap = _shift_return_rail(grid, trailing)
     layout = _Layout(grid, total, len(reads), digit + return_gap, return_gap)
-    return _fit_width(truth_table, layout, grid.render(), width)
+    stacked = _fit_width(truth_table, layout, grid.render(), width)
+    flat = _clockwise_flat(truth_table)
+    if width is not None and grid_width(flat) > width:
+        return stacked
+    return min(stacked, flat, key=lambda p: (grid_area(p), len(p)))
 
 
 def _clockwise_banded(truth_table: str, split: int) -> str:
@@ -489,4 +568,5 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
     empty_program="Clockwise program cannot be empty",
+    grid=True,
 )

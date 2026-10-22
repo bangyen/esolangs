@@ -28,7 +28,7 @@ from math import isqrt
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    grid_area,
+    grid_rank,
     input_weights,
     read_at,
 )
@@ -72,7 +72,7 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     """
     program = _program(truth_table, width)
     if width is None and len(set(truth_table)) > 1:
-        return min([program, *_folds(truth_table)], key=grid_area)
+        return min([program, *_folds(truth_table)], key=grid_rank)
     return program
 
 
@@ -290,4 +290,5 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="the queue and decision tree occupy fixed grid coordinates",
     example=Example(pair=PAIR, expected=""),
+    grid=True,
 )

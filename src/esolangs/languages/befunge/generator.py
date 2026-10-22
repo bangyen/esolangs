@@ -291,4 +291,5 @@ LANGUAGE = Language(
     example=Example(expected="0 "),
     proof_execution=(execution, True, (3, 9, 11)),
     proof_workspace=(workspace, True, (3, 9, 11)),
+    grid=True,
 )

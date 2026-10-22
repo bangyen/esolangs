@@ -76,6 +76,34 @@ class TestParameterizedBack:
             bits = [(row >> (7 - i)) & 1 for i in range(8)]
             assert self.run_back(self.instantiate(program, bits), 8) == table[row]
 
+    def test_the_fold_answers_every_three_input_table(self, monkeypatch) -> None:
+        """Folding from the first level up still computes each table."""
+        from esolangs.languages.back import generator
+        from esolangs.languages.back.generator import _back_htree
+
+        monkeypatch.setattr(generator, "_FOLD_BASE", 1)
+        for value in range(256):
+            table = format(value, "08b")
+            program = _back_htree(table, [1, 1, 1])
+            for row in range(8):
+                bits = [(row >> (2 - i)) & 1 for i in range(3)]
+                assert self.run_back(self.instantiate(program, bits), 3) == table[row]
+
+    def test_area_is_linear_where_the_comb_is_not(self) -> None:
+        """Rudin-Shapiro shares nothing: the comb is 3n + 5 wide, the fold is not."""
+        from esolangs.generation.helpers import grid_area
+        from esolangs.languages import generators
+
+        n = 12
+        table = "".join(
+            str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1))
+            for i in range(1 << n)
+        )
+        assert grid_area(generators.back(table)) < 0.75 * (3 * n + 5) * (
+            3 * (1 << n) // 4 + 1
+        )
+        assert grid_area(generators.back(table)) <= 27.5 * (1 << n)
+
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.languages import generators

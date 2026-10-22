@@ -1,11 +1,10 @@
-"""Streetcode's emitted characters: nine street rows of the lone-zero table."""
+"""Streetcode's emitted area: nine street rows of the lone-zero flat street."""
 
 
-def _chars(n: int, _: str) -> int:
-    """S: nine rows of the lone-zero street, or a tree of smaller area."""
+def _cells(n: int, _: str) -> int:
+    """S: the flat street's area at its widest (lone zero); the shipped one is a min."""
     g = sum(max(51, 2 ** (k - 1) + 3) for k in range(1, n))
-    area = 9 * (2 * 2**n + 107 + g)
-    return area + area // (4 * n + 16)
+    return 9 * (2 * 2**n + 107 + g)
 
 
-FORMULAS = {"scaling": (_chars, False, (6, 7, 8))}
+FORMULAS = {"scaling": (_cells, False, (6, 7, 8))}

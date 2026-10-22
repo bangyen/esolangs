@@ -135,10 +135,9 @@ Each missed the 10% bar:
   SendStuff and Codesick; re-laying BitDeque's jump targets at most 5.8%.
 - Defaulting to the smaller-area balance layout (2026-10-22; shipped for
   Piet, ArrowQueue and B-tapemark):
-  - Clockwise's narrow route wins every random table but saves a fixed
-    ten-odd rows of a 2n + 15-row grid: 34.1% at n=7, 32.0% at n=8, 27.0%
-    at n=11. Its banded strips rise (22.0% to 27.1% at n=7..8), never win
-    on area, and grow superlinearly in time (2.9 s at n=14).
+  - Clockwise's narrow route and banded strips (49-58T cells at n=10..12)
+    lose to the flat default's 30T + 48n + 24; the strips also grow
+    superlinearly in time (2.9 s at n=14).
   - LaserFuck's balance widths save 35.5% at n=6, 21.5% at n=7 and 11.9%
     at n=8.
   - Circuit Diagram's balance saves 12.4% at n=7 and 15.2% at n=8 but
@@ -489,22 +488,23 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Fifty-seven ledger cells stay `at most` with no route to `worst`
+Fifty-six ledger cells stay `at most` with no route to `worst`
 (2026-10-22; open ones are on the [roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
-  with the winner. ArrowQueue execution (proved 11T + 32n + 92) and
-  scaling, B-tapemark both, BFStack workspace, Boolfuck workspace,
+  with the winner. ArrowQueue execution (proved 11T + 32n + 92),
+  B-tapemark both, BFStack workspace, Boolfuck workspace,
   Circuit Diagram workspace, Container scaling (the threshold build loses
   to the tree from n = 6: 883 against 1,076) and workspace, CVNC
   execution, FALSE scaling and execution (reached at n = 4, 5 only; at
   n = 6 diagram 292 against expression 293), Fargo all three, For Thorn
   execution, Minifuck execution, Object Disoriented scaling, Piet both,
   Smallfuck execution, Streetcode both; scaling for Algebraic Programming
-  Language (54 against 56 at n = 2, 144 against 190 at n = 4,
-  exhaustive), Packlang, Painfuck (232 against 243 at n = 4), 6-5,
-  SStack (24T - 9 exact to n = 4), Underload (exact at n = 4 only) and
+  Language (144 against 182 at n = 4, exhaustive; the reduced
+  diagram's 10T + 4n + 6 holds to n = 14), Packlang, Painfuck (232 against 239 at n = 4), 6-5 (105 against 166 at
+  n = 4, the shorter of two layouts to n = 5),
+  SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
   Unlambda (to n = 2); Boolfuck scaling past n = 7 (the gates take its
   worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11.
 - Address widths: the peak sums the bit-lengths of table-dependent

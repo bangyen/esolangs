@@ -33,7 +33,20 @@ def workspace(n: int, program: str) -> int:
     )
 
 
+def scaling(n: int, _: str) -> int:
+    """F: the reduced diagram's worst, 10T + 4n + 6, for n = 2..14.
+
+    A node costs 18 and its halves; the worst class pairs with its own twin,
+    one ``!`` more.  Past 14 a per-level count exceeds it, so the inline
+    tree's 21T/2 + 4n + 6 stands; n = 1 reaches 31.
+    """
+    if 2 <= n <= 14:
+        return 10 * (1 << n) + 4 * n + 6
+    return 21 * (1 << n) // 2 + 4 * n + 6
+
+
 FORMULAS = {
+    "scaling": (scaling, False, (2, 3, 4, 5, 6, 8)),
     "execution": (execution, False, (3, 4, 5, 6, 8)),
     "workspace": (workspace, False, (3, 4, 5, 6, 8)),
 }

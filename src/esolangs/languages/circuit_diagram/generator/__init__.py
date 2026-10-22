@@ -32,7 +32,7 @@ inputs first; physical ports retain read order.
 
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
-    1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 669,345 chars.
+    1,207 chars, n=10 parity: 45,086 chars, n=10 random 1847: 747,092 chars.
 
 Decisions:
     Sharing repeated subtrees, area vs the unshared build, mean of 20 seeded
@@ -53,6 +53,7 @@ from esolangs.generation.helpers import (
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,
+    _layout_area,
     _resolve_order,
 )
 from esolangs.languages.circuit_diagram.proof_formulas import workspace
@@ -601,26 +602,26 @@ def _narrowest_present(*forms: str | None) -> str:
 
 
 def _competing_model_circuit(truth_table: str, inputs: int) -> str:
-    """Return the smallest emitted-character circuit among the n>=4 layouts.
+    """Return the smallest circuit, by area then characters, among the n>=4 layouts.
 
-    Three complete fixed-order folds compete by area against prefix
-    H-layouts and shared class banks; sharing wins character ties.
+    Three complete fixed-order folds compete against prefix H-layouts and
+    shared class banks; sharing wins ties of both.
     """
     from .compete import select_competing_model  # cycle: candidates import this module
     from .source_size import layout_source_size
 
+    def rank(model: _Layout) -> tuple[int, int]:
+        return _layout_area(model), layout_source_size(model)
+
     retained: list[_Layout] = []
     _linear_shared_layout(truth_table, inputs, retained)
-    selected = select_competing_model(truth_table, inputs)
-    # Text contracts count characters; a taller area winner can lose.
-    fallback = selected
-    code = fallback.render()
-    size = len(code)
+    fallback = selected = select_competing_model(truth_table, inputs)
+    best = rank(fallback)
     for model in retained:
-        model_size = layout_source_size(model)
-        if model_size < size or (model_size == size and selected not in retained):
-            selected, size = model, model_size
-    return code if selected is fallback else selected.render()
+        key = rank(model)
+        if key < best or (key == best and selected is fallback):
+            selected, best = model, key
+    return selected.render()
 
 
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
@@ -683,7 +684,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(128_824, 258_216, 2.0),
+    documented_sizes=(136_120, 258_216, 1.9),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",
@@ -692,4 +693,5 @@ LANGUAGE = Language(
     balance=_balance,
     eof="resolves its inputs while laying the grid",
     proof_workspace=(workspace, False, (3, 6)),
+    grid=True,
 )

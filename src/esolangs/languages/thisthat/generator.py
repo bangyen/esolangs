@@ -748,4 +748,5 @@ LANGUAGE = Language(
     empty_program="thisthat needs at least one start node",
     proof_execution=(execution, True, (3, 4)),
     proof_workspace=(workspace, True, (3, 5)),
+    grid=True,
 )

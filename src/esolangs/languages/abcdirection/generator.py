@@ -449,4 +449,5 @@ LANGUAGE = Language(
     empty_program="program must contain a line with DDDDDD",
     no_wrap="a newline adds a grid row and moves every vertical path",
     proof_execution=(execution, True, (3, 7)),
+    grid=True,
 )

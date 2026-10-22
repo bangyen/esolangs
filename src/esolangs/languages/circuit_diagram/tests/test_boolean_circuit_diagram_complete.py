@@ -8,6 +8,7 @@ from bisect import bisect_left
 
 import pytest
 
+from esolangs.generation.helpers import grid_area
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _linear_shared_layout,
@@ -123,28 +124,24 @@ def test_complete_models_execute_the_existing_repeat_control() -> None:
 
 
 @pytest.mark.medium
-def test_public_uncapped_models_compete_on_emitted_characters() -> None:
+def test_public_uncapped_models_compete_on_area() -> None:
     table = dense(8)
     models: list[_Layout] = []
     _linear_shared_layout(table, 8, models)
     assert models
     code = circuit_diagram(table)
-    best = min(len(model.render()) for model in models)
-    assert len(code) <= best
+    assert grid_area(code) <= min(grid_area(model.render()) for model in models)
     _execute(table, code, (0, 255))
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("family", [dense, nested_dense])
-def test_taller_area_winner_cannot_replace_smaller_text(family) -> None:
+def test_smaller_area_replaces_shorter_text(family) -> None:
+    """Grids are judged by area: the area winner ships though its text is longer."""
     table = family(10)
     models: list[_Layout] = []
     _linear_shared_layout(table, 10, models)
-    area_winner = min(models, key=lambda model: model.bounds()[0] * model.bounds()[1])
-    full = area_winner.render()
+    area_winner = min(models, key=lambda model: grid_area(model.render()))
     code = circuit_diagram(table)
-    lines = code.splitlines()
-    height, width = area_winner.bounds()
-    assert height * width < len(lines) * max(map(len, lines))
-    assert len(full) > len(code)
+    assert grid_area(code) <= grid_area(area_winner.render())
     _execute(table, code, (0, table.index("1"), len(table) - 1))

@@ -9,8 +9,10 @@ import esolangs
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages import generators as boolean
 from esolangs.languages.s_bleq.interpreter import _Machine
+from esolangs.languages.s_bleq.tests.formulas import below_eleven, tree_chars
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.proofs.test_execution_formulas import _tables
 from tests.support.generator_support import assert_parity_at_most_doubles
 
 run_sbleq = _runner("s_bleq")
@@ -82,3 +84,11 @@ class TestSbleq:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.s_bleq, range(11, 15))
+
+
+@pytest.mark.parametrize("n", [3, 4, 5, 8, 10])
+def test_size_below_eleven_inputs_is_at_most_the_shorter_route(n: int) -> None:
+    """The ledger's ``worst P`` starts at n = 11; below, min(tree, P) bounds it."""
+    bound = below_eleven(n) if n >= 5 else tree_chars(n)
+    for table in _tables("S*bleq", n):
+        assert len(esolangs.generate("S*bleq", table)) <= bound, table

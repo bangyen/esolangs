@@ -135,11 +135,11 @@ class TestClockwise:
                 assert machine.inp == start, (n, combo)
 
     def test_size_is_linear_in_the_table(self) -> None:
-        """Four table rows and a doubling chain: both linear, so size is."""
+        """Six band rows over a doubling chain laid flat: both linear, so size is."""
         sizes = [len(boolean.clockwise(parity(n))) for n in (5, 7, 9)]
         rise = (sizes[2] - sizes[1]) / (sizes[1] - sizes[0])
         assert 3.5 < rise < 4.4, sizes
-        assert sizes[2] / 2**9 < 20, sizes
+        assert sizes[2] / 2**9 < 30, sizes
 
 
 @pytest.mark.medium

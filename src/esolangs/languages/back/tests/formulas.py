@@ -1,19 +1,26 @@
-"""Back's emitted characters: the load column, or one row a tree node."""
+"""Back's emitted cells: the comb, then the smaller of it and the fold."""
 
 
-def _chars(n: int, _: str) -> int:
-    """C: all rows load-width to n = 5; past it the tree rows above the load.
+def _comb(n: int) -> int:
+    """3n + 5 load columns by max(6n - 1, 3T/4 + 1) rows (Rudin-Shapiro's tree)."""
+    return (3 * n + 5) * max(6 * n - 1, 3 * (1 << n) // 4 + 1)
 
-    Rows: 6n - 1 of load (width 3n + 4, two rows 1 wider); the Rudin-Shapiro
-    witness shares nothing, so its 3T/4 one-edge rows run in order, triples
-    (8, 5, 11 + 3v2(j)) with v2 the 2-adic valuation, a row for a level-k node
-    3(n - k) + 2 characters.  The first T/4 - 2n triples show above the load:
-    s = popcount(T/4 - 2n), the sum of v2 being m - s.
+
+def _fold(n: int) -> int:
+    """The H-tree fold's rectangle under the load row; parity reaches it.
+
+    Five-level combs at the leaves; a node is 3 + max(H0, H1) wide and
+    W0 + W1 + 2 tall, children transposed.
     """
-    if n <= 5:
-        return 18 * n * n + 27 * n - 4
-    t = 1 << n
-    return 18 * n * n - 30 * n + 10 + 15 * t // 2 - 3 * (t // 4 - 2 * n).bit_count()
+    width, height, entry = 17, 32, 0  # the five-level comb, 3 * 5 + 2 wide
+    for _ in range(6, n + 1):
+        width, height, entry = 3 + height, 2 * width + 2, width + 1
+    return (1 + width) * (max(0, 4 * n - entry) + height)
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8))}
+def _cells(n: int, _: str) -> int:
+    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 6."""
+    return _comb(n) if n <= 5 else min(_comb(n), _fold(n))
+
+
+FORMULAS = {"scaling": (_cells, False, (3, 4, 5, 6, 7, 8, 9, 10))}

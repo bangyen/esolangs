@@ -1,4 +1,4 @@
-"""Fish bounds: plain lookup to n = 5, the packed row from n = 6."""
+"""Fish bounds: plain lookup to n = 3, the packed row from n = 4."""
 
 bl = int.bit_length
 
@@ -23,7 +23,7 @@ def _packed(n: int) -> tuple[int, int]:
 
 def _execution(n: int, _: str) -> int:
     """Straight-line code to the ``;``: 9 a read, then the lookup."""
-    if n <= 5:
+    if n <= 3:
         return 9 * n + 9
     return 9 * n + 33 + 2 * _packed(n)[1]
 
@@ -33,18 +33,19 @@ def _workspace(n: int, _: str) -> int:
 
     Packed, ``,`` divides: the quotient is a 64-bit float.
     """
-    if n <= 5:
+    if n <= 3:
         return bl(9 * n + 8) + n + 13 + bl(n)
     return bl(_execution(n, "") - 1) + bl(_packed(n)[0]) + bl(n) + 71
 
 
 def _scaling(n: int, _: str) -> int:
-    """Characters: header and table to n = 5, then the packed row.
+    """F cells: 18n + 18 to n = 3, then the packed row s + 6 + ceil(T/6).
 
-    The packed row is its column, 6 powers and T/6 cells.
+    The packed row is its column, 6 powers and T/6 cells, and is never larger
+    than the two-row layout from n = 4.
     """
-    if n <= 5:
-        return (1 << n) + 9 * n + 10
+    if n <= 3:
+        return 2 * (9 * n + 9)
     return _packed(n)[0] + 6 - (-(1 << n) // 6)
 
 

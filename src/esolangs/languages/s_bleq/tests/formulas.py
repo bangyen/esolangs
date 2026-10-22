@@ -58,4 +58,30 @@ def _chars(n: int, _: str) -> int:
     return total
 
 
+def _distinct(n: int, d: int) -> int:
+    """Most distinct tested subtables at depth d: differing halves, at most 2^d."""
+    m = n - d
+    return min(2**d, 2 ** (2**m) - 2 ** (2 ** (m - 1)))
+
+
+def tree_chars(n: int, _: str = "") -> int:
+    """Bound on the hoisted tree route: n + 2K + 3 instructions, K distinct tests.
+
+    Each test is placed once; its zero edge falls through or jumps (one
+    instruction), its one edge is a data cell; two leaf pairs.  Every
+    instruction cell is at most the widest data address.
+    """
+    k = sum(_distinct(n, d) for d in range(n))
+    ins, tg = n + 2 * k + 3, k + 2
+    cb = 13 + 2 * n + tg
+    pre = 9 + 8 + len(str(cb))
+    data = 9 + 3 + n + n * len(str(cb + 3 * n)) + tg * len(str(cb + 3 * ins))
+    return pre + data + 4 + 2 * n + tg + 3 * ins * (len(str(cb)) + 1)
+
+
+def below_eleven(n: int, _: str = "") -> int:
+    """Shipped bound for n = 5..10: the shorter of tree and packed (<= P)."""
+    return min(tree_chars(n), _chars(n, ""))
+
+
 FORMULAS = {"scaling": (_chars, True, (11, 12, 13, 19))}

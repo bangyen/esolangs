@@ -1,4 +1,4 @@
-"""B-tapemark's emitted characters: the least-area layout."""
+"""B-tapemark's emitted cells: the least-area layout."""
 
 from math import isqrt
 
@@ -45,8 +45,8 @@ def _fold(n: int, c: int, r: int) -> tuple[int, int, int]:
     return chars + rows - 1, width, rows
 
 
-def _chars(n: int, _: str) -> int:
-    """L: characters of the least-area layout among wide, narrow and four folds."""
+def _cells(n: int, _: str) -> int:
+    """A: cells (width x rows) of the least-area of wide, narrow and four folds."""
     t = 1 << n
     candidates = [_wide(n), _narrow(n)]
     half = 18 * n - 9
@@ -55,7 +55,7 @@ def _chars(n: int, _: str) -> int:
         for r in dict.fromkeys([max(1, 3 * c - 12), t]):
             if c < t:
                 candidates.append(_fold(n, c, r))
-    return min(candidates, key=lambda s: s[1] * s[2])[0]
+    return min(w * h for _, w, h in candidates)
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7))}
+FORMULAS = {"scaling": (_cells, True, (3, 4, 5, 6, 7, 8))}
