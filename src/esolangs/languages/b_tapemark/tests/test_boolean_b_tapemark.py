@@ -212,7 +212,7 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Its stage, crossing no ``|``."""
-    assert_an_ignored_input_costs("B-tapemark", 5, 177)
+    assert_an_ignored_input_costs("B-tapemark", 5, 58)
 
 
 def test_sparse_tapemark_columns_do_not_scan_the_coordinate_span() -> None:
@@ -255,17 +255,38 @@ def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
     assert _evaluate("B-tapemark", mutant, inputs=5) != table
 
 
+def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> None:
+    """The strip wins a tie; each layout the default takes runs and is no larger."""
+    import random
+
+    from esolangs.generation.helpers import grid_area
+    from esolangs.languages.b_tapemark.generator import (
+        _b_tapemark_program,
+        _closed_forms,
+    )
+    from esolangs.runtime._evaluate import _evaluate
+
+    rng = random.Random(11)
+    for bits in (2, 4, 6, 7):
+        table = "".join(rng.choice("01") for _ in range(1 << bits))
+        strip, chosen = _b_tapemark_program(table), tools.b_tapemark(table)
+        layouts = [strip, *_closed_forms(table)]
+        assert grid_area(chosen) == min(map(grid_area, layouts))
+        assert chosen == strip or grid_area(chosen) < grid_area(strip)
+        assert _evaluate("B-tapemark", chosen, inputs=bits) == table
+    assert tools.b_tapemark("0" * 16) == ">" + "-|" * 4 + "0!"
+
+
 def test_balance_folds_a_random_table() -> None:
     import esolangs
     from esolangs.generation.wrap import balance_score
+    from esolangs.languages.b_tapemark.generator import _b_tapemark_program
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(64))
     balanced = esolangs.generate("B-tapemark", table, balance=True)
     # 202 columns unfolded; the stages' seven rows apiece floor the height.
     assert (
-        balance_score(balanced)[0]
-        < 130
-        < balance_score(esolangs.generate("B-tapemark", table))[0]
+        balance_score(balanced)[0] < 130 < balance_score(_b_tapemark_program(table))[0]
     )
 
 
