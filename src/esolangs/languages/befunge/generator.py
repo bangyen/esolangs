@@ -94,10 +94,8 @@ def _header(reads: str, width: str, offset: str) -> str:
 def _natural_befunge(truth_table: str) -> str:
     """Return a Befunge grid at the table's natural width.
 
-    The pre-#20 default build, kept whole for the smallest
-    projections: a straight header over a power-of-two table width
-    near ``sqrt(T)``; an over-wide header folds
-    (:func:`_fold_header`).
+    The pre-#20 default build, kept for the smallest projections: a
+    straight header over a power-of-two table width near ``sqrt(T)``.
     """
     n = _validate_truth_table(truth_table)
     _check_cap(n)
@@ -106,7 +104,9 @@ def _natural_befunge(truth_table: str) -> str:
     reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
     count = len(table)
     # The natural grid: a straight header over a power-of-two table width near
-    # ``sqrt(T)``; an over-wide header folds (:func:`_fold_header`).
+    # ``sqrt(T)``.  At counts up to _NATURAL_LAYOUT_MAX_COUNT that is the
+    # header over one row, and the header is at most 49 cells (n=13), so it
+    # never needs the 80x25 fold the wide build has.
     shift = count.bit_length() // 2
     table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
@@ -115,25 +115,7 @@ def _natural_befunge(truth_table: str) -> str:
     rows.extend(
         table[base : base + table_width] for base in range(0, count, table_width)
     )
-    plain = "\n".join(rows)
-    if max(map(len, rows)) <= 80 and len(rows) <= 25:
-        return plain
-    # At most two decimal digits per coordinate on the 80x25 torus.
-    # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
-    # Single-digit column counts save twelve literal cells (10.5% of area at
-    # n=6, widths 4-8; unreachable at n>=7); the narrow bound applies only
-    # when it proves that the count remains single-digit.
-    header_bound = len(reads) + _BOUND_NARROW
-    columns = max(80, 4, _min_columns(count, header_bound))
-    if columns >= 10:
-        header_bound = len(reads) + _BOUND_WIDE
-        columns = min(80, max(80, 4, _min_columns(count, header_bound)))
-    header_rows = _header_rows(header_bound, columns)
-    literal = _literal(columns)
-    header = _header(reads, literal, _literal(header_rows))
-    folded = _fold_header(header, columns, header_rows)
-    folded.extend(table[base : base + columns] for base in range(0, count, columns))
-    return "\n".join(folded)
+    return "\n".join(rows)
 
 
 def befunge(truth_table: str, width: int | None = None) -> str:

@@ -7,12 +7,13 @@ so unrelated edits do not churn ``deadcode_known.toml``; a scan exits 1 on any
 entry the baseline lacks.  ``--update`` rewrites the baseline after triage:
 each kept entry is reachable only past the tested arities or is a guard.
 
-A whole-tree run took 574 s wall on 2026-10-21.  Named languages scan only
-their generators, under their package tests and the registry tests matching
-their names (the selection ``mutants.py`` uses): 7-33 s each for Befunge,
-Minifuck, Line and Underload, whose entries matched the whole-tree run's
-exactly.  Another language's tests can still reach code that selection
-misses, so confirm a scoped entry with a whole-tree run before triage.
+A whole-tree run took 574 s wall on 2026-10-21; the weekly workflow runs it
+and fails on drift.  Named languages scan only their generators, under their
+package tests and the registry tests matching their names (the selection
+``mutants.py`` uses): 7-33 s each for Befunge, Minifuck, Line and Underload,
+whose entries matched the whole-tree run's exactly.  Not always: Circuit
+Diagram's took 388 s and reported 3 ``bundled_banks.py`` entries other
+languages' tests reach, so confirm a scoped entry with a whole-tree run.
 """
 
 from __future__ import annotations

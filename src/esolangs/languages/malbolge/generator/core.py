@@ -151,11 +151,9 @@ def _seed_label_chains(
                 main.op("p", p)
 
 
-def _t_jump(path: _Planner, readout: int, offset: int) -> None:
+def _t_jump(path: _Planner, readout: int) -> None:
     """``j`` to the table cell, ``j`` to its pointer, ``j`` to the hub, ``i``."""
     path.op("j", readout)
-    for _ in range(offset):
-        path.raw("o")
     path.raw("j")
     path.raw("j")
     path.raw("i")

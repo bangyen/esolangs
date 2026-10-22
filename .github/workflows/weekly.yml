@@ -188,3 +188,24 @@ jobs:
 
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
+
+  deadcode:
+    # Generator code no test reaches, against scripts/baselines/
+    # deadcode_known.toml.  Nothing else ran it, and the baseline drifted 20
+    # entries in a day (2026-10-21).  Whole tree: a per-language scan is
+    # not exact (Circuit Diagram's reported 3 entries other tests reach).
+    # 574 s wall locally on 10 cores, 1980 s CPU; the runner has 4.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v7
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+    - name: Install dependencies
+      run: uv sync --group dev --python 3.14
+    - name: Check for unreached generator code
+      run: uv run python scripts/deadcode.py

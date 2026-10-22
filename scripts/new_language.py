@@ -655,6 +655,25 @@ def _report(name: str, gaps: list[Gap]) -> None:
     print(f"after fixing these: just check-language {shlex.quote(name)}")
 
 
+def _regenerate() -> bool:
+    """Refresh the tested generated totals and examples; False on failure."""
+    before = _dirty()
+    for target in ("examples", "docs"):
+        regenerate = ["scripts/docs/generate.py", target]
+        if subprocess.run(
+            [sys.executable, *regenerate],
+            cwd=ROOT,
+            check=False,
+            stdout=subprocess.DEVNULL,
+        ).returncode:
+            # Its own error is above; a CalledProcessError trace buried it.
+            print(f"regenerating failed; rerun: python {' '.join(regenerate)}")
+            return False
+    for changed in sorted(_dirty() - before):
+        print(f"regenerated {changed}")
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     """Dispatch ``start``, ``check``, ``finish`` or ``remove``."""
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -715,17 +734,8 @@ def main(argv: list[str] | None = None) -> int:
             # A to-do list, not a failure: nonzero is for failing tests.
             _report(args.name, gaps)
             return 0
-        # Generated totals and the committed example are tested; refresh them.
-        before = _dirty()
-        for target in ("examples", "docs"):
-            subprocess.run(
-                [sys.executable, "scripts/docs/generate.py", target],
-                cwd=ROOT,
-                check=True,
-                stdout=subprocess.DEVNULL,
-            )
-        for changed in sorted(_dirty() - before):
-            print(f"regenerated {changed}")
+        if not _regenerate():
+            return 1
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         tests = quick_tests(args.name)
         print("+ pytest", " ".join(tests), flush=True)

@@ -41,32 +41,9 @@
     "line: return self._mapping[junction]",
 ]
 
-"circuit_diagram/generator/folded_banks.py" = [
-    "arm: if height * width > budget: -> return None",
-    "line: return None",
-]
-
-"circuit_diagram/generator/hpool.py" = [
-    "arm: if index not in self.order: -> signal = self.serial.fresh()",
-    "line: layout.input_port(8 * index, 2, signal)",
-    "line: signal = self.serial.fresh()",
-]
-
-"circuit_diagram/generator/source_size.py" = [
-    "arm: if height == 0: -> return 0",
-    "line: return 0",
-]
-
 "circuit_diagram/generator/sparse_banks.py" = [
     "arm: if _online_bank_area_floor(dimensions, n, prefix, q, ands) > budget: -> return None",
     "arm: if budget is None: -> return None",
-    "line: return None",
-    "line: return None #2",
-]
-
-"circuit_diagram/generator/sparse_masks.py" = [
-    "arm: if not self.work.spend(self.comparisons): -> return None",
-    "arm: if zero is None: -> return None",
     "line: return None",
     "line: return None #2",
 ]
@@ -81,7 +58,6 @@
 ]
 
 "dig/generator/_layout.py" = [
-    "arm: if fits(high, 1) and fits(low, 0): -> bits = min(_DIG_LEAF_BITS, n)",
     "arm: if key in self.owners and not self._route_entry(point, key, lanes): -> return False",
     "arm: if lane in self.cells: -> return False",
     "arm: if sharing and not tree.bridge_entries(): -> return None",
@@ -98,6 +74,7 @@
 
 "false/generator.py" = [
     "arm: case _Split(zero, one): -> <exit>",
+    "arm: if not ess or ess[-1] < len(ascii_lowercase): -> if width is None:",
 ]
 
 "flowchart/generator.py" = [
@@ -134,6 +111,11 @@
 "line/generator/render.py" = [
     "arm: if factor < 1: -> raise ValueError(f\"scale factor must be at least 1, got {factor}\")",
     "line: raise ValueError(f\"scale factor must be at least 1, got {factor}\")",
+]
+
+"malbolge/generator/digits.py" = [
+    "arm: if r[0] != 2 or any(x == _DIGIT and u[k] != 1 for k, x in enumerate(r) if k): -> return None",
+    "line: return None",
 ]
 
 "minifuck/generator/__init__.py" = [

@@ -1,7 +1,9 @@
 """``new_language.py check`` agrees with the suite on every registered language."""
 
+import importlib
 import inspect
 import io
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -66,6 +68,34 @@ def test_start_without_a_category_lists_them(
     err = capsys.readouterr().err
     assert all(category in err for category in new_language.CATEGORIES)
     assert not made
+
+
+def test_an_unassessed_language_does_not_break_the_census(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``start`` scaffolds ``unassessed``; the docs step raised KeyError on it."""
+    generate = importlib.import_module("docs.generate")  # beside new_language
+    rows = {"A": {"backlinks": 60}, "B": {"backlinks": 3}, "C": {"unassessed": True}}
+    monkeypatch.setattr(generate, "_curation_rows", lambda: rows)
+    text = generate.render_curation_census_section()
+    assert "1 clear the fame gate" in text
+    assert "1 are first implementations" in text
+    assert "1 more await" in text
+
+
+def test_a_failed_regeneration_ends_check_in_one_line(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(new_language, "check", lambda _: [])
+    monkeypatch.setattr(new_language, "_dirty", set)
+    monkeypatch.setattr(
+        new_language.subprocess,
+        "run",
+        lambda cmd, **_: subprocess.CompletedProcess(cmd, 1),
+    )
+    assert new_language.main(["check", _LONGEST]) == 1
+    out = capsys.readouterr().out
+    assert "rerun: python scripts/docs/generate.py examples" in out
 
 
 def test_start_on_a_terminal_asks_for_the_category(

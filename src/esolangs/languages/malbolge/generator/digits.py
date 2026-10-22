@@ -481,7 +481,7 @@ def _emit_digit_jump(main: _Planner, cells: _DCells, pointer: dict[int, int]) ->
     main.op("p", cells.z_cell)
     _emit_labels(main, cells, pointer)
     _emit_zero(main, cells)
-    _t_jump(main, cells.z_cell, 0)
+    _t_jump(main, cells.z_cell)
 
 
 @cache

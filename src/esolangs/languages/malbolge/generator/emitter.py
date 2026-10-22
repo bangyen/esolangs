@@ -121,10 +121,8 @@ class _Planner(_Emitter):
         self.goto(target)
         self.raw(op)
 
-    def hub(self, pointer: int, value: int, offset: int = 1) -> None:
-        """``j`` through ``pointer`` (holding ``value``) to ``value + offset``."""
+    def hub(self, pointer: int, value: int) -> None:
+        """``j`` through ``pointer`` (holding ``value``) to ``value + 1``."""
         self.goto(pointer)
         self.raw("j")
         self.d = value + 1
-        while self.d < value + offset:
-            self.raw("o")

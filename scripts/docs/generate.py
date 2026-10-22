@@ -377,15 +377,19 @@ def render_curation_census_section() -> str:
     registry, so the counts here are the registry's too.
     """
     census = _curation_rows()
-    fame = [entry["backlinks"] >= 60 for entry in census.values()]
+    # A new language is scaffolded ``unassessed`` (finish flags it); counting
+    # it here raised KeyError inside check-language's docs step instead.
+    fame = [e["backlinks"] >= 60 for e in census.values() if "backlinks" in e]
+    pending = len(census) - len(fame)
     checked = _curation_dates()["checked"]
-    return "\n".join(
-        [
-            f"The {checked} census (`snapshot.json`) records each",
-            f"language's backlinks and route: {fame.count(True)} clear the fame gate",
-            f"and {fame.count(False)} are first implementations.",
-        ]
-    )
+    lines = [
+        f"The {checked} census (`snapshot.json`) records each",
+        f"language's backlinks and route: {fame.count(True)} clear the fame gate",
+        f"and {fame.count(False)} are first implementations.",
+    ]
+    if pending:
+        lines.append(f"{pending} more await their backlink count.")
+    return "\n".join(lines)
 
 
 def render_sharing_counts_section() -> str:
