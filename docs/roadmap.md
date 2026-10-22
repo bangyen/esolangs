@@ -50,7 +50,14 @@ evidence, not optimization tasks.
   Conversely, a cover counting each flat once per `ceil(log2 n)` of its
   dimension, weight `W`, gives a program of `O(n log n (W + 1))` characters
   without conditional reads (executed through n=9), so an `omega(T)` bound
-  needs a cover bound beyond counting. Random tables are `O(T)`: with
+  needs a cover bound beyond counting. The converse fails: conditional reads
+  beat every cover exponentially. `k` selector reads, a line `s? :: Inp?`
+  per selector, then `Inp? :: L?` read bit `k + 1 + wt(s)` in `O(n log n)`
+  characters, yet no flat in that 1-set exceeds dimension
+  `2k - k/log2(k+1)` (polynomial-method bound on distinct weights), so a
+  cover needs `2**(k/log2(k+1))` flats (executed to n=9, sampled to n=61).
+  A linear construction is therefore not blocked by the cover gap; the
+  only bound known for all programs is counting. Random tables are `O(T)`: with
   probability `1 - 2/log n` the 1-set is at most `220*2**n/(n log n)` flats of
   dimension at most `log n + log log n` (phased transversal greedy with a
   random translation per block; two referee passes). That proof needs
