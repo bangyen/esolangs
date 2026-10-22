@@ -10,6 +10,7 @@ from collections.abc import Callable
 
 import esolangs
 from esolangs.debugger import make_vm
+from esolangs.generation.helpers import reflected_table
 from esolangs.registry import LANGUAGES
 from scripts.benchmark import WrittenState
 from tests.proofs._arities import formula_arities
@@ -171,26 +172,176 @@ def _laserfuck_worst(n: int) -> tuple[str, ...]:
     return "0" + "1" * (width - 1), "1" + "0" * (width - 1)
 
 
+# language-owners: ["Bitdeque"]
+def _bitdeque_tokens(n: int) -> str:
+    """8-bit blocks (17j + 8) mod 256, distinct pairs from n = 12: most tokens."""
+    if n >= 12:
+        pairs = ((1 + i % 254, 1 + i // 254 % 254) for i in range(2 ** (n - 4)))
+        return "".join(f"{a:08b}{b:08b}" for a, b in pairs)
+    offset = 75 if n == 3 else 8
+    return "".join(f"{(17 * j + offset) % 256:08b}" for j in range(2 ** (n - 3)))
+
+
+# language-owners: ["Codesick", "FRACTRAN", "SendStuff", "Stisp"]
+def _saturated(n: int, width: int, order: list[str]) -> str:
+    """Width-``width`` subtables placed in ``order``, every one if they fit.
+
+    Adjacent entries differ, so every shallower level is distinct too.
+    """
+    count, slots = len(order), (1 << n) // width
+    if slots <= count:
+        return "".join(order[:slots])
+    return "".join(
+        order[i % count] + order[(i + 1 + i // count) % count]
+        for i in range(slots // 2)
+    )
+
+
+def _first_fit(n: int, distinct: Callable[[int], int]) -> int:
+    """Width of the first depth's subtables whose ``distinct`` count fits."""
+    depth = next(d for d in range(n) if distinct(1 << (n - d)) <= 1 << d)
+    return 1 << (n - depth)
+
+
+def _unequal_first(n: int) -> str:
+    """Subtables with unequal halves first: the most diagram states."""
+    s = _first_fit(n, lambda s: (1 << s) - (1 << (s // 2)))
+    rows = [f"{k:0{s}b}" for k in range(1 << s)]
+    return _saturated(n, s, sorted(rows, key=lambda y: y[: s // 2] == y[s // 2 :]))
+
+
+def _codesick_worst(n: int) -> str:
+    """Nonconstant subtables first, read bit-reversed: the most nodes."""
+    s = _first_fit(n, lambda s: (1 << s) - 2)
+    rows = [f"{k:0{s}b}" for k in range(1, (1 << s) - 1)] + ["0" * s, "1" * s]
+    table = _saturated(n, s, rows)
+    return "".join(table[int(f"{r:0{n}b}"[::-1], 2)] for r in range(1 << n))
+
+
+def _sendstuff_worst(n: int) -> str:
+    """Equal halves last but one pair, unequal ones by last bit: late indices."""
+    s = _first_fit(n, lambda s: (1 << s) - (1 << (s // 2)))
+    rows = [f"{k:0{s}b}" for k in range(1 << s)]
+    same = [y for y in rows if y[: s // 2] == y[s // 2 :]]
+    diff = sorted((y for y in rows if y not in same), key=lambda y: (y[-1], y))
+    order = [same[-1], same[0], *same[1:-1][::-1], *diff]
+    if 1 << n == len(order) * s:
+        return "".join([order[1], order[0], *order[2:]])
+    count = len(order)
+    return "".join(
+        order[(i + 1 + i // count) % count] + order[i % count]
+        for i in range((1 << n) // s // 2)
+    )
+
+
+# language-owners: ["Crement"]
+def _crement_worst(n: int) -> str:
+    """Ordered unequal leaf pairs (x, x + d), d from V/2: every level distinct."""
+    if n <= 10:
+        values = sorted(range(16), key=lambda v: v >> 2 == v & 3)
+        cells = []
+        for i in range(1 << (n - 3)):
+            cells += [values[i % 16], values[(i + 8 + i // 16) % 16]]
+        return "".join(f"{v:04b}" for v in cells)
+    width = 8 if n <= 19 else 16
+    size = 1 << width
+    out = []
+    for j in range(1 << (n - 4 if width == 8 else n - 5)):
+        x, t = j % size, j // size
+        d = (t + size // 2 - 1) % (size - 1) + 1
+        out += [x, (x + d) % size]
+    return "".join(f"{v:0{width}b}" for v in out)
+
+
+# language-owners: ["Pointless"]
+def _pointless_worst(n: int) -> str:
+    """Each level's node called twice and the zero leaf thrice: all declared."""
+    one, zero = "10", "01"
+    for d in range(n - 2, 0, -1):
+        one, zero = zero + one, "0" * (1 << (n - d - 1)) + one
+    return zero + one
+
+
+# language-owners: ["Subleq"]
+def _subleq_worst(n: int) -> str:
+    """Mixed rows, so the packed decoder ships, the last full chunk all ones."""
+    chunk = (1 << n) // n - 1
+    return "".join(
+        "1"
+        if r == 0 or chunk * n <= r < chunk * n + n
+        else str(bin(r * r).count("1") & 1)
+        for r in range(1 << n)
+    )
+
+
+# language-owners: ["Underload"]
+def _underload_odd(h: int) -> str:
+    """Tree order: the inner table twice at depth 2, so its node carries."""
+    if h == 1:
+        return "01"
+    side = 2 ** (h - 2)
+    inner = _underload_odd(h - 2)
+    return "0" * side + inner + "1" * side + inner
+
+
+def _underload_worst(n: int) -> str:
+    """A chain of depth-2 carries, one depth-3 for even n, read tested-first."""
+    if n % 2:
+        tree = _underload_odd(n)
+    else:
+        zeros, inner = "0" * 2 ** (n - 3), _underload_odd(n - 3)
+        tree = 2 * zeros + 2 * inner + 3 * zeros + inner
+    return reflected_table(tree, n)
+
+
+def _low_one(n: int) -> str:
+    """One-hot at row T - 2: every input essential, no symmetry."""
+    return "0" * ((1 << n) - 2) + "10"
+
+
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "1 + i": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
-    "Bitdeque": lambda n: (_bitdeque_worst(n),) if n >= 3 else (),
+    "ArrowQueue": lambda n: (_low_one(n),),
+    "Bitdeque": lambda n: (_bitdeque_worst(n), _bitdeque_tokens(n)) if n >= 3 else (),
+    # Parity with row 0 flipped: a symmetric count table, one flip short.
+    "Boolfuck": lambda n: (
+        "1" + _parity(n)[1:],
+        *(("0000000010010110",) if n == 4 else ()),
+    ),
     # All ones but row 0: T - 1 ones and the top octal digit.
     "Blindfolded Arithmetic": lambda n: ("0" + "1" * (2**n - 1),),
     # Balanced, row 0 a planted one: the longest prologue, and a mark.
     "bit~": lambda n: ("1" * (2 ** (n - 1) - 1) + "01" + "0" * (2 ** (n - 1) - 1),),
     "Caballo": lambda n: (_morse("1110", "1011", n),) if n >= 2 else (),
+    "Codesick": lambda n: (_codesick_worst(n),) if n >= 2 else (),
     "Collatz Multiverse": lambda n: (_collatz_worst(n),) if n >= 2 else (),
+    "Crement": lambda n: (_crement_worst(n),) if n >= 3 else (),
+    # A one closing each block of 2^k: n - 2 copy jumps in a row.
+    "Decleq": lambda n: (
+        "".join("0" * (2**k - 1) + "1" for k in range(n - 1, 0, -1)) + "00",
+    ),
     "Dimensional": lambda n: (_dimensional_worst(n),) if n >= 4 else (),
     "Fackward": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
     # T - 1 runs: alternating but one equal pair.
     "Flowchart": lambda n: ("10" * (2 ** (n - 1) - 1) + "01",),
-    "Freestajlo": lambda n: (_freestajlo_worst(n),),
+    "FRACTRAN": lambda n: (_unequal_first(n),) if n >= 2 else (),
+    "Fish": lambda n: (_low_one(n),),
+    "Freestajlo": lambda n: (_freestajlo_worst(n), _low_one(n)),
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     # Equal halves under parity: the root skip doubles a 3T/2 - 1 term.
     "Kiss": lambda n: (_parity(n - 1) * 2,) if n >= 2 else (),
+    # 1 xor parity, the last input ignored at even n: the longest loop sums.
+    "Painfuck": lambda n: (
+        "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
+    ),
+    "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
     "Quassaunt": lambda n: (_quassaunt_worst(n),),
+    "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
+    "Stisp": lambda n: (_unequal_first(n),) if n >= 2 else (),
+    "Subleq": lambda n: (_subleq_worst(n),) if n >= 3 else (),
+    "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
 }
 
 

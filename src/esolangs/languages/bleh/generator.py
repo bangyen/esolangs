@@ -19,6 +19,7 @@ from itertools import pairwise
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.bleh.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -71,4 +72,5 @@ LANGUAGE = Language(
     eof="an exhausted io::next() is the empty bitstring",
     underfed_raises=True,
     empty_program="a Bleh program needs a main function",
+    proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
 )

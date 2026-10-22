@@ -47,6 +47,7 @@ Decisions:
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.languages.interprogck8.proof_formulas import execution, workspace
 from esolangs.registry._language import Language
 from esolangs.runtime.source_hints import with_hint
 
@@ -236,4 +237,6 @@ LANGUAGE = Language(
     split=True,
     random=True,
     no_wrap="a newline adds a line and moves every DownAccLines landing",
+    proof_execution=(execution, False, (3, 4, 5, 6, 7)),
+    proof_workspace=(workspace, True, (3, 4, 5, 6)),
 )

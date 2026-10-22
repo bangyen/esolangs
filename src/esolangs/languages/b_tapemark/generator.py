@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.b_tapemark.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -380,4 +381,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     empty_program="B-tapemark program needs exactly one start marker",
+    proof_workspace=(workspace, False, (3, 4)),
 )

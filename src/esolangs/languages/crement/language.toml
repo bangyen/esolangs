@@ -7,7 +7,7 @@ backlinks = 2
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, a folded subtree targets the shared self-jump or the line past the end, and a subtree already emitted at its level is targeted, not repeated"
-scaling = "linear: at most 3T/4 + 3min(T/4,12) + 2n + 6 lines: subtree ids"
+scaling = "linear: worst N lines: subtree ids"
 execution = "poly n: worst 5n + 2 commands, shared self-patching testers"
 workspace = "linear: at most 2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2)) bits: whole program state"
 definitions = ["P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared nodes per level", "N = 3P + 2n + 3"]

@@ -26,6 +26,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.languages.codesick.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -68,4 +69,5 @@ LANGUAGE = Language(
     eof="the whole input is read once to replace every `in`; no read meets EOF",
     # An argument holds no whitespace, so break only between arguments.
     wrap=wrap_space_delimited,
+    proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
 )

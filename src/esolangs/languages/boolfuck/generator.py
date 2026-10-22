@@ -429,5 +429,5 @@ LANGUAGE = Language(
     wrap=wrap_chars,
     eof="EOF supplies zero bits",
     # Six to eight reach the AND/XOR gates (docs/proofs/boolfuck-gates.md).
-    proof_workspace=(workspace, False, (3, 6, 7, 8)),
+    proof_workspace=(workspace, False, (3, 4, 6, 7, 8)),
 )

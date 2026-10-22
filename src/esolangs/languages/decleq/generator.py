@@ -22,7 +22,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import wrap_grid
-from esolangs.languages.decleq.proof_formulas import execution, workspace
+from esolangs.languages.decleq.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -150,6 +150,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
-    proof_execution=(execution, False, (3, 6)),
     proof_workspace=(workspace, True, (3, 4)),
 )

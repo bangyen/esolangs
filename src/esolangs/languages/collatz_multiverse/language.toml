@@ -9,8 +9,8 @@ labels = ["finite lookup"]
 qualification = "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it"
 scaling = "linear: one line per four rows, a 64-cell decoder, 3n index lines"
 execution = "linear: worst T/4 + 3n + 4m + 2K + 10 lines: one step per line, no branching"
-workspace = "T log T: at most ⌈T/4⌉(bl(⌊L/17⌋)+6) + 64(bl(⌊L/17⌋)+1) + (n²+168)(8n+bl(L)+9)/2 + 2bl(L) + 115 bits: arrays, registers"
-definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 29 for n = 6..8, 2n + 13 past n = 8"]
+workspace = "T log T: at most R + A + 2bl(⌊L/17⌋) + bl(2n) bits: registers R, arrays A, by name and value"
+definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 29 for n = 6..8, 2n + 13 past n = 8", "R = the registers: 8 per name character plus value bits", "A = ⌈T/4⌉ cells of one array, 2m + 6 of the other, each an index and a value"]
 
 [generator_sizes]
 "00000001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1078 }

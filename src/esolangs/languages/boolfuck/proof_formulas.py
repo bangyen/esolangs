@@ -6,7 +6,7 @@ def workspace(n: int, p: str) -> int:
     bl = int.bit_length
     return (
         bl(len(p) - 1)
-        + max(12, bl(2 * n - 2) + 10)
+        + max(12, bl(2 * n - 3) + 11)
         + n
         + sum(map(bl, range(1, n)))
         + bl(2 * n)

@@ -8,8 +8,9 @@ backlinks = 91
 labels = ["finite lookup"]
 qualification = "the inputs form a Horner row index and `g` reads that column from the table row"
 scaling = "linear: T table cells, or T/6 packed past n=5"
-execution = "poly n: at most 9n + 4bl(9n+72) + 35 commands: n Horner reads, then one or two `g`"
-workspace = "poly n: at most 2n + 76 bits: one stack, the row, a cell and its quotient"
+execution = "poly n: worst 9n + 9 commands to n = 5, then 9n + 33 + 2c: Horner reads, one lookup"
+workspace = "poly n: worst bl(9n+8) + n + 13 + bl(n) bits to n = 5, then bl(S-1)+bl(s)+bl(n)+71"
+definitions = ["c = 3 to n = 20, then 1 + 2bl(column): the packed column literal's characters", "S = 9n + 33 + 2c commands run; s = the packed column, 15⌈(9n+39)/15⌉ to n = 20"]
 
 [generator_sizes]
 "00000001" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 32 }

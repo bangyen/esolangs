@@ -35,4 +35,12 @@ def _freestajlo(n: int, _: str) -> int:
     return max(_plain(n), _packed(n))
 
 
-FORMULAS = {"workspace": (_freestajlo, True, (3, 4, 5, 6, 7))}
+def _execution(n: int, _: str) -> int:
+    """4n plain to n = 4; the packed literal's decode adds 17 from n = 5."""
+    return 4 * n + 17 * (n >= 5)
+
+
+FORMULAS = {
+    "execution": (_execution, True, (3, 4, 5, 6, 7)),
+    "workspace": (_freestajlo, True, (3, 4, 5, 6, 7)),
+}

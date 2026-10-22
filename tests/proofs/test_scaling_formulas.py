@@ -20,7 +20,7 @@ from tests.support.generator_support import CHECK
 #: A stated size bound: the unit follows its formula.
 _SIZE = re.compile(r"^(?:at most|worst) (.+?) (characters|lines|rows)\b")
 
-FORMULAS = ledger_formulas(lambda row: row.scaling_clause, {}, {})
+FORMULAS = ledger_formulas(lambda row: row.scaling_clause, {}, {}, column="scaling")
 _UNIT = {
     row.generator: match.group(2)
     for row in load_ledger().rows

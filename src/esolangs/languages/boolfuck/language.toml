@@ -14,8 +14,8 @@ bf_derivative = true
 labels = ["tree"]
 qualification = "each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes; repeated residuals use level flags or normalized AND/XOR bodies, affine tables stream through one accumulator, and symmetric tables stream their bytes into a unary population count and decide from the count alone"
 scaling = "linear: geometric tree walk; affine tables O(n) characters; symmetric O(n), O(n^2) worst"
-execution = "poly n: at most max(2n^2 + 27n + 8, 4n^2 + 30n + 15) commands; symmetric tables stream a unary count"
-workspace = "poly n: at most bl(L-1) + max(12, bl(2n-2)+10) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n) bits"
+execution = "poly n: worst 4n^2 + 30n + 8 commands past n = 1: the all-ones row of a symmetric count table"
+workspace = "poly n: at most bl(L-1) + max(12, bl(2n-3)+11) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n) bits"
 evidence = "docs/proofs/boolfuck-gates.md"
 
 [generator_sizes]

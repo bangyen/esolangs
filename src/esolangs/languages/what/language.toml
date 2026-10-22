@@ -9,7 +9,7 @@ labels = ["linear lookup"]
 qualification = "Horner's rule reads each bit with `??` and doubles by `*`; the index counts down one `-` a row, so at change point `b` it wraps above `2^k` exactly when the row is below `b`, and `[2^k>` writes the answer slot; past 15 inputs `???` puts the high bits in the index slot's string, and a guard per `2^15`-row block reloads the index"
 scaling = "linear: one `-` a row and one test a change point"
 execution = "linear: worst 6T + 6n + 5 commands: alternating answers, every conditional true"
-workspace = "poly n: at most n^2 - n + 276 + bl(2n+1) + bl(2n-1) + bl(L) bits: the 256-slot tape"
+workspace = "poly n: worst n^2-n+256+max(20,2n-2)+bl(6T+6n+5)+bl(2n+1)+bl(2n-1) bits: to n = 15, the 256-slot tape"
 
 [generator_sizes]
 "00000001" = { commands = 41, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 41 }, source_units = 52 }

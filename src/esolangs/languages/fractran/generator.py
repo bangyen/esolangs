@@ -260,5 +260,5 @@ LANGUAGE = Language(
     empty_program="a FRACTRAN program needs a starting value",
     example=Example(setters=fractran_setters, expected="1"),
     proof_execution=(execution, True, (3, 5)),
-    proof_workspace=(workspace, False, (3, 5)),
+    proof_workspace=(workspace, True, (3, 5, 6)),
 )

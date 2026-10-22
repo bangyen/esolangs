@@ -9,7 +9,8 @@ labels = ["parameterized lookup"]
 qualification = "head/tail discards leave the indexed entry in the deque"
 scaling = "linear: the shared tree"
 execution = "poly n: worst 7n + 8 commands past n = 2: prelude, load 2n, four a level, leaf n + 6"
-workspace = "linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 1 bits; unreached"
+workspace = "poly n: worst n + 1 + bl(U) bits past n = 2: n deque bits, a register bit, the cursor"
+definitions = ["U = 4n + 25 + Σ_{d<n-1} (2c_d + 2min(c_d, 2c_d - c_{d+1})), c_d = min(2^d, 2^(2^(n-d)) - 2)"]
 
 [generator_sizes]
 "00000001" = { commands = 19, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 21, "7" = 19 }, source_units = 164 }
@@ -23,7 +24,6 @@ workspace = "linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 
 
 [formula_arities]
 execution = [5, 6]
-workspace = [5]
 
 [ablations]
 audited = "2026-10-19"

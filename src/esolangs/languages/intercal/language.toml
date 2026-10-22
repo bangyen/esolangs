@@ -8,7 +8,7 @@ backlinks = 100
 labels = ["parameterized tree"]
 qualification = "equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree"
 scaling = "linear: reverse-depth numbering confines long names near the root"
-execution = "linear: at most 2n + 3 + Σ_{0<l<n} min(2^l, 2^(2^(n-l)) - 2) statements, one per named node"
+execution = "linear: at most 2n + min(T/8 + 2, T/16 + 14) statements: n + 3 fixed, named negations, shared nodes"
 workspace = "linear: at most 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits, S the Execution bound: one keyed bit per variable"
 
 [generator_sizes]

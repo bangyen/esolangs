@@ -46,7 +46,6 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
-from esolangs.languages.false.proof_formulas import execution
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -373,5 +372,4 @@ LANGUAGE = Language(
     wrap=_false,
     balance=_balance,
     eof="an exhausted '^' is the spec's -1",
-    proof_execution=(execution, False, (3, 6)),
 )
