@@ -1,8 +1,10 @@
 """bit~ Boolean program generator: planted table entries addressed by Horner jumps.
 
 Entries are planted left to right, so a skip loop has no terminator ahead of
-it: a constant or repeated span costs a ``>`` per cell.  An affine table
-XORs its inputs into one window instead ([ablations.xor_window]).
+it: a constant or repeated span costs a ``>`` per cell.  The minority value
+is planted, the print windows swapped when it is 0
+([ablations.minority_planting]).  An affine table XORs its inputs into one
+window instead ([ablations.xor_window]).
 
 Size:
     O(T) cells, two per entry; n=10 random 1847: 4,863 chars, n=10 and: 4,352
@@ -25,6 +27,9 @@ __all__ = ["bit_tilde"]
 #: Cells the prologue plants below the table: the ``0`` window at 10..17,
 #: the ``1`` window at 1..8, and the two walk terminators at 18 and 27.
 _BIT_TILDE_PLANTED = (3, 4, 8, 12, 13, 18, 27)
+#: The windows swapped (``0`` at 1..8, ``1`` at 10..17) for a table planted
+#: by its zeros, when ones are the majority ([ablations.minority_planting]).
+_BIT_TILDE_SWAPPED = (3, 4, 12, 13, 17, 18, 27)
 
 #: Step two cells left and flip, which runs forever over a zero lane and
 #: stops on the planted 1 it clears.  The leading ``<~`` primes the loop.
@@ -77,9 +82,12 @@ def _lookup(truth_table: str, n: int) -> str:
     # and even so that the reads stay in the lane whose jumps land in the zero one.
     start = 2 * len(table) + 34
 
-    planted = set(_BIT_TILDE_PLANTED)
+    # A planted entry costs a ``~`` more than a skipped one: plant the minority.
+    swapped = 2 * table.count("1") > len(table)
+    planted = set(_BIT_TILDE_SWAPPED if swapped else _BIT_TILDE_PLANTED)
+    mark = "0" if swapped else "1"
     planted.update(
-        start - 2 * index - 2 for index, bit in enumerate(table) if bit == "1"
+        start - 2 * index - 2 for index, bit in enumerate(table) if bit == mark
     )
 
     prog: list[str] = []
