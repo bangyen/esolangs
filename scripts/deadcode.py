@@ -25,7 +25,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +77,10 @@ def _report(data: Path, packages: list[str]) -> dict[str, dict[str, Any]]:
     return files
 
 
+def _text(lines: list[str], n: int) -> str:
+    return lines[n - 1].strip() if 0 < n <= len(lines) else "<exit>"
+
+
 def _entries(files: dict[str, dict[str, Any]]) -> dict[str, set[str]]:
     """Map each generator file to its unreached lines and arms, as source text."""
     found: dict[str, set[str]] = defaultdict(set)
@@ -84,13 +88,12 @@ def _entries(files: dict[str, dict[str, Any]]) -> dict[str, set[str]]:
         path = Path(name) if Path(name).is_absolute() else ROOT / name
         rel = path.resolve().relative_to(LANGUAGES).as_posix()
         lines = path.read_text().splitlines()
-
-        def text(n: int, lines: list[str] = lines) -> str:
-            return lines[n - 1].strip() if 0 < n <= len(lines) else "<exit>"
-
-        keys = [f"line: {text(n)}" for n in info["missing_lines"]]
-        keys += [f"arm: {text(a)} -> {text(b)}" for a, b in info["missing_branches"]]
-        seen: dict[str, int] = defaultdict(int)
+        keys = [f"line: {_text(lines, n)}" for n in info["missing_lines"]]
+        keys += [
+            f"arm: {_text(lines, a)} -> {_text(lines, b)}"
+            for a, b in info["missing_branches"]
+        ]
+        seen: Counter[str] = Counter()
         for key in keys:
             # Repeats are numbered, so a second unreached `return None` is new.
             seen[key] += 1
@@ -143,8 +146,11 @@ def main() -> int:
     known = _load()
     if packages:
         known = {k: v for k, v in known.items() if k.split("/")[0] in packages}
-    new = {rel: sorted(found[rel] - known.get(rel, set())) for rel in sorted(found)}
-    new = {rel: es for rel, es in new.items() if es}
+    new = {
+        rel: es
+        for rel in sorted(found)
+        if (es := sorted(found[rel] - known.get(rel, set())))
+    }
     gone = sum(len(es - found.get(rel, set())) for rel, es in known.items())
     for rel, es in new.items():
         print(rel)

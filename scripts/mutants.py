@@ -92,11 +92,7 @@ def candidates(package: str, count: int) -> list[Mutant]:
         tokens = list(tokenize.generate_tokens(io.StringIO(text).readline))
         for i, token in enumerate(tokens):
             old = token.string
-            if token.type == tokenize.OP or (
-                token.type == tokenize.NAME and old in ("and", "or")
-            ):
-                if old not in SWAP:
-                    continue
+            if token.type in (tokenize.OP, tokenize.NAME) and old in SWAP:
                 new = SWAP[old]
             elif token.type == tokenize.NUMBER and re.fullmatch(r"\d+", old):
                 if int(old) < 2:

@@ -315,13 +315,9 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
         parameterized = esolangs.describe(name)["parameterized"]
         for n in range(1, max_n + 1):
             for table in map("".join, itertools.product("01", repeat=1 << n)):
-                widths = (None, 8) if n < 3 else (None,)
-                for width in widths:
+                for width in (None, 8) if n < 3 else (None,):
                     try:
-                        if width is None:
-                            program = esolangs.generate(name, table)
-                        else:
-                            program = esolangs.generate(name, table, width=width)
+                        program = esolangs.generate(name, table, width=width)
                     except GeneratorCapError:
                         continue  # Unary's n=3 programs are too long to build
                     for row in range(1 << n):
@@ -359,9 +355,7 @@ def differences(
         # __eq__ wants the same class object.  Such traces compare by fields.
         # Event by event, so a real difference stops at its first step.
         memo: dict[int, object] = {}  # both traces stay alive, so ids stay unique
-        for step in range(max(len(before), len(after))):
-            first = before[step] if step < len(before) else None
-            second = after[step] if step < len(after) else None
+        for step, (first, second) in enumerate(itertools.zip_longest(before, after)):
             if first != second and (
                 first is None
                 or second is None
