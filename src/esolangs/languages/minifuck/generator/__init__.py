@@ -143,10 +143,6 @@ def _reduce(truth_table: str, n: int) -> _Reduced | None:
     return _Reduced(first, read_at(truth_table, essential, n), essential, gaps, after)
 
 
-#: Table width from which the direct lookup beats the ladder: O(T) text.
-_LOOKUP_MIN_ARITY = 5
-
-
 @cache
 def _solve(truth_table: str) -> str:
     """Build the positional Minifuck template for a truth table.
@@ -161,8 +157,6 @@ def _solve(truth_table: str) -> str:
     reduced = _reduce(truth_table, n)
     if reduced is not None:
         return _solve_reduced(reduced)
-    if n >= _LOOKUP_MIN_ARITY:
-        return _mux_lookup(truth_table, n)
     if n < _MUX_MIN_ARITY:
         # Nullary and unary tables use the embed's named standing column.
         degenerate = _degenerate(truth_table, n)
