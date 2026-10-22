@@ -7,9 +7,9 @@ backlinks = 91
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the inputs form a Horner row index and `g` reads that column from the table row"
-scaling = "linear: T table cells, one g at the index"
-execution = "poly n: worst 9n + 9 commands, n Horner reads and one `g`"
-workspace = "poly n: worst n + 13 + bl(9n+8) + bl(n) bits: one stack, x"
+scaling = "linear: T table cells, or T/6 packed past n=5"
+execution = "poly n: at most 9n + 4bl(9n+72) + 35 commands: n Horner reads, then one or two `g`"
+workspace = "poly n: at most 2n + 76 bits: one stack, the row, a cell and its quotient"
 
 [generator_sizes]
 "00000001" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 45 }
@@ -34,3 +34,10 @@ audited = "2026-10-19"
 saving = 700.0
 arity = 12
 verdict = "kept: canonical, exempt. The only mechanism on the default path, priced by area (chars agree in direction): the table in the codebox is read on its essential inputs only, an ignored input read and dropped. The program is two rows, header over table, so the area is 2 x 2^k for k essential inputs and the price is 0.00% on random tables and every all-essential class; on its class the deletion costs are exact multiples at n=10 and n=12 — one ignored input +100.00%, two +300.00%, three +700.00%, constant tables +3,431.03% at n=10 and +12,312.12% at n=12"
+
+[ablations.packed_row]
+saving = 89.8
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept, priced by area: one row holding the code, six powers of two and the table packed six entries a printable cell (codes 35-98), against the two-row header over table. Area 4.7% on random tables at n=6, 48.0% at n=7, 67.0% at n=8, 84.8% at n=10, 89.8% at n=12 (20 tables), rising; characters fall too (33.8% at n=7, 72.2% at n=10). Taken only when no larger in area and in characters, so n<=5 is unchanged (packing saved 5.6-6.6% of area there but cost 17-35% more characters). Majority and and at n=8 halve; parity keeps its column. Exhaustive n<=3 unchanged; random samples executed at n=4..12. Supersedes a plain single row (table after the header, 14.8% at n=7), which packing beats from n=6"
