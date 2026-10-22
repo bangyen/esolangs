@@ -29,6 +29,18 @@ evidence, not optimization tasks.
   ([limitations](limitations.md)). Reopen only with a layout that needs a
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
+- **Open worst-case bounds** (2026-10-22): these `at most` cells have a
+  route to `worst`. Layout-race and table-data cells stay `at most`.
+  - Partial range: SendStuff workspace past n = 10 (its witness falls one
+    short from n = 11), What!? workspace past n = 15, Circuit Diagram
+    execution past n = 12, 1 + i workspace outside n = 6..13.
+  - Measured, not proved: B-tapemark folds never exceed the narrow
+    staircase and ArrowQueue's fold term (both measured to n = 11), and
+    Painfuck's plain-tree side (20n - 3).
+  - SMU scaling is exact only for n = 7..10; the scaling notation takes
+    one case.
+  - Algebraic Programming Language execution is worst only per program's K.
+  - Malbolge's 199-step stub tail is observed, not derived.
 
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
