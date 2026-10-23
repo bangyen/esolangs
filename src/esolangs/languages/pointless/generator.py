@@ -15,7 +15,7 @@ A function stays declared only where that is shorter than pasting its body
 at each call (:func:`_inlined`).
 
 Size:
-    O(T) size and build time, 26n + 311 steps at most; n=10 parity: 1,060
+    O(T) size and build time, 26n + 309 steps at most; n=10 parity: 1,060
     chars, n=10 random 1847: 6,253 chars (8,558 declaring every function;
     26% less over five random tables at n=10, 11% at n=3, no added steps).
 """

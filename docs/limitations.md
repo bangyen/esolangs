@@ -491,13 +491,15 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Sixty-four ledger cells are `at most` throughout and twenty more past an
-exact range (2026-10-22, counted from the ledger; open ones are on the
+Sixty-four ledger cells are `at most` throughout and seventeen more past an
+exact range (2026-10-23, counted from the ledger; open ones are on the
 [roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
-  with the winner. ArrowQueue execution (proved 11T + 32n + 92),
+  with the winner. Back scaling and execution past n = 6 (the comb's
+  Rudin-Shapiro table folds: 2,240 cells against 2,522 at n = 7);
+  ArrowQueue execution (proved 11T + 32n + 92),
   BFStack workspace, Boolfuck workspace,
   Circuit Diagram workspace and scaling (an H-tree pool from n = 9 caps
   the area; the default measures at most 0.26 of the cap), Container scaling (the threshold build loses

@@ -1,9 +1,11 @@
 # Boolfuck's gate route fits the tree's workspace
 
-The ledger bounds Boolfuck's workspace by
+The ledger bounds Boolfuck's workspace with the term
+$\max(12, \mathrm{bl}(2n-3)+11)$ (the tree prints from cell $2n-3$: 38 > 37
+bits at $n=4$ under the old $\mathrm{bl}(2n-2)+10$). This shows the AND/XOR
+gate route (`normal_gates`) stays within the tighter
 $\mathrm{bl}(L-1) + \max(12, \mathrm{bl}(2n-2)+10) + n + \sum_{i<n}\mathrm{bl}(i)
-+ \mathrm{bl}(2n) + \mathrm{bl}(n)$ bits. This shows the AND/XOR gate route
-(`normal_gates`) stays within it for $n \ge 4$; it is admitted from $n=6$.
++ \mathrm{bl}(2n) + \mathrm{bl}(n)$ bits for $n \ge 4$; it is admitted from $n=6$.
 
 Workspace is the peak bits of three snapshot parts: the control state, the
 set of 1-cells on the tape, and input progress. A cell $c$ costs

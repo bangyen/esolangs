@@ -1,4 +1,4 @@
-"""S*bleq's emitted characters: the packed decoder, n >= 11 (built to n = 21)."""
+"""S*bleq's emitted characters: the packed decoder, n >= 11 (built to n = 25)."""
 
 #: Cell-naming operands by cell index: per input read, and in the decoder.
 _READ_CELLS = {3: 1, 5: 3, 6: 5, 7: 4, 8: 8}
