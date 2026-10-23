@@ -11,7 +11,7 @@ backlinks = 2
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry"
-scaling = "linear: at most S cells past n = 5: the lone-zero flat street"
+scaling = "linear: worst S cells from n = 2: tree, then the flat street"
 execution = "linear: worst 290n + 312 + H + W steps from n = 2 for an H×W tree, else F"
 definitions = ["F = 3T + 110n + 106 to n = 7, then 4T + 14n + 650: the flat street"]
 workspace = "T log T: at most nT + 2n + 25 + bl(2T+57+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3)"

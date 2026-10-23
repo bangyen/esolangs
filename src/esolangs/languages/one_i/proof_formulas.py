@@ -16,7 +16,9 @@ def workspace(n: int, _: str) -> int:
         # Peaks add per component: stack 2n+44 (bit, two literals of 16 + n+4
         # bits; offsets stay under 37T/4 < 2^(n+4)) + frame n+4+bl(n+2) (a
         # depth-4 constant at an n+4 bit offset, body n+3 ops with the `$$`),
-        # executed to n = 23; 4(n-1) of a depth-1 constant overtakes at n = 25.
+        # executed to n = 24 (row 11110000..); 4(n-1) of a depth-1 constant
+        # overtakes at n = 25.
         return 3 * n + 48 + bl(n + 2) + io
-    # a constant half (bare B x (n-1), 4 bits each) outweighs the node terms
+    # a constant half (bare B x (n-1), 4 bits each) outweighs the node terms;
+    # executed to n = 26 (any row opening 1: frame n+8, stack 4(n-1))
     return 5 * n - 1 + bl(n + 5) + io

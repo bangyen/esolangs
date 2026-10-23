@@ -1,9 +1,11 @@
 """The Scaling column's size bounds hold at small n, over every row.
 
 A cell stating ``at most <formula> characters`` (or ``lines``/``rows``/
-``cells``; a ``worst`` one must also be reached) is measured on the generated
-text: characters are ``len``, lines and rows are newline-separated, cells are
-the bounding rectangle (``grid_area``).  A 2D grid language states cells.  Two such
+``cells``/``codels``/``pixels``; a ``worst`` one must also be reached) is
+measured on the generated program: characters are ``len``, lines and rows are
+newline-separated, cells are the bounding rectangle (``grid_area``), and a
+raster's codels or pixels are its rows times its width.  A 2D grid language
+states cells, a raster language codels or pixels.  Two such
 bounds were false while nothing measured them: one 14T where parity reaches
 15T - 14, one 6n + 3T rows reaching 17 at n=1.
 """
@@ -14,6 +16,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.helpers import grid_area
+from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
@@ -21,7 +24,18 @@ from tests.proofs.test_execution_formulas import _tables
 from tests.support.generator_support import CHECK
 
 #: A stated size bound: the unit follows its formula.
-_SIZE = re.compile(r"^(?:at most|worst) (.+?) (characters|lines|rows|cells)\b")
+_SIZE = re.compile(
+    r"^(?:at most|worst) (.+?) (characters|lines|rows|cells|codels|pixels)\b"
+)
+
+#: A raster is judged by its rows times its width, at the default scale of 1.
+_RASTER = {"codels", "pixels"}
+
+
+def _raster_area(program: object) -> int:
+    assert isinstance(program, Raster)
+    return len(program.rows) * len(program.rows[0])
+
 
 FORMULAS = ledger_formulas(lambda row: row.scaling_clause, {}, {}, column="scaling")
 _UNIT = {
@@ -47,12 +61,15 @@ def test_size_formulas_hold(name: str, n: int) -> None:
     formula, exact, _ = FORMULAS[name]
     reached = False
     for table in _tables(name, n):
-        text = str(esolangs.generate(name, table))
+        program = esolangs.generate(name, table)
+        text = str(program)
         size = (
             len(text)
             if _UNIT[name] == "characters"
             else grid_area(text)
             if _UNIT[name] == "cells"
+            else _raster_area(program)
+            if _UNIT[name] in _RASTER
             else text.count("\n") + 1
         )
         claim = formula(n, text)

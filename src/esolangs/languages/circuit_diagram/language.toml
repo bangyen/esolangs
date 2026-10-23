@@ -17,8 +17,8 @@ backlinks = 5
 [proof_status]
 labels = ["tree"]
 qualification = "complete residual folds or a strictly smaller emitted fallback"
-scaling = "linear: emitted text; fixed-order residual DAGs costed before rendering"
-execution = "poly n: worst 2n + 1 commands: parity, the longest gate path"
+scaling = "linear: at most F cells past n = 8: H-tree pool caps it"
+execution = "poly n: at most 2n + 1 commands: the longest gate path, reached to n = 20"
 workspace = "linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses"
 evidence = "docs/proofs/circuit-diagram-sharing.md"
 

@@ -14,7 +14,7 @@ backlinks = 2
 [proof_status]
 labels = ["tree"]
 qualification = "finite decision trees preserve totality; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback"
-scaling = "linear: complete residual models and area-admitted rasters cost O(T)"
+scaling = "linear: worst F pixels past n = 5: the full tree's box"
 execution = "poly n: worst 5n commands; complete folds retain this bound"
 workspace = "poly n: worst n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1) bits past n = 4"
 evidence = "docs/proofs/line-sharing.md"

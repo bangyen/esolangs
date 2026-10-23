@@ -43,4 +43,34 @@ def _chars(n: int, text: str) -> int:
     return min(38 * 2**n + 20, _shared(n, text))
 
 
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6))}
+def _workspace(n: int, text: str) -> int:
+    """Frames + store + cell count + 14 + input count, each bounded by its own shape.
+
+    A run nests 2n + 3 calls at most, alternating the bit object's or ``N``'s
+    one-line body (<= 9 ops) with a branch body (<= 16n + 40 ops); a call's
+    cells, 6n + 9 at most, are numbered below the cell count, so a frame at
+    depth j holds code, pc and three refs (a slot adds a bit).  Its stack is
+    empty but at the innermost call (<= 3 items).  A cell is z, a bit or an
+    ``N`` object (c, 0, 0) or a branch object (c, N, 0): at most one of the
+    last two and a bit per level, the rest 1 bit each.  ``c`` bounds the code
+    ids: three built-ins and one per ``n`` form or class.  ``in_bits`` and
+    ``out_bits`` peak at 7 bits each.
+    """
+    bl = int.bit_length
+    c = 3 + text.count("n") + text.count("d")
+    cells = 6 * n + 9
+    frames = sum(
+        bl(c)
+        + (4 if j % 2 == 0 else bl(16 * n + 40))
+        + 3 * (bl(6 * ((j + 1) // 2) + 9) + 1)
+        for j in range(2 * n + 3)
+    )
+    frames += 4 * bl(cells) + 5
+    store = (n + 1) * (3 * bl(c) + 6) + cells
+    return frames + store + bl(cells) + bl(n) + 14
+
+
+FORMULAS = {
+    "scaling": (_chars, False, (3, 4, 5, 6)),
+    "workspace": (_workspace, False, (3, 4, 5, 6)),
+}

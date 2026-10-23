@@ -7,7 +7,7 @@ backlinks = 65
 [proof_status]
 labels = ["finite lookup"]
 qualification = "each table entry is pushed and an input index selects its output; literal products replace conjunction tables"
-scaling = "linear: O(T) codels in a strip or a smaller-area fold"
+scaling = "linear: at most F codels: the strip, or the fold plan if smaller"
 execution = "linear: at most 5T + 11n + 31 steps past n = 3: one block per operation, six per fold turn"
 workspace = "linear: at most T + 2n + 12 + 2bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack"
 
