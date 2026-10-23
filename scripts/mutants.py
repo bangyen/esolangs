@@ -15,7 +15,10 @@ Mutants edit source in place, so a sweep refuses to run outside a git
 worktree.  Caps: a run gets three times its baseline (60 s at least), the
 sweep a global budget, and a language three consecutive timeouts.  Records
 append to ``--out`` as JSON lines; add swept packages to
-``mutants_swept.toml`` once triaged.
+``mutants_swept.toml`` once triaged.  A failure that is only a
+duration-band flip (see ``_duration_flips``) never counts: a baseline
+passes when every one of its failures is a flip, and a mutant is recorded
+survived, with the flips listed, when no test functionally kills it.
 """
 
 from __future__ import annotations
@@ -163,7 +166,7 @@ def _pytest(package: str, *, stop: bool) -> list[str]:
         "-p",
         "no:cacheprovider",
     ]
-    command += ["--tb=no", "-rf", "-m", "not weekly", *(["-x"] if stop else [])]
+    command += ["--tb=short", "-rf", "-m", "not weekly", *(["-x"] if stop else [])]
     # The harness's deadline tests (under tests/, exercising the
     # worker-reaping machinery) can kill no generator mutant, and the
     # substring match drags them into package "line"'s selection ("line"
@@ -180,6 +183,64 @@ def _pytest(package: str, *, stop: bool) -> list[str]:
         "-k",
         keyword,
     ]
+
+
+# The shape the root conftest gives a duration-band failure (manufactured in
+# tests/support/duration_policy.py): the failure's whole body in its FAILURES
+# section is the overrun message, so a match there claims the failure is a
+# duration overrun and nothing else.  Same signature scripts/verify/gate.py
+# keys on.
+_DURATION_FAILURE = re.compile(r"\d+\.\d{2}s exceeds the (?:fast|medium) band limit")
+_SECTION_HEADER = re.compile(r"^_+ (.+?) _+$")
+
+
+def _duration_flips(output: str) -> list[str] | None:
+    """Return the failed node ids when every failure is a duration-band flip.
+
+    None when anything is unprovable: an ERROR line, no failures at all, no
+    FAILURES sections, a section count that disagrees with the summary, a
+    section whose body lacks the overrun signature, or a failed id no
+    section names.  Callers then keep the plain verdict.
+    """
+    lines = output.splitlines()
+    if any(line.startswith("ERROR ") for line in lines):
+        return None
+    ids = re.findall(r"^FAILED (\S+)", output, re.MULTILINE)
+    if not ids:
+        return None
+    start = next(
+        (
+            i
+            for i, line in enumerate(lines)
+            if line.startswith("=") and " FAILURES " in line
+        ),
+        None,
+    )
+    if start is None:
+        return None
+    sections: list[tuple[str, list[str]]] = []
+    for line in lines[start + 1 :]:
+        if line.startswith("=") and "short test summary info" in line:
+            break
+        header = _SECTION_HEADER.match(line)
+        if header:
+            sections.append((header.group(1), []))
+        elif sections:
+            sections[-1][1].append(line)
+    if len(sections) != len(ids):
+        return None
+    if not all(_DURATION_FAILURE.search("\n".join(body)) for _, body in sections):
+        return None
+    titles = [title for title, _ in sections]
+    if not all(
+        any(
+            nodeid.endswith(("::" + title, "::" + title.replace(".", "::")))
+            for title in titles
+        )
+        for nodeid in ids
+    ):
+        return None
+    return ids
 
 
 def _clear_bytecode() -> None:
@@ -234,11 +295,18 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
             start = time.monotonic()
             status, output = _run(_pytest(package, stop=False), 900)
             baseline = time.monotonic() - start
-            if status != "survived":
+            flips = _duration_flips(output) if status == "killed" else None
+            if status != "survived" and flips is None:
                 print(
                     f"{package}: baseline {status}\n{output[-2000:]}", file=sys.stderr
                 )
                 return 1
+            if flips:
+                print(
+                    f"{package}: baseline passed; {len(flips)} duration-only "
+                    "failure(s) tolerated",
+                    flush=True,
+                )
             timeout, streak = max(60.0, 3 * baseline), 0
             for mutant in candidates(package, per_language):
                 if time.monotonic() - began > budget:
@@ -255,17 +323,22 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                     status, output = _run(_pytest(package, stop=True), timeout)
                 finally:
                     path.write_text(original, encoding="utf-8")
+                flips = _duration_flips(output) if status == "killed" else None
+                if flips is not None:
+                    status = "survived"
                 streak = streak + 1 if status == "timeout" else 0
                 failed = sorted(set(re.findall(r"^FAILED (\S+)", output, re.MULTILINE)))
                 line = original.split("\n")[mutant["line"] - 1].strip()
                 record = mutant | {"package": package, "status": status}
+                if flips:
+                    record |= {"duration_flips": flips}
                 sink.write(
                     json.dumps(record | {"failed": failed[:3], "code": line}) + "\n"
                 )
                 sink.flush()
                 print(
                     package,
-                    status,
+                    status + (" (duration-only)" if flips else ""),
                     mutant["file"],
                     mutant["line"],
                     mutant["old"],
