@@ -270,3 +270,36 @@ def _cover(
         return min(options, default=10**9)
 
     return swap(missed, 0)
+
+
+def pair_loss(
+    n: int,
+    ref: Callable[[int, bool], int],
+    const: Callable[[int], int],
+    widest: Callable[[int], int],
+) -> int:
+    """Return what a per-level bound over-counts when the wide ids run out of pairs.
+
+    The 256 objects of level n - 3 (254 subtables, 2 constants) are named by
+    the `pairs` distinct ordered pairs of the level above.  W wide ids make
+    at most W(W - 1) pairs of two wide slots, so at least `pairs - W(W - 1)`
+    pairs hold a narrow slot; the narrow ids, named in ascending order before
+    any wide one exists, fill ceil(narrow / 2) pairs with two.  Every narrow
+    slot but each object's first costs the dearest narrow price, not the
+    widest the bound assumes.  Zero while the wide pairs suffice (n <= 18).
+    """
+    c = capped_level(n)
+    branching, equal, _, top = profile(n)
+    if c != n - 3 or branching[c] + equal[c] != 254:
+        return 0
+    pairs = branching[c - 1] + equal[c - 1]
+    first = top[c] - 253
+    ids = [ref(first + i, i < equal[c]) for i in range(254)]
+    wide = widest(c)
+    wide_ids = sum(1 for p in ids if p >= wide)
+    short = pairs - wide_ids * (wide_ids - 1)
+    if short <= 0:
+        return 0
+    narrow = [p for p in ids if p < wide] + [const(c)] * 2
+    extra = short + (len(narrow) - 2 + 1) // 2 - len(narrow)
+    return max(0, extra) * (wide - max(narrow))
