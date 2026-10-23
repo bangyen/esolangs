@@ -502,7 +502,7 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   execution past n = 9 (the fold ships whenever the comb has 769 rows:
   26,208 cells against 26,915 at n = 10);
   ArrowQueue execution (proved 11T + 32n + 92), Polynomial execution (C - 2
-  at n = 3, 4 over every table; 60 of C = 63 found at n = 5),
+  at n = 3, 4 over every table; C - 3 = 60 at n = 5, hybrids searched),
   Boolfuck workspace,
   Circuit Diagram workspace and scaling (an H-tree pool from n = 9 caps
   the area; the default measures at most 0.26 of the cap), Container scaling (the threshold build loses

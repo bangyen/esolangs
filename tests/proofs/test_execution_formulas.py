@@ -843,14 +843,15 @@ def _back_worst(n: int) -> tuple[str, ...]:
 
 
 def _polynomial_worst(n: int) -> tuple[str, ...]:
-    """Four blocks of 2^(n-2) rows, each the binary of its index, MSB first.
+    """Blocks each the binary of its index, MSB first; every level keeps its states.
 
-    Every level keeps its states distinct, so the machine runs 12n - 7 commands:
-    C - 2 at n = 3, 4 (the exhaustive worst), 53 of 63 at n = 5, where 60 is found.
+    Four blocks of 2^(n-2) rows run 12n - 7 commands: C - 2 at n = 3, 4 (the
+    exhaustive worst), 53 at n = 5.  There eight blocks of four run 60 = C - 3.
     """
     if n < 3:
         return ()
-    return ("".join(f"{block:0{1 << n - 2}b}" for block in range(4)),)
+    blocks, width = (8, 4) if n == 5 else (4, 1 << n - 2)
+    return ("".join(f"{block:0{width}b}" for block in range(blocks)),)
 
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
