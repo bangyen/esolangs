@@ -50,6 +50,8 @@ from __future__ import annotations
 import cmath
 import math
 import re
+from array import array
+from bisect import bisect_left
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -63,15 +65,17 @@ from esolangs.runtime.io import IO
 #: An exact Gaussian rational ``(re, im)``, or a float once inexact.
 type _Num = tuple[Fraction, Fraction] | complex
 type _Value = _Num | _Fn
-#: ``(source offset, command)``; a nested function is its own command.
-type _Op = tuple[int, str | _Fn]
-#: ``(function, next op)`` frames, innermost first.
-type _Frames = tuple[tuple[_Fn, int], _Frames] | None
+#: ``(function, next text index, next command number)`` frames, innermost
+#: first; the number keeps a snapshot's bits what a command list gave.
+type _Frames = tuple[tuple[_Fn, int, int], _Frames] | None
 #: ``(values popped, values pushed, turn)``; ``turn`` is a ``deque.rotate``
 #: step, or ``_SWAP`` to exchange the top and bottom.
 type _Edit = tuple[int, tuple[_Value, ...], int]
 
-_COMMANDS = frozenset("icle+*/^><%:()$ABCDpo?")
+_COMMANDS = "icle+*/^><%:()$ABCDpo?"
+_BAD = re.compile(rf"[^{re.escape(_COMMANDS)}\[\]]")
+_SPACE = re.compile(r"\s")
+_BRACKET = re.compile(r"[\[\]]")
 _SWAP = 2
 _ZERO = Fraction(0)
 _I: _Num = (_ZERO, Fraction(1))
@@ -79,38 +83,81 @@ _REAL = r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
 _UNSIGNED = r"(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
 
 
+class _Code:
+    """The program text, whitespace dropped, with each ``[``'s closing ``]``.
+
+    Flat: a parsed tree of ``(offset, char)`` tuples cost ~120 bytes a
+    command (1.1 GB parsed at n = 20, 9.1M characters); this is ~3.
+    """
+
+    def __init__(self, code: str) -> None:
+        #: Source offset of each text index; ``None`` while no whitespace.
+        self.origin: array[int] | None = None
+        self.text = text = code
+        if _SPACE.search(code):
+            self.text = text = "".join(code.split())
+            self.origin = array("q", (i for i, c in enumerate(code) if not c.isspace()))
+        #: Each ``[``'s text index, ascending, and its ``]``'s: ~2 bytes a
+        #: character where an array over the whole text cost 4.
+        self.opens = array("q")
+        self.closes = array("q")
+        bad = _BAD.search(text)
+        limit = bad.start() if bad else len(text)
+        open_ks: list[int] = []
+        for found in _BRACKET.finditer(text, 0, limit):
+            at = found.start()
+            if found.group() == "[":
+                open_ks.append(len(self.opens))
+                self.opens.append(at)
+                self.closes.append(0)
+            elif open_ks:
+                self.closes[open_ks.pop()] = at
+            else:
+                raise ValueError(f"1 + i: unmatched ']' at {self.offset(at)}")
+        if bad:
+            raise ValueError(
+                f"1 + i has no command {bad.group()!r} at {self.offset(limit)}"
+            )
+        if open_ks:
+            raise ValueError(
+                f"1 + i: unmatched '[' at {self.offset(self.opens[open_ks[-1]])}"
+            )
+
+    def close(self, at: int) -> int:
+        """The text index of the ``]`` closing the ``[`` at ``at``."""
+        return self.closes[bisect_left(self.opens, at)]
+
+    def offset(self, at: int) -> int:
+        """The source offset of text index ``at``."""
+        return at if self.origin is None else self.origin[at]
+
+
 @dataclass(frozen=True, eq=False)
 class _Fn:
-    """A function literal; compared and hashed by identity, so O(1)."""
+    """A function literal: the text between a ``[`` and its ``]``.
 
-    #: The ``[``'s source offset, ``-1`` for the program: the function's name.
-    offset: int
-    body: tuple[_Op, ...]
+    Compared and hashed by identity, so O(1).
+    """
+
+    code: _Code
+    #: Text index of the ``[``, ``-1`` for the program: the function's name.
+    start: int
+    #: Text index one past the last command.
+    end: int
+
+    @property
+    def offset(self) -> int:
+        """The ``[``'s source offset, ``-1`` for the program."""
+        return -1 if self.start < 0 else self.code.offset(self.start)
+
+    def __repr__(self) -> str:
+        return f"_Fn(offset={self.offset})"
 
 
 def _parse(code: str) -> _Fn:
     """Return the program as a function; brackets nest."""
-    bodies: list[list[_Op]] = [[]]
-    opens: list[int] = []
-    for offset, char in enumerate(code):
-        if char.isspace():
-            continue
-        if char == "[":
-            bodies.append([])
-            opens.append(offset)
-        elif char == "]":
-            if not opens:
-                raise ValueError(f"1 + i: unmatched ']' at {offset}")
-            start = opens.pop()
-            fn = _Fn(start, tuple(bodies.pop()))
-            bodies[-1].append((start, fn))
-        elif char in _COMMANDS:
-            bodies[-1].append((offset, char))
-        else:
-            raise ValueError(f"1 + i has no command {char!r} at {offset}")
-    if opens:
-        raise ValueError(f"1 + i: unmatched '[' at {opens[-1]}")
-    return _Fn(-1, tuple(bodies[0]))
+    flat = _Code(code)
+    return _Fn(flat, -1, len(flat.text))
 
 
 def _complex(value: _Num) -> complex:
@@ -262,9 +309,16 @@ def _advance(
     Pure: ``stack`` (top last) is only read, and a read arrives as ``got``.
     """
     assert frames is not None
-    (fn, pc), rest = frames
-    offset, command = fn.body[pc]
-    frames = ((fn, pc + 1), rest)
+    (fn, pc, nth), rest = frames
+    code = fn.code
+    command: str | _Fn = code.text[pc]
+    offset = code.offset(pc)
+    after = pc + 1
+    if command == "[":
+        after = code.close(pc)
+        command = _Fn(code, pc, after)
+        after += 1
+    frames = ((fn, after, nth + 1), rest)
     edit: _Edit = (0, (), 0)
     out = None
     if isinstance(command, _Fn):
@@ -289,9 +343,9 @@ def _advance(
         if not isinstance(chosen, _Fn):
             raise HaltError("1 + i ? invoked something that is not a function")
         edit = (1, (), 0)
-        if pc + 1 == len(fn.body):  # a tail call: the caller has nothing left
+        if after == fn.end:  # a tail call: the caller has nothing left
             frames = rest
-        frames = ((chosen, 0), frames)
+        frames = ((chosen, chosen.start + 1, 0), frames)
     else:
         arity = _ARITY.get(command, 2)
         if len(stack) < arity:
@@ -307,7 +361,7 @@ def _advance(
             raise HaltError(
                 f"1 + i {command} at {offset}: {exc or 'undefined'}"
             ) from exc
-    while frames is not None and frames[0][1] >= len(frames[0][0].body):
+    while frames is not None and frames[0][1] >= frames[0][0].end:
         frames = frames[1]
     return frames, edit, out
 
@@ -319,7 +373,7 @@ class _Machine:
         self.io = io
         self.end = len(code)
         program = _parse(code)
-        self.frames: _Frames = ((program, 0), None) if program.body else None
+        self.frames: _Frames = ((program, 0, 0), None) if program.end else None
         #: The stack, top at the right.
         self.values: deque[_Value] = deque()
 
@@ -332,8 +386,8 @@ class _Machine:
         """The next command's source offset; the code's length once halted."""
         if self.frames is None:
             return self.end
-        fn, pc = self.frames[0]
-        return fn.body[pc][0]
+        fn, pc, _ = self.frames[0]
+        return fn.code.offset(pc)
 
     @property
     def stack(self) -> list[_Value]:
@@ -348,7 +402,7 @@ class _Machine:
         frames: list[tuple[int, int]] = []
         node = self.frames
         while node is not None:
-            frames.append((node[0][0].offset, node[0][1]))
+            frames.append((node[0][0].offset, node[0][2]))
             node = node[1]
         values = tuple(
             ("fn", v.offset) if isinstance(v, _Fn) else v for v in self.values
@@ -371,8 +425,8 @@ class _Machine:
         """Run one command, reading its input first."""
         if self.frames is None:
             return
-        fn, pc = self.frames[0]
-        command = fn.body[pc][1]
+        fn, pc, _ = self.frames[0]
+        command = fn.code.text[pc]
         got = self._read(command) if command in ("A", "B", "C", "D") else None
         self.frames, edit, out = _advance(self.frames, self.values, got)
         popped, pushed, turn = edit
