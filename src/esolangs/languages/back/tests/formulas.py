@@ -70,6 +70,72 @@ _ORDERS = {
         1,
         2,
     ),
+    12: (
+        2,
+        9,
+        1,
+        4,
+        1,
+        7,
+        7,
+        6,
+        10,
+        6,
+        3,
+        1,
+        7,
+        0,
+        6,
+        6,
+        9,
+        0,
+        7,
+        4,
+        3,
+        10,
+        1,
+        5,
+        0,
+        5,
+        0,
+        10,
+        8,
+        0,
+        6,
+        10,
+        3,
+        6,
+        7,
+        8,
+        3,
+        7,
+        7,
+        8,
+        3,
+        5,
+        3,
+        10,
+        8,
+        7,
+        4,
+        0,
+        6,
+        8,
+        9,
+        1,
+        8,
+        10,
+        4,
+        1,
+        5,
+        8,
+        6,
+        8,
+        10,
+        3,
+        4,
+        4,
+    ),
 }
 
 
@@ -77,14 +143,16 @@ def witness(n: int) -> str:
     """Concatenated n = 6 blocks: n = 9 keeps the fold above the comb's 12,320.
 
     Full-fold blocks give the fold 155 x 168 at n = 10 and 171 x 312 at n = 11,
-    and 35 x 749 / 38 x 1521 comb rows cover them: F is the fold.
+    and 35 x 749 / 38 x 1521 / 41 x 2651+ comb rows cover them: F is the fold.
     """
     return "".join(_BLOCKS[i] for i in _ORDERS[n])
 
 
 def _cells(n: int, _: str) -> int:
-    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 11."""
+    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 12."""
     return _comb(n) if n <= 5 else min(_comb(n), _fold(n))
 
 
-FORMULAS = {"scaling": (_cells, frozenset(range(3, 12)), (3, 4, 5, 6, 7, 8, 9, 10, 11))}
+FORMULAS = {
+    "scaling": (_cells, frozenset(range(3, 13)), (3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+}
