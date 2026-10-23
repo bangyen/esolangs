@@ -47,23 +47,56 @@ def _lanes(entries: int, tail: list[int], columns: int, kind: int) -> tuple[int,
     return widest + 1, count
 
 
-def _packed(n: int, z: int) -> int:
-    """The least area of the nine layouts: width * (rows + 4), or 2 * rows + 2 plain."""
+def _layouts(n: int, z: int) -> list[tuple[int, int]]:
+    """(area, lanes) of the nine layouts: width * (rows + 4), or 2 * rows + 2 plain."""
     tail, entries = _tail(n), (1 << n) + z
     root = isqrt(entries + sum(tail))
-    best = None
+    found = []
     for kind, floor in ((0, 22), (1, 18), (2, 18)):
         for offset in (5, 9, 13):
             width, lanes = _lanes(entries, tail, max(floor, root + offset), kind)
             rows = 3 if lanes == 1 else lanes + 4 if kind else 2 * lanes + 2
-            best = width * rows if best is None else min(best, width * rows)
-    assert best is not None
-    return best
+            found.append((width * rows, lanes))
+    return found
+
+
+def _packed(n: int, z: int) -> int:
+    """The least area of the nine layouts."""
+    return min(area for area, _ in _layouts(n, z))
 
 
 def _strip(n: int, z: int) -> int:
     """Three rows by 2T + z + 5n + 18 columns."""
     return 3 * (2 * (1 << n) + z + 5 * n + 18)
+
+
+def _walk(n: int, z: int) -> int:
+    """Steps of the shipped layout (the most of any area tie), n <= 7.
+
+    Blocks entered: T + z + len(tail) operations and the halt, five per extra
+    lane (the turn's four blocks and the landing); the strip's push(T) is one
+    block, not a doubling, so it is 2n shorter.
+    """
+    blocks = (1 << n) + z + len(_tail(n))
+    least = min(_strip(n, z), _packed(n, z))
+    walks = [
+        blocks + 5 * (lanes - 1) + 2 for area, lanes in _layouts(n, z) if area == least
+    ]
+    if _strip(n, z) == least:
+        walks.append(blocks - 2 * n)
+    return max(walks)
+
+
+def walk_zeros(n: int) -> int:
+    """The z whose steps are the most, the last on a tie."""
+    return max(range(2, (1 << n) - 1), key=lambda z: (_walk(n, z), z))
+
+
+def _steps(n: int, _: str) -> int:
+    """Worst steps: the most over z to n = 7, then the fold's bound."""
+    if n >= 8:
+        return 5 * (1 << n) + 11 * n + 31
+    return _walk(n, walk_zeros(n))
 
 
 def zeros(n: int) -> int:
@@ -101,4 +134,7 @@ def _codels(n: int, _: str) -> int:
     return min(_strip(n, z), _packed(n, z))
 
 
-FORMULAS = {"scaling": (_codels, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8))}
+FORMULAS = {
+    "scaling": (_codels, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8)),
+    "execution": (_steps, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8)),
+}
