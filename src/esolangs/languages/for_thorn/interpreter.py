@@ -32,11 +32,12 @@ Decisions:
       one line, excluding its newline, and pushes its Unicode code points.
 """
 
-from collections.abc import Callable, Mapping
+from __future__ import annotations
+
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from operator import add, mul, sub
-from types import MappingProxyType
-from typing import NamedTuple
+from typing import NamedTuple, final
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
@@ -64,6 +65,141 @@ class _Frame:
 
 type _Frames = tuple[_Frame, ...]
 
+_ABSENT = object()
+_HASH_MASK = (1 << 64) - 1
+
+
+def _entry_hash(key: int, scope: object) -> int:
+    return hash((key, scope)) & _HASH_MASK
+
+
+@final
+class _Scopes(Mapping[int, str]):
+    """The scope table as a persistent map: a store costs O(1), not O(scopes).
+
+    Copying the table on every ``{`` made a run with S scopes O(S^2), and
+    ``frozenset(table.items())`` made every snapshot O(S).  Versions share one
+    dict (the root); an older version holds the single undo entry that turns
+    its successor back into it, and reading it first moves the dict back
+    along those entries.  The runtime only reads the newest version.
+
+    Equal versions have equal ``hash`` (the sum of entry hashes, kept
+    incrementally) and ``len``; ``==`` then compares contents, so a hash
+    collision never merges two states.  Unchanged stores return the same object.
+    """
+
+    __slots__ = ("data", "key", "link", "old", "size", "total")
+
+    def __init__(self) -> None:
+        """Make the empty table."""
+        self.data: dict[int, str] | None = {}
+        self.total = 0
+        self.size = 0
+        self.link: _Scopes | None = None
+        self.key = 0
+        self.old: object = _ABSENT
+
+    def _root(self) -> dict[int, str]:
+        """Return the dict holding this version, moving it here if elsewhere."""
+        if self.data is not None:
+            return self.data
+        path = []
+        node: _Scopes = self
+        while node.data is None:
+            path.append(node)
+            assert node.link is not None
+            node = node.link
+        for older in reversed(path):
+            data = node.data
+            assert data is not None
+            key, old = older.key, older.old
+            node.key, node.old = key, data.get(key, _ABSENT)
+            node.link, node.data = older, None
+            if old is _ABSENT:
+                del data[key]
+            else:
+                data[key] = old  # type: ignore[assignment]
+            older.data, older.link, older.old = data, None, _ABSENT
+            node = older
+        return node.data  # type: ignore[return-value]
+
+    def store(self, key: int, scope: str) -> _Scopes:
+        """Return the table with ``key`` bound to ``scope``."""
+        data = self._root()
+        old = data.get(key, _ABSENT)
+        if old == scope:
+            return self
+        new = _Scopes.__new__(_Scopes)
+        new.data, new.link, new.old = data, None, _ABSENT
+        new.total = (self.total + _entry_hash(key, scope)) & _HASH_MASK
+        new.size = self.size
+        if old is _ABSENT:
+            new.size += 1
+        else:
+            new.total = (new.total - _entry_hash(key, old)) & _HASH_MASK
+        data[key] = scope
+        self.data, self.link, self.key, self.old = None, new, key, old
+        return new
+
+    def delta(
+        self, last: _Scopes
+    ) -> tuple[list[tuple[int, str]], list[tuple[int, str]]] | None:
+        """Return (items gained, items lost) going from ``last`` to this version.
+
+        None when ``last`` is not an older version of this one.  Costs the
+        stores between them, for the workspace meter.
+        """
+        touched: dict[int, object] = {}
+        node = last
+        while node is not self:
+            if node.data is not None or node.link is None:
+                return None
+            touched.setdefault(node.key, node.old)
+            node = node.link
+        data = self._root()
+        gained, lost = [], []
+        for key, before in touched.items():
+            now = data.get(key, _ABSENT)
+            if now != before:
+                if before is not _ABSENT:
+                    lost.append((key, before))
+                if now is not _ABSENT:
+                    gained.append((key, now))
+        return gained, lost  # type: ignore[return-value]
+
+    def __getitem__(self, key: int) -> str:
+        """Return the scope stored under ``key``."""
+        return self._root()[key]
+
+    def get(self, key: int, default: str = "") -> str:  # type: ignore[override]
+        """Return the scope stored under ``key``, else ``default``."""
+        return self._root().get(key, default)
+
+    def __iter__(self) -> Iterator[int]:
+        """Iterate the stored keys."""
+        return iter(list(self._root()))
+
+    def __len__(self) -> int:
+        """Count the stored scopes."""
+        return self.size
+
+    def __hash__(self) -> int:
+        """Return the incrementally kept entry-hash sum."""
+        return self.total
+
+    def __eq__(self, other: object) -> bool:
+        """Compare contents, after the O(1) rejections."""
+        if self is other:
+            return True
+        if not isinstance(other, _Scopes):
+            if isinstance(other, Mapping):
+                return dict(self._root()) == dict(other)
+            return NotImplemented
+        if self.total != other.total or self.size != other.size:
+            return False
+        mine = dict(self._root())
+        return mine == other._root()
+
 
 # The frames are the reason this is a stack rather than a cursor: ``;``
 # and all three bracket forms push one, and a ``[`` body is re-pushed
@@ -81,7 +217,7 @@ class _State(NamedTuple):
     """
 
     stack: tuple[int, ...]
-    table: Mapping[int, str]
+    table: _Scopes
     frames: _Frames
     error: bool
 
@@ -236,7 +372,7 @@ def _bracket_step(step: _Step) -> _State | None:
             body = _Frame(scope, loop=char == "[")
             return state._replace(frames=(*frames, body))
         return state
-    table = MappingProxyType({**state.table, _top(stack): scope})
+    table = state.table.store(_top(stack), scope)
     return state._replace(table=table)
 
 
@@ -307,7 +443,7 @@ class _Machine:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
         self.stack: tuple[int, ...] = ()
-        self.table: Mapping[int, str] = MappingProxyType({})
+        self.table = _Scopes()
         self.frames: tuple[_Frame, ...] = (_Frame(code),)
         self._input_reads = 0
         self.error = False  # the top-level scope aborted (status 3)
@@ -343,7 +479,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (
             self.stack,
-            frozenset(self.table.items()),
+            self.table,
             tuple((f.code, f.pc, f.loop) for f in self.frames),
             self.io.progress(),
             self._input_reads,
@@ -360,7 +496,7 @@ class _Machine:
             frame.code,
             frame.loop,
             self.stack,
-            frozenset(self.table.items()),
+            self.table,
             self.io.progress(),
             self._input_reads,
         )

@@ -1,10 +1,20 @@
 """Bleh's emitted characters: functions per level, ids by digit count."""
 
-from tests.proofs._diagram_bounds import digits, profile
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from tests.proofs._diagram_bounds import (
+    capped_level,
+    capped_loss,
+    digits,
+    profile,
+    worst_diagram,
+)
 
 
-def _chars(n: int, _: str) -> int:
-    """Most characters over all tables, per level k of the reduced diagram.
+def _bound(n: int) -> int:
+    """Bound on the characters, per level k of the reduced diagram.
 
     A branching function is ``f<id>:"0"=<ref>:"1"=<ref>;`` (11 + name), an
     equal-halved or constant one ``<name>:={io::next();<ref>};`` (16 + name).
@@ -35,4 +45,32 @@ def _chars(n: int, _: str) -> int:
     return total
 
 
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7, 8))}
+def _prices(
+    n: int,
+) -> tuple[Callable[[int, bool], int], Callable[[int], int], Callable[[int], int]]:
+    """A reference's characters: name and call, a constant's, the dearest."""
+    top = profile(n)[3]
+    return (
+        lambda node, equal: (2 if equal else 11) + 1 + len(str(node)),
+        lambda level: 3 + len(str(level)),
+        lambda level: max(1 + len(str(top[level])), 1 + len(str(level))) + 11,
+    )
+
+
+def _chars(n: int, _: str) -> int:
+    """Worst characters, n = 3..8: the bound less what its last levels cannot reach.
+
+    The bound prices every reference past the first at the dearest call.
+    The 14 four-row subtables a level up are all there is, so their
+    references are fixed (:func:`capped_loss`): 36 short at n = 5, 108 from 6.
+    """
+    return _bound(n) - capped_loss(n, *_prices(n))
+
+
+def witness(n: int) -> str:
+    """The table reaching :func:`_chars`: every subtable, dear references first."""
+    ref, const, _ = _prices(n)
+    return worst_diagram(n, ref, const(capped_level(n)))
+
+
+FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8))}

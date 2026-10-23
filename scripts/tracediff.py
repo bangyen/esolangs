@@ -30,6 +30,7 @@ import sys
 import tempfile
 import time
 import tomllib
+from collections.abc import Mapping
 from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
@@ -179,7 +180,9 @@ def _plain(value: object, memo: dict[int, object]) -> object:
     result: object
     if isinstance(value, tuple | list):
         result = tuple(_plain(item, memo) for item in value)
-    elif isinstance(value, dict):
+    elif isinstance(value, Mapping):
+        # Forþ's persistent scope table is a Mapping whose undo links depend
+        # on read order; compare it by content.
         result = tuple(sorted((_repr(k), _plain(v, memo)) for k, v in value.items()))
     elif isinstance(value, set | frozenset):
         result = tuple(sorted(map(_repr, value)))
