@@ -67,6 +67,17 @@ class TestDig:
         assert len(banded) < len(flat)
         assert boolean.dig(table, width=18) == banded
 
+    def test_quarter_turn_wins_the_narrow_fallback_race_at_four_inputs(self) -> None:
+        """When no layout fits a narrow width, the quarter-turn is narrowest."""
+        from esolangs.languages.dig.generator import _dig_grid, _dig_quarter_turn
+
+        for table in ("0110101001101010", "1000001111111010"):
+            flat = _dig_grid(table, 4, None)
+            program = boolean.dig(table, width=8)
+            assert program == _dig_quarter_turn(flat)
+            for row, expected in enumerate(table):
+                assert run_dig(program, list(format(row, "04b"))) == expected
+
     def test_a_constant_table_is_one_column(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
         program = boolean.dig("1111")
