@@ -504,7 +504,8 @@ exact range (2026-10-22, counted from the ledger; open ones are on the
   to the tree from n = 6: 883 against 1,076) and workspace, CVNC
   execution, FALSE scaling and execution (reached at n = 4, 5 only; at
   n = 6 diagram 292 against expression 293), Fargo all three, For Thorn
-  execution, Minifuck execution, Object Disoriented scaling, Piet all three,
+  execution, Minifuck execution (from n = 13 the stored plan ships, under the
+  mux's worst), Object Disoriented scaling, Piet all three,
   Smallfuck execution, Streetcode workspace; scaling for Algebraic Programming
   Language (144 against 182 at n = 4, exhaustive; the reduced
   diagram's 10T + 4n + 6 holds to n = 14), Packlang, Painfuck (232 against 239 at n = 4), 6-5 (105 against 166 at

@@ -10,7 +10,7 @@ bf_derivative_predates = true
 labels = ["parameterized construction"]
 qualification = "affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback"
 scaling = "linear: worst 81T/2 + 59 - n characters, n = 3..12"
-execution = "linear: worst 71T/2 + 50 - n commands past n = 2: the positional strip, 5T + 9 collapsed"
+execution = "linear: worst 71T/2 + 50 - n commands to n = 12, at most after: the positional strip"
 workspace = "linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n = 4: a tape bit-integer"
 
 [generator_sizes]
@@ -24,7 +24,6 @@ workspace = "linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n =
 "11111110" = { commands = 323, commands_by_row = { "0" = 316, "1" = 313, "2" = 314, "3" = 310, "4" = 306, "5" = 310, "6" = 310, "7" = 323 }, source_units = 372 }
 
 [formula_arities]
-execution = [3, 4, 5, 6, 7]
 workspace = [5]
 
 [ablations]

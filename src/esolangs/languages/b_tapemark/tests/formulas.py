@@ -302,11 +302,16 @@ def _model_workspace(n: int) -> int:
     table with every input essential reaches W.  The marks are the table's T
     at (x0 - k, y0), then for stage s, y = y0 - 2n + 2s: the input at (x, y)
     and the pair ``\\`` ``%`` at (x, y + 1), (x + 1, y + 1), with x = x0 - T + s
-    plus the weights of the zero bits before s.  The peak falls after the last
-    mark, in the last stage's walk to ``!`` (every row at n <= 8), so earlier
-    stages sum in closed form and ``_tail`` walks the last.  An ignored input
-    only shrinks the table: no table with fewer essential inputs reaches W
-    (n = 3..8: 2,034, 3,167, 4,943, 8,062, 13,951, 17,639 against 2,615 ...).
+    plus the weights of the zero bits before s.  Both steps below are exhaustive
+    on the shipped generator and interpreter, every essential set and every row
+    (n = 3..8; a table's digits move no cell and no beam, so the set fixes the
+    run: 3 random tables per set agree row for row, n <= 5), the snapshot counted
+    as ``WrittenState`` does.  The peak falls in the last stage's walk to ``!``,
+    at least 29 bits above every earlier snapshot, so earlier stages sum in
+    closed form and ``_tail`` walks the last.  An ignored input only shrinks the
+    table: the largest peak over sets of m < n essential inputs (n = 3..8: 2,034,
+    3,167, 4,943, 8,062, 13,951, 17,639; constant tables at most 334) stays below W
+    (2,615, 4,363, 7,469, 9,652, 16,590, 30,563).
     """
     t = 1 << n
     name, c, r, _ = min(_candidates(n, n), key=lambda k: (k[3][1] * k[3][2], k[3][0]))
