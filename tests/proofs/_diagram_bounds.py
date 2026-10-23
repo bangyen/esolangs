@@ -79,8 +79,21 @@ def worst_diagram(
     if len(order) == 2:
         pairs = best_cover(cost, nodes, set(cost) if cover_const else set(order))
     else:
-        pairs = [(order[i], order[i + 1]) for i in range(0, len(order), 2)]
-        pairs += [(zero, one)] * cover_const
+        dear = max(cost[t] for t in order)
+        narrow = [t for t in order if cost[t] < dear]
+        wide = [t for t in order if cost[t] >= dear]
+        if cover_const and cost[zero] >= dear and len(narrow) + len(wide) // 2 <= nodes:
+            # Dear constants introduce the narrow ids without a narrow pair.
+            pairs = [(t, (zero, one)[i % 2]) for i, t in enumerate(narrow)]
+            pairs += [(wide[i], wide[i + 1]) for i in range(0, len(wide), 2)]
+        else:
+            pairs = [(order[i], order[i + 1]) for i in range(0, len(order), 2)]
+            # Cheap constants ride on the dearest id rather than on each other.
+            if cover_const:
+                if nodes - len(pairs) >= 2:
+                    pairs += [(zero, order[-1]), (one, order[-1])]
+                else:
+                    pairs.append((zero, one))
         by_cost = sorted(
             ((x, y) for x in cost for y in cost if x != y),
             key=lambda p: -(cost[p[0]] + cost[p[1]]),
@@ -116,3 +129,52 @@ def capped_loss(
     if k == n - 2:
         return 24 * dear - 6 * sum(children) - 12 * constant
     return 0
+
+
+def parent_loss(
+    n: int,
+    ref: Callable[[int, bool], int],
+    const: Callable[[int], int],
+    widest: Callable[[int], int],
+    consts: int = 2,
+) -> int:
+    """Return what a per-level bound over-counts at the capped level's parents.
+
+    The bound prices each child once and every other reference at the
+    dearest.  Ids ascend by first occurrence along the level, so rank r is
+    named by parent ceil(r / 2) or later; the dearest-priced ids and
+    constants (the wide set, W of them) fill at most W(W - 1) parents
+    with two wide slots, and a parent holds a wide slot only once one is
+    named.  The remaining slots take the next price, each narrow id once at
+    least.  The two equal-halved capped nodes take every pair of ranks, the
+    dearest kept.  An equal-halved parent loses a slot and its own
+    reference, so it is left out.
+    """
+    c = capped_level(n)
+    branching, equal, _, top = profile(n)
+    pairs = branching[c - 1] + equal[c - 1]
+    count = branching[c] + equal[c]
+    if count != 14 or equal[c] != 2:
+        return 0
+    first = top[c] - count + 1
+    old = sum(ref(first + i, i < equal[c]) for i in range(count))
+    old += consts * const(c) + (2 * pairs - count - consts) * widest(c)
+    wide = widest(c)
+    best = 0
+    for low in combinations(range(count), equal[c]):
+        price = [ref(first + i, i in low) for i in range(count)]
+        free = consts if const(c) >= wide else 0
+        names = [i for i, p in enumerate(price) if p >= wide]
+        total = len(names) + free
+        # Parents j = 1..pairs hold ranks up to 2j and the free constants.
+        have = [free + sum(1 for i in names if i < 2 * j) for j in range(1, pairs + 1)]
+        both = sum(1 for h in have if h >= 2)
+        one = sum(1 for h in have if h >= 1)
+        twos = min(total * (total - 1), both)
+        slots = 2 * twos + one - twos
+        narrow = [p for p in price if p < wide] + [const(c)] * (consts - free)
+        slots = min(slots, 2 * pairs - len(narrow))
+        refs = slots * wide + sum(narrow)
+        refs += (2 * pairs - slots - len(narrow)) * max(narrow, default=0)
+        best = max(best, refs)
+    return max(0, old - best)

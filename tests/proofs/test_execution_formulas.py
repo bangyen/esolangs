@@ -833,7 +833,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Bleh": lambda n: _diagram_witness("bleh", n),
+    "Bleh": lambda n: _diagram_witness("bleh", n, 9),
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         _quassaunt_stack(n),
