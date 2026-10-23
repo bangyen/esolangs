@@ -45,12 +45,8 @@ evidence, not optimization tasks.
     ids run out (59 of 64 nodes at n = 9). 3x sits 20-28% below its F.
 - **Unformulated scaling** (2026-10-22): Interprogck8 grows about 11
   characters an entry per input (T log T); Polynomial is a lower bound.
-- **Derived, not executed:** Forþ workspace's log factor needs a twin call
-  50,625 or more scopes back, at least 20 inputs
-  ([limitations](limitations.md#run-time-and-memory)); the n = 20 trigger
-  has 262,682 scopes and one row steps in about 18 minutes (quadratic in
-  scopes), so its workspace was not measured. What!? past n = 22 (6.4 GB
-  there) and S*bleq scaling past n = 25 (3 GB) were not built.
+- **Derived, not executed:** What!? past n = 22 (6.4 GB there) and S*bleq
+  scaling past n = 25 (3 GB) were not built.
 - **Open mathematics:** Polynomial's worst-case length constant
   `C_P(n)*n/T**2` is bracketed only within a factor 12.5, and whether the
   limit exists is open ([proofs](proofs/index.md#polynomial-bound)). Whether
