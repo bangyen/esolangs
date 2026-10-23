@@ -522,6 +522,14 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   R + 11n commands against 0.64R at n = 7 (a run skips the lines a flight
   hops); the workspace adds a slot and a frame of the longest body, 33
   characters, which only some tables hold.
+- Layout slack: Slow ACV Mammalian scaling, execution and workspace bound
+  every list at its residue maximum, but the layout is fixed by n and the
+  essential set (a table changes only its leaf bits), so the lists sit at
+  fixed residues and the maxima never co-occur. Exhaustive n = 3 (256
+  tables): 2,656 commands, 518 bits, 24,423 characters against 4,921, 802
+  and 54,796; sampled tables n = 7..12: 1.3-2.4x over on all three (n = 12
+  random: 327,178 characters against 475,725; 8,824 commands against
+  15,720). Exact needs the generator's own address solve, not a bound.
 - Address widths: the peak sums the bit-lengths of table-dependent
   positions, which cross powers of two by layout. AddSubJump, Caballo,
   Crement, Pointless, S-BLEQ (1.002x: cell bits plus 6n, packed
