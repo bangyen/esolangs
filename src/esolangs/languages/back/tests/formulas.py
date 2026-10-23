@@ -18,7 +18,7 @@ def _fold(n: int) -> int:
     return (1 + width) * (max(0, 4 * n - entry) + height)
 
 
-#: Annealed 64-bit n = 6 blocks (49 rows, 34 wide) and five full-fold ones (47 rows).
+#: Annealed n = 6 blocks: 0-5 have 48-49 comb rows, 6-8 are full-fold (45-47).
 _BLOCKS = (
     "0111010001010010111000011010000111001010011110000100101000100010",
     "0111010010100100010111011110010111001010010010100111101001010010",
@@ -28,261 +28,58 @@ _BLOCKS = (
     "1000011110100011101011001010111001010001001000010011010111011010",
     "0101100001000101101110001010011101011010010110100110010110011010",
     "1101110100110101110110110100101110011010010110100101100110100110",
-    "0101100001000100101110001010011101011010010110100110010110011010",
-    "0101110001000101101110001011011101011010010110100110010110011010",
     "1101100010110101110110110100101110011010010110100101100110100110",
 )
-#: Slots per n, hill-climbed on min(width * rows, fold) to reach the fold.
-_ORDERS = {
-    9: (0, 1, 2, 3, 4, 5, 2, 3),
-    10: (2, 1, 6, 7, 1, 4, 2, 0, 8, 9, 1, 5, 6, 10, 9, 0),
-    11: (
-        6,
-        6,
-        0,
-        0,
-        1,
-        1,
-        8,
-        8,
-        0,
-        2,
-        5,
-        2,
-        4,
-        5,
-        1,
-        2,
-        4,
-        2,
-        5,
-        2,
-        5,
-        1,
-        0,
-        1,
-        8,
-        8,
-        0,
-        0,
-        9,
-        8,
-        1,
-        2,
-    ),
-    12: (
-        2,
-        9,
-        1,
-        4,
-        1,
-        7,
-        7,
-        6,
-        10,
-        6,
-        3,
-        1,
-        7,
-        0,
-        6,
-        6,
-        9,
-        0,
-        7,
-        4,
-        3,
-        10,
-        1,
-        5,
-        0,
-        5,
-        0,
-        10,
-        8,
-        0,
-        6,
-        10,
-        3,
-        6,
-        7,
-        8,
-        3,
-        7,
-        7,
-        8,
-        3,
-        5,
-        3,
-        10,
-        8,
-        7,
-        4,
-        0,
-        6,
-        8,
-        9,
-        1,
-        8,
-        10,
-        4,
-        1,
-        5,
-        8,
-        6,
-        8,
-        10,
-        3,
-        4,
-        4,
-    ),
-    13: (
-        5,
-        1,
-        0,
-        4,
-        3,
-        3,
-        7,
-        8,
-        10,
-        2,
-        3,
-        1,
-        3,
-        0,
-        6,
-        0,
-        1,
-        0,
-        6,
-        1,
-        0,
-        0,
-        2,
-        5,
-        0,
-        0,
-        7,
-        10,
-        8,
-        0,
-        3,
-        10,
-        9,
-        6,
-        0,
-        8,
-        2,
-        4,
-        10,
-        8,
-        2,
-        5,
-        2,
-        5,
-        0,
-        3,
-        8,
-        1,
-        6,
-        8,
-        10,
-        1,
-        2,
-        3,
-        10,
-        1,
-        9,
-        1,
-        6,
-        9,
-        10,
-        10,
-        4,
-        4,
-        2,
-        7,
-        8,
-        6,
-        10,
-        6,
-        0,
-        4,
-        6,
-        8,
-        5,
-        2,
-        1,
-        1,
-        5,
-        0,
-        1,
-        2,
-        10,
-        8,
-        1,
-        4,
-        9,
-        6,
-        5,
-        7,
-        0,
-        7,
-        0,
-        4,
-        9,
-        8,
-        1,
-        6,
-        0,
-        0,
-        7,
-        0,
-        2,
-        1,
-        6,
-        2,
-        10,
-        3,
-        6,
-        8,
-        5,
-        1,
-        2,
-        7,
-        1,
-        0,
-        6,
-        9,
-        2,
-        6,
-        8,
-        2,
-        8,
-        1,
-        2,
-        3,
-        5,
-        0,
-    ),
-}
+#: n = 9 stays in the comb regime: eight slots of the 49-row blocks.
+_COMB_ORDER = (0, 1, 2, 3, 4, 5, 2, 3)
+#: Full-fold blocks fill the slots the fold's extremes need, 49-row ones the rest.
+_FULL, _ROWS = (7, 8, 6), (0, 1, 5, 2, 3)
+
+
+def _full(m: int, *, wide: bool) -> list[bool]:
+    """Blocks of an m-level fold that must have a full half for its width (height).
+
+    A node is 3 + max(H0, H1) wide and W0 + W1 + 2 tall: its width needs one
+    child's height (the zero child), its height both children's widths, and a
+    block's width needs a half with all 32 leaves.
+    """
+    if m == 6:
+        return [wide]
+    if wide:
+        return _full(m - 1, wide=False) + [False] * (1 << (m - 7))
+    return _full(m - 1, wide=True) * 2
+
+
+def _order(n: int) -> list[int]:
+    """Slot blocks reaching the fold: periodic picks, so no aligned neighbours match."""
+    if n == 9:
+        return list(_COMB_ORDER)
+    need = [
+        a or b for a, b in zip(_full(n, wide=True), _full(n, wide=False), strict=True)
+    ]
+    return [
+        (pool := _FULL if full else _ROWS)[i % len(pool)] for i, full in enumerate(need)
+    ]
 
 
 def witness(n: int) -> str:
     """Concatenated n = 6 blocks: n = 9 keeps the fold above the comb's 12,320.
 
-    Full-fold blocks give the fold 155 x 168 at n = 10 and 171 x 312 at n = 11,
-    and 35 x 749 / 38 x 1521 / 41 x 2651+ comb rows cover them: F is the fold.
+    From n = 10 the comb (>= 752 rows at n = 10, 1,503 at 11) outruns the fold
+    (35 x 749 / 38 x 1,412 rows), and the full-fold slots make F the fold.
     """
-    return "".join(_BLOCKS[i] for i in _ORDERS[n])
+    return "".join(_BLOCKS[i] for i in _order(n))
 
 
 def _cells(n: int, _: str) -> int:
-    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 13."""
+    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 16."""
     return _comb(n) if n <= 5 else min(_comb(n), _fold(n))
 
 
 FORMULAS = {
-    "scaling": (_cells, frozenset(range(3, 14)), (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13))
+    "scaling": (
+        _cells,
+        frozenset(range(3, 17)),
+        (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+    )
 }
