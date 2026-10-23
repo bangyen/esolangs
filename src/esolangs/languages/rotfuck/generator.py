@@ -43,7 +43,7 @@ from esolangs.languages.rotfuck.interpreter import (
     ROTFUCK_CYCLES,
     validate_rotation,
 )
-from esolangs.languages.rotfuck.proof_formulas import execution
+from esolangs.languages.rotfuck.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -402,4 +402,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     proof_execution=(execution, True, (3, 5)),
+    proof_workspace=(workspace, True, (3, 4, 5)),
 )
