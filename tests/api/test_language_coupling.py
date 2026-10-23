@@ -34,6 +34,7 @@ MANAGED = frozenset(
         "tests/support/samples.py",
         "tests/generators/test_wrap.py",
         "tests/proofs/test_execution_formulas.py",
+        "tests/proofs/_witnesses.py",
         "tests/proofs/test_workspace_formulas.py",
         "tests/api/test_language_coupling.py",
         "tests/tooling/test_new_language.py",
