@@ -8,7 +8,7 @@ backlinks = 4
 labels = ["tree"]
 qualification = "a read's 1 arm hops to the far child, short inside a cluster and above it a flight at its own column sharing each window's rung; its 0 arm falls through"
 scaling = "linear: worst F characters, n = 3..10; at most beyond"
-execution = "linear: at most R + 11n commands: each line runs once, a called body adds 11"
+execution = "linear: worst F commands, n = 3..6; at most R + 11n beyond"
 workspace = "poly n: worst bl(R) + bl(2n) + 543 bits: accumulator, line cursor, input cursor, slot and frame bodies"
 definitions = ["R = the program's lines"]
 

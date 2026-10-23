@@ -1,13 +1,8 @@
-"""Executed command and snapshot-bit bounds, R the program's lines."""
+"""Snapshot-bit bound, R the program's lines."""
 
 
 def _lines(program: str) -> int:
     return len(program.split("\n")) - program.endswith("\n")
-
-
-def execution(n: int, program: str) -> int:
-    """Each line runs at most once; a read's called body adds at most 11 lines."""
-    return _lines(program) + 11 * n
 
 
 def workspace(n: int, program: str) -> int:

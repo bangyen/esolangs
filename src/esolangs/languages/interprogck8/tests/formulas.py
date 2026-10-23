@@ -1,4 +1,4 @@
-"""Interprogck8's emitted characters: a max-plus recursion over the window layout."""
+"""Interprogck8: max-plus recursions over the window layout for size and commands."""
 
 from __future__ import annotations
 
@@ -190,4 +190,231 @@ def witness(n: int) -> str:
     return _best(n)[1]
 
 
-FORMULAS = {"scaling": (_chars, True, tuple(range(3, 11)))}
+#: Commands before the first window's code: the line-0 rung and the slot's capture.
+_START = 2
+#: A read's commands on its 0 arm (the slot's NnNn runs) and, plus its body, its 1 arm.
+_NEAR, _FAR = 7, 6
+_TAIL = ["@nd", "@nd", "x", *arith(-35), "div"]
+#: The walker a leaf leaves, Q (81) or T (84), and the tail commands it runs.
+_WALKERS = ((81, len(_TAIL)), (84, len(_TAIL) - 3))
+_NONE = -(10**9)
+#: Distinct-table options kept per state (the near and far halves must differ).
+_SEEN = 2
+#: Arities where the recursion is checked to reach the worst table.
+_EXACT = 6
+
+#: Per walker the dearest (value, table) options, and any tables of the layout.
+Seen = tuple[list[list[tuple[int, str]]], list[str]]
+#: (exit offset, windows opened, cluster size or None) to its options.
+Layouts = dict[tuple[int, int, int | None], Seen]
+Paths = dict[int, dict[tuple[int, int], list[str]]]
+
+
+@cache
+def _lead(target: int) -> int:
+    """Lines of the block hopping ``target``."""
+    return len(block_of(target))
+
+
+@cache
+def _body(target: int) -> int:
+    """Commands of the body a 1 arm calls (the block's other nine lines are fixed)."""
+    return _lead(target) - 9
+
+
+def _seat(offset: int, size: int) -> tuple[int, int, int, int]:
+    """Lay ``size`` lines: first line, exit offset, windows opened, blanks walked."""
+    if 1 <= offset <= FREE - size + 1:
+        return offset, offset + size, 0, 0
+    return 1, 1 + size, 1, PERIOD + 1 - offset
+
+
+def _note(layouts: Layouts, key: tuple[int, int, int | None], table: str) -> Seen:
+    """The options under ``key``, with ``table`` recorded as one that lays out so."""
+    seen = layouts.setdefault(key, ([[], []], []))
+    if table not in seen[1] and len(seen[1]) < _SEEN:
+        seen[1].append(table)
+    return seen
+
+
+def _keep(
+    layouts: Layouts,
+    key: tuple[int, int, int | None],
+    walker: int,
+    value: int,
+    table: str,
+) -> None:
+    """Keep the ``_SEEN`` dearest distinct tables that end in ``walker``."""
+    seen = layouts.get(key)
+    if seen and len(seen[0][walker]) == _SEEN and value <= seen[0][walker][-1][0]:
+        return
+    kept = _note(layouts, key, table)[0][walker]
+    if all(table != other for _, other in kept):
+        kept.append((value, table))
+        kept.sort(key=lambda option: -option[0])
+        del kept[_SEEN:]
+
+
+@cache
+def _paths(height: int) -> Paths:
+    """Cluster size to {(Q, T): tables}: a row's commands less its leaf rung's line.
+
+    A row's cluster commands are the reads it runs and the leaf; the leaf
+    rung's offset is taken off because its walker hops from there.
+    """
+    out: Paths = {}
+
+    def add(size: int, pair: tuple[int, int], table: str) -> None:
+        tables = out.setdefault(size, {}).setdefault(pair, [])
+        if table not in tables and len(tables) < _SEEN:
+            tables.append(table)
+
+    if height == 1:
+        add(2, (1, 1), "01")
+        add(2, (1, 1), "10")
+        add(3, (1, _NONE), "00")
+        add(3, (_NONE, 1), "11")
+        return out
+    below = _paths(height - 1)
+    for size, found in below.items():
+        if size < FREE:
+            for pair, tables in found.items():
+                for table in tables:
+                    add(size + 1, pair, table + table)
+    for near, firsts in below.items():
+        lead = _lead(near)
+        for far, seconds in below.items():
+            if lead + near + far > FREE:
+                continue
+            for one, near_tables in firsts.items():
+                for two, far_tables in seconds.items():
+                    pair = (
+                        max(
+                            _NEAR - lead + one[0],
+                            _FAR + _body(near) - lead - near + two[0],
+                        ),
+                        max(
+                            _NEAR - lead + one[1],
+                            _FAR + _body(near) - lead - near + two[1],
+                        ),
+                    )
+                    for first in near_tables:
+                        for second in far_tables:
+                            if first != second:
+                                add(lead + near + far, pair, first + second)
+    return out
+
+
+@cache
+def _seated(height: int, offset: int) -> Layouts:
+    """The clusters of ``height`` laid at ``offset``, per walker."""
+    out: Layouts = {}
+    for size, found in _paths(height).items():
+        line, end, opened, walked = _seat(offset, size)
+        for pair, tables in found.items():
+            for table in tables:
+                _note(out, (end, opened, size), table)
+                for walker, (accumulator, _) in enumerate(_WALKERS):
+                    if pair[walker] > _NONE // 2:
+                        value = walked - line + pair[walker]
+                        value -= (PERIOD - accumulator) * opened
+                        _keep(out, (end, opened, size), walker, value, table)
+    return out
+
+
+@cache
+def _layouts(n: int, height: int, offset: int) -> Layouts:
+    """Clusters and flights of ``height`` entered at ``offset``."""
+    return {**_seated(height, offset), **_flown(n, height, offset)}
+
+
+@cache
+def _flown(n: int, height: int, offset: int) -> Layouts:
+    """The flights of ``height`` at ``offset``: value = commands less the leaf's offset.
+
+    A row's value is its commands to the leaf rung, less (walker's window
+    length) * (the leaf's window) and the rung's offset; the walker then
+    adds its window length for every window to the last.  A near child
+    laid before the stop sets how many windows the far arm's flight crosses.
+    """
+    out: Layouts = {}
+    if height == 1:
+        return out
+    line, there, opened, walked = _seat(offset, 2)
+    for (end, more, size), seen in _layouts(n, height - 1, there).items():
+        if size in (None, FREE):
+            for walker, (accumulator, _) in enumerate(_WALKERS):
+                for value, table in seen[0][walker]:
+                    total = walked + 2 - (PERIOD - accumulator) * opened + value
+                    _keep(out, (end, opened + more, None), walker, total, table * 2)
+    column = columns(n)[n - height]
+    lead = len(block_of(column))
+    line, there, opened, walked = _seat(offset, lead)
+    rung = PERIOD * opened + line + lead - 1
+    fars = _layouts(n, height - 1, column + 2)
+    for (end, more, near), seen in _layouts(n, height - 1, there).items():
+        first = max(PERIOD * (opened + more) + end, PERIOD * (opened + 1))
+        stop = first + (column + 1 - first) % PERIOD
+        windows = stop // PERIOD
+        flight = PERIOD * (opened + 1) - (rung + 1 + column) + 1
+        flight += (windows - opened - 1) * (PERIOD - column) + 1
+        for (exit_, extra, far), seen_far in fars.items():
+            if (
+                near is not None
+                and far is not None
+                and _lead(near) + near + far <= FREE
+            ):
+                continue
+            key = (exit_, windows + extra, None)
+            for walker, (accumulator, _) in enumerate(_WALKERS):
+                for value, table in seen[0][walker]:
+                    for other in seen_far[1]:
+                        if table != other:
+                            total = (
+                                walked + _NEAR - (PERIOD - accumulator) * opened + value
+                            )
+                            _keep(out, key, walker, total, table + other)
+                            break
+                for value, table in seen_far[0][walker]:
+                    for other in seen[1]:
+                        if table != other:
+                            total = walked + _FAR + _body(column) + flight
+                            total += value - (PERIOD - accumulator) * windows
+                            _keep(out, key, walker, total, other + table)
+                            break
+    return out
+
+
+@cache
+def _worst(n: int) -> tuple[int, str]:
+    """The most commands of any table and row, and that table."""
+    best = (0, "")
+    for (_, opened, _), seen in _layouts(n, n, len(SLOT) + 1).items():
+        for walker, (accumulator, tail) in enumerate(_WALKERS):
+            for value, table in seen[0][walker]:
+                total = _START + value + (PERIOD - accumulator) * (opened + 1) + tail
+                best = max(best, (total, table))
+    return best
+
+
+def _steps(n: int, program: str) -> int:
+    """The recursion's worst where it is checked exact (n <= 6), else R + 11n.
+
+    The recursion keeps ``_SEEN`` tables a state, so it is a witnessed lower
+    bound past the checked range; R + 11n (each line once, a body adds 11)
+    is the proved bound for every n.
+    """
+    if n <= _EXACT:
+        return _worst(n)[0]
+    return program.count("\n") + 1 + 11 * n
+
+
+def steps_witness(n: int) -> str:
+    """The table reaching :func:`_steps`."""
+    return _worst(n)[1]
+
+
+FORMULAS = {
+    "scaling": (_chars, True, tuple(range(3, 11))),
+    "execution": (_steps, True, tuple(range(3, _EXACT + 1))),
+}
