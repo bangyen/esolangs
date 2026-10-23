@@ -666,7 +666,7 @@ def _bfstack_block(i: int, e: int) -> str:
     return "".join("10" if b == "1" else "01" for b in bits)
 
 
-def _bfstack_chars_worst(n: int) -> str:
+def _bfs_chars(n: int) -> str:
     """Distinct maximal blocks of up to 128 rows under a tree of blocks."""
     e = min(n, 7)
     return "".join(_bfstack_block(i, e) for i in range(2 ** (n - e)))
@@ -865,7 +865,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         else ()
     ),
     "BrainIf": lambda n: (_brainif_worst(n) if n >= 2 else "11",),
-    "BFStack": lambda n: (_bfstack_chars_worst(n),),
+    "BFStack": lambda n: (_bfs_chars(n), *_diagram_witness("bfstack", n, 5)),
     "thisthat": lambda n: (_thisthat_worst(n),) if n >= 3 else (),
     "Object disoriented": lambda n: (_od_worst(n),) if n >= 2 else (),
     # Below five its generic families miss the area worst by a column.
