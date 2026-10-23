@@ -335,7 +335,8 @@ more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude
 loading and use the worst sampled parity row. A sub-10 ms run does not
 establish an exponent.
 
-- Circuit Diagram loading is dominated by parsing super-linear area.
+- Circuit Diagram loading is dominated by parsing super-linear area (the
+  default's area is bounded by the H-tree pool, `~5.4k T` cells, at every n >= 9).
 
 - FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
   language floor. The shipped generator gives equal subtables one state, so
@@ -488,19 +489,20 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Fifty-six ledger cells stay `at most` with no route to `worst`
+Fifty-nine ledger cells stay `at most` with no route to `worst`
 (2026-10-22; open ones are on the [roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
   with the winner. ArrowQueue execution (proved 11T + 32n + 92),
   B-tapemark both, BFStack workspace, Boolfuck workspace,
-  Circuit Diagram workspace, Container scaling (the threshold build loses
+  Circuit Diagram workspace and scaling (an H-tree pool from n = 9 caps
+  the area; the default measures at most 0.26 of the cap), Container scaling (the threshold build loses
   to the tree from n = 6: 883 against 1,076) and workspace, CVNC
   execution, FALSE scaling and execution (reached at n = 4, 5 only; at
   n = 6 diagram 292 against expression 293), Fargo all three, For Thorn
-  execution, Minifuck execution, Object Disoriented scaling, Piet both,
-  Smallfuck execution, Streetcode both; scaling for Algebraic Programming
+  execution, Minifuck execution, Object Disoriented scaling, Piet all three,
+  Smallfuck execution, Streetcode workspace; scaling for Algebraic Programming
   Language (144 against 182 at n = 4, exhaustive; the reduced
   diagram's 10T + 4n + 6 holds to n = 14), Packlang, Painfuck (232 against 239 at n = 4), 6-5 (105 against 166 at
   n = 4, the shorter of two layouts to n = 5),
@@ -518,9 +520,13 @@ Fifty-six ledger cells stay `at most` with no route to `worst`
   bound now 1.03x).
 - Coincident peaks: the bound adds component maxima no single row or
   table reaches together, and the exact peak needs a per-row profile or
-  a joint optimisation. ABCDirection, Algebraic Programming Language,
-  FALSE (15x loose), For Thorn, Object Disoriented (4x) and Packlang
-  workspace; Polynomial both; SStack execution (exact at n = 5 and 8
+  a joint optimisation. Algebraic Programming Language execution (a
+  random half beside complemented (n-1)-parity runs 296 > 293, the parity
+  path, at n = 9: executed definitions K add to the longest path);
+  Circuit Diagram execution (2n + 1 is derived and reached to n = 20, but
+  a bank can beat the fold that reaches it); ABCDirection, Algebraic Programming Language,
+  FALSE (1.3x past n = 8, per route), For Thorn, Object Disoriented (1.7x,
+  per level) and Packlang workspace; Polynomial both; SStack execution (exact at n = 5 and 8
   only); Unlambda execution and workspace; RAM0 scaling (a repeat goto
   needs a zero child already built); SendStuff scaling (a constant child
   replaces the branching node the bound also prices).

@@ -47,12 +47,15 @@ def _bound(n: int, _: str) -> int:
 
 
 def _chars(n: int, program: str) -> int:
-    """U: the most nodes, a full tree to level n - 3 over 12 and 2; exact for n <= 10.
+    """U: the most nodes, a full tree to level n - 3 over 12 and 2; exact for n <= 4.
+
+    Reached by that tree for n = 5..10 (a random-start hill climb finds it at
+    n = 5..8) but unproved there, so those n are bounded by V.
 
     A node named costs two edges that a fresh node would use, so only the 2
     bottom nodes and the pair nodes the spare edges reach are read twice.
     """
-    if not 3 <= n <= 10:
+    if not 3 <= n <= 4:
         return _bound(n, program)
     pair = min(1 << (n - 2), 12)
     count = [*(1 << level for level in range(n - 2)), pair, 2]
@@ -82,4 +85,4 @@ def _chars(n: int, program: str) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8, 9, 10))}
+FORMULAS = {"scaling": (_chars, False, tuple(range(3, 11)))}

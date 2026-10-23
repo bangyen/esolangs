@@ -11,7 +11,14 @@ def _length(k: int) -> int:
 
 
 def _chars(n: int, _: str) -> int:
-    """N: main, reads, shift register and tree text, 2^(n-7) distinct blocks."""
+    """N: main, reads, shift register and tree text, 2^(n-7) distinct blocks.
+
+    A table's size is this minus what constants, repeats and ignored inputs
+    drop: a nonconstant leaf costs 7 + len(table) + 2 * block, a collapsed
+    constant span a call (about 12) plus one of two 23-character printers,
+    and a subtree used k times a definition (at most 6 over its body) and k
+    calls, against the k - 1 leaves it omits.
+    """
     h = max(n - 7, 0)
     low = n - h
     block = 1 << low
@@ -46,4 +53,4 @@ def _chars(n: int, _: str) -> int:
     return 5 + reads + register + tree + 1 + (lines - 1)
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 7, 8, 9))}
+FORMULAS = {"scaling": (_chars, True, (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13))}

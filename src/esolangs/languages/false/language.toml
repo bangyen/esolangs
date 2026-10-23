@@ -12,7 +12,8 @@ labels = ["tree"]
 qualification = "—"
 scaling = "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15"
 execution = "linear: at most 9T/2 + 5n - 7 commands past n = 3: expression text executed whole; diagram one path"
-workspace = "poly n: at most (2n+56)(n+4) + n + 1 + bl(n) bits: 26 lambdas"
+workspace = "poly n: at most W bits, b = bl(L), S stores: the build's stack, variables, frames"
+definitions = ["W = bl(n)+6n+2b constant, 5n-2+2b expression, n+1+2b(S+n+2) diagram"]
 
 [generator_sizes]
 "00000001" = { commands = 26, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26 }, source_units = 26 }
@@ -23,9 +24,6 @@ workspace = "poly n: at most (2n+56)(n+4) + n + 1 + bl(n) bits: 26 lambdas"
 "0110100110010110" = { commands = 40, commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 40 }
 "1101001101101101" = { commands = 71, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 71, "5" = 71, "6" = 71, "7" = 71, "8" = 71, "9" = 71, "10" = 71, "11" = 71, "12" = 71, "13" = 71, "14" = 71, "15" = 71 }, source_units = 71 }
 "11111110" = { commands = 32, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 32, "5" = 32, "6" = 32, "7" = 32 }, source_units = 32 }
-
-[formula_arities]
-workspace = [3, 5]
 
 [ablations]
 audited = "2026-10-19"

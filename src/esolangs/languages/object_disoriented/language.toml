@@ -9,7 +9,8 @@ labels = ["tree"]
 qualification = "a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; constant subtables fold, and a repeated branch is a class written once"
 scaling = "linear: at most min(38T + 20, S) characters: S counts distinct subtables"
 execution = "poly n: worst 67n + 34 commands: one tree path, 67 ops a level"
-workspace = "poly n: at most (2n+3)(bl(L)+bl(2L)+3bl(6n+8)+5) + (6n+9)(2bl(L)+3) + 2bl(L)+bl(6n+8)+bl(6n+9)+bl(n)+19 bits: two frames and six cells a level"
+workspace = "poly n: at most F + M + bl(6n+9) + bl(n) + 14 bits, c code ids, 2n+3 frames"
+definitions = ["c = 3 + the `n` and `d` letters", "F = Σ_{j<2n+3} (bl(c) + p_j + 3(bl(6⌈j/2⌉+9)+1)) + 4bl(6n+9) + 5; p_j = 4 even j, else bl(16n+40)", "M = (n+1)(3bl(c)+6) + 6n + 9"]
 
 [generator_sizes]
 "00000001" = { commands = 235, commands_by_row = { "0" = 117, "1" = 117, "2" = 117, "3" = 117, "4" = 168, "5" = 168, "6" = 219, "7" = 235 }, source_units = 194 }

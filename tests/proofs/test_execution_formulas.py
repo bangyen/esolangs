@@ -393,8 +393,12 @@ _IC_WIDTHS = {
 def _intercal_diagram(widths: tuple[int, ...], pairs: list[tuple[str, str]]) -> str:
     """The table of a diagram with ``widths`` nodes a level over 12 + 2 bottom ones."""
     n = len(widths)
-    level = [a + b for a, b in pairs[: widths[n - 2]]]
-    for w in reversed(widths[: n - 2]):
+    return _intercal_levels([a + b for a, b in pairs[: widths[n - 2]]], widths[: n - 2])
+
+
+def _intercal_levels(level: list[str], widths: tuple[int, ...]) -> str:
+    """Join ``level`` upward, ``widths`` nodes a level, top first."""
+    for w in reversed(widths):
         k = len(level)
         if w >= k:  # every node twice or more, every pair distinct
             edges = [j for i in range(w) for j in (i % k, (i + 1 + i // k) % k)]
@@ -409,6 +413,13 @@ def _intercal_diagram(widths: tuple[int, ...], pairs: list[tuple[str, str]]) -> 
 
 def _intercal_worst(n: int) -> str:
     """Diagram with the most named nodes: full unnamed top, lower nodes read twice."""
+    if n >= 13:
+        # Widest level 2^(n-5) to n = 21, 2^(n-6) from 22, then every ordered
+        # pair of the 256 eight-row tables (240 level n - 3 nodes, 16 doubled).
+        wide = min(1 << (n - 5), 65280) if n < 22 else 1 << (n - 6)
+        rows = [f"{k:08b}" for k in range(256)]
+        top = [min(1 << level, wide) for level in range(n - 4)]
+        return _intercal_levels(rows, (*top, min(wide, 65280)))
     w = 1 << max(n - 5, 0)
     widths = _IC_WIDTHS.get(n) or (*(1 << i for i in range(n - 4)), w, w, 12, 2)
     return _intercal_diagram(widths, _IC_PAIRS)
@@ -470,6 +481,17 @@ def _sbleq_worst(n: int) -> str:
     span = (1 << n) - low
     bits = [f"{low + (j * 0x9E3779B1) % span:0{n}b}"[::-1] for j in range(chunks)]
     return "".join(bits) + "1" * rest
+
+
+# language-owners: ["Forbin"]
+def _forbin_worst(n: int) -> str:
+    """2^(n-7) distinct nonconstant 128-entry blocks (block j is j + 1 in binary).
+
+    Below n = 7 the one-hot table: the whole table is one nonconstant block.
+    """
+    if n < 7:
+        return "0" * ((1 << n) - 1) + "1"
+    return "".join(format(j + 1, "0128b") for j in range(1 << (n - 7)))
 
 
 # language-owners: ["Suffolk"]
@@ -662,6 +684,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     "Dimensional": lambda n: (_dimensional_worst(n),) if n >= 4 else (),
     "Fackward": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
+    "Forbin": lambda n: (_forbin_worst(n),),
+    # Six random subtables tiled by 4 random top inputs: the diagram wins and
+    # stores the full 26 lambdas, the variables' peak.
+    "FALSE": lambda n: (_false_tiled(n),) if n >= 9 else (),
     # T - 1 runs: alternating but one equal pair.
     "Flowchart": lambda n: ("10" * (2 ** (n - 1) - 1) + "01",),
     "EGL": lambda n: ("10" + "1" * ((1 << n) - 2),),
@@ -672,7 +698,9 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     "INTERCAL": lambda n: (
-        (_intercal_worst(n), _intercal_chars_worst(n)) if 3 <= n <= 12 else ()
+        (_intercal_worst(n), *(_intercal_chars_worst(n),) * (n <= 12))
+        if 3 <= n <= 25
+        else ()
     ),
     # Equal halves under parity: the root skip doubles a 3T/2 - 1 term.
     "Kiss": lambda n: (_parity(n - 1) * 2,) if n >= 2 else (),
@@ -700,16 +728,73 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
 }
 
 
+def _streetcode_worst(n: int) -> str:
+    """Streetcode's largest shipped area: k zeros on distinct root paths.
+
+    Zero r sits in block bitrev(r) of 2^j (j = bits of k - 1), at offset
+    popcount(block) mod 2: the paths split as widely as possible, and no two
+    sibling halves are equal, so nothing folds or is drawn once.  k is the
+    least count where the tree (4 rows a leaf) is no smaller than the flat street.
+    """
+    if n < 5:
+        return _parity(n)
+    gap = sum(max(51, 2 ** (i - 1) + 3) for i in range(1, n))
+    k = next(
+        k
+        for k in range(1, 1 << n)
+        if 4 * (8 * n + 20) * (1 + sum(min(1 << d, k) for d in range(n)))
+        >= 9 * (2 * (1 << n) - k + 108 + gap)
+    )
+    bits = (k - 1).bit_length()
+    zeros = set()
+    for r in range(k):
+        block = int(format(r, f"0{bits}b")[::-1], 2) if bits else 0
+        zeros.add((block << n - bits) + block.bit_count() % 2)
+    return "".join("0" if i in zeros else "1" for i in range(1 << n))
+
+
+def _false_tiled(n: int) -> str:
+    """Six random (n - 4)-input subtables, each top-input row one of them."""
+    rnd = random.Random(1)
+    width = 1 << (n - 4)
+    subs = ["".join(rnd.choice("01") for _ in range(width)) for _ in range(6)]
+    return "".join(rnd.choice(subs) for _ in range(16))
+
+
+def _unary_tables(n: int) -> tuple[str, ...]:
+    """Every table a nine-command source admits: constants and single inputs.
+
+    Constant 0 is n commands, constant 1 n + 4, input i alone n + 2 if last
+    else n + 4, one more negated; two or more essential inputs need 4n - 2 or
+    more (AND 5n - 2, n = 2 only).
+    """
+    width = 1 << n
+
+    def single(i: int, flip: int) -> str:
+        return "".join(str((r >> (n - 1 - i) & 1) ^ flip) for r in range(width))
+
+    shapes = {"0" * width: n, "1" * width: n + 4}
+    for i in range(n):
+        for flip in (0, 1):
+            shapes[single(i, flip)] = n + (2 if i == n - 1 else 4) + flip
+    tables = [table for table, commands in shapes.items() if commands <= 9]
+    return (*tables, *(("0001",) if n == 2 else ()))
+
+
 def _tables(name: str, n: int) -> tuple[str, ...]:
     """Structured and random tables, with named worst-case witnesses."""
     width = 1 << n
+    if name == "Unary":
+        return _unary_tables(n)
     if name == "Circuit Diagram" and n >= 8:
         # Parity reaches 2n+1 at n=8; dense tables exercise pool admission
         # and constants use only their clock gate.
         return (_seeded(n, 1), _parity(n), "1" * width)
     if name == "Streetcode":
-        # Its worst in both columns, n = 6..8: one zero, the last entry.
-        return ("1" * (width - 1) + "0",)
+        # Execution's worst, one zero at the last entry; the area's worst,
+        # parity below five and above it the flat street at the least zero
+        # count where the tree is no smaller (:func:`_streetcode_worst`).
+        return ("1" * (width - 1) + "0", _streetcode_worst(n))
     if name == "Malbolge":
         # Straight-line code: all 10 tables tie at every n measured; the
         # all-ones or alternating label reaches the longest stub.

@@ -5,10 +5,16 @@ def _chars(n: int, _: str) -> int:
     """C: 95 + per level 5 a node, 3 a pad, plus 2D + E or 4(E - D) of macro names.
 
     From n = 12 the 256 eight-bit subtables are each named, one-letter names
-    going to the most used; exact to n = 15, past it 6T + 90 bounds.
+    going to the most used; exact to n = 15.  From n = 16 (32 uses, above the
+    4-bit tables' 31) the 8-bit tables outrank the lower macros: 47 get
+    one-letter names, the rest and every 4- and 2-bit macro two letters, so
+    5T/8 + 465T/2048 + 3490, exact to n = 19; level n - 4 is out of distinct
+    pairs at n = 20 (65,280 + 256 pads), 6T + 90 bounds past it.
     """
-    if n > 15:
+    if n > 19:
         return 6 * (1 << n) + 90
+    if n > 15:
+        return 5 * (1 << (n - 3)) + 465 * (1 << (n - 11)) + 3490
     if n > 11:
         uses = 1 << (n - 11)  # parents of each eight-bit subtable
         # Names go by use: the 4-bit tables (31 uses) first; the 2-bit tables
@@ -39,4 +45,6 @@ def _chars(n: int, _: str) -> int:
     return total + edges
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 5, 7, 9, 10, 11, 12, 13, 14, 15))}
+FORMULAS = {
+    "scaling": (_chars, True, (3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19))
+}

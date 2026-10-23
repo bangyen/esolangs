@@ -30,43 +30,29 @@ evidence, not optimization tasks.
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
-  `worst`. The 57 `at most` cells without one are in
+  `worst`. The 59 `at most` cells without one are in
   [limitations](limitations.md#run-time-and-memory).
-  - Partial range: SMU scaling past n = 15 (the lower macros take
-    two-letter names from n = 16), 1 + i workspace past n = 23,
-    INTERCAL execution and workspace past n = 12 (level n - 3's 240 pairs
-    cap the named nodes) and scaling outside n = 3..10, Inject scaling
-    past n = 49 (two-letter input names).
-  - Algebraic Programming Language execution: `max(21, ⌈65n/2⌉ + 3n - 27)`
-    is exact through n = 4 (exhaustive); parity reaches it to n = 10 and
-    searches to n = 8 never beat it, unproved past n = 4.
-- **Unformulated scaling** (2026-10-22): 18 cells state a mechanism, no
+  - Partial range: SMU scaling past n = 19 (level n - 4 runs out of
+    distinct pairs at n = 20), 1 + i workspace past n = 26, INTERCAL
+    execution and workspace past n = 25 (unbuilt; the bound is exact to
+    n = 38) and scaling past n = 4 (U is reached at n = 5..10, but the
+    integer program over level shapes with distinct-pair edges is unsolved).
+- **Unformulated scaling** (2026-10-22): 15 cells state a mechanism, no
   size formula. Bleh, Quassaunt and Stisp have a bound only as a per-level
   optimisation (not a rule); CVNC's unshared 8T + 12 is beaten by sharing
   on 12,926 of 65,536 four-input tables. Brainfuck, For Thorn,
   Interprogck8, Minifuck, Pointless, ROTfuck, Smallfuck, Subleq, 3x and
-  AddSubJump (n <= 5) race routes or layouts; Circuit Diagram's area
-  follows its fold DAG and class counts (621T cells at n = 8, 1,100T at
-  n = 11 on random tables); Line and Piet need a raster unit; Polynomial is a lower bound. Slow ACV's three
-  cells are prose too: candidate bounds hold to n = 20 but are unproved.
-- **Unmeasured classes:** Befunge, Malbolge and Polynomial execution carry
-  formulas; Unary execution and workspace do not (`max(n, min(n + 4, 8))`
-  commands is exact on the nine-command budget, unapplied).
-- **Argued, not derived** (2026-10-22): six `worst` cells rest on an
-  argument past the executed range. Clockwise scaling (an essential-input
-  subset sweep to n = 9), Codesick and Forbin scaling ("fewer nodes never
-  win" and the shrink argument, past n = 8), Circuit Diagram execution
-  (parity as the fold past n = 16, from size growth), INTERCAL scaling
-  n = 5..10 (an integer program over level shapes, every level non-empty)
-  and Suffolk scaling past n = 8 (the one-pair family enumerated at n = 7, 8,
-  sampled at 9, 10). Derive each, or scope it to the executed range.
+  AddSubJump (n <= 5) race routes or layouts; Polynomial is a lower bound.
+  Slow ACV's three cells are prose too: candidate bounds hold to n = 20 but
+  are unproved.
+- **Scoped by derivation** (2026-10-22): Suffolk's F is exact for
+  n = 4..12; from n = 13 the one-pair tables' NOR DAG fits the workspace
+  limit, so the worst is below F - 1 (not located). Codesick's W is exact
+  for n = 2..19; from n = 20 a third id width leaves it unreached.
 - **Derived, not executed:** Forþ workspace's log factor needs a twin call
   50,625 or more scopes back, at least 20 inputs
   ([limitations](limitations.md#run-time-and-memory)); What!? past n = 19
   (execution past 17) and S*bleq scaling past n = 21 were not built.
-- **Loose bounds:** FALSE workspace (15x) and Object Disoriented workspace
-  (4x) sum component peaks no row reaches together. A per-row profile
-  tightens them without a route to `worst`.
 - **Open mathematics:** Polynomial's worst-case length constant
   `C_P(n)*n/T**2` is bracketed only within a factor 12.5, and whether the
   limit exists is open ([proofs](proofs/index.md#polynomial-bound)). Whether
