@@ -7,11 +7,17 @@ def execution(n: int, _: str) -> int:
 
 
 def workspace(n: int, p: str) -> int:
-    """The stated workspace bound, evaluated for n and the program."""
+    """The stated workspace bound, evaluated for n and the program.
+
+    Past seven inputs the root level is a zero arm (its sentinel is popped,
+    so the stack peaks at ``n + 6``) or a one arm (its loop opens at position
+    51, at most six bits against ``bl(L)`` >= 10): never both at full width.
+    """
     bl = int.bit_length
     return (
         n
-        + 7
+        + 6
+        + (n < 8)
         + bl(n)
         + (max(n - 7, 0) + (3 * min(1 << n, 128) + 1) // 5 + 3) * bl(len(p))
     )

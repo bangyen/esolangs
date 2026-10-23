@@ -1,4 +1,9 @@
-"""BFStack's emitted characters: one byte-indexed block, then a tree of blocks."""
+"""BFStack's emitted characters: one byte-indexed block, then a tree of blocks.
+
+Workspace is exact from n = 9 (the root loop cannot clear half of L below).
+"""
+
+from esolangs.languages.bfstack.proof_formulas import workspace
 
 
 def _chars(n: int, _: str) -> int:
@@ -7,4 +12,7 @@ def _chars(n: int, _: str) -> int:
     return 3 * t + 54 * n + 59 if n <= 7 else 221 * t // 32 - 62
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8, 9))}
+FORMULAS = {
+    "scaling": (_chars, True, (3, 4, 5, 6, 7, 8, 9)),
+    "workspace": (workspace, frozenset({9, 10, 11}), (3, 6, 9, 10, 11)),
+}

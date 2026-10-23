@@ -109,6 +109,26 @@ def _bfstack_worst(n: int) -> str:
     return table
 
 
+def _bfstack_ws_worst(n: int) -> str:
+    """Workspace worst from n = 9, a rule: the deepest block under one arms.
+
+    Every loop opens past half of ``L`` and the stack keeps a sentinel per
+    one arm.  The root's zero arm is the 77-zero block ``A`` as the upper
+    half at every level, under constant lower halves (alternating, so no
+    node classifies); its one arm is ``2^(n-8)`` distinct patterned blocks,
+    the first a 32-bit pattern repeated, sized to put the root loop past
+    2^(bl(L)-1).
+    """
+    table = "0" * 77 + "1" * 51
+    for level in range(7, n - 1):
+        table = ("1" if level % 2 else "0") * len(table) + table
+    for j in range(1 << (n - 8)):
+        width = 32 if j == 0 else 64
+        half = f"{random.Random(104729 * j + 3).getrandbits(width):0{width}b}"
+        table += half * (128 // width)
+    return table
+
+
 def _morse(a: str, b: str, n: int) -> str:
     """Blocks ``a``, ``b`` in Thue-Morse order: halves both maximal, distinct."""
     for _ in range(n - 2):
@@ -1035,7 +1055,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "BFStack" and n >= 10:
         # Lower arities sweep the generic families; this named witness reaches
         # the combined classifier/odd-prefix bound without repeating them.
-        return (_bfstack_worst(n),)
+        return (_bfstack_worst(n), _bfstack_ws_worst(n))
     if name == "Algebraic Programming Language" and n >= 8:
         # Lower arities sweep the full corpus; retain shared, dense and inline
         # program shapes for the larger frame/serial bounds.
@@ -1053,6 +1073,8 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     )
     if name == "BFStack" and n >= 7:
         tables += (_bfstack_worst(n),)
+    if name == "BFStack" and n >= 9:
+        tables += (_bfstack_ws_worst(n),)
     if name == "AddSubJump":
         # The packed decoder's worst now that the tree takes the lone zero:
         # ones but rows 8 mod 9 and the last, reaching it at n = 6.
