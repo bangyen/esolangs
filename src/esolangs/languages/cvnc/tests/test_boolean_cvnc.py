@@ -210,3 +210,40 @@ def test_lf_wrapped_generators_execute_every_small_table(n: int, width: int) -> 
         for row, expected in enumerate(table):
             inputs = list(format(row, f"0{n}b"))
             assert run_cvnc(wrapped, inputs) == expected
+
+
+#: A pair spelled alone, by its two bits: constants fold to a read and a leaf.
+_PAIR_CHARS = {"00": 5, "01": 11, "10": 12, "11": 7}
+
+
+def _closed(table: str) -> int:
+    """Spell each node as a whole chunk: 5 a node over its halves, 12 a pair."""
+    k = len(table).bit_length() - 1
+    if len(set(table)) == 1:
+        return 2 * k + 5  # k reads at 2, then the leaf
+    if k == 1:
+        return _PAIR_CHARS[table]
+    half = len(table) // 2
+    return 5 + _closed(table[:half]) + _closed(table[half:])
+
+
+class TestCvncScalingBound:
+    """Sharing's segment breaks and jumps never beat the chunk spelling."""
+
+    def test_pair_chars_are_what_the_generator_spells(self) -> None:
+        module = importlib.import_module("esolangs.languages.cvnc.generator")
+        for table, chars in _PAIR_CHARS.items():
+            assert len(module._render(module._tree(table))) == chars  # noqa: SLF001
+
+    def test_a_program_is_at_most_its_prologue_and_chunks(self) -> None:
+        """The 17T/2 + 13 bound: pairs 12, nodes above 5, prologue <= 18."""
+        rng = random.Random(7)
+        tables = [format(v, "08b") for v in range(256)]
+        tables += [
+            "".join("1" if rng.random() < 0.1 + k / 70 else "0" for _ in range(64))
+            for k in range(60)
+        ]
+        for table in tables:
+            n = len(table).bit_length() - 1
+            assert len(boolean.cvnc(table)) <= 18 + _closed(table), table
+            assert _closed(table) <= 17 * 2 ** (n - 1) - 5
