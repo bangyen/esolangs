@@ -497,7 +497,7 @@ Sixty-four ledger cells stay `at most` with no route to `worst`
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
   with the winner. ArrowQueue execution (proved 11T + 32n + 92),
-  B-tapemark both, BFStack workspace, Boolfuck workspace,
+  BFStack workspace, Boolfuck workspace,
   Circuit Diagram workspace and scaling (an H-tree pool from n = 9 caps
   the area; the default measures at most 0.26 of the cap), Container scaling (the threshold build loses
   to the tree from n = 6: 883 against 1,076) and workspace, CVNC
