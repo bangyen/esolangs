@@ -14,7 +14,8 @@ labels = ["finite lookup"]
 qualification = "every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count"
 scaling = "linear: worst P characters, n = 2..10: a lone zero"
 execution = "linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: a lone zero second to last"
-workspace = "linear: worst 2T+n+8+bl(2T+6)+bl(L)+bl(8T²+43T+15n-5)+bl(n) bits for n = 2..6: 2T+7 cells"
+workspace = "linear: worst W bits to n = 6, at most V after: 2T + 7 cells"
+definitions = ["W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the execution worst", "V = 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n)"]
 
 [generator_sizes]
 "00000001" = { commands = 364, commands_by_row = { "0" = 212, "1" = 252, "2" = 252, "3" = 308, "4" = 236, "5" = 292, "6" = 292, "7" = 364 }, source_units = 268 }
@@ -28,9 +29,6 @@ workspace = "linear: worst 2T+n+8+bl(2T+6)+bl(L)+bl(8T²+43T+15n-5)+bl(n) bits f
 
 [catalogue]
 folding_constant_local = "_program"  # one-entry rotated lookup
-
-[formula_arities]
-workspace = [3, 4]
 
 [ablations]
 audited = "2026-10-19"

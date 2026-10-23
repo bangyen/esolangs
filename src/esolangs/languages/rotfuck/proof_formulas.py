@@ -11,10 +11,14 @@ def workspace(n: int, program: str) -> int:
 
     The tape peaks at 2T + 2 cells (the strip, the Horner scratch pair) with a
     count of 2^n - 1 (n bits) and one decrement-wrapped 255 (8) on it;
-    pointer at most 2T + 6, cursor L, rotation the execution bound.
+    pointer at most 2T + 6, cursor L, rotation the execution bound.  Past
+    n = 6 the earlier bound V (the tape measures 2T + 14 at n = 7, 8).
     """
     t = 1 << n
     bl = int.bit_length
+    if n > 6:
+        size = len(program)
+        return 2 * t + 5 * n + 35 + bl(2080 * size) + bl(2 * t + 6) + bl(size) + bl(n)
     return (
         2 * t
         + n
