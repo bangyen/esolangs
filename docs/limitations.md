@@ -512,10 +512,16 @@ Sixty-four ledger cells stay `at most` with no route to `worst`
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
   Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
   worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11.
+- Window slack: Interprogck8 scaling, execution and workspace bound the
+  construction, not the worst table. 420T + 900 characters against 200T
+  at most found, n = 4..10 (the windows opened are bounded, not located);
+  R + 11n commands against 0.64R at n = 7 (a run skips the lines a flight
+  hops); the workspace adds a slot and a frame of the longest body, 33
+  characters, which only some tables hold.
 - Address widths: the peak sums the bit-lengths of table-dependent
   positions, which cross powers of two by layout. AddSubJump, Caballo,
   Crement, Pointless, ROTfuck, S-BLEQ and Underload workspace;
-  Interprogck8 execution (mod-82/66 lanes); Painfuck workspace (slack 1
+  Painfuck workspace (slack 1
   at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
   exhaustive); Bitdeque scaling (GOTO digits by layout; 358 against
   400 at n = 4, exhaustive); 3x workspace (keys sized by use rank; 1.7x loose);
@@ -673,11 +679,12 @@ source is `O(T log n)` characters and no bound for every program is known
 either way.
 
 Four languages left on 2026-09-18 with linearity unproved and no language
-lower bound, and stay out under the scaling rule:
+lower bound; three stay out under the scaling rule:
 
 - %^2^-1: the planner hit a totality wall (30631e3bc).
 - Interprogck8: `DownAccLines` reach and non-nesting capture blocked the
-  generator (30631e3bc).
+  generator (30631e3bc). It returned (5bb5a565c) with a `Theta(T log T)`
+  lane build; shared window rungs made it linear (2026-10-22).
 - WII2D: its 256-domain cost policy had no readout rule (30631e3bc).
 - COD: the template build was `Theta(T**2)` (03131147d). A read-mode
   decision tree, re-attempted 2026-10-21 and executed, reaches

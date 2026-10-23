@@ -6,35 +6,30 @@ backlinks = 4
 
 [proof_status]
 labels = ["tree"]
-qualification = "a one-line compare read either flies its 1 child down a residue mod 82 through shared rungs or dismounts 85 lines onto its 0 child; a lane is any residue not in the air"
-scaling = "linear: each node's scans and dismount span a bounded number of lines"
-execution = "linear: at most 86n + ⌊R/66⌋ + 290 commands to n = 15, then 168n + ⌊R/66⌋ + 290"
-workspace = "poly n: worst 7 + bl(R) + bl(2n) bits: the accumulator, a line cursor, the input cursor"
+qualification = "a read's 1 arm hops to the far child, short inside a cluster and above it a flight at its own column sharing each window's rung; its 0 arm falls through"
+scaling = "linear: at most 420T + 900 characters: 126-line windows, at most 1.3T opened"
+execution = "linear: at most R + 11n commands: each line runs once, a called body adds 11"
+workspace = "poly n: at most bl(R) + bl(2n) + 543 bits: accumulator, line cursor, input cursor, slot and frame bodies"
 definitions = ["R = the program's lines"]
 
 [generator_sizes]
-"00000001" = { commands = 89, commands_by_row = { "0" = 203, "1" = 125, "2" = 125, "3" = 47, "4" = 126, "5" = 48, "6" = 81, "7" = 89 }, source_units = 3235 }
-"00001100" = { commands = 68, commands_by_row = { "0" = 203, "1" = 125, "2" = 125, "3" = 47, "4" = 212, "5" = 134, "6" = 146, "7" = 68 }, source_units = 3254 }
-"00110110" = { commands = 38, commands_by_row = { "0" = 140, "1" = 62, "2" = 181, "3" = 103, "4" = 96, "5" = 104, "6" = 137, "7" = 38 }, source_units = 3762 }
-"0110" = { commands = 77, commands_by_row = { "0" = 86, "1" = 94, "2" = 127, "3" = 77 }, source_units = 2101 }
-"01101001" = { commands = 125, commands_by_row = { "0" = 76, "1" = 149, "2" = 117, "3" = 83, "4" = 118, "5" = 84, "6" = 52, "7" = 125 }, source_units = 3933 }
-"0110100110010110" = { commands = 113, commands_by_row = { "0" = 78, "1" = 135, "2" = 168, "3" = 69, "4" = 169, "5" = 70, "6" = 103, "7" = 176, "8" = 171, "9" = 72, "10" = 105, "11" = 113, "12" = 106, "13" = 114, "14" = 147, "15" = 113 }, source_units = 8158 }
-"1101001101101101" = { commands = 134, commands_by_row = { "0" = 294, "1" = 135, "2" = 82, "3" = 155, "4" = 148, "5" = 70, "6" = 254, "7" = 176, "8" = 85, "9" = 158, "10" = 126, "11" = 92, "12" = 192, "13" = 114, "14" = 61, "15" = 134 }, source_units = 8146 }
-"11111110" = { commands = 68, commands_by_row = { "0" = 289, "1" = 211, "2" = 211, "3" = 133, "4" = 212, "5" = 134, "6" = 102, "7" = 68 }, source_units = 3257 }
+"00000001" = { commands = 37, commands_by_row = { "0" = 49, "1" = 49, "2" = 49, "3" = 49, "4" = 43, "5" = 43, "6" = 43, "7" = 37 }, source_units = 983 }
+"00001100" = { commands = 43, commands_by_row = { "0" = 49, "1" = 49, "2" = 49, "3" = 49, "4" = 37, "5" = 37, "6" = 43, "7" = 43 }, source_units = 1000 }
+"00110110" = { commands = 220, commands_by_row = { "0" = 133, "1" = 133, "2" = 121, "3" = 121, "4" = 220, "5" = 214, "6" = 214, "7" = 220 }, source_units = 1613 }
+"0110" = { commands = 51, commands_by_row = { "0" = 51, "1" = 45, "2" = 45, "3" = 51 }, source_units = 723 }
+"01101001" = { commands = 214, commands_by_row = { "0" = 134, "1" = 122, "2" = 122, "3" = 134, "4" = 214, "5" = 220, "6" = 220, "7" = 214 }, source_units = 1581 }
+"0110100110010110" = { commands = 472, commands_by_row = { "0" = 344, "1" = 326, "2" = 326, "3" = 344, "4" = 334, "5" = 349, "6" = 349, "7" = 334, "8" = 374, "9" = 386, "10" = 386, "11" = 374, "12" = 472, "13" = 466, "14" = 466, "15" = 472 }, source_units = 3032 }
+"1101001101101101" = { commands = 465, commands_by_row = { "0" = 325, "1" = 325, "2" = 343, "3" = 325, "4" = 348, "5" = 348, "6" = 333, "7" = 333, "8" = 386, "9" = 374, "10" = 374, "11" = 386, "12" = 465, "13" = 465, "14" = 471, "15" = 465 }, source_units = 3098 }
+"11111110" = { commands = 43, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 37, "5" = 37, "6" = 37, "7" = 43 }, source_units = 989 }
 
 [catalogue]
-sharing_exempt = "a stop sits on one lane, so two parents cannot land on one child"
-folding_ignored_read = "a read is itself a branch: both arms converge on one child, so an ignored input costs a read node per path"
+sharing_exempt = "a stop sits on one column, so two parents cannot land on one child"
+folding_ignored_read = "a read is itself a branch: a read whose halves agree is one line over its single child, so an ignored input costs a read line per path"
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-22"
 
 [ablations.equal_halves_convergence]
-saving = 9.6
+saving = 32.6
 arity = 12
-verdict = "kept: canonical, exempt. A read whose halves agree still consumes its digit, but both arms converge onto one laid child (the 0 walk runs through the 1 flight's stop). 9.3% at n=8 rising to 9.6% at n=12 on random tables; on its classes AND 95.3% / 98.4% at n=10/12, OR 94.8% / 98.2%, constant tables 99.1% / 99.7%, two ignored inputs 47.7% / 45.2%; exactly 0.0% on parity, whose halves are complements. The convergence is also how this generator absorbs ignored inputs and constants: there is no essential-input projection"
-
-[ablations.selective_rung_fill]
-saving = 27.8
-arity = 12
-verdict = "kept: filler lines are x (1 char) except where a flight hops or an acc-0 walk crosses a live lane, where a rung (12 chars) is required. Filling every odd line the tree's walks cross costs 30.5% at n=8 declining to 27.8% at n=12 on random tables, 43.0% on AND at n=10. The docstring's own corridor figure (1,207 chars/entry) prices a broader fill than the shipped walk rule negates; see the stale-figures entry F22 in RETIREMENT-CANDIDATES.md"
+verdict = "kept: canonical, exempt. A read whose halves agree is one read line over its single child, not a read over two copies: 32.6% off random tables at n=12 and 32.5% at n=8 (20 tables each, seed 1847 + n), 97.6% on AND and 99.7% on zeros at n=10, exactly 0.0% on parity, whose halves are complements. The fold is also how this generator absorbs ignored inputs and constants: there is no essential-input projection. Sizes only; the unfolded layout was not run"

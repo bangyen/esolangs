@@ -10,7 +10,7 @@ swept = [
     "cvnc", "cyclic_tag", "decleq", "dig", "dimensional", "egl", "eval",
     "fackward", "false", "fargo", "fish", "flowchart", "for_thorn", "forbin",
     "fractran", "freestajlo", "grapheme", "home_row", "hot", "inject",
-    "intercal", "interprogck8", "laserfuck", "line", "malbolge", "minifuck",
+    "intercal", "laserfuck", "line", "malbolge", "minifuck",
     "minsky_swap", "modulous", "object_disoriented", "one_i", "packlang",
     "painfuck", "piet", "pointless", "polynomial", "qoibl", "quassaunt",
     "ram0", "rotfuck", "rubic", "s_bleq", "sendstuff", "six_five", "slashes",

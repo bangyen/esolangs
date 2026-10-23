@@ -43,8 +43,7 @@ evidence, not optimization tasks.
   - Per-level bounds (2026-10-22): Stisp, Quassaunt and Bleh are exact to
     n = 8 (a witness rule); from n = 9 the capped level's pairs of top
     ids run out (59 of 64 nodes at n = 9). 3x sits 20-28% below its F.
-- **Unformulated scaling** (2026-10-22): Interprogck8 grows about 11
-  characters an entry per input (T log T); Polynomial is a lower bound.
+- **Unformulated scaling** (2026-10-22): Polynomial is a lower bound.
 - **Derived, not executed:** What!? past n = 22 (6.4 GB there) and S*bleq
   scaling past n = 25 (3 GB) were not built.
 - **Open mathematics:** Polynomial's worst-case length constant
