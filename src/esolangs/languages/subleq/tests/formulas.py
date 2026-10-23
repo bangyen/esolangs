@@ -8,22 +8,35 @@ def _tests(n: int) -> int:
     )
 
 
-def _packed(n: int, _: str) -> int:
-    """Packed decoder: 8n + 45 instructions, 18 named cells, ceil(T/n) chunks.
+#: Decode-part code addresses past the 8n read instructions: 44 branch targets
+#: and the self-modified load (instruction 14).
+_CODE = (
+    13, 2, 3, 4, 5, 7, 0, 8, 9, 10, 11, 12, 0, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+    32, 24, 25, 30, 27, 28, 29, 22, 31, 32, 33, 40, 35, 36, 37, 38, 39, 20, 41, 42,
+    43, 44, 14,
+)  # fmt: skip
 
-    An instruction cell is a code address (<= 3I), a named cell (<= 3I + 17)
-    or -1, so at most w digits; a chunk is at most -(2^n - 1); the named cells
-    are 22 characters, 2 more per extra digit of n.
+
+def _packed(n: int, _: str) -> int:
+    """Packed decoder, exact: 8n + 45 instructions, 18 named cells, ceil(T/n) chunks.
+
+    Reads are 8 instructions each, the decode 45; operands are 15n + 88 named
+    cells (n + 2 are -1), 8n read targets 3t, the _CODE addresses 3(8n + k).
+    Named values are 22 + 2 len(n) characters.  The longest chunk is all ones:
+    -(2^w - 1), w = n or T mod n for the last; row 0 clear costs no digit.
+    Equals the decoder on 0 followed by ones, n = 2..14.
     """
     code = 8 * n + 45
-    chunks = -(-(1 << n) // n)
     width = len(str(3 * code + 17))
-    cells = 3 * code + 18 + chunks
+    full, rest = divmod(1 << n, n)
     return (
-        cells - 1
-        + width * 3 * code
-        + 22 + 2 * (len(str(n)) - 1)
-        + chunks * (1 + len(str((1 << n) - 1)))
+        3 * code + 17 + -(-(1 << n) // n)  # separators between cells
+        + sum(len(str(3 * t)) for t in range(1, 8 * n + 1))
+        + sum(len(str(3 * (8 * n + k))) for k in _CODE)
+        + (15 * n + 88) * width + 2 * (n + 2)
+        + 22 + 2 * len(str(n))
+        + full * (1 + len(str((1 << n) - 1)))
+        + (1 + len(str((1 << rest) - 1)) if rest else 0)
     )  # fmt: skip
 
 
@@ -53,8 +66,13 @@ def _tree(n: int, _: str) -> int:
 
 
 def _chars(n: int, p: str) -> int:
-    """The shorter build is at most either one."""
+    """The shorter build is at most either one; at n = 9 a hashed table ships P.
+
+    Witness (`_asj_packed_worst` in test_execution_formulas): every chunk's last three
+    rows one, so each chunk keeps its top digit count, and the other rows
+    a multiplicative hash, so the tree (1,732) loses to P (1,683).
+    """
     return min(_packed(n, p), _tree(n, p))
 
 
-FORMULAS = {"scaling": (_chars, False, tuple(range(2, 10)))}
+FORMULAS = {"scaling": (_chars, frozenset({9}), tuple(range(2, 10)))}

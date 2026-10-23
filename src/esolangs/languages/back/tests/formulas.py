@@ -23,4 +23,4 @@ def _cells(n: int, _: str) -> int:
     return _comb(n) if n <= 5 else min(_comb(n), _fold(n))
 
 
-FORMULAS = {"scaling": (_cells, False, (3, 4, 5, 6, 7, 8, 9, 10))}
+FORMULAS = {"scaling": (_cells, frozenset(range(3, 7)), (3, 4, 5, 6, 7, 8, 9, 10))}

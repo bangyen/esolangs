@@ -101,4 +101,4 @@ def _codels(n: int, _: str) -> int:
     return min(_strip(n, z), _packed(n, z))
 
 
-FORMULAS = {"scaling": (_codels, True, (3, 4, 5, 6, 7))}
+FORMULAS = {"scaling": (_codels, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8))}

@@ -47,4 +47,10 @@ def _chars(n: int, _: str) -> int:
     return total + edges
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16))}
+FORMULAS = {
+    "scaling": (
+        _chars,
+        frozenset((3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16)),
+        (3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18),
+    )
+}

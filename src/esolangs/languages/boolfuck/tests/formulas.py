@@ -15,4 +15,4 @@ def _chars(n: int, _: str) -> int:
     return 35 * (1 << n) // 2 + 2 * n * n + 12 * n - (23 if n <= 7 else 11)
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 8)), (3, 4, 5, 6, 7, 8))}

@@ -84,4 +84,17 @@ def below_eleven(n: int, _: str = "") -> int:
     return min(tree_chars(n), _chars(n, ""))
 
 
-FORMULAS = {"scaling": (_chars, True, (11, 12, 13, 19, 20))}
+def _scaling(n: int, _: str) -> int:
+    """P from n = 11; below, the shorter of tree and packed (tree alone under 5)."""
+    if n >= 11:
+        return _chars(n, "")
+    return below_eleven(n) if n >= 5 else tree_chars(n)
+
+
+FORMULAS = {
+    "scaling": (
+        _scaling,
+        frozenset({11, 12, 13, 19, 20}),
+        (5, 8, 10, 11, 12, 13, 19, 20),
+    )
+}
