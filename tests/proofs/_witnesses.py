@@ -889,7 +889,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         _quassaunt_stack(n),
-        *_diagram_witness("quassaunt", n, 11),
+        *_diagram_witness("quassaunt", n, 12),
     ),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
