@@ -7,7 +7,9 @@ run each, then applies ``--per-language`` seeded mutants one at a time:
 operator swaps (``+``/``-``, ``<``/``<=``, ``and``/``or``, ...) and integer
 constants plus one, in generator source only.  Each runs the package's tests
 plus the registry tests matching its name, ``pytest -x``; a mutant that no
-test kills is a survivor to triage by hand.
+test kills is a survivor to triage by hand.  The selection excludes the
+harness's deadline tests, which no generator mutant can kill, and the
+xdist worker count comes from ``MUTANTS_WORKERS`` (default 4).
 
 Mutants edit source in place, so a sweep refuses to run outside a git
 worktree.  Caps: a run gets three times its baseline (60 s at least), the
@@ -151,14 +153,32 @@ def registry_keyword(package: str) -> str:
 
 
 def _pytest(package: str, *, stop: bool) -> list[str]:
-    command = ["uv", "run", "pytest", "-q", "-n", "4", "-p", "no:cacheprovider"]
+    command = [
+        "uv",
+        "run",
+        "pytest",
+        "-q",
+        "-n",
+        os.environ.get("MUTANTS_WORKERS", "4"),
+        "-p",
+        "no:cacheprovider",
+    ]
     command += ["--tb=no", "-rf", "-m", "not weekly", *(["-x"] if stop else [])]
+    # The harness's deadline tests (under tests/, exercising the
+    # worker-reaping machinery) can kill no generator mutant, and the
+    # substring match drags them into package "line"'s selection ("line"
+    # inside "deadline"), where they flake under load.  Exclude that stem
+    # outside the language packages, so a package's own deadline-named
+    # test still runs.
+    keyword = (
+        f"({registry_keyword(package)}) and not (deadline and not languages)"
+    )
     return [
         *command,
         f"src/esolangs/languages/{package}",
         "tests",
         "-k",
-        registry_keyword(package),
+        keyword,
     ]
 
 
