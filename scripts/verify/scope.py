@@ -497,6 +497,7 @@ INTERPRETER_CONTRACT_TESTS = (
     "tests/interpreters/test_transition_purity.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_execution_formulas.py",
+    "tests/proofs/_witnesses.py",
     "tests/generators/test_boolean_contract.py",
     "tests/tooling/test_examples.py",
 )

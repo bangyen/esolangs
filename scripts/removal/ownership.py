@@ -27,6 +27,7 @@ _EDITED = (
     "tests/support/samples.py",
     "tests/generators/test_wrap.py",
     "tests/proofs/test_execution_formulas.py",
+    "tests/proofs/_witnesses.py",
     "tests/proofs/test_workspace_formulas.py",
     "tests/proofs/test_bands.py",
     "tests/cli/test_cli_messages.py",

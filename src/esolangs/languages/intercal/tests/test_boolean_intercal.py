@@ -14,7 +14,7 @@ from esolangs.languages.intercal import generator
 from esolangs.languages.intercal.generator import PAIR, TEMPLATE_CHAR, intercal
 from esolangs.languages.intercal.interpreter import run
 from esolangs.runtime._evaluate import _evaluate
-from tests.proofs.test_execution_formulas import _intercal_worst
+from tests.proofs._witnesses import _intercal_worst
 from tests.support.generator_support import run_filled
 
 
