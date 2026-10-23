@@ -860,7 +860,11 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     # An 8-row cluster whose root block hops 15 lines (a 33-character body, held
     # by the slot and the calling frame), under equal-half reads.
     "Interprogck8": lambda n: (
-        ("01100000" * (1 << n - 3), *_diagram_witness("interprogck8", n, 10))
+        (
+            "01100000" * (1 << n - 3),
+            *_diagram_witness("interprogck8", n, 10),
+            *_diagram_witness("interprogck8", n, 6, "steps_witness"),
+        )
         if n >= 3
         else ()
     ),
@@ -961,12 +965,14 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
 }
 
 
-def _diagram_witness(stem: str, n: int, top: int = 8) -> tuple[str, ...]:
+def _diagram_witness(
+    stem: str, n: int, top: int = 8, name: str = "witness"
+) -> tuple[str, ...]:
     """The language's dearest-diagram table (its formulas.py), for n = 3..top."""
     if not 3 <= n <= top:
         return ()
     owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
-    return (owner.witness(n),)
+    return (getattr(owner, name)(n),)
 
 
 # language-owners: ["Piet"]

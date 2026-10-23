@@ -522,14 +522,6 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   n = 4 9 (exhaustive, 113 against 122), n = 5 0 (exact: 0^19 1^13 measures 213), n = 6 40 (386 against 426),
   n = 7 2 (815 against 817), n = 8 1 (908 against 909: the root's zero loop
   cannot sit past half of L); n = 6, 7 searched over packed cascades).
-- Window slack: Interprogck8 execution bounds the construction, not the
-  worst table: R + 11n commands against 166 of R = 346 at n = 3 (exhaustive,
-  0.48R; a run skips the lines a flight hops). Climbs: n = 4 175 of R = 346
-  (`1010101000001010`, 0.506R, so R/2 is no bound), n = 5 620 of 1,606,
-  n = 6 1,220 of 3,244 (0.39-0.38R). Every row crosses every window (a walker's
-  zone run, 126 - landing lines, plus the cluster code), so a tight bound is a
-  max-plus over the layout with the final walk's window count: not derived.
-  Scaling and workspace are exact.
 - Layout slack: Slow ACV Mammalian scaling, execution and workspace bound
   every list at its residue maximum, but the layout is fixed by n and the
   essential set (a table changes only its leaf bits), so the lists sit at
