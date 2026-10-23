@@ -38,8 +38,8 @@ evidence, not optimization tasks.
     is a design optimum, no rule found), Codesick scaling past n = 36 (the
     transition level's ids span widths 5..10), 1 + i workspace past n = 26, INTERCAL
     execution and workspace past n = 25 (unbuilt; the bound is exact to
-    n = 38) and scaling past n = 10 (level n - 3 outgrows its 240
-    distinct pairs at n = 11; U unbuilt there).
+    n = 38) and scaling past n = 12 (level n - 3 holds its 240
+    distinct pairs from n = 11; at 13 the third reads multiply, unbuilt).
   - Per-level bounds (2026-10-22): Stisp is exact to n = 10 (3,554 at n = 9,
     6,952 at n = 10), Quassaunt to n = 10 (31,842, 59,978) and Bleh to n = 9
     (6,016): the wide ids of the capped level make few pairs, and ids ascend
