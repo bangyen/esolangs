@@ -517,8 +517,11 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
   Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
-  worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11 and BFStack workspace below n = 9 (the root's zero loop
-  cannot sit past half of L: 908 against 909 at n = 8).
+  worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11 and BFStack workspace below n = 9 (the bound charges every open loop
+  bl(L) bits; positions below 2^(bl(L)-1) cost fewer. Smallest gap by table:
+  n = 4 9 (exhaustive, 113 against 122), n = 5 0, n = 6 40 (386 against 426),
+  n = 7 2 (815 against 817), n = 8 1 (908 against 909: the root's zero loop
+  cannot sit past half of L); n = 6, 7 searched over packed cascades).
 - Window slack: Interprogck8 execution bounds the construction, not the
   worst table: R + 11n commands against 166 of R = 346 at n = 3 (exhaustive,
   0.48R; a run skips the lines a flight hops). Climbs: n = 4 175 of R = 346
