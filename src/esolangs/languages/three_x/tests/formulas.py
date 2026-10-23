@@ -1,13 +1,26 @@
 """3x key, emitted-size and workspace bounds."""
 
+from fractions import Fraction
+
 from esolangs.languages.three_x.generator import _COMPLEMENT
 
 bl = int.bit_length
 
 
 def _key(i: int) -> int:
-    """K(i), a bound on the ith 3x key's bits: after w wraps a/3^w, |value| <= 3/2."""
-    return 2 * bl(3 ** bl(i - 1)) + 1
+    """K(i): bits of the ith key's value (numerator, sign, denominator).
+
+    Rank i - 1 is ``_constant(i - 1)``: 3, then 0 wrapped once per binary
+    digit after the leading one, ``v/3 - 1`` or ``1 - v/3``.
+    """
+    if i == 1:
+        return 3
+    value = Fraction(0)
+    for digit in bin(i - 1)[3:]:
+        value = value / 3 - 1 if digit == "0" else 1 - value / 3
+    return (
+        (abs(value.numerator).bit_length() or 1) + (value < 0) + bl(value.denominator)
+    )
 
 
 def _three_x(n: int, p: str) -> int:

@@ -491,8 +491,9 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Sixty-four ledger cells stay `at most` with no route to `worst`
-(2026-10-22; open ones are on the [roadmap](roadmap.md#generator-linearity)):
+Sixty-four ledger cells are `at most` throughout and twenty more past an
+exact range (2026-10-22, counted from the ledger; open ones are on the
+[roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
@@ -520,11 +521,12 @@ Sixty-four ledger cells stay `at most` with no route to `worst`
   characters, which only some tables hold.
 - Address widths: the peak sums the bit-lengths of table-dependent
   positions, which cross powers of two by layout. AddSubJump, Caballo,
-  Crement, Pointless, ROTfuck, S-BLEQ and Underload workspace;
+  Crement, Pointless, ROTfuck, S-BLEQ (1.002x: cell bits plus 6n, packed
+  route sampled to n = 10) and Underload workspace;
   Painfuck workspace (slack 1
   at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
   exhaustive); Bitdeque scaling (GOTO digits by layout; 358 against
-  400 at n = 4, exhaustive); 3x workspace (keys sized by use rank; 1.7x loose);
+  400 at n = 4, exhaustive); 3x workspace (exact key bits; 1.3-1.5x at n = 3..6, 1.8x at n = 9);
   Malbolge workspace (about 470 data-dependent re-encipher widths, the
   bound now 1.03x).
 - Coincident peaks: the bound adds component maxima no single row or

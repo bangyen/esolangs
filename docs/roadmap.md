@@ -30,8 +30,8 @@ evidence, not optimization tasks.
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
-  `worst`. The 64 `at most` cells without one are in
-  [limitations](limitations.md#run-time-and-memory).
+  `worst`. The rest of the 64 cells `at most` throughout and 20 past an
+  exact range are in [limitations](limitations.md#run-time-and-memory).
   - Partial range: SMU scaling past n = 16 (from n = 17 tables repeating
     rows of the 209 two-letter subtables keep one-letter names off most
     references: 115,507 > 115,170 at n = 17, +12,087 at n = 21; the worst
