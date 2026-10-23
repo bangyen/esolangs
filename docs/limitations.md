@@ -491,7 +491,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Sixty-two ledger cells are `at most` throughout and nineteen more past an
+Sixty-one ledger cells are `at most` throughout and twenty more past an
 exact range (2026-10-23, counted from the ledger; open ones are on the
 [roadmap](roadmap.md#generator-linearity)):
 
