@@ -843,7 +843,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
     "Sonata": lambda n: (_low_one(n),),
     "Stisp": lambda n: (
-        (_unequal_first(n), *_diagram_witness("stisp", n)) if n >= 2 else ()
+        (_unequal_first(n), *_diagram_witness("stisp", n, 10)) if n >= 2 else ()
     ),
     # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
     "Suffolk": lambda n: (
@@ -866,9 +866,9 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
 }
 
 
-def _diagram_witness(stem: str, n: int) -> tuple[str, ...]:
-    """The language's dearest-diagram table (its formulas.py), for n = 3..8."""
-    if not 3 <= n <= 8:
+def _diagram_witness(stem: str, n: int, top: int = 8) -> tuple[str, ...]:
+    """The language's dearest-diagram table (its formulas.py), for n = 3..top."""
+    if not 3 <= n <= top:
         return ()
     owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
     return (owner.witness(n),)

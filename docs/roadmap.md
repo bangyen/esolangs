@@ -40,8 +40,9 @@ evidence, not optimization tasks.
     execution and workspace past n = 25 (unbuilt; the bound is exact to
     n = 38) and scaling past n = 10 (level n - 3 outgrows its 240
     distinct pairs at n = 11; U unbuilt there).
-  - Per-level bounds (2026-10-22): Stisp, Quassaunt and Bleh are exact to
-    n = 8 (a witness rule); from n = 9 the capped level's pairs of top
+  - Per-level bounds (2026-10-22): Stisp is exact to n = 10 (3554 at n = 9,
+    6952 at n = 10; the pair count of the wide ids bounds it); Quassaunt and
+    Bleh are exact to n = 8 (a witness rule); from n = 9 the capped level's pairs of top
     ids run out (59 of 64 nodes at n = 9). 3x sits 20-28% below its F.
 - **Unformulated scaling** (2026-10-22): Polynomial is a lower bound.
 - **Derived, not executed:** What!? past n = 22 (6.4 GB there) and S*bleq
