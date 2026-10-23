@@ -29,4 +29,5 @@ Not run directly:
 - `_benchmark_worker.py` -- the subprocess `benchmark.py` supervises.
 - `baselines/` -- triaged results `deadcode`, `mutants` and `stale-figures`
   compare against: `deadcode --update` and `stale-figures --confirm` rewrite
-  theirs; add swept packages to `mutants_swept.toml` by hand.
+  theirs; add swept packages to `mutants_swept.toml` by hand, with the commit
+  swept.
