@@ -845,12 +845,13 @@ def _back_worst(n: int) -> tuple[str, ...]:
 def _polynomial_worst(n: int) -> tuple[str, ...]:
     """Blocks each the binary of its index, MSB first; every level keeps its states.
 
-    Four blocks of 2^(n-2) rows run 12n - 7 commands: C - 2 at n = 3, 4 (the
-    exhaustive worst), 53 at n = 5.  There eight blocks of four run 60 = C - 3.
+    n = 3: four blocks of two rows (C - 2).  From n = 4, 2^(n-2) blocks of four:
+    s_k = 2^k through level n - 2, so every doubling level chains and loses its
+    ``*=``; C - 2, 3, 4 at n = 4, 5, 6.  Four blocks of 2^(n-2) rows run only 12n - 7.
     """
     if n < 3:
         return ()
-    blocks, width = (8, 4) if n == 5 else (4, 1 << n - 2)
+    blocks, width = (4, 2) if n == 3 else (1 << n - 2, 4)
     return ("".join(f"{block:0{width}b}" for block in range(blocks)),)
 
 
