@@ -491,7 +491,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Fifty-nine ledger cells are `at most` throughout and twenty-one more past an
+Fifty-eight ledger cells are `at most` throughout and twenty-two more past an
 exact range (2026-10-23, counted from the ledger; open ones are on the
 [roadmap](roadmap.md#generator-linearity)):
 
@@ -503,7 +503,7 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   against 2,522 at n = 7);
   ArrowQueue execution (proved 11T + 32n + 92), Polynomial execution (C - 2
   at n = 3, 4 over every table; 60 of C = 63 found at n = 5),
-  BFStack workspace, Boolfuck workspace,
+  Boolfuck workspace,
   Circuit Diagram workspace and scaling (an H-tree pool from n = 9 caps
   the area; the default measures at most 0.26 of the cap), Container scaling (the threshold build loses
   to the tree from n = 6: 883 against 1,076) and workspace, CVNC
@@ -518,7 +518,8 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
   Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
-  worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11.
+  worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11 and BFStack workspace below n = 9 (the root's zero loop
+  cannot sit past half of L: 908 against 909 at n = 8).
 - Window slack: Interprogck8 scaling and execution bound the
   construction, not the worst table. 226T + 224 characters against 193T
   at most found, n = 6..10 (windows opened <= T/2, not located);

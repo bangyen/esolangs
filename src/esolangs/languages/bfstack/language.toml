@@ -14,7 +14,7 @@ labels = ["minterms"]
 qualification = "—"
 scaling = "linear: worst N characters: zero-row walk telescopes to T"
 execution = "poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7"
-workspace = "poly n: at most n + 7 + bl(n) + (d+1)bl(L) bits, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2: brackets"
+workspace = "poly n: worst n + 6 + bl(n) + (d+1)bl(L) bits past n = 8, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2"
 
 [generator_sizes]
 "00000001" = { commands = 230, commands_by_row = { "0" = 223, "1" = 228, "2" = 228, "3" = 233, "4" = 228, "5" = 233, "6" = 233, "7" = 230 }, source_units = 232 }
