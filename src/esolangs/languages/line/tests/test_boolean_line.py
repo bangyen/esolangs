@@ -195,6 +195,25 @@ def test_six_inputs_keep_the_rendered_layout() -> None:
 
 
 @pytest.mark.medium
+def test_forward_entry_lanes_land_two_units_per_lane() -> None:
+    """Forward entries sit at ``base + 4 + 2 * lane`` past the base column.
+
+    A stride of ``2 + lane`` instead draws a canvas of the same size with
+    the same ink count whose programs still compute their table, so only
+    the exact raster pins the stride.
+    """
+    import hashlib
+
+    table = "1100001100110000111111001111001100111111000000110000001100111111"
+    program = esolangs.generate("Line", table)
+    assert (len(program.rows[0]), len(program.rows)) == (920, 4360)
+    assert hashlib.sha256(program.to_png()).hexdigest() == (
+        "b0564c45aa027f5cc635b79ec740c9772fb15e4b1807e8e70ec44b7d76119dd1"
+    )
+    assert _evaluate("Line", program.to_png(), inputs=6) == table
+
+
+@pytest.mark.medium
 def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
     leaf = Node("+", next=Node("+", next=Node("o")))
     for root in (leaf, Node("?", zero=leaf, nonzero=leaf), Node("?", zero=leaf)):
