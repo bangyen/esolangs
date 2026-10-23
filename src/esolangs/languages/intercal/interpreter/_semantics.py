@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.intercal.interpreter._expr import (
     _DIGITS,
     _NEXT_LIMIT,
+    _NO_DATA,
     _ONESPOT_MAX,
     _REVERSED,
     _TWOSPOT_MAX,
@@ -26,6 +26,7 @@ from esolangs.languages.intercal.interpreter._parse import (
     _SelfAbstain,
     _Statement,
 )
+from esolangs.languages.intercal.interpreter._pmap import _PMap
 from esolangs.runtime._fault import _Fault
 
 
@@ -57,13 +58,6 @@ class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
         self.effects = effects
 
 
-def _frozen[K, V](mapping: Mapping[K, V]) -> Mapping[K, V]:
-    """Return ``mapping`` as an immutable mapping, sharing an existing freeze."""
-    return (
-        mapping if isinstance(mapping, MappingProxyType) else MappingProxyType(mapping)
-    )
-
-
 class _Program(NamedTuple):
     """The load-time facts about a program, fixed for the whole run."""
 
@@ -80,15 +74,15 @@ class _Program(NamedTuple):
 class _State:
     """Every changing value in an INTERCAL run.
 
-    A value, not a record: the stores are copied before a write and
-    :func:`_advance` returns a new state rather than editing this one.
+    A value, not a record: a write returns a store sharing its untouched
+    buckets and :func:`_advance` returns a new state rather than editing this one.
     """
 
     ind: int
-    scalars: Mapping[_Key, int]
-    arrays: Mapping[_Key, _Array]
+    scalars: _PMap[_Key, int]
+    arrays: _PMap[_Key, _Array]
     ignored: frozenset[_Key]
-    stashes: Mapping[_Key, tuple[int | _Array, ...]]
+    stashes: _PMap[_Key, tuple[int | _Array, ...]]
     abstained: tuple[int, ...]
     nexts: tuple[tuple[int, int], ...]
     last_in: int
@@ -209,7 +203,7 @@ def _store(state: _State, target: _Node, value: int) -> _State:
             raise _fail("E275", "INTERCAL onespot assignment overflow")
         if key in state.ignored:
             return state
-        return replace(state, scalars=_frozen({**state.scalars, key: value}))
+        return replace(state, scalars=state.scalars.set(key, value))
     key = (str(target.arg1), target.arg2)
     data, index = _element(target, state.scalars, state.arrays)
     if key[0] == "," and value > _ONESPOT_MAX:
@@ -217,12 +211,12 @@ def _store(state: _State, target: _Node, value: int) -> _State:
     if key in state.ignored:
         return state
     dimensions = state.arrays.get(key, ((), data))[0]
-    element = (dimensions, _frozen({**data, index: value}))
-    return replace(state, arrays=_frozen({**state.arrays, key: element}))
+    element = (dimensions, data.set(index, value))
+    return replace(state, arrays=state.arrays.set(key, element))
 
 
 def _array(state: _State, key: _Key) -> _Array:
-    array = state.arrays.get(key, ((), MappingProxyType({})))
+    array: _Array = state.arrays.get(key, ((), _NO_DATA))
     if len(array[0]) != 1:
         raise _fail(
             "E241",
@@ -257,6 +251,7 @@ def _write_in(
         key = (str(item.arg1), int(item.arg2))
         (size,), data = _array(state, key)
         last_in = state.last_in
+        written: dict[int, int] = {}
         for index in range(size):
             if pos >= len(inputs):
                 raise _NeedInput("char")
@@ -268,10 +263,10 @@ def _write_in(
                 value = (int(character) - last_in) % 256
                 last_in = int(character)
             if key not in state.ignored:
-                data = _frozen({**data, index: value})
+                written[index] = value
         state = replace(
             state,
-            arrays=_frozen({**state.arrays, key: ((size,), data)}),
+            arrays=state.arrays.set(key, ((size,), data.update(written))),
             last_in=last_in,
         )
         return state, pos
@@ -306,24 +301,21 @@ def _variable(state: _State, action: str, key: _Key) -> _State:
     if action == "stash":
         value: int | _Array
         if key[0] in ",;":
-            dimensions, data = state.arrays.get(key, ((), MappingProxyType({})))
-            value = (dimensions, _frozen(data))
+            value = state.arrays.get(key, ((), _NO_DATA))
         else:
             value = state.scalars.get(key, 0)
-        stashes = MappingProxyType(
-            {**state.stashes, key: (*state.stashes.get(key, ()), value)}
-        )
+        stashes = state.stashes.set(key, (*state.stashes.get(key, ()), value))
         return replace(state, stashes=stashes)
     stash = state.stashes.get(key)
     if not stash:
         raise _fail("E436", f"INTERCAL RETRIEVE of an unstashed {key[0]}")
     value = stash[-1]
-    state = replace(state, stashes=MappingProxyType({**state.stashes, key: stash[:-1]}))
+    state = replace(state, stashes=state.stashes.set(key, stash[:-1]))
     if key in state.ignored:
         return state
     if isinstance(value, int):
-        return replace(state, scalars=_frozen({**state.scalars, key: value}))
-    return replace(state, arrays=_frozen({**state.arrays, key: value}))
+        return replace(state, scalars=state.scalars.set(key, value))
+    return replace(state, arrays=state.arrays.set(key, value))
 
 
 def _resume(
@@ -397,9 +389,7 @@ def _dimension(state: _State, key: _Key, sizes: tuple[int, ...]) -> _State:
         raise _fail("E240", "an INTERCAL array dimension must be positive")
     if key in state.ignored:
         return state
-    return replace(
-        state, arrays=_frozen({**state.arrays, key: (sizes, MappingProxyType({}))})
-    )
+    return replace(state, arrays=state.arrays.set(key, (sizes, _NO_DATA)))
 
 
 def _abstain(state: _State, targets: Sequence[int], amount: int | None) -> _State:
@@ -552,7 +542,7 @@ def _thaw(value: Any) -> int | _Array:
     if isinstance(value, int):
         return value
     dimensions, data = value
-    return dimensions, _frozen(dict(data))
+    return dimensions, _PMap(dict(data))
 
 
 def _snapshot(state: _State) -> tuple[Any, ...]:

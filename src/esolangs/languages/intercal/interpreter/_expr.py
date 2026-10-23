@@ -12,12 +12,13 @@ from esolangs.languages.intercal.interpreter._parse import (
     _parse_expression,
     _unary,
 )
+from esolangs.languages.intercal.interpreter._pmap import _PMap
 
 type _Value = tuple[int, int]
-#: An array's dimensions and its data.  The data mapping is copied before a
-#: write, so a step returns new arrays rather than editing the ones it was
-#: handed.
-type _Array = tuple[tuple[int, ...], Mapping[int, int]]
+#: An array's dimensions and its data.  A write returns new data sharing the
+#: untouched buckets, so a step never edits the arrays it was handed.
+type _Array = tuple[tuple[int, ...], _PMap[int, int]]
+_NO_DATA: _PMap[int, int] = _PMap()
 
 # Digit words 0-9: English and, as the manual says C-INTERCAL accepts
 # (src/numerals.c), Sanskrit, Basque, Tagalog, Classical Nahuatl, Georgian,
@@ -100,10 +101,10 @@ def _evaluate(
 
 def _element(
     node: _Node, scalars: Mapping[_Key, int], arrays: Mapping[_Key, _Array]
-) -> tuple[Mapping[int, int], int]:
+) -> tuple[_PMap[int, int], int]:
     """Locate a subscripted element: its array's store and flat index."""
     sigil, number, subscripts = node.arg1, node.arg2, node.arg3
-    dimensions, data = arrays.get((sigil, number), ((), {}))
+    dimensions, data = arrays.get((sigil, number), ((), _NO_DATA))
     if len(subscripts) != len(dimensions):
         raise _fail(
             "E241",

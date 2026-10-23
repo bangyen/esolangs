@@ -69,9 +69,9 @@ Decisions:
 
 from __future__ import annotations
 
+import gc
 from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -86,9 +86,9 @@ from esolangs.languages.intercal.interpreter._parse import (
     _statements,
     _unary,
 )
+from esolangs.languages.intercal.interpreter._pmap import _PMap
 from esolangs.languages.intercal.interpreter._semantics import (
     _advance,
-    _frozen,
     _link,
     _NeedDraw,
     _NeedInput,
@@ -115,7 +115,15 @@ class _Machine:
         self.io = io
         self._rng = rng
         self.lines = _statements(code)
-        statements = tuple(_load(line) for line in self.lines)
+        # The parse trees are acyclic, but the collector rescans the growing
+        # heap again and again: a 33,062-statement load took 3.3 s, 1.7 s without it.
+        collecting = gc.isenabled()
+        gc.disable()
+        try:
+            statements = tuple(_load(line) for line in self.lines)
+        finally:
+            if collecting:
+                gc.enable()
         polite = sum(statement.polite for statement in statements)
         if (
             not self.lines
@@ -130,10 +138,10 @@ class _Machine:
         self._program = _link(statements)
         self.state = _State(
             0,
-            MappingProxyType({}),
-            MappingProxyType({}),
+            _PMap(),
+            _PMap(),
             frozenset(),
-            MappingProxyType({}),
+            _PMap(),
             tuple(int(statement.abstained) for statement in statements),
             (),
             0,
@@ -183,15 +191,15 @@ class _Machine:
         ) = state[:9]
         return _State(
             ind=ind,
-            scalars=_frozen(dict(scalars)),
-            arrays=_frozen(
+            scalars=_PMap(dict(scalars)),
+            arrays=_PMap(
                 {
-                    key: (dimensions, _frozen(dict(data)))
+                    key: (dimensions, _PMap(dict(data)))
                     for key, dimensions, data in arrays
                 }
             ),
             ignored=frozenset(ignored),
-            stashes=MappingProxyType(
+            stashes=_PMap(
                 {
                     key: tuple(_thaw(value) for value in values)
                     for key, values in stashes

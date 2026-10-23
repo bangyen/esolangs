@@ -375,7 +375,7 @@ _START = re.compile(
 # A label after these words is the command's target, not the next statement's;
 # not after the gerunds COMING FROM and NEXTING FROM, which take none.
 _TARGETING = ("FROM", "REINSTATE")
-_GERUND_FROM = re.compile(r"(?:COMING|NEXTING)\s*FROM\Z")
+_GERUNDS_FROM = ("COMING", "NEXTING")
 _HEADER = re.compile(
     r"\s*(?:\(\s*(\d[\d\s]*)\)\s*)?(?:(PLEASE)(?:\s*DO)?|DO)(\s*(?:NOT|N'T))?"
     r"(?:\s*%\s*(\d[\d\s]*))?"
@@ -385,13 +385,32 @@ _BARE = re.compile(
 )
 
 
+def _targeted(code: str, at: int) -> bool:
+    """Whether the text before ``at`` ends in a word taking a label target.
+
+    Scans back from ``at`` instead of slicing ``code[:at]``, which made the
+    split quadratic in the program's length.
+    """
+    end = at
+    while end and code[end - 1].isspace():
+        end -= 1
+    if not code.endswith(_TARGETING, 0, end):
+        return False
+    if not code.endswith("FROM", 0, end):
+        return True
+    gerund = end - 4
+    while gerund and code[gerund - 1].isspace():
+        gerund -= 1
+    return not code.endswith(_GERUNDS_FROM, 0, gerund)
+
+
 def _statements(code: str) -> list[str]:
     """Assemble statements at identifiers, retaining bare core fixtures."""
     starts = []
     for match in _START.finditer(code):
-        before = code[: match.start()].rstrip()
-        targeted = before.endswith(_TARGETING) and not _GERUND_FROM.search(before)
-        starts.append(match.start("id") if targeted else match.start())
+        starts.append(
+            match.start("id") if _targeted(code, match.start()) else match.start()
+        )
     bounds = [0, *starts, len(code)]
     statements: list[str] = []
     for left, right in pairwise(bounds):
