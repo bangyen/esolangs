@@ -77,4 +77,4 @@ def witness(n: int) -> str:
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 11)), tuple(range(3, 11)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 12)), tuple(range(3, 12)))}

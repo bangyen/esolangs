@@ -502,7 +502,7 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   26,208 cells against 26,915 at n = 10);
   ArrowQueue execution (proved 11T + 32n + 92), Polynomial execution (C - 2
   at n = 3, 4 over every table; C minus the doubling levels, 60, 95, 131, 198,
-  329 at n = 5-9, witnessed),
+  329, 588 at n = 5-10, witnessed),
   Boolfuck workspace,
   Circuit Diagram workspace and scaling (an H-tree pool from n = 9 caps
   the area; the default measures at most 0.26 of the cap), Container scaling (the threshold build loses
