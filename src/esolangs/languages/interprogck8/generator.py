@@ -28,8 +28,9 @@ A read whose halves are equal (``subtree_ids``), a constant or an ignored
 input, still consumes its digit: its child is laid straight after it.
 
 Size:
-    O(T) at every arity: a window is 126 lines and at most 1.3 T are opened,
-    so a table takes under 420 T characters whatever ``n``.
+    O(T) at every arity: a window is 126 lines and at most T / 2 are opened
+    (a height-h subtree advances at most 2**(h-1) - 1 windows), so a table
+    takes at most 226 T + 224 characters whatever ``n``; 195 T is the most found.
     n=10 random 1847: 162,227 chars, n=10 parity: 190,154 chars,
     n=10 and: 8,164 chars.
 

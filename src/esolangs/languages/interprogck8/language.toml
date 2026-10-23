@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["tree"]
 qualification = "a read's 1 arm hops to the far child, short inside a cluster and above it a flight at its own column sharing each window's rung; its 0 arm falls through"
-scaling = "linear: at most 420T + 900 characters: 126-line windows, at most 1.3T opened"
+scaling = "linear: at most 226T + 224 characters: 126-line windows, at most T/2 opened"
 execution = "linear: at most R + 11n commands: each line runs once, a called body adds 11"
 workspace = "poly n: at most bl(R) + bl(2n) + 543 bits: accumulator, line cursor, input cursor, slot and frame bodies"
 definitions = ["R = the program's lines"]

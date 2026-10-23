@@ -517,8 +517,8 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
   worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11.
 - Window slack: Interprogck8 scaling, execution and workspace bound the
-  construction, not the worst table. 420T + 900 characters against 200T
-  at most found, n = 4..10 (the windows opened are bounded, not located);
+  construction, not the worst table. 226T + 224 characters against 193T
+  at most found, n = 6..10 (windows opened <= T/2, not located);
   R + 11n commands against 0.64R at n = 7 (a run skips the lines a flight
   hops); the workspace adds a slot and a frame of the longest body, 33
   characters, which only some tables hold.
