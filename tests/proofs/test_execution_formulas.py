@@ -51,7 +51,7 @@ def _seeded(n: int, seed: int) -> str:
     return f"{random.Random(7919 * seed + n).getrandbits(width):0{width}b}"
 
 
-# language-owners: ["AddSubJump"]
+# language-owners: ["AddSubJump", "Subleq"]
 def _asj_packed_worst(n: int) -> str:
     """Top three bits of every chunk set (all chunks widest), the rest hashed.
 
@@ -209,6 +209,49 @@ def _laserfuck_worst(n: int) -> tuple[str, ...]:
             "".join(str(1 - row.bit_count() % 2) for row in range(width)),
         )
     return "0" + "1" * (width - 1), "1" + "0" * (width - 1)
+
+
+# language-owners: ["Object disoriented"]
+def _od_worst(n: int) -> str:
+    """Most distinct subtables per level, the slots left at the knee on constants.
+
+    Level d holds min(2^d, 2^(2^(n-d)) - 2) distinct nodes: a full tree down
+    to the knee, whose nodes pair the next level's functions (the first two
+    pairs of constants where four slots are spare, else one constant each
+    when two are), then every function.
+    """
+    nodes: list[dict[int, tuple[int, int]]] = [{}] * n
+    below: list[int] = []
+    fresh = 2
+    for d in range(n - 1, -1, -1):
+        width = min(2**d, 2 ** (2 ** (n - d)) - 2)
+        if d == n - 1:
+            pairs = [(0, 1), (1, 0)]
+        elif width == 2 ** (2 ** (n - d)) - 2:
+            both = [0, 1, *below]
+            pairs = [(a, b) for a in both for b in both if not a == b < 2]
+        elif len(below) == 2 * width:
+            pairs = list(zip(below[::2], below[1::2], strict=True))
+        elif 2 * width - len(below) == 2:
+            line = [0, below[0], below[1], 1, *below[2:]]
+            pairs = list(zip(line[::2], line[1::2], strict=True))
+        else:
+            size = len(below)
+            pairs = [(0, 1), (1, 0)]
+            pairs += [
+                (below[j], below[(j + t) % size])
+                for t in range(1, size)
+                for j in range(size)
+            ]
+            pairs += [p for x in below for c in (0, 1) for p in ((c, x), (x, c))]
+            pairs = pairs[:width]
+        below = list(range(fresh, fresh + width))
+        fresh += width
+        nodes[d] = dict(zip(below, pairs, strict=True))
+    row = below
+    for d in range(n):
+        row = [c for x in row for c in (nodes[d][x] if x > 1 else (x, x))]
+    return "".join(map(str, row))
 
 
 # language-owners: ["thisthat"]
@@ -714,6 +757,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "BrainIf": lambda n: (_brainif_worst(n) if n >= 2 else "11",),
     "BFStack": lambda n: (_bfstack_chars_worst(n),),
     "thisthat": lambda n: (_thisthat_worst(n),) if n >= 3 else (),
+    "Object disoriented": lambda n: (_od_worst(n),) if n >= 2 else (),
     # Below five its generic families miss the area worst by a column.
     "LaserFuck": lambda n: _laserfuck_worst(n) if n < 5 else (),
     "Bitdeque": lambda n: (_bitdeque_worst(n), _bitdeque_tokens(n)) if n >= 3 else (),
@@ -792,7 +836,11 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Smu": lambda n: (_smu_worst(n),),
     "Modulous": lambda n: (_row_one(n),),
     "Piet": lambda n: (_piet_worst(n),),
-    "Subleq": lambda n: (_subleq_worst(n),) if n >= 3 else (),
+    # n = 9: the hashed table ships the packed decoder at its widest (P = 1,683).
+    "Subleq": lambda n: (
+        *((_subleq_worst(n),) if n >= 3 else ()),
+        *((_asj_packed_worst(n),) if n == 9 else ()),
+    ),
     "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
 }
 

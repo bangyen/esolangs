@@ -90,4 +90,4 @@ def _chars(n: int, program: str) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-FORMULAS = {"scaling": (_chars, True, tuple(range(3, 11)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 11)), tuple(range(3, 12)))}
