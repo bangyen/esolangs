@@ -8,6 +8,7 @@ from tests.proofs._diagram_bounds import (
     capped_level,
     capped_loss,
     digits,
+    parent_loss,
     profile,
     worst_diagram,
 )
@@ -58,13 +59,15 @@ def _prices(
 
 
 def _chars(n: int, _: str) -> int:
-    """Worst characters, n = 3..8: the bound less what its last levels cannot reach.
+    """Worst characters, n = 3..9: the bound less what its last levels cannot reach.
 
     The bound prices every reference past the first at the dearest call.
     The 14 four-row subtables a level up are all there is, so their
     references are fixed (:func:`capped_loss`): 36 short at n = 5, 108 from 6.
+    Above them the wide ids run out of pairs from n = 9 (:func:`parent_loss`).
     """
-    return _bound(n) - capped_loss(n, *_prices(n))
+    prices = _prices(n)
+    return _bound(n) - capped_loss(n, *prices) - parent_loss(n, *prices)
 
 
 def witness(n: int) -> str:
@@ -73,4 +76,4 @@ def witness(n: int) -> str:
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 9)), tuple(range(3, 10)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 10)), tuple(range(3, 10)))}
