@@ -5,6 +5,7 @@ Each was derived from its generator, not fitted: a fit from parity data
 ``exact`` formula must also be reached here; ``bound`` only never exceeded.
 """
 
+import importlib
 import random
 from collections.abc import Callable
 from itertools import islice
@@ -688,6 +689,8 @@ def _minifuck_worst(n: int) -> str:
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
+    # The last input ignored: n - 1 essential inputs can outrun all n.
+    "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
@@ -748,11 +751,18 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Quassaunt": lambda n: (_quassaunt_worst(n), _quassaunt_stack(n)),
+    "Bleh": lambda n: _diagram_witness("bleh", n),
+    "Quassaunt": lambda n: (
+        _quassaunt_worst(n),
+        _quassaunt_stack(n),
+        *_diagram_witness("quassaunt", n),
+    ),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
     "Sonata": lambda n: (_low_one(n),),
-    "Stisp": lambda n: (_unequal_first(n),) if n >= 2 else (),
+    "Stisp": lambda n: (
+        (_unequal_first(n), *_diagram_witness("stisp", n)) if n >= 2 else ()
+    ),
     # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
     "Suffolk": lambda n: (
         (_suffolk_deep(n),)
@@ -767,6 +777,14 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Subleq": lambda n: (_subleq_worst(n),) if n >= 3 else (),
     "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
 }
+
+
+def _diagram_witness(stem: str, n: int) -> tuple[str, ...]:
+    """The language's dearest-diagram table (its formulas.py), for n = 3..8."""
+    if not 3 <= n <= 8:
+        return ()
+    owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
+    return (owner.witness(n),)
 
 
 def _streetcode_worst(n: int) -> str:

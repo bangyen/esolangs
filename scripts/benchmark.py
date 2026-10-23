@@ -265,9 +265,19 @@ class WrittenState:
             previous[at] = part
             if not written[at]:
                 written[at] = True
-                peaks[at] = state_bits(start[at], memo)
+                peaks[at] = state_bits(_items(start[at]), memo)
             now = counts[at]
             if (
+                now is not None
+                and hasattr(part, "delta")
+                and (moved := part.delta(last))
+            ):
+                # language-owners: ["Forþ"]
+                # A persistent scope table reports the items its stores moved,
+                # so a store recounts the change, not the whole table.
+                now += state_bits(frozenset(moved[0]), memo)
+                now -= state_bits(frozenset(moved[1]), memo)
+            elif (
                 now is not None
                 and isinstance(part, frozenset)
                 and isinstance(last, frozenset)
@@ -301,7 +311,7 @@ class WrittenState:
                 else:
                     now = state_bits(part, memo)
             else:
-                now = state_bits(part, memo)
+                now = state_bits(_items(part), memo)
             counts[at] = now
             if now > peaks[at]:
                 peaks[at] = now
@@ -310,6 +320,11 @@ class WrittenState:
     def bits(self) -> int:
         """Peak written bits so far."""
         return sum(self._peaks)
+
+
+def _items(part: object) -> object:
+    """A persistent table as the frozenset of its items; anything else as is."""
+    return frozenset(part.items()) if hasattr(part, "delta") else part  # type: ignore[attr-defined]
 
 
 def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:

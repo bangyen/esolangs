@@ -1,6 +1,6 @@
 """Stisp's emitted characters: equations per level, ids by digit count."""
 
-from tests.proofs._diagram_bounds import digits, profile
+from tests.proofs._diagram_bounds import digits, profile, worst_diagram
 
 
 def _chars(n: int, _: str) -> int:
@@ -29,4 +29,14 @@ def _chars(n: int, _: str) -> int:
     return total
 
 
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7, 8))}
+def witness(n: int) -> str:
+    """The table reaching :func:`_chars` for n = 3..8.
+
+    Every subtable of the capped level, then pairs of the highest ids: the
+    extra references land on the widest names.  Past n = 8 the top ids hold
+    too few pairs (59 of the 64 nodes at n = 9), so the bound is not reached.
+    """
+    return worst_diagram(n, lambda node, _: len(str(node)), 1, cover_const=False)
+
+
+FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8))}

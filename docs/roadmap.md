@@ -40,17 +40,11 @@ evidence, not optimization tasks.
     execution and workspace past n = 25 (unbuilt; the bound is exact to
     n = 38) and scaling past n = 10 (level n - 3 outgrows its 240
     distinct pairs at n = 11; U unbuilt there).
-  - Per-level bounds (2026-10-22): Stisp's F is reached at n = 1..8 but
-    has no witness rule; Quassaunt sits within 12 of F at n = 5..8, Bleh
-    3-8% and 3x 20-28% below it.
-- **Unformulated scaling** (2026-10-22): 5 cells state a mechanism, no
-  size formula. CVNC's 8T + 12 is its unshared route's worst, but sharing
-  can add up to 5 characters over that route (exhaustive n = 4), so it does
-  not bound the shipped text. Pointless's declare-everything bound needs an
-  unproved inlining inequality (no violation to n = 6). Interprogck8 grows
-  about 11 characters an entry per input (T log T). Polynomial is a lower
-  bound. Slow ACV's three cells are prose too: candidate bounds hold to
-  n = 20 but are unproved.
+  - Per-level bounds (2026-10-22): Stisp, Quassaunt and Bleh are exact to
+    n = 8 (a witness rule); from n = 9 the capped level's pairs of top
+    ids run out (59 of 64 nodes at n = 9). 3x sits 20-28% below its F.
+- **Unformulated scaling** (2026-10-22): Interprogck8 grows about 11
+  characters an entry per input (T log T); Polynomial is a lower bound.
 - **Derived, not executed:** Forþ workspace's log factor needs a twin call
   50,625 or more scopes back, at least 20 inputs
   ([limitations](limitations.md#run-time-and-memory)); the n = 20 trigger

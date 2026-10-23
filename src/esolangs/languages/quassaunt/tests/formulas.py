@@ -1,13 +1,23 @@
 """Quassaunt's emitted characters: definitions per level, ids by digit count."""
 
-from tests.proofs._diagram_bounds import digits, profile
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from tests.proofs._diagram_bounds import (
+    capped_level,
+    capped_loss,
+    digits,
+    profile,
+    worst_diagram,
+)
 
 #: Empty-name lengths of a ``_code`` push, a chain/equal node, a branch, a leaf.
 _CODE, _EQUAL, _BRANCH, _LEAF = 39, 140, 211, 57
 
 
-def _chars(n: int, _: str) -> int:
-    """Most characters over all tables, per level k of the reduced diagram.
+def _bound(n: int) -> int:
+    """Bound on the characters, per level k of the reduced diagram.
 
     Each node is a fixed body plus its own name and one code per child (a
     branch has two), and a space; the start word pushes the root.  Ids of a
@@ -36,4 +46,32 @@ def _chars(n: int, _: str) -> int:
     return total
 
 
-FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7, 8))}
+def _prices(
+    n: int,
+) -> tuple[Callable[[int, bool], int], Callable[[int], int], Callable[[int], int]]:
+    """A reference's characters: a node's id, a constant's name, the dearer."""
+    top = profile(n)[3]
+    return (
+        lambda node, _: len(str(node)),
+        lambda level: 1 + len(str(level)),
+        lambda level: max(len(str(top[level])), 1 + len(str(level))),
+    )
+
+
+def _chars(n: int, _: str) -> int:
+    """Worst characters, n = 3..8: the bound less what its last levels cannot reach.
+
+    The bound prices every reference past the first at the dearest name.
+    The 14 four-row subtables a level up are all there is, so their
+    references are fixed (:func:`capped_loss`): 4 short at n = 5, 12 from 6.
+    """
+    return _bound(n) - capped_loss(n, *_prices(n))
+
+
+def witness(n: int) -> str:
+    """The table reaching :func:`_chars`: every subtable, dear references first."""
+    ref, const, _ = _prices(n)
+    return worst_diagram(n, ref, const(capped_level(n)))
+
+
+FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8))}
