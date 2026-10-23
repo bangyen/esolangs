@@ -1,4 +1,4 @@
-"""Polynomial's execution: ``C - d`` at n = 3-9, ``d`` the doubling levels; else ``C``.
+"""Polynomial's execution: ``C - d`` at n = 3-10, ``d`` the doubling levels; else ``C``.
 
 Each formula was derived from its generator, not fitted.  An ``exact`` formula
 must also be reached by the corpus; ``bound`` only never exceeded.
@@ -24,8 +24,8 @@ def doublings(n: int) -> int:
 
 
 def _execution(n: int, _: str) -> int:
-    """The worst row runs ``C - d`` for n <= 9, else at most ``C``."""
-    return steps(n) - doublings(n) if n <= 9 else steps(n)
+    """The worst row runs ``C - d`` for n <= 10, else at most ``C``."""
+    return steps(n) - doublings(n) if n <= 10 else steps(n)
 
 
 def witness(n: int) -> str:
@@ -51,4 +51,4 @@ def witness(n: int) -> str:
     return "".join(f"{value:04b}" for value in values)
 
 
-FORMULAS = {"execution": (_execution, frozenset(range(3, 10)), tuple(range(3, 10)))}
+FORMULAS = {"execution": (_execution, frozenset(range(3, 11)), tuple(range(3, 11)))}

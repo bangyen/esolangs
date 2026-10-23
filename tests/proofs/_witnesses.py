@@ -810,7 +810,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
-    "Polynomial": lambda n: _diagram_witness("polynomial", n, 9),
+    "Polynomial": lambda n: _diagram_witness("polynomial", n, 10),
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
     # An 8-row cluster whose root block hops 15 lines (a 33-character body, held
     # by the slot and the calling frame), under equal-half reads.
@@ -885,7 +885,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         _quassaunt_stack(n),
-        *_diagram_witness("quassaunt", n, 10),
+        *_diagram_witness("quassaunt", n, 11),
     ),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
