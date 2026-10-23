@@ -90,8 +90,11 @@ def run_under_alarm(
     # Dispatch the earlier deadline: replacing a caller's timer let a nested
     # 0.05-second guard return successfully after 0.159 seconds.
     signal.signal(signal.SIGALRM, _timeout_handler)
-    signal.setitimer(signal.ITIMER_REAL, min(timeout, pending) if pending else timeout)
     try:
+        # Armed inside the ``try``: a 1 ms alarm can fire before it is entered.
+        signal.setitimer(
+            signal.ITIMER_REAL, min(timeout, pending) if pending else timeout
+        )
         run_fn(program, io_obj)
     finally:
         armed = False
