@@ -1,47 +1,42 @@
-"""Interprogck8 Boolean program generator: a decision tree on ``DownAccLines`` flights.
+"""Interprogck8 Boolean program generator: short hops under flights that share rungs.
 
-A rung jumps ``1 + acc`` lines and leaves the accumulator alone, so a flight
-hops a fixed stride through rungs to the first other line on its residue,
-its *stop*.
+``DownAccLines`` skips ``1 + acc`` lines.  The program is cut into windows of
+126 lines: 40 for code, then a zone of blank lines ending in a rung that every
+flight in the air shares.
 
-- **Read.**  One even line, ``{values/=u/=X/=X}`` with ``X`` 49 pips,
-  leaves Q (81) on a ``1`` and T (84) on a ``0``.  From the odd rung after
-  it, 81 flies stride 82 on the odd lines; 84 lands 85 below, an even
-  line, which zeroes the accumulator and walks into the 0 subtree.  A rung
-  under acc 0 is a fall-through, so walks cross live lanes freely.
-- **Lanes.**  Up to 15 inputs a read sits on the first even line after its
-  entry: a 0 child's lane is its parent's + 6, a 1 child's + 2 (mod 82),
-  which never meets an in-air ancestor's lane (see ``_ENTRY_LANES``).
-  Beyond, a depth-``d`` read takes the first even line whose rung residue
-  mod 82 is ``2d + 1``, so no two reads in the air share a lane (the air
-  holds at most ``n - 1`` of the 41 odd residues).  The 1 child's stop is
-  the first line on its residue past the 0 subtree and stays off the two
-  printer residues mod 66.
-- **Fill.**  A rung only where a flight hops or a walk crosses a live lane,
-  ``x`` elsewhere: the wiki errors on blank lines, so none are emitted.
+- **Read.**  ``{values/=u/=X/=X}`` with ``X`` 49 pips leaves Q (81) on a ``1``
+  and T (84) on a ``0``.  ``IFT`` calls the slot ``<NnNn>`` on a 0, which
+  zeroes the accumulator so the rung falls through onto the near child.  A 1
+  keeps 81, or ``IFQ`` calls a body that rewrites it, and the rung lands on
+  the far child: the slot is refilled after any other body.
+- **Cluster.**  A subtree of at most 40 lines is laid whole, the far child
+  as many lines past the rung as the near subtree is long.  A read over two
+  leaves is two lines: the compare leaves Q or T and the rung's hop of 82 or
+  85 lands the leaf's value on the tail's entry.
+- **Flight.**  A larger subtree's read sets the accumulator to column
+  ``40 + h - 2`` for ``h`` reads below it, so its rung lands in the zone and
+  each window's closing rung hops it to the same column again.  Flights share
+  that rung and differ by column; the stop, one ``NnNn`` at the flight's
+  column in a later window, is reached by no other flight, since a deeper
+  read has a lower column and finishes first.
+- **Tail.**  The last window takes the printers at columns 82 and 85, above
+  every flight's, and prints ``0`` or ``1``.
 
 A read whose halves are equal (``subtree_ids``), a constant or an ignored
-input, still consumes its digit: both arms converge, the 1 flight stopping
-on the line the zeroed 0 walk passes through, onto one child.
+input, still consumes its digit: its child is laid straight after it.
 
 Size:
-    O(T) at every arity: a node's read gap, dismount and stop gap span at
-    most 82, 85 and 2 * 82 lines, a leaf's scan 66, and no line exceeds the
-    65-character read; a dense table is 169 lines an entry from ``n = 8`` to
-    12.  Rungs on live lanes make characters per entry creep with ``n``
-    (550 at ``n = 8`` to 594 at 12 on parity), under the corridor filling
-    every odd line the walks cross, 719--761 at ``n = 8``.  Each flight is
-    laid once and a printer lane once from its
-    earliest launch, so building is O(T); a run visits each line at most once,
-    since every jump is forward.
-    n=10 random 1847: 532,117 chars, n=10 parity: 586,697 chars,
-    n=10 and: 26,904 chars.
+    O(T) at every arity: a window is 126 lines and at most 1.3 T are opened,
+    so a table takes under 420 T characters whatever ``n``.
+    n=10 random 1847: 167,672 chars, n=10 parity: 197,134 chars,
+    n=10 and: 8,206 chars.
 
 Raises:
-    GeneratorCapError: more than forty inputs; 41 lanes bound the arity.
+    GeneratorCapError: more than forty inputs; a flight's column must stay
+        below the printers'.
 
 Decisions:
-    Other repeated subtrees are not shared: a stop sits on one lane, so two
+    Other repeated subtrees are not shared: a stop sits on one column, so two
     parents cannot land on one child.
 """
 
@@ -54,150 +49,130 @@ from esolangs.runtime.source_hints import with_hint
 #: The rung.  ``DownAccLines`` jumps to ``ip + 1 + acc``.
 _RUNG = "DownAccLines"
 
-#: Q (81) flies 82 a hop; T (84) lands 85 below the rung.
-_STRIDE = 82
-_DISMOUNT = 85
-_PIPS_49 = ":" * 24 + "."
-_READ = "{values/=u/=" + _PIPS_49 + "/=" + _PIPS_49 + "}"
+#: The compare's pips: Q (81) when the digit is the ``0`` or ``1`` it names.
+_PIPS = {0: ":" * 24, 1: ":" * 24 + "."}
+#: A leaf's value as Q (81) or T (84) whatever the accumulator holds.
+_VALUE = {0: "{values/=/=/=}", 1: "{values/=:/=./=}"}
+#: The slot every read calls on a 0 to zero the accumulator.
+_SLOT = ["<", "NnNn", ">"]
 
-#: ``nNnN`` loads 65: a leaf flies stride 66 to the printer for its value.
-_PRINT_STRIDE = 66
-_PRINT_LANE = {0: 33, 1: 1}
-_PRINT_LANES = frozenset(_PRINT_LANE.values())
-
-#: Up to this many inputs a read stays on the first even line after its
-#: entry: a 0 child's lane is its parent's + 6, a 1 child's + 2 (mod 82), so
-#: an in-air ancestor ``k`` levels up collides only when ``3a + b = 41 m``
-#: with ``a + b = k``, ``a >= 1``, first at ``k = 15``, i.e. ``n = 16``.
-_ENTRY_LANES = 15
-
-#: The deepest read clears ``n - 1`` lanes in the air.
+#: A window holds ``_FREE`` code lines, then a zone that must reach the
+#: printers' entry at column 85 from the last code line.  The deepest of the
+#: forty reads flies at column ``_FREE + 37``, under the printers' 82.
+_FREE = 40
+_ZONE = 86
+_PERIOD = _FREE + _ZONE
 _MAX_INPUTS = 40
 
 
-class _Layout:
-    """The assembly state: placed lines and the printer flights' launches."""
-
-    def __init__(self) -> None:
-        self.ops: dict[int, str] = {}
-        self.leaves: list[tuple[int, int]] = []
-
-    def put(self, line: int, op: str) -> None:
-        """Occupy ``line`` with ``op``; a collision is a planning bug."""
-        if line in self.ops:
-            raise AssertionError(f"line {line} holds {self.ops[line]!r}, wanted {op!r}")
-        self.ops[line] = op
-
-    def lay(self, launch: int, stride: int, stop: int) -> None:
-        """Lay one flight's rungs from ``launch`` up to its ``stop``."""
-        for line in range(launch, stop, stride):
-            if self.ops.setdefault(line, _RUNG) != _RUNG:
-                raise AssertionError(f"flight from {launch} hits {self.ops[line]!r}")
-        if stop % stride != launch % stride:
-            raise AssertionError(f"flight from {launch} steps over its stop {stop}")
-
-    def walk(self, start: int, end: int, air: set[int]) -> None:
-        """Mark the lines an acc-0 walk passes: a rung where a live lane crosses."""
-        for line in range(start, end):
-            live = line % 2 and (
-                line % _STRIDE in air or line % _PRINT_STRIDE in _PRINT_LANES
-            )
-            self.ops.setdefault(line, _RUNG if live else "x")
+def _read(bit: int) -> str:
+    """The read leaving Q when the digit is ``bit``, else T."""
+    return "{values/=u/=" + _PIPS[bit] + "/=" + _PIPS[bit] + "}"
 
 
-def _tree(table: str, n: int, layout: _Layout) -> int:
-    """Lay the tree from line 0; return the first line past it."""
-    ids = subtree_ids(table)
-    air: set[int] = set()
-
-    def read(entry: int, depth: int) -> int:
-        """Place a depth-``depth`` read on its own lane; return its rung.
-
-        Lane ``2 * depth + 1`` is the depth's alone, and the air holds only
-        shallower ancestors' lanes, so it is free by construction.  Every
-        placed line lies before ``entry``, so the line is free too.
-        """
-        line = entry + entry % 2
-        if n > _ENTRY_LANES:
-            line += (2 * depth - line) % _STRIDE
-        layout.walk(entry, line, air)
-        layout.put(line, _READ)
-        return line + 1
-
-    def stop(start: int, lane: int) -> int:
-        """Place a stop on ``lane``'s first free line past ``start``, off printers."""
-        line = start + (lane - start) % _STRIDE
-        # 82 = 16 mod 66 and the printer residues differ by 32: one hop clears.
-        line += _STRIDE * (line % _PRINT_STRIDE in _PRINT_LANES)
-        layout.put(line, "NnNn")
-        return line
-
-    def node(depth: int, block: int, entry: int) -> int:
-        """Lay one subtree entered at ``entry`` under acc 0; return its frontier."""
-        if depth == n:
-            value = ids[n][block]
-            line = entry + entry % 2
-            line += (_PRINT_LANE[value] - 1 - line) % _PRINT_STRIDE
-            layout.walk(entry, line, air)
-            layout.put(line, "nNnN")
-            layout.leaves.append((line + 1, value))
-            return line + 2
-        launch = read(entry, depth)
-        lane = launch % _STRIDE
-        arm = launch + _DISMOUNT
-        layout.put(arm, "NnNn")
-        air.add(lane)
-        if ids[depth + 1][2 * block] == ids[depth + 1][2 * block + 1]:
-            # Equal halves: the 0 walk runs on through the 1 flight's stop.
-            landing = stop(arm + 1, lane)
-            layout.walk(arm + 1, landing, air)
-            air.discard(lane)
-            layout.lay(launch, _STRIDE, landing)
-            return node(depth + 1, 2 * block, landing + 1)
-        frontier = node(depth + 1, 2 * block, arm + 1)
-        air.discard(lane)
-        landing = stop(frontier, lane)
-        layout.lay(launch, _STRIDE, landing)
-        return node(depth + 1, 2 * block + 1, landing + 1)
-
-    return node(0, 0, 0)
+def _arith(delta: int) -> list[str]:
+    """The fewest ``@id``/``@nd``/``@dd``/``@nt`` lines adding ``delta`` mod 256."""
+    delta = (delta + 128) % 256 - 128
+    tens, ones = divmod(abs(delta), 10)
+    big, near, far = ("@id", "@nd", "@nt") if delta >= 0 else ("@dd", "@nt", "@nd")
+    exact = [big] * tens + [near] * ones
+    over = [big] * (tens + 1) + [far] * (10 - ones)
+    return min(exact, over, key=len) if ones else exact
 
 
-def _printers(layout: _Layout, start: int) -> tuple[int, dict[int, int]]:
-    """Lay both printers past ``start``; return the length and each value's stop.
+def _block(target: int) -> list[str]:
+    """A read whose 1 arm hops ``target`` lines and whose 0 arm falls through.
 
-    The 1 printer's stop and code come first, then a hop over the 0 side;
-    0 flights cross that code, so its odd lines stay off their residue.
+    ``IFQ`` calls a body rewriting Q to ``target``, then the slot is refilled.
     """
-    one_stop = start + (_PRINT_LANE[1] - start) % _PRINT_STRIDE
-    layout.put(one_stop, "NnNn")
-    one_code = ["@id"] * 4 + ["@nd"] * 9 + ["div", "NnNn"]
-    # The 35-line window must start past the first odd 0-lane line.
-    code = one_stop + 1 + (_PRINT_LANE[0] - _PRINT_LANE[1]) % _PRINT_STRIDE
-    layout.walk(one_stop + 1, code, set())
-    for line, op in enumerate(one_code, code):
-        layout.put(line, op)
-    hop = code + len(one_code)  # the adjusters and the rung of the escape
-    zero_start = hop + 20
-    zero_stop = zero_start + (_PRINT_LANE[0] - zero_start) % _PRINT_STRIDE
-    layout.put(zero_stop, "NnNn")
-    zero_code = ["@id"] * 4 + ["@nd"] * 8 + ["div"]
-    for line, op in enumerate(zero_code, zero_stop + 1):
-        layout.put(line, op)
-    end = zero_stop + 1 + len(zero_code)
-    layout.put(end, "x")  # the escape lands here, never past the last line
-    rung = hop + 19
-    distance = end - rung - 1
-    if distance != 44:  # the spacing and printer lanes fix it
-        raise AssertionError(f"printer escape spans {distance} lines, not 44")
-    spell = ["@id"] * 4 + ["@nd"] * 4
-    for line, op in enumerate(spell, hop):
-        layout.put(line, op)
-    for line in range(hop + len(spell), rung):
-        layout.put(line, "x")  # walked under the escape's acc: no rung
-    layout.put(rung, _RUNG)
-    layout.walk(rung + 1, zero_stop, set())
-    return end + 1, {1: one_stop, 0: zero_stop}
+    body = min(_arith(target - 81), ["NnNn", *["@nd"] * target], key=len)
+    return [_read(1), "IFT", "<", *body, ">", "IFQ", *_SLOT, _RUNG]
+
+
+class _Plan:
+    """The windows of one program: placed lines, the cursor and the last cluster."""
+
+    def __init__(self, table: str, n: int) -> None:
+        self.n = n
+        self.ids = subtree_ids(table)
+        self.ops: dict[int, str] = dict(enumerate(_SLOT, 1))
+        self.cursor = len(_SLOT) + 1
+        self.window = 0
+        self.sizes: dict[tuple[int, int], int] = {}
+
+    def halves(self, depth: int, block: int) -> tuple[int, int]:
+        """The ids of ``block``'s two child subtrees (leaf values at the bottom)."""
+        return self.ids[depth + 1][2 * block], self.ids[depth + 1][2 * block + 1]
+
+    def size(self, depth: int, block: int) -> int:
+        """Lines of the cluster at ``block``, or ``_FREE + 1`` if it is longer."""
+        key = (depth, block)
+        if key not in self.sizes:
+            low, high = self.halves(depth, block)
+            if depth == self.n - 1:
+                total = 3 if low == high else 2
+            elif low == high:
+                total = 1 + self.size(depth + 1, 2 * block)
+            else:
+                near = self.size(depth + 1, 2 * block)
+                far = self.size(depth + 1, 2 * block + 1) if near <= _FREE else near
+                total = len(_block(near)) + near + far
+            self.sizes[key] = min(total, _FREE + 1)
+        return self.sizes[key]
+
+    def cluster(self, depth: int, block: int) -> list[str]:
+        """The lines of the cluster at ``block``: every arm a short hop."""
+        low, high = self.halves(depth, block)
+        if depth == self.n - 1:
+            if low == high:
+                return [_read(1), _VALUE[low], _RUNG]
+            return [_read(low), _RUNG]  # Q prints the 0, T the 1
+        if low == high:
+            return [_read(1), *self.cluster(depth + 1, 2 * block)]
+        near = self.cluster(depth + 1, 2 * block)
+        return [*_block(len(near)), *near, *self.cluster(depth + 1, 2 * block + 1)]
+
+    def place(self, lines: list[str], reach: int) -> int:
+        """Lay ``lines`` in the first window with room, ending within ``reach``.
+
+        Returns the last line.  A window's code ends at ``_FREE``; ``reach`` is
+        how far into it a rung may sit and still land in the zone.
+        """
+        line, room = self.cursor, min(_FREE, reach) - len(lines) + 1
+        while not 1 <= line % _PERIOD <= room:
+            line = (line // _PERIOD + 1) * _PERIOD + 1
+        self.ops.update(enumerate(lines, line))
+        self.cursor = line + len(lines)
+        return self.cursor - 1
+
+    def lay(self, depth: int, block: int) -> None:
+        """Lay the subtree at ``block`` from the cursor, flights above clusters."""
+        low, high = self.halves(depth, block)
+        if self.size(depth, block) <= _FREE:
+            end = self.place(self.cluster(depth, block), _FREE)
+            self.window = end // _PERIOD
+        elif low == high:
+            self.place([_read(1), "NnNn"], _PERIOD)
+            self.lay(depth + 1, 2 * block)
+        else:
+            column = _FREE + self.n - 3 - depth  # a read of height n - 1 - depth
+            rung = self.place(_block(column), _PERIOD - 2 - column)
+            self.lay(depth + 1, 2 * block)
+            first = max(self.cursor, (rung // _PERIOD + 1) * _PERIOD)
+            stop = first + (column + 1 - first) % _PERIOD
+            self.ops[stop] = "NnNn"
+            self.cursor = stop + 1
+            self.lay(depth + 1, 2 * block + 1)
+
+    def text(self) -> str:
+        """Close the windows with their rungs and the printers' tail."""
+        last = self.window + 1
+        for window in range(last + 1):
+            self.ops.setdefault(window * _PERIOD, _RUNG)
+        tail = ["@nd", "@nd", "x", *_arith(-35), "div"]  # 81 -> 48, 84 -> 49
+        end = last * _PERIOD + 82 + len(tail)
+        self.ops.update(enumerate(tail, last * _PERIOD + 82))
+        return "\n".join(self.ops.get(i, "x") for i in range(end))
 
 
 def interprogck8(truth_table: str) -> str:
@@ -209,21 +184,14 @@ def interprogck8(truth_table: str) -> str:
     if n > _MAX_INPUTS:
         raise with_hint(
             GeneratorCapError(
-                f"Interprogck8's 41 lanes route at most {_MAX_INPUTS} inputs, not {n}"
+                f"Interprogck8 keeps its flights under the printers for at most "
+                f"{_MAX_INPUTS} inputs, not {n}"
             ),
-            "a table past forty inputs is a terabyte; no width enlarges the lanes",
+            "a table past forty inputs is a terabyte; no width enlarges the columns",
         )
-    layout = _Layout()
-    start = _tree(truth_table, n, layout)
-    length, stops = _printers(layout, start)
-    # Every leaf of one value shares a lane, so the earliest launch's
-    # flight lays every later one's rungs.
-    earliest: dict[int, int] = {}
-    for launch, value in layout.leaves:
-        earliest[value] = min(earliest.get(value, launch), launch)
-    for value, launch in earliest.items():
-        layout.lay(launch, _PRINT_STRIDE, stops[value])
-    return "\n".join(layout.ops.get(line, "x") for line in range(length))
+    plan = _Plan(truth_table, n)
+    plan.lay(0, 0)
+    return plan.text()
 
 
 LANGUAGE = Language(
@@ -238,5 +206,5 @@ LANGUAGE = Language(
     random=True,
     no_wrap="a newline adds a line and moves every DownAccLines landing",
     proof_execution=(execution, False, (3, 4, 5, 6, 7)),
-    proof_workspace=(workspace, True, (3, 4, 5, 6)),
+    proof_workspace=(workspace, False, (3, 4, 5, 6)),
 )

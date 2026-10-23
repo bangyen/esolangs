@@ -6,13 +6,14 @@ def _lines(program: str) -> int:
 
 
 def execution(n: int, program: str) -> int:
-    """Each line runs at most once: 86 a level, 168 with lane seeks past n = 15.
-
-    Stride-66 flights cross at most R lines; the printer region adds the rest.
-    """
-    return (86 if n <= 15 else 168) * n + _lines(program) // 66 + 290
+    """Each line runs at most once; a read's called body adds at most 11 lines."""
+    return _lines(program) + 11 * n
 
 
 def workspace(n: int, program: str) -> int:
-    """A 7-bit accumulator, the line cursor at most R, the input cursor 2n."""
-    return 7 + _lines(program).bit_length() + (2 * n).bit_length()
+    """A 7-bit accumulator, the line cursor at most R, the input cursor 2n.
+
+    The slot and the frame calling it each hold a body of at most 33
+    characters, the frame's index 4 bits.
+    """
+    return 7 + _lines(program).bit_length() + (2 * n).bit_length() + 2 * 8 * 33 + 4
