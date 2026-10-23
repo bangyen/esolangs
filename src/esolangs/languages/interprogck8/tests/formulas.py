@@ -328,6 +328,26 @@ def _layouts(n: int, height: int, offset: int) -> Layouts:
     return {**_seated(height, offset), **_flown(n, height, offset)}
 
 
+def _merge(members: list[Seen]) -> Seen:
+    """One state standing for ``members``: their dearest distinct options."""
+    if len(members) == 1:
+        return members[0]
+    options: list[list[tuple[int, str]]] = [[], []]
+    notes: list[str] = []
+    for member in members:
+        for walker in range(2):
+            options[walker] += member[0][walker]
+        notes += [table for table in member[1] if table not in notes]
+    for walker in range(2):
+        options[walker].sort(key=lambda option: -option[0])
+        kept: list[tuple[int, str]] = []
+        for value, table in options[walker]:
+            if all(table != other for _, other in kept):
+                kept.append((value, table))
+        options[walker] = kept[:_SEEN]
+    return options, notes[:_SEEN]
+
+
 @cache
 def _flown(n: int, height: int, offset: int) -> Layouts:
     """The flights of ``height`` at ``offset``: value = commands less the leaf's offset.
@@ -352,10 +372,14 @@ def _flown(n: int, height: int, offset: int) -> Layouts:
     line, there, opened, walked = _seat(offset, lead)
     rung = PERIOD * opened + line + lead - 1
     fars = _layouts(n, height - 1, column + 2)
+    nears: dict[tuple[int, int | None], list[Seen]] = {}
     for (end, more, near), seen in _layouts(n, height - 1, there).items():
         first = max(PERIOD * (opened + more) + end, PERIOD * (opened + 1))
         stop = first + (column + 1 - first) % PERIOD
         windows = stop // PERIOD
+        nears.setdefault((windows, near), []).append(seen)
+    for (windows, near), members in nears.items():
+        seen = _merge(members)
         flight = PERIOD * (opened + 1) - (rung + 1 + column) + 1
         flight += (windows - opened - 1) * (PERIOD - column) + 1
         for (exit_, extra, far), seen_far in fars.items():
@@ -468,10 +492,13 @@ def _bounds(n: int, height: int, offset: int) -> Bound:
     line, there, opened, walked = _seat(offset, lead)
     rung = PERIOD * opened + line + lead - 1
     fars = _bounds(n, height - 1, column + 2)
+    nears: dict[tuple[int, int | None], list[int]] = {}
     for (end, more, near), seen in _bounds(n, height - 1, there).items():
         first = max(PERIOD * (opened + more) + end, PERIOD * (opened + 1))
-        stop = first + (column + 1 - first) % PERIOD
-        windows = stop // PERIOD
+        windows = (first + (column + 1 - first) % PERIOD) // PERIOD
+        best = nears.setdefault((windows, near), [_NONE, _NONE])
+        best[:] = [max(old, new) for old, new in zip(best, seen, strict=True)]
+    for (windows, near), seen in nears.items():
         flight = PERIOD * (opened + 1) - (rung + 1 + column) + 1
         flight += (windows - opened - 1) * (PERIOD - column) + 1
         for (exit_, extra, far), seen_far in fars.items():

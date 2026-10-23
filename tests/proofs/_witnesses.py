@@ -803,8 +803,8 @@ def _back_worst(n: int) -> tuple[str, ...]:
 
 
 #: (language, n) whose witness build alone passes the fast band, to its band:
-#: Interprogck8's steps witness is a 1.3 s recursion at 7 and 9 s at 8.
-_WITNESS_BAND = {("Interprogck8", 7): "medium", ("Interprogck8", 8): "slow"}
+#: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included.
+_WITNESS_BAND = {("Interprogck8", 8): "medium"}
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
