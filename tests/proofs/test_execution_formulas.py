@@ -808,6 +808,17 @@ def _back_worst(n: int) -> tuple[str, ...]:
     return tables
 
 
+def _polynomial_worst(n: int) -> tuple[str, ...]:
+    """Four blocks of 2^(n-2) rows, each the binary of its index, MSB first.
+
+    Every level keeps its states distinct, so the machine runs 12n - 7 commands:
+    C - 2 at n = 3, 4 (the exhaustive worst), 53 of 63 at n = 5, where 60 is found.
+    """
+    if n < 3:
+        return ()
+    return ("".join(f"{block:0{1 << n - 2}b}" for block in range(4)),)
+
+
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
@@ -816,6 +827,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
+    "Polynomial": _polynomial_worst,
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
     "BrainIf": lambda n: (_brainif_worst(n) if n >= 2 else "11",),
     "BFStack": lambda n: (_bfstack_chars_worst(n),),
