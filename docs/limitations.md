@@ -491,7 +491,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Sixty-one ledger cells are `at most` throughout and twenty more past an
+Sixty ledger cells are `at most` throughout and twenty-one more past an
 exact range (2026-10-23, counted from the ledger; open ones are on the
 [roadmap](roadmap.md#generator-linearity)):
 
@@ -501,7 +501,8 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   rows and the fold's leaves ships 12,096 cells, not 12,320, at n = 9) and
   execution past n = 6 (the comb's Rudin-Shapiro table folds: 2,240 cells
   against 2,522 at n = 7);
-  ArrowQueue execution (proved 11T + 32n + 92),
+  ArrowQueue execution (proved 11T + 32n + 92), Polynomial execution (C - 2
+  at n = 3, 4 over every table; 60 of C = 63 found at n = 5),
   BFStack workspace, Boolfuck workspace,
   Circuit Diagram workspace and scaling (an H-tree pool from n = 9 caps
   the area; the default measures at most 0.26 of the cap), Container scaling (the threshold build loses
@@ -550,7 +551,7 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   Circuit Diagram execution (2n + 1 is derived and reached to n = 20, but
   a bank can beat the fold that reaches it); ABCDirection, Algebraic Programming Language,
   FALSE (1.3x past n = 8, per route), For Thorn, Object Disoriented (1.7x,
-  per level) and Packlang workspace; Polynomial both; SStack execution (exact at n = 5 and 8
+  per level) and Packlang workspace; Polynomial workspace; SStack execution (exact at n = 5 and 8
   only); Unlambda execution and workspace; RAM0 scaling (a repeat goto
   needs a zero child already built); SendStuff scaling (a constant child
   replaces the branching node the bound also prices).
