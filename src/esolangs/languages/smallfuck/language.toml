@@ -8,7 +8,7 @@ bf_derivative = true
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "each level owns a bit, branch flag, and result cell; a child transfers its result three cells upward, so the depth-first pointer walk crosses each tree edge only a constant number of times"
-scaling = "linear: six characters an input, approaching 48.5T characters"
+scaling = "linear: at most Q characters: the shorter plain tree, bands 3 or 5"
 execution = "poly n: at most 9n^2 + 100n + 20 commands, one tree path"
 workspace = "linear: worst L + bl(L) + bl(3n) bits: one tape bit per source character"
 

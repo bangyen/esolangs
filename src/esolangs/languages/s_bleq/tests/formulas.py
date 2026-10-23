@@ -84,4 +84,4 @@ def below_eleven(n: int, _: str = "") -> int:
     return min(tree_chars(n), _chars(n, ""))
 
 
-FORMULAS = {"scaling": (_chars, True, (11, 12, 13, 19))}
+FORMULAS = {"scaling": (_chars, True, (11, 12, 13, 19, 20))}

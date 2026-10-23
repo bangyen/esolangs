@@ -12,7 +12,7 @@ backlinks = 5
 [proof_status]
 labels = ["finite lookup"]
 qualification = "packed `n`-bit cells selected by a self-modified operand"
-scaling = "linear: T/n packed cells of O(n) digits, O(n) decoder"
+scaling = "linear: at most min(P, R) characters: packed decoder or shared residuals"
 execution = "linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10"
 workspace = "linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed"
 definitions = ["C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C", "Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23"]

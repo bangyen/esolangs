@@ -7,7 +7,7 @@ backlinks = 3
 [proof_status]
 labels = ["tree"]
 qualification = "each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched"
-scaling = "linear: O(T/n) nodes with O(n)-digit names"
+scaling = "linear: at most F characters: O(T/n) nodes, O(n)-digit names"
 execution = "linear: worst 5N + 21n + 9 steps: five a stored node, 21 a level"
 workspace = "linear: worst 16L - 328D - 8r + 32w + bl(5D+6) + bl(n) + 2490 bits: frames, globals; stack two bodies"
 definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "D = the program's definitions", "r = the root name's length", "w = the longest name, max(digits(D+1), 1+digits(n))"]

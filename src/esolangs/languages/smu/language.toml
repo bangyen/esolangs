@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["tree"]
 qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-scaling = "linear: worst C characters to n = 19, at most 6T+90 after"
+scaling = "linear: worst C characters to n = 16, at most 6T+90 after"
 execution = "poly n: worst 55n + 5 commands, one tree path of eight runs a level"
 workspace = "linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables"
 definitions = ["E = 95T - 80, the macro-expanded program with no constant subtree"]

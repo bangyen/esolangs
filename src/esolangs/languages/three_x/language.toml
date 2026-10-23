@@ -7,7 +7,7 @@ backlinks = 5
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: O(1) constant-span tests over canonical residual IDs"
+scaling = "linear: at most K characters: the plain tree under fixed keys"
 execution = "linear: worst L commands: the all-ones row enters every guard, no loop repeats"
 workspace = "linear: at most n·bl(L) + bl(2n-1) + 3G + 2n + 2K(N) + 6bl(N-1) + 9 + Σ_{i≤N}(K(i)+3) bits"
 definitions = ["K(i) = 2bl(3^bl(i-1)) + 1, a bound on the ith key's bits", "G = the program's ( count", "N = 1 + n + C + min(G, ⌊T/24⌋), C half the complement snippets"]

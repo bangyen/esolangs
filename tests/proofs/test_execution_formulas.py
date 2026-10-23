@@ -7,6 +7,7 @@ Each was derived from its generator, not fitted: a fit from parity data
 
 import random
 from collections.abc import Callable
+from itertools import islice
 
 import esolangs
 from esolangs.debugger import make_vm
@@ -504,6 +505,23 @@ def _suffolk_worst(n: int) -> str:
     return "01" * (h // 2) + "".join(map(str, seq[::-1]))
 
 
+# language-owners: ["Suffolk"]
+def _suffolk_deep(n: int) -> str:
+    """From n = 13 the DAG takes one- and two-skip tables: skip three rounds.
+
+    Two skipped sweep rounds in the first half, one in the second, at
+    different offsets, so the mixed blocks stay distinct (3n - 5 nodes).
+    """
+    m = 1 << (n - 1)
+
+    def half(skips: tuple[int, ...]) -> str:
+        return "".join(
+            str((r + 1 - sum(s <= r for s in skips)) & 1) for r in range(m - 1, -1, -1)
+        )
+
+    return half((m // 4 + 1, 3 * m // 4 + 4)) + half((m // 2 + 7,))
+
+
 # language-owners: ["BFStack"]
 #: Marker pair positions in the 128-row block: one pair per quarter.
 _BFSTACK_MARKS = (13, 14, 29, 30, 45, 46, 61, 62)
@@ -588,6 +606,15 @@ def _codesick_chars_worst(n: int) -> str:
                 return len(str(start[first] + r))
 
             ranks = range(nodes[first])
+            # Three id widths: cover every rank once, spares in top-width pairs.
+            if width(ranks[-1]) - width(0) > 1:
+                top = [r for r in ranks if width(r) == width(ranks[-1])]
+                fresh = [(r, r + 1) for r in ranks[::2]]
+                spare = (
+                    (a, b) for b in top for a in top if not (b == a + 1 and a % 2 == 0)
+                )
+                kids.append(fresh + list(islice(spare, nodes[d] - len(fresh))))
+                continue
             low = [r for r in ranks if width(r) == width(0)]
             high = [r for r in ranks if width(r) > width(0)] or low
             if high is low:
@@ -648,6 +675,17 @@ def _row_one(n: int) -> str:
     return "01" + "0" * ((1 << n) - 2)
 
 
+def _minifuck_worst(n: int) -> str:
+    """Controls 1 but the last row's: the strip's writes cost most (4 a one).
+
+    The control is the table bit xor the zero-control row parity, popcount + n.
+    """
+    return "".join(
+        "0" if row == 2**n - 1 else str(1 ^ ((row.bit_count() + n) & 1))
+        for row in range(2**n)
+    )
+
+
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
@@ -684,6 +722,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     "Dimensional": lambda n: (_dimensional_worst(n),) if n >= 4 else (),
     "Fackward": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
+    "Minifuck": lambda n: (_minifuck_worst(n),) if n >= 3 else (),
     "Forbin": lambda n: (_forbin_worst(n),),
     # Six random subtables tiled by 4 random top inputs: the diagram wins and
     # stores the full 26 lambdas, the variables' peak.
@@ -716,7 +755,9 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Stisp": lambda n: (_unequal_first(n),) if n >= 2 else (),
     # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
     "Suffolk": lambda n: (
-        (_suffolk_worst(n), *(("10" + _suffolk_worst(n)[2:],) if n >= 7 else ()))
+        (_suffolk_deep(n),)
+        if n >= 13
+        else (_suffolk_worst(n), *(("10" + _suffolk_worst(n)[2:],) if n >= 7 else ()))
         if n >= 3
         else ()
     ),

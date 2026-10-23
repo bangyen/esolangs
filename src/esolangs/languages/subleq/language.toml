@@ -7,7 +7,7 @@ backlinks = 82
 [proof_status]
 labels = ["finite lookup"]
 qualification = "shared direct-jump residual DAG or packed decoder with interned chunk payloads"
-scaling = "linear: O(T/n) residuals or packed chunks, O(n)-digit addresses or payloads"
+scaling = "linear: at most min(P, H) characters: packed decoder or hoisted tree"
 execution = "linear: worst 8T+(7n+5)(⌊T/n⌋-1)+23n-8 steps past n = 8: the packed decoder"
 workspace = "linear: worst I + R + P + bl(n) bits: image, rewritten cells, pc, cursor"
 definitions = ["I = the program's cell bits: bl(|v|) plus one per zero or negative cell", "R = 6n + 5 on a tree, 4 on a constant; packed, its worst read, advance or halving row", "P = the pc: bl(Q-3) on a tree, bl(Q) on a constant, bl(D-3) packed; Q cells, D decoder cells"]

@@ -7,7 +7,7 @@ backlinks = 2031
 [proof_status]
 labels = ["tree"]
 qualification = "folded decision tree; residuals defer through level flags; affine tables stream"
-scaling = "linear: decision_tree_program, span walk, leaf moves geometric"
+scaling = "linear: at most 35T/2 + 55n + 25 characters: the plain tree"
 execution = "poly n: worst 69n + 44 commands, the AND table's all-ones row"
 workspace = "poly n: worst 2n + 6 + bl(2n) + bl(n) + bl(L) bits"
 

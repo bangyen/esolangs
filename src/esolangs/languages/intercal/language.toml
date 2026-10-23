@@ -7,7 +7,7 @@ backlinks = 100
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree"
-scaling = "linear: worst U characters for n = 3..4, at most V after"
+scaling = "linear: worst U characters for n = 3..10, at most V after"
 execution = "linear: worst 2n + M statements for n = 5..25, at most it elsewhere: shared nodes"
 workspace = "linear: worst 9S - 18 + Σ_{k≤S-2} bl(k) + bl(S) bits for n = 1..25, at most it elsewhere"
 definitions = ["S = the Execution bound", "M = min(T/8+2, T/16+14, T/32+254) to n = 21, T/64+2^16-2 after"]

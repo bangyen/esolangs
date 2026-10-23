@@ -7,7 +7,7 @@ backlinks = 1
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "the inputs are atoms in n frames, and an equation per edge of the reduced diagram rewrites the head node"
-scaling = "linear: one or two equations a shared node, O(log T) digits each"
+scaling = "linear: at most F characters: one or two equations a node"
 execution = "poly n: worst n rewrites: one frame an input"
 workspace = "poly n: worst 16n + 8z bits, z the decimal digits of D + 1: the frames and the node atom"
 definitions = ["D = Σ_{k<n} min(2^k, 2^(2^(n-k)) - 2), the most nonconstant nodes"]
