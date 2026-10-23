@@ -233,6 +233,19 @@ def test_balance_folds_the_lookup_into_strips(row: int) -> None:
     assert run_streetcode(program, [str(bit) for bit in row_bits(row, 6)]) == table[row]
 
 
+def test_balance_fold_target_uses_the_western_margin() -> None:
+    """The fold's target squares the span east of the first used column."""
+    import esolangs
+
+    parity = "".join(str(index.bit_count() & 1) for index in range(64))
+    program = str(esolangs.generate("Streetcode", parity, balance=True))
+    rows = program.splitlines()
+    assert (len(rows), max(map(len, rows))) == (48, 98)
+    constant = str(esolangs.generate("Streetcode", "0" * 64, balance=True))
+    rows = constant.splitlines()
+    assert (len(rows), max(map(len, rows))) == (21, 50)
+
+
 def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:
     """Positive control: the shared-sill fold's strip end frames a mouth."""
     from esolangs.languages.streetcode.tests.fold_oracle import (
