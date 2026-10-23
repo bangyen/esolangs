@@ -5,6 +5,8 @@ import random
 import pytest
 
 import esolangs
+from esolangs.exceptions import GeneratorCapError
+from esolangs.languages.interprogck8 import generator
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -73,3 +75,38 @@ def test_parity_costs_the_same_per_entry_at_every_arity() -> None:
         assert all(lines[k] == "DownAccLines" for k in range(0, len(lines) - 82, 126))
         sizes[n] = len(program) / (1 << n)
     assert max(sizes.values()) - min(sizes.values()) < 0.5, sizes
+
+
+def test_arith_adds_its_delta_mod_256() -> None:
+    """The fewest lines add ``delta`` mod 256, even for deltas past a byte."""
+    step = {"@id": 10, "@nd": 1, "@dd": -10, "@nt": -1}
+    for delta in range(-600, 600):
+        lines = generator._arith(delta)  # noqa: SLF001
+        assert sum(step[line] for line in lines) % 256 == delta % 256, delta
+
+
+def test_cluster_sizes_match_their_lines() -> None:
+    """``size`` is the length of the cluster it prices, wherever that fits a window."""
+    rng = random.Random(7)
+    for n in (4, 5, 6, 7):
+        table = "".join(rng.choice("01") for _ in range(1 << n))
+        plan = generator._Plan(table, n)  # noqa: SLF001
+        for depth in range(n):
+            for block in range(1 << depth):
+                size = plan.size(depth, block)
+                if size <= generator._FREE:  # noqa: SLF001
+                    assert size == len(plan.cluster(depth, block)), (n, depth, block)
+
+
+def test_the_input_cap_is_forty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Forty inputs build; forty-one raise (a 2**40 table cannot be passed)."""
+    monkeypatch.setattr(generator, "_validate_truth_table", lambda _: 41)
+    with pytest.raises(GeneratorCapError):
+        generator.interprogck8("0")
+    monkeypatch.setattr(generator, "_validate_truth_table", lambda _: 40)
+    monkeypatch.setattr(
+        generator,
+        "_Plan",
+        lambda *_: type("P", (), {"lay": lambda *_: None, "text": lambda _: "ok"})(),
+    )
+    assert generator.interprogck8("0") == "ok"
