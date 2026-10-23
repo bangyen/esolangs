@@ -1,6 +1,7 @@
 """Executed tests for the INTERCAL Shannon-expression generator."""
 
 import random
+import re
 
 import pytest
 
@@ -9,9 +10,11 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
 )
+from esolangs.languages.intercal import generator
 from esolangs.languages.intercal.generator import PAIR, TEMPLATE_CHAR, intercal
 from esolangs.languages.intercal.interpreter import run
 from esolangs.runtime._evaluate import _evaluate
+from tests.proofs.test_execution_formulas import _intercal_worst
 from tests.support.generator_support import run_filled
 
 
@@ -73,6 +76,31 @@ def test_shared_templates_execute_on_sampled_tables(n: int) -> None:
     for _ in range(3):
         table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
         assert "".join(_run(table, row) for row in range(1 << n)) == table
+
+
+@pytest.mark.parametrize(("cap", "n"), [(12, 7), (20, 8), (30, 8)])
+@pytest.mark.medium
+def test_names_past_the_cap_spill_to_arrays_and_execute(
+    cap: int, n: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A lowered variable cap spills the top names; every row still computes."""
+    monkeypatch.setattr(generator, "_VARIABLE_MAX", cap)
+    table = _intercal_worst(n)
+    template = intercal(table)
+    assert " SUB #" in template
+    assert max(int(k) for k in re.findall(r"\.(\d+)", template)) <= cap
+    assert "".join(_run(table, row) for row in range(1 << n)) == table
+
+
+@pytest.mark.medium
+def test_every_name_of_the_widest_witness_is_a_legal_variable() -> None:
+    """n = 21 needs names to .65830; INTERCAL variables stop at .65535."""
+    program = intercal(_intercal_worst(21))
+    assert max(int(k) for k in re.findall(r"\.(\d+)", program)) <= 65535
+    widths = re.findall(r"^\S+ ,(\d+) <- #(\d+)$", program, re.M)
+    assert [int(j) for j, _ in widths] == list(range(1, 18))
+    assert {w for _, w in widths} == {"18"}
+    assert max(int(i) for i in re.findall(r" SUB #(\d+)", program)) <= 18
 
 
 @pytest.mark.parametrize("table", ["00"])

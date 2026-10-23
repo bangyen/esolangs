@@ -1,5 +1,7 @@
 """INTERCAL's emitted characters: diagram nodes priced per level."""
 
+from math import isqrt
+
 
 def _digits(x: int) -> int:
     return len(str(x))
@@ -8,7 +10,9 @@ def _digits(x: int) -> int:
 def _bound(n: int, _: str) -> int:
     """V: nodes priced per level, named nodes at most X, statements at most 2n + X.
 
-    X = min(T/8 + 2, T/16 + 14), the Execution bound's named nodes.
+    X = min(T/8 + 2, T/16 + 14), the Execution bound's named nodes.  Names past
+    .65535 spill to ``,j SUB #i`` arrays: each reference and ``<-`` target costs at
+    most 6 more characters, and each of the A arrays a ``DO ,j <- #B`` statement.
     """
     count, below = [0] * n, 2
     for level in range(n - 1, -1, -1):
@@ -16,7 +20,9 @@ def _bound(n: int, _: str) -> int:
         below += count[level]
     nodes = sum(count)
     named = min(min(((1 << n) >> 3) + 2, ((1 << n) >> 4) + 14), nodes)
-    statements = 2 * n + named
+    spilled = max(0, 2 * n - 2 + named - 65535)
+    arrays = -(-spilled // (isqrt(spilled - 1) + 1)) if spilled else 0
+    statements = 2 * n + named + arrays
     neg_name = _digits(2 * n - 2)
     name = _digits(2 * n - 2 + named)
 
@@ -36,6 +42,8 @@ def _bound(n: int, _: str) -> int:
     # Child names; two constant edges at least.
     total += 4 + (nodes + named - 1) * (1 + name)
     total += named * (5 + name)  # ".k <- " of each named node
+    if spilled:
+        total += 6 * (nodes + 2 * named - 1) + arrays * (14 + 2 * _digits(spilled))
     polite = max(1, (statements + 4) // 5)
     # PLEASE/DO, space, newline.
     total += 6 * polite + 2 * (statements - polite) + 2 * statements - 1

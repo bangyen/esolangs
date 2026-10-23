@@ -21,6 +21,7 @@ Decisions:
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from math import isqrt
 from typing import Any, NamedTuple
 
 from esolangs.generation.helpers import (
@@ -33,6 +34,7 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
 TEMPLATE_CHAR = "@"
+_VARIABLE_MAX = 65535  # the largest INTERCAL variable number
 PAIR = ("#0", "#1")
 
 
@@ -41,12 +43,15 @@ class _Expr:
     op: str
     value: int = 0
     children: tuple["_Expr", ...] = ()
+    text: str = ""
 
     def render(self, depth: int = 0) -> str:
         if self.op == "constant":
             return f"#{self.value}"
         if self.op == "input":
             return f".{self.value + 1}"
+        if self.op == "element":
+            return self.text
         outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
         if self.op == "not":
             children, operator = (*self.children, _ONE), "?"
@@ -78,7 +83,7 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     return _wrap_intercal(natural, width)
 
 
-_TOKEN = re.compile(r"[A-Z]+|[.#][0-9]+|<-|@+|[0-9]+|[^\s]")
+_TOKEN = re.compile(r"[A-Z]+|[.,;#][0-9]+|<-|@+|[0-9]+|[^\s]")
 
 
 def _intercal_tokens(program: str) -> list[str]:
@@ -173,10 +178,12 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
         else:
             text[node] = inline
 
+    top = first + len(names) - 1
+    width = _spill(top)
     exprs = [_ZERO, _ONE]
     for level, zero, one in _interior(nodes):
-        low = _variable(names.get(zero)) or exprs[zero]
-        high = _variable(names.get(one)) or exprs[one]
+        low = _reference(names.get(zero), width) or exprs[zero]
+        high = _reference(names.get(one), width) or exprs[one]
         exprs.append(_mux(selectors[level], low, high, _variable(negated[level])))
     assigned = [
         (name, _Expr("not", children=(selector,)))
@@ -185,7 +192,7 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     ]
     assigned.sort(key=lambda pair: pair[0])
     assigned += [(names[node], exprs[node]) for node in names]
-    return _program(n, assigned, exprs[root])
+    return _program(n, assigned, exprs[root], width)
 
 
 class _Node(NamedTuple):
@@ -255,10 +262,44 @@ def _variable(name: int | None) -> _Expr | None:
     return None if name is None else _Expr("input", name - 1)
 
 
-def _program(n: int, assigned: list[tuple[int, _Expr]], result: _Expr) -> str:
-    """Return the polite template: inputs, shared variables, result, output."""
+def _spill(top: int) -> int:
+    """Return the array width for names up to ``top``; 0 when all fit as variables.
+
+    ``S = top - 65535`` names spill; ``ceil(sqrt(S))`` per array keeps one
+    element write at O(sqrt(S)), the interpreter copying the array and the
+    array map per write.
+    """
+    spilled = top - _VARIABLE_MAX
+    return isqrt(spilled - 1) + 1 if spilled > 0 else 0
+
+
+def _target(name: int, width: int) -> str:
+    """Return the spelling of shared name ``name``: ``.k``, or an array element."""
+    if name <= _VARIABLE_MAX:
+        return f".{name}"
+    index = name - _VARIABLE_MAX - 1
+    return f",{index // width + 1} SUB #{index % width + 1}"
+
+
+def _reference(name: int | None, width: int) -> _Expr | None:
+    """Return the expression reading shared ``name``, or ``None`` for no name."""
+    if name is None or name <= _VARIABLE_MAX:
+        return _variable(name)
+    return _Expr("element", text=_target(name, width))
+
+
+def _program(
+    n: int, assigned: list[tuple[int, _Expr]], result: _Expr, width: int = 0
+) -> str:
+    """Return the polite template: inputs, arrays, shared names, result, output."""
     statements = [f".{n - i} <- {TEMPLATE_CHAR * 2}" for i in range(n)]
-    statements += [f".{name} <- {expr.render()}" for name, expr in assigned]
+    if width:
+        last = assigned[-1][0]
+        arrays = (last - _VARIABLE_MAX - 1) // width + 1
+        statements += [f",{j} <- #{width}" for j in range(1, arrays + 1)]
+    statements += [
+        f"{_target(name, width)} <- {expr.render()}" for name, expr in assigned
+    ]
     statements.append(f".{n + 1} <- {result.render()}")
     statements += [f"READ OUT .{n + 1}", "GIVE UP"]
     polite = max(1, (len(statements) + 4) // 5)  # one statement in five
