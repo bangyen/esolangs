@@ -156,13 +156,14 @@ class _Plan:
         near = self.cluster(depth + 1, 2 * block)
         return [*_block(len(near)), *near, *self.cluster(depth + 1, 2 * block + 1)]
 
-    def place(self, lines: list[str], reach: int) -> int:
-        """Lay ``lines`` in the first window with room, ending within ``reach``.
+    def place(self, lines: list[str]) -> int:
+        """Lay ``lines`` in the first window with room; returns the last line.
 
-        Returns the last line.  A window's code ends at ``_FREE``; ``reach`` is
-        how far into it a rung may sit and still land in the zone.
+        A window's code ends at ``_FREE``.  A flight's rung needs only
+        ``_PERIOD - 2 - column >= 44`` of it to land in the zone, so no reach
+        ever binds below ``_FREE``.
         """
-        line, room = self.cursor, min(_FREE, reach) - len(lines) + 1
+        line, room = self.cursor, _FREE - len(lines) + 1
         while not 1 <= line % _PERIOD <= room:
             line = (line // _PERIOD + 1) * _PERIOD + 1
         self.ops.update(enumerate(lines, line))
@@ -173,14 +174,14 @@ class _Plan:
         """Lay the subtree at ``block`` from the cursor, flights above clusters."""
         low, high = self.halves(depth, block)
         if self.size(depth, block) <= _FREE:
-            end = self.place(self.cluster(depth, block), _FREE)
+            end = self.place(self.cluster(depth, block))
             self.window = end // _PERIOD
         elif low == high:
-            self.place([_read(1), "NnNn"], _PERIOD)
+            self.place([_read(1), "NnNn"])
             self.lay(depth + 1, 2 * block)
         else:
             column = self.columns[depth]
-            rung = self.place(_block(column), _PERIOD - 2 - column)
+            rung = self.place(_block(column))
             self.lay(depth + 1, 2 * block)
             first = max(self.cursor, (rung // _PERIOD + 1) * _PERIOD)
             stop = first + (column + 1 - first) % _PERIOD
