@@ -13,7 +13,7 @@ backlinks = 6
 labels = ["tree", "cap"]
 qualification = "each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([summary](#polynomial-bound))"
 scaling = "lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([summary](#polynomial-bound))"
-execution = "unmeasured: worst C - 2, 2, 3, 4 at n = 3-6, then at most C"
+execution = "unmeasured: worst C - 2, 2, 3, 4, 4, 5, 6 at n = 3-9, then at most C"
 workspace = "poly n: at most bl(A + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits"
 definitions = ["A = min(10T - 7, 3 + 6(Σ_{k<n} s_k - 1) + 6s_n, 1934), s_k = min(2^k, 2^(2^(n-k)))", "M = max_k s_k", "C = min(A, 6n + 3 + 2Σ_{k=1}^{n} (s_k - 1))"]
 

@@ -802,19 +802,6 @@ def _back_worst(n: int) -> tuple[str, ...]:
     return tables
 
 
-def _polynomial_worst(n: int) -> tuple[str, ...]:
-    """Blocks each the binary of its index, MSB first; every level keeps its states.
-
-    n = 3: four blocks of two rows (C - 2).  From n = 4, 2^(n-2) blocks of four:
-    s_k = 2^k through level n - 2, so every doubling level chains and loses its
-    ``*=``; C - 2, 3, 4 at n = 4, 5, 6.  Four blocks of 2^(n-2) rows run only 12n - 7.
-    """
-    if n < 3:
-        return ()
-    blocks, width = (4, 2) if n == 3 else (1 << n - 2, 4)
-    return ("".join(f"{block:0{width}b}" for block in range(blocks)),)
-
-
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
@@ -823,7 +810,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
-    "Polynomial": _polynomial_worst,
+    "Polynomial": lambda n: _diagram_witness("polynomial", n, 9),
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
     # An 8-row cluster whose root block hops 15 lines (a 33-character body, held
     # by the slot and the calling frame), under equal-half reads.
