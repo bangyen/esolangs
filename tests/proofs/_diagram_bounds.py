@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from itertools import combinations
+from itertools import combinations, permutations
 
 
 def profile(n: int) -> tuple[list[int], list[int], list[int], list[int]]:
@@ -148,7 +148,9 @@ def parent_loss(
     named.  The remaining slots take the next price, each narrow id once at
     least.  The two equal-halved capped nodes take every pair of ranks, the
     dearest kept.  An equal-halved parent loses a slot and its own
-    reference, so it is left out.
+    reference, so it is left out.  The pairs are also at most the dearest
+    `pairs` distinct ordered pairs of the 16 nodes, less what naming each
+    node the pairs miss costs (:func:`_cover`).
     """
     c = capped_level(n)
     branching, equal, _, top = profile(n)
@@ -177,4 +179,86 @@ def parent_loss(
         refs = slots * wide + sum(narrow)
         refs += (2 * pairs - slots - len(narrow)) * max(narrow, default=0)
         best = max(best, refs)
+    if pairs >= 64:  # below, the relaxation above is already exact
+        best = min(best, _pair_bound(ref, const, c, pairs, first, wide))
     return max(0, old - best)
+
+
+def _pair_bound(
+    ref: Callable[[int, bool], int],
+    const: Callable[[int], int],
+    c: int,
+    pairs: int,
+    first: int,
+    wide: int,
+) -> int:
+    """Return the most the `pairs` parents' references can cost.
+
+    Take the dearest distinct ordered pairs of the 14 subtables and 2
+    constants, then name each node they miss in a swapped-in pair.  A node
+    below the last rank before the first wide id is first named before any
+    wide id exists, so its partner is a lower rank or a constant.
+    """
+    ranks = next((i for i in range(14) if ref(first + i, i < 0) >= wide), None)
+    if ranks is None:
+        return 10**9
+    best = 0
+    prices = {
+        low: [ref(first + i, i in low) for i in range(14)] + [const(c)] * 2
+        for low in combinations(range(14), 2)
+    }
+    # The dearest pairs alone bound a table; try the dearest first and stop
+    # once none can beat the best.
+    ceiling = {
+        low: sum(sorted(p[a] + p[b] for a, b in permutations(range(16), 2))[-pairs:])
+        for low, p in prices.items()
+    }
+    for low in sorted(prices, key=lambda low: -ceiling[low]):
+        if ceiling[low] <= best:
+            break
+        price = prices[low]
+        ordered = sorted(
+            ((price[a] + price[b], a, b) for a, b in permutations(range(16), 2)),
+            reverse=True,
+        )
+        chosen, spare = ordered[:pairs], ordered[pairs:]
+        seen = {e for _, a, b in chosen for e in (a, b)}
+        missed = [e for e in range(16) if e not in seen]
+        cost = _cover(missed, [v for v, _, _ in chosen], spare, ranks)
+        best = max(best, sum(v for v, _, _ in chosen) - cost)
+    return best
+
+
+def _cover(
+    missed: list[int], chosen: list[int], spare: list[tuple[int, int, int]], ranks: int
+) -> int:
+    """Return the least value lost naming each `missed` node in a swapped-in pair.
+
+    A spare pair `(value, a, b)` replaces the cheapest chosen value left and
+    may name two missed nodes; ranks below `ranks - 1` take partners below
+    `ranks` only (constants are 14 and 15).
+    """
+    best: dict[frozenset[int], int] = {}
+    for v, a, b in spare:  # dearest first
+        for names in ({a}, {b}, {a, b}):
+            if all(
+                x >= ranks - 1 or y >= 14 or y < ranks
+                for x, y in ((a, b), (b, a))
+                if x in names
+            ):
+                best.setdefault(frozenset(names), v)
+
+    def swap(todo: list[int], dropped: int) -> int:
+        """Return the least loss naming `todo`, `dropped` chosen values gone."""
+        if not todo:
+            return 0
+        head, tail = todo[0], todo[1:]
+        options = []
+        for other in [None, *tail]:
+            value = best.get(frozenset({head} if other is None else {head, other}))
+            if value is not None and dropped < len(chosen):
+                rest = [m for m in tail if m != other]
+                options.append(chosen[-1 - dropped] - value + swap(rest, dropped + 1))
+        return min(options, default=10**9)
+
+    return swap(missed, 0)

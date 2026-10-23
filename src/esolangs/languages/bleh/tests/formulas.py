@@ -59,21 +59,47 @@ def _prices(
 
 
 def _chars(n: int, _: str) -> int:
-    """Worst characters, n = 3..9: the bound less what its last levels cannot reach.
+    """Worst characters, n = 3..10: the bound less what its last levels cannot reach.
 
     The bound prices every reference past the first at the dearest call.
     The 14 four-row subtables a level up are all there is, so their
     references are fixed (:func:`capped_loss`): 36 short at n = 5, 108 from 6.
-    Above them the wide ids run out of pairs from n = 9 (:func:`parent_loss`).
+    Above them the wide ids run out of pairs from n = 9, and from n = 10 the
+    equal-halved ids cost to name (:func:`parent_loss`).
     """
     prices = _prices(n)
     return _bound(n) - capped_loss(n, *prices) - parent_loss(n, *prices)
 
 
+def _tenth() -> str:
+    """The n = 10 table: 128 parents over 14 four-row subtables and 2 constants.
+
+    Ranks 0-3 are the cheap-id branching ones (mids), 4 and 5 the equal-halved
+    (cheap), 6-13 the dear ids.  The first parents name only ranks below 6,
+    except that rank 5 may pair with the first dear id; then every pair of
+    dear ids, each dear id with each mid both ways, a constant on two dear
+    ids, and two more mid pairs fill the 128.
+    """
+    rows = [format(v, "04b") for v in range(1, 15)]
+    equal = ["0101", "1010"]
+    branching = [r for r in rows if r not in equal]
+    node = [*branching[:4], *equal, *branching[4:]]
+    mid, dear = range(4), range(6, 14)
+    pairs = [(0, 1), (2, 3), (0, 4), (5, 6)]
+    pairs += [(a, b) for a in dear for b in dear if a != b]
+    pairs += [p for a in dear for m in mid for p in ((a, m), (m, a))]
+    pairs += [(7, "0000"), (8, "1111"), (1, 0), (3, 2)]
+    return "".join(
+        "".join(x if isinstance(x, str) else node[x] for x in p) for p in pairs
+    )
+
+
 def witness(n: int) -> str:
     """The table reaching :func:`_chars`: every subtable, dear references first."""
     ref, const, _ = _prices(n)
+    if n == 10:
+        return _tenth()
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 10)), tuple(range(3, 10)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 11)), tuple(range(3, 11)))}
