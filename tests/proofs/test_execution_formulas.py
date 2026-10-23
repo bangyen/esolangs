@@ -67,6 +67,27 @@ def _asj_packed_worst(n: int) -> str:
     return "".join(rows)
 
 
+# language-owners: ["Subleq"]
+def _subleq_packed_worst(n: int) -> str:
+    """``_asj_packed_worst`` with the top k bits of each chunk set, k >= 3.
+
+    k is the least that keeps every chunk's value at the digit count of 2^n - 1:
+    at n = 10 three bits leave 896..1022, one digit short of 1023 (k = 6).
+    """
+    digits = len(str((1 << n) - 1))
+    k = next(
+        (k for k in range(3, n + 1) if ((1 << k) - 1) << (n - k) >= 10 ** (digits - 1)),
+        n,
+    )
+    width = 1 << n
+    rows = []
+    for row in range(width):
+        chunk, bit = divmod(row, n)
+        span = min(n, width - chunk * n)
+        rows.append("1" if bit >= span - k else str((row * 2654435761 >> 10) & 1))
+    return "".join(rows)
+
+
 # language-owners: ["BFStack"]
 #: BFStack's worst 7-input block, a rule: 64 zeros, 60 ones, a zero, then ones.
 _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
@@ -836,10 +857,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Smu": lambda n: (_smu_worst(n),),
     "Modulous": lambda n: (_row_one(n),),
     "Piet": lambda n: (_piet_worst(n),),
-    # n = 9: the hashed table ships the packed decoder at its widest (P = 1,683).
+    # n = 9..14: the hashed table ships the packed decoder at its widest.
     "Subleq": lambda n: (
         *((_subleq_worst(n),) if n >= 3 else ()),
-        *((_asj_packed_worst(n),) if n == 9 else ()),
+        *((_subleq_packed_worst(n),) if n >= 9 else ()),
     ),
     "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
 }
