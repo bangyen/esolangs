@@ -36,6 +36,8 @@ _PAST = re.compile(r"^,? past n ?= ?(\d+)(?=$|[:;,])")
 _NAMES = {"n", "T", "L", "bl", "max", "min", "ceil", "floor"}
 
 Formula = Callable[[int, str], int | Fraction]
+#: ``worst`` at every listed arity, or only at these (``at most`` at the rest).
+Exact = bool | frozenset[int]
 
 
 def bl(value: Fraction | int) -> int:
@@ -122,13 +124,18 @@ def parse(clause: str) -> tuple[Formula, bool, int] | None:
     return formula, kind == "worst", max(3, int(past.group(1)) + 1) if past else 3
 
 
+def exact_at(exact: Exact, n: int) -> bool:
+    """Whether some table must reach the formula at ``n``."""
+    return n in exact if isinstance(exact, frozenset) else exact
+
+
 def ledger_formulas(
     clause: Callable[[LedgerRow], str],
-    hand: dict[str, tuple[Formula, bool, tuple[int, ...]]],
+    hand: dict[str, tuple[Formula, Exact, tuple[int, ...]]],
     arities: dict[str, tuple[int, ...]],
     *,
     column: str | None = None,
-) -> dict[str, tuple[Formula, bool, tuple[int, ...]]]:
+) -> dict[str, tuple[Formula, Exact, tuple[int, ...]]]:
     """Return parsed bounds, handwritten fallbacks, then language-owned overrides.
 
     Arities run from the first n through three more for a ``poly n`` row,
@@ -138,8 +145,8 @@ def ledger_formulas(
     """
     from tests.proofs._ledger import load
 
-    table: dict[str, tuple[Formula, bool, tuple[int, ...]]] = {}
-    local: dict[str, tuple[Formula, bool, tuple[int, ...]]] = {}
+    table: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
+    local: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
     for row in load().rows:
         if column is not None:
             stem = canonical_id(row.generator)

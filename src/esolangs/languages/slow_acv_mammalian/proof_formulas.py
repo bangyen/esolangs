@@ -23,7 +23,21 @@ length is bounded by the largest value its residues allow:
 
 Each level runs at most max(prefix + node + arm, landing - pos), the
 0-branch fitting before the landing by construction.  The cells are
-counted from the same lists.  The default dialect only.
+counted from the same lists.
+
+Fewer essential inputs (m < n) never exceed the full bound: such a table is
+the m-layout with weight 0 and no pool on the ignored inputs, and L1-L8 hold
+for any weights.  ``_window``, ``_raise`` and ``_chain`` rise with the table
+(at most 256, or 255 2^(m-5) - 31 for m > 5); pools are a prefix of the full
+set.  A later level costs c_P with a pool, else c_R(w), whatever n and
+position, rising in w with c_R(7) = c_R(8).  For m > 5 the non-pool weights
+are termwise at most the full ones, also with the first node dropped.  For
+m <= 5 inputs 0..m-1 dominate and gain one c_R(0) a level, the full layout
+at least c_R(255), so the gap grows from n = 7, where it is >= 0.  At n <= 6
+list sums exceed the full bound (by up to 281 tokens, 9037 characters), so
+every essential set was built with each leaf slot at its dearer value (slot
+costs add: 0 of 189 random mixed tables off): at most 8440 tokens and 44872
+characters at n = 6, against 13,870 and 103,582.
 """
 
 from fractions import Fraction

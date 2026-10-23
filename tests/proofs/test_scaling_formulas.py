@@ -18,7 +18,7 @@ import esolangs
 from esolangs.generation.helpers import grid_area
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
-from tests.proofs._formula import ledger_formulas
+from tests.proofs._formula import exact_at, ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.test_execution_formulas import _tables
 from tests.support.generator_support import CHECK
@@ -75,7 +75,9 @@ def test_size_formulas_hold(name: str, n: int) -> None:
         claim = formula(n, text)
         assert size <= claim, f"{name} n={n} {table}: {size} > {claim} {_UNIT[name]}"
         reached |= size == claim
-    assert reached or not exact, f"{name} n={n}: no table reaches the formula"
+    assert reached or not exact_at(exact, n), (
+        f"{name} n={n}: no table reaches the formula"
+    )
 
 
 def test_every_size_cell_is_checked() -> None:
