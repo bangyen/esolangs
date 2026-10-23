@@ -491,7 +491,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Sixty ledger cells are `at most` throughout and twenty-one more past an
+Fifty-nine ledger cells are `at most` throughout and twenty-one more past an
 exact range (2026-10-23, counted from the ledger; open ones are on the
 [roadmap](roadmap.md#generator-linearity)):
 
@@ -519,12 +519,11 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
   Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
   worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11.
-- Window slack: Interprogck8 scaling, execution and workspace bound the
+- Window slack: Interprogck8 scaling and execution bound the
   construction, not the worst table. 226T + 224 characters against 193T
   at most found, n = 6..10 (windows opened <= T/2, not located);
   R + 11n commands against 0.64R at n = 7 (a run skips the lines a flight
-  hops); the workspace adds a slot and a frame of the longest body, 33
-  characters, which only some tables hold.
+  hops). Workspace is exact: `01100000` repeated reaches it at n = 3..11.
 - Layout slack: Slow ACV Mammalian scaling, execution and workspace bound
   every list at its residue maximum, but the layout is fixed by n and the
   essential set (a table changes only its leaf bits), so the lists sit at

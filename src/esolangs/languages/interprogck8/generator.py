@@ -232,5 +232,5 @@ LANGUAGE = Language(
     random=True,
     no_wrap="a newline adds a line and moves every DownAccLines landing",
     proof_execution=(execution, False, (3, 4, 5, 6, 7)),
-    proof_workspace=(workspace, False, (3, 4, 5, 6)),
+    proof_workspace=(workspace, True, (3, 4, 5, 6)),
 )
