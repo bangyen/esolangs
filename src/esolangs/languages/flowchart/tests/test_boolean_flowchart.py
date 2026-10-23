@@ -30,6 +30,22 @@ class TestFlowchart:
         """Tree layouts remain available for width requests."""
         assert boolean.flowchart(table) == _flowchart_deque(table)
 
+    @pytest.mark.parametrize(
+        ("table", "length"),
+        [("0011", 210), ("00000000000000111100001111000000", 606)],
+    )
+    def test_levels_past_the_last_switch_join_the_tail_at_eight_reads(
+        self, table: str, length: int
+    ) -> None:
+        """The tail is emitted: eight ``/ /`` per level past the last switch."""
+        program = boolean.flowchart(table)
+        assert program == _flowchart_deque(table)
+        assert len(program) == length
+        if len(table) == 4:
+            for row in range(4):
+                bits = [str((row >> (1 - i)) & 1) for i in range(2)]
+                assert run_flowchart(program, bits) == table[row], row
+
     def test_a_stacked_parity_tree_beats_the_flat_one(self) -> None:
         """From three inputs the stacked orientation is the shorter tree."""
         table = "01101001"
