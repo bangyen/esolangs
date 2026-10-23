@@ -538,6 +538,6 @@ LANGUAGE = Language(
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
     empty_program="Back program cannot be empty",
     example=Example(pair=PAIR, expected="0 1 0"),
-    proof_execution=(execution, True, (3, 5, 6)),
+    proof_execution=(execution, True, (3, 5, 6, 7, 8, 9)),
     grid=True,
 )
