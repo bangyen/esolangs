@@ -1,11 +1,15 @@
 """forbin generator tests."""
 
+import inspect
 import itertools
 import random
+import sys
+from collections.abc import Callable
 
 import pytest
 
 import esolangs
+from esolangs.exceptions import HaltError
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.witness_tables import witnesses
@@ -160,3 +164,53 @@ def test_forbin_skips_keywords_at_length_boundaries(
         "bba",
         "aaaa",
     ]
+
+
+def _frames_needed(attempt: Callable[[], object], answer: object) -> int:
+    """Fewest stack frames above this call that ``attempt`` completes in."""
+    depth = len(inspect.stack(0))
+
+    def fits(extra: int) -> bool:
+        old = sys.getrecursionlimit()
+        sys.setrecursionlimit(depth + extra)
+        try:
+            return attempt() == answer
+        except (RecursionError, HaltError):
+            return False
+        finally:
+            sys.setrecursionlimit(old)
+
+    low, high = 1, 400
+    assert fits(high)
+    while low < high:
+        mid = (low + high) // 2
+        low, high = (low, mid) if fits(mid) else (mid + 1, high)
+    return low
+
+
+def test_host_recursion_fits_the_claimed_scaling_range() -> None:
+    """Frames for the all-ones row grow per input; n = 134 stays under the limit.
+
+    Measured at n = 9 and 13 (slope 2.5 interpreter, 2 generator frames per
+    input), projected linearly: the 2^134-bit table itself cannot be built.
+    """
+    claimed = 134
+    limit = sys.getrecursionlimit() - len(inspect.stack(0)) - 100  # harness slack
+    for kind in ("run", "generate"):
+        frames = {}
+        for n in (9, 13):
+            table = "".join(format(j + 1, "0128b") for j in range(1 << (n - 7)))
+            if kind == "generate":
+                frames[n] = _frames_needed(
+                    lambda t=table: esolangs.generate("Forbin", t) and 1, 1
+                )
+            else:
+                program = esolangs.generate("Forbin", table)
+                bits = ["1"] * n
+                frames[n] = _frames_needed(
+                    lambda p=program, b=bits: run_forbin_boolean(p, b), table[-1]
+                )
+        slope = -(-(frames[13] - frames[9]) // 4)
+        projected = frames[13] + slope * (claimed - 13)
+        assert 0 < slope <= 6, (kind, frames)
+        assert projected < limit, (kind, frames, projected, limit)
