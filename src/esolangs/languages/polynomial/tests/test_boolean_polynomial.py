@@ -321,7 +321,8 @@ def test_constant_root_ends_after_consuming_the_inputs(bit) -> None:
     n = 8
     table = bit * (1 << n)
     states = max(min(2**k, 2 ** (2 ** (n - k))) for k in range(n + 1))
-    bound = (min(10 * (1 << n) - 7, 1934) + 10).bit_length() + 1
+    levels = sum(min(2**k, 2 ** (2 ** (n - k))) for k in range(n))
+    bound = (min(3 + 6 * (levels - 1) + 12, 1934) + 10).bit_length() + 1
     bound += (
         max((n + 3).bit_length(), (49 * (states - 1)).bit_length()) + 2 * n.bit_length()
     )

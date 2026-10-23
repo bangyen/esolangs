@@ -12,7 +12,8 @@ labels = ["tree"]
 qualification = "each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate"
 scaling = "linear: at most 169T/8 - 21 characters past n = 3: 315-character halves"
 execution = "poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node"
-workspace = "T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits: a shared subterm per frame"
+workspace = "T log T: at most 16(P + n·S) + (3n+9)bl(3n+9) + 9 + bl(n) bits: a copy of the shared subterm per read"
+definitions = ["P = the program's leaves, each k and s counted twice", "S = the same count for its largest X in an @-node's `N`dX"]
 
 [generator_sizes]
 "00000001" = { commands = 243, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 243, "7" = 243 }, source_units = 113 }
@@ -26,8 +27,6 @@ workspace = "T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits
 
 [formula_arities]
 execution = [3, 7]
-# Task, then 3n + 6 frames, each one shared subterm and its depth.
-workspace = [2, 3]
 
 [ablations]
 audited = "2026-10-19"
