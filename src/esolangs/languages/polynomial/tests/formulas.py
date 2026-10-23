@@ -1,11 +1,11 @@
-"""Polynomial's execution: one pass over at most ``A`` instructions."""
+"""Polynomial's execution: at most ``C`` commands run on a row."""
 
-from esolangs.languages.polynomial.proof_formulas import commands
+from esolangs.languages.polynomial.proof_formulas import steps
 
 
 def _execution(n: int, _: str) -> int:
-    """The stated bound ``A`` on commands run."""
-    return commands(n)
+    """The stated bound ``C`` on commands run."""
+    return steps(n)
 
 
 FORMULAS = {"execution": (_execution, False, (3, 4, 5))}
