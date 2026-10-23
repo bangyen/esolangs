@@ -251,3 +251,32 @@ def pack(operations: list[_Operation], default: Raster) -> Raster:
             abs(len(image.rows) - len(image.rows[0])),
         ),
     )
+
+
+def smallest(operations: list[_Operation], default: Raster) -> Raster:
+    """Return the least area of ``default`` and the nine lane layouts.
+
+    Ties go to fewer black codels, then the squarer image.  No black ceiling:
+    the layouts' area depends on the operations' block sizes alone (a lane
+    takes whole blocks to its room), save the extra row a colour clash costs
+    from n = 8.  ``default`` bounds the result, and never won in tests.
+    """
+    root = isqrt(sum(operation.size for operation in operations))
+    kinds: tuple[tuple[int, dict[str, bool]], ...] = (
+        (_MIN_PACKED_COLUMNS, {}),
+        (_MIN_SHARED_COLUMNS, {"duplicate": True}),
+        (_MIN_SHARED_COLUMNS, {"duplicate": True, "short": True}),
+    )
+    images = [
+        _layout(operations, max(minimum, root + offset), **options)
+        for minimum, options in kinds
+        for offset in (5, 9, 13)
+    ]
+    return min(
+        [default, *images],
+        key=lambda image: (
+            len(image.rows) * len(image.rows[0]),
+            sum(pixel == BLACK for row in image.rows for pixel in row),
+            abs(len(image.rows) - len(image.rows[0])),
+        ),
+    )

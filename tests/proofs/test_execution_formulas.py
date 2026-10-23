@@ -774,6 +774,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "SwitchCase": lambda n: (_switchcase_worst(n),),
     "Smu": lambda n: (_smu_worst(n),),
     "Modulous": lambda n: (_row_one(n),),
+    "Piet": lambda n: (_piet_worst(n),),
     "Subleq": lambda n: (_subleq_worst(n),) if n >= 3 else (),
     "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
 }
@@ -785,6 +786,21 @@ def _diagram_witness(stem: str, n: int) -> tuple[str, ...]:
         return ()
     owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
     return (owner.witness(n),)
+
+
+# language-owners: ["Piet"]
+def _piet_worst(n: int) -> str:
+    """Piet's largest shipped area: the zero count that peaks, T - z ones spread.
+
+    Ones at both ends (every input essential) and then mid-weight rows, so
+    neither half is constant and nothing but the entry count matters.
+    """
+    from esolangs.languages.piet.tests.formulas import zeros
+
+    width = 1 << n
+    middle = [r for r in range(width) if 2 <= r.bit_count() <= n - 2]
+    ones = {0, width - 1, *middle[: width - zeros(n) - 2]}
+    return "".join("1" if r in ones else "0" for r in range(width))
 
 
 def _streetcode_worst(n: int) -> str:

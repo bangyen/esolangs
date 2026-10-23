@@ -18,7 +18,7 @@ from esolangs.generation.raster_lookup.balance import (
     balance,
     folded,
 )
-from esolangs.generation.raster_lookup.packing import pack
+from esolangs.generation.raster_lookup.packing import smallest
 from esolangs.raster import Raster
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, SourceKind
@@ -37,17 +37,17 @@ def _area(image: Raster) -> int:
 
 @cache
 def _smallest(truth_table: str) -> Raster:
-    """Return the strip or the packed fold, whichever has less area (tie: strip).
+    """Return the strip, or the least-area of the fold and the packed layouts.
 
     The fold is drawn once at the balance path's dense width, ``sqrt(2C) + 9``
-    for ``C`` codels of operations, then packed: no width sweep, so O(T).  It
-    runs five to six more steps per turn; see [ablations.area_default].
+    for ``C`` codels of operations: no width sweep, so O(T).  The strip wins a
+    tie; see [ablations.area_default].
     """
     flat = _generate(truth_table)
     operations = _bounded_operations(truth_table)
     cells = sum(operation.size for operation in operations)
-    fold = pack(operations, folded(truth_table, isqrt(2 * cells - 1) + 9))
-    return fold if _area(fold) < _area(flat) else flat
+    packed = smallest(operations, folded(truth_table, isqrt(2 * cells - 1) + 9))
+    return packed if _area(packed) < _area(flat) else flat
 
 
 def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
