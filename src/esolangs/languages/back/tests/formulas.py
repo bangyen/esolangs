@@ -19,8 +19,12 @@ def _fold(n: int) -> int:
 
 
 def _cells(n: int, _: str) -> int:
-    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 6."""
+    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 8.
+
+    n = 9 is not: a table with the comb's 3T/4 + 1 rows and the fold's leaves
+    ships 12,096 of 12,320 (doubling), 12,180 from a 250 s anneal.
+    """
     return _comb(n) if n <= 5 else min(_comb(n), _fold(n))
 
 
-FORMULAS = {"scaling": (_cells, frozenset(range(3, 7)), (3, 4, 5, 6, 7, 8, 9, 10))}
+FORMULAS = {"scaling": (_cells, frozenset(range(3, 9)), (3, 4, 5, 6, 7, 8, 9, 10))}

@@ -780,9 +780,35 @@ def _minifuck_worst(n: int) -> str:
     )
 
 
+def _back_worst(n: int) -> tuple[str, ...]:
+    """Back's comb-worst tables: Rudin-Shapiro, and at n = 7, 8 a fold-sized one."""
+    width = 1 << n
+    # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
+    # and with row 1 flipped: the most rows its one-edges cannot share.
+    tables = (
+        "".join(
+            str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1)) for i in range(width)
+        ),
+    )
+    if n in (7, 8):
+        # Its fold is smaller (2,280 at n = 7), so the min stops at the fold.
+        # This one keeps the comb's rows with few constant pairs, so the fold
+        # stays above the comb: the n = 6 seed (60 s anneal, 59 of 64 leaves,
+        # 49 rows), doubled with the swapped complement, then at n = 8 with
+        # its first entry flipped.
+        seed = "1010010110100111010110100100010111011010010110100100101001110101"
+        swapped = "".join(seed[i + 1] + seed[i] for i in range(0, 64, 2))
+        doubled = seed + "".join("10"[int(c)] for c in swapped)
+        if n == 8:
+            doubled += str(1 - int(doubled[0])) + doubled[1:]
+        tables += (doubled,)
+    return tables
+
+
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
+    "Back": _back_worst,
     # The last input ignored: n - 1 essential inputs can outrun all n.
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
@@ -1027,15 +1053,6 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "Home Row":
         # Alternating but for one equal pair: every input essential, T - 2 leaves.
         tables += ("10" * (width // 2 - 1) + "01",)
-    if name == "Back":
-        # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
-        # and with row 1 flipped: the most rows its one-edges cannot share.
-        tables += (
-            "".join(
-                str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1))
-                for i in range(width)
-            ),
-        )
     if name == "Unsquare" and n >= 6:
         # Ends of one cell, runs of 12 and 14 between: 12a + 14b = 2**(n-1) - 1.
         b = (2 ** (n - 1) - 1) % 6
