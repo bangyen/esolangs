@@ -802,6 +802,10 @@ def _back_worst(n: int) -> tuple[str, ...]:
     return tables
 
 
+#: (language, n) whose witness build alone passes the fast band, to its band:
+#: Interprogck8's steps witness is a 1.3 s recursion at 7 and 9 s at 8.
+_WITNESS_BAND = {("Interprogck8", 7): "medium", ("Interprogck8", 8): "slow"}
+
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
@@ -818,7 +822,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         (
             "01100000" * (1 << n - 3),
             *_diagram_witness("interprogck8", n, 10),
-            *_diagram_witness("interprogck8", n, 6, "steps_witness"),
+            *_diagram_witness("interprogck8", n, 8, "steps_witness"),
         )
         if n >= 3
         else ()
