@@ -479,9 +479,11 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   14,752 to 28,384 continuation bits.
 - Forþ keys every scope by heap index, but twin calls hold the count near
   `4.6T/n` (`S·n/T` 4.75, 4.86, 4.42 at n=8, 10, 12), so keys cost about
-  `4.6T` bits. The log factor needs a twin 50,625 or more scopes back,
-  whose 20-character call misses `_FORTH_SUBTREE_FLOOR` (17): at least 20
-  inputs, derived, not executed.
+  `4.6T` bits. A table whose 16-row blocks all differ holds S at
+  `2^(n-2) + 538` from n = 13 (262,678 at n = 20, measured; no call reaches
+  past 512 scopes, and a twin 50,625 or more back is inlined, never
+  called): bits a scope rise 180.2 to 185.8 over n = 16..20, but 46.5 bits
+  a row at both ends, so T log T is not separable from linear there.
 
 - Malbolge:
   `test_boolean_malbolge.py` executes the boundary rows at every arity,
