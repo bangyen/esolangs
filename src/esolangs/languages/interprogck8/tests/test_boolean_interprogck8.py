@@ -110,3 +110,42 @@ def test_the_input_cap_is_forty(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *_: type("P", (), {"lay": lambda *_: None, "text": lambda _: "ok"})(),
     )
     assert generator.interprogck8("0") == "ok"
+
+
+def test_flight_columns_keep_the_stop_in_the_cursors_window() -> None:
+    """A flight's column is at least 40 at every depth that holds a flight.
+
+    The scaling bound's window recursion needs the stop (column + 1) past a
+    cursor that sits at line 41 at most; flights live at height >= 3.
+    """
+    for n in range(4, generator._MAX_INPUTS + 1):  # noqa: SLF001
+        assert min(generator._columns(n)[: n - 2]) >= 40, n  # noqa: SLF001
+
+
+@pytest.mark.parametrize("n", [3, 5, 7])
+def test_a_subtree_advances_at_most_two_to_the_h_minus_one_windows(n: int) -> None:
+    """Height h >= 3 advances the cursor at most 2**(h-1) - 1 windows, below 3 one.
+
+    The recursion behind the scaling bound 226T + 224 (window count <= T/2).
+    """
+    period = generator._PERIOD  # noqa: SLF001
+    seen: list[tuple[int, int]] = []
+
+    class Plan(generator._Plan):  # noqa: SLF001
+        def lay(self, depth: int, block: int) -> None:
+            start = self.cursor // period
+            super().lay(depth, block)
+            seen.append((self.n - depth, (self.cursor - 1) // period - start))
+
+    rng = random.Random(n)
+    width = 1 << n
+    for _ in range(40):
+        table = "".join(rng.choice(["00", "11", "01", "10"]) for _ in range(width // 2))
+        Plan(table, n).lay(0, 0)
+    assert seen
+    for height, advance in seen:
+        assert advance <= (1 if height <= 2 else (1 << (height - 1)) - 1)
+    # Bound on the whole program: lines and code characters.
+    for _ in range(10):
+        table = "".join(rng.choice(["00", "11", "01", "10"]) for _ in range(width // 2))
+        assert len(generator.interprogck8(table)) <= 226 * width + 224
