@@ -13,12 +13,14 @@ flight in the air shares.
   as many lines past the rung as the near subtree is long.  A read over two
   leaves is two lines: the compare leaves Q or T and the rung's hop of 82 or
   85 lands the leaf's value on the tail's entry.
-- **Flight.**  A larger subtree's read sets the accumulator to column
-  ``40 + h - 2`` for ``h`` reads below it, so its rung lands in the zone and
-  each window's closing rung hops it to the same column again.  Flights share
-  that rung and differ by column; the stop, one ``NnNn`` at the flight's
-  column in a later window, is reached by no other flight, since a deeper
-  read has a lower column and finishes first.
+- **Flight.**  A larger subtree's read sets the accumulator to a column below
+  80, the shallowest read at 80 and each read below it lower, so its rung
+  lands in the zone and each window's closing rung hops it to the same column
+  again, a walk of ``125 - column`` filler lines a window.  Flights share
+  that rung and differ by column; the stop, one ``NnNn`` one past the
+  flight's column in a later window, is reached by no other flight, since a
+  deeper read has a lower column and finishes first.  A column is the highest
+  whose body is no longer than ``_FREE + n - 3 - depth``'s.
 - **Tail.**  The last window takes the printers at columns 82 and 85, above
   every flight's, and prints ``0`` or ``1``.
 
@@ -28,8 +30,8 @@ input, still consumes its digit: its child is laid straight after it.
 Size:
     O(T) at every arity: a window is 126 lines and at most 1.3 T are opened,
     so a table takes under 420 T characters whatever ``n``.
-    n=10 random 1847: 167,672 chars, n=10 parity: 197,134 chars,
-    n=10 and: 8,206 chars.
+    n=10 random 1847: 162,227 chars, n=10 parity: 190,154 chars,
+    n=10 and: 8,164 chars.
 
 Raises:
     GeneratorCapError: more than forty inputs; a flight's column must stay
@@ -57,12 +59,14 @@ _VALUE = {0: "{values/=/=/=}", 1: "{values/=:/=./=}"}
 _SLOT = ["<", "NnNn", ">"]
 
 #: A window holds ``_FREE`` code lines, then a zone that must reach the
-#: printers' entry at column 85 from the last code line.  The deepest of the
-#: forty reads flies at column ``_FREE + 37``, under the printers' 82.
+#: printers' entry at column 85 from the last code line.  Flights fly at
+#: columns 80 down, never below the old ``_FREE + n - 3 - depth``.  A stop one past a
+#: column is under the Q walker's landing at 82.
 _FREE = 40
 _ZONE = 86
 _PERIOD = _FREE + _ZONE
 _MAX_INPUTS = 40
+_CEILING = 80
 
 
 def _read(bit: int) -> str:
@@ -89,12 +93,32 @@ def _block(target: int) -> list[str]:
     return [_read(1), "IFT", "<", *body, ">", "IFQ", *_SLOT, _RUNG]
 
 
+def _columns(n: int) -> list[int]:
+    """Flight column by depth: the highest, strictly falling, whose body is no longer.
+
+    The old column ``_FREE + n - 3 - depth`` is the floor.  A flight walks the
+    ``_PERIOD - 1 - column`` filler lines after its landing every window, so a
+    high column is cheap; 80 is the ceiling, a stop at 81 under the Q walker's
+    landing at 82.
+    """
+    columns, above = [], _CEILING + 1
+    for depth in range(n):
+        column = above - 1
+        cost = len(_block(_FREE + n - 3 - depth))
+        while len(_block(column)) > cost:
+            column -= 1
+        columns.append(column)
+        above = column
+    return columns
+
+
 class _Plan:
     """The windows of one program: placed lines, the cursor and the last cluster."""
 
     def __init__(self, table: str, n: int) -> None:
         self.n = n
         self.ids = subtree_ids(table)
+        self.columns = _columns(n)
         self.ops: dict[int, str] = dict(enumerate(_SLOT, 1))
         self.cursor = len(_SLOT) + 1
         self.window = 0
@@ -155,7 +179,7 @@ class _Plan:
             self.place([_read(1), "NnNn"], _PERIOD)
             self.lay(depth + 1, 2 * block)
         else:
-            column = _FREE + self.n - 3 - depth  # a read of height n - 1 - depth
+            column = self.columns[depth]
             rung = self.place(_block(column), _PERIOD - 2 - column)
             self.lay(depth + 1, 2 * block)
             first = max(self.cursor, (rung // _PERIOD + 1) * _PERIOD)
