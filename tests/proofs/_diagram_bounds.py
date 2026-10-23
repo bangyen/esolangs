@@ -113,8 +113,9 @@ def capped_loss(
     The bound prices each child once and every other reference at the
     dearest.  With two subtables at level n - 1 and a capped level above
     (n - 1: a few distinct pairs; n - 2: all 14 four-row subtables, whose
-    references to the two are fixed, 14 to nodes and 14 to constants), the
-    references cannot all be dear.
+    references to the two are fixed, 14 to nodes and 14 to constants; from
+    n = 11, n - 3: all 256 pairs of those 16 objects, 31 slots each), the
+    references cannot all be dear.  From n = 11 both lower levels count.
     """
     k = capped_level(n)
     top = profile(n)[3][n - 1]
@@ -126,9 +127,16 @@ def capped_loss(
         assumed = sum(children) + 2 * constant + (2 * nodes - 4) * dear
         best = best_cover(cost, nodes, set(cost))
         return assumed - sum(cost[x] + cost[y] for x, y in best)
-    if k == n - 2:
-        return 24 * dear - 6 * sum(children) - 12 * constant
-    return 0
+    loss = 24 * dear - 6 * sum(children) - 12 * constant
+    if k == n - 3:
+        # Level n - 3 is every ordered pair of the 16 four-row objects (14
+        # subtables, 2 constants): 496 slots, each object named 31 times, so
+        # its references cost 31 * S, S the 16 prices, whatever the order.
+        # A set of t objects costs (2t - 1) * S_t, increasing in t.
+        first = profile(n)[3][n - 2] - 13
+        prices = [ref(first + i, i < 2) for i in range(14)] + [const(n - 2)] * 2
+        loss += 480 * widest(n - 2) - 30 * sum(prices)
+    return loss if k >= n - 3 else 0
 
 
 def parent_loss(
