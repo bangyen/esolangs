@@ -315,7 +315,7 @@ Shipped limits, in inputs:
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell, seven-meaning packing is closed at the routing floor (above; [scaling](proofs/index.md#malbolge-bound)). |
-| Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
+| Polynomial | 10 | ≥11 | 1,934-instruction guard; a random n=11 table (2,390 instructions, a 58 MB program) factors for 522 s CPU before its first row (later rows reuse it) and peaks at 1.3 GB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 ### Size lower bounds
 
