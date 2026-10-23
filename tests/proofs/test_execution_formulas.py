@@ -804,7 +804,7 @@ def _minifuck_worst(n: int) -> str:
 
 
 def _back_worst(n: int) -> tuple[str, ...]:
-    """Back's comb-worst tables: Rudin-Shapiro, and at n = 7-9 a fold-sized one."""
+    """Back's comb-worst tables: Rudin-Shapiro, and at n = 7-10 a fold-sized one."""
     width = 1 << n
     # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
     # and with row 1 flipped: the most rows its one-edges cannot share.
@@ -825,12 +825,12 @@ def _back_worst(n: int) -> tuple[str, ...]:
         if n == 8:
             doubled += str(1 - int(doubled[0])) + doubled[1:]
         tables += (doubled,)
-    if n == 9:
+    if n >= 9:
         # Eight n = 6 blocks of 49 rows (seven boundaries share 7: 385 rows),
         # most of them 34 wide, so the fold stays at 12,432 above the comb's
-        # 12,320; it also runs the execution bound's 803 commands.
-        # Found by pairing annealed n = 6 blocks up the levels.
-        blocks = (
+        # 12,320 (and runs the execution bound's 803 commands); found by
+        # pairing annealed n = 6 blocks up the levels.
+        b = (
             "0111010001010010111000011010000111001010011110000100101000100010",
             "0111010010100100010111011110010111001010010010100111101001010010",
             "0101101001011010011101011010010100011101111011000101101000110101",
@@ -838,7 +838,19 @@ def _back_worst(n: int) -> tuple[str, ...]:
             "1010000100101100100010101100010100011010110010000101110111000111",
             "1000011110100011101011001010111001010001001000010011010111011010",
         )
-        tables += ("".join(blocks[i] for i in (0, 1, 2, 3, 4, 5, 2, 3)),)
+        order = (0, 1, 2, 3, 4, 5, 2, 3)
+        if n == 10:
+            # 749 rows (35 x 749 >= the fold) and the full fold 155 x 168:
+            # 26,208.  Five more full-fold blocks (anneal), slots hill-climbed.
+            b += (
+                "0101100001000101101110001010011101011010010110100110010110011010",
+                "1101110100110101110110110100101110011010010110100101100110100110",
+                "0101100001000100101110001010011101011010010110100110010110011010",
+                "0101110001000101101110001011011101011010010110100110010110011010",
+                "1101100010110101110110110100101110011010010110100101100110100110",
+            )
+            order = (2, 1, 6, 7, 1, 4, 2, 0, 8, 9, 1, 5, 6, 10, 9, 0)
+        tables += ("".join(b[i] for i in order),)
     return tables
 
 
