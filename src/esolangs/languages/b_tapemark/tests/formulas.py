@@ -335,12 +335,12 @@ def _model_workspace(n: int) -> int:
 
 
 def _workspace(n: int, program: str) -> int:
-    """W to n = 7; past it the program-cell bound B, which holds for every n."""
-    return _model_workspace(n) if n <= 7 else workspace(n, program)
+    """W to n = 8; past it the program-cell bound B, which holds for every n."""
+    return _model_workspace(n) if n <= 8 else workspace(n, program)
 
 
 FORMULAS = {
     "scaling": (_cells, True, (3, 4, 5, 6, 7, 8)),
     "execution": (_steps, True, (3, 4, 5, 6, 7, 8)),
-    "workspace": (_workspace, frozenset(range(3, 8)), (3, 4, 5, 6, 7)),
+    "workspace": (_workspace, frozenset(range(3, 9)), (3, 4, 5, 6, 7, 8)),
 }
