@@ -1,5 +1,13 @@
 """Executed command and snapshot-bit bounds."""
 
+from esolangs.runtime._digits import digit_limit_for
+
+
+def _digits(n: int) -> int:
+    """Decimal digits of 2^T; the cap lifts for the 0.3T of them past n = 13."""
+    with digit_limit_for(1 << n):
+        return len(str(1 << (1 << n)))
+
 
 def execution(n: int, _: str) -> int:
     """One command a character: 17 an input, a 19-letter frame, ``F…F``.
@@ -7,7 +15,7 @@ def execution(n: int, _: str) -> int:
     The minimal lift has at most ``d + 1`` digits, ``d`` those of 2^T; the
     value 10^(d-1) - 1 needs all of them.
     """
-    return 17 * n + 20 + len(str(2**2**n))
+    return 17 * n + 20 + _digits(n)
 
 
 def _lift_bits(n: int) -> int:
@@ -18,7 +26,7 @@ def _lift_bits(n: int) -> int:
     The largest is the valid residue cyclically nearest below 10^d mod 2^T.
     """
     span = 1 << (1 << n)
-    d = len(str(span))
+    d = _digits(n)
     covered: list[tuple[int, int]] = []
     for j in range(d):
         lo = 10**j % span
@@ -44,7 +52,7 @@ def workspace(n: int, _: str) -> int:
     """
     bl = int.bit_length
     t = 1 << n
-    d = len(str(2**t))
+    d = _digits(n)
     return (
         16 * d
         + 136 * n
