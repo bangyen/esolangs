@@ -856,7 +856,13 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "SwitchCase": lambda n: (_switchcase_worst(n),),
     "Smu": lambda n: (_smu_worst(n),),
     "Modulous": lambda n: (_row_one(n),),
-    "Piet": lambda n: (_piet_worst(n),),
+    "Piet": lambda n: tuple(
+        dict.fromkeys(
+            (_piet_worst(n), _piet_worst(n, steps=True))
+            if n <= 7
+            else (_piet_worst(n),)
+        )
+    ),
     # n = 9..14: the hashed table ships the packed decoder at its widest.
     "Subleq": lambda n: (
         *((_subleq_worst(n),) if n >= 3 else ()),
@@ -875,17 +881,19 @@ def _diagram_witness(stem: str, n: int, top: int = 8) -> tuple[str, ...]:
 
 
 # language-owners: ["Piet"]
-def _piet_worst(n: int) -> str:
-    """Piet's largest shipped area: the zero count that peaks, T - z ones spread.
+def _piet_worst(n: int, *, steps: bool = False) -> str:
+    """Piet's largest shipped area (or step count): the zero count that peaks.
 
-    Ones at both ends (every input essential) and then mid-weight rows, so
-    neither half is constant and nothing but the entry count matters.
+    T - z ones spread: at both ends (every input essential) and then
+    mid-weight rows, so neither half is constant and nothing but the entry
+    count matters.  Steps peak at z = 113 for n = 7, area at z = 126.
     """
-    from esolangs.languages.piet.tests.formulas import zeros
+    from esolangs.languages.piet.tests.formulas import walk_zeros, zeros
 
     width = 1 << n
     middle = [r for r in range(width) if 2 <= r.bit_count() <= n - 2]
-    ones = {0, width - 1, *middle[: width - zeros(n) - 2]}
+    z = walk_zeros(n) if steps else zeros(n)
+    ones = {0, width - 1, *middle[: width - z - 2]}
     return "".join("1" if r in ones else "0" for r in range(width))
 
 

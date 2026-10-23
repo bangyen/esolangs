@@ -8,7 +8,7 @@ backlinks = 65
 labels = ["finite lookup"]
 qualification = "each table entry is pushed and an input index selects its output; literal products replace conjunction tables"
 scaling = "linear: worst F codels to n = 7, then at most F"
-execution = "linear: at most 5T + 11n + 31 steps past n = 3: one block per operation, six per fold turn"
+execution = "linear: worst F steps to n = 7, then at most 5T + 11n + 31: blocks plus turns"
 workspace = "linear: at most T + 2n + 12 + 2bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack"
 
 [generator_sizes]
