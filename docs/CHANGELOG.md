@@ -5,6 +5,22 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 1.2.0
+
+- **Breaking:** Remove Vandevelo; its name no longer resolves. Its
+  generator's linearity was unproved, and an open scaling bound removes a
+  language.
+- Add Bleh, Freestajlo, Stisp, Kiss, Sonata and SwitchCase (95 languages).
+- Generated programs change:
+  - Piet, ArrowQueue, B-tapemark and Fish default to the least-area layout.
+  - Symmetric and affine tables take count or fold builds in Boolfuck,
+    BFStack, Circlefuck, EGL, Fish, Minsky Swap, Modulous, Painfuck,
+    ROTfuck, Smallfuck and bit~.
+  - Interprogck8 programs grow linearly in the table, about a third of
+    the old size at n = 10; they run more commands.
+- Forþ runs in time linear in its scopes; a program with S scopes took
+  O(S^2).
+
 ## 1.1.0
 
 - **Breaking:** Remove `esolangs debug`. The stepping API,
