@@ -68,11 +68,13 @@ def _tree(n: int, _: str) -> int:
 def _chars(n: int, p: str) -> int:
     """The shorter build is at most either one; at n = 9 a hashed table ships P.
 
-    Witness (`_asj_packed_worst` in test_execution_formulas): every chunk's last three
-    rows one, so each chunk keeps its top digit count, and the other rows
-    a multiplicative hash, so the tree (1,732) loses to P (1,683).
+    Witness (`_subleq_packed_worst` in test_execution_formulas): every chunk's top
+    k rows one (k = 3; 6 at n = 10, where 896 has fewer digits than 1023), so
+    each chunk keeps its top digit count, and the other rows a multiplicative
+    hash, so the tree loses to P: n = 9..14 measured 1683, 2111, 2709, 3735,
+    5563, 10069 = P.
     """
     return min(_packed(n, p), _tree(n, p))
 
 
-FORMULAS = {"scaling": (_chars, frozenset({9}), tuple(range(2, 10)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(9, 15)), tuple(range(2, 15)))}
