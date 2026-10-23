@@ -35,6 +35,8 @@ Decisions:
       above zero then advances three from there.
 """
 
+from collections.abc import Sequence
+
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._validate import check_address
@@ -47,22 +49,25 @@ from esolangs.runtime.source_hints import syntax_error
 _STORES = ("a", "ab", "b")
 
 
-#: One instant of a run: ``(mem, ip, halted)`` -- the self-modifying
-#: memory, the instruction pointer, and whether a negative jump stopped the
-#: run.  A value the transitions below map forward, never editing one in
-#: place, with the memory as a ``tuple`` for the same reason.
+#: One instant of a run's control: ``(ip, halted)`` -- the instruction pointer
+#: and whether a negative jump stopped the run.  The self-modifying memory is
+#: not in it: a transition reads it through ``mem`` and returns its cell
+#: writes, because threading a tuple copy per write made a row's cost
+#: quadratic in program size.
 #:
 #: ``halted`` is carried because a jump to a negative address stops the run
 #: with the pointer left where it was, so the position alone does not say.
-type _State = tuple[tuple[int, ...], int, bool]
+type _State = tuple[int, bool]
+
+#: ``(address, value)`` cell stores, in order, for the shell to apply.
+type _Writes = tuple[tuple[int, int], ...]
 
 
-def _read(state: _State, addr: int, byte: int | None = None) -> int:
+def _read(mem: Sequence[int], ip: int, addr: int, byte: int | None = None) -> int:
     """Read a value: a special address or a memory cell.
 
     ``byte`` is what the shell took from the input port for ``-2``.
     """
-    mem, ip, _halted = state
     if addr == -1:
         return ip
     if addr == -2:
@@ -78,23 +83,7 @@ def _read(state: _State, addr: int, byte: int | None = None) -> int:
     )
 
 
-def _write(state: _State, addr: int, value: int) -> _State:
-    """Return ``state`` with ``addr`` set to ``value``.
-
-    ``-1`` moves the instruction pointer; ``-2``/``-3`` writes are discarded.
-    """
-    mem, ip, halted = state
-    if addr >= 0:
-        if addr >= len(mem):
-            check_address(addr, "S*bleq")
-            mem = (*mem, *([0] * (addr + 1 - len(mem))))
-        return ((*mem[:addr], value, *mem[addr + 1 :]), ip, halted)
-    if addr == -1:
-        return (mem, value, halted)
-    return state
-
-
-def _operands(mem: tuple[int, ...], ip: int, *, indirect: bool) -> tuple[int, int]:
+def _operands(mem: Sequence[int], ip: int, *, indirect: bool) -> tuple[int, int]:
     """Return ``a`` and ``b``, read through the cells they name if indirect."""
     a, b = mem[ip], mem[ip + 1]
     if not indirect:
@@ -112,14 +101,19 @@ def _operands(mem: tuple[int, ...], ip: int, *, indirect: bool) -> tuple[int, in
 
 
 def _advance(
-    state: _State, store: str, byte: int | None = None, *, indirect: bool = False
-) -> _State:
-    """Return the state after executing one ``a b c`` instruction.
+    state: _State,
+    mem: Sequence[int],
+    store: str,
+    byte: int | None = None,
+    *,
+    indirect: bool = False,
+) -> tuple[_State, _Writes]:
+    """Return the control state and cell writes of one ``a b c`` instruction.
 
     Pure; output is the caller's, input arrives as ``byte``.
     The variant selects the destinations, including pointer writes.
     """
-    mem, ip, _halted = state
+    ip, _halted = state
     a, b = _operands(mem, ip, indirect=indirect)
     c = mem[ip + 2]
     if c < 0:
@@ -129,19 +123,28 @@ def _advance(
         )
     if a == -3 or b == -3:
         # The print already happened in the shell.
-        return (mem, ip + 3, False)
+        return (ip + 3, False), ()
 
-    diff = _read(state, a, byte) - _read(state, b, byte)
-    after = _write(state, a, diff) if store in ("a", "ab") else state
-    if store in ("ab", "b"):
-        after = _write(after, b, diff)
+    diff = _read(mem, ip, a, byte) - _read(mem, ip, b, byte)
+    writes: list[tuple[int, int]] = []
+    for addr in {"a": (a,), "ab": (a, b), "b": (b,)}[store]:
+        if addr >= len(mem):
+            check_address(addr, "S*bleq")
+        if addr >= 0:
+            writes.append((addr, diff))
+        elif addr == -1:
+            ip = diff
 
     if diff > 0:
-        return (after[0], after[1] + 3, False)
-    target = _read(after, c)
+        return (ip + 3, False), tuple(writes)
+    # ``c`` may be a cell this very instruction wrote.
+    target = next(
+        (value for addr, value in reversed(writes) if addr == c),
+        mem[c] if c < len(mem) else 0,
+    )
     if target < 0:
-        return (after[0], after[1], True)
-    return (after[0], target, False)
+        return (ip, True), tuple(writes)
+    return (target, False), tuple(writes)
 
 
 class _Machine:
@@ -167,7 +170,7 @@ class _Machine:
     ) -> None:
         """Build a machine over the cells ``code`` parses to."""
         self.io = io
-        self.mem = tuple(_parse(code))
+        self.mem = _parse(code)
         self.ip = 0
         self.store = store
         self.indirect = indirect
@@ -192,17 +195,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.mem, self.ip, self.io.progress(), self._halted)
-
-    @property
-    def _state(self) -> _State:
-        """The machine's fields as the value the transitions work on."""
-        return (self.mem, self.ip, self._halted)
-
-    def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields."""
-        mem, self.ip, self._halted = state
-        self.mem = mem
+        return (tuple(self.mem), self.ip, self.io.progress(), self._halted)
 
     def input_byte(self) -> int:
         # -2 returns the next byte of input; EOF reads as zero
@@ -222,16 +215,23 @@ class _Machine:
         """
         if self.halted:
             return
-        state = self._state
-        a, b = _operands(state[0], self.ip, indirect=self.indirect)
+        a, b = _operands(self.mem, self.ip, indirect=self.indirect)
+        byte = self.input_byte() if -2 in (a, b) else None
         if a == -3 or b == -3:
             other = b if a == -3 else a
-            byte = self.input_byte() if other == -2 else None
-            self.output(_read(state, other, byte))
-            self._restore(_advance(state, self.store, indirect=self.indirect))
-            return
-        byte = self.input_byte() if -2 in (a, b) else None
-        self._restore(_advance(state, self.store, byte, indirect=self.indirect))
+            self.output(_read(self.mem, self.ip, other, byte))
+            byte = None
+        (self.ip, self._halted), writes = _advance(
+            (self.ip, self._halted),
+            self.mem,
+            self.store,
+            byte,
+            indirect=self.indirect,
+        )
+        for addr, value in writes:
+            if addr >= len(self.mem):
+                self.mem.extend([0] * (addr + 1 - len(self.mem)))
+            self.mem[addr] = value
 
 
 def run(code: str, io: IO, store: str = "a", *, indirect: bool = False) -> None:
