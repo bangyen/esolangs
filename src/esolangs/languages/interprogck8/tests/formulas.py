@@ -200,8 +200,8 @@ _WALKERS = ((81, len(_TAIL)), (84, len(_TAIL) - 3))
 _NONE = -(10**9)
 #: Distinct-table options kept per state (the near and far halves must differ).
 _SEEN = 2
-#: Arities where the recursion is checked to reach the worst table.
-_EXACT = 6
+#: Arities where the witness is measured to reach the relaxed bound.
+_EXACT = 8
 
 #: Per walker the dearest (value, table) options, and any tables of the layout.
 Seen = tuple[list[list[tuple[int, str]]], list[str]]
@@ -397,16 +397,127 @@ def _worst(n: int) -> tuple[int, str]:
     return best
 
 
-def _steps(n: int, program: str) -> int:
-    """The recursion's worst where it is checked exact (n <= 6), else R + 11n.
+#: Per walker the dearest value of a layout state (tables dropped).
+Bound = dict[tuple[int, int, int | None], list[int]]
 
-    The recursion keeps ``_SEEN`` tables a state, so it is a witnessed lower
-    bound past the checked range; R + 11n (each line once, a body adds 11)
-    is the proved bound for every n.
+
+@cache
+def _pairs(height: int) -> dict[int, set[tuple[int, int]]]:
+    """Cluster size to its (Q, T) row-command pairs; halves may coincide."""
+    if height == 1:
+        return {2: {(1, 1)}, 3: {(1, _NONE), (_NONE, 1)}}
+    below = _pairs(height - 1)
+    out: dict[int, set[tuple[int, int]]] = {}
+    for size, found in below.items():
+        if size < FREE:
+            out.setdefault(size + 1, set()).update(found)
+    for near, firsts in below.items():
+        lead = _lead(near)
+        for far, seconds in below.items():
+            if lead + near + far > FREE:
+                continue
+            for one in firsts:
+                for two in seconds:
+                    out.setdefault(lead + near + far, set()).add(
+                        tuple(
+                            max(
+                                _NEAR - lead + one[w],
+                                _FAR + _body(near) - lead - near + two[w],
+                            )
+                            for w in range(2)
+                        )
+                    )
+    return out
+
+
+def _raise(
+    bound: Bound, key: tuple[int, int, int | None], walker: int, value: int
+) -> None:
+    """Keep the dearest ``value`` of ``walker`` under ``key``."""
+    best = bound.setdefault(key, [_NONE, _NONE])
+    best[walker] = max(best[walker], value)
+
+
+@cache
+def _bounds(n: int, height: int, offset: int) -> Bound:
+    """:func:`_layouts` with every table kept: the relaxation that bounds it above."""
+    out: Bound = {}
+    for size, found in _pairs(height).items():
+        line, end, opened, walked = _seat(offset, size)
+        for pair in found:
+            for walker, (accumulator, _) in enumerate(_WALKERS):
+                if pair[walker] > _NONE // 2:
+                    value = walked - line + pair[walker]
+                    _raise(
+                        out,
+                        (end, opened, size),
+                        walker,
+                        value - (PERIOD - accumulator) * opened,
+                    )
+    if height == 1:
+        return out
+    line, there, opened, walked = _seat(offset, 2)
+    for (end, more, size), best in _bounds(n, height - 1, there).items():
+        if size in (None, FREE):
+            for walker, (accumulator, _) in enumerate(_WALKERS):
+                if best[walker] > _NONE // 2:
+                    total = walked + 2 - (PERIOD - accumulator) * opened + best[walker]
+                    _raise(out, (end, opened + more, None), walker, total)
+    column = columns(n)[n - height]
+    lead = len(block_of(column))
+    line, there, opened, walked = _seat(offset, lead)
+    rung = PERIOD * opened + line + lead - 1
+    fars = _bounds(n, height - 1, column + 2)
+    for (end, more, near), seen in _bounds(n, height - 1, there).items():
+        first = max(PERIOD * (opened + more) + end, PERIOD * (opened + 1))
+        stop = first + (column + 1 - first) % PERIOD
+        windows = stop // PERIOD
+        flight = PERIOD * (opened + 1) - (rung + 1 + column) + 1
+        flight += (windows - opened - 1) * (PERIOD - column) + 1
+        for (exit_, extra, far), seen_far in fars.items():
+            if (
+                near is not None
+                and far is not None
+                and _lead(near) + near + far <= FREE
+            ):
+                continue
+            key = (exit_, windows + extra, None)
+            for walker, (accumulator, _) in enumerate(_WALKERS):
+                if seen[walker] > _NONE // 2:
+                    total = (
+                        walked + _NEAR - (PERIOD - accumulator) * opened + seen[walker]
+                    )
+                    _raise(out, key, walker, total)
+                if seen_far[walker] > _NONE // 2:
+                    total = walked + _FAR + _body(column) + flight + seen_far[walker]
+                    _raise(out, key, walker, total - (PERIOD - accumulator) * windows)
+    return out
+
+
+@cache
+def _bound(n: int) -> int:
+    """The most commands of any table and row, halves allowed to coincide."""
+    best = 0
+    for (_, opened, _), seen in _bounds(n, n, len(SLOT) + 1).items():
+        for walker, (accumulator, tail) in enumerate(_WALKERS):
+            if seen[walker] > _NONE // 2:
+                best = max(
+                    best,
+                    _START
+                    + seen[walker]
+                    + (PERIOD - accumulator) * (opened + 1)
+                    + tail,
+                )
+    return best
+
+
+def _steps(n: int, _: str) -> int:
+    """The relaxed recursion's worst, a proved upper bound; reached to n = ``_EXACT``.
+
+    The shipped ``_worst`` keeps ``_SEEN`` distinct tables a state and is a
+    witnessed lower bound; the two agree to ``_EXACT``.
     """
-    if n <= _EXACT:
-        return _worst(n)[0]
-    return program.count("\n") + 1 + 11 * n
+    return _bound(n)
 
 
 def steps_witness(n: int) -> str:

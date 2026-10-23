@@ -20,6 +20,7 @@ from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from tests.proofs._formula import exact_at, ledger_formulas
 from tests.proofs._ledger import load as load_ledger
+from tests.proofs._witnesses import _WITNESS_BAND
 from tests.proofs.test_execution_formulas import _tables
 from tests.support.generator_support import CHECK
 
@@ -52,7 +53,15 @@ _MEDIUM_FROM = 19
 @pytest.mark.parametrize(
     ("name", "n"),
     [
-        pytest.param(name, n, marks=[pytest.mark.medium] if n >= _MEDIUM_FROM else [])
+        pytest.param(
+            name,
+            n,
+            marks=[getattr(pytest.mark, band)]
+            if (band := _WITNESS_BAND.get((name, n)))
+            else [pytest.mark.medium]
+            if n >= _MEDIUM_FROM
+            else [],
+        )
         for name in sorted(FORMULAS)
         for n in FORMULAS[name][2]
     ],
