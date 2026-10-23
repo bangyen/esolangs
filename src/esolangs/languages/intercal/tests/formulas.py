@@ -47,15 +47,20 @@ def _bound(n: int, _: str) -> int:
 
 
 def _chars(n: int, program: str) -> int:
-    """U: the most nodes, a full tree to level n - 3 over 12 and 2; exact for n <= 4.
+    """U: a full tree to level n - 3 over 12 and 2, the most nodes; exact for n = 3..10.
 
-    Reached by that tree for n = 5..10 (a random-start hill climb finds it at
-    n = 5..8) but unproved there, so those n are bounded by V.
+    Past n = 10 the bound V (level n - 3 outgrows its 240 distinct pairs).
+    Exact because the generator's cost is a function of per-level node, named
+    and constant-edge counts, and an integer program over them maximises at
+    U: each level's nodes are at most the Hall slots above (q <= nodes above
+    + 1) and the distinct ordered pairs below, constant edges are at least
+    the pairs with no node to use, and spare readers at levels <= j fit the
+    slots above j.  A node is named iff it has two readers.
 
     A node named costs two edges that a fresh node would use, so only the 2
     bottom nodes and the pair nodes the spare edges reach are read twice.
     """
-    if not 3 <= n <= 4:
+    if n > 10:
         return _bound(n, program)
     pair = min(1 << (n - 2), 12)
     count = [*(1 << level for level in range(n - 2)), pair, 2]
@@ -85,4 +90,4 @@ def _chars(n: int, program: str) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-FORMULAS = {"scaling": (_chars, False, tuple(range(3, 11)))}
+FORMULAS = {"scaling": (_chars, True, tuple(range(3, 11)))}

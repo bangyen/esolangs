@@ -7,7 +7,7 @@ backlinks = 2
 [proof_status]
 labels = ["tree"]
 qualification = "each distinct subtable is one labelled node; it appends its marker to the unread bits, and a substring test for `0` before the marker reads the last bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump"
-scaling = "linear: worst W characters, n = 2..19; at most it, n = 20..34"
+scaling = "linear: worst W characters, n = 2..36"
 execution = "poly n: worst 3n + 1 steps: three a level, the leaf one"
 workspace = "poly n: worst 16n + 8 + 8·digits(C+1) + bl(3C+1) bits: the input as key, the unread bits, the ip"
 definitions = ["C = Σ_{d<n} min(2^d, 2^2^(n-d) - 2), the most non-constant nodes; digits counts decimal digits"]

@@ -7,7 +7,7 @@ backlinks = 4
 [proof_status]
 labels = ["tree"]
 qualification = "the tree tests the essential inputs; an ignored one is read and dropped as `,0*+`"
-scaling = "linear: span walk, constant dispatch, step literals geometric"
+scaling = "linear: at most S characters: scope counts per level, twins called"
 execution = "linear: at most 6T + 12n - 3 commands: every heap scope defined once, one dispatch path"
 workspace = "T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the scope dictionary"
 

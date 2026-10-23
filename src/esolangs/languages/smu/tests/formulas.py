@@ -8,10 +8,12 @@ def _chars(n: int, _: str) -> int:
     going to the most used; exact to n = 15.  From n = 16 (32 uses, above the
     4-bit tables' 31) the 8-bit tables outrank the lower macros: 47 get
     one-letter names, the rest and every 4- and 2-bit macro two letters, so
-    5T/8 + 465T/2048 + 3490, exact to n = 19; level n - 4 is out of distinct
-    pairs at n = 20 (65,280 + 256 pads), 6T + 90 bounds past it.
+    5T/8 + 465T/2048 + 3490, exact at n = 16 only: from n = 17 repeating
+    level n - 4 rows repeats rows free of one-letter tables and beats it (n = 17
+    115,507 > 115,170; n = 19 454,198 > 450,210; n = 20 905,770 > 896,930), so
+    6T + 90 bounds past n = 16.
     """
-    if n > 19:
+    if n > 16:
         return 6 * (1 << n) + 90
     if n > 15:
         return 5 * (1 << (n - 3)) + 465 * (1 << (n - 11)) + 3490
@@ -45,6 +47,4 @@ def _chars(n: int, _: str) -> int:
     return total + edges
 
 
-FORMULAS = {
-    "scaling": (_chars, True, (3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19))
-}
+FORMULAS = {"scaling": (_chars, True, (3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16))}

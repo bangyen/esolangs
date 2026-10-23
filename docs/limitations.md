@@ -489,7 +489,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   No row shares a cell, so a row's answer is wrong only if its own cell
   is: a corrupted cell fails exactly the rows that read it.
 
-Fifty-nine ledger cells stay `at most` with no route to `worst`
+Sixty-four ledger cells stay `at most` with no route to `worst`
 (2026-10-22; open ones are on the [roadmap](roadmap.md#generator-linearity)):
 
 - Route race: the shipped program is the shortest of several forms or
@@ -507,7 +507,8 @@ Fifty-nine ledger cells stay `at most` with no route to `worst`
   diagram's 10T + 4n + 6 holds to n = 14), Packlang, Painfuck (232 against 239 at n = 4), 6-5 (105 against 166 at
   n = 4, the shorter of two layouts to n = 5),
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
-  Unlambda (to n = 2); Boolfuck scaling past n = 7 (the gates take its
+  Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
+  Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
   worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11.
 - Address widths: the peak sums the bit-lengths of table-dependent
   positions, which cross powers of two by layout. AddSubJump, Caballo,

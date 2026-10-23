@@ -30,29 +30,33 @@ evidence, not optimization tasks.
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
-  `worst`. The 59 `at most` cells without one are in
+  `worst`. The 64 `at most` cells without one are in
   [limitations](limitations.md#run-time-and-memory).
-  - Partial range: SMU scaling past n = 19 (level n - 4 runs out of
-    distinct pairs at n = 20), 1 + i workspace past n = 26, INTERCAL
+  - Partial range: SMU scaling past n = 16 (from n = 17 tables repeating
+    rows of the 209 two-letter subtables keep one-letter names off most
+    references: 115,507 > 115,170 at n = 17, +12,087 at n = 21; the worst
+    is a design optimum, no rule found), Codesick scaling past n = 36 (the
+    transition level's ids span widths 5..10), 1 + i workspace past n = 26, INTERCAL
     execution and workspace past n = 25 (unbuilt; the bound is exact to
-    n = 38) and scaling past n = 4 (U is reached at n = 5..10, but the
-    integer program over level shapes with distinct-pair edges is unsolved).
-- **Unformulated scaling** (2026-10-22): 15 cells state a mechanism, no
-  size formula. Bleh, Quassaunt and Stisp have a bound only as a per-level
-  optimisation (not a rule); CVNC's unshared 8T + 12 is beaten by sharing
-  on 12,926 of 65,536 four-input tables. Brainfuck, For Thorn,
-  Interprogck8, Minifuck, Pointless, ROTfuck, Smallfuck, Subleq, 3x and
-  AddSubJump (n <= 5) race routes or layouts; Polynomial is a lower bound.
-  Slow ACV's three cells are prose too: candidate bounds hold to n = 20 but
-  are unproved.
-- **Scoped by derivation** (2026-10-22): Suffolk's F is exact for
-  n = 4..12; from n = 13 the one-pair tables' NOR DAG fits the workspace
-  limit, so the worst is below F - 1 (not located). Codesick's W is exact
-  for n = 2..19; from n = 20 a third id width leaves it unreached.
+    n = 38) and scaling past n = 10 (level n - 3 outgrows its 240
+    distinct pairs at n = 11; U unbuilt there).
+  - Per-level bounds (2026-10-22): Stisp's F is reached at n = 1..8 but
+    has no witness rule; Quassaunt sits within 12 of F at n = 5..8, Bleh
+    3-8% and 3x 20-28% below it.
+- **Unformulated scaling** (2026-10-22): 5 cells state a mechanism, no
+  size formula. CVNC's 8T + 12 is its unshared route's worst, but sharing
+  can add up to 5 characters over that route (exhaustive n = 4), so it does
+  not bound the shipped text. Pointless's declare-everything bound needs an
+  unproved inlining inequality (no violation to n = 6). Interprogck8 grows
+  about 11 characters an entry per input (T log T). Polynomial is a lower
+  bound. Slow ACV's three cells are prose too: candidate bounds hold to
+  n = 20 but are unproved.
 - **Derived, not executed:** Forþ workspace's log factor needs a twin call
   50,625 or more scopes back, at least 20 inputs
-  ([limitations](limitations.md#run-time-and-memory)); What!? past n = 19
-  (execution past 17) and S*bleq scaling past n = 21 were not built.
+  ([limitations](limitations.md#run-time-and-memory)); the n = 20 trigger
+  has 262,682 scopes and one row steps in about 18 minutes (quadratic in
+  scopes), so its workspace was not measured. What!? past n = 22 (6.4 GB
+  there) and S*bleq scaling past n = 25 (3 GB) were not built.
 - **Open mathematics:** Polynomial's worst-case length constant
   `C_P(n)*n/T**2` is bracketed only within a factor 12.5, and whether the
   limit exists is open ([proofs](proofs/index.md#polynomial-bound)). Whether
