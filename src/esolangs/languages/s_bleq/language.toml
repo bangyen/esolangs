@@ -9,7 +9,8 @@ labels = ["finite lookup"]
 qualification = "packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it"
 scaling = "linear: worst P characters, n = 11..25; below, at most min(tree, P)"
 execution = "linear: worst 3n + 2 instructions to n = 9, the tree route: n reads, 2n - 1 tests"
-workspace = "linear: at most 3L bits: the self-modified program, decimal cells"
+workspace = "linear: at most B + 6n + bl(3C) + bl(n) + 1 bits: the self-modified program, decimal cells"
+definitions = ["B = the program cells' bits, a sign one more", "C = the program's cell count"]
 
 [generator_sizes]
 "00000001" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 9, "5" = 9, "6" = 10, "7" = 9 }, source_units = 152 }
