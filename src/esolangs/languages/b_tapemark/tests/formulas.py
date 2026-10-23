@@ -1,6 +1,29 @@
-"""B-tapemark's emitted cells and executed steps: the least-area layout."""
+"""B-tapemark's cells, steps and written bits: the least-area layout."""
 
 from math import isqrt
+
+from esolangs.languages.b_tapemark.proof_formulas import workspace
+
+_STAGE = (
+    "|/    \\",
+    "*\\-|\\ 0",
+    "\\   | |",
+    "\\|*%/ \\|\\",
+    "    /",
+    "/   /*  /",
+    "|",
+)
+_NARROW_STAGE = (
+    "|/   \\",
+    "*\\-|\\0",
+    "\\   ||",
+    "\\|*%/\\|\\",
+    "    /",
+    "/   /* /",
+    "|",
+)
+_STEP = ((1, 0), (0, 1), (-1, 0), (0, -1))
+_MIRROR = {"\\": (1, 0, 3, 2), "/": (3, 2, 1, 0)}
 
 
 def _narrow(n: int, m: int | None = None) -> tuple[int, int, int]:
@@ -109,7 +132,210 @@ def _steps(n: int, _: str) -> int:
     return max(_steps_for(n, m) for m in range(1, n + 1) if 1 << m > n)
 
 
+def _bits(v: int) -> int:
+    """Bits the snapshot counts for an int: its length (1 for 0), 1 more if negative."""
+    return (v.bit_length() or 1) + (v < 0)
+
+
+def _mark(x: int, y: int) -> int:
+    """A cell of either grid: its character and its two coordinates."""
+    return 8 + _bits(x) + _bits(y)
+
+
+def _program(
+    n: int, name: str, c: int, r: int
+) -> tuple[dict[tuple[int, int], str], list[tuple[int, int]]]:
+    """Rendered cells of the shipped layout, m = n, and each stage's origin.
+
+    The start marker is a cell here (it fixes the render); the stage origins
+    are where the beam enters a stage heading down.
+    """
+    cells: dict[tuple[int, int], str] = {}
+    stages: list[tuple[int, int]] = []
+
+    def put(x: int, y: int, text: str) -> None:
+        for i, char in enumerate(text):
+            if char != " ":
+                cells[x + i, y] = char
+
+    t = 1 << n
+    narrow = name == "narrow"
+    # Copy: the beam runs west over t triples ``|d*``, the start on its east end.
+    if narrow:
+        for i in range(t):
+            put(2, 2 * i, "|0*")
+            put(1, 2 * i, "/")
+            put(5, 2 * i, "<" if i == 0 else "/")
+            if i + 1 < t:
+                put(1, 2 * i + 1, "\\")
+                put(5, 2 * i + 1, "\\")
+        bottom = 2 * t - 1
+        put(1, bottom, "\\")
+        put(6, bottom, "/")
+        for k in range(1, 2 * n + 1):
+            put(6, bottom - k, "|")
+        put(6, -1, "\\")
+        put(0, -1, "/")
+        top = bottom + 1
+    else:
+        width = c or t
+        east = 3 * width + (2 if c else 1)
+        for i in range(t):
+            put(east - 3 - 3 * (i % width), 2 * (i // width), "|0*")
+        put(east, 0, "<")
+        strips = -(-t // width)
+        for k in range(strips - 1):
+            put(1, 2 * k, "/")
+            put(1, 2 * k + 1, "\\")
+            put(east, 2 * k + 1, "\\")
+            put(east, 2 * k + 2, "/")
+        last = 2 * (strips - 1)
+        put(0, last, "\\")
+        for k in range(1, 2 * n + 1):
+            put(0, -k, "|")
+        put(0, -2 * n - 1, "\\")
+        put(-1, -2 * n - 1, "/")
+        top = last + 1
+    for i in range(n):
+        w = 1 << (n - 1 - i)
+        stages.append((0 if narrow else -1, top))
+        if narrow:
+            for k, line in enumerate(_NARROW_STAGE):
+                put(0, top + k, line)
+            run, extra, turn = max(6, 8 - w), 0, [w]
+        else:
+            turn = [r] * (w // r) + ([w % r] if w % r else []) if c else [w]
+            extra = max(0, 2 * len(turn) - 4)
+            for k, line in enumerate(_STAGE):
+                put(-1, top + k + (extra if k >= 4 else 0), line)
+            run = 9 if c else 8
+        for k, length in enumerate(turn):
+            y = top + 1 + 2 * k
+            put(run, y, "|" * length + "\\")
+            if k + 1 < len(turn):
+                put(run + length, y + 1, "/")
+                put(run - 1, y + 1, "/")
+                put(run - 1, y + 2, "\\")
+            else:
+                put(run + length, top + 4 + extra, "/")
+        top += 7 + extra
+    if narrow:
+        put(0, top, "\\")
+        put(n + 1, top, "\\")
+        put(n + 1, top + 1, "/")
+        put(0, top + 1, "!+" + "|" * (n - 1))
+    else:
+        put(-1, top, "/")
+        put(-n - 1, top, "+" + "|" * (n - 1))
+        put(-n - 2, top, "!")
+    # Render: wholly blank rows and columns go.
+    xs = {x: i for i, x in enumerate(sorted({x for x, _ in cells}))}
+    ys = {y: i for i, y in enumerate(sorted({y for _, y in cells}))}
+    return (
+        {(xs[x], ys[y]): char for (x, y), char in cells.items()},
+        [(xs[x], ys[y]) for x, y in stages],
+    )
+
+
+def _tail(
+    cells: dict[tuple[int, int], str],
+    data: dict[tuple[int, int], str],
+    at: tuple[int, int],
+    pointer: tuple[int, int],
+    digit: str,
+) -> int:
+    """Most bits of marks written and positions on the last stage's way out.
+
+    The beam enters the stage at ``at`` heading down with the mark pointer
+    at ``pointer``; ``digit`` is the input it reads.  The commands are the
+    interpreter's: ``|`` steps the data pointer, ``*`` copies the cell it
+    skips onto a blank data cell, ``-`` reads into one, a digit heading
+    vertically swaps grids when the data cell equals it, ``%`` swaps on a
+    mark, ``!`` halts.
+    """
+    grids = [cells, data]
+    where = [at, pointer]
+    swapped, heading, written, peak = 0, 1, 0, 0
+    pending = [digit]
+    while (cmd := grids[swapped].get(where[swapped], " ")) != "!":
+        other = 1 - swapped
+        under = grids[other].get(where[other], " ")
+        if cmd in _MIRROR:
+            heading = _MIRROR[cmd][heading]
+        elif cmd == "-" and under == " ":
+            grids[other][where[other]] = pending.pop()
+            written += _mark(*where[other])
+        elif cmd == "*":
+            x, y = where[swapped]
+            where[swapped] = x + _STEP[heading][0], y + _STEP[heading][1]
+            skipped = grids[swapped].get(where[swapped], " ")
+            if under == " " and skipped != " ":
+                grids[other][where[other]] = skipped
+                written += _mark(*where[other])
+        elif cmd == "|":
+            x, y = where[other]
+            where[other] = x + _STEP[heading][0], y + _STEP[heading][1]
+        elif (cmd == "%" and under != " ") or (
+            cmd.isdigit() and heading % 2 == 1 and under == cmd
+        ):
+            swapped = other
+        x, y = where[swapped]
+        where[swapped] = x + _STEP[heading][0], y + _STEP[heading][1]
+        peak = max(
+            peak,
+            written
+            + sum(_bits(v) for p in where for v in p)
+            + _bits(swapped)
+            + _bits(heading)
+            + 1,
+        )
+    return peak
+
+
+def _model_workspace(n: int) -> int:
+    """W: the largest snapshot, all n inputs essential, over every row.
+
+    A snapshot counts the program's cells (8 + both coordinates, the start
+    marker apart), the data grid's marks the same way, both pointers, the swap,
+    the heading and the halted flag, and bl(n) for the input consumed.  The
+    layout is a function of n alone and never reads a table digit, so any
+    table with every input essential reaches W.  The marks are the table's T
+    at (x0 - k, y0), then for stage s, y = y0 - 2n + 2s: the input at (x, y)
+    and the pair ``\\`` ``%`` at (x, y + 1), (x + 1, y + 1), with x = x0 - T + s
+    plus the weights of the zero bits before s.  The peak falls after the last
+    mark, in the last stage's walk to ``!`` (every row at n <= 8), so earlier
+    stages sum in closed form and ``_tail`` walks the last.  An ignored input
+    only shrinks the table: no table with fewer essential inputs reaches W
+    (n = 3..8: 2,034, 3,167, 4,943, 8,062, 13,951, 17,639 against 2,615 ...).
+    """
+    t = 1 << n
+    name, c, r, _ = min(_candidates(n, n), key=lambda k: (k[3][1] * k[3][2], k[3][0]))
+    cells, stages = _program(n, name, c, r)
+    x0, y0 = next(k for k, v in cells.items() if v in "<>^v")
+    del cells[x0, y0]
+    table = {(x0 - k, y0): "0" for k in range(t)}
+    base = sum(_mark(*p) for p in table)
+    worst = 0
+    for row in range(t):
+        data, marks, x = dict(table), base, x0 - t
+        for s in range(n - 1):
+            y = y0 - 2 * n + 2 * s
+            for p in ((x, y), (x, y + 1), (x + 1, y + 1)):
+                data[p] = "0"
+                marks += _mark(*p)
+            x += 1 + (0 if row >> (n - 1 - s) & 1 else 1 << (n - 1 - s))
+        last = (x, y0 - 2)
+        worst = max(worst, marks + _tail(cells, data, stages[-1], last, str(row & 1)))
+    return sum(_mark(*p) for p in cells) + worst + n.bit_length()
+
+
+def _workspace(n: int, program: str) -> int:
+    """W to n = 7; past it the program-cell bound B, which holds for every n."""
+    return _model_workspace(n) if n <= 7 else workspace(n, program)
+
+
 FORMULAS = {
     "scaling": (_cells, True, (3, 4, 5, 6, 7, 8)),
     "execution": (_steps, True, (3, 4, 5, 6, 7, 8)),
+    "workspace": (_workspace, frozenset(range(3, 8)), (3, 4, 5, 6, 7)),
 }
