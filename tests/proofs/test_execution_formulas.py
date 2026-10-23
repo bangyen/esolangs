@@ -804,7 +804,7 @@ def _minifuck_worst(n: int) -> str:
 
 
 def _back_worst(n: int) -> tuple[str, ...]:
-    """Back's comb-worst tables: Rudin-Shapiro, and at n = 7, 8 a fold-sized one."""
+    """Back's comb-worst tables: Rudin-Shapiro, and at n = 7-9 a fold-sized one."""
     width = 1 << n
     # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
     # and with row 1 flipped: the most rows its one-edges cannot share.
@@ -825,6 +825,19 @@ def _back_worst(n: int) -> tuple[str, ...]:
         if n == 8:
             doubled += str(1 - int(doubled[0])) + doubled[1:]
         tables += (doubled,)
+    if n == 9:
+        # Eight n = 6 blocks of 49 rows (seven boundaries share 7: 385 rows),
+        # five of them 34 wide, so the fold stays at 12,432 above the comb's
+        # 12,320.  Found by pairing annealed n = 6 blocks up the levels.
+        blocks = (
+            "1010010111100101101001011010010110001010111000011110010100100101",
+            "1011101011101101000111011000010010100101101001011011101001011010",
+            "0111011101010001110001111011010010100101101001011010111001011010",
+            "0100101001000101001011001011011110100100010110100100101001010001",
+            "1010010100100101101001011010010110100111100001011101111000100101",
+            "0111010111011011101000011110000110100001101011011000010001011010",
+        )
+        tables += ("".join(blocks[i] for i in (0, 1, 2, 3, 4, 0, 1, 5)),)
     return tables
 
 

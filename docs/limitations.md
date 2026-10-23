@@ -497,8 +497,8 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
-  with the winner. Back scaling past n = 8 (a table with the comb's
-  rows and the fold's leaves ships 12,096 cells, not 12,320, at n = 9) and
+  with the winner. Back scaling past n = 9 (F is the fold's 26,208 at n = 10; tables with
+  every pair non-constant reach 682 of the comb's 769 rows) and
   execution past n = 6 (the comb's Rudin-Shapiro table folds: 2,240 cells
   against 2,522 at n = 7);
   ArrowQueue execution (proved 11T + 32n + 92), Polynomial execution (C - 2
