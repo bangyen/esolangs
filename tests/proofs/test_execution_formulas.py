@@ -51,6 +51,22 @@ def _seeded(n: int, seed: int) -> str:
     return f"{random.Random(7919 * seed + n).getrandbits(width):0{width}b}"
 
 
+# language-owners: ["AddSubJump"]
+def _asj_packed_worst(n: int) -> str:
+    """Top three bits of every chunk set (all chunks widest), the rest hashed.
+
+    Knuth's multiplicative hash on the row index: a dense tree longer than
+    the packed decoder, so the decoder ships at its widest.
+    """
+    width = 1 << n
+    rows = []
+    for row in range(width):
+        chunk, bit = divmod(row, n)
+        span = min(n, width - chunk * n)
+        rows.append("1" if bit >= span - 3 else str((row * 2654435761 >> 10) & 1))
+    return "".join(rows)
+
+
 # language-owners: ["BFStack"]
 #: BFStack's worst 7-input block, a rule: 64 zeros, 60 ones, a zero, then ones.
 _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
@@ -689,6 +705,7 @@ def _minifuck_worst(n: int) -> str:
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
+    "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
     # The last input ignored: n - 1 essential inputs can outrun all n.
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),

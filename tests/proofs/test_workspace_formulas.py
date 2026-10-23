@@ -12,7 +12,7 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from tests.proofs._arities import formula_arities
-from tests.proofs._formula import ledger_formulas
+from tests.proofs._formula import exact_at, ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.test_execution_formulas import _measure, _tables
@@ -101,7 +101,9 @@ def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
             assert actual <= claim, f"{name} n={n} {table}: {actual} > {claim}"
             reached[i] |= actual == claim
     for found, (_, _, exact) in zip(reached, formulas, strict=True):
-        assert found or not exact, f"{name} n={n}: no table reaches the formula"
+        assert found or not exact_at(exact, n), (
+            f"{name} n={n}: no table reaches the formula"
+        )
 
 
 def test_every_formula_cell_is_checked() -> None:
