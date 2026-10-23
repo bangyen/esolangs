@@ -866,7 +866,11 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
     # An 8-row cluster whose root block hops 15 lines (a 33-character body, held
     # by the slot and the calling frame), under equal-half reads.
-    "Interprogck8": lambda n: ("01100000" * (1 << n - 3),) if n >= 3 else (),
+    "Interprogck8": lambda n: (
+        ("01100000" * (1 << n - 3), *_diagram_witness("interprogck8", n, 10))
+        if n >= 3
+        else ()
+    ),
     "BrainIf": lambda n: (_brainif_worst(n) if n >= 2 else "11",),
     "BFStack": lambda n: (_bfstack_chars_worst(n),),
     "thisthat": lambda n: (_thisthat_worst(n),) if n >= 3 else (),
