@@ -840,8 +840,7 @@ def _back_worst(n: int) -> tuple[str, ...]:
         )
         order = (0, 1, 2, 3, 4, 5, 2, 3)
         if n == 10:
-            # 749 rows (35 x 749 >= the fold) and the full fold 155 x 168:
-            # 26,208.  Five more full-fold blocks (anneal), slots hill-climbed.
+            # 35 x 749 rows >= the full fold 155 x 168 = 26,208; slots hill-climbed.
             b += (
                 "0101100001000101101110001010011101011010010110100110010110011010",
                 "1101110100110101110110110100101110011010010110100101100110100110",
