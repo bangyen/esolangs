@@ -524,7 +524,7 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   characters, which only some tables hold.
 - Address widths: the peak sums the bit-lengths of table-dependent
   positions, which cross powers of two by layout. AddSubJump, Caballo,
-  Crement, Pointless, ROTfuck, S-BLEQ (1.002x: cell bits plus 6n, packed
+  Crement, Pointless, S-BLEQ (1.002x: cell bits plus 6n, packed
   route sampled to n = 10) and Underload workspace;
   Painfuck workspace (slack 1
   at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
