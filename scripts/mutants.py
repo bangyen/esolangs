@@ -1,6 +1,7 @@
 """Seeded token mutants of a generator, run against its tests.
 
-``rank`` lists the largest generators ``mutants_swept.toml`` does not record.
+``rank`` lists the largest generators ``mutants_swept.toml`` does not record,
+or records at a commit their code has since left.
 ``sweep`` takes package directories (``abcdirection``), prices one baseline
 run each, then applies ``--per-language`` seeded mutants one at a time:
 operator swaps (``+``/``-``, ``<``/``<=``, ``and``/``or``, ...) and integer
@@ -18,6 +19,7 @@ append to ``--out`` as JSON lines; add swept packages to
 from __future__ import annotations
 
 import argparse
+import ast
 import io
 import json
 import os
@@ -255,13 +257,56 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
     return 0
 
 
+def _code(source: str) -> str:
+    """Return ``source``'s syntax tree without docstrings, as text."""
+    tree = ast.parse(source)
+    holders = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    for node in ast.walk(tree):
+        if not isinstance(node, holders) or not node.body:
+            continue
+        first = node.body[0]
+        if (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
+            node.body = node.body[1:] or [ast.Pass()]
+    return ast.dump(tree)
+
+
+def _git(*args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout
+
+
+def changed_since(package: str, commit: str) -> bool:
+    """Whether the package's generator code differs from ``commit``'s.
+
+    Docstrings are ignored: ``Size:`` anchors move with every size change.
+    """
+    root = (LANGUAGES / package).relative_to(ROOT)
+    paths = _git("ls-tree", "-r", "--name-only", commit, f"{root}/generator.py")
+    paths += _git("ls-tree", "-r", "--name-only", commit, f"{root}/generator/")
+    old = {
+        path: _code(_git("show", f"{commit}:{path}"))
+        for path in paths.split()
+        if path.endswith(".py") and "/tests/" not in path
+    }
+    new = {
+        str(f.relative_to(ROOT)): _code(f.read_text(encoding="utf-8"))
+        for f in generator_files(package)
+    }
+    return old != new
+
+
 def rank(count: int) -> list[str]:
     """Return the ``count`` largest unswept generators, by source lines."""
-    swept = set(tomllib.loads(SWEPT.read_text(encoding="utf-8"))["swept"])
+    swept = tomllib.loads(SWEPT.read_text(encoding="utf-8"))["swept"]
     sizes = []
     for package in sorted(p.name for p in LANGUAGES.iterdir() if p.is_dir()):
         files = generator_files(package)
-        if files and package not in swept:
+        if files and (package not in swept or changed_since(package, swept[package])):
             lines = sum(len(f.read_text(encoding="utf-8").splitlines()) for f in files)
             sizes.append((lines, package))
     return [package for _, package in sorted(sizes, reverse=True)[:count]]
@@ -273,7 +318,9 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    ranked = commands.add_parser("rank", help="largest generators not yet swept")
+    ranked = commands.add_parser(
+        "rank", help="largest generators unswept since their last change"
+    )
     ranked.add_argument("--count", type=int, default=10)
     run = commands.add_parser("sweep", help="run seeded mutants of packages")
     run.add_argument("packages", nargs="+")

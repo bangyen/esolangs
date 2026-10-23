@@ -1,20 +1,94 @@
 # Generator packages swept by scripts/mutants.py (or its scratch predecessor)
-# and triaged: every survivor pinned by a test or recorded as equivalent.
-swept = [
-    "a_painter_ant", "abcdirection", "addsubjump",
-    "algebraic_programming_language", "alight", "arrowqueue", "ascenic",
-    "b_tapemark", "back", "befunge", "bfstack", "bit_tilde", "bitdeque",
-    "bitwise_cyclic_tag", "bleh", "blindfolded_arithmetic", "boolfuck",
-    "brainfuck", "brainif", "caballo", "circlefuck", "circuit_diagram",
-    "clockwise", "codesick", "collatz_multiverse", "container", "crement",
-    "cvnc", "cyclic_tag", "decleq", "dig", "dimensional", "egl", "eval",
-    "fackward", "false", "fargo", "fish", "flowchart", "for_thorn", "forbin",
-    "fractran", "freestajlo", "grapheme", "home_row", "hot", "inject",
-    "intercal", "laserfuck", "line", "malbolge", "minifuck",
-    "minsky_swap", "modulous", "object_disoriented", "one_i", "packlang",
-    "painfuck", "piet", "pointless", "polynomial", "qoibl", "quassaunt",
-    "ram0", "rotfuck", "rubic", "s_bleq", "sendstuff", "six_five", "slashes",
-    "slow_acv_mammalian", "smallfuck", "smu", "sstack", "stisp", "streetcode",
-    "subleq", "suffolk", "super_snusp", "taglate", "thisthat", "three_x",
-    "thue", "unary", "underload", "unlambda", "unsquare", "what",
-]
+# and triaged at a commit: every survivor pinned by a test or recorded as
+# equivalent.  ``rank`` counts a package unswept again once its generator code,
+# docstrings aside, differs from that commit's.  87463869c is the first commit
+# that records the older sweeps; each ran at or before it.
+[swept]
+a_painter_ant = "87463869c"
+abcdirection = "87463869c"
+addsubjump = "87463869c"
+algebraic_programming_language = "87463869c"
+alight = "87463869c"
+arrowqueue = "87463869c"
+ascenic = "87463869c"
+b_tapemark = "87463869c"
+back = "87463869c"
+befunge = "87463869c"
+bfstack = "87463869c"
+bit_tilde = "87463869c"
+bitdeque = "87463869c"
+bitwise_cyclic_tag = "87463869c"
+bleh = "87463869c"
+blindfolded_arithmetic = "87463869c"
+boolfuck = "87463869c"
+brainfuck = "87463869c"
+brainif = "87463869c"
+caballo = "87463869c"
+circlefuck = "87463869c"
+circuit_diagram = "87463869c"
+clockwise = "87463869c"
+codesick = "87463869c"
+collatz_multiverse = "87463869c"
+container = "87463869c"
+crement = "87463869c"
+cvnc = "87463869c"
+cyclic_tag = "87463869c"
+decleq = "87463869c"
+dig = "87463869c"
+dimensional = "87463869c"
+egl = "87463869c"
+eval = "87463869c"
+fackward = "87463869c"
+false = "87463869c"
+fargo = "87463869c"
+fish = "87463869c"
+flowchart = "87463869c"
+for_thorn = "87463869c"
+forbin = "87463869c"
+fractran = "87463869c"
+freestajlo = "87463869c"
+grapheme = "87463869c"
+home_row = "87463869c"
+hot = "87463869c"
+inject = "87463869c"
+intercal = "87463869c"
+laserfuck = "87463869c"
+line = "87463869c"
+malbolge = "87463869c"
+minifuck = "87463869c"
+minsky_swap = "87463869c"
+modulous = "87463869c"
+object_disoriented = "87463869c"
+one_i = "87463869c"
+packlang = "87463869c"
+painfuck = "87463869c"
+piet = "87463869c"
+pointless = "87463869c"
+polynomial = "87463869c"
+qoibl = "87463869c"
+quassaunt = "87463869c"
+ram0 = "87463869c"
+rotfuck = "87463869c"
+rubic = "87463869c"
+s_bleq = "87463869c"
+sendstuff = "87463869c"
+six_five = "87463869c"
+slashes = "87463869c"
+slow_acv_mammalian = "87463869c"
+smallfuck = "87463869c"
+smu = "87463869c"
+sstack = "87463869c"
+stisp = "87463869c"
+streetcode = "87463869c"
+subleq = "87463869c"
+suffolk = "87463869c"
+super_snusp = "87463869c"
+taglate = "87463869c"
+thisthat = "87463869c"
+three_x = "87463869c"
+thue = "87463869c"
+unary = "87463869c"
+underload = "87463869c"
+unlambda = "87463869c"
+unsquare = "87463869c"
+what = "87463869c"
