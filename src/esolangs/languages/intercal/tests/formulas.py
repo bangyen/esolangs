@@ -46,10 +46,48 @@ def _bound(n: int, _: str) -> int:
     return total + (6 + _digits(n + 1)) + (10 + _digits(n + 1)) + 7
 
 
-def _chars(n: int, program: str) -> int:
-    """U: a full tree to level n - 3 over 12 and 2, the most nodes; exact for n = 3..10.
+def _capped(n: int) -> int:
+    """U at n = 11, 12: a full tree to level n - 4, 240 nodes at n - 3 over all 16 ids.
 
-    Past n = 10 the bound V (level n - 3 outgrows its 240 distinct pairs).
+    Every id is read 30 times by level n - 3, so the 12 pair nodes are named.
+    The 2^(n-3) - 240 spare slots above re-read level n - 3 nodes (named at
+    two reads, all 240 at n = 12: a statement and a name beat a constant or a
+    named pair node), the rest on the longest names.  The witness is built to
+    n = 12 and the shape was climbed, not solved as the n <= 10 program is.
+    """
+    slots = 1 << (n - 3)
+    count = [*(1 << level for level in range(n - 3)), 240, 12, 2]
+    named = min(240, slots - 240)  # level n - 3 nodes read twice
+    extra = slots - 240 - named  # third reads
+    negs = n - 3
+    first = n + 2 + negs
+    statements = n + negs + 14 + named + 3
+    polite = max(1, (statements + 4) // 5)
+    total = 0
+    for level in range(n):
+        sel = 1 + _digits(n - level)
+        if 2 <= level <= n - 2:
+            neg = _digits(2 * n - level)
+            total += count[level] * (28 + neg + sel) + 16 + neg + sel
+        else:
+            total += count[level] * (38 + 2 * sel)
+    a, b = 1 + _digits(first), 1 + _digits(first + 1)
+    # Level n - 2: 12 pairs of A, B and two constants; the bottom two read constants.
+    total += 2 * (a + b) + 4 * (b + 2) + 4 * (a + 2) + 2 * 4 + 8
+    ref = [1 + _digits(first + i) for i in range(14 + named)]
+    total += 30 * (a + b + 4 + sum(ref[2:14]))  # level n - 3: 480 reads
+    total += 2 * sum(ref[14:]) + extra * ref[-1]  # level n - 4's slots
+    total += sum(5 + _digits(first + i) for i in range(14 + named))  # ".k <- "
+    total += sum(7 + _digits(n - i) for i in range(n))  # ".k <- @@"
+    total += (5 + _digits(n + 1)) + (10 + _digits(n + 1)) + 7
+    return total + 4 * statements + 4 * polite - 1
+
+
+def _chars(n: int, program: str) -> int:
+    """U: a full tree to level n - 3 over 12 and 2, the most nodes; exact for n = 3..12.
+
+    From n = 11 level n - 3 holds its 240 distinct pairs (:func:`_capped`);
+    past n = 12 the bound V.
     Exact because the generator's cost is a function of per-level node, named
     and constant-edge counts, and an integer program over them maximises at
     U: each level's nodes are at most the Hall slots above (q <= nodes above
@@ -60,8 +98,10 @@ def _chars(n: int, program: str) -> int:
     A node named costs two edges that a fresh node would use, so only the 2
     bottom nodes and the pair nodes the spare edges reach are read twice.
     """
-    if n > 10:
+    if n > 12:
         return _bound(n, program)
+    if n > 10:
+        return _capped(n)
     pair = min(1 << (n - 2), 12)
     count = [*(1 << level for level in range(n - 2)), pair, 2]
     twice = max(0, min(12, (1 << (n - 2)) - 12))
@@ -90,4 +130,4 @@ def _chars(n: int, program: str) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 11)), tuple(range(3, 12)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 13)), tuple(range(3, 14)))}

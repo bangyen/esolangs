@@ -508,7 +508,20 @@ def _intercal_worst(n: int) -> str:
 
 
 def _intercal_chars_worst(n: int) -> str:
-    """Diagram with the most nodes: a full tree to level n - 3, then 12 and 2."""
+    """Diagram with the most nodes: a full tree to level n - 3, then 12 and 2.
+
+    From n = 11 level n - 3 is every distinct-halved pair of 4-bit tables
+    (240); the spare slots above re-read its nodes, thirds on the last ones.
+    """
+    if n >= 11:
+        rows = [f"{u:04b}{v:04b}" for u in range(16) for v in range(16) if u != v]
+        reads = [*rows, *(rows[i ^ 1] for i in range(240))]
+        slots = 1 << (n - 3)
+        reads = reads[:slots]
+        for j in range((slots - 480) // 2):
+            reads += [rows[240 - (slots - 480) + j], rows[240 - (slots - 480) // 2 + j]]
+        level = [reads[i] + reads[i + 1] for i in range(0, slots, 2)]
+        return _intercal_levels(level, tuple(1 << i for i in range(n - 4)))
     widths = (*(1 << i for i in range(n - 2)), min(1 << (n - 2), 12), 2)
     return _intercal_diagram(widths, _IC_CHAR_PAIRS)
 
@@ -822,7 +835,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     "INTERCAL": lambda n: (
-        (_intercal_worst(n), *(_intercal_chars_worst(n),) * (n <= 12))
+        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 12 else ()))
         if 3 <= n <= 25
         else ()
     ),
