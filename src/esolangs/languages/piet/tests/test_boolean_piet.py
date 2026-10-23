@@ -146,13 +146,13 @@ def test_the_default_is_the_smaller_of_strip_and_fold() -> None:
 
 
 def test_a_constant_half_is_folded_and_runs() -> None:
-    """All four constant-half shapes at n=5 beat the plain lookup and execute."""
+    """All four constant-half shapes at n=6 beat the plain lookup and execute."""
     rng = random.Random(3)
-    half = "".join(rng.choice("01") for _ in range(16))
-    plain = _codels(generate(half + "".join(rng.choice("01") for _ in range(16))))
-    for table in (half + "0" * 16, half + "1" * 16, "0" * 16 + half, "1" * 16 + half):
+    half = "".join(rng.choice("01") for _ in range(32))
+    plain = _codels(generate(half + "".join(rng.choice("01") for _ in range(32))))
+    for table in (half + "0" * 32, half + "1" * 32, "0" * 32 + half, "1" * 32 + half):
         assert _codels(generate(table)) < plain
-        assert _evaluate("Piet", generate(table), inputs=5) == table
+        assert _evaluate("Piet", generate(table), inputs=6) == table
 
 
 @pytest.mark.parametrize("truth_table", ["", "0", "1", "010", "0121"])
