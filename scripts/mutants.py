@@ -173,9 +173,7 @@ def _pytest(package: str, *, stop: bool) -> list[str]:
     # inside "deadline"), where they flake under load.  Exclude that stem
     # outside the language packages, so a package's own deadline-named
     # test still runs.
-    keyword = (
-        f"({registry_keyword(package)}) and not (deadline and not languages)"
-    )
+    keyword = f"({registry_keyword(package)}) and not (deadline and not languages)"
     return [
         *command,
         f"src/esolangs/languages/{package}",
