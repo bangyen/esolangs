@@ -286,6 +286,8 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
         ),
         # A width request tries a rotated selector order from three inputs.
         ("01000010", 30, 921),
+        # Three essential inputs exactly: the rotated order starts here.
+        ("00000111", 1, 1468),
         # A wide table of long zero runs and dense blocks, pinned end to end.
         (
             "00000000000000000000011100000111011101110111011101110111011101110000011100000000000000000111011101110111011100000111011100000111",
