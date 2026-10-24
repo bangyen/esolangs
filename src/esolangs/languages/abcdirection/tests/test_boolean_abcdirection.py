@@ -61,3 +61,17 @@ def test_balance_of_xor_n2_is_exact() -> None:
     """The tight width charges reads and band cells, not the write: 40x16."""
     program = str(esolangs.generate("ABCDirection", "0110", balance=True))
     assert balance_score(program) == (40, 655, 40)
+
+
+def test_balance_of_a_four_input_table_is_exact() -> None:
+    """The width model prices each print unit at five columns; pricing
+    one at six widens the helix a full lap: (side, length, width)."""
+    program = str(esolangs.generate("ABCDirection", "1010010010000110", balance=True))
+    assert balance_score(program) == (49, 1049, 49)
+
+
+def test_balance_of_not_n1_is_exact() -> None:
+    """The tight width's slack is four columns, for the lap's landing
+    and drop; a fifth widens even the one-input helix: (35, 575, 35)."""
+    program = str(esolangs.generate("ABCDirection", "01", balance=True))
+    assert balance_score(program) == (35, 575, 35)
