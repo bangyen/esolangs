@@ -163,6 +163,22 @@ def test_nonuniform_cells_retain_tokens(program: str) -> None:
     assert balance_score(balanced) <= balance_score(program)
 
 
+def test_a_request_as_wide_as_the_widest_token_keeps_the_plain_root() -> None:
+    """At width == the widest token the plain build stands; no swap is tried."""
+    from esolangs.languages.fractran.generator import fractran
+
+    assert fractran("0001", 10) == "17*3^$*5^$\n1/7 2/11\n11/65 7/13\n13/51 7/17\n1/5"
+
+
+def test_balanced_width_bounds_stop_below_the_widest_token() -> None:
+    """The balance regimes cap at the widest token minus one, not above it."""
+    table = "0100110000110100000110010110110100111010011101100010000011011111"
+    program = str(esolangs.generate("FRACTRAN", table, balance=True))
+    rows = program.split("\n")
+    assert (len(program), len(rows), max(map(len, rows))) == (462, 16, 33)
+    assert _evaluate("FRACTRAN", program, inputs=6) == table
+
+
 def test_fractran_parity_representation_omits_empty_width_regimes() -> None:
     from esolangs.languages.fractran.generator import _balance as _fractran
 
