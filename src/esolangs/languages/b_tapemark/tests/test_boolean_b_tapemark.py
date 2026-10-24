@@ -232,6 +232,13 @@ def test_the_narrow_staircase_is_exactly_sized(table: str, length: int) -> None:
     assert len(esolangs.generate("B-tapemark", table, width=8)) == length
 
 
+def test_wide_reflection_turns_the_beam_right_after_the_copy() -> None:
+    """The turn sits at 3 * size + 1: reflected, ``<`` follows the last copy."""
+    program = esolangs.generate("B-tapemark", "01", width=40)
+    assert len(program) == 106
+    assert next(row for row in program.splitlines() if "<" in row) == "   /|1*|0*<"
+
+
 def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
     """The reduced copy length (17/20 of the closed form) stays in the folds tried."""
     table = "".join("1" if i in (13, 107, 141) else "0" for i in range(256))
