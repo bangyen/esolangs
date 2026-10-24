@@ -92,6 +92,24 @@ def test_names_past_the_cap_spill_to_arrays_and_execute(
     assert "".join(_run(table, row) for row in range(1 << n)) == table
 
 
+def test_spill_width_is_zero_at_the_cap_and_a_ceiling_root_past_it() -> None:
+    """``_spill``: nothing past the cap -> 0; S past it -> ceil(sqrt(S))."""
+    from esolangs.languages.intercal.generator import _VARIABLE_MAX, _spill
+
+    assert _spill(_VARIABLE_MAX) == 0
+    assert _spill(_VARIABLE_MAX + 288) == 17
+    assert _spill(_VARIABLE_MAX + 289) == 17
+    assert _spill(_VARIABLE_MAX + 295) == 18
+
+
+def test_program_declares_one_array_per_spill_width_of_names() -> None:
+    """289 names past the cap at width 17 declare 17 arrays, not 18."""
+    from esolangs.languages.intercal.generator import _VARIABLE_MAX, _ZERO, _program
+
+    program = _program(2, [(_VARIABLE_MAX + 289, _ZERO)], _ZERO, width=17)
+    assert re.findall(r",(\d+) <- #17", program) == [str(j) for j in range(1, 18)]
+
+
 @pytest.mark.medium
 def test_every_name_of_the_widest_witness_is_a_legal_variable() -> None:
     """n = 21 needs names to .65830; INTERCAL variables stop at .65535."""
