@@ -157,6 +157,7 @@ def _shape(program: str) -> tuple[int, int, int]:
         (1, 11, (49, 5, 11)),  # two-digit columns just reachable from width 10
         (4, 20, (79, 4, 20)),
         (7, 1, (224, 20, 11)),  # the row floor of the narrowest request
+        (11, 1, (500, 21, 23)),  # the packed count's ceiling sets 23 columns
         (13, 1, (1522, 23, 67)),  # the packed lookup's row floor
     ],
 )
@@ -171,6 +172,7 @@ def test_requested_width_builds_the_exact_grid(
     ("table", "shape"),
     [
         ("1" * 16, (42, 6, 9)),
+        ("0010001010001001", (78, 7, 14)),  # the crossing's side + 2 wins
         (_seeded(6), (140, 9, 17)),
         (_seeded(7), (218, 11, 20)),  # the narrow layout's floor passes 9 columns
         (_seeded(11), (484, 15, 32)),
@@ -181,6 +183,20 @@ def test_balanced_grid_is_the_smallest_square(
 ) -> None:
     program = esolangs.generate("Befunge", table, balance=True)
     assert _shape(program) == shape
+
+
+def test_the_plain_build_never_exceeds_the_torus_width() -> None:
+    # The _seeded(9) header is 81 cells: the fit check's cap at the
+    # torus width sends it to the folded build (592 cells) instead of
+    # emitting a row the 80-wide playfield would refuse.
+    program = befunge(_seeded(9), 81)
+    assert _shape(program) == (592, 8, 80)
+
+
+def test_a_header_exactly_as_wide_as_the_request_stays_plain() -> None:
+    # The constant four-input header is exactly 24 cells; at width 24
+    # the fit check's <= keeps the two-row plain build.
+    assert befunge("0" * 16, 24) == "0&$&$&$&$:1%\\1/1+g68*-.@\n0"
 
 
 @pytest.mark.parametrize("width", [81, 1000])
