@@ -111,3 +111,20 @@ class TestParameterizedMinskySwap:
 
         program = _fill_minsky_swap(minsky_swap(AND2), list(bits))
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
+
+    def test_tables_with_ignored_inputs_execute(self) -> None:
+        """An ignored input's stage is a run plus two ``~`` and adds nothing.
+
+        Its target count must still advance by exactly the text it
+        emits: every later stage's skip target is counted from it, so
+        a drift of one lands each later skip a command too far.
+        """
+        import esolangs
+
+        for table in ("1010", "0011", "0101", "01010000", "00001111"):
+            n = len(table).bit_length() - 1
+            template = esolangs.generate("Minsky Swap", table)
+            for row in range(1 << n):
+                bits = list(map(int, f"{row:0{n}b}"))
+                program = esolangs.instantiate("Minsky Swap", str(template), bits)
+                assert self.run_minsky_swap(program) == table[row]
