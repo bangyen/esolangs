@@ -358,3 +358,17 @@ def test_balance_closed_form_is_never_worse_than_the_swept_one() -> None:
             new = esolangs.generate("Container", table, balance=True)
             old = _swept_balance(table, esolangs.generate("Container", table))
             assert balance_score(new) <= balance_score(old), table
+
+
+def test_output_gate_rests_at_two_for_the_smallest_peak() -> None:
+    """One input: the leaf peak is 2, so the output gate rests at 2.
+
+    With the resting value at 3 the emitted program still computes
+    the table (the gate value is a free choice in its range) at the
+    same length, so only the exact text pins it.
+    """
+    assert boolean.container("01") == (
+        "T:\n1 T>=T\n:\n1 T>=0\n-2 T>=1\n1 T>=2\nIN:\nc=47:\n1 T>=0\n"
+        "-2 T>=1\n1 T>=2\na=2:\n-1 a>=1\nb:\n2 a>=1\n-2 a>=2\n-2 c>=IN\n"
+        "d=2:\n-1 T>=1\nOUT=48:\n1 b>=d\nPRINT:\n1 T>=2\nEXIT=1:\n-1 T>=3"
+    )
