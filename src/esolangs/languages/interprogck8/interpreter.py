@@ -57,7 +57,8 @@ Decisions:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from functools import cache
 from typing import cast
 
 from esolangs.exceptions import HaltError
@@ -125,19 +126,22 @@ class _State:
 # exhausted, so the cat example's trailing ``EXE`` recurses at constant depth
 # and its state repeats: the cycle detector can prove the truth-machine's
 # ``1`` branch loops.
-def _advance_cursor(state: _State) -> _State:
+def _advance_cursor(state: _State, acc: int | None = None) -> _State:
     """Move past the line just executed, popping every finished frame.
 
     Popping eagerly keeps a tail-recursive function at constant stack
-    depth; otherwise no state repeats and a loop cannot be proved.
+    depth; otherwise no state repeats and a loop cannot be proved.  ``acc``
+    replaces the accumulator in the same step.
     """
+    if acc is None:
+        acc = state.acc
     if state.frames:
         body, index = state.frames[-1]
         frames = (*state.frames[:-1], (body, index + 1))
         while frames and frames[-1][1] >= len(frames[-1][0]):
             frames = frames[:-1]
-        return replace(state, frames=frames)
-    return replace(state, ip=state.ip + 1)
+        return _State(state.lines, state.ip, acc, state.slot, frames)
+    return _State(state.lines, state.ip + 1, acc, state.slot, state.frames)
 
 
 def _call(state: _State) -> _State:
@@ -147,7 +151,8 @@ def _call(state: _State) -> _State:
     state = _advance_cursor(state)
     if not state.slot:  # an empty body is a call that returns at once
         return state
-    return replace(state, frames=(*state.frames, (state.slot, 0)))
+    frames = (*state.frames, (state.slot, 0))
+    return _State(state.lines, state.ip, state.acc, state.slot, frames)
 
 
 def _capture(state: _State) -> _State:
@@ -162,7 +167,7 @@ def _capture(state: _State) -> _State:
     if end >= len(state.lines):
         raise HaltError("unclosed function")
     body = state.lines[state.ip + 1 : end]
-    return replace(state, slot=body, ip=end + 1)
+    return _State(state.lines, end + 1, state.acc, body, state.frames)
 
 
 def _restart(state: _State) -> _State:
@@ -225,6 +230,7 @@ def _value(arg: str, acc: int, rng: Randomness | None, byte: int | None) -> int:
     return _pips(arg)
 
 
+@cache
 def _read_kinds(line: str) -> tuple[str, ...]:
     """How ``line`` reads input: one ``"pips"``/``"ord"`` per read, in order.
 
@@ -299,7 +305,7 @@ def _advance(
         nxt = state.ip + 1 + acc
         if nxt > len(state.lines):
             raise HaltError("EOFError: not enough lines to skip down")
-        return replace(state, ip=nxt), None
+        return _State(state.lines, nxt, acc, state.slot, state.frames), None
     if line == "<":
         return _capture(state), None
     if line == "EXE" or (line, acc) in (("IFT", _TRUE), ("IFQ", _FALSE)):
@@ -309,7 +315,7 @@ def _advance(
     if line == "z":
         return _restart(state), None
     acc, out = _accumulate(line, acc, rng, reads)
-    return _advance_cursor(replace(state, acc=acc)), out
+    return _advance_cursor(state, acc), out
 
 
 #: A ``_State`` flattened for the branching search: the same five fields,
