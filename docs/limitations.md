@@ -497,8 +497,7 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
-  with the winner. Back scaling past n = 16 (the slot rule's comb rows are measured to n = 17, not derived) and
-  execution past n = 9 (the fold ships whenever the comb has 769 rows:
+  with the winner. Back execution past n = 9 (the fold ships whenever the comb has 769 rows:
   26,208 cells against 26,915 at n = 10);
   ArrowQueue execution (proved 11T + 32n + 92), Polynomial execution (C - 2
   at n = 3, 4 over every table; C minus the doubling levels, 60, 95, 131, 198,

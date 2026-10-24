@@ -65,21 +65,27 @@ def _order(n: int) -> list[int]:
 def witness(n: int) -> str:
     """Concatenated n = 6 blocks: n = 9 keeps the fold above the comb's 12,320.
 
-    From n = 10 the comb (>= 752 rows at n = 10, 1,503 at 11) outruns the fold
-    (35 x 749 / 38 x 1,412 rows), and the full-fold slots make F the fold.
+    From n = 10 the comb outruns the fold (752 rows against 749 at n = 10), and
+    the full-fold slots make F the fold.  For every n >= 10 the comb has
+    N + sum(r_s) - sum(save(s_i, s_i+1)) rows, N = 2^(n-6) slots: no level above
+    a block shares (slots i and i + 2^j differ, 3 and 5 not dividing 2^j; the
+    ring pairs slot N - 1 with slot 0), a block's first nodes sit on the zero
+    spine so a link sees only its two blocks, r_s = 44-48 and a link saves at
+    most 4 (the 72 ordered pairs, run).  So rows >= 41N, the width is 3n + 5,
+    and (3n + 5) * 41N >= 27.5T > fold for n >= 13; n = 10-12 are the formula.
     """
     return "".join(_BLOCKS[i] for i in _order(n))
 
 
 def _cells(n: int, _: str) -> int:
-    """F: the comb to n = 5, then min(comb, fold), under 27.5T; reached to n = 16."""
+    """F: the comb to n = 5, then min(comb, fold), under 27.5T."""
     return _comb(n) if n <= 5 else min(_comb(n), _fold(n))
 
 
 FORMULAS = {
     "scaling": (
         _cells,
-        frozenset(range(3, 17)),
-        (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+        True,
+        (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17),
     )
 }
