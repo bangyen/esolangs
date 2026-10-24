@@ -183,3 +183,34 @@ def test_balanced_layout_scores_are_exact(
     program = esolangs.generate("fargo", table, balance=True)
     assert balance_score(str(program)) == score
     assert _evaluate("Fargo", program, inputs=len(table).bit_length() - 1) == table
+
+
+def test_width_ten_keeps_the_exact_fit_definition() -> None:
+    """The naming budget's exact-fit edge, pinned as exact text.
+
+    At width 10 the definition's children sum exactly to the budget, so
+    the naming loop stops where it is; one name more (or a longer
+    lookahead) rewrites the whole assignment.
+    """
+    program = boolean.fargo("10", width=10)
+    assert program == "a @ 0\nb ^ 1 a\n% 0 b\n$\n"
+    assert [run_fargo(program, [bit]) for bit in "01"] == ["1", "0"]
+
+
+def test_a_wide_definition_keeps_its_pinned_silhouette() -> None:
+    """A width-40 definition whose naming the budget lookahead fixes.
+
+    The lookahead reserves the next name's length against the width;
+    reserving one character more, or naming past the exact fit, moves
+    this table's program to 684 chars in a ragged block.
+    """
+    table = (
+        "0110111010001010100110010101001111011011001100100000111110110110"
+        "0101001111010111101101000100110000100011000011001010101011101100"
+        "0000110110001110110011001001100011110011100001010110000000001001"
+        "1001011000100100001100010100001000110010111010011011000100110011"
+    )
+    program = boolean.fargo(table, width=40)
+    rows = program.splitlines()
+    assert len(program) == 678
+    assert len(rows) * max(map(len, rows)) == 1440
