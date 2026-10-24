@@ -45,6 +45,16 @@ def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> 
         esolangs.instantiate("ArrowQueue", source, [0, 1], truth_table="1001")
 
 
+def test_width_six_builds_the_wide_cascade() -> None:
+    """Width 6 is past the narrow cutoff: the cascade keeps its third column."""
+    from esolangs.runtime._evaluate import _evaluate
+
+    template = arrowqueue("01011100", 6)
+    lines = template.splitlines()
+    assert (len(template), len(lines), max(map(len, lines))) == (195, 36, 6)
+    assert _evaluate("ArrowQueue", template, inputs=3) == "01011100"
+
+
 @pytest.mark.parametrize("width", [4, 5, 6])
 def test_a_narrow_template_fills_against_its_table(width: int) -> None:
     """Width 5 shifts the setter column and was refused as a foreign template."""
@@ -86,6 +96,8 @@ def test_balanced_fold_computes_every_row_and_is_squarer(table: str) -> None:
         ("11101111", 10, 26, 245),
         ("01000100", 10, 21, 180),
         ("01011010", 26, 5, 133),
+        ("11001100", 11, 11, 103),  # the last strip sets the grid's height
+        ("01000000", 12, 21, 235),
     ],
 )
 def test_balanced_three_input_sizes_are_pinned(
