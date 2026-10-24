@@ -60,7 +60,7 @@ def _prices(
 
 
 def _chars(n: int, _: str) -> int:
-    """Worst characters, n = 3..19: the bound less what its last levels cannot reach.
+    """Worst characters, n = 3..20: the bound less what its last levels cannot reach.
 
     The bound prices every reference past the first at the dearest call.
     The 14 four-row subtables a level up are all there is, so their
@@ -71,7 +71,10 @@ def _chars(n: int, _: str) -> int:
     n - 3 objects once, the rest of their slots at the dearest id (n = 12: 256
     parents, 512 slots, wide ids pair freely), so nothing more is lost until
     n = 19: its 32,768 parents out-run the 172 wide ids' 29,412 pairs, and
-    :func:`pair_loss` prices the 3,356 pairs left to the narrow ids.
+    :func:`pair_loss` prices the 3,356 pairs left to the narrow ids.  At
+    n = 20 the capped level holds all 65,534 sixteen-row subtables, so the
+    parents are a permutation of them and the 256 eight-row objects' 130,560
+    spare references are fixed too (:func:`capped_loss`).
     """
     prices = _prices(n)
     return (
@@ -113,4 +116,4 @@ def witness(n: int) -> str:
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 20)), tuple(range(3, 20)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 21)), tuple(range(3, 21)))}

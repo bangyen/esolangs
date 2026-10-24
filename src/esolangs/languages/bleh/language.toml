@@ -7,7 +7,7 @@ backlinks = 2
 [proof_status]
 labels = ["tree"]
 qualification = "a function a shared node matches its input's character; a folded node or constant reads it as a statement"
-scaling = "linear: worst F characters, n = 3..19; at most beyond"
+scaling = "linear: worst F characters, n = 3..20; at most beyond"
 execution = "poly n: worst 8n + 5 steps: a call, a read and a match a level"
 workspace = "poly n: worst 64n + 306 + Σ_{0<a<n} bl(a) + bl(n) bits past n = 1: forced thunks, the print block"
 
