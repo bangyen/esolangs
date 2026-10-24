@@ -8,7 +8,13 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import input_weights
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.fish.generator import _folded, balance_fish, fish
+from esolangs.languages.fish.generator import (
+    _column,
+    _folded,
+    _packed,
+    balance_fish,
+    fish,
+)
 from esolangs.languages.fish.interpreter import run
 from esolangs.runtime._evaluate import _evaluate
 from tests.support.generator_support import run_lines
@@ -86,3 +92,73 @@ def test_a_balanced_table_past_225_code_rows_uses_a_doubling_height_literal() ->
         stdin = esolangs.encode_inputs("Fish", bits)
         got = esolangs.run("Fish", program, stdin=stdin, timeout=60)
         assert esolangs.read_answer("Fish", got) == table[row], row
+
+
+def test_packed_programs_execute_seeded_random_tables() -> None:
+    # The witness tables' packed forms lose the race or cancel out; a
+    # plain random table's packed row is decoded against _BASE and the
+    # complemented bits, and both must hold.
+    rng = random.Random(20261024)
+    for n in (4, 5, 6):
+        for _ in range(3):
+            table = "".join(rng.choice("01") for _ in range(1 << n))
+            assert _evaluate("Fish", fish(table), inputs=n) == table
+
+
+def test_a_width_that_exactly_fits_the_header_returns_the_plain_program() -> None:
+    # The header is exactly 13 cells: at width 13 the plain form fits.
+    assert fish("0000", 13) == "0i~i~1g68*-n;\n0"
+
+
+def test_fold_columns_fill_all_but_two_of_the_width() -> None:
+    # Width 4 folds on two columns; one less margin folds on one.
+    assert fish("0001", 4) == (
+        ">0iv\nv86<\n>*-v\nv2$<\n>*+v\nv6i<\n>8*v\nv$-<\n>2*v\nv:+<\n"
+        ">12v\nv%*<\n>$:v\nv21<\n>*%v\nv1-<\n>2*v\nv5,<\n>5*v\nvg+<\n"
+        ">68v\nv-*<\n>n;v\n\n\n00\n01"
+    )
+
+
+def test_the_fold_height_reserve_counts_three_literal_cells() -> None:
+    # rows_for(3): the a*b literal is three cells, and the height it
+    # buys must cover the code exactly as reserved.
+    assert fish("01010000", 1) == (
+        ">0v\nvi<\n>6v\nv8<\n>*v\nv-<\n>$v\nv2<\n>*v\nv+<\n>iv\nv~<\n"
+        ">iv\nv6<\n>8v\nv*<\n>-v\nv$<\n>2v\nv*<\n>+v\nv:<\n>1v\nv%<\n"
+        ">$v\nv:<\n>1v\nv%<\n>-v\nv1<\n>,v\nv7<\n>6v\nv*<\n>+v\nvg<\n"
+        ">6v\nv8<\n>*v\nv-<\n>nv\nv;<\n0\n1\n0\n0"
+    )
+
+
+def test_a_one_row_fold_of_a_constant_table() -> None:
+    assert fish("00", 1) == (
+        ">0v\nvi<\n>~v\nv:<\n>1v\nv%<\n>$v\nv:<\n>1v\nv%<\n>-v\nv1<\n"
+        ">,v\nv5<\n>5v\nv*<\n>+v\nvg<\n>6v\nv8<\n>*v\nv-<\n>nv\nv;<\n\n0"
+    )
+
+
+def test_the_column_literal_caps_at_225_then_doubles() -> None:
+    # f*k reaches 225 in three cells; the next column is a power of two.
+    assert _column(211) == (225, "ff*")
+    assert _column(225) == (225, "ff*")
+    assert _column(226) == (256, "12*2*2*2*2*2*2*2*")
+
+
+def test_the_packed_overlap_check_reserves_two_literals() -> None:
+    # The literal appears twice; when both copies would overrun the
+    # column the powers start at, the column moves past them.
+    powers = "".join(chr(64 + (1 << bit)) for bit in range(6))
+    snug = _packed("r" * 189, "0" * 16)
+    assert snug.index(powers) == 256
+    assert len(snug) == 265
+    wide = _packed("r" * 190, "0" * 16)
+    assert wide.index(powers) == 512
+    assert len(wide) == 521
+
+
+def test_the_fold_height_past_225_doubles_from_the_body_length() -> None:
+    # 226 rows of code: too many for an a*b literal (cap 225), so the
+    # height doubles to 512 and the literal spells it with 2* nine times.
+    rows = _folded("r" * 204, "01" * 128, 1).split("\n")
+    assert len(rows) == 768
+    assert rows.count("") == 270
