@@ -74,6 +74,11 @@ def test_folding_shortens_a_constant_table() -> None:
     assert len(false("00000000")) < len(false("01101001"))
 
 
+def test_the_all_ones_cofactor_folds_through_its_variable() -> None:
+    """The ``a=|`` fold is priced at the five chars it adds, not six."""
+    assert false("1101") == "^1&a:^1&b:b;a;a=|1&."
+
+
 def test_the_plain_tree_grows_by_a_line() -> None:
     """The shipped build folds and shares subtrees, so the plain tree is measured."""
 
