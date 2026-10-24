@@ -129,3 +129,37 @@ def test_balance_stays_within_five_percent_of_the_retired_sweep(seed: int) -> No
         for row in (0, (1 << inputs) - 1, rng.randrange(1 << inputs)):
             bits = list(format(row, f"0{inputs}b"))
             assert run_qoibl(balanced, bits) == table[row]
+
+
+class TestQoiblSweepPins:
+    """Pins from the mutation sweep: the Horner scratch variable and the
+    closed-form balance widths were unobserved."""
+
+    def test_the_horner_scratch_is_variable_two(self) -> None:
+        # _horner_lines expands over-long literals into variable 2 ("ye");
+        # variable 3 computes the same programs but is not the scratch.
+        from esolangs.languages.qoibl.generator import _horner_lines
+
+        lines = [f"we y we {'y' * 27} we"]
+        expanded = _horner_lines(lines, 4)
+        assert expanded[0].startswith("we ye we ")
+        assert any("qe ye qe" in line for line in expanded)
+
+    @pytest.mark.parametrize(
+        ("table", "shape"),
+        [
+            ("00000000", (190, 12, 18)),
+            ("0000000000000000", (220, 14, 19)),
+            (
+                "0110000101111110000011100110010100101011000101100000100001111110101010110100111010111101001001001011011010000100010001000100000011001101000110010000110110011110011110001010001001101011011100100101110101000111100010101011000110110001010001100111100010110001",
+                (1233, 32, 65),
+            ),
+        ],
+    )
+    def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
+        program = str(esolangs.generate("Qoibl", table, balance=True))
+        assert (
+            len(program),
+            program.count("\n") + 1,
+            max(map(len, program.split("\n"))),
+        ) == shape
