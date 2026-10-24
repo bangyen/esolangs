@@ -196,3 +196,26 @@ def test_six_input_table_keeps_its_shared_gate_size() -> None:
 
     table = "0001111111110001101100011011110111110000110100010001111110110001"
     assert len(esolangs.generate("Boolfuck", table)) == 633
+
+
+def test_four_input_table_keeps_its_gate_size() -> None:
+    import esolangs
+
+    # The gates race starts at n = 4, where the workspace first holds;
+    # this table's winner is the gates program, not the shared tree.
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = "0001110100101101"
+    program = boolfuck(table)
+    assert len(esolangs.generate("Boolfuck", table)) == 191
+    assert _evaluate("Boolfuck", program, inputs=4) == table
+
+
+def test_six_input_table_on_the_command_bound_keeps_its_shared_size() -> None:
+    import esolangs
+
+    # The shared-blocks tree's command count equals the bound exactly;
+    # admission is inclusive, so the shared program stands.
+    table = "1101010010101110011101011010111000000100111101000101111100000101"
+    assert len(esolangs.generate("Boolfuck", table)) == 599
+    _execute(table, boolfuck(table), range(len(table)))
