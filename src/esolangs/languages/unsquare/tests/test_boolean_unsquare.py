@@ -89,3 +89,23 @@ def test_shared_push_body_executes_within_ledger() -> None:
         4 * 256 + 79 * 8 + 22,
         lambda p: 256 + 12 + len(p).bit_length() + (len(p) - 33).bit_length() + 8,
     )
+
+
+def test_cost_accounting_counts_executed_commands() -> None:
+    """The shared form's admission arithmetic, counted exactly.
+
+    _run's loop form executes len(setup) + 5 * (count // 2) +
+    count % 2 commands (the odd tail pushes once more); the
+    bound is one plain-lookup pass, 4 * 2**n + 79 * n + 22; the
+    lookup outside the pushes costs 79 a kept input, 2 an
+    unkept one, plus the table and 26.
+    """
+    from esolangs.languages.unsquare.generator import (
+        _command_bound,
+        _lookup_cost,
+        _run,
+    )
+
+    assert _run("I", 21)[1] == 58
+    assert _command_bound(3) == 291
+    assert _lookup_cost(5, 2, 32) == 222
