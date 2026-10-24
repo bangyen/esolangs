@@ -235,3 +235,21 @@ def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
         **({"balance": True} if width == "balance" else {"width": width}),
     )
     assert _evaluate("Alight", program, inputs=n, settings=settings) == table
+
+
+def test_alight_small_tables_at_width_40_keep_their_exact_silhouette() -> None:
+    """Two layout boundaries the size race alone leaves unpinned.
+
+    At width 40, table 01's next piece exactly fills the row's room:
+    the packer must take it (splitting anyway costs 29 chars), and
+    table 00's minimax root estimate (isqrt(length * 11)) sets its
+    silhouette directly (a scale of 12 costs 22 chars).  Both mutant
+    layouts still compute their tables at the same widths, so only
+    the exact length and dimensions pin them.
+    """
+    from esolangs.languages.alight.generator import _dimensions
+
+    packed = boolean.alight("01", 40)
+    assert (len(packed), _dimensions(packed)) == (788, (34, 33))
+    rooted = boolean.alight("00", 40)
+    assert (len(rooted), _dimensions(rooted)) == (568, (24, 33))
