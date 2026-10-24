@@ -104,3 +104,23 @@ def test_multiple_flags_reduce_dense_cap_program_within_ledger() -> None:
         lambda p: 2 * n + 5 + 3 * n.bit_length() + (n + 1) * len(p).bit_length(),
         rows=[0, 1, 1 << (n - 1), (1 << n) - 2, (1 << n) - 1],
     )
+
+
+def test_admission_bound_keeps_the_winning_shared_form() -> None:
+    """The admission bound keeps the shared form it was priced on.
+
+    Both tables are won by a shared form whose command count sits
+    under ``(3 * n * n + 3) // 4 + 20 * n + 4`` but over the bound
+    with either product of the quadratic term replaced by a sum;
+    a bound computed that way excludes the winner and falls back
+    to a longer form (306 and 628 characters respectively).
+    """
+    from esolangs.languages.painfuck.generator import painfuck
+
+    assert len(painfuck("10000001000101100001011001101000")) == 287
+    assert (
+        len(
+            painfuck("1000010101001101010111100001001111011110000000010101111010000110")
+        )
+        == 608
+    )
