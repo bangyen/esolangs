@@ -94,11 +94,12 @@ def worst_diagram(
                     pairs += [(zero, order[-1]), (one, order[-1])]
                 else:
                     pairs.append((zero, one))
-        by_cost = sorted(
-            ((x, y) for x in cost for y in cost if x != y),
-            key=lambda p: -(cost[p[0]] + cost[p[1]]),
-        )
-        pairs += [p for p in by_cost if p not in pairs][: nodes - len(pairs)]
+        if len(pairs) < nodes:  # n = 20 fills every slot: no spare pairs to rank
+            by_cost = sorted(
+                ((x, y) for x in cost for y in cost if x != y),
+                key=lambda p: -(cost[p[0]] + cost[p[1]]),
+            )
+            pairs += [p for p in by_cost if p not in pairs][: nodes - len(pairs)]
     return "".join(a + b for a, b in pairs)
 
 
@@ -128,7 +129,7 @@ def capped_loss(
         best = best_cover(cost, nodes, set(cost))
         return assumed - sum(cost[x] + cost[y] for x, y in best)
     loss = 24 * dear - 6 * sum(children) - 12 * constant
-    if k == n - 3:
+    if k <= n - 3:
         # Level n - 3 is every ordered pair of the 16 four-row objects (14
         # subtables, 2 constants): 496 slots, each object named 31 times, so
         # its references cost 31 * S, S the 16 prices, whatever the order.
@@ -136,7 +137,14 @@ def capped_loss(
         first = profile(n)[3][n - 2] - 13
         prices = [ref(first + i, i < 2) for i in range(14)] + [const(n - 2)] * 2
         loss += 480 * widest(n - 2) - 30 * sum(prices)
-    return loss if k >= n - 3 else 0
+    if k == n - 4:
+        # Likewise level n - 4 is every ordered pair of the 256 eight-row
+        # objects (254 subtables, 2 constants): 511 slots each.
+        first = profile(n)[3][n - 3] - 253
+        eq = profile(n)[1][n - 3]
+        prices = [ref(first + i, i < eq) for i in range(254)] + [const(n - 3)] * 2
+        loss += 130560 * widest(n - 3) - 510 * sum(prices)
+    return loss if k >= n - 4 else 0
 
 
 def parent_loss(
