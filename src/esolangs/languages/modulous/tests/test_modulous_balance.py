@@ -134,3 +134,24 @@ def test_chunked_columns_match_the_swept_optimum() -> None:
             for off in (-3, -1, 1, 3)
         )
     assert got <= 1.03 * swept
+
+
+def test_suffix_measurement_starts_past_the_table_push() -> None:
+    """The chunked centre is measured from the instruction suffix.
+
+    The suffix slice starts at ``size + _TABLE_PUSH_OVERHEAD``,
+    past the default program's table push.  Starting the slice
+    that far earlier folds table-push tokens into the suffix
+    sum, moves the centre, and this table's balanced form
+    renders 48 columns wide instead of 49.
+    """
+    from esolangs.languages.modulous.generator import _balance, modulous
+
+    table = (
+        "0100001101101111101010100101110100101001001110010000111011001011"
+        "1111010111000000010101110011001010010110000010001110011011001101"
+        "1101000001011010111011111100101000110011011010001011001010111001"
+        "1011100011011111000101001001110111100100011100010010011010111100"
+    )
+    balanced = _balance(table, modulous(table))
+    assert max(map(len, balanced.splitlines())) == 49

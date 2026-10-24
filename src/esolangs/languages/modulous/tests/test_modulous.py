@@ -476,3 +476,51 @@ def test_a_draw_moves_the_snapshot_at_the_same_cursor() -> None:
 class TestContract(SnapshotContract):
     machine = staticmethod(lambda code: Modulous(code, IO()))
     stepping_program = "[PSH INT 5][PRT INT][END]"
+
+
+def test_width_four_pushes_the_table_as_string_chunks() -> None:
+    """At width 4 the prologue already pushes STR chunks, not INT bits.
+
+    The per-bit INT form is the width < 4 fallback.  At exactly 4
+    the chunked form renders -- one table character per push at
+    this width -- so the program opens with STR pushes.
+    """
+    from esolangs.languages.modulous.generator import modulous
+
+    assert modulous("0001", 4).split()[:8] == [
+        "[",
+        "PSH",
+        "STR",
+        '"1"]',
+        "[",
+        "PSH",
+        "STR",
+        '"0"]',
+    ]
+
+
+def test_chunked_columns_follow_the_square_law() -> None:
+    """``_chunked_columns`` solves ``w^2 = 4 * size + 2 * suffix``.
+
+    The centre the balanced form searches around: the ceiling
+    root of four times the table size plus twice the suffix,
+    floored at _MIN_CHUNK_WIDTH + 3.
+    """
+    from esolangs.languages.modulous.generator import _chunked_columns
+
+    assert _chunked_columns(256, [1] * 10) == 33
+    assert _chunked_columns(64, [3] * 7) == 18
+    # Below the root's range the floor binds: _MIN_CHUNK_WIDTH + 3.
+    assert _chunked_columns(2, []) == 9
+
+
+def test_fallback_chunks_hold_width_minus_three_characters() -> None:
+    """The chunked fallback packs ``width - 3`` table characters a push.
+
+    At width 8 the eight-row table is pushed as a five-character
+    chunk and a three-character chunk; one character narrower
+    chunks would split it 4 + 4 instead.
+    """
+    from esolangs.languages.modulous.generator import modulous
+
+    assert '"01010"' in modulous("01010001", 8)
