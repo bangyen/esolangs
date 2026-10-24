@@ -264,3 +264,44 @@ def test_six_input_table_with_five_essential_rows_pins_both_sizes() -> None:
     table = "0010100100101001011011100110111010011011100110110110101101101011"
     assert len(esolangs.generate("AddSubJump", table)) == 1063
     assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1427
+
+
+def test_packed_program_prints_then_halts_on_the_special_address() -> None:
+    """The packed builder's last instruction prints, then jumps to -8.
+
+    Any negative target halts the machine, so execution cannot tell -8
+    from -9; the shipped spelling is pinned as exact text.
+    """
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = "0111111010111101111010100000001100101100101110001110010110111110"
+    program = boolean.addsubjump(table)
+    assert program == (
+        "338 338 4 333 338 -1 8 332 338 335 12 333 337 337 16 332 337 338 20 332 338 "
+        "338 24 333 338 -1 28 332 338 335 32 333 337 337 36 332 337 338 40 332 338 33"
+        "8 44 333 338 -1 48 332 338 335 52 333 337 337 56 332 337 338 60 332 338 338 "
+        "64 333 338 -1 68 332 338 335 72 333 337 337 76 332 337 338 80 332 338 338 84"
+        " 333 338 -1 88 332 338 335 92 333 337 337 96 332 337 338 100 332 338 338 104"
+        " 333 338 -1 108 332 338 335 112 333 337 337 116 332 337 338 120 332 126 334 "
+        "124 337 332 332 132 332 126 334 132 332 332 332 144 332 126 334 140 333 332 "
+        "332 196 332 337 333 148 333 339 333 152 333 340 333 156 332 162 334 160 339 "
+        "332 332 168 332 162 334 168 332 332 332 120 332 162 334 176 333 332 332 180 "
+        "332 201 333 184 332 339 336 188 332 340 340 192 333 332 332 120 332 341 341 "
+        "200 333 341 346 204 332 342 342 208 333 342 340 212 332 342 333 216 332 343 "
+        "343 220 333 344 344 224 333 230 334 228 341 332 332 236 332 230 334 236 332 "
+        "332 332 248 332 230 334 244 333 332 332 288 332 341 333 252 333 258 334 256 "
+        "341 332 332 264 332 258 334 264 332 332 332 276 332 258 334 272 333 332 332 "
+        "284 332 341 333 280 333 343 333 224 332 344 333 288 332 342 333 292 333 298 "
+        "334 296 342 332 332 304 332 298 334 304 332 332 332 316 332 298 334 312 333 "
+        "332 332 324 332 341 341 320 333 341 343 216 332 345 344 328 332 -1 345 -8 33"
+        "2 0 1 4 48 6 0 0 6 0 0 0 0 0 48 62 53 59 21 0 19 19 7 39 54 7"
+    )
+    assert _evaluate("AddSubJump", program, inputs=6) == table
+
+
+def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
+    """Every input essential at n=5: balancing weighs the default layout
+    alone, never the legacy packed candidate; both sizes are pinned."""
+    table = "00111001011001101010100000100011"
+    assert len(esolangs.generate("AddSubJump", table)) == 993
+    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1443
