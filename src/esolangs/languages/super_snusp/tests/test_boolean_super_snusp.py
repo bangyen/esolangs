@@ -172,3 +172,29 @@ def test_a_number_read_is_ascii_decimal(token: str) -> None:
     """``@`` took Python's int() spellings: "1_0" read 10, "٣" read 3."""
     with pytest.raises(esolangs.ArgumentError, match="must be an integer"):
         esolangs.run("Super SNUSP", '"@#', stdin=token)
+
+
+class TestSuperSNUSPSweepPins:
+    """Pins from the mutation sweep: the width-zero floor, the
+    exact-fit shortcut and the balance candidate window."""
+
+    def test_width_zero_returns_the_floor_fold_not_the_vertical(self) -> None:
+        program = boolean.super_snusp("0110", width=0)
+        assert program == ('"48\\\n/,{/\n\\->\\\n/, /\n\\-<\\\n/{^/\n\\>^\\\n  ./')
+
+    def test_a_width_equal_to_the_flat_length_returns_the_flat_program(self) -> None:
+        flat = boolean.super_snusp("0010")
+        assert boolean.super_snusp("0010", width=len(flat)) == flat
+        assert "\n" not in flat
+
+    @pytest.mark.parametrize(
+        ("table", "shape"),
+        [("1100", (60, 5, 12)), ("1111", (42, 5, 8))],
+    )
+    def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
+        program = str(esolangs.generate("Super SNUSP", table, balance=True))
+        assert (
+            len(program),
+            program.count("\n") + 1,
+            max(map(len, program.split("\n"))),
+        ) == shape
