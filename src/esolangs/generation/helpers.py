@@ -449,11 +449,33 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     # appending ``o | mask`` after ``o`` extends the list in row order.
     # That is O(2**k) list work against O(2**k * k) bit tests -- worth the
     # doubling because order selection calls this once per candidate.
-    originals = [0]
-    for i in inputs:
-        mask = 1 << (n - 1 - i)
-        originals = [x for o in originals for x in (o, o | mask)]
-    return "".join([truth_table[o] for o in originals])
+    #
+    # Materialising that list costs 2**k int objects -- at k = 26 some
+    # 1.9 GB, the packed build's whole peak -- so distinct slots take an
+    # equivalent blocked path: their masks are distinct powers of two, the
+    # doubling never collides, and a row's index is the XOR of the masks
+    # of its set index bits (slot k's bit sits at index position
+    # len(inputs) - 1 - k).  Only a low block of index bits gets an offset
+    # table, built by the same doubling; each block of rows above it
+    # shares one XOR base and is gathered and joined block by block.
+    # Repeated slots (no caller passes any) keep the doubling verbatim.
+    masks = [1 << (n - 1 - i) for i in inputs]
+    if len(set(masks)) != len(masks):
+        originals = [0]
+        for mask in masks:
+            originals = [x for o in originals for x in (o, o | mask)]
+        return "".join([truth_table[o] for o in originals])
+    by_bit = masks[::-1]
+    low_bits = min(len(masks), 16)
+    low = [0]
+    for bit in range(low_bits):
+        low += [offset ^ by_bit[bit] for offset in low]
+    bases = [0]
+    for bit in range(low_bits, len(masks)):
+        bases += [base ^ by_bit[bit] for base in bases]
+    return "".join(
+        "".join([truth_table[base ^ offset] for offset in low]) for base in bases
+    )
 
 
 def input_weights(truth_table: str, n: int) -> tuple[list[int], str]:

@@ -92,19 +92,39 @@ def packed_decoder(
         -int(truth_table[start : start + n][::-1], 2)
         for start in range(0, len(truth_table), n)
     ]
+    # The projection is dead once the chunks are cut; at the witness
+    # arities it is a second full table string beside the caller's.
+    del truth_table
     asm = _Assembler()
     _emit_reads(asm, weights, direct=direct)
     loads = _emit_decode(asm, direct=direct)
     values = _cell_values(n, direct=direct)
-    data_names = [f"CHUNK{i}" for i in range(len(chunks))]
     layout = _direct_layout if direct else _indirect_layout
-    memory, address = layout(asm, [*values], data_names)
+    memory, address, chunk_base = layout(asm, [*values], len(chunks))
     for name, value in values.items():
         memory[address[name]] = value
-    for name, value in zip(data_names, chunks, strict=True):
-        memory[address[name]] = value
+    for index, value in enumerate(chunks):
+        memory[chunk_base + index] = value
+    del chunks
     _patch_loads(memory, loads, direct=direct)
-    return " ".join(map(str, memory))
+    return _render(memory)
+
+
+def _render(memory: list[int]) -> str:
+    """Join the memory image in slices, so no full string list is held.
+
+    The flat ``" ".join(map(str, memory))`` materialises one string per
+    cell -- at the n = 26 witness that is 2.6M strings, ~190 MB beside
+    the image itself.  Slices of 2**15 cells cap the transient at one
+    slice's strings plus the joined output.
+    """
+    step = 1 << 15
+    if len(memory) <= step:
+        return " ".join(map(str, memory))
+    return " ".join(
+        " ".join(map(str, memory[start : start + step]))
+        for start in range(0, len(memory), step)
+    )
 
 
 def _cell_values(n: int, *, direct: bool) -> dict[str, int]:
@@ -210,16 +230,23 @@ def _emit_decode(asm: _Assembler, *, direct: bool) -> _Loads:
 
 
 def _direct_layout(
-    asm: _Assembler, cells: list[str], data: list[str]
-) -> tuple[list[int], dict[str, int]]:
-    """Lay out the direct variant: literal branch targets, cells after the code."""
-    names = [*cells, *data]
+    asm: _Assembler, cells: list[str], data_count: int
+) -> tuple[list[int], dict[str, int], int]:
+    """Lay out the direct variant: literal branch targets, cells after the code.
+
+    Chunk cells follow the named cells consecutively, so only their
+    count and base are returned -- naming and addressing 2**n/n chunks
+    cost ~0.3 GB at n = 26 for a purely arithmetic layout.
+    """
     base = 3 * len(asm.instructions)
-    address = {name: base + i for i, name in enumerate(names)}
-    memory = [0] * (base + len(names))
+    address = {name: base + i for i, name in enumerate(cells)}
+    chunk_base = base + len(cells)
+    memory = [0] * (chunk_base + data_count)
 
     def operand(value: int | str) -> int:
-        return address[value] if isinstance(value, str) else value
+        if isinstance(value, str):
+            return chunk_base if value == "CHUNK0" else address[value]
+        return value
 
     for i, (a, b, target) in enumerate(asm.instructions):
         c = (
@@ -234,21 +261,27 @@ def _direct_layout(
         else:
             triple = [operand(b), operand(a), c]
         memory[3 * i : 3 * i + 3] = triple
-    return memory, address
+    return memory, address, chunk_base
 
 
 def _indirect_layout(
-    asm: _Assembler, cells: list[str], data: list[str]
-) -> tuple[list[int], dict[str, int]]:
-    """Lay out the indirect variant: each branch goes through a target cell."""
+    asm: _Assembler, cells: list[str], data_count: int
+) -> tuple[list[int], dict[str, int], int]:
+    """Lay out the indirect variant: each branch goes through a target cell.
+
+    Chunk cells follow the target cells consecutively; as in the
+    direct layout only their count and base are returned.
+    """
     target_names = [f"TARGET{i}" for i in range(len(asm.instructions))]
-    names = [*cells, *target_names, *data]
     base = 3 * len(asm.instructions)
-    address = {name: base + i for i, name in enumerate(names)}
-    memory = [0] * (base + len(names))
+    address = {name: base + i for i, name in enumerate([*cells, *target_names])}
+    chunk_base = base + len(cells) + len(target_names)
+    memory = [0] * (chunk_base + data_count)
 
     def operand(value: int | str) -> int:
-        return address[value] if isinstance(value, str) else int(value)
+        if isinstance(value, str):
+            return chunk_base if value == "CHUNK0" else address[value]
+        return int(value)
 
     for i, (a, b, target) in enumerate(asm.instructions):
         if target.startswith("@"):
@@ -257,7 +290,7 @@ def _indirect_layout(
             c = address[target_names[i]]
             memory[c] = 3 * (i + 1) if target == "next" else 3 * asm.labels[target]
         memory[3 * i : 3 * i + 3] = [operand(a), operand(b), c]
-    return memory, address
+    return memory, address, chunk_base
 
 
 def _patch_loads(memory: list[int], loads: _Loads, *, direct: bool) -> None:
