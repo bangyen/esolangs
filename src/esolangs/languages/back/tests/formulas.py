@@ -30,8 +30,13 @@ _BLOCKS = (
     "1101110100110101110110110100101110011010010110100101100110100110",
     "1101100010110101110110110100101110011010010110100101100110100110",
 )
-#: n = 9 stays in the comb regime: eight slots of the 49-row blocks.
-_COMB_ORDER = (0, 1, 2, 3, 4, 5, 2, 3)
+#: Comb-regime slot orders: at n = 7-9 the comb is the smaller build, and
+#: these picks of the 48-49-row blocks reach its rows with the fold above.
+_COMB_ORDERS = {
+    7: (0, 2),
+    8: (0, 1, 2, 3),
+    9: (0, 1, 2, 3, 4, 5, 2, 3),
+}
 #: Full-fold blocks fill the slots the fold's extremes need, 49-row ones the rest.
 _FULL, _ROWS = (7, 8, 6), (0, 1, 5, 2, 3)
 
@@ -51,9 +56,10 @@ def _full(m: int, *, wide: bool) -> list[bool]:
 
 
 def _order(n: int) -> list[int]:
-    """Slot blocks reaching the fold: periodic picks, so no aligned neighbours match."""
-    if n == 9:
-        return list(_COMB_ORDER)
+    """Slot blocks reaching the smaller build: the recorded comb-regime
+    orders at n = 7-9, else periodic picks, so no aligned neighbours match."""
+    if n in _COMB_ORDERS:
+        return list(_COMB_ORDERS[n])
     need = [
         a or b for a, b in zip(_full(n, wide=True), _full(n, wide=False), strict=True)
     ]
@@ -63,7 +69,7 @@ def _order(n: int) -> list[int]:
 
 
 def witness(n: int) -> str:
-    """Concatenated n = 6 blocks: n = 9 keeps the fold above the comb's 12,320.
+    """Concatenated n = 6 blocks: n = 7-9 keep the fold above the comb.
 
     From n = 10 the comb outruns the fold (752 rows against 749 at n = 10), and
     the full-fold slots make F the fold.  For every n >= 10 the comb has

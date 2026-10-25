@@ -772,7 +772,7 @@ def _minifuck_worst(n: int) -> str:
 
 
 def _back_worst(n: int) -> tuple[str, ...]:
-    """Back's comb-worst tables: Rudin-Shapiro, and at n = 7-11 a fold-sized one."""
+    """Back's comb-worst tables: Rudin-Shapiro, and from n = 7 the slot witness."""
     width = 1 << n
     # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
     # and with row 1 flipped: the most rows its one-edges cannot share.
@@ -781,19 +781,7 @@ def _back_worst(n: int) -> tuple[str, ...]:
             str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1)) for i in range(width)
         ),
     )
-    if n in (7, 8):
-        # Its fold is smaller (2,280 at n = 7), so the min stops at the fold.
-        # This one keeps the comb's rows with few constant pairs, so the fold
-        # stays above the comb: the n = 6 seed (60 s anneal, 59 of 64 leaves,
-        # 49 rows), doubled with the swapped complement, then at n = 8 with
-        # its first entry flipped.
-        seed = "1010010110100111010110100100010111011010010110100100101001110101"
-        swapped = "".join(seed[i + 1] + seed[i] for i in range(0, 64, 2))
-        doubled = seed + "".join("10"[int(c)] for c in swapped)
-        if n == 8:
-            doubled += str(1 - int(doubled[0])) + doubled[1:]
-        tables += (doubled,)
-    if n >= 9:
+    if n >= 7:
         tables += (
             importlib.import_module("esolangs.languages.back.tests.formulas").witness(
                 n
