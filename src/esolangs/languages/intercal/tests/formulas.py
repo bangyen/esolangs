@@ -55,13 +55,15 @@ def _bound(n: int, _: str) -> int:
 
 
 def _capped(n: int) -> int:
-    """U at n = 11, 12: a full tree to level n - 4, 240 nodes at n - 3 over all 16 ids.
+    """U at n = 11..19: a full tree to level n - 4, 240 nodes at n - 3 over all 16 ids.
 
     Every id is read 30 times by level n - 3, so the 12 pair nodes are named.
     The 2^(n-3) - 240 spare slots above re-read level n - 3 nodes (named at
     two reads, all 240 at n = 12: a statement and a name beat a constant or a
     named pair node), the rest on the longest names.  The witness is built to
-    n = 12 and the shape was climbed, not solved as the n <= 10 program is.
+    n = 19; at n = 20 the shape ends, since level n - 4 would need 2**16
+    distinct parents and the capped level holds only 240 * 239 ordered
+    pairs.  The shape was climbed, not solved as the n <= 10 program is.
     """
     slots = 1 << (n - 3)
     count = [*(1 << level for level in range(n - 3)), 240, 12, 2]
@@ -92,10 +94,10 @@ def _capped(n: int) -> int:
 
 
 def _chars(n: int, program: str) -> int:
-    """U: a full tree to level n - 3 over 12 and 2, the most nodes; exact for n = 3..12.
+    """U: a full tree to level n - 3 over 12 and 2, the most nodes; exact for n = 3..19.
 
     From n = 11 level n - 3 holds its 240 distinct pairs (:func:`_capped`);
-    past n = 12 the bound V.
+    past n = 19 the bound V.
     Exact because the generator's cost is a function of per-level node, named
     and constant-edge counts, and an integer program over them maximises at
     U: each level's nodes are at most the Hall slots above (q <= nodes above
@@ -106,7 +108,7 @@ def _chars(n: int, program: str) -> int:
     A node named costs two edges that a fresh node would use, so only the 2
     bottom nodes and the pair nodes the spare edges reach are read twice.
     """
-    if n > 12:
+    if n > 19:
         return _bound(n, program)
     if n > 10:
         return _capped(n)
@@ -138,4 +140,4 @@ def _chars(n: int, program: str) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 13)), tuple(range(3, 14)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 20)), tuple(range(3, 21)))}

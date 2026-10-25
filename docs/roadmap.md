@@ -61,8 +61,12 @@ evidence, not optimization tasks.
     so the range ends at the witness's memory, not the accounting), INTERCAL
     execution past n = 25 (unbuilt; the bound is exact to n = 38),
     workspace past n = 20 (names past .65535 spill to arrays, which cost
-    fewer bits: bound only) and scaling past n = 12 (level n - 3 holds its 240
-    distinct pairs from n = 11; at 13 the third reads multiply, unbuilt).
+    fewer bits: bound only) and scaling past n = 19 (exact to 19: the
+    witness builder's third-read padding indexed negatively and raised
+    from n = 13; with third reads re-placed on the longest-named rows the
+    generated program reaches U at every arity to 19, and at 20 level
+    n - 4 would need 2**16 distinct parents from the capped level's
+    240 * 239 ordered pairs, so the shape ends).
   - Per-level bounds (2026-10-22): Stisp is exact to n = 19 (3,554 at n = 9,
     6,952 at n = 10, 13,478, 20,652, 35,879, 67,629, 131,123, 258,105, 532,028,
     1,089,090, 2,199,893), Quassaunt to n = 19 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586) and Bleh to n = 21

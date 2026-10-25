@@ -509,8 +509,37 @@ def _intercal_chars_worst(n: int) -> str:
         reads = [*rows, *(rows[i ^ 1] for i in range(240))]
         slots = 1 << (n - 3)
         reads = reads[:slots]
-        for j in range((slots - 480) // 2):
-            reads += [rows[240 - (slots - 480) + j], rows[240 - (slots - 480) // 2 + j]]
+        if slots <= 720:
+            for j in range((slots - 480) // 2):
+                reads += [
+                    rows[240 - (slots - 480) + j],
+                    rows[240 - (slots - 480) // 2 + j],
+                ]
+        else:
+            # Third reads (slots - 480 of them) price at the longest name, so
+            # they pair up rows named with the most digits: level n - 3 names
+            # ascend in first-occurrence (reads) order from 2n + 13, so those
+            # rows are a suffix of rows.  Pairs take strides >= 2 inside the
+            # suffix, in both directions, so no parent repeats one of the
+            # first reads (stride +-1) or another third-read parent.
+            need = (slots - 480) // 2
+            threshold = 10 ** (len(str(2 * n + 252)) - 1)
+            long_rows = rows[max(0, threshold - (2 * n + 13)) :]
+            added: list[tuple[str, str]] = []
+            stride = 2
+            while len(added) < need and stride < len(long_rows):
+                for a in range(len(long_rows) - stride):
+                    added.append((long_rows[a], long_rows[a + stride]))
+                    if len(added) >= need:
+                        break
+                    added.append((long_rows[a + stride], long_rows[a]))
+                    if len(added) >= need:
+                        break
+                stride += 1
+            if len(added) < need:
+                raise ValueError(f"the capped shape ends before n = {n}")
+            for first_row, second_row in added:
+                reads += [first_row, second_row]
         level = [reads[i] + reads[i + 1] for i in range(0, slots, 2)]
         return _intercal_levels(level, tuple(1 << i for i in range(n - 4)))
     widths = (*(1 << i for i in range(n - 2)), min(1 << (n - 2), 12), 2)
@@ -802,6 +831,10 @@ _WITNESS_BAND = {
     ("Back", 17): "slow",
     ("Bleh", 21): "slow",
     ("Stisp", 18): "medium",
+    ("INTERCAL", 17): "medium",
+    ("INTERCAL", 18): "slow",
+    ("INTERCAL", 19): "slow",
+    ("INTERCAL", 20): "slow",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
@@ -872,7 +905,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     "INTERCAL": lambda n: (
-        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 12 else ()))
+        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 19 else ()))
         if 3 <= n <= 25
         else ()
     ),
