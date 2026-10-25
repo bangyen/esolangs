@@ -53,6 +53,43 @@ def best_cover(
     )
 
 
+def _dearest_pairs(
+    cost: dict[str, int], have: list[tuple[str, str]], quota: int
+) -> list[tuple[str, str]]:
+    """Return the dearest `quota` distinct ordered pairs not in `have`.
+
+    Dearest first, ties in the cost dict's order — the order sorting every
+    ordered pair by descending price sum would emit.  Emitting one price
+    sum at a time and stopping at the quota keeps the work proportional
+    to the pairs returned: at 65,536 priced objects (the capped level of
+    Bleh and Quassaunt from n = 20) the full sort ranks 4,294,901,760
+    pairs, and n = 21 is the first arity whose parents leave spares to
+    rank at that scale.
+    """
+    classes: dict[int, list[str]] = {}
+    for key, price in cost.items():
+        classes.setdefault(price, []).append(key)
+    sums = sorted({a + b for a in classes for b in classes}, reverse=True)
+    seen = set(have)
+    out: list[tuple[str, str]] = []
+    for total in sums:
+        for x, price in cost.items():
+            ys = classes.get(total - price)
+            if not ys:
+                continue
+            for y in ys:
+                if y == x:
+                    continue
+                pair = (x, y)
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                out.append(pair)
+                if len(out) == quota:
+                    return out
+    return out
+
+
 def worst_diagram(
     n: int, ref: Callable[[int, bool], int], const: int, *, cover_const: bool = True
 ) -> str:
@@ -95,11 +132,7 @@ def worst_diagram(
                 else:
                     pairs.append((zero, one))
         if len(pairs) < nodes:  # n = 20 fills every slot: no spare pairs to rank
-            by_cost = sorted(
-                ((x, y) for x in cost for y in cost if x != y),
-                key=lambda p: -(cost[p[0]] + cost[p[1]]),
-            )
-            pairs += [p for p in by_cost if p not in pairs][: nodes - len(pairs)]
+            pairs += _dearest_pairs(cost, pairs, nodes - len(pairs))
     return "".join(a + b for a, b in pairs)
 
 

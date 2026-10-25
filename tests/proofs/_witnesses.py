@@ -805,11 +805,13 @@ def _back_worst(n: int) -> tuple[str, ...]:
 #: (language, n) whose witness build alone passes the fast band, to its band:
 #: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included;
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
+#: Bleh's ten n = 21 tables take 9.4 s to generate between them.
 _WITNESS_BAND = {
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
     ("Back", 16): "medium",
     ("Back", 17): "slow",
+    ("Bleh", 21): "slow",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
@@ -891,7 +893,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Bleh": lambda n: _diagram_witness("bleh", n, 20),
+    "Bleh": lambda n: _diagram_witness("bleh", n, 21),
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         _quassaunt_stack(n),
