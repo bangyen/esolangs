@@ -28,3 +28,9 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 def test_a_constant_needs_no_index() -> None:
     assert esolangs.generate("Freestajlo", "1111") == "'1;#;#."
+
+
+def test_packed_words_start_at_code_35() -> None:
+    """The packed literal's zero word is ``#`` and its decode subtracts 35."""
+    program = esolangs.generate("Freestajlo", "11000100100111100001000100111100")
+    assert program == r'"FG*E_#";2*;+2*;+2*;+2*;+$6%\6/1+&35-\2\^/2%:'
