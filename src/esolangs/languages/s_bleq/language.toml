@@ -8,7 +8,7 @@ backlinks = 4
 labels = ["finite lookup"]
 qualification = "packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it"
 scaling = "linear: worst P characters, n = 11..28; below, at most min(tree, P)"
-execution = "linear: worst 3n + 2 instructions to n = 9, the tree route: n reads, 2n - 1 tests"
+execution = "linear: worst 3n + 2 instructions to n = 9, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps"
 workspace = "linear: at most B + 6n + bl(3C) + bl(n) + 1 bits: the self-modified program, decimal cells"
 definitions = ["B = the program cells' bits, a sign one more", "C = the program's cell count"]
 

@@ -128,5 +128,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_grid,
     eof="a failed read leaves the cell alone and the program runs on",
-    proof_execution=(execution, True, (3, 6)),
+    proof_execution=(execution, True, (3, 4, 5, 6, 7, 8, 9)),
 )
