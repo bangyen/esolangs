@@ -201,7 +201,7 @@ _NONE = -(10**9)
 #: Distinct-table options kept per state (the near and far halves must differ).
 _SEEN = 2
 #: Arities where the witness is measured to reach the relaxed bound.
-_EXACT = 9
+_EXACT = 10
 
 #: Per walker the dearest (value, table) options, and any tables of the layout.
 Seen = tuple[list[list[tuple[int, str]]], list[str]]
