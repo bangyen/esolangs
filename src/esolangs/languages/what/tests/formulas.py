@@ -21,6 +21,6 @@ def _commands(n: int, _: str) -> int:
 
 
 FORMULAS = {
-    "scaling": (_characters, True, (3, 4, 5, 15, 16)),
+    "scaling": (_characters, True, (3, 4, 5, 15, 16, 17, 18, 19, 20, 21, 22)),
     "execution": (_commands, True, (3, 4, 5)),
 }

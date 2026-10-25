@@ -827,6 +827,9 @@ def _back_worst(n: int) -> tuple[str, ...]:
 #: S*bleq's scaling cases at n = 21..25 run 10.1 s at n = 21, doubling
 #: per arity (the tree build over the corpus tables dominates; the
 #: packed witness alone generates in 2.1-28.7 s over the same range).
+#: What!?'s scaling case at n = 22 runs 9.7 s alone (its corpus tables
+#: past 15 inputs are dominated by the two alternating builds); n = 21
+#: stays in the medium band at 4.8 s.
 _WITNESS_BAND = {
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
@@ -843,6 +846,7 @@ _WITNESS_BAND = {
     ("S*bleq", 23): "slow",
     ("S*bleq", 24): "slow",
     ("S*bleq", 25): "slow",
+    ("What!?", 22): "slow",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
