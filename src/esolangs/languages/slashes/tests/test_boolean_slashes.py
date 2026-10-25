@@ -7,7 +7,13 @@ from esolangs.debugger import make_vm
 from esolangs.exceptions import TemplateError
 from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import wrap_program
-from esolangs.languages.slashes.generator import _DECODE, _UNARY, _is_unfilled_template
+from esolangs.languages.slashes.generator import (
+    _DECODE,
+    _IGNORE,
+    _SWEEP,
+    _UNARY,
+    _is_unfilled_template,
+)
 from esolangs.runtime._evaluate import _evaluate
 from scripts.benchmark import WrittenState
 from tests.support.witness_tables import witnesses
@@ -57,6 +63,19 @@ def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit) -> 
 @pytest.mark.parametrize("suffix", ["", "0", "$", "$2", "$x0", "ab0"])
 def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix) -> None:
     assert not _is_unfilled_template("/a///b//" + suffix)
+
+
+def test_all_slots_ignored_is_still_a_template() -> None:
+    # read == 0: the one slot is an ignored X and the table has one entry.
+    program = _IGNORE + _UNARY + _SWEEP + _DECODE + "X$>qA"
+    assert _is_unfilled_template(program)
+
+
+def test_filled_slots_are_not_a_template() -> None:
+    # No $ in the slots: a and b are filled values, not template slots,
+    # even when the rest of the string is canonical.
+    program = _UNARY + _SWEEP * 4 + _DECODE + "ab>qAqAqAqA"
+    assert not _is_unfilled_template(program)
 
 
 def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
