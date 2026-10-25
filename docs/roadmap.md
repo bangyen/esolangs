@@ -88,8 +88,19 @@ evidence, not optimization tasks.
     pair pricing, 11 of own-id naming) are not yet a rule. 3x sits 20-28%
     below its F.
 - **Unformulated scaling** (2026-10-22): Polynomial is a lower bound.
-- **Derived, not executed:** What!? past n = 22 (6.4 GB there) and S*bleq
-  scaling past n = 25 (3 GB) were not built.
+- **Derived, not executed:** S*bleq scaling past n = 25 (3 GB) was not
+  built.
+- **What!? past n = 22** is fenced by measurement, not derivation: the
+  witness builds at every arity to 26 (n = 22 in 2.47 s at 0.366 GB; the
+  builder's fragment list is the wall at 27, 5.42 GB at 26), the harness
+  generates the scaling claim's arities to 22 exactly, and sparse named
+  rows are executed at 16, 17 and 22 — the last row attains E(22) =
+  8,519,845 steps and W(22) = 587 bits exactly. The binding wall is the
+  interpreter's token parse (one token object per token): a load at
+  n = 22 takes 3.15 GB and 63 s and dies at 23, ≈6.3 GB projected — the
+  6.4 GB once recorded at 22 was that parse one arity up. No executed
+  evidence past 22 is claimed: last built 26, last loaded 22, and
+  execution past 22 waits on a parse-cost change.
 - **Open mathematics:** Polynomial's worst-case length constant
   `C_P(n)*n/T**2` is bracketed only within a factor 12.5, and whether the
   limit exists is open ([proofs](proofs/index.md#polynomial-bound)). Whether
