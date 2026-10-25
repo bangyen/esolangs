@@ -10,19 +10,50 @@ def _digit_sum(x: int) -> int:
     return total
 
 
+def _tower_fits(k: int, d: int) -> bool:
+    """2^(2^k) - 2 <= 2^d, decided on exponents; the tower is never built.
+
+    The boundary cases are exact: the tower is 0 at k = 0 and 2 at
+    k = 1; past that it fits iff 2^k <= d.
+    """
+    if k == 0:
+        return True
+    if k == 1:
+        return d >= 1
+    return d >= 2 and k < 64 and (1 << k) <= d
+
+
+def _nodes(n: int) -> list[int]:
+    """The most non-constant nodes per level: min(2^d, 2^(2^(n-d)) - 2).
+
+    The cap is decided on exponents, so no tower integer is built.
+    Building it before the min discarded it cost 2^(n-3) bytes at
+    level 0, which left the bound unevaluable past n = 34 on a
+    small machine; when the tower wins it has O(d) bits, so the
+    exact value is cheap.
+    """
+    return [
+        (1 << (1 << (n - d))) - 2 if _tower_fits(n - d, d) else 1 << d for d in range(n)
+    ]
+
+
 def _chars(n: int, _: str) -> int:
     """W = 68C + 43 + 8 digits(ids 2..C+1) + E, E the digits of every child name.
 
-    Exact for n = 2..36.  Size is 43 + sum over nodes of 68 + 8 digits(id) +
+    Exact for n = 2..69.  Size is 43 + sum over nodes of 68 + 8 digits(id) +
     digits(zero) + digits(one); ids run up by level, deepest first, so a level
     is a block of consecutive ids.  A node count below the level's cap loses
     at least 72 characters (the per-level bound is monotone in every count).
     The transition level takes the best distinct pairs, but for n = 20..36
     (ids of widths 3, 4, 5) covering all 65,534 ranks once binds first, the
-    spares going to 5-digit pairs: 9,000 below the two-width greedy.
+    spares going to 5-digit pairs: 9,000 below the two-width greedy.  From
+    n = 37 the capped level holds 2^32 - 2 ranks, ids of widths 5..10 from
+    65,806: covering binds first again and the spares go to 10-digit pairs,
+    which stay plentiful through n = 69 (at 69 the spares take
+    9,223,372,034,707,292,161 of the 10,857,243,130,095,610,000 pairs).
     """
-    nodes = [min(1 << d, (1 << (1 << (n - d))) - 2) for d in range(n)]
-    g = next(d for d in range(n) if (1 << (1 << (n - d))) - 2 <= 1 << d)
+    nodes = _nodes(n)
+    g = next(d for d in range(n) if _tower_fits(n - d, d))
     first = [2] * (n + 1)  # lowest id of level d; ids ascend upward
     for d in range(n - 1, -1, -1):
         first[d] = first[d + 1] + (nodes[d + 1] if d + 1 < n else 0)
