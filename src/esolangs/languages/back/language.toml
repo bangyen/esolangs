@@ -8,8 +8,9 @@ backlinks = 1
 labels = ["parameterized tree"]
 qualification = "an ignored input's run lands on the cell the next load fills, and a `-` after it leaves the cell empty"
 scaling = "linear: worst F cells: the smaller of the comb and the H-tree fold"
-execution = "linear: worst max(R,6n-1) + R + 3n + 6 commands to n = 9, then at most; R = 3T/4+1"
+execution = "linear: worst max(R,6n-1) + R + 3n + 6 commands to n = 9, then at most; rows at 17: 7,654"
 workspace = "poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits"
+definitions = ["R = 3T/4+1"]
 
 [generator_sizes]
 "00000001" = { commands = 36, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 30, "5" = 30, "6" = 33, "7" = 36 }, source_units = 239 }
