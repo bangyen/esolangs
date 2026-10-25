@@ -59,9 +59,18 @@ evidence, not optimization tasks.
     shape at its value at 25/26; at 28 the witness program runs to
     ~1.2G characters and generating it is OOM-killed on this machine,
     so the range ends at the witness's memory, not the accounting), INTERCAL
-    execution past n = 25 (unbuilt; the bound is exact to n = 38),
-    workspace past n = 20 (names past .65535 spill to arrays, which cost
-    fewer bits: bound only) and scaling past n = 19 (exact to 19: the
+    execution past n = 26 (exact to 26: the witness builds there, its
+    1,115,186 statements counted from the generated text, and rows are
+    executed to 25; at 26 the VM's load of that program is OOM-killed on
+    this machine, RSS past 6 GB without the load completing, and at 27
+    generation itself is OOM-killed, its peak doubling from the 3,991 MB
+    n = 26 took), workspace past n = 26 (exact to 26: past 20 the names
+    past .65535 spill to arrays, which cost fewer bits than a scalar, so
+    the old sum was only a bound; the closed form — scalars capped at
+    .65535, the A arrays priced by key, width and 0-based (index, value)
+    pairs — matches final snapshots at 21, 22 and 25, and at 26 the
+    generated text's own DIMENSION statements: 1,024 arrays of width
+    1,025, the last holding 50) and scaling past n = 19 (exact to 19: the
     witness builder's third-read padding indexed negatively and raised
     from n = 13; with third reads re-placed on the longest-named rows the
     generated program reaches U at every arity to 19, and at 20 level
