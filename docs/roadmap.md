@@ -32,10 +32,22 @@ evidence, not optimization tasks.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
   `worst`. The rest of the 56 cells `at most` throughout and 24 past an
   exact range are in [limitations](limitations.md#run-time-and-memory).
-  - Partial range: SMU scaling past n = 16 (from n = 17 tables repeating
-    rows of the 209 two-letter subtables keep one-letter names off most
-    references: 115,507 > 115,170 at n = 17, +12,087 at n = 21; the worst
-    is a design optimum, no rule found), Codesick scaling past n = 36 (the
+  - Partial range: SMU scaling past n = 16 (names rank by distinct
+    parents, but each occurrence pays a reference: a level n - 4 pair
+    repeated twice under a three-letter name fails the macro test and is
+    written out at both places, so its subtables collect two references
+    per parent. Repeating the 209 two-letter subtables' pairs while the
+    47 one-letter subtables keep distinct pairs, with mixed pairs tuning
+    the ranking from n = 19, measures 116,224 > 115,170 at n = 17,
+    228,825 at n = 18, 454,881 > 450,210 at n = 19 and 902,617 at n = 20
+    against a recorded 905,770; at n = 21 the 131,072 places exceed the
+    98,929 distinct pairs at multiplicities (1, 1, 2) and every
+    completion of the family either defines the repeated pairs or hands
+    the one-letter names to the high-reference subtables, so the
+    recorded +12,087 there sits outside the family. The split, the 194
+    two-letter-named pairs that are defined anyway, and the ranking
+    margin are chosen per arity: the worst is a design optimum, no rule
+    found), Codesick scaling past n = 36 (the
     transition level's ids span widths 5..10), 1 + i workspace past n = 26, INTERCAL
     execution past n = 25 (unbuilt; the bound is exact to n = 38),
     workspace past n = 20 (names past .65535 spill to arrays, which cost

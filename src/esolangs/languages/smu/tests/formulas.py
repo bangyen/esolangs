@@ -8,10 +8,15 @@ def _chars(n: int, _: str) -> int:
     going to the most used; exact to n = 15.  From n = 16 (32 uses, above the
     4-bit tables' 31) the 8-bit tables outrank the lower macros: 47 get
     one-letter names, the rest and every 4- and 2-bit macro two letters, so
-    5T/8 + 465T/2048 + 3490, exact at n = 16 only: from n = 17 repeating
-    level n - 4 rows repeats rows free of one-letter tables and beats it (n = 17
-    115,507 > 115,170; n = 19 454,198 > 450,210; n = 20 905,770 > 896,930), so
-    6T + 90 bounds past n = 16.
+    5T/8 + 465T/2048 + 3490, exact at n = 16 only.  Past n = 16 that price
+    charges every subtable once per distinct parent; a level n - 4 pair
+    repeated twice under a three-letter name fails the macro test
+    ((2 - 1) * 9 <= (2 + 2) * 3) and is written out at both places, so its
+    subtables collect two references per parent while names still rank by
+    parents.  Keeping the 47 one-letter subtables' pairs distinct and
+    repeating the 209 two-letter subtables' pairs beats it (n = 17
+    116,224 > 115,170; n = 19 454,881 > 450,210; n = 20 905,770 > 896,930),
+    so 6T + 90 bounds past n = 16.
     """
     if n > 16:
         return 6 * (1 << n) + 90
