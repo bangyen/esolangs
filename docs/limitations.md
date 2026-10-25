@@ -183,8 +183,8 @@ process; no rule reproduces it:
   `target - 1` lets one `j` land `D` on a hot cell, which cut the address
   fold from 10,420 to 7,234 cells and the integrated decoder from 13,177 to
   12,303, every control passing (16,384 address rows, 5,488 decoder cases).
-  Fold and decoder together, code and data, occupy 19,549 cells against the
-  9,897-cell table complement: a 9,652-cell deficit. It is a navigation
+  Fold and decoder together, code and data, occupy 19,537 cells against the
+  9,897-cell table complement: a 9,640-cell deficit. It is a navigation
   deficit, not a design one: pricing every `goto` to a cell at or above 34
   at one cell leaves fold 1,404 and decoder 4,015 (+956 data), a 6,375-cell
   union under the complement (the earlier 13,228 figure teleported only
