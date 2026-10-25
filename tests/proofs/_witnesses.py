@@ -2,12 +2,16 @@
 
 ``_WITNESSES`` maps a generator to the named tables its exact cells need;
 ``test_execution_formulas._tables`` appends them to the generic corpus.
+``_SPARSE_ROWS`` maps a generator to the named rows of one witness table
+that ``test_sparse_rows`` steps where the all-row suites cannot afford to,
+and ``_SPARSE_BAND`` carries those cases' duration bands.
 """
 
 import importlib
 import random
 from collections.abc import Callable
 from itertools import islice
+from typing import NamedTuple
 
 from esolangs.generation.helpers import reflected_table
 from esolangs.runtime._digits import digit_limit_for
@@ -847,6 +851,61 @@ _WITNESS_BAND = {
     ("S*bleq", 24): "slow",
     ("S*bleq", 25): "slow",
     ("What!?", 22): "slow",
+}
+
+
+class SparseRows(NamedTuple):
+    """Named rows of one witness table, stepped by the sparse-row suites.
+
+    ``table`` is the witness table at arity ``n``; ``rows`` every row the
+    execution suite steps; ``witness`` the row that must attain the
+    formulas named by the registration.  The workspace suite samples the
+    witness row alone.
+    """
+
+    table: str
+    rows: tuple[int, ...]
+    witness: int
+
+
+# language-owners: ["What!?"]
+def _what_sparse(n: int) -> SparseRows:
+    """Alternating answers: the last row attains E and W, the rest stay under.
+
+    The first row, the second block's first row and the middle row each
+    cost 2T + n + 147 (measured at n = 16, 17, 20), under E; each row
+    stepped pays its own parse (~65 s at n = 22), so past 17 only the
+    last row is stepped.
+    """
+    width = 1 << n
+    rows = (0, 1 << 15, width // 2, width - 1) if n <= 17 else (width - 1,)
+    return SparseRows("10" * (width // 2), tuple(dict.fromkeys(rows)), width - 1)
+
+
+#: Sparse-row registrations: a witness builder, the arities to step, and
+#: the formula columns (``"execution"``, ``"workspace"``) whose formulas
+#: the witness row must attain.  A registration naming no column checks
+#: its rows' answers only — the shape a route with no step bound yet
+#: (S*bleq's packed route) plugs into.
+_SPARSE_ROWS: dict[
+    str, tuple[Callable[[int], SparseRows], tuple[int, ...], frozenset[str]]
+] = {
+    "What!?": (_what_sparse, (16, 17, 22), frozenset({"execution", "workspace"})),
+}
+
+#: Sparse-case bands, from standalone runs: a case pays one parse a row
+#: stepped, so its cost is its row count times the parse at that arity,
+#: plus the stepping (the sampler roughly doubles a row's stepping).
+#: What!? parses in ~0.8 s at n = 16, ~1.8 s at 17, ~65 s at 22; whole
+#: cases measure 4.2 s / 3.9 s at 16 (execution / workspace), 11.5 s /
+#: 5.7 s at 17 and 100 s / 110 s at 22.
+_SPARSE_BAND = {
+    ("What!?", "execution", 16): "medium",
+    ("What!?", "execution", 17): "slow",
+    ("What!?", "execution", 22): "slow",
+    ("What!?", "workspace", 16): "medium",
+    ("What!?", "workspace", 17): "slow",
+    ("What!?", "workspace", 22): "slow",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
