@@ -91,10 +91,19 @@ evidence, not optimization tasks.
 - **S*bleq scaling past n = 25** is fenced by measurement, not
   derivation: the shipped generator attains P exactly at n = 26
   (25,817,068 characters, 61.5 s at a 5.55 GB peak; the packed
-  build alone peaks at 3.18 GB), a one-off build recorded
-  here — the permanent harness generates the scaling arities
-  to 25. Both the full generator and the packed build die at
-  27, so no built point past 26 is claimed.
+  build alone peaks at 3.18 GB) and, once the foreclosed tree
+  build is skipped and the packed build streams its projection
+  and render, at n = 27 (54,687,747 characters, 42.3 s at a
+  1.68 GB peak; the packed build alone peaks at 0.72 GB) and
+  n = 28 (105,463,455 characters, 88.3 s at a 3.30 GB peak) —
+  one-off builds recorded here; the permanent harness generates
+  the scaling arities to 25. Past n = 28 the bound is derived,
+  not built: P's closed form evaluates at every n and its
+  layout accounting supports attainment, but no program has
+  been built there — the route's peak doubles per arity
+  (0.87 GB at 26, 1.68 at 27, 3.30 at 28, some 6.5 GB projected
+  at 29) against this machine's memory, so the built range
+  ends at the route's memory, not the accounting.
 - **What!? past n = 22** is fenced by measurement, not derivation: the
   witness builds at every arity to 26 (n = 22 in 2.47 s at 0.366 GB; the
   builder's fragment list is the wall at 27, 5.42 GB at 26), the harness
