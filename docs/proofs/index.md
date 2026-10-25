@@ -20,6 +20,17 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Corollary 3.4 (Logarithmic mass) of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex) supplies the mass bound.
   Lemma 2.1, Corollary 2.3 and Theorem 4.2 of [coefficient-mass-complex](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-complex.tex) supply multisection and sign refinements.
   Proposition 2.1 of [coefficient-mass-attainment](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-attainment.tex) gives the confluent attainment construction.
+  Finite-n measurement does not discriminate the bracket. On the harness's
+  maximal-width witness family the shipped generator renders lengths 80,583;
+  286,613; 571,613; 1,662,475; 5,733,944 and 21,976,678 at n = 5..10, ratios
+  `L*n/T**2` of 393, 420, 244, 203, 197 and 210: flat at about 200, some 16
+  times the upper end, and the window is cap-ended at n = 10 (a dense n = 11
+  table needs 2,447 instructions against the 1,934 cap). A generator length
+  bounds the minimum only for the tables it builds, and the shipped generator
+  is not the attainment construction, so these points bound `C_P` from
+  neither side; measuring larger n is impossible under the cap and would not
+  test the limit if it were possible. The bracket rests on the analytic
+  argument and the executable controls, not on measurement.
   With rendered length `L`, fixed libmpdec uncapped generation costs
   `Theta((T**2/log T)**log2(3))` word operations; within the direct-FNT range
   admitted by the public cap it is `Theta(T**2)`. Generated-family cold parsing
