@@ -105,8 +105,8 @@ def _workspace(n: int, program: str) -> int:
 FORMULAS = {
     "scaling": (
         _scaling,
-        frozenset({11, 12, 13, 19, 20}),
-        (5, 8, 10, 11, 12, 13, 19, 20),
+        frozenset({11, 12, 13, 19, 20, 21, 22, 23, 24, 25}),
+        (5, 8, 10, 11, 12, 13, 19, 20, 21, 22, 23, 24, 25),
     ),
     "workspace": (_workspace, False, (3, 4, 5, 6)),
 }

@@ -824,6 +824,9 @@ def _back_worst(n: int) -> tuple[str, ...]:
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
 #: Bleh's ten n = 21 tables take 9.4 s to generate between them.
 #: Stisp's tables at n = 18 take 1.6 s to generate between them.
+#: S*bleq's scaling cases at n = 21..25 run 10.1 s at n = 21, doubling
+#: per arity (the tree build over the corpus tables dominates; the
+#: packed witness alone generates in 2.1-28.7 s over the same range).
 _WITNESS_BAND = {
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
@@ -835,6 +838,11 @@ _WITNESS_BAND = {
     ("INTERCAL", 18): "slow",
     ("INTERCAL", 19): "slow",
     ("INTERCAL", 20): "slow",
+    ("S*bleq", 21): "slow",
+    ("S*bleq", 22): "slow",
+    ("S*bleq", 23): "slow",
+    ("S*bleq", 24): "slow",
+    ("S*bleq", 25): "slow",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
