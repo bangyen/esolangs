@@ -145,6 +145,20 @@ def test_the_default_is_the_smaller_of_strip_and_fold() -> None:
         assert _evaluate("Piet", chosen, inputs=bits) == table
 
 
+def test_a_tied_pack_loses_to_the_strip() -> None:
+    """This n=4 table's least packed layout ties the strip's area exactly.
+
+    The seeded tables in the race test above contain no tie, so the
+    strip-wins-a-tie rule needs this witness: at equal area the
+    default must be the strip itself, not the packed layout.
+    """
+    from esolangs.languages.piet.generator import _generate
+
+    table = "1111000111100010"
+    assert generate(table).rows == _generate(table).rows
+    assert _evaluate("Piet", generate(table), inputs=4) == table
+
+
 def test_a_constant_half_is_folded_and_runs() -> None:
     """All four constant-half shapes at n=6 beat the plain lookup and execute."""
     rng = random.Random(3)
