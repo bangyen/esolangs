@@ -88,8 +88,13 @@ evidence, not optimization tasks.
     pair pricing, 11 of own-id naming) are not yet a rule. 3x sits 20-28%
     below its F.
 - **Unformulated scaling** (2026-10-22): Polynomial is a lower bound.
-- **Derived, not executed:** S*bleq scaling past n = 25 (3 GB) was not
-  built.
+- **S*bleq scaling past n = 25** is fenced by measurement, not
+  derivation: the shipped generator attains P exactly at n = 26
+  (25,817,068 characters, 61.5 s at a 5.55 GB peak; the packed
+  build alone peaks at 3.18 GB), a one-off build recorded
+  here — the permanent harness generates the scaling arities
+  to 25. Both the full generator and the packed build die at
+  27, so no built point past 26 is claimed.
 - **What!? past n = 22** is fenced by measurement, not derivation: the
   witness builds at every arity to 26 (n = 22 in 2.47 s at 0.366 GB; the
   builder's fragment list is the wall at 27, 5.42 GB at 26), the harness
