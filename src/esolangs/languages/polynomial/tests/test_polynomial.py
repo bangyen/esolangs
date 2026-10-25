@@ -683,6 +683,43 @@ class TestNttRecovery:
         assert _ntt_real_bound(1) == _NTT_FIELDS[0][0] // 2
 
     @pytest.mark.medium
+    def test_generated_operands_stay_inside_the_lift_window(self) -> None:
+        """Every generated operand clears the 50-per-degree envelope.
+
+        ``_ntt_real_bound`` is sized from this envelope; a generator
+        change that outgrew it would push operands past the screened
+        peel's window onto the exact remainder path and lose its speed.
+        Operands are read off the candidate instruction lists directly
+        (the factor for ``[a, b]`` is ``[1, -2a, a^2 + p^(2b)]``) over
+        the dense, nested-dense and witness tables -- the generator's
+        worst cases -- at every arity whose candidates reach the NTT
+        regime.
+        """
+        from esolangs.languages.polynomial.generator import (
+            _polynomial_candidates,
+            _polynomial_factors,
+        )
+        from esolangs.languages.polynomial.interpreter.ntt import (
+            _NTT_MIN_DEGREE,
+        )
+        from tests.support.witness_tables import dense, nested_dense, witnesses
+
+        checked = 0
+        for n in range(3, 11):
+            tables = [*witnesses(n), dense(n), nested_dense(n)]
+            for table in tables:
+                for instructions, _cost in _polynomial_candidates(table, n):
+                    factors = _polynomial_factors(instructions)
+                    degree = sum(len(factor) - 1 for factor in factors)
+                    if degree <= _NTT_MIN_DEGREE:
+                        continue
+                    checked += 1
+                    for instruction in instructions:
+                        if len(instruction) == 2:
+                            assert abs(instruction[0]) < 50 * degree
+        assert checked  # the NTT regime was actually exercised
+
+    @pytest.mark.medium
     def test_a_large_program_is_recovered_exactly(self) -> None:
         """Past the threshold, every planted factor comes back and nothing
         else -- the execution-gate witness for the search half.

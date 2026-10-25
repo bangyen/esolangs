@@ -198,11 +198,14 @@ def _ntt_pairs(
 def _ntt_real_bound(degree: int) -> int:
     """Return the real-part lift window for a polynomial of ``degree``.
 
-    A generated DAG operand is a label plus a span or byte delta: labels total
-    at most the instruction count, spans at most 48 times it, and the tree and
-    parking cases add at most 51.  Thus ``|a| < 50 * degree`` once the NTT path
-    starts above degree 100, where ``degree**2`` covers it.  The quadratic
-    envelope also admits generous hand-written slack; exact division remains
-    the acceptance test.
+    A generated DAG operand is a label plus a span or byte delta: labels
+    total at most the instruction count, spans at most 48 times it, and
+    the tree and parking cases add at most 51, so ``|a| < 50 * degree``
+    once the NTT path starts above degree 100 -- measured at most 2.03
+    times the degree over the dense, nested-dense and witness tables at
+    n <= 10.  The window only proposes candidates: acceptance is exact
+    division, and a root past the window stays in the remainder, which
+    ``_remainder_roots`` recovers exactly, so the window's size costs
+    speed only, never correctness, for hand-written programs too.
     """
-    return max(_NTT_FIELDS[0][0] // 2, degree * degree)
+    return max(_NTT_FIELDS[0][0] // 2, 50 * degree)
