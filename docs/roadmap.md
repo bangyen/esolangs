@@ -41,13 +41,17 @@ evidence, not optimization tasks.
     workspace past n = 20 (names past .65535 spill to arrays, which cost
     fewer bits: bound only) and scaling past n = 12 (level n - 3 holds its 240
     distinct pairs from n = 11; at 13 the third reads multiply, unbuilt).
-  - Per-level bounds (2026-10-22): Stisp is exact to n = 10 (3,554 at n = 9,
-    6,952 at n = 10), Quassaunt to n = 19 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586) and Bleh to n = 21
+  - Per-level bounds (2026-10-22): Stisp is exact to n = 19 (3,554 at n = 9,
+    6,952 at n = 10, 13,478, 20,652, 35,879, 67,629, 131,123, 258,105, 532,028,
+    1,089,090, 2,199,893), Quassaunt to n = 19 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586) and Bleh to n = 21
     (6,016, 11,582, 21,315, 32,899, 56,533, 104,661, 200,917, 393,429, 791,763,
     1,594,579, 3,196,898, 6,353,001, 9,826,409): the wide ids of the capped level make few pairs, ids
     ascend by first occurrence, and the lowest equal-halved id is named before
     any wide one exists; at 20 the parents permute all 65,534 sixteen-row
-    subtables. 3x sits 20-28% below its F.
+    subtables. Stisp stops at 19: at 20 its capped level drops to n - 4, its
+    parents price three digit widths, and a measured 739 characters (728 of
+    pair pricing, 11 of own-id naming) are not yet a rule. 3x sits 20-28%
+    below its F.
 - **Unformulated scaling** (2026-10-22): Polynomial is a lower bound.
 - **Derived, not executed:** What!? past n = 22 (6.4 GB there) and S*bleq
   scaling past n = 25 (3 GB) were not built.

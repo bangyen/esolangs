@@ -1,15 +1,20 @@
 """Stisp's emitted characters: equations per level, ids by digit count."""
 
+from __future__ import annotations
+
+from collections.abc import Callable
+
 from tests.proofs._diagram_bounds import (
     capped_level,
+    capped_loss,
     digits,
     profile,
     worst_diagram,
 )
 
 
-def _chars(n: int, _: str) -> int:
-    """Most characters over all tables, per level k of the reduced diagram.
+def _bound(n: int) -> int:
+    """Bound on the characters, per level k of the reduced diagram.
 
     A branching node writes two equations (16 + its id twice + its halves'
     ids), an equal-halved one writes one (8 + both ids once).  The ids of a
@@ -55,8 +60,49 @@ def _pair_refs(top: int, nodes: int, pairs: int) -> int:
     return 2 * narrow * forced + 2 * wide * wide_pairs + (narrow + wide) * mixed
 
 
+def _prices(
+    n: int,
+) -> tuple[Callable[[int, bool], int], Callable[[int], int], Callable[[int], int]]:
+    """A reference's digits, a constant's cost, a level's widest id's digits."""
+    top = profile(n)[3]
+    return (
+        lambda node, _equal: len(str(node)),
+        lambda _level: 1,
+        lambda level: len(str(top[level])),
+    )
+
+
+def _late_equal(n: int) -> int:
+    """1 when the capped level sits at n - 3, else 0.
+
+    The bound prices the 14 four-row subtables below the capped level with
+    the equal-halved pair at the level's lowest ids, as they are named when
+    that level is itself capped (n <= 10): by the pairing, equal ones
+    first.  One level down they are named by the capped subtables' halves
+    in ascending order — the equal capped subtables come first and name
+    every child — so the pair takes ids 8 and 13, not 4 and 5, and the
+    level's own-id digits total one less than the bound prices.
+    """
+    return 1 if capped_level(n) == n - 3 else 0
+
+
+def _chars(n: int, _: str) -> int:
+    """Worst characters, n = 3..19: the bound less what its capped level cannot reach.
+
+    The bound prices the capped level's references to the level below at
+    the widest id, but from n = 11 that level holds every eight-row
+    subtable, so its references are forced: each of the 14 nodes named 31
+    times and 60 slots on the constants (:func:`capped_loss`).  The 14
+    nodes' own ids are likewise named in ascending order, one character
+    less than priced (:func:`_late_equal`).
+    At n = 20 the capped level drops to n - 4 and its parents price three
+    digit widths; the bound is not exact there.
+    """
+    return _bound(n) - capped_loss(n, *_prices(n)) - _late_equal(n)
+
+
 def witness(n: int) -> str:
-    """The table reaching :func:`_chars` for n = 3..10.
+    """The table reaching :func:`_chars` for n = 3..19.
 
     Every subtable of the capped level, then pairs of the highest ids: the
     extra references land on the widest names.  Past n = 8 the top ids hold
@@ -66,4 +112,4 @@ def witness(n: int) -> str:
     return worst_diagram(n, lambda node, _: len(str(node)), 1, cover_const=False)
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 11)), tuple(range(3, 11)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 20)), tuple(range(3, 20)))}

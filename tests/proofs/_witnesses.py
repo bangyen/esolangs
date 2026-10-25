@@ -794,12 +794,14 @@ def _back_worst(n: int) -> tuple[str, ...]:
 #: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included;
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
 #: Bleh's ten n = 21 tables take 9.4 s to generate between them.
+#: Stisp's tables at n = 18 take 1.6 s to generate between them.
 _WITNESS_BAND = {
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
     ("Back", 16): "medium",
     ("Back", 17): "slow",
     ("Bleh", 21): "slow",
+    ("Stisp", 18): "medium",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
@@ -891,7 +893,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
     "Sonata": lambda n: (_low_one(n),),
     "Stisp": lambda n: (
-        (_unequal_first(n), *_diagram_witness("stisp", n, 10)) if n >= 2 else ()
+        (_unequal_first(n), *_diagram_witness("stisp", n, 19)) if n >= 2 else ()
     ),
     # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
     "Suffolk": lambda n: (
