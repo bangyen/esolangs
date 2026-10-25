@@ -8,6 +8,7 @@ from tests.proofs._diagram_bounds import (
     capped_level,
     capped_loss,
     digits,
+    pair_loss,
     parent_loss,
     profile,
     worst_diagram,
@@ -60,15 +61,24 @@ def _prices(
 
 
 def _chars(n: int, _: str) -> int:
-    """Worst characters, n = 3..18: the bound less what its last levels cannot reach.
+    """Worst characters, n = 3..19: the bound less what its last levels cannot reach.
 
     The bound prices every reference past the first at the dearest name.
     The 14 four-row subtables a level up are all there is, so their
     references are fixed (:func:`capped_loss`): 4 short at n = 5, 12 from 6.
     Above them the wide ids run out of pairs from n = 9 (:func:`parent_loss`).
+    At n = 19 the 32,768 parents of the 256 eight-row objects out-run the
+    pairs the widest-priced objects make -- the constants cost the widest
+    too, so the wide set is 174 objects making 30,102 pairs -- and
+    :func:`pair_loss` prices the slots left to the two-digit ids.
     """
     prices = _prices(n)
-    return _bound(n) - capped_loss(n, *prices) - parent_loss(n, *prices)
+    return (
+        _bound(n)
+        - capped_loss(n, *prices)
+        - parent_loss(n, *prices)
+        - pair_loss(n, *prices)
+    )
 
 
 def witness(n: int) -> str:
@@ -77,4 +87,4 @@ def witness(n: int) -> str:
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 19)), tuple(range(3, 19)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 20)), tuple(range(3, 20)))}

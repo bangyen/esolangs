@@ -295,6 +295,12 @@ def pair_loss(
     any wide one exists, fill ceil(narrow / 2) pairs with two.  Every narrow
     slot but each object's first costs the dearest narrow price, not the
     widest the bound assumes.  Zero while the wide pairs suffice (n <= 18).
+
+    When the constants themselves cost the widest, they pair as wide objects
+    instead: the wide set is the wide ids plus both constants, a narrow id is
+    named by one mixed pair (with a constant or a wide id), never by a narrow
+    pair, and the demoted slots are the shortfall pairs past the wide set's
+    own, less the narrow ids' first references.
     """
     c = capped_level(n)
     branching, equal, _, top = profile(n)
@@ -305,6 +311,13 @@ def pair_loss(
     ids = [ref(first + i, i < equal[c]) for i in range(254)]
     wide = widest(c)
     wide_ids = sum(1 for p in ids if p >= wide)
+    if const(c) >= wide:
+        wide_set = wide_ids + 2
+        short = pairs - wide_set * (wide_set - 1)
+        narrow_ids = [p for p in ids if p < wide]
+        if short <= 0 or not narrow_ids:
+            return 0
+        return max(0, short - len(narrow_ids)) * (wide - max(narrow_ids))
     short = pairs - wide_ids * (wide_ids - 1)
     if short <= 0:
         return 0
