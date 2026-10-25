@@ -53,7 +53,12 @@ evidence, not optimization tasks.
     10-digit pairs at every arity; at 70 the capped level drops to
     n - 6, 2^64 - 2 ranks of widths 10..20, and there the spares
     outgrow the 20-digit pairs at n = 133, so that era is measured by
-    counting, not ruled), 1 + i workspace past n = 26, INTERCAL
+    counting, not ruled), 1 + i workspace past n = 27 (exact to 27:
+    the constant half's peak is executed at 25..27, the concatenation
+    rival is executed at its own lower value at 27 and the swapped
+    shape at its value at 25/26; at 28 the witness program runs to
+    ~1.2G characters and generating it is OOM-killed on this machine,
+    so the range ends at the witness's memory, not the accounting), INTERCAL
     execution past n = 25 (unbuilt; the bound is exact to n = 38),
     workspace past n = 20 (names past .65535 spill to arrays, which cost
     fewer bits: bound only) and scaling past n = 12 (level n - 3 holds its 240

@@ -20,5 +20,5 @@ def workspace(n: int, _: str) -> int:
         # overtakes at n = 25.
         return 3 * n + 48 + bl(n + 2) + io
     # a constant half (bare B x (n-1), 4 bits each) outweighs the node terms;
-    # executed to n = 26 (any row opening 1: frame n+8, stack 4(n-1))
+    # executed to n = 27 (any row opening 1: frame n+8, stack 4(n-1))
     return 5 * n - 1 + bl(n + 5) + io
