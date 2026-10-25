@@ -6,12 +6,15 @@ import random
 import pytest
 
 import esolangs
+from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages import generators as boolean
+from esolangs.languages.s_bleq.generator import _tree_min_chars
 from esolangs.languages.s_bleq.interpreter import _Machine
 from esolangs.languages.s_bleq.tests.formulas import below_eleven, tree_chars
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
+from tests.proofs._witnesses import _sbleq_worst
 from tests.proofs.test_execution_formulas import _tables
 from tests.support.generator_support import assert_parity_at_most_doubles
 
@@ -84,6 +87,32 @@ class TestSbleq:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.s_bleq, range(11, 15))
+
+
+@pytest.mark.parametrize("n", [5, 6, 7, 8])
+def test_tree_min_chars_never_passes_the_tree_it_prices(n: int) -> None:
+    """The race skip's bound is a floor on the tree, on every table tried."""
+    seeded = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
+    for table in (*_tables("S*bleq", n), seeded, _sbleq_worst(n)):
+        tree = hoisted_tree(table, tuple(range(n)))
+        assert _tree_min_chars(table, n) <= len(tree), table
+
+
+def test_the_scaling_witness_skips_the_tree() -> None:
+    """At n = 12 the bound passes the packed length, so it ships unraced."""
+    n = 12
+    table = _sbleq_worst(n)
+    packed = packed_decoder(table)
+    assert _tree_min_chars(table, n) > len(packed)
+    assert boolean.s_bleq(table) == packed
+
+
+def test_parity_still_runs_the_race_and_ships_the_tree() -> None:
+    """Parity's bound stays low: the race runs and the tree wins it."""
+    n = 12
+    table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    assert _tree_min_chars(table, n) <= len(packed_decoder(table))
+    assert boolean.s_bleq(table) == hoisted_tree(table, tuple(range(n)))
 
 
 @pytest.mark.parametrize("n", [3, 4, 5, 8, 10])
