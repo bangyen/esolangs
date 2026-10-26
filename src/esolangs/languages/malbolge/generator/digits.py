@@ -46,6 +46,7 @@ weight, so one cell serves every row of a weight.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from functools import cache
 from itertools import product
 from typing import NamedTuple
@@ -279,6 +280,38 @@ def _d_inits() -> tuple[tuple[int, ...], ...]:
     return tuple(inits)
 
 
+def _fold_state(
+    gadget: tuple[str, ...],
+    init: tuple[int, ...],
+    reads: Iterator[int],
+    group: int,
+    s: int,
+) -> int:
+    """Return the readout state after one gadget group folds into ``s``.
+
+    The gadget runs over a copy of the group's init cells: ``/`` takes
+    the next read, ``K<n>`` a constant, a digit a ``crazy`` over that
+    cell.  Cells 1 and 2 leave ``u`` and ``v`` -- the group's swap
+    applied -- and the state advances through ``crazy``'s two
+    bijective rows.  The positional readouts and the popcount build's
+    are this same fold, over different gadgets and read counts.
+    """
+    cells, a = list(init), 0
+    for op in gadget:
+        if op == "/":
+            a = next(reads)
+        elif op[0] == "K":
+            a = _CONSTS[int(op[1])]
+        else:
+            a = cells[int(op)] = _crazy(a, cells[int(op)])
+    u, v = cells[1], cells[2]
+    if group == _D_SWAP_V:
+        v = _swap12(v)
+    if group == _D_SWAP_U:
+        u = _swap12(u)
+    return _rot(_crazy(_rot(_crazy(v, s)), u))
+
+
 @cache
 def _readouts(n: int) -> tuple[int, ...]:
     """Return each ``n - 1``-bit prefix's readout, by prefix.
@@ -297,20 +330,7 @@ def _readouts(n: int) -> tuple[int, ...]:
                     [48] * held
                     + [48 + ((bits >> k) & 1) for k in reversed(range(free))]
                 )
-                cells, a = list(init), 0
-                for op in _GADGET:
-                    if op == "/":
-                        a = next(reads)
-                    elif op[0] == "K":
-                        a = _CONSTS[int(op[1])]
-                    else:
-                        a = cells[int(op)] = _crazy(a, cells[int(op)])
-                u, v = cells[1], cells[2]
-                if group == _D_SWAP_V:
-                    v = _swap12(v)
-                if group == _D_SWAP_U:
-                    u = _swap12(u)
-                following.append(_rot(_crazy(_rot(_crazy(v, s)), u)))
+                following.append(_fold_state(_GADGET, init, reads, group, s))
         states = following
     return tuple(_crazy(s, 29524) for s in states)
 

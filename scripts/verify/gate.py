@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -33,6 +32,12 @@ ROOT = Path(__file__).resolve().parents[2]
 # scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from verify.failures import (  # noqa: E402
+    DURATION_FAILURE,
+    failed_ids,
+    failure_sections,
+    section_matches,
+)
 from verify.process import (  # noqa: E402
     run_bounded,
     start_logged,
@@ -350,16 +355,6 @@ HEAVY_STEPS = frozenset({LEAK_STEP})
 LEAKSWEEP_JOBS = "6"
 OVERLAPPED_LEAKSWEEP_JOBS = "3"
 
-# The shape the root conftest gives a duration-band failure (manufactured in
-# tests/support/duration_policy.py): how long the test took, then the band it
-# blew.  The message is the failure's whole body in its FAILURES section, so
-# a match there is a reliable claim that the failure is a wall-clock overrun
-# and nothing else.
-_DURATION_FAILURE = re.compile(r"\d+\.\d{2}s exceeds the (?:fast|medium) band limit")
-
-# A FAILURES section header: the test's dotted name between underscore rules.
-_SECTION_HEADER = re.compile(r"^_+ (.+?) _+$")
-
 
 def _complete_log(output: str) -> str | None:
     """Return the step's complete log text, when the excerpt names its path.
@@ -381,54 +376,6 @@ def _complete_log(output: str) -> str | None:
     return None
 
 
-def _failure_sections(text: str) -> list[tuple[str, str]] | None:
-    """Return a pytest log's FAILURES sections as (title, body) pairs.
-
-    None when the log carries no FAILURES banner -- the sections were cut
-    off, or the run died before printing them -- because then no failure in
-    it can be classified at all.
-    """
-    lines = text.splitlines()
-    start = next(
-        (
-            i
-            for i, line in enumerate(lines)
-            if line.startswith("=") and " FAILURES " in line
-        ),
-        None,
-    )
-    if start is None:
-        return None
-    sections: list[tuple[str, list[str]]] = []
-    for line in lines[start + 1 :]:
-        if line.startswith("=") and "short test summary info" in line:
-            break
-        header = _SECTION_HEADER.match(line)
-        if header:
-            sections.append((header.group(1), []))
-        elif sections:
-            sections[-1][1].append(line)
-    return [(title, "\n".join(body)) for title, body in sections]
-
-
-def _section_matches(title: str, nodeid: str) -> bool:
-    """Whether a FAILURES header *title* names the summarized *nodeid*.
-
-    The header drops the file path and dots the separator the node id
-    colons: ``tests/x.py::TestA::test_b`` is headed ``TestA.test_b``.
-    """
-    return nodeid.endswith(("::" + title, "::" + title.replace(".", "::")))
-
-
-def _failed_ids(lines: list[str]) -> list[str]:
-    """Node ids of pytest's ``FAILED <id> - <reason>`` summary lines."""
-    return [
-        line[len("FAILED ") :].partition(" - ")[0].strip()
-        for line in lines
-        if line.startswith("FAILED ")
-    ]
-
-
 def _duration_only_ids(output: str) -> list[str] | None:
     """Return the failed tests' ids when every failure is a duration overrun.
 
@@ -443,16 +390,16 @@ def _duration_only_ids(output: str) -> list[str] | None:
     lines = output.splitlines()
     if any(line.startswith("ERROR ") for line in lines):
         return None
-    ids = _failed_ids(lines)
+    ids = failed_ids(lines)
     if not ids:
         return None
-    sections = _failure_sections(_complete_log(output) or output)
+    sections = failure_sections(_complete_log(output) or output)
     if sections is None or len(sections) != len(ids):
         return None
-    if not all(_DURATION_FAILURE.search(body) for _, body in sections):
+    if not all(DURATION_FAILURE.search(body) for _, body in sections):
         return None
     if not all(
-        any(_section_matches(title, nodeid) for title, _ in sections) for nodeid in ids
+        any(section_matches(title, nodeid) for title, _ in sections) for nodeid in ids
     ):
         return None
     return ids
@@ -510,7 +457,7 @@ def _load_verdict(
             "rerun the gate on a quiet machine before pushing"
         )
         return [failure for failure in failures if failure[0] != LONG_STEP]
-    still = _failed_ids(rerun_output.splitlines())
+    still = failed_ids(rerun_output.splitlines())
     named = still or ids
     print(
         f"[load] pytest: {len(named)} of {len(ids)} failures still fail "

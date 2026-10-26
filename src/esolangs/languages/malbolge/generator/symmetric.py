@@ -52,14 +52,14 @@ from .digits import (
     _emit_digit_jump,
     _emit_digit_setup,
     _emit_swap12,
+    _fold_state,
     _helper_cells,
     _hubs,
     _preimages,
     _seed_values,
-    _swap12,
 )
 from .emitter import _Planner
-from .isa import _CONSTS, _program, _render, _rot
+from .isa import _program, _render
 
 #: The four-read gadget: the positional gadget's first two read
 #: blocks, a suffix folding in the fourth input, and a closing block
@@ -211,20 +211,7 @@ def _s_readouts() -> dict[int, int]:
                 reads = iter(
                     48 + ((bits >> k) & 1) for k in reversed(range(_S_READS[group]))
                 )
-                cells, a = list(init), 0
-                for op in gadget:
-                    if op == "/":
-                        a = next(reads)
-                    elif op[0] == "K":
-                        a = _CONSTS[int(op[1])]
-                    else:
-                        a = cells[int(op)] = _crazy(a, cells[int(op)])
-                u, v = cells[1], cells[2]
-                if group == _D_SWAP_V:
-                    v = _swap12(v)
-                if group == _D_SWAP_U:
-                    u = _swap12(u)
-                s2 = _rot(_crazy(_rot(_crazy(v, s)), u))
+                s2 = _fold_state(gadget, init, reads, group, s)
                 weight = total + bits.bit_count()
                 if s2 in following and following[s2] != weight:
                     raise AssertionError("one readout, two weights")
@@ -336,7 +323,13 @@ def _weight_classes(truth_table: str) -> tuple[str, ...] | None:
             classes[weight] = answer
         elif classes[weight] != answer:
             return None
-    return tuple(classes)  # type: ignore[return-value]
+    filled: list[str] = []
+    for entry in classes:
+        if entry is None:
+            # A weight no row attains (a short table): undetermined.
+            return None
+        filled.append(entry)
+    return tuple(filled)
 
 
 def _symmetric_program(truth_table: str) -> str | None:

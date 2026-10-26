@@ -41,6 +41,16 @@ from pathlib import Path
 from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parent.parent
+# scripts/ holds the sibling `verify` package.
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from verify.failures import (  # noqa: E402
+    DURATION_FAILURE,
+    failed_ids,
+    failure_sections,
+    section_matches,
+)
+
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
 SWEPT = Path(__file__).parent / "baselines/mutants_swept.toml"
 SWAP = {
@@ -183,15 +193,6 @@ def _pytest(package: str, *, stop: bool) -> list[str]:
     ]
 
 
-# The shape the root conftest gives a duration-band failure (manufactured in
-# tests/support/duration_policy.py): the failure's whole body in its FAILURES
-# section is the overrun message, so a match there claims the failure is a
-# duration overrun and nothing else.  Same signature scripts/verify/gate.py
-# keys on.
-_DURATION_FAILURE = re.compile(r"\d+\.\d{2}s exceeds the (?:fast|medium) band limit")
-_SECTION_HEADER = re.compile(r"^_+ (.+?) _+$")
-
-
 def _duration_flips(output: str) -> list[str] | None:
     """Return the failed node ids when every failure is a duration-band flip.
 
@@ -203,39 +204,17 @@ def _duration_flips(output: str) -> list[str] | None:
     lines = output.splitlines()
     if any(line.startswith("ERROR ") for line in lines):
         return None
-    ids = re.findall(r"^FAILED (\S+)", output, re.MULTILINE)
+    ids = failed_ids(lines)
     if not ids:
         return None
-    start = next(
-        (
-            i
-            for i, line in enumerate(lines)
-            if line.startswith("=") and " FAILURES " in line
-        ),
-        None,
-    )
-    if start is None:
+    sections = failure_sections(output)
+    if sections is None or len(sections) != len(ids):
         return None
-    sections: list[tuple[str, list[str]]] = []
-    for line in lines[start + 1 :]:
-        if line.startswith("=") and "short test summary info" in line:
-            break
-        header = _SECTION_HEADER.match(line)
-        if header:
-            sections.append((header.group(1), []))
-        elif sections:
-            sections[-1][1].append(line)
-    if len(sections) != len(ids):
-        return None
-    if not all(_DURATION_FAILURE.search("\n".join(body)) for _, body in sections):
+    if not all(DURATION_FAILURE.search(body) for _, body in sections):
         return None
     titles = [title for title, _ in sections]
     if not all(
-        any(
-            nodeid.endswith(("::" + title, "::" + title.replace(".", "::")))
-            for title in titles
-        )
-        for nodeid in ids
+        any(section_matches(title, nodeid) for title in titles) for nodeid in ids
     ):
         return None
     return ids
