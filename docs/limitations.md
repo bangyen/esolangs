@@ -248,6 +248,23 @@ process; no rule reproduces it:
   any aligned four-trit window of three such maps carries at least 96 of
   its 81 values, so no three are disjoint.
 
+  Carrying state across groups does not escape it (2026-10-25, audit M5):
+  in the one-query architecture the only cross-group state is entry state
+  the fold delivers, a function of the group's address, so a stateful
+  decoder is one meaning map per state class. Clean eight meanings per
+  address are attainable that way — four address-interval states suffice,
+  their read sets at most 26 residues and each eight-colourable
+  (colourings exhibited and verified in the audit notes) — so the
+  colouring bound does not extend across the state boundary. The price
+  closes it instead: the packing is fixed at 49,152 cells and the
+  annealed assignment already achieves it, so cleaner meanings are worth
+  no cells, while state-conditioning the merged-stream decoder's 181
+  window episodes costs at least 181 further episodes per added state,
+  869 cells at two states and 2,606 at four at the operated 4.8 a hit,
+  against the planner-stream design's 370-cell margin. Three states turn
+  on one unresolved colouring case and are priced out either way; two
+  states are excluded for interval and parity splits.
+
   Reading adjacent cells does not escape the window (2026-10-21, exhaustive):
   `v[h+1] - v[h]` is phase-free, but a decoder reaches it only through
   back-to-back `*`/`p` reads, since `D` advances once per instruction.
