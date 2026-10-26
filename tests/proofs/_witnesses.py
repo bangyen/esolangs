@@ -882,6 +882,37 @@ def _what_sparse(n: int) -> SparseRows:
     return SparseRows("10" * (width // 2), tuple(dict.fromkeys(rows)), width - 1)
 
 
+# language-owners: ["S*bleq"]
+def _sbleq_sparse(n: int) -> SparseRows:
+    """The packed witness's rows, as many as the band affords.
+
+    A row's price is its chunk scan, and the scan's prices are
+    chunk-value-driven, not positional (measured per row in the
+    landing notes; a case's steps run at ~0.5M/s on a quiet box,
+    degrading to ~0.2M/s under a memory-bound co-tenant — the
+    sets are budgeted at the degraded rate, against the slow
+    band's 600 s hard stop).
+    {0, width/2, last} totals 37M steps at n = 21 and stays; at
+    22 the middle row alone costs 44M, so {0, last} (34M) stands;
+    at 23 every row past chunk 0 costs 60M or more, so chunk 0's
+    last bit joins row 0 (12M together).  From n = 24 the chunks
+    are 8-digit decimals and row 0 alone costs 40M steps; every
+    second row measured there (57M and up) prices its pair past
+    the band, so row 0 stands alone.  The dearer rows are
+    recorded in the landing notes, unregistered.
+    """
+    width = 1 << n
+    if n == 21:
+        rows = (0, width // 2, width - 1)
+    elif n == 22:
+        rows = (0, width - 1)
+    elif n == 23:
+        rows = (0, n - 1)
+    else:
+        rows = (0,)
+    return SparseRows(_sbleq_worst(n), rows, rows[-1])
+
+
 #: Sparse-row registrations: a witness builder, the arities to step, and
 #: the formula columns (``"execution"``, ``"workspace"``) whose formulas
 #: the witness row must attain.  A registration naming no column checks
@@ -891,6 +922,7 @@ _SPARSE_ROWS: dict[
     str, tuple[Callable[[int], SparseRows], tuple[int, ...], frozenset[str]]
 ] = {
     "What!?": (_what_sparse, (16, 17, 22), frozenset({"execution", "workspace"})),
+    "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
 }
 
 #: Sparse-case bands, from standalone runs: a case pays one parse a row
@@ -898,7 +930,11 @@ _SPARSE_ROWS: dict[
 #: plus the stepping (the sampler roughly doubles a row's stepping).
 #: What!? parses in ~0.8 s at n = 16, ~1.8 s at 17, ~65 s at 22; whole
 #: cases measure 4.2 s / 3.9 s at 16 (execution / workspace), 11.5 s /
-#: 5.7 s at 17 and 100 s / 110 s at 22.
+#: 5.7 s at 17 and 100 s / 110 s at 22.  S*bleq parses in well under a
+#: second even at n = 26; its cases are priced by stepping alone
+#: (12M-40M steps a case, plus 1-31 s of generation): whole cases
+#: measure 28-108 s standalone (n = 23 the cheapest, 26 the dearest),
+#: and up to ~2.4x that under a memory-bound co-tenant.
 _SPARSE_BAND = {
     ("What!?", "execution", 16): "medium",
     ("What!?", "execution", 17): "slow",
@@ -906,6 +942,12 @@ _SPARSE_BAND = {
     ("What!?", "workspace", 16): "medium",
     ("What!?", "workspace", 17): "slow",
     ("What!?", "workspace", 22): "slow",
+    ("S*bleq", "execution", 21): "slow",
+    ("S*bleq", "execution", 22): "slow",
+    ("S*bleq", "execution", 23): "slow",
+    ("S*bleq", "execution", 24): "slow",
+    ("S*bleq", "execution", 25): "slow",
+    ("S*bleq", "execution", 26): "slow",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.

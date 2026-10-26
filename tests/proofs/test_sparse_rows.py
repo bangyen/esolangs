@@ -92,6 +92,7 @@ def test_sparse_workspace_rows(name: str, n: int) -> None:
     assert bits == claim, f"{name} n={n}: {bits} != {claim}"
 
 
+@pytest.mark.slow
 def test_sparse_registrations_are_real() -> None:
     """Every registration names a generator, its arities and its witness."""
     for name, (build, arities, columns) in _SPARSE_ROWS.items():
