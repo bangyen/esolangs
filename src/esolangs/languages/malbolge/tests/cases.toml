@@ -35,6 +35,6 @@ output = "¨"
 claim = "EOF is the value 59048, not an error (prints 59048 & 0xFF = 168)."
 
 [[generator_triggers]]
-table = "n=17 parity"
+table = "n=17 random 1"
 expect = "GeneratorCapError"
-claim = "seventeen inputs that use every input (seventeen is built only for a table that ignores one)"
+claim = "seventeen inputs in neither family (seventeen is built only for a table that ignores an input or is constant on Hamming-weight classes)"

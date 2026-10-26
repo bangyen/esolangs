@@ -166,11 +166,15 @@ process; no rule reproduces it:
   per two-trit digit, one cell per row pair, and the answer stub reads the
   last; below sixteen the unused reads are held at `0`, so every arity's
   cells are a subset of sixteen's. At seventeen it covers only tables
-  that ignore an input: the same build over the projection, with one
-  read discarded to keep the stream aligned, and 36 named rows of one
-  such witness execute in the sparse suite. Boundary rows execute at
-  every arity and every row at ten. Construction details and
-  measurements are in [construction summary](proofs/index.md#malbolge-bound).
+  that ignore an input -- the same build over the projection, with
+  one read discarded to keep the stream aligned -- or that are
+  constant on Hamming-weight classes, whose first fold group reads
+  four inputs and writes their popcount as its digit, so the readout
+  names the first sixteen inputs' weight and one cell serves each
+  weight's class pair. Named rows of one witness of each family
+  execute in the sparse suite. Boundary rows execute at every arity
+  and every row at ten. Construction details and measurements are in
+  [construction summary](proofs/index.md#malbolge-bound).
 
   Seventeen remains open. Native capture, semantic readout, footer dispatch and
   terminal-output components execute separately; no source computes an arbitrary

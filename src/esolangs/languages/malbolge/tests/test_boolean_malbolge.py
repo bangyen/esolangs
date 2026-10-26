@@ -10,6 +10,7 @@ from esolangs import generate
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages import generators as boolean
 from esolangs.languages.malbolge.generator import digits as _digits
+from esolangs.languages.malbolge.generator import symmetric as _symmetric
 from esolangs.languages.malbolge.generator.core import _table_char
 from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
 from esolangs.runtime.io import ScriptedIO
@@ -163,9 +164,39 @@ def test_seventeen_ignoring_an_input_builds_and_executes(bit: int) -> None:
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-def test_seventeen_using_every_input_and_eighteen_are_refused() -> None:
-    """Seventeen is built only for a table that ignores an input."""
-    with pytest.raises(GeneratorCapError, match="ignores an input"):
+@pytest.mark.medium
+def test_seventeen_weight_constant_builds_and_executes() -> None:
+    """A 17-input weight-class table builds via the popcount fold.
+
+    Parity (the class pair alternates at every weight) and a seeded
+    class vector both execute at the boundary rows: the zero row,
+    every single-bit row (one per folded input and the stub's), the
+    half and full rows, and the two alternating rows.
+    """
+    classes = "010111111000001011"
+    tables = (
+        "".join(str(row.bit_count() % 2) for row in range(1 << 17)),
+        "".join(classes[row.bit_count()] for row in range(1 << 17)),
+    )
+    rows = sorted(
+        {0, 1, 2, (1 << 16) - 1, 1 << 16, 2**17 - 2, 2**17 - 1}
+        | {1 << j for j in range(17)}
+    )
+    for table in tables:
+        assert _rows(table, rows) == [table[row] for row in rows]
+
+
+def test_symmetric_readouts_cover_every_weight() -> None:
+    """The popcount build's cells name weights 0..16, clear of the code."""
+    weights = _symmetric._s_readouts()  # noqa: SLF001
+    assert len(weights) == 20480
+    assert (min(weights), max(weights)) == (6565, 59040)
+    assert sorted(set(weights.values())) == list(range(17))
+
+
+def test_seventeen_in_neither_family_and_eighteen_are_refused() -> None:
+    """Seventeen is built only for the two restricted families."""
+    with pytest.raises(GeneratorCapError, match="does neither"):
         boolean.malbolge(dense(17))
     with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
         boolean.malbolge(dense(18))

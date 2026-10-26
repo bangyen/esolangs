@@ -34,11 +34,14 @@ The row's cell ``S + 1`` holds a label character naming one of four answers
 as a function of the last input -- ``0``, ``1``, ``x`` or ``not x`` -- and
 the answer stub reads that input.  Hubs and stubs sit where a missing
 digit keeps every table cell out (:mod:`.core`).
-Seventeen inputs would need 65,536 cells, more than the store.  A
-seventeen-input table that ignores an input is the one exception: the
-sixteen build over its projection, with the ignored input's read
-discarded in the gadget group that would have folded it, so the stream
-stays aligned and the stub still reads the last input.
+Seventeen inputs would need 65,536 cells, more than the store.  Two
+restricted families are the exceptions: a table that ignores an input
+is the sixteen build over its projection, with the ignored input's
+read discarded in the gadget group that would have folded it, so the
+stream stays aligned and the stub still reads the last input; a table
+constant on Hamming-weight classes is the popcount build in
+:mod:`.symmetric`, whose first group folds four inputs into their
+weight, so one cell serves every row of a weight.
 """
 
 from __future__ import annotations

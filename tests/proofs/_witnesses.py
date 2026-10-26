@@ -914,7 +914,49 @@ def _sbleq_sparse(n: int) -> SparseRows:
 
 
 # language-owners: ["Malbolge"]
-def _malbolge_sparse(n: int) -> SparseRows:
+def _malbolge_symmetric(n: int) -> SparseRows:
+    """One weight-class witness at seventeen: named rows, answers only.
+
+    The table is constant on Hamming-weight classes, with the class
+    vector drawn from ``Random(17018)`` (eighteen choices, both
+    answers attained).  The named rows -- row 0, every single-bit
+    row, the first row of every weight and the last two rows --
+    probe every folded input and the stub's, attain every weight and
+    both answers.  The evidence is about this one weight-class
+    witness only: it supports no scaling or execution claim, nothing
+    about non-symmetric seventeen-input tables, and it does not
+    soften "seventeen is open" -- below seventeen the suites execute
+    every row of every corpus table, here only these named rows run.
+    The witness field names the last row; no formula column is
+    claimed for Malbolge, so it attains nothing.
+    """
+    rng = random.Random(17018)
+    classes = "".join(rng.choice("01") for _ in range(n + 1))
+    table = "".join(classes[row.bit_count()] for row in range(1 << n))
+    rows = [0]
+    for row in (
+        *(1 << j for j in range(n)),
+        *((1 << w) - 1 for w in range(n + 1)),
+        (1 << n) - 2,
+        (1 << n) - 1,
+    ):
+        if row not in rows:
+            rows.append(row)
+    return SparseRows(table, tuple(rows), rows[-1])
+
+
+# language-owners: ["Malbolge"]
+def _malbolge_sparse(n: int) -> tuple[SparseRows, ...]:
+    """The two seventeen-input witnesses: projection and weight-class.
+
+    The projection witness follows; the weight-class witness is
+    :func:`_malbolge_symmetric`.  Both are answers-only.
+    """
+    return _malbolge_projection(n), _malbolge_symmetric(n)
+
+
+# language-owners: ["Malbolge"]
+def _malbolge_projection(n: int) -> SparseRows:
     """One projection witness at seventeen: 36 named rows, answers only.
 
     The witness is the sparse pricing's measured table (M7): a seeded
@@ -944,13 +986,19 @@ def _malbolge_sparse(n: int) -> SparseRows:
     return SparseRows(table, rows, 2 * 16)
 
 
-#: Sparse-row registrations: a witness builder, the arities to step, and
-#: the formula columns (``"execution"``, ``"workspace"``) whose formulas
-#: the witness row must attain.  A registration naming no column checks
-#: its rows' answers only — the shape a route with no step bound yet
-#: (S*bleq's packed route) plugs into.
+#: Sparse-row registrations: a witness builder (returning one witness
+#: or a tuple of them), the arities to step, and the formula columns
+#: (``"execution"``, ``"workspace"``) whose formulas the witness row
+#: must attain.  A registration naming no column checks its rows'
+#: answers only — the shape a route with no step bound yet (S*bleq's
+#: packed route) plugs into.
 _SPARSE_ROWS: dict[
-    str, tuple[Callable[[int], SparseRows], tuple[int, ...], frozenset[str]]
+    str,
+    tuple[
+        Callable[[int], SparseRows | tuple[SparseRows, ...]],
+        tuple[int, ...],
+        frozenset[str],
+    ],
 ] = {
     "What!?": (_what_sparse, (16, 17, 22), frozenset({"execution", "workspace"})),
     "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
@@ -968,8 +1016,9 @@ _SPARSE_ROWS: dict[
 #: measure 28-108 s standalone (n = 23 the cheapest, 26 the dearest),
 #: and up to ~2.4x that under a memory-bound co-tenant.  Malbolge
 #: parses in about a millisecond at seventeen (the source is the
-#: fixed store); its case is generation (~1.7 s) plus the 36 rows'
-#: stepping (~0.9 s), about 2.6 s standalone.
+#: fixed store); its case is generation plus both witnesses' rows
+#: (36 projection rows, 35 weight-class rows, 407,729 steps in all),
+#: about 1.9 s standalone.
 _SPARSE_BAND = {
     ("What!?", "execution", 16): "medium",
     ("What!?", "execution", 17): "slow",

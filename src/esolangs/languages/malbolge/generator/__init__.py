@@ -9,15 +9,17 @@ answer stub reads.  The whole fixed-size source is the program: constants,
 labels and stubs are all source characters, so there is no initializer.
 Fewer than sixteen inputs hold the unused reads at ``'0'``, so every
 arity's cells are a subset of sixteen's and one placement serves all.
-Seventeen inputs are built only when the table ignores one: the sixteen
-build over the projection, kept aligned by one discarded read.
+Seventeen inputs are built only when the table ignores an input or is
+constant on Hamming-weight classes: the sixteen build over the
+projection, kept aligned by one discarded read, or the popcount build,
+whose first group folds four inputs into their weight.
 
 Size:
     Constant: the fixed 59049-cell memory at every arity; n=10 random 1847:
     59,049 chars, n=16 and: 59,049 chars.
 
 Raises:
-    GeneratorCapError: past seventeen inputs, or seventeen using every input.
+    GeneratorCapError: past seventeen inputs, or seventeen in neither family.
 
 Decisions:
     Folding or sharing stubs cannot shrink the fixed store.
@@ -34,6 +36,7 @@ from esolangs.registry._language import Language, Shape
 from esolangs.runtime.source_hints import with_hint
 
 from .digits import _DIGITS_N, _digits_program, _seventeen_program
+from .symmetric import _symmetric_program
 
 MAX_INPUTS = _DIGITS_N
 
@@ -41,16 +44,21 @@ MAX_INPUTS = _DIGITS_N
 def malbolge(truth_table: str) -> str:
     """Return a Malbolge program computing ``truth_table``.
 
-    Seventeen inputs only when the table ignores an input; else ``n`` <= 16.
+    Seventeen inputs only when the table ignores an input or is
+    constant on Hamming-weight classes; else ``n`` <= 16.
     """
     n = _validate_truth_table(truth_table)
     if n > _DIGITS_N:
-        if n == _DIGITS_N + 1 and (program := _seventeen_program(truth_table)):
+        if n == _DIGITS_N + 1 and (
+            program := _seventeen_program(truth_table)
+            or _symmetric_program(truth_table)
+        ):
             return program
         detail = (
-            "seventeen is built only for a table that ignores an input, and "
-            "this one uses all seventeen; every row pair owns a cell, and "
-            "seventeen inputs would need 65,536 of the store's 59,049"
+            "seventeen is built only for a table that ignores an input or "
+            "is constant on Hamming-weight classes, and this one does "
+            "neither; every row pair owns a cell, and seventeen inputs "
+            "would need 65,536 of the store's 59,049"
             if n == _DIGITS_N + 1
             else "every row pair owns a cell, and seventeen inputs would need "
             "65,536 of the store's 59,049"
@@ -75,7 +83,10 @@ LANGUAGE = Language(
     # generator's or any other -- is bounded by a constant.
     size_bound=lambda _n: 59_049,
     generator_max_inputs=MAX_INPUTS + 1,
-    generator_restrictions="seventeen inputs only for a table that ignores an input",
+    generator_restrictions=(
+        "seventeen inputs only for a table that ignores an input "
+        "or is constant on Hamming-weight classes"
+    ),
     boolean=malbolge,
     # Not a tree: straight-line code into the fixed store.
     shape=Shape.LOOKUP,
