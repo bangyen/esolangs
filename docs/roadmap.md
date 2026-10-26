@@ -115,14 +115,9 @@ evidence, not optimization tasks.
   6.4 GB once recorded at 22 was that parse one arity up. No executed
   evidence past 22 is claimed: last built 26, last loaded 22, and
   execution past 22 waits on a parse-cost change.
-- **Open mathematics:** Polynomial's worst-case length constant
-  `C_P(n)*n/T**2` is bracketed only within a factor 12.5, and whether the
-  limit exists is open ([proofs](proofs/index.md#polynomial-bound)).
-  Measuring larger n cannot narrow it: the shipped generator's ratios on
-  the maximal-width witness family sit flat at about 200 with the window
-  cap-ended at n = 10, and generator points bound `C_P` from neither side.
-  Whether some 17-input Malbolge table has no program is open; the Malbolge row
-  above is the constructive side ([proofs](proofs/index.md#malbolge-bound)).
+- **Open mathematics:** Whether some 17-input Malbolge table has no program
+  is open; the Malbolge row above is the constructive side
+  ([proofs](proofs/index.md#malbolge-bound)).
 
 Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
