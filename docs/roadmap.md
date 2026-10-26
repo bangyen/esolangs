@@ -25,7 +25,8 @@ evidence, not optimization tasks.
   conflict graph: independence number 8, twelve classes), lockstep
   adjacent-cell reads reach 110 of 512 triples a phase, and the
   seven-meaning build's 1,994 gotos have 2.77 cells each in the
-  complement against a 3.6-cell routing floor
+  complement against a 3.6-cell annealed routing floor (certified
+  at least 2.99)
   ([limitations](limitations.md)). Reopen only with a layout that needs a
   quarter fewer gotos at that floor, or a decoder whose per-cell meaning
   is not a function of the window cell.

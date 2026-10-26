@@ -212,7 +212,16 @@ process; no rule reproduces it:
   non-navigation cells in the decoder and 682 in the fold, so the
   complement affords 5,516 cells for their 1,994 gotos, 2.77 a hit, under
   the 3.6 floor (unions 11,559 at 3.6 a hit, 13,953 at 4.8; a target
-  above 127 costs a window walk plus one `j` besides). The three-cell,
+  above 127 costs a window walk plus one `j` besides). The 3.6 in
+  that pricing is an annealed optimum, not a proved bound; what
+  certifies is 2.99: a flow relaxation over fractional contents
+  proves at least 2.99 cells a hit for this routing class on the
+  closest surviving reconstruction of the fold's pair distribution
+  (525 window pairs from the archived join build, whose own annealed
+  optimum is 3.56 a hit), so the model optimum lies between 2.99
+  certified and 3.55-3.59 annealed — and 2.77 a hit is under the
+  certified figure too, so the closure does not rest on the anneal.
+  The three-cell,
   seven-meaning family is closed unless a layout needs a quarter fewer
   gotos at the floor cost. Low pointer cells in
   the decoder's window are blocked: every window cell is a
