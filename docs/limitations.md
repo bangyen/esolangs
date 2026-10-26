@@ -221,8 +221,11 @@ process; no rule reproduces it:
   proves at least 2.99 cells a hit for this routing class on the
   closest surviving reconstruction of the fold's pair distribution
   (525 window pairs from the archived join build, whose own annealed
-  optimum is 3.56 a hit), so the model optimum lies between 2.99
-  certified and 3.55-3.59 annealed — and 2.77 a hit is under the
+  optimum is 3.48 a hit at a 5M-move anneal; samples of the same
+  distribution priced from 50 to 3,000 pairs rise from about 2.8
+  a hit and saturate at 3.43-3.46, no density reaching 3.6), so
+  the model optimum on the reconstruction lies between 2.99
+  certified and 3.48 annealed — and 2.77 a hit is under the
   certified figure too, so the closure does not rest on the anneal.
   The three-cell,
   seven-meaning family is closed unless a layout needs a quarter fewer
