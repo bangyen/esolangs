@@ -146,6 +146,31 @@ def test_past_sixteen_inputs_is_refused() -> None:
         boolean.malbolge(dense(17))
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", [0, 5, 16])
+def test_seventeen_ignoring_an_input_builds_and_executes(bit: int) -> None:
+    """A 17-input table ignoring one input builds via its projection.
+
+    The lift drops the last input (the plain sixteen build), a middle
+    positional input (a discarded read in its gadget group) and the
+    first input; boundary rows execute under both values of each.
+    """
+    base = dense(16)
+    table = "".join(
+        base[(r & ((1 << bit) - 1)) | ((r >> (bit + 1)) << bit)] for r in range(1 << 17)
+    )
+    rows = sorted({0, 1, 2, 65535, 65536, 2**17 - 2, 2**17 - 1})
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+def test_seventeen_using_every_input_and_eighteen_are_refused() -> None:
+    """Seventeen is built only for a table that ignores an input."""
+    with pytest.raises(GeneratorCapError, match="ignores an input"):
+        boolean.malbolge(dense(17))
+    with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
+        boolean.malbolge(dense(18))
+
+
 def test_a_value_meaning_needs_sixteen_characters() -> None:
     """A 16-value set meets every residue's character set; see the proof."""
     indices = [_XLAT1.index(op) for op in "ji*p</vo"]

@@ -34,7 +34,11 @@ The row's cell ``S + 1`` holds a label character naming one of four answers
 as a function of the last input -- ``0``, ``1``, ``x`` or ``not x`` -- and
 the answer stub reads that input.  Hubs and stubs sit where a missing
 digit keeps every table cell out (:mod:`.core`).
-Seventeen inputs would need 65,536 cells, more than the store.
+Seventeen inputs would need 65,536 cells, more than the store.  A
+seventeen-input table that ignores an input is the one exception: the
+sixteen build over its projection, with the ignored input's read
+discarded in the gadget group that would have folded it, so the stream
+stays aligned and the stub still reads the last input.
 """
 
 from __future__ import annotations
@@ -87,6 +91,12 @@ from .isa import (
 _DIGITS_N = 16
 #: Reads per gadget group.
 _READS = 3
+#: The ``_GADGET`` token index before which a discarded read drops a
+#: group's slot (1-based): the read lands where the next read or constant
+#: overwrites ``A``, so the gadget's cells never see the ignored input.
+#: Slot 4 is the read past the group -- the next group's first slot, or
+#: the stub's own input when the last group drops it.
+_DROP_TOKEN = {1: 0, 2: 2, 3: 4, 4: 13}
 
 #: The gadget: ``/`` reads an input, ``K`` sets ``A`` to 0 / all-1 / all-2 and
 #: a digit names the cell a ``p`` runs over.  The unique shortest injective
@@ -312,11 +322,14 @@ class _Digits(NamedTuple):
 
 
 @cache
-def _digits(n: int) -> _Digits:
+def _digits(n: int, drop: tuple[int, int] | None = None) -> _Digits:
     """Return ``(code, data, table cell per prefix, labels)`` for ``n`` inputs.
 
-    Raises if any code, stub, hub or data cell collides with another or with
-    a table cell, or if the readouts are not distinct.
+    ``drop`` is a ``(group, token)`` pair naming one discarded read in
+    that gadget group (the seventeen-input projection build); the
+    readouts, tables and labels are sixteen's either way.  Raises if
+    any code, stub, hub or data cell collides with another or with a
+    table cell, or if the readouts are not distinct.
     """
     tables = tuple(s + 1 for s in _readouts(n))
     if len(set(tables)) != len(tables) or max(tables) >= _WORDS:
@@ -329,7 +342,7 @@ def _digits(n: int) -> _Digits:
 
     main, _ = _main_planner(data)
     _emit_digit_setup(main, cells)
-    _emit_digit_groups(main, n, cells)
+    _emit_digit_groups(main, n, cells, drop)
     _emit_digit_jump(main, cells, pointer)
     code_end = main.c
 
@@ -434,15 +447,25 @@ def _emit_zero(main: _Planner, cells: _DCells) -> None:
 
 
 def _emit_gadget_reads(
-    main: _Planner, n: int, group: int, cell: list[int], cells: _DCells
+    main: _Planner,
+    n: int,
+    group: int,
+    cell: list[int],
+    cells: _DCells,
+    drop_token: int | None = None,
 ) -> None:
     """Emit one group's gadget ops over its three cells.
 
-    A held read is the constant ``'0'`` (:func:`_emit_zero`).
+    A held read is the constant ``'0'`` (:func:`_emit_zero`).  A dropped
+    read (``drop_token``) is a bare ``/`` before that gadget token: it
+    consumes one stream input and nothing else, since the token after
+    it reloads ``A`` (a read or a constant).
     """
     helper = cells.helper
     held = _held(n, group)
-    for op in _GADGET:
+    for index, op in enumerate(_GADGET):
+        if index == drop_token:
+            main.raw("/")
         if op == "/":
             if held:
                 held -= 1
@@ -455,7 +478,9 @@ def _emit_gadget_reads(
             main.op("p", cell[int(op)])
 
 
-def _emit_digit_groups(main: _Planner, n: int, cells: _DCells) -> None:
+def _emit_digit_groups(
+    main: _Planner, n: int, cells: _DCells, drop: tuple[int, int] | None = None
+) -> None:
     """Emit the five gadget groups, folding one digit per group into ``S``.
 
     ``S`` starts in the s cell and each group rotates it through its own
@@ -464,7 +489,8 @@ def _emit_digit_groups(main: _Planner, n: int, cells: _DCells) -> None:
     helper = cells.helper
     s = cells.s_cell
     for group, cell in enumerate(cells.gadget):
-        _emit_gadget_reads(main, n, group, cell, cells)
+        token = drop[1] if drop is not None and drop[0] == group else None
+        _emit_gadget_reads(main, n, group, cell, cells, token)
         if group == _D_SWAP_V:
             _emit_swap12(main, cell[2], cells.two, helper)
         main.op("p", s)
@@ -499,11 +525,66 @@ def _hubs() -> dict[str, tuple[int, ...]]:
     return {lab: tuple(sorted((a, _s01(a)))) for lab, a in _seed_values().items()}
 
 
-def _digits_program(truth_table: str, n: int) -> str:
-    code, data, tables, labels = _digits(n)
+def _render_build(truth_table: str, build: _Digits) -> str:
+    """Return ``build``'s program with ``truth_table``'s answer cells filled."""
+    code, data, tables, labels = build
     program = _program(code)
     program.update(data)
     for row, h in enumerate(tables):
         label = _ANSWER[truth_table[2 * row : 2 * row + 2]]
         program[h] = _table_char(h, label, labels)
     return _render(program)
+
+
+def _digits_program(truth_table: str, n: int) -> str:
+    return _render_build(truth_table, _digits(n))
+
+
+def _ignored_bit(truth_table: str) -> int | None:
+    """Return the lowest input bit ``truth_table`` ignores, or ``None``.
+
+    Bit 0 is the last input (the table is MSB first).  A table ignores
+    bit ``b`` when every block of ``2**b`` rows is followed by its twin:
+    the bit's two halves of each ``2**(b + 1)``-row block agree.
+    """
+    size = len(truth_table)
+    for bit in range(size.bit_length() - 1):
+        step = 1 << bit
+        if all(
+            truth_table[i : i + step] == truth_table[i + step : i + 2 * step]
+            for i in range(0, size, 2 * step)
+        ):
+            return bit
+    return None
+
+
+def _project(truth_table: str, bit: int) -> str:
+    """Return the table got by dropping ``bit``: each block's first half."""
+    step = 1 << bit
+    return "".join(
+        truth_table[i : i + step] for i in range(0, len(truth_table), 2 * step)
+    )
+
+
+def _seventeen_program(truth_table: str) -> str | None:
+    """Return a program for a seventeen-input table ignoring an input.
+
+    The projection's sixteen build computes the table, once the stream
+    is aligned: dropping the last input is that build unchanged, and
+    dropping stream position ``p`` (counting from 1) discards one read
+    in the gadget group that would have folded position ``p``.  Returns
+    ``None`` when the table uses all seventeen inputs.
+    """
+    bit = _ignored_bit(truth_table)
+    if bit is None:
+        return None
+    projected = _project(truth_table, bit)
+    if bit == 0:
+        return _digits_program(projected, _DIGITS_N)
+    position = _DIGITS_N + 1 - bit
+    if position == _DIGITS_N:
+        drop = (_D_GROUPS - 1, _DROP_TOKEN[4])
+    else:
+        group, slot = divmod(position - 1, _READS)
+        drop = (group, _DROP_TOKEN[slot + 1])
+    return _render_build(projected, _digits(_DIGITS_N, drop))

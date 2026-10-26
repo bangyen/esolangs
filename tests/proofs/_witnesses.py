@@ -913,6 +913,37 @@ def _sbleq_sparse(n: int) -> SparseRows:
     return SparseRows(_sbleq_worst(n), rows, rows[-1])
 
 
+# language-owners: ["Malbolge"]
+def _malbolge_sparse(n: int) -> SparseRows:
+    """One projection witness at seventeen: 36 named rows, answers only.
+
+    The witness is the sparse pricing's measured table (M7): a seeded
+    sixteen-input table (``Random(17017)``; the pricing script drew two
+    tables from the seed before it, so those draws are consumed here)
+    lifted to seventeen by ignoring the last input, each answer then
+    appearing under both values of that input.  The eighteen projected
+    rows -- row 0, every single-bit row, the half-width row (already a
+    single bit) and the last row -- probe every folded input, attain
+    both answers and include the step worst (projected row 16, 5,686
+    steps, the formula's pinned worst at sixteen); measured on the
+    sixteen build they total 100,484 steps, so the lifted 36 rows
+    total 200,968, about 0.9 s of stepping.  The evidence is about
+    this one projection witness only: it supports no scaling or
+    execution claim, nothing about non-projection seventeen-input
+    tables, and it does not soften "seventeen is open" -- below
+    seventeen the suites execute every row of every corpus table,
+    here only these named rows run.
+    """
+    rng = random.Random(17017)
+    for _ in range((1 << (n - 1)) + (1 << n)):
+        rng.choice("01")
+    base = "".join(rng.choice("01") for _ in range(1 << (n - 1)))
+    table = "".join(bit * 2 for bit in base)
+    projected = (0, *(1 << j for j in range(n - 1)), (1 << (n - 1)) - 1)
+    rows = tuple(2 * row + bit for row in projected for bit in (0, 1))
+    return SparseRows(table, rows, 2 * 16)
+
+
 #: Sparse-row registrations: a witness builder, the arities to step, and
 #: the formula columns (``"execution"``, ``"workspace"``) whose formulas
 #: the witness row must attain.  A registration naming no column checks
@@ -923,6 +954,7 @@ _SPARSE_ROWS: dict[
 ] = {
     "What!?": (_what_sparse, (16, 17, 22), frozenset({"execution", "workspace"})),
     "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
+    "Malbolge": (_malbolge_sparse, (17,), frozenset()),
 }
 
 #: Sparse-case bands, from standalone runs: a case pays one parse a row
@@ -934,7 +966,10 @@ _SPARSE_ROWS: dict[
 #: second even at n = 26; its cases are priced by stepping alone
 #: (12M-40M steps a case, plus 1-31 s of generation): whole cases
 #: measure 28-108 s standalone (n = 23 the cheapest, 26 the dearest),
-#: and up to ~2.4x that under a memory-bound co-tenant.
+#: and up to ~2.4x that under a memory-bound co-tenant.  Malbolge
+#: parses in about a millisecond at seventeen (the source is the
+#: fixed store); its case is generation (~1.7 s) plus the 36 rows'
+#: stepping (~0.9 s), about 2.6 s standalone.
 _SPARSE_BAND = {
     ("What!?", "execution", 16): "medium",
     ("What!?", "execution", 17): "slow",
@@ -948,6 +983,7 @@ _SPARSE_BAND = {
     ("S*bleq", "execution", 24): "slow",
     ("S*bleq", "execution", 25): "slow",
     ("S*bleq", "execution", 26): "slow",
+    ("Malbolge", "execution", 17): "medium",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
