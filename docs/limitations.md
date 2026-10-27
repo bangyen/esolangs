@@ -730,7 +730,10 @@ Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
 prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
 removed; IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
-48/49 normalization; dropping a step adds nothing). Painfuck shares brainfuck's flag tree but stays: its moves use
+48/49 normalization; dropping a step adds nothing). On the same ground
+CARP (no indirect jump or load: Decleq's diagram without the normalization)
+and CreativeScript v2 (a packed literal under Blindfolded Arithmetic's
+`1 + x(Q - 1)` shift) were not admitted on 2026-10-27. Painfuck shares brainfuck's flag tree but stays: its moves use
 `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
 admissions are exempt: S\*bleq, itself a re-spelling of Subleq, was
 collected first, and Subleq's generator re-spells S\*bleq's in turn;

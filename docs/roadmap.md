@@ -151,21 +151,6 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
-## Language candidates
-
-Unimplemented wiki pages shortlisted for the first-implementation route
-(2026-10-22): their specs read whole once the standing conventions (EOF,
-empty-stack pops, output framing, cell width) fill the gaps. None is
-admitted yet. Each needs a prototype audit first: an interpreter matching
-every example on its page, a linear generator executed over every table at
-small n, and a re-spelling comparison with the nearest collected generators
-([curation](limitations.md#curation)).
-
-- **Re-spelling, no construction found:** CARP (no indirect jump or load;
-  every construction is Decleq's diagram without the normalization, the
-  ground IEBEL was removed on) and CreativeScript v2 (a packed literal
-  under Blindfolded Arithmetic's `1 + x(Q - 1)` shift).
-
 ## Engineering
 
 Dead-code leads, unmeasured against the
