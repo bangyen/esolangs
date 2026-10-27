@@ -12,6 +12,40 @@ from typing import Any, NamedTuple
 from esolangs.exceptions import HaltError
 
 
+def _arg_key(arg: Any) -> tuple[Any, bool]:
+    """An intern key for one node part, and whether it may key at all.
+
+    Child nodes key by identity: an interned child is kept alive by the
+    cache, so its id cannot be reused while a parent key references it,
+    and interning is bottom-up, so identity stands for equality.  A part
+    holding a node that was never interned (it contains an unhashable
+    leaf) cannot key its parent either, or a freed id could collide.
+    """
+    if isinstance(arg, _Node):
+        return id(arg), id(arg) in _INTERNED
+    if isinstance(arg, tuple):
+        parts = []
+        for part in arg:
+            key, ok = _arg_key(part)
+            if not ok:
+                return None, False
+            parts.append(key)
+        return tuple(parts), True
+    try:
+        hash(arg)
+    except TypeError:
+        return None, False
+    return arg, True
+
+
+#: Interned parse nodes, keyed by (tag, part keys): equal subtrees are
+#: one object.  A generated worst-case program inlines its shared
+#: diagram into one expression; interning keeps the parse at the size
+#: of the distinct subtrees instead of unfolding every occurrence.
+_NODE_CACHE: dict[tuple[Any, ...], _Node] = {}
+_INTERNED: set[int] = set()
+
+
 class _Node(NamedTuple):
     """A parse-tree node: ``tag`` names the form, ``arg1``-``arg3`` its parts.
 
@@ -38,6 +72,23 @@ class _Node(NamedTuple):
     arg1: Any = None
     arg2: Any = None
     arg3: Any = None
+
+
+def _node(tag: str, arg1: Any = None, arg2: Any = None, arg3: Any = None) -> _Node:
+    """Build a parse node, interned: equal subtrees are one object."""
+    keys: list[Any] = [tag]
+    for arg in (arg1, arg2, arg3):
+        key, ok = _arg_key(arg)
+        if not ok:
+            return _Node(tag, arg1, arg2, arg3)
+        keys.append(key)
+    cache_key = tuple(keys)
+    node = _NODE_CACHE.get(cache_key)
+    if node is None:
+        node = _Node(tag, arg1, arg2, arg3)
+        _NODE_CACHE[cache_key] = node
+        _INTERNED.add(id(node))
+    return node
 
 
 type _Key = tuple[str, int]
@@ -197,7 +248,7 @@ class _Parser:
             return self.group(char)
         if char in _UNARIES:
             self.at += 1
-            return _Node("u", char, self.unambiguous())
+            return _node("u", char, self.unambiguous())
         found = self.literal(".:#,;")
         if found is None:
             raise _fail(
@@ -208,15 +259,15 @@ class _Parser:
         sigil, unary, number = found
         node: _Node
         if sigil == "#":
-            node = _Node("#", _unary(number, 16, unary) if unary else number)
+            node = _node("#", _unary(number, 16, unary) if unary else number)
             return node
         if sigil in ",;":
             if not self.keyword("SUB"):
                 raise _fail("E000", "an INTERCAL array needs SUB in an expression")
-            node = _Node("sub", sigil, number, self.subscripts())
+            node = _node("sub", sigil, number, self.subscripts())
         else:
-            node = _Node(sigil, number)
-        return _Node("u", unary, node) if unary else node
+            node = _node(sigil, number)
+        return _node("u", unary, node) if unary else node
 
     def subscripts(self) -> tuple[_Node, ...]:
         items = [self.unambiguous()]
@@ -239,7 +290,7 @@ class _Parser:
             )
         self.at += 1
         self.groups.pop()
-        return _Node("u", unary, inner) if unary else inner
+        return _node("u", unary, inner) if unary else inner
 
     def expression(self) -> _Node:
         """Parse an expression; binary operators right-associate (0.26+)."""
@@ -247,7 +298,7 @@ class _Parser:
         char = self.peek()
         if char and char in _MINGLES + "~":
             self.at += 1
-            return _Node("$" if char in _MINGLES else "~", left, self.expression())
+            return _node("$" if char in _MINGLES else "~", left, self.expression())
         return left
 
     def separated[T](self, item: Callable[[], T]) -> tuple[T, ...]:
@@ -284,7 +335,7 @@ class _Parser:
         start = self.at
         found = self.literal(",;")
         if found is not None and not found[1] and not self.keyword("SUB"):
-            return _Node("array", found[0], found[2])
+            return _node("array", found[0], found[2])
         self.at = start
         if output:
             return self.expression()
@@ -292,7 +343,7 @@ class _Parser:
         if found is not None:
             if found[1]:
                 raise _fail("E000", "invalid INTERCAL variable")
-            return _Node(found[0], found[2])
+            return _node(found[0], found[2])
         node = self.unambiguous()
         if node.tag != "sub":
             raise _fail("E000", "invalid INTERCAL variable")
@@ -307,53 +358,53 @@ class _Parser:
                 hint="use statements supported by esolangs describe --spec INTERCAL",
             )
         sigil, _unary_mark, number = found
-        target: _Node = _Node(sigil, number)
+        target: _Node = _node(sigil, number)
         if sigil in ",;" and self.keyword("SUB"):
-            target = _Node("sub", sigil, number, self.subscripts())
+            target = _node("sub", sigil, number, self.subscripts())
         if not self.keyword("<-"):
             raise _fail("E000", "invalid INTERCAL calculation")
         if target.tag in ",;":
             dimensions = [self.expression()]
             while self.keyword("BY"):
                 dimensions.append(self.expression())
-            return _Node("dimension", _DimensionKey(sigil, number), tuple(dimensions))
-        return _Node("calculate", target, self.expression())
+            return _node("dimension", _DimensionKey(sigil, number), tuple(dimensions))
+        return _node("calculate", target, self.expression())
 
     def command(self) -> _Node:
         label = self.label()
         if label is not None:
             if not self.keyword("NEXT"):
                 raise _fail("E000", "a label in a statement body must precede NEXT")
-            return _Node("next", label)
+            return _node("next", label)
         for word in ("FORGET", "RESUME"):
             if self.keyword(word):
-                return _Node(word.lower(), self.expression())
+                return _node(word.lower(), self.expression())
         for word in ("STASH", "RETRIEVE", "IGNORE", "REMEMBER"):
             if self.keyword(word):
-                return _Node(word.lower(), self.separated(self.variable))
+                return _node(word.lower(), self.separated(self.variable))
         if self.keyword("ABSTAIN"):
             count = None if self.keyword("FROM") else self.expression()
             if count is not None and not self.keyword("FROM"):
                 raise _fail("E000", "computed ABSTAIN needs FROM")
-            return _Node("abstain", self.required_target(), count)
+            return _node("abstain", self.required_target(), count)
         if self.keyword("REINSTATE"):
-            return _Node("reinstate", self.required_target())
+            return _node("reinstate", self.required_target())
         if self.keyword("READ OUT"):
-            return _Node("read", self.separated(lambda: self.io_item(output=True)))
+            return _node("read", self.separated(lambda: self.io_item(output=True)))
         if self.keyword("WRITE IN"):
-            return _Node("write", self.separated(lambda: self.io_item(output=False)))
+            return _node("write", self.separated(lambda: self.io_item(output=False)))
         if self.keyword("GIVE UP"):
-            return _Node("give up")
+            return _node("give up")
         if self.keyword("TRY AGAIN"):
-            return _Node("try again")
+            return _node("try again")
         for word in ("COME FROM", "NEXT FROM"):
             if self.keyword(word):
                 found = self.target()
                 kind = word.lower()
                 return (
-                    _Node(kind, found)
+                    _node(kind, found)
                     if found is not None
-                    else _Node(kind, self.expression())
+                    else _node(kind, self.expression())
                 )
         return self.lvalue_assignment()
 
@@ -504,5 +555,5 @@ def _load(text: str) -> _Statement:
                 else "unrecognized INTERCAL statement",
             )
     except HaltError as error:
-        command = _Node("error", str(error))
+        command = _node("error", str(error))
     return _Statement(text, label, bool(polite), abstained, chance, command, after)
