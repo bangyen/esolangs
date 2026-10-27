@@ -159,11 +159,6 @@ def _input_sentence(facts: LanguageInfo) -> str:
         return 'one decimal row index plus one, e.g. "3" for the bits 10'
     if shape in {"char_stream", "char_stream_cyclic"}:
         return f'adjacent bit characters, e.g. "{example}"'
-    if shape == "char_stream_padded":
-        return (
-            f'adjacent bit characters, e.g. "{example}" -- and an odd count '
-            f"above one is padded with a leading {zero} character"
-        )
     lines = f"{one}\\n{zero}"
     return f'one line per bit, e.g. "{lines}"'
 

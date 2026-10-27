@@ -82,9 +82,7 @@ def encode_inputs(
                 f"an integer too large to render as one: {exc}"
             ) from exc
     zero, one = contract.alphabet
-    ghost = contract.ghost_digit and len(bits) % 2 and len(bits) > 1
-    padded = [0, *bits] if ghost else bits
-    digits = [one if bit else zero for bit in padded]
+    digits = [one if bit else zero for bit in bits]
     if contract.input_shape in CHAR_STREAMS:
         return "".join(digits)
     return "".join(f"{digit}\n" for digit in digits)

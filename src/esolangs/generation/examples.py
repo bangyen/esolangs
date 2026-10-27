@@ -102,14 +102,6 @@ class BooleanExample:
     #: Boolean input encoding: adjacent characters, numeric/string lines,
     #: a row index, or a padded character stream.
     input_shape: InputShape = "line_per_bit"
-    #: Whether an odd input count is padded with a leading zero the program
-    #: reads like any other digit.  A generator whose slot stride must land
-    #: on a separator reads one digit more than the arity; feeding the
-    #: arity is an input-exhausted error, and padding at the *end* instead
-    #: answers every MSB-set row wrongly.  One input is the exception --
-    #: that arity is an affine computation on the bit itself, and reads
-    #: exactly one digit.
-    ghost_digit: bool = False
     bits: tuple[int, ...] = ()
     fill: Callable[[str, list[int]], str] | None = None
     #: The ``(zero, one)`` text per input, read off a template; ``fill`` is
@@ -186,7 +178,6 @@ def _contract_fields(contract: BooleanContract) -> dict[str, Any]:
         "answer_values": contract.answer_values,
         "alphabet": contract.alphabet,
         "input_shape": contract.input_shape,
-        "ghost_digit": contract.ghost_digit,
         "note": contract.note,
     }
 
@@ -215,7 +206,7 @@ def _reader(
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
     contract = _contract_for(interpreter)
-    if contract.input_shape in {"char_stream", "char_stream_padded"}:
+    if contract.input_shape == "char_stream":
         inputs = ("".join(inputs),)
     return BooleanExample(
         **_contract_fields(contract),

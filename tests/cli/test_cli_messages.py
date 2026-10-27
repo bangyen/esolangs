@@ -17,7 +17,7 @@ from tests.support.reference import REFERENCE
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
 _SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=True)
-_PADDED = one(input_shape="char_stream_padded")
+_STREAM = one(input_shape="char_stream")
 
 
 class TestTheHintsStayQuietWhenTheyDoNotApply:
@@ -56,7 +56,6 @@ class TestSmallerReportsFromRoundFifteen:
                 for n in one(input_shape="char_stream_cyclic")
             ),
             *((n, "one decimal row index") for n in one(input_shape="row_index")),
-            *((n, "padded with a leading") for n in _PADDED),
             (REFERENCE, "adjacent bit characters"),
         ],
     )
@@ -80,20 +79,18 @@ class TestRoundSixQol:
         for name in _SPELLED:
             zero, one = esolangs.describe(name)["input_encoding"]
             assert call_main(["encode", name, "10"], capsys) == f"{one}\n{zero}\n"
-        for name in _PADDED:
-            assert call_main(["encode", name, "101"], capsys) == "0101"
 
-    @pytest.mark.parametrize("padded", _PADDED)
+    @pytest.mark.parametrize("stream", _STREAM)
     def test_encode_then_run_computes_the_table(
-        self, padded: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, stream: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The pipeline the help now recommends, on the awkward language."""
+        """The pipeline the help now recommends, at an odd arity."""
         path = tmp_path / "tg.txt"
-        path.write_text(esolangs.generate(padded, "10010110"))
+        path.write_text(esolangs.generate(stream, "10010110"))
         got = ""
         for row in range(8):
-            stdin = call_main(["encode", padded, f"{row:03b}"], capsys)
-            got += call_main(["run", padded, str(path)], capsys, stdin=stdin)[-1:]
+            stdin = call_main(["encode", stream, f"{row:03b}"], capsys)
+            got += call_main(["run", stream, str(path)], capsys, stdin=stdin)[-1:]
         assert got == "10010110"
 
     def test_version_is_accepted_after_a_subcommand(

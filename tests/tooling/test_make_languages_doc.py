@@ -202,8 +202,6 @@ def test_the_shape_table_carries_the_encoders_output() -> None:
     # Row 5 is 101; a padded stream leads an odd count with a zero.
     for name in one(input_shape="row_index"):
         assert f"| {name} | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
-    for name in one(input_shape="char_stream_padded"):
-        assert f"| {name} | `char_stream_padded` | `0`/`1` | `'0101'` |" in rendered
 
 
 def test_boolean_set_names_are_registered() -> None:

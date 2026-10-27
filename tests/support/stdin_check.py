@@ -40,12 +40,6 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
     wanted = None
     if truth_table is not None:
         wanted = _validate_shape_for_evaluate(truth_table)
-        if shape == "char_stream_padded" and wanted % 2 and wanted > 1:
-            # language-owners: ["Taglate"]
-            # Taglate's pad is a digit the program reads like any other, so
-            # an odd input count above one costs an extra character.  Read off
-            # the shape, which is where that fact already lives.
-            wanted += 1
 
     if shape in {"row_index", "row_number"}:
         # A row number is the row index plus one, for a language whose input
@@ -100,7 +94,7 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
                     f"{wanted}-input program ({base}..{2**wanted - 1 + base})"
                 )
         return
-    if shape in {"char_stream", "char_stream_padded", "char_stream_cyclic"}:
+    if shape in {"char_stream", "char_stream_cyclic"}:
         if contract.input_sets:
             first, _, rest = stdin.partition("\n")
             if rest.strip():

@@ -5,14 +5,11 @@ from typing import Literal
 
 type AnswerMode = Literal["output", "dump", "termination"]
 #: The input shapes whose bits arrive as one unseparated character run.
-CHAR_STREAMS: frozenset[str] = frozenset(
-    {"char_stream", "char_stream_padded", "char_stream_cyclic"}
-)
+CHAR_STREAMS: frozenset[str] = frozenset({"char_stream", "char_stream_cyclic"})
 
 type InputShape = Literal[
     "line_per_bit",
     "char_stream",
-    "char_stream_padded",
     "char_stream_cyclic",
     "row_index",
     "row_number",
@@ -26,7 +23,6 @@ class BooleanContract:
 
     alphabet: tuple[str, str] = ("0", "1")
     input_shape: InputShape = "line_per_bit"
-    ghost_digit: bool = False
     answer_mode: AnswerMode = "output"
     answer_pattern: str = ""
     answer_values: tuple[str, str] = ("0", "1")

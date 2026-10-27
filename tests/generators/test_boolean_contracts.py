@@ -19,7 +19,6 @@ def test_examples_derive_the_registered_io_contract() -> None:
         for field in (
             "alphabet",
             "input_shape",
-            "ghost_digit",
             "answer_mode",
             "answer_pattern",
             "answer_values",
