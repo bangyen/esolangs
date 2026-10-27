@@ -585,6 +585,7 @@ _WITNESS_BAND = {
     ("Back", 17): "slow",
     ("Bleh", 21): "slow",
     ("Bleh", 22): "slow",
+    ("Quassaunt", 20): "slow",
     ("Stisp", 18): "medium",
     ("INTERCAL", 17): "medium",
     ("INTERCAL", 18): "slow",
@@ -863,7 +864,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         _quassaunt_stack(n),
-        *_diagram_witness("quassaunt", n, 19),
+        *_diagram_witness("quassaunt", n, 20),
     ),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),

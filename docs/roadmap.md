@@ -86,7 +86,7 @@ evidence, not optimization tasks.
     240 * 239 ordered pairs, so the shape ends).
   - Per-level bounds (2026-10-22): Stisp is exact to n = 19 (3,554 at n = 9,
     6,952 at n = 10, 13,478, 20,652, 35,879, 67,629, 131,123, 258,105, 532,028,
-    1,089,090, 2,199,893), Quassaunt to n = 19 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586) and Bleh to n = 22
+    1,089,090, 2,199,893), Quassaunt to n = 20 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586, 29,530,680) and Bleh to n = 22
     (6,016, 11,582, 21,315, 32,899, 56,533, 104,661, 200,917, 393,429, 791,763,
     1,594,579, 3,196,898, 6,353,001, 9,826,409, 16,773,225): the wide ids of the capped level make few pairs, ids
     ascend by first occurrence, and the lowest equal-halved id is named before
