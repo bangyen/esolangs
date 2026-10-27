@@ -105,6 +105,7 @@ Languages that use registers to store and manipulate data.
 Languages whose data is the program itself, rewritten as it runs.
 
 - [///](https://esolangs.org/wiki/%2F%2F%2F) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/slashes/interpreter.py))
+- [BASICER](https://esolangs.org/wiki/BASICER) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/basicer/interpreter.py))
 - [Crement](https://esolangs.org/wiki/Crement) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/crement/interpreter.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/inject/interpreter.py))
 - [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/malbolge/interpreter.py))

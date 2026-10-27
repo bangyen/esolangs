@@ -323,7 +323,8 @@ class TestProgramFilesLoad:
         path = tmp_path / "g.txt"
         path.write_text(esolangs.generate(spelled, "0110") + "\n")
         stdin = esolangs.encode_inputs(spelled, [0, 1])
-        assert call_main(["run", spelled, str(path)], capsys, stdin=stdin) == "1"
+        out = call_main(["run", spelled, str(path)], capsys, stdin=stdin)
+        assert esolangs.read_answer(spelled, out) == "1"
 
     @pytest.mark.parametrize(
         "name",

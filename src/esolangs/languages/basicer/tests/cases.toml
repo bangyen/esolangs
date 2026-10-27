@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = "JUMP 1"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unknown instruction"
+
+[[spec_triggers]]
+program = "GOTO 1 2"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: a menu ``GOTO`` at EOF"
+
+[[spec_triggers]]
+program = "GOTO 1 2"
+stdin = "x\n"
+expect = "ArgumentError"
+claim = "ArgumentError: a menu choice that is not an integer"
+
+[[spec_triggers]]
+program = "GOTO 1 2"
+stdin = "3\n"
+expect = "HaltError"
+claim = "HaltError: a menu choice outside 1 to the number of targets"

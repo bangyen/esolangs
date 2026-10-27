@@ -27,6 +27,8 @@ from esolangs.languages.b_tapemark.generator import LANGUAGE as _B_TAPEMARK_LANG
 from esolangs.languages.b_tapemark.generator import b_tapemark
 from esolangs.languages.back.generator import LANGUAGE as _BACK_LANGUAGE
 from esolangs.languages.back.generator import back
+from esolangs.languages.basicer.generator import LANGUAGE as _BASICER_LANGUAGE
+from esolangs.languages.basicer.generator import basicer
 from esolangs.languages.befunge.generator import LANGUAGE as _BEFUNGE_LANGUAGE
 from esolangs.languages.befunge.generator import befunge
 from esolangs.languages.bfstack.generator import LANGUAGE as _BFSTACK_LANGUAGE
@@ -217,6 +219,7 @@ _LANGUAGES = (
     _ASCENIC_LANGUAGE,
     _B_TAPEMARK_LANGUAGE,
     _BACK_LANGUAGE,
+    _BASICER_LANGUAGE,
     _BEFUNGE_LANGUAGE,
     _BFSTACK_LANGUAGE,
     _BIT_TILDE_LANGUAGE,
@@ -314,6 +317,7 @@ __all__ = [
     "ascenic",
     "b_tapemark",
     "back",
+    "basicer",
     "befunge",
     "bfstack",
     "bit_tilde",
