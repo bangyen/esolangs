@@ -79,6 +79,7 @@ don't edit by hand.
 | `minifuck/minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky_swap/minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
 | `modulous/modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
+| `nor_machine/nor-machine.txt` | NOR machine | `0001` | `01` | 0 1 | '0' |
 | `object_disoriented/object-disoriented.txt` | Object disoriented | `0001` | `01` | 01 | '0' |
 | `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |

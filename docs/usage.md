@@ -168,6 +168,7 @@ Build language-specific stdin with `encode_inputs`:
 | Interprogck8 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| NOR machine | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Piet | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |

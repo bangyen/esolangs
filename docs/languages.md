@@ -56,6 +56,7 @@ Languages whose primary data structure is a queue or deque.
 - [Bitdeque](https://esolangs.org/wiki/Bitdeque) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bitdeque/interpreter.py))
 - [Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bitwise_cyclic_tag/interpreter.py))
 - [Cyclic tag](https://esolangs.org/wiki/Cyclic_tag) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/cyclic_tag/interpreter.py))
+- [NOR machine](https://esolangs.org/wiki/NOR_machine) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/nor_machine/interpreter.py))
 - [Taglate](https://esolangs.org/wiki/Taglate) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/taglate/interpreter.py))
 
 ### Tape-based Languages

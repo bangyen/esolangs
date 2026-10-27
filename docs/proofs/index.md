@@ -302,6 +302,10 @@ These generators keep no unconstrained tree route and have no subtree to fold:
   An ignored input costs a drained `~ ~` through `input_weights`.
 - Modulous: Pushes the whole table as a string literal and spends the row index
   popping down to the answer.
+- NOR machine: Packs the table into one integer by Horner's rule and halves
+  it once per input by a NOR multiplexer; with no literals, even 0 and 1 are
+  grown from the first input.
+  `essential_inputs` drops ignored inputs; a constant table prints its bit.
 - Packlang: Paints one array block and indexes it at every arity.
 - Qoibl: Divides one literal by the power of two its reads build.
 - SLOW ACV MAMMALIAN: Its read chain emits one fixed-width leaf slot per row
@@ -434,6 +438,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: worst 81T/2 + 59 - n characters, n = 3..12 | linear: worst 71T/2 + 50 - n commands to n = 12, at most after: the positional strip | linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n = 4: a tape bit-integer |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`) | linear: worst N characters: cascade routes to two shared leaves, one-digit targets | linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down | poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: worst N characters: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
+| NOR machine | linear lookup | the table read at its essential inputs is one integer built by Horner's rule; each essential bit, smeared over a half-width mask, keeps V or V >> h by NORs, and the lone final V prints the low bit | linear: 13T + 12w + O(n^2) characters for w true rows | linear: worst 25T + 10n^2 + 80n - 21 commands, each run once | linear: at most 3T + 4n + bl(L) + 24 bits: V, its copy and three half-width masks |
 | Object disoriented | tree | a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; constant subtables fold, and a repeated branch is a class written once | linear: worst D characters to n = 8, at most min(38T+20, S) | poly n: worst 67n + 34 commands: one tree path, 67 ops a level | poly n: at most F + M + bl(6n+9) + bl(n) + 14 bits, c code ids, 2n+3 frames |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: at most N characters: one write per differing row | linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: at most 31T/2+3n-21 characters past n = 3: to n = 15 | poly n: worst 4n^2 + 9n + 5 - 6⌊n/2⌋ commands past n = 2: parity sum's loops; trees ≤ 22n | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
@@ -578,7 +583,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 95 theoretical totality arguments and
+Accordingly, this ledger records 96 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

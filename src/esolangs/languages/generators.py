@@ -137,6 +137,8 @@ from esolangs.languages.minsky_swap.generator import LANGUAGE as _MINSKY_SWAP_LA
 from esolangs.languages.minsky_swap.generator import minsky_swap
 from esolangs.languages.modulous.generator import LANGUAGE as _MODULOUS_LANGUAGE
 from esolangs.languages.modulous.generator import modulous
+from esolangs.languages.nor_machine.generator import LANGUAGE as _NOR_MACHINE_LANGUAGE
+from esolangs.languages.nor_machine.generator import nor_machine
 from esolangs.languages.object_disoriented.generator import (
     LANGUAGE as _OBJECT_DISORIENTED_LANGUAGE,
 )
@@ -278,6 +280,7 @@ _LANGUAGES = (
     _MINIFUCK_LANGUAGE,
     _MINSKY_SWAP_LANGUAGE,
     _MODULOUS_LANGUAGE,
+    _NOR_MACHINE_LANGUAGE,
     _OBJECT_DISORIENTED_LANGUAGE,
     _ONE_I_LANGUAGE,
     _PACKLANG_LANGUAGE,
@@ -379,6 +382,7 @@ __all__ = [
     "minifuck",
     "minsky_swap",
     "modulous",
+    "nor_machine",
     "object_disoriented",
     "one_i",
     "packlang",

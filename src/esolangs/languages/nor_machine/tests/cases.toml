@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a character that is neither a command nor whitespace"
+
+[[spec_triggers]]
+program = "V"
+stdin = "x"
+expect = "ArgumentError"
+claim = "ArgumentError: an input token that is not an integer"
+
+[[spec_triggers]]
+program = "V"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a command dequeuing more values than the queue holds"
