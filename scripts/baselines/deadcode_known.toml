@@ -1,10 +1,5 @@
 # Unreached generator code, triaged: see scripts/deadcode.py.
 
-"befunge/generator.py" = [
-    "arm: if len(header) <= columns: -> return \"\\n\".join(_rows(header, table, columns))",
-    "line: return \"\\n\".join(_rows(header, table, columns))",
-]
-
 "bfstack/generator.py" = [
     "line: data, control, pc, _cursor = state",
     "line: return data, control, pc, 0",
@@ -72,7 +67,6 @@
 ]
 
 "flowchart/generator.py" = [
-    "arm: if column is None: -> last_row[column] = entry",
     "arm: if index >= count and not run.pad: -> break",
     "arm: if not run.pad and (col + 1) * slots >= count: -> break",
     "line: break",
@@ -81,11 +75,6 @@
 
 "forbin/generator.py" = [
     "arm: for candidate in count(): -> <exit>",
-]
-
-"interprogck8/generator.py" = [
-    "arm: if n > _MAX_INPUTS: -> raise with_hint(",
-    "line: raise with_hint(",
 ]
 
 "line/generator/__init__.py" = [
@@ -138,6 +127,10 @@
 "rotfuck/generator.py" = [
     "arm: if piece is None: -> raise _UnplaceableError(\"no neutral pad is hidden from every open seek\")",
     "line: raise _UnplaceableError(\"no neutral pad is hidden from every open seek\")",
+]
+
+"sstack/generator/__init__.py" = [
+    "arm: if result is not None: -> for blocks in dict.fromkeys(banks):",
 ]
 
 "sstack/generator/_binary.py" = [
