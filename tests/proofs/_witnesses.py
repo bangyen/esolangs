@@ -646,16 +646,17 @@ def _what_sparse(n: int) -> SparseRows:
 
 # language-owners: ["Interprogck8"]
 def _interprogck8_sparse(n: int) -> SparseRows:
-    """The steps witness; row T - 16 attains E, the rest stay under.
+    """The steps witness; the named witness row attains E, the rest stay under.
 
-    Measured over all 2,048 rows at n = 11 (36,988 / 37,575 / 37,619 / 38,022
-    max by row range 0-255 / 256-999 / 1000-1699 / 1700-2047), the maximum is
-    row 2032 = T - 16, and 1008 and 992 are the next dearest.
+    n = 11: measured over all 2,048 rows, the maximum 38,022 is row 2034 =
+    T - 14 alone (2032, 2033, 2035 reach 38,004).  n = 12: rows 4093-4095
+    reach 76,006 (of 4000-4095 measured); the witness is the all-ones row.
     """
     owner = importlib.import_module("esolangs.languages.interprogck8.tests.formulas")
     width = 1 << n
-    rows = (0, 1, width // 2 - 1, width - 32, width // 2 - 16, width - 16, width - 1)
-    return SparseRows(owner.steps_witness(n), tuple(dict.fromkeys(rows)), width - 16)
+    witness = width - 14 if n == 11 else width - 1
+    rows = (0, 1, width // 2 - 1, width - 32, width // 2 - 16, width - 16, witness)
+    return SparseRows(owner.steps_witness(n), tuple(dict.fromkeys(rows)), witness)
 
 
 # language-owners: ["S*bleq"]
@@ -779,7 +780,7 @@ _SPARSE_ROWS: dict[
     "What!?": (_what_sparse, (16, 17, 22), frozenset({"execution", "workspace"})),
     "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
     "Malbolge": (_malbolge_sparse, (17,), frozenset()),
-    "Interprogck8": (_interprogck8_sparse, (11,), frozenset({"execution"})),
+    "Interprogck8": (_interprogck8_sparse, (11, 12), frozenset({"execution"})),
 }
 
 #: Sparse-case bands, from standalone runs: a case pays one parse a row
@@ -810,7 +811,8 @@ _SPARSE_BAND = {
     ("S*bleq", "execution", 25): "slow",
     ("S*bleq", "execution", 26): "slow",
     ("Malbolge", "execution", 17): "medium",
-    ("Interprogck8", "execution", 11): "weekly",
+    ("Interprogck8", "execution", 11): "medium",
+    ("Interprogck8", "execution", 12): "weekly",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.

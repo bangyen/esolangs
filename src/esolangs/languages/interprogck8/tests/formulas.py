@@ -198,15 +198,16 @@ _TAIL = ["@nd", "@nd", "x", *arith(-35), "div"]
 #: The walker a leaf leaves, Q (81) or T (84), and the tail commands it runs.
 _WALKERS = ((81, len(_TAIL)), (84, len(_TAIL) - 3))
 _NONE = -(10**9)
-#: Distinct-table options kept per state (the near and far halves must differ).
-_SEEN = 2
+#: Distinct-table options kept per state (the near and far halves must differ);
+#: 2 loses the bound at n = 6, 8, 9, 10 once exits are merged, 3 reaches it to 12.
+_SEEN = 3
 #: Arities where the witness is measured to reach the relaxed bound.
 _EXACT = 10
 
 #: Per walker the dearest (value, table) options, and any tables of the layout.
 Seen = tuple[list[list[tuple[int, str]]], list[str]]
-#: (exit offset, windows opened, cluster size or None) to its options.
-Layouts = dict[tuple[int, int, int | None], Seen]
+#: (windows opened, cluster size or None) to its options.
+Layouts = dict[tuple[int, int | None], Seen]
 Paths = dict[int, dict[tuple[int, int], list[str]]]
 
 
@@ -229,7 +230,7 @@ def _seat(offset: int, size: int) -> tuple[int, int, int, int]:
     return 1, 1 + size, 1, PERIOD + 1 - offset
 
 
-def _note(layouts: Layouts, key: tuple[int, int, int | None], table: str) -> Seen:
+def _note(layouts: Layouts, key: tuple[int, int | None], table: str) -> Seen:
     """The options under ``key``, with ``table`` recorded as one that lays out so."""
     seen = layouts.setdefault(key, ([[], []], []))
     if table not in seen[1] and len(seen[1]) < _SEEN:
@@ -237,7 +238,7 @@ def _note(layouts: Layouts, key: tuple[int, int, int | None], table: str) -> See
     return seen
 
 
-def _floor(layouts: Layouts, key: tuple[int, int, int | None], walker: int) -> int:
+def _floor(layouts: Layouts, key: tuple[int, int | None], walker: int) -> int:
     """The value a candidate must beat to enter ``key``'s kept options."""
     seen = layouts.get(key)
     if seen and len(seen[0][walker]) == _SEEN:
@@ -247,7 +248,7 @@ def _floor(layouts: Layouts, key: tuple[int, int, int | None], walker: int) -> i
 
 def _keep(
     layouts: Layouts,
-    key: tuple[int, int, int | None],
+    key: tuple[int, int | None],
     walker: int,
     value: int,
     table: str,
@@ -318,15 +319,15 @@ def _seated(height: int, offset: int) -> Layouts:
     """The clusters of ``height`` laid at ``offset``, per walker."""
     out: Layouts = {}
     for size, found in _paths(height).items():
-        line, end, opened, walked = _seat(offset, size)
+        line, _, opened, walked = _seat(offset, size)
         for pair, tables in found.items():
             for table in tables:
-                _note(out, (end, opened, size), table)
+                _note(out, (opened, size), table)
                 for walker, (accumulator, _) in enumerate(_WALKERS):
                     if pair[walker] > _NONE // 2:
                         value = walked - line + pair[walker]
                         value -= (PERIOD - accumulator) * opened
-                        _keep(out, (end, opened, size), walker, value, table)
+                        _keep(out, (opened, size), walker, value, table)
     return out
 
 
@@ -369,38 +370,41 @@ def _flown(n: int, height: int, offset: int) -> Layouts:
     if height == 1:
         return out
     line, there, opened, walked = _seat(offset, 2)
-    for (end, more, size), seen in _layouts(n, height - 1, there).items():
+    for (more, size), seen in _layouts(n, height - 1, there).items():
         if size in (None, FREE):
             for walker, (accumulator, _) in enumerate(_WALKERS):
                 for value, table in seen[0][walker]:
                     total = walked + 2 - (PERIOD - accumulator) * opened + value
-                    _keep(out, (end, opened + more, None), walker, total, table * 2)
+                    _keep(out, (opened + more, None), walker, total, table * 2)
     column = columns(n)[n - height]
     lead = len(block_of(column))
     line, there, opened, walked = _seat(offset, lead)
     rung = PERIOD * opened + line + lead - 1
     fars = _layouts(n, height - 1, column + 2)
     nears: dict[tuple[int, int | None], list[Seen]] = {}
-    for (end, more, near), seen in _layouts(n, height - 1, there).items():
-        first = max(PERIOD * (opened + more) + end, PERIOD * (opened + 1))
-        stop = first + (column + 1 - first) % PERIOD
-        windows = stop // PERIOD
+    for (more, near), seen in _layouts(n, height - 1, there).items():
+        windows = opened + max(more, 1)
         nears.setdefault((windows, near), []).append(seen)
     for (windows, near), members in nears.items():
         seen = _merge(members)
         flight = PERIOD * (opened + 1) - (rung + 1 + column) + 1
         flight += (windows - opened - 1) * (PERIOD - column) + 1
-        for (exit_, extra, far), seen_far in fars.items():
+        near_add = [walked + _NEAR - (PERIOD - acc) * opened for acc, _ in _WALKERS]
+        far_add = [
+            walked + _FAR + _body(column) + flight - (PERIOD - acc) * windows
+            for acc, _ in _WALKERS
+        ]
+        for (extra, far), seen_far in fars.items():
             if (
                 near is not None
                 and far is not None
                 and _lead(near) + near + far <= FREE
             ):
                 continue
-            key = (exit_, windows + extra, None)
-            for walker, (accumulator, _) in enumerate(_WALKERS):
+            key = (windows + extra, None)
+            for walker in (0, 1):
                 for value, table in seen[0][walker]:
-                    total = walked + _NEAR - (PERIOD - accumulator) * opened + value
+                    total = near_add[walker] + value
                     if total <= _floor(out, key, walker):
                         continue
                     for other in seen_far[1]:
@@ -408,8 +412,7 @@ def _flown(n: int, height: int, offset: int) -> Layouts:
                             _keep(out, key, walker, total, table + other)
                             break
                 for value, table in seen_far[0][walker]:
-                    total = walked + _FAR + _body(column) + flight
-                    total += value - (PERIOD - accumulator) * windows
+                    total = far_add[walker] + value
                     if total <= _floor(out, key, walker):
                         continue
                     for other in seen[1]:
@@ -423,7 +426,7 @@ def _flown(n: int, height: int, offset: int) -> Layouts:
 def _worst(n: int) -> tuple[int, str]:
     """The most commands of any table and row, and that table."""
     best = (0, "")
-    for (_, opened, _), seen in _layouts(n, n, len(SLOT) + 1).items():
+    for (opened, _), seen in _layouts(n, n, len(SLOT) + 1).items():
         for walker, (accumulator, tail) in enumerate(_WALKERS):
             for value, table in seen[0][walker]:
                 total = _START + value + (PERIOD - accumulator) * (opened + 1) + tail
@@ -432,7 +435,7 @@ def _worst(n: int) -> tuple[int, str]:
 
 
 #: Per walker the dearest value of a layout state (tables dropped).
-Bound = dict[tuple[int, int, int | None], list[int]]
+Bound = dict[tuple[int, int | None], list[int]]
 
 
 @cache
@@ -464,9 +467,7 @@ def _pairs(height: int) -> dict[int, set[tuple[int, int]]]:
     return out
 
 
-def _raise(
-    bound: Bound, key: tuple[int, int, int | None], walker: int, value: int
-) -> None:
+def _raise(bound: Bound, key: tuple[int, int | None], walker: int, value: int) -> None:
     """Keep the dearest ``value`` of ``walker`` under ``key``."""
     best = bound.setdefault(key, [_NONE, _NONE])
     best[walker] = max(best[walker], value)
@@ -474,68 +475,99 @@ def _raise(
 
 @cache
 def _bounds(n: int, height: int, offset: int) -> Bound:
-    """:func:`_layouts` with every table kept: the relaxation that bounds it above."""
+    """:func:`_layouts` with every table kept: the relaxation that bounds it above.
+
+    A state is (windows opened, cluster size or None).  The exit offset is
+    dropped: it is at most ``FREE + 1``, under every flight column + 1, so a
+    consumer's stop window is its ``opened + more`` whatever the exit.
+    """
     out: Bound = {}
     for size, found in _pairs(height).items():
-        line, end, opened, walked = _seat(offset, size)
+        line, _, opened, walked = _seat(offset, size)
         for pair in found:
             for walker, (accumulator, _) in enumerate(_WALKERS):
                 if pair[walker] > _NONE // 2:
                     value = walked - line + pair[walker]
                     _raise(
                         out,
-                        (end, opened, size),
+                        (opened, size),
                         walker,
                         value - (PERIOD - accumulator) * opened,
                     )
     if height == 1:
         return out
     line, there, opened, walked = _seat(offset, 2)
-    for (end, more, size), best in _bounds(n, height - 1, there).items():
+    for (more, size), best in _bounds(n, height - 1, there).items():
         if size in (None, FREE):
             for walker, (accumulator, _) in enumerate(_WALKERS):
                 if best[walker] > _NONE // 2:
                     total = walked + 2 - (PERIOD - accumulator) * opened + best[walker]
-                    _raise(out, (end, opened + more, None), walker, total)
+                    _raise(out, (opened + more, None), walker, total)
     column = columns(n)[n - height]
     lead = len(block_of(column))
     line, there, opened, walked = _seat(offset, lead)
     rung = PERIOD * opened + line + lead - 1
     fars = _bounds(n, height - 1, column + 2)
-    nears: dict[tuple[int, int | None], list[int]] = {}
-    for (end, more, near), seen in _bounds(n, height - 1, there).items():
-        first = max(PERIOD * (opened + more) + end, PERIOD * (opened + 1))
-        windows = (first + (column + 1 - first) % PERIOD) // PERIOD
-        best = nears.setdefault((windows, near), [_NONE, _NONE])
+    nears: dict[int, dict[int | None, list[int]]] = {}
+    for (more, near), seen in _bounds(n, height - 1, there).items():
+        windows = opened + max(more, 1)
+        best = nears.setdefault(windows, {}).setdefault(near, [_NONE, _NONE])
         best[:] = [max(old, new) for old, new in zip(best, seen, strict=True)]
-    for (windows, near), seen in nears.items():
+    # A far child of size ``far`` only excludes the nears that fit beside it.
+    sizes = {key[1] for key in fars}
+    cut = _NONE // 2
+    for windows, by_near in nears.items():
         flight = PERIOD * (opened + 1) - (rung + 1 + column) + 1
         flight += (windows - opened - 1) * (PERIOD - column) + 1
-        for (exit_, extra, far), seen_far in fars.items():
-            if (
-                near is not None
-                and far is not None
-                and _lead(near) + near + far <= FREE
-            ):
+        near_add = [walked + _NEAR - (PERIOD - acc) * opened for acc, _ in _WALKERS]
+        far_add = [
+            walked + _FAR + _body(column) + flight - (PERIOD - acc) * windows
+            for acc, _ in _WALKERS
+        ]
+        reach: dict[int | None, list[int] | None] = {}
+        for far in sizes:
+            best = None
+            for near, seen in by_near.items():
+                if (
+                    near is not None
+                    and far is not None
+                    and _lead(near) + near + far <= FREE
+                ):
+                    continue
+                best = (
+                    seen
+                    if best is None
+                    else [max(a, b) for a, b in zip(best, seen, strict=True)]
+                )
+            reach[far] = best
+        for (extra, far), seen_far in fars.items():
+            seen = reach[far]
+            if seen is None:
                 continue
-            key = (exit_, windows + extra, None)
-            for walker, (accumulator, _) in enumerate(_WALKERS):
-                if seen[walker] > _NONE // 2:
-                    total = (
-                        walked + _NEAR - (PERIOD - accumulator) * opened + seen[walker]
-                    )
-                    _raise(out, key, walker, total)
-                if seen_far[walker] > _NONE // 2:
-                    total = walked + _FAR + _body(column) + flight + seen_far[walker]
-                    _raise(out, key, walker, total - (PERIOD - accumulator) * windows)
+            key = (windows + extra, None)
+            totals = [
+                max(
+                    near_add[w] + seen[w] if seen[w] > cut else _NONE,
+                    far_add[w] + seen_far[w] if seen_far[w] > cut else _NONE,
+                )
+                for w in (0, 1)
+            ]
+            if max(totals) > cut:
+                kept = out.setdefault(key, [_NONE, _NONE])
+                kept[0] = max(kept[0], totals[0])
+                kept[1] = max(kept[1], totals[1])
     return out
 
 
 @cache
 def _bound(n: int) -> int:
     """The most commands of any table and row, halves allowed to coincide."""
+    # _bounds drops the exit offset only while it stays under every flight
+    # column; the narrowest column reaches FREE at n = 35.
+    if min(columns(n)) <= FREE:
+        raise ValueError(f"the exit-free bound is unproved at n = {n}")
     best = 0
-    for (_, opened, _), seen in _bounds(n, n, len(SLOT) + 1).items():
+    for (opened, _), seen in _bounds(n, n, len(SLOT) + 1).items():
         for walker, (accumulator, tail) in enumerate(_WALKERS):
             if seen[walker] > _NONE // 2:
                 best = max(
@@ -551,10 +583,10 @@ def _bound(n: int) -> int:
 def _steps(n: int, _: str) -> int:
     """The relaxed recursion's worst, a proved upper bound.
 
-    Reached over all rows to n = ``_EXACT``, and at 11 by one named row.
+    Reached over all rows to n = ``_EXACT``, and at 11 and 12 by one named row.
 
     The shipped ``_worst`` keeps ``_SEEN`` distinct tables a state and is a
-    witnessed lower bound; the two agree to 11.
+    witnessed lower bound; the two agree to 12.
     """
     return _bound(n)
 
