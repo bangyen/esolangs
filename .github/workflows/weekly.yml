@@ -189,19 +189,32 @@ jobs:
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
 
-  deadcode:
-    # DISABLED 2026-10-26: the job exceeds its 45-minute budget -- the
-    # suite outgrew the 2026-10-21 timing benchmark below.  Re-enable
-    # when scripts/deadcode.py completes within budget, verified
-    # locally.
-    if: false
-    # Generator code no test reaches, against scripts/baselines/
-    # deadcode_known.toml.  Nothing else ran it, and the baseline drifted 20
-    # entries in a day (2026-10-21).  Whole tree: a per-language scan is
-    # not exact (Circuit Diagram's reported 3 entries other tests reach).
-    # 574 s wall locally on 10 cores, 1980 s CPU; the runner has 4.
+  # Generator code no test reaches, against scripts/baselines/
+  # deadcode_known.toml.  Nothing else runs it, and the baseline drifted 20
+  # entries in a day (2026-10-21).  Whole tree: a per-language scan is
+  # not exact (Circuit Diagram's reported 3 entries other tests reach).
+  #
+  # Sharded since 2026-10-27: the single run outgrew the 45-minute
+  # budget -- 59:27 wall locally at 46cd51c38, ~4,972 s CPU, the suite
+  # having outgrown the 2026-10-21 benchmark the single-run form was
+  # calibrated on (574 s wall, 1,980 s CPU).  Four legs run disjoint
+  # node-id shards of the same whole suite under branch coverage
+  # (~1/4 of the CPU each, ~21 min a leg on the 4-core runner); the
+  # deadcode job below combines the four coverage files and runs
+  # scripts/deadcode.py's unchanged report over the combined data, so
+  # whole-tree exactness is preserved by construction.  A split-run
+  # equivalence check against the single run at the same base was
+  # verified locally before this landed.
+  deadcode-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      # One failing leg should not cancel the evidence from the others.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      COVERAGE_FILE: .coverage.deadcode-${{ matrix.shard }}
     steps:
     - uses: actions/checkout@v7
     - name: Install uv
@@ -212,5 +225,74 @@ jobs:
         python-version: "3.14"
     - name: Install dependencies
       run: uv sync --group dev --python 3.14
+    # The same collection scripts/deadcode.py runs itself -- `-m ""`,
+    # the whole suite, `-n 4`, branch coverage -- partitioned by node
+    # id.  scripts/ci/shard.py is the partitioner every sharded job in
+    # this repo uses; no durations file, so the split is the plain
+    # round-robin over sorted node ids and is reproducible locally.
+    - name: Scan one deadcode shard
+      run: >
+        uv run python scripts/ci/shard.py shard --marker ""
+        --shard ${{ matrix.shard }} --shards 4
+        --manifest notes/ci/deadcode.shard.json --
+        -q -n 4 --cov --cov-branch --cov-report=
+    - name: Upload shard coverage
+      uses: actions/upload-artifact@v7
+      with:
+        name: deadcode-coverage-${{ matrix.shard }}
+        path: .coverage.deadcode-${{ matrix.shard }}
+        include-hidden-files: true
+        if-no-files-found: error
+        retention-days: 1
+    - name: Retain shard selection evidence
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: shard-evidence-deadcode-${{ matrix.shard }}
+        path: notes/ci/deadcode.shard.json
+        if-no-files-found: error
+        retention-days: 7
+    - name: Retain worker and verification logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: logs-${{ github.job }}-${{ strategy.job-index }}
+        path: |
+          notes/verification/*.log
+          notes/benchmarks/*.log
+        if-no-files-found: ignore
+        retention-days: 14
+
+  deadcode:
+    needs: deadcode-scan
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Require every deadcode shard to pass
+      env:
+        SHARD_RESULT: ${{ needs.deadcode-scan.result }}
+      run: test "$SHARD_RESULT" = success
+    - uses: actions/checkout@v7
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+    - name: Install dependencies
+      run: uv sync --group dev --python 3.14
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: deadcode-coverage-*
+        merge-multiple: true
+    # Combine, then the report exactly as the single run produced it:
+    # --data reads the combined file instead of collecting.
     - name: Check for unreached generator code
-      run: uv run python scripts/deadcode.py
+      run: |
+        test -f .coverage.deadcode-0
+        test -f .coverage.deadcode-1
+        test -f .coverage.deadcode-2
+        test -f .coverage.deadcode-3
+        uv run coverage combine .coverage.deadcode-0 .coverage.deadcode-1 .coverage.deadcode-2 .coverage.deadcode-3
+        uv run python scripts/deadcode.py --data .coverage
