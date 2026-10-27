@@ -172,6 +172,17 @@ ignored-input tables included).
   Mammalian, APL, INTERCAL and Packlang are inventoried (2026-10-22): their
   unrecorded mechanisms are width/balance layout or core-construction
   constants, not default-path tricks. The audit is repeatable per generator.
+  Eight of the thirteen audited lost a trick. Next by kept `[ablations]`
+  (2026-10-27): Smallfuck 8, 3x 7, Boolfuck 7, and 6 each for S*bleq,
+  Subleq, Brainfuck, BFStack, CVNC and AddSubJump.
+- **Blind reimplementation of first implementations:** 14 of the 81 have a
+  clean-room interpreter written from the wiki page alone and diffed over
+  the generated corpus (2026-10-27): Aprknia, Balik, BASICER, Bleh,
+  Freestajlo, Hot, Kiss, lol waht, Pilas, S*bleq, Sonata, Stisp,
+  SwitchCase, Tiangou. They found one contradiction of the spec (Tiangou
+  halted on underflow); the other disagreements were spec gaps, now
+  recorded in the docstrings. With no outside
+  interpreter, this is the only independent check the rest get.
 - **The S*bleq variants are interpreter-only, and stay so unless they
   are ever registered:** the interpreter runs the store targets `a`
   (base), `ab` (S*bl*q) and `b` (Subl*q), each also in an indirect
