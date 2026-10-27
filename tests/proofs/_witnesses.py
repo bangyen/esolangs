@@ -588,6 +588,8 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: S*bleq's scaling cases at n = 21..25 run 10.1 s at n = 21, doubling
 #: per arity (the tree build over the corpus tables dominates; the
 #: packed witness alone generates in 2.1-28.7 s over the same range).
+#: They run weekly: 19 and 20 already reach the 7-digit chunks per push,
+#: and the chunk width is one rule; n = 25 took 221 s on CI.
 #: What!?'s scaling case at n = 22 runs 9.7 s alone (its corpus tables
 #: past 15 inputs are dominated by the two alternating builds); n = 21
 #: stays in the medium band at 4.8 s.
@@ -607,11 +609,11 @@ _WITNESS_BAND = {
     ("INTERCAL", 18): "slow",
     ("INTERCAL", 19): "slow",
     ("INTERCAL", 20): "slow",
-    ("S*bleq", 21): "slow",
-    ("S*bleq", 22): "slow",
-    ("S*bleq", 23): "slow",
-    ("S*bleq", 24): "slow",
-    ("S*bleq", 25): "slow",
+    ("S*bleq", 21): "weekly",
+    ("S*bleq", 22): "weekly",
+    ("S*bleq", 23): "weekly",
+    ("S*bleq", 24): "weekly",
+    ("S*bleq", 25): "weekly",
     ("What!?", 22): "slow",
 }
 
@@ -792,7 +794,8 @@ _SPARSE_ROWS: dict[
 #: second even at n = 26; its cases are priced by stepping alone
 #: (12M-40M steps a case, plus 1-31 s of generation): whole cases
 #: measure 28-108 s standalone (n = 23 the cheapest, 26 the dearest),
-#: and up to ~2.4x that under a memory-bound co-tenant.  Malbolge
+#: and up to ~2.4x that under a memory-bound co-tenant.  Past n = 21
+#: they run weekly: each re-checks the one packed route at a wider table.  Malbolge
 #: parses in about a millisecond at seventeen (the source is the
 #: fixed store); its case is generation plus both witnesses' rows
 #: (36 projection rows, 35 weight-class rows, 407,729 steps in all),
@@ -805,11 +808,11 @@ _SPARSE_BAND = {
     ("What!?", "workspace", 17): "slow",
     ("What!?", "workspace", 22): "slow",
     ("S*bleq", "execution", 21): "slow",
-    ("S*bleq", "execution", 22): "slow",
-    ("S*bleq", "execution", 23): "slow",
-    ("S*bleq", "execution", 24): "slow",
-    ("S*bleq", "execution", 25): "slow",
-    ("S*bleq", "execution", 26): "slow",
+    ("S*bleq", "execution", 22): "weekly",
+    ("S*bleq", "execution", 23): "weekly",
+    ("S*bleq", "execution", 24): "weekly",
+    ("S*bleq", "execution", 25): "weekly",
+    ("S*bleq", "execution", 26): "weekly",
     ("Malbolge", "execution", 17): "medium",
     ("Interprogck8", "execution", 11): "medium",
     ("Interprogck8", "execution", 12): "weekly",
