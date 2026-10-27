@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "{\n"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unmatched brace"
+
+[[spec_triggers]]
+program = ",\n  "
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: ',' at EOF"
+
+[[spec_triggers]]
+program = "+\n "
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a pop from an empty stack"

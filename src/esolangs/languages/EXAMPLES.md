@@ -85,6 +85,7 @@ don't edit by hand.
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
+| `pilas/pilas.txt` | Pilas | `0001` | `01` | 01 | '0' |
 | `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |
 | `polynomial/polynomial.txt` | Polynomial | `0001` | `01` | 01 | '0' |
 | `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |

@@ -41,6 +41,7 @@ Languages that use a stack for data manipulation.
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/grapheme/interpreter.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/modulous/interpreter.py))
 - [Piet](https://esolangs.org/wiki/Piet) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/piet/interpreter.py))
+- [Pilas](https://esolangs.org/wiki/Pilas) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/pilas/interpreter.py))
 - [Quassaunt](https://esolangs.org/wiki/Quassaunt) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/quassaunt/interpreter.py))
 - [SStack](https://esolangs.org/wiki/SStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sstack/interpreter.py))
 - [Smu](https://esolangs.org/wiki/Smu) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/smu/interpreter.py))
