@@ -23,3 +23,11 @@ sharing_exempt = "no names or jumps across lines: code runs once per place it is
 "0110100110010110" = { commands = 201, commands_by_row = { "0" = 201, "1" = 205, "2" = 205, "3" = 201, "4" = 205, "5" = 201, "6" = 201, "7" = 205, "8" = 205, "9" = 201, "10" = 201, "11" = 205, "12" = 201, "13" = 205, "14" = 205, "15" = 201 }, source_units = 570 }
 "1101001101101101" = { commands = 205, commands_by_row = { "0" = 183, "1" = 183, "2" = 201, "3" = 205, "4" = 179, "5" = 179, "6" = 183, "7" = 183, "8" = 201, "9" = 205, "10" = 205, "11" = 201, "12" = 183, "13" = 183, "14" = 201, "15" = 205 }, source_units = 472 }
 "11111110" = { commands = 155, commands_by_row = { "0" = 115, "1" = 115, "2" = 115, "3" = 115, "4" = 137, "5" = 137, "6" = 159, "7" = 155 }, source_units = 164 }
+
+[ablations]
+audited = "2026-10-27"
+
+[ablations.constant_spans]
+saving = 0.0
+arity = 10
+verdict = "kept: canonical. A constant span reads and drops its inputs, then prints once; the equal-halves fold already gives the same text, so 0.0% at n=8/10 on random and half-constant tables"
