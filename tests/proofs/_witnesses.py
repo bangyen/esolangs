@@ -569,7 +569,8 @@ def _intercal_chars_worst(n: int) -> str:
 #: (language, n) whose witness build alone passes the fast band, to its band:
 #: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included;
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
-#: Bleh's ten n = 21 tables take 9.4 s to generate between them.
+#: Bleh's ten n = 21 tables take 9.4 s to generate between them, its
+#: n = 22 tables 18.5 s.
 #: Stisp's tables at n = 18 take 1.6 s to generate between them.
 #: S*bleq's scaling cases at n = 21..25 run 10.1 s at n = 21, doubling
 #: per arity (the tree build over the corpus tables dominates; the
@@ -583,6 +584,7 @@ _WITNESS_BAND = {
     ("Back", 16): "medium",
     ("Back", 17): "slow",
     ("Bleh", 21): "slow",
+    ("Bleh", 22): "slow",
     ("Stisp", 18): "medium",
     ("INTERCAL", 17): "medium",
     ("INTERCAL", 18): "slow",
@@ -857,7 +859,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Bleh": lambda n: _diagram_witness("bleh", n, 21),
+    "Bleh": lambda n: _diagram_witness("bleh", n, 22),
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         _quassaunt_stack(n),
