@@ -148,6 +148,5 @@ don't edit by hand.
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
 - **sonata** -- Sonata's input is its initial string and its output the final one, = and the answer
 - **stisp** -- Stisp has no input or output: each input is the atom 0 or 1 in its frame, and the result, printed at halt, is the answer atom
-- **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **unary** -- Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.

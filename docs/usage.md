@@ -172,14 +172,13 @@ Build language-specific stdin with `encode_inputs`:
 | NOR machine | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Piet | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Tiangou | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Unary | `char_stream` | `\x00`/`ÿ` | `'ÿ\x00ÿ'` |
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | lol waht i cant edit talk pages | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 50 that read stdin take one `0`/`1` character per bit -- `'101'`.
+The other 51 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 18 embed their inputs and read no stdin: `instantiate` fills them.
 The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.

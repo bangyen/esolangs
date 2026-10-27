@@ -17,33 +17,29 @@ def run_taglate(program: str, inputs: list[str]) -> str:
 def test_execution_bound_splits_on_input_parity() -> None:
     from esolangs.languages.taglate.proof_formulas import execution
 
-    # Even n takes the closed form directly; odd n routes through m = n + 1.
     assert execution(4, "") == 353
-    assert execution(5, "") == 1070
+    assert execution(5, "") == 692
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_reads_the_ghost_and_real_inputs_before_printing(
-    n: int, bit: str
-) -> None:
+def test_constant_reads_every_input_before_printing(n: int, bit: str) -> None:
     from esolangs.languages.taglate.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
     table = bit * (1 << n)
     programs = [esolangs.generate("Taglate", table, width=w) for w in (None, 1, 20)]
     programs.append(esolangs.generate("Taglate", table, balance=True))
-    ghost = "0" if n > 1 and n % 2 else ""
     for program in programs:
         for row in range(1 << n):
-            io = ScriptedIO(ghost + f"{row:0{n}b}" + "extra")
+            io = ScriptedIO(f"{row:0{n}b}" + "extra")
             machine = _Machine(str(program).splitlines(), io)
             for _ in range(1000):
                 if machine.halted:
                     break
                 machine.step()
             assert machine.halted
-            assert io.position() == n + len(ghost)
+            assert io.position() == n
             assert io.getvalue() == bit
 
 
@@ -65,8 +61,7 @@ class TestTaglate:
             program = boolean.taglate(tt)
             for combo in range(8):
                 bits = [(combo >> (2 - i)) & 1 for i in range(3)]
-                inputs = ["0"] + [str(b) for b in bits]  # ghost digit
-                got = run_taglate(program, inputs)
+                got = run_taglate(program, [str(b) for b in bits])
                 if got != tt[combo]:
                     failures += 1
                     if failures <= 3:
@@ -100,31 +95,30 @@ class TestTaglate:
         for table in tables:
             program = boolean.taglate(table)
             assert len(program) < full, table
-            assert program.count("h") == 4, table  # ghost plus all three inputs
+            assert program.count("h") == 3, table
             for combo in range(8):
                 bits = [str((combo >> shift) & 1) for shift in (2, 1, 0)]
-                assert run_taglate(program, ["0", *bits]) == table[combo], (table, bits)
+                assert run_taglate(program, bits) == table[combo], (table, bits)
 
-    def test_three_inputs_of_five_widen_to_an_adjacent_pair(self) -> None:
-        """An odd dependency set of three in n=5 widens by the next input."""
+    def test_three_inputs_of_five_use_the_odd_layout(self) -> None:
+        """An odd dependency set of three in n=5 is built over three inputs."""
         table = "".join(bit * 4 for bit in "01101001")
         program = boolean.taglate(table)
-        assert len(program) == 524
+        assert len(program) == 280
         for combo in range(32):
             bits = [str((combo >> shift) & 1) for shift in (4, 3, 2, 1, 0)]
-            assert run_taglate(program, ["0", *bits]) == table[combo], bits
+            assert run_taglate(program, bits) == table[combo], bits
 
     def test_reduced_programs_still_read_every_input(self) -> None:
         """A reduced program consumes the inputs it no longer uses."""
         for n in (1, 2, 3, 4):
-            expected = n + (1 if n % 2 == 1 and n > 1 else 0)
             for table in (
                 "1" * 2**n,
                 "1" * 2 ** (n - 1) + "0" * 2 ** (n - 1),
                 ("10" * 2**n)[: 2**n],
             ):
                 program = boolean.taglate(table)
-                assert program.count("h") == expected, (n, table)
+                assert program.count("h") == n, (n, table)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -145,8 +139,7 @@ class TestTaglate:
         program = boolean.taglate(table)
         for combo in range(2**n):
             bits = row_bits(combo, n)
-            ghost = ["0"] if n % 2 == 1 and n > 1 else []
-            got = run_taglate(program, ghost + [str(b) for b in bits])
+            got = run_taglate(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
 
 
@@ -165,8 +158,7 @@ def test_narrow_seed_truth_tables(width: int) -> None:
         assert max(map(len, program.splitlines())) <= width
         for combo in range(len(table)):
             bits = [str((combo >> shift) & 1) for shift in range(n - 1, -1, -1)]
-            ghost = ["0"] if n > 1 and n % 2 else []
-            assert run_taglate(program, ghost + bits) == table[combo]
+            assert run_taglate(program, bits) == table[combo]
         assert boolean.taglate(table) == raw
 
 

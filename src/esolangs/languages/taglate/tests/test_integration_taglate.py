@@ -4,7 +4,6 @@ import pytest
 
 import esolangs
 from tests.runtime.test_input_encoding import XOR
-from tests.support.stdin_check import _check_stdin
 
 
 class TestAnswerMode:
@@ -13,10 +12,6 @@ class TestAnswerMode:
     def test_every_language_declares_one_of_three_modes(self) -> None:
         modes = {esolangs.describe(n)["answer_mode"] for n in esolangs.list_languages()}
         assert modes == {"output", "termination", "dump"}
-
-    def test_taglates_shape_names_its_padding(self) -> None:
-        """Plain ``line_per_bit`` hid the pad digit its n=3 program needs."""
-        assert esolangs.describe("Taglate")["input_shape"] == "char_stream_padded"
 
     @pytest.mark.slow
     def test_output_mode_means_the_printed_answer_is_the_table(self) -> None:
@@ -44,17 +39,6 @@ class TestAnswerMode:
         assert wrong == []
 
 
-def test_it_catches_taglates_pad() -> None:
-    """Its odd input count costs an extra line, and the shape says so."""
-    _check_stdin(
-        "Taglate",
-        esolangs.encode_inputs("Taglate", [1, 0, 1], truth_table="00010111"),
-        "00010111",
-    )
-    with pytest.raises(esolangs.ArgumentError):
-        _check_stdin("Taglate", "1\n0\n1\n", "00010111")
-
-
-def test_odd_arities_take_a_leading_ghost_digit() -> None:
-    assert esolangs.encode_inputs("Taglate", [1, 0, 1]) == "0101"
+def test_odd_arities_take_no_padding() -> None:
+    assert esolangs.encode_inputs("Taglate", [1, 0, 1]) == "101"
     assert esolangs.encode_inputs("Taglate", [1, 0]) == "10"

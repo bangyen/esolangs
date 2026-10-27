@@ -5,8 +5,8 @@ a 1, so a constant half or repeat has nothing to fold or share.
 
 Size:
     O(T) slots, independent of the table's values; n=10 random 1847: 21,025
-    chars, n=10 parity: 21,025 chars.  A table ignoring inputs is built over
-    its essential inputs only.
+    chars, n=10 parity: 21,025 chars, n=9 random 1847: 10,760 chars.  A table
+    ignoring inputs is built over its essential inputs only.
 """
 
 from itertools import pairwise
@@ -60,7 +60,7 @@ def _even_reduce(pairs: int, level: int, n: int) -> str:
     """Even-reduction block: select half the value pairs, keep all inputs.
 
     The queue holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then
-    two 48s, then the ``n`` input chars.  The ``rot`` rotation brings the
+    two 48s, then the ``n`` input cells.  The ``rot`` rotation brings the
     next input to the front; ``gy ... gz`` branches on it so the ``e^pairs``
     strides past the half of the value slots the input rejects; ``e^ahead``
     skips the untouched half and ``f^pairs`` drops it.  Every input stays on
@@ -99,7 +99,7 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
 
     ``level`` is the 0-based reduce level (odd here: 1, 3, ...).  The queue
     holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then two 48s,
-    then the ``n`` input chars.  Unlike the even reduce, the odd level
+    then the ``n`` input cells.  Unlike the even reduce, the odd level
     branches on a *retired* (previous) input whose bit has already been
     used, so ``e^rot`` brings that input to the front and the block runs
     ``zero`` (``gy j e^(qlen-1) gz``) to fold it away, ``swap`` (``e gy j
@@ -121,28 +121,13 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
-def _widen_even(used: list[int], n: int) -> list[int]:
-    """Widen an odd dependency set above 1 by one adjacent ignored input.
-
-    An odd set would make the reduced program ghost-pad itself and expect an
-    input the stream does not carry.
-    """
-    if len(used) % 2 == 1 and len(used) > 1:
-        if used[-1] + 1 < n:
-            return [*used, used[-1] + 1]
-        if used[0] > 0:
-            return [used[0] - 1, *used]
-    return used
-
-
-def _with_discards(reduced: str, used: list[int], n: int, *, ghost: bool) -> str:
+def _with_discards(reduced: str, used: list[int], n: int) -> str:
     """Re-expand the program for ``used`` inputs to read all ``n``.
 
     Each ignored input is read with ``h``, rotated to the front with ``e``
     once per queued cell, and dropped with ``f``, leaving the queue as the
     reduced program expects.  The count is the queue length at that point
-    (seed plus the reads so far), computed, not searched.  The ghost digit
-    of odd ``n`` above 1 is one more input to discard up front.
+    (seed plus the reads so far), computed, not searched.
     """
     seed, commands = reduced.split("\n", 1)
     discard = "h" + "e" * len(seed) + "f"
@@ -153,7 +138,7 @@ def _with_discards(reduced: str, used: list[int], n: int, *, ghost: bool) -> str
         parts.append(between * (after - before - 1))
         parts.append(reads[read] + "h")
     parts.append(reads[-1])
-    leading = used[0] + ghost
+    leading = used[0]
     trailing = n - used[-1] - 1
     return seed + "\n" + discard * leading + "".join(parts) + "h" * trailing
 
@@ -169,45 +154,51 @@ def _affine(truth_table: str) -> str:
     return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
 
 
-def _full_layout(truth_table: str, n: int, *, ghost: bool) -> str:
+def _full_layout(truth_table: str, n: int) -> str:
     """Program for a table that uses every input, ``n >= 2``.
 
-    The seed holds ``n_eff`` literal ``'1'``s (``n_eff - 1`` leading, one
-    trailing) around a run of ``'0'``s.  ``h``/``e``/``b``/``d``/``j`` read
-    ``n_eff`` inputs and interleave the reordered table into value slots
+    The seed holds ``n - 1`` literal ``'1'``s around a run of ``'0'``s and
+    one trailing ``'1'``.  ``h``/``e``/``b``/``d``/``j`` read the ``n``
+    inputs and interleave the reordered table into value slots
     ``[0, s0, 0, s1, ...]``, then two 48s and the inputs.  Alternating
     even/odd reduce blocks halve the slots without popping inputs;
-    ``e^6 f^(n_eff - 2) e^2`` reshapes the queue into the 8-cell layout
-    ``_SEL1_N2`` selects on.  Odd ``n`` pads the table to ``n_eff = n + 1``
-    with a ghost input so the slot stride lands on a separator.
+    ``e^6 f^(n - 2) e^2`` reshapes the queue into the 8-cell layout
+    ``_SEL1_N2`` selects on.  The strided reduces need an even number ``m``
+    of input cells ahead of the value slots, so odd ``n`` carries one extra
+    ``'1'`` cell after the last input: a spare cell, not a ghost input, so
+    the table stays ``2**n`` entries.
     """
-    n_eff = n + ghost
-    # Ghost=1 rows are never taken; pad them with 0.
-    full_tt = truth_table.ljust(2**n_eff, "0")
+    spare = n % 2
+    cells = n + spare
 
-    seed = "1" * (n_eff - 1) + "0" * (2 ** (n_eff + 2) + 2) + "1"
+    seed = "1" * (n - 1 + spare) + "0" * (2 ** (n + 2) + 2) + "1"
 
-    ordered = _reorder_tt(full_tt, n_eff)
+    ordered = _reorder_tt(truth_table, n)
     selectors = "".join("bd" if c == "1" else "bb" for c in ordered)
 
+    # The spare cell is the seed's last leading '1' (rotated behind the
+    # inputs by the extra ``e``); ``b`` pairs skip it, and the last ``e``
+    # puts it behind the inputs again after ``j`` has run.
     prefix = (
-        "he" * (n_eff - 1)
+        "he" * (n - 1)
         + "h"
+        + "e" * spare
         + selectors
         + "ee"
-        + "b" * n_eff
-        + "e" * (2 ** (n_eff + 1) + 2)
-        + "j" * n_eff
+        + "b" * n
+        + "e" * (2 ** (n + 1) + 2 + spare)
+        + "j" * n
+        + "e" * spare
     )
 
     select_parts: list[str] = []
-    for level in range(n_eff - 1):
-        pairs = 2 ** (n_eff - level)
+    for level in range(n - 1):
+        pairs = 2 ** (n - level)
         reduce = _even_reduce if level % 2 == 0 else _odd_reduce
-        select_parts.append(reduce(pairs, level, n_eff))
+        select_parts.append(reduce(pairs, level, cells))
 
-    if n_eff > 2:
-        select_parts.append("e" * 6 + "f" * (n_eff - 2) + "e" * 2)
+    if n > 2:
+        select_parts.append("e" * 6 + "f" * (n - 2) + "e" * 2 + "f" * spare)
     select_parts.append(_SEL1_N2)
 
     result: str = seed + "\n" + prefix + "".join(select_parts)
@@ -219,23 +210,19 @@ def _taglate_raw(truth_table: str) -> str:
 
     A table that ignores some inputs is emitted as the smaller table over
     the inputs it uses, with the ignored ones read and discarded: a constant
-    table goes from 451 characters to 7, ``11110000`` to 21.  Odd
-    ``n`` above 1 feeds a leading ghost digit.
+    table goes from 451 characters (n=4) to 7, ``11110000`` from 278 to 16.
     """
     n = _validate_truth_table(truth_table)
 
-    ghost = n % 2 == 1 and n > 1
     if len(set(truth_table)) == 1:
-        return truth_table[0] + "\n" + "h" * (n + ghost) + "i"
+        return truth_table[0] + "\n" + "h" * n + "i"
     used = essential_inputs(truth_table, n)
-    used = _widen_even(used, n)
-    # A single input needs no ghost, so odd size is fine there.
-    if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
+    if 0 < len(used) < n:
         reduced = _taglate_raw(read_at(truth_table, used, n))
-        return _with_discards(reduced, used, n, ghost=ghost)
+        return _with_discards(reduced, used, n)
     if n == 1:
         return _affine(truth_table)
-    return _full_layout(truth_table, n, ghost=ghost)
+    return _full_layout(truth_table, n)
 
 
 def _seed_commands(seed: str) -> str:
@@ -319,20 +306,12 @@ def balance_taglate(_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Taglate",
     "taglate",
-    proof_execution=(execution, True, (3, 4)),
-    proof_workspace=(workspace, True, (3, 5)),
+    proof_execution=(execution, True, (3, 4, 5)),
+    proof_workspace=(workspace, True, (3, 4, 5)),
     category="queue_based",
     boolean=taglate,
     split=True,
-    contract=BooleanContract(
-        input_shape="char_stream_padded",
-        ghost_digit=True,
-        note="Taglate reads adjacent characters, but an "
-        "odd input count above 1 is padded with a leading zero it reads "
-        "like any other digit: an n=3 program wants four characters. Feeding "
-        "three exhausts its input; padding at the end instead answers "
-        "every row whose top bit is set wrongly",
-    ),
+    contract=BooleanContract(input_shape="char_stream"),
     # Both concatenate before tokenizing (Taglate after the queue seed; A
     # Painter Ant drops whitespace), so no break can land inside a command.
     wrap=_taglate,
