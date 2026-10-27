@@ -103,9 +103,9 @@ evidence, not optimization tasks.
     past 19 needs a successor shape, not this one).
   - Per-level bounds (2026-10-22): Stisp is exact to n = 20 (3,554 at n = 9,
     6,952 at n = 10, 13,478, 20,652, 35,879, 67,629, 131,123, 258,105, 532,028,
-    1,089,090, 2,199,893, 4,477,971), Quassaunt to n = 20 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586, 29,530,680) and Bleh to n = 22
+    1,089,090, 2,199,893, 4,477,971), Quassaunt to n = 21 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586, 29,530,680, 44,538,424) and Bleh to n = 23
     (6,016, 11,582, 21,315, 32,899, 56,533, 104,661, 200,917, 393,429, 791,763,
-    1,594,579, 3,196,898, 6,353,001, 9,826,409, 16,773,225): the wide ids of the capped level make few pairs, ids
+    1,594,579, 3,196,898, 6,353,001, 9,826,409, 16,773,225, 30,666,857): the wide ids of the capped level make few pairs, ids
     ascend by first occurrence, and the lowest equal-halved id is named before
     any wide one exists; at 20 the parents permute all 65,534 sixteen-row
     subtables. Stisp's 739 at 20 (728 of pair pricing over three digit

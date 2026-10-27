@@ -570,7 +570,7 @@ def _intercal_chars_worst(n: int) -> str:
 #: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included;
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
 #: Bleh's ten n = 21 tables take 9.4 s to generate between them, its
-#: n = 22 tables 18.5 s.
+#: n = 22 tables 18.5 s, its n = 23 scaling test 23.8 s.
 #: Stisp's tables at n = 18 take 1.6 s to generate between them.
 #: S*bleq's scaling cases at n = 21..25 run 10.1 s at n = 21, doubling
 #: per arity (the tree build over the corpus tables dominates; the
@@ -585,7 +585,9 @@ _WITNESS_BAND = {
     ("Back", 17): "slow",
     ("Bleh", 21): "slow",
     ("Bleh", 22): "slow",
+    ("Bleh", 23): "slow",
     ("Quassaunt", 20): "slow",
+    ("Quassaunt", 21): "slow",
     ("Stisp", 20): "slow",
     ("Stisp", 18): "medium",
     ("INTERCAL", 17): "medium",
@@ -861,11 +863,11 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Bleh": lambda n: _diagram_witness("bleh", n, 22),
+    "Bleh": lambda n: _diagram_witness("bleh", n, 23),
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
         _quassaunt_stack(n),
-        *_diagram_witness("quassaunt", n, 20),
+        *_diagram_witness("quassaunt", n, 21),
     ),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),

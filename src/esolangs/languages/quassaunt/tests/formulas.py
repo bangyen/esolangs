@@ -61,7 +61,7 @@ def _prices(
 
 
 def _chars(n: int, _: str) -> int:
-    """Worst characters, n = 3..20: the bound less what its last levels cannot reach.
+    """Worst characters, n = 3..21: the bound less what its last levels cannot reach.
 
     The bound prices every reference past the first at the dearest name.
     The 14 four-row subtables a level up are all there is, so their
@@ -77,7 +77,7 @@ def _chars(n: int, _: str) -> int:
     nodes, not 14 or 254), the constants cost 3 against the widest
     name's 5 so no wide-set shortfall arises, and the capped level's
     parents leave exactly no spare slots -- the shipped terms are the
-    rule for the whole n - 4 era.
+    rule for the whole n - 4 era; n = 21 changes nothing in kind.
     """
     prices = _prices(n)
     return (
@@ -94,4 +94,4 @@ def witness(n: int) -> str:
     return worst_diagram(n, ref, const(capped_level(n)))
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 21)), tuple(range(3, 21)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 22)), tuple(range(3, 22)))}
