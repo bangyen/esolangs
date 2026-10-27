@@ -97,6 +97,11 @@ def pytest_runtest_makereport(
     report = yield
     if report.when != "call" or not report.passed:
         return report
+    # Under a branch tracer the band times the tracer: a 0.08 s cvnc test
+    # spent 3.05 s and 3.90 s of CPU in the deadcode scan (40589506957).
+    # The untraced runs, per push and weekly, still enforce every band.
+    if coverage.Coverage.current() is not None:
+        return report
     markers = {marker.name for marker in item.iter_markers()}
     message = violation(markers, report.duration, item.stash.get(_CPU_TIME, None))
     if message is not None:
