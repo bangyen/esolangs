@@ -26,7 +26,7 @@ definitions = ["R = 3T/4+1"]
 workspace = [3, 6]
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-27"
 
 [ablations.fall_through_sharing]
 saving = 23.3
@@ -47,3 +47,17 @@ verdict = "kept: canonical, exempt; a constant span emitting its leaf at once ea
 saving = 52.6
 arity = 10
 verdict = "kept: canonical, exempt; building the tree over the essential inputs earns 53.2% / 52.6% with a mid ignored input at n=8/10 and 66.1% / 71.1% with two scattered, but only 6.6% / 5.4% with a leading one and -0.3% / -0.0% with a trailing one — the fall-through sharing already absorbs exactly those redundancies. Constant tables restore the full weights, as the loads are the interface"
+
+[ablations.htree_fold]
+saving = 30.9
+arity = 12
+seed = "random.Random(184700 + n)"
+tables = "20 random per n=6..8, 6 per n=9..11, plus and/or/parity/majority; Rudin-Shapiro n=5..12"
+verdict = "kept: the fold sets the area class (O(T) against the comb's Theta(nT)) and grids are judged by area. Patched off (_FOLD_BASE = 99) it is inert on random tables at every n=6..11 and on parity and majority; it moves only the and table (33.8% at n=8, 7.6% at n=10) and the or table (47.8% at n=6). It is judged on its class, tables whose one-edges share nothing: Rudin-Shapiro saves 9.6% / 12.8% / 17.5% / 22.0% / 26.7% / 30.9% by area at n=7..12, still growing, and spends characters (21% to 157% more). Every changed program ran on every row (64 sampled from n=8), 0 bad; it races by grid_rank, so no area grows"
+
+[ablations.parity_accumulator]
+saving = 97.1
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = "5 random per n=4,6,8 plus and/or/parity/majority, width request 1"
+verdict = "kept: a named function (parity) on the width-request path only. At width 1 the tree cannot fit and the one-column accumulator saves 95.6% / 96.5% / 97.1% by area at n=4/6/8 (89.0% / 91.5% / 93.1% by chars); every other table is unchanged. Every changed program ran on every row, 0 bad"

@@ -27,9 +27,10 @@ Decisions:
     on random tables and pays on blocks drawn from two random ones
     ([ablations.wrap_race]).  The fold replaces the comb only when its area is
     smaller (ties keep the comb): from n=7, on tables whose one-edges share
-    little.  It spends characters, up to its area, for area.  A bend of the first
-    nonadjacent repeat through column 1 was retired: it saved at most 2.7% of
-    characters on average at n=7..10 (best single table 14.7%).
+    little ([ablations.htree_fold]).  It spends characters, up to its area,
+    for area.  A bend of the first nonadjacent repeat through column 1 was
+    retired: it saved at most 2.7% of characters on average at n=7..10 (best
+    single table 14.7%).
 """
 
 from collections.abc import Callable
