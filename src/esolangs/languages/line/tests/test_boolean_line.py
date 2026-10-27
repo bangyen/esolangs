@@ -200,15 +200,17 @@ def test_forward_entry_lanes_land_two_units_per_lane() -> None:
 
     A stride of ``2 + lane`` instead draws a canvas of the same size with
     the same ink count whose programs still compute their table, so only
-    the exact raster pins the stride.
+    the exact raster pins the stride.  The hash covers the pixels, not the
+    PNG: deflate output differs between zlib builds (macOS 1.2.12 vs CI).
     """
     import hashlib
 
     table = "1100001100110000111111001111001100111111000000110000001100111111"
     program = esolangs.generate("Line", table)
     assert (len(program.rows[0]), len(program.rows)) == (920, 4360)
-    assert hashlib.sha256(program.to_png()).hexdigest() == (
-        "b0564c45aa027f5cc635b79ec740c9772fb15e4b1807e8e70ec44b7d76119dd1"
+    pixels = bytes(c for row in program.rows for pixel in row for c in pixel)
+    assert hashlib.sha256(pixels).hexdigest() == (
+        "64e9d9d570ddb134dce6d5f3275ff5893cc21b8625fcda8ff42bbe6bcd3f13b1"
     )
     assert _evaluate("Line", program.to_png(), inputs=6) == table
 
