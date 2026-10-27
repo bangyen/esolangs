@@ -184,6 +184,16 @@ process; no rule reproduces it:
   a deficit for that construction, not an impossibility bound.
   The shipped cap remains sixteen for general tables.
 
+  Provenance (2026-10-27): the scripts and notes cited below
+  (`notes/malbolge17-refund/`, `09ab2fad`) are in no commit of the
+  repository's history. Re-derived since: the counting gap (exactly
+  46,076 bits), the window conflict graph (independence number 8,
+  chromatic number exactly 12) and the phase theorem. The routing
+  floors (2.99 certified, 3.6 annealed), the 7,234 pointer saturation,
+  the 110/512 lockstep rate, the 2.77-a-hit budget and the 19,537-cell
+  union are unverified records, and so are the route closures resting
+  on them.
+
   The seven-meaning integration was re-measured end to end (2026-10-21,
   `notes/malbolge17-refund/`, tooling from `09ab2fad:scripts/malbolge17/`).
   Navigation (`o`/`j`) is 93-94% of its emitted cells; a walked cell holding
@@ -391,7 +401,7 @@ process; no rule reproduces it:
   cells, the largest `K` with `C(59049, K) * 8**K < 2**131072`) is false per
   program: `'o'*59046 + '/<v'` computes the one-input identity and every
   cell flips it, so only a cut over one normal-form program per table
-  remains open. An impossibility proof needs at least 46,077 bits of
+  remains open. An impossibility proof needs at least 46,076 bits of
   structure beyond the raw count, and all seven candidate strategies
   for finding that structure are dead with named obstructions
   (2026-10, audit R2-10): the impossibility track is routeless absent

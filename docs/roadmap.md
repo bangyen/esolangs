@@ -35,7 +35,7 @@ evidence, not optimization tasks.
   word-mediated landing is realized in a full build that passes its
   gates (parity contract, per-row cases and a fresh census at the new
   window embedding, then placement and threaded rates inside the
-  9,897-cell complement), or with new mathematics toward the 46,077
+  9,897-cell complement), or with new mathematics toward the 46,076
   bits an impossibility proof needs beyond counting.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
   `worst`. The rest of the 56 cells `at most` throughout and 24 past an
