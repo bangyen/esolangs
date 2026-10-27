@@ -86,7 +86,7 @@ def parse(clause: str) -> tuple[Formula, bool, int] | None:
     """Return ``(formula(n, program), exact, first n)``, or None.
 
     ``exact`` is a ``worst`` bound, which some table must reach; ``at most``
-    need only never be exceeded.  ``first n`` is 3, or one past ``past n``.
+    need only never be exceeded.  ``first n`` is 1, or one past ``past n``.
     """
     match = _BOUND.match(clause)
     if match is None:
@@ -121,7 +121,7 @@ def parse(clause: str) -> tuple[Formula, bool, int] | None:
         value = Fraction(eval(code, {"__builtins__": {}}, names))
         return value.numerator if value.denominator == 1 else value
 
-    return formula, kind == "worst", max(3, int(past.group(1)) + 1) if past else 3
+    return formula, kind == "worst", int(past.group(1)) + 1 if past else 1
 
 
 def exact_at(exact: Exact, n: int) -> bool:
@@ -168,9 +168,11 @@ def ledger_formulas(
         if parsed is not None:
             formula, exact, start = parsed
             span = 3 if row.execution_class.startswith("poly") else 2
+            # Every n below 3 too: unchecked, three bounds were false at n = 1.
+            base = max(start, 3)
             table[row.generator] = (
                 formula,
                 exact,
-                arities.get(row.generator, (start, start + span)),
+                arities.get(row.generator, (*range(start, base), base, base + span)),
             )
     return {**table, **hand, **local}

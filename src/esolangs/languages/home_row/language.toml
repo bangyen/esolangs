@@ -8,8 +8,8 @@ backlinks = 15
 labels = ["parameterized tree"]
 qualification = "—"
 scaling = "linear: worst 27T/2 + 10n + 6 characters past n = 1: runs"
-execution = "linear: worst 10T + 10n + 88 commands: every guarded leaf run, one equal pair of rows"
-workspace = "poly n: worst n + 32 + bl(27T/2+10n+6) bits: index cell and cursor"
+execution = "linear: worst 10T + 10n + 88 commands past n = 1: every guarded leaf run, one equal pair of rows"
+workspace = "poly n: worst n + 32 + bl(27T/2+10n+6) bits past n = 1: index cell and cursor"
 
 [generator_sizes]
 "00000001" = { commands = 163, commands_by_row = { "0" = 122, "1" = 131, "2" = 133, "3" = 142, "4" = 137, "5" = 146, "6" = 148, "7" = 163 }, source_units = 91 }

@@ -9,7 +9,7 @@ labels = ["linear lookup"]
 qualification = "one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows"
 scaling = "linear: worst 9T/2 + 18n + 75 characters past n = 2: minority"
 execution = "linear: worst 13T/2 + 17n + 93 commands past n = 2: the walk crosses the table once"
-workspace = "linear: worst 2T + 49 + bl(2T+41) + bl(5T+18n+74) + bl(n) bits: 2T + 49 tape cells"
+workspace = "linear: worst 2T + 49 + bl(2T+41) + bl(5T+18n+74) + bl(n) bits past n = 1: 2T + 49 tape cells"
 
 [generator_sizes]
 "00000001" = { commands = 182, commands_by_row = { "0" = 173, "1" = 172, "2" = 170, "3" = 169, "4" = 166, "5" = 165, "6" = 163, "7" = 182 }, source_units = 162 }

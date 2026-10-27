@@ -8,7 +8,7 @@ backlinks = 4
 labels = ["linear lookup"]
 qualification = "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit"
 scaling = "linear: worst 30T + 48n + 24 cells: six rows, gadgets abreast"
-execution = "linear: worst 16T + 22n + 4 steps: the pointer's path to the last row"
+execution = "linear: worst 16T + 22n + 4 steps past n = 1: the pointer's path to the last row"
 workspace = "poly n: worst 57n + 53 + bl(5*2^n+8n+3) bits: 7n-character queue"
 
 [generator_sizes]
