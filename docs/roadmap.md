@@ -159,17 +159,19 @@ empty-stack pops, output framing, cell width) fill the gaps. None is
 admitted yet. Each needs a prototype audit first: an interpreter matching
 every example on its page, a linear generator executed over every table at
 small n, and a re-spelling comparison with the nearest collected generators
-([curation](limitations.md#curation)). CARP jumps by line number, so a
-plain tree costs T log T; it needs equal subtrees shared.
+([curation](limitations.md#curation)).
 
-- **Re-spelling risk:** CARP's decrement-and-branch tree is Decleq's
-  without the input normalization, and CreativeScript v2's arithmetic
-  (integer division, forced by its own `==` program) invites Blindfolded
-  Arithmetic's shifted literal or APL's `x`/`!x` selection. Each needs a
-  construction neither collected generator uses.
-- **No linear construction yet:** NOR machine (reaching an operand rotates
-  the queue), Balik (a 2D tree in O(T) area) and Tiangou (markers set as
-  they run, so jumps go backward only).
+- **Linear construction prototyped** (scratch interpreter, every table at
+  n <= 3 correct; `notes/feasibility-2026-10-27/`): Tiangou (integer-keyed
+  markers as a computed backward jump; at most 10T + O(n) characters),
+  NOR machine (Horner-built table integer halved per input by a NOR mux,
+  inputs packed so the queue stays at six items; 19.5T at n = 12) and
+  Balik (`*` over `@` as splitter and merger, alternating box layouts;
+  88T area at n = 10).
+- **Re-spelling, no construction found:** CARP (no indirect jump or load;
+  every construction is Decleq's diagram without the normalization, the
+  ground IEBEL was removed on) and CreativeScript v2 (a packed literal
+  under Blindfolded Arithmetic's `1 + x(Q - 1)` shift).
 
 ## Engineering
 
