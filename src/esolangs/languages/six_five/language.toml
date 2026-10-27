@@ -9,7 +9,7 @@ labels = ["finite lookup"]
 qualification = "past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks"
 scaling = "linear, time n log: at most N characters: two raced orders over canonical subtree IDs"
 execution = "linear: worst L commands: loop-free, each token runs at most once; constant tables run every token"
-workspace = "linear: at most 2T + 7n + 9 + bl(n) bits past n = 6: a tape of 2T cells"
+workspace = "linear: worst 2T + 6n + 6 + bl(n) + bl(L) bits past n = 6: a tape of 2T cells"
 
 [generator_sizes]
 "00000001" = { commands = 28, commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 29, "4" = 17, "5" = 23, "6" = 17, "7" = 28 }, source_units = 47 }
