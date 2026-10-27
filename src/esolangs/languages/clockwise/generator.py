@@ -13,7 +13,7 @@ strips the first inputs select (:func:`_clockwise_banded`): n=6 random
 184 -> 106 on a side, n=9 1107 -> 270.  The default races the stacked
 lookup against :func:`_clockwise_flat`, which lays the gadgets in one band
 (six rows, ``5T + 8n + 4`` wide): area ``30T + 48n + 24`` where the stack
-costs ``(2T + 9n + 2)(2n + 15)``.
+costs ``(2T + 9n + 2)(2n + 15)`` ([ablations.flat_band]).
 
 Size:
     O(T) cells; n=8 random 1847: 7,572 chars, n=10 random 1847: 29,172 chars,

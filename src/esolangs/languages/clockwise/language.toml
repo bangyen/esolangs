@@ -31,7 +31,7 @@ workspace = [3, 6]
 folds_without_tree = true
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-27"
 
 [ablations.essential_drop]
 saving = 50.9
@@ -52,3 +52,10 @@ verdict = "kept: clears the bar on its class -- a one-essential table's ring is 
 saving = 0.0
 arity = 10
 verdict = "kept: not priced -- layout machinery. Trailing ignored inputs are read on the return rail after printing, the grid shifted down to separate the rail from the entry descent; both plain placements fail -- reads appended to the last head compute wrong functions (240 of 896 gated runs mismatch on trailing-ignored tables), and the unshifted left column is blocked by the corridor turn. The separation costs about 13% of area with one trailing input and 26% with two, against the (illegal) head-append box"
+
+[ablations.flat_band]
+saving = 55.5
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: the one-band lookup races the stacked one by area and wins every random table, 54.9% at n=7, 55.5% at n=8, 58.3% at n=10 -- the same on parity, and, or and majority, since a table's bits move no cell; it wins every two-or-more-essential table through n=3. The race is live: stacked wins on few essential inputs with many trailing ones, whose reads the band takes down a tall rail (62 of the probed projections; essential (0, 1) at n=9 is 1,848 cells against 2,120)"
