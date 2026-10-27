@@ -312,6 +312,9 @@ These generators keep no unconstrained tree route and have no subtree to fold:
 - SwitchCase: A switch a hundred rows turns the row index into its row's bit.
   `essential_inputs` halves degenerate tables; the fold discriminator in
   `test_schemes.py` records this exception.
+- Tiangou: Marks each true row's site on one pass and jumps back to the
+  input's row; markers are keyed by integers, so the jump is computed.
+  `essential_inputs` drops ignored inputs; a constant table walks one row.
 - Thue: Makes the table its starting state and rewrites every adjacent pair down
   to one per input.
 - Unsquare: Pushes one stack cell per row and pops the row index off the top.
@@ -459,6 +462,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Taglate | tree | — | linear: worst 20·4^⌈n/2⌉+14⌈n/2⌉²+40⌈n/2⌉-5 characters past n = 2: fixed slots | linear: worst 16T + (7n^2+26n-22)/2 for even n > 2, 28T + (7m^2+22m-36)/2 for odd, m = n + 1 | linear: worst 24·2^m + 12m + 12 + bl(m) + bl(L-4·2^m-7m+1) bits, m = n rounded up to even |
 | thisthat | tree | inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop | linear: worst N cells past n = 2: an H-tree of `O(sqrt(T))` sides | linear: worst 32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T | poly n: worst 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n = 2 |
 | Thue | linear lookup | the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per essential input and the last character is the answer; an ignored input's round reads its line and deletes it; the rules never overlap, so the language's random rule choice has nothing to choose | linear: worst T + 187 characters: the plain layout and the table | linear: worst 2T + 3n - 2 rewrites: n rounds, each a marker sweep out and back | linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string |
+| Tiangou | linear lookup | one pass marks each true row's site; a computed backward jump returns to the input's row | linear: exactly 6T + 4w + 34n + 57 characters | linear: worst 10T + 17n + 28 commands | T log T: at most 2(n+5)T + 40 bits: T markers of a key and a position, the stack |
 | Unary | tree, cap | complemented-byte decision tree; constants, projections and conjunction guards avoid flags | lower bound: worst source length at least 2**T - 1; zero-count encoding | unmeasured: worst max(n, min(n + 4, 8)) commands past n = 2: at most nine commands, the last ] never run | poly n: worst W bits past n = 1: the programs of at most nine commands |
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: at most F characters past n = 3: 241 a five-input half | poly n: worst 12n + 3 + 2⌊(n-1)/2⌋ commands past n = 2: n slots, 11 a level, carries | linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, stack |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: at most 169T/8 - 21 characters past n = 3: 315-character halves | poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node | T log T: at most 16(P + n·S) + (3n+9)bl(3n+9) + 9 + bl(n) bits: a copy of the shared subterm per read |
@@ -574,7 +578,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 94 theoretical totality arguments and
+Accordingly, this ledger records 95 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

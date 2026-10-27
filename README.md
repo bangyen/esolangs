@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 99 esoteric languages: 97 text and 2 raster.
+Interpreters and Boolean generators for 100 esoteric languages: 98 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -102,7 +102,7 @@ Feeding it the two adjacent input characters prints their XOR.
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 96
+Ready-to-run programs for each of the 97
 languages with a boolean generator live in
 each language's [directory](https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).
 
@@ -122,7 +122,7 @@ lists all of them.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  96 of the
+first; its length implies `n`, so it isn't passed separately.  97 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

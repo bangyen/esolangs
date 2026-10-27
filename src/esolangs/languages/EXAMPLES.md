@@ -109,6 +109,7 @@ don't edit by hand.
 | `taglate/taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
 | `thisthat/thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
 | `thue/thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
+| `tiangou/tiangou.txt` | Tiangou | `0001` | `01` | 0 1 | '0' |
 | `unary/unary.txt.gz` | Unary | `0001` | `01` | '\x00ÿ' | not the answer -- see note |
 | `underload/underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda/unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |

@@ -162,10 +162,9 @@ small n, and a re-spelling comparison with the nearest collected generators
 ([curation](limitations.md#curation)).
 
 - **Linear construction prototyped** (scratch interpreter, every table at
-  n <= 3 correct; `notes/feasibility-2026-10-27/`): Tiangou (integer-keyed
-  markers as a computed backward jump; at most 10T + O(n) characters),
-  NOR machine (Horner-built table integer halved per input by a NOR mux,
-  inputs packed so the queue stays at six items; 19.5T at n = 12) and
+  n <= 3 correct; `notes/feasibility-2026-10-27/`): NOR machine
+  (Horner-built table integer halved per input by a NOR mux, inputs
+  packed so the queue stays at six items; 19.5T at n = 12) and
   Balik (`*` over `@` as splitter and merger, alternating box layouts;
   88T area at n = 10).
 - **Re-spelling, no construction found:** CARP (no indirect jump or load;

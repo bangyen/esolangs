@@ -205,6 +205,8 @@ from esolangs.languages.three_x.generator import LANGUAGE as _THREE_X_LANGUAGE
 from esolangs.languages.three_x.generator import three_x
 from esolangs.languages.thue.generator import LANGUAGE as _THUE_LANGUAGE
 from esolangs.languages.thue.generator import thue
+from esolangs.languages.tiangou.generator import LANGUAGE as _TIANGOU_LANGUAGE
+from esolangs.languages.tiangou.generator import tiangou
 from esolangs.languages.unary.generator import LANGUAGE as _UNARY_LANGUAGE
 from esolangs.languages.unary.generator import unary
 from esolangs.languages.underload.generator import LANGUAGE as _UNDERLOAD_LANGUAGE
@@ -308,6 +310,7 @@ _LANGUAGES = (
     _THISTHAT_LANGUAGE,
     _THREE_X_LANGUAGE,
     _THUE_LANGUAGE,
+    _TIANGOU_LANGUAGE,
     _UNARY_LANGUAGE,
     _UNDERLOAD_LANGUAGE,
     _UNLAMBDA_LANGUAGE,
@@ -408,6 +411,7 @@ __all__ = [
     "thisthat",
     "three_x",
     "thue",
+    "tiangou",
     "unary",
     "underload",
     "unlambda",

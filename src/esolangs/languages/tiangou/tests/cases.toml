@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a token that is not one of the ten commands"
+
+[[spec_triggers]]
+program = "i"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: 'i' at EOF"
+
+[[spec_triggers]]
+program = "i"
+stdin = "x"
+expect = "ArgumentError"
+claim = "ArgumentError: 'i' given a token that is not an integer"
+
+[[spec_triggers]]
+program = "o"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a pop from an empty stack"
