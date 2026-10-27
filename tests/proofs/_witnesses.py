@@ -631,6 +631,20 @@ def _what_sparse(n: int) -> SparseRows:
     return SparseRows("10" * (width // 2), tuple(dict.fromkeys(rows)), width - 1)
 
 
+# language-owners: ["Interprogck8"]
+def _interprogck8_sparse(n: int) -> SparseRows:
+    """The steps witness; row T - 16 attains E, the rest stay under.
+
+    Measured over all 2,048 rows at n = 11 (36,988 / 37,575 / 37,619 / 38,022
+    max by row range 0-255 / 256-999 / 1000-1699 / 1700-2047), the maximum is
+    row 2032 = T - 16, and 1008 and 992 are the next dearest.
+    """
+    owner = importlib.import_module("esolangs.languages.interprogck8.tests.formulas")
+    width = 1 << n
+    rows = (0, 1, width // 2 - 1, width - 32, width // 2 - 16, width - 16, width - 1)
+    return SparseRows(owner.steps_witness(n), tuple(dict.fromkeys(rows)), width - 16)
+
+
 # language-owners: ["S*bleq"]
 def _sbleq_sparse(n: int) -> SparseRows:
     """The packed witness's rows, as many as the band affords.
@@ -752,6 +766,7 @@ _SPARSE_ROWS: dict[
     "What!?": (_what_sparse, (16, 17, 22), frozenset({"execution", "workspace"})),
     "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
     "Malbolge": (_malbolge_sparse, (17,), frozenset()),
+    "Interprogck8": (_interprogck8_sparse, (11,), frozenset({"execution"})),
 }
 
 #: Sparse-case bands, from standalone runs: a case pays one parse a row
@@ -782,6 +797,7 @@ _SPARSE_BAND = {
     ("S*bleq", "execution", 25): "slow",
     ("S*bleq", "execution", 26): "slow",
     ("Malbolge", "execution", 17): "medium",
+    ("Interprogck8", "execution", 11): "slow",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.

@@ -237,6 +237,14 @@ def _note(layouts: Layouts, key: tuple[int, int, int | None], table: str) -> See
     return seen
 
 
+def _floor(layouts: Layouts, key: tuple[int, int, int | None], walker: int) -> int:
+    """The value a candidate must beat to enter ``key``'s kept options."""
+    seen = layouts.get(key)
+    if seen and len(seen[0][walker]) == _SEEN:
+        return seen[0][walker][-1][0]
+    return _NONE * 2
+
+
 def _keep(
     layouts: Layouts,
     key: tuple[int, int, int | None],
@@ -392,18 +400,20 @@ def _flown(n: int, height: int, offset: int) -> Layouts:
             key = (exit_, windows + extra, None)
             for walker, (accumulator, _) in enumerate(_WALKERS):
                 for value, table in seen[0][walker]:
+                    total = walked + _NEAR - (PERIOD - accumulator) * opened + value
+                    if total <= _floor(out, key, walker):
+                        continue
                     for other in seen_far[1]:
                         if table != other:
-                            total = (
-                                walked + _NEAR - (PERIOD - accumulator) * opened + value
-                            )
                             _keep(out, key, walker, total, table + other)
                             break
                 for value, table in seen_far[0][walker]:
+                    total = walked + _FAR + _body(column) + flight
+                    total += value - (PERIOD - accumulator) * windows
+                    if total <= _floor(out, key, walker):
+                        continue
                     for other in seen[1]:
                         if table != other:
-                            total = walked + _FAR + _body(column) + flight
-                            total += value - (PERIOD - accumulator) * windows
                             _keep(out, key, walker, total, other + table)
                             break
     return out
@@ -539,10 +549,12 @@ def _bound(n: int) -> int:
 
 
 def _steps(n: int, _: str) -> int:
-    """The relaxed recursion's worst, a proved upper bound; reached to n = ``_EXACT``.
+    """The relaxed recursion's worst, a proved upper bound.
+
+    Reached over all rows to n = ``_EXACT``, and at 11 by one named row.
 
     The shipped ``_worst`` keeps ``_SEEN`` distinct tables a state and is a
-    witnessed lower bound; the two agree to ``_EXACT``.
+    witnessed lower bound; the two agree to 11.
     """
     return _bound(n)
 
