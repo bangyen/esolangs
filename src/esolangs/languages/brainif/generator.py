@@ -10,8 +10,8 @@ Size:
     14,671 chars.
 
 Decisions:
-    The residual DAG cuts the three-input total from 319,576 to 291,524
-    characters and steps from 134,984 to 74,440.  The looped levels follow
+    The residual DAG cuts the three-input total from 310,116 to 291,524
+    characters and steps from 130,888 to 74,440.  The looped levels follow
     a cost model (:func:`_top_level`), not a fixed count.
 """
 
@@ -265,13 +265,13 @@ class _SpanBuilder:
     def span(self, lo: int, hi: int, k: int, rest: int) -> list[str]:
         """Emit one span's own lines, before any shared-label prefix."""
         if rest == 0:
-            # The answer byte is 48: add one iff the entry is a 1 and join
-            # the trampoline line whose guard that byte passes.
+            # The answer byte is 48: add one iff the entry is a 1 and jump to
+            # the output tail.
             if self.truth_table[lo] == "0":
-                return [f"if {_ASCII_ZERO} goto 2"]
+                return [f"if {_ASCII_ZERO} goto @out_0"]
             return [
                 f"if {_ASCII_ZERO} increment",
-                f"if {_ASCII_ONE} goto 3",
+                f"if {_ASCII_ONE} goto @out_0",
             ]
         middle = (lo + hi) // 2
         if self.truth_table[lo:middle] == self.truth_table[middle:hi] and (
@@ -304,17 +304,9 @@ class _SpanBuilder:
 
 def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]:
     """Emit symbolic tree entries with one shared output tail."""
-    # Initial zero skips the two-line output trampoline.  Leaves return with
-    # 48/49 to line 2, whose guards forward to the wide output-tail address,
-    # rendered twice rather than once per leaf.
-    entries: list[str] = [
-        "if 0 goto 4",
-        f"if {_ASCII_ZERO} goto @out_0",
-        f"if {_ASCII_ONE} goto @out_0",
-    ]
     # The answer byte goes on cell 0 and the inputs above it, read from the
     # far end back down.
-    entries += _climb("increment")
+    entries = _climb("increment")
     entries.append(f"if {_ASCII_ZERO} move right")
     entries += ["if 0 move right" for _ in range(n - 1)]
 
@@ -368,9 +360,8 @@ def _top_level(n: int) -> int:
     while ``2**(n-K) > 5 * 2**K``, i.e. ``K < (n - log2 5) / 2``, so the
     looped levels number ``(n - 1) // 2`` and the deepest is ``(n - 3) // 2``.
     Measured on seeded random tables the best top level is that at n=6, 8,
-    10..14, and one lower at n=5, 7, 9 (0.9% to 3.6% smaller than the formula,
-    hence the ``n < 10`` term); the old fixed cap of 4 was 2.3% to 7.6% larger
-    at n=6, 8, 10 and 0.2% to 0.8% at n=13, 14.
+    10..14, and one lower at n=5, 7, 9, but by less than the 10% bar
+    ([ablations.lookup_loops]).
 
     The cap also clears the pair condition: levels ``i < j`` share a marker
     position exactly when ``j - i == 2**(n-1-j)``, and ``m_i = 2**(n-1-i)``
@@ -379,7 +370,7 @@ def _top_level(n: int) -> int:
     stays under it.  ``n`` counts the essential inputs; :class:`_Strip`
     re-checks the pairs once ignored ones sit between the levels.
     """
-    return max(0, (n - 3 - (n < 10)) // 2)
+    return max(0, (n - 3) // 2)
 
 
 class _Strip:

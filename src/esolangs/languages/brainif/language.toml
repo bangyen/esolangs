@@ -28,7 +28,7 @@ sharing_local = "_brainif_dag"  # residual states emitted once
 folding_constant_local = "_brainif_dag"  # constant residual output tail
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-27"
 
 [ablations.residual_dag_sharing]
 saving = 81.9
@@ -46,3 +46,10 @@ arity = 8
 seed = "random.Random(n)"
 tables = 10
 verdict = "kept 2026-10-20: width requests past four essential inputs race the full tree against the linear lookup, keeping the tree where it fits and is shorter; at width 80 it is 28.2-32.2% shorter at n=5..8 and 59% at n=14 (the gate had shipped the lookup unmeasured). The lookup stays the narrow fallback (14-16 columns against the tree's 16)"
+
+[ablations.lookup_loops]
+saving = 18.9
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept 2026-10-27: the narrow lookup walks its widest levels by a loop that halts on a marker; at width 13 it is 9.9% at n=7, 18.9% at n=8, 24.7% at n=9 and 29.2% at n=10 on random tables (17.3-20.8% on parity, and, or and majority at n=8), a share still growing past n=8. The plain-rewrite audit retired the tree's leaf trampoline (larger at every n and width, 0.5-5.6%) and the loop rule's odd-n step down (1.9% at n=7, 0.9% at n=9)"
