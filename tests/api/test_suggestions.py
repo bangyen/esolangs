@@ -73,6 +73,21 @@ class TestASuggestionIsWorthLessThanSilence:
         assert "did you mean" not in str(caught.value)
         assert "`esolangs list` shows all of them" in str(caught.value)
 
+    def test_a_name_head_is_suggested_never_resolved(self) -> None:
+        """The longest name's head is too far for difflib to suggest."""
+        longest = max(esolangs.list_languages(), key=len)
+        key = canonical_id(longest).replace("_", "")
+        for head in (key[:3], key[: len(key) // 3]):
+            with pytest.raises(esolangs.UnknownLanguageError) as caught:
+                esolangs.describe(head)
+            assert longest in caught.value.suggestions, head
+
+    def test_no_junk_word_heads_a_name(self) -> None:
+        for word in self._JUNK:
+            with pytest.raises(esolangs.UnknownLanguageError) as caught:
+                esolangs.describe(word)
+            assert caught.value.suggestions == (), word
+
     def test_the_cli_shares_the_number(self) -> None:
         assert _did_you_mean("snorey", esolangs.list_languages()) == ""
         assert "--width" in _did_you_mean("--wdith", ["--width", "--bits"])

@@ -274,4 +274,11 @@ def resolve(name: str) -> str:
     close = difflib.get_close_matches(
         canonical_id(name), _BY_ID, n=2, cutoff=SUGGESTION_CUTOFF
     )
+    if not close:
+        # A head of a long name is too far for difflib: "lol" scores 0.18
+        # against lol_waht_i_cant_edit_talk_pages.  Suggest, never resolve:
+        # a head unique today turns ambiguous when a language is added.
+        head = canonical_id(name).replace("_", "")
+        starts = [i for i in _BY_ID if i.replace("_", "").startswith(head)]
+        close = starts if len(head) >= 3 and len(starts) <= 2 else []
     raise UnknownLanguageError(name, tuple(_BY_ID[c] for c in close))
