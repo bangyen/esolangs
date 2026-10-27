@@ -40,7 +40,7 @@ def _nodes(n: int) -> list[int]:
 def _chars(n: int, _: str) -> int:
     """W = 68C + 43 + 8 digits(ids 2..C+1) + E, E the digits of every child name.
 
-    Exact for n = 2..69.  Size is 43 + sum over nodes of 68 + 8 digits(id) +
+    Exact for n = 2..132.  Size is 43 + sum over nodes of 68 + 8 digits(id) +
     digits(zero) + digits(one); ids run up by level, deepest first, so a level
     is a block of consecutive ids.  A node count below the level's cap loses
     at least 72 characters (the per-level bound is monotone in every count).
@@ -51,6 +51,13 @@ def _chars(n: int, _: str) -> int:
     65,806: covering binds first again and the spares go to 10-digit pairs,
     which stay plentiful through n = 69 (at 69 the spares take
     9,223,372,034,707,292,161 of the 10,857,243,130,095,610,000 pairs).
+    From n = 70 the capped level drops to n - 6 and freezes: 2^64 - 2
+    ranks, ids of widths 10..20 from 4,295,033,100, so C is
+    2^(n-6) + 2^64 + 2^32 + 65,799 and the transition level covers every
+    rank once -- at 70 exactly one spare pair is left -- with its spares
+    at 20-digit pairs, whose fixed supply the spares fit through n = 132
+    (ratio 0.5962 there).  At 133 the spares outgrow that supply, and a
+    width-class rule would be needed; the form above is not exact there.
     """
     nodes = _nodes(n)
     g = next(d for d in range(n) if _tower_fits(n - d, d))

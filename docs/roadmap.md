@@ -55,13 +55,15 @@ evidence, not optimization tasks.
     recorded +12,087 there sits outside the family. The split, the 194
     two-letter-named pairs that are defined anyway, and the ranking
     margin are chosen per arity: the worst is a design optimum, no rule
-    found), Codesick scaling past n = 69 (exact to 69: from n = 37 the
+    found), Codesick scaling past n = 132 (exact to 132: from n = 37 the
     transition level holds 2^32 - 2 ranks, ids of widths 5..10 from
     65,806, covering binds first and the spares stay inside the
-    10-digit pairs at every arity; at 70 the capped level drops to
-    n - 6, 2^64 - 2 ranks of widths 10..20, and there the spares
-    outgrow the 20-digit pairs at n = 133, so that era is measured by
-    counting, not ruled), 1 + i workspace past n = 27 (exact to 27:
+    10-digit pairs at every arity; from n = 70 the capped level drops
+    to n - 6 and freezes at 2^64 - 2 ranks of widths 10..20, covering
+    binds with exactly one spare pair, and the spares fit the fixed
+    20-digit-pair supply through n = 132 (ratio 0.5962); at 133 the
+    spares outgrow that supply, so the era past 132 needs a
+    width-class rule this form does not have), 1 + i workspace past n = 27 (exact to 27:
     the constant half's peak is executed at 25..27, the concatenation
     rival is executed at its own lower value at 27 and the swapped
     shape at its value at 25/26; at 28 the witness program runs to
