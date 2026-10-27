@@ -13,8 +13,8 @@ folds_without_tree = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer built by Horner's rule; each essential bit, smeared over a half-width mask, keeps V or V >> h by NORs, and the lone final V prints the low bit"
-scaling = "linear: 13T + 12w + O(n^2) characters for w true rows"
-execution = "linear: worst 25T + 10n^2 + 80n - 21 commands, each run once"
+scaling = "linear: 13T + 12r + O(n^2) characters for r runs of 1s"
+execution = "linear: at most 19T + 10n^2 + 96n - 29 commands, each run once"
 workspace = "linear: at most 3T + 4n + bl(L) + 24 bits: V, its copy and three half-width masks"
 
 [ablations]
@@ -28,11 +28,18 @@ tables = "20 random and 20 with a random proper subset of inputs essential, n=8 
 verdict = "kept: a table ignoring inputs packs only the essential-input table; 76.7% at n=8 and 88.0% at n=10 on those tables, 0.0% on random ones"
 
 [generator_sizes]
-"00000001" = { commands = 437, commands_by_row = { "0" = 437, "1" = 437, "2" = 437, "3" = 437, "4" = 437, "5" = 437, "6" = 437, "7" = 437 }, source_units = 437 }
-"00001100" = { commands = 286, commands_by_row = { "0" = 286, "1" = 286, "2" = 286, "3" = 286, "4" = 286, "5" = 286, "6" = 286, "7" = 286 }, source_units = 286 }
-"00110110" = { commands = 473, commands_by_row = { "0" = 473, "1" = 473, "2" = 473, "3" = 473, "4" = 473, "5" = 473, "6" = 473, "7" = 473 }, source_units = 473 }
+"00000001" = { commands = 465, commands_by_row = { "0" = 465, "1" = 465, "2" = 465, "3" = 465, "4" = 465, "5" = 465, "6" = 465, "7" = 465 }, source_units = 465 }
+"00001100" = { commands = 298, commands_by_row = { "0" = 298, "1" = 298, "2" = 298, "3" = 298, "4" = 298, "5" = 298, "6" = 298, "7" = 298 }, source_units = 298 }
+"00110110" = { commands = 477, commands_by_row = { "0" = 477, "1" = 477, "2" = 477, "3" = 477, "4" = 477, "5" = 477, "6" = 477, "7" = 477 }, source_units = 477 }
 "0110" = { commands = 267, commands_by_row = { "0" = 267, "1" = 267, "2" = 267, "3" = 267 }, source_units = 267 }
-"01101001" = { commands = 473, commands_by_row = { "0" = 473, "1" = 473, "2" = 473, "3" = 473, "4" = 473, "5" = 473, "6" = 473, "7" = 473 }, source_units = 473 }
-"0110100110010110" = { commands = 775, commands_by_row = { "0" = 775, "1" = 775, "2" = 775, "3" = 775, "4" = 775, "5" = 775, "6" = 775, "7" = 775, "8" = 775, "9" = 775, "10" = 775, "11" = 775, "12" = 775, "13" = 775, "14" = 775, "15" = 775 }, source_units = 775 }
-"1101001101101101" = { commands = 799, commands_by_row = { "0" = 799, "1" = 799, "2" = 799, "3" = 799, "4" = 799, "5" = 799, "6" = 799, "7" = 799, "8" = 799, "9" = 799, "10" = 799, "11" = 799, "12" = 799, "13" = 799, "14" = 799, "15" = 799 }, source_units = 799 }
-"11111110" = { commands = 509, commands_by_row = { "0" = 509, "1" = 509, "2" = 509, "3" = 509, "4" = 509, "5" = 509, "6" = 509, "7" = 509 }, source_units = 509 }
+"01101001" = { commands = 489, commands_by_row = { "0" = 489, "1" = 489, "2" = 489, "3" = 489, "4" = 489, "5" = 489, "6" = 489, "7" = 489 }, source_units = 489 }
+"0110100110010110" = { commands = 783, commands_by_row = { "0" = 783, "1" = 783, "2" = 783, "3" = 783, "4" = 783, "5" = 783, "6" = 783, "7" = 783, "8" = 783, "9" = 783, "10" = 783, "11" = 783, "12" = 783, "13" = 783, "14" = 783, "15" = 783 }, source_units = 783 }
+"1101001101101101" = { commands = 795, commands_by_row = { "0" = 795, "1" = 795, "2" = 795, "3" = 795, "4" = 795, "5" = 795, "6" = 795, "7" = 795, "8" = 795, "9" = 795, "10" = 795, "11" = 795, "12" = 795, "13" = 795, "14" = 795, "15" = 795 }, source_units = 795 }
+"11111110" = { commands = 465, commands_by_row = { "0" = 465, "1" = 465, "2" = 465, "3" = 465, "4" = 465, "5" = 465, "6" = 465, "7" = 465 }, source_units = 465 }
+
+[ablations.complement_runs]
+saving = 46.7
+arity = 12
+seed = 0
+tables = "n=12 parity, all ones but the last row, and n=8 random"
+verdict = "kept: holding ~V through a run of 1s makes a 1 one shift, not a NOR, dup and inv; 46.7% on all ones but the last row and 10.0% on parity at n=12, about 12% on random tables at n=8; n=4 parity grows 775 to 783 chars"

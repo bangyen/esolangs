@@ -9,10 +9,12 @@ chooses ``V`` or ``V >> h``.  The low bit of what is left is printed by the
 lone final ``V``.  Straight-line code, run once: it never loops.
 
 Size:
-    13T + 12w + 10n^2 + 80n - 9 chars for w true rows, every input
-    essential, n >= 2; n=4 parity: 775 chars
+    13T + 12r + 10n^2 + 96n - 29 chars for r runs of true rows, every
+    input essential, n >= 2; n=4 parity: 783 chars
 
 Decisions:
+    Horner holds ``~V`` through each run of 1s ([ablations.complement_runs]).
+
     An ignored input is absorbed as ``1 = nor(nor(x, 1), 0)``: ``x`` is 0
     or 1, so ``nor(x, 1)`` is -2 for both.
 """
@@ -108,11 +110,15 @@ def nor_machine(truth_table: str) -> str:
     for i in reversed(essential[:-1]):
         q.shift("L", packed, 1)
         packed = q.or_(packed, f"x{i}")
-    v = zero
+    # ~V << 1 is ~((V << 1) | 1), so a 1 shifts the complement in free:
+    # hold ~V through each run of 1s and pay one ``inv`` per change.
+    v, inverted = zero, False
     for bit in reversed(table):
+        if inverted != (bit == "1"):
+            v, inverted = q.inv(v), not inverted
         q.unary("L", v, v)
-        if bit == "1":
-            v = q.inv(q.nor(v, q.dup(one)))
+    if inverted:
+        v = q.inv(v)
     low = q.inv(one)  # -2: NOR with it keeps bit 0 of the complement
     for level in range(1, len(essential) + 1):
         h = len(table) >> level
