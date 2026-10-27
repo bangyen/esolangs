@@ -31,7 +31,7 @@ definitions = ["W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the executi
 folding_constant_local = "_program"  # one-entry rotated lookup
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-27"
 
 [ablations.essential_projection]
 saving = 51.0
@@ -46,7 +46,14 @@ verdict = "kept: each strip is built with plain steps and with a carried count a
 [ablations.radix_bits]
 saving = 0.0
 arity = 10
-verdict = "side measurement, not an ablation: _RADIX_BITS swept over 1-8 on 200 random tables per arity. The cost concentrates in the walks (each digit's walk text runs to about three times its stride, and the second digit's stride is 2 to the first digit's width), so the total resonates with digit boundaries: a single digit wins where it fits (7/8 bits at n<=8, totals 183,368 / 263,309 against shipped 316,768 / 396,709), 5 bits wins at n=9/10 (473,058 / 744,828 against shipped 540,258 / 812,028), and the shipped 6 wins on parity at n=12 (11,899 against 22,470 for 5). No fixed value dominates; the constant stands"
+verdict = "side measurement, not an ablation: _RADIX_BITS swept over 4-8 on 200 random tables per arity, after short_digit_low. Wider digits now win monotonically but narrowly -- 8 bits against the shipped 6 saves 1.2% / 2.0% / 3.0% / 3.6% at n=7/8/9/10 (183,543 / 263,273 / 409,185 / 684,451 against 185,743 / 268,673 / 421,985 / 710,051) and 4.3% at n=12 -- under the bar, and a digit's walk takes count**2 / 2 moves, so the constant stands. Before short_digit_low the total resonated with digit boundaries (a single 7- or 8-bit digit beat the shipped 6 by 42% at n=7)"
+
+[ablations.short_digit_low]
+saving = 32.3
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: the index's short digit is read lowest, so the top digit's walk strides 2**(short width + 1) cells, not 128. 41.4% at n=7, 32.3% at n=8, 21.9% / 12.6% / 5.0% / 0.0% at n=9/10/11/12, 65.2% at n=13 -- periodic in n mod 6, zero where every digit is full. Identical output through n=6; parity, and, or, majority 0.0% (symmetric, one count walk). No table grew; every changed program run (30 at n=7..9, both rotations) was correct"
 
 [interpreter_ablations]
 audited = "2026-10-18"

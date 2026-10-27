@@ -20,7 +20,7 @@ A symmetric table sums its bits on the carrier and walks n + 1 entries
 
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
-    strides; n=10 random 1847: 4,061 chars, n=10 and: 758 chars.
+    strides; n=10 random 1847: 3,549 chars, n=10 and: 758 chars.
 
 Decisions:
     A repeated block is not shared: a brainfuck copy is at least 19 commands
@@ -232,12 +232,14 @@ class _Builder:
 
 
 def _groups(width: int) -> list[int]:
-    """Bit counts of the index's base-64 digits, lowest digit first."""
-    out = []
-    while width > 0:
-        out.append(min(_RADIX_BITS, width))
-        width -= out[-1]
-    return out
+    """Bit counts of the index's base-64 digits, lowest digit first.
+
+    The short digit goes lowest: a digit's walk text is four strides, and
+    its stride doubles per bit below it, so a short top digit spent 512
+    characters on a 128-cell stride at n = 7 ([ablations.short_digit_low]).
+    """
+    short = [width % _RADIX_BITS] if width % _RADIX_BITS else []
+    return short + [_RADIX_BITS] * (width // _RADIX_BITS)
 
 
 def _strides(groups: list[int]) -> list[int]:
