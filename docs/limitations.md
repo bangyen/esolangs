@@ -700,9 +700,16 @@ exact range (2026-10-23, counted from the ledger):
     for it; generation re-measured exact the same day at a 3,991 MB
     peak; generating 27 is OOM-killed), workspace past 26 (the closed
     form matches final snapshots at 21, 22 and 25 and the n = 26 text's
-    DIMENSION statements) and scaling past 19 (the shape needs 2^(n-4)
-    distinct parents against 57,360 ordered pairs, failing from 20).
-    Scaling reopens with a successor shape.
+    DIMENSION statements) and scaling past 22 (exact to 22 on the
+    successor shape: the capped shape ends at 19 — at 20 its level
+    n - 4 would need 2^16 distinct parents from 240 * 239 ordered
+    pairs — and the successor shifts the cap one level down, level
+    n - 4 holding all 65,280 ordered pairs of the 256 eight-row ids,
+    the reads spread evenly with the remainder on the longest names,
+    at 22 under a plateau of twice-read named nodes at level n - 5;
+    the closed form matches the generated programs at 20, 21 and 22
+    — 4,696,098, 8,512,928 and 13,586,491 characters; past 22 the
+    bound V stands).
   - S*bleq scaling past n = 28: one-off builds attain P at 26, 27 and 28
     (105,463,455 characters, 3.30 GB peak), the harness at the scaling
     arities to 25; the route's peak doubles per arity, about 6.5 GB at 29.

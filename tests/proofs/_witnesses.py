@@ -547,12 +547,73 @@ def _intercal_worst(n: int) -> str:
     return _intercal_diagram(widths, _IC_PAIRS)
 
 
+def _intercal_chars_shifted(n: int) -> str:
+    """The shifted cap at n >= 20: level n - 4 holds all 65,280 pairs.
+
+    The level n - 4 occurrence sequence runs in rounds over every
+    ordered pair of distinct eight-row values: round one lists them
+    all (lex order, so the values read extra times come last and take
+    the longest names), each later round re-lists the values whose
+    read count reaches it under its own stride permutation, whose
+    consecutive pairs are new parents, distinct with unequal halves.
+    Reads spread r0 = 2^(n-4) // 65,280 per value plus one more on
+    the last rem values; above the level the tree is full.
+    """
+    from math import gcd
+
+    values = [f"{a:08b}{b:08b}" for a in range(256) for b in range(256) if a != b]
+    cap = len(values)
+    r0, rem = divmod(1 << (n - 4), cap)
+    strides = (7, 11, 13, 19, 23, 29, 31, 37)
+    rounds = [values]
+    for k in range(2, r0 + 2):
+        subset = values if k <= r0 else values[cap - rem :]
+        stride = strides[k - 2]
+        assert gcd(stride, len(subset)) == 1
+        rounds.append([subset[(i * stride) % len(subset)] for i in range(len(subset))])
+    return "".join(v for rnd in rounds for v in rnd)
+
+
+def _intercal_chars_plateau(n: int) -> str:
+    """The shifted cap under a plateau at level n - 5, at n = 22.
+
+    The capped level's occurrence sequence runs in rounds (twice per
+    value, once more on the last values) as in the shifted build; its
+    consecutive pairs are the plateau's 2^(n-6) distinct nodes, and
+    the level n - 5 sequence lists those pairs once in order and once
+    stride-permuted, so every plateau node is read twice and named.
+    """
+    from math import gcd
+
+    values = [f"{a:08b}{b:08b}" for a in range(256) for b in range(256) if a != b]
+    cap = len(values)
+    x = 1 << (n - 6)
+    extra = 2 * x - 2 * cap
+    rounds = [values]
+    rounds.append([values[(i * 7) % cap] for i in range(cap)])
+    tail = values[cap - extra :]
+    rounds.append([tail[(i * 11) % len(tail)] for i in range(len(tail))])
+    seq = [v for rnd in rounds for v in rnd]
+    pairs = [(seq[2 * i], seq[2 * i + 1]) for i in range(x)]
+    assert gcd(13, x) == 1
+    order = [(i * 13) % x for i in range(x)]
+    return "".join(a + b for a, b in pairs) + "".join(
+        pairs[i][0] + pairs[i][1] for i in order
+    )
+
+
 def _intercal_chars_worst(n: int) -> str:
     """Diagram with the most nodes: a full tree to level n - 3, then 12 and 2.
 
     From n = 11 level n - 3 is every distinct-halved pair of 4-bit tables
     (240); the spare slots above re-read its nodes, thirds on the last ones.
+    From n = 20 the cap shifts to level n - 4 (:func:`_intercal_chars_shifted`),
+    at n = 22 under a plateau (:func:`_intercal_chars_plateau`).
     """
+    if n == 22:
+        return _intercal_chars_plateau(n)
+    if n >= 20:
+        return _intercal_chars_shifted(n)
     if n >= 11:
         rows = [f"{u:04b}{v:04b}" for u in range(16) for v in range(16) if u != v]
         reads = [*rows, *(rows[i ^ 1] for i in range(240))]
@@ -622,7 +683,9 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: past 15 inputs are dominated by the two alternating builds); n = 21
 #: stays in the medium band at 4.8 s.
 #: A case above a language's first per-push arity only backs a ledger
-#: range, so it runs weekly: Back 17, Stisp 20, INTERCAL 18-20, What!? 22.
+#: range, so it runs weekly: Back 17, Stisp 20, INTERCAL 18-24, What!? 22.
+#: INTERCAL's scaling cases at n = 20..23 run 25 s, 47 s, 90 s and
+#: 151 s alone (corpus generations dominate; n = 24 checks the bound).
 _WITNESS_BAND = {
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
@@ -640,6 +703,9 @@ _WITNESS_BAND = {
     ("INTERCAL", 18): "weekly",
     ("INTERCAL", 19): "weekly",
     ("INTERCAL", 20): "weekly",
+    ("INTERCAL", 21): "weekly",
+    ("INTERCAL", 22): "weekly",
+    ("INTERCAL", 23): "weekly",
     ("S*bleq", 21): "weekly",
     ("S*bleq", 22): "weekly",
     ("S*bleq", 23): "weekly",
@@ -963,7 +1029,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     "INTERCAL": lambda n: (
-        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 19 else ()))
+        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 22 else ()))
         if 3 <= n <= 25
         else ()
     ),
