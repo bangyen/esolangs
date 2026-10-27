@@ -91,7 +91,10 @@ evidence, not optimization tasks.
     from n = 13; with third reads re-placed on the longest-named rows the
     generated program reaches U at every arity to 19, and at 20 level
     n - 4 would need 2**16 distinct parents from the capped level's
-    240 * 239 ordered pairs, so the shape ends).
+    240 * 239 ordered pairs, so the shape ends -- fenced, not merely
+    unextended: the need is 2^(n-4) parents against 57,360 pairs,
+    failing at 20 and at every arity after, so reaching the bound
+    past 19 needs a successor shape, not this one).
   - Per-level bounds (2026-10-22): Stisp is exact to n = 20 (3,554 at n = 9,
     6,952 at n = 10, 13,478, 20,652, 35,879, 67,629, 131,123, 258,105, 532,028,
     1,089,090, 2,199,893, 4,477,971), Quassaunt to n = 20 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586, 29,530,680) and Bleh to n = 22
