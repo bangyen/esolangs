@@ -9,11 +9,13 @@ chooses ``V`` or ``V >> h``.  The low bit of what is left is printed by the
 lone final ``V``.  Straight-line code, run once: it never loops.
 
 Size:
-    13T + 12r + 10n^2 + 96n - 29 chars for r runs of true rows, every
-    input essential, n >= 2; n=4 parity: 783 chars
+    9T + 12r + 12n^2 + 93n - 20 chars for r runs of true rows, every
+    input essential, n >= 2; n=4 parity: 748 chars
 
 Decisions:
-    Horner holds ``~V`` through each run of 1s ([ablations.complement_runs]).
+    Horner holds ``~V`` through each run of 1s ([ablations.complement_runs]),
+    and the smear shares its rotations with the half-shift
+    ([ablations.shared_rotations]).
 
     An ignored input is absorbed as ``1 = nor(nor(x, 1), 0)``: ``x`` is 0
     or 1, so ``nor(x, 1)`` is -2 for both.
@@ -85,8 +87,21 @@ class _Queue:
         return self.inv(self.nor(a, b))
 
     def shift(self, op: str, a: str, k: int) -> None:
-        for _ in range(k):
-            self.unary(op, a, a)
+        self.shift_all({a: (op, k)})
+
+    def shift_all(self, jobs: dict[str, tuple[str, int]]) -> None:
+        """Shift several values on shared passes: one rotation serves all."""
+        left = {a: k for a, (_, k) in jobs.items() if k}
+        while left:
+            a = self.names[0]
+            if a in left:
+                self.out.append(jobs[a][0])
+                left[a] -= 1
+                if not left[a]:
+                    del left[a]
+            else:
+                self.out.append("I")
+            self.names = [*self.names[1:], a]
 
 
 def nor_machine(truth_table: str) -> str:
@@ -126,14 +141,15 @@ def nor_machine(truth_table: str) -> str:
         mask = q.nor(q.inv(bit), q.dup(low))
         if level < len(essential):
             q.unary("R", packed, packed)
+        # The smear's h - 1 left shifts ride the half-shift's h right ones.
+        upper = q.dup(v)
         width = 1
         while width < h:
             wide = q.dup(mask)
-            q.shift("L", wide, width)
+            q.shift_all({wide: ("L", width), upper: ("R", width)})
             mask = q.or_(mask, wide)
             width *= 2
-        upper = q.dup(v)
-        q.shift("R", upper, h)
+        q.shift("R", upper, h - width + 1)
         # mask ? upper : v, as nor(nor(~mask, ~upper), nor(mask, ~v)).
         keep_upper = q.nor(q.inv(q.dup(mask)), q.inv(upper))
         keep_lower = q.nor(mask, q.inv(v))
