@@ -20,16 +20,23 @@ evidence, not optimization tasks.
 - Unary has a documented language lower bound.
 - Befunge has a finite-source totality exception.
 
-- **Malbolge:** generation at seventeen inputs is open (2026-10-21): a
+- **Malbolge:** generation at seventeen inputs is open (2026-10-26): a
   table cell cannot carry eight address-independent meanings (window
   conflict graph: independence number 8, twelve classes), lockstep
   adjacent-cell reads reach 110 of 512 triples a phase, and the
   seven-meaning build's 1,994 gotos have 2.77 cells each in the
   complement against a 3.6-cell annealed routing floor (certified
-  at least 2.99)
-  ([limitations](limitations.md)). Reopen only with a layout that needs a
-  quarter fewer gotos at that floor, or a decoder whose per-cell meaning
-  is not a function of the window cell.
+  at least 2.99). The composition routes priced since -- hub
+  substrates in the shipped and re-addressed geometries, marching
+  and data-initialized decoders, threaded and streaming emission,
+  membership dispatch, the permutation families -- are closed in
+  [limitations](limitations.md) on eligibility, mechanism or
+  measured rates. Reopen only with a decoder variant whose
+  word-mediated landing is realized in a full build that passes its
+  gates (parity contract, per-row cases and a fresh census at the new
+  window embedding, then placement and threaded rates inside the
+  9,897-cell complement), or with new mathematics toward the 46,077
+  bits an impossibility proof needs beyond counting.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
   `worst`. The rest of the 56 cells `at most` throughout and 24 past an
   exact range are in [limitations](limitations.md#run-time-and-memory).

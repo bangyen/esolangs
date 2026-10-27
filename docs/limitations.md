@@ -312,6 +312,56 @@ process; no rule reproduces it:
   but a run must be 22 cells long to meet every table address's eight
   pointers, and seven classes need 154 > 94.
 
+  The composition routes priced since (2026-10, audit rounds 1-8) close
+  on measurement, mechanism or eligibility:
+
+  - Threaded-stream emission was falsified by replay: the fold's slices
+    thread at 16.36 cells an episode and the decoder setup's at 28.11,
+    for a composed union of 27,212 cells. Streaming the decoder instead
+    dies on the encoder side: three `rot`/`crazy` steps with a
+    character-sized operand reach about 8 of a group's 256 bytes from
+    any input state, a 96.5-96.9% per-group reachability failure.
+  - A hub substrate steering the archived fold and decoder closes on
+    eligibility: under the full census only 10 of its 45 hub positions
+    survive (140 of the walked window [0, 420) are census fact targets,
+    concentrated at 34..155, the components' own target space), for a
+    best corrected union of 16,165 cells; widening the walk reaches a
+    10,227 floor-ledger union, still over. Re-addressing the components
+    to free the dense block priced a fitting union of 8,503 on paper,
+    but the re-lay is not realizable: the decoder's landing idiom
+    encodes window addresses as source characters, so its
+    residue-faithful window embedding in 34..127 is the shipped one,
+    and the fold's seam cannot move +94 in its tuned walk graph (entry
+    stream 1,091 to 2,688 cells, assembly overlaps) -- a priced layout
+    nobody has built is a prediction, not a route, until its build
+    passes its gates.
+  - A membership decoder closes on mechanism: no two-valued equality
+    test exists as a `crazy` combine of depth at most 3 in the fold's
+    exit representation, and the surviving dispatch floors at about
+    1,026 counted cells, a break-even of about 53 rows.
+  - The permutation fence is settled with its criterion sharpened: a
+    family fences only if its both-stub classes number at most 36,864,
+    and at most the product of its digit-image counts. C17 counts
+    65,416 classes and is out on the count; D17 counts 32,896 and is
+    out on wiring, an invariant digit readout's image holding at most
+    10 values against its 32,896 classes.
+  - Marching, data-initialized decoders close in every screened form:
+    operand freedom was solved on exhibit, but placement growth is
+    intrinsic -- at the most generous grouping the bodies plus fixed
+    lines alone total 11,170 cells before any data. Behind that is the
+    phase theorem, generalised: a re-executed cell never repeats an
+    instruction at any two distinct phases, at any stride, so every
+    repeated action in a loop must be carried by a different cell each
+    pass. The theorem binds any looping read path in full; the
+    archived fold, the archived decoder's straight-line read path and
+    the shipped generator's output are not bound.
+
+  One route is open: a decoder variant whose field-read landing is
+  word-mediated -- the continuation address borne by a setup-deposited
+  word, not a source character -- exhibited at single-case scale in
+  the shipped interpreter at a measured 21 cells per deposited word.
+  The full variant build is unbuilt, and no union is quoted for it.
+
   Counting bounds each family independently of mixer quality:
 
   - stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;
@@ -341,7 +391,12 @@ process; no rule reproduces it:
   cells, the largest `K` with `C(59049, K) * 8**K < 2**131072`) is false per
   program: `'o'*59046 + '/<v'` computes the one-input identity and every
   cell flips it, so only a cut over one normal-form program per table
-  remains open.
+  remains open. An impossibility proof needs at least 46,077 bits of
+  structure beyond the raw count, and all seven candidate strategies
+  for finding that structure are dead with named obstructions
+  (2026-10, audit R2-10): the impossibility track is routeless absent
+  new mathematics, and seventeen stays open exactly as far as the
+  counting leaves it -- no stronger claim is proved.
 
   Malbolge without `i`/`j` cannot express NOT. Straight-line `c == d` from
   the reset state gives a `p` its own cell's instruction character, one of 94
@@ -353,7 +408,7 @@ Shipped limits, in inputs:
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell, seven-meaning packing is closed at the routing floor (above; [scaling](proofs/index.md#malbolge-bound)). |
+| Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell, seven-meaning packing is closed at the routing floor, and the composition routes since are closed on eligibility, mechanism or measured rates, with one decoder variant open (above; [scaling](proofs/index.md#malbolge-bound)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; a random n=11 table (2,390 instructions, a 58 MB program) factors for 522 s CPU before its first row (later rows reuse it) and peaks at 1.3 GB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 ### Size lower bounds
