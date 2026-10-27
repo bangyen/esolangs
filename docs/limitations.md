@@ -692,8 +692,13 @@ exact range (2026-10-23, counted from the ledger):
     with a width-class rule.
   - 1 + i workspace past n = 27: the n = 28 witness, ~1.7G characters, is
     OOM-killed while generating here.
-  - INTERCAL execution past n = 26 (loading the n = 26 witness passes
-    6 GB RSS; generating 27 is OOM-killed), workspace past 26 (the closed
+  - INTERCAL execution past n = 26 (the n = 26 witness's load, with the
+    interned parser, was killed at 5,954 MB RSS with the load unreturned
+    when measured on 2026-10-27 — the intern cache retains a key tuple
+    and a dict entry per distinct node and the 1.1M small statements'
+    ~20M nodes barely share, against the ~2.0–2.2 GB once extrapolated
+    for it; generation re-measured exact the same day at a 3,991 MB
+    peak; generating 27 is OOM-killed), workspace past 26 (the closed
     form matches final snapshots at 21, 22 and 25 and the n = 26 text's
     DIMENSION statements) and scaling past 19 (the shape needs 2^(n-4)
     distinct parents against 57,360 ordered pairs, failing from 20).
