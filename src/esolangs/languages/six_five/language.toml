@@ -9,7 +9,7 @@ labels = ["finite lookup"]
 qualification = "past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks"
 scaling = "linear, time n log: at most N characters: two raced orders over canonical subtree IDs"
 execution = "linear: worst L commands: loop-free, each token runs at most once; constant tables run every token"
-workspace = "linear: worst 2T + 7n + 9 + bl(n) bits past n = 6: a tape of 2T cells"
+workspace = "linear: at most 2T + 7n + 9 + bl(n) bits past n = 6: a tape of 2T cells"
 
 [generator_sizes]
 "00000001" = { commands = 28, commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 29, "4" = 17, "5" = 23, "6" = 17, "7" = 28 }, source_units = 47 }
@@ -75,3 +75,10 @@ verdict = "removed 2026-10-20 (retirement candidate #11): re-emitting the winner
 saving = 32.2
 arity = 10
 verdict = "kept: the walk's preload stopping at the last 1 clears on its class (front-half tables, ones ending early: 31.3% at n=9) and earns 0.1% on random walk tables, whose last 1 sits near the final row"
+
+[ablations.walk_home_loop]
+saving = 36.4
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: the walk returns home by a loop left to a sentinel 5 at cell 0 (7 characters) instead of one 3 per cell (2 per row); 36.4% at n=8, 38.0% / 38.9% at n=9 / 10 (200 tables), 39.4% / 39.7% at n=11 / 12 (40 tables); 5.54 -> 3.52 chars per row at n=8. Parity/and/or unchanged (the tree wins); majority n=12 19,765 -> 11,558. n <= 7 byte-identical (exhaustive n <= 3, 200 random each at n=4..7). All 200 changed n=8 programs, 6 at n=9 and 2 at n=10 executed on every row, 0 wrong; a wrong table is flagged"

@@ -8,11 +8,11 @@ inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
 
 Size:
     O(T) worst case, small for structured tables; n=10 parity: 207 chars,
-    n=10 and: 145 chars, n=10 random 1847: 5,292 chars.
+    n=10 and: 145 chars, n=10 random 1847: 3,235 chars.
 
 Decisions:
-    The positional walk spends exactly ``n`` labels.  Counting tree labels
-    exactly rather than as a bound made one n == 6 table longer
+    The positional walk spends ``n`` labels plus its home loop's.
+    Counting tree labels exactly rather than as a bound made one n == 6 table longer
     (:func:`_six_five_markers`).  Dropping the old DAG precheck shrinks
     sharing-heavy tables (:func:`_six_five_hoisted`).
 """
@@ -50,6 +50,10 @@ _SIX_FIVE_NORMALIZE = "9999922"
 #: three tokens as is each leaf's +16..+18, where 8/9 took seven.
 _SIX_FIVE_HELD = 31
 _SIX_FIVE_TREE_NORMALIZE = "992"
+
+#: Walk home: left until the cell reads the sentinel 5 (table cells are 0/1).
+#: The loop's ``4`` is the program's first, so label 1.
+_SIX_FIVE_RETURN = "43758" + "1"
 
 #: The node test: skip the left arm's jump when the bit is 0.
 _SIX_FIVE_TEST = "7V"
@@ -129,14 +133,16 @@ def _six_five_chosen(truth_table: str, orders: dict[tuple[int, ...], None]) -> s
 def _six_five_walk(truth_table: str) -> str:
     """Emit the positional-walk 6-5 program: the whole table on the tape.
 
-    Spends exactly ``n`` labels: the branching moves the pointer, not the
-    cursor.  Row ``j`` is preloaded at stride ``n + j`` (cell ``2 * (n + j)``;
-    ``1`` moves two cells), ones as ``62``.  Each bit is read where the
+    Spends ``n`` labels plus the home loop's: the branching moves the
+    pointer, not the cursor.  Row ``j`` is preloaded at stride ``n + j``
+    (cell ``2 * (n + j)``; ``1`` moves two cells), ones as ``62``; a loop
+    then walks left to the sentinel 5 at cell 0, not a ``3`` per cell.
+    Each bit is read where the
     pointer stands: bit 1 skips the ``8n`` into ``2**(n-1-i)`` strides, bit 0
     jumps past them; both share one more stride, so after ``n`` bits the
     pointer is at the indexed row and the leaf adds 48 and prints.  The
     shared stride keeps every ``B`` behind the final cell.  Dense n == 10:
-    10 labels, 5309 chars, 1024 rows in 12s.
+    11 labels, 3252 chars.
 
     An ignored input is ``B1``, its shared stride alone, and the table is
     laid out at the rest.  It has no ``4``, so labels count essential inputs:
@@ -146,8 +152,15 @@ def _six_five_walk(truth_table: str) -> str:
     if n > _SIX_FIVE_MAX_LABEL:
         return _six_five_guarded(truth_table)
     weights, projected = input_weights(truth_table, n)
-    out = _six_five_preload(projected, n)
-    label = 0
+    out, label = _six_five_preload(projected, n), 0
+    back = 2 * (n + projected.rfind("1"))
+    if (
+        back > len(_SIX_FIVE_RETURN) + 1
+        and sum(map(bool, weights)) < _SIX_FIVE_MAX_LABEL
+    ):
+        # A sentinel at cell 0 and a leftward loop replace the 3s home.
+        out = "5" + out.removesuffix("3" * back) + _SIX_FIVE_RETURN
+        label = 1
     for weight in weights:
         if not weight:
             out += "B1"

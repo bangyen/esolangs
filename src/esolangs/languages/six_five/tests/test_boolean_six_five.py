@@ -202,13 +202,13 @@ class TestSixFive:
         table = _dense(8)
         program = boolean.six_five(table)
         assert program == _six_five_walk(table).removesuffix("0")
-        assert _markers(program) == 8
+        assert _markers(program) == 9
         for combo in range(0, 256, 3):
             got = run_six_five(program, list(format(combo, "08b")))
             assert got == table[combo], f"row {combo}"
 
     def test_an_ignored_input_on_the_walk_is_one_read(self) -> None:
-        """``B1`` and its stride: five characters, never another table.
+        """``B1`` and its stride: three characters, never another table.
 
         Its ``4`` is gone too, so the labels count essential inputs; labelled
         by position, every later jump misroutes (all but a last ignored one
@@ -222,8 +222,8 @@ class TestSixFive:
                 for row in range(256)
             )
             program = _six_five_walk(table).removesuffix("0")
-            assert len(program) - len(_six_five_walk(dense7).removesuffix("0")) == 5, at
-            assert _markers(program) == 7
+            assert len(program) - len(_six_five_walk(dense7).removesuffix("0")) == 3, at
+            assert _markers(program) == 8
             for combo in range(0, 256, 3):
                 bits = [str((combo >> (7 - i)) & 1) for i in range(8)]
                 assert run_six_five(program, bits) == table[combo], (at, combo)
@@ -232,8 +232,8 @@ class TestSixFive:
         """The generator clears n == 10 on a table with nothing to fold."""
         dense10 = _dense(10)
         program = boolean.six_five(dense10)
-        assert _markers(program) == 10
-        assert len(program) == 5308
+        assert _markers(program) == 11
+        assert len(program) == 3251
         for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
             bits = [(combo >> (9 - i)) & 1 for i in range(10)]
             feed = iter([str(b) for b in bits])
