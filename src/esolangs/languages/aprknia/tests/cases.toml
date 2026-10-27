@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unmatched bracket"
+
+[[spec_triggers]]
+program = "11*!!!~!,"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: a read at EOF"
+
+[[spec_triggers]]
+program = "!"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a pop, swap or loop test on too short a stack"

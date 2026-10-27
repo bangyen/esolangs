@@ -17,6 +17,8 @@ from esolangs.languages.algebraic_programming_language.generator import (
 )
 from esolangs.languages.alight.generator import LANGUAGE as _ALIGHT_LANGUAGE
 from esolangs.languages.alight.generator import alight
+from esolangs.languages.aprknia.generator import LANGUAGE as _APRKNIA_LANGUAGE
+from esolangs.languages.aprknia.generator import aprknia
 from esolangs.languages.arrowqueue.generator import LANGUAGE as _ARROWQUEUE_LANGUAGE
 from esolangs.languages.arrowqueue.generator import arrowqueue
 from esolangs.languages.ascenic.generator import LANGUAGE as _ASCENIC_LANGUAGE
@@ -210,6 +212,7 @@ _LANGUAGES = (
     _ADDSUBJUMP_LANGUAGE,
     _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
     _ALIGHT_LANGUAGE,
+    _APRKNIA_LANGUAGE,
     _ARROWQUEUE_LANGUAGE,
     _ASCENIC_LANGUAGE,
     _B_TAPEMARK_LANGUAGE,
@@ -306,6 +309,7 @@ __all__ = [
     "addsubjump",
     "algebraic_programming_language",
     "alight",
+    "aprknia",
     "arrowqueue",
     "ascenic",
     "b_tapemark",

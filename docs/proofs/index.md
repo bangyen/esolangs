@@ -377,6 +377,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand | linear: worst P characters past n = 5, at most min(P, R) below | linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10 | linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed |
 | Algebraic Programming Language | tree | bounded shared frames; base-26 names are unbounded | linear: at most F characters: 10T + 4n + 6, n = 2..14 | linear: at most max(21,ceil(65n/2)-21)+K+2min(K,3n+1) commands: definitions initialize once and execute at most once | poly n: at most 179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1) bits: frame/global state |
 | Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches | linear: worst T + 16n + 38 + digits(48(T-1)) characters: one literal | poly n: worst 2n + 5 commands, n Horner reads and one `at` | poly n: worst 72n + 762 + bl(6n+12) + bl(n) bits, n in 2..25 |
+| Aprknia | tree | — | linear: at most 78T characters: one 61-command node per branch | poly n: worst 51n + 17 commands | poly n: at most 2n + 31 bits |
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: worst A cells: the least-area cascade or fold, T - 1 leaves | linear: at most 11T + 32n + 92 commands: Horner doubling 8 a marker, a row 1, fold corridors | linear: worst T + 11 + bl(T+6n+8) bits: a queue of T + 6 bits, the row, the column |
 | Ascenic | tree | Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump | lower bound: worst N characters: generated Θ(T**2), N the alternating table's size ([summary](#ascenic-bound)) | linear: worst 2T + 7n + 3 - 2⌊n/2⌋ commands: alternating answers, two lines a change | poly n: worst bl(2T+6n+3+n mod 2) + max(bl(a)+bl(a+2)+n+1, bl((b+2T-2)(b+2T-1))) + bl(2n-1) bits: index, stack, cursor |
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: worst A cells: the least-area of six closed-form layouts | linear: worst E steps: the all-zero row of the least-area layout | T log T: worst W bits to n = 8, at most B after: program cells, marks, pointers |
@@ -570,7 +571,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 90 theoretical totality arguments and
+Accordingly, this ledger records 91 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
