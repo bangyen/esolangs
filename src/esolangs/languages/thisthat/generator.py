@@ -574,6 +574,8 @@ def _build_dag(ids: list[list[int]], m: int) -> _Dag:
                 elif child not in representatives:
                     representatives[child] = row
                     pending[level + 1].append(child)
+                # A node's two arms to one child count once: sharing means
+                # distinct parents, which is what admits a DAG at all.
                 if side == 0 or zero_id != one_id:
                     incoming[child] += 1
                 kids.append(child)
@@ -610,10 +612,9 @@ def _draw_nodes(
         else:
             builder.node(point, "◧")
             zero, one = children[key]
-            builder.node(router, "⬒" if zero == one else "◒")
-            edges = [(1, one)] if zero == one else [(-1, zero), (1, one)]
+            builder.node(router, "◒")
             steps = []
-            for sign, child in edges:
+            for sign, child in ((-1, zero), (1, one)):
                 row = y + 2 * sign
                 col = columns[child]
                 target_y = ys[child] - 4

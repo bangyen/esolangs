@@ -22,7 +22,7 @@ workspace = "poly n: worst 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n 
 "11111110" = { commands = 59, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 51, "5" = 51, "6" = 59, "7" = 59 }, source_units = 621 }
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-27"
 
 [ablations.essential_drop]
 saving = 49.7
@@ -43,6 +43,20 @@ verdict = "kept: canonical, exempt; saving on the half-constant class (13.1% at 
 saving = 92.8
 arity = 12
 verdict = "kept: canonical sharing, exempt; saving on its mosaic-2 class (88.0% at n=10, 92.3% at n=11, 200 tables); parity 98.7% at n=12, tiled 32.7% at n=11; 0.0% on random tables; mosaic-4 admission earns 0.0% at n=9/10 and 28.7% only at n=12"
+
+[ablations.dag_equal_halves]
+saving = 0.0
+arity = 10
+seed = 184700
+tables = "40 each of tiled, mosaic-2, mosaic-4 and equal-halves mosaic-2 at n=7, 8 and 10, plus parity, and, or, majority"
+verdict = "removed 2026-10-27: the DAG's single-arm router (⬒, one wire when a node's halves share a child) saves 0.00% by area on every class at n=7..10 (the grid's rectangle is set by columns and 8 rows per node, not by the second wire) and at most 0.08% by chars, on the equal-halves class built to exercise it; it never fired on parity, and, or or majority. Every program that changed (28, 28 and 26 equal-halves tables at n=7, 8, 10; 13 mosaic-2 at n=10) was executed on every row against the plain two-wire router, 0 wrong"
+
+[ablations.dag_column_banks]
+saving = 51.6
+arity = 16
+seed = 184700
+tables = "parity, and, or, majority n=8..16; 40 each of mosaic-2 and equal-halves mosaic-2 at n=7, 8 and 10"
+verdict = "kept: alternating column banks (a layer reuses the columns of the layer two above) against one column per node. Judged on its class, the tables the DAG is admitted for: majority 83.0% at n=8, 88.8% at n=9, then 40.0% (n=11) growing to 51.6% (n=16) once the plain build is also a DAG; parity 32.9% at n=9 growing to 40.0% at n=16; equal-halves mosaic-2 37.0%, 48.6% and 46.5% at n=7, 8, 10; mosaic-2 30.0% at n=10; 0.0% on random tables and on and/or, where no DAG is admitted. Share grows with arity (the plain width is linear in the node count, the banked width in the widest layer); no table grows; every changed program through n=12 executed on every row, 0 wrong"
 
 [ablations.width_machinery]
 saving = 0.0
