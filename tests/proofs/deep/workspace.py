@@ -28,6 +28,7 @@ from tests.proofs.deep.execution import (
     _growth,
     _rows,
     _step_growth,
+    exempt_generators,
     run_to_answer,
 )
 from tests.proofs.deep.linearity import _regime_start
@@ -185,11 +186,18 @@ def main() -> int:
                         reason=f"dense increments grow x{step:.3f}, a hidden T",
                     )
         measured.append(growth)
+    # A cap row has no asymptotic growth to fit: Unary's generation cap stops
+    # it at n = 2, below MIN_RUNGS.  Its formula is proved in tests/proofs; a
+    # cap row that does measure is still held to its class.
+    exempt = exempt_generators()
     print(f"Workspace contract: {len(measured)} generators\n")
     print(f"  {'generator':30s} {'class':7s} {'growth':>7s} {'bits':>8s}")
     for row in sorted(measured, key=lambda r: -(r.ratio or 0)):
         if row.ratio is None:
-            print(f"  {row.generator:30s} {row.workspace:7s} UNPROVEN  {row.reason}")
+            tag = "  [exempt]" if row.generator in exempt else ""
+            print(
+                f"  {row.generator:30s} {row.workspace:7s} UNPROVEN  {row.reason}{tag}"
+            )
             continue
         print(
             f"  {row.generator:30s} {row.workspace:7s} x{row.ratio:6.3f} "
@@ -201,7 +209,10 @@ def main() -> int:
         print(f"  {row.generator:30s} {row.workspace_clause}")
 
     failures = [
-        row for row in measured if row.ratio is None or row.ratio > BOUND[row.workspace]
+        row
+        for row in measured
+        if (row.ratio is None and row.generator not in exempt)
+        or (row.ratio is not None and row.ratio > BOUND[row.workspace])
     ]
     if failures:
         print(f"\n{len(failures)} generator(s) exceed their workspace class:")
