@@ -494,8 +494,8 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 41
-of 63 tree-shaped generators build parity or a repeated-block table at most
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 40
+of 62 tree-shaped generators build parity or a repeated-block table at most
 0.90x its dense or distinct-block twin (7 by a local helper); 22 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
@@ -665,7 +665,7 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 100 languages.
+The collection has 99 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -729,7 +729,8 @@ family is not enough; Rubic's tree branches on cube parity, not a jump.
 Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
 prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
-removed. Painfuck shares brainfuck's flag tree but stays: its moves use
+removed; IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
+48/49 normalization; dropping a step adds nothing). Painfuck shares brainfuck's flag tree but stays: its moves use
 `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
 admissions are exempt: S\*bleq, itself a re-spelling of Subleq, was
 collected first, and Subleq's generator re-spells S\*bleq's in turn;
@@ -786,7 +787,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 21 clear the fame gate
-and 79 are first implementations.
+and 78 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

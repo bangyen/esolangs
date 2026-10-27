@@ -1,6 +1,6 @@
 """BASICER Boolean program generator: a shared decision diagram of menus.
 
-Each node is one unnumbered ``GOTO a b`` line: the menu reads the input's
+Each node is one ``GOTO a b`` line: the menu reads the input's
 choice (``1`` for 0, ``2`` for 1) and jumps to the zero or one child in a
 single step.  Equal subtables at a level share one line, so the program is
 the quasi-reduced diagram; a node whose children match still reads its
@@ -8,11 +8,12 @@ input, as ``GOTO a a``.  The leaves come last: ``PRINT 0`` then ``GOTO 0``,
 a missing line that halts, and ``PRINT 1``, which halts by falling off.
 
 Size:
-    O(T) lines, fewer when subtables repeat; n=4 parity: 87 chars
+    O(T) lines, fewer when subtables repeat; n=4 parity: 108 chars
 
 Decisions:
-    Unnumbered lines, addressed by position, save the number on every line
-    and leave the targets unchanged in length.
+    Every line is numbered by its position.  Unnumbered lines would save
+    the number, but the page never says what ``GOTO`` targets without
+    them, so the interpreter's positional reading would carry the program.
 """
 
 from esolangs.generation.helpers import subtree_ids
@@ -43,7 +44,7 @@ def basicer(truth_table: str) -> str:
         rows.append(f"GOTO {line[d + 1, zero]} {line[d + 1, one]}")
     for bit in used:
         rows += ["PRINT 0", "GOTO 0"] if bit == 0 else ["PRINT 1"]
-    return "\n".join(rows)
+    return "\n".join(f"{num} {row}" for num, row in enumerate(rows, 1))
 
 
 LANGUAGE = Language(
