@@ -6,10 +6,11 @@ cell with ``*`` over ``@``: on 0 the pointer reverses into the top child,
 otherwise it runs down to the bottom child.  Both children leave east into a
 second ``*`` over ``@`` that merges them, since the tested cell is
 unchanged.  A leaf prints the answer cell, incremented for a 1.  Boxes
-stack children vertically and side by side in turn, so the area is linear.
+stack children vertically, and side by side at every other level, so the
+area is linear.
 
 Size:
-    Theta(T) area, about 88T; n=4 parity: 1,037 chars
+    Theta(T) area, about 84.5T; n=4 parity: 949 chars
 
 Decisions:
     A constant subtable is one leaf that walks to the answer cell, so a
@@ -24,6 +25,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.languages.balik.proof_formulas import execution
 from esolangs.registry._language import Language, Shape
 
 type _Cells = dict[tuple[int, int], str]
@@ -58,7 +60,10 @@ def _box(
     _put(cells, 0, 1, "*>")
     _put(cells, 1, 1, "@")
     _merge(cells, top, 0, 3)
-    if (k - depth) % 2:
+    levels = k - depth
+    # Side by side only at odd levels from 3 below the root: the least
+    # area over every layout sequence through n = 14 (n = 4 within 1%).
+    if not (levels % 2 and 3 <= levels < k):
         # Vertical: the bottom child under the top one.
         b = max(w0, w1) + 4
         r1 = max(h0, 2)
@@ -123,4 +128,5 @@ LANGUAGE = Language(
     boolean=balik,
     shape=Shape.TREE,
     no_wrap="a newline adds a grid row and moves every vertical path",
+    proof_execution=(execution, True, (3, 4, 5)),
 )
