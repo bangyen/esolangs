@@ -123,6 +123,7 @@ Languages that store data in named variables the program declares.
 - [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/intercal/interpreter/__init__.py))
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/packlang/interpreter/__init__.py))
 - [SwitchCase](https://esolangs.org/wiki/SwitchCase) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/switchcase/interpreter.py))
+- [lol waht i cant edit talk pages](https://esolangs.org/wiki/lol_waht_i_cant_edit_talk_pages) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/lol_waht_i_cant_edit_talk_pages/interpreter.py))
 
 ### Other Languages
 

@@ -125,6 +125,12 @@ from esolangs.languages.laserfuck.generator import LANGUAGE as _LASERFUCK_LANGUA
 from esolangs.languages.laserfuck.generator import laserfuck
 from esolangs.languages.line.generator import LANGUAGE as _LINE_LANGUAGE
 from esolangs.languages.line.generator import line
+from esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator import (
+    LANGUAGE as _LOL_WAHT_I_CANT_EDIT_TALK_PAGES_LANGUAGE,
+)
+from esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator import (
+    lol_waht_i_cant_edit_talk_pages,
+)
 from esolangs.languages.malbolge.generator import LANGUAGE as _MALBOLGE_LANGUAGE
 from esolangs.languages.malbolge.generator import malbolge
 from esolangs.languages.minifuck.generator import LANGUAGE as _MINIFUCK_LANGUAGE
@@ -266,6 +272,7 @@ _LANGUAGES = (
     _KISS_LANGUAGE,
     _LASERFUCK_LANGUAGE,
     _LINE_LANGUAGE,
+    _LOL_WAHT_I_CANT_EDIT_TALK_PAGES_LANGUAGE,
     _MALBOLGE_LANGUAGE,
     _MINIFUCK_LANGUAGE,
     _MINSKY_SWAP_LANGUAGE,
@@ -365,6 +372,7 @@ __all__ = [
     "kiss",
     "laserfuck",
     "line",
+    "lol_waht_i_cant_edit_talk_pages",
     "malbolge",
     "minifuck",
     "minsky_swap",

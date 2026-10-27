@@ -75,6 +75,7 @@ don't edit by hand.
 | `kiss/kiss.txt` | Kiss | `0001` | `01` | 01 | '0' |
 | `laserfuck/laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line/line.png` | Line | `0001` | `01` | 0 1 | '0' |
+| `lol_waht_i_cant_edit_talk_pages/lol-waht-i-cant-edit-talk-pages.txt` | lol waht i cant edit talk pages | `0001` | `01` | 0 1 | '0' |
 | `malbolge/malbolge.txt` | Malbolge | `0001` | `01` | 01 | '0' |
 | `minifuck/minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky_swap/minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |

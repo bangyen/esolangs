@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = "hello"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a line matching no command"
+
+[[spec_triggers]]
+program = "user:a\nim awesome tottaly but no a"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: a read at EOF"
+
+[[spec_triggers]]
+program = "user:a\nim awesome tottaly but no a"
+stdin = "x"
+expect = "ArgumentError"
+claim = "ArgumentError: a read given a non-integer token"
+
+[[spec_triggers]]
+program = "i hate u q"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a variable used before its ``user:`` line"

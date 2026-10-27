@@ -1,0 +1,28 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+unassessed = true
+
+[proof_status]
+labels = ["tree"]
+qualification = "—"
+scaling = "linear: at most 210T characters: two while-equal loops per branch"
+execution = "poly n: worst 7n + 1 commands"
+workspace = "poly n: at most 20n + 3 bits"
+
+[catalogue]
+sharing_exempt = "no procedures or jumps: a subtree runs only where it is written"
+
+[generator_sizes]
+"00000001" = { commands = 22, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 17, "5" = 17, "6" = 22, "7" = 22 }, source_units = 742 }
+"00001100" = { commands = 17, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 566 }
+"00110110" = { commands = 22, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 1123 }
+"0110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15 }, source_units = 647 }
+"01101001" = { commands = 22, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 1475 }
+"0110100110010110" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 29, "5" = 29, "6" = 29, "7" = 29, "8" = 29, "9" = 29, "10" = 29, "11" = 29, "12" = 29, "13" = 29, "14" = 29, "15" = 29 }, source_units = 3123 }
+"1101001101101101" = { commands = 29, commands_by_row = { "0" = 24, "1" = 24, "2" = 29, "3" = 29, "4" = 24, "5" = 24, "6" = 24, "7" = 24, "8" = 29, "9" = 29, "10" = 29, "11" = 29, "12" = 24, "13" = 24, "14" = 29, "15" = 29 }, source_units = 2419 }
+"11111110" = { commands = 22, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 17, "5" = 17, "6" = 22, "7" = 22 }, source_units = 742 }
+
+[ablations]
+audited = "2026-10-27"

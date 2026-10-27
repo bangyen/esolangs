@@ -174,6 +174,7 @@ Build language-specific stdin with `encode_inputs`:
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Unary | `char_stream` | `\x00`/`ÿ` | `'ÿ\x00ÿ'` |
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| lol waht i cant edit talk pages | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
 The other 49 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 18 embed their inputs and read no stdin: `instantiate` fills them.
