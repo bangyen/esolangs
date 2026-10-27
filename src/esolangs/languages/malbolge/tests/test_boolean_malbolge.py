@@ -148,11 +148,12 @@ def test_past_sixteen_inputs_is_refused() -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("bit", [0, 5, 16])
+@pytest.mark.parametrize("bit", [0, 1, 5, 16])
 def test_seventeen_ignoring_an_input_builds_and_executes(bit: int) -> None:
     """A 17-input table ignoring one input builds via its projection.
 
-    The lift drops the last input (the plain sixteen build), a middle
+    The lift drops the last input (the plain sixteen build), the
+    second-to-last (the final gadget group's own drop), a middle
     positional input (a discarded read in its gadget group) and the
     first input; boundary rows execute under both values of each.
     """
@@ -192,6 +193,15 @@ def test_symmetric_readouts_cover_every_weight() -> None:
     assert len(weights) == 20480
     assert (min(weights), max(weights)) == (6565, 59040)
     assert sorted(set(weights.values())) == list(range(17))
+
+
+def test_weight_classes_reject_a_short_table() -> None:
+    """A table too short to attain every weight is undetermined.
+
+    The generator only asks at seventeen inputs, where every weight
+    occurs; the helper's own contract still names the short case.
+    """
+    assert _symmetric._weight_classes("0110") is None  # noqa: SLF001
 
 
 def test_seventeen_in_neither_family_and_eighteen_are_refused() -> None:
