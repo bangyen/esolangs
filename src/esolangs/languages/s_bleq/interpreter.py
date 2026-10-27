@@ -33,6 +33,9 @@ Decisions:
     * Bare "-1 IP", "-2 returns next byte of user input" and "none of which
       could be in ``c``": writing ``-1`` moves the pointer and a result
       above zero then advances three from there.
+    * A store to ``-2`` is dropped: the page gives the input port no
+      write.  The read still consumes a character, so ``-2 0 0`` skips one;
+      the generator's constant programs open with it.
 """
 
 from collections.abc import Sequence
