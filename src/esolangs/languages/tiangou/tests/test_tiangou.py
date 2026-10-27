@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.tiangou.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 
@@ -53,9 +52,13 @@ def test_line_break_separates_like_a_space() -> None:
     assert _out("p\no") == "1"
 
 
-def test_empty_pop_halts() -> None:
-    with pytest.raises(HaltError):
-        _out("o")
+def test_a_command_short_of_values_is_a_no_op() -> None:
+    # Cerberus: "If there aren't enough items for a command, it is treated
+    # as a no-op" -- nothing is popped.
+    assert _out("o") == ""
+    assert _out("p - o") == "1"
+    assert _out('p " o') == "1"
+    assert _out("> p o") == "1"
 
 
 def test_unknown_command_is_rejected() -> None:

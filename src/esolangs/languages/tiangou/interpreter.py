@@ -25,9 +25,10 @@ Errors:
     ProgramError: a token that is not one of the ten commands.
     InputExhaustedError: ``i`` at EOF.
     ArgumentError: ``i`` given a token that is not an integer.
-    HaltError: a pop from an empty stack.
 
 Decisions:
+    * A command short of values is a no-op and pops nothing: every command
+      corresponds to one in Cerberus, whose page says so.
     * A marker resumes *after* its ``<``.  The page's truth machine
       ``i p < : : o >`` loops on input 1 only so: resuming at the ``<``
       would pop the last 1 and leave ``:`` an empty stack.
@@ -42,7 +43,6 @@ Decisions:
 
 from __future__ import annotations
 
-from esolangs.exceptions import HaltError
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime.io import IO
@@ -140,11 +140,8 @@ class _Machine:
         ind, stack = self.state
         c = self.tokens[ind]
         if len(stack) < _POPS.get(c, 0):
-            raise HaltError(
-                f"{c!r} at command {ind} needs {_POPS[c]} value(s) and the "
-                f"stack holds {len(stack)}",
-                hint="push enough values before popping",
-            )
+            self.state = (ind + 1, stack)
+            return
         read = self.io.input_num() if c == "i" else None
         target = self.markers.get(stack[-1]) if c == ">" else None
         self.state, out, mark = _advance(self.state, self.tokens, read, target)

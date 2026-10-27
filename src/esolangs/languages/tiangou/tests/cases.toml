@@ -15,9 +15,3 @@ program = "i"
 stdin = "x"
 expect = "ArgumentError"
 claim = "ArgumentError: 'i' given a token that is not an integer"
-
-[[spec_triggers]]
-program = "o"
-stdin = ""
-expect = "HaltError"
-claim = "HaltError: a pop from an empty stack"
