@@ -84,17 +84,20 @@ evidence, not optimization tasks.
     generated program reaches U at every arity to 19, and at 20 level
     n - 4 would need 2**16 distinct parents from the capped level's
     240 * 239 ordered pairs, so the shape ends).
-  - Per-level bounds (2026-10-22): Stisp is exact to n = 19 (3,554 at n = 9,
+  - Per-level bounds (2026-10-22): Stisp is exact to n = 20 (3,554 at n = 9,
     6,952 at n = 10, 13,478, 20,652, 35,879, 67,629, 131,123, 258,105, 532,028,
-    1,089,090, 2,199,893), Quassaunt to n = 20 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586, 29,530,680) and Bleh to n = 22
+    1,089,090, 2,199,893, 4,477,971), Quassaunt to n = 20 (31,842, 59,978, 114,994, 171,634, 285,380, 513,732, 970,436, 1,883,844, 3,723,970, 7,410,370, 14,780,586, 29,530,680) and Bleh to n = 22
     (6,016, 11,582, 21,315, 32,899, 56,533, 104,661, 200,917, 393,429, 791,763,
     1,594,579, 3,196,898, 6,353,001, 9,826,409, 16,773,225): the wide ids of the capped level make few pairs, ids
     ascend by first occurrence, and the lowest equal-halved id is named before
     any wide one exists; at 20 the parents permute all 65,534 sixteen-row
-    subtables. Stisp stops at 19: at 20 its capped level drops to n - 4, its
-    parents price three digit widths, and a measured 739 characters (728 of
-    pair pricing, 11 of own-id naming) are not yet a rule. 3x sits 20-28%
-    below its F.
+    subtables. Stisp's 739 at 20 (728 of pair pricing over three digit
+    widths, 11 of own-id naming) is era-constant, not a patch: the same
+    correction closes the whole n - 4 era, 20..36. 3x sits 20-28% below
+    its F, and the gap is structural: F's head maximum and tree maximum
+    are attained by incompatible tables (a complement copy collapses the
+    subtree the recursion prices as a split), so no table reaches both;
+    exact worsts at n = 2..4 run 72-76% of F.
 - **Unformulated scaling** (2026-10-22): Polynomial is a lower bound.
 - **S*bleq scaling past n = 25** is fenced by measurement, not
   derivation: the shipped generator attains P exactly at n = 26

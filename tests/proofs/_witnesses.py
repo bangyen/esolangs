@@ -586,6 +586,7 @@ _WITNESS_BAND = {
     ("Bleh", 21): "slow",
     ("Bleh", 22): "slow",
     ("Quassaunt", 20): "slow",
+    ("Stisp", 20): "slow",
     ("Stisp", 18): "medium",
     ("INTERCAL", 17): "medium",
     ("INTERCAL", 18): "slow",
@@ -870,7 +871,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
     "Sonata": lambda n: (_low_one(n),),
     "Stisp": lambda n: (
-        (_unequal_first(n), *_diagram_witness("stisp", n, 19)) if n >= 2 else ()
+        (_unequal_first(n), *_diagram_witness("stisp", n, 20)) if n >= 2 else ()
     ),
     # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
     "Suffolk": lambda n: (

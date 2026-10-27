@@ -86,8 +86,26 @@ def _late_equal(n: int) -> int:
     return 1 if capped_level(n) == n - 3 else 0
 
 
+def _era_loss(n: int) -> int:
+    """739 when the capped level sits at n - 4, else 0.
+
+    Three counted parts, constant across the era (20 <= n <= 36, where
+    the capped level holds the same 65,534 sixteen-row subtables, ids
+    272..65,805, at three digit widths).  Pair pricing: the witness
+    pairs the capped level's ids consecutively ascending, so the 728
+    three-digit ids pair among themselves first -- 364 pairs at two
+    digits less than :func:`_pair_refs` prices them (it counts all
+    9,728 sub-five-digit ids as four-digit pairs) -- 728.  Own ids: the
+    254 eight-row subtables one level below are named by the capped
+    level's halves in ascending order, ten digits less than the bound's
+    branching-at-top split prices, and the 14 four-row subtables below
+    them one less -- the :func:`_late_equal` species one level deeper.
+    """
+    return 739 if capped_level(n) == n - 4 else 0
+
+
 def _chars(n: int, _: str) -> int:
-    """Worst characters, n = 3..19: the bound less what its capped level cannot reach.
+    """Worst characters, n = 3..20: the bound less what its capped level cannot reach.
 
     The bound prices the capped level's references to the level below at
     the widest id, but from n = 11 that level holds every eight-row
@@ -95,14 +113,15 @@ def _chars(n: int, _: str) -> int:
     times and 60 slots on the constants (:func:`capped_loss`).  The 14
     nodes' own ids are likewise named in ascending order, one character
     less than priced (:func:`_late_equal`).
-    At n = 20 the capped level drops to n - 4 and its parents price three
-    digit widths; the bound is not exact there.
+    At n = 20 the capped level drops to n - 4 and its parents price
+    three digit widths; :func:`_era_loss` prices what the two-width
+    form cannot.
     """
-    return _bound(n) - capped_loss(n, *_prices(n)) - _late_equal(n)
+    return _bound(n) - capped_loss(n, *_prices(n)) - _late_equal(n) - _era_loss(n)
 
 
 def witness(n: int) -> str:
-    """The table reaching :func:`_chars` for n = 3..19.
+    """The table reaching :func:`_chars` for n = 3..20.
 
     Every subtable of the capped level, then pairs of the highest ids: the
     extra references land on the widest names.  Past n = 8 the top ids hold
@@ -112,4 +131,4 @@ def witness(n: int) -> str:
     return worst_diagram(n, lambda node, _: len(str(node)), 1, cover_const=False)
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 20)), tuple(range(3, 20)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 21)), tuple(range(3, 21)))}
