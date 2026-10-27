@@ -55,7 +55,13 @@ evidence, not optimization tasks.
     recorded +12,087 there sits outside the family. The split, the 194
     two-letter-named pairs that are defined anyway, and the ranking
     margin are chosen per arity: the worst is a design optimum, no rule
-    found), Codesick scaling past n = 132 (exact to 132: from n = 37 the
+    found -- the binding choice itself changes with arity (the split
+    at 17, tie-breaks and the defined-pair cohort at 18, the mixed
+    share at 19, XX multiplicity against the uses ceiling at 20), and
+    at 21 the family's capacity fails outright: 98,929 pair slots at
+    the exhibited multiplicities for 131,072 places, the overflow
+    forced onto pairs the keep test defines and collapses), Codesick
+    scaling past n = 132 (exact to 132: from n = 37 the
     transition level holds 2^32 - 2 ranks, ids of widths 5..10 from
     65,806, covering binds first and the spares stay inside the
     10-digit pairs at every arity; from n = 70 the capped level drops
