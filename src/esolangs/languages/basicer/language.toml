@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [curation]
-unassessed = true
+backlinks = 3
 
 [proof_status]
 labels = ["tree"]

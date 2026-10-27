@@ -786,8 +786,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 21 clear the fame gate
-and 74 are first implementations.
-5 more await their backlink count.
+and 79 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

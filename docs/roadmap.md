@@ -159,15 +159,16 @@ empty-stack pops, output framing, cell width) fill the gaps. None is
 admitted yet. Each needs a prototype audit first: an interpreter matching
 every example on its page, a linear generator executed over every table at
 small n, and a re-spelling comparison with the nearest collected generators
-([curation](limitations.md#curation)). BASICER, CARP and IEBEL jump by
-line number, so a plain tree costs T log T; they need equal subtrees shared.
+([curation](limitations.md#curation)). CARP jumps by line number, so a
+plain tree costs T log T; it needs equal subtrees shared.
 
-- **Ready for the audit:** Pilas (two lockstep stack lines; `{...}` runs
-  while the top is zero), Aprknia (one stack; `*` pushes five results),
-  lol waht i cant edit talk pages (while-equal blocks over variables),
-  IEBEL (equality-branch OISC; its truth machine forces `b` as a register
-  for the controls and a literal for the load) and BASICER (`GOTO` menus
-  read the input and branch in one step).
+- **Collected, admission open:** IEBEL's shared diagram (read, `2 1 Z`
+  equality branch, fall through on `'1'`, `1 3 c` jump) may re-spell
+  Subleq's (`branch_decoder.hoisted_tree`) and Decleq's: the node drops
+  their 48/49 normalization, and no step is one they lack. BASICER's
+  generator emits unnumbered lines; the page allows them but never says
+  what `GOTO` targets then, so positional addressing is the interpreter's
+  reading of core semantics. Numbered lines avoid the gap.
 - **Re-spelling risk:** CARP's decrement-and-branch tree is Decleq's
   without the input normalization, and CreativeScript v2's arithmetic
   (integer division, forced by its own `==` program) invites Blindfolded
