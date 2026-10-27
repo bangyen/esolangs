@@ -1,5 +1,7 @@
 """Executed block-pool routing, pulse, workspace, and size controls."""
 
+from unittest import mock
+
 import pytest
 
 from esolangs.languages.circuit_diagram.generator import (
@@ -11,7 +13,7 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
     _large_pool_layout,
     _pool_layout,
 )
-from esolangs.languages.circuit_diagram.interpreter import _Machine
+from esolangs.languages.circuit_diagram.interpreter import _compile, _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.witness_tables import dense
@@ -29,9 +31,13 @@ def _execute(table, code, rows=None):
     lines = code.splitlines()
     maximum = 0
     selected = range(1 << n) if rows is None else rows
+    # A program past the compile cache's text bound reparses per machine:
+    # 8 s a row at 21M cells, 290 s of the 129-class check's 36 rows.
+    topology = _compile(tuple(lines))
     for row in selected:
         io = ScriptedIO(f"{row:0{n}b}")
-        vm = _Machine(lines, io)
+        with mock.patch(f"{_Machine.__module__}._compile", return_value=topology):
+            vm = _Machine(lines, io)
         assert io.progress() == n
         written = WrittenState(vm.snapshot()) if row in (0, (1 << n) - 1) else None
         commands = 0

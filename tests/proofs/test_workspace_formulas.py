@@ -14,7 +14,6 @@ from esolangs.registry import LANGUAGES
 from tests.proofs._arities import formula_arities
 from tests.proofs._formula import exact_at, ledger_formulas
 from tests.proofs._ledger import load as load_ledger
-from tests.proofs._witnesses import band_marks
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.test_execution_formulas import _measure, _tables
 from tests.support.generator_support import CHECK
@@ -54,12 +53,6 @@ _SLOW_AT_MIN: frozenset[tuple[str, int]] = frozenset(
     {("Container", 7), ("6-5", 8), ("Fargo", 6), ("Malbolge", 3), ("Subleq", 9)}
 )
 
-# language-owners: ["B-tapemark"]
-#: Range tops past the slow band's 600 s stop on CI: B-tapemark-8 ran 316 s,
-#: then 540 s, then was killed (40570971132); locally two dense tables take
-#: 61 s each of its ten.
-_WEEKLY: frozenset[tuple[str, int]] = frozenset({("B-tapemark", 8)})
-
 
 def _first_above_two(arities: tuple[int, ...]) -> int:
     return min((a for a in arities if a > 2), default=0)
@@ -79,9 +72,7 @@ def _formula_cases() -> list[object]:
         pytest.param(
             name,
             n,
-            marks=band_marks("weekly", f"{name} formulas exact at n = {n}")
-            if (name, n) in _WEEKLY
-            else pytest.mark.medium
+            marks=pytest.mark.medium
             if (name, n) not in _SLOW_AT_MIN
             and (
                 n <= 2

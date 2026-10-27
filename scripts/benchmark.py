@@ -161,7 +161,8 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     """Count a snapshot value's bits: integer widths, 8 per character.
 
     ``memo`` caches immutable containers by identity, so a persistent
-    store's shared chunks are walked once a run, not once a step.
+    store's shared chunks are walked once a run, not once a step.  A class
+    whose instances never change says so with ``snapshot_immutable = True``.
     """
     if value is None:
         return 0
@@ -221,7 +222,7 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
         total = sum(state_bits(getattr(value, name, None), memo) for name in slots)
     else:
         raise TypeError(f"cannot count bits of {type(value).__name__}")
-    if isinstance(value, _MEMO_TYPES):
+    if isinstance(value, _MEMO_TYPES) or getattr(value, "snapshot_immutable", False):
         memo[id(value)] = (value, total)
     return total
 

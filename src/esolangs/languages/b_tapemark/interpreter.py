@@ -49,6 +49,10 @@ class _Grid:
 
     __slots__ = ("_cells", "_digest")
 
+    #: Workspace sampling counts a grid once a run: each write's new grids
+    #: tuple re-walked the unchanged program grid, 99% of an n = 8 check.
+    snapshot_immutable = True
+
     def __init__(self, cells: dict[tuple[int, int], str]) -> None:
         """Take ownership of ``cells``; callers must not keep a reference."""
         self._cells = cells
