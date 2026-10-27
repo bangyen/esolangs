@@ -30,6 +30,7 @@ don't edit by hand.
 | `ascenic/ascenic.txt` | Ascenic | `0001` | `01` | 0 1 | '0' |
 | `b_tapemark/b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back/back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
+| `balik/balik.txt` | Balik | `0001` | `01` | 0 1 | '0' |
 | `basicer/basicer.txt` | BASICER | `0001` | `01` | 1 2 | '0\n' |
 | `befunge/befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
 | `bfstack/bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |

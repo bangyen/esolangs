@@ -389,6 +389,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Ascenic | tree | Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump | lower bound: worst N characters: generated Θ(T**2), N the alternating table's size ([summary](#ascenic-bound)) | linear: worst 2T + 7n + 3 - 2⌊n/2⌋ commands: alternating answers, two lines a change | poly n: worst bl(2T+6n+3+n mod 2) + max(bl(a)+bl(a+2)+n+1, bl((b+2T-2)(b+2T-1))) + bl(2n-1) bits: index, stack, cursor |
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: worst A cells: the least-area of six closed-form layouts | linear: worst E steps: the all-zero row of the least-area layout | T log T: worst W bits to n = 8, at most B after: program cells, marks, pointers |
 | Back | parameterized tree | an ignored input's run lands on the cell the next load fills, and a `-` after it leaves the cell empty | linear: worst F cells: the smaller of the comb and the H-tree fold | linear: worst max(R,6n-1) + R + 3n + 6 commands to n = 9, then at most; rows at 17: 7,654 | poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits |
+| Balik | tree | nested boxes test one input cell each with a splitter that also merges, since the tested cell is unchanged; a constant subtable is one leaf | linear: about 88T characters, alternating vertical and horizontal boxes | linear: at most 48·2^⌈n/2⌉ + n^2 + 20n commands: one path down the boxes | poly n: at most 2bl(L) + 2n + 3bl(2n + 4) + 6 bits |
 | BASICER | tree | — | linear: at most T + 2 lines: one menu per diagram node | linear: worst n + 2 commands | linear: worst n + 4 bits |
 | Befunge | exception | six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables | linear: worst N cells past n = 6: 80 columns, one header row | unmeasured: worst 5n + 28 steps to n=10, 5n + 67 to 13 | poly n: worst 2n + bl(5n+28) + bl(2n-1) + 10 bits to n = 10, then 2n + bl(2n-1) + 23 |
 | BFStack | minterms | — | linear: worst N characters: zero-row walk telescopes to T | poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7 | poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2 |
@@ -583,7 +584,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 96 theoretical totality arguments and
+Accordingly, this ledger records 97 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

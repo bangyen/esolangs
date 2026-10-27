@@ -161,9 +161,6 @@ every example on its page, a linear generator executed over every table at
 small n, and a re-spelling comparison with the nearest collected generators
 ([curation](limitations.md#curation)).
 
-- **Linear construction prototyped** (scratch interpreter, every table at
-  n <= 3 correct; `notes/feasibility-2026-10-27/`): Balik (`*` over `@`
-  as splitter and merger, alternating box layouts; 88T area at n = 10).
 - **Re-spelling, no construction found:** CARP (no indirect jump or load;
   every construction is Decleq's diagram without the normalization, the
   ground IEBEL was removed on) and CreativeScript v2 (a packed literal

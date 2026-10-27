@@ -11,6 +11,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Alight](https://esolangs.org/wiki/Alight) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/alight/interpreter/__init__.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/arrowqueue/interpreter.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/b_tapemark/interpreter.py))
+- [Balik](https://esolangs.org/wiki/Balik) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/balik/interpreter.py))
 - [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/befunge/interpreter.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/circuit_diagram/interpreter/__init__.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/clockwise/interpreter.py))

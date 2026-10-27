@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = "x"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a character that is neither a command nor a space"
+
+[[spec_triggers]]
+program = ","
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: ',' at EOF"
+
+[[spec_triggers]]
+program = ","
+stdin = "x"
+expect = "ArgumentError"
+claim = "ArgumentError: ',' given a character that is not a ternary digit"
+
+[[spec_triggers]]
+program = "<"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: '<' on the leftmost cell"
