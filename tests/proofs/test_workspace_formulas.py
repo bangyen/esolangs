@@ -44,14 +44,14 @@ FORMULAS = ledger_formulas(
 )
 
 
-# language-owners: ["6-5", "Container", "Fargo", "Subleq"]
+# language-owners: ["6-5", "Container", "Fargo", "Malbolge", "Subleq"]
 #: Smallest-arity cases that still measure past the medium band run alone
 #: (Container-7 5.7s and Fargo-6 4.6s overrun under load; the 6-5 walk
 #: now starts in the eight-input witness corpus; Subleq-9, its first packed
-#: decoder, 28s with written state): the
+#: decoder, 28s with written state; Malbolge-3 5.3s, 16s on CI): the
 #: per-step state measurement dominates, so they run in the slow band.
 _SLOW_AT_MIN: frozenset[tuple[str, int]] = frozenset(
-    {("Container", 7), ("6-5", 8), ("Fargo", 6), ("Subleq", 9)}
+    {("Container", 7), ("6-5", 8), ("Fargo", 6), ("Malbolge", 3), ("Subleq", 9)}
 )
 
 # language-owners: ["B-tapemark"]
