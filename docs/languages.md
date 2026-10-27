@@ -93,6 +93,7 @@ Languages that use registers to store and manipulate data.
 - [Decleq](https://esolangs.org/wiki/Decleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/decleq/interpreter.py))
 - [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fractran/interpreter/__init__.py))
 - [HQ9+](https://esolangs.org/wiki/HQ9+) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/hq9/interpreter.py)) *(interpreter-only)*
+- [IEBEL](https://esolangs.org/wiki/IEBEL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/iebel/interpreter.py))
 - [Interprogck8](https://esolangs.org/wiki/Interprogck8) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/interprogck8/interpreter.py))
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/minsky_swap/interpreter.py))
 - [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/polynomial/interpreter/__init__.py))
