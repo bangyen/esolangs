@@ -184,15 +184,19 @@ process; no rule reproduces it:
   a deficit for that construction, not an impossibility bound.
   The shipped cap remains sixteen for general tables.
 
-  Provenance (2026-10-27): the scripts and notes cited below
-  (`notes/malbolge17-refund/`, `09ab2fad`) are in no commit of the
-  repository's history. Re-derived since: the counting gap (exactly
-  46,076 bits), the window conflict graph (independence number 8,
-  chromatic number exactly 12) and the phase theorem. The routing
-  floors (2.99 certified, 3.6 annealed), the 7,234 pointer saturation,
-  the 110/512 lockstep rate, the 2.77-a-hit budget and the 19,537-cell
-  union are unverified records, and so are the route closures resting
-  on them.
+  Provenance (2026-10-27): `notes/malbolge17-refund/` and `09ab2fad` are
+  in no commit of the repository's history; the `scripts/malbolge17/`
+  archive survives at `b42d79e` (deleted in `0f4b0284`), on the old
+  module layout. Re-derived since: the counting gap (exactly 46,076
+  bits), the window conflict graph (independence number 8, chromatic
+  number exactly 12), the phase theorem, the three-cell lockstep ceiling
+  (137 of 512 clean triples) and the orbit packing (41,949 cells, 2,401
+  collision pairs). The shipped sixteen-input build measures 11.1 cells
+  a `goto` (416 gotos, 4,608 path cells, 82% of them label navigation).
+  The routing floors (2.99 certified, 3.6 annealed), the 7,234 pointer
+  saturation, the 110-a-phase lockstep rate, the 2.77-a-hit budget and
+  the 19,537-cell union are unverified records, and so are the route
+  closures resting on them.
 
   The seven-meaning integration was re-measured end to end (2026-10-21,
   `notes/malbolge17-refund/`, tooling from `09ab2fad:scripts/malbolge17/`).

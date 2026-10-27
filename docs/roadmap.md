@@ -37,6 +37,12 @@ evidence, not optimization tasks.
   window embedding, then placement and threaded rates inside the
   9,897-cell complement), or with new mathematics toward the 46,076
   bits an impossibility proof needs beyond counting.
+  Lead (2026-10-27): a `p` or `*` run during the initial walk or a
+  lockstep sweep deposits a full word for one source cell, against 25-30
+  in the shipped label phase; its words fall in five value bands, so one
+  window sweep places about 30 labels and leaves 29 of 94 residues
+  uncovered. Untested: steering the sweep from words prepared in the
+  window.
 - **Open worst-case bounds** (2026-10-22): these cells have a route to
   `worst`. The rest of the 56 cells `at most` throughout and 24 past an
   exact range are in [limitations](limitations.md#run-time-and-memory).
