@@ -11,8 +11,8 @@ backlinks = 3
 labels = ["tree"]
 qualification = "—"
 scaling = "linear: worst 20·4^⌈n/2⌉+14⌈n/2⌉²+40⌈n/2⌉-5 characters past n = 2: fixed slots"
-execution = "linear: worst 16T + (7n^2+26n-22)/2 for even n > 2, 28T + (7m^2+22m-36)/2 for odd, m = n + 1"
-workspace = "linear: worst 24·2^m + 12m + 12 + bl(m) + bl(L-4·2^m-7m+1) bits, m = n rounded up to even"
+execution = "linear: worst 16T + (7n^2+26n-22)/2 for even n, 28T + (7m^2+22m-36)/2 for odd, m = n+1, past n = 2"
+workspace = "linear: worst 24·2^m + 12m + 12 + bl(m) + bl(L-4·2^m-7m+1) bits past n = 2, m = n+n%2"
 
 [generator_sizes]
 "00000001" = { commands = 306, commands_by_row = { "0" = 252, "1" = 255, "2" = 264, "3" = 267, "4" = 291, "5" = 294, "6" = 303, "7" = 306 }, source_units = 451 }

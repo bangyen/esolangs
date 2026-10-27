@@ -12,7 +12,7 @@ bf_derivative_predates = true
 [proof_status]
 labels = ["minterms"]
 qualification = "—"
-scaling = "linear: worst N characters: zero-row walk telescopes to T"
+scaling = "linear: worst N characters past n = 2: zero-row walk telescopes to T"
 execution = "poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7"
 workspace = "poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2"
 

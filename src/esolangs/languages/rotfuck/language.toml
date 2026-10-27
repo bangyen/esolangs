@@ -14,7 +14,7 @@ labels = ["finite lookup"]
 qualification = "every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count"
 scaling = "linear: worst P characters, n = 2..10: a lone zero"
 execution = "linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: a lone zero second to last"
-workspace = "linear: worst W bits to n = 6, at most V after: 2T + 7 cells"
+workspace = "linear: worst W bits for n = 2..6, at most V after: 2T + 7 cells"
 definitions = ["W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the execution worst", "V = 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n)"]
 
 [generator_sizes]

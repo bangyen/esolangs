@@ -61,6 +61,10 @@ _SLOW_AT_MIN: frozenset[tuple[str, int]] = frozenset(
 _WEEKLY: frozenset[tuple[str, int]] = frozenset({("B-tapemark", 8)})
 
 
+def _first_above_two(arities: tuple[int, ...]) -> int:
+    return min((a for a in arities if a > 2), default=0)
+
+
 def _formula_cases() -> list[object]:
     ledgers = (EXECUTION_FORMULAS, FORMULAS)
     cases = sorted(
@@ -79,7 +83,13 @@ def _formula_cases() -> list[object]:
             if (name, n) in _WEEKLY
             else pytest.mark.medium
             if (name, n) not in _SLOW_AT_MIN
-            and any(name in ledger and n == min(ledger[name][2]) for ledger in ledgers)
+            and (
+                n <= 2
+                or any(
+                    name in ledger and n == _first_above_two(ledger[name][2])
+                    for ledger in ledgers
+                )
+            )
             else pytest.mark.slow,
         )
         for name, n in cases

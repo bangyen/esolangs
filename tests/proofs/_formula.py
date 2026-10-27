@@ -129,6 +129,15 @@ def exact_at(exact: Exact, n: int) -> bool:
     return n in exact if isinstance(exact, frozenset) else exact
 
 
+def _first_claimed(text: str) -> int:
+    """Least n the clause claims: 1, or where its stated scope starts."""
+    starts = [int(k) + 1 for k in re.findall(r"past n ?= ?(\d+)", text)]
+    stated = r"(?:n ?(?:>=|≥) ?|(?:at|for|from) n ?= ?)(\d+)"
+    starts += map(int, re.findall(stated, text))
+    starts += map(int, re.findall(r"\bn ?= ?(\d+)\.\.", text))
+    return min(starts, default=1)
+
+
 def ledger_formulas(
     clause: Callable[[LedgerRow], str],
     hand: dict[str, tuple[Formula, Exact, tuple[int, ...]]],
@@ -145,6 +154,8 @@ def ledger_formulas(
     """
     from tests.proofs._ledger import load
 
+    rows = {row.generator: row for row in load().rows}
+    hand = dict(hand)
     table: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
     local: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
     for row in load().rows:
@@ -175,4 +186,9 @@ def ledger_formulas(
                 exact,
                 arities.get(row.generator, (*range(start, base), base, base + span)),
             )
+    for owned in (hand, local):
+        for name, (formula, exact, rungs) in owned.items():
+            row = rows.get(name)
+            first = _first_claimed(clause(row)) if row else 1
+            owned[name] = (formula, exact, (*range(first, min(rungs)), *rungs))
     return {**table, **hand, **local}

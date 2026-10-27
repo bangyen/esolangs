@@ -900,7 +900,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Bleh": lambda n: _diagram_witness("bleh", n, 23),
     "Quassaunt": lambda n: (
         _quassaunt_worst(n),
-        _quassaunt_stack(n),
+        *((_quassaunt_stack(n),) if n >= 3 else ()),
         *_diagram_witness("quassaunt", n, 21),
     ),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
@@ -920,12 +920,16 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "SwitchCase": lambda n: (_switchcase_worst(n),),
     "Smu": lambda n: (_smu_worst(n),),
     "Modulous": lambda n: (_row_one(n),),
-    "Piet": lambda n: tuple(
-        dict.fromkeys(
-            tuple(_piet_worst(n, kind) for kind in ("area", "steps", "bits"))
-            if n <= 7
-            else (_piet_worst(n, "area"),)
+    "Piet": lambda n: (
+        tuple(
+            dict.fromkeys(
+                tuple(_piet_worst(n, kind) for kind in ("area", "steps", "bits"))
+                if n <= 7
+                else (_piet_worst(n, "area"),)
+            )
         )
+        if n >= 2
+        else ()
     ),
     # n = 9..14: the hashed table ships the packed decoder at its widest.
     "Subleq": lambda n: (

@@ -143,7 +143,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         a = (2 ** (n - 1) - 1 - 7 * b) // 6
         runs = [1, *[12] * (a // 2), *[14] * b, *[12] * (a - a // 2), 1]
         tables += ("".join(str(i % 2) * c for i, c in enumerate(runs)),)
-    if name == "Packlang":
+    if name == "Packlang" and n >= 3:
         # The most zeros a 128-row fill block may punch, in every block;
         # zeros are isolated, since a run of ones would be a shorter loop.
         block = min(width, 128)

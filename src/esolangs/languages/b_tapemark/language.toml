@@ -11,7 +11,7 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on"
-scaling = "linear: worst A cells: the least-area of six closed-form layouts"
+scaling = "linear: worst A cells past n = 1: the least-area of six layouts"
 execution = "linear: worst E steps: the all-zero row of the least-area layout"
 workspace = "T log T: worst W bits to n = 8, at most B after: program cells, marks, pointers"
 definitions = ["B = 8 + coordinate bits per program cell, plus a widest-coordinate mark per * or - cell"]

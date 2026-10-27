@@ -8,7 +8,7 @@ backlinks = 2
 labels = ["finite lookup"]
 qualification = "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it"
 scaling = "linear: worst N characters past n = 2: one line per four rows"
-execution = "linear: worst T/4 + 3n + 4m + 2K + 10 lines: one step per line, no branching"
+execution = "linear: worst T/4 + 3n + 4m + 2K + 10 lines past n = 2: one step per line"
 workspace = "T log T: worst end-state registers, arrays A and D, ip, input counter bits past n = 2: top code repeated"
 definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 29 for n = 6..8, 2n + 13 past n = 8", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of the m cells"]
 

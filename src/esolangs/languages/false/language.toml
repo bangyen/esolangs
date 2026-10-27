@@ -12,7 +12,7 @@ labels = ["tree"]
 qualification = "—"
 scaling = "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15"
 execution = "linear: at most 9T/2 + 5n - 7 commands past n = 3: expression text executed whole; diagram one path"
-workspace = "poly n: at most W bits, b = bl(L), S stores: the build's stack, variables, frames"
+workspace = "poly n: at most W bits past n = 2, b = bl(L), S stores: the build's stack, variables, frames"
 definitions = ["W = bl(n)+6n+2b constant, 5n-2+2b expression, n+1+2b(S+n+2) diagram"]
 
 [generator_sizes]
