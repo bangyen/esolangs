@@ -12,6 +12,8 @@ import random
 from collections.abc import Callable
 from typing import NamedTuple
 
+import pytest
+
 from esolangs.generation.helpers import reflected_table
 from esolangs.runtime._digits import digit_limit_for
 from tests.proofs._witness_builders import (
@@ -566,11 +568,22 @@ def _intercal_chars_worst(n: int) -> str:
     return _intercal_diagram(widths, _IC_CHAR_PAIRS)
 
 
+def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
+    """Marks for a band; a weekly case names the ledger cell it alone checks."""
+    if band is None:
+        return []
+    if band == "weekly":
+        return [pytest.mark.weekly, pytest.mark.cost_evidence(f"ledger: {case}")]
+    return [getattr(pytest.mark, band)]
+
+
 #: (language, n) whose witness build alone passes the fast band, to its band:
 #: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included;
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
 #: Bleh's ten n = 21 tables take 9.4 s to generate between them, its
 #: n = 22 tables 18.5 s, its n = 23 scaling test 23.8 s.
+#: Arities past the last one that adds a proof term run weekly: Bleh 21-23
+#: and Quassaunt 20, 21 only re-confirm the n - 4 loss term, ~1 min a run.
 #: Stisp's tables at n = 18 take 1.6 s to generate between them.
 #: S*bleq's scaling cases at n = 21..25 run 10.1 s at n = 21, doubling
 #: per arity (the tree build over the corpus tables dominates; the
@@ -583,11 +596,11 @@ _WITNESS_BAND = {
     ("Back", 15): "medium",
     ("Back", 16): "medium",
     ("Back", 17): "slow",
-    ("Bleh", 21): "slow",
-    ("Bleh", 22): "slow",
-    ("Bleh", 23): "slow",
-    ("Quassaunt", 20): "slow",
-    ("Quassaunt", 21): "slow",
+    ("Bleh", 21): "weekly",
+    ("Bleh", 22): "weekly",
+    ("Bleh", 23): "weekly",
+    ("Quassaunt", 20): "weekly",
+    ("Quassaunt", 21): "weekly",
     ("Stisp", 20): "slow",
     ("Stisp", 18): "medium",
     ("INTERCAL", 17): "medium",
@@ -797,7 +810,7 @@ _SPARSE_BAND = {
     ("S*bleq", "execution", 25): "slow",
     ("S*bleq", "execution", 26): "slow",
     ("Malbolge", "execution", 17): "medium",
-    ("Interprogck8", "execution", 11): "slow",
+    ("Interprogck8", "execution", 11): "weekly",
 }
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.

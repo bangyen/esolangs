@@ -19,7 +19,7 @@ import esolangs
 from esolangs.debugger import make_vm
 from esolangs.registry import LANGUAGES
 from scripts.benchmark import WrittenState
-from tests.proofs._witnesses import _SPARSE_BAND, _SPARSE_ROWS, SparseRows
+from tests.proofs._witnesses import _SPARSE_BAND, _SPARSE_ROWS, SparseRows, band_marks
 from tests.proofs.deep.execution import run_to_answer
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.test_workspace_formulas import FORMULAS as WORKSPACE_FORMULAS
@@ -31,9 +31,9 @@ def _cases(column: str) -> list[object]:
         pytest.param(
             name,
             n,
-            marks=[getattr(pytest.mark, band)]
-            if (band := _SPARSE_BAND.get((name, column, n)))
-            else [],
+            marks=band_marks(
+                _SPARSE_BAND.get((name, column, n)), f"{name} {column} exact at n = {n}"
+            ),
         )
         for name, (_, arities, columns) in sorted(_SPARSE_ROWS.items())
         if column == "execution" or column in columns

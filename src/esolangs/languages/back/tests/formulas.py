@@ -32,6 +32,9 @@ _BLOCKS = (
 )
 #: Comb-regime slot orders: at n = 7-9 the comb is the smaller build, and
 #: these picks of the 48-49-row blocks reach its rows with the fold above.
+#: Searched (4590e0c49), not derived: 8 of 81 block pairs reach 2,522 cells
+#: at n = 7, 35 of 6,561 quadruples 5,597 at 8; kept picks also reach the
+#: execution formula on every row.  A layout change re-runs that search.
 _COMB_ORDERS = {
     7: (0, 2),
     8: (0, 1, 2, 3),
