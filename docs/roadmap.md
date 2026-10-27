@@ -167,8 +167,8 @@ ignored-input tables included).
   Dig's default banded tree came out this way, and four of SStack's six
   sharing routes (2026-10-21), 6-5's copy node and Minifuck's dead lookup
   threshold (2026-10-22), and BrainIf's leaf trampoline and odd-n loop step
-  and ThisThat's DAG single-arm router (2026-10-27). Flowchart, Circlefuck
-  and Circuit Diagram kept every trick and Ascenic has none. Line, Alight, Polynomial, Slow ACV
+  and ThisThat's DAG single-arm router (2026-10-27). Flowchart, Circlefuck,
+  Circuit Diagram, Clockwise and Back kept every trick and Ascenic has none. Line, Alight, Polynomial, Slow ACV
   Mammalian, APL, INTERCAL and Packlang are inventoried (2026-10-22): their
   unrecorded mechanisms are width/balance layout or core-construction
   constants, not default-path tricks. The audit is repeatable per generator.
