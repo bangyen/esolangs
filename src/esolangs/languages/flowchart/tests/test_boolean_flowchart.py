@@ -230,6 +230,22 @@ def test_a_shared_drawing_has_an_exact_size() -> None:
         assert run_flowchart(program, bits) == table[row], row
 
 
+@pytest.mark.slow
+def test_a_shared_drawing_reuses_a_freed_rail_column() -> None:
+    """A later jump group reuses the rail column an earlier group freed.
+
+    The repeated subtrees' entry rows stagger: one group's rail ends
+    above a later group's first copy, so the later group takes the
+    freed column instead of a fresh one; every row still answers.
+    """
+    table = "1000101010101010101010101010100010001010100010101010100010101000"
+    program = boolean.flowchart(table, 16)
+    assert program == _flowchart_render(_flowchart_stacked(table, share=True))
+    for row in range(64):
+        bits = [str((row >> (5 - i)) & 1) for i in range(6)]
+        assert run_flowchart(program, bits) == table[row], row
+
+
 @pytest.mark.parametrize("width", [1, 40])
 def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
     """Ignored inputs cost their reads, not a switch: f(c, d) of four inputs."""
