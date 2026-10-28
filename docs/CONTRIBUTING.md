@@ -295,8 +295,11 @@ requirements:
 
 - **10% or more** off the total emitted size at the largest arity where it
   runs: seeded random tables at n=7..8, or at its cap if it stops earlier,
-  and 200 tables when the result is within two points of the bar. A trick
-  aimed at a table class (ignored inputs, constants) is judged on that class;
+  and 200 tables when the result is within two points of the bar. Only
+  random tables and named functions count: a class drawn to show where a
+  trick fires (sparse rows, two-block tilings, guarded affine residuals)
+  keeps nothing, since the canonical set already covers repeated and
+  constant structure.
   2D grids (`grid=True`) are judged by area, rows times the longest row: their
   default build races by `grid_rank` and Scaling counts cells. The n=3 total is
   context only: greedy order searches saved 8-15% there but at most 2.2% at
@@ -321,8 +324,10 @@ requirements:
   6.0% at n=8: a fixed ~51 columns against a widening street. A saving
   proportional to the construction — per room, per leaf, per entry — holds
   its share and passes.
-- **No table grows**: checked exhaustively through three inputs, so keep the
-  old build as a candidate when the new one is not uniformly shorter.
+- **No size class breaks**: some tables may grow; the old build stays a
+  candidate only where the new one alone would leave the Scaling class. A
+  fallback kept to spare scattered tables a few characters is itself a
+  trick and meets this bar.
 - **Every table executes**: exhaustively through three inputs and sampled at
   four to six. Pin the n=3 total before and after; update `just sizes` when its
   baseline moves.
