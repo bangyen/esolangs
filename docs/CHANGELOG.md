@@ -5,6 +5,32 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 1.4.0
+
+- **Breaking:** `snapshot` leaves the public `VM` protocol; step through
+  `Debugger.snapshot()`, which now returns `Hashable`.
+- **Breaking:** `describe()` drops `width_aware`; read `width_effect`.
+- **Breaking:** `esolangs list --json --details` gives `examples` (the
+  paths `describe` gives) instead of the boolean `has_example`.
+- **Breaking:** `UnknownLanguageError(suggestions=)` and
+  `InputExhaustedError(unit=)` are keyword-only.
+- **Breaking:** `read_answer` given non-string output raises
+  `ArgumentError`, not `ProgramError`.
+- Export `TextLimits`.
+- `describe()`'s `source_kind`, `state_model` (never `None`) and `shape`,
+  `ExecutionTimeoutError.bound` and `ip_shape` are `Literal` types, and
+  `esolangs.<typo>` no longer type-checks.
+- A debugger fault carries `partial_output`, as `run`'s does.
+- Clean errors for a lone surrogate in `CompressedText` and `dump_program`,
+  non-bytes `Raster.from_png` and bad PNG settings metadata. One-line
+  source without a letter (Befunge's `/`) is no longer refused as a path.
+- `DialectSettings` reprs as the call that builds it.
+- Generated programs change:
+  - Boolfuck programs are 6-11% smaller at n = 4..7, unchanged from
+    n = 10.
+  - 3x programs are 14% smaller at n = 3 and 4% at n = 6, 3% larger at
+    n = 8 and 8% at n = 12.
+
 ## 1.3.0
 
 - **Breaking:** `encode_inputs("Taglate", bits)` no longer prepends a `0`
