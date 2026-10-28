@@ -440,10 +440,8 @@ class _HybridBuilder:
         # enough, since the park below overwrites what it left.
         for _ in range(bit, self.n):
             instrs.append(_read())
-        # Only an ancestor tests the parked value. Removing the root
-        # store saves 13.5% on both eight-input constants (750 -> 649 chars).
-        if bit:
-            instrs.append(_add(-(_ASCII_ZERO + 1 + self.park)))
+        # Only an ancestor tests the parked value.
+        instrs.append(_add(-(_ASCII_ZERO + 1 + self.park)))
 
     def emit_node(self, rows: list[int], bit: int) -> None:
         """Emit one tree node: read, branch into the one-arm, then the zero-arm."""

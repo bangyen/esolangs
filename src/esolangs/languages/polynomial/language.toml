@@ -56,9 +56,11 @@ arity = 8
 verdict = "kept: canonical, exempt from the bar; saving on the trailing-ignored class (35.6% on the leading-ignored class; 0.0% on scattered-ignored tables, which the reductions cannot cut, and 0.0% on random tables)"
 
 [ablations.root_store_removal]
-saving = 13.5
+saving = 0.0
 arity = 8
-verdict = "kept: bespoke; on the constant class, per-table 649 chars against 750 with the store kept -- the generator's cited figure; 15.9% at n=6; 0.0% off the constant class"
+seed = 20261028
+tables = 20
+verdict = "retired 2026-10-28 (random + named bar): omitting the park store when a constant leaf is the root saved 0.00% on 20 seeded random tables at n=7, 8 (33,129,623 chars at n=8 either way) and 0.00% on parity, majority, and, or and a threshold at n=7..12, since only a constant table has a leaf at the root; it earned 13.5% on constants alone (750 -> 649 chars at n=8), a constant-only class. Constants now carry the store (750 chars at n=8, 217-218 at n=3; commands n + 3, was n + 2); 8 constants n=1..8 executed, 0 mismatches"
 
 [ablations.tree_constant_fold]
 saving = 12.1

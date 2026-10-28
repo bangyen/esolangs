@@ -145,8 +145,6 @@ class TestPolynomial:
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
                 tree = _polynomial_tree(table)
-                if len(set(table)) == 1:
-                    tree = tree[:-1]  # no ancestor tests a constant root's park
                 assert _polynomial_hybrid(table, n) == tree, table
                 machine = _polynomial_hybrid(table, 0)
                 if len(set(table)) == 1:
@@ -326,4 +324,4 @@ def test_constant_root_ends_after_consuming_the_inputs(bit) -> None:
     bound += (
         max((n + 3).bit_length(), (49 * (states - 1)).bit_length()) + 2 * n.bit_length()
     )
-    assert_shared_program("Polynomial", table, None, n + 2, lambda _program: bound)
+    assert_shared_program("Polynomial", table, None, n + 3, lambda _program: bound)
