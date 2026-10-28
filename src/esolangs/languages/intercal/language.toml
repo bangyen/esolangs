@@ -9,7 +9,7 @@ labels = ["parameterized tree"]
 qualification = "equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree"
 scaling = "linear: worst U characters for n = 3..22, at most V after"
 execution = "linear: worst 2n + M + A statements for n = 5..26, at most it elsewhere: shared nodes"
-workspace = "linear: worst 9m + Σ_{k≤m} bl(k) + B + bl(S) bits for n = 1..26, at most it elsewhere"
+workspace = "linear: worst 9m + Σ_{k≤m} bl(k) + B + bl(S) bits for n = 1..27, at most it elsewhere"
 definitions = ["S = the Execution bound", "M = min(T/8+2, T/16+14, T/32+254) to n = 21, T/64+2^16-2 after", "A = ⌈P/⌈√P⌉⌉ arrays for the P = max(0, 2n + M - 65,537) names past .65535", "m = min(S - 2 - A, 65535), the highest scalar name", "B = spill bits: A(8+bl(W)) + Σ_{j≤A} bl(j) + (A-1)E(W) + E(P-(A-1)W), W = ⌈√P⌉, E(c) = Σ_{i<c}(bl(i)+1)+1"]
 
 [generator_sizes]

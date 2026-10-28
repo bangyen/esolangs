@@ -698,9 +698,17 @@ exact range (2026-10-23, counted from the ledger):
     and a dict entry per distinct node and the 1.1M small statements'
     ~20M nodes barely share, against the ~2.0–2.2 GB once extrapolated
     for it; generation re-measured exact the same day at a 3,991 MB
-    peak; generating 27 is OOM-killed), workspace past 26 (the closed
-    form matches final snapshots at 21, 22 and 25 and the n = 26 text's
-    DIMENSION statements) and scaling past 22 (exact to 22 on the
+    peak; generating 27 is OOM-killed), workspace past 27 (exact to
+    27: the closed form matches final snapshots at 21, 22 and 25 and
+    the n = 26 text's DIMENSION statements; at 27 a streamed
+    generation of the 2,164,188-statement text — peak 680 MB,
+    byte-identical machinery checked against the shipped generator
+    to n = 20 and against the preserved n = 26 text — carries 1,448
+    arrays of width 1,449, the last holding 500, and the write set
+    read off the text's assignment targets prices to the closed form
+    exactly, 23,818,646 bits; a snapshot by execution at 27 waits on
+    the same load as execution at 26) and scaling past 22 (exact to
+    22 on the
     successor shape: the capped shape ends at 19 — at 20 its level
     n - 4 would need 2^16 distinct parents from 240 * 239 ordered
     pairs — and the successor shifts the cap one level down, level

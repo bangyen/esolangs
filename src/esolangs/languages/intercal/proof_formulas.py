@@ -48,12 +48,17 @@ def execution(n: int, _: str) -> int:
 def workspace(n: int, _: str) -> int:
     """Nine bits and a key per variable; past .65535 the spilled names cost less.
 
-    Exact to n = 26: the written snapshot only grows and the statement
+    Exact to n = 27: the written snapshot only grows and the statement
     index climbs, so the peak bits are the final snapshot's — each
     scalar a key of ``8 + bl(k)`` around a one-bit value, the scalars
     ``.1``..``.m``; past 20 the P spilled names fill A arrays of width
     ``isqrt(P - 1) + 1`` (key ``8 + bl(j)``, elements ``bl(i) + 1``
-    0-based), checked against snapshots at 21, 22, 25 and text at 26.
+    0-based), checked against snapshots at 21, 22, 25 and text at 26
+    and 27 — at 27 the text (2,164,188 statements, streamed at a
+    680 MB peak) carries 1,448 arrays of width 1,449, the last holding
+    500, and the write set read off its assignment targets — every
+    scalar, every element of the full arrays — prices to this sum
+    exactly, as the 25 and 26 write sets do to theirs.
     """
     bl = int.bit_length
     s = execution(n, "")
