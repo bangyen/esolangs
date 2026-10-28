@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 from esolangs.languages.back.generator import _back_ordered
+from esolangs.runtime._evaluate import _evaluate
 from tests.generators.test_boolean_parameterized_contract import _drawing
 from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import row_bits, witnesses
@@ -400,3 +401,18 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
             assert rule == _drawn_plan(table, levels, levels, vertical)
             kept += len(rule)
     assert kept > 500  # positive control: the corpus shares nodes
+
+
+@pytest.mark.parametrize(("n", "side"), [(7, 80), (8, 122)])
+def test_balance_races_the_folded_tree(n: int, side: int) -> None:
+    """The comb wins area but the tree renders the smaller square (seed 0)."""
+    import random
+
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+
+    table = format(random.Random(131 * 0 + n).getrandbits(1 << n), f"0{1 << n}b")
+    comb = esolangs.generate("Back", table)
+    balanced = esolangs.generate("Back", table, balance=True)
+    assert balance_score(balanced)[0] == side < balance_score(comb)[0]
+    assert _evaluate("Back", balanced, inputs=n) == table

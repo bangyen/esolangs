@@ -28,11 +28,12 @@ Decisions:
     ([ablations.wrap_race]).  The fold replaces the comb only when its area is
     smaller (ties keep the comb): from n=7, on tables whose one-edges share
     little ([ablations.htree_fold]).  It spends characters, up to its area,
-    for area.  A bend of the first nonadjacent repeat through column 1 was
-    retired: it saved at most 2.7% of characters on average at n=7..10 (best
-    single table 14.7%).  A complementing loader (rows ``(INPUT, "+")``) under
-    the reversed table was not shipped: nor/or area 29-33% off at n=8 only,
-    under 8% at n=10 and 0% at n=9, 11, 12.
+    for area.  ``balance=True`` also races the fold against the comb by
+    squareness ([ablations.balance_htree]).  A bend of the first nonadjacent
+    repeat through column 1 was retired: it saved at most 2.7% of characters
+    on average at n=7..10 (best single table 14.7%).  A complementing loader
+    (rows ``(INPUT, "+")``) under the reversed table was not shipped: nor/or
+    area 29-33% off at n=8 only, under 8% at n=10 and 0% at n=9, 11, 12.
 """
 
 from collections.abc import Callable
@@ -506,8 +507,15 @@ def _back_ordered(
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the default with one column; wider layouts never won."""
-    return min(default, back(table, 1), key=balance_score)
+    """Compare the default, one column and the folded tree by squareness.
+
+    The comb wins area at n=8 (140 x 29) but the tree is squarer (63 x 80).
+    """
+    candidates = [default, back(table, 1)]
+    weights, reduced = input_weights(table, _validate_truth_table(table))
+    if len(reduced) > 1 << _FOLD_BASE:
+        candidates.append(_back_htree(reduced, weights))
+    return min(candidates, key=balance_score)
 
 
 LANGUAGE = Language(

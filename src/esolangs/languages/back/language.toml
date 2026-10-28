@@ -64,5 +64,12 @@ seed = "random.Random(184700 + n)"
 tables = "5 random per n=4,6,8 plus and/or/parity/majority, width request 1"
 verdict = "kept: a named function (parity) on the width-request path only. At width 1 the tree cannot fit and the one-column accumulator saves 95.6% / 96.5% / 97.1% by area at n=4/6/8 (89.0% / 91.5% / 93.1% by chars); every other table is unchanged. Every changed program ran on every row, 0 bad"
 
+[ablations.balance_htree]
+saving = 80.6
+arity = 8
+seed = "random.Random(131s + n), s = 0..19"
+tables = "20 random per n=7,8 (6 per n=9..11) plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7..10"
+verdict = "kept: the balanced hook raced only the default and the one-column build, both combs, so the fold (which loses area to the comb at n=8: 63 x 80 against 140 x 29) never competed for squareness. Racing it by balance_score takes balanced area (score squared) off 69.3% / 80.6% on random tables at n=7 / 8, 91.6% / 94.6% / 97.7% at n=9 / 10 / 11 (the comb's area is Theta(nT), the fold's O(T): a class change, still growing); named functions: or 46.5% / 56.5% / 31.1% / 49.3% at n=7..10, nor 50.0% at n=7, nand 46.5% at n=7, threshold-(n-1) 46.1% at n=8, parity and majority 0.0-4.8%. No size class breaks and the default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad) and a wrong table failed on each"
+
 [audits]
 plain_rewrite = 2026-10-27
