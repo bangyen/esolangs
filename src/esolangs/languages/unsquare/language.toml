@@ -22,6 +22,7 @@ workspace = "linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1
 "11111110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
 
 [catalogue]
+folding_constant = "a constant run is one counted Horner loop (_run), log-sized; a constant table is one run"
 sharing_exempt = "a stack lookup, one pushed entry per row, with no subtable branch"
 
 [formula_arities]
@@ -47,6 +48,8 @@ arity = 12
 verdict = "kept: a run of equal entries is pushed by a counted Horner loop when shorter than the literal run. 0.00-0.02% on random tables (runs are shorter than the loop's break-even); on run-rich classes at n=10/12, AND and OR +84.9 / +95.2%, half-constant +29.6 / +32.2%, sparse +13.2 / +13.8%, majority +7.7 / +11.1%. The Decisions figures for the loops do not reproduce on seeded tables (F27)"
 
 [ablations.twin_halves]
-saving = 13.9
-arity = 12
-verdict = "kept: the first aligned block of two identical halves shares one counted push body, when shorter and within an internal command bound. On deep twins (the block is half the table) +10.2% at n=8, +12.8% at n=10 and +13.9% at n=12; on fixed 32-entry blocks the share declines with the block's share of the table (+4.39% at n=6 to +0.11% at n=12), since exactly one block is shared. The internal command bound never binds (removing it measures 0.00% everywhere)"
+saving = 0.0
+arity = 8
+seed = 20261028
+tables = 20
+verdict = "retired 2026-10-28 (random + named bar): sharing one counted push body for the first block of two identical halves saved 0.03% at n=7 and 0.02% at n=8 on 20 seeded random tables (12,360 -> 12,358 chars at n=8; 2 of 20 changed) and 0 chars on parity, majority, and, or and a threshold at n=7..12; it earned 10-14% only on deep twins (block half the table), an ad hoc class. The command bound that gated it and the executed-count returns that fed it went with it; n=10 random 1847 grows 2,173 -> 2,174 chars. Execution 4T + 79n + 22 still reached at n=8 (1,678) and never exceeded at n=6..8"
