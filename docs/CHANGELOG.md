@@ -5,6 +5,19 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 1.2.1
+
+- Add Aprknia, Balik, BASICER, lol waht i cant edit talk pages, NOR
+  machine, Pilas and Tiangou (102 languages).
+- An unknown language name suggests the names it begins:
+  `lol` asks "did you mean lol waht i cant edit talk pages?".
+- Generated programs change:
+  - Taglate programs for odd n are 15-38% smaller.
+  - Interprogck8 programs run about a third fewer commands.
+- INTERCAL, Interprogck8, 1 + i, Polynomial and S*bleq interpreters load or
+  run faster on large programs; S*bleq rows took time quadratic in the
+  program.
+
 ## 1.2.0
 
 - **Breaking:** Remove Vandevelo; its name no longer resolves. Its
