@@ -27,7 +27,8 @@ Size:
 Decisions:
     Dropping the single-block, bank and mixed-bank candidates costs at most
     6.2% over 200 tables per class at n=9 and n=12 (jointly); dropping the
-    per-level blocks form loses 19.8% (noisy affine), so it stays.
+    per-level blocks form loses 13-24% on guarded affine tables at n=10
+    ([ablations.shared_blocks]), so it stays.
     Shared blocks past the 2n^2 + 27n + 8 command bound are refused: a
     repeated table can build larger than a distinct one
     ([ablations.command_bound]).  The count build is a class rule for
@@ -345,7 +346,8 @@ def normal_gates(table: str) -> str | None:
     # below it each table's count is checked.  Native extreme paths attain it
     # at n=9 (413) and n=16 (938).  Workspace holds from n=4
     # (docs/proofs/boolfuck-gates.md), so the race starts there: the gates
-    # clear the bar from n=6 ([ablations.normal_gates]) and never lose below.
+    # clear the bar from n=8, 9.9% at n=7 ([ablations.normal_gates]), and
+    # never lose below.
     if n < 4:
         return None
     x = 2 * (n - 2)
