@@ -292,15 +292,21 @@ class _LayoutTree(_TreeEmitter):
         depth: int,
         *,
         prune: bool = True,
+        flat: bool = False,
     ) -> None:
         super().__init__(builder, table)
         self._ids = ids
         self._depth = depth
         self._prune = prune
+        self._flat = flat
         self._axes = ((1, 0), (0, 1))
 
     def _span(self, level: int) -> int:
-        return 8 * (1 << ((self._depth - level - 1) // 2)) - 2
+        # ``flat`` halves the vertical pitch: a 2:1 (columns:rows) block.
+        vertical = not self._axes[level % 2][0]
+        return (4 if self._flat and vertical else 8) * (
+            1 << ((self._depth - level - 1) // 2)
+        ) - 2
 
     def _leaf(self, level: int, lo: int, hi: int) -> bool:
         # A constant span is a leaf wherever it sits: what it has not
@@ -483,8 +489,10 @@ def _strip_tree(truth_table: str) -> str:
     return builder.render()
 
 
-def _tree(truth_table: str, *, prune: bool = True) -> str:
+def _tree(truth_table: str, *, prune: bool = True, flat: bool = False) -> str:
     """Build the tree; ``prune=False`` keeps every input and unfolds spans.
+
+    ``flat`` halves the vertical spans (twice as wide as tall, balance only).
 
     Ignored inputs are read and dropped.  Kept inputs are tested in input
     order at every node; the root's arms are not swapped.
@@ -493,7 +501,7 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
-    return _layout(truth_table, n, essential, prune=prune)
+    return _layout(truth_table, n, essential, prune=prune, flat=flat)
 
 
 def _layout(
@@ -502,6 +510,7 @@ def _layout(
     essential: list[int],
     *,
     prune: bool = True,
+    flat: bool = False,
 ) -> str:
     """Lay out the tree over ``truth_table``, whose level ``k`` pops input ``k``."""
     # No essential input: the table is one constant char, which subtree_ids
@@ -510,7 +519,7 @@ def _layout(
     depth = len(essential)
     builder = _Builder()
     root = (0, 0)
-    _LayoutTree(builder, truth_table, ids, depth, prune=prune).run(
+    _LayoutTree(builder, truth_table, ids, depth, prune=prune, flat=flat).run(
         0, 0, len(truth_table), root, (0, 1)
     )
     cells = builder.cells()
@@ -529,13 +538,21 @@ def _layout(
 
 
 def _balance(truth_table: str, default: str) -> str:
-    """Compare the default with the narrowest grid.
+    """Compare the default, the narrowest grid and the flat tree.
+
+    The flat tree halves the vertical pitch, so even arities (square
+    otherwise, side 2 x rows) become 2:1; odd arities already were.
 
     The inline tree and the square-width rewraps of both orientations never
     won (n=1..8, incl. tiled and constant-leaf tables); neither did walking
     down one column at a time (127 tables through n=11).
     """
-    return min(default, thisthat(truth_table, 1), key=balance_score)
+    return min(
+        default,
+        thisthat(truth_table, 1),
+        _tree(truth_table, flat=True),
+        key=balance_score,
+    )
 
 
 _MIN_NODE_BUDGET = 8

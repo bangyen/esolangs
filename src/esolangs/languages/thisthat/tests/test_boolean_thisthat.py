@@ -312,3 +312,17 @@ def test_a_dag_over_the_cycle_bound_is_refused() -> None:
     source = esolangs.generate("thisthat", table)
     assert len(source) == 2053
     assert evaluate_generated("thisthat", table) == table
+
+
+@pytest.mark.parametrize(
+    ("n", "side"), [(6, 118), pytest.param(8, 246, marks=pytest.mark.medium)]
+)
+def test_balance_races_the_flat_tree(n: int, side: int) -> None:
+    """Halved vertical pitch makes an even-arity tree 2:1 (cell square: 230 / 486)."""
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
+    balanced = esolangs.generate("thisthat", table, balance=True)
+    assert balance_score(balanced)[0] == side
+    assert _evaluate("thisthat", balanced, 60, inputs=n, max_rows=None) == table
