@@ -6,7 +6,7 @@ backlinks = 6
 
 [proof_status]
 labels = ["parameterized tree"]
-qualification = "the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate"
+qualification = "the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out"
 scaling = "linear: at most C characters: tokens per distinct subtable"
 execution = "poly n: worst n^2 + 8n + 5 commands, one root-to-leaf path"
 workspace = "poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits past n = 2, S the token count"
