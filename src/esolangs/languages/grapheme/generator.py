@@ -1,7 +1,9 @@
 """Grapheme Boolean program generator: the table is one integer literal.
 
 The literal (int mode, ~0.302 letters an entry) is indexed by Horner's rule
-run on the complemented input bits; it has no subtrees to fold or share.
+run on the complemented or the direct input bits, and its bit or the
+complement is printed, whichever spells the shorter integer; it has no
+subtrees to fold or share.
 
 Size:
     O(T) letters; n=10 random 1847: 498 chars, n=16 random 1847: 20,021 chars.
@@ -81,7 +83,8 @@ def grapheme(
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; prints
     ``'0'`` or ``'1'``.  The table is one int-mode literal, ~0.302 letters an
-    entry, indexed by Horner's rule run on the complemented input bits.
+    entry, indexed by Horner's rule run on the complemented or direct input
+    bits; the answer bit or its complement is printed, whichever is shorter.
     """
     return _program(truth_table, integer_conversion=integer_conversion)
 
@@ -106,19 +109,28 @@ def _program(
     read_bit = "W" + _grapheme_push65(dialect) + "B" + "T"
     drop_unread_line = "WM"
     square = "KS"
-    double_unless_set = two + "B" + "S"
     shift = "R"
     low_bit = "K" + two + "LR" + two + "SLB"
 
-    pieces = [one]
-    for input_index in range(n):
-        if input_index in reading:
-            pieces.append(square + read_bit + double_unless_set)
-        else:
-            pieces.append(drop_unread_line)
-    pieces.append(_grapheme_literal(_grapheme_table(table), dialect))
-    pieces.append(shift + low_bit + "Y")
-    return "".join(pieces)
+    # The literal's length follows its magnitude, so build the four spellings
+    # of the table -- the index complemented (``2 - bit`` doubles on a 0) or
+    # direct (``1 + bit``), the answer stored or negated by ``T`` -- all of
+    # one length apart from that ``T``, and keep the shortest.
+    programs = []
+    for direct in (False, True):
+        double = one + "AS" if direct else two + "BS"
+        head = one + "".join(
+            square + read_bit + double if i in reading else drop_unread_line
+            for i in range(n)
+        )
+        packed = table[::-1] if direct else table
+        for negate in (False, True):
+            entries = packed.translate(str.maketrans("01", "10")) if negate else packed
+            literal = _grapheme_literal(_grapheme_table(entries), dialect)
+            programs.append(
+                head + literal + shift + low_bit + ("T" if negate else "") + "Y"
+            )
+    return min(programs, key=len)
 
 
 LANGUAGE = Language(

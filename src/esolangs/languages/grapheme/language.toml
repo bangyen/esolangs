@@ -6,21 +6,21 @@ backlinks = 3
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0"
-scaling = "linear: worst 17n + 20 + digits(2^T) characters: one per read block"
-execution = "linear: worst 17n + 20 + d commands, d the digits of 2^T: one per program character"
-workspace = "linear: worst 16d + 136n + 195 + bl(17n+d+5) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n) bits"
+qualification = "the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0 (or a 1), which is Horner's rule for the complemented (or direct) index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0"
+scaling = "linear: at most 17n + 20 + digits(2^T) characters from n=2"
+execution = "linear: at most 17n + 20 + d commands from n=2, d the digits of 2^T: one per program character"
+workspace = "linear: at most 16d + 136n + 195 + bl(17n+d+5) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n) bits from n=2"
 definitions = ["λ = the largest lift of d + 1 digits, d those of 2^T"]
 
 [generator_sizes]
 "00000001" = { commands = 71, commands_by_row = { "0" = 71, "1" = 71, "2" = 71, "3" = 71, "4" = 71, "5" = 71, "6" = 71, "7" = 71 }, source_units = 71 }
 "00001100" = { commands = 57, commands_by_row = { "0" = 57, "1" = 57, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 57, "7" = 57 }, source_units = 57 }
-"00110110" = { commands = 74, commands_by_row = { "0" = 74, "1" = 74, "2" = 74, "3" = 74, "4" = 74, "5" = 74, "6" = 74, "7" = 74 }, source_units = 74 }
+"00110110" = { commands = 73, commands_by_row = { "0" = 73, "1" = 73, "2" = 73, "3" = 73, "4" = 73, "5" = 73, "6" = 73, "7" = 73 }, source_units = 73 }
 "0110" = { commands = 56, commands_by_row = { "0" = 56, "1" = 56, "2" = 56, "3" = 56 }, source_units = 56 }
 "01101001" = { commands = 73, commands_by_row = { "0" = 73, "1" = 73, "2" = 73, "3" = 73, "4" = 73, "5" = 73, "6" = 73, "7" = 73 }, source_units = 73 }
 "0110100110010110" = { commands = 93, commands_by_row = { "0" = 93, "1" = 93, "2" = 93, "3" = 93, "4" = 93, "5" = 93, "6" = 93, "7" = 93, "8" = 93, "9" = 93, "10" = 93, "11" = 93, "12" = 93, "13" = 93, "14" = 93, "15" = 93 }, source_units = 93 }
 "1101001101101101" = { commands = 93, commands_by_row = { "0" = 93, "1" = 93, "2" = 93, "3" = 93, "4" = 93, "5" = 93, "6" = 93, "7" = 93, "8" = 93, "9" = 93, "10" = 93, "11" = 93, "12" = 93, "13" = 93, "14" = 93, "15" = 93 }, source_units = 93 }
-"11111110" = { commands = 74, commands_by_row = { "0" = 74, "1" = 74, "2" = 74, "3" = 74, "4" = 74, "5" = 74, "6" = 74, "7" = 74 }, source_units = 74 }
+"11111110" = { commands = 72, commands_by_row = { "0" = 72, "1" = 72, "2" = 72, "3" = 72, "4" = 72, "5" = 72, "6" = 72, "7" = 72 }, source_units = 72 }
 
 [catalogue]
 sharing_exempt = "one integer table literal"
