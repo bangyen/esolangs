@@ -128,6 +128,13 @@ Each missed the 10% bar:
 - EGL spelling the ASCII-zero subtraction as a loop (21 characters for 48)
   saves a fixed 27 an input: 27.2% at n=7, 20.3% at n=8, 8.7% at n=10.
 - Container's threshold path writing deltas unsigned saves a flat 4.7-5.4%.
+- FRACTRAN writing each guard as one literal (`29*11` as `319`) saves
+  9.6-10.4% of random tables at n = 6..8, 8.3% at 10 and 6.8% at 14
+  (parity 7.1-9.2%): the guard primes lengthen, so the `*` saved is a
+  falling share.  The factored spelling stays because it keeps runs on
+  the interpreter's prime index; literal guards outgrow its base cap and
+  fall back to the integer scan, so shipping them also needs an index
+  that factors guards over the program's own primes.
 - Object Disoriented's last-level short forms save 2.9% at n=7 and 0.6% at
   n=10; parity 7.8% at n=8.
 - Cheapest names to the most-used nodes: `subtree_ids` already numbers

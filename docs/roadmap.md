@@ -79,10 +79,3 @@ ignored-input tables included).
   halted on underflow); the other disagreements were spec gaps, now
   recorded in the docstrings. With no outside
   interpreter, this is the only independent check the rest get.
-- **FRACTRAN's one-literal guards (retirement candidate #19) wait on the
-  index:** writing each guard as one literal (`11*29` as `319`) leaves
-  programs the interpreter's index refuses -- the literals are products of
-  two of the program's primes and outgrow any linear cap on its bases
-  (36,041 against a 4,337-character program at n=10), so runs scan the
-  fraction list. It ships only with an index that factors guards over the
-  program's own primes; its saving is 8.4% at n=10.

@@ -42,7 +42,7 @@ verdict = "removed 2026-10-20 (retirement candidate #18): the constant_span_test
 [ablations.guard_spelling]
 saving = -7.9
 arity = 12
-verdict = "candidate: a guard above SMALL_BASE is spelled as its factors (state*bit) so the interpreter's index receives it pre-factored. Spelling the integer product instead is smaller everywhere: -10.6% at n=6, -9.1% at n=10, -7.9% at n=12 on random tables, -7.7% on parity at n=10. The cost buys interpreter parse time, not size. See RETIREMENT-CANDIDATES entry 19"
+verdict = "kept 2026-10-27: a guard above SMALL_BASE is spelled as its factors (state*bit) so the interpreter's index receives it pre-factored. Spelling the integer product instead is smaller everywhere: -10.6% at n=6, -9.1% at n=10, -7.9% at n=12 on random tables, -7.7% on parity at n=10, and falling with n (6.8% of the shipped size at n=14, five seeds). Literal guards outgrow the index's base cap and fall back to the integer scan, so the swap needs an index that factors guards over the program's own primes; under 10% from n=7, that interpreter change does not pay. See RETIREMENT-CANDIDATES entry 19"
 
 [ablations.state_prime_order]
 saving = 4.4
