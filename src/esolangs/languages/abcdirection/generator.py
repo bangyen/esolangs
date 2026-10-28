@@ -45,7 +45,9 @@ Decisions:
     shares each input's move, so a constant block still needs a cell for each
     entry the pointer can land on, and sharing a repeated block needs moves
     that differ by path -- the per-path drawing of the ``4**n`` tree this
-    replaced (9,983,952 cells at ``n = 6``).
+    replaced (9,983,952 cells at ``n = 6``).  Output polarity stays lopsided
+    (n=8: or 2,499 chars, nor 3,284): a complemented build needs an output
+    flip in ``_print_unit`` and the helix, not built.
 """
 
 from math import isqrt

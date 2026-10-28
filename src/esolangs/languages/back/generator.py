@@ -30,7 +30,9 @@ Decisions:
     little ([ablations.htree_fold]).  It spends characters, up to its area,
     for area.  A bend of the first nonadjacent repeat through column 1 was
     retired: it saved at most 2.7% of characters on average at n=7..10 (best
-    single table 14.7%).
+    single table 14.7%).  A complementing loader (rows ``(INPUT, "+")``) under
+    the reversed table was not shipped: nor/or area 29-33% off at n=8 only,
+    under 8% at n=10 and 0% at n=9, 11, 12.
 """
 
 from collections.abc import Callable
