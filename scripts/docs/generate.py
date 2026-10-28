@@ -283,26 +283,54 @@ def render_input_shapes_section() -> str:
     return "\n".join(rows)
 
 
-def render_api_section() -> str:
-    """Render docs/usage.md's exported-callable list between the markers.
+def _summary(member: object) -> str:
+    summary = (inspect.getdoc(member) or "").split("\n")[0].rstrip(".")
+    # The docstrings are reStructuredText; a role marker and a double
+    # backtick both render as literal text in Markdown.
+    summary = re.sub(r":\w+:`~?([^`]+)`", r"`\1`", summary)
+    summary = summary.replace("``", "`")
+    return f"{summary[0].lower()}{summary[1:]}"
 
-    ``esolangs.__all__`` filtered to functions, one per line with the first
-    line of its docstring.  The gate that used to demand all of these in a
+
+def render_api_section() -> str:
+    """Render docs/usage.md's list of ``esolangs.__all__`` between the markers.
+
+    Functions, then types, then exceptions, one per line with the first line
+    of its docstring; an alias shows its union, an exception its bases (the
+    builtin one is what a caller may already catch).  A 2.0 audit found the
+    list held only the functions, so most of what a major version freezes
+    was documented nowhere.  The gate that used to demand all of these in a
     single README sentence is what produced a thirteen-name run-on; this
     list carries the same guarantee and no sentence.
     """
-    lines = []
+    functions, types, errors = [], [], []
     for name in esolangs.__all__:
         member = getattr(esolangs, name)
-        if not inspect.isfunction(member):
-            continue
-        summary = (inspect.getdoc(member) or "").split("\n")[0].rstrip(".")
-        # The docstrings are reStructuredText; a role marker and a double
-        # backtick both render as literal text in Markdown.
-        summary = re.sub(r":\w+:`~?([^`]+)`", r"`\1`", summary)
-        summary = summary.replace("``", "`")
-        lines.append(f"- `esolangs.{name}` -- {summary[0].lower()}{summary[1:]}")
-    return "\n".join(lines)
+        if inspect.isfunction(member):
+            functions.append(f"- `esolangs.{name}` -- {_summary(member)}")
+        elif isinstance(member, type) and issubclass(member, BaseException):
+            bases = ", ".join(base.__name__ for base in member.__bases__)
+            errors.append(f"- `esolangs.{name}({bases})` -- {_summary(member)}")
+        elif hasattr(member, "__value__"):
+            union = re.sub(r"\b(?:[a-z_]+\.)+", "", str(member.__value__))
+            types.append(f"- `esolangs.{name}` -- `{union}`")
+        else:
+            types.append(f"- `esolangs.{name}` -- {_summary(member)}")
+    return "\n".join(
+        [
+            "Functions:",
+            "",
+            *functions,
+            "",
+            "Types:",
+            "",
+            *types,
+            "",
+            "Exceptions:",
+            "",
+            *errors,
+        ]
+    )
 
 
 def xor_language() -> str:

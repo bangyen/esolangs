@@ -13,8 +13,30 @@ hides this using [`describe`](#describe) metadata.
 | `run` | run a program through its interpreter |
 | `encode` | print the stdin that feeds a bit string |
 | `read-answer` | print the answer bit a program's output carries |
-| `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives every capability field to filter with `jq` |
+| `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives a record of `describe` fields per language to filter with `jq` |
 | `describe` | how one language reads input and where its answer lands |
+
+Options, each explained in full by its command's `--help`:
+
+| Option | Commands | Does |
+| --- | --- | --- |
+| `--width [N]` | generate | wrap or lay out to N columns (default 80); what it does per language is `describe`'s `width_effect` |
+| `--balance` | generate | pick the layout fitting the smallest on-screen square; excludes `--width` |
+| `--bits BITS` | generate | fill a template's input slots, printing a runnable program |
+| `--plain` | generate | write compressed text as plain text instead of gzip |
+| `--scale N` | generate, run | enlarge raster pixels after layout; on `run`, override the detected scale |
+| `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
+| `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
+| `--timeout SECONDS` | run | stop the run after this long; unbounded by default |
+| `--isolated` | run | run in a subprocess, 30 seconds by default |
+| `--max-output N` | run | cap isolated output in characters |
+| `--max-memory BYTES` | run | cap an isolated worker's address space (Linux) |
+| `--seed N` | run | fix a random language's draws |
+| `--details` | list | add the marker column |
+| `--json` | list, describe | print JSON |
+| `--generator`, `--interpreter-only` | list | only languages with, or without, a generator |
+| `--grep REGEX` | list | only languages whose spec matches |
+| `--spec` | describe | print the interpreter's own description of the language |
 
 `encode` and `read-answer` wrap `run` for one input row:
 
@@ -120,9 +142,11 @@ layout. Rendering more than 2^28 pixels raises `ArgumentError`.
   native images whose blocks also fit a larger grid. Its committed example
   uses 80-pixel codels (480×240).
 
-## Exported callables
+## Public API
 
 <!-- PUBLIC-API:START -->
+
+Functions:
 
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
@@ -134,7 +158,47 @@ layout. Rendering more than 2^28 pixels raises `ArgumentError`.
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
 
+Types:
+
+- `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
+- `esolangs.DialectSettings` -- explicit overrides; omitted choices retain each language's defaults
+- `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
+- `esolangs.Language` -- bind a canonical language name to the package's existing functions
+- `esolangs.LanguageInfo` -- what `describe` returns, as a type a caller can annotate with
+- `esolangs.Program` -- `str | Raster | CompressedText`
+- `esolangs.ProgramSource` -- `Program | bytes | PathLike[str] | IO[str] | IO[bytes]`
+- `esolangs.Raster` -- an immutable 8-bit RGB image source, stored row by row
+- `esolangs.TextLimits` -- independent raw-export, generation-work and compressed-file budgets
+
+Exceptions:
+
+- `esolangs.ArgumentError(EsolangError, ValueError)` -- an argument's value is outside what the call accepts
+- `esolangs.EsolangError(Exception)` -- base class for errors from the esolangs package
+- `esolangs.ExecutionTimeoutError(HaltError, TimeoutError)` -- a run was stopped by its wall-clock bound rather than by the program
+- `esolangs.GeneratorCapError(EsolangError, ValueError)` -- a boolean generator, such as a prime-based one, refusing too big a table
+- `esolangs.HaltError(EsolangError)` -- an interpreter halted on an invalid operation
+- `esolangs.InputExhaustedError(EsolangError, EOFError)` -- a program read past the end of its input
+- `esolangs.InterpreterLimitError(HaltError)` -- an interpreter hit an implementation limit running a program
+- `esolangs.MissingDependencyError(EsolangError, ImportError)` -- an optional dependency required by one language is not installed
+- `esolangs.ProgramError(EsolangError, ValueError)` -- a program could not be loaded: it is malformed for its language
+- `esolangs.ProgramNotFoundError(ProgramError, FileNotFoundError)` -- a program file could not be read because it is not there
+- `esolangs.TemplateError(EsolangError, ValueError)` -- a parameterized generator's template was used as a program
+- `esolangs.TruthTableError(EsolangError, ValueError)` -- a truth table was not a usable binary string of length `2**n`
+- `esolangs.UnknownLanguageError(EsolangError, ValueError)` -- a language name was not in the registry
+
 <!-- PUBLIC-API:END -->
+
+Every `EsolangError` carries `partial_output`, the output written before
+the raise (empty when the program never ran). Some add fields:
+
+| Exception | Attributes |
+| --- | --- |
+| `ExecutionTimeoutError` | `bound`: `"timeout"` or `"max_steps"` |
+| `InputExhaustedError` | `reads`, the reads that succeeded; `supplied`, the input units given; `unit`, what one is (`"line"` by default) |
+| `UnknownLanguageError` | `language`, the name asked for; `suggestions`, the close registered names |
+
+Catch the builtin base when a caller already does: a `ProgramError` is a
+`ValueError`, an `ExecutionTimeoutError` a `TimeoutError`.
 
 ## Feeding a program
 

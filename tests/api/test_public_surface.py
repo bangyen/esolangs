@@ -169,6 +169,24 @@ class TestPackageSurface:
         policy = usage[usage.index("## Compatibility") :]
         assert documented(policy.replace("exit statuses:", "exit codes:")) == raised
 
+    def test_every_option_is_indexed_in_usage(self) -> None:
+        """Most flags were in ``--help`` only (2.0 audit), and they freeze too."""
+        from esolangs.cli import HELP
+
+        usage = (ROOT / "docs" / "usage.md").read_text(encoding="utf-8")
+        table = usage[usage.index("| Option | Commands | Does |") :].split("\n\n")[0]
+        rows = {
+            flag: commands
+            for line in table.splitlines()[2:]
+            for cells in [line.split("|")]
+            for flag in re.findall(r"--[a-z-]+", cells[1])
+            for commands in [{c.strip() for c in cells[2].split(",")}]
+        }
+        for command, text in HELP.items():
+            synopsis = text.split("\n\n")[0]
+            for flag in re.findall(r"--[a-z-]+", synopsis):
+                assert command in rows.get(flag, set()), (command, flag)
+
 
 class TestTheSignaturesAgreeWithThemselves:
     """Two functions taking the same argument should describe it the same."""

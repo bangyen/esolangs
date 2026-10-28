@@ -333,16 +333,16 @@ class TestTheApiNameListsCannotDriftAgain:
             if inspect.isfunction(getattr(esolangs, name))
         }
 
-    def test_the_api_reference_lists_every_public_function(self) -> None:
-        """The reference has to introduce all of it -- as a list, not a sentence."""
+    def test_the_api_reference_lists_every_public_name(self) -> None:
+        """All of ``__all__``, as a list: it once held only the functions."""
         listed = USAGE_DOC.read_text().split("<!-- PUBLIC-API:START -->", 1)[1]
         listed = listed.split("<!-- PUBLIC-API:END -->", 1)[0]
         entries = {
-            line.split("`")[1].removeprefix("esolangs.")
+            line.split("`")[1].removeprefix("esolangs.").split("(")[0]
             for line in listed.splitlines()
             if line.startswith("- `esolangs.")
         }
-        assert entries == self._public_callables()
+        assert entries == set(esolangs.__all__)
 
     def test_the_module_docstring_names_every_public_function(self) -> None:
         """Same for the thing ``help(esolangs)`` shows first."""
