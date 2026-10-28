@@ -61,7 +61,7 @@ saving = 0.0
 arity = 12
 seed = "random.Random(1000 + n)"
 tables = 30
-verdict = "removed 2026-10-28 (plain-rewrite audit): _Names gave deeper inputs the shortest names because they occur in more guards. Deleting it, i.e. restoring the old reversed() order (positive control: bytes differ on every random table, so the patch bites): 0.00% total size exhaustively at n=3 (47,720 chars) and n=4 (19,643,240 chars, all 65,536 tables, none shorter) and on every class at n=5..12 (30 tables per class, six arities). No default-path build needs more than 52 distinct labels, so every label is one character and the order cannot bind. Names now go out in input order"
+verdict = "removed 2026-10-28 (plain-rewrite audit): _Names gave deeper inputs the shortest names because they occur in more guards. Deleting it, i.e. restoring the old reversed() order (positive control: bytes differ on every random table, so the patch bites): 0.00% total size exhaustively at n=3 (47,720 chars) and n=4 (19,643,240 chars, all 65,536 tables, none shorter) and on every class at n=5..12 (30 tables per class, six arities). No default-path build needs more than 52 distinct labels, so every label is one character and the order cannot bind. Names now go out in input order; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
 
 [ablations.balance_banded]
 saving = 21.7

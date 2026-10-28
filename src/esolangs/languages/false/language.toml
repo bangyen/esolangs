@@ -65,14 +65,14 @@ saving = 0.0
 arity = 8
 seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named as expression_complement; 300 random tables per n=4..7, 100 at n=8"
 tables = 20
-verdict = "removed 2026-10-28 (plain-rewrite audit): a third and fourth expression build stored each input as ^~1& with the table reversed (alone, and with the complement). Never strictly wins on a named function at n=7..10 and no table of the exhaustive n<=3 changes; random tables 0.03% / 0.00% chars and 0.00% area at n=7/8, 10 of 300 tables differ at n=7 and 3 of 100 at n=8, by 1 char each. Build time 4 expression searches -> 2 (n=12 random 8.4 -> 3.8 s, n=14 35 -> 13.9 s)"
+verdict = "removed 2026-10-28 (plain-rewrite audit): a third and fourth expression build stored each input as ^~1& with the table reversed (alone, and with the complement). Never strictly wins on a named function at n=7..10 and no table of the exhaustive n<=3 changes; random tables 0.03% / 0.00% chars and 0.00% balanced area at n=7/8, 10 of 300 tables differ at n=7 and 3 of 100 at n=8, by 1 char each. Build time 4 expression searches -> 2 (n=12 random 8.4 -> 3.8 s, n=14 35 -> 13.9 s)"
 
 [ablations.expression_negated_combine]
 saving = 4.5
 arity = 8
 seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named as expression_complement"
 tables = 20
-verdict = "removed 2026-10-28 (plain-rewrite audit): the 5-char negated step a=| / a=& for a constant cofactor of the wrong polarity, now that the complement build covers the polarity. 3.7% / 4.5% chars (2.7% / 3.7% area) at n=7/8 on random tables, every one of 20 grows (6090 -> 6322, 11149 -> 11669); no named function changes at n=7..10 -- under the bar"
+verdict = "removed 2026-10-28 (plain-rewrite audit): the 5-char negated step a=| / a=& for a constant cofactor of the wrong polarity, now that the complement build covers the polarity. 3.7% / 4.5% chars (2.7% / 3.7% balanced area) at n=7/8 on random tables, every one of 20 grows (6090 -> 6322, 11149 -> 11669); no named function changes at n=7..10 -- under the bar"
 
 [ablations.expression_xor_collapse]
 saving = 13.3

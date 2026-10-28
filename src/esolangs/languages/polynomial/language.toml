@@ -60,7 +60,7 @@ saving = 0.0
 arity = 8
 seed = 20261028
 tables = 20
-verdict = "retired 2026-10-28 (random + named bar): omitting the park store when a constant leaf is the root saved 0.00% on 20 seeded random tables at n=7, 8 (33,129,623 chars at n=8 either way) and 0.00% on parity, majority, and, or and a threshold at n=7..12, since only a constant table has a leaf at the root; it earned 13.5% on constants alone (750 -> 649 chars at n=8), a constant-only class. Constants now carry the store (750 chars at n=8, 217-218 at n=3; commands n + 3, was n + 2); 8 constants n=1..8 executed, 0 mismatches"
+verdict = "retired 2026-10-28 (random + named bar): omitting the park store when a constant leaf is the root saved 0.00% on 20 seeded random tables at n=7, 8 (33,129,623 chars at n=8 either way) and 0.00% on parity, majority, and, or and a threshold at n=7..12, since only a constant table has a leaf at the root; it earned 13.5% on constants alone (750 -> 649 chars at n=8), a constant-only class. Constants now carry the store (750 chars at n=8, 217-218 at n=3; commands n + 3, was n + 2); 8 constants n=1..8 executed, 0 mismatches; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
 
 [ablations.tree_constant_fold]
 saving = 12.1

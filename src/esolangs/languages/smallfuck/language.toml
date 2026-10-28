@@ -60,7 +60,7 @@ verdict = "kept: canonical, exempt; saving on the leading-ignored class (40.0% m
 [ablations.tail_trim]
 saving = 0.0
 arity = 11
-verdict = "removed 2026-10-20 (retirement candidate #7): a fixed ~5 chars per program (0.1% at n=8, 0.0% at n=10/11 on random tables) -- fails the bar and the genuine-percentage stipulation; the tail is now the builder's own text, moves among the closing brackets included"
+verdict = "removed 2026-10-20 (retirement candidate #7): a fixed ~5 chars per program (0.1% at n=8, 0.0% at n=10/11 on random tables) -- fails the bar and the genuine-percentage stipulation; the tail is now the builder's own text, moves among the closing brackets included. Re-priced 2026-10-28 on the current build (non-complement builds only): and 5.4 / 6.5 / 7.3 / 8.0 / 2.1 / 3.0% chars at n=7..12, random 0.1%; balanced area on and 0 / 19.0 / 0 / 17.4 / 8.5 / 0% -- a one-step side quantisation (20 -> 18 at n=8), not a share; it caused the whole and/nand balanced growth of the 2026-10-20 bundle. Stays removed"
 
 [ablations.width_machinery]
 saving = 0.0

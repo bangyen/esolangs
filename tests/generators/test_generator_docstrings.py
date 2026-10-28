@@ -275,6 +275,24 @@ def test_an_ablation_saving_is_said_once() -> None:
     )
 
 
+def test_a_retirement_records_its_balanced_area() -> None:
+    """A trick retired from 2026-10-28 on cites its balanced area too.
+
+    LaserFuck's sized leaf was retired on default sizes and restored: the
+    balanced route used it (17-21% of area at n=10..12).
+    """
+    missing = {}
+    for name in _generated():
+        root = _LANGUAGES_DIR / LANGUAGES[name].id
+        table = tomllib.loads((root / "language.toml").read_text())
+        for key, entry in table.get("ablations", {}).items():
+            verdict = entry.get("verdict", "") if isinstance(entry, dict) else ""
+            dated = re.match(r"(?:retired|removed) (\d{4}-\d\d-\d\d)", verdict)
+            if dated and dated[1] >= "2026-10-28" and "balanced" not in verdict:
+                missing.setdefault(name, []).append(key)
+    assert missing == {}, f"state the balanced area in each retirement -- {missing}"
+
+
 def test_every_generator_has_an_audit_record() -> None:
     """A dated ``[ablations]`` record; Bleh, Freestajlo and Stisp shipped without."""
     missing = [
