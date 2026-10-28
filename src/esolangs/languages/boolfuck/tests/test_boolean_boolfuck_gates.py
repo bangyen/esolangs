@@ -104,8 +104,11 @@ def test_count_build_attains_the_restated_execution_bound(n: int) -> None:
 
 # One code per _normal class: constants 0 and 15, literal 3, xor 6, and-type 11.
 @pytest.mark.parametrize("code", [0, 3, 6, 11, 15])
-def test_every_two_input_function_with_ignored_prefix(code: int) -> None:
-    table = f"{code:04b}" * 128
+def test_every_two_input_function_under_a_parity_prefix(code: int) -> None:
+    # Odd prefixes hold the function, even ones an AND, so every prefix input counts.
+    table = "".join(
+        f"{code:04b}" if prefix.bit_count() & 1 else "0001" for prefix in range(128)
+    )
     program = normal_gates(table)
     assert program is not None
     _execute(table, program, [*range(4), *range(508, 512)])
@@ -209,13 +212,3 @@ def test_four_input_table_keeps_its_gate_size() -> None:
     program = boolfuck(table)
     assert len(esolangs.generate("Boolfuck", table)) == 191
     assert _evaluate("Boolfuck", program, inputs=4) == table
-
-
-def test_six_input_table_on_the_command_bound_keeps_its_shared_size() -> None:
-    import esolangs
-
-    # The shared-blocks tree's command count equals the bound exactly;
-    # admission is inclusive, so the shared program stands.
-    table = "1101010010101110011101011010111000000100111101000101111100000101"
-    assert len(esolangs.generate("Boolfuck", table)) == 599
-    _execute(table, boolfuck(table), range(len(table)))

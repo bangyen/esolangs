@@ -6,10 +6,10 @@ bit read is the value bit; it lands on the byte's cell and the other seven go to
 scratch (bytes consumed whole).  Node ``i`` sets ``flag_i``; ``[+`` on the bit
 clears it and runs the one-side (which clears the flag); ``[+`` on the flag runs
 the zero-side only if the flag survived.  Every flag is 0 again on return.
-Constant subtrees fold to a leaf as in ``helpers.decision_tree_body``; a ``"1"``
-leaf flips R, and one leaf executes, so R flips at most once.  Repeated
-residuals defer to unused level flags, emitted once in depth order after the
-prefix tree, only when text shrinks within the command bound.  At n>=6,
+An ignored input is read into scratch and the tree and the gates run over
+the essential ones.  Constant subtrees fold to a leaf as in
+``helpers.decision_tree_body``; a ``"1"`` leaf flips R, and one leaf executes,
+so R flips at most once.  At n>=6,
 two-input cofactors normalize to shared AND/XOR gates; input flips and output
 bias distinguish their functions without extra flags.  Affine tables stream
 through two data cells, toggling the accumulator once per selected bit.
@@ -25,10 +25,8 @@ Size:
     decision walk: n=12 majority: 356 chars, against the tree's 26,656.
 
 Decisions:
-    Dropping the single-block, bank and mixed-bank candidates costs at most
-    6.2% over 200 tables per class at n=9 and n=12 (jointly); dropping the
-    per-level blocks form loses 13-24% on guarded affine tables at n=10
-    ([ablations.shared_blocks]), so it stays.
+    Deferring repeated residuals to unused level flags was retired: it paid
+    only on guarded affine tables ([ablations.shared_blocks]).
     Every candidate is admitted up to the ledger's execution clause,
     4n^2 + 30n + 8 commands, which the count build attains; the tree's own
     2n^2 + 27n + 8 refused shared builds of parity with flipped rows only
@@ -45,11 +43,11 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     affine_form,
     constant_span_test,
+    input_weights,
     move_text,
     subtree_ids,
 )
 from esolangs.generation.shared_block import ContinuationCost as _Cost
-from esolangs.generation.shared_block import repeated_blocks
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.boolfuck.proof_formulas import workspace
@@ -183,13 +181,22 @@ class _Emitter:
         self.move(cell)
         self.emit("[+]")
 
-    def read_inputs(self, n: int) -> None:
-        """Read ``n`` bytes: each value bit to cell ``2i``, the rest to scratch."""
-        for i in range(n):
-            self.move(2 * i)
-            self.emit(",")
-            self.move(_SCRATCH)
-            self.emit("," * 7)
+    def read_inputs(self, weights: list[int]) -> None:
+        """Read one byte per weight, an ignored one entirely into scratch.
+
+        An essential input's value bit goes to the next cell pair.
+        """
+        cell = 0
+        for weight in weights:
+            if weight:
+                self.move(2 * cell)
+                self.emit(",")
+                cell += 1
+                self.move(_SCRATCH)
+                self.emit("," * 7)
+            else:
+                self.move(_SCRATCH)
+                self.emit("," * 8)
 
     def printer(self) -> None:
         self.move(self.result)
@@ -346,7 +353,9 @@ def _command_bound(n: int) -> int:
 
 def normal_gates(table: str) -> str | None:
     """Return shared normalized gates where both existing ledgers admit them."""
-    n = _validate_truth_table(table)
+    real = _validate_truth_table(table)
+    weights, table = input_weights(table, real)
+    n = len(table).bit_length() - 1
     # Prefix forks cost at most 15 commands per input. The AND/XOR tails
     # give 2*n*n + 25*n + 26, within the admission bound from n=3; each
     # table's count is still checked.  Native extreme paths attain it at n=9
@@ -363,7 +372,7 @@ def normal_gates(table: str) -> str | None:
     gates = [kind for kind in ("and", "xor") if kind in kinds]
     flags = {kind: x + 1 + 2 * i for i, kind in enumerate(gates)}
     e = _Emitter(result=2 * n, carrier=x + 1)
-    e.read_inputs(n)
+    e.read_inputs(weights)
     header_cost = e.count
     tree = _GateTree(table, flags, e)
     prefix = tree.node(0, 0, len(table))
@@ -373,14 +382,14 @@ def normal_gates(table: str) -> str | None:
         for target in tails:
             tails[target] += distance + (active if target == flags[kind] else 1)
     commands = header_cost + prefix.evaluate(tails)
-    if commands > _command_bound(n):
+    if commands > _command_bound(real):
         return None
     return "".join(e.out)
 
 
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
-    programs = [_boolfuck_tree(truth_table)[0]]
+    programs = [_boolfuck_tree(truth_table)]
     for candidate in (
         affine_stream(truth_table),
         normal_gates(truth_table),
@@ -388,42 +397,37 @@ def boolfuck(truth_table: str) -> str:
     ):
         if candidate is not None:
             programs.append(candidate)
-    blocks = repeated_blocks(truth_table)
-    if blocks:
-        program, commands = _boolfuck_tree(truth_table, shared_blocks=blocks)
-        if commands <= _command_bound(_validate_truth_table(truth_table)):
-            programs.append(program)
     return min(programs, key=len)
 
 
-def _boolfuck_tree(
-    truth_table: str, shared_blocks: tuple[tuple[int, int], ...] = ()
-) -> tuple[str, int]:
-    """Emit a tree, optionally deferring blocks into their first unused flags."""
+def _boolfuck_tree(truth_table: str) -> str:
+    """Emit the flip-only decision tree over the stored bits."""
     n = _validate_truth_table(truth_table)
+    weights, projected = input_weights(truth_table, n)
+    if not any(weights):
+        # A constant table keeps every input: its leaf needs a tree to hang on.
+        weights, projected = [1] * n, truth_table
+    essential = sum(map(bool, weights))
     # Cell 1 carries the answer's constant bits: every flag is 0 again there.
-    out = _Emitter(result=2 * n, carrier=1)
+    out = _Emitter(result=2 * essential, carrier=1)
 
-    out.read_inputs(n)
+    out.read_inputs(weights)
 
     # Decision tree over the stored bits.
-    read_cost = out.count
-    body, tree_cost = flag_tree_body(
-        truth_table,
-        tuple(range(n)),
+    body, _ = flag_tree_body(
+        projected,
+        tuple(range(essential)),
         out.pos,
         out.result,
-        shared_blocks=shared_blocks,
         flip=True,
     )
     out.emit(body)
     out.pos = out.result
-    tail_start = out.count
 
     # Print the ASCII answer byte: R, 0,0,0, 1,1, 0,0 (little-endian).
     out.printer()
 
-    return "".join(out.out), read_cost + tree_cost + out.count - tail_start
+    return "".join(out.out)
 
 
 LANGUAGE = Language(
