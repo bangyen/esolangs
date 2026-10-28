@@ -7,7 +7,8 @@ a *coordinate* (its ``{`` arm), so the index doubles.
 
 The table is painted in full, two characters an entry: a run of zeros is
 a counter loop where that is shorter, any other entry is painted one by
-one.
+one.  Whichever of the table and its complement paints shorter is painted;
+the complement is read out as ``1 - c`` through a fresh cell.
 
 Size:
     O(T) for dense tables, O(n) for and; n=10 random 1847: 2,306 chars,
@@ -48,6 +49,9 @@ _COUNT_DOUBLE = (
     f"{{{_COUNTER}<{_COUNTER}>{_SPARE}>{_SPARE}}}{{{_SPARE}<{_SPARE}>{_COUNTER}}}"
 )
 _READ = "d>!0"
+_FLIP = str.maketrans("01", "10")
+# Move the painted bit c onto a fresh cell as -c; 49 more then prints 1 - c.
+_NEGATE = f"[->{_COUNTER}-<{_COUNTER}]>{_COUNTER}"
 
 
 def dimensional(truth_table: str, width: int | None = None) -> str:
@@ -73,7 +77,15 @@ def _program(truth_table: str, width: int | None = None) -> str:
     weights, truth_table = input_weights(truth_table, n)
     reads = (_DOUBLE + _READ if weight else "d" for weight in weights)
     index = "".join(reads)
-    program = _paint(truth_table) + index + f">{_PLANE}" + "+" * _ASCII_ZERO + "."
+    painted = _paint(truth_table)
+    flipped = _paint(truth_table.translate(_FLIP))
+    # Zero runs loop and ones do not, so a ones-heavy table is painted as its
+    # complement and read out negated ([ablations.complement_paint]).
+    if len(flipped) + len(_NEGATE) < len(painted):
+        painted, tail = flipped, _NEGATE + "+" * (_ASCII_ZERO + 1)
+    else:
+        tail = "+" * _ASCII_ZERO
+    program = painted + index + f">{_PLANE}" + tail + "."
     return wrap_program(program, "dimensional", width)
 
 

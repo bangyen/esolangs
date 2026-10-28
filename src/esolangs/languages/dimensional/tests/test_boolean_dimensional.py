@@ -1,5 +1,7 @@
 """Dimensional generator tests."""
 
+import random
+
 import pytest
 
 from esolangs import generate, run
@@ -97,9 +99,15 @@ class TestDimensional:
         """One painted cell an entry, whichever bit, until a zero run is a loop."""
         full = "0" + "1" * 63
         spaced = "01" * 31 + "11"
+        rng = random.Random(7)
+        alternating, other = (
+            "".join(rng.choice("01") for _ in range(64)) for _ in range(2)
+        )
         one = "0" * 63 + "1"
-        assert len(boolean.dimensional(full)) == len(boolean.dimensional(spaced))
-        assert len(boolean.dimensional(one)) < len(boolean.dimensional(full))
+        assert len(boolean.dimensional(alternating)) == len(boolean.dimensional(other))
+        assert len(boolean.dimensional(one)) < len(boolean.dimensional(alternating))
+        # A ones-heavy table is painted as its complement, a zero run.
+        assert len(boolean.dimensional(full)) < len(boolean.dimensional(spaced))
         parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.dimensional(parity)) < 10_000
 
