@@ -40,7 +40,7 @@ verdict = "kept: canonical, exempt. An ignored input's stage is one inert setter
 [ablations.constant_tail_fold]
 saving = 55.0
 arity = 10
-verdict = "kept: the cascade's trailing constant span is not drawn -- a 0 tail is dropped (running off the grid halts) and a 1 tail is one drained ring that pops the markers the dropped rows would. On random tables the tails are ~2 entries (1.59% at n=6 falling to 0.11% at n=10 by area); on its class at n=10 a constant last quarter saves 17.4% (0-suffix) / 29.5% (1-suffix) and a constant last half 38.1% / 55.0%"
+verdict = "kept: the cascade's trailing constant span is not drawn -- a 0 tail is dropped (running off the grid halts) and a 1 tail is one drained ring that pops the markers the dropped rows would. On random tables the tails are ~2 entries (1.59% at n=6 falling to 0.11% at n=10 by area); on its class at n=10 a constant last quarter saves 17.4% (0-suffix) / 29.5% (1-suffix) and a constant last half 38.1% / 55.0%. Re-priced 2026-10-28 (random + named bar), deleting the fold from the cascade and every strip, by area, 20 seeded random tables: 1.67% / 1.40% at n=7 / 8, 0.00% at n=9..12; named: or 75.0% / 83.8% / 89.7% / 93.9% / 96.5% / 98.1% at n=7..12, threshold >= n//3 36.7% / 41.6% / 21.9% / 23.7% / 24.0% / 11.6%, majority 7.6% falling to 0.9%, and 1.1% to 0.05%, parity 0.00%. Clears 10% on named functions at every arity, and is also the cascade's realization of the canonical constant fold (a constant aligned span is a constant tail of the Horner cascade; only a trailing run can be dropped without moving later indices): kept"
 
 [ablations.area_default]
 saving = 27.6

@@ -64,7 +64,7 @@ verdict = "kept: canonical, exempt; on its repeated-subtree class, 8.0% on rando
 [ablations.projection_wire]
 saving = 92.7
 arity = 8
-verdict = "kept: judged on its class; 0.0% on random tables"
+verdict = "kept: judged on its class; 0.0% on random tables. Re-priced 2026-10-28 (random + named bar): fires on none of 200 random tables per arity at n=7..12 and on none of parity, majority, and, or, threshold (all n essential), so 0.00% there; 92.7% on its class. Canonical, exempt: it is the ignored-input drop at its extreme -- essential_inputs leaves one input and read_at a literal, whose circuit is no gate, only the wire through the n ports every run still reads; the general build would draw the n^2 + 3n port grid (88 chars at n=8) for zero gates against the wire's 2n (16)"
 
 [ablations.competing_model_race]
 saving = 2.1

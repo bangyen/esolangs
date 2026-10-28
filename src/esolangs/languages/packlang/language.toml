@@ -45,7 +45,7 @@ verdict = "kept: the block race is offered each smaller block size whose level r
 [ablations.fill_punch]
 saving = 55.1
 arity = 10
-verdict = "kept: a block with more ones than zeros past the fill cost is filled by one loop and its zeros punched out. On random tables 2.4% at n=8, 2.9% at n=10, 3.2% at n=12 (the comment's +2.4% drop cost at n=8 reproduces exactly); on dense tables 40.4% at n=8 with 80% ones and 55.1% at n=10 with 90% ones. The comment's +66% / +125% for the dense classes are growth over the shipped size: measured 67.8% / 122.8%, so they reproduce under their own convention"
+verdict = "kept: a block with more ones than zeros past the fill cost is filled by one loop and its zeros punched out. On random tables 2.4% at n=8, 2.9% at n=10, 3.2% at n=12 (the comment's +2.4% drop cost at n=8 reproduces exactly); on dense tables 40.4% at n=8 with 80% ones and 55.1% at n=10 with 90% ones. The comment's +66% / +125% for the dense classes are growth over the shipped size: measured 67.8% / 122.8%, so they reproduce under their own convention. Re-priced 2026-10-28 (random + named bar), chars, deleting the branch beside the run loops: random 3.00% / 3.30% / 2.08% / 2.64% / 3.41% / 2.92% at n=7..12 (20 tables); named at n=7..12: threshold >= n//3 17.1% / 15.1% / 13.6% / 17.5% / 14.2% / 9.8%, majority 2.0% / 4.4% / 8.0% / 6.1% / 9.6% / 6.0%, or 1.6% to 0.4%, and and parity 0.00%. Other thresholds: >= 2 15.1% at n=8, >= 3 17.5% at n=10 and 11.1% at n=12, >= 4 17.3% and >= 7 15.0% at n=14, so some threshold clears 10% at every arity measured: kept as a rule for the threshold family, not for random tables"
 
 [ablations.run_loops]
 saving = 27.3

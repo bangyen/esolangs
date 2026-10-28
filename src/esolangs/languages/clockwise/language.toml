@@ -46,7 +46,7 @@ verdict = "kept: canonical constant fold, exempt; a constant table's ring is 84 
 [ablations.coordinate_ring]
 saving = 95.2
 arity = 10
-verdict = "kept: clears the bar on its class -- a one-essential table's ring is 85 cells of area at n=10 against an average 1,774 for the projected lookup build over the same input (94.6% at n=8), the share rising with arity"
+verdict = "kept: clears the bar on its class -- a one-essential table's ring is 85 cells of area at n=10 against an average 1,774 for the projected lookup build over the same input (94.6% at n=8), the share rising with arity. Re-priced 2026-10-28 (random + named bar): fires on none of 200 random tables per arity at n=7..12 and on none of parity, majority, and, or, threshold (all n essential), so 0.00% there. Canonical, exempt: the ignored-input drop at its extreme, the ring being the one-literal counterpart of the constant ring (essential_inputs leaves one input; its seven reads are the only coordinate, and the rest are read past it); the projected lookup over the same input is 1,774 cells at n=10 against the ring's 85"
 
 [ablations.trailing_rail]
 saving = 0.0
