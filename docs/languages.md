@@ -48,6 +48,7 @@ Languages that use a stack for data manipulation.
 - [Tiangou](https://esolangs.org/wiki/Tiangou) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/tiangou/interpreter.py))
 - [Underload](https://esolangs.org/wiki/Underload) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/underload/interpreter.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/unsquare/interpreter.py))
+- [Whitespace](https://esolangs.org/wiki/Whitespace) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/whitespace/interpreter.py))
 
 ### Queue-based Languages
 

@@ -1,0 +1,38 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 58
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the inputs form a Horner row index and the table is one binary literal halved once per index step"
+scaling = "linear: worst T + 32n + 147 characters: one literal"
+execution = "linear: worst 19T + 8n commands: the loop runs once per index step"
+workspace = "linear: at most 2T + n + 19 bits: the literal on the stack and in the heap"
+
+[catalogue]
+folding_constant = "a constant table prints its bit; any other is one literal, with no subtable to fold"
+
+[schemes]
+folds_without_tree = true
+
+[generator_sizes]
+"00000001" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 251 }
+"00001100" = { commands = 94, commands_by_row = { "0" = 37, "1" = 37, "2" = 56, "3" = 56, "4" = 75, "5" = 75, "6" = 94, "7" = 94 }, source_units = 222 }
+"00110110" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 250 }
+"0110" = { commands = 92, commands_by_row = { "0" = 35, "1" = 54, "2" = 73, "3" = 92 }, source_units = 214 }
+"01101001" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 251 }
+"0110100110010110" = { commands = 336, commands_by_row = { "0" = 51, "1" = 70, "2" = 89, "3" = 108, "4" = 127, "5" = 146, "6" = 165, "7" = 184, "8" = 203, "9" = 222, "10" = 241, "11" = 260, "12" = 279, "13" = 298, "14" = 317, "15" = 336 }, source_units = 290 }
+"1101001101101101" = { commands = 336, commands_by_row = { "0" = 51, "1" = 70, "2" = 89, "3" = 108, "4" = 127, "5" = 146, "6" = 165, "7" = 184, "8" = 203, "9" = 222, "10" = 241, "11" = 260, "12" = 279, "13" = 298, "14" = 317, "15" = 336 }, source_units = 291 }
+"11111110" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 250 }
+
+[ablations]
+audited = "2026-10-28"
+
+[ablations.input_projection]
+saving = 23.1
+arity = 8
+seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; one-ignored: a random 2^(n-1) table repeated, random.Random(7 * n + i)"
+tables = 20
+verdict = "kept: canonical, exempt. The literal covers the essential inputs only; an ignored one is read into the scratch and dropped (8 chars against 32 and a doubled literal). 0.0% on random tables at n=7/8; one ignored input 17.7% / 23.1%, constant tables 84.5% / 85.8%"

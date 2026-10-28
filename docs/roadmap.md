@@ -54,9 +54,6 @@ Fame admissions at the 50-backlink gate
 ([curation](limitations.md#how-a-language-is-admitted)); each needs an
 interpreter matching every example on its page and a linear generator.
 
-- **Whitespace** (58): removed under the 60 gate; restore it from git
-  history (`git log --all --diff-filter=D -- '*whitespace*'`) and re-gate
-  it against current contracts.
 - **Chicken** (55): one stack, with code and input on it; jumps index the
   stack.
 - **Shakespeare** (54): pick the reference word lists and grammar, judged

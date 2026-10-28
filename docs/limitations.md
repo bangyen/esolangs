@@ -704,7 +704,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 101 languages.
+The collection has 102 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -832,12 +832,12 @@ INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, FRACTRAN
 14.
 
 Existing fame exceptions must still clear the bar. Whitespace was removed at
-58 backlinks under the 60 gate and is readmissible at 50.
+58 backlinks under the 60 gate and readmitted at 50 (2026-10-28).
 
 <!-- CURATION-CENSUS:START -->
 
 The 2026-10-06 census (`snapshot.json`) records each
-language's backlinks and route: 21 clear the fame gate
+language's backlinks and route: 22 clear the fame gate
 and 80 are first implementations.
 
 <!-- CURATION-CENSUS:END -->

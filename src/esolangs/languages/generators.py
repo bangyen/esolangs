@@ -219,6 +219,8 @@ from esolangs.languages.unsquare.generator import LANGUAGE as _UNSQUARE_LANGUAGE
 from esolangs.languages.unsquare.generator import unsquare
 from esolangs.languages.what.generator import LANGUAGE as _WHAT_LANGUAGE
 from esolangs.languages.what.generator import what
+from esolangs.languages.whitespace.generator import LANGUAGE as _WHITESPACE_LANGUAGE
+from esolangs.languages.whitespace.generator import whitespace
 
 _LANGUAGES = (
     _A_PAINTER_ANT_LANGUAGE,
@@ -319,6 +321,7 @@ _LANGUAGES = (
     _UNLAMBDA_LANGUAGE,
     _UNSQUARE_LANGUAGE,
     _WHAT_LANGUAGE,
+    _WHITESPACE_LANGUAGE,
 )
 
 __all__ = [
@@ -421,6 +424,7 @@ __all__ = [
     "unlambda",
     "unsquare",
     "what",
+    "whitespace",
 ]
 # END GENERATED EXPORTS
 

@@ -1,0 +1,74 @@
+language = "Whitespace"
+oldid = 197025
+
+[[examples]]
+id = "hello"
+note = "The page's program prints no exclamation mark; it is in the comment."
+source = "Hello, world!  \t  \t   \n\t\n     \t\t  \t \t\n\t\n     \t\t \t\t  \n\t\n     \t\t \t\t  \n\t\n     \t\t \t\t\t\t\n\t\n     \t \t\t  \n\t\n     \t     \n\t\n     \t\t\t \t\t\t\n\t\n     \t\t \t\t\t\t\n\t\n     \t\t\t  \t \n\t\n     \t\t \t\t  \n\t\n     \t\t  \t  \n\t\n  \n\n\n"
+expected = "Hello, world"
+
+[[examples]]
+id = "truth-machine-0"
+source = "   \n \n \t\n\t\t\t\t\t\n\t  \n\n  \t\n   \t\n\t\n \t\n \n\t\n\n   \n   \n\t\n \t\n\n\n"
+stdin = "0\n"
+expected = "0"
+
+[[spec_triggers]]
+program = ""
+stdin = ""
+expect = "ProgramError"
+claim = "an empty program"
+
+[[spec_triggers]]
+program = "   "
+stdin = ""
+expect = "ProgramError"
+claim = "one that ends inside a command"
+
+[[spec_triggers]]
+program = "\t \n\t"
+stdin = ""
+expect = "ProgramError"
+claim = "an unassigned subcommand"
+
+[[spec_triggers]]
+program = "    \n\t\n\t \n\n\n"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "a read at EOF"
+
+[[spec_triggers]]
+program = "    \n\t\n\t\t\n\n\n"
+stdin = "x\n"
+expect = "ArgumentError"
+claim = "a number read given a non-integer token"
+
+[[spec_triggers]]
+program = "\t   \n\n\n"
+stdin = ""
+expect = "HaltError"
+claim = "a pop from an empty stack"
+
+[[spec_triggers]]
+program = "   \t\n    \n\t \t \n\n\n"
+stdin = ""
+expect = "HaltError"
+claim = "division or modulo by zero"
+
+[[spec_triggers]]
+program = "   \t\n \t   \t \t\n\n\n\n"
+stdin = ""
+expect = "HaltError"
+claim = "a ``copy`` or ``slide`` past the stack"
+
+[[spec_triggers]]
+program = "\n\t\n\n\n\n"
+stdin = ""
+expect = "HaltError"
+claim = "a ``return`` with no call"
+
+[[spec_triggers]]
+program = "\n \n\t\n\n\n\n"
+stdin = ""
+expect = "HaltError"
+claim = "a jump to a label that is never marked"
