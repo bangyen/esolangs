@@ -18,8 +18,8 @@ def two_state(truth_table: str) -> str | None:
                 if len(states) > 2:
                     return None
         levels.append(states)
-
-    def gate(depth: int) -> list[int]:
+    gates: list[list[int]] = []
+    for depth in range(n):
         children = {node: state for state, node in enumerate(levels[depth + 1])}
         branches: dict[int, list[int]] = {}
         for place, node in enumerate(ids[depth]):
@@ -28,43 +28,16 @@ def two_state(truth_table: str) -> str | None:
                     children[ids[depth + 1][2 * place + bit]] for bit in (0, 1)
                 ]
         parents = levels[depth]
-        return branches[parents[0]] + branches[parents[-1]]
-
-    gates = [gate(depth) for depth in range(n)]
+        gates.append(branches[parents[0]] + branches[parents[-1]])
+    bias = levels[-1][0]
     # The input-embed convention needs every flip's span to be the same
     # content pair.  Only the setter run changes with a bit, and a level whose
     # minority sits at an odd branch position takes the reversed pair, so the
     # spans agree exactly when every orientation does.  Mixed orientations are
-    # the positional decoder's job.  An even level has no minority and takes
-    # either pair (its branches swap under the reversed one), so it follows
-    # the odd levels: AND is OR with every input negated, not a mixed chain.
-    odd = {
-        o
-        for values, o in zip(gates, _orientations(gates), strict=True)
-        if sum(values) % 2
-    }
-    if len(odd) > 1:
+    # the positional decoder's job.
+    if len(set(_orientations(gates))) > 1:
         return None
-    even = odd.pop() if odd else "0"
-
-    def shaped(depth: int) -> list[int]:
-        values = gate(depth)
-        if even == "1" and sum(values) % 2 == 0:
-            values = [values[1], values[0], values[3], values[2]]
-        return values
-
-    # A residual's label is its position in its level, so reversing a
-    # two-residual level complements the level above (the toggle that
-    # follows a majority-one or constant-one level) and leaves every
-    # orientation alone.  Top down, each level above gets the labelling
-    # that spares its toggle: OR is AND's chain with its states exchanged.
-    for depth in range(n):
-        values = shaped(depth)
-        spare = values[0] if sum(values) % 2 == 0 else int(sum(values) > 2)
-        if spare and len(levels[depth + 1]) == 2:
-            levels[depth + 1].reverse()
-    gates = [shaped(depth) for depth in range(n)]
-    return _emit(gates, levels[-1][0], even)
+    return _emit(gates, bias)
 
 
 def _orientations(gates: list[list[int]]) -> list[str]:
@@ -171,18 +144,10 @@ def _emit_unframed(gates: list[list[int]], bias: int) -> str:
     return "".join(emitter.parts)
 
 
-def _emit(gates: list[list[int]], bias: int, even: str = "0") -> str:
-    """Keep the state in bit 7; a guarded setter clears it only when active.
-
-    ``even`` is the orientation an even level carries (its branches already
-    swapped when it is ``"1"``).
-    """
+def _emit(gates: list[list[int]], bias: int) -> str:
+    """Keep the state in bit 7; a guarded setter clears it only when active."""
     walk = _emit_unframed(gates, bias)
-    header = "".join(
-        o if sum(values) % 2 else even
-        for values, o in zip(gates, _orientations(gates), strict=True)
-    )
-    return "g" + header + "g" + walk + "."
+    return "g" + "".join(_orientations(gates)) + "g" + walk + "."
 
 
 def state_setters(template: str, n: int) -> tuple[tuple[str, str], ...] | None:

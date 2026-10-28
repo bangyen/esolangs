@@ -30,11 +30,10 @@ def test_every_small_two_state_table_runs() -> None:
                     template, TEMPLATE_CHAR, minifuck_setters(template, n), bits
                 )
                 assert esolangs.run("Minifuck", source) == expected
-    # The convention needs every odd level's setter orientation to agree, so
-    # the 16 mixed-orientation tables decline to the positional decoder; an
-    # even level takes the odd levels' orientation (AND is OR, inputs negated).
-    assert (served, nonlinear) == (92, 64)
-    assert two_state("0" * 15 + "1") is not None
+    # The convention needs every level's setter orientation to agree, so the
+    # 48 mixed-orientation tables decline to the positional decoder.
+    assert (served, nonlinear) == (60, 32)
+    assert two_state("0" * 15 + "1") is None  # AND: mixed 0,1,1,...,1
 
 
 @pytest.mark.medium

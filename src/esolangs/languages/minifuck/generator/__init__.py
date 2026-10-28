@@ -18,10 +18,6 @@ Decisions:
     each residual once within the positional length.  Where they fit,
     :func:`two_state` saves 95-100% (n=8-16) and :func:`stored` 20-98% (and/or
     from n=10, parity from n=12, symmetric tables from n=14).
-    :func:`two_state` labels each level's residuals so no level toggles and
-    lets even levels follow the odd ones' orientation: n=8 AND 10,158 -> 301
-    chars, OR 488 -> 304 (and the input/output complements, 10,163 -> 304,
-    491 -> 301).
 """
 
 import re

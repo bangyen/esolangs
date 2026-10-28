@@ -20,9 +20,6 @@ Decisions:
     10% bar.  A tiled n=16 table shrinks 1,747 -> 803 characters (-54%)
     against the plain tree; the test executes it on 128 rows.  Inline text and
     the existing command bound guard the admission of deferred residuals.
-    A chain of ifs is cheap and an else is not: the reversed table under
-    swapped setters (marker ``~``, inputs negated) is built too and the
-    shorter kept, n=8 or 260 -> 171 chars, nor 238 -> 170; random n=8 -1.4%.
 """
 
 import re
@@ -67,10 +64,6 @@ PAIR = ("x>>>", "*>>>")
 #: below n=8, 5 still wins parity n=4..6 (8-14%).
 BAND = 3
 BANDS = (BAND, 5)
-
-#: A leading comment marking a program whose setters are swapped: the inputs
-#: enter negated.
-_NEGATED = "~"
 
 #: Cells per level: input ``3 i``, flag ``3 k + 1``, band result ``3 k + 2``.
 STRIDE = len(PAIR[0]) - 1
@@ -127,30 +120,16 @@ class _Builder:
 
 def smallfuck(truth_table: str, width: int | None = None) -> str:
     """Return a Smallfuck template whose final tape cell 2 is the answer."""
+    natural = in_input_order(truth_table, _smallfuck_ordered)
     n = _validate_truth_table(truth_table)
-    # A chain of ifs is cheap and an else is not, so AND-like tables beat their
-    # OR-like duals; the reversed table under swapped setters (every input
-    # negated) reaches the cheap polarity.
-    natural = min(
-        _plain(truth_table, n), _NEGATED + _plain(truth_table[::-1], n), key=len
-    )
+    if (form := affine_form(truth_table, n)) is not None and any(form[1]):
+        natural = min(natural, _xor_chain(n, *form), key=len)
     if width is None or width <= 0:
         return natural
     if width < len(PAIR[0]):
-        head = _NEGATED * natural.startswith(_NEGATED)
-        natural = (
-            head + (TEMPLATE_CHAR + ">>>") * n + natural[len(head) + len(PAIR[0]) * n :]
-        )
+        natural = (TEMPLATE_CHAR + ">>>") * n + natural[len(PAIR[0]) * n :]
     marked = mark_runs(natural, TEMPLATE_CHAR, smallfuck_setters(natural, n))
     return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)
-
-
-def _plain(truth_table: str, n: int) -> str:
-    """Return the smaller of the tree and, for an affine table, the XOR chain."""
-    natural = in_input_order(truth_table, _smallfuck_ordered)
-    if (form := affine_form(truth_table, n)) is not None and any(form[1]):
-        natural = min(natural, _xor_chain(n, *form), key=len)
-    return natural
 
 
 def _xor_chain(n: int, bias: int, coefficients: list[int]) -> str:
@@ -170,10 +149,8 @@ def _xor_chain(n: int, bias: int, coefficients: list[int]) -> str:
 
 def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Keep the pointer walk outside narrow one-character input slots."""
-    body = template.replace("\n", "")
-    negated = body.startswith(_NEGATED)
-    pair = ("x", "*") if body[negated:].startswith("$>>>") else PAIR
-    return (pair[::-1] if negated else pair,) * n
+    pair = ("x", "*") if template.replace("\n", "").startswith("$>>>") else PAIR
+    return (pair,) * n
 
 
 def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
