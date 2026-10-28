@@ -129,8 +129,8 @@ class TestInject:
         assert collapsed_by_depth_only == []
         # And the tree itself is unchanged when the depth clause cannot fire.
         perm = (0, 1, 2)
-        assert _tree("01101001", 0, 3, _Names(3, perm), perm) == _tree(
-            "01101001", 0, 3, _Names(3, perm), perm
+        assert _tree("01101001", 0, 3, _Names(3), perm) == _tree(
+            "01101001", 0, 3, _Names(3), perm
         )
 
 

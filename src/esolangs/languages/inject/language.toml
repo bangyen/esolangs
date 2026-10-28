@@ -31,24 +31,44 @@ audited = "2026-10-19"
 [ablations.subtree_sharing]
 saving = 25.8
 arity = 4
-verdict = "kept: canonical, exempt. In the tree regime (n<=4) a subtree repeated at its level is written once, at its last occurrence, and each earlier one skips to it. Exhaustive at n=4 (all 65,536 tables): 25.8% of the unshared build's total, shipped longer on no table. The Decisions' -27.1% is the per-table mean of (shipped - unshared) / shipped, 27.14% measured"
+seed = "random.Random(1000 + n)"
+tables = 30
+verdict = "kept: canonical, exempt. In the tree regime (n<=4) a subtree repeated at its level is written once, at its last occurrence, and each earlier one skips to it. Exhaustive at n=4 (all 65,536 tables): 25.8% of the unshared build's total, shipped longer on no table. The Decisions' -27.1% is the per-table mean of (shipped - unshared) / shipped, 27.14% measured. Plain-rewrite 2026-10-28, deleting it (every changed program ran): exhaustive n=3 14.1%, n=4 25.8% (never longer on any table); per class at n=4 on 30 tables each: random 27.1, two-block 23.6, half-constant 13.8, dense 6.0, mid-ignored 3.6, parity 52.1, majority 34.3, or/and 9.2, constants 0 (nothing to share)"
 
 [ablations.halves_agree_passover]
 saving = 4.9
 arity = 4
-verdict = "kept: canonical, exempt. A tree node whose halves are the same subtree is passed over for its zero half. Exhaustive at n=4: totals 19,643,240 shipped vs 20,648,450 without, 4.9% of the ablated build"
+seed = "random.Random(1000 + n)"
+tables = 30
+verdict = "kept: canonical, exempt. A tree node whose halves are the same subtree is passed over for its zero half. Exhaustive at n=4: totals 19,643,240 shipped vs 20,648,450 without, 4.9% of the ablated build. Plain-rewrite 2026-10-28, deleting it: exhaustive n=3 4.1%, never longer; per class at n=4 on 30 tables each: mid-ignored 25.5 (an ignored input is exactly a node whose halves agree), random 5.1, two-block 4.6, half-constant 1.6, dense / parity / majority / or / and / constants 0.0 (size-neutral there: no changed bytes)"
 
 [ablations.essential_projection]
 saving = 70.8
 arity = 12
-verdict = "kept: canonical, exempt. In the halving regime (n>=5) an ignored input weighs 0 -- read, never tested -- and the table is embedded projected. 0.0% on random tables, where the projection is the identity; with one ignored input 41.8% at n=10 and 47.1% at n=12, with two 63.4% / 70.8%. A constant table is 180 chars shipped vs 3,809 unprojected at n=10"
+seed = "random.Random(1000 + n)"
+tables = 30
+verdict = "kept: canonical, exempt. In the halving regime (n>=5) an ignored input weighs 0 -- read, never tested -- and the table is embedded projected. 0.0% on random tables, where the projection is the identity; with one ignored input 41.8% at n=10 and 47.1% at n=12, with two 63.4% / 70.8%. A constant table is 180 chars shipped vs 3,809 unprojected at n=10. Plain-rewrite 2026-10-28, deleting it, 30 tables per class: mid-ignored (inputs 1 and n//2) 40.4 / 39.7 / 44.1 / 50.5 / 57.4 / 63.4 / 70.8% at n=5 / 6 / 7 / 8 / 9 / 10 / 12, rising; constants 78.0% at n=5 up to 98.4% at n=12; random, parity, majority, or/and, two-block and half-constant 0.0% at every n=5..12 (no changed bytes); dense 29.3 / 11.6 / 2.8 / 0.0% at n=5 / 6 / 7 / 8.. (a chance ignored input only)"
 
 [ablations.regime_crossover]
 saving = 22.7
 arity = 6
-verdict = "kept: the tree builds n<=4 and the halving lookup builds above. Ordered-tree vs halving totals on 200 seeded random tables: ratio 0.836 at n=4 (tree wins), 1.009 at n=5, 1.227 at n=6 (halving wins by 22.7% of its build) -- the shipped split sits at the measured crossover. The Decisions' 1.04x at n=5 measures 1.009x on this corpus; the corpus behind 1.04 is unstated"
+seed = "random.Random(77 + n)"
+tables = 200
+verdict = "kept on random tables: the tree builds n<=4 and the halving lookup builds above. Ordered-tree vs halving totals on 200 seeded random tables: ratio 0.836 at n=4 (tree wins), 1.009 at n=5, 1.227 at n=6 (halving wins by 22.7% of its build) -- the shipped split sits at the measured crossover. The Decisions' 1.04x at n=5 measures 1.009x on this corpus; the corpus behind 1.04 is unstated. Plain-rewrite 2026-10-28: the tree saves 16.1% of the halving total on 200 random tables at n=4 (26.9% at n=3), so it clears the bar at its cap; but the cap is set by random tables alone. On 30-table classes the tree stays far smaller than halving past n=4: or/and halving is 3.6x the tree at n=8 (parity 2.4x, majority 1.95x), two-block 1.95x, dense 1.57x, half-constant 1.40x at n=5 but halving 2.4% smaller at n=8, mid-ignored 1.29x at n=5 but halving 18% smaller at n=8; on random tables the tree is 1.51x / 1.72x halving at n=7 / 8. Left as is: extending the cap is a new race, not a retirement. Two constant tables at n=4 are 3.3% shorter under halving"
 
 [ablations.name_ordering]
 saving = 0.0
 arity = 12
-verdict = "kept: _Names gives deeper inputs the shortest names because they occur in more guards. It prices exactly 0.0% everywhere: exhaustive at n=4 the inverted order is identical on all 65,536 tables, and halving totals are identical at n=6..12. No default-path build needs more than 52 distinct labels, so every label is one character and the order cannot bind. Dropping it would delete no code, only the reversed() in one loop; recorded, not proposed for removal"
+seed = "random.Random(1000 + n)"
+tables = 30
+verdict = "removed 2026-10-28 (plain-rewrite audit): _Names gave deeper inputs the shortest names because they occur in more guards. Deleting it, i.e. restoring the old reversed() order (positive control: bytes differ on every random table, so the patch bites): 0.00% total size exhaustively at n=3 (47,720 chars) and n=4 (19,643,240 chars, all 65,536 tables, none shorter) and on every class at n=5..12 (30 tables per class, six arities). No default-path build needs more than 52 distinct labels, so every label is one character and the order cannot bind. Names now go out in input order"
+
+[ablations.balance_banded]
+saving = 21.7
+arity = 14
+seed = "random.Random(1000 + n)"
+tables = 20
+verdict = "kept: balance hook races the banded lookup against the default by rendered area (balance_score(p)[0]**2), so it can never grow. Plain-rewrite 2026-10-28: 18.1% of the area on 200 random tables at n=4 (5.2% at n=3), and none at n=5..10, where the banded program is 29.6% larger by area at n=5, 375% at n=8, 2.0% at n=10; it wins again from n=11, 10.6% / 16.9% / 20.1% / 21.7% at n=11 / 12 / 13 / 14 on 20 random tables (the same on parity, two-block, half-constant; mid-ignored from n=13 at 9.5% / 16.4%; constants never), still rising at n=14. The docstring's 'never elsewhere' was stale. The width= path (inject(table, width)) is a wrapping feature, not a size trick, and is not judged here"
+
+[audits]
+plain_rewrite = 2026-10-28

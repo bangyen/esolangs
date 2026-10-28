@@ -1,12 +1,12 @@
-b;
-b;
 a;
 a;
-readto b
+b;
+b;
 readto a
-skipq b z
-c;
+readto b
 skipq a z
+c;
+skipq b z
 d;
 send o
 skip

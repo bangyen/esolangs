@@ -2,7 +2,7 @@
 
 The only state is label-blocks and the only test is ``skipq X Y`` (textual
 equality).  Each bit is read up front (one ``readto``); at depth ``d`` the node
-tests ``perm[d]`` (identity and greedy compete) with ``skipq INPUT ZERO``, which
+tests input ``perm[d]`` (the identity) with ``skipq INPUT ZERO``, which
 skips the ``1``-subtree block when the bit is ``0``.  A leaf sends the zero or
 one block and escapes.  The only forward jump is ``skip``'s first clause (a
 bare ``skip`` inside a block loops back), so every escape is a ``skip``-family
@@ -51,12 +51,9 @@ _CONSTANTS = {"o", "t", "z"}
 class _Names:
     """Hand out globally unique short labels and retain escape order."""
 
-    def __init__(self, n: int, perm: tuple[int, ...]) -> None:
+    def __init__(self, n: int) -> None:
         self.next = 0
-        self.inputs = [""] * n
-        # Deeper inputs occur in more guards, so they get the shortest names.
-        for input_index in reversed(perm):
-            self.inputs[input_index] = self.fresh()
+        self.inputs = [self.fresh() for _ in range(n)]
         self.escapes: list[str] = []
 
     def fresh(self) -> str:
@@ -198,7 +195,7 @@ def _inject_banded(truth_table: str) -> str:
     # >= m rows per chunk amortize O(m)-letter unique labels over the table.
     low = min(m, (m - 1).bit_length())
     high = m - low
-    names = _Names(n, tuple(range(n)))
+    names = _Names(n)
     lines = _preamble(names, "0")
 
     def walk(start: int, stop: int, level: int) -> None:
@@ -233,7 +230,7 @@ def _inject_halving(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     weights, projected = input_weights(truth_table, n)
-    names = _Names(n, tuple(range(n)))
+    names = _Names(n)
     lines = _preamble(names, projected)
     lines += _halve(
         names, [(h, i) for h, i in zip(weights, names.inputs, strict=True) if h]
@@ -246,7 +243,7 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Inject program; see :func:`inject`."""
     n = _validate_truth_table(truth_table)
 
-    names = _Names(n, perm)
+    names = _Names(n)
     body = [f"readto {names.inputs[d]}" for d in range(n)]
     body += _tree(truth_table, 0, n, names, perm)
 
@@ -265,7 +262,10 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Race the banded lookup: up to 18% smaller at n=3..4, never elsewhere."""
+    """Race the banded lookup, which wins by area on the smallest and the widest tables.
+
+    See ``[ablations.balance_banded]``.
+    """
     return min(default, _inject_banded(table), key=balance_score)
 
 
