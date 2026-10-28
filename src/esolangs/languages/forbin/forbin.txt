@@ -1,10 +1,8 @@
-main { a , a , a , a
-, a , a , a , b , a ,
-a , a , a , a , a , a
-, c = ( in 0 ) ; d e
-, f , g , h { for _ :
-1 .. b { e , f = g ,
-h } for _ : 1 .. c {
-e = f } out 0 , 0 , 1
-, 1 , 0 , 0 , 0 , e ;
-} d 0 , 0 , 0 , 1 ; }
+main{a,a,a,a,a,a
+,a,b,a,a,a,a,a,a
+,a,c=(in 0);d e,
+f,g,h{for _:1..b
+{e,f=g,h}for _:1
+..c{e=f}out 0,0,
+1,1,0,0,0,e;}d 0
+,0,0,1;}

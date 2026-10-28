@@ -18,6 +18,8 @@ Decisions:
     ([ablations.name_ordering]); the balanced spelling is the only candidate
     ([ablations.balance_race]).  The block width is raced per table
     ([ablations.block_width_race]); the balanced spelling takes the same race.
+    The balanced spelling keeps a space only between two word tokens
+    ([ablations.balance_word_spaces]).
 """
 
 import re
@@ -290,11 +292,28 @@ def _register(names: _Names, block: int, high: int, n: int) -> str:
     return f"{names.table} {','.join(cells)}{{{''.join(body)}}}"
 
 
+def _is_word(char: str) -> bool:
+    """Whether ``char`` can continue an identifier, keyword or number."""
+    return char.isalnum() or char == "_"
+
+
 def _balance(table: str, default: str) -> str:
-    """Return the token-balanced disjoint-guard spelling."""
+    """Return the token-balanced disjoint-guard spelling.
+
+    A space stays only between two adjacent word tokens; any other token pair
+    is already separated, and a row break separates the rest.
+    """
     tokens = forbin(table, 1).split()
-    width = balanced_token_width(tokens, " ", maximum=grid_width(default) - 1)
-    return _join_tokens(tokens, width, " ")
+    # The space rides on the earlier token: a row's last one is trimmed.
+    spaced = [
+        token + " " if _is_word(token[-1]) and _is_word(following[0]) else token
+        for token, following in zip(tokens, [*tokens[1:], "+"], strict=True)
+    ]
+    width = balanced_token_width(
+        spaced, maximum=grid_width(default) - 1, rstrip_rows=True
+    )
+    rows = _join_tokens(spaced, width, "").split("\n")
+    return "\n".join(row.rstrip() for row in rows)
 
 
 LANGUAGE = Language(

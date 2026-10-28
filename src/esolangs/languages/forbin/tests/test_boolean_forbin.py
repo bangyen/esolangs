@@ -228,3 +228,18 @@ def test_host_recursion_fits_the_claimed_scaling_range() -> None:
         projected = frames[13] + slope * (claimed - 13)
         assert 0 < slope <= 6, (kind, frames)
         assert projected < limit, (kind, frames, projected, limit)
+
+
+@pytest.mark.parametrize(("n", "side"), [(7, 39), (8, 48)])
+def test_balanced_spaces_only_separate_word_tokens(n: int, side: int) -> None:
+    """A space survives only between two word characters (seed n)."""
+    import re
+
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
+    balanced = str(esolangs.generate("forbin", table, balance=True))
+    assert balance_score(balanced)[0] == side
+    assert not re.search(r"[^\w\n] | [^\w\n]", balanced)
+    assert _evaluate("forbin", balanced, inputs=n) == table

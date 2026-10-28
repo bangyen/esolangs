@@ -77,5 +77,12 @@ seed = 1
 tables = 20
 verdict = "retired: size-neutral, a dead candidate. The balanced hook raced the unwrapped default against the token-joined spelling on balance_score and the default never won: 0 of 4 + 16 + 256 + 65,536 tables exhaustively at n=1..4 (the joined spelling strictly smaller on all of them), 0 of 300 random tables each at n=5..8, and 0 of 20 on every class at n=4..12 (area, measured against the early-return default) (random, parity, majority, and/or, dense, two-block, mid-ignored, constant, half-constant). Measured on rendered area, balance_score(program)[0] ** 2, the joined spelling is 89-99.5% smaller than the default. Deleting the race changes no output byte, so the patch is size-neutral; the hook now returns the joined spelling"
 
+[ablations.balance_word_spaces]
+saving = 43.8
+arity = 10
+seed = "random.Random(131s + n), s = 0..19"
+tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7..10"
+verdict = "kept: the balanced spelling put a space between every token (n=8: 1,100 -> 2,096 chars, ratio 3.8 on a 23 x 47 fold). A space now stays only between two adjacent word tokens (identifier, keyword, number or underscore on both sides); a row break separates the rest and a row's trailing space is trimmed. Balanced area (score squared) -43.8% / -45.5% on random tables at n=7 / 8, named functions -37.1% to -47.1% at n=7..10 (parity -42.0 / -42.1 / -39.9 / -40.8%, majority -41.3 / -40.2 / -37.1 / -39.0%, and/or 43.8-45.7%, still ~40% at n=10 so not declining). No table got worse; the default is byte-identical on all 72 tables. Every balanced program ran on every row (72 tables, n=7..10, 0 bad) and a wrong table failed on each"
+
 [audits]
 plain_rewrite = 2026-10-28
