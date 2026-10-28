@@ -2,7 +2,7 @@
 
 The only state is label-blocks and the only test is ``skipq X Y`` (textual
 equality).  Each bit is read up front (one ``readto``); at depth ``d`` the node
-tests input ``perm[d]`` (the identity) with ``skipq INPUT ZERO``, which
+tests input ``d`` with ``skipq INPUT ZERO``, which
 skips the ``1``-subtree block when the bit is ``0``.  A leaf sends the zero or
 one block and escapes.  The only forward jump is ``skip``'s first clause (a
 bare ``skip`` inside a block loops back), so every escape is a ``skip``-family
@@ -72,12 +72,10 @@ def _leaf(bit: str, escape: str) -> list[str]:
     return [f"send {'o' if bit == '1' else 'z'}", "skip", f"{escape};"]
 
 
-def _tree(
-    table: str, depth: int, n: int, names: _Names, perm: tuple[int, ...]
-) -> list[str]:
-    """Emit the decision tree for ``table``, testing input ``perm[depth]`` first.
+def _tree(table: str, depth: int, n: int, names: _Names) -> list[str]:
+    """Emit the decision tree for ``table``, testing input ``depth`` first.
 
-    ``table`` is in the permuted frame; ``names`` records escape labels, closing order.
+    ``names`` records escape labels, closing order.
     A subtree repeated at its level is written at its last occurrence in the
     text; each earlier one is a ``skip`` over a block that closes just before
     it.  A constant subtree is a leaf, and a node whose halves agree is passed
@@ -124,7 +122,7 @@ def _tree(
         zeros = walk(level + 1, 2 * block)
         return [
             *lines,
-            f"skipq {names.inputs[perm[level]]} z",
+            f"skipq {names.inputs[level]} z",
             f"{label};",
             *ones,
             f"{label};",
@@ -172,8 +170,7 @@ def inject(truth_table: str, width: int | None = None) -> str:
     never split.
     """
     if len(truth_table) <= 16:
-        n = _validate_truth_table(truth_table)
-        program = _inject_ordered(truth_table, tuple(range(n)))
+        program = _inject_ordered(truth_table)
     else:
         program = _inject_halving(truth_table)
     widest = grid_width(program)
@@ -239,13 +236,13 @@ def _inject_halving(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Inject program; see :func:`inject`."""
+def _inject_ordered(truth_table: str) -> str:
+    """Emit the input-order Inject program; see :func:`inject`."""
     n = _validate_truth_table(truth_table)
 
     names = _Names(n)
     body = [f"readto {names.inputs[d]}" for d in range(n)]
-    body += _tree(truth_table, 0, n, names, perm)
+    body += _tree(truth_table, 0, n, names)
 
     # Each escape block spans every later executable line, so the closes
     # follow the tree, in order of issue, ahead of the constants.

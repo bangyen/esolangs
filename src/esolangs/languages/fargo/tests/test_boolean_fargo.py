@@ -123,7 +123,7 @@ class TestFargo:
 
 
 @pytest.mark.medium
-def test_default_compares_shared_definitions() -> None:
+def test_default_names_only_the_nodes_sharing_shortens() -> None:
     from tests.support.screen_support import corpus
 
     table = corpus(8)["tiled"]

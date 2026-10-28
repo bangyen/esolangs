@@ -50,6 +50,8 @@ _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
 #: 2.39 at six, 2.20 at seven.  Seven is the last value that still measures
 #: cleanly -- at eight the block is wider than the whole table at ``n = 7``,
 #: which is a rung ``tests/proofs/deep/linearity.py`` fits a line through.
+#: The prologue makes five and six smaller through n=10; seven wins from
+#: n=12 ([ablations.painted_block_bits]).
 _BLOCK_BITS = 7
 
 
