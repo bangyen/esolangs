@@ -632,24 +632,27 @@ class SparseRows(NamedTuple):
     ``table`` is the witness table at arity ``n``; ``rows`` every row the
     execution suite steps; ``witness`` the row that must attain the
     formulas named by the registration.  The workspace suite samples the
-    witness row alone.
+    witness row alone, or ``ws_witness`` when W peaks on another row.
     """
 
     table: str
     rows: tuple[int, ...]
     witness: int
+    ws_witness: int | None = None
 
 
 # language-owners: ["What!?"]
 def _what_sparse(n: int) -> SparseRows:
-    """Alternating answers: the last row attains E and W, the rest stay under.
+    """Alternating answers: row 0 attains E, the last row W (past 15 inputs).
 
-    The first row, the second block's first row and the middle row each
-    cost 2T + n + 147 (measured at n = 16, 17, 20), under E.
+    Row 0 satisfies every change point's test; each block's first row ties
+    it, the middle and last rows cost less (measured at n = 16, 17).
     """
     width = 1 << n
     rows = (0, 1 << 15, width // 2, width - 1)
-    return SparseRows("10" * (width // 2), tuple(dict.fromkeys(rows)), width - 1)
+    return SparseRows(
+        "10" * (width // 2), tuple(dict.fromkeys(rows)), 0, ws_witness=width - 1
+    )
 
 
 # language-owners: ["Interprogck8"]

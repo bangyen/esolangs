@@ -1,23 +1,30 @@
 """What!?'s emitted characters and commands past 15 inputs.
 
-Through 15 inputs one block: 13T + 7n - 1 characters, 6T + 6n + 5 commands.
+Through 15 inputs one block: 7(T-1) + digits of 1..T-1 + 7n + 12 characters.
 Past, B = 2^(n-15) blocks of 2^15 rows, h = n - 15 high bits in each label.
 """
 
 
 def _characters(n: int, _: str) -> int:
-    """13(T - B) changes and dashes, 23 + h a block guard, 164 + 3h the rest."""
-    t, h = 1 << n, max(0, n - 15)
+    """Per block 7 a change and its row digits, 13 the first write; the rest as before.
+
+    A change at row ``r`` writes ``[r>.4x,]`` (``7 + len(r)``); a block has
+    at most ``2^k - 1`` of them (alternating), then 23 + h its guard and
+    164 + 3h the rest.
+    """
+    k, h = min(n, 15), max(0, n - 15)
+    rows = 1 << k
+    block = 7 * (rows - 1) + sum(len(str(r)) for r in range(1, rows))
     if h == 0:
-        return 13 * t + 7 * n - 1
-    return 13 * t + 164 + 3 * h + (1 << h) * (10 + h)
+        return block + 7 * n + 12
+    return (1 << h) * (block + 13 + 10 + h) + 164 + 3 * h
 
 
 def _commands(n: int, _: str) -> int:
-    """Alternating answers, last row: its block 6 a row, every other block 2."""
+    """Alternating answers, row 0: every test true, 5 a row; other blocks 1."""
     if n <= 15:
-        return 6 * (1 << n) + 6 * n + 5
-    return 2 * (1 << n) + (1 << 17) + n + 143
+        return 5 * (1 << n) + 6 * n + 6
+    return (1 << n) + (1 << 17) + n + (1 << (n - 15)) + 143
 
 
 FORMULAS = {

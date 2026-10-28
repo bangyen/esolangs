@@ -1,21 +1,20 @@
-"""What!? Boolean program generator: a row index counted down a run chain.
+"""What!? Boolean program generator: a row index tested against change points.
 
-``??`` reads each bit and ``.2*.??+`` folds it into the index by Horner's
-rule.  Beside a 1, the index ``W`` loses one ``-`` a row up to each change
-point ``b``, wrapping below 0 to 65536 less, so ``[32768>`` holds exactly
-for rows ``r >= b`` and writes the run's answer; ``.!`` prints the last.
+``??`` reads each bit and ``.2*.??+`` folds it into the index ``W`` by
+Horner's rule.  The last row's answer is written, then for each change point
+``b`` from the last down ``[b>`` holds exactly for rows ``r < b`` and writes
+the answer below ``b``; ``.!`` prints the last write.
 Past 15 inputs, blocks of ``2^15`` rows reload ``W`` behind a sentinel
 65535 and a guard on the high bits, which ``???`` put in ``W``'s string.
 
 Size:
-    Through 15 inputs, 7n + 12 chars plus 12 per change point and one per
-    row up to the last, at most 13T + 7n; 6T + 6n + 5 steps at most; n=10
-    parity: 9,289 chars, n=10 random 1847: 7,405 chars.
+    Through 15 inputs, 7n + 12 chars plus 7 and the row's digits per change
+    point; 5T + 6n + 6 steps at most; n=10 parity: 6,846 chars (was 9,289),
+    n=10 random 1847: 5,287 chars (was 7,405).
 
 Decisions:
-    Literal row numbers per change point are O(T log T), smaller only
-    while digits are few: 11,240 against 12,358 chars at n=10.  A ``2^n``
-    test literal grew the same way (ratio 4.447 on n=12 parity).
+    Counting ``W`` down a ``-`` a row cost 12 and the gap a change point,
+    never under the literal: ``and`` was 335 chars at n=8, ``nor`` 81.
 """
 
 from esolangs.generation.helpers import _validate_truth_table
@@ -23,10 +22,8 @@ from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.what.proof_formulas import workspace
 from esolangs.registry._language import Language
 
-#: Wrapped values stay at or above 65536 - 2^15, valid ones below 2^15.
+#: Row literals stay below 2^15, at most 5 digits.
 _LOW_INPUTS = 15
-#: Valid indices sit below ``2^low``, wrapped ones at or above ``65536 - 2^15``.
-_TEST = 1 << _LOW_INPUTS
 #: Copies the index from two slots left into ``W``, leaving 1 between.
 _LOAD = ",0+.0+,1."
 
@@ -41,19 +38,17 @@ def what(truth_table: str) -> str:
     parts = ["." * w + "???" * high + "," * w if high else ""]
     parts.append("??" + ".2*.??+" * (low - 1) + "..")
     for start in range(0, len(truth_table), block):
-        answer = 48 + int(truth_table[start])
+        rows = truth_table[start : start + block]
+        answer = 48 + int(rows[-1])
         if high:
             label = f"{start >> low:0{high}b}"
             parts.append(f'65535["{label}":{_LOAD}.{answer},]')
         else:
             parts.append(f"{_LOAD}.{answer},")
-        last = 0
-        for offset in range(1, block):
-            row = start + offset
-            if truth_table[row] != truth_table[row - 1]:
-                answer = 48 + int(truth_table[row])
-                parts.append("-" * (offset - last) + f"[{_TEST}>.{answer},]")
-                last = offset
+        # Last change point first: each row keeps its nearest write above.
+        for row in range(len(rows) - 1, 0, -1):
+            if rows[row] != rows[row - 1]:
+                parts.append(f"[{row}>.{48 + int(rows[row - 1])},]")
     parts.append(".!")
     return "".join(parts)
 

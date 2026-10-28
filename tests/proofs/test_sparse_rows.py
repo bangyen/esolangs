@@ -95,7 +95,8 @@ def test_sparse_workspace_rows(name: str, n: int) -> None:
     for spec in _specs(name, n):
         program = esolangs.generate(name, spec.table)
         claim = WORKSPACE_FORMULAS[name][0](n, program)
-        _, bits = _step_row(name, program, spec.table, spec.witness, written=True)
+        row = spec.witness if spec.ws_witness is None else spec.ws_witness
+        _, bits = _step_row(name, program, spec.table, row, written=True)
         assert bits == claim, f"{name} n={n}: {bits} != {claim}"
 
 
