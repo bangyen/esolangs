@@ -80,7 +80,9 @@ def test_balance_stays_within_five_percent_of_every_fit_width(seed: int) -> None
             assert esolangs.read_answer("INTERCAL", answer) == expected
 
 
-@pytest.mark.parametrize(("n", "side"), [(7, 81), (8, 103)])
+@pytest.mark.parametrize(
+    ("n", "side"), [(7, 81), pytest.param(8, 103, marks=pytest.mark.medium)]
+)
 def test_balance_packs_short_statements_into_shared_rows(n: int, side: int) -> None:
     """Seed n: statements start at DO/PLEASE, so a row holds several."""
     from esolangs.runtime._evaluate import _evaluate
