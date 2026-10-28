@@ -7,19 +7,19 @@ backlinks = 4
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike"
-scaling = "linear: worst 9T + 3n - 6 characters: corridor weights sum to T"
+scaling = "linear: worst 9T + 3n - 9 characters past n = 2"
 execution = "linear: worst 2L commands: one pass to the fixed point, one proving the repeat"
-workspace = "T log T: worst 2(n+1)T + 4 + bl(L-1) bits: corridor, answers, ant, cursor"
+workspace = "T log T: worst 2(n+1)T + 2 + bl(L-1) bits: corridor, answers, ant, cursor"
 
 [generator_sizes]
-"00000001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 57 }
+"00000001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 34 }
 "00001100" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 33 }
 "00110110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 66 }
 "0110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3], source_units = 33 }
 "01101001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 66 }
 "0110100110010110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 129 }
-"1101001101101101" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 135 }
-"11111110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 75 }
+"1101001101101101" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 134 }
+"11111110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 34 }
 
 [catalogue]
 folding_constant_local = "_program"  # restore inputs and leave one answer cell
@@ -48,3 +48,8 @@ verdict = "kept: canonical, exempt. The corridor covers the table read at the es
 saving = 790.7
 arity = 12
 verdict = "kept: the corridor ends where the trailing run of equal answers starts; a walk halts at the corridor's end and every index past it shares that answer. Painting the full corridor instead costs +768.42 / +790.73% at n=10/12 on OR and dense tables and +480.26 / +494.21% on sparse tables; on random tables only +0.08 / +0.02%, since a random trailing run is ~2 rows. The saving is proportional to the trailing run, not a fixed amount"
+
+[ablations.flipped_corridor]
+saving = 5103.0
+arity = 10
+verdict = "kept: a table with a long leading run walks the mirror corridor (top index first, a zero input walks the lane east, a white wall cell and lane stopper clamp it), as cheap as the OR-like form. Dropping it costs +476.47 / +762.74% on and / nand at n=10 (6,174 vs 1,071, 9,240 vs 1,071) and 0.00% on parity; thresholds k=7 / 8 / 9 at n=10 +8.4 / +23.9 / +69.0% (+0.9% on majority); random tables at n=7 / 8 +0.31 / +0.16% (20 seeded). Share on and holds across n=7..12 (-79 to -83%, nand -86 to -89%)"

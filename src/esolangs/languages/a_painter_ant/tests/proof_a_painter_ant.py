@@ -10,7 +10,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, input_weights
-from esolangs.languages.a_painter_ant.generator import a_painter_ant
+from esolangs.languages.a_painter_ant.generator import (
+    _east,
+    _flipped,
+    a_painter_ant,
+)
 from esolangs.languages.a_painter_ant.tests.a_painter_ant_trace import run
 from tests.generators.fills import fill
 from tests.support.witness_tables import row_bits
@@ -33,11 +37,28 @@ def corridor_end(table: str) -> int:
     return len(table.rstrip(table[-1]))
 
 
+def is_flipped(table: str) -> bool:
+    """Whether the generator ships the mirror corridor for the projected table."""
+    weights = input_weights(table, len(table).bit_length() - 1)
+    kept = weights[1]
+    return len(set(kept)) > 1 and len(_flipped(kept, weights[0])) < len(
+        _east(kept, weights[0])
+    )
+
+
 def expected_grid(table: str) -> dict[tuple[int, int], int]:
     """The white cells the head is meant to paint: corridor and one-answers."""
     table = input_weights(table, len(table).bit_length() - 1)[1]
     if len(set(table)) == 1:
         return {(0, 0): 1}
+    if is_flipped(table):
+        run = len(table) - len(table.lstrip(table[0]))
+        cells = table[run - 1 :][::-1]
+        grid = {(x, 0): 1 for x in range(len(cells) + 1)}
+        grid.update({(x, 1): 1 for x, bit in enumerate(cells) if bit == "1"})
+        # The lane stopper above the wall cell.
+        grid[len(cells), -1] = 1
+        return grid
     end = corridor_end(table)
     grid = {(x, 0): 1 for x in range(end + 1)}
     grid.update({(x, 1): 1 for x in range(end + 1) if table[x] == "1"})
@@ -101,8 +122,9 @@ def check_l2(max_n: int = 10) -> list[str]:
             assert outcome.position == (0, 0), (n, table)
             kept = input_weights(table, n)[1]
             end = corridor_end(kept)
-            assert len(set(kept[end:])) == 1, (n, table)
-            assert end == 0 or kept[end - 1] != kept[end], (n, table)
+            if not is_flipped(table):
+                assert len(set(kept[end:])) == 1, (n, table)
+                assert end == 0 or kept[end - 1] != kept[end], (n, table)
         lines.append(f"  n={n}: {len(tables)} tables, head exact")
     return lines
 
@@ -111,7 +133,8 @@ def check_l3(max_w: int = 10) -> list[str]:
     """A zero's walk collapses to nothing; a one's is its exact length."""
     size = 1 << max_w
     # A last answer unlike the one before it keeps the whole corridor.
-    build = a_painter_ant("1" * (size - 1) + "0")
+    table = "1" * (size - 1) + "0"
+    build = _east(table, input_weights(table, max_w)[0])
     head = build[: build.index(TEMPLATE_CHAR)]
     powers = [1 << k for k in range(max_w)]
     for w in powers:
@@ -126,14 +149,27 @@ def check_l3(max_w: int = 10) -> list[str]:
             # An odd number of one rows makes every input essential, so
             # projection cannot shorten the corridor this lemma measures.
             table = "0" + table[1:]
-        short = a_painter_ant(table)
+        short = _east(table, input_weights(table, max_w)[0])
         head = short[: short.index(TEMPLATE_CHAR)]
         for w in powers:
             outcome = run(head + "N" + "E" * w + "SN", 1)
             assert outcome.position == (min(w, end), 0), (end, w)
+    # The mirror: a zero walks the lane east and stops under the stopper.
+    for lead in powers:
+        table = "0" * lead + "1" + "0" * (size - lead - 1)
+        table = table[:-1] + "1"
+        weights = input_weights(table, max_w)[0]
+        flipped = _flipped(input_weights(table, max_w)[1], weights)
+        head = flipped[: flipped.index(TEMPLATE_CHAR)]
+        cells = len(table.lstrip("0")) + 1
+        for w in powers:
+            zero = run(head + "n" + "e" * w + "SN", 1).position
+            assert zero == (min(w, cells - 1), 0), (lead, w)
+            assert run(head + "N" + "e" * w + "SN", 1).position == (0, 0), (lead, w)
     return [
         f"  w=1..{size // 2}: zero walks collapse, one walks measure exactly",
         f"  c, w=1..{size // 2}: a one's walk stops at the corridor's end c",
+        f"  mirror, w=1..{size // 2}: a zero's lane walk stops at the stopper",
     ]
 
 
@@ -158,7 +194,7 @@ def phases(template: str) -> list[str]:
         if rest[i] == TEMPLATE_CHAR:
             out.append("run")
             i += 1
-        elif rest[i] == "E":
+        elif rest[i] in "Ee":
             out.append("walk")
             i += 1
         elif rest[i : i + 2] == "SN":

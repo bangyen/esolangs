@@ -829,6 +829,16 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
     "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
     "Back": _back_worst,
+    # One-cell runs at both ends: neither corridor direction shortens it (size);
+    # a leading run of two and one zero at the end (workspace).
+    "A Painter Ant": lambda n: (
+        (
+            "0" + "1" * ((1 << n) - 2) + "0",
+            "110" + "1" * ((1 << n) - 4) + "0",
+        )
+        if n >= 3
+        else ()
+    ),
     # The last input ignored: n - 1 essential inputs can outrun all n.
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
