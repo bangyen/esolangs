@@ -155,7 +155,12 @@ def stop_process_tree(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> 
                 pass
             except PermissionError:
                 # The leader can exit after poll(), leaving a zombie group:
-                # 1 in 15 test_verify runs.  A live leader is a real failure.
+                # 1 in 15 test_verify runs.  Mid-exit it is neither signalable
+                # nor yet reapable (7 in 100 runs of a child that exits after
+                # its first print), so give it a second.  A live leader is a
+                # real failure.
+                with suppress(subprocess.TimeoutExpired):
+                    proc.wait(timeout=1)
                 if proc.poll() is None:
                     raise
         else:
