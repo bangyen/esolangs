@@ -63,12 +63,14 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (25): 3x, 6-5, Algebraic Programming Language, Alight, Ascenic,
+Audited (26): 3x, 6-5, Algebraic Programming Language, Alight, Ascenic,
 Back, Boolfuck, BrainIf, Circlefuck, Circuit Diagram, Clockwise, Dig,
-Flowchart, INTERCAL, LaserFuck, Line, Minifuck, Packlang, Polynomial, SLOW
-ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, thisthat. Next by kept
-`[ablations]`: AddSubJump 6, BFStack 6, CV(N)(C) 6, Malbolge 6, S*bleq 6,
-Container 5, Fargo 5, Forbin 5, Inject 5.
+Flowchart, INTERCAL, LaserFuck, Line, Minifuck, Packlang, Polynomial,
+S*bleq, SLOW ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, thisthat.
+Next by kept `[ablations]`: AddSubJump 6, BFStack 6, CV(N)(C) 6, Malbolge 6,
+Container 5, Fargo 5, Forbin 5, Inject 5, ArrowQueue 4, B-tapemark 4,
+brainfuck 4, Collatz Multiverse 4, Dimensional 4, FALSE 4, FRACTRAN 4,
+Freestajlo 4, Painfuck 4, Piet 4, RAM0 4, ROTfuck 4, Suffolk 4.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
