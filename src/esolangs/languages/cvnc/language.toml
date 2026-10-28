@@ -27,29 +27,32 @@ audited = "2026-10-19"
 [ablations.subtree_sharing]
 saving = 86.7
 arity = 10
-verdict = "kept: canonical sharing, exempt; a repeated subtree is entered by climbing to its first copy's syllable and jumping, where shorter. 17.5% / 19.6% on random tables at n=9/10 and rising, 82.4% / 86.7% on two-block 16-row tables, 96.1% / 98.4% on parity at n=10/12"
+verdict = "kept: canonical sharing, exempt; a repeated subtree is entered by climbing to its first copy's syllable and jumping, where shorter. 17.5% / 19.6% on random tables at n=9/10 and rising, 82.4% / 86.7% on two-block 16-row tables, 96.1% / 98.4% on parity at n=10/12. Plain-rewrite audit 2026-10-27, deleting it (200 random tables per arity, seed 1000+n; 40 per class, 20 at n=9): +11.75 / +14.37 / +16.97% at n=7 / 8 / 9, rising; two-ignored +6.8 / +9.4 / +13.6%, mid-ignored +8.8 / +11.9 / +15.7%, half-constant +7.2 / +9.8 / +12.2%, parity +80.3 / +88.5 / +93.3%, OR 0.00% (size-neutral); 3 of 40 two-ignored tables at n=7 are smaller without it"
 
 [ablations.climb]
 saving = 19.7
 arity = 10
-verdict = "kept: the accumulator reaches a jump target by a closed form (nearer square root, square, step the rest) instead of one increment per syllable; 17.6% / 19.7% on random tables at n=9/10, 75.4% on two-block tables at n=10, 70.8% / 70.4% on parity at n=10/12. Its price overlaps subtree sharing's: each is measured with the other in place"
+verdict = "kept: the accumulator reaches a jump target by a closed form (nearer square root, square, step the rest) instead of one increment per syllable; 17.6% / 19.7% on random tables at n=9/10, 75.4% on two-block tables at n=10, 70.8% / 70.4% on parity at n=10/12. Its price overlaps subtree sharing's: each is measured with the other in place. Plain-rewrite audit 2026-10-27, one increment per syllable instead (same corpora): +11.87 / +14.54 / +17.16% on random tables at n=7 / 8 / 9, rising; two-ignored +6.7 / +9.7 / +13.8%, mid-ignored +8.7 / +11.9 / +15.9%, half-constant +7.6 / +10.3 / +12.6%, parity +54.9 / +62.2 / +67.4%, OR 0.00% (size-neutral); no table grows"
 
 [ablations.spelling_dp]
 saving = 18.9
 arity = 10
-verdict = "kept: commands are spelled as the fewest syllables by dynamic programming over the syllable options, against 19.8% / 18.9% on random tables at n=9/10 for a greedy first-option spelling, flat across arities, and 26.6% / 23.1% on parity at n=8/10"
+verdict = "kept: commands are spelled as the fewest syllables by dynamic programming over the syllable options, against 19.8% / 18.9% on random tables at n=9/10 for a greedy first-option spelling, flat across arities, and 26.6% / 23.1% on parity at n=8/10. Plain-rewrite audit 2026-10-27, first-option spelling instead (same corpora): +17.22 / +17.07 / +17.99% on random tables at n=7 / 8 / 9, flat; every class 15.8-20.4%, parity 17.2 / 26.6 / 24.9%, OR 18.8 / 19.4 / 19.7%; no table grows"
 
 [ablations.constant_fold]
 saving = 11.8
 arity = 10
-verdict = "kept: canonical, exempt; a constant subtree folds to one leaf but keeps its reads. 12.6% / 11.8% on random tables at n=9/10 (seed set 2: 12.6% / 11.9%), 21.7% / 13.1% on constant-half tables at n=8/10, 74.8% on constant tables at n=10, 48.4% / 56.8% on OR at n=10/12"
+verdict = "kept: canonical, exempt; a constant subtree folds to one leaf but keeps its reads. 12.6% / 11.8% on random tables at n=9/10 (seed set 2: 12.6% / 11.9%), 21.7% / 13.1% on constant-half tables at n=8/10, 74.8% on constant tables at n=10, 48.4% / 56.8% on OR at n=10/12. Plain-rewrite audit 2026-10-27, folding only single rows (same corpora): +15.69 / +13.64 / +13.63% on random tables at n=7 / 8 / 9, half-constant +26.7 / +23.2 / +20.0%, OR +52.2 / +49.5 / +46.6%, parity 0.00% (size-neutral)"
 
 [ablations.essential_projection]
 saving = 35.7
 arity = 10
-verdict = "kept: canonical, exempt; a tree over the essential inputs only competes with the full tree and the shorter body wins. 0.0% on random tables (no ignored inputs to project away), 37.6% on tables ignoring inputs 1 and 5 of 8, 35.7% / 36.2% on mid-ignored tables at n=10 across both seed sets, 30.8% with two ignored, 37.4% on 16-row tiled tables at n=10; 0.0% where the ignored input trails, which costs the full tree nothing either"
+verdict = "kept: canonical, exempt; a tree over the essential inputs only competes with the full tree and the shorter body wins. 0.0% on random tables (no ignored inputs to project away), 37.6% on tables ignoring inputs 1 and 5 of 8, 35.7% / 36.2% on mid-ignored tables at n=10 across both seed sets, 30.8% with two ignored, 37.4% on 16-row tiled tables at n=10; 0.0% where the ignored input trails, which costs the full tree nothing either. Plain-rewrite audit 2026-10-27, the full tree only (same corpora): 0.00% on random and half-constant tables and parity/OR (size-neutral); +39.8 / +37.3 / +33.0% on two-ignored and +31.2 / +37.6 / +28.0% on mid-ignored tables at n=7 / 8 / 9; no table grows"
 
 [ablations.leaf_accumulator_reuse]
 saving = 3.3
 arity = 10
-verdict = "kept: a leaf with no reads left reuses the accumulator's known value; 3.2% / 3.3% on random tables at n=9/10, flat — a genuine but sub-bar share, and the mechanism is a pass-through of a value the walk already carries, not a subsystem. On parity alone it swings 16.1% at n=10 to -7.0% at n=12; it does not make the average program larger on the tables it targets"
+verdict = "kept: a leaf with no reads left reuses the accumulator's known value; 3.2% / 3.3% on random tables at n=9/10, flat — a genuine but sub-bar share, and the mechanism is a pass-through of a value the walk already carries, not a subsystem. On parity alone it swings 16.1% at n=10 to -7.0% at n=12; it does not make the average program larger on the tables it targets. Plain-rewrite audit 2026-10-27: kept; deleting it costs +4.25 / +4.18 / +3.76 / +1.79% on 200 random tables at n=5 / 6 / 7 / 8 (seed 4242), +1.71% at n=9 (40), +4.73% at n=10 (20) and +4.07% at n=12 (10), flat, though it is the longer build on 15 / 25 / 48 / 73 of 200 tables at n=5..8; parity +12.6 / +20.3 / +18.3 / +18.8 / +19.2% at n=6..10, -6.5% at n=12. Deleting it loosens the scaling bound to 19T/2 + 13 (a pair spelled alone costs 14, not 12) and removes four lines, since the walk carries the accumulator for the shared-subtree climbs anyway. Every changed program run on all rows through n=7, one in ten above"
+
+[audits]
+plain_rewrite = 2026-10-27
