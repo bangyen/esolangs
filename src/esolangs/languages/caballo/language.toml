@@ -7,8 +7,8 @@ backlinks = 1
 [proof_status]
 labels = ["tree"]
 qualification = "the inputs are the initial stack; each node is the wiki's conditional, `d` dropping a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack survives; equal halves pop untested and constant subtables fold"
-scaling = "linear: worst 21T/2 - 14 characters past n = 1: subtree_ids folding"
-execution = "poly n: worst n(n+1)/2 + 14n - 2 commands past n = 1: empty groups skip whole"
+scaling = "linear: worst 10T - 13 characters past n = 1: subtree_ids folding"
+execution = "poly n: at most n(n+1)/2 + 14n + 6 commands past n = 1: empty groups skip whole, flip +8"
 workspace = "poly n: at most (n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3) bits: nested frames"
 
 [generator_sizes]
@@ -19,7 +19,7 @@ workspace = "poly n: at most (n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5
 "01101001" = { commands = 31, commands_by_row = { "0" = 31, "1" = 31, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 31, "7" = 31 }, source_units = 66 }
 "0110100110010110" = { commands = 57, commands_by_row = { "0" = 46, "1" = 46, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 46, "7" = 46, "8" = 57, "9" = 57, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 57, "15" = 57 }, source_units = 146 }
 "1101001101101101" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 48, "5" = 48, "6" = 48, "7" = 48, "8" = 46, "9" = 46, "10" = 57, "11" = 57, "12" = 47, "13" = 47, "14" = 47, "15" = 47 }, source_units = 117 }
-"11111110" = { commands = 46, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 35, "5" = 35, "6" = 46, "7" = 46 }, source_units = 45 }
+"11111110" = { commands = 44, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 43 }
 
 [catalogue]
 sharing_exempt = "no names or jumps: code runs once per place it is written"

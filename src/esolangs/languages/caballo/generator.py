@@ -6,6 +6,9 @@ first branch, and the zero test ``(1+di-)`` cancels to nothing on a 1.
 Both branches pop the bit.  A node whose halves agree pops it untested; a
 constant subtable pops the rest and leaves ``[1]`` (``i``) or ``[]``, so
 one stack survives at weight 1 and the output is never drawn at random.
+The complement's tree plus a closing flip competes, the shorter winning:
+a last level costs nothing for leaves 01 and 12 characters for 10, so the
+flip cuts a table dense in 10s (negated thresholds, 17-23% at n=7..12).
 
 Size:
     T-1 nodes at most, appended into one buffer: size and build time O(T);
@@ -21,9 +24,23 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
+#: Flips the surviving stack, ``[]`` <-> ``[1]``: the 10 last level's form.
+_NOT = "(d+(1+di-)i)"
+
 
 def caballo(truth_table: str) -> str:
-    """Build a Caballo program printing ``[1]`` or ``[]`` for each row."""
+    """Build a Caballo program printing ``[1]`` or ``[]`` for each row.
+
+    The complement's tree plus a closing flip competes: a last level emits
+    nothing for leaves 01 and the flip for 10.
+    """
+    plain = _tree(truth_table)
+    flipped = _tree("".join("10"[c == "1"] for c in truth_table)) + _NOT
+    return min(plain, flipped, key=len)
+
+
+def _tree(truth_table: str) -> str:
+    """The conditional tree for ``truth_table``."""
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
     out: list[str] = []

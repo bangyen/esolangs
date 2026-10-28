@@ -901,7 +901,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     # Balanced, row 0 a planted one: the longest prologue, and a mark.
     "bit~": lambda n: ("1" * (2 ** (n - 1) - 1) + "01" + "0" * (2 ** (n - 1) - 1),),
     "Circlefuck": lambda n: (_row_one(n),),
-    "Caballo": lambda n: (_morse("1110", "1011", n),) if n >= 2 else (),
+    "Caballo": lambda n: ("0010" + _morse("0110", "1001", n)[4:],) if n >= 2 else (),
     "Codesick": lambda n: (
         (_codesick_worst(n), _codesick_chars_worst(n)) if n >= 2 else ()
     ),
