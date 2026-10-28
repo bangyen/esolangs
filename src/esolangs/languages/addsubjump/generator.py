@@ -106,8 +106,8 @@ def _memory(
 def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program for ``truth_table`` (length ``2**n``, MSB first)."""
     n = _validate_truth_table(truth_table)
-    # The shared tree folds the ignored levels: it wins with five essential
-    # inputs ([ablations.residual_tree_route]) and on named functions past them.
+    # The shared tree wins on and/or and parity at every n and never on
+    # random tables past n=5 ([ablations.residual_tree_route]).
     tree = _addsubjump_ordered(truth_table, tuple(range(n)), shared=True)
     return min((_addsubjump_packed(truth_table), tree), key=len)
 

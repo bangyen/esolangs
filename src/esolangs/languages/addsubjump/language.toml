@@ -36,9 +36,9 @@ arity = 10
 verdict = "kept: clears the bar on random tables and rises steeply (17.7% at n=6, 65.8% at n=8, 86.0% at n=10 against the tree candidate). On named functions the unrated tree candidate is smaller (and/or 889 against 1,547-1,609 at n=8) -- the route cutoff at 32 essential rows left that on the table until 2026-10-20, when the tree began racing at every n: and 1,547 -> 889 and parity 1,609 -> 1,267 at n=8, and 1,847 -> 1,107 at n=10; random tables unchanged (0/20 tree wins at n=6..10). Plain-rewrite 2026-10-27: the race is unchanged by the audit (shared tree against packed); random tables ship the tree at n<=5 and the packed build at n>=6 in the 20-table samples at n=6..8"
 
 [ablations.residual_tree_route]
-saving = 21.5
-arity = 8
-verdict = "kept: clears the bar on its class -- racing the tree/shared candidate where essential rows number 32 or fewer earns 19.9% on five-essential tables at n=6 rising to 21.5% at n=8 over the packed build alone (in-code figures 18.7% / 20.6%, the same measurement on a different sample). The plain tree alone contributes only 0.5-1.1% of it; the shared build carries the route. Plain-rewrite 2026-10-27: the plain tree contestant and the explicit n=5 branch (shared against packed only) are retired -- see tree_contestant; the shared tree now races the packed build at every n"
+saving = 62.2
+arity = 12
+verdict = "kept 2026-10-28 (random + named bar): the shared tree racing the packed build is inert on random tables (0.0% of chars and of balanced area on 20 seeded tables at n=7 and n=8, the packed build wins every one) but earns 40-62% of chars on and/or at n=7..12 (or n=12 3,507 -> 1,325; and n=8 1,547 -> 889), 20-45% on parity at n=7..12 (n=12 3,506 -> 1,919), 11% / 25% on a one-third threshold at n=8 / n=12, 29-53% of balanced area on and/or; majority only 0-5% (n=9..11 0.0%). Kept on the named functions; the earlier five-essential-table figures (19.9% at n=6 to 21.5% at n=8) are an ad-hoc class and no longer count. Plain-rewrite 2026-10-27: the plain tree contestant and the explicit n=5 branch are retired -- see tree_contestant; the shared tree races the packed build at every n"
 
 [ablations.shared_residuals]
 saving = 20.7
