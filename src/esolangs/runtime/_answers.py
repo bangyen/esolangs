@@ -99,12 +99,13 @@ def read_answer(language: str, output: str) -> str:
     Raises:
         UnknownLanguageError: ``language`` is not registered.
         ArgumentError: The language answers by terminating: its answer is
-            whether it halts, not anything printed.
-        ProgramError: ``output`` holds no readable answer, or is not a string.
+            whether it halts, not anything printed; or ``output`` is not a
+            string.
+        ProgramError: ``output`` holds no readable answer.
     """
     name = resolve(language)
     if not isinstance(output, str):
-        raise ProgramError(f"output must be a string, got {type(output).__name__}")
+        raise ArgumentError(f"output must be a string, got {type(output).__name__}")
     contract = LANGUAGES[name].contract
     if contract.answer_mode == "termination":
         raise ArgumentError(

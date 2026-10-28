@@ -281,4 +281,4 @@ def resolve(name: str) -> str:
         head = canonical_id(name).replace("_", "")
         starts = [i for i in _BY_ID if i.replace("_", "").startswith(head)]
         close = starts if len(head) >= 3 and len(starts) <= 2 else []
-    raise UnknownLanguageError(name, tuple(_BY_ID[c] for c in close))
+    raise UnknownLanguageError(name, suggestions=tuple(_BY_ID[c] for c in close))

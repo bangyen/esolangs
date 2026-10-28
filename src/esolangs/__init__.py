@@ -22,7 +22,7 @@ import re
 from collections.abc import Callable
 from functools import cache, partial
 from math import isqrt
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from esolangs._language import Language
 from esolangs.compressed import CompressedText, TextLimits
@@ -108,23 +108,28 @@ from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
 
-
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
 #: the fallback covers an uninstalled tree.  Read on first access, not
 #: import: ``importlib.metadata`` was 23ms of the 56ms import (PEP 562).
-def __getattr__(name: str) -> str:
-    """Resolve ``__version__`` lazily; everything else is a normal miss."""
-    if name != "__version__":
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    import importlib.metadata
+#: Hidden from type checkers, which otherwise typed ``esolangs.generat`` as
+#: ``str`` and ``from esolangs import generat`` as ``Any``.
+if TYPE_CHECKING:
+    __version__: str
+else:
 
-    try:
-        version = importlib.metadata.version("esolangs")
-    except importlib.metadata.PackageNotFoundError:  # pragma: no cover - CI installs
-        # A source tree that was never installed.
-        version = "0.0.0+unknown"
-    globals()["__version__"] = version
-    return version
+    def __getattr__(name: str) -> str:
+        """Resolve ``__version__`` lazily; everything else is a normal miss."""
+        if name != "__version__":
+            raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+        import importlib.metadata
+
+        try:
+            version = importlib.metadata.version("esolangs")
+        except importlib.metadata.PackageNotFoundError:  # pragma: no cover
+            # A source tree that was never installed.
+            version = "0.0.0+unknown"
+        globals()["__version__"] = version
+        return version
 
 
 def _bind_annotation_names() -> None:
@@ -548,8 +553,9 @@ _ISOLATED_TIMEOUT = 30.0
 #: Characters a filename is made of, and a program mostly is not.
 _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
 
-#: A short extension, which is what makes a bare name look like a file.
-_PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
+#: A short extension, which is what makes a bare name look like a file;
+#: led by a letter, so ``1.5`` is not one.
+_PATH_EXTENSION = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,4}$")
 
 
 def _looks_like_a_path(program: Program) -> bool:
@@ -558,12 +564,14 @@ def _looks_like_a_path(program: Program) -> bool:
     A path is legal text in most of these languages
     (``run("brainfuck", "prog.bf")`` returns a null byte).  Shape-based: one
     line of path characters, rooted (``/``, ``./``, ``../``, ``~/``) or ending
-    in a short extension.  ``.``, ``..`` and ``~`` are accepted as programs
-    (``~~`` is two legal source characters).
+    in a short extension, naming something (a letter).  ``.``, ``..``,
+    ``~~`` and Befunge's ``/`` are accepted as programs.
     """
     if not isinstance(program, str):
         return False
     if "\n" in program or not _PATH_CHARS.match(program):
+        return False
+    if not re.search("[A-Za-z]", program):
         return False
     rooted = program.startswith(("/", "./", "../", "~/"))
     return rooted or bool(_PATH_EXTENSION.search(program))
@@ -574,7 +582,7 @@ def _check_runnable(language: str, program: Program) -> None:
 
     Both are valid input to an interpreter and each produced a confident
     wrong answer (an unfilled template can run as nothing).  Shared by
-    ``_check_program`` and the CLI's ``debug``.
+    ``_check_program`` and :func:`make_vm`.
     """
     name = resolve(language)
     if isinstance(program, (Raster, CompressedText)):
@@ -590,7 +598,8 @@ def _check_runnable(language: str, program: Program) -> None:
     if not LANGUAGES[name].path_like_source and _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
-            f"Read the file first, or pass pathlib.Path({program!r})"
+            f"Read the file first, or pass pathlib.Path({program!r}); "
+            f"source that only looks like one runs with a trailing newline"
         )
     char = template_char(LANGUAGES[name].id)
     if char is not None and char in program:
@@ -688,7 +697,7 @@ def _run_bounded(
             else f"execution stopped at the {reason} bound"
         )
         error.partial_output = debugger.output
-        error.bound = reason
+        error.bound = "timeout" if reason == "timeout" else "max_steps"
         raise error
     return debugger.output
 

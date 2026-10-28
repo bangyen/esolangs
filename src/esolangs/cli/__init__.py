@@ -444,7 +444,7 @@ def _read_answer(rest: list[str]) -> None:
     if facts["answer_mode"] == "termination":
         zero, one = facts["answer_encoding"]
         _fail(
-            f"{facts['name']} answers by {zero} for a 0 and {one} for a 1, so "
+            f"{facts['name']} answers 0 if it {zero} and 1 if it {one}, so "
             f"there is no output to read; use: esolangs run "
             f"--timeout <seconds> {facts['name']} <program-file> and observe "
             f"whether it halts"

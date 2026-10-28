@@ -198,7 +198,7 @@ SIGNATURES = {
     "Debugger.break_when": "(self, predicate: 'Callable[[VM], bool]') -> 'None'",
     "Debugger.clear_breakpoints": "(self) -> 'None'",
     "Debugger.run": "(self, *, max_steps: 'int | None' = None, timeout: 'float | None' = None) -> 'StopReason'",  # noqa: E501
-    "Debugger.snapshot": "(self) -> 'object'",
+    "Debugger.snapshot": "(self) -> 'Hashable'",
     "Debugger.step": "(self) -> 'None'",
     "Debugger.watch_cell": "(self, index: 'int') -> 'list[int | None]'",
     "Debugger.watch_stack": "(self, slot: 'int') -> 'list[object]'",
@@ -510,7 +510,94 @@ class TestThePathGuardKnowsMoreThanTxt:
         """``.`` and ``..`` are legal brainfuck and must not be mistaken."""
         esolangs.run(REFERENCE, program, stdin="", timeout=5)
 
-    @pytest.mark.parametrize("program", ["~~", "-", "a/b/c"])
+    @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
-        """Adjacent commands ``~~`` were refused."""
+        """Adjacent commands ``~~`` were refused, and Befunge's ``/``."""
         assert not esolangs._looks_like_a_path(program), program  # noqa: SLF001
+
+
+class TestTheArgumentBoundaryRefusesCleanly:
+    """Wrong arguments the 2.0 audit found escaping as raw or wrong errors."""
+
+    @pytest.mark.parametrize(
+        "build",
+        [
+            lambda: esolangs.CompressedText.from_chunks(["\ud800"]),
+            lambda: esolangs.CompressedText.repeated("\ud800", 3),
+        ],
+    )
+    def test_a_lone_surrogate_is_an_argument_error(self, build) -> None:
+        """It escaped as ``UnicodeEncodeError`` from ``str.encode``."""
+        with pytest.raises(ArgumentError, match="UTF-8"):
+            build()
+
+    def test_dump_program_refuses_what_load_program_would(self) -> None:
+        """``run`` accepts the surrogate; the dumped document did not load."""
+        with pytest.raises(ProgramError, match="UTF-8"):
+            esolangs.dump_program(REFERENCE, "\ud800")
+
+    @pytest.mark.parametrize("data", [None, 5, "png"])
+    def test_png_data_of_the_wrong_type_says_so(self, data: object) -> None:
+        """``None`` read "'NoneType' object is not subscriptable"."""
+        with pytest.raises(ArgumentError, match="must be bytes"):
+            esolangs.Raster.from_png(data)  # type: ignore[arg-type]
+
+    def test_png_bytes_may_be_any_buffer(self) -> None:
+        """A ``memoryview`` hit "unsupported operand type(s) for +"."""
+        png = esolangs.Raster((((0, 0, 0),),)).to_png()
+        assert esolangs.Raster.from_png(memoryview(png)).rows == ((((0, 0, 0),),))
+
+    def test_png_settings_are_validated_as_a_document_is(self, monkeypatch) -> None:
+        """``{"integer": 5}`` said "int() can't convert non-string"."""
+        from esolangs.raster import png
+
+        bad = {"version": 1, "settings": {"cell_modulus": {"integer": 5}}}
+        monkeypatch.setattr(png, "read_metadata", lambda _data: bad)
+        data = esolangs.Raster((((0, 0, 0),),)).to_png()
+        with pytest.raises(ProgramError, match="hexadecimal"):
+            esolangs.Raster.from_png(data)
+
+    def test_read_answer_of_a_non_string_is_an_argument_error(self) -> None:
+        """Every other wrong-type argument already was."""
+        with pytest.raises(ArgumentError, match="must be a string"):
+            esolangs.read_answer(REFERENCE, None)  # type: ignore[arg-type]
+
+    def test_an_unknown_name_of_any_type_renders(self) -> None:
+        """``UnknownLanguageError(5)`` raised ``AttributeError`` on ``.strip``."""
+        assert "5" in str(UnknownLanguageError(5))  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("drive", ["run", "step"])
+    def test_a_debugger_fault_keeps_its_partial_output(self, drive: str) -> None:
+        """``run(max_steps=)`` filled it and the debugger left it empty."""
+        debugger = debugger_api.make_debugger(REFERENCE, "+++.,", stdin="")
+        if drive == "step":
+            for _ in range(4):
+                debugger.step()
+        with pytest.raises(InputExhaustedError) as caught:
+            getattr(debugger, drive)()
+        assert caught.value.partial_output == "\x03"
+
+
+def test_the_closed_string_sets_match_their_sources() -> None:
+    """``describe`` and ``ip_shape`` Literals, against the values they type."""
+    from typing import get_args
+
+    from esolangs.registry import _contracts, _describe
+    from esolangs.registry._language import Shape, SourceKind
+    from esolangs.vm import IpShape
+
+    def labels(alias: object) -> set[str]:
+        return set(get_args(alias.__value__))  # type: ignore[attr-defined]
+
+    assert labels(_contracts.StateModel) == set(_describe._STATE_MODELS.values())  # noqa: SLF001
+    assert labels(_contracts.SourceForm) == {kind.value for kind in SourceKind}
+    assert labels(_contracts.GeneratorShape) == {shape.value for shape in Shape}
+    # Static: an interpreter declares its shape as a class attribute.
+    root = Path(esolangs.__file__).parent / "languages"
+    shapes = {
+        match
+        for source in root.rglob("*.py")
+        for match in re.findall(r'ip_shape = "(\w+)"', source.read_text())
+    }
+    assert shapes
+    assert shapes <= labels(IpShape), shapes

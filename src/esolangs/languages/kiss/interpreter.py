@@ -176,14 +176,14 @@ class _Machine:
     def _read(self) -> int:
         """Return the next input bit."""
         if self.ended:
-            raise InputExhaustedError(self.bits, self.bits, "bit")
+            raise InputExhaustedError(self.bits, self.bits, unit="bit")
         try:
             char = chr(self.io.input_char())
         except EOFError:
             char = "\n"
         if char == "\n":
             self.ended = True
-            raise InputExhaustedError(self.bits, self.bits, "bit")
+            raise InputExhaustedError(self.bits, self.bits, unit="bit")
         if char not in "01":
             raise syntax_error(
                 f"Kiss input must be a binary string, got {char!r}",

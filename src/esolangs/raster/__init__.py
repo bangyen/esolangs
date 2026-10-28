@@ -315,6 +315,10 @@ class Raster:
         Any decode failure is a bad program, so it becomes a
         :class:`~esolangs.exceptions.ProgramError`.
         """
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            # ``None`` read "'NoneType' object is not subscriptable".
+            raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
+        data = bytes(data)
         try:
             decoded = png._rgb_rows(data)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then
@@ -334,21 +338,13 @@ class Raster:
             scale = metadata.get("scale")
             if scale is not None:
                 check_scale(scale)
-            options = metadata.get("settings")
-            settings = None
-            if options is not None:
-                if not isinstance(options, dict):
-                    raise ValueError("PNG settings must be an object")
-                settings = DialectSettings(
-                    **{
-                        key: int(value["integer"], 16)
-                        if isinstance(value, dict)
-                        else value
-                        for key, value in options.items()
-                    }
-                )
-                if language is not None:
-                    settings.options(language)
+            # The JSON document's validation: ``{"integer": 5}`` once
+            # surfaced as "int() can't convert non-string".
+            from esolangs.portable import decode_settings
+
+            settings = decode_settings(metadata.get("settings"))
+            if settings is not None and language is not None:
+                settings.options(language)
             return _assign(
                 cls.__new__(cls), decoded, None, None, language, settings, scale
             )

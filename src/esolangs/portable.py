@@ -72,6 +72,12 @@ def dump_program(
         )
     else:
         document.update(kind="text", source=str(source))
+    try:
+        # The check ``load_program`` makes: a lone surrogate dumped as a
+        # ``\ud800`` escape, which it then refused.
+        json.dumps(document, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise ProgramError(f"program is not valid UTF-8 text: {error}") from error
     return json.dumps(
         document, ensure_ascii=True, sort_keys=True, separators=(",", ":")
     )
@@ -89,6 +95,14 @@ def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _settings(value: Any, language: str) -> DialectSettings | None:
     """Restore saved dialect settings, validated for ``language``."""
+    settings = decode_settings(value)
+    if settings is not None:
+        dialect_options(language, settings)
+    return settings
+
+
+def decode_settings(value: Any) -> DialectSettings | None:
+    """Restore saved dialect settings; shared with PNG metadata."""
     if value is None:
         return None
     if not isinstance(value, dict):
@@ -103,9 +117,7 @@ def _settings(value: Any, language: str) -> DialectSettings | None:
                 raise ValueError("integer settings need a hexadecimal string")
             item = int(literal, 16)
         choices[key] = item
-    settings = DialectSettings(**choices)
-    dialect_options(language, settings)
-    return settings
+    return DialectSettings(**choices)
 
 
 def _load_png(

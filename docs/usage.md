@@ -103,7 +103,9 @@ expanded text. A `CompressedText` carries its `limits`, a
 `TextLimits(plain_chars, generation_chars, gzip_bytes)`: past `plain_chars`
 `str()` refuses with `GeneratorCapError` (export the gzip instead), and the
 other two cap the expanded work and the compressed file. `dump_program` and
-`load_program` round-trip all three as text.
+`load_program` round-trip all three as text. Without limits nothing is
+capped: a gzip file expands about 1000-fold, counted on construction, so
+pass `TextLimits` when the data is untrusted.
 
 ## Work with one language
 
@@ -199,6 +201,9 @@ the raise (empty when the program never ran). Some add fields:
 
 Catch the builtin base when a caller already does: a `ProgramError` is a
 `ValueError`, an `ExecutionTimeoutError` a `TimeoutError`.
+
+`InputSource`, `Program` and `ProgramSource` are aliases for annotations:
+`isinstance` raises `TypeError` on them, so test against their members.
 
 ## Feeding a program
 
@@ -454,8 +459,8 @@ every command calls public functions, a capability lands in the API first,
 and the CLI gains a flag only for a shell workflow. Filtering, stepping and
 saving programs stay in Python.
 
-The public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus
-the documented CLI. Every other module (`esolangs.vm`, `esolangs.registry`,
+The public API is `esolangs.__all__`, `esolangs.__version__` and
+`esolangs.debugger.__all__`, plus the documented CLI. Every other module (`esolangs.vm`, `esolangs.registry`,
 `esolangs.generation`, `esolangs.runtime`, ...) is internal.
 
 Within a major release, compatibility covers:
@@ -470,7 +475,10 @@ Within a major release, compatibility covers:
 - interpreter semantics for valid programs, including I/O and answers;
 - committed examples as executable programs for their recorded tables.
 
-New keyword-only arguments and metadata fields may be added. Human CLI prose,
+New keyword-only arguments and metadata fields may be added. The language
+set is curated, not frozen: a minor release may add a language, or remove
+one that fails [curation](limitations.md#curation), listing
+each removal as breaking in the CHANGELOG. Human CLI prose,
 generated program text, debugger presentation, internal modules, and private
 `_` names may change without deprecation; generated programs retain
 behaviour, not spelling or size.

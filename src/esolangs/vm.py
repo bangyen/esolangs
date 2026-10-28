@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable
 from functools import cache
-from typing import Protocol, runtime_checkable
+from typing import Literal, Protocol, cast, runtime_checkable
 
 from esolangs._cycles import (
     _AffineMachine as _AffineMachine,
@@ -121,6 +121,10 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     return vm.output
 
 
+#: What :attr:`VM.ip_shape` returns.
+type IpShape = Literal["offset", "grid", "line", "opaque"]
+
+
 @runtime_checkable
 class VM(Protocol):
     """A step-capable interpreter wrapper.
@@ -172,7 +176,7 @@ class VM(Protocol):
         """The stack, or ``[]`` where the language has none."""
 
     @property
-    def ip_shape(self) -> str:
+    def ip_shape(self) -> IpShape:
         """How to read :attr:`ip` as a place in the source, if at all.
 
         ``"offset"`` (default) counts characters; ``"grid"`` is row, column,
@@ -339,8 +343,8 @@ class _DelegatingVM:
         return trait(self._machine, "self_halts")
 
     @property
-    def ip_shape(self) -> str:
-        return str(getattr(self._machine, "ip_shape", "offset"))
+    def ip_shape(self) -> IpShape:
+        return cast(IpShape, getattr(self._machine, "ip_shape", "offset"))
 
     @property
     def views(self) -> tuple[tuple[str, str], ...]:

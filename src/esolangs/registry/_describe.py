@@ -13,7 +13,14 @@ from esolangs.registry import (
     resolve,
     wiki_url,
 )
-from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
+from esolangs.registry._contracts import (
+    AnswerMode,
+    GeneratorShape,
+    InputShape,
+    SourceForm,
+    StateModel,
+    WidthEffect,
+)
 from esolangs.registry._language import Shape
 from esolangs.runtime._execution import interpreter_module
 from esolangs.settings import DialectOption, dialect_choices
@@ -23,7 +30,7 @@ from esolangs.vm import machine_traits
 _LANGUAGES_DIR = pathlib.Path(__file__).resolve().parents[1] / "languages"
 
 # Registry category -> state model name.
-_STATE_MODELS = {
+_STATE_MODELS: dict[str, StateModel] = {
     "register_based": "register",
     "tape_based": "tape",
     "stack_based": "stack",
@@ -60,9 +67,9 @@ class LanguageInfo(TypedDict):
     name: str
     spec: str
     id: str
-    source_kind: str
-    state_model: str | None
-    shape: str | None
+    source_kind: SourceForm
+    state_model: StateModel
+    shape: GeneratorShape | None
     generator_max_inputs: int | None
     generator_restrictions: str | None
     boolean_generator: bool
@@ -129,7 +136,6 @@ def describe(language: str) -> LanguageInfo:
     """
     name = resolve(language)
     lang = LANGUAGES[name]
-    family = lang.category if lang.interpreter else None
     stem = example_stems().get(lang.id, lang.id)
     # Package-relative: repository-relative paths broke after a ``chdir`` and
     # when installed; absolute ones froze the install location into output.
@@ -149,7 +155,7 @@ def describe(language: str) -> LanguageInfo:
         "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,
-        "state_model": _STATE_MODELS.get(family) if family else None,
+        "state_model": _STATE_MODELS[lang.category],
         "shape": lang.shape.value if generates else None,
         "boolean_generator": generates,
         "generator_max_inputs": lang.generator_max_inputs,

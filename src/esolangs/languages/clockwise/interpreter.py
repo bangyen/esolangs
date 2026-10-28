@@ -200,7 +200,7 @@ class _Machine:
                 # Bits, not lines: the input was read up front as
                 # characters, so the failed read is the first and the
                 # supply is the character cursor.
-                raise InputExhaustedError(0, self.io.position(), "character")
+                raise InputExhaustedError(0, self.io.position(), unit="character")
         self.state, byte = _advance(self.state, self.code)
         if byte is not None:
             self.io.print_char(chr(byte))

@@ -4,6 +4,9 @@ Every deliberate error derives from :class:`EsolangError`, and each also
 from the built-in it replaced (``ValueError``, ``EOFError``).
 """
 
+from functools import partial
+from typing import Literal
+
 
 class EsolangError(Exception):
     """Base class for errors from the esolangs package."""
@@ -38,7 +41,7 @@ class ExecutionTimeoutError(HaltError, TimeoutError):
     #: Which bound ended the run: ``"timeout"`` or ``"max_steps"``.  Both
     #: raise this class, so a caller passing both could tell them apart only
     #: by the message.
-    bound: str = "timeout"
+    bound: Literal["timeout", "max_steps"] = "timeout"
 
     def __init__(self, *args: object) -> None:
         """Keep the timeout diagnostic and suggest checking termination first."""
@@ -51,7 +54,7 @@ class ExecutionTimeoutError(HaltError, TimeoutError):
 class UnknownLanguageError(EsolangError, ValueError):
     """A language name was not in the registry."""
 
-    def __init__(self, language: str, suggestions: tuple[str, ...] = ()) -> None:
+    def __init__(self, language: str, *, suggestions: tuple[str, ...] = ()) -> None:
         """Build the error for an unknown ``language``, with close ``suggestions``."""
         # No close match: point at the command that lists them.
         hint = (
@@ -63,7 +66,10 @@ class UnknownLanguageError(EsolangError, ValueError):
         # unprintables).
         shown = (
             language
-            if language and language == language.strip() and language.isprintable()
+            if isinstance(language, str)
+            and language
+            and language == language.strip()
+            and language.isprintable()
             else repr(language)
         )
         super().__init__(f"unknown language: {shown}{hint}")
@@ -75,7 +81,8 @@ class UnknownLanguageError(EsolangError, ValueError):
 
         The default replays ``self.args`` -- the message -- and re-prefixed it per hop.
         """
-        return (type(self), (self.language, self.suggestions), self.__dict__)
+        rebuild = partial(type(self), suggestions=self.suggestions)
+        return (rebuild, (self.language,), self.__dict__)
 
 
 class ArgumentError(EsolangError, ValueError):
@@ -125,7 +132,7 @@ class InputExhaustedError(EsolangError, EOFError):
     An :class:`EOFError`, the convention the interpreters detect on.
     """
 
-    def __init__(self, reads: int, supplied: int, unit: str = "line") -> None:
+    def __init__(self, reads: int, supplied: int, *, unit: str = "line") -> None:
         """Build the error after ``reads`` reads against ``supplied`` input units."""
         super().__init__(
             f"program read past the end of input: {supplied} "
@@ -147,7 +154,8 @@ class InputExhaustedError(EsolangError, EOFError):
         Unpicklable, it took a ``ProcessPoolExecutor`` down with ``BrokenProcessPool``;
         the state carries ``partial_output`` and ``__notes__``, which it dropped.
         """
-        return (type(self), (self.reads, self.supplied, self.unit), self.__dict__)
+        rebuild = partial(type(self), unit=self.unit)
+        return (rebuild, (self.reads, self.supplied), self.__dict__)
 
 
 class GeneratorCapError(EsolangError, ValueError):

@@ -96,9 +96,14 @@ def _decode(text: str, *, expired: bool) -> str:
         kind = result["error"]
         cls = getattr(exceptions, kind, exceptions.InterpreterLimitError)
         args = result["args"]
+        # The wire keeps every argument positional; the optional ones are
+        # keyword-only on the classes.
+        options: dict[str, Any] = {}
         if kind == "UnknownLanguageError":
-            args = [args[0], tuple(args[1])]
-        error = cls(*args)
+            args, options = args[:1], {"suggestions": tuple(args[1])}
+        elif kind == "InputExhaustedError":
+            args, options = args[:2], {"unit": args[2]}
+        error = cls(*args, **options)
         error.partial_output = partial
         if "notes" in result:
             error.__notes__ = list(result["notes"])
@@ -116,13 +121,16 @@ def check_memory(max_memory: int | None, *, isolated: bool) -> None:
         return
     check_whole(max_memory, "max_memory")
     if max_memory == 0:
-        raise exceptions.ArgumentError("max_memory must be positive")
+        raise exceptions.ArgumentError("max_memory must be a positive integer, got 0")
     if not isolated:
         raise exceptions.ArgumentError("max_memory requires isolated=True")
+    # A local, not ``sys.platform`` inline: mypy narrows that per host and
+    # called the next check unreachable on macOS.
+    platform: str = sys.platform
+    if platform != "linux":
+        raise exceptions.ArgumentError("max_memory is supported only on Linux")
     if max_memory >= 1 << 63:
         raise exceptions.ArgumentError("max_memory exceeds the platform limit")
-    if sys.platform != "linux":
-        raise exceptions.ArgumentError("max_memory is supported only on Linux")
 
 
 def check_limits(

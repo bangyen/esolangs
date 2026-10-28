@@ -246,7 +246,7 @@ class ScriptedIO(IO):
             reads, supplied = self._line_reads, self.supplied
         else:
             reads, supplied = self._offset, len(self._source)
-        raise InputExhaustedError(reads, supplied, unit)
+        raise InputExhaustedError(reads, supplied, unit=unit)
 
     def _read(self, _prompt: str) -> str:
         r"""Read one ``\n``-terminated line.

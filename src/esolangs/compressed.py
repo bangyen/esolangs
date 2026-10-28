@@ -125,7 +125,14 @@ class CompressedText:
                 count += len(chunk)
                 if limits is not None:
                     _check_work(limits, count)
-                stream.write(chunk.encode("utf-8"))
+                try:
+                    encoded = chunk.encode("utf-8")
+                except UnicodeEncodeError as error:
+                    # A lone surrogate, which no source file can hold.
+                    raise ArgumentError(
+                        f"chunks must be valid UTF-8 text: {error}"
+                    ) from error
+                stream.write(encoded)
                 if limits is not None:
                     _check_gzip(limits, output.tell())
         return cls(output.getvalue(), limits=limits)

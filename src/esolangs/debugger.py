@@ -8,16 +8,23 @@ step, so ``break_at`` on the initial position fires without executing it.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from inspect import signature
 from time import monotonic
 from typing import Literal, cast, get_args
 
-from esolangs.exceptions import ArgumentError
+from esolangs.exceptions import ArgumentError, EsolangError
 from esolangs.runtime._source import InputSource, ProgramSource
 from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
 from esolangs.settings import DialectSettings
-from esolangs.vm import VM, SnapshotVM, complete_vm, make_vm, run_until_halt
+from esolangs.vm import (
+    VM,
+    IpShape,
+    SnapshotVM,
+    complete_vm,
+    make_vm,
+    run_until_halt,
+)
 
 __all__ = [
     "STOP_REASONS",
@@ -31,9 +38,8 @@ __all__ = [
 #: Why a :meth:`Debugger.run` returned.
 StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 
-#: :data:`StopReason`'s members as iterable data.  What :meth:`Debugger.run`
-#: returns; the CLI's ``debug`` also prints ``stopped: raised`` for a fault
-#: it caught, so a parsed ``stopped:`` line can fail against this tuple.
+#: :data:`StopReason`'s members as iterable data: what :meth:`Debugger.run`
+#: returns.  A fault raises instead.
 STOP_REASONS: tuple[StopReason, ...] = get_args(StopReason)
 
 
@@ -94,7 +100,7 @@ class Debugger:
         return self.vm.ip
 
     @property
-    def ip_shape(self) -> str:
+    def ip_shape(self) -> IpShape:
         """How the wrapped VM's ``ip`` reads as a place in the source."""
         return self.vm.ip_shape
 
@@ -152,7 +158,7 @@ class Debugger:
         """
         return self.vm.eof_is_a_value
 
-    def snapshot(self) -> object:
+    def snapshot(self) -> Hashable:
         """Return the wrapped machine's complete *internal* state, hashable.
 
         ``output`` is excluded, so equal internal state means the same future
@@ -294,8 +300,13 @@ class Debugger:
 
         Delegates past the halt: the post-halt-dump languages keep their answer
         there, and returning early cost a debugger-driven verifier 58/65.
+        A fault raises with ``partial_output`` set, as :func:`esolangs.run`'s does.
         """
-        self.vm.step()
+        try:
+            self.vm.step()
+        except EsolangError as exc:
+            exc.partial_output = self.output
+            raise
         self._record()
 
     def run(
@@ -310,7 +321,7 @@ class Debugger:
         ``"breakpoint"`` can come back with ``halted`` true and ``output`` empty
         -- another ``step()`` takes the dump, which is outside ``max_steps``.
         Bounds return rather than raise (``None`` unbounded); a fault still
-        raises (the CLI prints ``stopped: raised``, see :data:`STOP_REASONS`).
+        raises, with ``partial_output`` set.
         The timeout is checked with the breakpoints, so no main thread is
         needed.  Drives :func:`~esolangs.vm.run_until_halt` over ``self`` so
         watches stay part of a step.
@@ -338,7 +349,11 @@ class Debugger:
                 # and three idle ``run()`` calls on a halted machine
                 # grew ``watch_cell`` by three.
                 self._dumped = True
-                complete_vm(self.vm, max_steps=0)
+                try:
+                    complete_vm(self.vm, max_steps=0)
+                except EsolangError as exc:
+                    exc.partial_output = self.output
+                    raise
                 self._record()
                 if self._stopped_at_breakpoint():
                     return "breakpoint"

@@ -15,6 +15,11 @@ type InputShape = Literal[
     "row_number",
 ]
 type WidthEffect = Literal["layout", "wrap", "none"]
+type SourceForm = Literal["text", "raster"]
+type StateModel = Literal[
+    "register", "tape", "stack", "grid", "queue", "program", "variables", "other"
+]
+type GeneratorShape = Literal["tree", "reducing", "lookup"]
 
 
 @dataclass(frozen=True, slots=True)
