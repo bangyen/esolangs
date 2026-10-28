@@ -643,12 +643,10 @@ def _what_sparse(n: int) -> SparseRows:
     """Alternating answers: the last row attains E and W, the rest stay under.
 
     The first row, the second block's first row and the middle row each
-    cost 2T + n + 147 (measured at n = 16, 17, 20), under E; each row
-    stepped pays its own parse (~65 s at n = 22), so past 17 only the
-    last row is stepped.
+    cost 2T + n + 147 (measured at n = 16, 17, 20), under E.
     """
     width = 1 << n
-    rows = (0, 1 << 15, width // 2, width - 1) if n <= 17 else (width - 1,)
+    rows = (0, 1 << 15, width // 2, width - 1)
     return SparseRows("10" * (width // 2), tuple(dict.fromkeys(rows)), width - 1)
 
 
@@ -785,7 +783,7 @@ _SPARSE_ROWS: dict[
         frozenset[str],
     ],
 ] = {
-    "What!?": (_what_sparse, (16, 17, 22), frozenset({"execution", "workspace"})),
+    "What!?": (_what_sparse, (16, 17), frozenset({"execution", "workspace"})),
     "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
     "Malbolge": (_malbolge_sparse, (17,), frozenset()),
     "Interprogck8": (_interprogck8_sparse, (11, 12), frozenset({"execution"})),
@@ -794,9 +792,11 @@ _SPARSE_ROWS: dict[
 #: Sparse-case bands, from standalone runs: a case pays one parse a row
 #: stepped, so its cost is its row count times the parse at that arity,
 #: plus the stepping (the sampler roughly doubles a row's stepping).
-#: What!? parses in ~0.8 s at n = 16, ~1.8 s at 17, ~65 s at 22; whole
-#: cases measure 4.2 s / 3.9 s at 16 (execution / workspace), 11.5 s /
-#: 5.7 s at 17 and 100 s / 110 s at 22.  S*bleq parses in well under a
+#: What!? parses in ~0.8 s at n = 16, ~1.8 s at 17; whole cases measure
+#: 4.2 s / 3.9 s at 16 (execution / workspace) and 11.5 s / 5.7 s at 17.
+#: No case at 22 (77 s / 86 s): it reaches no line or branch 16 and 17
+#: miss, and past 15 inputs E and W have no case split for it to check.
+#: S*bleq parses in well under a
 #: second even at n = 26; its cases are priced by stepping alone
 #: (12M-40M steps a case, plus 1-31 s of generation): whole cases
 #: measure 28-108 s standalone (n = 23 the cheapest, 26 the dearest),
@@ -809,10 +809,8 @@ _SPARSE_ROWS: dict[
 _SPARSE_BAND = {
     ("What!?", "execution", 16): "medium",
     ("What!?", "execution", 17): "slow",
-    ("What!?", "execution", 22): "slow",
     ("What!?", "workspace", 16): "medium",
     ("What!?", "workspace", 17): "slow",
-    ("What!?", "workspace", 22): "slow",
     ("S*bleq", "execution", 21): "slow",
     ("S*bleq", "execution", 22): "weekly",
     ("S*bleq", "execution", 23): "weekly",
