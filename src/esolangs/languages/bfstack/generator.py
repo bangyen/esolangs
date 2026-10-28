@@ -186,9 +186,8 @@ def _bfstack_plain(truth_table: str) -> str:
             # The one arm clears the sentinel below the bit. Both arms restore
             # their stack depth, so the zero arm runs only when the bit was zero.
             plain = ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
-        # The classifier saves 12-28% of chars on tables of two repeated blocks
-        # (n=8..12), 6-80% on named functions (OR at n=8 to parity at n=12),
-        # 0% on random tables.
+        # The classifier pays on tables of two repeated blocks from n=8, never
+        # on random tables ([ablations.two_block_classifier]).
         shared = classified(level, lo, hi)
         return plain if shared is None or len(plain) <= len(shared) else shared
 

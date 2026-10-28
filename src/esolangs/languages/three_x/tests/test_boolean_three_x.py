@@ -220,7 +220,7 @@ def test_three_x_keys_fit_their_bound() -> None:
 @pytest.mark.parametrize(
     ("table", "size"),
     [
-        # A repeated constant block is not shared.
+        # The repeated zero blocks are not shared; the repeated mixed one is.
         ("0001100000011000000110000000000000000000000000000000000000000000", 366),
         # The sharing gain charges 7 characters a row.
         ("1101110011011101110011011101110111001101110111011100110011001101", 565),
