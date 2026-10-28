@@ -163,16 +163,6 @@ def _widest(program: str) -> int:
     return max(map(len, program.split()))
 
 
-#: Parity on two inputs: consume the unique phase primes 3/7 once, depositing
-#: 5 for each.  Cancel paired ones, then move the remaining 5 onto answer 2.
-_PARITY_TWO = "21 $/3 $/7 1/25 2/5"
-_PARITY_PAIR = ("1", "5")
-#: Width < 4 cannot hold "1/25", so it takes the binary form.
-_PARITY_BINARY = "21 $/3 $/7 1/4"
-#: The table both parity programs compute.
-_PARITY_TABLE = "0110"
-
-
 def fractran(truth_table: str, width: int | None = None) -> str:
     """Return a template; narrow tables give the root the smallest state prime.
 
@@ -187,49 +177,14 @@ def fractran(truth_table: str, width: int | None = None) -> str:
         narrow = _plain(truth_table, n, small_root=True)
         if _widest(narrow) < floor:
             program = narrow
-    if truth_table == _PARITY_TABLE and _widest(program) > width:
-        program = _PARITY_BINARY if width < 4 else _PARITY_TWO
     return wrap_program(program, "fractran", width)
 
 
-def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
-    """Return parity numerator setters only for the exact two-phase program."""
-    pair = PAIR
-    if n == 2:
-        if template.split() == _PARITY_TWO.split():
-            pair = _PARITY_PAIR
-        elif template.split() == _PARITY_BINARY.split():
-            pair = ("1", "2")
-    return (pair,) * n
-
-
-def _balance(table: str, default: str) -> str:
-    """Balance ordinary fractions, small-root fractions and parity phases."""
-    n = _validate_truth_table(table)
-    floor = _widest(default)
-    narrow = _plain(table, n, small_root=True)
-    if _widest(narrow) >= floor:
-        narrow = default
-    regimes: list[tuple[str, int, int | None]] = [(default, floor, None)]
-    upper = floor - 1
-    lower = 1
-    if table == _PARITY_TABLE:
-        lower = _widest(narrow)
-        regimes.extend(
-            [
-                (_PARITY_BINARY, 1, min(3, lower - 1, upper)),
-                (_PARITY_TWO, 4, min(lower - 1, upper)),
-            ]
-        )
-    regimes.append((narrow, lower, upper))
-    candidates = [default]
-    for program, lo, hi in regimes:
-        if hi is not None and lo > hi:
-            continue
-        tokens = program.split()
-        width = balanced_token_width(tokens, " ", minimum=lo, maximum=hi)
-        candidates.append(_join_tokens(tokens, width, " "))
-    return min(candidates, key=balance_score)
+def _balance(_table: str, default: str) -> str:
+    """Return the default or its fractions joined at the squarest token width."""
+    tokens = default.split()
+    width = balanced_token_width(tokens, " ", minimum=_widest(default))
+    return min([default, _join_tokens(tokens, width, " ")], key=balance_score)
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
@@ -258,7 +213,7 @@ LANGUAGE = Language(
     wrap=wrap_space_delimited,
     balance=_balance,
     empty_program="a FRACTRAN program needs a starting value",
-    example=Example(setters=fractran_setters, expected="1"),
+    example=Example(pair=PAIR, expected="1"),
     proof_execution=(execution, True, (3, 5)),
     proof_workspace=(workspace, True, (3, 5, 6)),
 )

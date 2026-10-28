@@ -106,16 +106,12 @@ def test_fractran_phase_parity_witness_tables(width: int) -> None:
 
 @pytest.mark.parametrize("width", [1, 4, 8, 9, 80])
 @pytest.mark.parametrize("as_string", [False, True])
-def test_fractran_phase_parity_public_uniform_setters(
+def test_fractran_parity_two_executes_at_every_width(
     width: int, *, as_string: bool
 ) -> None:
-    from esolangs.languages.fractran.generator import fractran_setters
-
     template = esolangs.generate("FRACTRAN", "0110", width=width)
     if as_string:
         template = str(template)
-    pairs = fractran_setters(template, 2)
-    assert len(set(pairs)) == 1
     for row, expected in enumerate("0110"):
         program = esolangs.instantiate(
             "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
@@ -124,21 +120,8 @@ def test_fractran_phase_parity_public_uniform_setters(
             esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", program))
             == expected
         )
-        if width < 9:
-            assert max(map(len, program.splitlines())) <= max(width, 4)
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate("FRACTRAN", template, [0, 1], truth_table="0001")
-
-
-def test_fractran_phase_parity_exact_resolver_and_size() -> None:
-    from esolangs.languages.fractran.generator import fractran_setters
-
-    template = fractran("0110", 1)
-    assert max(map(len, template.splitlines())) == 3
-    assert fractran_setters(template, 2) == (("1", "2"),) * 2
-    legacy = fractran("0110", 4)
-    assert fractran_setters(legacy, 2) == (("1", "5"),) * 2
-    assert fractran_setters(legacy.replace("1/25", "1/5"), 2) == (("0", "1"),) * 2
 
 
 @pytest.mark.parametrize("n", [4, 5, 6])
@@ -165,7 +148,6 @@ def test_nonuniform_cells_retain_tokens(program: str) -> None:
 
 def test_a_request_as_wide_as_the_widest_token_keeps_the_plain_root() -> None:
     """At width == the widest token the plain build stands; no swap is tried."""
-    from esolangs.languages.fractran.generator import fractran
 
     assert fractran("0001", 10) == "17*3^$*5^$\n1/7 2/11\n11/65 7/13\n13/51 7/17\n1/5"
 
@@ -179,12 +161,8 @@ def test_balanced_width_bounds_stop_below_the_widest_token() -> None:
     assert _evaluate("FRACTRAN", program, inputs=6) == table
 
 
-def test_fractran_parity_representation_omits_empty_width_regimes() -> None:
+def test_fractran_parity_two_balances_and_executes() -> None:
     from esolangs.languages.fractran.generator import _balance as _fractran
 
-    parity = esolangs.generate("FRACTRAN", "0110", width=4)
-    balanced = _fractran("0110", parity)
-    assert balanced in [
-        esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 6, 8)
-    ]
+    balanced = _fractran("0110", esolangs.generate("FRACTRAN", "0110", width=4))
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
