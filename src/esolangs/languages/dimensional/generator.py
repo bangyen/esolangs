@@ -33,7 +33,6 @@ from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
     _dimensional,
-    balance_score,
     wrap_program,
 )
 from esolangs.languages.dimensional.proof_formulas import workspace
@@ -169,10 +168,10 @@ def _dimensional_bare(table: str, n: int) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the default with the token-balanced layout; one column never won."""
+    """Return the token-balanced layout; the default and one column never won."""
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
-    return min(default, _program(table, width), key=balance_score)
+    return _program(table, width)
 
 
 LANGUAGE = Language(

@@ -24,7 +24,7 @@ from esolangs.generation.helpers import (
     subtree_slot,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.ram0.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
@@ -229,10 +229,10 @@ class _TreeEmitter:
 
 
 def _balance(_table: str, default: str) -> str:
-    """Compare the default with the operand row fit; width-one NAND never won."""
+    """Return the operand row fit; the default and width-one NAND never won."""
     tokens = default.split()
     width = balanced_token_width(tokens, " ")
-    return min(default, _join_tokens(tokens, width, " "), key=balance_score)
+    return _join_tokens(tokens, width, " ")
 
 
 LANGUAGE = Language(

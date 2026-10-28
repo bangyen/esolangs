@@ -42,7 +42,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import balance_score, wrap_tokens
+from esolangs.generation.wrap import wrap_tokens
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -151,10 +151,9 @@ def _underload_layout_tokens(template: str) -> list[str]:
 
 
 def _balance(table: str, default: str) -> str:
-    """Balance the selectors at their token fit; the other forms never won."""
+    """Balance the selectors at their token fit; the default never won."""
     normal = re.findall(_token_pattern(len(PAIR[0])), default)
-    balanced = underload(table, balanced_token_width(normal, minimum=5))
-    return min(default, balanced, key=balance_score)
+    return underload(table, balanced_token_width(normal, minimum=5))
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:

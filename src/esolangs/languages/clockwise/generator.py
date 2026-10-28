@@ -10,8 +10,8 @@ accumulator and emit the seven answer bits on a closed two-column ring.  A
 ``width`` exceeded rotates the program counterclockwise (two columns for
 n <= 2, else ``2*n + 5``).  ``balance`` may instead split the table into
 strips the first inputs select (:func:`_clockwise_banded`): n=6 random
-184 -> 106 on a side, n=9 1107 -> 270.  The default races the stacked
-lookup against :func:`_clockwise_flat`, which lays the gadgets in one band
+184 -> 106 on a side, n=9 1107 -> 270.  The default is
+:func:`_clockwise_flat`, which lays the gadgets in one band
 (six rows, ``5T + 8n + 4`` wide): area ``30T + 48n + 24`` where the stack
 costs ``(2T + 9n + 2)(2n + 15)`` ([ablations.flat_band]).
 
@@ -228,7 +228,12 @@ def _clockwise_flat(truth_table: str) -> str:
 
 
 def _clockwise_program(truth_table: str, width: int | None = None) -> str:
-    """Build the indexed lookup; unbounded width also races the flat band."""
+    """Build the flat band, or under a width the narrower of it and the lookup."""
+    flat = _clockwise_flat(truth_table)
+    if width is None:
+        # Area 30T + 48n + 24 against the stack's (2T + 9n + 2)(2n + 15) >= 34T:
+        # the band wins at every n ([ablations.flat_band]).
+        return flat
     total = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, total)
     trailing = total - used[-1] - 1
@@ -239,8 +244,7 @@ def _clockwise_program(truth_table: str, width: int | None = None) -> str:
     return_gap = _shift_return_rail(grid, trailing)
     layout = _Layout(grid, total, len(reads), digit + return_gap, return_gap)
     stacked = _fit_width(truth_table, layout, grid.render(), width)
-    flat = _clockwise_flat(truth_table)
-    if width is not None and grid_width(flat) > width:
+    if grid_width(flat) > width:
         return stacked
     return min(stacked, flat, key=lambda p: (grid_area(p), len(p)))
 
