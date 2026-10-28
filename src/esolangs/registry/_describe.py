@@ -68,7 +68,6 @@ class LanguageInfo(TypedDict):
     boolean_generator: bool
     parameterized: bool
     reads_input: bool
-    width_aware: bool
     width_effect: WidthEffect
     input_encoding: tuple[str, str] | None
     input_shape: InputShape | None
@@ -104,7 +103,7 @@ def describe(language: str) -> LanguageInfo:
           (``reads_input`` false).
         - Width: ``width_effect`` is ``"layout"`` (a shape built to fit; a
           hint), ``"wrap"`` (reflowed between tokens) or ``"none"`` (newlines
-          are semantic); ``width_aware`` is the narrower ``== "layout"``.
+          are semantic).
         - Input: ``reads_input``; ``input_shape`` and ``input_encoding``, the
           ``(zero, one)`` pair (the wrong alphabet is a wrong answer), both
           None unless ``reads_input``.
@@ -157,8 +156,6 @@ def describe(language: str) -> LanguageInfo:
         "generator_restrictions": lang.generator_restrictions or None,
         "parameterized": parameterized,
         "reads_input": reads_input,
-        # Computed once so the two cannot drift into disagreeing.
-        "width_aware": width_effect == "layout",
         "width_effect": width_effect,
         # Defaults leaked here as facts: Deadfish "read" ``line_per_bit``.
         "input_encoding": contract.alphabet if reads_input else None,

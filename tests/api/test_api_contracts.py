@@ -144,12 +144,12 @@ class TestDescribe:
         ]
         assert not missing, f"{missing} report no examples; {CHECK}"
 
-    def test_width_aware_names_the_generators_that_lay_themselves_out(self) -> None:
+    def test_layout_names_the_generators_that_lay_themselves_out(self) -> None:
         """It answered False for every one: it takes a generator, not a name."""
         aware = {
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["width_aware"]
+            if esolangs.describe(name)["width_effect"] == "layout"
         }
         signature = {
             name

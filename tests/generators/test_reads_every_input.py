@@ -49,7 +49,7 @@ def test_the_audit_sees_unread_input(monkeypatch) -> None:
         (name, path)
         for path in ({}, {"width": 1}, {"balance": True})
         for name in GENERATED
-        if "width" not in path or INFOS[name]["width_aware"]
+        if "width" not in path or INFOS[name]["width_effect"] == "layout"
     ],
     ids=str,
 )

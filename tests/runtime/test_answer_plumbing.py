@@ -365,8 +365,8 @@ class TestTheDebuggerMirrorsSnapshot:
         assert debugger.snapshot() != before
 
 
-class TestTheTwoWidthKeysCannotDrift:
-    """``width_aware`` is exactly ``width_effect == "layout"``."""
+class TestWidthEffects:
+    """``width_effect`` sorts every language into one of three."""
 
     def test_all_three_effects_are_represented(self) -> None:
         """A guard over a field with one value in practice guards nothing."""

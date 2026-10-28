@@ -93,7 +93,7 @@ class TestTheAdvisoryNotesAreRenderedOnce:
 
 def test_width_floor_matches_its_source_and_overrun_count() -> None:
     """Warnings follow actual rendered widths, including narrower constructions."""
-    assert esolangs.describe("Streetcode")["width_aware"]
+    assert esolangs.describe("Streetcode")["width_effect"] == "layout"
     source = esolangs.generate("Streetcode", "10010110", width=1)
     assert max(map(len, source.splitlines())) == 7
     assert overruns("Streetcode", "10010110") == (2, 6)

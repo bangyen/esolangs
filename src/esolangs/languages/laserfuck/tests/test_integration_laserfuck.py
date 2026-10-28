@@ -180,7 +180,7 @@ class TestASeedMakesARunRepeat:
 
 def test_width_floor_matches_its_source_and_overrun_count() -> None:
     """Warnings follow actual rendered widths, including narrower constructions."""
-    assert esolangs.describe("LaserFuck")["width_aware"]
+    assert esolangs.describe("LaserFuck")["width_effect"] == "layout"
     source = esolangs.generate("LaserFuck", "10010110", width=1)
     assert max(map(len, source.splitlines())) == 8
     assert overruns("LaserFuck", "10010110") == (2, 7)

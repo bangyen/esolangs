@@ -45,6 +45,7 @@ class TestPackageSurface:
             "ProgramSource",
             "Raster",
             "TemplateError",
+            "TextLimits",
             "TruthTableError",
             "UnknownLanguageError",
             "describe",
@@ -113,7 +114,6 @@ class TestPackageSurface:
             "spec",
             "state_model",
             "steppable_to_answer",
-            "width_aware",
             "width_effect",
             "wiki_url",
         ]

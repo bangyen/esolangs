@@ -77,7 +77,10 @@ Two kinds of language need a different call:
 - a `CompressedText` (Unary).
 
 `str()` of a `Raster` is a summary, not source; of a `CompressedText`, the
-expanded text. `dump_program` and
+expanded text. A `CompressedText` carries its `limits`, a
+`TextLimits(plain_chars, generation_chars, gzip_bytes)`: past `plain_chars`
+`str()` refuses with `GeneratorCapError` (export the gzip instead), and the
+other two cap the expanded work and the compressed file. `dump_program` and
 `load_program` round-trip all three as text.
 
 ## Work with one language
@@ -376,7 +379,9 @@ shows the `gen`, `tmpl`, and `ex` markers. Fields include:
 | `reads_input` | the language reads stdin |
 | `random` | the interpreter draws at random, so `run(seed=...)` applies |
 
-There are more fields beyond these.
+`help(esolangs.describe)` lists every field. `spec`, `answer_convention` and
+`generator_restrictions` are prose for people; parse `answer_pattern`, a
+regex, instead.
 
 ## Compatibility
 

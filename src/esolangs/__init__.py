@@ -25,7 +25,7 @@ from math import isqrt
 from typing import Any, cast
 
 from esolangs._language import Language
-from esolangs.compressed import CompressedText
+from esolangs.compressed import CompressedText, TextLimits
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import (
     ArgumentError,
@@ -53,7 +53,7 @@ from esolangs.generation.token_balance import CELL_ASPECT
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width(language)`` got False for
 # every language in the registry, contradicting both its own docstring and
-# ``describe(...)["width_aware"]`` -- which is the question they were asking.
+# ``describe(...)["width_effect"] == "layout"`` -- the question they asked.
 from esolangs.generation.wrap import (
     balance_program,
     wrap_program,
@@ -169,6 +169,7 @@ __all__ = [
     "ProgramSource",
     "Raster",
     "TemplateError",
+    "TextLimits",
     "TruthTableError",
     "UnknownLanguageError",
     "describe",

@@ -32,26 +32,29 @@ class TextLimits:
             if type(value) is not int or value < 0:
                 raise ArgumentError("text limits must be nonnegative integers")
 
-    def check_plain(self, count: int) -> None:
-        """Reject raw export before allocating or writing it."""
-        if count > self.plain_chars:
-            raise GeneratorCapError(
-                f"raw text exceeds the {self.plain_chars}-character cap; use gzip"
-            )
 
-    def check_work(self, count: int) -> None:
-        """Reject expanded generation work before compression."""
-        if count > self.generation_chars:
-            raise GeneratorCapError(
-                f"generation exceeds the {self.generation_chars}-character work cap"
-            )
+def _check_plain(limits: TextLimits, count: int) -> None:
+    """Reject raw export before allocating or writing it."""
+    if count > limits.plain_chars:
+        raise GeneratorCapError(
+            f"raw text exceeds the {limits.plain_chars}-character cap; use gzip"
+        )
 
-    def check_gzip(self, count: int) -> None:
-        """Reject a compressed file above its byte budget."""
-        if count > self.gzip_bytes:
-            raise GeneratorCapError(
-                f"gzip source exceeds the {self.gzip_bytes}-byte file cap"
-            )
+
+def _check_work(limits: TextLimits, count: int) -> None:
+    """Reject expanded generation work before compression."""
+    if count > limits.generation_chars:
+        raise GeneratorCapError(
+            f"generation exceeds the {limits.generation_chars}-character work cap"
+        )
+
+
+def _check_gzip(limits: TextLimits, count: int) -> None:
+    """Reject a compressed file above its byte budget."""
+    if count > limits.gzip_bytes:
+        raise GeneratorCapError(
+            f"gzip source exceeds the {limits.gzip_bytes}-byte file cap"
+        )
 
 
 #: Characters per gzip read and per repeated-source chunk.
@@ -61,7 +64,7 @@ _BLOCK = 65536
 def _check_limits(limits: object) -> None:
     """Refuse a ``limits`` that is not a TextLimits or None."""
     if limits is not None and not isinstance(limits, TextLimits):
-        # ``limits=5`` raised a bare AttributeError from ``check_gzip``.
+        # ``limits=5`` raised a bare AttributeError from ``_check_gzip``.
         raise ArgumentError("limits must be a TextLimits or None")
 
 
@@ -86,10 +89,10 @@ class CompressedText:
         )
         _check_limits(self.limits)
         if self.limits is not None:
-            self.limits.check_gzip(len(self.data))
+            _check_gzip(self.limits, len(self.data))
         object.__setattr__(self, "_size", sum(len(chunk) for chunk in self.chunks()))
         if self.limits is not None:
-            self.limits.check_work(self._size)
+            _check_work(self.limits, self._size)
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
@@ -121,10 +124,10 @@ class CompressedText:
                     )
                 count += len(chunk)
                 if limits is not None:
-                    limits.check_work(count)
+                    _check_work(limits, count)
                 stream.write(chunk.encode("utf-8"))
                 if limits is not None:
-                    limits.check_gzip(output.tell())
+                    _check_gzip(limits, output.tell())
         return cls(output.getvalue(), limits=limits)
 
     @classmethod
@@ -143,7 +146,7 @@ class CompressedText:
                 "repeated source needs one character and a nonnegative count"
             )
         if limits is not None:
-            limits.check_work(count)
+            _check_work(limits, count)
         block = character * _BLOCK
         return cls.from_chunks(
             (block[: min(_BLOCK, count - start)] for start in range(0, count, _BLOCK)),
@@ -161,7 +164,7 @@ class CompressedText:
     def plain_chunks(self) -> Iterator[str]:
         """Enforce the raw-export budget before yielding any text."""
         if self.limits is not None:
-            self.limits.check_plain(len(self))
+            _check_plain(self.limits, len(self))
         return self.chunks()
 
     def to_gzip(self) -> bytes:
@@ -186,7 +189,7 @@ class CompressedText:
             raise ArgumentError("width must be a positive integer")
 
         if self.limits is not None:
-            self.limits.check_work(len(self) + len(self) // width)
+            _check_work(self.limits, len(self) + len(self) // width)
 
         def chunks() -> Iterator[str]:
             column = 0
