@@ -80,8 +80,8 @@ def test_every_three_input_function_executes_through_png() -> None:
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
             assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
-    # Folding a constant half: 34,638 -> 34,512.
-    assert total == 34_062
+    # The halved lookup (retired 2026-10-28) held this at 34,062.
+    assert total == 34_224
 
 
 @pytest.mark.slow
@@ -159,13 +159,11 @@ def test_a_tied_pack_loses_to_the_strip() -> None:
     assert _evaluate("Piet", generate(table), inputs=4) == table
 
 
-def test_a_constant_half_is_folded_and_runs() -> None:
-    """All four constant-half shapes at n=6 beat the plain lookup and execute."""
+def test_constant_half_tables_run() -> None:
+    """All four constant-half shapes at n=6 execute."""
     rng = random.Random(3)
     half = "".join(rng.choice("01") for _ in range(32))
-    plain = _codels(generate(half + "".join(rng.choice("01") for _ in range(32))))
     for table in (half + "0" * 32, half + "1" * 32, "0" * 32 + half, "1" * 32 + half):
-        assert _codels(generate(table)) < plain
         assert _evaluate("Piet", generate(table), inputs=6) == table
 
 

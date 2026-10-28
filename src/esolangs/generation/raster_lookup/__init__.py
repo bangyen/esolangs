@@ -1,9 +1,9 @@
 """Build linear-size raster lookups for Boolean truth tables.
 
-A constant half is folded: the other half is stored and the top bit combines
-with the entry.  A repeated subtable is not shared: a strip has no jump, and
-copying an entry back costs a depth-sized push (one codel per level), more
-than the 1.5-codel entry it replaces.
+A constant half is not folded ([ablations.halved_lookup]); a repeated
+subtable is not shared: a strip has no jump, and copying an entry back costs a
+depth-sized push (one codel per level), more than the 1.5-codel entry it
+replaces.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def _literal_product(
 
 
 def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
-    """Return the lookups worth comparing: a literal product, else plain and halved.
+    """Return the lookups worth comparing: a literal product, else the plain one.
 
     Every input is read, but only the essential ones index the table: an
     ignored input is popped, and the stored table is projected onto the rest.
@@ -92,9 +92,7 @@ def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
     direct = _literal_product(truth_table, essential, inputs)
     if direct is not None:
         return [direct]
-    halved = _half_lookup(truth_table, essential, inputs)
-    plain = _lookup(truth_table, essential, inputs)
-    return [plain] if halved is None else [plain, halved]
+    return [_lookup(truth_table, essential, inputs)]
 
 
 def _operations(truth_table: str, inputs: int) -> list[_Operation]:
@@ -162,55 +160,6 @@ def _lookup(table: str, essential: list[int], inputs: int) -> list[_Operation]:
         *_select(len(table)),
         _Operation(_OUT_NUMBER),
     ]
-
-
-def _half_lookup(
-    table: str, essential: list[int], inputs: int
-) -> list[_Operation] | None:
-    """Return the lookup of a table whose one half is constant, or ``None``.
-
-    The first essential bit ``b`` is read before the table and left under it.
-    The other half is stored, and ``b`` is rolled back to combine with the
-    entry: ``sel * !b`` for a zero upper half, ``!(!sel * !b)`` for a one one.
-    Constant half, default strip: -30%/-26% (zero upper half) and -17%/-13%
-    (one lower half) at n=7/6, 12 seeded tables; random tables unchanged.
-    """
-    half = len(table) // 2
-    upper = len(set(table[half:])) == 1
-    if not upper and len(set(table[:half])) != 1:
-        return None
-    kept, constant = (
-        (table[:half], table[half:]) if upper else (table[half:], table[:half])
-    )
-    one = constant[0] == "1"
-    first = essential[0]
-    operations = [
-        op for _ in range(first) for op in (_Operation(_IN_NUMBER), _Operation(_POP))
-    ]
-    operations.append(_Operation(_IN_NUMBER))
-    operations.extend(_entries(kept))
-    operations.extend(_row_number(essential, inputs, first + 1))
-    operations.extend(_select(half))
-    if one:
-        operations.append(_Operation(_NOT))
-    operations.extend(
-        (
-            _push(half),  # a power of two, which the bounded layouts rebuild
-            _push(1),
-            _Operation(_ADD),
-            _push(1),
-            _push(2),
-            _Operation(_SUBTRACT),
-            _Operation(_ROLL),
-        )
-    )
-    if upper:
-        operations.append(_Operation(_NOT))
-    operations.append(_Operation(_MULTIPLY))
-    if one:
-        operations.append(_Operation(_NOT))
-    operations.append(_Operation(_OUT_NUMBER))
-    return operations
 
 
 def _next_colour(colour: Pixel, change: Change) -> Pixel:

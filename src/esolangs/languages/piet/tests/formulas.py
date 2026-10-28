@@ -2,8 +2,8 @@
 
 To n = 7 every packed layout is a function of the operations' block sizes alone
 (a lane takes whole blocks to its room; 5,800 random tables at n = 5..7 never
-cost a clash row), and a table with n essential inputs, z zeros and neither half
-constant has the sizes ``[1] * (T + z)`` then a tail that depends on n only.
+cost a clash row), and a table with n essential inputs and z zeros has the
+sizes ``[1] * (T + z)`` then a tail that depends on n only.
 So the shipped area is a function of (n, z): the worst is its maximum over z.
 From n = 8 a colour clash can cost a row (+32 codels at n = 8, in 53 of 1,277
 tables), the rows depend on the bit pattern, and only the fold's bound holds.
@@ -254,7 +254,7 @@ def _fold(blocks: int) -> int:
 def _codels(n: int, _: str) -> int:
     """F: max over z in [2, T - 2] of min(strip, least packed layout) to n = 7.
 
-    Fewer essential inputs or a constant half store fewer entries (the family
+    Fewer essential inputs store fewer entries (the family
     scan never reached the plain family).  From n = 8 the result is also at
     most the fold, drawn in the race, at the most blocks C = 2T + 8n + 17.
     """
