@@ -29,7 +29,8 @@ Decisions:
     smaller (ties keep the comb): from n=7, on tables whose one-edges share
     little ([ablations.htree_fold]).  It spends characters, up to its area,
     for area.  ``balance=True`` also races the fold against the comb by
-    squareness ([ablations.balance_htree]).  A bend of the first nonadjacent
+    squareness ([ablations.balance_htree]), at comb bases 2..6
+    ([ablations.balance_comb_base]).  A bend of the first nonadjacent
     repeat through column 1 was retired: it saved at most 2.7% of characters
     on average at n=7..10 (best single table 14.7%).  A complementing loader
     (rows ``(INPUT, "+")``) under the reversed table was not shipped: nor/or
@@ -65,6 +66,8 @@ PAIR = ("-", "+")
 _BACK_INPUT = TEMPLATE_CHAR
 #: Subtrees this short stay combs; taller ones fold (25-28 cells per leaf).
 _FOLD_BASE = 5
+#: Comb bases the balance race folds at (inclusive); the default fold uses 5.
+_BALANCE_BASES = (2, 6)
 _MIRROR = {"/": "\\", "\\": "/"}
 
 
@@ -151,10 +154,10 @@ def _back_parity(truth_table: str, n: int) -> str | None:
     return "\n".join([*rows, "*"])
 
 
-def _back_htree(table: str, weights: list[int]) -> str:
+def _back_htree(table: str, weights: list[int], base: int = _FOLD_BASE) -> str:
     r"""Fold the decision tree into an H-tree of combs, under a row of load.
 
-    A subtree of at most ``_FOLD_BASE`` levels is the plain comb (``+\>``
+    A subtree of at most ``base`` levels is the plain comb (``+\>``
     chains, one row per one-edge).  A taller node is ``+ / >`` on row ``m`` of
     its rectangle, entered heading east: the zero side skips the mirror, runs
     on and turns south into the zero-child below; a one turns north, runs a
@@ -188,7 +191,7 @@ def _back_htree(table: str, weights: list[int]) -> str:
             half = 1 << (levels - level - 1)
             w0, h0, _ = measure(level + 1, lo)
             w1, h1, _ = measure(level + 1, lo + half)
-            if levels - level <= _FOLD_BASE:
+            if levels - level <= base:
                 box = (3 + max(w0, w1), h0 + h1, 0)
             else:
                 box = (3 + max(h0, h1), w0 + w1 + 2, w1 + 1)
@@ -218,7 +221,7 @@ def _back_htree(table: str, weights: list[int]) -> str:
         _, _, m = dims[level, lo]
         _, h0, m0 = dims[level + 1, lo]
         _, _, m1 = dims[level + 1, lo + half]
-        if levels - level <= _FOLD_BASE:
+        if levels - level <= base:
             # Comb: the zero side runs on, the one side starts h0 rows down.
             for c, char in enumerate("+\\>"):
                 put(0, c, char)
@@ -507,14 +510,19 @@ def _back_ordered(
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the default, one column and the folded tree by squareness.
+    """Compare the default, one column and the folded tree at each comb base.
 
     The comb wins area at n=8 (140 x 29) but the tree is squarer (63 x 80).
+    A base moves the fold's shape by a factor of two per level of parity, so
+    the even arities reach 2:1 only at another base (n=8: 46 x 102 at base 6).
     """
     candidates = [default, back(table, 1)]
     weights, reduced = input_weights(table, _validate_truth_table(table))
-    if len(reduced) > 1 << _FOLD_BASE:
-        candidates.append(_back_htree(reduced, weights))
+    candidates.extend(
+        _back_htree(reduced, weights, base)
+        for base in range(_BALANCE_BASES[0], _BALANCE_BASES[1] + 1)
+        if len(reduced) > 1 << base
+    )
     return min(candidates, key=balance_score)
 
 

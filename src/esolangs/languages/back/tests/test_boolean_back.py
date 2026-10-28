@@ -403,9 +403,9 @@ def test_the_landing_rule_matches_drawing_the_tree() -> None:
     assert kept > 500  # positive control: the corpus shares nodes
 
 
-@pytest.mark.parametrize(("n", "side"), [(7, 80), (8, 122)])
+@pytest.mark.parametrize(("n", "side"), [(7, 78), (8, 99)])
 def test_balance_races_the_folded_tree(n: int, side: int) -> None:
-    """The comb wins area but the tree renders the smaller square (seed 0)."""
+    """The comb wins area but the fold, at its best comb base, is the smaller square."""
     import random
 
     import esolangs

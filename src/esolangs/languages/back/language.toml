@@ -71,5 +71,12 @@ seed = "random.Random(131s + n), s = 0..19"
 tables = "20 random per n=7,8 (6 per n=9..11) plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7..10"
 verdict = "kept: the balanced hook raced only the default and the one-column build, both combs, so the fold (which loses area to the comb at n=8: 63 x 80 against 140 x 29) never competed for squareness. Racing it by balance_score takes balanced area (score squared) off 69.3% / 80.6% on random tables at n=7 / 8, 91.6% / 94.6% / 97.7% at n=9 / 10 / 11 (the comb's area is Theta(nT), the fold's O(T): a class change, still growing); named functions: or 46.5% / 56.5% / 31.1% / 49.3% at n=7..10, nor 50.0% at n=7, nand 46.5% at n=7, threshold-(n-1) 46.1% at n=8, parity and majority 0.0-4.8%. No size class breaks and the default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad) and a wrong table failed on each"
 
+[ablations.balance_comb_base]
+saving = 31.5
+arity = 8
+seed = "random.Random(s), s = 0..19, n = 7, 8"
+tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-n/2 at n=7..10"
+verdict = "kept, balanced: the balanced fold used the default comb base 5 only, so an even arity stayed a square-ish block (n=8 122-134 side). The fold's shape moves a factor of two per base, so racing bases 2..6 by balance_score finds the 2:1 block (n=8 base 6: 46 x 102, side 102): balanced area (score squared) off 31.5% on random tables at n=8, 7.4% at n=7 (base 4); named: and/nand 67% and or/nor 33-37% at n=9, 62% and 29-33% at n=7, majority and threshold 28% at n=7 / 4% at n=8, parity 0.0%; random n=10 about 30% (6 tables). Flat across even n, not declining. The default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad), and the fold at every base 2..6 ran on all n<=4 tables plus 600 random n=5,6 (132,378 programs, 0 bad); a wrong table failed"
+
 [audits]
 plain_rewrite = 2026-10-27
