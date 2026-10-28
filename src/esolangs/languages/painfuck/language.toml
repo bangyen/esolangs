@@ -44,7 +44,7 @@ verdict = "candidate: the second tree built over the single repeated_block resid
 [ablations.levels_plan]
 saving = 0.0
 arity = 12
-verdict = "removed 2026-10-20 (retirement candidate #30): the repeated_blocks plan entered in the form race on every table. Audit deletion cost was 0.00% on every corpus except mosaic at n=10 (+1.02%). Re-priced 2026-10-20 on fleet-canonical classes: fleet-corpus tiled +5.09% at n=8 (one table), +0.00% at n=10 and +0.83% at n=12; fleet tiled draws +0.30/+0.27/+0.14% at n=8/10/12; random and all other classes +0.00%. At the two largest arities it earns ~nothing, and its one real win fades with arity. The -77% parity figure once credited to it in the generator's comment belongs to the mixed bank (F25)"
+verdict = "removed 2026-10-20 (retirement candidate #30): the repeated_blocks plan entered in the form race on every table. Audit deletion cost was 0.00% on every corpus except mosaic at n=10 (+1.02%). Re-priced 2026-10-20 on fleet-canonical classes: fleet-corpus tiled +5.09% at n=8 (one table), +0.00% at n=10 and +0.83% at n=12; fleet tiled draws +0.30/+0.27/+0.14% at n=8/10/12; random and all other classes +0.00%. At the two largest arities it earns ~nothing, and its one real win fades with arity. The -77% parity figure once credited to it in the generator's comment belongs to the mixed bank (F25). Re-priced 2026-10-28: random 0.01%/0.00%; parity, majority, and, or, popcount>=2 0.00% at n=7..12; popcount>=3 peaks 8.3% at n=16; popcount>=4 9.2/10.4/11.4% at n=14/15/16 only; stays retired (one threshold at the cap is a chosen class)"
 
 [ablations.restart_move]
 saving = 0.05
