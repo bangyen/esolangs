@@ -22,6 +22,9 @@ Decisions:
     answer negated by ``i = a - i``: or at n=10 8,849 -> 677 chars
     ([ablations.complement_table]).
 
+    The reversed table read with negated inputs (divisor ``Q - bit * (Q - 1)``,
+    same cost) is also tried: and at n=8 1,061 -> 551 ([ablations.mirror_lookup]).
+
     The divisor 2 is rebuilt into ``c`` every round: keeping it across
     rounds saved one 6-char instruction per firing — a fixed amount
     against a Theta(T) program ([ablations.register_reuse]).
@@ -56,12 +59,13 @@ def _table_integer(truth_table: str) -> list[str]:
     return code
 
 
-def _lookup(n: int, essential: list[int]) -> list[str]:
+def _lookup(n: int, essential: list[int], *, mirror: bool = False) -> list[str]:
     """Return the code shifting ``b`` right by the essential bits of ``i - 1``.
 
     An ignored input's bit is dropped from ``i`` unused; rounds stop at the
     most significant essential input.  Every divisor is 2 or
-    ``1 + bit * (Q - 1)``, never 0, until the halt.
+    ``1 + bit * (Q - 1)``, never 0, until the halt.  ``mirror`` divides by
+    ``Q - bit * (Q - 1)`` instead, so every input reads negated.
     """
     code = ["i=i-a", "e=a+a"]
     left = len(essential)
@@ -77,7 +81,9 @@ def _lookup(n: int, essential: list[int]) -> list[str]:
             "i=i/c",
             "c=e-a",
             "c=c*d",
-            "c=c+a",  # 1, or Q = 2**2**m for the mth essential input up
+            "c=e-c"
+            if mirror
+            else "c=c+a",  # 1 or Q = 2**2**m, by the bit or its negation
             "b=b/c",
         ]
         left -= 1
@@ -93,12 +99,17 @@ def blindfolded_arithmetic(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
     projected = read_at(truth_table, essential, n)
-    plain = [*_table_integer(projected), *_lookup(n, essential)]
-    # A set bit costs an instruction: the complement may be shorter.
-    flip = projected.translate(str.maketrans("01", "10"))
-    flipped = _table_integer(flip) + _lookup(n, essential)
-    flipped.insert(-2, "i=a-i")
-    return ";".join(min(plain, flipped, key=lambda code: len(";".join(code))))
+    # A set bit costs an instruction: the complement or reversal may be shorter.
+    candidates = []
+    for mirror in (False, True):
+        table = projected[::-1] if mirror else projected
+        for flip in (False, True):
+            bits = table.translate(str.maketrans("01", "10")) if flip else table
+            code = _table_integer(bits) + _lookup(n, essential, mirror=mirror)
+            if flip:
+                code.insert(-2, "i=a-i")
+            candidates.append(code)
+    return ";".join(min(candidates, key=lambda code: len(";".join(code))))
 
 
 def _wrap(program: str, width: int) -> str:
