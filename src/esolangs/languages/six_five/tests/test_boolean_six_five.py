@@ -233,7 +233,7 @@ class TestSixFive:
         dense10 = _dense(10)
         program = boolean.six_five(dense10)
         assert _markers(program) == 11
-        assert len(program) == 3251
+        assert len(program) == 3252
         for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
             bits = [(combo >> (9 - i)) & 1 for i in range(10)]
             feed = iter([str(b) for b in bits])

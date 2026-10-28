@@ -8,7 +8,7 @@ inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
 
 Size:
     O(T) worst case, small for structured tables; n=10 parity: 207 chars,
-    n=10 and: 145 chars, n=10 random 1847: 3,235 chars.
+    n=10 and: 145 chars, n=10 random 1847: 3,236 chars.
 
 Decisions:
     The positional walk spends ``n`` labels plus its home loop's.
@@ -153,7 +153,7 @@ def _six_five_walk(truth_table: str) -> str:
         return _six_five_guarded(truth_table)
     weights, projected = input_weights(truth_table, n)
     out, label = _six_five_preload(projected, n), 0
-    back = 2 * (n + projected.rfind("1"))
+    back = 2 * (n + len(projected) - 1)
     if (
         back > len(_SIX_FIVE_RETURN) + 1
         and sum(map(bool, weights)) < _SIX_FIVE_MAX_LABEL
@@ -173,15 +173,13 @@ def _six_five_walk(truth_table: str) -> str:
 
 def _six_five_preload(truth_table: str, n: int) -> str:
     """Place table ones n strides from the entry cell; return there."""
-    # Later zero rows stay virgin; the walk grows the tape on demand.
-    last = truth_table.rfind("1")
     out = ["1" * n]
-    for row in range(last + 1):
-        if truth_table[row] == "1":
+    for row, bit in enumerate(truth_table):
+        if bit == "1":
             out.append("62")
-        if row != last:
+        if row != len(truth_table) - 1:
             out.append("1")
-    out.append("3" * (2 * (n + last)))
+    out.append("3" * (2 * (n + len(truth_table) - 1)))
     return "".join(out)
 
 

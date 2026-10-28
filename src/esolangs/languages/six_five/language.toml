@@ -72,9 +72,11 @@ arity = 10
 verdict = "removed 2026-10-20 (retirement candidate #11): re-emitting the winner with copied reads raw earned 0.0% on every corpus except and/or (6.2%/7.5% at n=7), with the share in clear decline to 4.3%/5.3% at n=10 -- a fixed three tokens per copied read; fails the bar and the genuine-percentage stipulation. Restored 2026-10-20 capped at n <= 2: jointly 6 chars on one n=1 table and 48 chars over n=2, 0.0% at n=3 on exhaustive small tables, and reverted the same day: a cap chosen where a trick still pays is judged at n=7..8 (CONTRIBUTING)"
 
 [ablations.walk_preload_skip]
-saving = 32.2
-arity = 10
-verdict = "kept: the walk's preload stopping at the last 1 clears on its class (front-half tables, ones ending early: 31.3% at n=9) and earns 0.1% on random walk tables, whose last 1 sits near the final row"
+saving = 0.1
+arity = 8
+seed = 20261028
+tables = 20
+verdict = "retired 2026-10-28 (random + named bar): stopping the walk's preload at the last 1 saved 0.00% at n=7 and 0.13% at n=8 on 20 seeded random tables (18,024 -> 18,001 chars) and 0 chars on parity, majority, and, or and a threshold at n=7..12 (their last 1 is the final row or they take the tree); it earned 31.3% only on front-half tables (ones ending early), an ad hoc class. The preload now spans every row; n=10 random 1847 grows 3,235 -> 3,236 chars and the dense n=10 pin 3,251 -> 3,252. The scaling bound already priced a last 1 at the final row, so the formula and class are unchanged"
 
 [ablations.walk_home_loop]
 saving = 36.4
