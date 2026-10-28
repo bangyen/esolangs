@@ -13,14 +13,14 @@ workspace = "T log T: at most end-state registers, arrays A and D, ip, input cou
 definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 30 for n = 6..8, 2n + 14 past n = 8", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of the m cells"]
 
 [generator_sizes]
-"00000001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1078 }
-"00001100" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 891 }
-"00110110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1117 }
-"0110" = { commands = 32, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32 }, source_units = 881 }
-"01101001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1117 }
-"0110100110010110" = { commands = 46, commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46, "8" = 46, "9" = 46, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 46, "15" = 46 }, source_units = 1229 }
-"1101001101101101" = { commands = 52, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 52, "5" = 52, "6" = 52, "7" = 52, "8" = 52, "9" = 52, "10" = 52, "11" = 52, "12" = 52, "13" = 52, "14" = 52, "15" = 52 }, source_units = 1387 }
-"11111110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1088 }
+"00000001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1081 }
+"00001100" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 894 }
+"00110110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1120 }
+"0110" = { commands = 32, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32 }, source_units = 884 }
+"01101001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1120 }
+"0110100110010110" = { commands = 46, commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46, "8" = 46, "9" = 46, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 46, "15" = 46 }, source_units = 1232 }
+"1101001101101101" = { commands = 52, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 52, "5" = 52, "6" = 52, "7" = 52, "8" = 52, "9" = 52, "10" = 52, "11" = 52, "12" = 52, "13" = 52, "14" = 52, "15" = 52 }, source_units = 1390 }
+"11111110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1091 }
 
 [catalogue]
 sharing_exempt = "indexed packed cells, one line each, with no subtable branch; only its at most 15 cell decoders are shared (B C C B 0.72x at n=6, 0.93x at n=8)"
@@ -45,7 +45,7 @@ verdict = "kept: canonical fold realization, exempt; a constant table read-and-p
 [ablations.coded_cells]
 saving = 0.2
 arity = 12
-verdict = "kept by the split decision on candidate #15: storing codes instead of values in the cells, with the decoder spanning the codes, prices 0.36% / 0.20% on random tables at n=11/12, 9.7% -> 3.2% on the few-distinct class it is built for, and declines through the bar on majority, and and or; parity holds 22.2% / 20.4%, the named-function case that keeps it. Inside the assignment, the top-code choice prices 0.27% / 0.16% on random tables. The empty-cell code-0 preference is removed: it priced -0.6% to -1.6% on every corpus, so code 0 now follows the frequency ranking among the cells that do not take the top code"
+verdict = "kept by the split decision on candidate #15: storing codes instead of values in the cells, with the decoder spanning the codes, prices 0.36% / 0.20% on random tables at n=11/12, 9.7% -> 3.2% on the few-distinct class it is built for, and declines through the bar on majority, and and or; parity holds 22.2% / 20.4%, the named-function case that keeps it. Inside the assignment, the top-code choice prices 0.27% / 0.16% on random tables. Re-priced 2026-10-28 (20 seeded tables, seed 1000n + i; chars / balanced area): without codes random +5.9% / +13.7% at n=7 and +1.1% / +0.8% at n=8, parity +44.1 / +38.3 / +34.4 / +32.2 / +31.1 / +30.6% chars at n=7..12 (+103.6% falling to +6.9% balanced), majority +42.7% falling to +5.2%, threshold >= n//3 +21.9% to +4.2%, and/nand +30.8% to +2.4%: clears 10% on parity at every arity, kept for that family. The empty-cell code-0 preference is removed: it priced -0.6% to -1.6% on every corpus, so code 0 now follows the frequency ranking among the cells that do not take the top code"
 
 [ablations.aliases]
 saving = 5.14
@@ -60,4 +60,22 @@ verdict = "removed (retirement candidate #17): dropping a block's trailing pad l
 [ablations.referenced_constants]
 saving = 47.7
 arity = 12
-verdict = "kept: building only the referenced constants (plus their plan chain) earns 23.4% on random tables at n=8, 33.2% at n=10 and 47.7% at n=12 (building every k1..k512 is the ablated cost), 52.2% on the few-distinct class and 50.1-61.5% on named functions at n=12"
+verdict = "kept: building only the referenced constants (plus their plan chain) earns 23.4% on random tables at n=8, 33.2% at n=10 and 47.7% at n=12 (building every k1..k512 is the ablated cost), 52.2% on the few-distinct class and 50.1-61.5% on named functions at n=12. Re-priced 2026-10-28 (20 seeded tables, seed 1000n + i): building every constant up to the largest costs +35.2% / +30.4% chars and +68.9% / +59.3% balanced area on random tables at n=7/8, +55% to +160% chars on every named table at n=7..12"
+
+[ablations.complement_build]
+saving = 63.8
+arity = 12
+verdict = "kept 2026-10-28: the complemented table is also built (printing 49 - bit) and the shorter kept, since an empty cell is a pad line. Without it: random +0.16% / 0.00% chars at n=7/8 and 0.0% balanced area; or +22.1 / +30.7 / +40.7 / +50.3 / +58.2 / +63.8% chars at n=7..12, threshold >= n//3 +14.0 / +23.3 / +22.2 / +35.6 / +48.4 / +43.1%, nand +3.3% falling to +0.3%, and, parity, nor, majority 0.0%. Clears 10% on or and the thresholds at every arity, kept for those families; balanced area 0.0% (the width sets the side)"
+
+[ablations.zero_spelling]
+saving = 0.05
+arity = 8
+verdict = "retired 2026-10-28: the constants phase spelled the zero register `z` (the shortest never-written name) instead of `zero`: 0.07% / 0.05% chars on 20 seeded random tables at n=7/8, 0.13% falling to 0.01% on named tables at n=7..12 (a fixed ~3 chars a constant line), 0.0% balanced area. The constants now spell it `zero`, the rest keep `z`. Executed: 680 default and balanced programs (every n<=3 table, random n=7/8, named n=7..9) all correct, a wrong table fails"
+
+[ablations.balance_candidates]
+saving = 5.55
+arity = 8
+verdict = "kept 2026-10-28 by contract: the balance hook rebuilds the program at the default's own width and from the narrow builds, each in its original, compact, aliased and renamed spellings. Priced against balance = default on 20 seeded random tables (seed 1000n + i): 5.55% / 1.08% balanced area at n=7/8; named tables 0.0% except or and nor, 9.6% / 12.3% at n=7 then 54.4 / 37.0 / 23.1 / 13.7 / 7.8% at n=8..12, a share falling from its n=8 peak under the 10% bar. Alone, the narrow builds and the spellings each price 0.0% (the width-limited rebuild carries it). Fails the bar, but tests/generators/test_balance_remaining.py requires every native-width generator to balance within 5% of the best width layout and the default misses that on or/nor, so it stays; an invariant, not a size trick"
+
+[audits]
+plain_rewrite = 2026-10-28

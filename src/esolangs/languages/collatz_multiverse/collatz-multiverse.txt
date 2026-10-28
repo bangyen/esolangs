@@ -1,5 +1,5 @@
 k1=negativeOnex+negativeOne,NOT PRINT.
-k1=negativeOnex+z,NOT PRINT.
+k1=negativeOnex+zero,NOT PRINT.
 k2=negativeOnex+negativeOne,NOT PRINT.
 k2=negativeOnex+k1,NOT PRINT.
 k3=negativeOnex+k1,NOT PRINT.

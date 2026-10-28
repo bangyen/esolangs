@@ -7,8 +7,8 @@ prints one constant.  The shortest build over the essential inputs wins.
 
 Size:
     O(T): one line per four-row cell plus four decoder lines per distinct
-    cell.  n=10 parity: 8,374 chars, n=10 and: 6,684 chars, n=10 random 1847:
-    12,466 chars.
+    cell.  n=10 parity: 8,377 chars, n=10 and: 6,687 chars, n=10 random 1847:
+    12,469 chars.
 
 Decisions:
     Cells of eight rows: more decoder lines than the ``T / 8`` they save
@@ -170,7 +170,7 @@ def _cm_emit_constants(needed: set[int], *, narrow: bool) -> list[str]:
     """Constants phase: return the lines building every needed constant."""
     if narrow:
         return _cm_narrow_constants(needed)
-    return _cm_constants(needed, zero="z")
+    return _cm_constants(needed)
 
 
 def _cm_emit_decoder(lines: list[str], codes: dict[int, int], *, narrow: bool) -> None:
@@ -384,26 +384,22 @@ def _cm_chain(need: Iterable[int]) -> dict[int, tuple[int, int]]:
     return plan
 
 
-def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
+def _cm_constants(needed: Iterable[int]) -> list[str]:
     """Lines building Collatz Multiverse constants for the values in ``needed``.
 
     ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
     :func:`_cm_plan`'s two-line trick.  Only referenced constants are built.
-
-    ``zero`` names the never-written register the language reads as 0; the
-    name is free (any never-assigned register reads as 0), so a caller that
-    spells zero on most lines can pick the shortest.
     """
     plan = _cm_chain(needed)
     lines = [
         "k1 = negativeOne x + negativeOne, NOT PRINT.",
-        f"k1 = negativeOne x + {zero}, NOT PRINT.",
+        "k1 = negativeOne x + zero, NOT PRINT.",
         "k2 = negativeOne x + negativeOne, NOT PRINT.",
         "k2 = negativeOne x + k1, NOT PRINT.",
     ]
     for n, (b, c) in sorted(plan.items()):
         lines.append(f"k{n} = negativeOne x + k{b}, NOT PRINT.")
-        addend = f"k{c}" if c else zero
+        addend = f"k{c}" if c else "zero"
         lines.append(f"k{n} = k2 x + {addend}, NOT PRINT.")
     return lines
 

@@ -70,7 +70,7 @@ class TestCollatzMultiverse:
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (497493, 273428)
+        assert (plain, built) == (498255, 274190)
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
@@ -282,17 +282,17 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
         (
             "0100001010101000011000010000010010111100100010000000101100100001",
             30,
-            2471,
+            2474,
         ),
         # A width request tries a rotated selector order from three inputs.
-        ("01000010", 30, 921),
+        ("01000010", 30, 924),
         # Three essential inputs exactly: the rotated order starts here.
         ("00000111", 1, 1468),
         # A wide table of long zero runs and dense blocks, pinned end to end.
         (
             "00000000000000000000011100000111011101110111011101110111011101110000011100000000000000000111011101110111011100000111011100000111",
             None,
-            2322,
+            2325,
         ),
     ],
 )
