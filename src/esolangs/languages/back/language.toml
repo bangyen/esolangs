@@ -34,9 +34,11 @@ arity = 12
 verdict = "kept: canonical sharing, exempt, and clears the bar outright — a node whose one-subtree equals the next node's zero-subtree draws nothing, earning 19.8% by area on random tables at n=6 rising to 23.3% at n=12 (15.2% by chars), 51.4% / 50.8% on eight-block tables at n=9/10 and 98.3% on parity at n=12. It also absorbs the projection's weak classes: a trailing ignored input prices -0.3% for the projection because the fall already draws the projected shape"
 
 [ablations.wrap_race]
-saving = 15.8
-arity = 9
-verdict = "kept: racing the wrap build (the level's last node falls onto its first, admitted from 8 nodes down) earns 15.8% by area at n=9 and 15.3% at n=10 on eight blocks drawn from two random ones (10.1% / 11.2% by chars; the in-code figures -10.2% chars / -15.6% area reproduce), and is inert on random tables (0.0% at every arity, both metrics). The race selects by len, but on the wrap's class the chars winner is also the area winner on every table measured"
+saving = 0.0
+arity = 12
+seed = "random.Random(20261028000 + 7n)"
+tables = "20 random per n=7,8 plus and/or/parity/majority/one-third threshold at n=7..12"
+verdict = "retired 2026-10-28 (random + named bar): the wrap build (the level's last node falls onto its first, admitted from 8 nodes down) saves 0.0% of chars, grid area and balanced area on 20 random tables at n=7 and n=8 (no table smaller) and on every named function at n=7..12 (0.0%, both metrics, the fold takes the large ones). Only its two-block class (eight blocks drawn from two random ones, the earlier 15.8% at n=9) moved -- deleting it costs +7.5% area and +3.1% chars (1,537 -> 1,653 cells) on the one n=8 test table -- and an ad-hoc class keeps nothing. Code deleted: back(wrap=), _WRAP_ROWS, the ring in the landing plan. Every program ran on all rows (n<=3 exhaustive, 20 random and named at n=4..8, 0 mismatches); bounds hold, generator sizes unchanged"
 
 [ablations.constant_fold]
 saving = 13.1

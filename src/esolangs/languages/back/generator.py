@@ -22,9 +22,9 @@ Decisions:
     level draws none: the beam falls down the column onto that node's mirror
     and turns east into the zero side.  Straight-fall area: see
     [ablations.fall_through_sharing]; n <= 5 is unchanged, the load column
-    setting the height.  The column wraps, so the level's last node reaches
-    its first from eight rows up; over the next-node fall alone it is inert
-    on random tables and pays on blocks drawn from two random ones
+    setting the height.  A wrap of the level's last node onto its first
+    (from eight rows up) was retired: 0.0% by area and by chars on random
+    tables and on parity, majority, and/or and a threshold at n=7..12
     ([ablations.wrap_race]).  The fold replaces the comb only when its area is
     smaller (ties keep the comb): from n=7, on tables whose one-edges share
     little ([ablations.htree_fold]).  It spends characters, up to its area,
@@ -60,7 +60,6 @@ _Grid = dict[tuple[int, int], str]
 #: Both are one grid cell, so a run is the exact width of its program.
 PAIR = ("-", "+")
 _BACK_INPUT = TEMPLATE_CHAR
-_WRAP_ROWS = 8
 #: Subtrees this short stay combs; taller ones fold (25-28 cells per leaf).
 _FOLD_BASE = 5
 _MIRROR = {"/": "\\", "\\": "/"}
@@ -243,7 +242,7 @@ def _back_htree(table: str, weights: list[int]) -> str:
     return _render(rows)
 
 
-def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> str:
+def back(truth_table: str, width: int | None = None) -> str:
     """Build a Back template; ``truth_table`` has length ``2**n``, MSB first."""
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -251,16 +250,8 @@ def back(truth_table: str, width: int | None = None, *, wrap: bool = True) -> st
         # A constant already folds to one leaf; it keeps every input.
         weights, table = [1] * n, truth_table
     levels = len(table).bit_length() - 1
-    # A wrapped fall only removes rows; the smaller build (by area, or length
-    # under a width request), the plain one on a tie, guards that none grows.
-    program = min(
-        (
-            _back_ordered(table, tuple(range(levels)), width, weights, wrap=w)
-            for w in ((False, True) if wrap else (False,))
-        ),
-        key=len if width is not None else grid_rank,
-    )
-    if wrap and width is None and len(table) > 1 << _FOLD_BASE:
+    program = _back_ordered(table, tuple(range(levels)), width, weights)
+    if width is None and len(table) > 1 << _FOLD_BASE:
         program = min(
             program,
             _back_htree(table, weights),
@@ -327,7 +318,6 @@ class _BackContext:
     constant: Callable[[int, int], bool]
     vertical: bool = False
     shared: set[_Node] = field(default_factory=set)
-    wrap: bool = False
     ids: list[list[int]] = field(default_factory=list)
     grid: _Grid = field(default_factory=dict)
     where: dict[_Node, tuple[int, int]] = field(default_factory=dict)
@@ -419,14 +409,8 @@ class _BackContext:
             events: list[int | None] = []
             self.level_events(events, 0, 0, k)
             order = [event for event in events if event is not None]
-            # The last node's beam falls off the bottom and wraps to the
-            # top, where the level's first mirror is the first in the
-            # column.  Its walk is about the rows it saves, but only from
-            # eight rows up: below that it is a few cells saved for a whole
-            # column walked.
-            ring = self.wrap and 2 ** (self.levels - k - 1) >= _WRAP_ROWS
-            follower = dict(pairwise([*order, *order[:1]] if ring else order))
-            landing = dict(pairwise([*events, *events[:1]] if ring else events))
+            follower = dict(pairwise(order))
+            landing = dict(pairwise(events))
             self.shared.update(
                 (k, a)
                 for a, b in follower.items()
@@ -441,8 +425,6 @@ def _back_ordered(
     perm: tuple[int, ...],
     width: int | None = None,
     weights: list[int] | None = None,
-    *,
-    wrap: bool = False,
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
@@ -491,7 +473,6 @@ def _back_ordered(
             n=n,
             constant=constant,
             vertical=vertical,
-            wrap=wrap,
             ids=ids,
         )
         context.plan()
