@@ -134,6 +134,9 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         tables += ("1" * (width - 2) + "01",)
     if name in _WITNESSES:
         tables += _WITNESSES[name](n)
+    if name == "Fargo" and n == 6:
+        # 322 commands: shared names run their bodies per reference, past 5T + 1.
+        tables += ("1000001000110001000001001111000100000100010100000110010000011000",)
     if name == "Home Row":
         # Alternating but for one equal pair: every input essential, T - 2 leaves.
         tables += ("10" * (width // 2 - 1) + "01",)
