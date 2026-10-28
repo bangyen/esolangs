@@ -65,7 +65,9 @@ def _sbleq_worst(n: int) -> str:
 
 # language-owners: ["Forbin"]
 def _forbin_worst(n: int) -> str:
-    """2^(n-7) distinct nonconstant 128-entry blocks (block j is j + 1 in binary).
+    """The b = 7 build's worst: 2^(n-7) distinct nonconstant 128-entry blocks.
+
+    Block j is j + 1 in binary; the race reaches it only at n = 12, 13.
 
     Below n = 7 the one-hot table: the whole table is one nonconstant block.
     """

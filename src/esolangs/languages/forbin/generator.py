@@ -1,13 +1,14 @@
 """Forbin Boolean program generator: painted blocks behind a branch tree.
 
 One multi-assignment reads all ``8n`` input bits and keeps each low bit.  The
-last seven inputs address a block of literal entries through a shift
+last ``b`` inputs address a block of literal entries through a shift
 register in ``table``; the rest pick the block with range-loop ifs, and a
 constant span collapses to a call to a printer.  Repeated blocks or subtrees
-become one function nested in ``main``.
+become one function nested in ``main``.  ``b`` is the width in 3..7 that
+gives the shortest program.
 
 Size:
-    Two characters per painted entry, O(T); n=10 random 1847: 3,466 chars,
+    Two characters per painted entry, O(T); n=10 random 1847: 3,111 chars,
     n=12 random 1847: 10,224 chars.
 
 Decisions:
@@ -15,7 +16,8 @@ Decisions:
     128-entry blocks shrink, random tables are unchanged
     ([ablations.subtree_sharing]).  Names go out in order of first use
     ([ablations.name_ordering]); the balanced spelling is the only candidate
-    ([ablations.balance_race]).
+    ([ablations.balance_race]).  The block width is raced per table
+    ([ablations.block_width_race]); the balanced spelling takes the same race.
 """
 
 import re
@@ -43,16 +45,14 @@ _FORBIN_ALPHABET = ascii_letters
 _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
 
 
-#: Inputs answered by the shift register rather than by a branch.  A block
-#: costs two characters an entry (the literal and its comma) against the
-#: twenty-odd a tree leaf costs, so the per-entry constant falls as this
-#: rises while the register's fixed prologue doubles with it: 2.76 at five,
-#: 2.39 at six, 2.20 at seven.  Seven is the last value that still measures
-#: cleanly -- at eight the block is wider than the whole table at ``n = 7``,
-#: which is a rung ``tests/proofs/deep/linearity.py`` fits a line through.
-#: The prologue makes five and six smaller through n=10; seven wins from
-#: n=12 ([ablations.painted_block_bits]).
-_BLOCK_BITS = 7
+#: Inputs the shift register answers, raced by length per table.  A block
+#: costs two characters an entry against a tree leaf's twenty-odd, but the
+#: register's prologue doubles per bit and a narrow block lets distinct
+#: subtrees repeat: random tables prefer 5 at n<=9 and 7 from n=12, structured
+#: ones 3-5 at every n.  Seven stays the widest -- at eight the block outgrows
+#: the whole table at ``n = 7``, a rung ``tests/proofs/deep/linearity.py``
+#: fits a line through ([ablations.block_width_race]).
+_BLOCK_WIDTHS = (3, 4, 5, 6, 7)
 
 
 def _forbin_names() -> Iterator[str]:
@@ -95,19 +95,28 @@ def forbin(truth_table: str, width: int | None = None) -> str:
 
     A supplied width uses disjoint guards and grammar-token wrapping, with
     a four-column floor for ``main``. Unwrapped output retains early returns.
+    The shortest block width in ``_BLOCK_WIDTHS`` is kept
+    ([ablations.block_width_race]).
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
     """
+    n = len(truth_table).bit_length() - 1
+    widths = dict.fromkeys(min(n, bits) for bits in _BLOCK_WIDTHS)
+    return min((_build(truth_table, width, bits) for bits in widths), key=len)
+
+
+def _build(truth_table: str, width: int | None, bits: int) -> str:
+    """Build the program whose shift register addresses ``bits`` inputs."""
     if width is not None:
-        natural = forbin(truth_table)
+        natural = _build(truth_table, None, bits)
         if grid_width(natural) <= width:
             return natural
     # The tree is built over the essential inputs; an ignored input is still
     # read, but its kept bit drops into the scratch name with the other seven.
     weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
     n = len(table).bit_length() - 1
-    low = min(n, _BLOCK_BITS)
+    low = min(n, bits)
     high = n - low
     block = 1 << low
     names = _Names(n, block)

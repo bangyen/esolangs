@@ -6,11 +6,11 @@ backlinks = 5
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry"
-scaling = "linear: worst N characters, n = 2..134: two an entry, distinct nonconstant blocks"
-execution = "poly n: worst 2 max(n - 7, 0) + 2 commands"
+qualification = "the last b inputs, b = 3..7 raced by length, paint a block of `2**b` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry"
+scaling = "linear: at most N characters, n = 2..134: two an entry, distinct blocks"
+execution = "poly n: worst 2 max(n - 3, 0) + 2 commands"
 workspace = "linear: worst 32n + 71 + 2bl(n) + G bits for n ≤ 48: main's locals in both frame and scope"
-definitions = ["G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-7, 0), the loop cursor"]
+definitions = ["G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-3, 0), the loop cursor"]
 
 [generator_sizes]
 "00000001" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
@@ -18,8 +18,8 @@ definitions = ["G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10)
 "00110110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
 "0110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2 }, source_units = 131 }
 "01101001" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
-"0110100110010110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2, "11" = 2, "12" = 2, "13" = 2, "14" = 2, "15" = 2 }, source_units = 281 }
-"1101001101101101" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2, "11" = 2, "12" = 2, "13" = 2, "14" = 2, "15" = 2 }, source_units = 281 }
+"0110100110010110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 246 }
+"1101001101101101" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 246 }
 "11111110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
 
 [formula_arities]
@@ -49,7 +49,14 @@ verdict = "kept: canonical, exempt. A subtree repeated at its level becomes one 
 [ablations.painted_block_bits]
 saving = 2.1
 arity = 12
-verdict = "kept: _BLOCK_BITS = 7 is a crossover constant, not a win at every arity. On random tables blocks of 5/6 beat 7 by 22.0% / 19.4% at n=9 and 6.6% / 10.3% at n=10, but at n=12 seven wins (+12.7% over 5, +2.1% over 6, as shares of the variants' totals). The comment's per-entry constants (2.78 at five, 2.39 at six, 2.22 at seven) are two-point slopes between n=10 and n=12 and reproduce (2.76 / 2.39 / 2.20 measured): the slope hides the shift register's fixed prologue, which doubles per block bit and is what smaller blocks save at n<=10. The comment also ties seven to the proof's linearity rungs, and some value must be chosen — a per-arity race would be a new mechanism, not a removal. Plain-rewrite 2026-10-28 (20 tables per class, seed 1; savings of seven as shares of the variant's total, negative when seven loses): against 5 / 6 bits seven loses on random tables at -59.5% / -39.8% at n=8, -28.2% / -24.0% at n=9 and -7.0% / -11.5% at n=10, and wins at n=12 (+12.7% / +2.1%; +30.3% over 4 bits, +6.8% over 8); the same shape holds on dense, mid-ignored (n=12: -7.0% / -11.3%) and half-constant tables (n=12: +5.6% over 5, -3.0% against 6), while on parity, majority and two-block tables fewer bits stay ahead even at n=12. Not changed: the constant fixes the ledger's scaling, execution and workspace clauses (two an entry from n = 2, 2 max(n - 7, 0) + 2 commands), so lowering it is a borderline call reported to the caller rather than a retirement here"
+verdict = "replaced by [ablations.block_width_race]: the fixed _BLOCK_BITS = 7 was a crossover constant, not a win at every arity. Against 5 / 6 bits seven lost on random tables at -59.5% / -39.8% at n=8 and -7.0% / -11.5% at n=10, won only from n=12 (+12.7% / +2.1%), and on parity, majority and two-block tables fewer bits stayed ahead even at n=12. The width is now raced per table over 3..7, seven kept as the widest (at eight the block outgrows the whole table at n = 7, a rung tests/proofs/deep/linearity.py fits a line through)"
+
+[ablations.block_width_race]
+saving = 37.1
+arity = 8
+seed = 1000
+tables = 20
+verdict = "kept: the shortest of the shift-register widths b = 3..7 per table, seven among them so no table grows (no table grew in size, n=4..14; tables are seed 1000 + n, 20 per class to n=10 and 4 above, one parity and one majority table, shares of main's total). Size, random tables: -12.3% / -21.4% / -36.6% / -50.2% / -37.1% / -21.8% / -10.2% / -2.9% at n=4..11 and 0.0% from n=12 (seven wins there: a share falling to zero on random tables, which meets the bar at n=7..8 and is the old crossover); named functions and structured classes keep their saving at every n: parity -47.6% at n=14, majority -43.0%, or/and -62.4%, dense with 3 zeros -55.2%, two-block -75.0% (rising), mid-ignored -35.1% at n=8 and 0.0% at n=14, half-constant -48.2% at n=8 and 0.0% from n=13, constant 0.0%. Area (balance_score(p)[0] ** 2, the balanced output): random -49.3% / -35.6% / -10.1% at n=7 / 8 / 10 and 0.0% from n=12; parity -54.6% and majority -51.9% at n=14; or/and -62.8%; dense -56.0%; two-block -78.6%; mid-ignored -36.0% at n=8; half-constant -48.2% at n=8. Candidate sets (seed 777 sweep): dropping b = 3 costs up to 11.2 points (mid-ignored, n=6), 3.2 on or/and and 1.9 on dense at n=8, 0.3 on parity; dropping 3 and 4 costs or/and 10.7 / 9.1 points; a fixed 5 grows random tables +14.7% at n=12 and a fixed 6 +2.1%, so no constant wins everywhere and a closed rule would have to predict a crossover that moves with the class (random favors 5 at n=7..9 and 7 from n=12, structured tables 3). Adding b = 2 / 1 saves 0.0% on every class but or/and (4.0% / 4.2% at n=8, 3.3% / 3.5% at n=10), under the bar. The balanced hook needs no race of its own: it builds the token spelling through forbin(table, 1), which races the widths by the wrapped length, and that matches racing five balanced spellings by area (majority 2-3 points better than balancing the unwrapped winner at n=9, 12 and 13; equal on every other class). Execution cost: the narrow winner descends more tree levels, 2 max(n - 3, 0) + 2 commands a row instead of 2 max(n - 7, 0) + 2 (n=4 parity 2 -> 4 commands)"
 
 [ablations.name_ordering]
 saving = 1.1
@@ -61,7 +68,7 @@ saving = 2.8
 arity = 16
 seed = 1
 tables = 20
-verdict = "kept for execution and workspace, below the size bar. The unwrapped tree uses early returns (a leaf is `return(call)`, the lower half unguarded); the wrapped build uses disjoint `for _:1..!b` guards. Priced by deleting it, i.e. building the disjoint-guard tree for the unwrapped program too (20 tables per class, seed 1, 8 at n=16; shares of the plain total): the returns lose at n<=7 (random tables -2.6% at n=4, -0.5% at n=7), break even at n=8 (0.1%) and save 0.7% / 1.4% / 2.3% / 2.6% / 2.7% on random tables at n=9 / 10 / 12 / 14 / 16, a plateau near 2.8% (peak, measured past n=8); named functions at n=12 / 16: and/or 1.9% / 3.3%, majority 1.2% / 1.9%, parity 0.4% / 0.6%; two-block tables 3.9% at n=16; mid-ignored tables 1.4% at n=12; constant tables lose 3.0% at n=12. A constant share far under 10% at every arity and class, so it fails the size bar. Retirement trial 2026-10-28 (seed 1, 20 tables per class): sizes reproduce (-2.5% at n=4, +0.1% at n=8, +2.4% at n=12), area unchanged; but `return(call)` is a tail call, so the disjoint-guard tree runs 9 / 17 / 33 / 38 commands a row at n=1 / 3 / 7 / 8 against 2 / 2 / 2 / 4, and the callee's frame stays live: worst written state 200 / 459 / 5,790 / 5,847 bits against 110 / 176 / 306 / 347. Kept for that, not for the clause's constant"
+verdict = "kept for execution and workspace, below the size bar. The unwrapped tree uses early returns (a leaf is `return(call)`, the lower half unguarded); the wrapped build uses disjoint `for _:1..!b` guards. Priced by deleting it, i.e. building the disjoint-guard tree for the unwrapped program too (20 tables per class, seed 1, 8 at n=16; shares of the plain total): the returns lose at n<=7 (random tables -2.6% at n=4, -0.5% at n=7), break even at n=8 (0.1%) and save 0.7% / 1.4% / 2.3% / 2.6% / 2.7% on random tables at n=9 / 10 / 12 / 14 / 16, a plateau near 2.8% (peak, measured past n=8); named functions at n=12 / 16: and/or 1.9% / 3.3%, majority 1.2% / 1.9%, parity 0.4% / 0.6%; two-block tables 3.9% at n=16; mid-ignored tables 1.4% at n=12; constant tables lose 3.0% at n=12. A constant share far under 10% at every arity and class, so it fails the size bar. Retirement trial 2026-10-28 (seed 1, 20 tables per class): sizes reproduce (-2.5% at n=4, +0.1% at n=8, +2.4% at n=12), area unchanged; but `return(call)` is a tail call, so the disjoint-guard tree runs 9 / 17 / 33 / 38 commands a row at n=1 / 3 / 7 / 8 against 2 / 2 / 2 / 4 at b = 7 (before the width race), and the callee's frame stays live: worst written state 200 / 459 / 5,790 / 5,847 bits against 110 / 176 / 306 / 347. Kept for that, not for the clause's constant"
 
 [ablations.balance_race]
 saving = 0.0

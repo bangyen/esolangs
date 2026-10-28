@@ -294,8 +294,9 @@ These generators keep no unconstrained tree route and have no subtree to fold:
 - Flowchart: Pushes one deque entry per row and walks the cursor to it. Its tree
   is the width-constrained route.
   An ignored input skips its eight bits.
-- Forbin: Paints a 128-entry block as one call’s argument list at every arity;
-  branches above seven inputs choose a block rather than route a table.
+- Forbin: Paints a block of 2^b entries (b = 3..7, the shortest per table) as
+  one call’s argument list; branches above b inputs choose a block rather than
+  route a table.
   An ignored input is read into the scratch name through `input_weights`.
 - Minsky Swap: Its `~` cascade routes the index to two shared leaves with a one-
   digit target per row.
@@ -421,7 +422,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Fargo | tree | finite folded layout | linear: at most F characters past n = 1: inline Davio form | linear: at most 9T - 5 commands: each expanded token runs once, plus 2 per executed shared-name reference | linear: at most 16(L - 3) + bl(L) + 11 bits past n = 5: one frame's tokens, pending calls |
 | Fish | finite lookup | the inputs form a Horner row index and `g` reads that column from the table row | linear: worst F cells: two rows for n = 2..3, then one row | poly n: worst 9n + 9 commands for n = 2..3, then 9n + 33 + 2c: Horner reads, one lookup | poly n: worst bl(9n+8) + n + 13 + bl(n) bits for n = 2..3, then bl(S-1)+bl(s)+bl(n)+71 |
 | Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: worst 28T+72n+38 cells past n = 1: two rows of 14T+36n+19 | linear: worst 3T + 9n + 3 nodes past n = 1: preload T plus T - 1 runs | T log T: worst F bits past n = 2: 7T + 18n + 5 exit-memory cells, the deques, the counters |
-| Forbin | finite lookup | the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: worst N characters, n = 2..134: two an entry, distinct nonconstant blocks | poly n: worst 2 max(n - 7, 0) + 2 commands | linear: worst 32n + 71 + 2bl(n) + G bits for n ≤ 48: main's locals in both frame and scope |
+| Forbin | finite lookup | the last b inputs, b = 3..7 raced by length, paint a block of `2**b` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: at most N characters, n = 2..134: two an entry, distinct blocks | poly n: worst 2 max(n - 3, 0) + 2 commands | linear: worst 32n + 71 + 2bl(n) + G bits for n ≤ 48: main's locals in both frame and scope |
 | Forþ | tree | the tree tests the essential inputs; an ignored one is read and dropped as `,0*+` | linear: at most S characters: scope counts per level, twins called | linear: at most 6T + 12n - 3 commands: every heap scope defined once, one dispatch path | T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the scope dictionary |
 | FRACTRAN | parameterized tree | the bits are the exponents of `n` primes in the starting value, a decision tree gives equal subtables one state prime, and the first-match rule is the else-branch | linear: worst C = 2 + Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits | poly n: worst n + 2: a step a level or unread set bit, the leaf, the halt | poly n: worst bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start |
 | Freestajlo | linear lookup | the table is one `"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies; past the crossover the literal packs six entries a character and the row splits into that depth and a bit | linear: worst min(T + 4n + 1, ⌈T/6⌉ + 4n + 19) characters | poly n: worst 4n commands to n = 4, then 4n + 17: the literal, the reads and folds, the decode | linear: worst max(P, W) bits: the literal's codes on the stack, plain or packed |
@@ -493,7 +494,7 @@ Symbols the formula cells use:
 - **FALSE:** W = bl(n)+6n+2b constant, 5n-2+2b expression, n+1+2b(S+n+2) diagram.
 - **Fish:** c = 3 to n = 20, then 1 + 2bl(column): the packed column literal's characters; S = 9n + 33 + 2c commands run; s = the packed column, 15⌈(9n+39)/15⌉ to n = 20.
 - **Flowchart:** F = Σ over exit-memory cells of 4 + bl(column), plus deque keys and counters.
-- **Forbin:** G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-7, 0), the loop cursor.
+- **Forbin:** G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-3, 0), the loop cursor.
 - **Freestajlo:** P = 6t + 7 + bl(t+2) + bl(2n+2m) + bl(2n), m = min(n, 4), t = 2^m; W = 7⌊T/6⌋ + 7 + bl(⌈T/6⌉+4) + max(16, 2n+3) + bl(4n+18) + bl(2n), 0 below n = 5.
 - **Grapheme:** λ = the largest lift of d + 1 digits, d those of 2^T.
 - **Inject:** A = bl(12n+10) + bl(2n) + bl(n) + Σ_{i≤n+2}(bl(3i) + bl(3i+2)) + Σ_{2n+5≤m≤6n+4} bl(m).

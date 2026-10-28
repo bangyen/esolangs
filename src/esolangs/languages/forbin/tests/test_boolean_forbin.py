@@ -83,19 +83,31 @@ class TestForbinBoolean:
 
     def test_constant_spans_fold_above_the_block(self) -> None:
         """A constant span of blocks calls a printer instead of painting."""
-        from esolangs.languages.forbin.generator import _BLOCK_BITS, _Names
+        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build, _Names
 
-        arity = _BLOCK_BITS + 2
+        block_bits = max(_BLOCK_WIDTHS)
+        arity = block_bits + 2
         wide = 2**arity
-        register = _Names(arity, 1 << _BLOCK_BITS).table + " "
+        register = _Names(arity, 1 << block_bits).table + " "
         whole = boolean.forbin("1" * wide)
         assert whole.count("return(") == 1
         # The constant table paints no block, so defines no shift register.
         assert register not in whole
         # Two constant spans call printers beside the one painted quarter.
         parity = "".join(str(i.bit_count() & 1) for i in range(wide // 4))
-        mixed = boolean.forbin("0" * (wide // 2) + "1" * (wide // 4) + parity)
+        mixed = _build("0" * (wide // 2) + "1" * (wide // 4) + parity, None, block_bits)
         assert mixed.count("return(") == 3
+
+    def test_block_width_is_raced_and_never_grows(self) -> None:
+        """Parity at n=8 takes a narrower block than seven; no width is longer."""
+        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build
+
+        parity = "".join(str(i.bit_count() & 1) for i in range(256))
+        program = boolean.forbin(parity)
+        sizes = {b: len(_build(parity, None, b)) for b in _BLOCK_WIDTHS}
+        assert len(program) == min(sizes.values()) < sizes[max(_BLOCK_WIDTHS)]
+        for row in (0, 1, 100, 255):
+            assert run_forbin_boolean(program, list(format(row, "08b"))) == parity[row]
 
     def test_full_tree_growth_is_linear(self) -> None:
         """Names and indentation add only a geometric cost to the tree."""
@@ -107,14 +119,15 @@ class TestForbinBoolean:
 
     def test_a_repeated_block_is_painted_once(self) -> None:
         """Blocks a b b a share one function per distinct block."""
-        from esolangs.languages.forbin.generator import _BLOCK_BITS
+        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build
 
+        block_bits = max(_BLOCK_WIDTHS)
         rng = random.Random(7)
         a, b = (
-            ",".join(rng.choice("01") for _ in range(2**_BLOCK_BITS)) for _ in range(2)
+            ",".join(rng.choice("01") for _ in range(2**block_bits)) for _ in range(2)
         )
         table = "".join(block.replace(",", "") for block in (a, b, b, a))
-        program = boolean.forbin(table)
+        program = _build(table, None, block_bits)
         assert program.count(a) == program.count(b) == 1
         for row in (0, 127, 128, 300, 400, 511):
             bits = list(format(row, "09b"))
@@ -125,14 +138,15 @@ class TestForbinBoolean:
     )
     def test_nested_repeats_share_once(self, layout: str, size: int) -> None:
         """A repeated subtree costs one function; its insides are not repeats."""
-        from esolangs.languages.forbin.generator import _BLOCK_BITS
+        from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _build
 
+        block_bits = max(_BLOCK_WIDTHS)
         rng = random.Random(3)
         blocks = {
-            c: "".join(rng.choice("01") for _ in range(2**_BLOCK_BITS)) for c in "XY"
+            c: "".join(rng.choice("01") for _ in range(2**block_bits)) for c in "XY"
         }
         table = "".join(blocks[c] for c in layout)
-        program = boolean.forbin(table)
+        program = _build(table, None, block_bits)
         assert len(program) == size
         for row in (0, 127, 128, 300, 511, 512, 700, 1023):
             bits = list(format(row, "010b"))
