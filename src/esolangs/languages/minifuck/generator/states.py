@@ -18,8 +18,8 @@ def two_state(truth_table: str) -> str | None:
                 if len(states) > 2:
                     return None
         levels.append(states)
-    gates: list[list[int]] = []
-    for depth in range(n):
+
+    def gate(depth: int) -> list[int]:
         children = {node: state for state, node in enumerate(levels[depth + 1])}
         branches: dict[int, list[int]] = {}
         for place, node in enumerate(ids[depth]):
@@ -28,27 +28,19 @@ def two_state(truth_table: str) -> str | None:
                     children[ids[depth + 1][2 * place + bit]] for bit in (0, 1)
                 ]
         parents = levels[depth]
-        gates.append(branches[parents[0]] + branches[parents[-1]])
-    bias = levels[-1][0]
-    # The input-embed convention needs every flip's span to be the same
-    # content pair.  Only the setter run changes with a bit, and a level whose
-    # minority sits at an odd branch position takes the reversed pair, so the
-    # spans agree exactly when every orientation does.  Mixed orientations are
-    # the positional decoder's job.
-    if len(set(_orientations(gates))) > 1:
-        return None
-    return _emit(gates, bias)
+        return branches[parents[0]] + branches[parents[-1]]
 
-
-def _orientations(gates: list[list[int]]) -> list[str]:
-    """Return the setter orientation each level's guarded update carries."""
-    out: list[str] = []
-    for values in gates:
-        if sum(values) % 2 == 0:
-            out.append("0")
-        else:
-            out.append(str(values.index(1 - int(sum(values) > 2)) & 1))
-    return out
+    # A residual's label is its position in its level, so reversing a
+    # two-residual level complements the level above and leaves every
+    # minority position's parity alone.  Top down, each level gets the
+    # labelling that spares the toggle after the level above: OR is AND's
+    # chain with its states exchanged.
+    for depth in range(n):
+        values = gate(depth)
+        spare = values[0] if sum(values) % 2 == 0 else int(sum(values) > 2)
+        if spare and len(levels[depth + 1]) == 2:
+            levels[depth + 1].reverse()
+    return _emit([gate(depth) for depth in range(n)], levels[-1][0])
 
 
 class _StateEmitter:
@@ -106,15 +98,19 @@ def _emit_even_level(emitter: _StateEmitter, values: list[int]) -> None:
 
 
 def _emit_odd_level(emitter: _StateEmitter, values: list[int]) -> None:
-    """Emit a level whose update is the minority branch's guarded setter."""
+    """Emit a level whose update is the minority branch's guarded setter.
+
+    A minority at input 0 spells the setter then ``[``; at input 1 it is
+    read through ``[<[x<`` first, so no table swaps the setter pair.  A
+    minority under the last residual first flips bit 7 (``[x<``).  Each form
+    equals the old restoring read plus setter on every tape a level can meet
+    (scratch cells 8-11 and cell 6 free), checked over all of them.
+    """
     majority = int(sum(values) > 2)
     minority = values.index(1 - majority)
     emitter.seek()
-    if minority < 2:
-        emitter.parts.append("[x<")
-    # The restoring read leaves bit 7 unchanged, with pointer 6 for a
-    # one and 7 for a zero. The setter therefore computes a & !b.
-    emitter.parts.append(_READS[1] + _MINIFUCK_INPUT + "<" * 9)
+    form = "[<[x<" + _MINIFUCK_INPUT if minority % 2 else _MINIFUCK_INPUT + "["
+    emitter.parts.append("[x<" * (minority >= 2) + form + "<" * 9)
     if majority:
         emitter.toggle()
 
@@ -146,24 +142,4 @@ def _emit_unframed(gates: list[list[int]], bias: int) -> str:
 
 def _emit(gates: list[list[int]], bias: int) -> str:
     """Keep the state in bit 7; a guarded setter clears it only when active."""
-    walk = _emit_unframed(gates, bias)
-    return "g" + "".join(_orientations(gates)) + "g" + walk + "."
-
-
-def state_setters(template: str, n: int) -> tuple[tuple[str, str], ...] | None:
-    """Decode the inert orientation header, including after wrapping."""
-    if not template.startswith("g"):
-        return None
-    header = []
-    for char in template:
-        if not char.isspace():
-            header.append(char)
-        if len(header) == n + 2:
-            break
-    if (
-        len(header) != n + 2
-        or header[-1] != "g"
-        or any(char not in "01" for char in header[1:-1])
-    ):
-        return None
-    return tuple(PAIR[::-1] if char == "1" else PAIR for char in header[1:-1])
+    return _emit_unframed(gates, bias) + "."

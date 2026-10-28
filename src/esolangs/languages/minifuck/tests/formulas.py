@@ -11,8 +11,8 @@ n = 12 (last bullet).  Steps are the emitted length minus the collapsed ``[``
   + 1) the pad extension, a the next weight, so e <= g (pad 2, relay 4 each):
   18, met by a gap before the last essential input.  k = n - 1 is the worst:
   M(n-1) + 18 <= B needs 15.25 T >= 28 (287 against 331 at n = 3), so under B.
-* ``two_state``: length <= 90n + 36 (89 a level, 33 to finish, over all 16 value
-  lists and all 128 lower-cell states), under B from n = 3.
+* ``two_state``: length <= 89n + 34 (89 a level, 33 to finish and the dot, over
+  all 16 value lists and all 128 lower-cell states), under B from n = 3.
 * ``stored``: each ``[x<[x<[x<[x`` collapses exactly twice (its cell flips to
   not-a, a, not-a, a and a landing on 0 collapses) and no word ends in ``[``,
   so no skip crosses a word and steps <= L - 2R.  The other words are at most

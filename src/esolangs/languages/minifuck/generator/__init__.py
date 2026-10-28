@@ -7,7 +7,7 @@ The simulator laws are pinned differentially against the interpreter.
 
 Size:
     Parity is O(n) through the two-residual diagram, other tables O(T).
-    n=16 parity: 458 chars, n=10 random 1847: 40,501 chars.
+    n=16 parity: 440 chars, n=10 random 1847: 40,501 chars.
 
 Decisions:
     Seeded n=16 affine (100 tables): 488-764 characters against
@@ -18,6 +18,10 @@ Decisions:
     each residual once within the positional length.  Where they fit,
     :func:`two_state` saves 95-100% (n=8-16) and :func:`stored` 20-98% (and/or
     from n=10, parity from n=12, symmetric tables from n=14).
+    :func:`two_state` labels each level's residuals so no level toggles and
+    reads a minority at input 1 through ``[<[x<`` (no table swaps the setter
+    pair, no header): n=8 AND 10,158 -> 309 chars, NAND 10,163 -> 312, OR
+    488 -> 281, NOR 491 -> 278.
 """
 
 import re
@@ -62,7 +66,7 @@ from esolangs.languages.minifuck.generator.sim import (
     PAIR,
     _clamp,
 )
-from esolangs.languages.minifuck.generator.states import state_setters, two_state
+from esolangs.languages.minifuck.generator.states import two_state
 from esolangs.languages.minifuck.generator.stored import stored
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
@@ -335,9 +339,7 @@ def _parity_columns(
 
 
 def minifuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
-    """Read state-setter orientations or the parity layout's inert q prefix."""
-    if (setters := state_setters(template, n)) is not None:
-        return setters
+    """The one setter pair, narrowed for the parity layout's inert q prefix."""
     return (("x", "[") if template.startswith("q\n") else PAIR,) * n
 
 
