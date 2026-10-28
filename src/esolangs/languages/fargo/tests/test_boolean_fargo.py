@@ -84,7 +84,7 @@ class TestFargo:
         assert sizes[1] < 2 * sizes[0] + 16
 
     def test_choosing_arms_shrinks_the_corpus(self) -> None:
-        """Tables to two inputs never grow; the three-input corpus shrinks 10.2%."""
+        """Tables to two inputs never grow; the three-input corpus shrinks 11.7%."""
         from esolangs.languages.fargo.generator import anf_coefficients
         from esolangs.languages.fargo.tests.fargo_oracle import _anf_expression
 
@@ -101,14 +101,14 @@ class TestFargo:
                 else:
                     before += old
                     after += built
-        assert (before, after) == (9556, 8580)
+        assert (before, after) == (9556, 8434)
 
     @pytest.mark.parametrize(
         ("table", "program"),
         [
-            # NOR3: no 1-arm vanishes, so Davio0 keeps the 0-arm and names the
-            # repeated ``1 ^ x0`` node.
-            ("10000000", "a ^ 1 @ 0\nb ^ a & @ 1 a\n% 0 ^ b & @ 10 b\n$\n"),
+            # NOR3: the complement of OR3 under ``^ 1``, shorter than the dense
+            # product of negated inputs.
+            ("10000000", "% 0 ^ 1 | | @ 0 @ 1 @ 10\n$\n"),
             # OR3: each 1-arm is constant one, so each node is ``f0 | x``.
             ("01111111", "% 0 | | @ 0 @ 1 @ 10\n$\n"),
         ],

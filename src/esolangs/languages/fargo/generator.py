@@ -22,6 +22,9 @@ Size:
     packs the same nodes into lines of a chosen width.
 
 Decisions:
+    The complement's expression under ``^ 1`` is a candidate: nor at n=8
+    122 -> 66 chars ([ablations.complement_expression]).
+
     The free choice between Davio0 and monotone-OR arms (1.3-2.1% at
     n=8), rotated orders (0.9% at n=8) and indexed-selector cost splits
     (3.5% at n=5) fall under the 10% bar and are not built.
@@ -194,9 +197,16 @@ def _arm_expression(
 
 
 def _expression(truth_table: str, n: int) -> str:
-    """Return the arm expression in identity input order."""
-    coeffs = anf_coefficients(truth_table)
-    return _arm_expression(truth_table, coeffs, n, tuple(range(n)))
+    """Return the shorter of the arm expression and the complement's, negated."""
+    at = tuple(range(n))
+    plain = _arm_expression(truth_table, anf_coefficients(truth_table), n, at)
+    flip = truth_table.translate(str.maketrans("01", "10"))
+    negated = "^ 1 " + _arm_expression(flip, anf_coefficients(flip), n, at)
+    return min(
+        plain,
+        negated,
+        key=lambda e: len(_packed_program(e, n, len(f"% 0 {e}\n$\n"))),
+    )
 
 
 _SYMBOLS = "@&|^"
