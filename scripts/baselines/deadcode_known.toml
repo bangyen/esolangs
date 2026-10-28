@@ -25,7 +25,6 @@
 ]
 
 "circuit_diagram/generator/banks.py" = [
-    "arm: if gates + 2 * len(classes) - 1 > _class_gate_cap(len(table), n): -> return None",
     "line: return None",
     "line: return self._mapping[junction]",
 ]

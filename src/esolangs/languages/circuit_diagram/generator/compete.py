@@ -47,22 +47,11 @@ def _pool(target: _Target, ceiling: int | None) -> _Layout | None:
     )
 
 
-def _residual(target: _Target, ceiling: int | None) -> _Layout | None:
-    from esolangs.languages.circuit_diagram.generator.banks import (
-        _residual_class_bank_candidate,
-    )
-
-    return _residual_class_bank_candidate(target.table, ceiling)
-
-
-# By area, leave-one-out: residual saves 12.0% on two-block tiled tables at
-# n=10, 14.4% on n=12 parity; bundled 40.7% / 60.7% on random tables at
-# n=12 / 14.  Order is the tie-break: an earlier candidate keeps an
-# equal-area win.
+# Leave-one-out: bundled saves 40.7% / 60.7% of area on random tables at
+# n=12 / 14.  Order breaks equal-area ties.
 _CANDIDATES: tuple[_Candidate, ...] = (
     _pool,
     lambda t, ceiling: bundled_banks.bundled_class_bank_candidate(t.table, ceiling),
-    _residual,
 )
 
 

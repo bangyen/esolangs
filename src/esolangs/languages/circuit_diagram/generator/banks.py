@@ -1,6 +1,6 @@
 """Share class bodies through predicate-and-function banks.
 
-G<=2T+8n+111 gives state<=6T+25n+334, below 7T+2n-9 from n=10.
+The bundled candidate caps gates at T+n.
 Bounded H bodies and coordinate-bucket copying use O(T) area and work.
 This still does not share every residual across bodies.
 """
@@ -10,20 +10,10 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 
-from esolangs.generation.helpers import _validate_truth_table
-
-from .forest import _Forest, _suffix_forest
-from .hpool import (
-    _atom_inputs,
-    _large_pool_layout,
-)
-from .layout import _Layout, _layout_area, _RoutingLayout
+from .forest import _Forest
+from .layout import _Layout, _RoutingLayout
 
 type _Output = tuple[tuple[int, int], int]
-
-# Input count where a shared suffix forest beats separate roots even with no
-# repeated class.
-_FOREST_PAYS_ALONE_INPUTS = 9
 
 
 class _BankLayout(_RoutingLayout):
@@ -408,11 +398,6 @@ class _BankAssembler:
         return self.layout
 
 
-def _class_gate_cap(table_size: int, n: int) -> int:
-    """Return the gate budget that keeps written state below 7T+2n-9."""
-    return 2 * table_size + 8 * n + 111
-
-
 def _gate_count(model: _Layout) -> int:
     """Return how many gate glyphs (``a o ~ x X``) ``model`` draws."""
     return sum(char in "ao~xX" for char in model.glyphs.values())
@@ -445,23 +430,6 @@ def _assemble_banks(
     ).assemble()
 
 
-def _residual_class_bank_candidate(
-    table: str, ceiling: int | None = None
-) -> _Layout | None:
-    """Choose separate or shared suffix roots by exact area, preserving ties."""
-    separate = _class_bank_layout(table, ceiling, shared=False)
-    shared_ceiling = ceiling
-    if separate is not None:
-        area = _layout_area(separate)
-        shared_ceiling = area if ceiling is None else min(ceiling, area)
-    forest = _class_bank_layout(table, shared_ceiling, shared=True)
-    if forest is None:
-        return separate
-    if separate is None:
-        return forest
-    return forest if _layout_area(forest) < _layout_area(separate) else separate
-
-
 def _pool_budget(ceiling: int | None) -> int | None:
     """Return the bank area budget: ``ceiling``, unbounded when ``None``.
 
@@ -491,83 +459,3 @@ def _online_bank_area_floor(
     )
     width = max(w for h, w in dimensions) + 2 * n + 40 + 2 * ((q - 1).bit_length() + 1)
     return height * width
-
-
-def _class_bank_layout(
-    table: str, ceiling: int | None = None, *, shared: bool
-) -> _Layout | None:
-    """Share workspace-admitted seven/eight-input classes across all prefixes.
-
-    A fixed class cap bounds H-mask copying; counted gates enforce workspace.
-    """
-    from . import _essential_table
-
-    n = _validate_truth_table(table)
-    tail = _atom_inputs(n)
-    prefix = n - tail
-    if prefix < 2 or len(set(table)) == 1:
-        return None
-    size = 1 << tail
-    chunks = _chunks(table, size)
-    classes = [chunk for chunk in dict.fromkeys(chunks) if "1" in chunk]
-    # Keep the former implied class cap independently of the gate count:
-    # sparse masks can fit the workspace even when their worst-case bound cannot.
-    # At n=9 the shared forest pays without a repeated class: it folds the
-    # four distinct roots' internal seven-input residuals together (dense9
-    # executes in 258,216 characters; random n=9 tables save 40% of chars,
-    # 20% of area, over separate roots, 40 tables).
-    if len(classes) >= 1 << (tail + 1) or not any(
-        "0" in chunk
-        and (chunks.count(chunk) > 1 or (shared and n == _FOREST_PAYS_ALONE_INPUTS))
-        for chunk in classes
-    ):
-        return None
-    forest = _suffix_forest(classes, tail) if shared else None
-    if forest is not None and ceiling is not None:
-        height, width = forest[0].bounds()
-        # Copying removes two output cells but adds a larger positive offset;
-        # retained endpoint rows therefore bound the assembled area below.
-        if height * width > ceiling:
-            return None
-    parts: list[list[tuple[_Layout, list[int]]]] = []
-    dimensions = [] if forest is None else [forest[0].bounds()]
-    ands = sum("0" in chunk for chunk in classes)
-    for chunk in classes:
-        mask = "".join("1" if word == chunk else "0" for word in chunks)
-        models: list[tuple[_Layout, list[int]]] = []
-        for word, ports, order in (
-            (mask, prefix, list(range(prefix))),
-            (chunk, tail, list(range(prefix, n))),
-        ):
-            if "0" not in word or (shared and order[0] != 0):
-                continue
-            used, reduced = _essential_table(word, ports)
-            model = _large_pool_layout(
-                reduced, input_order=used, port_inputs=ports, ceiling=ceiling
-            )
-            if model is None:
-                return None
-            dimensions.append(model.bounds())
-            if (
-                ceiling is not None
-                and _online_bank_area_floor(dimensions, n, prefix, len(classes), ands)
-                > ceiling
-            ):
-                return None
-            models.append((model, order))
-        parts.append(models)
-    # Keep H-mask complements inside their copied blocks so each local wire
-    # retains its original driver and coordinate-bucket copying stays linear.
-    gates = sum(_gate_count(model) for models in parts for model, _ in models)
-    if forest is not None:
-        gates += _gate_count(forest[0])
-    # At most one AND per class and q-1 ORs; constants only reduce this count.
-    if gates + 2 * len(classes) - 1 > _class_gate_cap(len(table), n):
-        return None
-    model = _assemble_banks(
-        parts,
-        n,
-        prefix,
-        shared_suffix=forest,
-    )
-    return model if ceiling is None or _layout_area(model) <= ceiling else None

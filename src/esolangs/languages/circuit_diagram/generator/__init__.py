@@ -32,7 +32,7 @@ inputs first; physical ports retain read order.
 
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
-    1,207 chars, n=10 parity: 45,086 chars, n=10 random 1847: 747,092 chars.
+    1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 747,092 chars.
 
 Decisions:
     Sharing repeated subtrees, area vs the unshared build, mean of 20 seeded
@@ -684,7 +684,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(136_120, 258_216, 1.9),
+    documented_sizes=(136_120, 298_272, 2.19),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

@@ -64,7 +64,7 @@ def test_public_dense_candidates_beat_minterms_without_relaxing_contracts(n) -> 
     height, width = model.bounds()
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) <= height * width
-    assert len(code) == {8: 136_120, 9: 258_216}[n]
+    assert len(code) == {8: 136_120, 9: 298_272}[n]
     legacy = _h_term_layout(table)
     assert model.bounds()[0] * model.bounds()[1] < (
         legacy.bounds()[0] * legacy.bounds()[1]

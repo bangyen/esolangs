@@ -5,9 +5,6 @@ from itertools import combinations, islice
 import pytest
 
 from esolangs.languages.circuit_diagram.generator import circuit_diagram
-from esolangs.languages.circuit_diagram.generator.banks import (
-    _residual_class_bank_candidate,
-)
 from esolangs.languages.circuit_diagram.tests.test_boolean_circuit_diagram_pool import (
     _execute,
 )
@@ -43,8 +40,3 @@ def test_counted_mask_banks_execute_class_and_prefix_boundaries() -> None:
         }
     )
     assert _execute(table, code, rows) == 30
-
-
-def test_counted_banks_still_obey_the_area_ceiling() -> None:
-    table, _ = _sparse_classes()
-    assert _residual_class_bank_candidate(table, ceiling=100) is None
