@@ -64,16 +64,16 @@ class TestJsonOutput:
     def test_list_json_details_spells_out_the_markers(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The point of the flag: three booleans instead of a marker column."""
+        """Each row is describe's record, cut down: same keys, same values.
+
+        ``has_example`` (a bool) once stood where describe has ``examples``.
+        """
         rows = json.loads(call_both(["list", "--json", "--details"], capsys)[0])
         assert [row["name"] for row in rows] == esolangs.list_languages()
         for row in rows:
             facts = esolangs.describe(row["name"])
-            assert row["boolean_generator"] == facts["boolean_generator"]
-            assert row["parameterized"] == facts["parameterized"]
-            assert row["has_example"] == bool(facts["examples"])
-            assert row["state_model"] == facts["state_model"]
-            assert row["shape"] == facts["shape"]
+            assert row == {key: facts[key] for key in row}
+            assert {"boolean_generator", "parameterized", "examples"} <= set(row)
 
     def test_list_json_agrees_with_the_marker_column(
         self, capsys: pytest.CaptureFixture[str]
@@ -87,7 +87,7 @@ class TestJsonOutput:
             marks = line[len(row["name"]) :].split()
             assert ("gen" in marks) == row["boolean_generator"]
             assert ("tmpl" in marks) == row["parameterized"]
-            assert ("ex" in marks) == row["has_example"]
+            assert ("ex" in marks) == bool(row["examples"])
 
     def test_both_commands_still_reject_a_stray_argument(
         self, capsys: pytest.CaptureFixture[str]

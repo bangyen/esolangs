@@ -152,7 +152,7 @@ def _list(rest: list[str]) -> None:
                         "parameterized": facts["parameterized"],
                         "generator_max_inputs": facts["generator_max_inputs"],
                         "generator_restrictions": facts["generator_restrictions"],
-                        "has_example": bool(facts["examples"]),
+                        "examples": facts["examples"],
                     }
                     for name, facts in zip(names, map(describe, names), strict=True)
                 ],
