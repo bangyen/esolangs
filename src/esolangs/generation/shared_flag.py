@@ -28,6 +28,10 @@ class FlagDialect:
     closer: str
     decrement: str
     retest: bool = False
+    #: The result cell's write and its undo, when they differ from the
+    #: flag's ``one`` and ``decrement`` (a result preset to 1, cleared by leaves).
+    leaf: str = ""
+    unleaf: str = ""
 
 
 def _tape_dialect(*, flip: bool) -> FlagDialect:
@@ -201,7 +205,7 @@ class _FlagTree:
             return self.node(i + 1, combo)
         if value == "1":
             self.move(self.result)
-            self.emit(self.spelling.one)
+            self.emit(self.spelling.leaf or self.spelling.one)
         # value == "0": the leaf emits nothing
         return _Cost(self.count - start)
 
@@ -241,15 +245,20 @@ class _FlagTree:
     def binary_leaf(self, combo: int, start: int) -> _Cost[int]:
         """Emit the last level's two leaves in one loop over its bit."""
         spelling, bit_cell = self.spelling, 2 * self.perm[self.n - 1]
+        leaf = spelling.leaf or spelling.one
         if self.table[combo] == "1":
             self.move(self.result)
-            self.emit(spelling.one)
+            self.emit(leaf)
         self.move(bit_cell)
         self.emit(spelling.opener)
         skipped = self.count - start
         self.emit(spelling.zero)
         self.move(self.result)
-        self.emit(spelling.one if self.table[combo + 1] == "1" else spelling.decrement)
+        self.emit(
+            leaf
+            if self.table[combo + 1] == "1"
+            else spelling.unleaf or spelling.decrement
+        )
         self.move(bit_cell)
         self.emit(spelling.closer)
         return _Cost(max(skipped, self.count - start + self.retest))

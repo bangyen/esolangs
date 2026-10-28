@@ -10,13 +10,14 @@ flag, tests the bit and clears the flag inside, then tests the flag for the
 zero side, so exactly one side fires and both cells end zero.  The answer
 accumulates in cell ``2n``, printed once.  Repeated residuals share through
 level flags or banks, admitted under a command bound; inline text stays a
-candidate.  An affine table sums its bits and prints the sum mod 2
-([ablations.parity_sum]).
+candidate; the tree is also built for the complement, with the result
+preset to 1 and cleared at each leaf, and the shorter kept.  An affine table
+sums its bits and prints the sum mod 2 ([ablations.parity_sum]).
 
 Size:
-    Shared residuals shrink dense tables: three seeded 90%-ones n=16 tables
-    average 488,239 -> 409,056 characters (-16.2%), five rows executed per
-    table; n=10 parity: 132 chars, n=10 random 1847: 10,160 chars.
+    Shared residuals shrink dense tables (before the complement build: three
+    seeded 90%-ones n=16 tables average 488,239 -> 409,056 characters, -16.2%);
+    n=10 parity: 132 chars, n=10 random 1847: 10,138 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -107,16 +108,30 @@ def _parity_sum(bias: int, coefficients: list[int]) -> str:
 
 
 def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
+    """Return the shorter of the table's tree and its complement's flipped tree.
+
+    Each 1 leaf costs a move and ``ps``; the flipped tree presets the result
+    to 1 and subtracts at the complement's 1 leaves, so OR costs what NOR does.
+    """
+    flipped = table.translate(str.maketrans("01", "10"))
+    return min(
+        _painfuck_polarity(table, perm, flip=False),
+        _painfuck_polarity(flipped, perm, flip=True),
+        key=len,
+    )
+
+
+def _painfuck_polarity(table: str, perm: tuple[int, ...], *, flip: bool) -> str:
     """Return the shortest of inline text, one residual and banks.
 
     Banks are same-level, or the mixed union of one-per-depth picks with the
     greatest bank; all stay under a command bound.
     """
-    plain, _ = _painfuck_tree(table, perm)
+    plain, _ = _painfuck_tree(table, perm, None, flip=flip)
     shared = repeated_block(table)
     if shared is None:
         return plain
-    candidate, commands = _painfuck_tree(table, perm, shared)
+    candidate, commands = _painfuck_tree(table, perm, shared, flip=flip)
     n = len(perm)
     bound = (3 * n * n + 3) // 4 + 20 * n + 4
     forms = [(plain, 0), (candidate, commands)]
@@ -129,7 +144,7 @@ def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     plans.append(repeated_mixed_bank(table))
     for blocks, flags in dict.fromkeys(plans):
         if len(blocks) > 1:
-            forms.append(_painfuck_shared(table, perm, blocks, flags))
+            forms.append(_painfuck_shared(table, perm, blocks, flags, flip=flip))
     return min((code for code, cost in forms if cost <= bound), key=len)
 
 
@@ -138,10 +153,16 @@ def _painfuck_shared(
     perm: tuple[int, ...],
     blocks: tuple[tuple[int, int], ...],
     flags: tuple[int, ...] = (),
+    *,
+    flip: bool = False,
 ) -> tuple[str, int]:
-    """Emit native flag dispatch and return its maximum command count."""
+    """Emit native flag dispatch and return its maximum command count.
+
+    ``flip`` presets the result cell to 1 (``rpsll`` after the reads) and
+    clears it at each leaf, so ``table`` is the complement of the answer.
+    """
     n = _validate_truth_table(table)
-    header = "ir" * (n - 1) + "i"
+    header = "ir" * (n - 1) + "i" + ("rpsll" if flip else "")
     body, commands = flag_tree_body(
         table,
         perm,
@@ -150,16 +171,32 @@ def _painfuck_shared(
         shared_blocks=blocks,
         flag_levels=flags,
         binary_leaves=True,
-        dialect=FlagDialect(_move, "ps", "s", "a", "b", "s", retest=True),
+        dialect=FlagDialect(
+            _move,
+            "ps",
+            "s",
+            "a",
+            "b",
+            "s",
+            retest=True,
+            leaf="s" if flip else "",
+            unleaf="ps" if flip else "",
+        ),
     )
     return _encode(header + body + "o"), len(header) + commands + 1
 
 
 def _painfuck_tree(
-    table: str, perm: tuple[int, ...], shared: tuple[int, int] | None = None
+    table: str,
+    perm: tuple[int, ...],
+    shared: tuple[int, int] | None = None,
+    *,
+    flip: bool = False,
 ) -> tuple[str, int]:
     """Emit an inline tree or one deferred residual with the native flag dialect."""
-    return _painfuck_shared(table, perm, () if shared is None else (shared,))
+    return _painfuck_shared(
+        table, perm, () if shared is None else (shared,), (), flip=flip
+    )
 
 
 LANGUAGE = Language(
