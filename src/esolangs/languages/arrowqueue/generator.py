@@ -21,6 +21,11 @@ Size:
 Decisions:
     The decision tree (``n <= 4``) was never smaller at n=4 (0.0% by area, 200
     random tables) and kept ignored inputs.
+    Input polarity stays lopsided (n=8 area: and 1,878 vs nor 348, nand 2,178
+    vs or 354): the dropped tail is always the high-index end, and a leading
+    run would need the count ``T - 1 - r``, but a stage cell pushes a bit
+    (``~``) or nothing (``.``), never ``1 - bit``.  The answer is halt or
+    loop, so no output flip either; no loop-less mirror exists.
 """
 
 from math import isqrt
