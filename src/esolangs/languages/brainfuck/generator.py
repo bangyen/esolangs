@@ -14,7 +14,9 @@ Size:
 Decisions:
     Flags cut n=10 sparse from 2,646 to 754 chars; folding and shared output
     cut n=10 XOR from 77,939 to 18,495; the affine stream cut n=16 parity
-    from 672,691 to 1,186.
+    from 672,691 to 1,186.  The tree of the complement table with a
+    complementing print races the direct tree: n=8 or 745 -> 622 chars,
+    NOT-majority 2,052 -> 1,638; its print costs 10 more commands.
 """
 
 from esolangs.generation.helpers import (
@@ -43,7 +45,11 @@ _RIGHT, _LEFT = ">", "<"
 
 def bf_tree(truth_table: str) -> str:
     """Return a compact program, consuming every input unconditionally."""
-    tree = in_input_order(truth_table, _bf_ordered)
+    tree = min(
+        in_input_order(truth_table, _bf_ordered),
+        in_input_order(truth_table.translate(_COMPLEMENT), _flipped_ordered),
+        key=len,
+    )
     affine = _affine_stream(truth_table)
     return min((tree, affine), key=len) if affine is not None else tree
 
@@ -81,8 +87,26 @@ def _affine_stream(table: str) -> str | None:
     return "".join(parts)
 
 
+_COMPLEMENT = str.maketrans("01", "10")
+
+#: Print the result bit as ASCII; the flipped tail prints ``49 - r`` from the
+#: cell above, so a tree built for the complement table prints the table.
+_PRINT = "+" * _ASCII_ZERO + "."
+_FLIPPED = ">" + "+" * (_ASCII_ZERO + 1) + "<[->-<]>."
+
+
 def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit a permuted table; node i tests cell 2*perm[i], reads stay ordered."""
+    return _tree_for(truth_table, perm, _PRINT)
+
+
+def _flipped_ordered(complement: str, perm: tuple[int, ...]) -> str:
+    """Emit the tree of a complemented table, whose print restores the polarity."""
+    return _tree_for(complement, perm, _FLIPPED)
+
+
+def _tree_for(truth_table: str, perm: tuple[int, ...], tail: str) -> str:
+    """Emit a tree whose result cell is printed by ``tail``."""
     n = _validate_truth_table(truth_table)
 
     # read bits b_i at cell 2i, leaving the flag cells (1, 3, ...) zero
@@ -97,11 +121,10 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # A shared print pays the ASCII offset once rather than at every leaf.
     cells.append(move_text(pos, 2 * n, _RIGHT, _LEFT))
-    cells.append("+" * _ASCII_ZERO)
-    cells.append(".")
+    cells.append(tail)
     plain = "".join(cells)
     # The body's share of `_command_budget`.
-    budget = _command_budget(n) - len(header) - _ASCII_ZERO - 1
+    budget = _command_budget(n) - len(header) - len(tail)
     shared = shared_flag_tree(
         truth_table,
         perm,
@@ -110,7 +133,7 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         command_budget=budget,
     )
     if shared is not None and shared[1] <= budget:
-        candidate = header + shared[0] + "+" * _ASCII_ZERO + "."
+        candidate = header + shared[0] + tail
         if len(candidate) < len(plain):
             plain = candidate
     return plain
