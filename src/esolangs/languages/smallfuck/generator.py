@@ -23,11 +23,14 @@ Decisions:
     A chain of ifs is cheap and an else is not: the reversed table behind a
     prologue flipping every input cell once (setters unchanged) is built too
     and the shorter kept, n=8 or 260 -> 182 chars, nor 238 -> 177, majority
-    1219 -> 1084; random n=8 -0.7%.
+    1219 -> 1084; random n=8 -0.7%.  The complement behind a closing flip
+    of cell 2 is built too (with and without the input prologue): thr2 n=8
+    601 -> 511, n=10 847 -> 671; random n=8 -0.8%.
 """
 
 import re
 from collections.abc import Callable
+from functools import partial
 from itertools import pairwise
 from typing import Any
 
@@ -129,11 +132,18 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     # A chain of ifs is cheap and an else is not, so AND-like tables beat their
     # OR-like duals; the reversed table behind a prologue that flips every
     # input cell once (the setters stay as they are) reaches the cheap polarity.
-    negated = in_input_order(
-        truth_table[::-1],
-        lambda table, perm: _smallfuck_ordered(table, perm, negate=True),
-    )
-    natural = min(natural, negated, key=len)
+    # Likewise the complement behind a closing flip of cell 2.
+    flipped = "".join("10"[int(bit)] for bit in truth_table)
+    twins = [
+        in_input_order(
+            table[::-1] if negate else table,
+            partial(_smallfuck_ordered, negate=negate, complement=complement),
+        )
+        for table, complement in ((truth_table, False), (flipped, True))
+        for negate in (False, True)
+        if negate or complement
+    ]
+    natural = min(natural, *twins, key=len)
     if (form := affine_form(truth_table, n)) is not None and any(form[1]):
         natural = min(natural, _xor_chain(n, *form), key=len)
     if width is None or width <= 0:
@@ -166,7 +176,11 @@ def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 
 
 def _smallfuck_ordered(
-    table: str, perm: tuple[int, ...], *, negate: bool = False
+    table: str,
+    perm: tuple[int, ...],
+    *,
+    negate: bool = False,
+    complement: bool = False,
 ) -> str:
     """Compare the plain tree, deferred residuals and paired roots.
 
@@ -186,7 +200,11 @@ def _smallfuck_ordered(
     # +5.7% at n=8, 0% below.
     paired = _paired_roots(table)
     for band in BANDS:
-        forms.append(_smallfuck_tree(table, perm, band=band, negate=negate))
+        forms.append(
+            _smallfuck_tree(
+                table, perm, band=band, negate=negate, complement=complement
+            )
+        )
         for blocks, flags in plans:
             if blocks:
                 forms.append(
@@ -197,12 +215,18 @@ def _smallfuck_ordered(
                         flag_levels=flags,
                         band=band,
                         negate=negate,
+                        complement=complement,
                     )
                 )
         if paired:
             forms.append(
                 _smallfuck_tree(
-                    table, perm, paired_roots=paired, band=band, negate=negate
+                    table,
+                    perm,
+                    paired_roots=paired,
+                    band=band,
+                    negate=negate,
+                    complement=complement,
                 )
             )
     bound = 9 * n * n + 100 * n + 20
@@ -668,6 +692,7 @@ def _smallfuck_tree(
     paired_roots: tuple[tuple[int, int], ...] = (),
     band: int = BAND,
     negate: bool = False,
+    complement: bool = False,
 ) -> tuple[str, int]:
     """Emit one order's template; level ``k`` tests input ``perm[k]``.
 
@@ -679,7 +704,8 @@ def _smallfuck_tree(
     O(1) either way.  An arm whose lower half is constant needs no flag:
     that constant is flipped in first and the upper arm built inverted, so
     a node over two leaves is ``result ^= bit`` alone.  ``negate`` flips every
-    input cell once first, so the tree sees the complemented inputs.
+    input cell once first, so the tree sees the complemented inputs;
+    ``complement`` flips cell 2 last, so the tree's table is the answer's complement.
     """
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
@@ -718,7 +744,7 @@ def _smallfuck_tree(
     )
     prefix = tree.arm(-1, 0, len(truth_table), ANSWER, "1")
     if pairs:
-        return tree.emit_paired_roots(prefix)
+        return _closed(builder, *tree.emit_paired_roots(prefix), complement=complement)
     empty_tails = dict.fromkeys([None, *range(len(blocks))], 0)
     cost = head + prefix.evaluate(empty_tails)
     stages = [
@@ -732,8 +758,17 @@ def _smallfuck_tree(
             tails = {target: value + skipped for target, value in tails.items()}
             tails[i] = commands
         cost = head + prefix.evaluate(tails) + 1
-    program = "".join(builder.code)
-    return program, cost
+    return _closed(builder, "".join(builder.code), cost, complement=complement)
+
+
+def _closed(
+    builder: _Builder, program: str, cost: int, *, complement: bool
+) -> tuple[str, int]:
+    """Append the closing flip of cell 2 when the tree built the complement."""
+    if not complement:
+        return program, cost
+    tail = move_text(builder.at, ANSWER, ">", "<") + "*"
+    return program + tail, cost + len(tail)
 
 
 def _balance(table: str, default: str) -> str:
