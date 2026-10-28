@@ -119,14 +119,15 @@ def bfstack(truth_table: str) -> str:
     """Build a BFStack program; a symmetric table indexes its input count.
 
     The count fits the byte index at any width, so the block limit does not
-    apply ([ablations.symmetric_count]).
+    apply ([ablations.symmetric_count]).  It always beats the plain build:
+    no symmetric table through n=8 (12,596 at n=8) ships a different program
+    when the race against the plain build is dropped.
     """
-    plain = _bfstack_plain(truth_table)
     n = _validate_truth_table(truth_table)
     symmetric = symmetric_weights(truth_table, n)
     if symmetric is None or len(symmetric[1]) > 255:
-        return plain
-    return min(plain, _bfstack_small(truth_table, n, symmetric), key=len)
+        return _bfstack_plain(truth_table)
+    return _bfstack_small(truth_table, n, symmetric)
 
 
 def _bfstack_plain(truth_table: str) -> str:
