@@ -1,7 +1,6 @@
 """Retired constructions, kept as oracles for the generators that replaced them."""
 
 # These independent construction oracles deliberately mirror generated programs.
-# pylint: disable=duplicate-code
 
 from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 

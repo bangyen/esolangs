@@ -15,11 +15,9 @@ from tests.support.event_io import EventIO
 
 def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
     """Step ``machine`` until it halts or a call provably replays an ancestor."""
-    # pylint: disable=duplicate-code
     # The overlap with the shared module's walk is the point, not an
     # oversight: see the docstring above.  Importing it instead would cut
-    # this file from the mutation bundle whole, so the copy stays and the
-    # similarity check is told so here rather than left to fail in CI.
+    # this file from the mutation bundle whole, so the copy stays.
     keys: dict[int, object] = {}
     pushes, steps = 0, 0
     while pushes < limit:
