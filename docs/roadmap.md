@@ -101,7 +101,7 @@ Row 3, Hot 3, NOR machine 3, Qoibl 3, SendStuff 3, Smu 3, Taglate 3, Unary
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-14 of the 81 first implementations: Aprknia, Balik, BASICER, Bleh,
+14 of the 80 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, S*bleq,
 Sonata, Stisp, SwitchCase, Tiangou.
 

@@ -66,7 +66,6 @@ don't edit by hand.
 | `for_thorn/forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
 | `fractran/fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `freestajlo/freestajlo.txt` | Freestajlo | `0001` | `01` | 0 1 | '0' |
-| `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `hot/hot.txt` | Hot | `0001` | `01` | 01 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
@@ -134,7 +133,6 @@ don't edit by hand.
 - **cyclic-tag** -- Inputs fill the initial queue; the final deleted bit is the answer.
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
 - **fractran** -- FRACTRAN has neither input nor output: the inputs are the exponents of n primes in the starting value, and the answer is the value the run stops on -- 1 for a zero and 2 for a one
-- **grapheme** -- input bits are spelled % and A: a line starting with A is a 1 and any other line a 0, so a 0/1 line reads as 0 and the program answers the all-zeros row; esolangs encode spells them
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **intercal** -- INTERCAL READ OUT prints a lone overbar for zero and I for one
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3

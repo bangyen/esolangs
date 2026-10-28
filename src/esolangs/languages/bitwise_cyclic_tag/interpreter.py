@@ -68,8 +68,8 @@ def _parse(code: str) -> tuple[str, str, tuple[int, ...]]:
 
 # The data-string is not threaded through :func:`_advance`: a run appends ``Theta(T)``
 # bits and copying per append would cost ``Theta(T**2)`` for a program meant to be
-# linear, so the append leaves as an effect (``grapheme.py``'s arrangement) and
-# deletion is a cursor, not a slice.
+# linear, so the append leaves as an effect and deletion is a cursor, not a
+# slice.
 def _advance(state: _State, program: str, bit: str) -> tuple[_State, str | None]:
     """Return the state after one command, and the bit to append.
 

@@ -278,32 +278,6 @@ def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
     assert built, f"{name} never built a positive control"
 
 
-# language-owners: ["Grapheme"]
-# The build sweep above proves every generator *returns* a program up to five
-# inputs.  It never runs one, and nothing else ran one past
-# four inputs either.  Grapheme's variable keys collided with two of its own
-# command characters from slot 5 onward, so from six essential inputs it
-# emitted a program its own interpreter could not execute -- and the sweep
-# saw a healthy non-empty string every time.
-#
-# The property that matters is not table *size* but how many inputs are
-# *essential*: a dense n=9 table that folds down to one input exercises one
-# slot and sails through.  A single-minterm table is the cheap way to force
-# all n of them -- its one 1 makes every input matter, while the program
-# stays small enough to execute.  Grapheme n=9 costs 0.18s that way against
-# 11.7s for an all-essential random table, which is the difference between a
-# test and a nightly job.
-#
-# n=6 is the floor that would have caught the bug and is affordable for all
-# 60: 13.4s of work in total, no language over 4.3s, and none excluded.
-# Restoring the old key alphabet makes this fail, which is the only
-# evidence that the arity is high enough.
-# There is deliberately no exclusion table here.
-#
-# A wider probe backs the choice rather than a hunch: 517 evaluations over
-# the whole registry, both shapes, n=5..8, found zero further failures of this
-# kind, so Grapheme was the only one.  22 language/arity pairs were too
-# expensive to reach and are *unchecked*, not passing.
 _ONE_MINTERM_ARITY = 6
 
 

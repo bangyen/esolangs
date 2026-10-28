@@ -509,8 +509,8 @@ requires a construction exemption rather than a sub-gate bound.
 <!-- SHARING-COUNTS:START -->
 
 A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 40
-of 63 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 23 are
+of 62 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 22 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -704,7 +704,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 102 languages.
+The collection has 101 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -773,7 +773,11 @@ Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
 prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
 removed; IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
-48/49 normalization; dropping a step adds nothing). On the same ground
+48/49 normalization; dropping a step adds nothing), and Grapheme on
+2026-10-28 (Qoibl's packed literal: every shipped program translated block
+for block into Qoibl and computed its table, 190 of 190 at n = 1-6; a distinct rebuild, a row counter halving the
+literal in a loop, cost +9.8% chars and +20% balanced area at n = 7 over
+the shipped build with its free wins). On the same ground
 CARP (no indirect jump or load: Decleq's diagram without the normalization)
 and CreativeScript v2 (a packed literal under Blindfolded Arithmetic's
 `1 + x(Q - 1)` shift) were not admitted on 2026-10-27. Painfuck shares brainfuck's flag tree but stays: its moves use
@@ -834,7 +838,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 21 clear the fame gate
-and 81 are first implementations.
+and 80 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
@@ -1041,13 +1045,6 @@ one reading. These are those choices.
 - CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
   It discards LF to run line-wrapped generated programs; this is a source-rule
   deviation, not a specification gap.
-- Grapheme discards LF to run line-wrapped generated programs; this is a
-  source-rule deviation, not a specification gap. It defaults to `integer_conversion="between_letters"`: `FAFY` prints
-  1. `"after_each_letter"` includes the prose's final multiplication and prints
-  10. Both integer mode and string conversion follow this setting; generators
-  adapt their literals. The same page’s truth machine requires 1 rather than
-  the prose’s 10. An unset variable reads as its own name, which the page’s
-  variables example (`VARIABL`) requires.
 - Packlang literals default to decimal; `literal_policy="binary_digits"`
   treats literals containing only `0` and `1` as binary. The same page uses
   decimal `101` in Hello World and binary digits in PlusOrMinus and dependency
