@@ -19,14 +19,14 @@ execution = "linear: worst T + 296n + 682 steps for n = 5, 6, then 18T + 56n + 4
 workspace = "linear: worst 8n + 26 bits at n = 5, 6, then 12T + 2n + 11 + 2bl(n)"
 
 [generator_sizes]
-"00000001" = { commands = 1574, commands_by_row = { "0" = 1561, "1" = 1561, "2" = 1561, "3" = 1561, "4" = 1566, "5" = 1566, "6" = 1571, "7" = 1574 }, source_units = 269 }
-"00001100" = { commands = 1568, commands_by_row = { "0" = 1561, "1" = 1561, "2" = 1561, "3" = 1561, "4" = 1567, "5" = 1567, "6" = 1568, "7" = 1568 }, source_units = 198 }
-"00110110" = { commands = 1575, commands_by_row = { "0" = 1564, "1" = 1564, "2" = 1567, "3" = 1567, "4" = 1570, "5" = 1573, "6" = 1574, "7" = 1575 }, source_units = 413 }
-"0110" = { commands = 1277, commands_by_row = { "0" = 1272, "1" = 1275, "2" = 1276, "3" = 1277 }, source_units = 229 }
-"01101001" = { commands = 1578, commands_by_row = { "0" = 1567, "1" = 1570, "2" = 1571, "3" = 1572, "4" = 1573, "5" = 1574, "6" = 1575, "7" = 1578 }, source_units = 559 }
-"0110100110010110" = { commands = 1881, commands_by_row = { "0" = 1862, "1" = 1865, "2" = 1866, "3" = 1867, "4" = 1868, "5" = 1869, "6" = 1870, "7" = 1873, "8" = 1872, "9" = 1873, "10" = 1874, "11" = 1877, "12" = 1876, "13" = 1879, "14" = 1880, "15" = 1881 }, source_units = 1319 }
-"1101001101101101" = { commands = 1878, commands_by_row = { "0" = 1860, "1" = 1860, "2" = 1864, "3" = 1867, "4" = 1863, "5" = 1863, "6" = 1866, "7" = 1866, "8" = 1868, "9" = 1871, "10" = 1872, "11" = 1873, "12" = 1871, "13" = 1871, "14" = 1875, "15" = 1878 }, source_units = 979 }
-"11111110" = { commands = 1573, commands_by_row = { "0" = 1562, "1" = 1562, "2" = 1562, "3" = 1562, "4" = 1567, "5" = 1567, "6" = 1572, "7" = 1573 }, source_units = 271 }
+"00000001" = { commands = 1574, commands_by_row = { "0" = 1560, "1" = 1560, "2" = 1560, "3" = 1560, "4" = 1565, "5" = 1565, "6" = 1570, "7" = 1574 }, source_units = 266 }
+"00001100" = { commands = 1568, commands_by_row = { "0" = 1560, "1" = 1560, "2" = 1560, "3" = 1560, "4" = 1566, "5" = 1566, "6" = 1568, "7" = 1568 }, source_units = 196 }
+"00110110" = { commands = 1575, commands_by_row = { "0" = 1562, "1" = 1562, "2" = 1566, "3" = 1566, "4" = 1568, "5" = 1572, "6" = 1573, "7" = 1575 }, source_units = 406 }
+"0110" = { commands = 1277, commands_by_row = { "0" = 1270, "1" = 1274, "2" = 1275, "3" = 1277 }, source_units = 225 }
+"01101001" = { commands = 1578, commands_by_row = { "0" = 1564, "1" = 1568, "2" = 1569, "3" = 1571, "4" = 1571, "5" = 1573, "6" = 1574, "7" = 1578 }, source_units = 547 }
+"0110100110010110" = { commands = 1881, commands_by_row = { "0" = 1858, "1" = 1862, "2" = 1863, "3" = 1865, "4" = 1865, "5" = 1867, "6" = 1868, "7" = 1872, "8" = 1869, "9" = 1871, "10" = 1872, "11" = 1876, "12" = 1874, "13" = 1878, "14" = 1879, "15" = 1881 }, source_units = 1287 }
+"1101001101101101" = { commands = 1878, commands_by_row = { "0" = 1857, "1" = 1857, "2" = 1861, "3" = 1865, "4" = 1861, "5" = 1861, "6" = 1865, "7" = 1865, "8" = 1865, "9" = 1869, "10" = 1870, "11" = 1872, "12" = 1870, "13" = 1870, "14" = 1874, "15" = 1878 }, source_units = 958 }
+"11111110" = { commands = 1573, commands_by_row = { "0" = 1561, "1" = 1561, "2" = 1561, "3" = 1561, "4" = 1566, "5" = 1566, "6" = 1571, "7" = 1573 }, source_units = 268 }
 
 [catalogue]
 sharing_exempt = "a leaf retires by its path's bits, so equal subtables differ as text; a lookup above sixty-four entries"
@@ -62,9 +62,9 @@ arity = 8
 verdict = "kept: canonical, exempt; saving on its own class"
 
 [ablations.sized_leaf_retirement]
-saving = 3.5
-arity = 4
-verdict = "removed: tree route only, weighted route unaffected; 3.5 in area, still under the bar"
+saving = 19.0
+arity = 11
+verdict = "kept 2026-10-28: the balanced route uses the tree at every n -- 17-21% area on random tables at n=10..12, 18-19% on parity (seeds 1, 7), 0 at n=7..8; the default route alone fails (3.5% at n=4, peak 4.6% at its n=6 cap)"
 
 [ablations.reader_orientation_search]
 saving = 0.0

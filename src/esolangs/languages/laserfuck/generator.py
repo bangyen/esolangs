@@ -9,8 +9,8 @@ the weighted linear-space lookup replaces the tree.
 
 Size:
     About 23T chars from n=7 (weighted lookup); the tree under it:
-    n=4 random 1847: 557 chars, n=5 random 1847: 1,676 chars,
-    n=6 random 1847: 4,354 chars, n=10 random 1847: 24,605 chars,
+    n=4 random 1847: 548 chars, n=5 random 1847: 1,640 chars,
+    n=6 random 1847: 4,241 chars, n=10 random 1847: 24,605 chars,
     n=16 and: 1,443,471 chars.
 
 Decisions:
@@ -474,25 +474,35 @@ class _TreeEmitter:
         self.ids = subtree_ids(truth_table)
         self.rows: list[list[tuple[int, str]]] = [[]]
 
-    def leaf(self, depth: int, first: int, row: int, col: int) -> None:
+    def leaf(
+        self, depth: int, first: int, row: int, col: int, skipped: int = 0
+    ) -> None:
         """Sweep the cells, then ``+`` for a one answer and ``x``.
 
         Inputs sit in cells 1..n, cell 0 at zero, so a zero answer needs no
         code.  Sweep all ``n`` cells from cell ``n`` down or an unconsumed one
-        prints beside the answer: a flat two ``-`` retires either value
-        (0 -> -2, 1 -> -1), consumed or not.  Sizing the run to the
-        consumed bit (``-`` x bit+1) saved 2.2% at n=4, under the bar.
+        prints beside the answer.  A cell the path consumed (bit ``b``) takes
+        ``-`` x ``b + 1``; one with no test (``skipped`` bit set: an equal-
+        halves step, or a level past ``depth``) takes a flat two ``-``, which
+        retires either value.  See [ablations.sized_leaf_retirement]: the
+        balanced route uses this tree at every n, 17-21% area on random
+        tables at n=10..12, 18-19% on parity (seeds 1, 7).
         """
         n = self.n
-        run = ">" * (n - depth) + "--<" * n
+        run = ">" * (n - depth) + "--<" * (n - depth)
+        for level in range(depth, 0, -1):
+            bit = (first >> (n - level)) & 1
+            run += "-" * (2 if skipped >> (level - 1) & 1 else bit + 1) + "<"
         run += "+" if self.table[first] == "1" else ""
         self.rows[row].append((col, run + "x"))
 
-    def emit(self, depth: int, first: int, row: int, col: int) -> None:
+    def emit(
+        self, depth: int, first: int, row: int, col: int, skipped: int = 0
+    ) -> None:
         """Lay one row span, entered at ``(row, col)`` going right."""
         n = self.n
         if depth == n:
-            self.leaf(depth, first, row, col)
+            self.leaf(depth, first, row, col, skipped)
             return
         below = self.ids[depth + 1]
         place = first >> (n - depth)
@@ -500,13 +510,13 @@ class _TreeEmitter:
             # Equal halves (an ignored input, a repeat): the input is still
             # read, so step the pointer past its cell, but test nothing.
             self.rows[row].append((col, ">"))
-            self.emit(depth + 1, first, row, col + 1)
+            self.emit(depth + 1, first, row, col + 1, skipped | 1 << depth)
             return
         self.rows[row].append((col, ">#v)"))
-        self.emit(depth + 1, first, row, col + 4)  # zero carries on
+        self.emit(depth + 1, first, row, col + 4, skipped)  # zero carries on
         drop = len(self.rows)
         self.rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
-        self.emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3)
+        self.emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3, skipped)
 
 
 def _laserfuck_tree(truth_table: str, n: int) -> _LaserTree:

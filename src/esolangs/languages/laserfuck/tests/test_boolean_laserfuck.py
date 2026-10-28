@@ -2,6 +2,7 @@
 
 import importlib
 import random
+import re
 
 import pytest
 
@@ -239,16 +240,16 @@ class TestLaserFuck:
             for w in range(8, 61)
         ]
         assert scanned == sorted(scanned)
-        assert set(scanned) == {7, 10, 34, 43, 57}
+        assert set(scanned) == {7, 10, 34, 43, 56}
 
     @pytest.mark.parametrize(
         ("table", "rows", "columns"),
         [
             ("01", 3, 44),
             ("0001", 3, 56),
-            ("0110", 4, 57),
-            ("11111110", 4, 69),
-            ("01101001", 8, 70),
+            ("0110", 4, 56),
+            ("11111110", 4, 68),
+            ("01101001", 8, 68),
         ],
     )
     def test_the_grid_has_exact_dimensions(
@@ -262,10 +263,10 @@ class TestLaserFuck:
     @pytest.mark.parametrize(
         ("width", "rows", "columns"),
         [
-            (18, 59, 10),
-            (19, 59, 10),
-            (27, 59, 10),
-            (28, 59, 10),
+            (18, 58, 10),
+            (19, 58, 10),
+            (27, 58, 10),
+            (28, 58, 10),
             (35, 17, 34),
             (44, 6, 43),
         ],
@@ -281,8 +282,8 @@ class TestLaserFuck:
     @pytest.mark.parametrize(
         ("table", "flip", "narrow", "wide"),
         [
-            ("11111110", 70, (6, 49), (4, 69)),
-            ("01101001", 71, (10, 49), (8, 70)),
+            ("11111110", 69, (6, 49), (4, 68)),
+            ("01101001", 69, (10, 49), (8, 68)),
         ],
     )
     def test_the_straight_layout_starts_at_its_exact_width(
@@ -333,15 +334,17 @@ class TestLaserFuck:
         assert boolean.laserfuck("11110000").count("x") == 2
         assert boolean.laserfuck("10010110").count("x") == 8
 
-    def test_a_table_that_folds_nothing_keeps_the_flat_sweep(self) -> None:
-        """Parity's leaves retire every input with a flat two ``-``."""
+    def test_a_table_that_folds_nothing_sizes_each_leaf_to_its_path(self) -> None:
+        """Parity's leaves retire cell ``k`` with ``-`` x (its bit + 1)."""
         program = boolean.laserfuck("10010110")
         leaves = program.split("x")[:-1]
         assert len(leaves) == 8
+        tails = set()
         for leaf in leaves:
-            assert leaf.endswith("--<--<--<") or leaf.endswith("--<--<--<+"), (
-                f"a leaf retires with a sized run: {leaf!r}"
-            )
+            tail = re.search(r"(-{1,2}<){3}\+?$", leaf)
+            assert tail, f"a leaf retires with a sized run: {leaf!r}"
+            tails.add(tail.group().removesuffix("+"))
+        assert len(tails) == 8, "each path's bits give its own run"
 
     def test_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
@@ -371,7 +374,7 @@ def test_overhead_funnel_floor_and_corpus_size() -> None:
     assert len(boolean.laserfuck("0110", 1)) == 569
     assert sum(len(boolean.laserfuck(format(v, "04b"), 1)) for v in range(16)) == 9104
     assert (
-        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 104521
+        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 101511
     )
 
 
