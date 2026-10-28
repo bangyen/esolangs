@@ -124,6 +124,7 @@ def _cm_build(
     *,
     numbered: bool = True,
     narrow: bool = False,
+    invert: bool = False,
 ) -> str:
     """Emit the cell-and-decoder program over ``order``'s inputs.
 
@@ -134,8 +135,12 @@ def _cm_build(
     holds its bit ``j`` at ``4 c + j``.  ``numbered`` False stores each cell's
     own value as its code, the build before :func:`_cm_codes` numbered cells.
     ``narrow`` uses odd indices ``3 + 2 i`` and doubles address offsets.
+    ``invert`` stores the complemented table -- an empty cell is a cheap pad
+    line, so the sparser polarity costs less -- and prints ``49 - bit``.
     """
     address_scale = 2 if narrow else 1
+    if invert:
+        truth_table = "".join("10"[int(bit)] for bit in truth_table)
     table = read_at(truth_table, order, n)
     padded = table + "0" * (-len(table) % _CM_CHUNK)
     chunks = [
@@ -149,7 +154,7 @@ def _cm_build(
     weights = {address_scale * 2 ** (high - 1 - k) for k in range(high)}
     stored = sorted((code, value) for value, code in codes.items() if code)
     needed = {
-        _ASCII_ZERO,
+        _ASCII_ZERO + invert,
         *weights,
         *(address_scale * _CM_CHUNK * code for code, _ in stored),
     }
@@ -157,7 +162,7 @@ def _cm_build(
     names = {value: f"k{address_scale * _CM_CHUNK * code}" for code, value in stored}
     _cm_emit_decoder(lines, codes, narrow=narrow)
     _cm_emit_cells(lines, chunks, names, narrow=narrow)
-    _cm_emit_address(lines, n, order, high, address_scale)
+    _cm_emit_address(lines, n, order, high, address_scale, invert=invert)
     return "\n".join(lines)
 
 
@@ -188,7 +193,13 @@ def _cm_emit_cells(
 
 
 def _cm_emit_address(
-    lines: list[str], n: int, order: list[int], high: int, address_scale: int
+    lines: list[str],
+    n: int,
+    order: list[int],
+    high: int,
+    address_scale: int,
+    *,
+    invert: bool = False,
 ) -> None:
     """Address phase: read the inputs, sum the address, print the bit.
 
@@ -220,7 +231,10 @@ def _cm_emit_address(
     lines.append(_CM_FOLD.format(dst="t", src=f"w{select[-1]}"))
     lines.append("o=zx+D[t],NOT PRINT.")
     # ``o`` holds the bit: ``0 * a + b`` for a zero, ``1 * a + b`` for a one.
-    lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
+    if invert:
+        lines.append(f"o=negativeOne x+k{_ASCII_ZERO + 1},DO PRINT.")
+    else:
+        lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
 
 
 def _cm_layout(program: str, width: int) -> str:
@@ -295,7 +309,11 @@ def _cm_candidates(
             _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=narrow)
         ]
     orders = _cm_orders(essential_inputs(truth_table, n), expanded=expanded)
-    return [_cm_build(truth_table, n, order, narrow=narrow) for order in orders]
+    return [
+        _cm_build(truth_table, n, order, narrow=narrow, invert=invert)
+        for order in orders
+        for invert in (False, True)
+    ]
 
 
 def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
@@ -397,6 +415,6 @@ LANGUAGE = Language(
     boolean=collatz_multiverse,
     balance=balance_collatz_multiverse,
     no_wrap="each line is one complete register assignment",
-    proof_execution=(execution, True, (3, 5, 6, 8)),
-    proof_workspace=(workspace, True, (3, 4, 5, 6, 9)),
+    proof_execution=(execution, False, (3, 5, 6, 8)),
+    proof_workspace=(workspace, False, (3, 4, 5, 6, 9)),
 )

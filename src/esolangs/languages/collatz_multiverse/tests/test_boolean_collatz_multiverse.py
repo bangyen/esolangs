@@ -70,7 +70,7 @@ class TestCollatzMultiverse:
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (497493, 275732)
+        assert (plain, built) == (497493, 273428)
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""

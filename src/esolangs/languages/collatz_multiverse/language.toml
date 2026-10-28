@@ -7,10 +7,10 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it"
-scaling = "linear: worst N characters past n = 2: one line per four rows"
-execution = "linear: worst T/4 + 3n + 4m + 2K + 10 lines past n = 2: one step per line"
-workspace = "T log T: worst end-state registers, arrays A and D, ip, input counter bits past n = 2: top code repeated"
-definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 29 for n = 6..8, 2n + 13 past n = 8", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of the m cells"]
+scaling = "linear: at most N characters past n = 2: a line per cell"
+execution = "linear: at most T/4 + 3n + 4m + 2K + 10 lines past n = 2: one step per line"
+workspace = "T log T: at most end-state registers, arrays A and D, ip, input counter bits past n = 2: top code repeated"
+definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 30 for n = 6..8, 2n + 14 past n = 8", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of the m cells"]
 
 [generator_sizes]
 "00000001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1078 }
@@ -19,8 +19,8 @@ definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constan
 "0110" = { commands = 32, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32 }, source_units = 881 }
 "01101001" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1117 }
 "0110100110010110" = { commands = 46, commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46, "8" = 46, "9" = 46, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 46, "15" = 46 }, source_units = 1229 }
-"1101001101101101" = { commands = 52, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 52, "5" = 52, "6" = 52, "7" = 52, "8" = 52, "9" = 52, "10" = 52, "11" = 52, "12" = 52, "13" = 52, "14" = 52, "15" = 52 }, source_units = 1403 }
-"11111110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1156 }
+"1101001101101101" = { commands = 52, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 52, "5" = 52, "6" = 52, "7" = 52, "8" = 52, "9" = 52, "10" = 52, "11" = 52, "12" = 52, "13" = 52, "14" = 52, "15" = 52 }, source_units = 1387 }
+"11111110" = { commands = 41, commands_by_row = { "0" = 41, "1" = 41, "2" = 41, "3" = 41, "4" = 41, "5" = 41, "6" = 41, "7" = 41 }, source_units = 1088 }
 
 [catalogue]
 sharing_exempt = "indexed packed cells, one line each, with no subtable branch; only its at most 15 cell decoders are shared (B C C B 0.72x at n=6, 0.93x at n=8)"

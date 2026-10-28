@@ -63,4 +63,4 @@ def _chars(n: int, _: str) -> int:
     return sum(lens) + len(lens) - 1
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7))}
+FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7))}
