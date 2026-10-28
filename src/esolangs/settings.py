@@ -51,7 +51,11 @@ class DialectSettings:
         object.__setattr__(self, "_items", tuple(sorted(choices.items())))
 
     def options(self, language: str) -> dict[str, Any]:
-        """Return validated overrides supported by ``language``."""
+        """Return these overrides validated for ``language``.
+
+        Raises:
+            ArgumentError: ``language`` has no such setting or value.
+        """
         name = resolve(language)
         values: dict[str, Any] = dict(self._items)
         dialect = LANGUAGES[name].dialect

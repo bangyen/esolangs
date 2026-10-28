@@ -176,7 +176,7 @@ Exceptions:
 
 - `esolangs.ArgumentError(EsolangError, ValueError)` -- an argument's value is outside what the call accepts
 - `esolangs.EsolangError(Exception)` -- base class for errors from the esolangs package
-- `esolangs.ExecutionTimeoutError(HaltError, TimeoutError)` -- a run was stopped by its wall-clock bound rather than by the program
+- `esolangs.ExecutionTimeoutError(HaltError, TimeoutError)` -- a run hit its `timeout` or `max_steps` bound before the program ended
 - `esolangs.GeneratorCapError(EsolangError, ValueError)` -- a boolean generator, such as a prime-based one, refusing too big a table
 - `esolangs.HaltError(EsolangError)` -- an interpreter halted on an invalid operation
 - `esolangs.InputExhaustedError(EsolangError, EOFError)` -- a program read past the end of its input

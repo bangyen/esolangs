@@ -313,7 +313,8 @@ class Raster:
         Untrusted bytes: a corrupt chunk used to escape as a bare
         ``zlib.error``/``struct.error``/``IndexError``/``MemoryError``.
         Any decode failure is a bad program, so it becomes a
-        :class:`~esolangs.exceptions.ProgramError`.
+        :class:`~esolangs.exceptions.ProgramError`; data that is not
+        bytes-like is an :class:`~esolangs.exceptions.ArgumentError`.
         """
         if not isinstance(data, (bytes, bytearray, memoryview)):
             # ``None`` read "'NoneType' object is not subscriptable".

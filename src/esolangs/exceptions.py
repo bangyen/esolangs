@@ -33,9 +33,10 @@ class HaltError(EsolangError):
 
 
 class ExecutionTimeoutError(HaltError, TimeoutError):
-    """A run was stopped by its wall-clock bound rather than by the program.
+    """A run hit its ``timeout`` or ``max_steps`` bound before the program ended.
 
-    Not a plain :class:`HaltError`: some languages answer by terminating.
+    Its own subclass of :class:`HaltError`, because some languages answer by
+    terminating: running out of time is no answer.
     """
 
     #: Which bound ended the run: ``"timeout"`` or ``"max_steps"``.  Both

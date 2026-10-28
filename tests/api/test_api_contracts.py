@@ -498,6 +498,8 @@ class TestThePathGuardKnowsMoreThanTxt:
             "prog.TXT",
             "/etc/hosts",
             "a/b/c.json",
+            "foo.7z",
+            "data.1",
         ],
     )
     def test_a_path_shaped_string_is_refused(self, argument: str) -> None:

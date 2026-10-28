@@ -154,7 +154,7 @@ class Debugger:
     def eof_is_a_value(self) -> bool:
         """Whether a read past the end of the input yields a value here.
 
-        See :attr:`~esolangs.vm.VM.eof_is_a_value`; the one trait not mirrored.
+        See :attr:`~esolangs.vm.VM.eof_is_a_value`.
         """
         return self.vm.eof_is_a_value
 
@@ -162,10 +162,10 @@ class Debugger:
         """Return the wrapped machine's complete *internal* state, hashable.
 
         ``output`` is excluded, so equal internal state means the same future
-        computation; see :meth:`~esolangs.vm.SnapshotVM.snapshot` for the post-halt
-        dump.  A repeated
-        snapshot proves a loop, which settles the four termination languages in
-        microseconds.
+        computation.  The post-halt dump writes output without changing the
+        snapshot on most such languages (Cyclic tag records it).  A repeated snapshot
+        proves a loop, which settles a termination language
+        (``describe(name)["answer_mode"] == "termination"``) in microseconds.
         """
         return cast(SnapshotVM, self.vm).snapshot()
 
@@ -406,7 +406,8 @@ def make_debugger(
     :class:`~esolangs.exceptions.ProgramError`, and on a language that
     reads its whole input while the machine is built -- an underfed stdin
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
-    than at :meth:`Debugger.run`.
+    than at :meth:`Debugger.run`.  ``scale`` and ``settings`` are checked
+    as :func:`esolangs.run` checks them.
     """
     return Debugger(
         make_vm(language, program, stdin=stdin, scale=scale, settings=settings)

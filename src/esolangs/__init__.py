@@ -553,9 +553,8 @@ _ISOLATED_TIMEOUT = 30.0
 #: Characters a filename is made of, and a program mostly is not.
 _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
 
-#: A short extension, which is what makes a bare name look like a file;
-#: led by a letter, so ``1.5`` is not one.
-_PATH_EXTENSION = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,4}$")
+#: A short extension, which is what makes a bare name look like a file.
+_PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 
 
 def _looks_like_a_path(program: Program) -> bool:

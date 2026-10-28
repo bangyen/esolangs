@@ -406,8 +406,8 @@ def make_vm(
     :func:`~esolangs.registry.resolve`.  A name outside the registry raises
     :class:`UnknownLanguageError`. Text and raster use the same step interface. The
     program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
-    unfilled template otherwise runs to a confident ``'0'``), and the checked
-    value is what reaches the interpreter (:mod:`esolangs.runtime._validate`).
+    unfilled template otherwise runs to a confident ``'0'``), as are ``scale``
+    and ``settings``; the checked value is what reaches the interpreter.
     """
     from esolangs import _check_program
 
