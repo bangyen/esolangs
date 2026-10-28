@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
+from esolangs.languages.circuit_diagram.generator import (
+    _circuit_diagram_model,
+    _dag,
+    _essential_table,
+)
 from esolangs.languages.circuit_diagram.generator.banks import (
     _assemble_banks,
     _chunks,
@@ -11,12 +15,27 @@ from esolangs.languages.circuit_diagram.generator.banks import (
     _online_bank_area_floor,
     _pool_budget,
 )
-from esolangs.languages.circuit_diagram.generator.folded_banks import (
-    _folded_class_masks,
-)
 from esolangs.languages.circuit_diagram.generator.forest import _suffix_forest
 from esolangs.languages.circuit_diagram.generator.hpool import _atom_inputs
 from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
+
+
+def _folded_class_masks(
+    chunks: list[str], classes: list[str], prefix: int, table_size: int
+) -> list[tuple[list[int], str]] | None:
+    """Return essential class masks within the aggregate quadratic fold budget."""
+    masks = []
+    work = 0
+    for word in classes:
+        used, reduced = _essential_table(
+            "".join(str(int(chunk == word)) for chunk in chunks), prefix
+        )
+        # Include original ports in the quadratic fold-work bound.
+        work += (len(_dag(reduced, len(used)).ops) + prefix) ** 2
+        if work > 4 * table_size:
+            return None
+        masks.append((used, reduced))
+    return masks
 
 
 def bundled_class_bank_candidate(

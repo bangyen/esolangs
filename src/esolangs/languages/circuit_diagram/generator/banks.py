@@ -24,8 +24,6 @@ type _Output = tuple[tuple[int, int], int]
 # Input count where a shared suffix forest beats separate roots even with no
 # repeated class.
 _FOREST_PAYS_ALONE_INPUTS = 9
-# Pooled masks through eight inputs already use the folded-mask construction.
-_POOLED_MASK_INPUTS = 8
 
 
 class _BankLayout(_RoutingLayout):
@@ -472,18 +470,6 @@ def _pool_budget(ceiling: int | None) -> int | None:
     if ceiling is None:
         return sys.maxsize
     return ceiling if ceiling > 0 else None
-
-
-def _bank_rectangle(
-    dimensions: list[tuple[int, int]], n: int, prefix: int, q: int
-) -> tuple[int, int]:
-    """Return the (height, width) bound of a ``q``-class online bank.
-
-    Model bands, AND/separator rows, q-1 OR returns and the inclusive footer.
-    """
-    height = 2 * n + 8 + 4 * prefix + sum(h + 8 for h, _w in dimensions) + 32 * q + 5
-    width = max(w for _h, w in dimensions) + 2 * n + 40 + 2 * ((q - 1).bit_length() + 1)
-    return height, width
 
 
 def _online_bank_area_floor(

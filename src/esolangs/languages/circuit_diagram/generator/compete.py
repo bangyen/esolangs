@@ -16,8 +16,6 @@ from typing import NamedTuple
 from esolangs.languages.circuit_diagram.generator import (
     _essential_table,
     bundled_banks,
-    folded_banks,
-    sparse_banks,
 )
 from esolangs.languages.circuit_diagram.generator.layout import _Layout, _layout_area
 
@@ -58,15 +56,10 @@ def _residual(target: _Target, ceiling: int | None) -> _Layout | None:
 
 
 # By area, leave-one-out: residual saves 12.0% on two-block tiled tables at
-# n=10; bundled 79% on random tables at n=10, 60% at n=14.  Folded and sparse
-# first build at n=17 (mask prefix past eight): on 2-1000 repeated classes they
-# tie and beat bundled by 3-22%; sparse alone builds 1000 dense classes.
-# Order is the tie-break: an earlier candidate keeps an equal-area win.  The
-# interval models count characters before rendering, so a node cap cannot
-# hide a smaller complete fold.
+# n=10, 14.4% on n=12 parity; bundled 40.7% / 60.7% on random tables at
+# n=12 / 14.  Order is the tie-break: an earlier candidate keeps an
+# equal-area win.
 _CANDIDATES: tuple[_Candidate, ...] = (
-    lambda t, ceiling: folded_banks.folded_class_bank_candidate(t.table, ceiling),
-    lambda t, ceiling: sparse_banks.sparse_class_bank_candidate(t.table, ceiling),
     _pool,
     lambda t, ceiling: bundled_banks.bundled_class_bank_candidate(t.table, ceiling),
     _residual,

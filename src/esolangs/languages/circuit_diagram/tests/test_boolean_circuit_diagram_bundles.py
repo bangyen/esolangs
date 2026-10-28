@@ -65,10 +65,9 @@ def test_mask_work_is_checked_before_building_forests(monkeypatch) -> None:
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
-    masks = importlib.import_module(
-        "esolangs.languages.circuit_diagram.generator.folded_banks"
+    monkeypatch.setattr(
+        module, "_dag", lambda *_args: _Dag([None] * 1000, 0, set(), {})
     )
-    monkeypatch.setattr(masks, "_dag", lambda *_args: _Dag([None] * 1000, 0, set(), {}))
     monkeypatch.setattr(
         module, "_suffix_forest", lambda *_args: pytest.fail("mask work rejected")
     )

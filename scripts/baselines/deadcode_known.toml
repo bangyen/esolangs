@@ -30,13 +30,6 @@
     "line: return self._mapping[junction]",
 ]
 
-"circuit_diagram/generator/sparse_banks.py" = [
-    "arm: if _online_bank_area_floor(dimensions, n, prefix, q, ands) > budget: -> return None",
-    "arm: if budget is None: -> return None",
-    "line: return None",
-    "line: return None #2",
-]
-
 "container/generator.py" = [
     "arm: for index in count(): -> <exit>",
 ]
