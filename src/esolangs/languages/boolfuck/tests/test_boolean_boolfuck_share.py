@@ -25,10 +25,10 @@ def _repeated_nodes(table: str) -> int:
 
 
 def test_repeated_node_upside_is_below_the_sharing_gate() -> None:
-    """The screen's n=5 upside is 2.5% of emitted size, so no share pays."""
+    """The screen's n=5 upside is 2.7% of emitted size, so no share pays."""
     cost = (len(boolfuck(parity(5))) - len(boolfuck(parity(3)))) / (31 - 7)
     sample = five_input_sample()
     saved = sum(_repeated_nodes(table) for table in sample) * cost
     total = sum(len(boolfuck(table)) for table in sample)
-    assert (round(saved), total) == (1992, 80_762)
+    assert (round(saved), total) == (1992, 73_581)
     assert 100 * saved / total < 5  # the sharing gate is 10%

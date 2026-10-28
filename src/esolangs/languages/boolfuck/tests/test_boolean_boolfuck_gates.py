@@ -173,8 +173,8 @@ def test_boolfuck_scaling_windows_follow_normalized_gate_route() -> None:
     assert trend <= MAX_DIFF_RATIO
 
 
-# Gate programs whose true cost is a few commands past 2n^2 + 27n + 8: the
-# planner must refuse them, so the public program stays within the bound.
+# Gate programs whose true cost is a few commands past 2n^2 + 27n + 8, the
+# tree's bound: admitted under the ledger's clause, they stay within it.
 @pytest.mark.parametrize(
     "table",
     [

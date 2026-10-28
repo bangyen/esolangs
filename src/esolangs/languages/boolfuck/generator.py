@@ -29,9 +29,11 @@ Decisions:
     6.2% over 200 tables per class at n=9 and n=12 (jointly); dropping the
     per-level blocks form loses 13-24% on guarded affine tables at n=10
     ([ablations.shared_blocks]), so it stays.
-    Shared blocks past the 2n^2 + 27n + 8 command bound are refused: a
-    repeated table can build larger than a distinct one
-    ([ablations.command_bound]).  The count build is a class rule for
+    Every candidate is admitted up to the ledger's execution clause,
+    4n^2 + 30n + 8 commands, which the count build attains; the tree's own
+    2n^2 + 27n + 8 refused shared builds of parity with flipped rows only
+    5-6% past it ([ablations.command_bound]).
+    The count build is a class rule for
     symmetric tables, not a race-wide win: 0.0% on random tables at
     n=10/12, where the class does not occur, and a within-class saving
     that rises with arity ([ablations.popcount_stream]).
@@ -334,17 +336,21 @@ _SCRATCH = -1
 
 
 def _command_bound(n: int) -> int:
-    """Return the most commands a Boolfuck candidate over ``n`` inputs may take."""
-    return 2 * n * n + 27 * n + 8
+    """Return the most commands a Boolfuck candidate over ``n`` inputs may take.
+
+    The ledger's execution clause, attained by the count build's all-ones row:
+    any candidate within it keeps the clause true.
+    """
+    return 4 * n * n + 30 * n + 8
 
 
 def normal_gates(table: str) -> str | None:
     """Return shared normalized gates where both existing ledgers admit them."""
     n = _validate_truth_table(table)
     # Prefix forks cost at most 15 commands per input. The AND/XOR tails
-    # give 2*n*n + 25*n + 26, at most the existing bound exactly when n>=9;
-    # below it each table's count is checked.  Native extreme paths attain it
-    # at n=9 (413) and n=16 (938).  Workspace holds from n=4
+    # give 2*n*n + 25*n + 26, within the admission bound from n=3; each
+    # table's count is still checked.  Native extreme paths attain it at n=9
+    # (413) and n=16 (938).  Workspace holds from n=4
     # (docs/proofs/boolfuck-gates.md), so the race starts there: the gates
     # clear the bar from n=8, 9.9% at n=7 ([ablations.normal_gates]), and
     # never lose below.
