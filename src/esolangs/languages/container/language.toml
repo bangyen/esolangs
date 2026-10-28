@@ -31,33 +31,54 @@ sharing_exempt = "the shared tree races a threshold sum, one line per table step
 audited = "2026-10-19"
 
 [ablations.prune]
-saving = 13.4
-arity = 6
-verdict = "kept: canonical, exempt from the bar; the halves-agree settle earns 15.4% on random tables at n=5 and 49.2% on and at n=6"
+saving = 58.1
+arity = 10
+seed = "random.Random(n)"
+tables = 100
+verdict = "kept: canonical, exempt from the bar. Plain-rewrite 2026-10-27, deleting it (shipped program, tree racing the threshold, every changed program ran on all rows): 0.00% on 100 random tables at n=4..8 (the tree ships none of them, so it is size-neutral there), 2.63% on all 256 at n=3 (41 change); where the tree ships, projections 52.3 / 54.7 / 58.1% (x0 at n=7 / 8 / 10), constants 67.7-70.5%, two-block tilings 42.5 / 45.8 / 50.7%, mid-ignored tables 11.1 / 10.4 / 8.6% at n=9 / 10 / 12, parity 0.00% (no level has agreeing halves)"
 
 [ablations.sharing]
-saving = 29.8
-arity = 6
-verdict = "kept: canonical sharing, exempt; rises with arity on random tables (16.5% at n=5), 68.2% on parity at n=6; jointly with the prune, 53.1% at n=6"
+saving = 90.9
+arity = 12
+seed = "random.Random(n)"
+tables = 100
+verdict = "kept: canonical sharing, exempt. Plain-rewrite 2026-10-27, deleting it: 0.00% on 100 random tables at n=3..8 (8 of 65,536 change at n=4; the threshold ships the rest), parity 23.9 / 51.3 / 70.5 / 90.9% at n=8 / 9 / 10 / 12, mid-ignored tables 25.3 / 51.7% at n=9 / 10, majority 11.8% at n=10, rising with arity wherever the tree ships"
 
 [ablations.zero_leaf_inversion]
-saving = 35.5
-arity = 6
-verdict = "kept: under the bar on random tables (0.9% at n=6) and dense-ones tables (1.6%), it stays under the named-function rule on the or family (31.4% at n=4 rising to 35.5% at n=6); the docstring's 12.7% figure prices a pre-prune build and is flagged in the audit report"
+saving = 1.2
+arity = 10
+seed = "random.Random(n)"
+tables = 100
+verdict = "removed 2026-10-27 (plain-rewrite audit): summing a dense table from its zero leaves (OUT starting at 49, each zero leaf subtracting one) is size-neutral on the shipped program on 100 random tables at n=4..8 and on the or, majority and dense-ones families at n=6..10, because the threshold ships there; inside the tree alone it earned 28.5% of the OR family but that tree never ships past n=4. Shipped: 0.75% over the 256 n=3 tables (16 change; 82,208 -> 82,827 with it gone), 0.01% over all 65,536 at n=4 (57), const-1 tables 3.8 / 3.5 / 3.2 / 2.8% at n=6 / 7 / 8 / 10, threshold-of-half 1.2% at n=10 -- under 10% everywhere. The earlier 31-35% on the or family priced a pre-race build. Every changed program ran on all rows (all of n<=3, the 130 tree-shipped n=4 tables, samples to n=10)"
 
 [ablations.mirror_race]
 saving = 0.9
 arity = 12
 verdict = "removed 2026-10-20 (retirement candidate #12): the mirrored step order earned 2.6% on random tables at n=7 falling to 0.9% at n=12, a winner's-curse shape, and 0.4-3.4% on the two-block tilings it was kept for -- the in-code claim of 15-44% there never reproduced; the threshold build now always takes the plain order"
 
-[ablations.essential_projection]
-saving = 49.1
+[ablations.opposite_side_relay]
+saving = 13.5
 arity = 12
-verdict = "kept: canonical, exempt; the threshold's projection is the identity on random tables (0.0%) and earns 49.1% on mid-ignored tables at n=12 (lead 3.4%, trail 3.7%, two ignored 8.2%)"
+verdict = "kept: the tree's opposite-side relay extends canonical sharing to repeated subtrees on the other side of a parent, which a copy cannot feed directly (its mismatch rule names its own side's gate). Plain-rewrite 2026-10-27, deleting it (sharing on the copy's own side only): 0.00% shipped on random tables at n=3..8 and exhaustively at n=3 and n=4 (size-neutral: the tree wins none of them), but on the families where the tree ships parity 12.3 / 12.8 / 13.1 / 13.5% at n=8 / 9 / 10 / 12, mid-ignored tables 12.2 / 12.7 / 13.3% at n=9 / 10 / 12 and majority 11.6% at n=10 -- over the bar and rising, a per-node share rather than a fixed saving. A named-function and ignored-input rule, not a random-table one"
+
+[ablations.essential_projection]
+saving = 29.7
+arity = 6
+verdict = "kept: canonical (ignored inputs dropped), exempt. Plain-rewrite 2026-10-27, deleting the threshold's projection (every input keeps its weight, shipped program): 0.00% on 100 random tables at n=3..8 and 0.09% / 0.17% over all 65,536 / 256 tables at n=4 / 3, but on a mid-ignored family 29.7 / 26.0 / 6.0% at n=6 / 7 / 8, then 0.00% at n >= 9 where the tree takes the family. The earlier record's 49.1% on its mid-ignored family at n=12 priced the threshold alone; the shipped race gives the tree that family"
 
 [ablations.tree_threshold_race]
-saving = 56.4
-arity = 6
+saving = 62.4
+arity = 8
 seed = "random.Random(n)"
 tables = 200
-verdict = "kept 2026-10-20: the shared tree races the threshold sum and the shorter ships (ties keep the tree, two ticks faster). Against the tree alone, 41.1% / 50.4% / 56.4% at n=4/5/6 on 200 seeded random tables, 110,437 -> 82,208 over the 256 n=3 tables; the tree keeps 41 of them (constants, projections). Before the race the n <= 6 gate shipped the tree unconditionally. The race was capped at n <= 6 until the workspace bound went per-program (2026-10-20); past it the tree wins no random table (0/200 at n=7..10) but structured ones at n=10: parity 7,593 -> 2,241, constants 829 -> 245, x0 756 -> 317, halfconst 4,255 -> 2,083"
+verdict = "kept: the shared tree races the threshold sum and the shorter ships (ties keep the tree, two ticks faster). Class trick, judged on the tables the tree wins. Against the tree alone, 42.2 / 51.0 / 56.7 / 61.0 / 62.4% at n=4..8 on 200 seeded random tables, and 28.0% over the 256 n=3 tables (114,994 -> 82,827; the tree keeps 26 of them). Against the threshold alone the race earns 1.90% at n=3 and 0.00% on random tables at n=4..8 (the tree wins none), but 50.7% on two-block tilings, 58.1% on projections (x0), 67.7-70.5% on constants and 11.8% on majority at n=10, and, on named functions, parity 70.5 / 90.9% at n=10 / 12 and mid-ignored tables 51.7% at n=10. The race was capped at n <= 6 until the workspace bound went per-program (2026-10-20); it runs at every n"
+
+[ablations.balance_candidates]
+saving = 26.2
+arity = 10
+seed = 9090
+tables = 6
+verdict = "threshold candidate kept, width-1 and unnarrowed candidates removed 2026-10-27 (plain-rewrite audit). Balancing narrows the default and the threshold program at the square side and keeps the squarer. The width-1 narrowing and the unnarrowed default never won (0 changes over all 65,536 tables at n=4, all of n<=3, 100 random tables at n=3..8 and the named families to n=12) and were dropped. Deleting the threshold candidate costs rendered area on the classes where the tree ships: two-block tables (6, seed 9090) +15.5% at n=8, +8.1% at n=9, 0.00% at n=10; majority +26.2% at n=10; 0.00% on random tables at n=4..10 and on parity, OR and AND; 5.17% over all 16 tables at n=2. Not a width trick: container(table, width) still races the narrowed threshold against the narrowed default, since that one reaches narrower widths the tree cannot (the plain choice is wider on 160 of the 65,536 n=4 tables and on x0 / two-block at n=7..8)"
+
+[audits]
+plain_rewrite = 2026-10-27

@@ -193,14 +193,10 @@ def _container_tree(
       dips to 1, so the surviving leaf adds its entry to ``OUT`` (which holds
       48 from the start); ``PRINT`` fires and ``EXIT`` halts.
 
-    The last block costs one line per leaf the table sends to 1, so a dense
-    table is summed from its **zero** leaves instead: ``OUT`` starts at 49
-    and each surviving zero leaf subtracts one, printing ``49 - S``.  The
-    clamp at zero never bites, since the value stays at 48 or 49.  Its share
-    of the shipped program is largest on the OR class
-    ([ablations.zero_leaf_inversion]).  A leaf that does not answer is never
-    read, so
-    it is not emitted, and a gate no emitted child names is not declared.
+    The last block costs one line per leaf the table sends to 1 and a leaf
+    that does not answer is never read, so it is not emitted; a gate no
+    emitted child names is not declared.  A table summed from its zero
+    leaves instead was retired ([ablations.zero_leaf_inversion]).
 
     ``share`` folds a node into the first live node at its depth with the
     same subtable (``subtree_ids``): only one parent is ever alive, so the
@@ -242,10 +238,7 @@ class _TreeEmitter:
     def _select_leaves(self) -> None:
         nodes, n, table = self.nodes, self.n, self.truth_table
         self.leaves = [i for i, node in enumerate(nodes) if node.tests == n] or [-1]
-        ones = sum(table[self._row_of(i)] == "1" for i in self.leaves)
-        self.invert = ones > len(self.leaves) - ones
-        wanted = "0" if self.invert else "1"
-        self.answers = {i for i in self.leaves if table[self._row_of(i)] == wanted}
+        self.answers = {i for i in self.leaves if table[self._row_of(i)] == "1"}
         self.order = [
             i for i, node in enumerate(nodes) if node.tests < n or i in self.answers
         ]
@@ -327,12 +320,10 @@ class _TreeEmitter:
         rest = peak + 1 if peak > 2 else 2
         # The gate is never restored: EXIT halts the tick after PRINT.
         lines = [f"{self.output_gate}={rest}:", f"-{rest - 1} T>={2 * n - 1}"]
-        # Whichever leaf set is smaller wins; ties keep the plain form.  The
-        # gate alone keeps OUT at its base until the printing tick.
-        lines.append(f"OUT={_ASCII_ZERO + 1 if self.invert else _ASCII_ZERO}:")
-        delta = "-1" if self.invert else "1"
+        # The gate alone keeps OUT at its base until the printing tick.
+        lines.append(f"OUT={_ASCII_ZERO}:")
         for i in sorted(self.answers, key=self._row_of):
-            lines.append(f"{delta} {self.names[i]}>={self.output_gate}")
+            lines.append(f"1 {self.names[i]}>={self.output_gate}")
         lines.append("PRINT:")
         lines.append(f"1 T>={2 * n}")
         lines.append("EXIT=1:")
@@ -537,7 +528,7 @@ def _narrow_rules(program: str, width: int) -> str:
 def container(truth_table: str, width: int | None = None) -> str:
     """Build Container rules; narrow widths factor constants and deltas."""
     # The tree wins constants, projections and structured tables, the
-    # threshold most other tables from n=3: 41 of the 256 n=3 tables keep the
+    # threshold most other tables from n=3: 26 of the 256 n=3 tables keep the
     # tree, ties included (it halts two ticks sooner).
     program = min(
         _container_tree(truth_table, share=True),
@@ -555,17 +546,15 @@ def container(truth_table: str, width: int | None = None) -> str:
 
 
 def balance_container(table: str, default: str) -> str:
-    """Return the squarest of the default and its narrowings at the square width."""
-    programs = [default, _container_threshold(table)]
+    """Return the squarer of the default and the threshold program, narrowed."""
     # Narrowing at w costs no characters until a rule stops fitting, so the
-    # square side is isqrt(CELL_ASPECT * characters); the threshold program
-    # and the narrowest width are the named alternatives.
+    # square side is isqrt(CELL_ASPECT * characters).  The threshold program
+    # is the named alternative ([ablations.balance_candidates]).
     side = isqrt(CELL_ASPECT * len(default))
-    candidates = [
-        _narrow_rules(program, width) for program in programs for width in (1, side)
-    ]
-    candidates.append(default)
-    return min(candidates, key=balance_score)
+    return min(
+        (_narrow_rules(p, side) for p in (default, _container_threshold(table))),
+        key=balance_score,
+    )
 
 
 LANGUAGE = Language(

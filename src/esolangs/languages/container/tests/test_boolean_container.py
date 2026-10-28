@@ -143,25 +143,6 @@ class TestContainer:
         sizes = [len(boolean.container("01" * (2 ** (n - 1)))) for n in range(7, 11)]
         assert all(b <= 2 * a + 4000 for a, b in itertools.pairwise(sizes))
 
-    def test_dense_tables_evaluate_the_complement(self) -> None:
-        """A dense table is summed from its zero leaves and inverted."""
-        from esolangs.languages.container.generator import _container_tree
-
-        full = [
-            len(_container_tree("1" * k + "0" * (8 - k), prune=False)) for k in range(9)
-        ]
-        assert full[4] == max(full)  # four ones is the worst case
-        # k ones against k zeros: the same k answer lines, each one signed,
-        # but for one ``-`` fewer at k = 1, whose lone answering leaf is a
-        # high child and so declares only the high gate (``1 T>=``).
-        assert [full[8 - k] - full[k] for k in range(4)] == [0, 0, 2, 3]
-        flip = str.maketrans("01", "10")
-        for i in range(256):
-            table = format(i, "08b")
-            complement = table.translate(flip)
-            difference = len(_container_tree(table)) - len(_container_tree(complement))
-            assert abs(difference) <= 3  # leaf signs differ, not their count
-
     def test_constants_test_nothing(self) -> None:
         """The positive control: a constant reads its inputs and prints."""
         for table in ("0" * 8, "1" * 8, "0" * 16):
@@ -203,9 +184,9 @@ class TestContainer:
                     _container_tree(table, prune=False)
                 )
         tables = [format(i, "08b") for i in range(256)]
-        # The threshold sum wins 215 of them: 110,437 for the tree alone.
-        assert sum(len(boolean.container(t)) for t in tables) == 82_208
-        assert sum(len(_container_tree(t, prune=False)) for t in tables) == 154_833
+        # The threshold sum wins 215 of them: 114,994 for the tree alone.
+        assert sum(len(boolean.container(t)) for t in tables) == 82_827
+        assert sum(len(_container_tree(t, prune=False)) for t in tables) == 164_976
 
     def test_no_line_restores_what_nothing_reads(self) -> None:
         """Unsigned deltas, no leaf decay, no output restore, a static ``OUT``."""
@@ -249,14 +230,14 @@ class TestContainerSharing:
         return before, after
 
     def test_three_input_total(self) -> None:
-        """All 256 three-input tables: 112,857 to 110,437 characters, 2.4%."""
+        """All 256 three-input tables: 117,946 to 114,994 characters, 2.5%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (112_857, 110_437)
-        assert 110_437 * 100 < 110_105 * 105
+        assert self._totals(tables) == (117_946, 114_994)
+        assert 114_994 * 100 < 110_105 * 105
 
     def test_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 284,564 to 237,480 characters, 16.5%."""
-        assert self._totals(five_input_sample()) == (284_564, 237_480)
+        """200 seeded five-input tables: 289,253 to 239,873 characters, 17.1%."""
+        assert self._totals(five_input_sample()) == (289_253, 239_873)
 
     def test_a_relay_feeds_the_other_side_s_copy(self) -> None:
         """Four-input parity relays its repeated nodes and runs every row."""
