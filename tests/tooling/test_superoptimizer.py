@@ -145,14 +145,16 @@ def test_audit_false_corpus() -> None:
     the pair tables ship 16 while the constant tables ship the
     3-char spellings the v2 audit once reported as gaps.  Restated
     again the same day for the expression-form landing: the pair
-    tables now ship the expression spellings, 10 and 12."""
+    tables now ship the expression spellings, 10 and 12 (11 once flipped
+    builds landed:
+    `^~1&a:a;1&.`, which brings ~ into the alphabet)."""
     corpus = corpus_for(AUDIT_LANGUAGE)
-    assert corpus.sizes[1] == {"00": 3, "01": 10, "10": 12, "11": 3}
+    assert corpus.sizes[1] == {"00": 3, "01": 10, "10": 11, "11": 3}
     # The pair spelling's ' and _ left the emitted alphabet with it;
     # the expression landing took the lambda chars [ ] ? ! out of the
     # small-arity corpus and brought the formula chars + - | and the
     # third input's letter c in.
-    assert set(corpus.alphabet) == set("$&%+-.01:;=^abc|")
+    assert set(corpus.alphabet) == set("$&%+-.01:;=^abc|~")
 
 
 @pytest.mark.medium  # ~8k interpreter executions through the public API
