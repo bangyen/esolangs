@@ -40,12 +40,12 @@ verdict = "kept: canonical sharing, exempt; saving on the mosaic-4 class (18.8% 
 [ablations.paired_roots]
 saving = 23.8
 arity = 11
-verdict = "kept: clears on random tables (15.8% at n=9, 20.5% at n=10, share rising)"
+verdict = "kept: clears on random tables (15.8% at n=9, 20.5% at n=10, share rising); plain-rewrite audit 2026-10-27, 5 seeds each, every program run: 0.0% at n=4..7, 4.4% at n=8, 15.7/21.0/23.8/25.2% at n=9/10/11/12 -- growing past the verdict arity to its peak; its complement-shared three-bit code and free-cell high bit are the construction, not separable"
 
 [ablations.band_race]
 saving = 10.3
 arity = 11
-verdict = "kept: clears on random tables; the band-(3,5) race's saving over band 3 alone is flat at 9.8-10.4% from n=9 to n=11"
+verdict = "kept: clears on random tables; the band-(3,5) race's saving over band 3 alone is flat at 9.8-10.4% from n=9 to n=11; plain-rewrite audit 2026-10-27, 200 tables (100 at n=10), every program run: 0.0% at n=7, 5.5% at n=8, 10.4% at n=9, 9.9% at n=10, 10.2/10.6% at n=11/12 on 5 seeds -- at the bar and flat, not declining, so kept"
 
 [ablations.constant_folding]
 saving = 14.7
@@ -71,4 +71,7 @@ saving = 91.0
 arity = 8
 seed = "named and random affine tables"
 tables = 8
-verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) folds each counted input cell into the next one down with [*...*...], ending in cell 2, and flips it for the bias, raced by length against the banded tree. Parity 74.8% at n=4, 85.9% at n=6, 89.4% at n=7, 91.0% at n=8, 93.0% at n=10, 94.3% at n=12; random affine tables 70-86% where the chain wins. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 13 tables change, none grows, every changed program executed; named and affine tables executed through n=10"
+verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) folds each counted input cell into the next one down with [*...*...], ending in cell 2, and flips it for the bias, raced by length against the banded tree. Parity 74.8% at n=4, 85.9% at n=6, 89.4% at n=7, 91.0% at n=8, 93.0% at n=10, 94.3% at n=12; random affine tables 70-86% where the chain wins. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 13 tables change, none grows, every changed program executed; named and affine tables executed through n=10; plain-rewrite audit 2026-10-27: parity 74.8/85.9/89.4/91.0/92.1/93.0/93.7/94.3% at n=4/6/7/8/9/10/11/12, 0 of 5 random tables change at every n"
+
+[audits]
+plain_rewrite = 2026-10-27
