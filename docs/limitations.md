@@ -707,17 +707,19 @@ exact range (2026-10-23, counted from the ledger):
     arrays of width 1,449, the last holding 500, and the write set
     read off the text's assignment targets prices to the closed form
     exactly, 23,818,646 bits; a snapshot by execution at 27 waits on
-    the same load as execution at 26) and scaling past 22 (exact to
-    22 on the
-    successor shape: the capped shape ends at 19 — at 20 its level
-    n - 4 would need 2^16 distinct parents from 240 * 239 ordered
-    pairs — and the successor shifts the cap one level down, level
-    n - 4 holding all 65,280 ordered pairs of the 256 eight-row ids,
-    the reads spread evenly with the remainder on the longest names,
-    at 22 under a plateau of twice-read named nodes at level n - 5;
-    the closed form matches the generated programs at 20, 21 and 22
-    — 4,696,098, 8,512,928 and 13,586,491 characters; past 22 the
-    bound V stands).
+    the same load as execution at 26) and scaling past 23 (exact to
+    23 on the successor shape: the capped shape ends at 19 — at 20
+    its level n - 4 would need 2^16 distinct parents from
+    240 * 239 ordered pairs — and the successor shifts the cap one
+    level down, level n - 4 holding all 65,280 ordered pairs of the
+    256 eight-row ids, the reads spread evenly with the remainder on
+    the longest names, from 22 under a plateau of twice-read named
+    nodes at level n - 5; the closed form matches the generated
+    programs at 20, 21, 22 and 23 — 4,696,098, 8,512,928, 13,586,491
+    and 23,718,841 characters; at 23 the plateau's cap reads run in
+    rounds at the {4, 5} spread, the margin over the shifted shape
+    is 310,847, and a sweep of level n - 5 widths peaks at the
+    plateau width; past 23 the bound V stands).
   - S*bleq scaling past n = 28: one-off builds attain P at 26, 27 and 28
     (105,463,455 characters, 3.30 GB peak), the harness at the scaling
     arities to 25; the route's peak doubles per arity, about 6.5 GB at 29.

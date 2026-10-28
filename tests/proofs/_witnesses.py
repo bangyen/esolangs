@@ -575,24 +575,35 @@ def _intercal_chars_shifted(n: int) -> str:
 
 
 def _intercal_chars_plateau(n: int) -> str:
-    """The shifted cap under a plateau at level n - 5, at n = 22.
+    """The shifted cap under a plateau at level n - 5, from n = 22.
 
-    The capped level's occurrence sequence runs in rounds (twice per
-    value, once more on the last values) as in the shifted build; its
-    consecutive pairs are the plateau's 2^(n-6) distinct nodes, and
-    the level n - 5 sequence lists those pairs once in order and once
+    The capped level's occurrence sequence runs in rounds over every
+    value — r0 = 2^(n-5) // 65,280 full rounds (the first in lex
+    order, the rest stride-permuted), then one stride round over the
+    last rem values — as in the shifted build; its consecutive pairs
+    are the plateau's 2^(n-6) distinct nodes, and the level n - 5
+    sequence lists those pairs once in order and once
     stride-permuted, so every plateau node is read twice and named.
+    At n = 22 this is the original build: rounds at strides 7 and 11
+    over a 512-value tail.
     """
     from math import gcd
 
     values = [f"{a:08b}{b:08b}" for a in range(256) for b in range(256) if a != b]
     cap = len(values)
     x = 1 << (n - 6)
-    extra = 2 * x - 2 * cap
+    r0, rem = divmod(2 * x, cap)
+    strides = (7, 11, 13, 19, 23, 29, 31, 37)
     rounds = [values]
-    rounds.append([values[(i * 7) % cap] for i in range(cap)])
-    tail = values[cap - extra :]
-    rounds.append([tail[(i * 11) % len(tail)] for i in range(len(tail))])
+    for k in range(2, r0 + 1):
+        stride = strides[k - 2]
+        assert gcd(stride, cap) == 1
+        rounds.append([values[(i * stride) % cap] for i in range(cap)])
+    if rem:
+        tail = values[cap - rem :]
+        stride = strides[r0 - 1]
+        assert gcd(stride, len(tail)) == 1
+        rounds.append([tail[(i * stride) % len(tail)] for i in range(len(tail))])
     seq = [v for rnd in rounds for v in rnd]
     pairs = [(seq[2 * i], seq[2 * i + 1]) for i in range(x)]
     assert gcd(13, x) == 1
@@ -608,9 +619,9 @@ def _intercal_chars_worst(n: int) -> str:
     From n = 11 level n - 3 is every distinct-halved pair of 4-bit tables
     (240); the spare slots above re-read its nodes, thirds on the last ones.
     From n = 20 the cap shifts to level n - 4 (:func:`_intercal_chars_shifted`),
-    at n = 22 under a plateau (:func:`_intercal_chars_plateau`).
+    from n = 22 under a plateau (:func:`_intercal_chars_plateau`).
     """
-    if n == 22:
+    if n >= 22:
         return _intercal_chars_plateau(n)
     if n >= 20:
         return _intercal_chars_shifted(n)
@@ -706,6 +717,7 @@ _WITNESS_BAND = {
     ("INTERCAL", 21): "weekly",
     ("INTERCAL", 22): "weekly",
     ("INTERCAL", 23): "weekly",
+    ("INTERCAL", 24): "weekly",
     ("S*bleq", 21): "weekly",
     ("S*bleq", 22): "weekly",
     ("S*bleq", 23): "weekly",
@@ -1029,7 +1041,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     "INTERCAL": lambda n: (
-        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 22 else ()))
+        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 23 else ()))
         if 3 <= n <= 25
         else ()
     ),

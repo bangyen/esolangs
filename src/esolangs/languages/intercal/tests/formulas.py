@@ -119,22 +119,25 @@ def _target_sum(lo: int, hi: int, width: int) -> int:
 
 
 def _plateau(n: int) -> int:
-    """U at n = 22: the shifted cap under a plateau at level n - 5.
+    """U at n >= 22: the shifted cap under a plateau at level n - 5.
 
     Level n - 5 holds 2^(n-6) distinct pairs of capped nodes, each
     read twice and named, so the capped level's 2^(n-5) reads spread
-    two per node with one more on the last rem2 (the longest names).
-    Against :func:`_shifted`'s full level n - 5 this gives up half
-    the capped reads and 2^(n-6) frames, and gains the plateau's
-    statements and second spellings: at n = 22 a converted pair nets
-    3 * spelling + 4 + prefix share - inline > 0 (spillings run to
-    12-13 characters against an inline of 44), at n = 20 and 21 it
-    does not, and the full level stands there.  Priced like
-    :func:`_shifted`, with both named levels' reads spelled out.
+    r0 = 2^(n-5) // 65,280 per node with one more on the last rem
+    (the longest names): at n = 22 the {2, 3} spread, at n = 23 the
+    {4, 5}.  Against :func:`_shifted`'s full level n - 5 this gives
+    up half the capped reads and 2^(n-6) frames, and gains the
+    plateau's statements and second spellings: at n = 22 a converted
+    pair nets 3 * spelling + 4 + prefix share - inline > 0
+    (spillings run to 12-13 characters against an inline of 44), at
+    n = 20 and 21 it does not, and the full level stands there; at
+    n = 23 the margin over the shifted shape is 310,847 characters
+    and a width sweep over level n - 5 peaks at the plateau width.
+    Priced like :func:`_shifted`, with both named levels' reads
+    spelled out.
     """
     cap = 65280
     x = 1 << (n - 6)
-    rem2 = 2 * x - 2 * cap
     negs = n - 3
     first = n + 2 + negs
     named = 254 + cap + x
@@ -173,8 +176,10 @@ def _plateau(n: int) -> int:
     total += 8 + 6 * b2 + 30 * s4 + 510 * s8
     cap_lo = first + 254
     cap_hi = cap_lo + cap - 1
-    total += 2 * _target_sum(cap_lo, cap_hi, width)  # capped reads
-    total += _target_sum(cap_hi - rem2 + 1, cap_hi, width)  # the extra reads
+    r0, rem = divmod(2 * x, cap)
+    total += r0 * _target_sum(cap_lo, cap_hi, width)  # capped reads
+    if rem:
+        total += _target_sum(cap_hi - rem + 1, cap_hi, width)  # extra reads
     total += 2 * _target_sum(cap_hi + 1, top, width)  # plateau reads
     total += _target_sum(first, top, width) + 4 * named  # ".k <- "
     for level in range(2, n - 1):  # the named ~selector statements
@@ -268,11 +273,11 @@ def _shifted(n: int) -> int:
 
 
 def _chars(n: int, program: str) -> int:
-    """U: the most nodes per level; exact for n = 3..22.
+    """U: the most nodes per level; exact for n = 3..23.
 
     From n = 11 level n - 3 holds its 240 distinct pairs (:func:`_capped`);
-    from n = 20 the cap shifts one level down (:func:`_shifted`), at
-    n = 22 under a named plateau (:func:`_plateau`); past n = 22 the
+    from n = 20 the cap shifts one level down (:func:`_shifted`), from
+    n = 22 under a named plateau (:func:`_plateau`); past n = 23 the
     bound V.
     Exact because the generator's cost is a function of per-level node, named
     and constant-edge counts, and an integer program over them maximises at
@@ -287,9 +292,9 @@ def _chars(n: int, program: str) -> int:
     any node is read twice: crossing a fresh node into named gains its
     statement and a spelling, against the one spelling the donor loses.
     """
-    if n > 22:
+    if n > 23:
         return _bound(n, program)
-    if n == 22:
+    if n >= 22:
         return _plateau(n)
     if n > 19:
         return _shifted(n)
@@ -323,4 +328,4 @@ def _chars(n: int, program: str) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 23)), tuple(range(3, 24)))}
+FORMULAS = {"scaling": (_chars, frozenset(range(3, 24)), tuple(range(3, 25)))}
