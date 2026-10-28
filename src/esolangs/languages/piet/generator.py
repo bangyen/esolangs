@@ -36,17 +36,24 @@ def _area(image: Raster) -> int:
 
 
 @cache
+def _packed(truth_table: str) -> Raster:
+    """Return the fold packed, drawn once at the balance path's dense width.
+
+    The width is ``sqrt(2C) + 9`` for ``C`` codels of operations: no width
+    sweep, so O(T).
+    """
+    operations = _bounded_operations(truth_table)
+    cells = sum(operation.size for operation in operations)
+    return smallest(operations, folded(truth_table, isqrt(2 * cells - 1) + 9))
+
+
+@cache
 def _smallest(truth_table: str) -> Raster:
     """Return the strip, or the least-area of the fold and the packed layouts.
 
-    The fold is drawn once at the balance path's dense width, ``sqrt(2C) + 9``
-    for ``C`` codels of operations: no width sweep, so O(T).  The strip wins a
-    tie; see [ablations.area_default].
+    The strip wins a tie; see [ablations.area_default].
     """
-    flat = _generate(truth_table)
-    operations = _bounded_operations(truth_table)
-    cells = sum(operation.size for operation in operations)
-    packed = smallest(operations, folded(truth_table, isqrt(2 * cells - 1) + 9))
+    flat, packed = _generate(truth_table), _packed(truth_table)
     return packed if _area(packed) < _area(flat) else flat
 
 

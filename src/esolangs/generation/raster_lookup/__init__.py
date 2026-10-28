@@ -46,9 +46,13 @@ def _push(value: int) -> _Operation:
 
 
 def _literal_product(
-    table: str, essential: list[int], inputs: int
+    table: str, essential: list[int], inputs: int, *, summed: bool = False
 ) -> list[_Operation] | None:
     """Return a conjunction or its complement, consuming inputs in order.
+
+    ``summed`` adds the literals that fail instead of multiplying the ones
+    that hold, then ``not``: a literal costs 2 codels when it is 0 here and
+    when it is 1 there, so the cheaper polarity of the two is kept.
 
     One-hot and one-cold tables: the raster area (3 rows x width, codels)
     is 97.0% / 95.5% smaller than the lookup at n=8 (10 tables each).
@@ -65,16 +69,20 @@ def _literal_product(
         cell: (row >> (len(essential) - position - 1)) & 1
         for position, cell in enumerate(essential)
     }
+    if summed and not essential:
+        return None
     operations = [] if essential else [_push(1)]
     for cell in range(inputs):
         operations.append(_Operation(_IN_NUMBER))
         if cell not in literals:
             operations.append(_Operation(_POP))
             continue
-        if literals[cell] == 0:
+        if literals[cell] == (1 if summed else 0):
             operations.append(_Operation(_NOT))
         if cell != essential[0]:
-            operations.append(_Operation(_MULTIPLY))
+            operations.append(_Operation(_ADD if summed else _MULTIPLY))
+    if summed:
+        operations.append(_Operation(_NOT))
     if invert:
         operations.append(_Operation(_NOT))
     operations.append(_Operation(_OUT_NUMBER))
@@ -89,10 +97,20 @@ def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
     """
     essential = essential_inputs(truth_table, inputs)
     truth_table = read_at(truth_table, essential, inputs)
-    direct = _literal_product(truth_table, essential, inputs)
-    if direct is not None:
-        return [direct]
-    return [_lookup(truth_table, essential, inputs)]
+    direct = [
+        found
+        for summed in (False, True)
+        if (found := _literal_product(truth_table, essential, inputs, summed=summed))
+    ]
+    if direct:
+        return direct
+    # An entry is 1 codel for a 1 and 2 for a 0: the complemented table is
+    # also stored, with a ``not`` on the selected entry.
+    complement = "".join("10"[int(bit)] for bit in truth_table)
+    return [
+        _lookup(truth_table, essential, inputs),
+        _lookup(complement, essential, inputs, flipped=True),
+    ]
 
 
 def _operations(truth_table: str, inputs: int) -> list[_Operation]:
@@ -152,12 +170,18 @@ def _entries(table: str) -> list[_Operation]:
     return operations
 
 
-def _lookup(table: str, essential: list[int], inputs: int) -> list[_Operation]:
-    """Return the table pushed whole and the row number rolled to the top."""
+def _lookup(
+    table: str, essential: list[int], inputs: int, *, flipped: bool = False
+) -> list[_Operation]:
+    """Return the table pushed whole and the row number rolled to the top.
+
+    ``flipped`` marks a complemented ``table``: the selected entry is negated.
+    """
     return [
         *_entries(table),
         *_row_number(essential, inputs, 0),
         *_select(len(table)),
+        *([_Operation(_NOT)] if flipped else []),
         _Operation(_OUT_NUMBER),
     ]
 

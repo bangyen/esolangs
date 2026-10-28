@@ -5,6 +5,8 @@ To n = 7 every packed layout is a function of the operations' block sizes alone
 cost a clash row), and a table with n essential inputs and z zeros has the
 sizes ``[1] * (T + z)`` then a tail that depends on n only.
 So the shipped area is a function of (n, z): the worst is its maximum over z.
+Past half zeros the complement is stored instead, T - z zeros and a ``not`` on
+the selected entry, so the worst z is the middle one.
 From n = 8 a colour clash can cost a row (+32 codels at n = 8, in 53 of 1,277
 tables), the rows depend on the bit pattern, and only the fold's bound holds.
 """
@@ -13,7 +15,17 @@ from functools import cache
 from math import isqrt
 
 
-def _tail(n: int) -> list[int]:
+def _flipped(n: int, z: int) -> bool:
+    """Whether the complement is stored: it has fewer codels, ``not`` included."""
+    return (1 << n) + 1 < 2 * z
+
+
+def _stored(n: int, z: int) -> int:
+    """Zeros among the stored entries."""
+    return (1 << n) - z if _flipped(n, z) else z
+
+
+def _tail(n: int, *, flip: bool = False) -> list[int]:
     """Block sizes after the T + z entries: row number, select, print, halt pad."""
     return [
         *(1, 1),  # push 1, not
@@ -21,6 +33,7 @@ def _tail(n: int) -> list[int]:
         1,  # push T, rebuilt by doubling:
         *(2, 1) * n,  # push 2, multiply
         *(2, 1, 1, 1, 1, 1, 2, 1, 1, 1),  # the roll
+        *((1,) if flip else ()),  # not on the entry of a complemented table
         1,  # print
         *(2, 1),  # push 2, pop keep the halt off the last turn
     ]
@@ -62,7 +75,7 @@ def _layouts(
 
     Rows are lanes + 4 (shared, short) or 2 * lanes + 2 (plain), 3 for one lane.
     """
-    tail, entries = _tail(n), (1 << n) + z
+    tail, entries = _tail(n, flip=_flipped(n, z)), (1 << n) + _stored(n, z)
     root = isqrt(entries + sum(tail))
     found = []
     for kind, floor in ((0, 22), (1, 18), (2, 18)):
@@ -80,8 +93,8 @@ def _packed(n: int, z: int) -> int:
 
 
 def _strip(n: int, z: int) -> int:
-    """Three rows by 2T + z + 5n + 18 columns."""
-    return 3 * (2 * (1 << n) + z + 5 * n + 18)
+    """Three rows by 2T + z + 5n + 18 columns, one more for a ``not``."""
+    return 3 * (2 * (1 << n) + _stored(n, z) + 5 * n + 18 + _flipped(n, z))
 
 
 def _walk(n: int, z: int) -> int:
@@ -91,7 +104,7 @@ def _walk(n: int, z: int) -> int:
     lane (the turn's four blocks and the landing); the strip's push(T) is one
     block, not a doubling, so it is 2n shorter.
     """
-    blocks = (1 << n) + z + len(_tail(n))
+    blocks = (1 << n) + _stored(n, z) + len(_tail(n, flip=_flipped(n, z)))
     least = min(_strip(n, z), _packed(n, z))
     walks = [
         blocks + 5 * (len(lanes) - 1) + 2
@@ -116,7 +129,7 @@ def _steps(n: int, _: str) -> int:
 
 
 @cache
-def _trace(n: int, row: int) -> list[int]:
+def _trace(n: int, row: int, *, flip: bool = False) -> list[int]:
     """Stack bits after each tail operation on ``row``; entries are 1 bit each."""
     stack = [1] * (1 << n)
     reads = iter((row >> (n - 1 - i)) & 1 for i in range(n))
@@ -125,7 +138,7 @@ def _trace(n: int, row: int) -> list[int]:
     steps += [("push", 1), *[("push", 2), ("mul", 0)] * n]
     steps += [("push", 2), ("push", 1), ("roll", 0), ("push", 1), ("add", 0)]
     steps += [("push", 1), ("push", 2), ("sub", 0), ("mul", 0), ("roll", 0)]
-    steps += [("out", 0), ("push", 2), ("pop", 0)]
+    steps += [*([("not", 0)] if flip else []), ("out", 0), ("push", 2), ("pop", 0)]
     trace = []
     for name, value in steps:
         if name == "push":
@@ -183,7 +196,8 @@ def _bits(n: int, z: int, row: int) -> int:
     to the right and 4 to the left), input progress bl(2n-1), halted 1 and the
     read count bl(n).
     """
-    trace, entries = _trace(n, row), (1 << n) + z
+    trace = _trace(n, row, flip=_flipped(n, z))
+    entries = (1 << n) + _stored(n, z)
     least = min(_strip(n, z), _packed(n, z))
     fixed = (2 * n - 1).bit_length() + 1 + n.bit_length()
     found = []

@@ -80,8 +80,9 @@ def test_every_three_input_function_executes_through_png() -> None:
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
             assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
-    # The halved lookup (retired 2026-10-28) held this at 34,062.
-    assert total == 34_224
+    # The halved lookup (retired 2026-10-28) held this at 34,062; storing the
+    # complement past half zeros brings it to 33,882.
+    assert total == 33_882
 
 
 @pytest.mark.slow
@@ -247,7 +248,8 @@ def test_compact_folds_execute_without_growing() -> None:
             if inputs == 3:
                 total += score(image)[1]
     # 40,868 under |width - height| first; max(width, height) first: 40,574.
-    assert total == 40_574
+    # The sum form and complemented lookup (2026-10-28): 40,256.
+    assert total == 40_256
 
 
 @pytest.mark.parametrize("width", [13, 19, 30])

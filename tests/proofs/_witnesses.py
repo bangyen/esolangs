@@ -998,16 +998,18 @@ def _diagram_witness(
 def _piet_worst(n: int, kind: str) -> str:
     """Piet's largest shipped area, step count or written bits: the peak z.
 
-    T - z ones spread: at both ends (every input essential) and then
-    mid-weight rows, so neither half is constant and nothing but the entry
-    count matters.  At n = 7 area peaks at z = 126, steps at 113, bits at 108.
+    T - z ones spread (the complement past half zeros): at both ends (every
+    input essential) and then mid-weight rows, so neither half is constant and
+    nothing but the entry count matters.  At n = 7 area peaks at z = 76,
+    steps at 65, bits at 101.
     """
     from esolangs.languages.piet.tests.formulas import bit_zeros, walk_zeros, zeros
 
     width = 1 << n
     middle = [r for r in range(width) if 2 <= r.bit_count() <= n - 2]
+    rest = [r for r in range(1, width - 1) if r not in middle]
     z = {"area": zeros, "steps": walk_zeros, "bits": bit_zeros}[kind](n)
-    ones = {0, width - 1, *middle[: width - z - 2]}
+    ones = {0, width - 1, *[*middle, *rest][: width - z - 2]}
     return "".join("1" if r in ones else "0" for r in range(width))
 
 
