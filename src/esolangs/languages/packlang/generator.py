@@ -17,8 +17,9 @@ Size:
     n=8 and: 661 chars, n=10 and: 798 chars, n=10 random 1847: 6,679 chars.
 
 Decisions:
-    The opposite answer polarity was dropped: +2.94% (3-input total) and
-    +2.46-2.71% (seeded 5-input samples).
+    The complement painted and printed as ``49 ^ t`` races the direct paint;
+    see ``[ablations.complement_paint]``.  The execution bound is the direct
+    paint's worst, no longer reached.
 """
 
 import re
@@ -82,8 +83,13 @@ def packlang(
     literals = PacklangLiterals(literal_policy)
     weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
     built = []
-    for runs, block in product((False, True), _blocks(table)):
-        program = _painted(table, weights, runs=runs, block=block)
+    complement = table.translate(str.maketrans("01", "10"))
+    for (runs, block), flip in product(
+        product((False, True), _blocks(table)), (False, True)
+    ):
+        program = _painted(
+            complement if flip else table, weights, runs=runs, block=block, flip=flip
+        )
         if literal_policy != "decimal":
             program = re.sub(
                 r"(?<!\w)\d+", lambda match: literals.emit(int(match[0])), program
@@ -148,7 +154,9 @@ def balance_packlang(_table: str, default: str) -> str:
     )
 
 
-def _painted(painted: str, weights: list[int], *, runs: bool, block: int) -> str:
+def _painted(
+    painted: str, weights: list[int], *, runs: bool, block: int, flip: bool = False
+) -> str:
     """Return a program painting ``painted``'s ones into an array.
 
     ``painted`` indexes the inputs of nonzero weight; the rest are read and
@@ -174,7 +182,7 @@ def _painted(painted: str, weights: list[int], *, runs: bool, block: int) -> str
         painted, index, span, blocks, n - low, runs=runs
     )
     body += remaps + painting
-    body += [f"charPut({_ASCII_ZERO}^t({low_index}));", "0;"]
+    body += [f"charPut({_ASCII_ZERO + flip}^t({low_index}));", "0;"]
 
     names = ["i", "d", "c"] + (["q"] if filled else [])
     declarations = "".join(f"  Char {name};\n" for name in names)
@@ -329,6 +337,6 @@ LANGUAGE = Language(
     balance=balance_packlang,
     eof="an exhausted charGet is newline byte 10",
     empty_program="empty program",
-    proof_execution=(execution, True, (3, 7)),
+    proof_execution=(execution, False, (3, 7)),
     proof_workspace=(workspace, False, (3, 5)),
 )

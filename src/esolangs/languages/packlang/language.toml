@@ -8,7 +8,7 @@ backlinks = 4
 labels = ["linear lookup"]
 qualification = "one 128-row array block, painted inside the `If` that selects it"
 scaling = "linear: at most N characters: one write per differing row"
-execution = "linear: worst 19T/2 - n - 4 steps for n = 3..7, then 3T/64 + 1206 - n"
+execution = "linear: at most 19T/2 - n - 4 steps for n = 3..7, then 3T/64 + 1206 - n"
 workspace = "poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array"
 
 [generator_sizes]
@@ -18,8 +18,8 @@ workspace = "poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) 
 "0110" = { commands = 17, commands_by_row = { "0" = 10, "1" = 11, "2" = 16, "3" = 17 }, source_units = 242 }
 "01101001" = { commands = 38, commands_by_row = { "0" = 15, "1" = 16, "2" = 21, "3" = 22, "4" = 31, "5" = 32, "6" = 37, "7" = 38 }, source_units = 329 }
 "0110100110010110" = { commands = 81, commands_by_row = { "0" = 22, "1" = 23, "2" = 28, "3" = 29, "4" = 38, "5" = 39, "6" = 44, "7" = 45, "8" = 58, "9" = 59, "10" = 64, "11" = 65, "12" = 74, "13" = 75, "14" = 80, "15" = 81 }, source_units = 443 }
-"1101001101101101" = { commands = 144, commands_by_row = { "0" = 85, "1" = 86, "2" = 91, "3" = 92, "4" = 101, "5" = 102, "6" = 107, "7" = 108, "8" = 121, "9" = 122, "10" = 127, "11" = 128, "12" = 137, "13" = 138, "14" = 143, "15" = 144 }, source_units = 463 }
-"11111110" = { commands = 63, commands_by_row = { "0" = 40, "1" = 41, "2" = 46, "3" = 47, "4" = 56, "5" = 57, "6" = 62, "7" = 63 }, source_units = 329 }
+"1101001101101101" = { commands = 79, commands_by_row = { "0" = 20, "1" = 21, "2" = 26, "3" = 27, "4" = 36, "5" = 37, "6" = 42, "7" = 43, "8" = 56, "9" = 57, "10" = 62, "11" = 63, "12" = 72, "13" = 73, "14" = 78, "15" = 79 }, source_units = 422 }
+"11111110" = { commands = 35, commands_by_row = { "0" = 12, "1" = 13, "2" = 18, "3" = 19, "4" = 28, "5" = 29, "6" = 34, "7" = 35 }, source_units = 299 }
 
 [schemes]
 folds_without_tree = true
@@ -51,6 +51,11 @@ verdict = "kept: a block with more ones than zeros past the fill cost is filled 
 saving = 27.3
 arity = 12
 verdict = "kept: the race also builds each block from one loop per run of ones. On random tables 1.2-1.6% (the comment says 0%); on threshold tables — one long run of ones per block, every input essential — 16.5% at n=9, 24.3% at n=10, 27.3% at n=12 and rising. The comment's -19.9% / -32.7% / -35.8% at n=7/8/9 on constant-leaf tables measures 6.4% / 4.8% / 16.5% on the threshold reconstruction: the construction is unstated and the small-arity figures do not reproduce, but the mechanism clears the bar at the verdict arities"
+
+[ablations.complement_paint]
+saving = 29.2
+arity = 10
+verdict = "kept: the race also paints the complement table and prints 49 ^ t, keeping the shorter (one input setter pair either way). or: 12.2% at n=8 (751 -> 659), 29.2% at n=10 (1,124 -> 796); threshold >= 2 20.8% at n=10 (1,196 -> 947); random 2.6% / 2.1% at n=7/8. An earlier 5-input race gained only 2.5-2.7% and was dropped; the dense classes were what it missed. Execution bound is now at most, not worst: exhaustive max steps 38 at n=3, 131 at n=4 against 69 and 144"
 
 [ablations.block_cap]
 saving = 2.9

@@ -23,7 +23,9 @@ class TestPacklangPaintedArray:
     def test_a_constant_table_paints_per_block_not_per_row(self) -> None:
         """Both fold routes: an all-zero block writes nothing, a full one fills."""
         assert "INCR t(" not in boolean.packlang("0000")
-        assert "While q^7Do{" in boolean.packlang("11111110")
+        # A lone zero is the complement's lone one: one write, printed as 49 ^ t.
+        assert boolean.packlang("11111110").count("INCR t(") == 1
+        assert "charPut(49^t(" in boolean.packlang("11111110")
         assert "While q^127Do{" in boolean.packlang("1" * 127 + "0" * 129)
         # A painted row costs eleven characters, so two per row is well
         # under the cheapest per-row program either constant could have.
