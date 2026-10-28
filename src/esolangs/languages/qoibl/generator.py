@@ -4,7 +4,8 @@ The whole table is a literal, bit ``k`` holding row ``k``; each input read
 squares and multiplies ``power`` so it ends as ``2**index`` (the row index
 accumulates in the exponent by Horner's rule), and the printed character is
 ``'0'`` plus the low bit of ``literal // power``, or ``'1'`` minus it when
-the complement packs shorter ([ablations.polarity_flip]).
+the complement packs shorter ([ablations.polarity_flip]).  A top-heavy table
+is packed reversed under complemented reads, if shorter ([ablations.negated_reads]).
 
 Size:
     O(T) characters for the literal, O(n) statements;
@@ -76,6 +77,22 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
         # stands as a two-row table; the rest are ignored reads.
         weights = [1] + [0] * (n - 1)
         truth_table = truth_table[0] * 2
+    program = min(
+        (
+            _program(table, weights, negated=negated)
+            for table, negated in ((truth_table, False), (truth_table[::-1], True))
+        ),
+        key=len,
+    )
+    return _fit(program, width)
+
+
+def _program(truth_table: str, weights: list[int], *, negated: bool) -> str:
+    """Return the unwrapped program; ``negated`` reads each input complemented.
+
+    Complementing every input reverses the row order, so the negated build
+    packs the reversed table and an input contributes ``2 / 2**bit``.
+    """
     # Variables 0 and 1; variable 2 is the Horner scratch when narrow.
     power = _qoibl_enc(0)
     row = _qoibl_enc(1)
@@ -89,8 +106,15 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     flip = flipped.bit_length() < packed.bit_length()
     if flip:
         packed, zero = flipped, _qoibl_enc(_ASCII_ZERO + 1)
-    lines = _read_statements(weights, power, row, zero, two, packed, flip=flip)
-    program = "\n".join(lines)
+    lines = _read_statements(
+        weights, power, row, zero, two, packed, flip=flip, negated=negated
+    )
+    return "\n".join(lines)
+
+
+def _fit(program: str, width: int | None) -> str:
+    """Wrap ``program`` to ``width`` characters, Horner-splitting if needed."""
+    lines = program.split("\n")
     if width is None:
         return program
     # Fits as-is: no Horner expansion needed.
@@ -110,6 +134,7 @@ def _read_statements(
     packed: int,
     *,
     flip: bool = False,
+    negated: bool = False,
 ) -> list[str]:
     """Emit one assignment per input read, then unpack the row and print it.
 
@@ -118,6 +143,9 @@ def _read_statements(
     # The input digit is 48 or 49, so minus 47 it is 2**bit: multiplying it
     # in appends the new bit to the row index accumulating in the exponent.
     two_to_bit = _arith(_INPUT, _SUB, _qoibl_enc(_ASCII_ZERO - 1))
+    drain = two_to_bit
+    if negated:
+        two_to_bit = _arith(two, _DIV, two_to_bit)
     lines = []
     counted = False
     for weight in weights:
@@ -125,7 +153,7 @@ def _read_statements(
             # An ignored input only needs draining; ``row`` is overwritten by
             # the packed literal below, and before the first essential read
             # ``power`` is overwritten by it instead.
-            lines.append(_assign(row if counted else power, two_to_bit))
+            lines.append(_assign(row if counted else power, drain))
         elif counted:
             # ``power = power * (power * 2**bit)``: squaring doubles the
             # exponent and the multiply appends the new bit -- Horner's rule

@@ -55,3 +55,10 @@ arity = 8
 seed = "random.Random(184700 + n) and named tables"
 tables = 200
 verdict = "kept under the named-function rule: when the complemented table packs to fewer bits (a trailing run of ones, which the literal pays for while trailing zeros are free), the literal is the complement and the print is '1' minus the bit, same statement count. Or 12.3% at n=6, 19.8% at n=7, 30.6% at n=8, 59.2% at n=10, rising; at-least-3 2.9-14.7% at n=6..10; majority 1.4-2.3%, and 0.1-0.2%; random tables 0.05-0.19%. Exhaustive n<=3: 138 tables change, none grows, every changed program executed; random samples and named tables executed through n=8"
+
+[ablations.negated_reads]
+saving = 52.2
+arity = 10
+seed = "named tables"
+tables = 14
+verdict = "kept under the named-function rule: the table reversed with each read as 2 / 2**bit (inputs complemented) is built beside the plain build and the shorter kept, so the one-hot-at-the-top and/nand pay the one-hot-at-the-bottom literal plus 12 characters a read. and/nand 6.6% at n=7, 19.0% at n=8, 34.9% at n=9, 52.2% at n=10, rising with the literal; or/nor and random tables unchanged (random 0.0% at n=7/8). Balanced area on and 52.3% at n=7, 60.2% at n=8, 84.4% at n=10. Executed on 20 random tables per arity and the named tables through n=9"
