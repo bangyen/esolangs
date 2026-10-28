@@ -174,6 +174,30 @@ def _value_error_hint(message: str, language: str | None) -> str:
     return "check the operands and input against the language's syntax"
 
 
+def _seed_refusal(name: str) -> ArgumentError:
+    random_languages = ", ".join(
+        language for language, lang in sorted(LANGUAGES.items()) if lang.random
+    )
+    alternatives = (
+        f"the languages that draw are {random_languages}"
+        if random_languages
+        else "no registered language draws random values"
+    )
+    return with_hint(
+        ArgumentError(
+            f"{name} draws no random values, so a seed has nothing to fix; "
+            f"{alternatives}"
+        ),
+        ("omit seed when running a deterministic language"),
+    )
+
+
+def check_seed_for(name: str, seed: int | None) -> None:
+    """Refuse a seed for a language that draws nothing, before any input."""
+    if seed is not None and not LANGUAGES[name].random:
+        raise _seed_refusal(name)
+
+
 def prepare_call(
     name: str,
     program: Program,
@@ -194,21 +218,7 @@ def prepare_call(
         options["scale"] = scale
     draws = "rng" in inspect.signature(target).parameters
     if seed is not None and not draws:
-        random_languages = ", ".join(
-            language for language, lang in sorted(LANGUAGES.items()) if lang.random
-        )
-        alternatives = (
-            f"the languages that draw are {random_languages}"
-            if random_languages
-            else "no registered language draws random values"
-        )
-        raise with_hint(
-            ArgumentError(
-                f"{name} draws no random values, so a seed has nothing to fix; "
-                f"{alternatives}"
-            ),
-            ("omit seed when running a deterministic language"),
-        )
+        raise _seed_refusal(name)
     if draws and (seed is not None or reproducible):
         try:
             options["rng"] = Seeded(

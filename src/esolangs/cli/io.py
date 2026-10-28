@@ -148,7 +148,7 @@ def _bounded_read(path: str, timeout: float | None) -> bytes:
 
     def _on_timeout() -> None:
         _fail(
-            f"gave up reading {path} after {waited:.0f}s -- it is not "
+            f"gave up reading {path} after {waited:g}s -- it is not "
             f"delivering data (a FIFO with no writer, or a device)",
             _TIMEOUT_EXIT,
         )
@@ -210,7 +210,7 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
 
     def _on_timeout() -> None:
         _fail(
-            f"no input arrived on stdin within {timeout:.0f}s, and nothing "
+            f"no input arrived on stdin within {timeout:g}s, and nothing "
             f"closed it{hint}",
             _TIMEOUT_EXIT,
         )

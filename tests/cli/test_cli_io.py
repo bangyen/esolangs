@@ -25,10 +25,21 @@ _SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=Tr
 class TestTheStdinReaderInProcess:
     """The subprocess tests prove the behaviour; these reach the lines."""
 
-    def test_an_unknown_language_is_named_before_stdin_is_read(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    @pytest.mark.parametrize(
+        ("args", "error"),
+        [
+            (["NotALang"], "unknown language"),
+            (["--seed", "1", REFERENCE], "draws no random values"),
+        ],
+    )
+    def test_an_unanswerable_run_is_refused_before_stdin_is_read(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        args: list[str],
+        error: str,
     ) -> None:
-        """It read stdin first, so this answer waited on input forever."""
+        """It read stdin first, so these answers waited on input forever."""
         path = tmp_path / "p.txt"
         path.write_text("+.")
 
@@ -37,9 +48,9 @@ class TestTheStdinReaderInProcess:
                 return False
 
             def read(self) -> str:  # pragma: no cover - must not be called
-                raise AssertionError("stdin was read before the name resolved")
+                raise AssertionError("stdin was read before the refusal")
 
-        argv = ["esolangs", "run", "NotALang", str(path)]
+        argv = ["esolangs", "run", *args, str(path)]
         with (
             patch.object(sys, "stdin", _NeverEnding()),
             patch.object(sys, "argv", argv),
@@ -47,7 +58,7 @@ class TestTheStdinReaderInProcess:
         ):
             main()
         assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
+        assert error in capsys.readouterr().err
 
 
 # 6.0s over 12 tests: drives the CLI as a subprocess.

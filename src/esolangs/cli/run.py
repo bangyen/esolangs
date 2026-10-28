@@ -42,6 +42,7 @@ from esolangs.exceptions import (
     ExecutionTimeoutError,
     TemplateError,
 )
+from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._isolated import check_memory
 from esolangs.settings import dialect_options
 
@@ -106,6 +107,8 @@ def _run(rest: list[str]) -> None:
     with _errors():
         dialect_options(language, settings)
         facts = describe(language)
+        # Before stdin too: held open, `run --seed 1 brainfuck` hung here.
+        check_seed_for(facts["name"], seed)
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.

@@ -140,7 +140,7 @@ Build language-specific stdin with `encode_inputs`:
 - Taglate:
 
   ```python
-  esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
+  esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '101'
   ```
 
 <!-- INPUT-SHAPES:START -->

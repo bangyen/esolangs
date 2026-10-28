@@ -19,7 +19,7 @@ concurrency:
 
 # `.python-version` pins 3.14, but the jobs below deliberately sync other
 # interpreters -- the lint job holds the 3.12 floor `requires-python`
-# promises, and the test matrix spans 3.12/3.13/3.14/3.15.  A bare `uv run`
+# promises, and the test matrix runs its ends, 3.12 and 3.15.  A bare `uv run`
 # re-reads that pin, sees the synced `.venv` does not match it, and *deletes
 # and recreates* the environment on the pinned interpreter instead of the
 # one the job set up.  `UV_NO_SYNC` makes the explicit `uv sync` above each
