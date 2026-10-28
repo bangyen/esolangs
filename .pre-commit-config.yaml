@@ -51,7 +51,7 @@ repos:
     hooks:
       - id: check-doc-links
         name: Check internal Markdown links
-        entry: python3 checks/check_doc_links.py
+        entry: python3 checks/check_docs.py --links
         language: system
         files: \.md$
         pass_filenames: false

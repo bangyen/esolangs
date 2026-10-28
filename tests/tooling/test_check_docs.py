@@ -1,4 +1,4 @@
-"""The doc-link gate flags dead anchors and passes real cross-references."""
+"""The docs gate flags dead anchors and passes real cross-references."""
 
 from pathlib import Path
 from typing import Any
@@ -8,7 +8,7 @@ import pytest
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "checks" / "check_doc_links.py"
+SCRIPT = REPO_ROOT / "checks" / "check_docs.py"
 
 
 def load_script() -> Any:

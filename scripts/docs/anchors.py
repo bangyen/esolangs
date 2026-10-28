@@ -1,6 +1,6 @@
 """GitHub heading slugs and the link targets a Markdown file offers.
 
-Shared by the doc-link gate (``checks/check_doc_links.py``) and the proof
+Shared by the docs gate (``checks/check_docs.py``) and the proof
 manifest's evidence check, so the two agree on what an anchor is.
 """
 

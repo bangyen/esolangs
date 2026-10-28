@@ -245,9 +245,9 @@ def test_documentation_check_preserves_source_files(
     *,
     stale: bool,
 ) -> None:
-    from checks import check_generated_docs
+    from checks import check_docs
 
-    for relative in check_generated_docs.GENERATED:
+    for relative in check_docs.GENERATED:
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
@@ -263,16 +263,16 @@ def test_documentation_check_preserves_source_files(
             (tmp_path / relative).read_bytes(),
             (tmp_path / relative).stat().st_mtime_ns,
         )
-        for relative in check_generated_docs.GENERATED
+        for relative in check_docs.GENERATED
     }
-    monkeypatch.setattr(check_generated_docs, "ROOT", tmp_path)
-    assert check_generated_docs.main() == int(stale)
+    monkeypatch.setattr(check_docs, "ROOT", tmp_path)
+    assert check_docs.stale_generated() == int(stale)
     assert {
         relative: (
             (tmp_path / relative).read_bytes(),
             (tmp_path / relative).stat().st_mtime_ns,
         )
-        for relative in check_generated_docs.GENERATED
+        for relative in check_docs.GENERATED
     } == before
     error = capsys.readouterr().err
     assert ("run python scripts/docs/generate.py docs: README.md" in error) == stale

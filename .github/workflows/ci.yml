@@ -58,8 +58,8 @@ jobs:
     - name: Type-check src/ and scripts/
       run: uv run mypy
 
-    - name: Check generated documentation
-      run: uv run python checks/check_generated_docs.py
+    - name: Check generated documentation and internal links
+      run: uv run python checks/check_docs.py
 
     # Emitted size and step count for every language on 2-, 3- and 4-input
     # tables, compared exactly against the committed baseline.  They are the

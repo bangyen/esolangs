@@ -1,4 +1,8 @@
-"""Fail when a tracked Markdown file links to a missing file or heading.
+"""Fail on stale generated documentation or a dead internal Markdown link.
+
+Generated sections are regenerated into a temporary copy and compared with
+the committed files.  Links: a tracked Markdown file must not link to a
+missing file or heading.
 
 The documentation cross-references itself heavily -- ``CONTRIBUTING.md``
 points at the roadmap's process, the proofs point at the canonical-set rules,
@@ -25,6 +29,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -32,6 +37,30 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from docs.anchors import FENCE, anchors
 
 ROOT = Path(__file__).resolve().parents[1]
+GENERATED = (
+    "README.md",
+    "docs/languages.md",
+    "docs/proofs/index.md",
+    "docs/roadmap.md",
+    "docs/usage.md",
+    "docs/limitations.md",
+    "docs/CONTRIBUTING.md",
+    ".github/ISSUE_TEMPLATE/language_request.yml",
+    "src/esolangs/languages/generators.py",
+)
+
+
+def _manifest_is_stale() -> bool:
+    """Return whether the committed examples manifest differs from its render.
+
+    Only the manifest: regenerating every example program would make this
+    check as slow as ``tests/tooling/test_examples.py``, which covers them.
+    """
+    from docs import examples
+
+    manifest = examples.LANGUAGES_DIR / "EXAMPLES.md"
+    return manifest.read_text(encoding="utf-8") != examples.boolean_manifest_text()
+
 
 _INLINE_CODE = re.compile(r"`[^`\n]*`")
 _LINK = re.compile(r"\]\(\s*([^)\s]+)")
@@ -95,7 +124,7 @@ def tracked_markdown() -> list[str]:
     return sorted(name for name in result.stdout.split("\0") if name)
 
 
-def main() -> int:
+def broken_internal_links() -> int:
     """Report every dead internal link; exit nonzero if any."""
     files = tracked_markdown()
     broken = broken_links(ROOT, files)
@@ -107,5 +136,48 @@ def main() -> int:
     return 0
 
 
+def stale_generated() -> int:
+    """Return nonzero when the committed generated sections were stale."""
+    # Imported here: they load esolangs, which the links-only pre-commit
+    # hook's bare python3 may lack.
+    from docs import generate
+
+    before = {path: (ROOT / path).read_bytes() for path in GENERATED}
+    with tempfile.TemporaryDirectory(prefix="generated-docs-") as directory:
+        output_root = Path(directory)
+        for path, content in before.items():
+            target = output_root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        result = generate.docs_main(output_root=output_root)
+        changed = [
+            path
+            for path, content in before.items()
+            if (output_root / path).read_bytes() != content
+        ]
+    if changed:
+        print(
+            "generated documentation is stale; run python "
+            "scripts/docs/generate.py docs: " + ", ".join(changed),
+            file=sys.stderr,
+        )
+        return 1
+    if _manifest_is_stale():
+        print(
+            "languages/EXAMPLES.md is stale; run python "
+            "scripts/docs/generate.py examples",
+            file=sys.stderr,
+        )
+        return 1
+    return result
+
+
+def main(argv: list[str]) -> int:
+    """Run both checks; ``--links`` runs only the link check (pre-commit)."""
+    if argv == ["--links"]:
+        return broken_internal_links()
+    return broken_internal_links() | stale_generated()
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

@@ -112,7 +112,7 @@ DEFAULT_STEP_DEADLINE = 60.0
 STEPS = [
     (
         "generated docs",
-        [*PY, "checks/check_generated_docs.py"],
+        [*PY, "checks/check_docs.py"],
     ),
     ("pre-commit", [*PY, "-m", "pre_commit", "run", "--all-files"]),
     # The only mypy run.  pre-commit has no mypy hook: the mirror's isolated
