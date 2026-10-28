@@ -20,6 +20,10 @@ Decisions:
     10% bar.  A tiled n=16 table shrinks 1,747 -> 803 characters (-54%)
     against the plain tree; the test executes it on 128 rows.  Inline text and
     the existing command bound guard the admission of deferred residuals.
+    A chain of ifs is cheap and an else is not: the reversed table behind a
+    prologue flipping every input cell once (setters unchanged) is built too
+    and the shorter kept, n=8 or 260 -> 182 chars, nor 238 -> 177, majority
+    1219 -> 1084; random n=8 -0.7%.
 """
 
 import re
@@ -122,6 +126,14 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     """Return a Smallfuck template whose final tape cell 2 is the answer."""
     natural = in_input_order(truth_table, _smallfuck_ordered)
     n = _validate_truth_table(truth_table)
+    # A chain of ifs is cheap and an else is not, so AND-like tables beat their
+    # OR-like duals; the reversed table behind a prologue that flips every
+    # input cell once (the setters stay as they are) reaches the cheap polarity.
+    negated = in_input_order(
+        truth_table[::-1],
+        lambda table, perm: _smallfuck_ordered(table, perm, negate=True),
+    )
+    natural = min(natural, negated, key=len)
     if (form := affine_form(truth_table, n)) is not None and any(form[1]):
         natural = min(natural, _xor_chain(n, *form), key=len)
     if width is None or width <= 0:
@@ -153,7 +165,9 @@ def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return (pair,) * n
 
 
-def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
+def _smallfuck_ordered(
+    table: str, perm: tuple[int, ...], *, negate: bool = False
+) -> str:
     """Compare the plain tree, deferred residuals and paired roots.
 
     Deferred plans are the per-level residuals and the unranked same-level
@@ -172,16 +186,25 @@ def _smallfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     # +5.7% at n=8, 0% below.
     paired = _paired_roots(table)
     for band in BANDS:
-        forms.append(_smallfuck_tree(table, perm, band=band))
+        forms.append(_smallfuck_tree(table, perm, band=band, negate=negate))
         for blocks, flags in plans:
             if blocks:
                 forms.append(
                     _smallfuck_tree(
-                        table, perm, shared_blocks=blocks, flag_levels=flags, band=band
+                        table,
+                        perm,
+                        shared_blocks=blocks,
+                        flag_levels=flags,
+                        band=band,
+                        negate=negate,
                     )
                 )
         if paired:
-            forms.append(_smallfuck_tree(table, perm, paired_roots=paired, band=band))
+            forms.append(
+                _smallfuck_tree(
+                    table, perm, paired_roots=paired, band=band, negate=negate
+                )
+            )
     bound = 9 * n * n + 100 * n + 20
     for _, cost in forms:
         if cost > bound:
@@ -227,8 +250,10 @@ class _Tree:
         selected: dict[tuple[int, int], int],
         pairs: dict[int, int],
         band: int,
+        head: int,
     ) -> None:
         self.n = n
+        self.head = head
         self.band = band
         self.truth_table = truth_table
         self.perm = perm
@@ -535,7 +560,7 @@ class _Tree:
         model = decoder.decode(0, (0, *self.pairs))
         decoder.price(model)
         program = "".join(self.builder.code)
-        return program, len(PAIR[0]) * self.n + prefix.evaluate(decoder.pair_tails) + 1
+        return program, self.head + prefix.evaluate(decoder.pair_tails) + 1
 
 
 class _PairDecoder:
@@ -642,6 +667,7 @@ def _smallfuck_tree(
     flag_levels: tuple[int, ...] = (),
     paired_roots: tuple[tuple[int, int], ...] = (),
     band: int = BAND,
+    negate: bool = False,
 ) -> tuple[str, int]:
     """Emit one order's template; level ``k`` tests input ``perm[k]``.
 
@@ -652,12 +678,17 @@ def _smallfuck_tree(
     when done, so a flip travels at most ``3 band`` cells and a node costs
     O(1) either way.  An arm whose lower half is constant needs no flag:
     that constant is flipped in first and the upper arm built inverted, so
-    a node over two leaves is ``result ^= bit`` alone.
+    a node over two leaves is ``result ^= bit`` alone.  ``negate`` flips every
+    input cell once first, so the tree sees the complemented inputs.
     """
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
     builder = _Builder(STRIDE * n)
     builder.emit(TEMPLATE_CHAR * (len(PAIR[0]) * n))
+    if negate:
+        for cell in reversed(range(n)):
+            builder.flip(STRIDE * cell)
+    head = builder.count
     blocks = shared_blocks
     _check_definitions(n, blocks, flag_levels)
     pending_levels = flag_levels or tuple(depth for depth, _ in blocks)
@@ -683,12 +714,13 @@ def _smallfuck_tree(
         selected,
         pairs,
         band,
+        head,
     )
     prefix = tree.arm(-1, 0, len(truth_table), ANSWER, "1")
     if pairs:
         return tree.emit_paired_roots(prefix)
     empty_tails = dict.fromkeys([None, *range(len(blocks))], 0)
-    cost = len(PAIR[0]) * n + prefix.evaluate(empty_tails)
+    cost = head + prefix.evaluate(empty_tails)
     stages = [
         (i, *tree.emit_definition(i, depth, row))
         for i, (depth, row) in enumerate(blocks)
@@ -699,7 +731,7 @@ def _smallfuck_tree(
             commands = active + body.evaluate(tails)
             tails = {target: value + skipped for target, value in tails.items()}
             tails[i] = commands
-        cost = len(PAIR[0]) * n + prefix.evaluate(tails) + 1
+        cost = head + prefix.evaluate(tails) + 1
     program = "".join(builder.code)
     return program, cost
 
