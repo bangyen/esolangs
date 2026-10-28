@@ -5,7 +5,8 @@ as one binary integer, shifts it by the row and takes the low bit.  The
 random ``=`` opcode is never used.  At n=2 five tables use a fixed short form.
 
 Size:
-    One ``*`` per entry plus one ``)`` per one entry, so T to 2T chars;
+    One ``*`` per entry plus one ``)`` per rarer-value entry, so T to 3T/2
+    chars;
     n=2 parity: 16 chars, n=16 and: 65,863 chars, n=16 parity: 98,630 chars.
 
 Decisions:
@@ -62,9 +63,13 @@ def _emit_lookup(truth_table: str) -> str:
     # Keep 2 on the value stack while cell 1 builds the packed table.  The
     # reversed source order makes truth_table[row] bit ``row`` of the integer.
     out.append(">0>2{<")
-    out.extend("*)" if bit == "1" else "*" for bit in reversed(truth_table))
+    # Each marked entry costs a ``)``: mark the rarer value, and encode the
+    # bit as 49 ^ bit (the complement) or 48 + bit, one character either way.
+    flip = 2 * truth_table.count("1") > len(truth_table)
+    marked = "0" if flip else "1"
+    out.extend("*)" if bit == marked else "*" for bit in reversed(truth_table))
     # Shift by the row saved in cell 0, reduce modulo 2, encode as ASCII.
-    out.append("<{>]$%$>48{<+$.")
+    out.append("<{>]$%$>49{<^$." if flip else "<{>]$%$>48{<+$.")
     return "".join(out)
 
 

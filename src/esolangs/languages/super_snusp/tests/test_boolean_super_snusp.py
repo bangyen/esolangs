@@ -145,7 +145,7 @@ class TestSuperSNUSP:
         ("table", "length"),
         [
             ("1010", 47),  # one dependency at two inputs
-            ("1111", 30),  # constant at two
+            ("1111", 29),  # constant at two
             ("00000000", 32),  # constant at three
             ("00000011", 68),  # depends on the last two of three
         ],
@@ -189,7 +189,7 @@ class TestSuperSNUSPSweepPins:
 
     @pytest.mark.parametrize(
         ("table", "shape"),
-        [("1100", (60, 5, 12)), ("1111", (42, 5, 8))],
+        [("1100", (60, 5, 12)), ("1111", (39, 4, 9))],
     )
     def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
         program = str(esolangs.generate("Super SNUSP", table, balance=True))
