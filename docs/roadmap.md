@@ -16,29 +16,30 @@ Edit the `[proof_status]` section of the language's own `language.toml` and run
 `just docs` to update it. Proved limits remain
 evidence, not optimization tasks.
 
-- **Malbolge:** generation at seventeen inputs is open (2026-10-26): a
-  table cell cannot carry eight address-independent meanings (window
-  conflict graph: independence number 8, twelve classes), lockstep
-  adjacent-cell reads reach 110 of 512 triples a phase, and the
-  seven-meaning build's 1,994 gotos have 2.77 cells each in the
-  complement against a 3.6-cell annealed routing floor (certified
-  at least 2.99). The composition routes priced since -- hub
-  substrates in the shipped and re-addressed geometries, marching
-  and data-initialized decoders, threaded and streaming emission,
-  membership dispatch, the permutation families -- are closed in
-  [limitations](limitations.md) on eligibility, mechanism or
-  measured rates. Reopen only with a decoder variant whose
-  word-mediated landing is realized in a full build that passes its
-  gates (parity contract, per-row cases and a fresh census at the new
-  window embedding, then placement and threaded rates inside the
-  9,897-cell complement), or with new mathematics toward the 46,076
-  bits an impossibility proof needs beyond counting.
-  Lead (2026-10-27): a `p` or `*` run during the initial walk or a
-  lockstep sweep deposits a full word for one source cell, against 25-30
-  in the shipped label phase; its words fall in five value bands, so one
-  window sweep places about 30 labels and leaves 29 of 94 residues
-  uncovered. Untested: steering the sweep from words prepared in the
-  window.
+- **Malbolge:** generation at seventeen inputs is open (2026-10-26).
+  - *Why it is hard:* a table cell cannot carry eight
+    address-independent meanings (window conflict graph: independence
+    number 8, twelve classes); lockstep adjacent-cell reads reach 110 of
+    512 triples a phase; the seven-meaning build's 1,994 gotos have 2.77
+    cells each in the complement against a 3.6-cell annealed routing
+    floor (certified at least 2.99).
+  - *Ruled out:* hub substrates in the shipped and re-addressed
+    geometries, marching and data-initialized decoders, threaded and
+    streaming emission, membership dispatch, the permutation families;
+    see [limitations](limitations.md) for eligibility, mechanism or
+    measured rates.
+  - *Reopen with:* a decoder variant whose word-mediated landing is
+    realized in a full build that passes its gates (parity contract,
+    per-row cases and a fresh census at the new window embedding, then
+    placement and threaded rates inside the 9,897-cell complement), or
+    new mathematics toward the 46,076 bits an impossibility proof needs
+    beyond counting.
+  - *Next lead (2026-10-27, untested):* a `p` or `*` run during the
+    initial walk or a lockstep sweep deposits a full word for one source
+    cell, against 25-30 in the shipped label phase; its words fall in
+    five value bands, so one window sweep places about 30 labels and
+    leaves 29 of 94 residues uncovered. Try steering the sweep from
+    words prepared in the window.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
