@@ -38,7 +38,7 @@ _VARIABLE_MAX = 65535  # the largest INTERCAL variable number
 PAIR = ("#0", "#1")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Expr:
     op: str
     value: int = 0
@@ -180,11 +180,12 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
 
     top = first + len(names) - 1
     width = _spill(top)
+    complements = [_variable(name) for name in negated]
     exprs = [_ZERO, _ONE]
     for level, zero, one in _interior(nodes):
         low = _reference(names.get(zero), width) or exprs[zero]
         high = _reference(names.get(one), width) or exprs[one]
-        exprs.append(_mux(selectors[level], low, high, _variable(negated[level])))
+        exprs.append(_mux(selectors[level], low, high, complements[level]))
     assigned = [
         (name, _Expr("not", children=(selector,)))
         for selector, name in zip(selectors, negated, strict=True)
@@ -219,19 +220,22 @@ def _diagram(truth_table: str, n: int) -> tuple[list[_Node], int]:
     selector cannot change its value.
     """
     nodes = [_Node(n, 0, 0), _Node(n, 1, 1)]
-    index: dict[_Node, int] = {}
+    # Plain tuples key the index: a NamedTuple per row pair was most of the
+    # build at 21 inputs, and the two hash and compare alike.
+    index: dict[tuple[int, int, int], int] = {}
     ids = [int(bit) for bit in truth_table]
     for level in range(n - 1, -1, -1):
         halves, ids = ids, []
-        for at in range(0, len(halves), 2):
-            key = _Node(level, halves[at], halves[at + 1])
-            if key.zero == key.one:
-                ids.append(key.zero)
+        for zero, one in zip(halves[::2], halves[1::2], strict=True):
+            if zero == one:
+                ids.append(zero)
                 continue
-            if key not in index:
-                index[key] = len(nodes)
-                nodes.append(key)
-            ids.append(index[key])
+            key = (level, zero, one)
+            found = index.get(key)
+            if found is None:
+                found = index[key] = len(nodes)
+                nodes.append(_Node(*key))
+            ids.append(found)
     return nodes, ids[0]
 
 
