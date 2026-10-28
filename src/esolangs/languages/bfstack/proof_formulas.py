@@ -2,8 +2,14 @@
 
 
 def execution(n: int, _: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
-    return 73 * n + 371 + 13 * (n % 2)
+    """The stated execution bound, evaluated for n and the program.
+
+    A wide level costs at most 60 commands, on its one arm: ``>+,`` 3,
+    48 ``-``, ``[<-`` 3, ``>]`` 2, the retested ``[`` 1, then the skipped zero
+    arm's ``<[`` and the closing ``<`` 3 (59 on a zero arm).  The worst
+    seven-input block runs 894, 895 with its trailing ``<``.
+    """
+    return 60 * (n - 7) + 895
 
 
 def workspace(n: int, p: str) -> int:

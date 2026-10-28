@@ -92,17 +92,14 @@ _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
 
 
 def _bfstack_worst(n: int) -> str:
-    """Worst past n = 7, a rule: the block under classifier nodes.
+    """Worst past n = 7, a rule: the block under one arms at every wide level.
 
-    Two inputs wrap ``t`` as ``t d d t`` with ``d`` all ones: the classifier
-    reads 1001 and its last row costs 146 commands against two branches' 120.
-    An odd input goes under an all-ones half.
+    A one arm costs 60 commands a level against a zero arm's 59, and a
+    constant zero half keeps every level from folding as equal halves.
     """
     table = _BFSTACK_BLOCK
-    if n % 2 == 0:
-        table = "1" * len(table) + table
     while len(table) < 1 << n:
-        table += "1" * len(table) * 2 + table
+        table = "1" * len(table) + table
     return table
 
 
@@ -111,10 +108,9 @@ def _bfstack_ws_worst(n: int) -> str:
 
     Every loop opens past half of ``L`` and the stack keeps a sentinel per
     one arm.  The root's zero arm is the 77-zero block ``A`` as the upper
-    half at every level, under constant lower halves (alternating, so no
-    node classifies); its one arm is ``2^(n-8)`` distinct patterned blocks,
-    the first a 32-bit pattern repeated, sized to put the root loop past
-    2^(bl(L)-1).
+    half at every level, under constant lower halves (alternating); its one
+    arm is ``2^(n-8)`` distinct patterned blocks, the first a 32-bit pattern
+    repeated, sized to put the root loop past 2^(bl(L)-1).
     """
     table = "0" * 77 + "1" * 51
     for level in range(7, n - 1):

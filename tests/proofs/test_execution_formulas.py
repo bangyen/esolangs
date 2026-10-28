@@ -98,7 +98,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         return (_parity(n), _dense(n), "0" * width, "1" * width, *_laserfuck_worst(n))
     if name == "BFStack" and n >= 10:
         # Lower arities sweep the generic families; this named witness reaches
-        # the combined classifier/odd-prefix bound without repeating them.
+        # the one-arm chain bound without repeating them.
         return (_bfstack_worst(n), _bfstack_ws_worst(n))
     if name == "Algebraic Programming Language" and n >= 8:
         # Lower arities sweep the full corpus; retain shared, dense and inline

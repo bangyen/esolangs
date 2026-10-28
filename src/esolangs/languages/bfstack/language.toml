@@ -13,7 +13,7 @@ bf_derivative_predates = true
 labels = ["minterms"]
 qualification = "—"
 scaling = "linear: worst N characters past n = 2: zero-row walk telescopes to T"
-execution = "poly n: worst 73n + 371 + 13(n mod 2) commands past n = 7"
+execution = "poly n: worst 60n + 475 commands past n = 7"
 workspace = "poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2"
 
 [generator_sizes]
@@ -40,9 +40,11 @@ arity = 12
 verdict = "kept: each block's decoder lists the rarer value's rows in its subtraction cascade (the inverted form lists ones and presets the result cell). Priced by deletion: always listing zeros costs 1.0% on random tables at n=8/10/12, 7.5% / 8.6% / 8.7% on majority, and on sparse tables (10% ones) 22.4% at n=8, 21.7% at n=10 and 21.6% at n=12; 0.00% on dense tables, where the direct form is the winner the race picks anyway. Plain-rewrite audit 2026-10-27: kept as a class rule on sparse tables (10% ones, 200 tables): +29.7 / +28.5% off at n=7/8 and 28.0 / 27.8 / 27.8% at n=9/10/12 (20 tables), flat across arity; random tables +0.96 / +0.97 / +0.75 / +0.92 / +1.00% at n=7/8/9/10/12 (fails 10%); named functions, now shadowed by the symmetric rule, at most +2.7% (AND, n=12), 0.0% on OR and majority, +0.3% on parity, so the majority figure above predates the symmetric rule. The tie (`<` vs `<=`) is size-neutral: 0.00% off, programs differ only by equal-length polarity. Every changed program run on all rows through n=8"
 
 [ablations.two_block_classifier]
-saving = 28.4
+saving = 0.0
 arity = 12
-verdict = "kept: a wide node whose four quarters are two distinct blocks classifies its two prefix bits once and writes each block once, raced against the plain split at every node. Priced by deletion: 0.00% on random tables; on two-block tables 12.0% at n=8 rising to 28.0% at n=10 and 28.4% at n=12; on parity 24.2% / 61.1% / 80.2%, on AND 13.2% / 14.9% / 16.1%, on OR 6.2% / 10.2% / 12.8% (before the symmetric rule took named functions). The in-code 12-49% range does not hold at both ends on the named functions; see the stale-figures entry F21. Plain-rewrite audit 2026-10-27: kept; two-block tables (random blocks, 200 at n=8) cost +14.7% at n=8 and +39.6 / +50.7 / +54.5% at n=9/10/12 (20 tables), rising; random tables 0 of 200 change at n=7/8; it fires only at n >= 8 (0 of 200 two-block tables change at n=7). Named functions no longer reach it (symmetric rule first): parity/AND/OR/majority 0.0% off. The `n - level < 3` threshold is size-neutral: `< 2` and `< 4` ship byte-identical programs on every table above. Every changed program run on all rows through n=8"
+seed = "random.Random(20261028000 + 7n)"
+tables = "20 random per n=7,8 plus parity/majority/and/or/one-third threshold at n=7..12"
+verdict = "retired 2026-10-28 (random + named bar): deleting the two-block classifier changes no program on 20 random tables at n=7 and n=8 (0.0% of chars and of balanced area) nor on parity, majority, and, or and a one-third threshold at n=7..12 (0.0%, both metrics; the symmetric rule takes the named functions first). Only two-block tables moved (random blocks: n=10 2,657 -> 3,461 chars, +30.3%; n=8 unchanged on the table tried) and an ad-hoc class keeps nothing. It also cost executed commands: its worst row ran 146 commands per two levels against 120 for two branches, so the execution bound falls from 73n + 371 + 13(n mod 2) to 60n + 475. Code deleted: the classifier node and _bfstack_class folded into _bfstack_small. Every program ran on all rows; generator sizes unchanged"
 
 [ablations.halves_agree_skip]
 saving = 0.6
