@@ -11,6 +11,7 @@ from esolangs.languages.smallfuck.generator import (
     PAIR,
     _smallfuck_ordered,
     smallfuck,
+    smallfuck_setters,
 )
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
@@ -20,7 +21,8 @@ from tests.support.witness_tables import dense, witnesses
 
 def _run(table: str, row: int) -> str:
     n = len(table).bit_length() - 1
-    return run_filled(run, smallfuck(table), [PAIR] * n, row, n)
+    template = smallfuck(table)
+    return run_filled(run, template, smallfuck_setters(template, n), row, n)
 
 
 @pytest.mark.parametrize("n", range(1, 4))
@@ -46,12 +48,12 @@ def test_source_growth_is_linear() -> None:
 
 
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
-    """Pin the three-input total: 57,894 characters before, 20,956 after."""
+    """Pin the three-input total: 57,894 characters before, 19,914 after."""
     assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]<<<]"
     # XOR takes the chain; the tree it would build still ends this way.
     tree = in_input_order("0110", _smallfuck_ordered)
     assert tree.endswith("[*<*>]<<<]>[*>>[*<*>]<<]")
-    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20956
+    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 19914
 
     table = multiple_tables()[0]
     template = esolangs.generate("Smallfuck", table)
@@ -346,7 +348,7 @@ def test_wide_band_is_never_larger_than_the_narrow_band(
         (witnesses(4)[5], 204),
         ("00011011010010111011100101000100", 422),
         (witnesses(8)[2], 169),
-        (dense(8), 3472),
+        (dense(8), 3271),
     ],
     ids=["n4-banded", "n5-paired", "n8-and", "n8-dense"],
 )
@@ -356,4 +358,7 @@ def test_pinned_template_sizes(table: str, size: int) -> None:
     template = smallfuck(table)
     assert len(template) == size
     for row in range(0, len(table), max(1, len(table) // 16)):
-        assert run_filled(run, template, [PAIR] * n, row, n) == table[row]
+        assert (
+            run_filled(run, template, smallfuck_setters(template, n), row, n)
+            == table[row]
+        )
