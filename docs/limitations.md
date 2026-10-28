@@ -489,7 +489,7 @@ requires a construction exemption rather than a sub-gate bound.
   to 6..12 essential inputs without a width (16 of 96 controls improved).
 - Dig has 10.9% repeated-node potential at n=5; its admission tests support
   its construction exemption. Its shared pool is 2..10 unique 64-row classes
-  indexed by one decimal digit over 2..6 prefix bits; a larger pool needs a
+  indexed by one decimal digit over 1..6 prefix bits; a larger pool needs a
   multi-digit index. A finished sharing layout whose `_chain_lanes` corridor
   crosses another class's lane arrow or branch `$` is rejected and falls back
   unshared: 131 of 602 shared layouts in the n=12 scan behind this entry

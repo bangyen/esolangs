@@ -188,6 +188,7 @@ def _dig_flat_leaf(
         painter=_dig_adder(high, 2),
         stepper=_dig_adder(low, 0),
         geometry=_FlatGeometry.landmarks(rows, cols, classes),
+        stride=sum(high) + 1,
     )
     return builder.build()
 
@@ -195,14 +196,13 @@ def _dig_flat_leaf(
 def _check_shared_stamp(
     table: str, high: list[int], low: list[int], classes: int
 ) -> None:
-    """Refuse a shared stamp that is not six-bit classes with digit labels."""
+    """Refuse a shared stamp whose classes or row stride do not fit one digit."""
     if classes > 1 and (
-        high != [4, 2, 1]
-        or low != [4, 2, 1]
-        or not 2 <= classes <= 10
-        or len(table) != 64 * classes
+        not 2 <= classes <= 10
+        or sum(high) >= _DIG_SPAN
+        or len(table) != classes * (sum(high) + 1) * (sum(low) + 1)
     ):
-        raise AssertionError("shared stamps require six-bit classes and digit labels")
+        raise AssertionError("shared stamps require digit labels and strides")
 
 
 @dataclass(frozen=True)
@@ -243,6 +243,7 @@ class _FlatLeafBuilder:
     turns: dict[tuple[int, int], int] = field(default_factory=dict)
     reads: _Reads = field(default_factory=list)
     width: int = 0
+    stride: int = 1
 
     def build(self) -> _Stamp:
         """Run the painting phases in entry-to-exit order and stamp the leaf."""
@@ -339,7 +340,7 @@ class _FlatLeafBuilder:
         self.width = max(far, 3 + self.painter.box.max_x)
 
     def _capture_shared_offset(self) -> None:
-        """Capture eight rows per class before the final six inputs are read.
+        """Capture ``stride`` rows per class before the leaf's inputs are read.
 
         The extra return command adds that stored offset to the row count.
         """
@@ -351,10 +352,23 @@ class _FlatLeafBuilder:
         self.reads.append(
             ((geo.top + 1, 3 + first), (geo.top + 2, 3 + first), frozenset())
         )
-        chars.update({(2, 8): "$", (2, 7): "*", (2, 6): ";", (2, 9): "2", (3, 7): "8"})
+        # Row 2 is walked west from the body's entry column; the capture sits
+        # on the first store's column, so a leading ignored input shifts it.
+        at = 3 + first
+        chars.update(
+            {
+                (2, at + 2): "$",
+                (2, at + 1): "*",
+                (2, at): ";",
+                (2, at + 3): "2",
+                (3, at + 1): str(self.stride),
+            }
+        )
         self.turns[2, 1], self.turns[0, 1] = _DIG_RETRACE, _DIG_FORWARD
-        pending = frozenset({(2, 6)})
-        self.reads.extend((((2, 8), (2, 9), pending), ((2, 7), (3, 7), pending)))
+        pending = frozenset({(2, at)})
+        self.reads.extend(
+            (((2, at + 2), (2, at + 3), pending), ((2, at + 1), (3, at + 1), pending))
+        )
 
 
 def _render(cells: dict[tuple[int, int], str], *, dense: bool) -> str:

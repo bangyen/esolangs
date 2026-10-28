@@ -87,12 +87,15 @@ class TestDig:
             assert run_dig(program, list(format(row, "02b"))) == "1"
 
     def test_a_constant_leaf_is_a_row_of_reads(self) -> None:
-        """A constant half sizes its own box, so the grid shrinks."""
+        """A constant half sizes its own box, so the grid shrinks.
+
+        At n=10: at n=7 both tables take the indexed decoder (540 cells each).
+        """
         import random
 
         rng = random.Random(3)
-        half = "".join(rng.choice("01") for _ in range(64))
-        mixed = boolean.dig(half + "0" * 64).split("\n")
+        half = "".join(rng.choice("01") for _ in range(512))
+        mixed = boolean.dig(half + "0" * 512).split("\n")
         full = boolean.dig(half + half[::-1]).split("\n")
         assert len(mixed) * max(map(len, mixed)) < len(full) * max(map(len, full))
 
