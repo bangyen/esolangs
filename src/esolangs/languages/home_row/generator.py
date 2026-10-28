@@ -8,10 +8,11 @@ constant table discards all setters and prints a literal.  No goto, and ``l``
 re-runs only its own block: no leaf of the linear chain is reached twice.
 
 Size:
-    Up to 2**n leaves in a linear chain; n=10 and: 3,209 chars, n=10 random
-    1847: 8,711 chars, n=10 parity: 10,359 chars.
+    Up to 2**n leaves in a linear chain; n=10 and: 1,175 chars (was 3,209),
+    n=10 random 1847: 8,711 chars, n=10 parity: 10,359 chars.
 
 Decisions:
+    A negated twin takes a table when shorter: ``and`` at n=8 885 -> 385.
     Sharing runs of equal rows through ``js`` clamped decrements saves, at n=7,
     56.48% on random, 54.66% on tiled, 120.15% with one half constant and
     29.67% with constant blocks (deletion costs, 200 tables a class).
@@ -26,6 +27,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.home_row.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
@@ -43,12 +45,14 @@ def _runs(rows: str) -> list[tuple[int, str]]:
 
 
 def home_row(truth_table: str) -> str:
-    """Return a Home Row template for a binary, MSB-first ``2**n`` truth table."""
-    return _program(truth_table)
+    """Return the shorter template: the table, or its reverse negated."""
+    return min(
+        _program(truth_table), _program(truth_table[::-1], negated=True), key=len
+    )
 
 
-def _program(truth_table: str) -> str:
-    """Build a weighted lookup or discard all setters and print a literal."""
+def _program(truth_table: str, *, negated: bool = False) -> str:
+    """Build a lookup (``negated``: weights on ``s``, cell -1) or a literal."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         # On zero, s/a decrements then restores; j/a skips the increment.
@@ -65,10 +69,8 @@ def _program(truth_table: str) -> str:
     table = truth_table if len(used) == n else read_at(truth_table, used or [0], n)
     weights = {i: 2 ** (len(used) - 1 - slot) for slot, i in enumerate(used)}
 
-    bit_lines = [
-        "a" + TEMPLATE_CHAR + "lsffff" + "a" * weights.get(i, 0) + "fl"
-        for i in range(n)
-    ]
+    head = "a" + TEMPLATE_CHAR + ("slaffff" if negated else "lsffff")
+    bit_lines = [head + "a" * weights.get(i, 0) + "fl" for i in range(n)]
     guarded = table.rstrip(table[-1])
     # A run of equal rows is one leaf behind ``js`` clamped decrements: ``j``
     # skips the ``s`` on a zero cell, so the index reaches the leaf as
@@ -96,6 +98,7 @@ LANGUAGE = Language(
     # A sum, not a tree: a lookup over the essential inputs only.
     shape=Shape.REDUCING,
     contract=BooleanContract(),
+    proof_workspace=(workspace, True, (2, 3, 4, 5, 6)),
     wrap=wrap_chars,
     example=Example(pair=HOME_ROW_PAIR),
 )

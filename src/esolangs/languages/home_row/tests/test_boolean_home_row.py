@@ -114,4 +114,4 @@ class TestParameterizedHomeRow:
         from esolangs.languages import generators
 
         tables = (format(v, "08b") for v in range(256))
-        assert sum(len(generators.home_row(t)) for t in tables) == 28404
+        assert sum(len(generators.home_row(t)) for t in tables) == 28314

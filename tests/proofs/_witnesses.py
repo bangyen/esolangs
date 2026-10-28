@@ -852,6 +852,11 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
+    # Workspace: a negated setter's -1 bit on a program as long as the worst
+    # (n = 3: a leading run of three zeros, then alternating; from 5, eight).
+    "Home Row": lambda n: (
+        ("00010101",) if n == 3 else ("0" * 8 + _parity(n)[8:],) if n >= 5 else ()
+    ),
     "Polynomial": lambda n: _diagram_witness("polynomial", n, 10),
     "Ascenic": lambda n: ("01" * (1 << n - 1),),
     # An 8-row cluster whose root block hops 15 lines (a 33-character body, held
