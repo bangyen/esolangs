@@ -37,9 +37,6 @@ from esolangs.registry._language import Example, Language
 PAIR = ("Z", "A")
 _RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
-#: A leaf: set ``z`` to the answer and jump to the halt trampoline.
-_LEAF = "Z A 2"
-
 
 def ram0(truth_table: str, width: int | None = None) -> str:
     """Build a RAM0 template; ``width=1`` through three inputs uses NAND circuits.
@@ -204,9 +201,7 @@ class _TreeEmitter:
         """
         level, block, slot = self.resolve(level, block)
         copy = self.placed.get(slot)
-        # A goto is one token; re-emitting a leaf is three, so only jump to
-        # a leaf copy while its address text is shorter than the leaf.
-        if copy is not None and (slot[0] >= 0 or len(str(copy)) < len(_LEAF)):
+        if copy is not None:
             self.tree.append(str(copy))
             return
         if self.share:
