@@ -95,7 +95,7 @@ def test_balanced_fold_computes_every_row_and_is_squarer(table: str) -> None:
     [
         ("11101111", 10, 26, 245),
         ("01000100", 10, 21, 180),
-        ("01011010", 26, 5, 133),
+        ("01011010", 26, 6, 138),
         ("11001100", 11, 11, 103),  # the last strip sets the grid's height
         ("01000000", 12, 21, 235),
     ],

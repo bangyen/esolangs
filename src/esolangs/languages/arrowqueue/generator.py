@@ -264,17 +264,10 @@ def _folds(table: str) -> list[str]:
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the tree, cascades with one, five and six columns, and folds."""
+    """Return the default or the fold with the least balanced side."""
     if len(set(table)) == 1:
         return default
-    return min(
-        default,
-        arrowqueue(table, 1),
-        arrowqueue(table, 5),
-        arrowqueue(table, 6),
-        *_folds(table),
-        key=balance_score,
-    )
+    return min([default, *_folds(table)], key=balance_score)
 
 
 LANGUAGE = Language(
