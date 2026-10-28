@@ -18,7 +18,9 @@ Size:
     n=3; n=16 parity: 71 chars, n=10 random 1847: 312 chars.
 
 Decisions:
-    A table has no subtrees to fold or share.
+    A table has no subtrees to fold or share.  ``balance=True`` also folds the
+    packed row into a snake over a block of cells
+    ([ablations.balance_packed_fold]).
 """
 
 from math import isqrt
@@ -162,11 +164,59 @@ def _folded(reads: str, truth_table: str, columns: int) -> str:
     return "\n".join(rows)
 
 
+def _number(value: int) -> str:
+    """Return a Fish literal for ``value``: a hex digit, else doubling."""
+    if value <= 15:
+        return f"{value:x}"
+    return _number(value // 2) + "2*" + ("1+" if value % 2 else "")
+
+
+def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
+    """Return the packed table folded: a snake of code over a ``columns`` block.
+
+    The six powers of two sit in the row below the code, the packed cells in
+    ``columns``-wide rows under them; an index ``i`` of a cell is at
+    ``(i % c, rows + 1 + i // c)``.  Rows of code alternate as in :func:`_folded`.
+    """
+    cells = "".join(
+        chr(_BASE + sum((ch == "0") << j for j, ch in enumerate(word)))
+        for word in (
+            truth_table[i : i + _WORD] for i in range(0, len(truth_table), _WORD)
+        )
+    )
+    powers = "".join(chr(64 + (1 << bit)) for bit in range(_WORD))
+    width = _number(columns)
+    rows = 1
+    while True:
+        # Cell i -> (i % c, rows + 1 + i // c); a power b -> (b, rows).
+        coordinates = f":{width}%:@-{width},{_number(rows + 1)}+g"
+        body = (
+            f"0{reads}:{_WORD}%:@-{_WORD},{coordinates}57*-${_number(rows)}g88*-,2%1(n;"
+        )
+        if -(-len(body) // columns) <= rows:
+            break
+        rows += 1
+    snake: list[str] = []
+    for offset in range(0, len(body), columns):
+        chunk = body[offset : offset + columns].ljust(columns)
+        snake.append(
+            ">" + chunk + "v" if len(snake) % 2 == 0 else "v" + chunk[::-1] + "<"
+        )
+    snake.extend([""] * (rows - len(snake)))
+    snake.append(powers)
+    snake.extend(
+        cells[offset : offset + columns] for offset in range(0, len(cells), columns)
+    )
+    return "\n".join(snake)
+
+
 def balance_fish(truth_table: str, default: str) -> str:
-    """Minimize the rendered side over every power-of-two fold and the parity column.
+    """Minimize the rendered side over every fold of the table and of the packed row.
 
     Fold c=2^k gives W=c+2, H=h+ceil(T/c), where h is the code height, about
     (9n+11+6k)/c rows.  Folds run to the code's length, so about log2(9n)+1.
+    The packed row folds at four widths near ``sqrt(2 * length)``
+    ([ablations.balance_packed_fold]).
     """
     n = _validate_truth_table(truth_table)
     candidates = [default]
@@ -175,6 +225,11 @@ def balance_fish(truth_table: str, default: str) -> str:
     # Folds wider than the table leave it one row; they pay off for short tables.
     candidates.extend(
         _folded(reads, table, 1 << k) for k in range(len(reads).bit_length() + 1)
+    )
+    root = (2 * len(_packed(reads, table))) ** 0.5
+    candidates.extend(
+        _packed_folded(reads, table, max(4, round(root * scale)))
+        for scale in (0.9, 1.0, 1.1, 1.2)
     )
     return min(candidates, key=balance_score)
 

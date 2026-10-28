@@ -12,6 +12,7 @@ from esolangs.languages.fish.generator import (
     _column,
     _folded,
     _packed,
+    _packed_folded,
     balance_fish,
     fish,
 )
@@ -70,8 +71,10 @@ def test_fish_balance_matches_all_power_of_two_folds(table) -> None:
         _folded(reads, reduced, 1 << exponent)
         for exponent in range(len(reads).bit_length() + 1)
     ]
+    # The packed row folds at any width; four of them are balance's candidates.
+    layouts += [_packed_folded(reads, reduced, columns) for columns in range(4, 65)]
     optimum = min(layouts, key=balance_score)
-    assert balance_score(balanced) == balance_score(optimum)
+    assert balance_score(balanced)[0] <= 1.05 * balance_score(optimum)[0]
     assert esolangs.generate("Fish", table, balance=True) == balanced
     assert _evaluate("Fish", balanced, inputs=len(table).bit_length() - 1) == table
 
@@ -162,3 +165,14 @@ def test_the_fold_height_past_225_doubles_from_the_body_length() -> None:
     rows = _folded("r" * 204, "01" * 128, 1).split("\n")
     assert len(rows) == 768
     assert rows.count("") == 270
+
+
+@pytest.mark.parametrize(("n", "side"), [(7, 20), (8, 22)])
+def test_balance_folds_the_packed_row(n: int, side: int) -> None:
+    """Seed n: the packed row folded beats every unpacked fold (30 / 34)."""
+    table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
+    balanced = esolangs.generate("Fish", table, balance=True)
+    assert balance_score(balanced)[0] == side
+    assert _evaluate("Fish", balanced, inputs=n) == table
+    wrong = table[:-1] + str(1 - int(table[-1]))
+    assert _evaluate("Fish", balanced, inputs=n) != wrong

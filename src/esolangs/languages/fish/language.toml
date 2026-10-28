@@ -49,3 +49,10 @@ arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept, priced by area: one row holding the code, six powers of two and the table packed six entries a printable cell (codes 35-98), against the two-row header over table. Area 4.7% on random tables at n=6, 48.0% at n=7, 67.0% at n=8, 84.8% at n=10, 89.8% at n=12 (20 tables), rising; characters fall too (33.8% at n=7, 72.2% at n=10). Taken whenever smaller in area (characters break ties), so from n=4 (packing saves 5.6-6.6% of area at n=4..5 but costs 17-35% more characters). Majority and and at n=8 halve; parity keeps its column. Exhaustive n<=3 unchanged; random samples executed at n=4..12. Supersedes a plain single row (table after the header, 14.8% at n=7), which packing beats from n=6"
+
+[ablations.balance_packed_fold]
+saving = 58.1
+arity = 8
+seed = "random.Random(131s + n), s = 0..19"
+tables = "20 random per n=7,8 (5 per n=9..12) plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7..10"
+verdict = "kept: balance folded only the unpacked table (n=8: side 34), never the packed row (169 cells in 1 row). The packed fold keeps the code as a snake of c columns, the six powers in the row under it and the cells in c-wide rows below, addressed by (i % c, rows + 1 + i // c) at about 19 extra characters; c is 0.9 / 1.0 / 1.1 / 1.2 times sqrt(2 len(packed row)), within 4.2% of the best width of a 4..89 sweep over 71 tables n=3..10. Balanced area (score squared): -55.6% / -58.1% on random tables at n=7 / 8 (side 30 -> 20, 34 -> 22), -64.6% / -82.0% / -76.4% / -88.5% at n=9..12 (5 tables each, still growing); named: and/or/majority/thresholds -55.6 / -58.1 / -64.6 / -82.0% at n=7..10, parity -55.6 / -58.1 / -64.6 / -66.0% (it beats the one-column parity program). The default is byte-identical on all 72 tables. Every balanced program ran on every row (72 tables, n=7..10, 0 bad), a wrong table failed on each; 1,416 tables (all n<=3, sampled n=4..6 with ignored inputs) and the fold at 12 widths 4..64 on 150 tables ran too, 0 bad"
