@@ -15,6 +15,7 @@ import re
 import shlex
 import textwrap
 import tomllib
+import typing
 
 import esolangs
 from docs.audits import rows as _audit_rows
@@ -312,7 +313,12 @@ def render_api_section() -> str:
             bases = ", ".join(base.__name__ for base in member.__bases__)
             errors.append(f"- `esolangs.{name}({bases})` -- {_summary(member)}")
         elif hasattr(member, "__value__"):
-            union = re.sub(r"\b(?:[a-z_]+\.)+", "", str(member.__value__))
+            # str() of a typing union reads Union[...] before 3.14.
+            union = " | ".join(
+                arg.__name__ if isinstance(arg, type) else str(arg)
+                for arg in typing.get_args(member.__value__)
+            )
+            union = re.sub(r"\b(?:[a-z_]+\.)+", "", union)
             types.append(f"- `esolangs.{name}` -- `{union}`")
         else:
             types.append(f"- `esolangs.{name}` -- {_summary(member)}")
