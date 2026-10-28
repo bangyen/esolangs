@@ -377,12 +377,13 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     expression = _expression(truth_table, n)
     compact = f"% 0 {expression}\n$\n"
-    shared = _definition_program(expression, n)
-    # Naming only the nodes sharing shortens: 50.5% under the shorter of
-    # the two at n=10 (20 random tables), equal on parity.
+    # Naming only the nodes sharing shortens (``[ablations.profitability_packing]``);
+    # it is never longer than the inline or the one-node-per-line form, so
+    # without a width it is the whole race (``[ablations.default_race]``).
     packed = _packed_program(expression, n, len(compact))
     if width is None:
-        return min(compact, shared, packed, key=len)
+        return packed
+    shared = _definition_program(expression, n)
     fitting = [
         program
         for program in (compact, shared, packed, _packed_program(expression, n, width))
@@ -392,7 +393,7 @@ def fargo(truth_table: str, width: int | None = None) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Return the squarest of the default, the one-node-per-line form and five packings.
+    """Return the squarest of the default and five packings.
 
     A packing at width ``w`` has about ``w`` columns and ``H(w)`` lines, with
     ``H`` falling as ``w`` grows, so the squarest width solves ``w = 2 H(w)``.
@@ -403,6 +404,8 @@ def _balance(table: str, default: str) -> str:
     """
     n = _validate_truth_table(table)
     expression = _expression(table, n)
+    # The one-node-per-line form only seeds the walk: it never renders
+    # squarer than the default or a packing (``[ablations.balance_race]``).
     shared = _definition_program(expression, n)
     width = isqrt(2 * max(len(shared), len(f"% 0 {expression}\n$\n")))
     packed = []
@@ -412,7 +415,7 @@ def _balance(table: str, default: str) -> str:
     packed.append(
         _packed_program(expression, n, balance_score(min(packed, key=balance_score))[0])
     )
-    return min(default, shared, *packed, key=balance_score)
+    return min(default, *packed, key=balance_score)
 
 
 def anf_coefficients(truth_table: str) -> list[int]:

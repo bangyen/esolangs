@@ -32,32 +32,56 @@ workspace = [6]
 [ablations]
 audited = "2026-10-19"
 
+[ablations.default_race]
+saving = 0.0
+arity = 10
+seed = 20261028
+tables = 66128
+verdict = "retired: the default race between the inline form, the one-node-per-line form and the packing never picks either of the first two over the packing -- all 65,804 non-constant tables at n=1..4 and 324 seeded tables over every non-constant class at n=5..10 (10 per class, one for each named function) return the packing's exact bytes, so the race is dead code and fargo(table) is the packing alone; the one-node-per-line form stays as the fallback when a width fits nothing, and the inline form as a width candidate. Size-neutral, byte-identical; priced 2026-10-28"
+
+[ablations.balance_race]
+saving = 0.0
+arity = 10
+seed = 20261028
+tables = 4270
+verdict = "retired: the one-node-per-line form as a balanced-layout candidate never wins by rendered area -- 0.0% on 20 seeded tables per class and arity over n=4..10 for random, dense, two-block, mid-ignored, half-constant and constant tables and the or, and, parity and majority tables, and on 4,270 exhaustive or sampled tables at n=1..4; it still seeds the width walk. The walk's fourth step and its final side try each save under 1% of area on any class at n=5..10 (20 tables each) and are kept as the side-balance contract the docstring states, not a size trick (borderline); a single packing at the seed width costs 6.5% to 28.9% of area on random tables at n=4..10, so the walk itself clears the bar; priced 2026-10-28"
+
+[ablations.operand_one_fold]
+saving = 1.7
+arity = 12
+seed = 20261028
+tables = 5
+verdict = "kept: canonical constant fold (a conjunction with the constant one is its literal), exempt; priced by emitting the explicit & x 1, it saves 5.72% at n=8, 5.09% at n=9, 3.48% at n=10 and 1.69% at n=12 on random tables, 50% on or and parity at n=10, the share falling as tables grow; priced 2026-10-28"
+
 [ablations.davio_factoring]
 saving = 68.0
 arity = 10
-verdict = "kept: clears the bar on random tables and rises with arity (57.5% at n=8, 64.6% at n=9, 68.0% at n=10 against a plain ANF monomial build run through the same naming race); 99.2% on or at n=10, 87.9% on majority"
+verdict = "kept: clears the bar on random tables and rises with arity (57.5% at n=8, 64.6% at n=9, 68.0% at n=10 against a plain ANF monomial build run through the same naming race); 99.2% on or at n=10, 87.9% on majority. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity, 5 at n=12): the plain ANF monomial build through the same packing race is 160.5% larger at n=8, 214.4% at n=9, 265.7% at n=10 and 331.4% at n=12 on random tables, 77.6% to 394.4% on dense (n=4..10), 40.7% to 227.96% on half-constant, 400% to 14,415% on or and 54% to 974% on majority (n=4..10); kept"
 
 [ablations.profitability_packing]
 saving = 51.5
 arity = 10
-verdict = "kept: clears the bar -- naming only the nodes whose sharing pays earns 51.3% at n=9 and 51.5% at n=10 over the name-everything form, and the naming race jointly earns 61.0% over the inline form at n=10; the docstring's figure reproduces on its table (name-all 3,728 chars halved to 1,810 at n=10 random 1847)"
+verdict = "kept: clears the bar -- naming only the nodes whose sharing pays earns 51.3% at n=9 and 51.5% at n=10 over the name-everything form, and the naming race jointly earns 61.0% over the inline form at n=10; the docstring's figure reproduces on its table (name-all 3,728 chars halved to 1,810 at n=10 random 1847). Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity): naming every node costs 91.5% more at n=8, 104.4% at n=9, 105.7% at n=10 and 110.4% at n=12 on random tables, 97.8% on dense, 82.4% on two-block, 93.5% on mid-ignored and 61.7% on majority at n=10; kept"
 
 [ablations.subtree_interning]
 saving = 19.5
 arity = 10
-verdict = "kept: canonical sharing substrate, exempt; interning plus naming every distinct node is a wash against the inline form at n=8 (-0.5%) growing to 19.5% at n=10 -- the profitability test in the packing is what realizes the value on the default path"
+verdict = "kept: canonical sharing substrate, exempt; interning plus naming every distinct node is a wash against the inline form at n=8 (-0.5%) growing to 19.5% at n=10 -- the profitability test in the packing is what realizes the value on the default path. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity): dropping all sharing (the inline form) costs 94.2% at n=8, 128.2% at n=9, 156.9% at n=10 and 200.9% at n=12 on random tables and 831% on majority at n=10; exempt and kept"
 
 [ablations.arm_forms]
 saving = 63.3
 arity = 10
-verdict = "kept under the named-function rule: the complemented-literal and monotone-OR arms earn 63.3% on or at n=10 and 15.7% on majority at n=8, but 0.3% on random tables at n=9 and -0.2% at n=10; the forms are exact identities chosen by the Davio difference's shape, the or family's whole construction (container's zero-leaf inversion is the precedent shape)"
+verdict = "kept under the named-function rule: the complemented-literal and monotone-OR arms earn 63.3% on or at n=10 and 15.7% on majority at n=8, but 0.3% on random tables at n=9 and -0.2% at n=10; the forms are exact identities chosen by the Davio difference's shape, the or family's whole construction (container's zero-leaf inversion is the precedent shape). Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity, 5 at n=12), the two arms priced apart. The monotone OR saves 0.85% at n=8, 0.87% at n=9, 0.51% at n=10 and 0.28% at n=12 on random tables and 203.2% to 207.5% on or at n=8..10 (210.2% at n=12), so it stays for the or family and no other; on majority it saves 19.5% at n=8, 4.7% at n=9 and nothing at n=10 or n=6..7. The complemented-literal arm (1-arm kept) saves nothing on random tables (-0.41% at n=8, -0.65% at n=10), grows two-block tables (-3.15% at n=10), nothing on or, and 5.56% at n=8, 3.16% at n=9, 3.63% at n=10 on dense: it fails the bar, but retiring it breaks the pinned test_choosing_arms_shrinks_the_corpus and the scaling clause at n=2 (28 against 24 characters), so it stays as a borderline call"
 
 [ablations.essential_descent]
 saving = 16.9
 arity = 10
-verdict = "kept: canonical, exempt; the recursion's zero-skip earns 21.6% on mid-ignored tables at n=8 and 16.9% at n=10, 4.4-5.5% on random tables -- positive on every corpus at both judged arities, though the share declines as tables grow"
+verdict = "kept: canonical, exempt; the recursion's zero-skip earns 21.6% on mid-ignored tables at n=8 and 16.9% at n=10, 4.4-5.5% on random tables -- positive on every corpus at both judged arities, though the share declines as tables grow. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity, 5 at n=12): against an explicit zero operand the descent saves 5.28% at n=8, 6.16% at n=9, 4.74% at n=10 and 2.93% at n=12 on random tables and 38.3%, 25.1%, 22.5%, 14.5% on mid-ignored tables at n=8, 9, 10, 12; canonical and kept"
 
 [ablations.exact_fit_stop]
 saving = 0.0
 arity = 10
-verdict = "rejected: the naming loop's exact-fit stop (round-3 mutant 339: break on < budget instead of <=) is a no-op on the default path -- 0.00% at every arity n=6..12, 0 of 1,400 seeded random tables change, because at the default width no node's inlined text ever lands exactly on the budget; only w=40 moves, declining monotonically from 11.42% at n=6 through -0.02% at n=8 to -0.78% at n=11, where all 200 sampled tables grow (worst +60 chars) -- a local effect that inverts as tables grow, not a genuine percentage. Execution gate clean (932 changed programs, 0 mismatches), so the rejection is a pure size verdict; priced 2026-10-25"
+verdict = "rejected: the naming loop's exact-fit stop (round-3 mutant 339: break on < budget instead of <=) is a no-op on the default path -- 0.00% at every arity n=6..12, 0 of 1,400 seeded random tables change, because at the default width no node's inlined text ever lands exactly on the budget; only w=40 moves, declining monotonically from 11.42% at n=6 through -0.02% at n=8 to -0.78% at n=11, where all 200 sampled tables grow (worst +60 chars) -- a local effect that inverts as tables grow, not a genuine percentage. Execution gate clean (932 changed programs, 0 mismatches), so the rejection is a pure size verdict; priced 2026-10-25. Plain-rewrite audit 2026-10-28: unchanged"
+
+[audits]
+plain_rewrite = 2026-10-28
