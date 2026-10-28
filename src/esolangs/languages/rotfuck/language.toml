@@ -31,7 +31,7 @@ definitions = ["W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the executi
 folding_constant_local = "_program"  # one-entry rotated lookup
 
 [ablations]
-audited = "2026-10-27"
+audited = "2026-10-28"
 
 [ablations.essential_projection]
 saving = 51.0
@@ -39,9 +39,11 @@ arity = 10
 verdict = "kept: canonical, exempt; the lookup is built over the essential inputs only and ignored inputs land on a dead cell. 0.0% on random tables (nothing to project), 20.0% / 65.5% on tables ignoring one or two inputs of 8, 33.4% / 51.0% at n=10, 79.3% / 89.7% on 16-row tiled tables at n=8/10, 95.8% / 97.4% on constant tables"
 
 [ablations.skip_race]
-saving = 21.9
+saving = 0.0
 arity = 10
-verdict = "kept: each strip is built with plain steps and with a carried count across zero runs, and the shorter text wins; priced by race marginal (deletion cost). 0.0% on random tables at every arity — a carried count first beats plain steps at a gap of roughly 50 cells, which random tables effectively never contain — against 3.1% / 7.5% / 14.1% / 21.9% on zero-upper-half tables at n=7/8/9/10, rising (the in-code 3%/7.5%/14% at n=7/8/9 reproduces), 10.3% on constant-half tables at n=10, and 50.2% / 78.2% on AND at n=10/12"
+seed = "random.Random(i * 1000 + n), i < 20"
+tables = 20
+verdict = "retired 2026-10-28 (plain-rewrite audit): the carried-count crossing of zero runs changes 0 of 20 random tables at n=7..10 (0.0%), and no named function at n=7..12 -- parity, majority, and, or, nand, nor, thresholds 2 and 3, not-majority all 0.0%, balanced too, because the symmetric count shadows AND (with it off AND would save 29.9% / 58.6% at n=8/10). What remained was the zero-upper-half class (5.4 / 11.2 / 18.2 / 25.4% at n=7..10, an ad-hoc class that keeps nothing); removed, plain steps only"
 
 [ablations.radix_bits]
 saving = 0.0
@@ -53,7 +55,7 @@ saving = 32.3
 arity = 8
 seed = "random.Random(184700 + n)"
 tables = 200
-verdict = "kept: the index's short digit is read lowest, so the top digit's walk strides 2**(short width + 1) cells, not 128. 41.4% at n=7, 32.3% at n=8, 21.9% / 12.6% / 5.0% / 0.0% at n=9/10/11/12, 65.2% at n=13 -- periodic in n mod 6, zero where every digit is full. Identical output through n=6; parity, and, or, majority 0.0% (symmetric, one count walk). No table grew; every changed program run (30 at n=7..9, both rotations) was correct"
+verdict = "kept: the index's short digit is read lowest, so the top digit's walk strides 2**(short width + 1) cells, not 128. 41.4% at n=7, 32.3% at n=8, 21.9% / 12.6% / 5.0% / 0.0% at n=9/10/11/12, 65.2% at n=13 -- periodic in n mod 6, zero where every digit is full. Identical output through n=6; parity, and, or, majority 0.0% (symmetric, one count walk). No table grew; every changed program run (30 at n=7..9, both rotations) was correct. Plain-rewrite audit 2026-10-28, 20 random tables per n, balanced area too: 41.4/32.3/21.9/12.6% at n=7/8/9/10 (balanced 40.4/34.0/20.5/12.1%), 0 named functions change; the saving falls below the 10% bar after n=10 and returns at n=13, so kept on the n=7..8 bar"
 
 [interpreter_ablations]
 audited = "2026-10-18"
@@ -69,4 +71,7 @@ saving = 68.7
 arity = 8
 seed = "named symmetric tables"
 tables = 7
-verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 sums its bits on the carrier and walks a strip of n + 1 entries, raced by length against the Horner-digit lookup. Parity 65.2% at n=7, 68.7% at n=8, 81.2% at n=10, 92.4% at n=12; majority 65.2/68.1/80.6/92.1%; or and at-least-2 70.3-70.4% at n=8; and 58.6%, exactly-1 63.6% at n=8; a symmetric table with an ignored input 64.4% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed, and under the forward rotation; named tables executed through n=8, parity at n=10"
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 sums its bits on the carrier and walks a strip of n + 1 entries, raced by length against the Horner-digit lookup. Parity 65.2% at n=7, 68.7% at n=8, 81.2% at n=10, 92.4% at n=12; majority 65.2/68.1/80.6/92.1%; or and at-least-2 70.3-70.4% at n=8; and 58.6%, exactly-1 63.6% at n=8; a symmetric table with an ignored input 64.4% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed, and under the forward rotation; named tables executed through n=8, parity at n=10. Plain-rewrite audit 2026-10-28 (named fns, n=7..12, balanced within 1-5 points): parity 40.6/53.8/67.2/78.5/86.9/92.4%, majority 40.6/52.5/67.2/77.7/86.9/92.1%, or/nand 44.1/57.5/70.6/81.1/88.7/93.5%, and/nor 24.1/27.5/32.8/39.7/48.3/58.2%, thresholds 2 and 3 42.7-57.3% at n=7/8, not-majority 40.6-92.7%, all rising; 0 of 20 random tables change at n=7..10"
+
+[audits]
+plain_rewrite = 2026-10-28

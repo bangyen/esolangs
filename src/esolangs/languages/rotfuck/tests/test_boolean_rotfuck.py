@@ -135,20 +135,6 @@ class TestRotfuck:
                         checked += 1
         assert checked > 4000
 
-    def test_the_stride_is_the_walks_square_root(self) -> None:
-        """One closed-form stride: at worst 16% over the scan it replaced.
-
-        The scan won 0.08% of whole programs (94,060 vs 94,134 chars over 40
-        random n=7..10 tables).
-        """
-        from esolangs.languages.rotfuck.generator import _skip
-
-        for fresh in (True, False):
-            for distance in (*range(1, 300), 533, 1000, 2047):
-                ruled = len(_skip(distance, fresh=fresh))
-                assert ruled <= distance
-                assert ruled <= len(_scanned_skip(distance, fresh=fresh)) * 1.16
-
     @pytest.mark.parametrize("trips", range(7))
     def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
         """The invariant every loop rests on, checked by running one."""
@@ -231,16 +217,15 @@ class TestRotfuck:
         """The forward layout is deterministic down to the character."""
         assert len(boolean.rotfuck(table, rotation="forward")) == length
 
-    def test_a_lone_late_one_in_a_64_table_is_exactly_616_long(self) -> None:
+    def test_a_lone_late_one_in_a_64_table_is_exactly_647_long(self) -> None:
         """The loop-phase set (0, 3, 4, 5) mod 8 fixes the pads, so the length."""
-        assert len(boolean.rotfuck("0" * 52 + "1" + "0" * 11)) == 616
+        assert len(boolean.rotfuck("0" * 52 + "1" + "0" * 11)) == 647
 
-    def test_a_long_run_of_zero_entries_is_skipped_by_a_walk_and_runs(self) -> None:
-        """A zero upper half is one carried count, not 2 * 128 steps."""
+    def test_a_zero_upper_half_runs(self) -> None:
+        """A zero upper half is 2 * 128 plain steps, and still correct."""
         half = "".join(str(bin(row * 37 % 256).count("1") & 1) for row in range(128))
         table = half + "0" * 128
         program = boolean.rotfuck(table)
-        assert len(program) < len(boolean.rotfuck(half + half[::-1]))
         for combo in (0, 1, 127, 128, 200, 255):
             bits = [(combo >> (7 - i)) & 1 for i in range(8)]
             assert run_rotfuck(program, [str(b) for b in bits]) == table[combo]
@@ -296,23 +281,6 @@ def _search_pads() -> tuple[str, ...]:
         for run in product("+-><", repeat=length)
         if _is_net_zero(run)
     )
-
-
-def _scanned_skip(distance: int, *, fresh: bool) -> str:
-    """The old ``_skip``: the shortest walk over every stride."""
-    best = ">" * distance
-    start = "" if fresh else ">"
-    room = distance - 1 if fresh else distance - 2
-    for stride in range(2, room + 1):
-        count = room // stride
-        if count < 2:
-            break
-        walk = f"[[-{'>' * stride}+{'<' * stride}]{'>' * stride}-]"
-        left = distance - len(start) - stride * count
-        candidate = start + "+" * count + walk + ">" * left
-        if len(candidate) < len(best):
-            best = candidate
-    return best
 
 
 def _is_net_zero(run: Iterable[str]) -> bool:

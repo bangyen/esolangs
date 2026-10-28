@@ -27,7 +27,6 @@ Decisions:
     a cell against 2.5 for an entry.
 """
 
-import math
 from collections.abc import Callable
 
 from esolangs.generation.helpers import (
@@ -262,49 +261,20 @@ def _walk(stride: int, toward: str = "<", back: str = ">") -> str:
     return f"[[-{left}+{right}]{left}-]"
 
 
-def _skip(distance: int, *, fresh: bool) -> str:
-    """Brainfuck moving ``distance`` cells right across zeros, shorter of two.
-
-    Plain ``>`` steps, or a count carried ``isqrt(room / 3)`` cells a step.  The count
-    sits on the current cell when it is ``fresh`` (zero), else one cell on, and
-    must land on a zero cell before the destination.  A zero upper half
-    shrinks the program ([ablations.skip_race]).
-    """
-    best = ">" * distance
-    start = "" if fresh else ">"
-    room = distance - 1 if fresh else distance - 2
-    # A walk costs 3 * stride + room // stride - room, nearly: minimal near
-    # sqrt(room / 3).  The exact scan over strides gained 0.08% (94,060 vs
-    # 94,134 chars, 40 random n=7..10 tables), under the 10% bar.
-    stride = math.isqrt(max(room, 0) // 3)
-    if stride < 2 or room // stride < 2:
-        return best
-    count = room // stride
-    walk = _walk(stride, ">", "<")
-    left = distance - len(start) - stride * count
-    candidate = start + "+" * count + walk + ">" * left
-    return min(best, candidate, key=len)
-
-
-def _strip(table: str, *, skips: bool) -> str:
+def _strip(table: str) -> str:
     """Brainfuck writing the table's ones two cells apart, ending past the last slot.
 
     Entry ``e`` sits at cell ``2 * (size - 1 - e)`` with a zero carrier above
-    it; the pointer starts on entry 0's carrier.  A run of zero entries is
-    crossed by a carried count instead (:func:`_skip`).
+    it; the pointer starts on entry 0's carrier.
     """
     size = len(table)
     out = []
     at = 0  # the cell the pointer stands on
-    written = False
     for slot in range(size):
         if table[size - 1 - slot] == "1":
-            distance = 2 * slot - at
-            out.append(_skip(distance, fresh=not written) if skips else ">" * distance)
-            out.append("+")
-            at, written = 2 * slot, True
-    distance = 2 * size - 1 - at
-    out.append(_skip(distance, fresh=not written) if skips else ">" * distance)
+            out.append(">" * (2 * slot - at) + "+")
+            at = 2 * slot
+    out.append(">" * (2 * size - 1 - at))
     return "".join(out)
 
 
@@ -357,12 +327,9 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
         lookups.append((symmetric[1], _count(n, used)))
     texts = []
     for entries, select in lookups:
-        for strip in dict.fromkeys(
-            (_strip(entries, skips=False), _strip(entries, skips=True))
-        ):
-            out = _Builder(cycle)
-            out.emit(_parse(strip + select + "<" + "+" * _ASCII_ZERO + "."))
-            texts.append(out.text())
+        out = _Builder(cycle)
+        out.emit(_parse(_strip(entries) + select + "<" + "+" * _ASCII_ZERO + "."))
+        texts.append(out.text())
     return min(texts, key=len)
 
 
