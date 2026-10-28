@@ -5,8 +5,8 @@
 transform (:func:`anf_coefficients`, Theta(log T) coefficients per word).
 Each variable is factored as ``p = p0 ^ (x & p1)``, so every coefficient
 appears at most once, in identity order (no reads, so order only renames the
-``@`` literals).  A node keeps its 0-arm (Davio0) unless the 1-arm vanishes
-(1-arm kept) or is the constant one (``f0 | x``).  The program is
+``@`` literals).  A node keeps its 0-arm (Davio0) unless the 1-arm is the
+constant one (``f0 | x``).  The program is
 ``% 0 <expression>`` then ``$``; a constant table emits the literal.  Input
 ``i`` (most-significant-first) is bit ``n - 1 - i`` of the one line read
 before execution -- the only place the mapping appears.  A repeated node gets a
@@ -22,7 +22,7 @@ Size:
     packs the same nodes into lines of a chosen width.
 
 Decisions:
-    The free choice among Davio0, Davio1 and monotone-OR arms (1.3-2.1% at
+    The free choice between Davio0 and monotone-OR arms (1.3-2.1% at
     n=8), rotated orders (0.9% at n=8) and indexed-selector cost splits
     (3.5% at n=5) fall under the 10% bar and are not built.
 """
@@ -65,20 +65,6 @@ class _Grain[T]:
     xor: Callable[[T, T], T]
     child: Callable[[T, int], None]
     downgrade: Callable[[T, int], bool]
-
-
-def _arm[T](choice: int, low: T, one: T, high: T) -> tuple[T, str, T]:
-    """Return the kept arm, operator, and operand arm for a Davio choice.
-
-    Choice 0 keeps the 0-arm and xors out the Davio difference; choice 1
-    keeps the 1-arm when that difference vanishes; choice 2 keeps the 0-arm
-    with a monotone OR when the 1-arm is the constant one.
-    """
-    if choice == 0:
-        return low, "^", high
-    if choice == 1:
-        return one, "^", high
-    return low, "|", one
 
 
 def _word_width(n: int) -> int:
@@ -166,14 +152,11 @@ class _ArmBuilder:
             low, high = grain.split(anf, half)
         one = grain.xor(low, high)
         w0, w1 = grain.weight(low), grain.weight(one)
-        if not w1:
-            choice = 1
-        elif grain.is_one(one, w1) and w0:
-            choice = 2
-        else:
-            choice = 0
-        kept_anf, op, operand_anf = _arm(choice, low, one, high)
-        literal = f"^ 1 @ {self.at[bit]:b}" if choice % 2 else f"@ {self.at[bit]:b}"
+        monotone = bool(w1 and w0 and grain.is_one(one, w1))
+        # Davio0 keeps the 0-arm and xors out the difference; the monotone
+        # form keeps the 0-arm with an OR when the 1-arm is the constant one.
+        kept_anf, op, operand_anf = (low, "|", one) if monotone else (low, "^", high)
+        literal = f"@ {self.at[bit]:b}"
         if not grain.is_zero(kept_anf):
             pieces.append(f"{op} ")
             grain.child(kept_anf, bit - 1)

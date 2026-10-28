@@ -84,7 +84,7 @@ class TestFargo:
         assert sizes[1] < 2 * sizes[0] + 16
 
     def test_choosing_arms_shrinks_the_corpus(self) -> None:
-        """Tables to two inputs never grow; the three-input corpus shrinks 12%."""
+        """Tables to two inputs never grow; the three-input corpus shrinks 10.2%."""
         from esolangs.languages.fargo.generator import anf_coefficients
         from esolangs.languages.fargo.tests.fargo_oracle import _anf_expression
 
@@ -101,22 +101,21 @@ class TestFargo:
                 else:
                     before += old
                     after += built
-        assert (before, after) == (9556, 8400)
+        assert (before, after) == (9556, 8580)
 
     @pytest.mark.parametrize(
-        ("table", "expression"),
+        ("table", "program"),
         [
-            # NOR3: each 1-arm is zero, so each node keeps its 0-arm negated
-            # where the positive factoring spelled all eight ANF terms.
-            ("10000000", "& ^ 1 @ 10 & ^ 1 @ 1 ^ 1 @ 0"),
+            # NOR3: no 1-arm vanishes, so Davio0 keeps the 0-arm and names the
+            # repeated ``1 ^ x0`` node.
+            ("10000000", "a ^ 1 @ 0\nb ^ a & @ 1 a\n% 0 ^ b & @ 10 b\n$\n"),
             # OR3: each 1-arm is constant one, so each node is ``f0 | x``.
-            ("01111111", "| | @ 0 @ 1 @ 10"),
+            ("01111111", "% 0 | | @ 0 @ 1 @ 10\n$\n"),
         ],
     )
-    def test_a_node_keeps_its_cheap_arm(self, table: str, expression: str) -> None:
-        """Polarity is chosen per node by the construction, not by the fill."""
-        program = boolean.fargo(table)
-        assert program == f"% 0 {expression}\n$\n"
+    def test_a_node_keeps_its_cheap_arm(self, table: str, program: str) -> None:
+        """The monotone OR is chosen per node by the construction, not the fill."""
+        assert boolean.fargo(table) == program
         for combo in range(8):
             bits = list(format(combo, "03b"))
             assert run_fargo(program, bits) == table[combo]
@@ -129,7 +128,7 @@ def test_default_names_only_the_nodes_sharing_shortens() -> None:
     table = corpus(8)["tiled"]
     program = boolean.fargo(table)
     # 441 when every node was named; now only the ones sharing shortens.
-    assert len(program) == 253
+    assert len(program) == 242
     # Width 1 fits nothing, so it falls back to naming every node.
     assert len(program) < len(boolean.fargo(table, width=1))
     for row, answer in enumerate(table):
@@ -212,5 +211,5 @@ def test_a_wide_definition_keeps_its_pinned_silhouette() -> None:
     )
     program = boolean.fargo(table, width=40)
     rows = program.splitlines()
-    assert len(program) == 678
-    assert len(rows) * max(map(len, rows)) == 1440
+    assert len(program) == 680
+    assert len(rows) * max(map(len, rows)) == 1406

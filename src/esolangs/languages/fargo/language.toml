@@ -69,9 +69,11 @@ arity = 10
 verdict = "kept: canonical sharing substrate, exempt; interning plus naming every distinct node is a wash against the inline form at n=8 (-0.5%) growing to 19.5% at n=10 -- the profitability test in the packing is what realizes the value on the default path. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity): dropping all sharing (the inline form) costs 94.2% at n=8, 128.2% at n=9, 156.9% at n=10 and 200.9% at n=12 on random tables and 831% on majority at n=10; exempt and kept"
 
 [ablations.arm_forms]
-saving = 63.3
-arity = 10
-verdict = "kept under the named-function rule: the complemented-literal and monotone-OR arms earn 63.3% on or at n=10 and 15.7% on majority at n=8, but 0.3% on random tables at n=9 and -0.2% at n=10; the forms are exact identities chosen by the Davio difference's shape, the or family's whole construction. Plain-rewrite audit 2026-10-28 (seed 20261028, 20 tables per arity, 5 at n=12), the two arms priced apart. The monotone OR saves 0.85% at n=8, 0.87% at n=9, 0.51% at n=10 and 0.28% at n=12 on random tables and 203.2% to 207.5% on or at n=8..10 (210.2% at n=12), so it stays for the or family and no other; on majority it saves 19.5% at n=8, 4.7% at n=9 and nothing at n=10 or n=6..7. The complemented-literal arm (1-arm kept) saves nothing on random tables (-0.41% at n=8, -0.65% at n=10), grows two-block tables (-3.15% at n=10), nothing on or, and 5.56% at n=8, 3.16% at n=9, 3.63% at n=10 on dense; retiring it also breaks the pinned test_choosing_arms_shrinks_the_corpus and the scaling clause at n=2 (28 against 24 characters). Retirement trial of the complemented-literal arm (choice 1) on 2026-10-28 (seed 20261028, 20 tables per class): sparse tables (three ones) grew 8.1/4.2/6.4/9.3/6.7/9.7/10.3% at n=4..10 and dense (three zeros) 2.6/4.6/3.6/5.5/4.4/7.2/8.8%, area +28.9% / +26.7% at n=10, still rising, so it is kept on its class"
+saving = 0.0
+arity = 8
+seed = 20261028
+tables = 20
+verdict = "monotone-OR arm kept; complemented-literal arm (choice 1, 1-arm kept) retired 2026-10-28 (random + named bar): it saved -0.57% at n=7 and -0.38% at n=8 on 20 seeded random tables (retiring it shrinks them 7,040 -> 7,000 and 11,756 -> 11,712 chars) and 0 chars on parity, majority, and, or and a threshold at n=7..12 (the n=9 majority program changed, same size); it kept only dense and sparse tables (3-10% on those, ad hoc classes). The monotone OR earns 203-210% on or at n=8..12, so it stays for the or family. Cost of the retirement: the n=3 corpus grows 8,400 -> 8,580 chars; the n=2 worst inline expression grows 17 -> 23 chars (scaling M_1 re-derived by exhaustion, M_t = 2 M_{t-1} + 8 + bl(t) unchanged, same linear class); n=10 random 1847 stays 1,810. Execution bound 9T - 5 re-checked, no violation"
 
 [ablations.essential_descent]
 saving = 16.9
