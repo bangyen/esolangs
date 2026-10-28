@@ -41,7 +41,12 @@ verdict = "kept: the tree contestant. Deleting it (packed for every table) costs
 [ablations.constant_shortcut]
 saving = 0.0
 arity = 12
-verdict = "recorded: a constant table returns the packed build directly, skipping the race. Size-neutral — routing constants through the race changes no output, because the packed build wins constant tables anyway; the tree alone on a constant table costs +282.05% at n=10 and +290.22% at n=12. The shortcut only saves the tree build"
+verdict = "recorded: a constant table returns the packed build directly, skipping the race. Size-neutral — routing constants through the race changes no output, because the packed build wins constant tables anyway; the tree alone on a constant table costs +282.05% at n=10 and +290.22% at n=12. The shortcut only saves the tree build. Plain-rewrite audit 2026-10-27: routing constants through the race changes 0 of 26 programs at n=2..10 and 0 of 206 at n=7/8, 0.00% at every arity"
+
+[ablations.share_lookahead]
+saving = 21.46
+arity = 8
+verdict = "kept: the tree jumps straight to an already-emitted one-half instead of emitting a relay jump (placed.get in hoisted_tree). Removing it costs +22.35% at n=7 and +21.46% at n=8 on 200 random tables (+22.54 / +21.96% on 20; +4.3% n=2, +10.2% n=4, +19.4% n=6, flat past n=6, not declining), +12.7% parity, +17.2% OR, +4.3% majority, 0.0% AND at n=8. It ships on random tables to n=8 only; packed wins n>=9. All changed programs run on every row through n=8, 40 sampled rows at n=9/10 (audited 2026-10-27)"
 
 [ablations.subtree_sharing]
 saving = 36.67
@@ -62,6 +67,9 @@ verdict = "kept: canonical, exempt. Inside the tree build: a constant subtree re
 saving = 66.52
 arity = 12
 verdict = "kept: canonical, exempt. Inside the packed build: an ignored input is read into TMP and never joins the index, and the table is packed over the essential inputs only. Removing projection costs +34.98% on one-ignored and +66.52% on two-ignored tables at n=12 (direct: the unprojected build still ships); on three-ignored tables it grows past the tree, so the routed price caps at +22.52%. It is 0.00% wherever every input is essential"
+
+[audits]
+plain_rewrite = 2026-10-27
 
 [formula_arities]
 execution = [9]
