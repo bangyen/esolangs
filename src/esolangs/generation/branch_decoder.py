@@ -14,6 +14,7 @@ def hoisted_tree(
     perm: tuple[int, ...],
     *,
     direct: bool = False,
+    flip: bool = False,
 ) -> str:
     """Emit one input order's hoisted program; with shared residuals.
 
@@ -21,12 +22,18 @@ def hoisted_tree(
     stays in input order, so the program consumes its input stream exactly
     as the node-read build did.  A subtree already emitted is jumped to,
     not repeated.  ``direct`` renders byte I/O and immediate jump targets
-    from the same folded instructions.
+    from the same folded instructions.  ``flip`` (indirect only) branches
+    on a 0 bit instead of a 1: the test ``-48 - (-x)`` runs on a per-input
+    copy of the constant, spent with the path, and the one half falls
+    through, so a repeated zero half is a jump target, not a relay jump.
     """
     n = _validate_truth_table(truth_table)
+    if flip and direct:
+        raise ValueError("flip is the indirect tree's test")
     neg49 = 0
     vbase = 4
     nxtbase = vbase + n
+    cbase = nxtbase + n
 
     # (a operand, b operand, kind, kind's argument); ``a``/``b`` are data
     # offsets made absolute below, and ``kind`` picks how ``c`` is filled.
@@ -57,20 +64,23 @@ def hoisted_tree(
             return
         at = len(instructions)
         instructions.append((0, 0, "", 0))  # the branch, once its target is known
-        emit(level + 1, 2 * block)
-        # The one subtree is branched to, so an earlier copy costs nothing.
-        one = placed.get(resolve(level + 1, 2 * block + 1)[2])
+        emit(level + 1, 2 * block + flip)
+        # The other subtree is branched to, so an earlier copy costs nothing.
+        one = placed.get(resolve(level + 1, 2 * block + 1 - flip)[2])
         if one is None:
             one = len(instructions)
-            emit(level + 1, 2 * block + 1)
-        instructions[at] = (vbase + perm[level], neg49, "one", one)
+            emit(level + 1, 2 * block + 1 - flip)
+        if flip:
+            instructions[at] = (cbase + perm[level], vbase + perm[level], "one", one)
+        else:
+            instructions[at] = (vbase + perm[level], neg49, "one", one)
 
     emit(0, 0)
 
     if direct:
         return _direct_tree(instructions, n)
 
-    onebase = nxtbase + n
+    onebase = cbase + n * flip
     # One target cell per distinct target: two branches to one copy share it.
     targets = dict.fromkeys(
         arg for _a, _b, kind, arg in instructions if kind in {"one", "jump"}
@@ -96,6 +106,7 @@ def hoisted_tree(
         [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1]
         + [0] * n
         + [code_base + 3 * (i + 1) for i in range(n)]
+        + [-_ASCII_ZERO] * (n * flip)
         + [code_base + 3 * arg for arg in targets]
     )
     # Instruction 0 jumps over inert low-address data to the code.  Keeping

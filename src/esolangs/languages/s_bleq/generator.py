@@ -6,8 +6,10 @@ consumes all inputs before printing.
 
 Size:
     n=10 random 1847: 2,974 chars, n=10 parity: 487 chars,
-    n=10 and: 383 chars.
+    n=10 and: 334 chars.
 """
+
+from functools import partial
 
 from esolangs.generation.branch_decoder import hoisted_tree as _sbleq_hoisted
 from esolangs.generation.helpers import (
@@ -38,14 +40,29 @@ def s_bleq(truth_table: str) -> str:
     if len(set(truth_table)) == 1:
         return _sbleq_constant(n, truth_table[0])
     if len(truth_table) <= _TREE_ROWS:
-        return in_input_order(truth_table, _sbleq_hoisted)
+        return _tree(truth_table)
     packed = packed_decoder(truth_table)
     # A proved lower bound past the packed length settles the race
     # without building the tree (see _tree_min_chars).
     if _tree_min_chars(truth_table, n) > len(packed):
         return packed
-    tree = in_input_order(truth_table, _sbleq_hoisted)
+    tree = _tree(truth_table)
     return tree if len(tree) < len(packed) else packed
+
+
+def _tree(truth_table: str) -> str:
+    """The hoisted tree, branching on a 1 bit or on a 0 bit: the shorter.
+
+    A branch falls through into the zero half and jumps to the one half, so
+    a repeated zero half costs a relay jump a level (AND ran 1.3x its
+    complement-input twin NOR); the flipped test costs one constant cell an
+    input.
+    """
+    return min(
+        in_input_order(truth_table, _sbleq_hoisted),
+        in_input_order(truth_table, partial(_sbleq_hoisted, flip=True)),
+        key=len,
+    )
 
 
 def _tree_min_chars(truth_table: str, n: int) -> int:
@@ -70,6 +87,7 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
     fresh = 2
     branches = 0
     targets: set[int] = set()
+    flipped: set[int] = set()  # the flipped tree branches to the zero halves
     leaf_bits = 0
     for i in range(0, len(data), 2):
         zero, one = data[i] & 1, data[i + 1] & 1
@@ -84,6 +102,7 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
             seen[zero, one] = node
             branches += 1
             targets.add(one)
+            flipped.add(zero)
         level.append(node)
     while len(level) > 1:
         seen = {}
@@ -100,12 +119,15 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
                 if zero != one:
                     branches += 1
                     targets.add(one)
+                    flipped.add(zero)
             above.append(node)
         level = above
 
     def digits(value: int) -> int:
         return len(str(value))
 
+    # Either polarity may ship (see _tree), so the floor takes the fewer.
+    targets = min(targets, flipped, key=len)
     code_base = 13 + 2 * n + len(targets)
     return (
         branches * (6 + digits(13 + 2 * n))

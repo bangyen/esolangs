@@ -94,8 +94,9 @@ def test_tree_min_chars_never_passes_the_tree_it_prices(n: int) -> None:
     """The race skip's bound is a floor on the tree, on every table tried."""
     seeded = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     for table in (*_tables("S*bleq", n), seeded, _sbleq_worst(n)):
-        tree = hoisted_tree(table, tuple(range(n)))
-        assert _tree_min_chars(table, n) <= len(tree), table
+        for flip in (False, True):
+            tree = hoisted_tree(table, tuple(range(n)), flip=flip)
+            assert _tree_min_chars(table, n) <= len(tree), (table, flip)
 
 
 def test_the_scaling_witness_skips_the_tree() -> None:
@@ -121,3 +122,12 @@ def test_size_below_eleven_inputs_is_at_most_the_shorter_route(n: int) -> None:
     bound = below_eleven(n) if n >= 5 else tree_chars(n)
     for table in _tables("S*bleq", n):
         assert len(esolangs.generate("S*bleq", table)) <= bound, table
+
+
+def test_flipped_tree_ends_the_and_relay_jumps() -> None:
+    """AND's repeated zero half is a jump target when the test branches on 0."""
+    n = 8
+    table = "0" * (2**n - 1) + "1"
+    nor = "1" + "0" * (2**n - 1)
+    assert len(boolean.s_bleq(table)) < 0.9 * len(hoisted_tree(table, tuple(range(n))))
+    assert len(boolean.s_bleq(table)) < 1.2 * len(boolean.s_bleq(nor))
