@@ -61,3 +61,6 @@ verdict = "kept: alternating column banks (a layer reuses the columns of the lay
 [ablations.width_machinery]
 saving = 0.0
 verdict = "kept: feasibility -- rotation, the strip and streaming trees, the narrowest-grid race and the native-XOR case serve explicit widths only; no default-path effect"
+
+[audits]
+plain_rewrite = 2026-10-27

@@ -79,3 +79,6 @@ verdict = "kept: canonical, exempt; no separate check in current code (dropped a
 [ablations.width_machinery]
 saving = 0.0
 verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column builder; no default-path effect"
+
+[audits]
+plain_rewrite = 2026-10-18

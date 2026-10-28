@@ -43,3 +43,6 @@ verdict = "kept: the (hi, lo) == (1, 0) leaf is spelled 0K instead of the pair n
 saving = 8.2
 arity = 12
 verdict = "kept: a leaf argument goes bare instead of parenthesized. Grouping every argument costs +7.74% at n=10 and +8.15% at n=12 on random tables, +8.45 / +9.06% on one-ignored tables; the share is arity-stable, not a fixed amount"
+
+[audits]
+blind_reimplementation = 2026-10-27

@@ -56,3 +56,6 @@ verdict = "kept: the race also builds each block from one loop per run of ones. 
 saving = 2.9
 arity = 10
 verdict = "kept: _BLOCK = 7 caps the painted block at 128 rows, which is termination machinery (a 512-row array did not terminate in 30 s; the Char index wraps). The value is flat as the comment claims: block sizes 5/6/8 against 7 on random tables at n=10 measure +1.2% / -1.2% / +3.0% (claimed +1.2% / -1.2% / +2.7%). Six would win random by 1.2% but loses 14.9% on 90%-dense tables at n=10; eight is the reverse, so seven is a measured compromise, not a leftover"
+
+[audits]
+plain_rewrite = 2026-10-22

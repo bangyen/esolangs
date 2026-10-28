@@ -56,3 +56,6 @@ verdict = "kept: canonical, exempt; saving on the constant-span class, flat pain
 saving = 46.4
 arity = 10
 verdict = "kept: canonical, exempt; saving on the mosaic class (33.3% at n=9); negative on random tables, where the race's both-metrics test rejects the shared build"
+
+[audits]
+plain_rewrite = 2026-10-22

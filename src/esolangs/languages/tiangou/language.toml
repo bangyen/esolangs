@@ -36,3 +36,6 @@ arity = 10
 seed = 2026
 tables = "20 random and 20 with a random proper subset of inputs essential, n=8 and n=10"
 verdict = "kept: a table ignoring inputs walks only the essential-input table; 77.8% at n=8 and 89.2% at n=10 on those tables, 0.0% on random ones"
+
+[audits]
+blind_reimplementation = 2026-10-27

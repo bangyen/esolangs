@@ -40,3 +40,6 @@ arity = 12
 seed = 0
 tables = "n=4 and n=12 parity; the area recurrence over every layout sequence through n = 14"
 verdict = "kept: side by side only at odd levels from 3 below the root is the least area over all 2^n sequences except n = 4 (840 vs 832); against strict alternation it saves 8.5% chars at n=4 and 4.6% at n=12 parity, and the worst run drops 1,496 to 1,242 commands at n=10"
+
+[audits]
+blind_reimplementation = 2026-10-27

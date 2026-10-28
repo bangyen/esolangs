@@ -31,3 +31,6 @@ audited = "2026-10-27"
 saving = 0.0
 arity = 10
 verdict = "kept: canonical. A constant span reads and drops its inputs, then prints once; the equal-halves fold already gives the same text, so 0.0% at n=8/10 on random and half-constant tables"
+
+[audits]
+blind_reimplementation = 2026-10-27

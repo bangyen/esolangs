@@ -104,3 +104,6 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 price = -3.0
 workload = "run"
 verdict = "removed 2026-10-20 (interpreter candidate I-6): -3.0% run with overlapping spreads in the audit; no measurable earning"
+
+[audits]
+plain_rewrite = 2026-10-21

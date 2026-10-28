@@ -54,28 +54,35 @@ Dead-code leads, unmeasured against the
 A removal must leave the generated corpus byte-identical (tiled, constant and
 ignored-input tables included).
 
-- **Plain-rewrite audits are one-off:** Streetcode and LaserFuck were each
-  audited once -- write the plain canonical construction, price every
-  bespoke trick against it, and remove the ones whose saving is a fixed
-  amount rather than a genuine percentage (see
-  [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)):
-  Streetcode's lift and tail overlap, LaserFuck's sized leaf retirement and
-  Dig's default banded tree came out this way, and four of SStack's six
-  sharing routes (2026-10-21), 6-5's copy node and Minifuck's dead lookup
-  threshold (2026-10-22), and BrainIf's leaf trampoline and odd-n loop step
-  and ThisThat's DAG single-arm router (2026-10-27). Flowchart, Circlefuck,
-  Circuit Diagram, Clockwise and Back kept every trick and Ascenic has none. Line, Alight, Polynomial, Slow ACV
-  Mammalian, APL, INTERCAL and Packlang are inventoried (2026-10-22): their
-  unrecorded mechanisms are width/balance layout or core-construction
-  constants, not default-path tricks. The audit is repeatable per generator.
-  Eight of the thirteen audited lost a trick. Next by kept `[ablations]`
-  (2026-10-27): Smallfuck 8, 3x 7, Boolfuck 7, and 6 each for S*bleq,
-  Subleq, Brainfuck, BFStack, CVNC and AddSubJump.
-- **Blind reimplementation of first implementations:** 14 of the 81 have a
-  clean-room interpreter written from the wiki page alone and diffed over
-  the generated corpus (2026-10-27): Aprknia, Balik, BASICER, Bleh,
-  Freestajlo, Hot, Kiss, lol waht, Pilas, S*bleq, Sonata, Stisp,
-  SwitchCase, Tiangou. They found one contradiction of the spec (Tiangou
-  halted on underflow); the other disagreements were spec gaps, now
-  recorded in the docstrings. With no outside
-  interpreter, this is the only independent check the rest get.
+- **Plain-rewrite audits:** write the plain canonical construction, price
+  every bespoke trick against it, and remove the ones whose saving is a
+  fixed amount rather than a genuine percentage (see
+  [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)).
+  Eight of the first thirteen lost a trick.  Record a finished audit as
+  `[audits] plain_rewrite = <date>` in the language's `language.toml`.
+
+<!-- PLAIN-REWRITE-AUDITS:START -->
+
+Audited (21): 6-5, Algebraic Programming Language, Alight, Ascenic, Back,
+BrainIf, Circlefuck, Circuit Diagram, Clockwise, Dig, Flowchart, INTERCAL,
+LaserFuck, Line, Minifuck, Packlang, Polynomial, SLOW ACV MAMMALIAN, SStack,
+Streetcode, thisthat. Next by kept `[ablations]`: Smallfuck 8, 3x 7,
+Boolfuck 7, AddSubJump 6, BFStack 6, CV(N)(C) 6, Malbolge 6, S*bleq 6,
+Subleq 6.
+
+<!-- PLAIN-REWRITE-AUDITS:END -->
+
+- **Blind reimplementation of first implementations:** a clean-room
+  interpreter written from the wiki page alone, diffed over the generated
+  corpus.  With no outside interpreter, this is the only independent
+  check a first implementation gets; the first fourteen found one spec
+  contradiction (Tiangou halted on underflow), the rest spec gaps now in
+  the docstrings.  Record one as `[audits] blind_reimplementation = <date>`.
+
+<!-- BLIND-REIMPLEMENTATIONS:START -->
+
+14 of the 81 first implementations: Aprknia, Balik, BASICER, Bleh,
+Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, S*bleq,
+Sonata, Stisp, SwitchCase, Tiangou.
+
+<!-- BLIND-REIMPLEMENTATIONS:END -->

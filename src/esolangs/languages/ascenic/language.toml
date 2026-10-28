@@ -45,3 +45,6 @@ verdict = "recorded: an LT/ADDS pair is emitted only where the answer changes. T
 saving = 0.62
 arity = 12
 verdict = "recorded: every emitted argument is the smallest its constraint allows (LT thresholds exact, the rest the running minimum, parity-adjusted where required). Taking the free choices (each -2 build's start, base) 2 higher instead costs +2.00% at n=10 and +0.62% at n=12 on random tables, declining — the bumps are O(n) against Theta(T^2) chars. Nothing to remove: the minimum is the default, not a device"
+
+[audits]
+plain_rewrite = 2026-10-21

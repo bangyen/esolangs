@@ -70,3 +70,6 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 price = 43.2
 workload = "traced"
 verdict = "kept: int bitvector over tuple tape"
+
+[audits]
+plain_rewrite = 2026-10-22

@@ -26,3 +26,6 @@ sharing_exempt = "no procedures or jumps: a subtree runs only where it is writte
 
 [ablations]
 audited = "2026-10-27"
+
+[audits]
+blind_reimplementation = 2026-10-27

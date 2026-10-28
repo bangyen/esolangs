@@ -50,3 +50,6 @@ tables = 200
 saving = 0.0
 arity = 12
 verdict = "kept: 0.0% race marginal on random tables at every arity n=4..12 (both seed sets) and on dense, mosaic and half-constant corpora; stays under the named-function rule -- 71.0% on parity at n=8 rising to 95.6% at n=16, a share growing with arity, and 26.5% on majority at n=10; its class is a level whose residuals repeat across the whole level"
+
+[audits]
+plain_rewrite = 2026-10-21

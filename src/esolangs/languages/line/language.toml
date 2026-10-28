@@ -82,3 +82,6 @@ verdict = "kept: id-keyed row/pixel caches; documented ~4x was one n=8 case, cor
 price = 94.8
 workload = "run"
 verdict = "kept"
+
+[audits]
+plain_rewrite = 2026-10-22

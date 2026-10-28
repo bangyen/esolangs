@@ -49,3 +49,6 @@ verdict = "kept: canonical, exempt; priced jointly with the constant-arm forms i
 saving = 48.5
 arity = 10
 verdict = "kept: clears the bar on random tables and rises with arity (35.7% at n=7, 43.6% at n=9, 48.5% at n=10); 97.5% on parity and 85.8% on majority at n=10; the in-code figure of 32-33% at n=7..9 (40 random tables) prices higher on the audit's 200-table corpus -- a stale-low sample figure, flagged in the batch 6 report"
+
+[audits]
+plain_rewrite = 2026-10-22

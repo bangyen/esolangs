@@ -54,3 +54,6 @@ verdict = "kept: each level's ~selector is assigned once when per_level * (inlin
 saving = 0.0
 arity = 12
 verdict = "kept: the emitted size is exactly invariant under input permutation -- 0 of 256 tables at n=3 and 0 of 200 at n=5 change by one char under the greedy order, which does fire (94/256 and 124/200 non-identity permutations). The Decisions' greedy-cost figures (+2.14% on three inputs, +1.68% on the five-input sample) do not reproduce; see the stale-figures list"
+
+[audits]
+plain_rewrite = 2026-10-22

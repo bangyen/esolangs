@@ -83,3 +83,6 @@ verdict = "candidate: unmeasurable; parse is ~37 ms per source, executions domin
 price = 46523.7
 workload = "run"
 verdict = "kept: execution re-factors the same tuples on every use; the cache makes it once per distinct tuple"
+
+[audits]
+plain_rewrite = 2026-10-22

@@ -107,3 +107,6 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 price = 136.9
 workload = "run()"
 verdict = "kept: run() skips revalidating identical geometry"
+
+[audits]
+plain_rewrite = 2026-10-18

@@ -38,3 +38,6 @@ arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: canonical, exempt; one equation over a variable where a node's halves agree, against one per bit: 2.3% on random tables at n=8 declining to 0.9% at n=12, 5.2-7.8% one-ignored, 0.0% on constants (the drain answers them) and on parity/majority/and; never larger"
+
+[audits]
+blind_reimplementation = 2026-10-27

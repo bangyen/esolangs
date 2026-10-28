@@ -61,3 +61,6 @@ arity = 8
 seed = "random.Random(184700 + n)"
 tables = "5 random per n=4,6,8 plus and/or/parity/majority, width request 1"
 verdict = "kept: a named function (parity) on the width-request path only. At width 1 the tree cannot fit and the one-column accumulator saves 95.6% / 96.5% / 97.1% by area at n=4/6/8 (89.0% / 91.5% / 93.1% by chars); every other table is unchanged. Every changed program ran on every row, 0 bad"
+
+[audits]
+plain_rewrite = 2026-10-27

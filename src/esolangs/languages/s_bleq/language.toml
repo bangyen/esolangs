@@ -64,3 +64,6 @@ verdict = "recorded: the 16-row cutoff below which the packed build is not tried
 saving = 0.0
 arity = 26
 verdict = "recorded: where the proved bound _tree_min_chars exceeds the packed text's length, the generator returns the packed build directly, skipping the tree build. Size-neutral — the bound charges the tree's emission cell by cell, so past it the tree cannot win the race, and a corpus differential of 66,197 dumped programs against the unskipped build is byte-identical. The skip only saves build cost: on the worst-case witness, generation at n=25 falls from 29.9 s at a 2.95 GB peak to 16.3 s at 1.69 GB, and at n=26 from 86.7 s at 5.81 GB to 55.1 s at 3.35 GB"
+
+[audits]
+blind_reimplementation = 2026-10-27

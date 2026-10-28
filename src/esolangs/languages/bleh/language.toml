@@ -37,3 +37,6 @@ arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: canonical, exempt; a node whose halves agree reads its input as a statement and goes on (also how a constant above the last input reads the rest) instead of matching both bits to one child: 10.1% on random tables at n=8 declining to 4.8% at n=12, 9.9-16.9% one-ignored, 39.7-40.8% on constants, 13.4-14.2% on parity/majority/and; never larger"
+
+[audits]
+blind_reimplementation = 2026-10-27

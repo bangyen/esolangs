@@ -23,3 +23,6 @@ workspace = "linear: worst n + 4 bits"
 
 [ablations]
 audited = "2026-10-27"
+
+[audits]
+blind_reimplementation = 2026-10-27

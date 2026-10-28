@@ -43,3 +43,6 @@ folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @
 
 [schemes]
 folds_without_tree = true
+
+[audits]
+blind_reimplementation = 2026-10-27
