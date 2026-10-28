@@ -11,20 +11,20 @@ backlinks = 2
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on"
-scaling = "linear: worst A cells past n = 1: the least-area of six layouts"
+scaling = "linear: worst A cells past n = 1: the least-area of three layouts"
 execution = "linear: worst E steps: the all-zero row of the least-area layout"
 workspace = "T log T: worst W bits to n = 8, at most B after: program cells, marks, pointers"
 definitions = ["B = 8 + coordinate bits per program cell, plus a widest-coordinate mark per * or - cell"]
 
 [generator_sizes]
-"00000001" = { commands = 211, commands_by_row = { "0" = 230, "1" = 225, "2" = 225, "3" = 220, "4" = 221, "5" = 216, "6" = 216, "7" = 211 }, source_units = 304 }
-"00001100" = { commands = 159, commands_by_row = { "0" = 174, "1" = 169, "2" = 169, "3" = 164, "4" = 169, "5" = 164, "6" = 164, "7" = 159 }, source_units = 244 }
-"00110110" = { commands = 211, commands_by_row = { "0" = 230, "1" = 225, "2" = 225, "3" = 220, "4" = 221, "5" = 216, "6" = 216, "7" = 211 }, source_units = 304 }
-"0110" = { commands = 127, commands_by_row = { "0" = 137, "1" = 132, "2" = 132, "3" = 127 }, source_units = 186 }
-"01101001" = { commands = 211, commands_by_row = { "0" = 230, "1" = 225, "2" = 225, "3" = 220, "4" = 221, "5" = 216, "6" = 216, "7" = 211 }, source_units = 304 }
-"0110100110010110" = { commands = 347, commands_by_row = { "0" = 383, "1" = 378, "2" = 378, "3" = 373, "4" = 374, "5" = 369, "6" = 369, "7" = 364, "8" = 366, "9" = 361, "10" = 361, "11" = 356, "12" = 357, "13" = 352, "14" = 352, "15" = 347 }, source_units = 486 }
-"1101001101101101" = { commands = 347, commands_by_row = { "0" = 383, "1" = 378, "2" = 378, "3" = 373, "4" = 374, "5" = 369, "6" = 369, "7" = 364, "8" = 366, "9" = 361, "10" = 361, "11" = 356, "12" = 357, "13" = 352, "14" = 352, "15" = 347 }, source_units = 486 }
-"11111110" = { commands = 211, commands_by_row = { "0" = 230, "1" = 225, "2" = 225, "3" = 220, "4" = 221, "5" = 216, "6" = 216, "7" = 211 }, source_units = 304 }
+"00000001" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"00001100" = { commands = 126, commands_by_row = { "0" = 147, "1" = 142, "2" = 140, "3" = 135, "4" = 138, "5" = 133, "6" = 131, "7" = 126 }, source_units = 344 }
+"00110110" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"0110" = { commands = 89, commands_by_row = { "0" = 105, "1" = 98, "2" = 96, "3" = 89 }, source_units = 221 }
+"01101001" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"0110100110010110" = { commands = 187, commands_by_row = { "0" = 237, "1" = 230, "2" = 228, "3" = 221, "4" = 224, "5" = 217, "6" = 215, "7" = 208, "8" = 216, "9" = 209, "10" = 207, "11" = 200, "12" = 203, "13" = 196, "14" = 194, "15" = 187 }, source_units = 545 }
+"1101001101101101" = { commands = 187, commands_by_row = { "0" = 237, "1" = 230, "2" = 228, "3" = 221, "4" = 224, "5" = 217, "6" = 215, "7" = 208, "8" = 216, "9" = 209, "10" = 207, "11" = 200, "12" = 203, "13" = 196, "14" = 194, "15" = 187 }, source_units = 545 }
+"11111110" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
 
 [catalogue]
 folding_constant_local = "b_tapemark"  # direct read-and-print constant
@@ -50,12 +50,35 @@ verdict = "kept: canonical, exempt; a constant table is one literal row of 2n+3 
 
 [ablations.blank_compaction]
 saving = 0.0
-arity = 11
-verdict = "kept: the render drops wholly blank rows and columns, but the wide layout has none to drop: 0.0% by area on every default-path corpus at n=9/10/11. The narrow and folded layouts the default now also takes are rendered the same way; a folded copy wider than its table (c > Te) leaves blank columns only the render removes. Unpriced there"
+arity = 12
+verdict = "retired 2026-10-28: the render dropped wholly blank rows and columns and never fired: 0.0% default and balanced area, byte-identical, on 20 seeded tables at n=7/8 (seed 1000n + i), the parity, majority, and, or, nand, nor and threshold tables at n=7..12, 3,216 builds over n=1..7 at widths none/1/9/12/20/40/80, every ignored-input class tried and the constants. The render is the bounding box, shifted to the origin"
+
+[ablations.narrow_candidate]
+saving = 0.0
+arity = 8
+verdict = "retired 2026-10-28: the narrow staircase as a default and balanced candidate never wins at n>=6: 0.0% default and balanced area on 20 seeded tables at n=7/8, on the named tables at n=7..12, on 100 tables at n=6, and on the constants. It won only at n<=5 (default area +22.9% / +60.7% / +109.4% / +131.2% / +68.4% without it, exhaustive n=1..4 and 100 tables at n=5; balanced area 0.0% at every n) and on tables ignoring inputs (+13% to +230% default area at n=7/8 with two to five ignored; balanced 0.0%), which the bar does not count. Tables at n=9..11 ignoring one or two inputs keep the same areas. width=1 still builds the staircase. The n=3 pins move (e.g. 01101001: 304 -> 364 chars, 211 -> 134 steps)"
+
+[ablations.run_unfolded_candidate]
+saving = 0.0
+arity = 12
+verdict = "retired 2026-10-28: the closed-form folds also tried run = T (unfolded weight runs) beside run = 3c - 12; the second alone matches it everywhere: 0.0% default and balanced area at n=7..12 on random and named tables (the T runs alone cost +4.2% / +59.7% / +145% / +277% / +477% default area at n=8..12), and on the n<=4, ignored and constant classes"
+
+[ablations.balance_extra_candidates]
+saving = 0.0
+arity = 8
+verdict = "retired 2026-10-28: balance also raced the reflected flat strip (width = the strip's own) and, for constants, the width-1 vertical form; neither ever wins on balanced area: 0.0% on 20 seeded tables at n=7/8, the named tables at n=7..12, every table at n<=4, and the constants at n=1..12 (the reflection only breaks character-count ties at n<=5)"
+
+[ablations.copy_17_20]
+saving = 16.9
+arity = 8
+verdict = "kept: the fold height is raced at the formula's best copy and 17/20 of it. Without the second, default area is +17.9% / +16.9% at n=7/8 on 20 seeded random tables (seed 1000n + i) and on every named table (the layout depends on n alone), +15.3% / +12.1% at n=9/10, +8.1% / +9.5% at n=11/12 (declining below the bar past n=10); balanced area 0.0% at n=7..12, so it earns its place on the default route only. Clears 10% at n=7..8"
 
 [ablations.area_default]
 saving = 91.0
 arity = 10
 seed = "random.Random(184700 + n)"
 tables = 200
-verdict = "kept: the default is the least by area of the wide strip, the narrow staircase and the folded strips balance builds (copy best or 17 best // 20, run 3 copy - 12 or T; one candidate list shared with balance), the strip on a tie; constants keep their direct build. No width sweep: n=10/12/14 build in 18/63/266 ms, linear. Total area over 200 random tables falls 48.1% at n=6, 67.7% at n=7, 79.4% at n=8 and 91.0% at n=10 (52.2% / 56.7% / 53.5% at n=3/4/5, where the staircase wins every table); every chosen program is executed, exhaustively through n=3 and sampled through n=7. Execution bound, derived by tracing the beam (a step is a cell visited; the render only deletes wholly blank rows and columns, so an uncompacted count bounds the run, and equals it when none is deleted). Te = 2^e entries at e essential inputs, w a stage's weight, the all-zero row worst (a 0 costs 2w + 31 or more, a 1 about 30 or 32). Narrow, N = Te entries (n + 1 when Te <= n): copy 9N + 1, climb and descent 4N + 6, stages 30 on a 1 and 2w + 31 on a 0 (35 below w = 2), tail 2n + 4; at most 13N + 2Te + 37n + 9 <= 15T + 37n + 9. Fold, S = ceil(Te/c) strips, k = ceil(w/run) rows: copy (S-1)(5c + 4) + 3c + 3 - r for the r entries of the last strip, climb and descent 4S + 4n - 1, stages 32 + max(0, 2k - 4) on a 1 and 2w + 37 + 4(k - 1) on a 0 (39 at k = 1), tail n + 2; so (S-1)(6c + 4) + 3c + 4S + Te + 42n + 2 + the stages' turn terms. With (S-1)c < Te, c >= 2, 3c <= 18n - 9 + 4T/3 (isqrt <= its radicand's root bound), and run >= 9 whenever a stage folds (c >= 7 from n = 2; at n = 1 w = 1 = run), that is below 13T + 62n. The strip keeps its 4T + 42n + 5. So 15T + 62n + 9 covers all three; measured worst steps 74, 137, 230, 383, 656, 785, 1206 at n=1..7 against the old strip bound 55, 105, 163, 237, 343, 513, 811."
+verdict = "kept (re-priced 2026-10-28: the narrow staircase and the T-run folds left the list, see their verdicts): the default is the least by area of the wide strip and the two folded strips balance builds (copy best or 17 best // 20, run 3 copy - 12; one candidate list shared with balance), the strip on a tie; constants keep their direct build. Without the folds on 20 seeded random tables: default area +159.6% / +384.7% at n=7/8, balanced area +652% / +2,005%; named tables +160% to +2,001% default and +652% to +99,432% balanced at n=7..12. No width sweep: n=10/12/14 build in 18/63/266 ms, linear. Total area over 200 random tables falls 48.1% at n=6, 67.7% at n=7, 79.4% at n=8 and 91.0% at n=10 (52.2% / 56.7% / 53.5% at n=3/4/5, where the staircase wins every table); every chosen program is executed, exhaustively through n=3 and sampled through n=7. Execution bound, derived by tracing the beam (a step is a cell visited; the render only deletes wholly blank rows and columns, so an uncompacted count bounds the run, and equals it when none is deleted). Te = 2^e entries at e essential inputs, w a stage's weight, the all-zero row worst (a 0 costs 2w + 31 or more, a 1 about 30 or 32). Narrow, N = Te entries (n + 1 when Te <= n): copy 9N + 1, climb and descent 4N + 6, stages 30 on a 1 and 2w + 31 on a 0 (35 below w = 2), tail 2n + 4; at most 13N + 2Te + 37n + 9 <= 15T + 37n + 9. Fold, S = ceil(Te/c) strips, k = ceil(w/run) rows: copy (S-1)(5c + 4) + 3c + 3 - r for the r entries of the last strip, climb and descent 4S + 4n - 1, stages 32 + max(0, 2k - 4) on a 1 and 2w + 37 + 4(k - 1) on a 0 (39 at k = 1), tail n + 2; so (S-1)(6c + 4) + 3c + 4S + Te + 42n + 2 + the stages' turn terms. With (S-1)c < Te, c >= 2, 3c <= 18n - 9 + 4T/3 (isqrt <= its radicand's root bound), and run >= 9 whenever a stage folds (c >= 7 from n = 2; at n = 1 w = 1 = run), that is below 13T + 62n. The strip keeps its 4T + 42n + 5. So 15T + 62n + 9 covers all three; measured worst steps 74, 137, 230, 383, 656, 785, 1206 at n=1..7 against the old strip bound 55, 105, 163, 237, 343, 513, 811."
+
+[audits]
+plain_rewrite = 2026-10-28

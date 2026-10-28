@@ -196,7 +196,7 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
         for n in (7, 8, 9)
     ]
     assert sizes[2] < 2.1 * sizes[1] < 4.41 * sizes[0]
-    # Sparse standalone layouts exercise coordinate compression on either axis.
+    # Sparse standalone layouts keep their blank rows and columns.
     horizontal, vertical = _Builder(), _Builder()
     horizontal.put(0, 0, ">")
     horizontal.put(100, 0, "!")
@@ -212,16 +212,16 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Its stage, crossing no ``|``."""
-    assert_an_ignored_input_costs("B-tapemark", 5, 58)
+    assert_an_ignored_input_costs("B-tapemark", 5, 235)
 
 
-def test_sparse_tapemark_columns_do_not_scan_the_coordinate_span() -> None:
+def test_render_is_the_bounding_box() -> None:
     builder = _Builder()
     assert builder.render() == ""
     builder.put(0, 0, "x")
-    builder.put(10**9, 1, "y")
-    assert builder.render() == "x\n y"
-    assert builder.render(reflect=True) == " y\nx"
+    builder.put(3, 2, "y")
+    assert builder.render() == "x\n\n   y"
+    assert builder.render(reflect=True) == "   y\n\nx"
 
 
 @pytest.mark.parametrize(
@@ -243,7 +243,7 @@ def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
     """The reduced copy length (17/20 of the closed form) stays in the folds tried."""
     table = "".join("1" if i in (13, 107, 141) else "0" for i in range(256))
     program = str(esolangs.generate("B-tapemark", table, balance=True))
-    assert balance_score(program) == (170, 3297, 148)
+    assert balance_score(program) == (170, 3303, 142)
 
 
 @pytest.mark.parametrize(("copy", "run"), [(1, 1), (5, 3), (16, 40)])

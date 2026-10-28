@@ -13,23 +13,8 @@ _STAGE = (
     "/   /*  /",
     "|",
 )
-_NARROW_STAGE = (
-    "|/   \\",
-    "*\\-|\\0",
-    "\\   ||",
-    "\\|*%/\\|\\",
-    "    /",
-    "/   /* /",
-    "|",
-)
 _STEP = ((1, 0), (0, 1), (-1, 0), (0, -1))
 _MIRROR = {"\\": (1, 0, 3, 2), "/": (3, 2, 1, 0)}
-
-
-def _narrow(n: int, m: int | None = None) -> tuple[int, int, int]:
-    """(characters, widest row, rows) of the narrow staircase, m essential inputs."""
-    t = 1 << (n if m is None else m)
-    return 16 * t + 54 * n + 14, t // 2 + 7, 2 * t + 7 * n + 3
 
 
 def _wide(n: int, m: int | None = None) -> tuple[int, int, int]:
@@ -77,20 +62,20 @@ def _fold(n: int, c: int, r: int, m: int | None = None) -> tuple[int, int, int]:
 
 
 def _candidates(n: int, m: int) -> list[tuple[str, int, int, tuple[int, int, int]]]:
-    """Shipped candidates in order: wide, narrow, then the closed-form folds."""
+    """Shipped candidates in order: wide, then the closed-form folds."""
     t = 1 << n
-    out = [("wide", 0, 0, _wide(n, m)), ("narrow", 0, 0, _narrow(n, m))]
+    out = [("wide", 0, 0, _wide(n, m))]
     half = 18 * n - 9
     best = (half + isqrt(half * half + 48 * t)) // 6
     for c in dict.fromkeys([best, best * 17 // 20]):
-        for r in dict.fromkeys([max(1, 3 * c - 12), t]):
-            if c < 1 << m:
-                out.append(("fold", c, r, _fold(n, c, r, m)))
+        r = max(1, 3 * c - 12)
+        if c < 1 << m:
+            out.append(("fold", c, r, _fold(n, c, r, m)))
     return out
 
 
 def _cells(n: int, _: str) -> int:
-    """A: cells (width x rows) of the least-area of wide, narrow and four folds."""
+    """A: cells (width x rows) of the least-area of wide and two folds."""
     return min(w * h for *_, (_, w, h) in _candidates(n, n))
 
 
@@ -100,7 +85,7 @@ def _steps_for(n: int, m: int) -> int:
     The shipped layout is the least (area, characters) candidate, a function
     of n and m alone.  Its row 0 is longest: a stage's one-side is shorter
     than the zero-side walk of its weight, two commands a cell.  Wide
-    4T + 42n + 5, narrow 15T + 37n - 4m + 11 (T = 2^m); a fold of S strips
+    4T + 42n + 5 (T = 2^m); a fold of S strips
     of c entries with runs of r is T + 6Sc + 8S - 3c + 44n - 2, plus 4f - 6
     for each stage whose weight breaks into f >= 2 runs.
     """
@@ -108,8 +93,6 @@ def _steps_for(n: int, m: int) -> int:
     name, c, r, _ = min(_candidates(n, m), key=lambda k: (k[3][1] * k[3][2], k[3][0]))
     if name == "wide":
         return 4 * t + 42 * n + 5
-    if name == "narrow":
-        return 15 * t + 37 * n - 4 * m + 11
     strips = -(-t // c)
     runs = (-(-w // r) for w in _weights(n, m))
     return (
@@ -143,7 +126,7 @@ def _mark(x: int, y: int) -> int:
 
 
 def _program(
-    n: int, name: str, c: int, r: int
+    n: int, c: int, r: int
 ) -> tuple[dict[tuple[int, int], str], list[tuple[int, int]]]:
     """Rendered cells of the shipped layout, m = n, and each stage's origin.
 
@@ -159,56 +142,33 @@ def _program(
                 cells[x + i, y] = char
 
     t = 1 << n
-    narrow = name == "narrow"
     # Copy: the beam runs west over t triples ``|d*``, the start on its east end.
-    if narrow:
-        for i in range(t):
-            put(2, 2 * i, "|0*")
-            put(1, 2 * i, "/")
-            put(5, 2 * i, "<" if i == 0 else "/")
-            if i + 1 < t:
-                put(1, 2 * i + 1, "\\")
-                put(5, 2 * i + 1, "\\")
-        bottom = 2 * t - 1
-        put(1, bottom, "\\")
-        put(6, bottom, "/")
-        for k in range(1, 2 * n + 1):
-            put(6, bottom - k, "|")
-        put(6, -1, "\\")
-        put(0, -1, "/")
-        top = bottom + 1
-    else:
-        width = c or t
-        east = 3 * width + (2 if c else 1)
-        for i in range(t):
-            put(east - 3 - 3 * (i % width), 2 * (i // width), "|0*")
-        put(east, 0, "<")
-        strips = -(-t // width)
-        for k in range(strips - 1):
-            put(1, 2 * k, "/")
-            put(1, 2 * k + 1, "\\")
-            put(east, 2 * k + 1, "\\")
-            put(east, 2 * k + 2, "/")
-        last = 2 * (strips - 1)
-        put(0, last, "\\")
-        for k in range(1, 2 * n + 1):
-            put(0, -k, "|")
-        put(0, -2 * n - 1, "\\")
-        put(-1, -2 * n - 1, "/")
-        top = last + 1
+    width = c or t
+    east = 3 * width + (2 if c else 1)
+    for i in range(t):
+        put(east - 3 - 3 * (i % width), 2 * (i // width), "|0*")
+    put(east, 0, "<")
+    strips = -(-t // width)
+    for k in range(strips - 1):
+        put(1, 2 * k, "/")
+        put(1, 2 * k + 1, "\\")
+        put(east, 2 * k + 1, "\\")
+        put(east, 2 * k + 2, "/")
+    last = 2 * (strips - 1)
+    put(0, last, "\\")
+    for k in range(1, 2 * n + 1):
+        put(0, -k, "|")
+    put(0, -2 * n - 1, "\\")
+    put(-1, -2 * n - 1, "/")
+    top = last + 1
     for i in range(n):
         w = 1 << (n - 1 - i)
-        stages.append((0 if narrow else -1, top))
-        if narrow:
-            for k, line in enumerate(_NARROW_STAGE):
-                put(0, top + k, line)
-            run, extra, turn = max(6, 8 - w), 0, [w]
-        else:
-            turn = [r] * (w // r) + ([w % r] if w % r else []) if c else [w]
-            extra = max(0, 2 * len(turn) - 4)
-            for k, line in enumerate(_STAGE):
-                put(-1, top + k + (extra if k >= 4 else 0), line)
-            run = 9 if c else 8
+        stages.append((-1, top))
+        turn = [r] * (w // r) + ([w % r] if w % r else []) if c else [w]
+        extra = max(0, 2 * len(turn) - 4)
+        for k, line in enumerate(_STAGE):
+            put(-1, top + k + (extra if k >= 4 else 0), line)
+        run = 9 if c else 8
         for k, length in enumerate(turn):
             y = top + 1 + 2 * k
             put(run, y, "|" * length + "\\")
@@ -219,21 +179,15 @@ def _program(
             else:
                 put(run + length, top + 4 + extra, "/")
         top += 7 + extra
-    if narrow:
-        put(0, top, "\\")
-        put(n + 1, top, "\\")
-        put(n + 1, top + 1, "/")
-        put(0, top + 1, "!+" + "|" * (n - 1))
-    else:
-        put(-1, top, "/")
-        put(-n - 1, top, "+" + "|" * (n - 1))
-        put(-n - 2, top, "!")
-    # Render: wholly blank rows and columns go.
-    xs = {x: i for i, x in enumerate(sorted({x for x, _ in cells}))}
-    ys = {y: i for i, y in enumerate(sorted({y for _, y in cells}))}
+    put(-1, top, "/")
+    put(-n - 1, top, "+" + "|" * (n - 1))
+    put(-n - 2, top, "!")
+    # Render: the bounding box, shifted to the origin.
+    x0 = min(x for x, _ in cells)
+    y0 = min(y for _, y in cells)
     return (
-        {(xs[x], ys[y]): char for (x, y), char in cells.items()},
-        [(xs[x], ys[y]) for x, y in stages],
+        {(x - x0, y - y0): char for (x, y), char in cells.items()},
+        [(x - x0, y - y0) for x, y in stages],
     )
 
 
@@ -314,8 +268,8 @@ def _model_workspace(n: int) -> int:
     (2,615, 4,363, 7,469, 9,652, 16,590, 30,563).
     """
     t = 1 << n
-    name, c, r, _ = min(_candidates(n, n), key=lambda k: (k[3][1] * k[3][2], k[3][0]))
-    cells, stages = _program(n, name, c, r)
+    _, c, r, _ = min(_candidates(n, n), key=lambda k: (k[3][1] * k[3][2], k[3][0]))
+    cells, stages = _program(n, c, r)
     x0, y0 = next(k for k, v in cells.items() if v in "<>^v")
     del cells[x0, y0]
     table = {(x0 - k, y0): "0" for k in range(t)}

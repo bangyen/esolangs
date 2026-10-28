@@ -7,13 +7,13 @@ print a literal answer without that walk.
 
 Size:
     O(T) source and construction in every layout; the narrow XOR2 needs
-    nine columns.  The default is the least by area of the wide strip, the
-    narrow staircase and the closed-form strips (``balance``'s candidates,
-    no width sweep): n=10 parity: 10,565 chars, n=10 random 1847: 10,565
-    chars, a 127 x 204 grid against the strip's 93 x 3,086 (6,809 chars of
-    ragged rows).  ``balance`` snakes the copy and the weight runs into
-    strips (:func:`_b_tapemark_folded`): n=6 random 202 -> 118 on a side,
-    n=10 3086 -> 243; the stages' seven rows apiece floor the height.
+    nine columns.  The default is the least by area of the wide strip and the
+    closed-form strips (``balance``'s candidates, no width sweep): n=10
+    parity: 10,565 chars, n=10 random 1847: 10,565 chars, a 127 x 204 grid
+    against the strip's 93 x 3,086 (6,809 chars of ragged rows).
+    ``balance`` snakes the copy and the weight runs into strips
+    (:func:`_b_tapemark_folded`): n=6 random 202 -> 118 on a side, n=10
+    3086 -> 243; the stages' seven rows apiece floor the height.
 """
 
 from __future__ import annotations
@@ -124,24 +124,18 @@ class _Builder:
         self.put(-depth - 2, y, "!")
 
     def render(self, *, reflect: bool = False) -> str:
-        """Render without wholly blank rows and columns.
+        """Render the bounding box of the placed cells.
 
-        ``reflect`` mirrors the grid top to bottom, mirrors included.
+        ``reflect`` mirrors the grid top to bottom, mirrors included.  Dropping
+        wholly blank rows and columns was retired: it never fired.
         """
 
         def axis(values: set[int], *, reverse: bool = False) -> list[int]:
-            # Scanning a dense span beats a comparison sort; the table
-            # fills 3T columns, so only sparse layouts sort.
             if not values:
                 return []
             lo, hi = min(values), max(values)
-            if hi - lo + 1 > 4 * len(values):
-                return sorted(values, reverse=reverse)
-            order = range(hi, lo - 1, -1) if reverse else range(lo, hi + 1)
-            return [v for v in order if v in values]
+            return list(range(hi, lo - 1, -1) if reverse else range(lo, hi + 1))
 
-        # Dropping an empty row or column cannot move a beam: a blank cell is
-        # a no-op anywhere.
         xs = axis({x for x, _ in self.cells})
         ys = axis({y for _, y in self.cells}, reverse=reflect)
         column = {x: i for i, x in enumerate(xs)}
@@ -157,7 +151,7 @@ class _Builder:
         lines = []
         for y in ys:
             cells = rows[y]
-            line = [" "] * (max(cells) + 1)
+            line = [" "] * (max(cells, default=-1) + 1)
             for i, char in cells.items():
                 line[i] = char
             lines.append("".join(line))
@@ -338,8 +332,8 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
 
 
 def _closed_forms(table: str) -> list[str]:
-    """Return the narrow staircase and the formula's folded strips (not constant)."""
-    candidates = [b_tapemark(table, 1)]
+    """Return the formula's folded strips (not constant)."""
+    candidates = []
     depth = len(table).bit_length() - 1
     # A run row as wide as a copy row (3 per entry, less the stage's 12
     # columns west of it) won at n=7..10 in a full grid; below that the
@@ -350,22 +344,17 @@ def _closed_forms(table: str) -> list[str]:
     half = 18 * depth - 9
     best = (half + isqrt(half * half + 48 * len(table))) // 6
     for copy in {best, best * 17 // 20}:
-        for run in {max(1, 3 * copy - 12), len(table)}:
-            candidates.append(_b_tapemark_folded(table, max(1, copy), run))
+        candidates.append(
+            _b_tapemark_folded(table, max(1, copy), max(1, 3 * copy - 12))
+        )
     return candidates
 
 
 def _balance(table: str, default: str) -> str:
-    """Compare the original grid, its reflection and the closed-form layouts."""
+    """Return the default or the closed-form layout with the least balanced side."""
     if len(set(table)) == 1:
-        return min(default, b_tapemark(table, 1), key=balance_score)
-    flat = _b_tapemark_program(table)
-    candidates = [
-        default,
-        b_tapemark(table, grid_width(flat)),
-        *_closed_forms(table),
-    ]
-    return min(candidates, key=balance_score)
+        return default
+    return min([default, *_closed_forms(table)], key=balance_score)
 
 
 LANGUAGE = Language(
