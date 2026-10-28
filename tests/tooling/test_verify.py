@@ -93,19 +93,6 @@ class TestCiRedoesEveryLocalStep:
         ]
         assert not missing, f"steps CI does not run: {missing}"
 
-    def test_diff_coverage_step_matches_ci_and_is_manual_only(self) -> None:
-        verify = load_script()
-        assert "diff coverage" in verify.MANUAL_ONLY
-        cmd = dict(verify.STEPS)["diff coverage"]
-        assert cmd[-3:] == [
-            "checks/check_diff_coverage.py",
-            "--partial",
-            "--strict",
-        ]
-        assert "check_diff_coverage.py --partial --strict" in CI.read_text(
-            encoding="utf-8"
-        )
-
     def test_a_step_ci_does_not_run_is_reported(self) -> None:
         workflow = CI.read_text(encoding="utf-8") + (
             CI.with_name("weekly.yml").read_text(encoding="utf-8")
@@ -162,40 +149,6 @@ class TestZeroStepsIsNotAPass:
         assert "zero steps" in out
 
 
-@pytest.mark.parametrize("allow", [False, True])
-def test_missing_tools_never_report_complete_verification(
-    allow, monkeypatch, capsys
-) -> None:
-    verify = load_script()
-    step = "duplicate-code check (pylint)"
-    monkeypatch.setattr(
-        verify, "STEPS", [(step, ["unused"]), ("available", ["unused"])]
-    )
-    monkeypatch.setenv("VERIFY_NO_SYNC", "1")
-    argv = ["verify.py", "--only", f"{step},available"]
-    if allow:
-        argv.append("--allow-incomplete")
-    monkeypatch.setattr(sys, "argv", argv)
-    monkeypatch.setattr(
-        verify,
-        "run_bounded",
-        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1),
-    )
-    runs = []
-
-    def run_steps(steps, **_kwargs):
-        runs.extend(name for name, _, _ in steps)
-        return [], [], 0.0
-
-    monkeypatch.setattr(verify, "_run_steps", run_steps)
-    assert verify.main() == (0 if allow else 1)
-    text = capsys.readouterr().out
-    assert "all local checks passed" not in text
-    assert "pylint not installed" in text
-    assert runs == (["available"] if allow else [])
-    assert ("incomplete verification" if allow else "verification failed") in text
-
-
 @pytest.mark.parametrize("full", [False, True])
 def test_shared_changes_keep_all_tests_without_local_coverage(
     monkeypatch: pytest.MonkeyPatch,
@@ -204,7 +157,7 @@ def test_shared_changes_keep_all_tests_without_local_coverage(
     verify = load_script()
     monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
     monkeypatch.setattr(
-        verify, "_parse_only_skip", lambda: (None, None, full, True, False, False)
+        verify, "_parse_only_skip", lambda: (None, None, full, False, False)
     )
     monkeypatch.setattr(
         verify, "_scope_plan", lambda **_: (None, "verification tooling changed")
@@ -238,7 +191,7 @@ def test_failures_close_the_run_with_their_cause(
     verify = load_script()
     monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
     monkeypatch.setattr(
-        verify, "_parse_only_skip", lambda: (None, None, True, True, False, False)
+        verify, "_parse_only_skip", lambda: (None, None, True, False, False)
     )
     monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
     monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
@@ -261,7 +214,7 @@ def test_a_failure_names_its_log_and_failing_tests(
     verify = load_script()
     monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
     monkeypatch.setattr(
-        verify, "_parse_only_skip", lambda: (None, None, True, True, False, False)
+        verify, "_parse_only_skip", lambda: (None, None, True, False, False)
     )
     monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
     monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())
@@ -285,7 +238,7 @@ def _run_gate(monkeypatch: pytest.MonkeyPatch, verify: Any, failures: list) -> i
     """Drive ``verify.main`` with ``_run_steps`` returning canned *failures*."""
     monkeypatch.setattr(verify, "_ensure_dev_deps", lambda: None)
     monkeypatch.setattr(
-        verify, "_parse_only_skip", lambda: (None, None, True, True, False, False)
+        verify, "_parse_only_skip", lambda: (None, None, True, False, False)
     )
     monkeypatch.setattr(verify, "_scope_plan", lambda **_: (None, "test"))
     monkeypatch.setattr(verify, "_scope_changed_files", lambda: ())

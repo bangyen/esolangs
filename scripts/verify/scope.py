@@ -51,7 +51,6 @@ SHARED_INTERPRETER = (
 SHARED_TOOLING = (
     "scripts/verify/gate.py",
     "scripts/verify/scope.py",
-    "checks/check_diff_coverage.py",
     "pyproject.toml",
     ".pre-commit-config.yaml",
     "justfile",
@@ -149,7 +148,6 @@ TOOLING_INTEGRATIONS = {
         (
             ".github/workflows/",
             "scripts/ci/shard.py",
-            "checks/check_diff_coverage.py",
         ),
     ),
 }
@@ -182,7 +180,6 @@ CACHED_STEPS = frozenset(
         "deep proofs (verify band)",
         "dead definitions",
         "generator size baseline",
-        "duplicate-code check (pylint)",
     }
 )
 _DISTRIBUTIONS = {
@@ -190,13 +187,6 @@ _DISTRIBUTIONS = {
         "pillow",
         "sympy",
         "mpmath",
-        "pylint",
-        "astroid",
-        "dill",
-        "isort",
-        "platformdirs",
-        "tomlkit",
-        "mccabe",
     },
 }
 
@@ -211,7 +201,7 @@ def _feed(digest: _Digest, value: bytes) -> None:
 
 
 # Steps whose certificate covers imported tool sources, and those modules.
-_RUNTIME_MODULES = {"python checks": ("ast", "PIL.Image", "pylint.lint")}
+_RUNTIME_MODULES = {"python checks": ("ast", "PIL.Image")}
 
 
 def runtime_digest(step: str) -> str:
@@ -228,9 +218,7 @@ def runtime_digest(step: str) -> str:
     ):
         name = distribution.metadata["Name"].lower().replace("_", "-")
         _feed(digest, f"{name}:{distribution.version}".encode())
-        selected = name in _DISTRIBUTIONS[step] or any(
-            entry.group.startswith("pylint") for entry in distribution.entry_points
-        )
+        selected = name in _DISTRIBUTIONS[step]
         for file in distribution.files or ():
             if file.suffix == ".pyc":
                 continue
@@ -405,7 +393,6 @@ class VerifiedCache:
 # A step absent from this table is always run: it is either cheap enough not to
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
-    "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "checks/"),
     "dead definitions": ("src/", "scripts/", "checks/"),
     # Only a generator, an interpreter (the step counts are executed), or the
     # baseline itself can move these numbers.

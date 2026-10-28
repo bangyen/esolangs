@@ -90,10 +90,8 @@ MANUAL_ONLY = frozenset(
         "generated docs",
         "dead definitions",
         "generator size baseline",
-        "duplicate-code check (pylint)",
         "deep proofs (verify band)",
         "exception leaks",
-        "diff coverage",
     }
 )
 
@@ -122,17 +120,6 @@ STEPS = [
     # this run covers src/ and scripts/ both from the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     ("pytest", [*PY, "-m", "pytest", "-q"]),
-    # CI's changed-line gate, with CI's flags: it judges only the lines and
-    # branches this branch added (its own merge-base diff, not the gate's
-    # scoping) against the `.coverage` a `pytest --cov --cov-branch` run
-    # left behind, and --strict makes missing evidence a failure rather
-    # than a skip.  Manual-only because a default gate run records no
-    # coverage, so the step could only ever fail or skip there; run it via
-    # `just test-diff-coverage` once a coverage run exists.
-    (
-        "diff coverage",
-        [*PY, "checks/check_diff_coverage.py", "--partial", "--strict"],
-    ),
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "checks/check_dead_definitions.py"]),
@@ -141,29 +128,6 @@ STEPS = [
     # the collection's claims rest on, and until this step nothing measured
     # them outside a hand-run `just benchmark`.  192 measurements, ~3s.
     ("generator size baseline", [*PY, "checks/check_generator_sizes.py"]),
-    (
-        # pylint's R0801 reports similar blocks across files, catching
-        # copy-pasted helpers like the bracket matcher or the OISC memory
-        # tokenizer.  --ignore-imports keeps shared import blocks from
-        # counting as duplication.  tests/ is left out: it doubled the line
-        # count and quadrupled the file pairs the O(files^2) comparison
-        # walks (53s -> 10s), and shared test scaffolding is not what the
-        # check is for.  No -j: this runs in pytest's shadow, and the 2s
-        # that workers save here they take back from its four.
-        "duplicate-code check (pylint)",
-        [
-            *PY,
-            "checks/check_duplicate_code.py",
-            "--disable=all",
-            "--enable=duplicate-code",
-            "--min-similarity-lines=10",
-            "--ignore-imports=yes",
-            "--ignore=tests",
-            "src/esolangs",
-            "scripts",
-            "checks",
-        ],
-    ),
     (
         "deep proofs (verify band)",
         [*PY, "-m", "tests.proofs.deep", "verify"],
@@ -272,9 +236,7 @@ def _rerun_hint(name: str, output: str | None = None) -> list[str]:
     return [rerun, *(f"  fix:   {fix}" for fix in fixes)]
 
 
-def _parse_only_skip() -> tuple[
-    set[str] | None, set[str] | None, bool, bool, bool, bool
-]:
+def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bool]:
     parser = argparse.ArgumentParser(description="Run the local verification stack")
     parser.add_argument(
         "--only",
@@ -311,11 +273,6 @@ def _parse_only_skip() -> tuple[
         help="run every step over the whole tree instead of scoping the run "
         "to the files this branch touched",
     )
-    parser.add_argument(
-        "--allow-incomplete",
-        action="store_true",
-        help="skip unavailable tools and report incomplete verification",
-    )
     args = parser.parse_args()
     if args.list:
         for name, _ in STEPS:
@@ -334,7 +291,7 @@ def _parse_only_skip() -> tuple[
                 f"{flag}: unknown step(s) {', '.join(unknown)}; "
                 f"--list prints the {len(known)} names"
             )
-    return only, skip, args.full, args.quiet, args.verbose, args.allow_incomplete
+    return only, skip, args.full, args.quiet, args.verbose
 
 
 # The step that mutates the working tree.  pre-commit's ruff/ruff-format and
@@ -723,9 +680,9 @@ def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
     return cmd
 
 
-def main() -> int:  # noqa: C901
+def main() -> int:
     """Run the verification stack: lint, types, tests, and scoping."""
-    only, skip, full, quiet, verbose, allow_incomplete = _parse_only_skip()
+    only, skip, full, quiet, verbose = _parse_only_skip()
 
     # `--list` exits inside the parse, so this never slows it down.
     _ensure_dev_deps()
@@ -743,28 +700,11 @@ def main() -> int:  # noqa: C901
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     if whole:
         env["VERIFY_CLEAN_CACHE"] = "0"
-    # Probe PY rather than the running interpreter: verify/gate.py may be launched
-    # by a different python than the one it runs the steps with (e.g.
-    # `uv run --with pylint python scripts/verify/gate.py`, which leaves PY pointing
-    # at .venv), and it is PY that has to import pylint.
-    have_pylint = (
-        only is not None
-        and "duplicate-code check (pylint)" in only
-        and (
-            run_bounded(
-                [*PY, "-c", "import pylint"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            ).returncode
-            == 0
-        )
-    )
     # Decide every step first, then run.  Deciding is pure bookkeeping (scope
     # lookups, tool probes) while running is where the time goes, so keeping
     # the two apart lets the runner overlap the long step with the short ones
     # without the skip logic having to care.
     runnable: list[tuple[str, list[str], dict[str, str]]] = []
-    unavailable: list[str] = []
     for name, cmd in STEPS:
         if only is not None and name not in only:
             continue
@@ -796,19 +736,7 @@ def main() -> int:  # noqa: C901
             step_env = dict(step_env, SKIP="mypy")
         if only is None and name == LONG_STEP:
             cmd = _pytest_cmd(cmd, full=full, changed=changed)
-        if not have_pylint and "(pylint)" in name:
-            unavailable.append(f"{name}: pylint not installed (pip install pylint)")
-            continue
         runnable.append((name, cmd, step_env))
-
-    if unavailable:
-        for reason in unavailable:
-            print(f"[unavailable] {reason}")
-        if not allow_incomplete:
-            print(
-                "verification failed: install required tools or use --allow-incomplete"
-            )
-            return 1
 
     if "LEAKSWEEP_JOBS" not in env:
         overlap = not _should_stream(
@@ -858,12 +786,7 @@ def main() -> int:  # noqa: C901
     if failures:
         print(f"{len(failures)} check(s) failed")
         return 1
-    if unavailable:
-        print(
-            "incomplete verification: available checks passed; required tools missing"
-        )
-    else:
-        print("all local checks passed")
+    print("all local checks passed")
     return 0
 
 

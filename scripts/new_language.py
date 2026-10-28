@@ -785,13 +785,12 @@ def _curation(name: str) -> dict[str, Any]:
     return _curation_fragment(path)
 
 
-#: The gate's CI-only checks (MANUAL_ONLY) that need no coverage run; the
+#: The gate's CI-only checks (MANUAL_ONLY); the
 #: size baseline is left out because ``_gate`` has just re-recorded it.
 #: Without them a green finish could still fail CI.
 _CI_ONLY = (
     "generated docs",
     "dead definitions",
-    "duplicate-code check (pylint)",
     "exception leaks",
     "deep proofs (verify band)",
 )

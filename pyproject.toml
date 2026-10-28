@@ -47,8 +47,6 @@ dev = [
     "urllib3>=2.7.0",
     "ruff==0.16.9",
     "mypy==2.3.1",
-    # Required by verify/gate.py's duplicate-code check.
-    "pylint>=3.0.0",
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",
@@ -242,7 +240,7 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["src/esolangs"]
 # Branch coverage is what the gates read: `coverage report` derives it from the
-# collected arcs and `check_diff_coverage.py` requires 90% per touched file.
+# collected arcs and CI's 98% whole-tree floor reads it.
 # Pinned here rather than only on CI's `--cov-branch`, so a local `pytest --cov`
 # measures the same thing and a dropped flag cannot silently fall back to line.
 branch = true

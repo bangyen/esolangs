@@ -70,7 +70,6 @@ def test_coverage_gate_requires_success_and_both_artifacts() -> None:
     assert "test -f .coverage.shard-0" in commands
     assert "test -f .coverage.shard-1" in commands
     assert "coverage report --fail-under=98" in commands
-    assert "check_diff_coverage.py --partial --strict" in commands
 
 
 def test_failure_log_uploads_are_unconditional_and_unique() -> None:

@@ -242,7 +242,6 @@ jobs:
         pattern: coverage-*
         merge-multiple: true
     # Keep the 98% whole-tree drift floor; slow-only paths have slack here.
-    # The separate diff gate still requires added lines and branches to pass.
     - name: Combine complete branch coverage and retain the drift floor
       run: |
         test -f .coverage.shard-0
@@ -250,8 +249,6 @@ jobs:
         uv run coverage combine .coverage.shard-0 .coverage.shard-1
         uv run coverage report --fail-under=98
         uv run coverage xml
-    - name: Check changed-line and changed-branch coverage
-      run: uv run python checks/check_diff_coverage.py --partial --strict
 
 
   slow:

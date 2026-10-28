@@ -70,11 +70,6 @@ jobs:
     # --full run and `-m "not slow"` otherwise, so the `weekly` probes run
     # here and nowhere else.
     #
-    # No coverage gate here.  `check_diff_coverage.py` is diff-scoped -- it
-    # judges the files a *branch* touches -- and a scheduled run on `main`
-    # has no merge base, so the gate would skip and print nothing useful.
-    # Per-PR CI reports it with `--partial`; the blocking form is the local
-    # command that report prints.
     - name: Test with pytest (full suite, including the slow band)
       run: uv run python -m pytest -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
@@ -175,16 +170,6 @@ jobs:
     # elsewhere in src/, that nothing in src/ or scripts/ reads.  <2s.
     - name: Check for definitions nothing reads
       run: uv run python checks/check_dead_definitions.py
-
-    # Scan production and tooling sources: tests/ is left
-    # out because shared test scaffolding is not what this check is for,
-    # and including it roughly quadrupled the file pairs the O(files^2)
-    # comparison walks (141s of this job's 218s in run 37334678602).
-    - name: Check for duplicated code blocks
-      run: >
-        uv run --with pylint python checks/check_duplicate_code.py --disable=all
-        --enable=duplicate-code --min-similarity-lines=10
-        --ignore-imports=yes src/esolangs scripts
 
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local

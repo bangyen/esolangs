@@ -71,13 +71,9 @@ changes (`test-full` includes slow tests; weekly probes run separately with
 `just examples`, generated doc sections with `just docs`.
 
 `gate.py` is the local gate. Its steps: generated-docs freshness,
-pre-commit (lint, format, and comment density — at least two code lines
-per prose line under `src/`), mypy, pytest, dead definitions (a helper
+pre-commit (lint and format), mypy, pytest, dead definitions (a helper
 nothing calls is deleted, or moves under `tests/`), the generator size
-baseline, duplicate code, the deep proofs, and the exception-leak sweep.
-Diff coverage runs only when named: `just test-diff-coverage` applies
-CI's `--partial --strict` check (90% of added statements and branches per
-touched file) to the `.coverage` a `pytest --cov --cov-branch` run left.
+baseline, the deep proofs, and the exception-leak sweep.
 The gate scopes itself to the files your branch touched; steps outside
 that scope are skipped and left to CI. `just test-full` runs every step
 over the whole tree. Inside pytest, further pins hold: no file over
@@ -422,11 +418,10 @@ Adding a language, step by step. Work in order; at any point,
 4. `just finish-language "Name"` regenerates examples, docs and the size
    baseline, then runs the full `verify/gate.py` over the whole tree
    (the `--full` run, like `just test-full`), not the branch-scoped
-   default the other recipes use, then the checks the gate leaves to CI
-   except diff coverage. That is the gate: `just
+   default the other recipes use, then the checks the gate leaves to CI.
+   That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.
-   Added lines need 90% statement and branch coverage per file; the
-   report separates them from older gaps. It takes minutes, so run it in
+   It takes minutes, so run it in
    the background; it reruns failed tests
    alone and says when every failure was machine load. Steps `check`
    still lists don't stop it: it reports them, runs the gate anyway, and

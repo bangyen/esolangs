@@ -5,9 +5,6 @@
 # need permission outside the repository.  An explicit UV_CACHE_DIR still wins.
 export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() + "/.cache/uv")
 
-# Keep Pylint's statistics writable in sandboxed worktrees too.
-export PYLINTHOME := env_var_or_default("PYLINTHOME", justfile_directory() + "/.cache/pylint")
-
 # Byte-compile dependencies when uv creates the venv.  A fresh worktree's venv
 # otherwise compiles sympy on first import -- ~1.3 s of CPU charged to
 # whichever 1 s fast-band test touches it first, which then failed once per
@@ -127,19 +124,11 @@ test-py *args:
 test-one +nodes:
     {{PYTHON}} -m pytest -q -n 0 -m "" "$@"
 
-# lint + duplicate-code + dead definitions
+# lint + dead definitions
 [group('test')]
 [no-exit-message]
 test-lint *args:
-    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"duplicate-code check (pylint)","dead definitions" {{args}}
-
-# CI's changed-line coverage gate (--partial --strict), reading the
-# .coverage a `pytest --cov --cov-branch` run left behind
-[group('test')]
-[doc("CI's changed-line coverage gate, over an existing .coverage")]
-[no-exit-message]
-test-diff-coverage *args:
-    {{PYTHON}} scripts/verify/gate.py --only "diff coverage" {{args}}
+    {{PYTHON}} scripts/verify/gate.py --only pre-commit,"dead definitions" {{args}}
 
 # create interpreter, generator and test stubs; asks the category unless --category
 [group('languages')]
