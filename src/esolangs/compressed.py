@@ -7,7 +7,7 @@ import gzip
 import io
 import zlib
 from collections.abc import Iterable, Iterator
-from dataclasses import KW_ONLY, dataclass, field, replace
+from dataclasses import KW_ONLY, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -135,7 +135,30 @@ class CompressedText:
                 stream.write(encoded)
                 if limits is not None:
                     _check_gzip(limits, output.tell())
-        return cls(output.getvalue(), limits=limits)
+        data = output.getvalue()
+        if limits is not None:
+            _check_gzip(limits, len(data))
+        return cls._measured(data, count, limits, None, None)
+
+    @classmethod
+    def _measured(
+        cls,
+        data: bytes,
+        size: int,
+        limits: TextLimits | None,
+        language: str | None,
+        settings: DialectSettings | None,
+    ) -> CompressedText:
+        """Build from a stream already known valid and ``size`` characters long.
+
+        Skips __post_init__'s decompress-to-measure pass, which was most of
+        Unary's generation time at nine inputs.
+        """
+        text = object.__new__(cls)
+        fields = {"data": data, "language": language, "settings": settings}
+        for name, value in {**fields, "limits": limits, "_size": size}.items():
+            object.__setattr__(text, name, value)
+        return text
 
     @classmethod
     def repeated(
@@ -186,7 +209,8 @@ class CompressedText:
         self, language: str | None, *, settings: DialectSettings | None = None
     ) -> CompressedText:
         """Retain generation provenance."""
-        return replace(self, language=language, settings=settings)
+        language = check_provenance(language, settings)
+        return self._measured(self.data, self._size, self.limits, language, settings)
 
     def wrapped(self, width: int | None) -> CompressedText:
         """Insert line breaks at width without collecting expanded source."""

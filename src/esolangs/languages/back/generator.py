@@ -75,10 +75,13 @@ def _extent(grid: _Grid) -> tuple[int, int]:
 
 def _render(rows: list[dict[int, str]]) -> str:
     """Join sparse rows, gaps blank, each row only as long as its last cell."""
-    return "\n".join(
-        "".join(cells.get(x, " ") for x in range(max(cells, default=-1) + 1))
-        for cells in rows
-    )
+    lines = []
+    for cells in rows:
+        line = [" "] * (max(cells, default=-1) + 1)
+        for x, char in cells.items():
+            line[x] = char
+        lines.append("".join(line))
+    return "\n".join(lines)
 
 
 def _place_load(grid: _Grid, units: list[str], height: int) -> None:
