@@ -87,8 +87,9 @@ def _subleq_packed_worst(n: int) -> str:
 
 
 # language-owners: ["BFStack"]
-#: BFStack's worst 7-input block, a rule: 64 zeros, 60 ones, a zero, then ones.
-_BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
+#: BFStack's worst 7-input block for execution, a rule: ones at rows 1 and 127.
+#: Its 126 zero rows end at 127 and the last row's input is all ones.
+_BFSTACK_BLOCK = "0" + "1" + "0" * 125 + "1"
 
 
 def _bfstack_worst(n: int) -> str:
@@ -107,18 +108,20 @@ def _bfstack_ws_worst(n: int) -> str:
     """Workspace worst from n = 9, a rule: the deepest block under one arms.
 
     Every loop opens past half of ``L`` and the stack keeps a sentinel per
-    one arm.  The root's zero arm is the 77-zero block ``A`` as the upper
+    one arm.  The root's zero arm is the one-minterm block ``A`` as the upper
     half at every level, under constant lower halves (alternating); its one
-    arm is ``2^(n-8)`` distinct patterned blocks, the first a 32-bit pattern
-    repeated, sized to put the root loop past 2^(bl(L)-1).
+    arm is ``2^(n-8)`` distinct blocks, sized to put the root loop past
+    2^(bl(L)-1) with L under 2^bl(L): a single zero among ones, the
+    cheapest; at n = 9 a single one, the dearest, which still leaves the
+    root loop at 2016 < 2048 (see ``workspace``).
     """
-    table = "0" * 77 + "1" * 51
+    table = "0" * 64 + "1" + "0" * 63
     for level in range(7, n - 1):
         table = ("1" if level % 2 else "0") * len(table) + table
     for j in range(1 << (n - 8)):
-        width = 32 if j == 0 else 64
-        half = f"{random.Random(104729 * j + 3).getrandbits(width):0{width}b}"
-        table += half * (128 // width)
+        at = 2 + j
+        block = "0" * at + "1" + "0" * (127 - at)
+        table += block if n == 9 else "".join("1" if c == "0" else "0" for c in block)
     return table
 
 

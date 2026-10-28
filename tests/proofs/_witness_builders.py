@@ -104,34 +104,19 @@ def _suffolk_deep(n: int) -> str:
 
 
 # language-owners: ["BFStack"]
-#: Marker pair positions in the 128-row block: one pair per quarter.
-_BFSTACK_MARKS = (13, 14, 29, 30, 45, 46, 61, 62)
-
-
 def _bfstack_block(i: int, e: int) -> str:
-    """2^e rows, half zeros, last row 0 (pairs 01/10 by the bits of i).
+    """2^e rows of zeros but one: the worst block, distinct by its row.
 
-    At e = 7 the four quarters differ by marker pairs.
+    The cascade lists every other row and ends at the last; the one sits at row
+    ``1 + i``, never row 0 or the last, whose symmetric tables take the count.
     """
-    pairs = 2 ** (e - 1)
-    if e < 7:
-        return "".join(
-            ("10" if (i >> j) & 1 else "01") if j < pairs - 1 else "10"
-            for j in range(pairs)
-        )
-    free = [j for j in range(63) if j not in _BFSTACK_MARKS]
-    bits = ["0"] * 64
-    for k, j in enumerate(free):
-        bits[j] = str((i >> k) & 1)
-    for q in range(4):  # marker pairs 00, 01, 10, 11, one per quarter
-        bits[_BFSTACK_MARKS[2 * q]] = str(q >> 1)
-        bits[_BFSTACK_MARKS[2 * q + 1]] = str(q & 1)
-    bits[63] = "1"
-    return "".join("10" if b == "1" else "01" for b in bits)
+    rows = 2**e
+    at = 1 + i if e == 7 else 1
+    return "0" * at + "1" + "0" * (rows - at - 1)
 
 
 def _bfs_chars(n: int) -> str:
-    """Distinct maximal blocks of up to 128 rows under a tree of blocks."""
+    """Distinct worst blocks of up to 128 rows under a tree of blocks."""
     e = min(n, 7)
     return "".join(_bfstack_block(i, e) for i in range(2 ** (n - e)))
 

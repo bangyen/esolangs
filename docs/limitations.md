@@ -640,9 +640,7 @@ exact range (2026-10-23, counted from the ledger):
   Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
   worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11 and BFStack workspace below n = 9 but n = 5 (the bound charges every open loop
   bl(L) bits; positions below 2^(bl(L)-1) cost fewer. Smallest gap by table:
-  n = 4 9 (exhaustive, 113 against 122), n = 5 0 (exact: 0^19 1^13 measures 213), n = 6 40 (386 against 426),
-  n = 7 2 (815 against 817), n = 8 1 (908 against 909: the root's zero loop
-  cannot sit past half of L); n = 6, 7 searched over packed cascades).
+  n = 4 11 (exhaustive, 165 against 176), n = 5 0 (exact: 0^16 1 0^15 measures 321); n = 6..8 not re-measured since the decoder race went, 2026-10-28).
 - Layout slack: Slow ACV Mammalian scaling, execution and workspace bound
   every list at its residue maximum, but the layout is fixed by n and the
   essential set (a table changes only its leaf bits), so the lists sit at

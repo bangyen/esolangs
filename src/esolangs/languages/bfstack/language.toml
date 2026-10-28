@@ -13,16 +13,16 @@ bf_derivative_predates = true
 labels = ["minterms"]
 qualification = "—"
 scaling = "linear: worst N characters past n = 2: zero-row walk telescopes to T"
-execution = "poly n: worst 60n + 475 commands past n = 7"
-workspace = "poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-7,0) + ⌊(3min(T,128)+1)/5⌋ + 2"
+execution = "poly n: worst 60n + 660 commands past n = 7"
+workspace = "poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-7,0) + min(T,128) + 1"
 
 [generator_sizes]
-"00000001" = { commands = 230, commands_by_row = { "0" = 223, "1" = 228, "2" = 228, "3" = 233, "4" = 228, "5" = 233, "6" = 233, "7" = 230 }, source_units = 232 }
-"00001100" = { commands = 184, commands_by_row = { "0" = 173, "1" = 173, "2" = 178, "3" = 178, "4" = 171, "5" = 171, "6" = 184, "7" = 184 }, source_units = 179 }
+"00000001" = { commands = 242, commands_by_row = { "0" = 211, "1" = 220, "2" = 220, "3" = 229, "4" = 220, "5" = 229, "6" = 229, "7" = 242 }, source_units = 234 }
+"00001100" = { commands = 182, commands_by_row = { "0" = 162, "1" = 162, "2" = 171, "3" = 171, "4" = 185, "5" = 185, "6" = 182, "7" = 182 }, source_units = 183 }
 "00110110" = { commands = 246, commands_by_row = { "0" = 211, "1" = 220, "2" = 241, "3" = 246, "4" = 229, "5" = 248, "6" = 249, "7" = 246 }, source_units = 245 }
-"0110" = { commands = 180, commands_by_row = { "0" = 170, "1" = 167, "2" = 167, "3" = 180 }, source_units = 175 }
+"0110" = { commands = 175, commands_by_row = { "0" = 160, "1" = 178, "2" = 178, "3" = 175 }, source_units = 177 }
 "01101001" = { commands = 239, commands_by_row = { "0" = 211, "1" = 229, "2" = 229, "3" = 226, "4" = 229, "5" = 226, "6" = 226, "7" = 239 }, source_units = 232 }
-"0110100110010110" = { commands = 297, commands_by_row = { "0" = 277, "1" = 269, "2" = 269, "3" = 287, "4" = 269, "5" = 287, "6" = 287, "7" = 284, "8" = 269, "9" = 287, "10" = 287, "11" = 284, "12" = 287, "13" = 284, "14" = 284, "15" = 297 }, source_units = 289 }
+"0110100110010110" = { commands = 292, commands_by_row = { "0" = 262, "1" = 285, "2" = 285, "3" = 277, "4" = 285, "5" = 277, "6" = 277, "7" = 295, "8" = 285, "9" = 277, "10" = 277, "11" = 295, "12" = 277, "13" = 295, "14" = 295, "15" = 292 }, source_units = 291 }
 "1101001101101101" = { commands = 330, commands_by_row = { "0" = 299, "1" = 304, "2" = 270, "3" = 310, "4" = 277, "5" = 286, "6" = 313, "7" = 318, "8" = 291, "9" = 316, "10" = 317, "11" = 308, "12" = 319, "13" = 324, "14" = 317, "15" = 330 }, source_units = 318 }
 "11111110" = { commands = 229, commands_by_row = { "0" = 222, "1" = 227, "2" = 227, "3" = 232, "4" = 227, "5" = 232, "6" = 232, "7" = 229 }, source_units = 231 }
 
@@ -35,9 +35,11 @@ arity = 12
 verdict = "kept: canonical, exempt. Each block packs over its essential inputs only (input_weights); an ignored input is read and popped. 0.00% on random tables at n=8/10/12; with one ignored input 34.4% at n=8, 27.4% at n=10 and 27.3% at n=12, and 13.5% on two-block tables at n=8 whose blocks ignore inputs"
 
 [ablations.decoder_value_race]
-saving = 21.6
+saving = 2.7
 arity = 12
-verdict = "kept: each block's decoder lists the rarer value's rows in its subtraction cascade (the inverted form lists ones and presets the result cell). Priced by deletion: always listing zeros costs 1.0% on random tables at n=8/10/12, 7.5% / 8.6% / 8.7% on majority, and on sparse tables (10% ones) 22.4% at n=8, 21.7% at n=10 and 21.6% at n=12; 0.00% on dense tables, where the direct form is the winner the race picks anyway. Plain-rewrite audit 2026-10-27: kept as a class rule on sparse tables (10% ones, 200 tables): +29.7 / +28.5% off at n=7/8 and 28.0 / 27.8 / 27.8% at n=9/10/12 (20 tables), flat across arity; random tables +0.96 / +0.97 / +0.75 / +0.92 / +1.00% at n=7/8/9/10/12 (fails 10%); named functions, now shadowed by the symmetric rule, at most +2.7% (AND, n=12), 0.0% on OR and majority, +0.3% on parity, so the majority figure above predates the symmetric rule. The tie (`<` vs `<=`) is size-neutral: 0.00% off, programs differ only by equal-length polarity. Every changed program run on all rows through n=8"
+seed = "random.Random(20261028000 + 7n)"
+tables = "20 random per n=7,8 plus parity/majority/and/or/one-third threshold at n=7..12"
+verdict = "retired 2026-10-28 (random + named bar): always listing the zero rows (the rarer-value race of the inverted form, which listed ones and preset the result cell, deleted) costs +0.67% of chars at n=7 and +1.31% at n=8 on 20 random tables (balanced area +1.94% / +2.51%, no table smaller) and on named functions at most 2.7% of chars (and, n=12: 736 -> 756; 2.2% at n=7), 0.3-0.4% on parity at n=8/10/12 (n=10: 631 -> 633) and 0.0% on majority, or and the threshold at n=7..12; balanced area at most 6.2% (and, n=7). Only sparse tables (10% ones) moved, 28% at n=8..12 (n=10 sparse: 6,135 -> 7,842 chars), an ad-hoc class that keeps nothing. Code deleted: the inverted cascade, the preset flag of the encoder. The n=3 total grows 58,758 -> 59,249 characters (+0.84%), and the worst execution and size bounds are re-derived (worst seven-input block 1,079 commands, 948 characters with its closing <; worst workspace lists 127 rows, not 77): same growth classes. Every program ran on all rows (n<=3 exhaustive, 20 random + named n=4..8, 0 mismatches)"
 
 [ablations.two_block_classifier]
 saving = 0.0
@@ -55,11 +57,6 @@ verdict = "kept: canonical family, exempt. A wide node whose halves agree reads 
 saving = 0.8
 arity = 8
 verdict = "kept: canonical, exempt. A constant span inside the wide build folds to a constant leaf. Its solo price is 0.8% at n=8 declining to 0.1% at n=12 on half-constant tables: the halves-agree skip and the block projection absorb a constant span almost as cheaply. Jointly (plain build) half-constant tables cost 42.7% at n=8 rising to 48.2% at n=12"
-
-[ablations.decoder_figures]
-saving = 0.0
-arity = 12
-verdict = "recorded: the decoder docstring's listing figures (17,091 chars at twelve inputs for a mostly-zero table, 4,801 for the all-one table) reproduce under no reading tried: the shipped programs for the n=12 AND and OR tables are 1,135 and 1,072 chars, the decoder's own cascades on those tables are 12,292 / 4,105 and 10 / 12,293, and the decoder never sees twelve inputs (blocks cap at seven essential inputs). See the stale-figures entry F20"
 
 [ablations.symmetric_count]
 saving = 60.0

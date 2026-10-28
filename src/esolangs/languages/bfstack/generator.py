@@ -1,22 +1,22 @@
 """BFStack Boolean program generator: byte-indexed row lists under prefix branches.
 
 Up to seven essential inputs are summed into a byte ``1 + row`` and a nested
-subtraction cascade lists the rarer value's rows; wider tables branch on the
+subtraction cascade lists the zero rows; wider tables branch on the
 leading input into blocks.
 
 Size:
-    O(T) chars; parity and and are linear in n.  n=10 parity: 631 chars,
-    n=10 and: 624 chars, n=10 random 1847: 6,983 chars.
+    O(T) chars; parity and and are linear in n.  n=10 parity: 633 chars,
+    n=10 and: 640 chars, n=10 random 1847: 7,003 chars.
 
 Decisions:
     No call or goto (loops nest) and the stack hides all but its top, so a
     repeated block cannot be reached from a flag.  A node whose four
     quarters are two distinct blocks once classified its two prefix bits and
-    wrote each block once; it was retired: 0.0% on random tables at n=7, 8
-    and on named functions at n=7..12, 14.7-54.5% only on two-block tables
-    ([ablations.two_block_classifier]).  The decoder lists the rarer
-    value rather than folding a run: it has no range test, so each listed
-    row is its own nested loop.
+    wrote each block once; it was retired: it paid only on two-block tables
+    ([ablations.two_block_classifier]).  The decoder lists the zero rows
+    rather than folding a run: it has no range test, so each listed row is
+    its own nested loop.  Listing the rarer value instead was retired: it
+    pays only on sparse tables ([ablations.decoder_value_race]).
 """
 
 from functools import cache
@@ -36,16 +36,15 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Payload, Shape
 
 
-def _bfstack_encoder(weights: list[int], *, preset: bool) -> str:
+def _bfstack_encoder(weights: list[int]) -> str:
     """BFStack code turning the inputs into the number ``1 + sum(bit*weight)``.
 
     ``,`` reads, 48 ``-``s normalize, ``[<+w>]`` adds the weight; an ignored
     input, weight 0, is read and popped.  The ``+1`` keeps the result nonzero
-    so the decoder's outer ``[`` always runs, and ``preset`` starts it at 1
-    for the subtracting decoder.
+    so the decoder's outer ``[`` always runs.
     """
-    # Result cell (0, or 1 when the decoder subtracts) below the accumulator.
-    prog = ">+>+" if preset else ">>+"
+    # Result cell (0) below the accumulator.
+    prog = ">>+"
     for weight in weights:
         if not weight:
             prog += ",<"
@@ -74,21 +73,14 @@ def _bfstack_cascade(rows: list[int], payload: str) -> str:
 _BLOCK_INPUTS = 7
 
 
-def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
-    """Return the decoder, and whether the result must start at 1.
+def _bfstack_decoder(truth_table: str) -> str:
+    """Return the decoder: a cascade listing the zero rows, then ``[<+>]``.
 
-    Lists the rarer value (the inverted form lists ones); ties keep direct.
-    Listing zeros for a mostly-zero table costs 12,292 characters at
-    twelve inputs against 4,105 listing ones (the twelve-input AND table).
+    Listing the rarer value instead (ones, with a preset result cell) was
+    retired ([ablations.decoder_value_race]).
     """
     zeros = [k + 1 for k, ch in enumerate(truth_table) if ch == "0"]
-    ones = [k + 1 for k, ch in enumerate(truth_table) if ch == "1"]
-    direct = _bfstack_cascade(zeros, "[<+>]")
-    # +1 pays the encoder's preset ``+``.
-    inverted = _bfstack_cascade(ones, "[<->]")
-    if len(inverted) + 1 < len(direct):
-        return inverted, True
-    return direct, False
+    return _bfstack_cascade(zeros, "[<+>]")
 
 
 def _bfstack_small(
@@ -99,10 +91,9 @@ def _bfstack_small(
     At most ``_BLOCK_INPUTS`` essential inputs; an ignored input weighs nothing.
     """
     weights, projected = build or input_weights(truth_table, n)
-    decoder, preset = _bfstack_decoder(projected)
     return (
-        _bfstack_encoder(weights, preset=preset)
-        + decoder
+        _bfstack_encoder(weights)
+        + _bfstack_decoder(projected)
         + "<"
         + "+" * _ASCII_ZERO
         + "."

@@ -7,20 +7,23 @@ from esolangs.languages.bfstack.proof_formulas import workspace
 
 
 def _chars(n: int, _: str) -> int:
-    """N = 3T + 54n + 59 through n = 7, then 221T/32 - 62 (62 a split, 822 a block)."""
+    """N = 4T + 54n + 57 through n = 7, then 505T/64 - 62 (62 a split, 948 a block).
+
+    A block is the encoder's ``3 + 54n + T - 1``, a cascade over the ``T - 1``
+    zero rows ending at ``T`` (``T + 2(T - 1) + 7``) and the printing 50.
+    """
     t = 1 << n
-    return 3 * t + 54 * n + 59 if n <= 7 else 221 * t // 32 - 62
+    return 4 * t + 54 * n + 57 if n <= 7 else 505 * t // 64 - 62
 
 
 def witness(n: int) -> str:
-    """Workspace witness, n = 5: a zero run of ``(3T + 1) // 5`` rows, then ones.
+    """Workspace witness, n = 5: one row at ``T / 2``, zeros elsewhere.
 
-    Its cascade starts at 3 + 54n + T - 1 >= 256 with L < 512, so each open loop
-    costs ``bl(L)``; n = 5 measures 213 here and on no other zero/one split.
+    Its cascade lists ``T - 1`` rows from 3 + 54n + T - 1 >= 256 with L < 512,
+    so each open loop costs ``bl(L)``; n = 5 measures 321 on it.
     """
     t = 1 << n
-    z = (3 * t + 1) // 5
-    return "0" * z + "1" * (t - z)
+    return "0" * (t // 2) + "1" + "0" * (t // 2 - 1)
 
 
 FORMULAS = {

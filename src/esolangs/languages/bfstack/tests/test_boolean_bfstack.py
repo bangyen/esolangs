@@ -92,7 +92,7 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
 
 
 def test_small_tables_do_not_grow_and_execute() -> None:
-    """The n=3 total is 58,758 characters."""
+    """The n=3 total is 59,249 characters."""
     from esolangs.languages.bfstack.generator import _bfstack_small
 
     total = 0
@@ -105,4 +105,4 @@ def test_small_tables_do_not_grow_and_execute() -> None:
                 total += len(program)
             for row, expected in enumerate(table):
                 assert run_bfstack(program, list(format(row, f"0{n}b"))) == expected
-    assert total == 58_758
+    assert total == 59_249
