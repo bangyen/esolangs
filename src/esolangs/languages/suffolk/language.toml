@@ -27,7 +27,7 @@ audited = "2026-10-19"
 [ablations.dag_race]
 saving = 83.2
 arity = 12
-verdict = "kept: suffolk returns the shorter of the countdown sweep and a shared-cofactor NOR DAG. Deleting the DAG route costs 61.1% on AND at n=10 rising to 83.2% at n=12 (61.0% / 83.1% on OR), and 0.0% on random tables: the DAG wins 0 of 200 random tables at each arity, ledger or not, so the race's entire value is its AND/OR class"
+verdict = "kept: suffolk returns the shorter of the countdown sweep and a shared-cofactor NOR DAG. Deleting the DAG route costs 61.1% on AND at n=10 rising to 83.2% at n=12 (61.0% / 83.1% on OR), and 0.0% on random tables: the DAG wins 0 of 200 random tables at each arity, ledger or not, so the race's entire value is its AND/OR class; plain-rewrite audit 2026-10-28, seed random.Random(1000n + k), 20 tables, every program run to n=9: 0.00% on random tables at n=7/8 (default and balanced area); and, or, nand, nor 29.9/37.1/48.1/61.1/73.4/83.1% at n=7..12 (balanced area 30.6/36.9/48.7/61.6/73.4/83.0%), growing; at-least-2 0% to n=11 and 71.4% at n=12; parity, majority, at-least-3 0% -- kept for the named family"
 
 [ablations.workspace_ledger]
 saving = 0.0
@@ -43,3 +43,6 @@ verdict = "kept: canonical, exempt. Both routes build over the essential inputs 
 saving = 0.0
 arity = 12
 verdict = "kept: canonical, exempt, and load-bearing. A constant table takes a short drain-and-print branch (121-127 chars at n=10/12). Without the branch the general sweep faces a one-row reduced table with empty halves and indexes table[0] of an empty half: the ablated build fails on every constant table and is byte-identical everywhere else, so there is no alternative build to price against"
+
+[audits]
+plain_rewrite = 2026-10-28
