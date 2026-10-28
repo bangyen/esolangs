@@ -45,7 +45,7 @@ verdict = "kept: clears on random tables (15.8% at n=9, 20.5% at n=10, share ris
 [ablations.band_race]
 saving = 10.3
 arity = 11
-verdict = "kept: clears on random tables; the band-(3,5) race's saving over band 3 alone is flat at 9.8-10.4% from n=9 to n=11; plain-rewrite audit 2026-10-27, 200 tables (100 at n=10), every program run: 0.0% at n=7, 5.5% at n=8, 10.4% at n=9, 9.9% at n=10, 10.2/10.6% at n=11/12 on 5 seeds -- at the bar and flat, not declining, so kept"
+verdict = "kept: clears on random tables; the band-(3,5) race's saving over band 3 alone is flat at 9.8-10.4% from n=9 to n=11; plain-rewrite audit 2026-10-27, every program run: 0.0% at n=7, 5.5% at n=8 (200 tables), growing, so measured to its peak on 200 tables: 10.38/9.86/10.31/10.63% at n=9/10/11/12, the race winning all 200 at each -- at its largest arity it clears the bar and still rises, so kept"
 
 [ablations.constant_folding]
 saving = 14.7
