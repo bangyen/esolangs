@@ -600,8 +600,7 @@ counting rule stands. Dense tables, n=8 to 9 unless stated:
   is: a corrupted cell fails exactly the rows that read it.
 
 Fifty-seven ledger cells are `at most` throughout and twenty-three more past an
-exact range (2026-10-23, counted from the ledger; open ones are on the
-[roadmap](roadmap.md#generator-linearity)):
+exact range (2026-10-23, counted from the ledger):
 
 - Route race: the shipped program is the shortest of several forms or
   layouts, so the worst table is a maximum over a minimum and switches
@@ -659,7 +658,35 @@ exact range (2026-10-23, counted from the ledger; open ones are on the
   per level) and Packlang workspace; Polynomial workspace; SStack execution (exact at n = 5 and 8
   only); Unlambda execution and workspace; RAM0 scaling (a repeat goto
   needs a zero child already built); SendStuff scaling (a constant child
-  replaces the branching node the bound also prices).
+  replaces the branching node the bound also prices); 3x scaling (20-28%
+  below F: a complement copy collapses the subtree F prices as a split, so
+  no table reaches both its head and tree maxima; exact worsts at n = 2..4
+  run 72-76% of F).
+- Fenced ranges: exact to a measured arity, unproved past it; each reopens
+  only as stated.
+  - SMU scaling past n = 16: the worst is a per-arity design optimum (the
+    binding choice is the split at 17, tie-breaks at 18, the mixed share
+    at 19, XX multiplicity at 20), no rule found; at 21 the exhibited
+    family's 98,929 pair slots cannot hold 131,072 places.  Reopens with a
+    rule or a successor family.
+  - Codesick scaling past n = 132: the spare ids fit the fixed 20-digit
+    pair supply through 132 (ratio 0.5962) and outgrow it at 133.  Reopens
+    with a width-class rule.
+  - 1 + i workspace past n = 27: the n = 28 witness, ~1.2G characters, is
+    OOM-killed while generating here.
+  - INTERCAL execution past n = 26 (loading the n = 26 witness passes
+    6 GB RSS; generating 27 is OOM-killed), workspace past 26 (the closed
+    form matches final snapshots at 21, 22 and 25 and the n = 26 text's
+    DIMENSION statements) and scaling past 19 (the shape needs 2^(n-4)
+    distinct parents against 57,360 ordered pairs, failing from 20).
+    Scaling reopens with a successor shape.
+  - S*bleq scaling past n = 28: one-off builds attain P at 26, 27 and 28
+    (105,463,455 characters, 3.30 GB peak), the harness at the scaling
+    arities to 25; the route's peak doubles per arity, about 6.5 GB at 29.
+  - What!? past n = 22: the witness builds to 26 and E(22) = 8,519,845
+    steps and W(22) = 587 bits are executed, but the interpreter's
+    one-object-per-token parse loads n = 22 in 3.15 GB and dies at 23.
+    Reopens with a leaner parse.
 
 ## Curation
 
@@ -825,6 +852,13 @@ lower bound; three stay out under the scaling rule:
 - SendStuff (3): the extended language (`/` commands, `{}` node sets,
   fragments, strings) is a separate version on the wiki and is not
   implemented.
+- S*bleq: the interpreter also runs the store targets `ab` (S*bl*q) and
+  `b` (Subl*q), each with an indirect form, but no registry entry or
+  dialect selects them and the generator emits base S*bleq only.
+  Registering one means generalizing the hoisted tree and packed decoder
+  to its store target, execution-gated; an indirect form dereferences its
+  operands, so it needs a pointer cell per operand, a different
+  construction.
 
 - [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
   (94) clears the fame gate despite duplicating an earlier queue language's
