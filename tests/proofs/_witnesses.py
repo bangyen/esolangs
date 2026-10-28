@@ -830,6 +830,11 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
     "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
     "Back": _back_worst,
+    # Row 0 marked and T / 2 rows marked, all inputs essential: the
+    # complement of parity, whose walk re-runs every row after the first.
+    "Tiangou": lambda n: (
+        "".join(str(1 - bin(r).count("1") % 2) for r in range(1 << n)),
+    ),
     # One-cell runs at both ends: neither corridor direction shortens it (size);
     # a leading run of two and one zero at the end (workspace).
     "A Painter Ant": lambda n: (

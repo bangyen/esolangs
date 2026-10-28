@@ -8,7 +8,8 @@ prints 0 otherwise.  Ignored inputs are read as 0 and dropped, so a
 constant table walks one row.
 
 Size:
-    6T + 4w + 34n + 57 chars for w true rows, every input essential;
+    6T + 4w + 34n + 57 chars for w marked rows (the rarer value, +4 when
+    that is the 0 rows), every input essential;
     n=4 parity: 321 chars
 """
 
@@ -36,8 +37,12 @@ def tiangou(truth_table: str) -> str:
         )
     parts.append(f"p {_NEG} - {_NEG} p")
     table = read_at(truth_table, essential, n)
-    parts += [': < q " -' if bit == "1" else 'q " -' for bit in table]
-    parts.append('" : > p : - < - > o')
+    # Marking the false rows instead costs 4 chars each; ``p -`` before the
+    # print turns the 1 / 0 answer into 0 / 1 for 4 more.
+    flip = 2 * table.count("1") > len(table) + 1
+    marked = "0" if flip else "1"
+    parts += [': < q " -' if bit == marked else 'q " -' for bit in table]
+    parts.append('" : > p : - < - >' + (" p - o" if flip else " o"))
     return " ".join(parts)
 
 
