@@ -14,6 +14,7 @@ from esolangs.registry import LANGUAGES
 from tests.proofs._arities import formula_arities
 from tests.proofs._formula import exact_at, ledger_formulas
 from tests.proofs._ledger import load as load_ledger
+from tests.proofs._witnesses import band_marks
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.test_execution_formulas import _measure, _tables
 from tests.support.generator_support import CHECK
@@ -68,20 +69,22 @@ def _formula_cases() -> list[object]:
             for n in arities
         }
     )
+    # Arities above the first per push reach no code it misses (coverage
+    # over Interprogck8, Polynomial and Unary, 2026-10-28) and only back the
+    # ledger's ranges, 77% of the slow band's ~1,020 s: they run weekly.
     return [
         pytest.param(
             name,
             n,
-            marks=pytest.mark.medium
-            if (name, n) not in _SLOW_AT_MIN
-            and (
-                n <= 2
-                or any(
-                    name in ledger and n == _first_above_two(ledger[name][2])
-                    for ledger in ledgers
-                )
+            marks=pytest.mark.slow
+            if (name, n) in _SLOW_AT_MIN
+            else pytest.mark.medium
+            if n <= 2
+            or any(
+                name in ledger and n == _first_above_two(ledger[name][2])
+                for ledger in ledgers
             )
-            else pytest.mark.slow,
+            else band_marks("weekly", f"{name} formulas exact at n = {n}"),
         )
         for name, n in cases
     ]

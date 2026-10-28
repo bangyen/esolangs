@@ -599,28 +599,30 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: What!?'s scaling case at n = 22 runs 9.7 s alone (its corpus tables
 #: past 15 inputs are dominated by the two alternating builds); n = 21
 #: stays in the medium band at 4.8 s.
+#: A case above a language's first per-push arity only backs a ledger
+#: range, so it runs weekly: Back 17, Stisp 20, INTERCAL 18-20, What!? 22.
 _WITNESS_BAND = {
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
     ("Back", 16): "medium",
-    ("Back", 17): "slow",
+    ("Back", 17): "weekly",
     ("Bleh", 21): "weekly",
     ("Bleh", 22): "weekly",
     ("Bleh", 23): "weekly",
     ("Quassaunt", 20): "weekly",
     ("Quassaunt", 21): "weekly",
-    ("Stisp", 20): "slow",
+    ("Stisp", 20): "weekly",
     ("Stisp", 18): "medium",
     ("INTERCAL", 17): "medium",
-    ("INTERCAL", 18): "slow",
-    ("INTERCAL", 19): "slow",
-    ("INTERCAL", 20): "slow",
+    ("INTERCAL", 18): "weekly",
+    ("INTERCAL", 19): "weekly",
+    ("INTERCAL", 20): "weekly",
     ("S*bleq", 21): "weekly",
     ("S*bleq", 22): "weekly",
     ("S*bleq", 23): "weekly",
     ("S*bleq", 24): "weekly",
     ("S*bleq", 25): "weekly",
-    ("What!?", 22): "slow",
+    ("What!?", 22): "weekly",
 }
 
 
@@ -795,7 +797,8 @@ _SPARSE_ROWS: dict[
 #: What!? parses in ~0.8 s at n = 16, ~1.8 s at 17; whole cases measure
 #: 4.2 s / 3.9 s at 16 (execution / workspace) and 11.5 s / 5.7 s at 17.
 #: No case at 22 (77 s / 86 s): it reaches no line or branch 16 and 17
-#: miss, and past 15 inputs E and W have no case split for it to check.
+#: miss, and past 15 inputs E and W have no case split for it to check;
+#: 17 only backs the ledger range, so it runs weekly.
 #: S*bleq parses in well under a
 #: second even at n = 26; its cases are priced by stepping alone
 #: (12M-40M steps a case, plus 1-31 s of generation): whole cases
@@ -808,9 +811,9 @@ _SPARSE_ROWS: dict[
 #: about 1.9 s standalone.
 _SPARSE_BAND = {
     ("What!?", "execution", 16): "medium",
-    ("What!?", "execution", 17): "slow",
+    ("What!?", "execution", 17): "weekly",
     ("What!?", "workspace", 16): "medium",
-    ("What!?", "workspace", 17): "slow",
+    ("What!?", "workspace", 17): "weekly",
     ("S*bleq", "execution", 21): "slow",
     ("S*bleq", "execution", 22): "weekly",
     ("S*bleq", "execution", 23): "weekly",
