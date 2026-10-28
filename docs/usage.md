@@ -486,8 +486,8 @@ generated program text, debugger presentation, internal modules, and private
 `_` names may change without deprecation; generated programs retain
 behaviour, not spelling or size.
 
-A breaking public change requires a major release, except that until 2.0 a
-minor release may remove CLI options and commands;
-[CHANGELOG.md](CHANGELOG.md) lists every break. Coexisting replacements
+From 2.0, a breaking public change requires a major release; until then a
+minor release may break any of the above.
+[CHANGELOG.md](CHANGELOG.md) lists every break first. Coexisting replacements
 are documented for at least one minor release.
 Security and correctness fixes may reject input accepted by mistake.
