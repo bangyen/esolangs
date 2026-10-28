@@ -10,57 +10,87 @@ qualification = "—"
 scaling = "linear: at most K characters: the plain tree under fixed keys"
 execution = "linear: worst L commands: the all-ones row enters every guard, no loop repeats"
 workspace = "linear: at most n·bl(L) + bl(2n-1) + 3G + 2n + 2K(N) + 6bl(N-1) + 9 + Σ_{i≤N}(K(i)+3) bits"
-definitions = ["K(i) = bits of the ith key's value, exact", "G = the program's ( count", "N = 1 + n + C + min(G, ⌊T/24⌋), C half the complement snippets"]
+definitions = ["K(i) = bits of the ith key's value, exact", "G = the program's ( count", "N = 1 + n + min(G, ⌊T/24⌋)"]
 
 [generator_sizes]
 "00000001" = { commands = 132, commands_by_row = { "0" = 108, "1" = 108, "2" = 108, "3" = 108, "4" = 118, "5" = 118, "6" = 132, "7" = 132 }, source_units = 132 }
-"00001100" = { commands = 129, commands_by_row = { "0" = 118, "1" = 118, "2" = 118, "3" = 118, "4" = 129, "5" = 129, "6" = 129, "7" = 129 }, source_units = 129 }
-"00110110" = { commands = 188, commands_by_row = { "0" = 154, "1" = 154, "2" = 154, "3" = 154, "4" = 174, "5" = 174, "6" = 188, "7" = 188 }, source_units = 188 }
-"0110" = { commands = 132, commands_by_row = { "0" = 121, "1" = 121, "2" = 132, "3" = 132 }, source_units = 132 }
-"01101001" = { commands = 208, commands_by_row = { "0" = 166, "1" = 166, "2" = 177, "3" = 177, "4" = 183, "5" = 183, "6" = 208, "7" = 208 }, source_units = 208 }
-"0110100110010110" = { commands = 327, commands_by_row = { "0" = 211, "1" = 211, "2" = 222, "3" = 222, "4" = 228, "5" = 228, "6" = 253, "7" = 253, "8" = 240, "9" = 240, "10" = 265, "11" = 265, "12" = 277, "13" = 277, "14" = 327, "15" = 327 }, source_units = 327 }
-"1101001101101101" = { commands = 293, commands_by_row = { "0" = 201, "1" = 201, "2" = 215, "3" = 215, "4" = 212, "5" = 212, "6" = 226, "7" = 226, "8" = 227, "9" = 227, "10" = 258, "11" = 258, "12" = 248, "13" = 248, "14" = 293, "15" = 293 }, source_units = 293 }
-"11111110" = { commands = 162, commands_by_row = { "0" = 138, "1" = 138, "2" = 138, "3" = 138, "4" = 148, "5" = 148, "6" = 162, "7" = 162 }, source_units = 162 }
+"00001100" = { commands = 102, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 92, "5" = 92, "6" = 102, "7" = 102 }, source_units = 102 }
+"00110110" = { commands = 152, commands_by_row = { "0" = 112, "1" = 112, "2" = 112, "3" = 112, "4" = 129, "5" = 129, "6" = 142, "7" = 152 }, source_units = 152 }
+"0110" = { commands = 102, commands_by_row = { "0" = 82, "1" = 82, "2" = 92, "3" = 102 }, source_units = 102 }
+"01101001" = { commands = 181, commands_by_row = { "0" = 121, "1" = 121, "2" = 131, "3" = 141, "4" = 140, "5" = 150, "6" = 161, "7" = 181 }, source_units = 181 }
+"0110100110010110" = { commands = 312, commands_by_row = { "0" = 166, "1" = 166, "2" = 176, "3" = 186, "4" = 185, "5" = 195, "6" = 206, "7" = 226, "8" = 194, "9" = 204, "10" = 215, "11" = 235, "12" = 230, "13" = 250, "14" = 272, "15" = 312 }, source_units = 312 }
+"1101001101101101" = { commands = 254, commands_by_row = { "0" = 156, "1" = 156, "2" = 170, "3" = 170, "4" = 167, "5" = 167, "6" = 181, "7" = 181, "8" = 182, "9" = 182, "10" = 209, "11" = 219, "12" = 203, "13" = 203, "14" = 244, "15" = 254 }, source_units = 254 }
+"11111110" = { commands = 132, commands_by_row = { "0" = 99, "1" = 99, "2" = 99, "3" = 99, "4" = 106, "5" = 106, "6" = 116, "7" = 132 }, source_units = 132 }
 
 [catalogue]
 sharing_local = "_three_x_emit"  # defer repeated blocks behind flags
 
 [ablations]
-audited = "2026-10-19"
-# Source figures that match a verdict but measure something else (the greedy input order, not equal_halves_skip).
-unrelated = ["2.2%"]
+audited = "2026-10-27"
+# Source figures that match a verdict but measure something else (the greedy input order, not equal_halves_skip; the share-gain fit, not top_tracking).
+unrelated = ["2.2%", "12.6%"]
 
 [ablations.key_assignment]
-saving = 47.0
+saving = 50.9
 arity = 10
-verdict = "kept: the cheapest key goes to the most-read name in _key_pieces; structural (kind, depth) order instead costs 44.2% at n=9 and 47.0% at n=10 on random tables, rising at every arity measured, and 28.9% on parity at n=10"
+seed = "random.Random(1000 * n + s)"
+tables = 5
+verdict = "kept 2026-10-27: the cheapest key goes to the most-read name in _key_pieces; structural (kind, depth) order instead costs 19.3% / 33.7% / 37.1% / 44.7% / 50.9% / 53.0% at n=4/6/7/8/10/12 on random tables, rising at every arity, and 33.7% on parity, 24.8% on majority at n=10"
 
 [ablations.column_copy]
-saving = 17.2
-arity = 10
-verdict = "kept: a span equal to a bit under it, or to its complement, is one copy write; it earns 15.9% at n=9 and 17.2% at n=10 on random tables, rising, and 10.1% on parity at n=12. It loses where other mechanisms carry the table: -7.0% on 16-row tiled tables at n=10, where the block sharing prices 66.4% on its own class, and -5.8% at n=4"
+saving = 12.0
+arity = 12
+seed = "random.Random(1000 * n + s)"
+tables = 200
+verdict = "kept 2026-10-27: a span equal to a bit under it is one copy write; with it off the random tables grow 5.0% / 9.0% / 8.9% / 11.2% / 11.7% / 12.0% at n=4/6/7/8/10/12 (5 tables), 10.1% at n=7 and 10.9% at n=8 over 200 tables, still rising past n=8, and 6.2-7.0% on parity at n=7..12. Borderline at n=7 (10.1%), cleared by the rise"
 
 [ablations.block_sharing]
 saving = 66.4
 arity = 10
-verdict = "kept: canonical sharing, exempt; a repeated aligned block of at least four rows is written once behind a flag, chosen by _gain and raced against the plain tree. 0.0% on random tables, 55.2% / 66.4% on two-block 16-row tables at n=9/10, 79.9% on parity at n=10 and 90.3% at n=12"
+verdict = "kept 2026-10-27: canonical sharing, exempt; a repeated aligned block of at least four rows is written once behind a flag, chosen by _gain and raced against the plain tree. 0.0% on random tables, 55.2% / 66.4% on two-block 16-row tables at n=9/10, 79.9% on parity at n=10 and 90.3% at n=12"
 
 [ablations.equal_halves_skip]
 saving = 16.7
 arity = 10
-verdict = "kept: canonical, exempt; a node whose halves agree is its first half. 2.2% / 2.3% on random tables at n=9/10, 12.9% / 16.7% on two-block tables; jointly with the constant fold it earns 21.7% on random tables at n=10 where each alone prices 0.0% / 2.3%"
+verdict = "kept 2026-10-27: canonical, exempt; a node whose halves agree is its first half. 2.2% / 2.3% on random tables at n=9/10, 12.9% / 16.7% on two-block tables; jointly with the constant fold it earns 21.7% on random tables at n=10 where each alone prices 0.0% / 2.3%"
 
 [ablations.constant_fold]
 saving = 0.0
 arity = 10
-verdict = "kept: canonical, exempt; its marginal alone is 0.0% on every corpus measured, constants included, because the equal-halves skip and the column copy emit the same spans. Jointly with the skip it earns 21.7% on random tables at n=10, 56.5% on constant-half tables at n=10 and 94.4% on AND at n=10: the pair covers each other, neither price is a failure"
+verdict = "kept 2026-10-27: canonical, exempt; its marginal alone is 0.0% on every corpus measured, constants included, because the equal-halves skip and the column copy emit the same spans. Jointly with the skip it earns 21.7% on random tables at n=10, 56.5% on constant-half tables at n=10 and 94.4% on AND at n=10: the pair covers each other, neither price is a failure"
 
 [ablations.value_tracking]
 saving = 56.2
 arity = 12
-verdict = "kept: the emitter tracks the result's and flags' values and skips writes that would repeat them; 0.1% on random tables at n=10, but 33.3% on majority at n=10 and 56.2% at n=12, which keeps it under the named-function rule, and 9.2% on AND at n=10"
+seed = "random.Random(1000 * n + s)"
+tables = 200
+verdict = "kept 2026-10-27: the emitter tracks the result's and flags' values and skips writes that would repeat them; 0.7% on random tables at n=7..8 over 200 tables, but 10.3% on majority at n=7, 16.7% at n=8, 33.3% at n=10 and 56.2% at n=12, rising, which keeps it under the named-function rule, and 8.7-9.4% on AND"
 
 [ablations.essential_projection]
 saving = 0.0
 arity = 10
-verdict = "kept: canonical, exempt; its size price is 0.0% at every arity and the emitted program is byte-identical with and without it on all 200 ignored-input tables at n=8 — the tree folds an ignored input anyway. It is build-time machinery, as its comment states (0.115 s against 0.972 s at n=12 with two ignored inputs), not a size mechanism"
+verdict = "kept 2026-10-27: canonical, exempt; its size price is 0.0% at every arity and the emitted program is byte-identical with and without it on all 200 ignored-input tables at n=8 — the tree folds an ignored input anyway. It is build-time machinery, as its comment states (0.115 s against 0.972 s at n=12 with two ignored inputs), not a size mechanism"
+
+[ablations.complement_copy]
+saving = 7.7
+arity = 14
+seed = "random.Random(1000 * n + s)"
+tables = 30
+verdict = "retired 2026-10-27 (plain-rewrite audit): a span equal to a bit's complement was one copy of a stored complement (_COMPLEMENT, the NOT keys); it saved -14.1% / -6.2% / 1.7% / 4.1% / 6.1% / 7.3% / 7.7% / 7.5% at n=4/6/7/8/10/12/14/16 on random tables (5 tables; 7.4% over 30 at n=12), peaking under the 10% bar, and 3.3-4.2% on parity at n=12..16, 0.0% on and, or and majority; at n <= 6 it cost more than it saved. Removing it shrinks the n=4 and n=6 corpora and grows n=10 random 6.5% (43,114 to 45,922 characters over 5 tables)"
+
+[ablations.top_tracking]
+saving = 12.9
+arity = 12
+seed = "random.Random(1000 * n + s)"
+tables = 200
+verdict = "kept 2026-10-27: a guard closes on its known stack top, so a nested guard's close is a bare ) where a clean stack costs 333x); with it off, random tables grow 10.9% at n=7 and 11.7% at n=8 over 200 tables, 12.6% at n=10 over 100, 12.9% at n=12 and 13.0% at n=14 over 5, still rising (7.1% at n=4, 9.8% at n=6); named: 6.2-6.7% on and, 7.7-8.1% on parity, 1.7% on or. Unrecorded before the audit"
+
+[ablations.key_family]
+saving = 11.2
+arity = 12
+seed = "random.Random(1000 * n + s)"
+tables = 200
+verdict = "kept 2026-10-27: key k is the closed-form wrapped-zero family (4 + 3 (bl(k) - 1) characters, the shortest grammar lengths) rather than the plain linear key, 3 wrapped k times (1 + 3k); linear keys grow random tables 10.6% at n=7 and 11.1% at n=8 over 200 tables, 11.2% at n=10 and n=12 over 5, and 19-40% on parity, and, or and majority at n=7..12. Borderline at n=7 (10.6%), flat near 11"
+
+[audits]
+plain_rewrite = 2026-10-27

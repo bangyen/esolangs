@@ -2,7 +2,7 @@
 
 from fractions import Fraction
 
-from esolangs.languages.three_x.generator import _COMPLEMENT
+from esolangs.languages.three_x.generator import _SCALE
 
 bl = int.bit_length
 
@@ -27,10 +27,10 @@ def _three_x(n: int, p: str) -> int:
     """Read cursor, guard positions and residues, keys and values.
 
     Every guard met leaves one 3-bit item; N bounds the names: the result,
-    n bits, the complements the program stores (two snippets each) and the
+    n bits and the
     flags (one guard each, a shared block covers 24 rows).
     """
-    names = 1 + n + str(p).count(_COMPLEMENT) // 2 + min(str(p).count("("), 2**n // 24)
+    names = 1 + n + min(str(p).count("("), 2**n // 24)
     return (
         n * bl(len(p))
         + bl(2 * n - 1)
@@ -53,21 +53,21 @@ def _chars(n: int, _: str) -> int:
 
     The shipped keys are the cheapest assignment for the real uses, so pricing
     the tree under any one fixed assignment bounds it: the result variable
-    takes rank 0, then each level's bit and complement, deepest first.  A node
-    at depth e is a leaf (a write of at most 5, or a copy of a bit or
-    complement of a level >= e: 2 and its key) or, for e <= n - 2, a split (the
-    bit's key, ``^(`` and a close of at most 4) over two nodes at e + 1.  The
-    worst node recurses on e; the head reads and scales every bit and
-    complements it, the tail prints the result.
+    takes rank 0, then each level's bit, deepest first.  A node
+    at depth e is a leaf (a write of at most 5, or a copy of a bit
+    of a level >= e: 2 and its key) or a split (the
+    bit's key, ``^(`` and a close of at most 4) over two nodes at e + 1
+    (constant writes below the last level).  The worst node recurses on e;
+    the head reads and scales every bit, the tail prints the result.
     """
-    bit = {n - 1 - i: _width(1 + 2 * i) for i in range(n)}
-    comp = {n - 1 - i: _width(2 + 2 * i) for i in range(n)}
+    bit = {n - 1 - i: _width(1 + i) for i in range(n)}
     result = _width(0)
     worst = 0
     for e in range(n - 1, -1, -1):
-        leaf = result + max(5, 2 + max(max(bit[v], comp[v]) for v in range(e, n)))
-        worst = leaf if e == n - 1 else max(leaf, bit[e] + 6 + 2 * worst)
-    head = sum(48 + bit[v] + 2 * comp[v] for v in range(n))
+        leaf = result + max(5, 2 + max(bit[v] for v in range(e, n)))
+        child = result + 5 if e == n - 1 else worst
+        worst = max(leaf, bit[e] + 6 + 2 * child)
+    head = sum(3 + len(_SCALE) + bit[v] for v in range(n))
     return head + worst + 8 + result
 
 

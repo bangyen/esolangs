@@ -9,8 +9,8 @@ complement; a constant subtree, or one equal to a bit under it, is one write.
 sets a flag in the tree and is written once after it, guarded by that flag.
 
 Size:
-    O(T) for dense tables, O(n) for parity and and; n=10 parity: 2,300 chars,
-    n=10 and: 472 chars, n=10 random 1847: 8,588 chars.
+    O(T) for dense tables, O(n) for parity and and; n=10 parity: 2,351 chars,
+    n=10 and: 472 chars, n=10 random 1847: 9,050 chars.
 
 Decisions:
     Shares are chosen by ``_gain`` from counts and lengths, no trial
@@ -39,7 +39,6 @@ __all__ = ["three_x"]
 
 _ZERO = "333x"  # (3 - 3) / 3
 _ONE = "3333x3x"  # (3 - 0) / 3
-_NEG_ONE = "33333xx"  # (0 - 3) / 3
 
 
 # 3x's only literal is ``3`` and its only arithmetic is ``x`` (replace the
@@ -75,25 +74,16 @@ def _constants(count: int) -> list[str]:
 _SCALE = "3" + _ZERO + _ONE + "x#" + _ZERO + "#x"
 
 
-#: From ``[v]``, leave ``3 - v``: a scaled bit's complement.
-_COMPLEMENT = _NEG_ONE + "#3#x"
-
-
-#: What a complemented column reads as.
-_SWAP = str.maketrans("01", "10")
-
-
 class _Kind(Enum):
     """The kind of one piece of the emit stream.
 
     Declared in the same order as the variable names these replace
-    (``"bit" < "flag" < "not" < "result"``), so sorting names by
+    (``"bit" < "flag" < "result"``), so sorting names by
     ``kind.value`` keeps the cheapest-key assignment byte-identical.
     """
 
     BIT = auto()
     FLAG = auto()
-    NOT = auto()
     RESULT = auto()
     TEXT = auto()
 
@@ -112,7 +102,7 @@ class _Piece:
 
 
 #: The result variable's marker; the other variables are ``_Piece`` values
-#: with kind BIT, NOT, or FLAG and their tree depth.
+#: with kind BIT or FLAG and their tree depth.
 _RESULT = _Piece(_Kind.RESULT)
 
 
@@ -252,14 +242,9 @@ class _Emitter:
         self.pieces.append(var)
         self.pieces.append(_Piece(_Kind.TEXT, ("3" if value == "1" else _ZERO) + "v"))
 
-    def copy(self, level: int, *, complement: bool) -> None:
+    def copy(self, level: int) -> None:
         self.pieces.append(_RESULT)
-        self.pieces.append(
-            _Piece(
-                _Kind.NOT if complement else _Kind.BIT,
-                depth=self.essential[level],
-            )
-        )
+        self.pieces.append(_Piece(_Kind.BIT, depth=self.essential[level]))
         self.pieces.append(_Piece(_Kind.TEXT, "^v"))
 
     def open(self) -> None:
@@ -305,10 +290,7 @@ class _Emitter:
         for level in range(depth, self.width):
             column = self.pattern(hi - lo, level - depth)
             if span == column:
-                self.copy(level, complement=False)
-                return ("", *self.settle(state)[1:])
-            if span == column.translate(_SWAP):
-                self.copy(level, complement=True)
+                self.copy(level)
                 return ("", *self.settle(state)[1:])
 
         mid = (lo + hi) // 2
@@ -345,7 +327,7 @@ class _Emitter:
 
 
 def _read_head(pieces: list[_Piece], perm: tuple[int, ...], n: int) -> list[_Piece]:
-    """Return the input reads, storing a complement only where the tree copies one.
+    """Return the input reads, storing a scaled bit only where the tree names it.
 
     The reads run in stream order and only the store target moves: stream
     input ``i`` goes into the name the tree tests at depth ``perm.index(i)``.
@@ -357,20 +339,8 @@ def _read_head(pieces: list[_Piece], perm: tuple[int, ...], n: int) -> list[_Pie
         head.append(_Piece(_Kind.TEXT, "?"))
         depth = depth_of[i]
         bit = _Piece(_Kind.BIT, depth=depth)
-        mark = _Piece(_Kind.NOT, depth=depth)
-        if bit in named or mark in named:
-            head.append(_Piece(_Kind.TEXT, _SCALE))
-            if mark in named:
-                head.extend(
-                    [
-                        _Piece(_Kind.TEXT, _COMPLEMENT),
-                        mark,
-                        _Piece(_Kind.TEXT, "#v"),
-                        mark,
-                        _Piece(_Kind.TEXT, "^" + _COMPLEMENT),
-                    ]
-                )
-            head.extend([bit, _Piece(_Kind.TEXT, "#v")])
+        if bit in named:
+            head.extend([_Piece(_Kind.TEXT, _SCALE), bit, _Piece(_Kind.TEXT, "#v")])
     return head
 
 

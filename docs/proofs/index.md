@@ -478,7 +478,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 Symbols the formula cells use:
 
 - **1 + i:** W = 51, 61, 64, 70 at n = 2..5; 3n+52+bl(2n-1) to 13; 3n+48+bl(n+2)+bl(2n-1) to 24; 5n-1+bl(n+5)+bl(2n-1) from 25.
-- **3x:** K(i) = bits of the ith key's value, exact; G = the program's ( count; N = 1 + n + C + min(G, ⌊T/24⌋), C half the complement snippets.
+- **3x:** K(i) = bits of the ith key's value, exact; G = the program's ( count; N = 1 + n + min(G, ⌊T/24⌋).
 - **ABCDirection:** d = (2n + 4) mod 5, the rows the read block drops.
 - **AddSubJump:** C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C; Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23.
 - **Algebraic Programming Language:** K = shared uppercase definitions, excluding NOT; A = 4n+3, active split and NOT frames; Q = 6n+5, pending nodes across frames; b = bl(2L+2), serial widths for AST nodes and functions; d = bl(L), bounding function-name length and the line cursor; V = Σ_{1≤j≤n-2} (bl(s) + bl(s+1) + bl(s+5)), s = 2n+8+7j, three serials per level; W = bl(2n-1) + bl(2n+3) + bl(2n+13) + bl(F) + 2bl(F+1) + bl(F+2) + bl(F+4), F = 2n+7.
