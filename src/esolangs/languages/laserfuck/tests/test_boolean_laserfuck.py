@@ -443,3 +443,19 @@ def test_a_width_tree_tests_only_essential_inputs(width: int) -> None:
     assert len(program) < len(boolean.laserfuck("0110100110010110", width))
     for row in range(16):
         assert run_laserfuck(program, list(format(row, "04b")), 0) == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "side"), [(7, 92), (8, 162)])
+def test_balance_races_the_turned_tree(n: int, side: int) -> None:
+    """The tree stood on end is the balanced square (upright: 166-172 / 322+)."""
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
+    balanced = esolangs.generate("LaserFuck", table, balance=True)
+    assert balance_score(balanced)[0] == side
+    assert _evaluate("LaserFuck", balanced, 60, inputs=n, max_rows=None) == table
+    wrong = table[:-1] + str(1 - int(table[-1]))
+    assert _evaluate("LaserFuck", balanced, 60, inputs=n, max_rows=None) != wrong

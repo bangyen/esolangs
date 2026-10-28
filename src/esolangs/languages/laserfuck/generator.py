@@ -778,8 +778,21 @@ def _laserfuck_raise_funnel(program: str) -> str:
     return "\n".join([" }}v", "|o^", " _", route, *shifted])
 
 
+def _laserfuck_turned(table: str) -> str:
+    """Build the flat reader with its tree stood on end beneath it.
+
+    The staircase has one row per *one* edge, so upright it is tall and
+    narrow; turned it is as wide as it was tall and only the leaf-run
+    length tall.
+    """
+    n = _validate_truth_table(table)
+    reader = _laserfuck_reader(n, None, vertical_tree=False)
+    tree = _laserfuck_tree(table, n)
+    return _laserfuck_assemble(reader, tree, None, vertical_tree=True)
+
+
 def balance_laserfuck(table: str, default: str) -> str:
-    """Compare reader fits, tree placements and startup-funnel fits."""
+    """Compare reader fits, tree placements, startup-funnel fits and the turned tree."""
     n = _validate_truth_table(table)
     margin = MARGIN
     events = {1, 4}
@@ -802,6 +815,7 @@ def balance_laserfuck(table: str, default: str) -> str:
 
     return min(
         default,
+        _laserfuck_turned(table),
         *(laserfuck(table, width) for width in sorted(widths)),
         key=balance_score,
     )

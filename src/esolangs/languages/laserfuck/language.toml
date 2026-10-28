@@ -66,6 +66,13 @@ saving = 19.0
 arity = 11
 verdict = "kept 2026-10-28: the balanced route uses the tree at every n -- 17-21% area on random tables at n=10..12, 18-19% on parity (seeds 1, 7), 0 at n=7..8; the default route alone fails (3.5% at n=4, peak 4.6% at its n=6 cap)"
 
+[ablations.balance_turned_tree]
+saving = 74.7
+arity = 8
+seed = "random.Random(s), s = 0..19, n = 7, 8"
+tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-n/2 at n=7..10"
+verdict = "kept, balanced: the balance hook only raced upright fits, whose staircase has one row per one edge (161 x 79 at n=8, side 322). Racing the flat reader with the tree stood on end (52 x 162, side 162) takes balanced area (score squared) off 70.8% / 74.7% on random tables at n=7 / 8; named: parity 74.6 / 76.8 / 77.8 / 76.6%, majority 59.2 / 74.6 / 74.8 / 78.3% at n=7..10, threshold-3 34.3 / 63.4 / 74.6 / 74.7%; and/or/nand/nor 0.0 (they are a line). Flat across n=8..10 at ~75%, not declining. The default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad) and a wrong table failed. Past n=8 the turned block is wider than 2:1 (n=9 58 x 338), a fold would gain more"
+
 [ablations.reader_orientation_search]
 saving = 0.0
 arity = 4
