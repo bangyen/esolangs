@@ -56,7 +56,7 @@ class TestForbinBoolean:
     def test_uses_the_lsb_of_each_input(self) -> None:
         """Each input is read as 8 bits and only the LSB is kept."""
         program = boolean.forbin("01")
-        assert "e,e,e,e,e,e,e,a=(in 0);" in program
+        assert "a,a,a,a,a,a,a,b=(in 0);" in program
 
     def test_small_program_uses_one_character_variables(self) -> None:
         """The first 52 variables do not carry widening decimal suffixes."""
@@ -121,7 +121,7 @@ class TestForbinBoolean:
             assert run_forbin_boolean(program, bits) == table[row]
 
     @pytest.mark.parametrize(
-        ("layout", "size"), [("XXXYXYXY", 1938), ("XXXYXXYX", 1984)]
+        ("layout", "size"), [("XXXYXYXY", 1932), ("XXXYXXYX", 1978)]
     )
     def test_nested_repeats_share_once(self, layout: str, size: int) -> None:
         """A repeated subtree costs one function; its insides are not repeats."""

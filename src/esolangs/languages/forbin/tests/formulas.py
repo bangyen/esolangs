@@ -22,19 +22,26 @@ def _chars(n: int, _: str) -> int:
     h = max(n - 7, 0)
     low = n - h
     block = 1 << low
-    table, junk, first = n, n + 3, n + 4  # name indexes; cells follow
+    # Name indexes, in order of first use: junk, n bits, table, then the cells.
+    junk, table, first = 0, n + 1, n + 2
 
     def cells(a: int, b: int) -> int:
         return _chars_of_names(first + b) - _chars_of_names(first + a)
 
-    reads = 7 * n * _length(junk) + _chars_of_names(n) + (8 * n - 1) + 8
+    reads = (
+        7 * n * _length(junk)
+        + _chars_of_names(n + 1)
+        - _chars_of_names(1)
+        + (8 * n - 1)
+        + 8
+    )
     register = _length(table) + 1 + cells(0, block) + (block - 1) + 1
     live = block
     for level in range(h, n):
         half = live // 2
         register += (
             9
-            + _length(level)
+            + _length(level + 1)
             + 1
             + cells(0, half)
             + half
@@ -48,7 +55,7 @@ def _chars(n: int, _: str) -> int:
         live = half
     register += 18 + _length(first) + 1 + 1
     leaf = 7 + _length(table) + 2 * block
-    tree = sum((1 << lv) * (11 + _length(lv)) for lv in range(h)) + (1 << h) * leaf
+    tree = sum((1 << lv) * (11 + _length(lv + 1)) for lv in range(h)) + (1 << h) * leaf
     lines = 4 + (1 << (h + 2)) - 2
     return 5 + reads + register + tree + 1 + (lines - 1)
 

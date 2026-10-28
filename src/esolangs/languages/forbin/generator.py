@@ -7,13 +7,15 @@ constant span collapses to a call to a printer.  Repeated blocks or subtrees
 become one function nested in ``main``.
 
 Size:
-    Two characters per painted entry, O(T); n=10 random 1847: 3,472 chars,
-    n=12 random 1847: 10,230 chars.
+    Two characters per painted entry, O(T); n=10 random 1847: 3,466 chars,
+    n=12 random 1847: 10,224 chars.
 
 Decisions:
     Sharing a repeated block or subtree: tables tiled from two random
     128-entry blocks shrink, random tables are unchanged
-    ([ablations.subtree_sharing]).
+    ([ablations.subtree_sharing]).  Names go out in order of first use
+    ([ablations.name_ordering]); the balanced spelling is the only candidate
+    ([ablations.balance_race]).
 """
 
 import re
@@ -32,7 +34,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, balance_score, wrap_space_delimited
+from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.forbin.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
@@ -60,7 +62,7 @@ def _forbin_names() -> Iterator[str]:
 
 
 class _Names:
-    """The identifiers one program uses, shortest where they repeat most."""
+    """The identifiers one program uses, shortest first in order of use."""
 
     def __init__(self, n: int, block: int) -> None:
         self._names = _forbin_names()
@@ -68,13 +70,13 @@ class _Names:
         def take(size: int) -> list[str]:
             return list(islice(self._names, size))
 
-        # The tree names an input bit once a node and calls ``table`` or a
-        # constant printer once a leaf, so those repeat with the table
-        # length and take the one-character names first.
-        self.bits = take(n)
-        self.table, self.zero, self.one = take(3)
+        # Names go out in the order the program first uses them
+        # ([ablations.name_ordering]).
         (self.junk,) = take(1)
+        self.bits = take(n)
+        (self.table,) = take(1)
         self.cells = take(block)
+        self.zero, self.one = take(2)
 
     def fresh(self) -> str:
         """Return a name no other part of the program uses."""
@@ -278,10 +280,10 @@ def _register(names: _Names, block: int, high: int, n: int) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Return the disjoint-guard spelling below the statement span."""
+    """Return the token-balanced disjoint-guard spelling."""
     tokens = forbin(table, 1).split()
     width = balanced_token_width(tokens, " ", maximum=grid_width(default) - 1)
-    return min(default, _join_tokens(tokens, width, " "), key=balance_score)
+    return _join_tokens(tokens, width, " ")
 
 
 LANGUAGE = Language(
