@@ -11,13 +11,13 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from inspect import signature
 from time import monotonic
-from typing import Literal, get_args
+from typing import Literal, cast, get_args
 
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._source import InputSource, ProgramSource
 from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
 from esolangs.settings import DialectSettings
-from esolangs.vm import VM, complete_vm, make_vm, run_until_halt
+from esolangs.vm import VM, SnapshotVM, complete_vm, make_vm, run_until_halt
 
 __all__ = [
     "STOP_REASONS",
@@ -156,12 +156,12 @@ class Debugger:
         """Return the wrapped machine's complete *internal* state, hashable.
 
         ``output`` is excluded, so equal internal state means the same future
-        computation; see :meth:`~esolangs.vm.VM.snapshot` for the post-halt
+        computation; see :meth:`~esolangs.vm.SnapshotVM.snapshot` for the post-halt
         dump.  A repeated
         snapshot proves a loop, which settles the four termination languages in
         microseconds.
         """
-        return self.vm.snapshot()
+        return cast(SnapshotVM, self.vm).snapshot()
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
         """Stop when the program counter reaches ``ip``.

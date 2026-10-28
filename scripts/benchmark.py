@@ -47,7 +47,7 @@ from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._describe import LanguageInfo
 from esolangs.runtime._validate import check_timeout
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
+from esolangs.vm import VM, SnapshotVM, complete_vm, run_until_halt_or_cycle
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -337,7 +337,7 @@ def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
     split = LANGUAGES[language].payload
     if split is None:
         return None
-    data, control, pc, flags = split(vm.snapshot())
+    data, control, pc, flags = split(cast(SnapshotVM, vm).snapshot())
     data_widths = [_integer_bits(value) for value in data]
     control_widths = [_integer_bits(value) for value in control]
     data_bits = sum(data_widths)
@@ -422,11 +422,11 @@ def _execute(
             # baseline's wrapper-step count, excluding its post-halt dump.
             vm = debugger_api.make_vm(language, source, stdin=stdin)
 
-        written = WrittenState(vm.snapshot()) if track_store else None
+        written = WrittenState(cast(SnapshotVM, vm).snapshot()) if track_store else None
 
         def sample_store() -> None:
             if written is not None:
-                written.sample(vm.snapshot())
+                written.sample(cast(SnapshotVM, vm).snapshot())
                 result["peak_written_bits"] = written.bits
                 result["peak_memory_cells"] = max(
                     result["peak_memory_cells"] or 0, len(vm.memory)

@@ -131,15 +131,6 @@ class VM(Protocol):
     def step(self) -> None:
         """Execute one command, advancing the machine."""
 
-    def snapshot(self) -> Hashable:
-        """Return the internal state cycle detection compares, hashable.
-
-        ``output`` is excluded, so equal internal state means the same future
-        computation.  The post-halt dump (``dumps_on_the_post_halt_step``)
-        writes output without changing the snapshot on most such languages
-        (Cyclic tag records the dump, so its snapshot changes).
-        """
-
     @property
     def halted(self) -> bool:
         """Whether the machine has finished executing."""
@@ -376,6 +367,24 @@ def machine_traits(language: str) -> dict[str, bool]:
     """
     state = interpreter_module(resolve(language))._Machine  # noqa: SLF001 - traits need no instance
     return traits(state)
+
+
+@runtime_checkable
+class SnapshotVM(VM, Protocol):
+    """A :class:`VM` with the state cycle detection compares; internal.
+
+    Out of the public protocol (2.0): users reach it as
+    :meth:`~esolangs.debugger.Debugger.snapshot`.
+    """
+
+    def snapshot(self) -> Hashable:
+        """Return the internal state cycle detection compares, hashable.
+
+        ``output`` is excluded, so equal internal state means the same future
+        computation.  The post-halt dump (``dumps_on_the_post_halt_step``)
+        writes output without changing the snapshot on most such languages
+        (Cyclic tag records the dump, so its snapshot changes).
+        """
 
 
 def make_vm(
