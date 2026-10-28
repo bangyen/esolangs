@@ -20,6 +20,8 @@ Size:
     1847: 20,543 chars, n=12 random 1847: 81,985 chars.
 
 Decisions:
+    ``balance=True`` prefixes a rule deleting every later newline, and
+    folds the whole program square ([ablations.balance_newline_rule]).
     A trailing run of the table cannot be trimmed: the cursor ``>`` is left
     undecoded (116 of 126 wrong).
 """
@@ -31,6 +33,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
@@ -67,6 +71,22 @@ def slashes(truth_table: str) -> str:
     )
     prefix = _IGNORE if 0 in weights else ""
     return prefix + _UNARY + _SWEEP * len(bits) + _DECODE + slots + ">" + table
+
+
+#: Deletes every later newline, so the rest wraps anywhere.
+_NEWLINES = "/\n//"
+
+
+def _balance(program: str) -> str:
+    """Return the program behind :data:`_NEWLINES`, folded square.
+
+    A break may fall anywhere, inside a rule too: the newline rule runs first
+    and every later newline is gone before a rule is read.  Template runs
+    stay whole.  The unwrapped line stays a candidate for tiny tables.
+    """
+    tokens = _tokens(_NEWLINES + program, r"[\s\S]")
+    width = balanced_token_width(tokens)
+    return min(program, _join_tokens(tokens, width, ""), key=balance_score)
 
 
 def _is_unfilled_template(code: str) -> bool:
@@ -112,5 +132,6 @@ LANGUAGE = Language(
         "constant tables delete the input letters and print their answer.",
     ),
     no_wrap="newlines are literal output and substitution data",
+    wrap_balance=_balance,
     example=Example(pair=("a", "b"), unfilled=_is_unfilled_template),
 )

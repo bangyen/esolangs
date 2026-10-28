@@ -101,3 +101,30 @@ def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
 
 def test_unwrappable_source_is_untouched() -> None:
     assert wrap_program("iiiioddo", "slashes", 4) == "iiiioddo"
+
+
+@pytest.mark.parametrize(
+    "table", ["00", "11", "0110", "00001111", "01010101", "0001000100010001"]
+)
+def test_balanced_program_folds_behind_the_newline_rule(table: str) -> None:
+    """Constant, ignored-input and full tables all run once folded."""
+    from esolangs.generation.wrap import balance_score
+
+    n = len(table).bit_length() - 1
+    plain = str(esolangs.generate("///", table))
+    balanced = str(esolangs.generate("///", table, balance=True))
+    assert balance_score(balanced) <= balance_score(plain)
+    assert _evaluate("///", balanced, inputs=n) == table
+    assert _evaluate("///", balanced, inputs=n) != table[:-1] + str(1 - int(table[-1]))
+
+
+def test_balanced_side_is_square_at_n8() -> None:
+    """Seed 8: 5181 chars on one line fold to 52 x 104 behind the rule."""
+    import random
+
+    from esolangs.generation.wrap import balance_score
+
+    table = format(random.Random(8).getrandbits(256), "0256b")
+    balanced = str(esolangs.generate("///", table, balance=True))
+    assert balance_score(balanced)[0] == 104
+    assert balanced.startswith("/\n//")

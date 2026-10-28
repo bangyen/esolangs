@@ -39,3 +39,10 @@ verdict = "kept: canonical, exempt. A constant table deletes its input letters a
 saving = 99.8
 arity = 12
 verdict = "kept: canonical, exempt. The table is read at the essential inputs only; an ignored input's slot is X-marked and its bit deleted by the _IGNORE rule before the unary sweep. Emitting the full table over all inputs costs +99.18% at n=10 and +99.79% at n=12 on one-ignored tables, +295.44 / +298.82% on two-ignored tables, and 0.00% on random tables, where every input is essential"
+
+[ablations.balance_newline_rule]
+saving = 100.0
+arity = 8
+seed = "random.Random(131s + n), s = 0..19"
+tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7,8"
+verdict = "kept: the balanced build was a no-op (one line, no wrapper), 1 x 2,620 and 1 x 5,181 chars at n=7 / 8. A leading rule /<newline>// deletes every later newline before the next rule is read, so the rest folds at any column, inside a rule too; the 4-char prefix and template runs kept whole fold it to side 74 / 104 (balance_score(p)[0]), balanced area (score squared) -99.9% / -100.0% on random tables and on every named function (sizes are table-independent; 6,864,400 -> 5,476 and 26,842,761 -> 10,816). The default is byte-identical on all 56 tables. Every balanced program ran on every row (56 tables, 0 bad) and a wrong table failed on each; a constant, an ignored-input and full tables at n<=4 ran too (test)"
