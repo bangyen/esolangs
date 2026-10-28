@@ -42,6 +42,13 @@ def _seeded(n: int, seed: int) -> str:
     return f"{random.Random(7919 * seed + n).getrandbits(width):0{width}b}"
 
 
+def _dig_indexed_worst(n: int) -> str:
+    """Distinct six-input leaves, at most ten: the indexed decoder's walk grows
+    24 commands per class (``proof_formulas._INDEXED``)."""
+    blocks = [_seeded(6, k + 1) for k in range(min(10, 1 << n - 6))]
+    return "".join(blocks[i % len(blocks)] for i in range(1 << n - 6))
+
+
 # language-owners: ["AddSubJump", "Subleq"]
 def _asj_packed_worst(n: int) -> str:
     """Top three bits of every chunk set (all chunks widest), the rest hashed.
@@ -821,6 +828,7 @@ _SPARSE_BAND = {
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
+    "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
     "Back": _back_worst,
     # The last input ignored: n - 1 essential inputs can outrun all n.
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),

@@ -6,13 +6,11 @@ from esolangs.languages.dig.generator._layout import (
     _dig_alt_clear,
     _Point,
     _remap_reads,
-    _walk_bound,
 )
 from esolangs.languages.dig.generator._leaf import (
     _DIG_TURNS_CW,
     _dig_adder,
     _dig_flat_leaf,
-    _dig_flat_walk,
     _hold_column,
     _Reads,
     _render,
@@ -23,8 +21,8 @@ class _PrefixDecoder(NamedTuple):
     """A prefix decoder stamp plus the geometry the shared body needs.
 
     ``end`` is the exit column, ``last`` the stamp-local point the decoder
-    is left from, ``prefix_cost`` its walk, ``exit_row`` its exit row, and
-    ``offset``/``row_offset``/``top`` place and bound it on the grid.
+    is left from, and ``offset``/``row_offset``/``top`` place and bound it on
+    the grid.
     """
 
     chars: dict[tuple[int, int], str]
@@ -32,8 +30,6 @@ class _PrefixDecoder(NamedTuple):
     reads: _Reads
     end: int
     last: tuple[int, int]
-    prefix_cost: int
-    exit_row: int
     offset: int
     row_offset: int
     top: int
@@ -61,8 +57,6 @@ def _flat_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
         reads,
         end=halt[1],
         last=halt,
-        prefix_cost=_dig_flat_walk(high, low),
-        exit_row=halt[0],
         offset=1,
         row_offset=row_offset,
         top=box.max_y + row_offset + 3,
@@ -99,15 +93,12 @@ def _adder_prefix_decoder(bits: int, prefix: str) -> _PrefixDecoder:
         )
     )
     chars.update({(row, end): char for row, char in enumerate(prefix, 5)})
-    hold = _hold_column(chars)
     return _PrefixDecoder(
         chars,
         turns,
         reads,
         end=end,
         last=(len(prefix) + 4, end),
-        prefix_cost=2 * hold + 4 - end,
-        exit_row=1,
         offset=1,
         row_offset=1,
         top=len(prefix) + 8,
@@ -132,38 +123,11 @@ def _indexed_classes(table: str) -> tuple[list[str], str] | None:
     return unique, "".join(indices[block] for block in blocks)
 
 
-def _indexed_ledger_cost(decoder: _PrefixDecoder, classes: int) -> int:
-    """Charge entry, decoder, connection and shared-body legs to the ledger."""
-    # Entry, decoder, descent, east/down/west connection, shared body.
-    rows = 8
-    body_cost = (
-        _dig_flat_walk([4, 2, 1], [4, 2, 1])
-        - ((rows + 14) // 2 - 1)
-        + 9
-        + 3 * rows * (classes - 1)
-    )
-    return (
-        decoder.row_offset
-        + decoder.offset
-        + decoder.prefix_cost
-        + decoder.top
-        - 2
-        - (decoder.exit_row + decoder.row_offset)
-        + _BODY_ENTRY_COL
-        - (decoder.end + decoder.offset)
-        + 4
-        + _BODY_ENTRY_COL
-        - 9
-        + body_cost
-    )
-
-
 def _dig_indexed_shared(table: str, n: int) -> str | None:
     """Decode two to six prefix bits into shared six-input leaf classes.
 
     Prefix literals become inert after the selected class is read. Its
     class number adds eight rows to the final six-input lookup per class.
-    Entry and stamp legs are charged against the unchanged command ledger.
     """
     bits = n - 6
     if bits not in (2, 3, 4, 5, 6):
@@ -177,8 +141,6 @@ def _dig_indexed_shared(table: str, n: int) -> str | None:
         if bits > 4
         else _adder_prefix_decoder(bits, prefix)
     )
-    if _indexed_ledger_cost(decoder, len(unique)) > _walk_bound(n):
-        return None
     return _assemble_indexed(decoder, unique)
 
 

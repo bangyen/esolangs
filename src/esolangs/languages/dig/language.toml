@@ -8,7 +8,7 @@ backlinks = 11
 labels = ["tree"]
 qualification = "finite cell placement, the last six essential inputs left to a painted leaf table, an ignored input among or above them read and dropped"
 scaling = "linear: worst A cells past n = 6: the dense table"
-execution = "linear: worst 128 + 46·2^((n-6)/2) for even n, 128 + 64·2^((n-7)/2) for odd, past n = 6"
+execution = "linear: at most 125 + 74·2^((n-6)/2) for even n, 125 + 92·2^((n-7)/2) for odd, past n = 6"
 workspace = "linear: worst 8RC + bl(R-1) + bl(C-1) + bl(2n-1) + bl(n) + 10 bits past n = 4: the R×C grid"
 
 [generator_sizes]
@@ -65,7 +65,7 @@ verdict = "kept: canonical, exempt; saving on the constant-table class"
 [ablations.indexed_leaf_decoder]
 saving = 96.8
 arity = 12
-verdict = "kept: clears on its mosaic class (88.0% at n=10, 200 tables); refused by the execution ledger at n=11 with four or more classes (cost 395 against a bound of 384)"
+verdict = "kept: clears on its mosaic class (88.0% at n=10, 200 tables); the execution ledger that refused it is removed: it refused three or more classes at n=8, four at n=9, five at n=10, four at n=11 (395 against 384), eight at n=12, costing 53.2% of area on random tables at n=8, 63.1% at n=9 and 94.6% on eight classes at n=12, to keep a constant of a bound whose growth the decoder keeps -- it runs at n <= 12 only, at most 265, 371, 435, 539, 561 commands"
 
 [ablations.lane_and_parallel_sharing]
 saving = 0.0
@@ -88,9 +88,9 @@ arity = 8
 verdict = "retired 2026-10-21 (plain-rewrite audit): the two-band tree stays a width candidate only; as a default candidate it saved 9.4% of area over the 256 n=3 tables, 0.2% at n=4 (2,000 random), 0.0% at n=5..10 on random and one-to-three-essential tables, and on and/or 19.5% at n=7, 4.5% at n=8, 0.0% at n=9 -- a share in decline"
 
 [ablations.compaction]
-saving = 0.6
-arity = 8
-verdict = "kept: feasibility -- the travel-axis squeeze is inseparable from the execution-ledger gate in the same method, and the gate refuses shared builds worth as much as the squeeze saves"
+saving = 67.4
+arity = 16
+verdict = "kept: clears on its parity class (58.8% of area at n=13, 65.1% at n=14, 67.4% at n=16, against the same shared build uncompacted); 1.3-1.8% on random repeated-leaf tables at n=12..14, 0.0% at n <= 12 where no lane build wins"
 
 [ablations.width_machinery]
 saving = 0.0

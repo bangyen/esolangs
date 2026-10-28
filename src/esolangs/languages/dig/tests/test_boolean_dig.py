@@ -269,7 +269,9 @@ class TestDig:
             table = ignore(inner, at)
             n = len(table).bit_length() - 1
             program = boolean.dig(table)
-            assert len(program) < 1.03 * len(boolean.dig(inner))
+            # 674 against 641 at n=9: the read costs 5.1% once the inner
+            # table's four classes take the indexed decoder; no level doubles.
+            assert len(program) < 1.06 * len(boolean.dig(inner))
             for row in range(0, 1 << n, 1 if n == 7 else 11):
                 bits = [str(row >> (n - 1 - i) & 1) for i in range(n)]
                 assert run_dig(program, bits) == table[row], (at, row)
@@ -527,11 +529,11 @@ def test_spare_row_routes_reach_every_width_path(width: int | None) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize(
-    ("pattern", "shared", "expected_steps", "expected_area"),
-    [("0220200231131331", True, 291, 1152), ("1230301230121230", False, 291, 1152)],
+    ("pattern", "expected_steps", "expected_area"),
+    [("0220200231131331", 291, 1152), ("1230301230121230", 291, 1152)],
 )
-def test_disjoint_and_interleaved_groups_choose_bounded_routes(
-    pattern: str, *, shared: bool, expected_steps: int, expected_area: int
+def test_disjoint_and_interleaved_groups_choose_the_indexed_route(
+    pattern: str, expected_steps: int, expected_area: int
 ) -> None:
     import random
 
@@ -542,8 +544,7 @@ def test_disjoint_and_interleaved_groups_choose_bounded_routes(
     rng = random.Random(2026)
     blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(4)]
     table = "".join(blocks[int(bit)] for bit in pattern)
-    candidate = _dig_lane_shared(table, 10)
-    assert (candidate is not None) == shared
+    assert _dig_lane_shared(table, 10) is not None
     program = boolean.dig(table)
     rows = program.splitlines()
     assert len(rows) * max(map(len, rows)) == expected_area
@@ -709,12 +710,12 @@ def test_indexed_sharing_admits_full_input_controls(
     assert worst == commands
 
 
-def test_indexed_sharing_refuses_four_classes_at_nine_inputs() -> None:
+def test_indexed_sharing_builds_four_classes_at_nine_inputs() -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks[int(c)] for c in "01230123")
-    assert _dig_indexed_shared(table, 9) is None
+    assert _dig_indexed_shared(table, 9) is not None
 
 
 @pytest.mark.medium
@@ -747,15 +748,15 @@ def test_indexed_prefix_decoders_execute_every_row(
     assert worst == commands
 
 
-def test_indexed_sharing_refuses_four_classes_at_eleven_inputs() -> None:
+def test_indexed_sharing_builds_four_classes_at_eleven_inputs() -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
-    assert _dig_indexed_shared("".join(blocks) * 8, 11) is None
+    assert _dig_indexed_shared("".join(blocks) * 8, 11) is not None
 
 
 @pytest.mark.medium
-def test_indexed_six_bit_decoder_keeps_four_classes_within_the_ledger() -> None:
+def test_indexed_six_bit_decoder_runs_four_classes() -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
@@ -780,7 +781,7 @@ def test_indexed_six_bit_decoder_keeps_four_classes_within_the_ledger() -> None:
 
 
 @pytest.mark.medium
-def test_indexed_sharing_uses_the_ledger_to_limit_class_count() -> None:
+def test_indexed_sharing_builds_seven_and_eight_classes_at_twelve_inputs() -> None:
     from esolangs.languages.dig.generator._shared import _dig_indexed_shared
     from esolangs.languages.dig.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
@@ -804,7 +805,7 @@ def test_indexed_sharing_uses_the_ledger_to_limit_class_count() -> None:
         worst = max(worst, steps)
     assert worst == 489
     blocks.append("0" * 64)
-    assert _dig_indexed_shared("".join(blocks) * 8, 12) is None
+    assert _dig_indexed_shared("".join(blocks) * 8, 12) is not None
 
 
 @pytest.mark.parametrize(

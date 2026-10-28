@@ -13,7 +13,6 @@ from esolangs.languages.dig.generator._leaf import (
     _dig_adder_fits,
     _dig_constant_leaf,
     _dig_flat_leaf,
-    _dig_flat_walk,
     _render,
 )
 
@@ -53,14 +52,6 @@ class _Point(NamedTuple):
         """Return the point ``count`` cells from here along ``heading``."""
         d_row, d_col = _DIG_DIRECTIONS[heading]
         return _Point(self.row + d_row * count, self.col + d_col * count)
-
-
-def _walk_bound(n: int) -> int:
-    """Return the command cost a sharing walk may take at ``n`` inputs."""
-    bound: int = 128 + (
-        46 * 2 ** ((n - 6) // 2) if n % 2 == 0 else 64 * 2 ** ((n - 7) // 2)
-    )
-    return bound
 
 
 def _operand_side(heading: int) -> int:
@@ -388,8 +379,6 @@ class _AlternatingTree:
         self.corridors: list[tuple[_Point, int, int]] = []
         self.entries: dict[_Point, _LeafKey] = {}
         self.owners: dict[_LeafKey, _Point] = {}
-        self.links: list[tuple[_Point, _Point, _Point]] = []
-        self.tails: dict[_Point, int] = {}
 
     def short_leaf(self, level: int, lo: int) -> str:
         """Return the constant span's read row for ``truth_table[lo]``."""
@@ -481,8 +470,6 @@ class _AlternatingTree:
         if not paint:
             return
         code = self.short_leaf(level, lo)
-        if self.sharing:
-            self.tails[point] = len(code)
         self.text(point, heading, code)
         self.reads.extend(
             (point.step(heading, i), point.step(heading, i + 1), frozenset())
@@ -522,9 +509,7 @@ class _AlternatingTree:
             self._paint_branch_block(point, heading, skip, end)
         half = (lo + hi) // 2
         for child_bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
-            self._place_child(
-                level, point, end, heading, child_bit, child_bounds, paint=paint
-            )
+            self._place_child(level, end, heading, child_bit, child_bounds, paint=paint)
 
     def _paint_branch_block(
         self, point: _Point, heading: int, skip: int, end: _Point
@@ -546,7 +531,6 @@ class _AlternatingTree:
     def _place_child(
         self,
         level: int,
-        point: _Point,
         end: _Point,
         heading: int,
         child_bit: int,
@@ -565,8 +549,6 @@ class _AlternatingTree:
         child = end.step(child_heading, distance)
         if paint:
             self.corridors.append((end, child_heading, distance))
-            if self.sharing:
-                self.links.append((point, end, child))
         self.node(level + 1, child, child_heading, *child_bounds, paint=paint)
 
     def paint(self) -> None:
@@ -656,8 +638,8 @@ class _AlternatingTree:
                     )
                 previous[key] = lane
 
-    def compact_sharing(self) -> bool:
-        """Compact unused travel-axis rows/columns; False aborts.
+    def compact_sharing(self) -> None:
+        """Compact unused travel-axis rows/columns.
 
         Keep every internal blank in a leaf box; compact only the unused
         rows or columns between stamps, where the mole is overground.
@@ -679,34 +661,6 @@ class _AlternatingTree:
         # `_compaction_lines` guarantees this passes: no digit becomes a
         # reader's neighbour, and corridors and lane arrows cannot change.
         _dig_alt_clear(self.cells, compact_reads, compact_corridors)
-        return self._sharing_walk_cost(compact) <= _walk_bound(self.n)
-
-    def _sharing_walk_cost(self, compact: Callable[[_Point], _Point]) -> int:
-        """Return the entry ray plus the worst walk of any shared entry."""
-        costs = {_Point(0, 0): 0}
-        for parent, end, child in self.links:
-            p, e, c = compact(parent), compact(end), compact(child)
-            costs[child] = (
-                costs[parent]
-                + abs(p.row - e.row)
-                + abs(p.col - e.col)
-                + abs(e.row - c.row)
-                + abs(e.col - c.col)
-            )
-        leaf_cost = _dig_flat_walk(self.high, self.low)
-        worst = max((costs[p] + cost for p, cost in self.tails.items()), default=0)
-        for point, key in self.entries.items():
-            travel = 0
-            if key in self.owners:
-                travel = abs(
-                    compact(point)[self.travel_axis]
-                    - compact(self.owners[key])[self.travel_axis]
-                )
-            worst = max(worst, costs[point] + travel + leaf_cost)
-        entry_cost = (
-            4 - min(row for row, _ in self.cells) - min(col for _, col in self.cells)
-        )
-        return entry_cost + worst
 
     def render(self) -> str:
         """Shift the grid to a blank entry ray and render it."""
@@ -759,6 +713,6 @@ def _dig_layout(
         if sharing:
             return None
         raise
-    if sharing and not tree.compact_sharing():
-        return None
+    if sharing:
+        tree.compact_sharing()
     return tree.render()

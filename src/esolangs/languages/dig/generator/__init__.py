@@ -18,12 +18,14 @@ Decisions:
     A constant span at any level is a row of reads and a print, its box sized
     alone ([ablations.constant_span_alternating]).
     Aligned repeated leaves join along spare rows or columns, retaining the
-    last copy and compacting unused external space.  Paths must fit the
-    execution ledger (n=8 A B B A: 1,155 cells, 208 commands); groups whose
-    corridors collide or exceed it remain unshared.  A prefix lookup can
-    index up to seven shared leaf classes at n=8..12, adding eight rows per
-    class to one six-input body; full-input parity uses 720 cells and 227
-    commands at n=9, four-class n=10 controls 1,152 cells and 291 commands.
+    last copy and compacting unused external space; groups whose corridors
+    collide remain unshared.  A shared walk adds one travel along a grid
+    axis to the unshared descent, so commands stay O(sqrt T)
+    ([proof_formulas.execution]); no ledger refuses a build.  A prefix
+    lookup can index up to ten shared leaf classes at n=8..12, adding eight
+    rows per class to one six-input body; full-input parity uses 720 cells
+    and 227 commands at n=9, four-class n=10 controls 1,152 cells and 291
+    commands.
     Narrow widths can use the indexed leaf decoder.
 """
 
@@ -323,8 +325,7 @@ def _dig_alternating(truth_table: str, n: int) -> str:
 def _dig_lane_shared(truth_table: str, n: int) -> str | None:
     """Join aligned repeated leaves along spare rows or columns.
 
-    Reject crossings and paths above the execution ledger. A six-bit leaf's
-    worst walk is the sum of its adder, painter, selector and output legs.
+    None on crossings or collisions.
     """
     if n <= _DIG_LEAF_BITS:
         return None
@@ -549,7 +550,7 @@ LANGUAGE = Language(
     split=True,
     balance=_balance,
     empty_program="Dig program cannot be empty",
-    proof_execution=(execution, True, (7,)),
+    proof_execution=(execution, False, (7, 8, 9, 10, 11, 12)),
     proof_workspace=(workspace, True, (5,)),
     grid=True,
 )

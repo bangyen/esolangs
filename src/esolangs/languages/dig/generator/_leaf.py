@@ -357,25 +357,6 @@ class _FlatLeafBuilder:
         self.reads.extend((((2, 8), (2, 9), pending), ((2, 7), (3, 7), pending)))
 
 
-def _dig_flat_walk(high: list[int], low: list[int]) -> int:
-    """Bound the centered flat stamp's walk, including the final halt."""
-    row_count, col_count = sum(high) + 1, sum(low) + 1
-    painter = _dig_adder(high, 2).box.max_x - 1
-    stepper = _dig_adder(low, 0).box.max_x - 1
-    far = max(_TABLE_COL + col_count, 5 + stepper)
-    # Sum the flat stamp's walking legs. Only the selected column
-    # changes their length; its maximum is col_count - 1. Data digits
-    # affect the printed answer, never the route.
-    return (
-        (row_count + 14) // 2
-        - 1
-        + 2 * (painter + stepper + far)
-        + 3 * row_count
-        + 2 * (col_count - 1)
-        + 48
-    )
-
-
 def _render(cells: dict[tuple[int, int], str], *, dense: bool) -> str:
     """Paint ``cells`` into rows of text; ``dense`` keeps empty rows.
 

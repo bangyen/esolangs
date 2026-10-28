@@ -9,4 +9,6 @@ def _cells(n: int, _: str) -> int:
     return (36 * k - 1) * (28 * k - 1) if n % 2 else (56 * k - 1) * (36 * k - 1)
 
 
-FORMULAS = {"scaling": (_cells, True, (7, 8))}
+# Reached at 7 and 10; at 8 and 9 a random table has at most ten classes, so
+# the indexed decoder is smaller (900 and 1,440 cells).
+FORMULAS = {"scaling": (_cells, frozenset({7, 10}), (7, 8, 10))}
