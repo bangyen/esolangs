@@ -20,7 +20,7 @@ definitions = ["C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C", "Q = I·bl
 [generator_sizes]
 "00000001" = { commands = 23, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 20, "5" = 20, "6" = 23, "7" = 23 }, source_units = 344 }
 "00001100" = { commands = 17, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 237 }
-"00110110" = { commands = 23, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 452 }
+"00110110" = { commands = 24, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 23, "5" = 23, "6" = 24, "7" = 24 }, source_units = 452 }
 "0110" = { commands = 17, commands_by_row = { "0" = 16, "1" = 16, "2" = 17, "3" = 17 }, source_units = 287 }
 "01101001" = { commands = 24, commands_by_row = { "0" = 23, "1" = 23, "2" = 24, "3" = 24, "4" = 25, "5" = 25, "6" = 24, "7" = 24 }, source_units = 450 }
 "0110100110010110" = { commands = 32, commands_by_row = { "0" = 30, "1" = 30, "2" = 31, "3" = 31, "4" = 32, "5" = 32, "6" = 31, "7" = 31, "8" = 33, "9" = 33, "10" = 32, "11" = 32, "12" = 31, "13" = 31, "14" = 32, "15" = 32 }, source_units = 614 }
@@ -33,17 +33,17 @@ audited = "2026-10-19"
 [ablations.packed_decoder]
 saving = 86.0
 arity = 10
-verdict = "kept: clears the bar on random tables and rises steeply (17.7% at n=6, 65.8% at n=8, 86.0% at n=10 against the tree candidate). On named functions the unrated tree candidate is smaller (and/or 889 against 1,547-1,609 at n=8) -- the route cutoff at 32 essential rows left that on the table until 2026-10-20, when the tree began racing at every n: and 1,547 -> 889 and parity 1,609 -> 1,267 at n=8, and 1,847 -> 1,107 at n=10; random tables unchanged (0/20 tree wins at n=6..10)"
+verdict = "kept: clears the bar on random tables and rises steeply (17.7% at n=6, 65.8% at n=8, 86.0% at n=10 against the tree candidate). On named functions the unrated tree candidate is smaller (and/or 889 against 1,547-1,609 at n=8) -- the route cutoff at 32 essential rows left that on the table until 2026-10-20, when the tree began racing at every n: and 1,547 -> 889 and parity 1,609 -> 1,267 at n=8, and 1,847 -> 1,107 at n=10; random tables unchanged (0/20 tree wins at n=6..10). Plain-rewrite 2026-10-27: the race is unchanged by the audit (shared tree against packed); random tables ship the tree at n<=5 and the packed build at n>=6 in the 20-table samples at n=6..8"
 
 [ablations.residual_tree_route]
 saving = 21.5
 arity = 8
-verdict = "kept: clears the bar on its class -- racing the tree/shared candidate where essential rows number 32 or fewer earns 19.9% on five-essential tables at n=6 rising to 21.5% at n=8 over the packed build alone (in-code figures 18.7% / 20.6%, the same measurement on a different sample). The plain tree alone contributes only 0.5-1.1% of it; the shared build carries the route"
+verdict = "kept: clears the bar on its class -- racing the tree/shared candidate where essential rows number 32 or fewer earns 19.9% on five-essential tables at n=6 rising to 21.5% at n=8 over the packed build alone (in-code figures 18.7% / 20.6%, the same measurement on a different sample). The plain tree alone contributes only 0.5-1.1% of it; the shared build carries the route. Plain-rewrite 2026-10-27: the plain tree contestant and the explicit n=5 branch (shared against packed only) are retired -- see tree_contestant; the shared tree now races the packed build at every n"
 
 [ablations.shared_residuals]
 saving = 20.7
 arity = 8
-verdict = "kept: canonical sharing, exempt; its marginal within the candidate is 19.5% on five-essential tables at n=6 rising to 20.7% at n=8, 20.9% on random tables at n=4, and 18.7% against the packed build alone at n=5 (in-code figure 18.9%)"
+verdict = "kept: canonical sharing, exempt; its marginal within the candidate is 19.5% on five-essential tables at n=6 rising to 20.7% at n=8, 20.9% on random tables at n=4, and 18.7% against the packed build alone at n=5 (in-code figure 18.9%). Plain-rewrite 2026-10-27, deleting it (plain tree only, programs run on all rows): +10.41% / +40.13% on 10 random tables at n=3 / 4, parity +24.2 / +70.4%, majority +13.9 / +28.9% (n=3/4), parity +32.3 / +27.0% at n=7 / 8; on five-essential tables at n=7 / 8 +21.52 / +24.36% (four-essential +29.69 / +19.05%, 20 tables per arity, 4 of them in class)"
 
 [ablations.constant_fold]
 saving = 43.9
@@ -55,7 +55,30 @@ saving = 21.5
 arity = 8
 verdict = "kept: canonical, exempt; skipping levels no node tests earns 20.0-21.5% on scattered five-essential tables at n=7/8 (trailing 11.4-14.4%), 4.8-4.9% on random tables at n=4/5 where the tree routes run, and 69.5-72.0% on constants, where it is the whole construction"
 
+[ablations.data_blocks]
+saving = 21.9
+arity = 5
+verdict = "kept: bespoke, passes the bar. The two instruction-width data blocks at fixed low addresses (U=6 the zero cell, 48/49 the output digits, -48 the bit normaliser) give every tree operand a one-digit address; the plain build names them and places them after the instructions. Removing the blocks (d = -7) costs +21.86% on 40 random tables at n=5, the last arity where the tree ships on random tables (+25.49% / +32.55% at n=3 / 4 with d = a named zero cell, 10 tables each), and parity +25.6 / +26.1 / +26.6%, AND/OR +19.1 / +19.5 / +20.0%, majority +24.6 / +25.8 / +15.3% at n=5 / 6 / 7 -- per instruction, so a share not a fixed saving. Every changed program ran on all rows (n<=8)"
+
+[ablations.conditional_cell]
+saving = 0.0
+arity = 8
+verdict = "recorded: the d operand is cell 7 (the block's last word, never written, so the instruction adds). It saves 8.77% on 40 random tables at n=5 over the special zero -7, but the plain choice inside the blocks is d = U (cell 6, also a zero, same digit count): 0.00% on every class at n=3..8 (26-45 programs per arity differ in bytes, all ran on every row to n=8). A one-digit address pick, not a trick to price against -7"
+
+[ablations.tree_contestant]
+saving = 0.0
+arity = 8
+verdict = "removed 2026-10-27 (plain-rewrite audit): the unshared tree beside the shared build never ships smaller. Deleting it grows no table and shrinks none on random, one- to five-essential, half-constant, constant, threshold, parity, AND/OR and majority tables at n=3..8 (20 tables per class at n=3..8; 0 LARGER of 4,054 tables compared against the old build, 289 programs differ in bytes at equal length -- ties the old min kept as the tree -- the changed programs ran on every row to n=6 and a fifth of them above). The one visible cost is a step tie-break: table 00110110 rows 6 and 7 now run 24 commands against 23 (size pin unchanged, baseline re-recorded). The n=5 branch (shared against packed, no tree) and the one-essential-input branch of the packed builder went with it: both byte-identical in length on 200 random tables at n=5 and the named classes, 0.00%"
+
+[ablations.balance_legacy_packed]
+saving = 0.0
+arity = 8
+verdict = "removed 2026-10-27 (plain-rewrite audit): balancing also tried the full-table packed layout when an input is ignored. It changed the balanced program on five-essential tables only: -8.83% of area on 4 tables at n=6 (7.02% on 20), -2.80% on 4 at n=7 (2.46% on 20), 0.00% on 4 at n=8, and 0.00% on random, one- to four-essential, half-constant, constant and named tables at n=5..8 -- under 10% and falling. The balanced n=6 five-essential pin moves 1,427 -> 1,543 characters; the test that compared the balanced score with the legacy layout went with it"
+
 [ablations.essential_projection]
 saving = 10.7
 arity = 8
 verdict = "kept: canonical, exempt; the packed build's projection onto essential inputs earns 6.1% at build level with one ignored input at n=8 and 10.7% with two (4.4% / 8.7% at n=6); the full-table build it replaces never won its race (0 of 322 tables, in-code record) and survives only as a balance candidate"
+
+[audits]
+plain_rewrite = 2026-10-27

@@ -2,10 +2,8 @@
 
 Each input is read into a cell as a byte and, if tested, hoisted to 0 or 4; a
 node adds that to its goto's own ``c`` operand to pick the zero or one
-trampoline.  Up to 16 rows the shorter of tree and shared residuals in input
-order, and 32 rows (or 32 essential rows) also try the residual trees; wider
-tables use the packed decoder over essential inputs (or a read-and-print
-constant root), which indexes ``m``-bit cells.
+trampoline.  The shared-residual tree in input order races the packed decoder
+over essential inputs, which indexes ``m``-bit cells; the shorter ships.
 
 Size:
     Packed is O(T) cells over O(T/log T) words; n=4 parity: 614 chars,
@@ -25,7 +23,7 @@ from esolangs.generation.helpers import (
     input_weights,
     stored_inputs,
 )
-from esolangs.generation.wrap import balance_program, balance_score, wrap_grid
+from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.addsubjump.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -107,31 +105,21 @@ def _memory(
 
 def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program for ``truth_table`` (length ``2**n``, MSB first)."""
-    packed = _addsubjump_packed(truth_table)
-    if len(truth_table) == 32:
-        # Shared residuals beat packed alone at n=5
-        # ([ablations.shared_residuals]).
-        shared = _addsubjump_ordered(truth_table, tuple(range(5)), shared=True)
-        return min((packed, shared), key=len)
     n = _validate_truth_table(truth_table)
-    # The tree folds the ignored levels: it wins with five essential inputs
-    # ([ablations.residual_tree_route]) and on named functions past them.
-    tree = _addsubjump_candidate(truth_table, tuple(range(n)))
-    return min((packed, tree), key=len)
+    # The shared tree folds the ignored levels: it wins with five essential
+    # inputs ([ablations.residual_tree_route]) and on named functions past them.
+    tree = _addsubjump_ordered(truth_table, tuple(range(n)), shared=True)
+    return min((_addsubjump_packed(truth_table), tree), key=len)
 
 
-def _addsubjump_packed(truth_table: str, *, keep_ignored_inputs: bool = False) -> str:
-    """Emit the essential-input packed decoder, or the full one if asked."""
+def _addsubjump_packed(truth_table: str) -> str:
+    """Emit the packed decoder over the essential inputs."""
     n = _validate_truth_table(truth_table)
-    if keep_ignored_inputs:
-        return _packed_build(truth_table, [1] * n)
     weights, projected = input_weights(truth_table, n)
     if all(weights):
         return _packed_build(truth_table, weights)
     # The full-table build never won against this one: 0 of 322 tables with
     # ignored inputs (n=6..8, 1..n-1 essential), so it is not raced.
-    if len(projected) == 1:
-        return _addsubjump_ordered(truth_table, tuple(range(n)))
     return _packed_build(projected, weights)
 
 
@@ -305,29 +293,6 @@ def _packed_build(truth_table: str, weights: list[int]) -> str:
     return _PackedBuilder(truth_table, weights).build()
 
 
-def balance_addsubjump(table: str, default: str) -> str:
-    """Keep the former full packed layout among the balanced candidates."""
-    if (
-        len(table) <= 16
-        or len(set(table)) == 1
-        or all(input_weights(table, _validate_truth_table(table))[0])
-    ):
-        return balance_program(default, "addsubjump")
-    legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
-    return min(
-        balance_program(default, "addsubjump"),
-        balance_program(legacy, "addsubjump"),
-        key=balance_score,
-    )
-
-
-def _addsubjump_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Choose the shorter tree or shared-residual build for one input order."""
-    tree = _addsubjump_ordered(truth_table, perm)
-    shared = _addsubjump_ordered(truth_table, perm, shared=True)
-    return min((tree, shared), key=len)
-
-
 def _addsubjump_ordered(
     truth_table: str,
     perm: tuple[int, ...],
@@ -450,7 +415,6 @@ LANGUAGE = Language(
     "addsubjump",
     category="register_based",
     boolean=addsubjump,
-    balance=balance_addsubjump,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

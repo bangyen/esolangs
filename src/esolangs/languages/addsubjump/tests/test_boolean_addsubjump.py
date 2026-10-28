@@ -12,6 +12,7 @@ from esolangs.languages import generators as boolean
 from esolangs.languages.addsubjump.generator import (
     _addsubjump_ordered,
     _addsubjump_packed,
+    _packed_build,
     addsubjump,
 )
 from tests.generators.boolean_runners import _run_from, _runner
@@ -19,6 +20,11 @@ from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits, witnesses
 
 run_addsubjump = _runner("addsubjump")
+
+
+def _full_packed(table: str) -> str:
+    """The packed build over every input, ignored ones included."""
+    return _packed_build(table, [1] * (len(table).bit_length() - 1))
 
 
 def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
@@ -34,16 +40,14 @@ def test_packed_projection_executes_every_three_input_table() -> None:
     for value in range(256):
         table = f"{value:08b}"
         program = _addsubjump_packed(table)
-        legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
+        legacy = _full_packed(table)
         assert len(program) <= len(legacy)
         assert _evaluate("AddSubJump", program, inputs=3) == table
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("kind", ["zero", "one", "first", "last", "ends"])
-def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind) -> None:
-    from esolangs.generation.wrap import balance_program, balance_score
-    from esolangs.languages.addsubjump.generator import _addsubjump_packed
+def test_wide_packed_projection_keeps_reads(kind) -> None:
     from esolangs.languages.addsubjump.interpreter import _Machine
     from esolangs.runtime._evaluate import _evaluate
     from esolangs.runtime.io import ScriptedIO
@@ -67,13 +71,10 @@ def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind) -> None
         )
     )
     program = boolean.addsubjump(table)
-    legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
+    legacy = _full_packed(table)
     assert len(program) < len(legacy)
     assert _evaluate("AddSubJump", program, inputs=8) == table
     balanced = esolangs.generate("AddSubJump", table, balance=True)
-    assert balance_score(balanced) <= balance_score(
-        balance_program(legacy, "addsubjump")
-    )
     assert _evaluate("AddSubJump", balanced, inputs=8) == table
     for row in (0, 1, 128, 255):
         bits = [int(c) for c in f"{row:08b}"]
@@ -87,7 +88,6 @@ def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind) -> None
 @pytest.mark.medium
 @pytest.mark.parametrize("essential", range(1, 8))
 def test_packed_projection_indexes_nonadjacent_coordinates(essential) -> None:
-    from esolangs.languages.addsubjump.generator import _addsubjump_packed
     from esolangs.runtime._evaluate import _evaluate
 
     used = [*range(essential - 1), 7]
@@ -95,7 +95,7 @@ def test_packed_projection_indexes_nonadjacent_coordinates(essential) -> None:
         str(sum((row >> (7 - bit)) & 1 for bit in used) % 2) for row in range(256)
     )
     program = boolean.addsubjump(table)
-    assert len(program) <= len(_addsubjump_packed(table, keep_ignored_inputs=True))
+    assert len(program) <= len(_full_packed(table))
     assert _evaluate("AddSubJump", program, inputs=8) == table
 
 
@@ -241,29 +241,12 @@ def test_packed_cells_execute(n: int) -> None:
             assert esolangs.read_answer("AddSubJump", output) == table[row]
 
 
-def test_balancing_retains_legacy_packed_layout_with_an_ignored_input() -> None:
-    """Retention is not only for constants: at n=7 an ignored input keeps it.
-
-    Six-input parity padded with an ignored leading input; the full packed
-    layout balances strictly better here, as for every such n=7 table.
-    """
-    from esolangs.generation.wrap import balance_program, balance_score
-    from esolangs.languages.addsubjump.generator import _addsubjump_packed
-    from tests.support.witness_tables import parity
-
-    table = parity(6) * 2
-    legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
-    balanced = esolangs.generate("AddSubJump", table, balance=True)
-    old = balance_program(legacy, "addsubjump")
-    assert balance_score(balanced) <= balance_score(old)
-
-
 def test_six_input_table_with_five_essential_rows_pins_both_sizes() -> None:
-    """Five essential inputs at n=6 take the tree route, and balancing keeps
-    the full packed layout when it scores better; both sizes are pinned."""
+    """Five essential inputs at n=6 take the tree route; balancing weighs the
+    default layout alone; both sizes are pinned."""
     table = "0010100100101001011011100110111010011011100110110110101101101011"
     assert len(esolangs.generate("AddSubJump", table)) == 1063
-    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1427
+    assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1543
 
 
 def test_packed_program_prints_then_halts_on_the_special_address() -> None:
