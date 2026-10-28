@@ -8,7 +8,11 @@ columns.
 
 From six inputs the canonical shape is flat: the table is written one cell
 per entry and the inputs address it (:func:`_streetcode_flat`), which is
-nine rows of street however many entries there are; the tree races it by
+nine rows of street however many entries there are; only the minority
+entries are marked: a one by ``^``, or, when the zeros are fewer by two,
+a zero by ``~`` (the tail lifts 49 and the rooms steer with two ``^``), so
+a table dense in ones writes as short a street as its complement (thr2
+n=8: 8,856 -> 6,723 cells); the tree races it by
 area where it folds ([ablations.flat_tree_race]). The tree folds constant
 subtrees and draws equal nonconstant sibling cofactors once, advancing CP
 past their selector. Nonadjacent repeats still have separate drawings: they
@@ -451,7 +455,11 @@ def _streetcode_mouths(
 
 
 def _streetcode_room(
-    grid: dict[tuple[int, int], str], mouth: int, room: int, walk: int
+    grid: dict[tuple[int, int], str],
+    mouth: int,
+    room: int,
+    walk: int,
+    steer: int = 1,
 ) -> None:
     """Draw one level's side room, its stalk, and the read run east of it.
 
@@ -460,7 +468,9 @@ def _streetcode_room(
     ``2 * room`` cells in that order.  The walk's ``_`` fill them and the
     ``^`` after them leaves the cell CP lands on nonzero, which is what
     steers the merge back west -- a merge re-reads the cell, and on a zero
-    it would rejoin the street heading east instead.
+    it would rejoin the street heading east instead.  A cell marked ``~``
+    holds -1, which one ``^`` zeroes; ``steer`` is the ``^`` count (two
+    fit the room: it has 2 * room >= walk + 2 cells).
     """
     east = mouth + 1
     west = east - room + 1
@@ -484,7 +494,8 @@ def _streetcode_room(
     drive += [(_DOWN, col) for col in range(west, east)]
     for row, col in drive[:walk]:
         grid[row, col] = "_"
-    grid[drive[walk]] = "^"
+    for cell in drive[walk : walk + steer]:
+        grid[cell] = "^"
     grid[_WEST, mouth + _READ_RUN + 1] = "I"
     for col in range(mouth + 2, mouth + _READ_RUN + 1):
         grid[_WEST, col] = "~"
@@ -534,7 +545,16 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     ``I`` ahead of the tail.  The table holds the indexed inputs' entries alone.
     """
     truth_table, n, gaps, pending = _flat_inputs(truth_table, n)
-    fill = "".join(("^" if bit == "1" else "") + "=" for bit in reversed(truth_table))
+    # Only the minority entry is marked: a one by ``^``, or, with the zeros
+    # marked ``~`` and the tail lifting 49, a zero.  The tail's extra ``^``
+    # is paid for by the minority.
+    negated = truth_table.count("0") + 1 < truth_table.count("1")
+    mark = "~" if negated else "^"
+    tail = _TAIL.replace("_", "^_") if negated else _TAIL
+    marked = "0" if negated else "1"
+    fill = "".join(
+        (mark if bit == marked else "") + "=" for bit in reversed(truth_table)
+    )
     fill += "^"
     # ``pending`` trailing ignored inputs are lone ``I`` between the last
     # mouth and the tail; each overwrites the cell CP rests on, one east of
@@ -543,7 +563,7 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     # Overlapping it onto the fill's columns saved a fixed ~51 columns --
     # 8.6% of area at n=7, 6.0% at n=8, a share falling with arity -- under
     # the genuine-percentage rule in docs/CONTRIBUTING.md.
-    mouths = _streetcode_mouths(n, len(fill) + 3 + len(_TAIL) + pending, gaps)
+    mouths = _streetcode_mouths(n, len(fill) + 3 + len(tail) + pending, gaps)
     width = mouths[0][0] + _READ_RUN + 2 + gaps[0]
     grid: dict[tuple[int, int], str] = {}
     for col in range(width + 2):
@@ -553,11 +573,11 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     for col in range(1, width + 1):
         grid[_WEST, col] = grid[_EAST, col] = " "
     for (mouth, room, walk), gap in zip(mouths, gaps, strict=True):
-        _streetcode_room(grid, mouth, room, walk)
+        _streetcode_room(grid, mouth, room, walk, 1 + negated)
         for col in range(mouth + _READ_RUN + 2, mouth + _READ_RUN + 2 + gap):
             grid[_WEST, col] = "I"
-    for step, char in enumerate(_TAIL + "I" * pending):
-        grid[_WEST, mouths[-1][0] - len(_TAIL) - pending + step] = char
+    for step, char in enumerate(tail + "I" * pending):
+        grid[_WEST, mouths[-1][0] - len(tail) - pending + step] = char
     grid[_EAST, 1] = "C"
     for step, char in enumerate(fill):
         grid[_EAST, 2 + step] = char

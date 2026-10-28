@@ -1,8 +1,9 @@
 """Executed command and snapshot-bit bounds."""
 
 
-# Flat: each one entry costs a step, so all ones but one is the worst; the
-# tail's 51 columns are crossed once.  A tree (the only program with the
+# Flat: each marked entry costs a step, the minority polarity (at most T/2),
+# so T/2 + 1 ones, marked as the T/2 - 1 zeros, is the worst; the tail's 51
+# columns are crossed once.  A tree (the only program with the
 # setup ring's ``U``) runs a fixed setup, 294 steps an input, then drives
 # only east or south from row 2 past the setup's 4n + 16 columns, short of
 # the bottom and east walls, and halts in place.
@@ -13,8 +14,8 @@ def execution(n: int, program: str) -> int:
         setup, west = (724, 21) if n == 1 else (294 * n + 333, 4 * n + 16)
         return setup + len(rows) + max(map(len, rows)) - west - 5
     if n < 8:
-        return 3 * (1 << n) + 110 * n + 106
-    return 4 * (1 << n) + 14 * n + 650
+        return 5 * (1 << n - 1) + 110 * n + 108
+    return 7 * (1 << n - 1) + 14 * n + 652
 
 
 def workspace(n: int, _: str) -> int:

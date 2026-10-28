@@ -81,9 +81,9 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         # and constants use only their clock gate.
         return (_seeded(n, 1), _parity(n), "1" * width)
     if name == "Streetcode":
-        # Execution's worst, one zero at the last entry; the area's worst,
-        # parity below five and above it the flat street at the least zero
-        # count where the tree is no smaller (:func:`_streetcode_worst`).
+        # A tree's execution worst, one zero at the last entry; the shared
+        # worst, parity below five and above it the flat street's longest
+        # fill (:func:`_streetcode_worst`).
         return ("1" * (width - 1) + "0", _streetcode_worst(n))
     if name == "Malbolge":
         # Straight-line code: all 10 tables tie at every n measured; the

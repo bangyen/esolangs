@@ -1014,28 +1014,14 @@ def _piet_worst(n: int, kind: str) -> str:
 
 
 def _streetcode_worst(n: int) -> str:
-    """Streetcode's largest shipped area: k zeros on distinct root paths.
+    """Streetcode's largest shipped area and steps: the flat street's longest fill.
 
-    Zero r sits in block bitrev(r) of 2^j (j = bits of k - 1), at offset
-    popcount(block) mod 2: the paths split as widely as possible, and no two
-    sibling halves are equal, so nothing folds or is drawn once.  k is the
-    least count where the tree (4 rows a leaf) is no smaller than the flat street.
+    From five inputs, T/2 + 1 ones (the zeros marked, T/2 - 1 of them) is the
+    longest fill the flat street writes, and no tree beats it; below, parity.
     """
     if n < 5:
         return _parity(n)
-    gap = sum(max(51, 2 ** (i - 1) + 3) for i in range(1, n))
-    k = next(
-        k
-        for k in range(1, 1 << n)
-        if 4 * (8 * n + 20) * (1 + sum(min(1 << d, k) for d in range(n)))
-        >= 9 * (2 * (1 << n) - k + 108 + gap)
-    )
-    bits = (k - 1).bit_length()
-    zeros = set()
-    for r in range(k):
-        block = int(format(r, f"0{bits}b")[::-1], 2) if bits else 0
-        zeros.add((block << n - bits) + block.bit_count() % 2)
-    return "".join("0" if i in zeros else "1" for i in range(1 << n))
+    return "1" + _parity(n)[1:]
 
 
 def _false_tiled(n: int) -> str:

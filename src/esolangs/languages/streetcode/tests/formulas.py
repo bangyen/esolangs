@@ -10,20 +10,14 @@ def _cells(n: int, _: str) -> int:
     """The shipped area at its widest.
 
     n <= 4: the tree alone, 4 rows a leaf, every leaf distinct (parity), 8n + 20
-    columns.  From 5 the flat street, 9 rows of 2T - k + 108 + G columns with k
-    zeros, races the tree (4 * (8n + 20) * (1 + sum_d min(2^d, k))): the worst is
-    the flat at the least k where the tree is no smaller.
+    columns.  From 5 the flat street, 9 rows of T + m + 108 + G columns with m
+    the minority entries marked (at most T/2: the zeros are marked when they are
+    fewer than the ones by two), races the tree: the worst is a balanced
+    table the tree does not beat.
     """
     if n < 5:
         return (32 * n + 80) << n
-
-    def flat(k: int) -> int:
-        return 9 * (2 * 2**n - k + 108 + _gap(n))
-
-    def tree(k: int) -> int:
-        return 4 * (8 * n + 20) * (1 + sum(min(2**d, k) for d in range(n)))
-
-    return flat(next(k for k in range(1, 2**n) if tree(k) >= flat(k)))
+    return 9 * (3 * 2 ** (n - 1) + 108 + _gap(n))
 
 
 FORMULAS = {"scaling": (_cells, True, (2, 3, 4, 5, 6, 7, 8, 9, 10))}

@@ -511,7 +511,7 @@ Symbols the formula cells use:
 - **SLOW ACV MAMMALIAN:** E = first jump, prologue, per-level prefix, node and arm, tail: each list at its residue maximum; B = 8 bits a cell on arrays 0 and 16, pool zeros, heads, counters.
 - **Smu:** E = 95T - 80, the macro-expanded program with no constant subtree.
 - **Stisp:** D = Σ_{k<n} min(2^k, 2^(2^(n-k)) - 2), the most nonconstant nodes.
-- **Streetcode:** F = 3T + 110n + 106 to n = 7, then 4T + 14n + 650: the flat street.
+- **Streetcode:** F = 5T/2 + 110n + 108 to n = 7, then 7T/2 + 14n + 652: the flat street.
 - **Subleq:** I = the program's cell bits: bl(|v|) plus one per zero or negative cell; R = 6n + 5 on a tree, 4 on a constant; packed, its worst read, advance or halving row; P = the pc: bl(Q-3) on a tree, bl(Q) on a constant, bl(D-3) packed; Q cells, D decoder cells.
 - **Unary:** W = max t + bl(n) + bl(n+k): (k,t) = (0,8) (2,8) (3,8) (4,10) (5,17), n+k ≤ 9.
 - **Unlambda:** P = the program's leaves, each k and s counted twice; S = the same count for its largest X in an @-node's `N`dX.
