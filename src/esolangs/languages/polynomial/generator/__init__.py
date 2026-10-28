@@ -12,8 +12,8 @@ residual, ``k`` the one with the fewest instructions.  An expansion bounded
 past 1,000,000,000 characters also raises.
 
 Size:
-    Grows with the instruction count and the prime sizes; n=8 parity: 47,037
-    chars, n=8 random 1847: 1,600,593 chars, n=16 and: 234,362 chars.
+    Grows with the instruction count and the prime sizes; n=8 parity: 40,385
+    chars, n=8 random 1847: 1,454,887 chars, n=16 and: 206,042 chars.
 
 Raises:
     GeneratorCapError: the cheapest construction needs more than 1934
@@ -176,8 +176,9 @@ def _polynomial_candidates(
 def _polynomial_assemble(instrs: list[list[int]]) -> str:
     """Expand an instruction list into its ``f(x) = ...`` polynomial.
 
-    One prime per instruction.  Sharing a prime across decode-ordered runs
-    was retired under the bar ([ablations.prime_sharing]).
+    Consecutive instructions share a prime when their decode order is their
+    program order (keys never decrease); each shared prime shrinks every
+    later constant; figures in [ablations.prime_sharing].
     """
     factors = _polynomial_factors(instrs)
     estimate = estimate_generation(factors)
@@ -201,15 +202,35 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     return str(render_product(factors))
 
 
+def _polynomial_decode_key(instr: list[int]) -> tuple[int, int]:
+    """Return where ``convert`` places ``instr`` among the roots of one prime.
+
+    Primes upward; within one, real roots by exponent then complex by
+    ``(b, a)``.
+    """
+    if len(instr) == 1:
+        return (0, instr[0])
+    return (instr[1], instr[0])
+
+
 def _polynomial_factors(instrs: list[list[int]]) -> list[list[int]]:
     """Encode instructions as factors without expanding their product."""
-    factors: list[list[int]] = []
-    for instr, p in zip(instrs, primes(len(instrs)), strict=True):
-        if len(instr) == 2:
-            a, b = instr
-            factors.append([1, -2 * a, a * a + p ** (2 * b)])
+    groups: list[list[list[int]]] = []
+    for instr in instrs:
+        if groups and _polynomial_decode_key(groups[-1][-1]) <= _polynomial_decode_key(
+            instr
+        ):
+            groups[-1].append(instr)
         else:
-            factors.append([1, -(p ** instr[0])])
+            groups.append([instr])
+    factors: list[list[int]] = []
+    for group, p in zip(groups, primes(len(groups)), strict=True):
+        for instr in group:
+            if len(instr) == 2:
+                a, b = instr
+                factors.append([1, -2 * a, a * a + p ** (2 * b)])
+            else:
+                factors.append([1, -(p ** instr[0])])
     return factors
 
 
@@ -468,7 +489,7 @@ LANGUAGE = Language(
     f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS} estimated characters; "
     "table dependent",
     boolean=polynomial,
-    documented_sizes=(1_745_528, 5_458_693, 3.1),
+    documented_sizes=(1_589_968, 5_016_851, 3.1),
     contract=BooleanContract(
         input_shape="char_stream",
     ),

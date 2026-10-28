@@ -24,14 +24,14 @@ output_size = "Language lower bound"
 evidence = "docs/proofs/index.md#polynomial-bound"
 
 [generator_sizes]
-"00000001" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 5418 }
-"00001100" = { commands = 16, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 2504 }
-"00110110" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 28, "5" = 28, "6" = 29, "7" = 29 }, source_units = 11208 }
-"0110" = { commands = 18, commands_by_row = { "0" = 17, "1" = 17, "2" = 18, "3" = 18 }, source_units = 2425 }
-"01101001" = { commands = 25, commands_by_row = { "0" = 24, "1" = 24, "2" = 25, "3" = 25, "4" = 26, "5" = 26, "6" = 25, "7" = 25 }, source_units = 5649 }
-"0110100110010110" = { commands = 33, commands_by_row = { "0" = 31, "1" = 31, "2" = 32, "3" = 32, "4" = 33, "5" = 33, "6" = 32, "7" = 32, "8" = 34, "9" = 34, "10" = 33, "11" = 33, "12" = 32, "13" = 32, "14" = 33, "15" = 33 }, source_units = 10449 }
-"1101001101101101" = { commands = 37, commands_by_row = { "0" = 38, "1" = 38, "2" = 37, "3" = 37, "4" = 38, "5" = 38, "6" = 38, "7" = 38, "8" = 37, "9" = 37, "10" = 38, "11" = 38, "12" = 38, "13" = 38, "14" = 37, "15" = 37 }, source_units = 20300 }
-"11111110" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 5419 }
+"00000001" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 4864 }
+"00001100" = { commands = 16, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 2296 }
+"00110110" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 28, "5" = 28, "6" = 29, "7" = 29 }, source_units = 9478 }
+"0110" = { commands = 18, commands_by_row = { "0" = 17, "1" = 17, "2" = 18, "3" = 18 }, source_units = 2056 }
+"01101001" = { commands = 25, commands_by_row = { "0" = 24, "1" = 24, "2" = 25, "3" = 25, "4" = 26, "5" = 26, "6" = 25, "7" = 25 }, source_units = 4702 }
+"0110100110010110" = { commands = 33, commands_by_row = { "0" = 31, "1" = 31, "2" = 32, "3" = 32, "4" = 33, "5" = 33, "6" = 32, "7" = 32, "8" = 34, "9" = 34, "10" = 33, "11" = 33, "12" = 32, "13" = 32, "14" = 33, "15" = 33 }, source_units = 8757 }
+"1101001101101101" = { commands = 37, commands_by_row = { "0" = 38, "1" = 38, "2" = 37, "3" = 37, "4" = 38, "5" = 38, "6" = 38, "7" = 38, "8" = 37, "9" = 37, "10" = 38, "11" = 38, "12" = 38, "13" = 38, "14" = 37, "15" = 37 }, source_units = 17584 }
+"11111110" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 4865 }
 
 [catalogue]
 sharing_local = "_polynomial_states"  # ordered BDD over equal residuals
@@ -68,9 +68,9 @@ arity = 8
 verdict = "kept: canonical, exempt; saving on the constant-first-half span class (16.0% at n=7); 0.0% on random tables -- the fold fires on structure, not noise"
 
 [ablations.prime_sharing]
-saving = 9.0
+saving = 8.9
 arity = 8
-verdict = "retired before this audit: sharing one prime across decode-ordered runs saved 11.0% at n=7 and 9.0% at n=8 (200 tables each), under the bar at both judged arities; recorded in the generator and not re-measured"
+verdict = "kept 2026-10-28, one uniform encoding for every table (never grows one; a parity/or/and-only gate is more code than the trick): random tables alone are under the bar, 9.9% at n=7 and 8.9% at n=8 (100-200 tables, seeds 1 and 7, executed, 0 wrong); named functions clear it, parity 14.6%/14.1% at n=7/8 (13.4% at n=10), or 15.2%/14.7%, and 14.5%/14.1%, majority 11.4%/10.8%"
 
 [interpreter_ablations]
 audited = "2026-10-18"
