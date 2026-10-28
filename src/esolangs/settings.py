@@ -18,7 +18,7 @@ _CHOICES: dict[str, tuple[int | str, ...]] = {
 }
 
 
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True, init=False, repr=False)
 class DialectSettings:
     """Explicit overrides; omitted choices retain each language's defaults."""
 
@@ -49,6 +49,11 @@ class DialectSettings:
                     f"choices: {', '.join(map(str, values))}"
                 )
         object.__setattr__(self, "_items", tuple(sorted(choices.items())))
+
+    def __repr__(self) -> str:
+        """Spell the call that rebuilds it; the dataclass one showed ``_items``."""
+        choices = ", ".join(f"{key}={value!r}" for key, value in self._items)
+        return f"DialectSettings({choices})"
 
     def options(self, language: str) -> dict[str, Any]:
         """Return these overrides validated for ``language``.

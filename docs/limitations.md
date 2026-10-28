@@ -45,13 +45,12 @@ Exceptions and per-language notes:
 <!-- RASTER-SOURCES:START -->
 
 Line and Piet carry a raster source: `generate` returns an
-`esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
+`esolangs.Raster`, `run` takes it or a PNG path through the shared
 codec, and `describe` reports `source_kind="raster"`.
 
 <!-- RASTER-SOURCES:END -->
 
-Text and image-based languages share the same VM and step rules; `RUNNERS`
-describes text bundling only.
+Text and image-based languages share the same VM and step rules.
 
 - Line retains its graph for repeated generated rows; stepping parses pixels.
 - Piet emits and executes pixels. Its packer tries up to 9 start-colour
@@ -167,6 +166,14 @@ process; no rule reproduces it:
 
 ### Largest input counts
 
+`describe(language)["generator_max_inputs"]` names each cap; three
+generators have one.
+
+- Befunge: thirteen inputs. A six-bit ASCII lookup fills the 80x25 grid,
+  and the finite source space excludes some sixteen-input tables
+  ([exceptions and walls](proofs/index.md#exceptions-and-walls)).
+- Unary: nine inputs, under its character and gzip budgets; see
+  [Unary](#unary).
 - Malbolge:
   Malbolge's source-embedded generator covers sixteen inputs with one
   positional build: the first `n - 1` inputs fill a readout word three bits
@@ -205,8 +212,8 @@ process; no rule reproduces it:
   the 19,537-cell union are unverified records, and so are the route
   closures resting on them.
 
-  The seven-meaning integration was re-measured end to end (2026-10-21,
-  `notes/malbolge17-refund/`, tooling from `09ab2fad:scripts/malbolge17/`).
+  The seven-meaning integration was re-measured end to end (2026-10-21;
+  its notes and tooling were not preserved, see Provenance above).
   Navigation (`o`/`j`) is 93-94% of its emitted cells; a walked cell holding
   `target - 1` lets one `j` land `D` on a hot cell, which cut the address
   fold from 10,420 to 7,234 cells and the integrated decoder from 13,177 to
@@ -223,7 +230,7 @@ process; no rule reproduces it:
   (C2190 to C40096) every further candidate builds but none shrinks the
   fold, since a pointer takes a window cell the labels and reducer used and
   the reducer grows by more than the pointer saves. The pointer mechanism
-  is saturated at 7,234 (`notes/malbolge17-refund/`, 2026-10-21). Nor
+  is saturated at 7,234 (2026-10-21, notes not preserved). Nor
   can the window's contents be rechosen to approach one cell a hit: `D`
   moves only to `D + 1` or `mem[D] + 1`, so routing is a walk on a
   94-node out-degree-2 graph, and annealing all 94 contents over their
@@ -307,8 +314,8 @@ process; no rule reproduces it:
   three-cell read lands on 110 distinct cells at its worst phase against the
   256 a byte needs (two cells: 38 of 64), no triple lands phase-free, and
   every chain's state space is at most 243 cells, since `crazy` acts per
-  di-trit (`notes/malbolge17-refund/scripts/chain_sep.py`, 9.7 s; the
-  identity control scores 512). Mixing a per-window-cell constant instead is
+  di-trit (9.7 s by a script that was not preserved; the identity control
+  scores 512). Mixing a per-window-cell constant instead is
   the measured landing decoder above.
 
   Shared cells do not rescue the count (2026-10-20, model): the holes of the

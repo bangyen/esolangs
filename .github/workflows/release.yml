@@ -60,6 +60,12 @@ jobs:
           exit 1
         fi
 
+    # github-release reads these notes after publish; a missing section
+    # failed there, with the package already on PyPI.
+    - name: The tag must have a CHANGELOG section
+      if: github.ref_type == 'tag'
+      run: uv run python scripts/ci/release.py notes "$GITHUB_REF_NAME" >/dev/null
+
   verify:
     needs: check-version
     runs-on: ubuntu-latest
@@ -91,7 +97,8 @@ jobs:
   build:
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # v1.3.0 took 7.6 minutes, v1.2.0 6.2.
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v7
 

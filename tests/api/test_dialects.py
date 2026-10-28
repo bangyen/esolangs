@@ -168,6 +168,15 @@ def test_inherited_choices_are_checked_before_input() -> None:
         esolangs.run(REFERENCE, source, stdin=Unreadable())
 
 
+@pytest.mark.parametrize(
+    "settings",
+    [DialectSettings(), DialectSettings(expression_syntax="postfix")],
+)
+def test_the_repr_rebuilds_the_settings(settings: DialectSettings) -> None:
+    """It printed ``DialectSettings(_items=(...))``, a private field."""
+    assert eval(repr(settings), {"DialectSettings": DialectSettings}) == settings
+
+
 def test_default_pickle_has_no_retained_choices() -> None:
     source = esolangs.generate(REFERENCE, "01")
     restored = pickle.loads(pickle.dumps(source))

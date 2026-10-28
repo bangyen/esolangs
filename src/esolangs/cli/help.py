@@ -76,9 +76,9 @@ commands:
                                 where it puts the answer (--spec prints the
                                 interpreter's own description of it)
 
-Language names are case-insensitive.  `esolangs <command> --help` describes
-one command in full; `--version` prints the version.  -s is short for
---settings.  A truth table is 2^n bits, most significant first; its length
+Language names are case-insensitive.  `esolangs <command> --help` (-h)
+describes one command in full; `--version` (-V) prints the version.  -s is
+short for --settings.  A truth table is 2^n bits, most significant first; its length
 sets the input count (0110 is two-input XOR).
 
 exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal

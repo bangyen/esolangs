@@ -388,7 +388,7 @@ def render_raster_section() -> str:
     return "\n".join(
         [
             f"{_join(raster)} {verb} a raster source: `generate` returns an",
-            "`esolangs.raster.Raster`, `run` takes it or a PNG path through the shared",
+            "`esolangs.Raster`, `run` takes it or a PNG path through the shared",
             'codec, and `describe` reports `source_kind="raster"`.',
         ]
     )

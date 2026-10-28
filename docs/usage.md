@@ -87,7 +87,7 @@ Two kinds of language need a different call:
   ```python
   raster = esolangs.generate("Piet", table)
   assert isinstance(raster, esolangs.Raster)
-  raster.to_png()
+  raster.to_png()  # PNG I/O needs esolangs[image] (Pillow)
   stdin = esolangs.encode_inputs("Piet", [0, 1])
   assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
   ```
@@ -415,7 +415,8 @@ assert len(debug.output) > 2
 
 ## Benchmarking
 
-Measure a generated program and check every input row:
+Measure a generated program and check every input row, from a clone of the
+repository (`just` targets are not installed with the package):
 
 ```bash
 just benchmark brainfuck 0110 --all-rows
@@ -448,7 +449,9 @@ shows the `gen`, `tmpl`, and `ex` markers. Fields include:
 | `reads_input` | the language reads stdin |
 | `random` | the interpreter draws at random, so `run(seed=...)` applies |
 
-`help(esolangs.describe)` lists every field. `spec`, `answer_convention` and
+`help(esolangs.describe)` lists every field. `name` is the display name
+(`///`); `id` is the same language as an identifier (`slashes`), accepted
+wherever a name is. `spec`, `answer_convention` and
 `generator_restrictions` are prose for people; parse `answer_pattern`, a
 regex, instead.
 
