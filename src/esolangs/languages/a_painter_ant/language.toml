@@ -7,9 +7,9 @@ backlinks = 4
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike"
-scaling = "linear: worst 9T + 3n - 9 characters past n = 2"
+scaling = "linear: worst 15T/2 + 3n - 3 characters"
 execution = "linear: worst 2L commands: one pass to the fixed point, one proving the repeat"
-workspace = "T log T: worst 2(n+1)T + 2 + bl(L-1) bits: corridor, answers, ant, cursor"
+workspace = "T log T: at most 2(n+1)T + 2 + bl(L-1) bits: corridor, answers, ant, cursor"
 
 [generator_sizes]
 "00000001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 34 }
@@ -18,7 +18,7 @@ workspace = "T log T: worst 2(n+1)T + 2 + bl(L-1) bits: corridor, answers, ant, 
 "0110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3], source_units = 33 }
 "01101001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 66 }
 "0110100110010110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 129 }
-"1101001101101101" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 134 }
+"1101001101101101" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 125 }
 "11111110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 34 }
 
 [catalogue]

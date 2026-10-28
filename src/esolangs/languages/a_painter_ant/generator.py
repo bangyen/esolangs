@@ -12,7 +12,10 @@ each input to one white origin, then leave it black or white.
 A table whose leading run is longer than its trailing run walks the mirror
 (:func:`_flipped`): the corridor holds the top index first, a zero input
 walks the black lane east, and a white wall cell with its lane stopper
-clamps the walk.  The shorter of the two ships.
+clamps the walk.  Either corridor may paint its answers on the zeros
+instead of the ones, which reads complemented; a start ``S`` for ``N`` and a
+tail ``nN`` (a zero rests on the lane, a one a cell up) undo it, so a table
+mostly ones costs what its complement does.  The shortest of the four ships.
 
 Size:
     O(T) characters, one corridor cell per row; n=10 parity: 7,707 chars,
@@ -53,37 +56,42 @@ def _program(truth_table: str) -> str:
         return "P" + (TEMPLATE_CHAR + "S") * n + ("p" if truth_table[0] == "0" else "")
     # An ignored input walks no ``E``: the corridor is the essential inputs'.
     weights, table = input_weights(truth_table, n)
-    east = _east(table, weights)
-    flipped = _flipped(table, weights)
-    return min(east, flipped, key=len)
+    return min(
+        (
+            f(table, weights, invert=inv)
+            for f in (_east, _flipped)
+            for inv in (False, True)
+        ),
+        key=len,
+    )
 
 
-def _answers(out: list[str], bit: str) -> None:
+def _answers(out: list[str], bit: str, *, invert: bool) -> None:
     """Paint the answer cell under the ant on pass 1; harmless later."""
-    if bit == "1":
+    if (bit == "1") != invert:
         out.append("sPN")
 
 
-def _east(table: str, weights: list[int]) -> str:
+def _east(table: str, weights: list[int], *, invert: bool) -> str:
     """Corridor from index 0 east to the trailing run's first answer."""
     size = len(table.rstrip(table[-1])) + 1
     # Pass 1 paints the origin; later ``N`` lifts off the answer, ``W`` returns.
-    out = ["N", "W" * (size - 1), "P"]
-    _answers(out, table[0])
+    out = ["SN"[not invert], "W" * (size - 1), "P"]
+    _answers(out, table[0], invert=invert)
     for bit in table[1:size]:
         # ``e`` paints on pass 1, ``E`` enters white later: one cell per pass.
         out.append("ePE")
-        _answers(out, bit)
+        _answers(out, bit, invert=invert)
     out.append("W" * (size - 1))
     for weight in weights:
         out.append(TEMPLATE_CHAR)
         out.append("E" * weight + "SN")
     # ``s`` steps onto a black answer; a white one leaves the ant on white.
-    out.append("s")
+    out.append("s" + "nN" * invert)
     return "".join(out)
 
 
-def _flipped(table: str, weights: list[int]) -> str:
+def _flipped(table: str, weights: list[int], *, invert: bool) -> str:
     """Corridor from the top index, a zero input walking the lane east.
 
     Complemented inputs make AND-like tables (a long leading run) as cheap as
@@ -93,17 +101,17 @@ def _flipped(table: str, weights: list[int]) -> str:
     """
     run = len(table) - len(table.lstrip(table[0]))
     cells = table[run - 1 :][::-1]
-    out = ["N", "W" * (len(cells) - 1), "P"]
-    _answers(out, cells[0])
+    out = ["SN"[not invert], "W" * (len(cells) - 1), "P"]
+    _answers(out, cells[0], invert=invert)
     for bit in cells[1:]:
         out.append("ePE")
-        _answers(out, bit)
+        _answers(out, bit, invert=invert)
     # Wall cell, then its lane stopper; ``S`` returns on pass 1 only.
     out.append("ePEnPS" + "W" * len(cells))
     for weight in weights:
         out.append(TEMPLATE_CHAR)
         out.append("e" * weight + "SN")
-    out.append("s")
+    out.append("s" + "nN" * invert)
     return "".join(out)
 
 
