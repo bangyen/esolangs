@@ -24,12 +24,12 @@ class TestPainfuck:
 
 @pytest.mark.medium
 def test_shared_residual_executes_within_ledger() -> None:
-    from esolangs.languages.painfuck.generator import _painfuck_tree
+    from esolangs.languages.painfuck.generator import _painfuck_shared
     from tests.support.generator_support import assert_shared_program
     from tests.support.screen_support import corpus
 
     table = corpus(8)["tiled"]
-    plain, _ = _painfuck_tree(table, tuple(range(8)))
+    plain, _ = _painfuck_shared(table, tuple(range(8)), ())
     assert_shared_program(
         "Painfuck",
         table,
@@ -82,8 +82,7 @@ def test_multiple_flags_execute_with_their_native_command_price(table) -> None:
 # shard pushed it past the 15s scaled limit.
 @pytest.mark.slow
 def test_multiple_flags_reduce_dense_cap_program_within_ledger() -> None:
-    from esolangs.generation.shared_block import repeated_block
-    from esolangs.languages.painfuck.generator import _painfuck_tree
+    from esolangs.languages.painfuck.generator import _painfuck_shared
     from tests.support.generator_support import assert_shared_program
 
     n = 16
@@ -91,11 +90,7 @@ def test_multiple_flags_reduce_dense_cap_program_within_ledger() -> None:
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
     perm = tuple(range(n))
     bound = (3 * n * n + 3) // 4 + 20 * n + 4
-    forms = [
-        _painfuck_tree(table, perm),
-        _painfuck_tree(table, perm, repeated_block(table)),
-    ]
-    previous = min((p for p, c in forms if c <= bound), key=len)
+    previous, _ = _painfuck_shared(table, perm, ())
     assert_shared_program(
         "Painfuck",
         table,
@@ -113,14 +108,14 @@ def test_admission_bound_keeps_the_winning_shared_form() -> None:
     under ``(3 * n * n + 3) // 4 + 20 * n + 4`` but over the bound
     with either product of the quadratic term replaced by a sum;
     a bound computed that way excludes the winner and falls back
-    to a longer form (306 and 628 characters respectively).
+    to a longer form (368 and 675 characters respectively).
     """
     from esolangs.languages.painfuck.generator import painfuck
 
-    assert len(painfuck("10000001000101100001011001101000")) == 287
+    assert len(painfuck("10000001000101100001011001101000")) == 297
     assert (
         len(
             painfuck("1000010101001101010111100001001111011110000000010101111010000110")
         )
-        == 608
+        == 620
     )

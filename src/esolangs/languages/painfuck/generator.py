@@ -3,21 +3,19 @@
 Uses Painfuck's own commands, not transliterated brainfuck: ``i`` reads and
 ``o`` prints a *number*, so the ASCII offset brainfuck pays twice per
 program (49% of its characters at ``n == 4``, 70% at ``n == 2``) vanishes.
-``r`` moves two right, the cell layout's stride, and ``d`` resets the
-pointer, so returning to the reads costs one character instead of one per
-cell.  Bit ``k`` sits in cell ``2k``, its flag in ``2k + 1``: a node sets the
-flag, tests the bit and clears the flag inside, then tests the flag for the
-zero side, so exactly one side fires and both cells end zero.  The answer
-accumulates in cell ``2n``, printed once.  Repeated residuals share through
-level flags or banks, admitted under a command bound; inline text stays a
-candidate; the tree is also built for the complement, with the result
-preset to 1 and cleared at each leaf, and the shorter kept.  An affine table
-sums its bits and prints the sum mod 2 ([ablations.parity_sum]).
+``r`` moves two right, the cell layout's stride.  Bit ``k`` sits in cell
+``2k``, its flag in ``2k + 1``: a node sets the flag, tests the bit and clears
+the flag inside, then tests the flag for the zero side, so exactly one side
+fires and both cells end zero.  The answer accumulates in cell ``2n``, printed
+once.  Repeated residuals share through level flags or banks, admitted under a
+command bound; inline text stays a candidate; the tree is also built for the
+complement, with the result preset to 1 and cleared at each leaf, and the
+shorter kept.  An affine table sums its bits and prints the sum mod 2
+([ablations.parity_sum]).
 
 Size:
-    Shared residuals shrink dense tables (before the complement build: three
-    seeded 90%-ones n=16 tables average 488,239 -> 409,056 characters, -16.2%);
-    n=10 parity: 132 chars, n=10 random 1847: 10,138 chars.
+    Banks shrink dense tables (majority 1,257 -> 704 chars at n=8, 4,406 ->
+    1,342 at n=10); n=10 parity: 132 chars, n=10 random 1847: 10,156 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -70,19 +68,6 @@ def _reach(start: int, target: int) -> str:
     return "r" * ((delta + 1) // 2) + ("l" if delta % 2 else "")
 
 
-def _move(start: int, target: int) -> str:
-    """Return the shorter of walking to ``target`` and restarting at 0.
-
-    ``d`` resets the pointer, which brainfuck cannot do: a leaf deep in
-    the tree reaches the result cell in ``1 + target // 2`` characters
-    however far right it has walked, instead of one per cell walked back.
-    """
-    # Restart wins on skewed tables ([ablations.restart_move]).
-    relative = _reach(start, target)
-    absolute = "d" + _reach(0, target)
-    return relative if len(relative) <= len(absolute) else absolute
-
-
 def painfuck(truth_table: str) -> str:
     """Return a Painfuck program for an MSB-first ``2**n`` truth table."""
     tree = in_input_order(truth_table, _painfuck_ordered)
@@ -122,23 +107,19 @@ def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
 
 
 def _painfuck_polarity(table: str, perm: tuple[int, ...], *, flip: bool) -> str:
-    """Return the shortest of inline text, one residual and banks.
+    """Return the shorter of inline text and the banks.
 
     Banks are same-level, or the mixed union of one-per-depth picks with the
     greatest bank; all stay under a command bound.
     """
-    plain, _ = _painfuck_tree(table, perm, None, flip=flip)
-    shared = repeated_block(table)
-    if shared is None:
+    plain, _ = _painfuck_shared(table, perm, (), (), flip=flip)
+    if repeated_block(table) is None:
         return plain
-    candidate, commands = _painfuck_tree(table, perm, shared, flip=flip)
     n = len(perm)
     bound = (3 * n * n + 3) // 4 + 20 * n + 4
-    forms = [(plain, 0), (candidate, commands)]
-    # Banks over one residual.  Per form against the residual form at
-    # n=8: mixed bank -76.9% parity, -44.0% majority; banks -39.9/-37.4%.
-    # (The levels plan was removed 2026-10-20: at the verdict arities it
-    # earned ~nothing — see [ablations.levels_plan] in language.toml.)
+    forms = [(plain, 0)]
+    # Banks win on majority and thresholds ([ablations.bank_plans]); the
+    # one-residual form and the levels plan went ([ablations]).
     plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = []
     plans.extend(repeated_bank(table, ranked=ranked) for ranked in (False, True))
     plans.append(repeated_mixed_bank(table))
@@ -172,7 +153,7 @@ def _painfuck_shared(
         flag_levels=flags,
         binary_leaves=True,
         dialect=FlagDialect(
-            _move,
+            _reach,
             "ps",
             "s",
             "a",
@@ -184,19 +165,6 @@ def _painfuck_shared(
         ),
     )
     return _encode(header + body + "o"), len(header) + commands + 1
-
-
-def _painfuck_tree(
-    table: str,
-    perm: tuple[int, ...],
-    shared: tuple[int, int] | None = None,
-    *,
-    flip: bool = False,
-) -> tuple[str, int]:
-    """Emit an inline tree or one deferred residual with the native flag dialect."""
-    return _painfuck_shared(
-        table, perm, () if shared is None else (shared,), (), flip=flip
-    )
 
 
 LANGUAGE = Language(
