@@ -27,7 +27,9 @@ Decisions:
 
     The free choice between Davio0 and monotone-OR arms (1.3-2.1% at
     n=8), rotated orders (0.9% at n=8) and indexed-selector cost splits
-    (3.5% at n=5) fall under the 10% bar and are not built.
+    (3.5% at n=5) fall under the 10% bar and are not built.  Reversed-table
+    literals spelled ``^ 1 @ i`` save 9-10% on popcount <= n//3 at n=7..8,
+    nothing from n=9, and grow balanced thr2 by a quarter: not built.
 """
 
 from collections.abc import Callable

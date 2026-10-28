@@ -72,6 +72,7 @@ def test_fish_balance_matches_all_power_of_two_folds(table) -> None:
         for exponent in range(len(reads).bit_length() + 1)
     ]
     # The packed row folds at any width; four of them are balance's candidates.
+    assert balance_score(balanced) <= min(map(balance_score, layouts))
     layouts += [_packed_folded(reads, reduced, columns) for columns in range(4, 65)]
     optimum = min(layouts, key=balance_score)
     assert balance_score(balanced)[0] <= 1.05 * balance_score(optimum)[0]

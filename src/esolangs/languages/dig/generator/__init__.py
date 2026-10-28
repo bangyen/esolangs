@@ -27,6 +27,9 @@ Decisions:
     full-input parity uses 720 cells and 227 commands at n=9, four-class
     n=10 controls 1,152 cells and 291 commands.
     Narrow widths can use the indexed leaf decoder.
+    The quarter turn is not a balance candidate for the alternating layout:
+    operand lookup scans neighbours in a fixed order, so the rotated n=10
+    parity and majority programs read the wrong digit.
 """
 
 from collections.abc import Callable

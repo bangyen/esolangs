@@ -17,6 +17,9 @@ Decisions:
     from 672,691 to 1,186.  The tree of the complement table with a
     complementing print races the direct tree: n=8 or 745 -> 622 chars,
     NOT-majority 2,052 -> 1,638; its print costs 10 more commands.
+    Negated reads (``-`` x 49) under the reversed table fold popcount <= n//3
+    only from n=9 (n=10 4,495 -> 3,507 chars): at n=7..8 the n extra
+    commands overrun the pinned budget, so it is not built.
 """
 
 from esolangs.generation.helpers import (

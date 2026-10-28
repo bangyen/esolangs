@@ -15,6 +15,9 @@ Size:
 Decisions:
     A constant subtable is one leaf that walks to the answer cell, so a
     sibling box may be narrower or shorter: the path crosses spaces.
+    A global input negation (``++`` after each read, reversed table) wins
+    only reversed thresholds (n=10 thr2 15,197 -> 12,101 chars), never a
+    random table, and grows their balanced area up to a third: not built.
 """
 
 from collections.abc import Callable
