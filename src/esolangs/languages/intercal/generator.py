@@ -15,7 +15,8 @@ Decisions:
     permutation, so no order can cost or save anything.  Narrower rebuilds
     (unsimplified, per-operation names, split mingles) were retired: at
     n=7..10 wrapping the natural program is smaller summed over widths 1 to
-    259, by 27.0% (n=7) to 32.6% (n=10).
+    259, by 27.0% (n=7) to 32.6% (n=10).  ``balance=True`` also shares rows
+    between short statements ([ablations.balance_packed_rows]).
 """
 
 import re
@@ -92,23 +93,33 @@ def _intercal_tokens(program: str) -> list[str]:
 
 
 def balance_intercal(_table: str, default: str) -> str:
-    """Return the lowest-``balance_score`` of four wraps of ``default``.
+    """Return the lowest-``balance_score`` of four packed wraps of ``default``.
 
-    The longest statement dominates: with ``m`` rows besides it (half a row of
-    token waste each) and ``L`` its characters, the square width solves
-    ``w = 2(m + L / w)``.  Token
-    quantisation puts the best width 15-30% above that root; wraps at 1.15,
-    1.25, 1.3 and 1.4 times it stay within 5% of the best fit width on 360
-    random tables of 2-64 rows.
+    Statements are token-wrapped (:func:`_wrap_intercal`), then consecutive
+    lines share a row up to the width: a line break is a token boundary
+    and a statement starts at ``DO`` or ``PLEASE``, so short statements
+    no longer cost a row each.  The square width is about 1.2-1.3 times
+    ``sqrt(2 * characters)``; wraps at 1.1, 1.2, 1.3 and 1.4 times it stay within
+    7% of the best width on the measured tables (see
+    [ablations.balance_packed_rows]).
     """
-    lengths = sorted(map(len, default.splitlines()))
-    rows = len(lengths) - 0.5
-    root = rows + (rows * rows + 2 * lengths[-1]) ** 0.5
+    root = (2 * len(default)) ** 0.5
     candidates = [
-        _wrap_intercal(default, max(1, round(root * scale)))
-        for scale in (1.15, 1.25, 1.3, 1.4)
+        _pack_rows(_wrap_intercal(default, width), width)
+        for width in (max(1, round(root * scale)) for scale in (1.1, 1.2, 1.3, 1.4))
     ]
     return min(candidates, key=balance_score)
+
+
+def _pack_rows(program: str, width: int) -> str:
+    """Join consecutive lines with a space while a row fits ``width``."""
+    rows: list[str] = []
+    for line in program.splitlines():
+        if rows and len(rows[-1]) + 1 + len(line) <= width:
+            rows[-1] += " " + line
+        else:
+            rows.append(line)
+    return "\n".join(rows)
 
 
 def _wrap_intercal(program: str, width: int) -> str:
