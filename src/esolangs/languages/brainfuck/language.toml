@@ -22,7 +22,7 @@ workspace = "poly n: worst 2n + 7 + bl(2n) + bl(n) + bl(L) bits past n = 2"
 "11111110" = { commands = 261, commands_by_row = { "0" = 222, "1" = 222, "2" = 222, "3" = 222, "4" = 236, "5" = 236, "6" = 250, "7" = 261 }, source_units = 267 }
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-28"
 
 [ablations.shared_flag_tree]
 saving = 16.7
@@ -39,10 +39,17 @@ saving = 0.0
 arity = 16
 verdict = "removed 2026-10-20 (retirement candidate #8): 0.0% race marginal on every corpus measured, jointly with the binary bank and individually (in-code core prices 10.3%/12.1% at n=14/16, 18.1%/15.9% with both banks off)"
 
-[ablations.affine_stream]
-saving = 48.1
+[ablations.complement_print]
+saving = 24.1
 arity = 12
-verdict = "kept: clears on its affine class (40.6% at n=8, share rising); 97.9% on the parity table at n=12; never fires on random tables"
+seed = "random.Random(i * 1000 + n), i < 20"
+tables = 20
+verdict = "kept under the named-function rule (plain-rewrite audit 2026-10-28; added the same day): the tree of the complement table with a complementing print races the direct tree. Random tables 0.48% / 0.06% at n=7/8 (2 and 1 of 20 change), balanced 0.51% / 0.00%; or and nand 14.3/16.5/18.6/20.5/22.3/24.1% at n=7..12 (balanced 10.8/19.0/18.1/17.4/20.1/22.6%), not-majority 13.3/20.2/19.1/25.3/22.0/27.2% (balanced 14.8/20.4/18.1/23.4/22.0/26.5%), rising; and, nor, parity, majority, thresholds unchanged. 136 programs n=3..10 executed on every row, a wrong table fails"
+
+[ablations.affine_stream]
+saving = 97.9
+arity = 12
+verdict = "kept: parity (named, affine) 69.0/80.3/88.1/93.2/96.2/97.9% at n=7..12, balanced 67.9/79.8/87.6/92.9/96.0/97.8%, rising; 0 of 20 random tables change at n=7/8; plain-rewrite audit 2026-10-28, every program executed"
 
 [ablations.plain_tree_merge]
 saving = 54.4
@@ -77,3 +84,6 @@ verdict = "kept: run-collapse, clear and transfer ops priced jointly as one _com
 price = 26.4
 workload = "run()"
 verdict = "kept: steady-state warm cache; each program runs on all 2^n rows"
+
+[audits]
+plain_rewrite = 2026-10-28
