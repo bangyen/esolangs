@@ -26,12 +26,12 @@ def _extra(n: int) -> int:
     """Digits the address cells gain at four and more digits.
 
     Instructions: 11 a read and 45 in the decoder.  The cells start at 3 a
-    instruction: 17 named cells, then a target cell each, then the chunks.
+    instruction: 16 named cells, then a target cell each, then the chunks.
     """
     code = 11 * n + 45
     base = 3 * code
     extra = _wide(base + 16, base + 15 + code) + _wide(
-        base + 17 + code, base + 17 + code
+        base + 16 + code, base + 16 + code
     )
     for index, count in _READ_CELLS.items():
         extra += n * count * _wide(base + index, base + index)
@@ -45,13 +45,13 @@ def _extra(n: int) -> int:
 
 
 def _chars(n: int, _: str) -> int:
-    """P: 175n + 719 + _extra(n), then each chunk's widest decimal.
+    """P: 175n + 717 + _extra(n), then each chunk's widest decimal.
 
     Two more once N and COUNT take two digits.
     """
     t = 1 << n
     full, rest = divmod(t, n)
-    total = 175 * n + 719 + 2 * (len(str(n)) - 1) + _extra(n)
+    total = 175 * n + 717 + 2 * (len(str(n)) - 1) + _extra(n)
     total += full * (2 + len(str(t - 1)))
     if rest:
         total += 2 + len(str((1 << rest) - 1))

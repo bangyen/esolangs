@@ -18,11 +18,11 @@ _CODE = (
 
 
 def _packed(n: int, _: str) -> int:
-    """Packed decoder, exact: 8n + 45 instructions, 18 named cells, ceil(T/n) chunks.
+    """Packed decoder, exact: 8n + 45 instructions, 17 named cells, ceil(T/n) chunks.
 
     Reads are 8 instructions each, the decode 45; operands are 15n + 88 named
     cells (n + 2 are -1), 8n read targets 3t, the _CODE addresses 3(8n + k).
-    Named values are 22 + 2 len(n) characters.  The longest chunk is all ones:
+    Named values are 20 + 2 len(n) characters.  The longest chunk is all ones:
     -(2^w - 1), w = n or T mod n for the last; row 0 clear costs no digit.
     Equals the decoder on 0 followed by ones, n = 2..14.
     """
@@ -30,11 +30,11 @@ def _packed(n: int, _: str) -> int:
     width = len(str(3 * code + 17))
     full, rest = divmod(1 << n, n)
     return (
-        3 * code + 17 + -(-(1 << n) // n)  # separators between cells
+        3 * code + 16 + -(-(1 << n) // n)  # separators between cells
         + sum(len(str(3 * t)) for t in range(1, 8 * n + 1))
         + sum(len(str(3 * (8 * n + k))) for k in _CODE)
         + (15 * n + 88) * width + 2 * (n + 2)
-        + 22 + 2 * len(str(n))
+        + 20 + 2 * len(str(n))
         + full * (1 + len(str((1 << n) - 1)))
         + (1 + len(str((1 << rest) - 1)) if rest else 0)
     )  # fmt: skip

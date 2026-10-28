@@ -5,7 +5,7 @@ larger ones also build the packed decoder and keep the shorter.  A constant
 consumes all inputs before printing.
 
 Size:
-    n=10 random 1847: 2,976 chars, n=10 parity: 487 chars,
+    n=10 random 1847: 2,974 chars, n=10 parity: 487 chars,
     n=10 and: 383 chars.
 """
 

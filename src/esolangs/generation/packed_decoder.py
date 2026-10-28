@@ -147,7 +147,6 @@ def _cell_values(n: int, *, direct: bool) -> dict[str, int]:
         "Q": 0,
         "R": 0,
         "OUT": _ASCII_ZERO,
-        "HALT": -1,
     }
     if not direct:
         del values["POS48"]
@@ -225,7 +224,7 @@ def _emit_decode(asm: _Assembler, *, direct: bool) -> _Loads:
     asm.mark("output")
     asm.add("OUT", "R")
     asm.emit("OUTPUT" if direct else -3, "OUT")
-    asm.jump("halt" if direct else "@HALT")
+    asm.jump("halt")
     return _Loads(increment, chunk)
 
 
@@ -284,11 +283,12 @@ def _indirect_layout(
         return int(value)
 
     for i, (a, b, target) in enumerate(asm.instructions):
-        if target.startswith("@"):
-            c = address[target[1:]]
-        else:
-            c = address[target_names[i]]
-            memory[c] = 3 * (i + 1) if target == "next" else 3 * asm.labels[target]
+        c = address[target_names[i]]
+        memory[c] = (
+            3 * (i + 1)
+            if target == "next"
+            else (-1 if target == "halt" else 3 * asm.labels[target])
+        )
         memory[3 * i : 3 * i + 3] = [operand(a), operand(b), c]
     return memory, address, chunk_base
 
