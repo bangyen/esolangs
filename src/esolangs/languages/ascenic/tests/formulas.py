@@ -14,4 +14,4 @@ def _chars(n: int, _: str) -> int:
     )
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7))}
+FORMULAS = {"scaling": (_chars, frozenset({2, 3, 4, 5, 6, 7}), (3, 4, 5, 6, 7))}

@@ -19,6 +19,11 @@ Size:
     parity: 1,545,756 chars, n=10 random 1847: 1,176,242 chars.
 
 Decisions:
+    The shorter of the table and its reversal is built (the reversal's rows
+    read ``T - 1 - r`` by flipped Horner signs and a first-line ``SUB 2``):
+    the scale lines' arguments follow the last change point, so and at n=8
+    8,399 -> 2,965 chars ([ablations.mirror_scan]).
+
     A decision tree with ``JMPF`` cannot share: a jump's target is its line
     plus its argument, both rising, so no two jumps land on one line.
 """
@@ -27,7 +32,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.languages.ascenic.proof_formulas import workspace
 from esolangs.registry._language import Language
 
-_PRINT, _INPUT, _PUSH, _ADD, _MUL, _DIV, _MOD = 1, 2, 3, 4, 6, 7, 8
+_PRINT, _INPUT, _PUSH, _ADD, _SUB, _MUL, _DIV, _MOD = 1, 2, 3, 4, 5, 6, 7, 8
 _LT, _ADDS, _SUBS, _MULS = 13, 16, 17, 18
 
 
@@ -60,9 +65,13 @@ class _Lines:
         return "\n".join("A" * op + "s" * arg for op, arg in self.lines)
 
 
-def ascenic(truth_table: str) -> str:
-    """Build an Ascenic program printing ``truth_table[row]`` for the inputs."""
-    n = _validate_truth_table(truth_table)
+def _scan(table: str, n: int, *, mirror: bool) -> str:
+    """Return the scan program for ``table``, its rows read forwards or mirrored.
+
+    Mirrored, the Horner signs flip so ``x_n = r + e`` and a first-line
+    ``+-2`` (weight ``(-2)**n`` after the last ``MULS``) adds ``2T``: the
+    rows come out as ``T - 1 - r``, so ``table`` must be the reversed one.
+    """
     out = _Lines()
     # x_i = -2 x_(i-1) +- b_i, signed so that x_n is -r and -2 x_n is 2r.
     for i in range(1, n + 1):
@@ -70,16 +79,24 @@ def ascenic(truth_table: str) -> str:
             out.negative_two()
             out.add(_MULS)
         out.add(_INPUT, odd=True)
-        if (n - i) % 2 == 0:
+        if mirror:
+            if i == 1:
+                out.add(_SUB, 2)
+            if (n - i) % 2 == 1:
+                out.add(_SUBS)  # a first bit subtracts from the empty stack's 0
+            elif i > 1:
+                out.add(_ADDS)
+        elif (n - i) % 2 == 0:
             out.add(_SUBS)  # the first bit subtracts from the empty stack's 0
         elif i > 1:
             out.add(_ADDS)
     out.negative_two()
     out.add(_MULS)
-    base = out.free + (out.free % 2 != int(truth_table[-1]))
-    out.add(_ADD, base)
-    for k in range(len(truth_table) - 1):
-        if truth_table[k] != truth_table[k + 1]:
+    # Mirrored, the first-line 2T stands in for all but ``base - 2`` of the shift.
+    base = out.free + (out.free % 2 != int(table[-1])) + 2 * mirror
+    out.add(_ADD, base - 2 * mirror)
+    for k in range(len(table) - 1):
+        if table[k] != table[k + 1]:
             out.add(_LT, base + 2 * k + 1)
             out.add(_ADDS)
     scale = out.free
@@ -89,6 +106,18 @@ def ascenic(truth_table: str) -> str:
     out.add(_DIV, 2 * scale + 2)
     out.add(_PRINT, odd=True)
     return out.text()
+
+
+def ascenic(truth_table: str) -> str:
+    """Build an Ascenic program printing ``truth_table[row]`` for the inputs."""
+    n = _validate_truth_table(truth_table)
+    forward = _scan(truth_table, n, mirror=False)
+    if n == 0:
+        return forward
+    # Threshold arguments climb with the last change point: a table whose
+    # changes sit at the end is cheaper read from the other end.
+    mirrored = _scan(truth_table[::-1], n, mirror=True)
+    return min(forward, mirrored, key=len)
 
 
 LANGUAGE = Language(
