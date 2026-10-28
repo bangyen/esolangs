@@ -64,14 +64,14 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (39): 3x, 6-5, A Painter Ant, AddSubJump, Algebraic Programming
+Audited (40): 3x, 6-5, A Painter Ant, AddSubJump, Algebraic Programming
 Language, Alight, Ascenic, Back, BFStack, Boolfuck, brainfuck, BrainIf,
 Circlefuck, Circuit Diagram, Clockwise, Container, CV(N)(C), Dig,
-Dimensional, FALSE, Fargo, Flowchart, Forbin, Inject, INTERCAL, LaserFuck,
-Line, Minifuck, Packlang, Painfuck, Polynomial, ROTfuck, S*bleq, SLOW ACV
-MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, thisthat. Next by kept
-`[ablations]`: Malbolge 6, ArrowQueue 4, B-tapemark 4, Collatz Multiverse 4,
-Fish 4, FRACTRAN 4, Freestajlo 4, Piet 4, RAM0 4, Suffolk 4.
+Dimensional, FALSE, Fargo, Flowchart, Forbin, Freestajlo, Inject, INTERCAL,
+LaserFuck, Line, Minifuck, Packlang, Painfuck, Polynomial, ROTfuck, S*bleq,
+SLOW ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, thisthat. Next by
+kept `[ablations]`: Malbolge 6, ArrowQueue 4, B-tapemark 4, Collatz
+Multiverse 4, Fish 4, FRACTRAN 4, Piet 4, RAM0 4, Suffolk 4.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
