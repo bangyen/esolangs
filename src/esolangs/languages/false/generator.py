@@ -18,20 +18,18 @@ where the diagram executes one path.  A combine can leave FALSE's
 -1 true value on the stack where the answer is 1, so the value is
 masked with ``1&`` before the print: the printed digit is exactly
 the answer bit.  The formula is also built for the complement (closed with
-``~``) and for every input negated (stored with ``^~1&``), since its
-combines are cheap on a clear cofactor: negated thresholds and NAND/NOR
-fall 18-24%.
+``~``), since its combines are cheap on a clear cofactor: negated
+thresholds and NAND/NOR fall 18-25%.
 
 Size:
     O(n) for parity, O(T) for random tables; n=10 parity: 100 chars,
-    n=10 random 1847: 2,161 chars.
+    n=10 random 1847: 2,240 chars.
 """
 
 from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from itertools import product
 from string import ascii_lowercase
 from sys import maxsize
 from typing import NamedTuple
@@ -85,13 +83,10 @@ def false(truth_table: str, width: int | None = None) -> str:
     # The expression build names its variables by input position, and
     # FALSE variables are a-z: past the alphabet it cannot be built.
     if not ess or ess[-1] < len(ascii_lowercase):
-        # A flipped build trades 1 char (``~`` on the body) or one per
-        # essential input (``^~1&`` stores the negated bit) for the cheap
-        # polarity of the combines, which favour a clear cofactor.
-        for flip_out, flip_in in product((False, True), repeat=2):
-            expression = _expression(
-                truth_table, n, ess, flip_out=flip_out, flip_in=flip_in
-            )
+        # The complement build trades 1 char (``~`` on the body) for the
+        # cheap polarity of the combines, which favour a clear cofactor.
+        for flip_out in (False, True):
+            expression = _expression(truth_table, n, ess, flip_out=flip_out)
             if len(expression) < len(program):
                 program = expression
     if width is None:
@@ -239,7 +234,6 @@ def _expression(
     ess: list[int],
     *,
     flip_out: bool = False,
-    flip_in: bool = False,
 ) -> str:
     """Return the expression-form build: stored inputs, a formula, a print.
 
@@ -250,13 +244,12 @@ def _expression(
     onto its essential inputs: at each node the cheapest combine
     wins -- a dropped input when the halves agree, the xor collapse
     (``+b&``) for complementary halves, a one-char ``&`` or ``|``
-    step (or its 5-char negated form, ``a=|`` / ``a=&``) when a
-    cofactor is constant, else the mux sum (``$`` ... ``+b&`` ...
+    step when a cofactor is constant, else the mux sum (``$`` ... ``+b&`` ...
     ``&+b&``, 10 chars over the two halves).  Variable letters are
     the inputs' own positions.  In the combines a bare letter is a
     variable reference, whose integer is its index -- ``a`` is the
-    constant 0 and ``b`` the constant 1 -- so ``a=`` tests a fetched
-    bit against 0 and ``+b&`` folds a fetch into a sum's parity.
+    constant 0 and ``b`` the constant 1 -- so ``+b&`` folds a
+    fetch into a sum's parity.
 
     A formula is evaluated whole, where the diagram executes one
     path; the race in :func:`false` keeps whichever text is shorter.
@@ -266,23 +259,15 @@ def _expression(
 
     ``flip_out`` builds the complement and ends the body with ``~``, whose
     low bit is the complement's (``~0`` = -1, ``~1`` = -2, ``~-1`` = 0).
-    ``flip_in`` builds the table read with every input negated and stores
-    each essential input as ``^~1&``: the character code's complement has
-    the opposite low bit.
     """
     # Project the table onto its essential inputs, in original order.
     sub = read_at(truth_table, ess, n)
     if flip_out:
         sub = _complement(sub)
-    if flip_in:
-        sub = sub[::-1]
     letters = {pos: chr(ord("a") + pos) for pos in ess}
 
     search = _ExpressionSearch(letters)
-    store = "^~1&" if flip_in else "^1&"
-    prologue = "".join(
-        f"{store}{letters[i]}:" if i in letters else "^%" for i in range(n)
-    )
+    prologue = "".join(f"^1&{letters[i]}:" if i in letters else "^%" for i in range(n))
     return prologue + search.text(sub, tuple(ess)) + "~" * flip_out + "1&."
 
 
@@ -323,11 +308,7 @@ class _ExpressionSearch:
                 best = min(best, self.size(a, rest) + 5)
             if a == "0" * len(a):
                 best = min(best, self.size(b, rest) + 3)
-            elif a == "1" * len(a):
-                best = min(best, self.size(b, rest) + 5)
-            if b == "0" * len(b):
-                best = min(best, self.size(a, rest) + 5)
-            elif b == "1" * len(b):
+            if b == "1" * len(b):
                 best = min(best, self.size(a, rest) + 3)
             best = min(best, self.size(a, rest) + self.size(b, rest) + 10)
         return best
@@ -362,16 +343,7 @@ class _ExpressionSearch:
                 options.append(
                     (self.size(b, rest) + 3, self.text(b, rest) + fetch + "&")
                 )
-            elif a == "1" * len(a):
-                # f = 1 when x=0, B when x=1: B | (x==0 ? -1 : 0)
-                options.append(
-                    (self.size(b, rest) + 5, self.text(b, rest) + fetch + "a=|")
-                )
-            if b == "0" * len(b):
-                options.append(
-                    (self.size(a, rest) + 5, self.text(a, rest) + fetch + "a=&")
-                )
-            elif b == "1" * len(b):
+            if b == "1" * len(b):
                 options.append(
                     (self.size(a, rest) + 3, self.text(a, rest) + fetch + "|")
                 )

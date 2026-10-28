@@ -52,3 +52,34 @@ verdict = "kept: a leaf reached from the root through folds only prints first an
 saving = 30.4
 arity = 12
 verdict = "kept, landed 2026-10-21: a second build raced per table against the diagram -- the essential inputs are stored, the rest drained, and a Boolean formula built by memoized Shannon decomposition is evaluated whole and printed masked to the bit (1&.). Removing it costs 33.3% / 33.4% at n=10 and 30.4% / 30.4% at n=12 on random tables (seeds 184700 / 777000), 35.8% / 31.8% on structured+named; every random table wins at both arities and no table grows. Priced from the superoptimizer pilot's FALSE review: the miner's finds were hypotheses until this construction priced them"
+
+[ablations.expression_complement]
+saving = 18.6
+arity = 10
+seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named parity, majority, and, or, nand, nor, thresholds >= 2, 3, n-1 and their negations"
+tables = 20
+verdict = "kept for the negated-threshold family (named-function rule): the formula is built for the complement and closed with ~, whose low bit is the complement's. NAND/NOR 18.1 / 18.3 / 18.5 / 18.6% fewer chars at n=7/8/9/10 (n=8 82 -> 67; balanced area 0.0 / 26.5 / 13.8 / 12.9%), negated >=2 and >=n-1 thresholds 22.4 / 23.7 / 24.7 / 23.5% (n=8 241 -> 184; area 19.0 / 17.4 / 22.6 / 21.0%); parity, majority, AND, OR, >=2, >=3 and their other negations unchanged. Random tables: 0.41% / 0.41% chars, 0.39% / 0.29% area at n=7/8 (6115 -> 6090, 11195 -> 11149), 4 / 7 of 20 tables win -- under the bar there"
+
+[ablations.expression_negated_inputs]
+saving = 0.0
+arity = 8
+seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named as expression_complement; 300 random tables per n=4..7, 100 at n=8"
+tables = 20
+verdict = "removed 2026-10-28 (plain-rewrite audit): a third and fourth expression build stored each input as ^~1& with the table reversed (alone, and with the complement). Never strictly wins on a named function at n=7..10 and no table of the exhaustive n<=3 changes; random tables 0.03% / 0.00% chars and 0.00% area at n=7/8, 10 of 300 tables differ at n=7 and 3 of 100 at n=8, by 1 char each. Build time 4 expression searches -> 2 (n=12 random 8.4 -> 3.8 s, n=14 35 -> 13.9 s)"
+
+[ablations.expression_negated_combine]
+saving = 4.5
+arity = 8
+seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named as expression_complement"
+tables = 20
+verdict = "removed 2026-10-28 (plain-rewrite audit): the 5-char negated step a=| / a=& for a constant cofactor of the wrong polarity, now that the complement build covers the polarity. 3.7% / 4.5% chars (2.7% / 3.7% area) at n=7/8 on random tables, every one of 20 grows (6090 -> 6322, 11149 -> 11669); no named function changes at n=7..10 -- under the bar"
+
+[ablations.expression_xor_collapse]
+saving = 13.3
+arity = 8
+seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named as expression_complement"
+tables = 20
+verdict = "kept: complementary halves collapse to a sum's parity (+b&, 5 chars) instead of a mux. 13.7% / 13.3% chars (11.8% / 12.7% area) at n=7/8 on random tables; parity 65.7 / 66.1 / 66.4 / 66.7% at n=7/8/9/10 (70 vs 204 at n=7)"
+
+[audits]
+plain_rewrite = 2026-10-28
