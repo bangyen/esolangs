@@ -859,8 +859,12 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         *(("0000000010010110",) if n == 4 else ()),
         *((_boolfuck_flip(n),) if n >= 3 else ()),
     ),
-    # All ones but row 0: T - 1 ones and the top octal digit.
-    "Blindfolded Arithmetic": lambda n: ("0" + "1" * (2**n - 1),),
+    # Half the rows set, so table and complement tie: T/2 + 1 ones under a
+    # clear top bit (n even), or T/2 ones under a "10" top digit (n odd).
+    "Blindfolded Arithmetic": lambda n: (
+        "1" * (2 ** (n - 1) + 1) + "0" * (2 ** (n - 1) - 1),
+        "1" * (2 ** (n - 1) - 1) + "0" * 2 ** (n - 1) + "1",
+    ),
     # Balanced, row 0 a planted one: the longest prologue, and a mark.
     "bit~": lambda n: ("1" * (2 ** (n - 1) - 1) + "01" + "0" * (2 ** (n - 1) - 1),),
     "Circlefuck": lambda n: (_row_one(n),),

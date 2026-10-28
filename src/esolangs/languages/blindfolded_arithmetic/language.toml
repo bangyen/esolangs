@@ -7,9 +7,9 @@ backlinks = 19
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer built by Horner's rule in base 8, and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer"
-scaling = "linear: worst 6T + 6⌈T/3⌉ + 60n + 53 characters: six an instruction"
-execution = "linear: worst T + ⌈T/3⌉ + 10n + 9 commands: all ones but the first row, run once"
-workspace = "linear: worst 2T + 6 + bl(T+⌈T/3⌉+10n+6) bits past n = 2: b and its even copy"
+scaling = "linear: worst 3T + 6⌈T/3⌉ + 60n + 59 characters: six an instruction"
+execution = "linear: worst ⌊T/2⌋ + ⌈T/3⌉ + 10n + 10 commands: half the rows set, run once"
+workspace = "linear: worst 2T + 6 + bl(⌊T/2⌋+⌈T/3⌉+10n+7) bits past n = 2: b and its even copy"
 
 [generator_sizes]
 "00000001" = { commands = 44, commands_by_row = { "0" = 44, "1" = 44, "2" = 44, "3" = 44, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 263 }
@@ -18,8 +18,8 @@ workspace = "linear: worst 2T + 6 + bl(T+⌈T/3⌉+10n+6) bits past n = 2: b and
 "0110" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33 }, source_units = 197 }
 "01101001" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 47, "7" = 47 }, source_units = 281 }
 "0110100110010110" = { commands = 63, commands_by_row = { "0" = 63, "1" = 63, "2" = 63, "3" = 63, "4" = 63, "5" = 63, "6" = 63, "7" = 63, "8" = 63, "9" = 63, "10" = 63, "11" = 63, "12" = 63, "13" = 63, "14" = 63, "15" = 63 }, source_units = 377 }
-"1101001101101101" = { commands = 66, commands_by_row = { "0" = 66, "1" = 66, "2" = 66, "3" = 66, "4" = 66, "5" = 66, "6" = 66, "7" = 66, "8" = 66, "9" = 66, "10" = 66, "11" = 66, "12" = 66, "13" = 66, "14" = 66, "15" = 66 }, source_units = 395 }
-"11111110" = { commands = 50, commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 50, "5" = 50, "6" = 50, "7" = 50 }, source_units = 299 }
+"1101001101101101" = { commands = 62, commands_by_row = { "0" = 62, "1" = 62, "2" = 62, "3" = 62, "4" = 62, "5" = 62, "6" = 62, "7" = 62, "8" = 62, "9" = 62, "10" = 62, "11" = 62, "12" = 62, "13" = 62, "14" = 62, "15" = 62 }, source_units = 371 }
+"11111110" = { commands = 45, commands_by_row = { "0" = 45, "1" = 45, "2" = 45, "3" = 45, "4" = 45, "5" = 45, "6" = 45, "7" = 45 }, source_units = 269 }
 
 [catalogue]
 folding_constant_local = "read_at"  # one projected table bit, no lookup round
@@ -36,3 +36,8 @@ verdict = "kept: canonical, exempt. The table integer is built from the table re
 saving = 0.6
 arity = 12
 verdict = "removed (retirement candidate 34): the divisor 2 is rebuilt into c at every lookup round; the two flag that kept it across rounds until an essential input's divisor computation overwrote it is gone. The audit measured rebuilding at +1.58% at n=10 and +0.57% at n=12 on tables ignoring the three low inputs, +0.65 / +0.21% on two-low-ignored and scattered-ignored tables, 0.00% on random tables: one fixed 6-char instruction per firing, declining everywhere. See RETIREMENT-CANDIDATES entry 34"
+
+[ablations.complement_table]
+saving = 97.6
+arity = 12
+verdict = "kept: the table integer is built from whichever of the table and its complement has fewer set bits (one instruction each), the complement's low bit negated by one closing `i=a-i` (6 chars). 0.98-1.65% on random tables at n=7..8 (20 seeded), parity and and 0.00%, majority 0.0-2.1%; or 66.8% / 78.5% / 92.3% / 97.6% at n=7 / 8 / 10 / 12 (2,585 -> 557 chars at n=8, 8,849 -> 677 at n=10), nand 50.0% / 58.6% / 69.2% / 73.2%, popcount>=2 54.4% / 66.2% / 80.0% / 85.2% (share rising with n); nor was already cheap (and still 1,061 chars at n=8: its single set bit is the top one, which costs Horner digits, not bits). Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 150-300 samples at n=4..5, named tables to n=10)"

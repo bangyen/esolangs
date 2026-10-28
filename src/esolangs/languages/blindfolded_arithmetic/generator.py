@@ -18,6 +18,10 @@ Decisions:
     and accumulator fit beside ``i``; base 2 costs 9,851 chars at n=10
     parity.
 
+    The shorter of the table and its complement is built, the complement's
+    answer negated by ``i = a - i``: or at n=10 8,849 -> 677 chars
+    ([ablations.complement_table]).
+
     The divisor 2 is rebuilt into ``c`` every round: keeping it across
     rounds saved one 6-char instruction per firing — a fixed amount
     against a Theta(T) program ([ablations.register_reuse]).
@@ -89,7 +93,12 @@ def blindfolded_arithmetic(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
     projected = read_at(truth_table, essential, n)
-    return ";".join([*_table_integer(projected), *_lookup(n, essential)])
+    plain = [*_table_integer(projected), *_lookup(n, essential)]
+    # A set bit costs an instruction: the complement may be shorter.
+    flip = projected.translate(str.maketrans("01", "10"))
+    flipped = _table_integer(flip) + _lookup(n, essential)
+    flipped.insert(-2, "i=a-i")
+    return ";".join(min(plain, flipped, key=lambda code: len(";".join(code))))
 
 
 def _wrap(program: str, width: int) -> str:
