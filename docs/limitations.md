@@ -721,18 +721,22 @@ verdicts, co-categories, I/O and branch vocabulary, and page length.
 
 ### How a language is admitted
 
-Fame admits languages with at least 60 unique esolangs linking pages. Resolve
-title redirects, exhaust `list=backlinks` continuations, include redirect links
-across all namespaces, and deduplicate by page ID. Pause at least three seconds
-between requests.
+Fame admits esoteric languages with at least 50 unique esolangs linking
+pages. Resolve title redirects, exhaust `list=backlinks` continuations,
+include redirect links across all namespaces, and deduplicate by page ID.
+Pause at least three seconds between requests.
 
-The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
+The cutoff is policy, not a measured popularity boundary: 60 from 2026-10-01,
+lowered to 50 on 2026-10-28, where it admits every language in Morr's and
+Kneusel's selections (below). The page must describe an esolang: Forth (57)
+and C++ draw backlinks as influences, and models with no syntax (Tag
+system 54, Turing machine) are not languages.
 Record resolved title, date and count; missing data means unassessed
 (`unassessed = true`, which `finish` flags until the count is recorded). Low
 backlinks count against only old languages; Wikipedia pageviews are not a
 gate.
 
-Below 60, a language is admitted only as a first implementation: when the
+Below 50, a language is admitted only as a first implementation: when the
 repo adds it, no implementation exists but the maintainer's. Its page is in
 the Unimplemented category, or the edit that first tagged it Implemented is
 User:Bangyen's. An intrinsic axis can choose between such candidates; it
@@ -819,11 +823,12 @@ API batch. Brainfuck-relative gates and the indeterminate band are retired.
 The 2026-10-01 fame audit recorded these backlink counts. Clears the
 fame gate: Befunge 381, Underload 167, Thue 155, Malbolge 129,
 INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, FRACTRAN
-65, Piet 65. Below the fame gate: Whitespace 58, Forth 57, Chicken 55,
-Shakespeare 54, LOLCODE 47. Rejected: Brainloller 26, Braincopter 14.
+65, Piet 65, Whitespace 58, Chicken 55, Shakespeare 54. Not esolangs: Forth
+57. Below the fame gate: LOLCODE 47. Rejected: Brainloller 26, Braincopter
+14.
 
 Existing fame exceptions must still clear the bar. Whitespace was removed at
-58 backlinks.
+58 backlinks under the 60 gate and is readmissible at 50.
 
 <!-- CURATION-CENSUS:START -->
 

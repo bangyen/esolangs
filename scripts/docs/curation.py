@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from esolangs.registry import Language
 
 ROOT = Path(__file__).resolve().parents[2]
+# Fame admits at this many backlinks; below it, only a first implementation.
+FAME_BACKLINKS = 50
 
 _FIELDS = frozenset(
     {"backlinks", "bf_derivative", "bf_derivative_predates", "unassessed"}

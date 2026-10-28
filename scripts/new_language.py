@@ -329,7 +329,7 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
             Gap(
                 f"src/esolangs/languages/{module}/language.toml",
                 'add a [curation] section with backlinks = <wiki "What links '
-                'here" count> (60+ is the fame route, fewer a first '
+                'here" count> (50+ is the fame route, fewer a first '
                 "implementation), plus bf_derivative = true if the wiki tags it "
                 "Brainfuck derivatives (see docs/limitations.md#curation); "
                 "offline, unassessed = true until the count is recorded",

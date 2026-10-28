@@ -5,6 +5,7 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
+from scripts.docs.curation import FAME_BACKLINKS
 from scripts.docs.curation import rows as _curation_rows
 from tests.support.generator_support import CHECK
 from tests.support.pick import languages
@@ -14,7 +15,7 @@ _CENSUS = _curation_rows()
 
 
 def test_every_language_was_admitted_by_a_recorded_route() -> None:
-    """Fame is 60 backlinks; below that, only a first implementation."""
+    """Fame is ``FAME_BACKLINKS`` backlinks; below, only a first implementation."""
     unrecorded = sorted(set(LANGUAGES) - set(_CENSUS))
     assert not unrecorded, f"no admission record for {unrecorded}; {CHECK}"
     stale = sorted(set(_CENSUS) - set(LANGUAGES))
@@ -22,7 +23,7 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
     for name, row in _CENSUS.items():
         if row.get("unassessed"):
             continue  # offline; `finish` asks for the count before merging
-        # The route is derived: fame at 60 backlinks, else first implementation.
+        # The route is derived: fame at ``FAME_BACKLINKS``, else first impl.
         assert isinstance(row["backlinks"], int), name
 
 
@@ -39,7 +40,7 @@ def test_no_new_brainfuck_derivative_is_a_first_implementation() -> None:
     derived = {
         name
         for name, row in _CENSUS.items()
-        if row.get("bf_derivative") and row["backlinks"] < 60
+        if row.get("bf_derivative") and row["backlinks"] < FAME_BACKLINKS
     }
     assert derived <= predating, sorted(derived - predating)
 

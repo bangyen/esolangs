@@ -20,6 +20,7 @@ import typing
 import esolangs
 from docs.audits import rows as _audit_rows
 from docs.catalogue import load as _catalogue_load
+from docs.curation import FAME_BACKLINKS
 from docs.curation import dates as _curation_dates
 from docs.curation import rows as _curation_rows
 from docs.proof_status import splice, update_docs
@@ -409,14 +410,16 @@ def render_curation_census_section() -> str:
     """Render docs/limitations.md's census counts from the curation fixture.
 
     The fixture records backlinks per registry language, and the route
-    follows: fame at 60, else first implementation;
+    follows: fame at ``FAME_BACKLINKS``, else first implementation;
     ``tests/api/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
     census = _curation_rows()
     # A new language is scaffolded ``unassessed`` (finish flags it); counting
     # it here raised KeyError inside check-language's docs step instead.
-    fame = [e["backlinks"] >= 60 for e in census.values() if "backlinks" in e]
+    fame = [
+        e["backlinks"] >= FAME_BACKLINKS for e in census.values() if "backlinks" in e
+    ]
     pending = len(census) - len(fame)
     checked = _curation_dates()["checked"]
     lines = [
@@ -500,7 +503,9 @@ def render_plain_rewrite_section() -> str:
 def render_blind_reimplementation_section() -> str:
     """Render the roadmap's blind-reimplementation progress over first impls."""
     first = {
-        name for name, row in _curation_rows().items() if row.get("backlinks", 0) < 60
+        name
+        for name, row in _curation_rows().items()
+        if row.get("backlinks", 0) < FAME_BACKLINKS
     }
     done = [
         name
