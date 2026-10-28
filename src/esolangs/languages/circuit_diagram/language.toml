@@ -81,6 +81,11 @@ saving = 0.0
 arity = 17
 verdict = "retired 2026-10-28 (random + named bar): the folded and sparse class banks, guarded to n >= 17 (mask prefix past eight), build nothing below it and leave the area unchanged at n=17 on 3 seeded random tables and parity, majority, and, or and a threshold (0.00%); they won only on repeated-class tables (14.7% under bundled at 3 classes, n=17), a class drawn to show them, and the pool caps the Scaling class where they built. Kept in the race: the pool (the only candidate at n <= 8) and bundled (leave-one-out 40.74% / 60.74% of area on 20 random tables at n=12 / 14; 0.00% at n <= 10). The residual bank was retired 2026-10-28: area saved on parity 3.87% / 8.31% / 14.40% at n=10 / 11 / 12 then 0.00% at n=13..16 (a peak and a fall to zero, not a share that holds); majority, and, or and a threshold 0.00% at n=10..16; 20 random tables 0.00% at n=8, 10, 11, 12 and 1.16% mean at n=9 (0.8-5.5% on 9 of 20). Its chars were larger on parity (+16.5% at n=12); removing it grows dense n=9 from 258,216 to 298,272 chars and 3-class n=10 tables by up to 17% area, inside the pool's Scaling class"
 
+[ablations.output_polarity]
+saving = 68.4
+arity = 8
+verdict = "kept: one extra fixed-order candidate folds the complement table and negates the root gate for free (``A`` NAND, ``O`` NOR; a bare rail root takes ``~``). NAND / NOR cost 3.2x AND / OR from the complemented rails and mixed gates; the flipped build is area-equal to AND / OR (2,537 vs 8,025 at n=8). Area saved on NAND = NOR over n=7..12: 68.8 / 68.4 / 68.1 / 67.8 / 67.6 / 67.5% (a steady share, 6,045 -> 1,887 at n=7, 18,745 -> 6,097 at n=12); complemented thresholds 5.1-13.5% (n=7..12); AND, OR, parity, majority and thresholds 0.00%; 20 seeded random tables 0.00% at n=7 / 8, none grew; the balanced area of NAND / NOR also falls 16,900 -> 5,476 at n=7 and 22,500 -> 7,396 at n=8"
+
 [ablations.ignored_input_drop]
 saving = 0.1
 arity = 8

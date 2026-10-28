@@ -28,7 +28,8 @@ A repeated subtree is built once (:func:`_dag`, hash-consed on ``(level,
 zero, one)``); a shared output keeps its column group until its last read.
 At most one unfinished signal per input level is live.  Wide unconstrained
 builds compare natural order and two transposes moving the last three/four
-inputs first; physical ports retain read order.
+inputs first, and the complement table with the root gate negated (``A``,
+``O``); physical ports retain read order.
 
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
@@ -61,7 +62,7 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
 # Gate characters used by muxes and the two self-fed constant forms.
-_GateGlyph = Literal["a", "o", "x", "X"]
+_GateGlyph = Literal["a", "o", "A", "O", "x", "X"]
 _ConstGlyph = Literal["x", "X"]
 
 __all__ = ["circuit_diagram"]
@@ -76,6 +77,7 @@ _ROW_STEP = 2
 # ([ablations.competing_model_floor]), and it wins no n <= 3 table, where it
 # would only slow generation.
 _COMPETING_MODEL_MIN_INPUTS = 4
+_COMPLEMENT = str.maketrans("01", "10")
 # Columns the output dash and colon add past the final gate group, so
 # banding rebuilds this much narrower when the first attempt is too wide.
 _OUTPUT_GLYPH_COLUMNS = 2
@@ -379,9 +381,17 @@ def _signal(arm: _Value) -> int:
 
 
 def _mux(
-    builder: _Builder, selectors: list[int | None], zero: _Value, one: _Value
+    builder: _Builder,
+    selectors: list[int | None],
+    zero: _Value,
+    one: _Value,
+    *,
+    flip: bool = False,
 ) -> _Value:
     """Return ``zero`` or ``one`` according to ``selector``.
+
+    ``flip`` makes the last gate its negation (``A``, ``O``); a rail or
+    constant result is returned plain, for the caller to invert.
 
     ``(~selector AND zero) OR (selector AND one)`` is a three-gate mux.
     The caller shares each selector's complement across its whole level.
@@ -396,28 +406,39 @@ def _mux(
     # The plain rail's two rules come first: a level that only ever takes
     # them has no complement to read (see :func:`_complemented_levels`).
     if zero == "0":
-        return builder.gate("a", selector, _signal(one))
+        return builder.gate(_glyph("a", flip=flip), selector, _signal(one))
     if one == "1":
-        return builder.gate("o", selector, _signal(zero))
+        return builder.gate(_glyph("o", flip=flip), selector, _signal(zero))
     negated = selectors[1]
     if negated is None:  # pragma: no cover - built before the fold
         raise AssertionError("selector has no complemented rail")
     if zero == "1" and one == "0":
         return negated
     if one == "0":
-        return builder.gate("a", negated, _signal(zero))
+        return builder.gate(_glyph("a", flip=flip), negated, _signal(zero))
     if zero == "1":
-        return builder.gate("o", negated, _signal(one))
-    return _three_gate_mux(builder, selector, negated, zero, one)
+        return builder.gate(_glyph("o", flip=flip), negated, _signal(one))
+    return _three_gate_mux(builder, selector, negated, zero, one, flip=flip)
+
+
+def _glyph(kind: Literal["a", "o"], *, flip: bool) -> _GateGlyph:
+    """Return ``kind``, or its negation (``A`` NAND, ``O`` NOR) when ``flip``."""
+    return "A" if flip and kind == "a" else "O" if flip else kind
 
 
 def _three_gate_mux(
-    builder: _Builder, selector: int, negated: int, zero: int, one: int
+    builder: _Builder,
+    selector: int,
+    negated: int,
+    zero: int,
+    one: int,
+    *,
+    flip: bool = False,
 ) -> int:
     """Return the full mux: ``(~selector AND zero) OR (selector AND one)``."""
     off = builder.gate("a", negated, zero)
     on = builder.gate("a", selector, one)
-    return builder.gate("o", off, on)
+    return builder.gate(_glyph("o", flip=flip), off, on)
 
 
 class _Dag(NamedTuple):
@@ -478,13 +499,26 @@ def _dag(truth_table: str, n: int) -> _Dag:
 
 
 def _emit_dag(
-    builder: _Builder, selectors: list[list[int | None]], dag: _Dag
+    builder: _Builder,
+    selectors: list[list[int | None]],
+    dag: _Dag,
+    *,
+    flip_root: bool = False,
 ) -> dict[int, _Value]:
-    """Emit shared muxes and retain their values for single or multiple roots."""
+    """Emit shared muxes and retain their values for single or multiple roots.
+
+    ``flip_root`` negates the root's last gate for free.
+    """
     n = len(selectors)
     values: dict[int, _Value] = {0: "0", 1: "1"}
     for level, zero, one, node in dag.ops:
-        signal = _mux(builder, selectors[n - 1 - level], values[zero], values[one])
+        signal = _mux(
+            builder,
+            selectors[n - 1 - level],
+            values[zero],
+            values[one],
+            flip=flip_root and node == dag.root,
+        )
         values[node] = signal
         if isinstance(signal, int) and signal in builder.stride_of:
             builder.pending[signal] = dag.reads.get(node, 0)
@@ -492,10 +526,20 @@ def _emit_dag(
 
 
 def _finish_fold(
-    builder: _Builder, selectors: list[list[int | None]], dag: _Dag
+    builder: _Builder,
+    selectors: list[list[int | None]],
+    dag: _Dag,
+    *,
+    invert: bool = False,
 ) -> _Layout:
-    """Emit one root, using a self-fed gate for either constant."""
-    result = _emit_dag(builder, selectors, dag)[dag.root]
+    """Emit one root, using a self-fed gate for either constant.
+
+    ``invert`` prints ``~root``, the fold being over the complement table:
+    the root's last gate is negated, or ``~`` follows a bare rail.
+    """
+    result = _emit_dag(builder, selectors, dag, flip_root=invert)[dag.root]
+    if invert and isinstance(result, int) and result not in builder.stride_of:
+        result = builder.invert(result)
     if isinstance(result, str):
         rail = selectors[0][0]
         if rail is None:  # pragma: no cover - every selector has a plain rail
@@ -539,6 +583,7 @@ def _circuit_diagram_model(
     *,
     input_order: list[int] | None = None,
     port_inputs: int | None = None,
+    invert: bool = False,
 ) -> _Layout:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -574,7 +619,7 @@ def _circuit_diagram_model(
     builder.band_start = builder.next_column
     builder.limit = limit
 
-    _finish_fold(builder, selectors, dag)
+    _finish_fold(builder, selectors, dag, invert=invert)
     return builder.layout
 
 
@@ -594,6 +639,14 @@ def _linear_shared_layout(table: str, inputs: int, models: list[_Layout]) -> Non
                 candidate, None, input_order=order, port_inputs=inputs
             )
         )
+    # Output polarity: a table costs 3.2x its complement when only the
+    # complement is a plain-rail chain (NAND vs AND): fold it, negate the root gate.
+    flipped = projected.translate(_COMPLEMENT)
+    models.append(
+        _circuit_diagram_model(
+            flipped, None, input_order=used, port_inputs=inputs, invert=True
+        )
+    )
 
 
 def _narrowest_present(*forms: str | None) -> str:
