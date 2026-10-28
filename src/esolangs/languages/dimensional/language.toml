@@ -46,12 +46,12 @@ verdict = "kept: canonical, exempt. A constant table is spelled as a literal pro
 [ablations.zero_run_loops]
 saving = 1614.7
 arity = 12
-verdict = "kept: a zero run of nine or more is spelled as a counter loop at a balanced stride instead of bare steps. 0.02-0.07% on random tables; on the long-run classes it is the build: AND 514.4% at n=10 and 1,614.7% at n=12, half-constant 66.8% / 85.4%, sparse 26.3% / 30.6%, majority 15.6% / 20.6%. The in-code shares (83.7% on AND at n=10, 73% on a threshold, 13.5% on majority, share of the plainer build) all reproduce"
+verdict = "kept: a zero run of nine or more is spelled as a counter loop at a balanced stride instead of bare steps. 0.02-0.07% on random tables; on the long-run classes it is the build: AND 514.4% at n=10 and 1,614.7% at n=12, half-constant 66.8% / 85.4%, sparse 26.3% / 30.6%, majority 15.6% / 20.6%. The in-code shares (83.7% on AND at n=10, 73% on a threshold, 13.5% on majority, share of the plainer build) all reproduce. Plain-rewrite audit 2026-10-28 (20 random tables per n, Random(1000n+s)): random 0.07% / 0.06% at n=7 / 8, balanced 0.00%; and/nor 42.5% / 60.4% / 83.7% at n=7 / 8 / 10, or/nand 40.1% / 58.9% / 83.2%, popcount>=2 26.4% / 42.9% / 72.7%, majority 2.0% / 8.2% / 13.5%; balanced area follows (and 40.1% / 60.9% / 83.0%)"
 
 [ablations.count_doubling]
 saving = 12.9
 arity = 12
-verdict = "kept: inside a counted loop the count is spelled by whichever of unary and doubling through the spare dimension is shorter, so it never makes a program larger. 0.00% on random tables and most named tables; on AND, the longest-count class, 4.3% at n=10 rising to 12.9% at n=12 and 25.9% at n=14. The in-code shares (11.4% at n=12 and 20.6% at n=14 on AND, 13.4% on a threshold at n=14, share of the plainer build) all reproduce"
+verdict = "kept: inside a counted loop the count is spelled by whichever of unary and doubling through the spare dimension is shorter, so it never makes a program larger. 0.00% on random tables and most named tables; on AND, the longest-count class, 4.3% at n=10 rising to 12.9% at n=12 and 25.9% at n=14. The in-code shares (11.4% at n=12 and 20.6% at n=14 on AND, 13.4% on a threshold at n=14, share of the plainer build) all reproduce. Plain-rewrite audit 2026-10-28: 0.0% on 20 random tables and every named function at n=7 / 8 (and/nor 4.1% / 6.7% / 11.4% / 20.5% at n=10 / 11 / 12 / 14, balanced 6.8% / 6.0% / 11.4% / 18.1%; popcount>=2 0.9% / 2.8% / 5.4% / 13.3%). Kept as a judgment call: nil at n=7..8 but rising, and without it AND leaves O(n) for O(2^(n/2)) (a unary count of sqrt(T)), the class its Size anchor states"
 
 [ablations.trailing_zero_skip]
 saving = 0.1
@@ -61,4 +61,7 @@ verdict = "removed 2026-10-20 (retirement candidate #26): painting stopped at th
 [ablations.complement_paint]
 saving = 93.7
 arity = 12
-verdict = "kept: the table or its complement is painted, whichever paints shorter, and a complement is read out through a fresh dimension-4 cell as 49 - c (`[->4-<4]>4` and one more `+`, 11 chars). Zero runs loop and ones cost two characters each, so or/nand paid per one. 0.00% on random tables (20 seeded) at n=7 and n=8, parity, majority, and, nor 0.0%; or/nand 40.1% / 58.9% / 83.2% / 93.7% at n=7 / 8 / 10 / 12 (730 -> 300 chars at n=8, 2,306 -> 388 at n=10), popcount>=2 26.4% / 42.9% / 72.7% / 88.4%, popcount>=3 8.8% / 23.4% / 54.6% / 77.3%, popcount>=4 0.0% / 5.5% / 31.7% / 58.5% (share rising with n). Balanced area follows (or at n=10 4,624 -> 841). Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 60-300 samples at n=4..6, named tables to n=10)"
+verdict = "kept: the table or its complement is painted, whichever paints shorter, and a complement is read out through a fresh dimension-4 cell as 49 - c (`[->4-<4]>4` and one more `+`, 11 chars). Zero runs loop and ones cost two characters each, so or/nand paid per one. 0.00% on random tables (20 seeded) at n=7 and n=8, parity, majority, and, nor 0.0%; or/nand 40.1% / 58.9% / 83.2% / 93.7% at n=7 / 8 / 10 / 12 (730 -> 300 chars at n=8, 2,306 -> 388 at n=10), popcount>=2 26.4% / 42.9% / 72.7% / 88.4%, popcount>=3 8.8% / 23.4% / 54.6% / 77.3%, popcount>=4 0.0% / 5.5% / 31.7% / 58.5% (share rising with n). Balanced area follows (or at n=10 4,624 -> 841). Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 60-300 samples at n=4..6, named tables to n=10). Plain-rewrite audit 2026-10-28 (20 random tables per n, Random(1000n+s).getrandbits(1<<n), plus named tables): balanced area or/nand 40.1% / 55.6% / 81.8% at n=7 / 8 / 10, popcount>=2 29.7% / 40.8% / 72.0%, popcount>=3 6.3% / 24.0% / 54.2%; random 0.00% size and balanced; kept for the or/nand and threshold family"
+
+[audits]
+plain_rewrite = 2026-10-28
