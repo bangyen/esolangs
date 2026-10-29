@@ -793,22 +793,23 @@ which ships from n = 6, 18 of 18 at n = 5-7, broken translators failing.
 The 2026-10-29 rule makes the literal and indexed-table grounds family, so
 HQ9+ with headers, Parenthesys, Grapheme and CreativeScript v2 (not
 admitted on 2026-10-27: a packed literal under a `1 + x(Q - 1)` shift) are
-re-judged (see the [roadmap](roadmap.md)); IEBEL, Decleq and CARP (not
-admitted: S\*bleq's tree without the normalization), excluded on diagram
-grounds, stay out by decision, not re-judged. Painfuck shares brainfuck's flag tree but stays: its
+re-judged, and so are IEBEL, Decleq and CARP (not admitted: S\*bleq's
+tree without the normalization), excluded on diagram grounds (see the
+[roadmap](roadmap.md)). Painfuck shares brainfuck's flag tree but stays: its
 moves use `d` and `r` and its I/O is numeric, none of them brainfuck's.
-Fame admissions are exempt. S\*bleq went on 2026-10-29 though collected
-first: it and Subleq re-spell each other, 276 of 276 tables at n = 1-3
+Fame admissions are exempt. Between two first implementations the
+construction stays with the language created first on the wiki, not the
+one collected first, so the outcome is the same in any collection order
+(2026-10-29). S\*bleq went on 2026-10-29 though collected first: it and Subleq re-spell each other, 276 of 276 tables at n = 1-3
 each way (a broken translator passes 6), and the fame route keeps the
 original. The rulings above that cite S\*bleq hold against Subleq, which
 builds the same tree and packed decoder.
 
-Nor does the first-implementation route admit a page the wiki categorizes as
-a Brainfuck derivative: the family already holds brainfuck and ten collected
-derivatives. Adopted 2026-10-15 for candidates; each package's
-`language.toml` records the category as `bf_derivative` in its `[curation]`
-section. The seven derivative first implementations that
-predate it stay, each the wiki's only implementation of its page.
+A Brainfuck derivative is judged like any language: the ban on them
+(2026-10-15) kept seven collected before it and refused the same
+languages after, so it went on 2026-10-29. Each package's `language.toml`
+records the category as `bf_derivative` in its `[curation]` section; a
+derivative whose generator copies brainfuck's flag tree re-spells it.
 
 ### Recognition sources
 

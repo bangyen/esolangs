@@ -7,7 +7,6 @@ workspace = 9
 [curation]
 backlinks = 3
 bf_derivative = true
-bf_derivative_predates = true
 
 [proof_status]
 labels = ["minterms"]

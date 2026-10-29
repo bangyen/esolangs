@@ -61,11 +61,12 @@ ignored-input tables included).
   [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)).
   Eight of the first thirteen lost a trick.  Record a finished audit as
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
-- **Re-judge table-as-data removals** (2026-10-29): a packed literal or
-  indexed table is family now, so HQ9+ with headers, Parenthesys and
-  Grapheme (removed packages) and CreativeScript v2 (never built) return
-  unless another ground excludes them: spec completeness, a fixed token
-  map, the Brainfuck-derivative ban.
+- **Re-judge family-ground removals** (2026-10-29): a decision diagram
+  and a table held as data are family now, so HQ9+ with headers,
+  Parenthesys, Grapheme, IEBEL and Decleq (removed packages), CARP and
+  CreativeScript v2 (never built), and Brainfuck derivatives refused by
+  the dropped ban return unless another ground excludes them: spec
+  completeness, a fixed token map, a bespoke re-spelling.
 - **Malbolge per-arity layout** (parked 2026-10-29): live cells are 10-14% of
   the 59,049-cell image at n <= 12. Tables sit at 39,367-43,002 because the
   held top digit is 6; a bit-to-digit bijection putting it at 1, with hubs and

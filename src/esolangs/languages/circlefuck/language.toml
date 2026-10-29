@@ -7,7 +7,6 @@ workspace = 6
 [curation]
 backlinks = 5
 bf_derivative = true
-bf_derivative_predates = true
 
 [proof_status]
 labels = ["linear lookup"]

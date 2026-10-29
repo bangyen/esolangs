@@ -21,9 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # Fame admits at this many backlinks; below it, only a first implementation.
 FAME_BACKLINKS = 50
 
-_FIELDS = frozenset(
-    {"backlinks", "bf_derivative", "bf_derivative_predates", "unassessed"}
-)
+_FIELDS = frozenset({"backlinks", "bf_derivative", "unassessed"})
 _COLLECTED = {"checked": "curation", "bf_derivatives_checked": "bf_derivatives"}
 
 
@@ -41,15 +39,9 @@ def _validate(path: Path, row: dict[str, Any]) -> dict[str, Any]:
         value = row["backlinks"]
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:
             raise ValueError(f"{path}: backlinks must be a nonnegative int")
-    for key in ("bf_derivative", "bf_derivative_predates", "unassessed"):
+    for key in ("bf_derivative", "unassessed"):
         if key in row and not isinstance(row[key], bool):
             raise ValueError(f"{path}: {key} must be a bool")
-    if row.get("bf_derivative_predates") and not row.get("bf_derivative"):
-        raise ValueError(
-            f"{path}: bf_derivative_predates records a Brainfuck derivative "
-            "admitted before the 2026-10-15 exclusion, so bf_derivative "
-            "must be true"
-        )
     return dict(row)
 
 

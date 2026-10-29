@@ -5,7 +5,6 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
-from scripts.docs.curation import FAME_BACKLINKS
 from scripts.docs.curation import rows as _curation_rows
 from tests.support.generator_support import CHECK
 from tests.support.pick import languages
@@ -25,24 +24,6 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
             continue  # offline; `finish` asks for the count before merging
         # The route is derived: fame at ``FAME_BACKLINKS``, else first impl.
         assert isinstance(row["backlinks"], int), name
-
-
-def test_no_new_brainfuck_derivative_is_a_first_implementation() -> None:
-    """The exclusion holds for candidates from 2026-10-15; the rest predate it.
-
-    A predating derivative records ``bf_derivative_predates`` in its
-    package's ``[curation]`` section; a derivative admitted since the
-    exclusion carries no such marker, so it must clear the fame gate.
-    """
-    predating = {
-        name for name, row in _CENSUS.items() if row.get("bf_derivative_predates")
-    }
-    derived = {
-        name
-        for name, row in _CENSUS.items()
-        if row.get("bf_derivative") and row["backlinks"] < FAME_BACKLINKS
-    }
-    assert derived <= predating, sorted(derived - predating)
 
 
 @pytest.mark.parametrize("language", languages(boolean_generator=False))

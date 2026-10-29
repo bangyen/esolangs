@@ -9,7 +9,6 @@ workspace = 11
 [curation]
 backlinks = 1
 bf_derivative = true
-bf_derivative_predates = true
 
 [proof_status]
 labels = ["finite lookup"]
