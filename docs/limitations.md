@@ -507,8 +507,8 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
-of 62 tree-shaped generators build parity or a repeated-block table at most
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 39
+of 63 tree-shaped generators build parity or a repeated-block table at most
 0.90x its dense or distinct-block twin (7 by a local helper); 24 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
@@ -699,7 +699,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 103 languages.
+The collection has 104 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -796,9 +796,9 @@ which ships from n = 6, 18 of 18 at n = 5-7, broken translators failing.
 The 2026-10-29 rule makes the literal and indexed-table grounds family, so
 HQ9+ with headers, Parenthesys and CreativeScript v2 (not
 admitted on 2026-10-27: a packed literal under a `1 + x(Q - 1)` shift) are
-re-judged, and so are IEBEL and CARP (not admitted: Decleq's diagram without the
+re-judged, and so is CARP (not admitted: Decleq's diagram without the
 normalization), excluded on diagram grounds (see the
-[roadmap](roadmap.md)); Decleq and Grapheme returned on 2026-10-29. Painfuck shares brainfuck's flag tree but stays: its
+[roadmap](roadmap.md)); Decleq, Grapheme and IEBEL returned on 2026-10-29. Painfuck shares brainfuck's flag tree but stays: its
 moves use `d` and `r` and its I/O is numeric, none of them brainfuck's.
 Fame admissions are exempt. Between two first implementations the
 construction stays with the language created first on the wiki, not the
@@ -859,7 +859,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 79 are first implementations.
+and 80 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

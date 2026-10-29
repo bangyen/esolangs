@@ -63,7 +63,7 @@ ignored-input tables included).
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
 - **Re-judge family-ground removals** (2026-10-29): a decision diagram
   and a table held as data are family now, so HQ9+ with headers,
-  Parenthesys and IEBEL (removed packages), CARP and
+  Parenthesys (removed packages), CARP and
   CreativeScript v2 (never built), and Brainfuck derivatives refused by
   the dropped ban return unless another ground excludes them: spec
   completeness, a fixed token map, a bespoke re-spelling.
@@ -100,7 +100,7 @@ Pointless 2, Quassaunt 2, Stisp 2, Super SNUSP 2, SwitchCase 2, Unsquare 2.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-12 of the 79 first implementations: Aprknia, Balik, BASICER, Bleh,
+12 of the 80 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, Stisp,
 SwitchCase, Tiangou.
 

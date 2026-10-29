@@ -430,6 +430,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Grapheme | linear lookup | the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0 (or a 1), which is Horner's rule for the complemented (or direct) index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0 | linear: at most 17n + 20 + digits(2^T) characters from n=2 | linear: at most 17n + 20 + d commands from n=2, d the digits of 2^T: one per program character | linear: at most 16d + 136n + 195 + bl(17n+d+5) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n) bits from n=2 |
 | Home Row | parameterized tree | — | linear: worst 27T/2 + 10n + 6 characters past n = 1: runs | linear: worst 10T + 10n + 88 commands past n = 1: every guarded leaf run, one equal pair of rows | poly n: worst n + 32 + bl(27T/2+10n+6) + [n!=4] bits past n = 1: index cell, cursor, a -1 setter cell |
 | Hot | tree | the table is a tree of Church pairs, equal halves folded to `K`, applied to the bits that one fixed reader stage an input takes from `A` | linear: worst 27T/2 + 73n + 86 characters past n = 1: pairs | poly n: worst 35n + 45 rewrites: a pair a level, then the answer stage | linear: worst max(88T+232n+235, 132T+24n-53) + bl(n) bits past n = 1: two copies early, three at the end |
+| IEBEL | tree | equal subtables share one block, reached by line-number jumps | linear: one block per distinct subtable, jumps of log T digits | poly n: worst 3n + 3 commands | poly n: worst n + 275 bits |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: worst C characters past n = 4: every n | poly n: worst 8n + 10 commands past n = 4, halving per level | linear: worst 24T + 516n + 169 + A bits for n = 5..16: the program text after n reads |
 | INTERCAL | parameterized tree | equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree | linear: worst U characters for n = 3..19, at most V after | linear: worst 2n + M + A statements for n = 5..26, at most it elsewhere: shared nodes | linear: worst 9m + Σ_{k≤m} bl(k) + B + bl(S) bits for n = 1..26, at most it elsewhere |
 | Interprogck8 | tree | a read's 1 arm hops to the far child, short inside a cluster and above it a flight at its own column sharing each window's rung; its 0 arm falls through | linear: worst F characters, n = 3..10; at most beyond | linear: worst F commands, n = 3..12; at most F to n = 34 | poly n: worst bl(R) + bl(2n) + 543 bits past n = 2: accumulator, line cursor, input cursor, slot and frame bodies |
@@ -585,7 +586,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 98 theoretical totality arguments and
+Accordingly, this ledger records 99 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
