@@ -43,6 +43,7 @@ don't edit by hand.
 | `brainfuck/brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif/brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
 | `caballo/caballo.txt` | Caballo | `0001` | `01` | 0 1 | '[]' |
+| `chicken/chicken.txt` | Chicken | `0001` | `01` | 01 | '0' |
 | `circlefuck/circlefuck.txt` | Circlefuck | `0001` | `01` | 01 | '0' |
 | `circuit_diagram/circuit-diagram.txt` | Circuit Diagram | `0001` | `01` | 01 | '0' |
 | `clockwise/clockwise.txt` | Clockwise | `0001` | `01` | 01 | '0' |
@@ -128,6 +129,7 @@ don't edit by hand.
 - **bitwise-cyclic-tag** -- Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs are bits of the initial data-string, and the answer is the bit the last 0 deletes, which the interpreter prints alone -- so the output is the answer and there is no position to name
 - **blindfolded-arithmetic** -- the input must be a positive integer, so the committed input is the row index plus one
 - **caballo** -- Caballo reads its inputs as the initial stack, the first on top, and prints the surviving stack: [1] for one, [] for zero
+- **chicken** -- Chicken's input is one string; input[i] is bit i
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
 - **container** -- Container prints the answer; module.run returns the EXIT code.
 - **crement** -- Crement answers by termination: the tree's nodes patch a per-input tester's jump targets, and the row lands past the end (halts, 0) or on a self-jump (diverges, 1)

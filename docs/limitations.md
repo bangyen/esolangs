@@ -704,7 +704,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 102 languages.
+The collection has 103 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -837,7 +837,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 <!-- CURATION-CENSUS:START -->
 
 The 2026-10-06 census (`snapshot.json`) records each
-language's backlinks and route: 22 clear the fame gate
+language's backlinks and route: 23 clear the fame gate
 and 80 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
@@ -1060,6 +1060,14 @@ one reading. These are those choices.
   output `=` prints nothing, `(` or `)` halts, and an unbalanced program
   popped to run halts. The page's expanded cat drops the `=` after `(+=)`
   and forces a leading 1; the compact source fixes the repair.
+- Chicken is one JavaScript-valued array: the stack is its end, so a pop
+  truncates and a load past it is `undefined` (the page's `undefined` and
+  NaN examples need that). The input is all of stdin as one string, a
+  jump counts from the cell after it, and running off the array exits.
+  Integers are exact rather than doubles, a string reads as a number only
+  if blank or a decimal integer, and only decimal `&#N;` unescapes. The
+  stack array as an operand, a non-index store address and a load from an
+  `undefined` source raise `HaltError`.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
 

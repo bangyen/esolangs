@@ -1,0 +1,42 @@
+language = "Chicken"
+oldid = 198989
+
+[[examples]]
+id = "quine"
+source = "chicken\n"
+expected = "chicken"
+
+[[examples]]
+id = "undefined"
+source = "chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken\n\n"
+expected = "undefined"
+
+[[examples]]
+id = "a-plus-b"
+source_file = "fixtures/a_plus_b.chicken"
+stdin = "1 2"
+expected = "3"
+
+[[examples]]
+id = "cat"
+source = "chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken\n\n"
+stdin = "hello"
+expected = "hello"
+
+[[spec_triggers]]
+program = "chicken hen\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a word other than chicken in a line"
+
+[[spec_triggers]]
+program = "chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken\n\nchicken\nchicken chicken\n"
+stdin = ""
+expect = "HaltError"
+claim = "the stack array used as a string operand"
+
+[[spec_triggers]]
+program = "chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken chicken\nchicken chicken chicken chicken\nchicken chicken chicken chicken chicken chicken chicken\n"
+stdin = ""
+expect = "InterpreterLimitError"
+claim = "a store past the cell limit"

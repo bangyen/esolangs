@@ -34,6 +34,7 @@ Languages that use a stack for data manipulation.
 - [Ascenic](https://esolangs.org/wiki/Ascenic) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/ascenic/interpreter.py))
 - [BFStack](https://esolangs.org/wiki/BFStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bfstack/interpreter.py))
 - [Caballo](https://esolangs.org/wiki/Caballo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/caballo/interpreter.py))
+- [Chicken](https://esolangs.org/wiki/Chicken) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/chicken/interpreter.py))
 - [Eval](https://esolangs.org/wiki/Eval) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/eval/interpreter.py))
 - [FALSE](https://esolangs.org/wiki/FALSE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/false/interpreter.py))
 - [Fackward](https://esolangs.org/wiki/Fackward) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fackward/interpreter.py))

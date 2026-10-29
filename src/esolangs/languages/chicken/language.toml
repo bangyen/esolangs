@@ -1,0 +1,35 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 55
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "the essential input bits fold into a row number from a pushed base, and a load reads that row's chicken count back out of the program's own lines"
+scaling = "linear: at most 5T + 4n^2 + 372n + 300 characters"
+execution = "linear: at most 9n + 3 commands"
+workspace = "linear: at most 3T/2 + 80n + 300 bits"
+
+[catalogue]
+folding_constant_local = "essential_inputs"  # no essential input: one push line
+
+[generator_sizes]
+"00000001" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1243 }
+"00001100" = { commands = 19, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 19, "7" = 19 }, source_units = 869 }
+"00110110" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1264 }
+"0110" = { commands = 19, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19 }, source_units = 876 }
+"01101001" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1264 }
+"0110100110010110" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37, "8" = 37, "9" = 37, "10" = 37, "11" = 37, "12" = 37, "13" = 37, "14" = 37, "15" = 37 }, source_units = 1678 }
+"1101001101101101" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37, "8" = 37, "9" = 37, "10" = 37, "11" = 37, "12" = 37, "13" = 37, "14" = 37, "15" = 37 }, source_units = 1692 }
+"11111110" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 1285 }
+
+[ablations]
+audited = "2026-10-28"
+
+[ablations.polarity]
+saving = 31.31
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept under the named-function rule: storing the majority value as blank lines and subtracting the loaded cell from a pushed 1 costs 112 characters and changes 11 of 200 random tables at n=7 (0.08%) and 25 at n=8 (0.20%), none grows. OR drops 19.85% at n=7 and 31.31% at n=8; AND, parity and majority (ones are the minority) 0%. Exhaustive n<=3 and named tables to n=8 executed"

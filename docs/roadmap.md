@@ -54,8 +54,6 @@ Fame admissions at the 50-backlink gate
 ([curation](limitations.md#how-a-language-is-admitted)); each needs an
 interpreter matching every example on its page and a linear generator.
 
-- **Chicken** (55): one stack, with code and input on it; jumps index the
-  stack.
 - **Shakespeare** (54): pick the reference word lists and grammar, judged
   by the wiki examples; second-person resolution needs exactly two on stage.
 
