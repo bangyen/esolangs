@@ -377,7 +377,7 @@ class TestProgramObjectsRefuseMisuse:
             esolangs.load_program(TEMPLATE_LANGUAGE, json.dumps(document))
 
     def test_break_at_takes_a_negative_position(self) -> None:
-        """AddSubJump and Subleq halt at -8 and -1; break_at refused them."""
+        """Subleq halts at -1; break_at refused it."""
         debugger_api.make_debugger(REFERENCE, "+").break_at(-1)
 
     def test_the_debugger_mirrors_every_vm_trait(self) -> None:

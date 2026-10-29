@@ -21,7 +21,6 @@ Languages that move a pointer or beam across a 2D grid.
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/flowchart/interpreter.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/laserfuck/interpreter.py))
 - [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/streetcode/interpreter/__init__.py))
-- [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/super_snusp/interpreter.py))
 - [thisthat](https://esolangs.org/wiki/thisthat) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/thisthat/interpreter.py))
 
 ### Stack-based Languages
@@ -93,8 +92,6 @@ Languages that operate on a tape (similar to Turing machines).
 
 Languages that use registers to store and manipulate data.
 
-- [AddSubJump](https://esolangs.org/wiki/AddSubJump) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/addsubjump/interpreter.py))
-- [Blindfolded Arithmetic](https://esolangs.org/wiki/Blindfolded_Arithmetic) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/blindfolded_arithmetic/interpreter.py))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/collatz_multiverse/interpreter.py))
 - [Deadfish](https://esolangs.org/wiki/Deadfish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/deadfish/interpreter.py)) *(interpreter-only)*
 - [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fractran/interpreter/__init__.py))

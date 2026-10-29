@@ -32,32 +32,6 @@ TABLE = "0110"
 
 NARROW_WIDTH = 13
 
-# language-owners: ["Alight", "Line", "Super SNUSP"]
-# Languages that must never be *reflowed*, and why: each ``LANGUAGE``'s
-# ``no_wrap=``.  Not a restatement of
-# the implementation: each was verified to break (or to be meaningless) when
-# newlines are inserted, so the table is the record of that finding.
-#
-# Four of them are already covered by a general rule and named anyway,
-# because each has a *specific* reason worth keeping rather than deriving
-# again.  Alight and Super SNUSP are 2D, where a newline is a row: Alight's
-# commands are words walked out cell by cell, so a row end cuts one in
-# half, and Super SNUSP's pointer walks a grid, so a break relocates code
-# rather than reflowing it.  (The older reason given here -- that with no
-# start marker it enters at the bottom right -- is true of the language but
-# not of these programs, which all begin with an explicit ``"``.)  Both now
-# take a width themselves, by folding on their own turns and mirrors; that
-# is the independence the paragraph below is about. Line-structured source
-# instead assigns meaning to line boundaries: splitting an indented
-# statement or a line classified by whether it contains ``=`` changes its
-# job rather than reflowing it.
-#
-# Unwrappable is not the same as unbounded, and the two memberships are
-# independent: a language here may still take a width by *emitting* a
-# narrower program, which is what function x(y) does by naming its
-# subtrees.  What this table says is only that :func:`wrap_program` must
-# not touch the finished text -- the reasons above are why a break is
-# destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_wrap}
 
 # language-owners: ["Dig", "LaserFuck", "Streetcode"]

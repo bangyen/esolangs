@@ -43,7 +43,7 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
 
     if shape in {"row_index", "row_number"}:
         # A row number is the row index plus one, for a language whose input
-        # must be positive (Blindfolded Arithmetic).
+        # must be positive.
         base = int(shape == "row_number")
         noun = "row number" if base else "row index"
         # ``isdecimal``, not ``isdigit``: a superscript like ``²`` passes

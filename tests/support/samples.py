@@ -156,7 +156,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "6-5": ("55A", ""),
     "A Painter Ant": ("Pnn", ""),
     "Algebraic Programming Language": ("a + 1", "41\n"),
-    "AddSubJump": ("-1 1 -1 -7", ""),
     "Alight": ("begin;var c;set c 65;out c;end;", ""),
     "ArrowQueue": ("~*+", "0"),
     "BFStack": (">+.", ""),
@@ -223,7 +222,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Smallfuck": (">>*", ""),
     "Smu": ("(|+|+++|)", ""),
     "Streetcode": (STREETCODE, ""),
-    "Super SNUSP": ('"65.', ""),
     "Suffolk": ("!" * 66 + "<.", ""),
     "Taglate": ("abc\ni", ""),
     # One rule that prints and deletes its match, so the state empties.

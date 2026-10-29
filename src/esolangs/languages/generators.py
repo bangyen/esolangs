@@ -7,8 +7,6 @@ from esolangs.languages.a_painter_ant.generator import (
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
 from esolangs.languages.abcdirection.generator import LANGUAGE as _ABCDIRECTION_LANGUAGE
 from esolangs.languages.abcdirection.generator import abcdirection
-from esolangs.languages.addsubjump.generator import LANGUAGE as _ADDSUBJUMP_LANGUAGE
-from esolangs.languages.addsubjump.generator import addsubjump
 from esolangs.languages.algebraic_programming_language.generator import (
     LANGUAGE as _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
 )
@@ -45,10 +43,6 @@ from esolangs.languages.bitwise_cyclic_tag.generator import (
 from esolangs.languages.bitwise_cyclic_tag.generator import bitwise_cyclic_tag
 from esolangs.languages.bleh.generator import LANGUAGE as _BLEH_LANGUAGE
 from esolangs.languages.bleh.generator import bleh
-from esolangs.languages.blindfolded_arithmetic.generator import (
-    LANGUAGE as _BLINDFOLDED_ARITHMETIC_LANGUAGE,
-)
-from esolangs.languages.blindfolded_arithmetic.generator import blindfolded_arithmetic
 from esolangs.languages.boolfuck.generator import LANGUAGE as _BOOLFUCK_LANGUAGE
 from esolangs.languages.boolfuck.generator import boolfuck
 from esolangs.languages.brainfuck.generator import LANGUAGE as _BRAINFUCK_LANGUAGE
@@ -199,8 +193,6 @@ from esolangs.languages.subleq.generator import LANGUAGE as _SUBLEQ_LANGUAGE
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.suffolk.generator import LANGUAGE as _SUFFOLK_LANGUAGE
 from esolangs.languages.suffolk.generator import suffolk
-from esolangs.languages.super_snusp.generator import LANGUAGE as _SUPER_SNUSP_LANGUAGE
-from esolangs.languages.super_snusp.generator import super_snusp
 from esolangs.languages.switchcase.generator import LANGUAGE as _SWITCHCASE_LANGUAGE
 from esolangs.languages.switchcase.generator import switchcase
 from esolangs.languages.taglate.generator import LANGUAGE as _TAGLATE_LANGUAGE
@@ -229,7 +221,6 @@ from esolangs.languages.whitespace.generator import whitespace
 _LANGUAGES = (
     _A_PAINTER_ANT_LANGUAGE,
     _ABCDIRECTION_LANGUAGE,
-    _ADDSUBJUMP_LANGUAGE,
     _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
     _ALIGHT_LANGUAGE,
     _APRKNIA_LANGUAGE,
@@ -245,7 +236,6 @@ _LANGUAGES = (
     _BITDEQUE_LANGUAGE,
     _BITWISE_CYCLIC_TAG_LANGUAGE,
     _BLEH_LANGUAGE,
-    _BLINDFOLDED_ARITHMETIC_LANGUAGE,
     _BOOLFUCK_LANGUAGE,
     _BRAINFUCK_LANGUAGE,
     _BRAINIF_LANGUAGE,
@@ -314,7 +304,6 @@ _LANGUAGES = (
     _STREETCODE_LANGUAGE,
     _SUBLEQ_LANGUAGE,
     _SUFFOLK_LANGUAGE,
-    _SUPER_SNUSP_LANGUAGE,
     _SWITCHCASE_LANGUAGE,
     _TAGLATE_LANGUAGE,
     _THISTHAT_LANGUAGE,
@@ -333,7 +322,6 @@ __all__ = [
     "BOOLEAN",
     "a_painter_ant",
     "abcdirection",
-    "addsubjump",
     "algebraic_programming_language",
     "alight",
     "aprknia",
@@ -349,7 +337,6 @@ __all__ = [
     "bitdeque",
     "bitwise_cyclic_tag",
     "bleh",
-    "blindfolded_arithmetic",
     "boolfuck",
     "brainfuck",
     "brainif",
@@ -418,7 +405,6 @@ __all__ = [
     "streetcode",
     "subleq",
     "suffolk",
-    "super_snusp",
     "switchcase",
     "taglate",
     "thisthat",

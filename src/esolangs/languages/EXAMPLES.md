@@ -22,7 +22,6 @@ don't edit by hand.
 | `six_five/6-5.txt` | 6-5 | `0001` | `01` | 01 | '0' |
 | `a_painter_ant/a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '..#\n###\n#o.' |
 | `abcdirection/abcdirection.txt` | ABCDirection | `0001` | `01` | 01 | '0' |
-| `addsubjump/addsubjump.txt` | AddSubJump | `0001` | `01` | 01 | '0' |
 | `algebraic_programming_language/algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight/alight.txt` | Alight | `0001` | `01` | 01 | '0' |
 | `aprknia/aprknia.txt` | Aprknia | `0001` | `01` | 01 | '0' |
@@ -38,7 +37,6 @@ don't edit by hand.
 | `bitwise_cyclic_tag/bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
 | `bit_tilde/bit~.txt` | bit~ | `0001` | `01` | 01 | '0' |
 | `bleh/bleh.txt` | Bleh | `0001` | `01` | 01 | '0' |
-| `blindfolded_arithmetic/blindfolded-arithmetic.txt` | Blindfolded Arithmetic | `0001` | `01` | 2 | '0' |
 | `boolfuck/boolfuck.txt` | Boolfuck | `0001` | `01` | 01 | '0' |
 | `brainfuck/brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif/brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
@@ -106,7 +104,6 @@ don't edit by hand.
 | `streetcode/streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
 | `subleq/subleq.txt` | Subleq | `0001` | `01` | 01 | '0' |
 | `suffolk/suffolk.txt` | Suffolk | `0001` | `01` | 01 | '0' |
-| `super_snusp/super-snusp.txt` | Super SNUSP | `0001` | `01` | 01 | '0' |
 | `switchcase/switchcase.txt` | SwitchCase | `0001` | `01` | 01 | '0' |
 | `taglate/taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
 | `thisthat/thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
@@ -127,7 +124,6 @@ don't edit by hand.
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
 - **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
 - **bitwise-cyclic-tag** -- Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs are bits of the initial data-string, and the answer is the bit the last 0 deletes, which the interpreter prints alone -- so the output is the answer and there is no position to name
-- **blindfolded-arithmetic** -- the input must be a positive integer, so the committed input is the row index plus one
 - **caballo** -- Caballo reads its inputs as the initial stack, the first on top, and prints the surviving stack: [1] for one, [] for zero
 - **chicken** -- Chicken's input is one string; input[i] is bit i
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly

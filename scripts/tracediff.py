@@ -273,8 +273,8 @@ def _random_programs(
     ]
     mixed = len(numbers) < len(texts)
     alphabet = sorted(set("".join(texts)) | {" "})
-    # Negative values the corpus uses are special addresses (AddSubJump's
-    # flags sit at -2..-9); without them a flag mutant went unseen.
+    # Negative values the corpus uses are special addresses (Subleq halts
+    # at -1); without them a flag mutant went unseen.
     low = min([-1, *(value for row in numbers for value in row)])
     programs = []
     for _ in range(count):

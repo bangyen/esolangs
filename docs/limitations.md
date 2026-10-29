@@ -32,7 +32,6 @@ Unless a language says otherwise:
 Exceptions and per-language notes:
 
 - Unsquare uses Unicode character codes where input framing is unspecified.
-- AddSubJump uses Unicode character codes where input framing is unspecified.
 - Minifuck uses Unicode character codes where input framing is unspecified.
 - Forbin expression calls retain their documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
@@ -506,8 +505,8 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 39
-of 62 tree-shaped generators build parity or a repeated-block table at most
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
+of 61 tree-shaped generators build parity or a repeated-block table at most
 0.90x its dense or distinct-block twin (7 by a local helper); 23 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
@@ -635,7 +634,7 @@ exact range (2026-10-23, counted from the ledger):
   n = 4, the shorter of two layouts to n = 5),
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
-  Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
+  Smallfuck and Subleq (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
   worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11 and BFStack workspace below n = 9 but n = 5 (the bound charges every open loop
   bl(L) bits; positions below 2^(bl(L)-1) cost fewer. Smallest gap by table:
   n = 4 11 (exhaustive, 165 against 176), n = 5 0 (exact: 0^16 1 0^15 measures 321); n = 6..8 not re-measured since the decoder race went, 2026-10-28).
@@ -648,7 +647,7 @@ exact range (2026-10-23, counted from the ledger):
   random: 327,178 characters against 475,725; 8,824 commands against
   15,720). Exact needs the generator's own address solve, not a bound.
 - Address widths: the peak sums the bit-lengths of table-dependent
-  positions, which cross powers of two by layout. AddSubJump, Caballo,
+  positions, which cross powers of two by layout. Caballo,
   Crement, Pointless, S-BLEQ (1.002x: cell bits plus 6n, packed
   route sampled to n = 10) and Underload workspace;
   Painfuck workspace (slack 1
@@ -701,7 +700,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 103 languages.
+The collection has 100 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -712,7 +711,6 @@ incompatible embeds; ZTOALC L for a searched syntax-level lookup table. The 2D s
 1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
 verdicts, co-categories, I/O and branch vocabulary, and page length.
 
-- Super SNUSP was admitted by the 2D screen.
 - Alight was admitted by the 2D screen.
 - Pinyin was rejected by the 2D screen.
 
@@ -770,6 +768,12 @@ A generator built differently to avoid a re-spelling must be no larger, in
 characters and in balanced area, than the re-spelling build with its free
 wins (2026-10-28): admission buys a whole language, so the 10% bar for a
 size trick grants no allowance.
+The match must carry the older generator's construction past a shared
+decision diagram (2026-10-29): 35 generators build one (`subtree_ids`),
+and any language with a two-way branch hosts its node as a fixed gadget,
+so a diagram alone is family. Translation into a universal machine is no
+evidence either: Pilas, Aprknia, lol waht, Packlang and Qoibl run in
+Whitespace, Freestajlo, 1 + i and Modulous in FALSE, all by fixed gadgets.
 Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
 prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
@@ -789,14 +793,24 @@ decision tree: every shipped program translated instruction for
 instruction into S\*bleq, a constant pool for its indirect jumps and a
 two-instruction read, and computed its table, 2,676 of 2,676 at n = 1-6;
 copy-and-decrement, its one primitive S\*bleq lacks, is a fixed S\*bleq
-gadget, so no construction escapes). Rescues checked on 2026-10-29 found
+gadget, so no construction escapes). A family re-sweep on 2026-10-29
+removed three more. Super SNUSP and Blindfolded Arithmetic (Qoibl's
+packed literal shifted by the row): every program translated block for
+block into Qoibl and computed its table, 2,100 of 2,100 rows at n = 1-3
+and 960 of 960 at n = 4, 5 for Super SNUSP (the row index as an exponent;
+Qoibl has no shift), 276 of 276 tables at n = 1-3 and 33 of 33 at n = 4-6
+for Blindfolded Arithmetic. AddSubJump (S\*bleq's race of a shared tree
+against a packed decoder, phase for phase): both routes translated into
+S\*bleq, 276 of 276 each at n = 1-3, and the packed route, which ships
+from n = 6, 18 of 18 at n = 5-7. Broken translators failed throughout.
+Rescues checked on 2026-10-29 found
 none: Factor is brainfuck as a prime product, a token substitution;
 HQ9+ with headers' decimal literal is Qoibl's packed literal in another
 base, larger to n = 6; Parenthesys' packed decimal with a `^` bit test is
 Qoibl's literal again, larger at n <= 3; CreativeScript v2 has no branch,
 loop or index under any reading of its spec. On the same ground
 CARP (no indirect jump or load: S\*bleq's tree, via Decleq's, without the normalization)
-and CreativeScript v2 (a packed literal under Blindfolded Arithmetic's
+and CreativeScript v2 (Qoibl's packed literal under a
 `1 + x(Q - 1)` shift) were not admitted on 2026-10-27. Painfuck shares brainfuck's flag tree but stays: its moves use
 `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
 admissions are exempt: S\*bleq, itself a re-spelling of Subleq, was
@@ -855,7 +869,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 79 are first implementations.
+and 76 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

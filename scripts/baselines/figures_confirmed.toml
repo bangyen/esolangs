@@ -3,9 +3,6 @@
 ["abcdirection/generator.py"]
 "replaced (9,983,952 cells at ``n = 6``)." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
-["addsubjump/generator.py"]
-"Interning equal packed cells saves 0.00% at n=8: a running operand reads" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
-
 ["alight/generator.py"]
 "# 2 chars: 0.47% at n=8, retired.)" = "c89c9d061f41050be04083635c299840931049cf"
 "# tables: without the guard n=8 at width 300 is 83% larger (0% at 50-160" = "c89c9d061f41050be04083635c299840931049cf"
@@ -16,9 +13,6 @@
 ["bitdeque/generator.py"]
 "65,536 tables, -49.3%, none longer.  A linear discard lookup raced the tree" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 "and won on 0 of 215 tables (random, parity, and, majority; n=5..9): retired." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
-
-["blindfolded_arithmetic/generator.py"]
-"and accumulator fit beside ``i``; base 2 costs 9,851 chars at n=10" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
 ["brainfuck/generator.py"]
 "Flags cut n=10 sparse from 2,646 to 754 chars; folding and shared output" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
@@ -87,11 +81,6 @@
 "# At n=3, emitted grid area falls from 258856 to 228946 cells over all" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 "past ``width`` falls to it (``00000011``: 12x41 -> 165x9 at ``width=40``):" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 "wide (n=11: 1021 columns), which caps the gain near 4x." = "498ae85700bb5ed78eb17065c56a123e7516c756"
-
-["super_snusp/generator.py"]
-"# (72%) on these five." = "498ae85700bb5ed78eb17065c56a123e7516c756"
-"# only arity: 723 vs 907 characters over all 16 tables (20.3%), 72 vs 256" = "c89c9d061f41050be04083635c299840931049cf"
-"# only arity: 723 vs 907 characters over all 16 tables, 72 vs 256" = "498ae85700bb5ed78eb17065c56a123e7516c756"
 
 ["three_x/generator.py"]
 "(at most 5 characters each) and is within 1.4% of that greedy loop on" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"

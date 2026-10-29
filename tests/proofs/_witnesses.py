@@ -48,7 +48,6 @@ def _dig_indexed_worst(n: int) -> str:
     return "".join(blocks[i % len(blocks)] for i in range(1 << n - 6))
 
 
-# language-owners: ["AddSubJump", "Subleq"]
 def _asj_packed_worst(n: int) -> str:
     """Top three bits of every chunk set (all chunks widest), the rest hashed.
 
@@ -809,7 +808,6 @@ _SPARSE_BAND = {
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
-    "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
     "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
     "Back": _back_worst,
     # Row 0 marked and T / 2 rows marked, all inputs essential: the
@@ -870,12 +868,6 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "1" + _parity(n)[1:],
         *(("0000000010010110",) if n == 4 else ()),
         *((_boolfuck_flip(n),) if n >= 3 else ()),
-    ),
-    # Half the rows set, so table and complement tie: T/2 + 1 ones under a
-    # clear top bit (n even), or T/2 ones under a "10" top digit (n odd).
-    "Blindfolded Arithmetic": lambda n: (
-        "1" * (2 ** (n - 1) + 1) + "0" * (2 ** (n - 1) - 1),
-        "1" * (2 ** (n - 1) - 1) + "0" * 2 ** (n - 1) + "1",
     ),
     # Balanced, row 0 a planted one: the longest prologue, and a mark.
     "bit~": lambda n: ("1" * (2 ** (n - 1) - 1) + "01" + "0" * (2 ** (n - 1) - 1),),

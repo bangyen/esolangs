@@ -69,20 +69,19 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (68): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
-Algebraic Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark,
-Back, Befunge, BFStack, Bitdeque, bit~, Blindfolded Arithmetic, Boolfuck,
-brainfuck, BrainIf, Circlefuck, Circuit Diagram, Clockwise, Collatz
-Multiverse, Container, Crement, CV(N)(C), Dig, Dimensional, EGL, FALSE,
-Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row, Hot,
-Inject, INTERCAL, Interprogck8, LaserFuck, Line, Malbolge, Minifuck,
-Modulous, Packlang, Painfuck, Piet, Polynomial, Qoibl, RAM0, ROTfuck,
-S*bleq, SLOW ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, Suffolk,
-Taglate, thisthat, Thue, Underload, Unlambda. Next by kept `[ablations]`:
-NOR machine 3, SendStuff 3, Smu 3, Unary 3, Balik 2, Bitwise Cyclic Tag 2,
-Bleh 2, Caballo 2, Codesick 2, Cyclic tag 2, Eval 2, Fackward 2, Minsky Swap
-2, Pointless 2, Quassaunt 2, Stisp 2, Super SNUSP 2, SwitchCase 2, Unsquare
-2.
+Audited (66): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, Algebraic
+Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark, Back,
+Befunge, BFStack, Bitdeque, bit~, Boolfuck, brainfuck, BrainIf, Circlefuck,
+Circuit Diagram, Clockwise, Collatz Multiverse, Container, Crement,
+CV(N)(C), Dig, Dimensional, EGL, FALSE, Fargo, Fish, Flowchart, Forbin,
+Forþ, FRACTRAN, Freestajlo, Home Row, Hot, Inject, INTERCAL, Interprogck8,
+LaserFuck, Line, Malbolge, Minifuck, Modulous, Packlang, Painfuck, Piet,
+Polynomial, Qoibl, RAM0, ROTfuck, S*bleq, SLOW ACV MAMMALIAN, Smallfuck,
+SStack, Streetcode, Subleq, Suffolk, Taglate, thisthat, Thue, Underload,
+Unlambda. Next by kept `[ablations]`: NOR machine 3, SendStuff 3, Smu 3,
+Unary 3, Balik 2, Bitwise Cyclic Tag 2, Bleh 2, Caballo 2, Codesick 2,
+Cyclic tag 2, Eval 2, Fackward 2, Minsky Swap 2, Pointless 2, Quassaunt 2,
+Stisp 2, SwitchCase 2, Unsquare 2.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
@@ -95,7 +94,7 @@ Bleh 2, Caballo 2, Codesick 2, Cyclic tag 2, Eval 2, Fackward 2, Minsky Swap
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-13 of the 79 first implementations: Aprknia, Balik, BASICER, Bleh,
+13 of the 76 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, S*bleq,
 Stisp, SwitchCase, Tiangou.
 
