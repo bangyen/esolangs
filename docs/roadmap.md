@@ -94,7 +94,7 @@ Stisp 2, SwitchCase 2, Unsquare 2.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-13 of the 76 first implementations: Aprknia, Balik, BASICER, Bleh,
+13 of the 75 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, S*bleq,
 Stisp, SwitchCase, Tiangou.
 

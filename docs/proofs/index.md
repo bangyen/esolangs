@@ -444,7 +444,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: at most N characters: one write per differing row | linear: at most 19T/2 - n - 4 steps for n = 3..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: at most 31T/2+3n-21 characters past n = 3: to n = 15 | poly n: worst 4n^2 + 9n + 5 - 6⌊n/2⌋ commands past n = 2: parity sum's loops; trees ≤ 22n | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
 | Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: worst F codels for n = 2..7, then at most F | linear: worst F steps for n = 2..7, then at most 5T + 11n + 31: blocks plus turns | linear: worst F bits for n = 2..7, then at most S: the stack |
-| Piet++ | finite lookup | the leading essential inputs fold into a pixel address, Read loads the pixel holding 2^k table bits, and the last k inputs square up the power of two that selects the bit | linear: at most 3T/16 + 12n + 62 codels | linear: at most 6n + 5 steps | linear: at most bl(T/16 + 4n + 21) + bl(n) + bl(2n-1) + 37 bits |
 | Pilas | tree | — | linear: at most 38T characters: one 27-command node per branch | poly n: worst 46n + 21 commands | poly n: at most 3n + 24 bits |
 | Pointless | tree | each distinct subtable is one function, pasted in where that is shorter; `,=` maps a character to its bit through the cells 48 and 49, and `[` tests the bit's cell; the one `!` seeds the 1s that make `+` an increment | linear: at most F characters: every function declared | poly n: worst 26n + 309 steps past n = 2: setup 6n + 305, 16 a level | poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([summary](#polynomial-bound)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([summary](#polynomial-bound)) | unmeasured: worst C - 2, 2, 3, 4, 4, 5, 6, 7 at n = 3-10, then at most C | poly n: at most bl(A + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits |
@@ -578,7 +577,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 95 theoretical totality arguments and
+Accordingly, this ledger records 94 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

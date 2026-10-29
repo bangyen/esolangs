@@ -41,7 +41,7 @@ Exceptions and per-language notes:
 
 <!-- RASTER-SOURCES:START -->
 
-Line, Piet and Piet++ carry a raster source: `generate` returns an
+Line and Piet carry a raster source: `generate` returns an
 `esolangs.Raster`, `run` takes it or a PNG path through the shared
 codec, and `describe` reports `source_kind="raster"`.
 
@@ -506,8 +506,8 @@ requires a construction exemption rather than a sub-gate bound.
 <!-- SHARING-COUNTS:START -->
 
 A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
-of 61 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 23 are
+of 60 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 22 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -700,7 +700,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 100 languages.
+The collection has 99 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -777,9 +777,11 @@ Whitespace, Freestajlo, 1 + i and Modulous in FALSE, all by fixed gadgets.
 Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
 prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
-removed (Piet++ returned on 2026-10-28: its generator packs 16 table bits to a
-pixel and `Read`s the pixel at a Horner address, which Piet, with no memory
-primitive, cannot transcribe); IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
+removed (Piet++ returned on 2026-10-28, packing 16 table bits to a pixel
+and `Read`ing it at a Horner address, which Piet cannot transcribe, and
+left again on 2026-10-29: that is Fish's packed cells fetched by `g`, a
+wider cell and no new primitive; every program translated op for op into
+Fish, 2,120 of 2,120 rows at n = 1-3 and 1,728 of 1,728 at n = 4, 6); IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
 48/49 normalization; dropping a step adds nothing), and Grapheme on
 2026-10-28 (Qoibl's packed literal: every shipped program translated block
 for block into Qoibl and computed its table, 190 of 190 at n = 1-6; a distinct rebuild, a row counter halving the
@@ -869,7 +871,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 76 are first implementations.
+and 75 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

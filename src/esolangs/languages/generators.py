@@ -145,10 +145,6 @@ from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
 from esolangs.languages.painfuck.generator import painfuck
 from esolangs.languages.piet.generator import LANGUAGE as _PIET_LANGUAGE
 from esolangs.languages.piet.generator import piet
-from esolangs.languages.piet_plus_plus.generator import (
-    LANGUAGE as _PIET_PLUS_PLUS_LANGUAGE,
-)
-from esolangs.languages.piet_plus_plus.generator import piet_plus_plus
 from esolangs.languages.pilas.generator import LANGUAGE as _PILAS_LANGUAGE
 from esolangs.languages.pilas.generator import pilas
 from esolangs.languages.pointless.generator import LANGUAGE as _POINTLESS_LANGUAGE
@@ -282,7 +278,6 @@ _LANGUAGES = (
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
     _PIET_LANGUAGE,
-    _PIET_PLUS_PLUS_LANGUAGE,
     _PILAS_LANGUAGE,
     _POINTLESS_LANGUAGE,
     _POLYNOMIAL_LANGUAGE,
@@ -383,7 +378,6 @@ __all__ = [
     "packlang",
     "painfuck",
     "piet",
-    "piet_plus_plus",
     "pilas",
     "pointless",
     "polynomial",
