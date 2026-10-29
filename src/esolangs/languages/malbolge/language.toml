@@ -49,7 +49,7 @@ audited = "2026-10-18"
 [ablations.full_store_render]
 saving = 0.0
 arity = 16
-verdict = "kept: the source is the whole memory image by design; the untouched tail costs 44.7% at n=3..7 and 11.1% at n=15, ~0% at the largest arities"
+verdict = "kept: the source is the whole memory image by design. The untouched tail is 2,186 of 59,049 characters (3.7%, under the bar) at every arity: the 56,863-character prefix still computes the table and 56,862 does not, on random and parity tables at n=3, 7, 10 and 12 (plain-rewrite audit 2026-10-29). The 2026-10-18 figures (44.7% at n=3..7, 11.1% at n=15) predate the one positional build"
 
 [ablations.tier_constructions]
 saving = 0.0
@@ -86,3 +86,6 @@ verdict = "kept: a per-step snapshot costs the writes, not 59,049 words"
 price = 2.1
 workload = "run"
 verdict = "candidate: unmeasurable; the fill is ~55 ms per source against multi-second executions"
+
+[audits]
+plain_rewrite = 2026-10-29
