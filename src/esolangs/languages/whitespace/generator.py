@@ -33,9 +33,7 @@ _LINE = "\n"
 
 #: The tab/space/line tokens each command is built from, named so a run of
 #: whitespace at the emission site cannot silently become another command.
-_DUP = _SPACE + _LINE + _SPACE
 _SWAP = _SPACE + _LINE + _TAB
-_DISCARD = _SPACE + _LINE * 2
 _ADD = _TAB + _SPACE + _SPACE + _SPACE
 _SUB = _TAB + _SPACE + _SPACE + _TAB
 _MUL = _TAB + _SPACE + _SPACE + _LINE
