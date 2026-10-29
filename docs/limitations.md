@@ -704,7 +704,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 105 languages.
+The collection has 104 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -783,7 +783,11 @@ primitive, cannot transcribe); IEBEL followed on 2026-10-27 (Subleq's shared dia
 2026-10-28 (Qoibl's packed literal: every shipped program translated block
 for block into Qoibl and computed its table, 190 of 190 at n = 1-6; a distinct rebuild, a row counter halving the
 literal in a loop, cost +9.8% chars and +20% balanced area at n = 7 over
-the shipped build with its free wins). On the same ground
+the shipped build with its free wins), and Sonata on 2026-10-28 (the
+Slashes unary index: every shipped program translated block for block into
+`///` and computed its table, 258 of 258 at n = 1-6; its symmetric count is
+Slashes' unary block less the doubling rule, 50 of 50; the pairwise
+halving it avoided re-spells Thue). On the same ground
 CARP (no indirect jump or load: Decleq's diagram without the normalization)
 and CreativeScript v2 (a packed literal under Blindfolded Arithmetic's
 `1 + x(Q - 1)` shift) were not admitted on 2026-10-27. Painfuck shares brainfuck's flag tree but stays: its moves use
@@ -844,7 +848,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 81 are first implementations.
+and 80 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

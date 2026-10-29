@@ -928,7 +928,6 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
-    "Sonata": lambda n: (_low_one(n),),
     "Stisp": lambda n: (
         (_unequal_first(n), *_diagram_witness("stisp", n, 20)) if n >= 2 else ()
     ),

@@ -102,7 +102,6 @@ don't edit by hand.
 | `slow_acv_mammalian/slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck/smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `smu/smu.txt` | Smu | `0001` | `01` | 01 | '0' |
-| `sonata/sonata.txt` | Sonata | `0001` | `01` | 01 | '=0' |
 | `sstack/sstack.txt` | SStack | `0001` | `01` | 01 | '0' |
 | `stisp/stisp.txt` | Stisp | `0001` | `01` | embedded 01 | '0' |
 | `streetcode/streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
@@ -149,7 +148,6 @@ don't edit by hand.
 - **slashes** -- Inputs fill the binary row index before unary selection; constant tables delete the input letters and print their answer.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
-- **sonata** -- Sonata's input is its initial string and its output the final one, = and the answer
 - **stisp** -- Stisp has no input or output: each input is the atom 0 or 1 in its frame, and the result, printed at halt, is the answer atom
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **unary** -- Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.

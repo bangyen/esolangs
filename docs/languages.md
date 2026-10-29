@@ -116,7 +116,6 @@ Languages whose data is the program itself, rewritten as it runs.
 - [Crement](https://esolangs.org/wiki/Crement) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/crement/interpreter.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/inject/interpreter.py))
 - [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/malbolge/interpreter.py))
-- [Sonata](https://esolangs.org/wiki/Sonata) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sonata/interpreter.py))
 - [Thue](https://esolangs.org/wiki/Thue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/thue/interpreter.py))
 
 ### Variable-based Languages

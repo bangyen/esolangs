@@ -476,7 +476,7 @@ def quick_tests(name: str) -> list[str]:
         "tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
         # Whole modules or functions: each runs the registry in ~1-4 s, and
-        # Kiss/Sonata/SwitchCase first failed all of these inside finish's
+        # Kiss/SwitchCase first failed all of these inside finish's
         # 250 s gate (2026-10-21).
         "tests/interpreters/test_spec_triggers.py",
         "tests/api/test_catalog_contracts.py::TestTheSpecIsReachable",
@@ -691,7 +691,7 @@ def size_anchors(name: str) -> list[str]:
     """Return one line per ``Size:`` anchor in the generator's docstring.
 
     Each is re-measured as ``test_the_size_anchor_is_what_generate_emits``
-    does; Sonata's and SwitchCase's went stale twice while being built.
+    does; SwitchCase's went stale twice while being built.
     """
     import importlib
     import inspect

@@ -313,9 +313,6 @@ These generators keep no unconstrained tree route and have no subtree to fold:
   by the power of two its reads build.
 - SLOW ACV MAMMALIAN: Its read chain emits one fixed-width leaf slot per row
   whatever the table says.
-- Sonata: Doubles a unary row index and strips one table entry per unit.
-  `essential_inputs` halves degenerate tables; the fold discriminator in
-  `test_schemes.py` records this exception.
 - SwitchCase: A switch a hundred rows turns the row index into its row's bit.
   `essential_inputs` halves degenerate tables; the fold discriminator in
   `test_schemes.py` records this exception.
@@ -465,7 +462,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf | linear: at most V characters | linear: at most E commands | linear: at most B bits |
 | Smallfuck | parameterized tree | each level owns a bit, branch flag, and result cell; a child transfers its result three cells upward, so the depth-first pointer walk crosses each tree edge only a constant number of times | linear: at most Q characters: the shorter plain tree, bands 3 or 5 | poly n: at most 9n^2 + 100n + 20 commands, one tree path | linear: worst L + bl(L) + bl(3n) bits: one tape bit per source character |
 | Smu | tree | a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros carry the repeated text, and a subtree two parents reach is one more when that is shorter | linear: worst C characters to n = 16, at most 6T+90 after | poly n: worst 55n + 5 commands, one tree path of eight runs a level | linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables |
-| Sonata | finite lookup | the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them | linear: worst T + 4n + 101 characters: projected table plus reads | linear: worst T + n + 3 steps: a doubling an input, a strip a row | linear: worst 16T + 10 bits: the string at its longest, an index of T - 1 units beside the table |
 | SStack | tree | each input byte is compared with stacked '1' and '0', then popped before descent; the empty test stack ends both one-shot loops; a constant subtree reads its remaining inputs and prints; repeated residuals use guarded labels | linear: at most 24T-9 characters: 21 a node, 3 a leaf, 12 prologue | poly n: at most 7n + 3 commands, six a tree node plus guarded dispatch | poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes |
 | Stisp | parameterized tree | the inputs are atoms in n frames, and an equation per edge of the reduced diagram rewrites the head node | linear: worst F characters, n = 3..20; at most beyond | poly n: worst n rewrites: one frame an input | poly n: worst 16n + 8z bits, z the decimal digits of D + 1: the frames and the node atom |
 | Streetcode | linear lookup | the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry | linear: worst S cells from n = 2: tree, then the flat street | linear: worst 290n + 312 + H + W steps from n = 2 for an H×W tree, else F | T log T: at most nT + 2n + 25 + bl(2T+57+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3) |
@@ -588,7 +584,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 100 theoretical totality arguments and
+Accordingly, this ledger records 99 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

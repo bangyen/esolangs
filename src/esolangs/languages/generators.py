@@ -191,8 +191,6 @@ from esolangs.languages.smallfuck.generator import LANGUAGE as _SMALLFUCK_LANGUA
 from esolangs.languages.smallfuck.generator import smallfuck
 from esolangs.languages.smu.generator import LANGUAGE as _SMU_LANGUAGE
 from esolangs.languages.smu.generator import smu
-from esolangs.languages.sonata.generator import LANGUAGE as _SONATA_LANGUAGE
-from esolangs.languages.sonata.generator import sonata
 from esolangs.languages.sstack.generator import LANGUAGE as _SSTACK_LANGUAGE
 from esolangs.languages.sstack.generator import sstack
 from esolangs.languages.stisp.generator import LANGUAGE as _STISP_LANGUAGE
@@ -314,7 +312,6 @@ _LANGUAGES = (
     _SLOW_ACV_MAMMALIAN_LANGUAGE,
     _SMALLFUCK_LANGUAGE,
     _SMU_LANGUAGE,
-    _SONATA_LANGUAGE,
     _SSTACK_LANGUAGE,
     _STISP_LANGUAGE,
     _STREETCODE_LANGUAGE,
@@ -420,7 +417,6 @@ __all__ = [
     "slow_acv_mammalian",
     "smallfuck",
     "smu",
-    "sonata",
     "sstack",
     "stisp",
     "streetcode",
