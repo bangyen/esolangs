@@ -91,7 +91,6 @@ don't edit by hand.
 | `ram0/ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `rotfuck/rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
 | `rubic/rubic.txt` | Rubic | `0001` | `01` | 01 | '0' |
-| `s_bleq/s-bleq.txt` | S*bleq | `0001` | `01` | 01 | '0' |
 | `sendstuff/sendstuff.txt` | SendStuff | `0001` | `01` | 01 | '0' |
 | `shakespeare/shakespeare.txt` | Shakespeare | `0001` | `01` | 0 1 | '0' |
 | `slashes/slashes.txt` | /// | `0001` | `01` | embedded 01 | '0' |

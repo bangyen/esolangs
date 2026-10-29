@@ -505,8 +505,8 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
-of 60 tree-shaped generators build parity or a repeated-block table at most
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 37
+of 59 tree-shaped generators build parity or a repeated-block table at most
 0.90x its dense or distinct-block twin (7 by a local helper); 22 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
@@ -635,7 +635,7 @@ exact range (2026-10-23, counted from the ledger):
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
   Smallfuck and Subleq (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
-  worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11 and BFStack workspace below n = 9 but n = 5 (the bound charges every open loop
+  worst: 1,968 against 4,681 at n = 8); BFStack workspace below n = 9 but n = 5 (the bound charges every open loop
   bl(L) bits; positions below 2^(bl(L)-1) cost fewer. Smallest gap by table:
   n = 4 11 (exhaustive, 165 against 176), n = 5 0 (exact: 0^16 1 0^15 measures 321); n = 6..8 not re-measured since the decoder race went, 2026-10-28).
 - Layout slack: Slow ACV Mammalian scaling, execution and workspace bound
@@ -648,8 +648,7 @@ exact range (2026-10-23, counted from the ledger):
   15,720). Exact needs the generator's own address solve, not a bound.
 - Address widths: the peak sums the bit-lengths of table-dependent
   positions, which cross powers of two by layout. Caballo,
-  Crement, Pointless, S-BLEQ (1.002x: cell bits plus 6n, packed
-  route sampled to n = 10) and Underload workspace;
+  Crement, Pointless and Underload workspace;
   Painfuck workspace (slack 1
   at n = 3..6, never 0); Bitdeque scaling (GOTO digits by layout; 358 against
   400 at n = 4, exhaustive); 3x workspace (exact key bits; 1.3-1.5x at n = 3..6, 1.8x at n = 9);
@@ -688,9 +687,6 @@ exact range (2026-10-23, counted from the ledger):
     DIMENSION statements) and scaling past 19 (the shape needs 2^(n-4)
     distinct parents against 57,360 ordered pairs, failing from 20).
     Scaling reopens with a successor shape.
-  - S*bleq scaling past n = 28: one-off builds attain P at 26, 27 and 28
-    (105,463,455 characters, 3.30 GB peak), the harness at the scaling
-    arities to 25; the route's peak doubles per arity, about 6.5 GB at 29.
   - What!? past n = 22: the witness builds to 26 and E(22) = 8,519,845
     steps and W(22) = 587 bits are executed, but the interpreter's
     one-object-per-token parse loads n = 22 in 3.15 GB and dies at 23.
@@ -700,7 +696,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 99 languages.
+The collection has 98 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -815,9 +811,11 @@ CARP (no indirect jump or load: S\*bleq's tree, via Decleq's, without the normal
 and CreativeScript v2 (Qoibl's packed literal under a
 `1 + x(Q - 1)` shift) were not admitted on 2026-10-27. Painfuck shares brainfuck's flag tree but stays: its moves use
 `d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
-admissions are exempt: S\*bleq, itself a re-spelling of Subleq, was
-collected first, and Subleq's generator re-spells S\*bleq's in turn;
-the fame route is what admits Subleq.
+admissions are exempt. S\*bleq went on 2026-10-29 though collected
+first: it and Subleq re-spell each other, 276 of 276 tables at n = 1-3
+each way (a broken translator passes 6), and the fame route keeps the
+original. The rulings above that cite S\*bleq hold against Subleq,
+which builds the same tree and packed decoder.
 
 Nor does the first-implementation route admit a page the wiki categorizes as
 a Brainfuck derivative: the family already holds brainfuck and ten collected
@@ -871,7 +869,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 75 are first implementations.
+and 74 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
@@ -906,13 +904,6 @@ lower bound; three stay out under the scaling rule:
 - SendStuff (3): the extended language (`/` commands, `{}` node sets,
   fragments, strings) is a separate version on the wiki and is not
   implemented.
-- S*bleq: the interpreter also runs the store targets `ab` (S*bl*q) and
-  `b` (Subl*q), each with an indirect form, but no registry entry or
-  dialect selects them and the generator emits base S*bleq only.
-  Registering one means generalizing the hoisted tree and packed decoder
-  to its store target, execution-gated; an indirect form dereferences its
-  operands, so it needs a pointer cell per operand, a different
-  construction.
 
 - [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
   (94) clears the fame gate despite duplicating an earlier queue language's

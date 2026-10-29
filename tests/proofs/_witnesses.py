@@ -26,7 +26,6 @@ from tests.proofs._witness_builders import (
     _malbolge_stub,  # noqa: F401 -- re-exported for the formula suites
     _minifuck_worst,
     _row_one,
-    _sbleq_worst,
     _smu_worst,
     _suffolk_deep,
     _suffolk_worst,
@@ -48,27 +47,14 @@ def _dig_indexed_worst(n: int) -> str:
     return "".join(blocks[i % len(blocks)] for i in range(1 << n - 6))
 
 
-def _asj_packed_worst(n: int) -> str:
-    """Top three bits of every chunk set (all chunks widest), the rest hashed.
-
-    Knuth's multiplicative hash on the row index: a dense tree longer than
-    the packed decoder, so the decoder ships at its widest.
-    """
-    width = 1 << n
-    rows = []
-    for row in range(width):
-        chunk, bit = divmod(row, n)
-        span = min(n, width - chunk * n)
-        rows.append("1" if bit >= span - 3 else str((row * 2654435761 >> 10) & 1))
-    return "".join(rows)
-
-
 # language-owners: ["Subleq"]
 def _subleq_packed_worst(n: int) -> str:
-    """``_asj_packed_worst`` with the top k bits of each chunk set, k >= 3.
+    """Top k bits of every chunk set (all chunks widest), the rest hashed.
 
-    k is the least that keeps every chunk's value at the digit count of 2^n - 1:
-    at n = 10 three bits leave 896..1022, one digit short of 1023 (k = 6).
+    k >= 3 is the least that keeps every chunk's value at the digit count of
+    2^n - 1: at n = 10 three bits leave 896..1022, one digit short of 1023
+    (k = 6).  Knuth's multiplicative hash on the row index: a dense tree
+    longer than the packed decoder, so the decoder ships at its widest.
     """
     digits = len(str((1 << n) - 1))
     k = next(
@@ -570,11 +556,6 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: Arities past the last one that adds a proof term run weekly: Bleh 21-23
 #: and Quassaunt 20, 21 only re-confirm the n - 4 loss term, ~1 min a run.
 #: Stisp's tables at n = 18 take 1.6 s to generate between them.
-#: S*bleq's scaling cases at n = 21..25 run 10.1 s at n = 21, doubling
-#: per arity (the tree build over the corpus tables dominates; the
-#: packed witness alone generates in 2.1-28.7 s over the same range).
-#: They run weekly: 19 and 20 already reach the 7-digit chunks per push,
-#: and the chunk width is one rule; n = 25 took 221 s on CI.
 #: What!?'s scaling case at n = 22 runs 9.7 s alone (its corpus tables
 #: past 15 inputs are dominated by the two alternating builds); n = 21
 #: stays in the medium band at 4.8 s.
@@ -596,11 +577,11 @@ _WITNESS_BAND = {
     ("INTERCAL", 18): "weekly",
     ("INTERCAL", 19): "weekly",
     ("INTERCAL", 20): "weekly",
-    ("S*bleq", 21): "weekly",
-    ("S*bleq", 22): "weekly",
-    ("S*bleq", 23): "weekly",
-    ("S*bleq", 24): "weekly",
-    ("S*bleq", 25): "weekly",
+    (21): "weekly",
+    (22): "weekly",
+    (23): "weekly",
+    (24): "weekly",
+    (25): "weekly",
     ("What!?", 22): "weekly",
 }
 
@@ -646,37 +627,6 @@ def _interprogck8_sparse(n: int) -> SparseRows:
     witness = width - 1
     rows = (0, 1, width // 2 - 1, width - 32, width // 2 - 16, width - 16, witness)
     return SparseRows(owner.steps_witness(n), tuple(dict.fromkeys(rows)), witness)
-
-
-# language-owners: ["S*bleq"]
-def _sbleq_sparse(n: int) -> SparseRows:
-    """The packed witness's rows, as many as the band affords.
-
-    A row's price is its chunk scan, and the scan's prices are
-    chunk-value-driven, not positional (measured per row in the
-    landing notes; a case's steps run at ~0.5M/s on a quiet box,
-    degrading to ~0.2M/s under a memory-bound co-tenant — the
-    sets are budgeted at the degraded rate, against the slow
-    band's 600 s hard stop).
-    {0, width/2, last} totals 37M steps at n = 21 and stays; at
-    22 the middle row alone costs 44M, so {0, last} (34M) stands;
-    at 23 every row past chunk 0 costs 60M or more, so chunk 0's
-    last bit joins row 0 (12M together).  From n = 24 the chunks
-    are 8-digit decimals and row 0 alone costs 40M steps; every
-    second row measured there (57M and up) prices its pair past
-    the band, so row 0 stands alone.  The dearer rows are
-    recorded in the landing notes, unregistered.
-    """
-    width = 1 << n
-    if n == 21:
-        rows = (0, width // 2, width - 1)
-    elif n == 22:
-        rows = (0, width - 1)
-    elif n == 23:
-        rows = (0, n - 1)
-    else:
-        rows = (0,)
-    return SparseRows(_sbleq_worst(n), rows, rows[-1])
 
 
 # language-owners: ["Malbolge"]
@@ -756,8 +706,7 @@ def _malbolge_projection(n: int) -> SparseRows:
 #: or a tuple of them), the arities to step, and the formula columns
 #: (``"execution"``, ``"workspace"``) whose formulas the witness row
 #: must attain.  A registration naming no column checks its rows'
-#: answers only — the shape a route with no step bound yet (S*bleq's
-#: packed route) plugs into.
+#: answers only — the shape a route with no step bound yet plugs into.
 _SPARSE_ROWS: dict[
     str,
     tuple[
@@ -767,7 +716,6 @@ _SPARSE_ROWS: dict[
     ],
 ] = {
     "What!?": (_what_sparse, (16, 17), frozenset({"execution", "workspace"})),
-    "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
     "Malbolge": (_malbolge_sparse, (17,), frozenset()),
     "Interprogck8": (_interprogck8_sparse, (11, 12), frozenset({"execution"})),
 }
@@ -780,14 +728,8 @@ _SPARSE_ROWS: dict[
 #: No case at 22 (77 s / 86 s): it reaches no line or branch 16 and 17
 #: miss, and past 15 inputs E and W have no case split for it to check;
 #: 17 only backs the ledger range, so it runs weekly.
-#: S*bleq parses in well under a
-#: second even at n = 26; its cases are priced by stepping alone
-#: (12M-40M steps a case, plus 1-31 s of generation): whole cases
-#: measure 28-108 s standalone (n = 23 the cheapest, 26 the dearest),
-#: and up to ~2.4x that under a memory-bound co-tenant.  Past n = 21
-#: they run weekly: each re-checks the one packed route at a wider table.  Malbolge
-#: parses in about a millisecond at seventeen (the source is the
-#: fixed store); its case is generation plus both witnesses' rows
+#: Malbolge parses in about a millisecond at seventeen (the source is
+#: the fixed store); its case is generation plus both witnesses' rows
 #: (36 projection rows, 35 weight-class rows, 407,729 steps in all),
 #: about 1.9 s standalone.
 _SPARSE_BAND = {
@@ -795,12 +737,6 @@ _SPARSE_BAND = {
     ("What!?", "execution", 17): "weekly",
     ("What!?", "workspace", 16): "medium",
     ("What!?", "workspace", 17): "weekly",
-    ("S*bleq", "execution", 21): "slow",
-    ("S*bleq", "execution", 22): "weekly",
-    ("S*bleq", "execution", 23): "weekly",
-    ("S*bleq", "execution", 24): "weekly",
-    ("S*bleq", "execution", 25): "weekly",
-    ("S*bleq", "execution", 26): "weekly",
     ("Malbolge", "execution", 17): "medium",
     ("Interprogck8", "execution", 11): "medium",
     ("Interprogck8", "execution", 12): "weekly",
@@ -914,7 +850,6 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         *((_quassaunt_stack(n),) if n >= 3 else ()),
         *_diagram_witness("quassaunt", n, 21),
     ),
-    "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
     "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
     "Stisp": lambda n: (
         (_unequal_first(n), *_diagram_witness("stisp", n, 20)) if n >= 2 else ()

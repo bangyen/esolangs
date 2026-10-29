@@ -220,7 +220,6 @@ n/a = unsupported):
 | Dimensional | 12 | 80 | $ $ $ $ |
 | bit~ | 7 | 102 | $ $ $ $ |
 | Alight | 34 | 58 | $ $ $ $ |
-| S*bleq | 12 | 85 | $ $ $ $ |
 | brainfuck | 8 | 115 | $ $ $ $ |
 | BFStack | 8 | 119 | $ $ $ $ |
 | Smu | 12 | 102 | $ $ $ $ |

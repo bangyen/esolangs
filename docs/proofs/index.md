@@ -369,7 +369,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 - Fargo's T-dependent work was hidden by parity.
 - Forþ's T-dependent work was hidden by parity.
 - INTERCAL's T-dependent work was hidden by parity.
-- S*bleq's T-dependent work was hidden by parity.
 - 6-5's T-dependent work was hidden by parity.
 - SLOW ACV MAMMALIAN read x1.43 on the increments.
 - Painfuck's `at most` formula is also proved for every n.
@@ -452,7 +451,6 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out | linear: at most C characters: tokens per distinct subtable | poly n: worst n^2 + 8n + 5 commands, one root-to-leaf path | poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits past n = 2, S the token count |
 | ROTfuck | finite lookup | every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count | linear: worst P characters, n = 2..10: a lone zero | linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: a lone zero second to last | linear: worst W bits for n = 2..6, at most V after: 2T + 7 cells |
 | Rubic | tree | every subtree undoes its `r2` store, so the cube is one of two states and each table expression is checked on both; equal halves read untested and constant subtables fold | linear: worst 155T/2 - 57 characters: parity, no node folds; subtree_ids folding | poly n: worst ⌊39n/2⌋ + 7 commands: a differing node runs 19 or 20, alternating | poly n: worst 3n² + 18n + 118 + bl(n) bits past n = 1: loop frames, the cube's 108 |
-| S*bleq | finite lookup | packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: worst P characters, n = 11..28; below, at most min(tree, P) | linear: worst 3n + 2 instructions to n = 9, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps | linear: at most B + 6n + bl(3C) + bl(n) + 1 bits: the self-modified program, decimal cells |
 | SendStuff | tree | each distinct subtable is one named node reached by reference; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched | linear: at most C characters: one definition a distinct subtable, longest ids | poly n: worst 4n + 2 steps: four sends a level, root and leaf one each | poly n: worst 10n + 12 + bl(n) + Σ_{d<n} bl(N_d) bits past n = 2, N_d by V_j: pending frames |
 | Shakespeare | linear lookup | the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2 | linear: at most 16T + 7n^2 + 180n + 300 characters | linear: worst 2n + 7 commands | linear: at most 2T + 13 bits |
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf | linear: at most V characters | linear: at most E commands | linear: at most B bits |
@@ -502,7 +500,6 @@ Symbols the formula cells use:
 - **Polynomial:** A = min(10T - 7, 3 + 6(Σ_{k<n} s_k - 1) + 6s_n, 1934), s_k = min(2^k, 2^(2^(n-k))); M = max_k s_k; C = min(A, 6n + 3 + 2Σ_{k=1}^{n} (s_k - 1)).
 - **Quassaunt:** N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables; D = the program's definitions; r = the root name's length; w = the longest name, max(digits(D+1), 1+digits(n)).
 - **ROTfuck:** W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the execution worst; V = 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n).
-- **S*bleq:** B = the program cells' bits, a sign one more; C = the program's cell count.
 - **SendStuff:** N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last depth-d Input; V_j = 4b + min(2^j - b, 2^(s/2)), b = min(2^j, 2^s - 2^(s/2)), s = 2^(n-j).
 - **SLOW ACV MAMMALIAN:** E = first jump, prologue, per-level prefix, node and arm, tail: each list at its residue maximum; B = 8 bits a cell on arrays 0 and 16, pool zeros, heads, counters.
 - **Smu:** E = 95T - 80, the macro-expanded program with no constant subtree.
@@ -577,7 +574,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 94 theoretical totality arguments and
+Accordingly, this ledger records 93 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

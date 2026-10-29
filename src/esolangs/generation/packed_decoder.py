@@ -9,7 +9,7 @@ from esolangs.generation.helpers import (
 )
 
 
-def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
+def _constant(inputs: int, bit: str, *, direct: bool = False) -> str:
     """Read every input and print the literal in the output's unused third cell."""
     # The reader writes into executed cell 0; the variant discards the write to -2:
     # subtracting cell 0's -2 keeps each ASCII read positive, so it falls through.
@@ -81,7 +81,7 @@ def packed_decoder(
     """
     total = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        return _sbleq_constant(total, truth_table[0], direct=direct)
+        return _constant(total, truth_table[0], direct=direct)
     weights, projected = input_weights(truth_table, total)
     if any(weights):
         truth_table = projected

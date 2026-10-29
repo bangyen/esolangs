@@ -217,7 +217,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Qoibl": ("we y we yyeeee we\ntt qe y qe tt", ""),
     "RAM0": ("ZA", ""),
     "ROTfuck": (".", ""),
-    "S*bleq": ("-3 11 3", ""),
     "SLOW ACV MAMMALIAN": ("SEED SEED SEED CONSUME PRONOUNCE", ""),
     "Smallfuck": (">>*", ""),
     "Smu": ("(|+|+++|)", ""),
