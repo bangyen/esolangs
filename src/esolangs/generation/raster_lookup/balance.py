@@ -200,16 +200,14 @@ def _tight_plan(operations: list[_Operation], columns: int, stop: int) -> _Plan:
 
 
 def _balanced_plan(
-    operations: list[_Operation], default: Raster, *, compact: bool, dense: bool = False
+    operations: list[_Operation], default: Raster, *, compact: bool
 ) -> _Plan:
     """Balance the strip and all bounded-block row-fit layouts."""
     cells = sum(operation.size for operation in operations)
-    pitch = 2 if dense else 3 if compact else 4
-    target = max(_MIN_COLUMNS, isqrt(pitch * cells - 1) + (9 if dense else 7))
+    pitch = 3 if compact else 4
+    target = max(_MIN_COLUMNS, isqrt(pitch * cells - 1) + 7)
 
     def fit(columns: int, stop: int) -> _Plan:
-        if dense:
-            return _tight_plan(operations, columns, stop)
         return _plan(operations, columns, stop, compact=compact)
 
     # One row is narrower than its columns, so the strip is its own choice.
@@ -242,14 +240,10 @@ def balance(table: str, default: Raster) -> Raster:
     selected = old
     if _improves(compact.score(), old_score):
         selected = compact
-    dense = _balanced_plan(operations, default, compact=True, dense=True)
-    ceiling = min(selected.score(), default_score)
-    if _improves(dense.score(), ceiling):
-        selected = dense
     if default_score > selected.score():
         packed = pack(operations, _emit(operations, selected))
         # Packing minimizes area, not the shape: 00001000's 13x7 plan packs
         # to 14x3, a larger square than the 10x3 default.
         if _raster_score(packed) <= default_score:
             return packed
-    return pack(operations, default)
+    return default

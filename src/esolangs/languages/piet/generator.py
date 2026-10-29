@@ -9,7 +9,6 @@ Size:
 """
 
 from functools import cache
-from math import isqrt
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.raster_lookup import _INITIAL, _next_colour, _operations, strip
@@ -37,19 +36,13 @@ def _area(image: Raster) -> int:
 
 @cache
 def _packed(truth_table: str) -> Raster:
-    """Return the fold packed, drawn once at the balance path's dense width.
-
-    The width is ``sqrt(2C) + 9`` for ``C`` codels of operations: no width
-    sweep, so O(T).
-    """
-    operations = _bounded_operations(truth_table)
-    cells = sum(operation.size for operation in operations)
-    return smallest(operations, folded(truth_table, isqrt(2 * cells - 1) + 9))
+    """Return the least-area packed layout, bounded by the strip."""
+    return smallest(_bounded_operations(truth_table), _generate(truth_table))
 
 
 @cache
 def _smallest(truth_table: str) -> Raster:
-    """Return the strip, or the least-area of the fold and the packed layouts.
+    """Return the strip, or the least-area packed layout.
 
     The strip wins a tie; see [ablations.area_default].
     """

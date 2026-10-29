@@ -129,9 +129,7 @@ def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
 
     operations = _bounded_operations(table)
     default = esolangs.generate("Piet", table)
-    old = _emit(
-        operations, _balanced_plan(operations, default, compact=True, dense=True)
-    )
+    old = _emit(operations, _balanced_plan(operations, default, compact=True))
     program = Raster.from_png(pack(operations, old).to_png())
     assert any(pixel == WHITE for row in program.rows for pixel in row)
     assert score(program)[1] < score(old)[1]
