@@ -62,3 +62,6 @@ arity = 10
 seed = "named tables"
 tables = 14
 verdict = "kept under the named-function rule: the table reversed with each read as 2 / 2**bit (inputs complemented) is built beside the plain build and the shorter kept, so the one-hot-at-the-top and/nand pay the one-hot-at-the-bottom literal plus 12 characters a read. and/nand 6.6% at n=7, 19.0% at n=8, 34.9% at n=9, 52.2% at n=10, rising with the literal; or/nor and random tables unchanged (random 0.0% at n=7/8). Balanced area on and 52.3% at n=7, 60.2% at n=8, 84.4% at n=10. Executed on 20 random tables per arity and the named tables through n=9"
+
+[audits]
+plain_rewrite = 2026-10-28

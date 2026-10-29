@@ -44,3 +44,6 @@ arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept under the named-function rule: while at most one constant kind sits above the leaves, a last level whose leaves differ pushes the popped bit, or its inverse, and halts (POP [INVERT] PUSH GOTO 1 INVERT GOTO 1) instead of placing the leaves it would otherwise share. Parity 15.5% at n=6, 14.9% at n=8, 15.0% at n=10, 15.5% at n=12, flat; and 7.6% at n=8; majority and random tables 0.0% from n=6 (1.1% at n=4, 0.1% at n=5), since both constant leaves are placed there. Exhaustive n<=4: 13,022 tables change, none grows, every changed program executed. An unconditional form grew 00001101 at n=3"
+
+[audits]
+plain_rewrite = 2026-10-28

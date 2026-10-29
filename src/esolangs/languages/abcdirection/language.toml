@@ -51,3 +51,6 @@ verdict = "candidate: real but under the bar; carries the write-bump invariant t
 price = 59.4
 workload = "traced"
 verdict = "kept: snapshot per step is O(1) once the table is written"
+
+[audits]
+plain_rewrite = 2026-10-28

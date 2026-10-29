@@ -37,3 +37,6 @@ verdict = "kept: canonical projection, exempt; when an input is ignored the tabl
 saving = 32.2
 arity = 10
 verdict = "kept: a constant half of the table is stored once, with nine extra rules of about 110 chars restoring it, raced against the unfolded layouts by length; priced by race marginal. 1.8% on constant-half tables at n=8, 19.3% at n=9 and 32.2% at n=10 (the docstring's -19% / -32% and 'wins from nine inputs' reproduce), 32.2% on AND/OR at n=10 and 44.9% at n=12. The module docstring's balanced figures (-24% / -35%) do not reproduce under any current construction: 19.3% / 32.2% on the plain race, 0.0% under balance_thue, whose winner on constant-half tables is an unfolded chunked layout"
+
+[audits]
+plain_rewrite = 2026-10-28

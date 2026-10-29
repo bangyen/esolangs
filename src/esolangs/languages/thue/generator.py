@@ -11,7 +11,8 @@ state reached has one rule at one position), so the answer is reproducible
 unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 A constant half is stored once (:func:`_fold`, shorter from nine inputs) on
-every path; balanced n=9/10 -24%/-35%.
+every path; and/or n=9/10 -19%/-32% chars, 0% balanced (the balancer's
+chunked layout wins).
 
 Size:
     ``T + 187`` characters; n=4 random 1847: 203 chars, n=10 random 1847:
