@@ -49,5 +49,10 @@ seed = "random.Random + named tables"
 tables = 20
 verdict = "kept under the named-function rule (plain-rewrite audit 2026-10-29): the table reversed and negated is built beside the plain build and the shorter kept. Dropping it costs +100% on and/nand at n=7, +130% at n=8 (385 -> 885), +173% at n=10; majority and thr4 1-2%; random tables, or, nor, parity 0.0% at n=7..10, so it never grows a program"
 
+[ablations.last_leaf_decrement]
+saving = 0.0
+arity = 10
+verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29). The last guarded leaf omits its s decrement, which nothing after it reads; always emitting it costs 1 character a table (+1.4% at most, n=2..6; 0.0% at n=7..10)"
+
 [audits]
 plain_rewrite = 2026-10-29

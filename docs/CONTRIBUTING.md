@@ -285,6 +285,9 @@ dropped (`essential_inputs`, `read_at`), constant subtrees folded
 canonical piece ships at any saving: it is exempt only where the construction
 leaves it nothing to act on, or where it makes the average program larger on
 the tables it targets at the largest arity measured (cite the figure).
+Writing a construct minimally is spelling, not a trick, and ships without the
+bar: no redundant grouping, no trailing no-op (Hot's bare leaf arguments,
+Home Row's last `s`).
 
 Anything else is a bespoke size optimization and must meet all of these
 requirements:

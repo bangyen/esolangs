@@ -61,23 +61,28 @@ ignored-input tables included).
   [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)).
   Eight of the first thirteen lost a trick.  Record a finished audit as
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
+- **Malbolge per-arity layout** (parked 2026-10-29): live cells are 10-14% of
+  the 59,049-cell image at n <= 12. Tables sit at 39,367-43,002 because the
+  held top digit is 6; a bit-to-digit bijection putting it at 1, with hubs and
+  stubs re-placed below ~14k, would cut n <= 12 programs about 4-5x. It
+  re-derives the fold's digit math and its 2,464-sequence check.
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (67): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Audited (68): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
 Algebraic Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark,
 Back, Befunge, BFStack, Bitdeque, bit~, Blindfolded Arithmetic, Boolfuck,
 brainfuck, BrainIf, Circlefuck, Circuit Diagram, Clockwise, Collatz
 Multiverse, Container, Crement, CV(N)(C), Dig, Dimensional, EGL, FALSE,
-Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row,
+Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row, Hot,
 Inject, INTERCAL, Interprogck8, LaserFuck, Line, Malbolge, Minifuck,
 Modulous, Packlang, Painfuck, Piet, Polynomial, Qoibl, RAM0, ROTfuck,
 S*bleq, SLOW ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, Suffolk,
 Taglate, thisthat, Thue, Underload, Unlambda. Next by kept `[ablations]`:
-Hot 3, NOR machine 3, SendStuff 3, Smu 3, Unary 3, Balik 2, Bitwise Cyclic
-Tag 2, Bleh 2, Caballo 2, Codesick 2, Cyclic tag 2, Eval 2, Fackward 2,
-Minsky Swap 2, Pointless 2, Quassaunt 2, Stisp 2, Super SNUSP 2, SwitchCase
-2, Unsquare 2.
+NOR machine 3, SendStuff 3, Smu 3, Unary 3, Balik 2, Bitwise Cyclic Tag 2,
+Bleh 2, Caballo 2, Codesick 2, Cyclic tag 2, Eval 2, Fackward 2, Minsky Swap
+2, Pointless 2, Quassaunt 2, Stisp 2, Super SNUSP 2, SwitchCase 2, Unsquare
+2.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
