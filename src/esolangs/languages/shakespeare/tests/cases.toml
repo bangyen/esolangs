@@ -1,0 +1,191 @@
+language = "Shakespeare"
+oldid = 189483
+
+[[examples]]
+id = "truth-machine-zero"
+note = "The page states no output; a 0 input prints 0 and halts."
+source_file = "fixtures/truth_machine.spl"
+stdin = "0\n"
+expected = "0"
+
+[[examples]]
+id = "cat"
+note = "Spelling repaired (the page has Ooen for Open); it echoes its input and ends reading past it."
+source_file = "fixtures/cat.spl"
+stdin = "ab"
+expected = "ab"
+stop = "eof"
+
+[[spec_triggers]]
+program = '''
+Title.
+Romeo, a man.
+Act I: A.
+Scene I: S.
+[Enter Romeo]
+Romeo:
+ Ooen your mind.
+'''
+stdin = ""
+expect = "ProgramError"
+claim = "a word outside the word lists"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Act II: A.
+Scene I: S.
+'''
+stdin = ""
+expect = "ProgramError"
+claim = "acts not numbered from I"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ Let us proceed to scene III.
+'''
+stdin = ""
+expect = "ProgramError"
+claim = "a goto to a scene the act lacks"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ Listen to your heart.
+'''
+stdin = ""
+expect = "InputExhaustedError"
+claim = "a number read at EOF"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ Open your mind.
+'''
+stdin = ""
+expect = "InputExhaustedError"
+claim = "a character read at EOF"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ Listen to your heart.
+'''
+stdin = "x\n"
+expect = "ArgumentError"
+claim = "a number read given a non-integer token"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ You are the quotient between a rose and nothing.
+'''
+stdin = ""
+expect = "HaltError"
+claim = "a division by zero"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ Recall my sins.
+'''
+stdin = ""
+expect = "HaltError"
+claim = "a pop from an empty stack"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ You are a bad coward. Speak your mind.
+'''
+stdin = ""
+expect = "HaltError"
+claim = "an unprintable character code"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Hamlet, a prince.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+[Enter Hamlet]
+'''
+stdin = ""
+expect = "HaltError"
+claim = "a third character entering"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Act I: A.
+Scene I: S.
+[Enter Romeo]
+Romeo:
+ You are nothing.
+'''
+stdin = ""
+expect = "HaltError"
+claim = "a second person with one on stage"
+
+[[spec_triggers]]
+program = '''
+T.
+Romeo, a man.
+Juliet, a woman.
+Act I: A.
+Scene I: S.
+[Enter Romeo and Juliet]
+Romeo:
+ You are twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice twice nothing.
+'''
+stdin = ""
+expect = "InterpreterLimitError"
+claim = "an expression nested past the host recursion limit"

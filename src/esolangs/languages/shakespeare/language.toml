@@ -1,0 +1,38 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 54
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2"
+scaling = "linear: at most 16T + 7n^2 + 180n + 300 characters"
+execution = "linear: worst 2n + 7 commands"
+workspace = "linear: at most 2T + 13 bits"
+
+[catalogue]
+folding_constant = "a constant table reads its inputs and prints its bit"
+
+[schemes]
+folds_without_tree = true
+
+[generator_sizes]
+"00000001" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 855 }
+"00001100" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 672 }
+"00110110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 906 }
+"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11 }, source_units = 662 }
+"01101001" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 912 }
+"0110100110010110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1226 }
+"1101001101101101" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1219 }
+"11111110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 886 }
+
+[ablations]
+audited = "2026-10-28"
+
+[ablations.polarity]
+saving = 76.46
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept under the named-function rule: packing the complement of a table with more ones than zeros (and subtracting from 1) changes 96 of 200 random tables at n=7 and 100 at n=8, none grows, 1.83% / 1.89% in total; OR drops 64.74% at n=7 and 76.46% at n=8, majority 1.61% at n=7; AND and parity 0%. Exhaustive n<=3 and named tables to n=8 executed"

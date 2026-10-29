@@ -1,0 +1,43 @@
+# Word lists of the Shakespeare Programming Language.
+#
+# Source: the reference word lists of Karl Hasselstrom and Jon Aslund's SPL
+# (spl 1.2.1), as carried in the shakespearelang 1.0.0 grammar
+# (shakespeare.ebnf, MIT).  The original tarball on SourceForge was not
+# fetchable; the Python package is its maintained port.  Entries are lower
+# case; a space joins the words of a multi-word entry.
+
+be = ["am", "are", "art", "be", "is"]
+
+article = ["a", "an", "the"]
+
+first_person = ["i", "me"]
+
+first_person_reflexive = ["myself"]
+
+second_person = ["thee", "thou", "you"]
+
+second_person_reflexive = ["thyself", "yourself"]
+
+second_person_possessive = ["thine", "thy", "your"]
+
+negative_adjective = ["bad", "cowardly", "cursed", "damned", "dirty", "disgusting", "distasteful", "dusty", "evil", "fat-kidneyed", "fatherless", "fat", "foul", "hairy", "half-witted", "horrible", "horrid", "infected", "lying", "miserable", "misused", "oozing", "rotten", "smelly", "snotty", "sorry", "stinking", "stuffed", "stupid", "vile", "villainous", "worried"]
+
+neutral_adjective = ["big", "black", "blue", "bluest", "bottomless", "furry", "green", "hard", "huge", "large", "little", "normal", "old", "purple", "red", "rural", "small", "tiny", "white", "yellow"]
+
+positive_adjective = ["amazing", "beautiful", "blossoming", "bold", "brave", "charming", "clearest", "cunning", "cute", "delicious", "embroidered", "fair", "fine", "gentle", "golden", "good", "handsome", "happy", "healthy", "honest", "lovely", "loving", "mighty", "noble", "peaceful", "pretty", "prompt", "proud", "reddest", "rich", "smooth", "sunny", "sweet", "sweetest", "trustworthy", "warm"]
+
+negative_noun = ["hell", "microsoft", "bastard", "beggar", "blister", "codpiece", "coward", "curse", "death", "devil", "draught", "famine", "flirt-gill", "goat", "hate", "hog", "hound", "leech", "lie", "pig", "plague", "starvation", "toad", "war", "wolf"]
+
+neutral_noun = ["animal", "aunt", "brother", "cat", "chihuahua", "cousin", "cow", "daughter", "door", "face", "father", "fellow", "granddaughter", "grandfather", "grandmother", "grandson", "hair", "hamster", "horse", "lamp", "lantern", "mistletoe", "moon", "morning", "mother", "nephew", "niece", "nose", "purse", "road", "roman", "sister", "sky", "son", "squirrel", "stone wall", "thing", "town", "tree", "uncle", "wind"]
+
+positive_noun = ["heaven", "king", "lord", "angel", "flower", "happiness", "joy", "plum", "summer's day", "hero", "rose", "kingdom", "pony"]
+
+character = ["achilles", "adonis", "adriana", "aegeon", "aemilia", "agamemnon", "agrippa", "ajax", "alonso", "andromache", "angelo", "antiochus", "antonio", "arthur", "autolycus", "balthazar", "banquo", "beatrice", "benedick", "benvolio", "bianca", "brabantio", "brutus", "capulet", "cassandra", "cassius", "christopher sly", "cicero", "claudio", "claudius", "cleopatra", "cordelia", "cornelius", "cressida", "cymberline", "demetrius", "desdemona", "dionyza", "doctor caius", "dogberry", "don john", "don pedro", "donalbain", "dorcas", "duncan", "egeus", "emilia", "escalus", "falstaff", "fenton", "ferdinand", "ford", "fortinbras", "francisca", "friar john", "friar laurence", "gertrude", "goneril", "hamlet", "hecate", "hector", "helen", "helena", "hermia", "hermonie", "hippolyta", "horatio", "imogen", "isabella", "john of gaunt", "john of lancaster", "julia", "juliet", "julius caesar", "king henry", "king john", "king lear", "king richard", "lady capulet", "lady macbeth", "lady macduff", "lady montague", "lennox", "leonato", "luciana", "lucio", "lychorida", "lysander", "macbeth", "macduff", "malcolm", "mariana", "mark antony", "mercutio", "miranda", "mistress ford", "mistress overdone", "mistress page", "montague", "mopsa", "oberon", "octavia", "octavius caesar", "olivia", "ophelia", "orlando", "orsino", "othello", "page", "pantino", "paris", "pericles", "pinch", "polonius", "pompeius", "portia", "priam", "prince henry", "prospero", "proteus", "publius", "puck", "queen elinor", "regan", "robin", "romeo", "rosalind", "sebastian", "shallow", "shylock", "slender", "solinus", "stephano", "thaisa", "the abbot of westminster", "the apothecary", "the archbishop of canterbury", "the duke of milan", "the duke of venice", "the ghost", "theseus", "thurio", "timon", "titania", "titus", "troilus", "tybalt", "ulysses", "valentine", "venus", "vincentio", "viola"]
+
+possessive = ["mine", "my", "thine", "thy", "your", "his", "her", "its", "their"]
+
+positive_comparative = ["better", "bigger", "fresher", "friendlier", "nicer", "jollier"]
+
+negative_comparative = ["punier", "smaller", "worse"]
+
+nothing = ["nothing", "zero"]

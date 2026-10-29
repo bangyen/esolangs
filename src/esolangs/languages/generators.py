@@ -177,6 +177,8 @@ from esolangs.languages.s_bleq.generator import LANGUAGE as _S_BLEQ_LANGUAGE
 from esolangs.languages.s_bleq.generator import s_bleq
 from esolangs.languages.sendstuff.generator import LANGUAGE as _SENDSTUFF_LANGUAGE
 from esolangs.languages.sendstuff.generator import sendstuff
+from esolangs.languages.shakespeare.generator import LANGUAGE as _SHAKESPEARE_LANGUAGE
+from esolangs.languages.shakespeare.generator import shakespeare
 from esolangs.languages.six_five.generator import LANGUAGE as _SIX_FIVE_LANGUAGE
 from esolangs.languages.six_five.generator import six_five
 from esolangs.languages.slashes.generator import LANGUAGE as _SLASHES_LANGUAGE
@@ -306,6 +308,7 @@ _LANGUAGES = (
     _RUBIC_LANGUAGE,
     _S_BLEQ_LANGUAGE,
     _SENDSTUFF_LANGUAGE,
+    _SHAKESPEARE_LANGUAGE,
     _SIX_FIVE_LANGUAGE,
     _SLASHES_LANGUAGE,
     _SLOW_ACV_MAMMALIAN_LANGUAGE,
@@ -411,6 +414,7 @@ __all__ = [
     "rubic",
     "s_bleq",
     "sendstuff",
+    "shakespeare",
     "six_five",
     "slashes",
     "slow_acv_mammalian",

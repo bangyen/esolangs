@@ -48,15 +48,6 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
-## Language candidates
-
-Fame admissions at the 50-backlink gate
-([curation](limitations.md#how-a-language-is-admitted)); each needs an
-interpreter matching every example on its page and a linear generator.
-
-- **Shakespeare** (54): pick the reference word lists and grammar, judged
-  by the wiki examples; second-person resolution needs exactly two on stage.
-
 ## Engineering
 
 Dead-code leads, unmeasured against the

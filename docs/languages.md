@@ -46,6 +46,7 @@ Languages that use a stack for data manipulation.
 - [Pilas](https://esolangs.org/wiki/Pilas) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/pilas/interpreter.py))
 - [Quassaunt](https://esolangs.org/wiki/Quassaunt) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/quassaunt/interpreter.py))
 - [SStack](https://esolangs.org/wiki/SStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/sstack/interpreter.py))
+- [Shakespeare](https://esolangs.org/wiki/Shakespeare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/shakespeare/interpreter.py))
 - [Smu](https://esolangs.org/wiki/Smu) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/smu/interpreter.py))
 - [Tiangou](https://esolangs.org/wiki/Tiangou) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/tiangou/interpreter.py))
 - [Underload](https://esolangs.org/wiki/Underload) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/underload/interpreter.py))

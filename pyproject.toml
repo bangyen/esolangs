@@ -73,7 +73,7 @@ exclude = ["tests*", "examples*", "docs*", "esolangs.languages.*.tests*"]
 # root, which left them out of the wheel, so `describe(...)["examples"]` was
 # populated from a checkout and empty from an install, with nothing to say
 # which you had.
-esolangs = ["py.typed", "languages/EXAMPLES.md", "languages/*/*.txt", "languages/*/*.png", "languages/*/*.gz"]
+esolangs = ["py.typed", "languages/EXAMPLES.md", "languages/*/*.txt", "languages/*/*.png", "languages/*/*.gz", "languages/shakespeare/words.toml"]
 
 [tool.ruff]
 target-version = "py312"

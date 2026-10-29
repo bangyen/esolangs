@@ -309,6 +309,8 @@ These generators keep no unconstrained tree route and have no subtree to fold:
   `essential_inputs` drops ignored inputs; a constant table prints its bit.
 - Packlang: Paints one array block and indexes it at every arity.
 - Qoibl: Divides one literal by the power of two its reads build.
+- Shakespeare: Packs the table into one number by Horner's rule and divides it
+  by the power of two its reads build.
 - SLOW ACV MAMMALIAN: Its read chain emits one fixed-width leaf slot per row
   whatever the table says.
 - Sonata: Doubles a unary row index and strips one table entry per unit.
@@ -459,6 +461,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Rubic | tree | every subtree undoes its `r2` store, so the cube is one of two states and each table expression is checked on both; equal halves read untested and constant subtables fold | linear: worst 155T/2 - 57 characters: parity, no node folds; subtree_ids folding | poly n: worst ⌊39n/2⌋ + 7 commands: a differing node runs 19 or 20, alternating | poly n: worst 3n² + 18n + 118 + bl(n) bits past n = 1: loop frames, the cube's 108 |
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: worst P characters, n = 11..28; below, at most min(tree, P) | linear: worst 3n + 2 instructions to n = 9, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps | linear: at most B + 6n + bl(3C) + bl(n) + 1 bits: the self-modified program, decimal cells |
 | SendStuff | tree | each distinct subtable is one named node reached by reference; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched | linear: at most C characters: one definition a distinct subtable, longest ids | poly n: worst 4n + 2 steps: four sends a level, root and leaf one each | poly n: worst 10n + 12 + bl(n) + Σ_{d<n} bl(N_d) bits past n = 2, N_d by V_j: pending frames |
+| Shakespeare | linear lookup | the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2 | linear: at most 16T + 7n^2 + 180n + 300 characters | linear: worst 2n + 7 commands | linear: at most 2T + 13 bits |
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf | linear: at most V characters | linear: at most E commands | linear: at most B bits |
 | Smallfuck | parameterized tree | each level owns a bit, branch flag, and result cell; a child transfers its result three cells upward, so the depth-first pointer walk crosses each tree edge only a constant number of times | linear: at most Q characters: the shorter plain tree, bands 3 or 5 | poly n: at most 9n^2 + 100n + 20 commands, one tree path | linear: worst L + bl(L) + bl(3n) bits: one tape bit per source character |
 | Smu | tree | a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros carry the repeated text, and a subtree two parents reach is one more when that is shorter | linear: worst C characters to n = 16, at most 6T+90 after | poly n: worst 55n + 5 commands, one tree path of eight runs a level | linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables |
@@ -585,7 +588,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 99 theoretical totality arguments and
+Accordingly, this ledger records 100 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

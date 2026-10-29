@@ -704,7 +704,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 104 languages.
+The collection has 105 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -839,7 +839,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 <!-- CURATION-CENSUS:START -->
 
 The 2026-10-06 census (`snapshot.json`) records each
-language's backlinks and route: 23 clear the fame gate
+language's backlinks and route: 24 clear the fame gate
 and 81 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
@@ -1070,6 +1070,17 @@ one reading. These are those choices.
   if blank or a decimal integer, and only decimal `&#N;` unescapes. The
   stack array as an operand, a non-index store address and a load from an
   `undefined` source raise `HaltError`.
+- Shakespeare's word lists are the SPL 1.2.1 lists as carried by shakespearelang
+  1.0.0 (the original tarball was unfetchable), in `words.toml`; the
+  Python package is a cross-check only. At most two characters stand on
+  stage (a third entering halts, as the page says; the package halts only on
+  the next "you"). The be-verb after "You" is optional (the Hello World
+  fixture), acts number from I, a goto stays in its act and a missing scene is
+  a load error. Integers are unbounded; quotient and remainder truncate toward
+  zero. A read at EOF raises, so the Cat program echoes its input and then
+  ends on `InputExhaustedError` (the package stores -1 and fails printing it).
+  The page's Cat has `Ooen`, which raises; the pinned program is the repair
+  `Open`. Number input is a signed token (the package reads digits only).
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
 
