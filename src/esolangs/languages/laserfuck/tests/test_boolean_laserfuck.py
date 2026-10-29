@@ -459,3 +459,16 @@ def test_balance_races_the_turned_tree(n: int, side: int) -> None:
     assert _evaluate("LaserFuck", balanced, 60, inputs=n, max_rows=None) == table
     wrong = table[:-1] + str(1 - int(table[-1]))
     assert _evaluate("LaserFuck", balanced, 60, inputs=n, max_rows=None) != wrong
+
+
+@pytest.mark.medium
+def test_balance_tiles_subtrees_at_n9() -> None:
+    """The tree cut at depth 2, subtrees side by side: (side, length, width)."""
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+    from esolangs.runtime._evaluate import _evaluate
+
+    table = format(random.Random(9).getrandbits(1 << 9), f"0{1 << 9}b")
+    balanced = esolangs.generate("LaserFuck", table, balance=True)
+    assert balance_score(balanced) == (292, 25252, 292)
+    assert _evaluate("LaserFuck", balanced, 60, inputs=9, max_rows=None) == table

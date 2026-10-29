@@ -89,3 +89,8 @@ verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column b
 
 [audits]
 plain_rewrite = 2026-10-18
+
+[ablations.tiled_tree]
+saving = 71.6
+arity = 10
+verdict = "kept: balanced area on seed 4242 (25 tables an n, 9 at n=11/12) falls 24.6% at n=9, 71.6% at n=10, 82.8% at n=11, 92.6% at n=12 (area a row 109/109/95 at n=10..12, was 385/637/1275); no table grows at n=1..12, n<=8 unchanged. The upright tree is one row per leaf, so its square is T/2 on a side; cut at depth (n-5)//2 and the subtrees side by side, wires blank. Ink is O(Tn), so area is O(T log n) a row. Default byte-identical (corpus hash n=1..12)"

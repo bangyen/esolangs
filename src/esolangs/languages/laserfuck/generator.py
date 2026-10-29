@@ -12,6 +12,8 @@ Size:
     n=4 random 1847: 548 chars, n=5 random 1847: 1,640 chars,
     n=6 random 1847: 4,241 chars, n=10 random 1847: 24,605 chars,
     n=16 and: 1,443,471 chars.
+    Balanced (tiled subtrees from n=9): about 110 cells of area a row at
+    n=10..12 (random 4242).
 
 Decisions:
     The narrowest-reader (width=1) layout is 13.1% shorter by length at n=4
@@ -473,6 +475,10 @@ class _TreeEmitter:
         self.n = n
         self.ids = subtree_ids(truth_table)
         self.rows: list[list[tuple[int, str]]] = [[]]
+        # Set by :func:`_laserfuck_tiled`: cut the tree at this depth and
+        # record each cut as (row, col, first, skipped) instead of descending.
+        self.stop: int | None = None
+        self.cuts: list[tuple[int, int, int, int]] = []
 
     def leaf(
         self, depth: int, first: int, row: int, col: int, skipped: int = 0
@@ -501,6 +507,9 @@ class _TreeEmitter:
     ) -> None:
         """Lay one row span, entered at ``(row, col)`` going right."""
         n = self.n
+        if depth == self.stop:
+            self.cuts.append((row, col, first, skipped))
+            return
         if depth == n:
             self.leaf(depth, first, row, col, skipped)
             return
@@ -791,8 +800,57 @@ def _laserfuck_turned(table: str) -> str:
     return _laserfuck_assemble(reader, tree, None, vertical_tree=True)
 
 
+def _laserfuck_tiled(table: str, cut: int | None = None) -> str:
+    r"""Build the reader, then the tree cut at depth ``d``, subtrees side by side.
+
+    The upright tree is one row per leaf, so balanced it is T/2 on a side
+    (area ~T^2).  Cut at ``d = (n - 5) // 2`` (best measured cut at n=9..13,
+    random tables: 2, 2, 3, 3, 4), each of the 2**d cut rows ends in a wire:
+    a ``v`` far enough right to clear the top part, a column of blank down
+    to row B, and a ``\`` that turns the beam right into its subtree.
+    Wires cross only blank cells, so they cost area but no ink.  The
+    subtrees, each standing as the upright tree does, sit left to right
+    from that column; a subtree is about 7n columns wide, so the side is
+    about sqrt(7nT) columns (rows count double).  Returns ""
+    when ``d`` is under 1.
+    """
+    n = _validate_truth_table(table)
+    if cut is None:
+        cut = (n - 5) // 2
+    if cut < 1:
+        return ""
+    top = _TreeEmitter(table, n)
+    top.stop = cut
+    top.emit(0, 0, 0, 0)
+    reader_rows, exit_row, exit_col = _laserfuck_reader(n, None, vertical_tree=False)
+    base = MARGIN + exit_col
+    grid = _LaserGrid()
+    _laserfuck_funnel(grid)
+    for offset, text in enumerate(reader_rows):
+        for index, char in enumerate(text):
+            if char != " ":
+                grid.put(offset, MARGIN + index, char)
+    for offset, marks in enumerate(top.rows):
+        for col, text in marks:
+            grid.put_run(exit_row + offset, base + col, text)
+    floor = exit_row + len(top.rows)
+    # Wires run from the cut rows to columns past the whole top part.
+    column = max(max(len(line) for line in grid.cells), base + 1)
+    for row, _, first, skipped in top.cuts:
+        sub = _TreeEmitter(table, n)
+        sub.emit(cut, first, 0, 0, skipped)
+        width = max(c + len(t) for marks in sub.rows for c, t in marks)
+        grid.put(exit_row + row, column, "v")
+        grid.put(floor, column, "\\")
+        for offset, marks in enumerate(sub.rows):
+            for col_in, text in marks:
+                grid.put_run(floor + offset, column + 1 + col_in, text)
+        column += width + 1
+    return grid.render()
+
+
 def balance_laserfuck(table: str, default: str) -> str:
-    """Compare reader fits, tree placements, startup-funnel fits and the turned tree."""
+    """Compare reader fits, tree placements, funnel fits, the turned and tiled trees."""
     n = _validate_truth_table(table)
     margin = MARGIN
     events = {1, 4}
@@ -816,6 +874,7 @@ def balance_laserfuck(table: str, default: str) -> str:
     return min(
         default,
         _laserfuck_turned(table),
+        _laserfuck_tiled(table) or default,
         *(laserfuck(table, width) for width in sorted(widths)),
         key=balance_score,
     )
