@@ -107,6 +107,8 @@ from esolangs.languages.fractran.generator import LANGUAGE as _FRACTRAN_LANGUAGE
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.freestajlo.generator import LANGUAGE as _FREESTAJLO_LANGUAGE
 from esolangs.languages.freestajlo.generator import freestajlo
+from esolangs.languages.grapheme.generator import LANGUAGE as _GRAPHEME_LANGUAGE
+from esolangs.languages.grapheme.generator import grapheme
 from esolangs.languages.home_row.generator import LANGUAGE as _HOME_ROW_LANGUAGE
 from esolangs.languages.home_row.generator import home_row
 from esolangs.languages.hot.generator import LANGUAGE as _HOT_LANGUAGE
@@ -271,6 +273,7 @@ _LANGUAGES = (
     _FORBIN_LANGUAGE,
     _FRACTRAN_LANGUAGE,
     _FREESTAJLO_LANGUAGE,
+    _GRAPHEME_LANGUAGE,
     _HOME_ROW_LANGUAGE,
     _HOT_LANGUAGE,
     _INJECT_LANGUAGE,
@@ -374,6 +377,7 @@ __all__ = [
     "forbin",
     "fractran",
     "freestajlo",
+    "grapheme",
     "home_row",
     "hot",
     "inject",

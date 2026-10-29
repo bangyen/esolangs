@@ -26,7 +26,8 @@ the same shell performs their ``charPut``/``charGet`` in call order.
 
 There is no recursion ceiling.  A program that recurses forever grows the
 frame list, not Python's stack; that class revisits no state, so
-``esolangs.run``'s wall-clock ``timeout`` handles it.
+``esolangs.run``'s wall-clock ``timeout`` handles it, as ``grapheme.py``
+records.
 
 Numeric literals default to decimal. ``literal_policy="binary_digits"`` reads
 all-0/1 digit strings as binary and every other number as decimal; this makes
@@ -102,7 +103,8 @@ from esolangs.runtime.io import IO
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the
 # heap and never touches Python's stack.  That class revisits no state, so
-# it is what ``esolangs.run``'s wall-clock ``timeout`` is for.
+# it is what ``esolangs.run``'s wall-clock ``timeout`` is for -- the same
+# reasoning ``grapheme.py`` records.
 
 
 @dataclass(frozen=True)

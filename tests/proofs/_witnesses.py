@@ -15,6 +15,7 @@ from typing import NamedTuple
 import pytest
 
 from esolangs.generation.helpers import reflected_table
+from esolangs.runtime._digits import digit_limit_for
 from tests.proofs._witness_builders import (
     _back_worst,
     _befunge_worst,
@@ -177,6 +178,25 @@ def _freestajlo_worst(n: int) -> str:
     if n <= 6:
         return "".join(c * 2 ** (n - 4) for c in "10" * 7 + "01")
     return "0110" + "1" * (2**n - 4)
+
+
+# language-owners: ["Grapheme"]
+def _grapheme_worst(n: int) -> tuple[str, ...]:
+    """The longest lift, 10^(d-1) - 1, and the largest: the top valid residue."""
+    t = 1 << n
+    span = 1 << t
+    with digit_limit_for(t):  # 0.31T digits, past the 4300 default from n = 14
+        d = len(str(span))
+        top = f"{10 ** (d - 1) - 1:0{t}b}"
+    covered = []
+    for j in range(d):
+        lo = 10**j % span
+        hi = lo + 10**j
+        covered += [(lo, hi)] if hi <= span else [(lo, span), (0, hi - span)]
+    v = 10**d % span - 1
+    while (hit := next((lo for lo, hi in covered if lo <= v < hi), None)) is not None:
+        v = hit - 1 if hit else span - 1
+    return top, f"{v:0{t}b}"
 
 
 # language-owners: ["Quassaunt"]
@@ -840,6 +860,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Befunge": lambda n: (_befunge_worst(n),),
     "Fish": lambda n: (_low_one(n),),
     "Freestajlo": lambda n: (_freestajlo_worst(n), _low_one(n)),
+    "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
     "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
     "INTERCAL": lambda n: (
         (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 19 else ()))

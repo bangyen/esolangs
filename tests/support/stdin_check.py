@@ -124,6 +124,11 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
         return
     stray = [line for line in lines if line not in (zero, one)]
     if stray:
+        # language-owners: ["Grapheme"]
+        # Phrased around the alphabet rather than the stray count, because
+        # the useful half is what this language *does* spell its bits with:
+        # a reader who fed 0/1 lines to Grapheme needs '%' and 'A', not a
+        # tally of how many lines were wrong.
         raise ArgumentError(
             f"{name} spells its bits {zero!r} and {one!r}, and {len(stray)} "
             f"stdin line(s) are outside that -- the first is {stray[0]!r}"

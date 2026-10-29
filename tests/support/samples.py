@@ -198,6 +198,7 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     # Conway's two-fraction addition, which halts once no 2 is left.
     "FRACTRAN": ("2^3*3 3/2", ""),
     "Fish": ("23+n;", ""),
+    "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
     # A corrected truth machine (the wiki's own is inverted -- see the
     # interpreter's module docstring), on the input that halts: the "1"

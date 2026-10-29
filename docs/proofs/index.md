@@ -427,6 +427,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Forþ | tree | the tree tests the essential inputs; an ignored one is read and dropped as `,0*+` | linear: at most S characters: scope counts per level, twins called | linear: at most 6T + 12n - 3 commands: every heap scope defined once, one dispatch path | T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the scope dictionary |
 | FRACTRAN | parameterized tree | the bits are the exponents of `n` primes in the starting value, a decision tree gives equal subtables one state prime, and the first-match rule is the else-branch | linear: worst C = 2 + Σ_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits | poly n: worst n + 2: a step a level or unread set bit, the leaf, the halt | poly n: worst bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start |
 | Freestajlo | linear lookup | the table is one `"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies; past the crossover the literal packs six entries a character and the row splits into that depth and a bit | linear: worst min(T + 4n + 1, ⌈T/6⌉ + 4n + 19) characters | poly n: worst 4n commands to n = 4, then 4n + 17: the literal, the reads and folds, the decode | linear: worst max(P, W) bits: the literal's codes on the stack, plain or packed |
+| Grapheme | linear lookup | the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0 (or a 1), which is Horner's rule for the complemented (or direct) index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0 | linear: at most 17n + 20 + digits(2^T) characters from n=2 | linear: at most 17n + 20 + d commands from n=2, d the digits of 2^T: one per program character | linear: at most 16d + 136n + 195 + bl(17n+d+5) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n) bits from n=2 |
 | Home Row | parameterized tree | — | linear: worst 27T/2 + 10n + 6 characters past n = 1: runs | linear: worst 10T + 10n + 88 commands past n = 1: every guarded leaf run, one equal pair of rows | poly n: worst n + 32 + bl(27T/2+10n+6) + [n!=4] bits past n = 1: index cell, cursor, a -1 setter cell |
 | Hot | tree | the table is a tree of Church pairs, equal halves folded to `K`, applied to the bits that one fixed reader stage an input takes from `A` | linear: worst 27T/2 + 73n + 86 characters past n = 1: pairs | poly n: worst 35n + 45 rewrites: a pair a level, then the answer stage | linear: worst max(88T+232n+235, 132T+24n-53) + bl(n) bits past n = 1: two copies early, three at the end |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: worst C characters past n = 4: every n | poly n: worst 8n + 10 commands past n = 4, halving per level | linear: worst 24T + 516n + 169 + A bits for n = 5..16: the program text after n reads |
@@ -496,6 +497,7 @@ Symbols the formula cells use:
 - **Flowchart:** F = Σ over exit-memory cells of 4 + bl(column), plus deque keys and counters.
 - **Forbin:** G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-3, 0), the loop cursor.
 - **Freestajlo:** P = 6t + 7 + bl(t+2) + bl(2n+2m) + bl(2n), m = min(n, 4), t = 2^m; W = 7⌊T/6⌋ + 7 + bl(⌈T/6⌉+4) + max(16, 2n+3) + bl(4n+18) + bl(2n), 0 below n = 5.
+- **Grapheme:** λ = the largest lift of d + 1 digits, d those of 2^T.
 - **Inject:** A = bl(12n+10) + bl(2n) + bl(n) + Σ_{i≤n+2}(bl(3i) + bl(3i+2)) + Σ_{2n+5≤m≤6n+4} bl(m).
 - **INTERCAL:** S = the Execution bound; M = min(T/8+2, T/16+14, T/32+254) to n = 21, T/64+2^16-2 after; A = ⌈P/⌈√P⌉⌉ arrays for the P = max(0, 2n + M - 65,537) names past .65535; m = min(S - 2 - A, 65535), the highest scalar name; B = spill bits: A(8+bl(W)) + Σ_{j≤A} bl(j) + (A-1)E(W) + E(P-(A-1)W), W = ⌈√P⌉, E(c) = Σ_{i<c}(bl(i)+1)+1.
 - **Interprogck8:** R = the program's lines.
@@ -562,6 +564,10 @@ The remaining `cap` rows do have a uniform lift argument.
 
 ### Retired resource ceilings
 
+- Grapheme left this section when its tree did: the table is one int-mode
+  literal and the index is an accumulator, so no arity needs a second variable
+  and there is nothing left to run out of.
+
 - 6-5 left when its walk stopped
   spending a label per input.
   `8n` names the n-th `4` of the program and the operand characters stop at
@@ -579,7 +585,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 97 theoretical totality arguments and
+Accordingly, this ledger records 98 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->
