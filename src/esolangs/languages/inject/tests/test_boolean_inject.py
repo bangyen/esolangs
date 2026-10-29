@@ -6,6 +6,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import (
@@ -18,6 +19,12 @@ run_inject = _runner("inject", newline=True)
 
 class TestInject:
     """The decision tree of ``skipq`` guards over stored input blocks."""
+
+    def test_balanced_parity_chunks_the_table_square(self) -> None:
+        """Parity n=10: ~sqrt(T)-wide chunks, ~sqrt(T) lines (default: 1024 wide)."""
+        table = "".join(str(bin(i).count("1") % 2) for i in range(1 << 10))
+        program = esolangs.generate("inject", table, balance=True)
+        assert balance_score(str(program)) == (298, 2170, 142)
 
     def test_constant_subtrees_are_folded(self) -> None:
         """A table ignoring its later inputs costs one test, not ``n``."""

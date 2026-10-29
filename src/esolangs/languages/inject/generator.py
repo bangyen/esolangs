@@ -180,9 +180,11 @@ def inject(truth_table: str, width: int | None = None) -> str:
     return banded if grid_width(banded) < widest else program
 
 
-def _inject_banded(truth_table: str) -> str:
+def _inject_banded(truth_table: str, *, square: bool = False) -> str:
     """Select an O(m)-bit chunk of the ``m`` essential inputs, then halve it.
 
+    ``square`` sizes the chunk to ``2**((m + 4) // 2)`` characters, so chunk
+    width and the tree's line count both grow as ``sqrt(T)``.
     Ignored inputs are read and never tested (see :func:`_inject_halving`).
     """
     n = _validate_truth_table(truth_table)
@@ -191,6 +193,8 @@ def _inject_banded(truth_table: str) -> str:
     m = len(essential)
     # >= m rows per chunk amortize O(m)-letter unique labels over the table.
     low = min(m, (m - 1).bit_length())
+    if square:
+        low = min(m, (m + 4) // 2)
     high = m - low
     names = _Names(n)
     lines = _preamble(names, "0")
@@ -259,11 +263,17 @@ def _inject_ordered(truth_table: str) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Race the banded lookup, which wins by area on the smallest and the widest tables.
+    """Race both banded lookups against the default by area.
 
-    See ``[ablations.balance_banded]``.
+    The narrow chunk wins at n=3..4 (``[ablations.balance_banded]``); the
+    square one keeps balanced area O(T) (``[ablations.balance_square_chunk]``).
     """
-    return min(default, _inject_banded(table), key=balance_score)
+    return min(
+        default,
+        _inject_banded(table),
+        _inject_banded(table, square=True),
+        key=balance_score,
+    )
 
 
 LANGUAGE = Language(

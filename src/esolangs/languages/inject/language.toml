@@ -70,8 +70,12 @@ seed = "random.Random(1000 + n)"
 tables = 20
 verdict = "kept: balance hook races the banded lookup against the default by rendered area (balance_score(p)[0]**2), so it can never grow. Plain-rewrite 2026-10-28: 18.1% of the area on 200 random tables at n=4 (5.2% at n=3), and none at n=5..10, where the banded program is 29.6% larger by area at n=5, 375% at n=8, 2.0% at n=10; it wins again from n=11, 10.6% / 16.9% / 20.1% / 21.7% at n=11 / 12 / 13 / 14 on 20 random tables (the same on parity, two-block, half-constant; mid-ignored from n=13 at 9.5% / 16.4%; constants never), still rising at n=14. The docstring's 'never elsewhere' was stale. The width= path (inject(table, width)) is a wrapping feature, not a size trick, and is not judged here"
 
+[ablations.balance_square_chunk]
+saving = 98.6
+arity = 12
+seed = "random.Random(4242 + n)"
+tables = 2
+verdict = "kept: balanced area (balance_score(p)[0]**2) at n=12 is 191,844 vs 13,942,756 with the narrow chunk (98.6% smaller); exponent n=10 to 12 0.56 vs 1.87, unchanged to n=7, n=8..12 down 30.1 / 71.0 / 91.5 / 95.4 / 98.6%. The narrow chunk (log m characters) left T / log m tree lines; the chunk of 2**((m + 4) // 2) characters balances 7 lines a leaf against its width. Default build byte-identical"
+
 [audits]
 plain_rewrite = 2026-10-28
-
-[balance_growth]
-open = "line-bound (blocks and executable commands are delimited by source lines); the balance hook only repacks whole lines, so balanced area grows as T**1.87 from n=10 to 12 (2026-10-29), unexamined"
