@@ -266,6 +266,17 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
     assert _evaluate("Container", balanced, inputs=len(table).bit_length() - 1) == table
 
 
+@pytest.mark.medium
+def test_balanced_parity_is_the_block_program() -> None:
+    """Parity at n=8 draws as 4-row blocks and a pipelined bit read."""
+    from esolangs.generation.wrap import balance_score
+
+    table = "".join(str(row.bit_count() & 1) for row in range(256))
+    balanced = esolangs.generate("Container", table, balance=True)
+    assert balance_score(balanced) == (348, 1392, 9)
+    assert _evaluate("Container", balanced, inputs=8) == table
+
+
 @pytest.mark.parametrize(("table", "weights"), [("0011", [1, 0]), ("0101", [0, 1])])
 def test_threshold_proof_keeps_ignored_latches(table: str, weights: list[int]) -> None:
     from esolangs.languages.container.generator import _container_threshold

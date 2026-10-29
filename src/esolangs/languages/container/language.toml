@@ -80,8 +80,12 @@ seed = 9090
 tables = 6
 verdict = "threshold candidate kept, width-1 and unnarrowed candidates removed 2026-10-27 (plain-rewrite audit). Balancing narrows the default and the threshold program at the square side and keeps the squarer. The width-1 narrowing and the unnarrowed default never won (0 changes over all 65,536 tables at n=4, all of n<=3, 100 random tables at n=3..8 and the named families to n=12) and were dropped. Deleting the threshold candidate costs rendered area on the classes where the tree ships: two-block tables (6, seed 9090) +15.5% at n=8, +8.1% at n=9, 0.00% at n=10; majority +26.2% at n=10; 0.00% on random tables at n=4..10 and on parity, OR and AND; 5.17% over all 16 tables at n=2. Not a width trick: container(table, width) still races the narrowed threshold against the narrowed default, since that one reaches narrower widths the tree cannot (the plain choice is wider on 160 of the 65,536 n=4 tables and on x0 / two-block at n=7..8) Retirement re-measured 2026-10-28 under the random + named bar (balanced area, balance_score(p)[0]**2, 20 seeded random tables at n=7, 8, seed 20261028): 0.00% on random (3,759,832 area at n=8 either way) and on parity, and, or at n=7..12; majority costs +26.2% area at n=10 (506,944 -> 640,000) and a threshold (popcount >= n // 3) +19.5% at n=12 (817,216 -> 976,144), 0.00% at the other arities. Kept: it clears 10% on named functions, though only at one arity each, so the rule serves those families, not the race"
 
+[ablations.balance_blocks]
+saving = 94.6
+arity = 12
+seed = "random.Random(4242 + n)"
+tables = 2
+verdict = "kept: balanced area (balance_score(p)[0]**2, mean of 2 seeded tables) falls 24.4 / 60.2 / 77.8 / 88.7 / 94.6% at n=8..12 (501,840 -> 199,810 at n=9, 19,300,298 -> 1,032,256 at n=12) and is unchanged to n=7; growth n=10 -> 12 from T**1.79 to T**0.77. One line per table step made side 2*lines = T; S-bit block words in a loaded W, bits read greedily by a pipelined threshold, give O(sqrt T) lines. Default build byte-identical"
+
 [audits]
 plain_rewrite = 2026-10-27
-
-[balance_growth]
-open = "line-bound (each line declares a container or one of its rules); the balance hook only repacks whole lines, so balanced area grows as T**1.79 from n=10 to 12 (2026-10-29), unexamined"

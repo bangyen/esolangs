@@ -6,7 +6,8 @@ to a leaf that adds its entry to ``OUT`` at tick ``2n`` (see
 :func:`_container_tree`).  In the threshold sum, each bit latches into its own
 container and one gate dip adds the binary weights to a row counter, so
 ``OUT`` is a prefix sum with one line per step in the table
-(:func:`_container_threshold`, halting in ``2n + 2`` ticks).
+(:func:`_container_threshold`, halting in ``2n + 2`` ticks).  Balanced output
+adds a third route, :func:`_container_blocks`, with ``O(sqrt T)`` lines.
 
 Size:
     Tree up to 2**n lines in the worst case, threshold one line per table
@@ -545,16 +546,99 @@ def container(truth_table: str, width: int | None = None) -> str:
     )
 
 
+def _block_word(table: str, block: int, size: int) -> int:
+    """Return block ``block`` of ``table`` as an integer, row 0 the top bit."""
+    return int(table[block * size : (block + 1) * size], 2)
+
+
+def _container_blocks(table: str) -> str:
+    """Build a program with ``O(sqrt T)`` lines: blocks of ``S = 2**s`` rows.
+
+    The high input bits pick block ``h`` and one rule per block loads its
+    ``S``-bit word into ``W`` (a prefix sum of word differences).  The low
+    bits ``l`` load ``Lo`` with ``2l``, which counts down one a tick; stage
+    ``i`` (a 2-tick period) reads bit ``i`` of ``W`` greedily, moving the
+    threshold ``TH`` to ``prefix + 2**(S-1-i)`` while ``i < l``.  Stages
+    ``i >= l`` are dead (``Lo <= 0``), so ``TH`` freezes at stage ``l``'s
+    threshold and ``W >= TH`` then is bit ``l``.  Each stage's ``Y`` is a
+    one-tick pulse (1 alive, 2 alive and set), killed outside its tick.
+    """
+    n = _validate_truth_table(table)
+    s = max(1, (n - 2) // 2)
+    size, blocks = 1 << s, 1 << (n - s)
+    identifiers = _free_names(_RESERVED)
+    gate, high, low, word, thr, fin = (next(identifiers) for _ in range(6))
+    latches = [next(identifiers) for _ in range(n)]
+    windows = [next(identifiers) for _ in range(n)]
+    stages = [next(identifiers) for _ in range(size - 1)]
+
+    lines = _threshold_pulse_lines(n)
+    lines += _threshold_window_lines(windows, latches, n)
+    lines += [
+        f"{gate}=2:",
+        f"-1 T>={2 * n - 1}",
+        f"+2 T>={2 * n}",
+        f"-1 T>={2 * n + 1}",
+    ]
+    if blocks > 1:
+        lines.append(f"{high}:")
+        lines += [f"+{1 << (n - s - 1 - k)} {latches[k]}>={gate}" for k in range(n - s)]
+        lines.append(f"-{blocks} T>={2 * n + 1}")  # live for tick 2n + 1 only
+    lines.append(f"{low}:")
+    lines += [f"+{2 << (n - 1 - k)} {latches[k]}>={gate}" for k in range(n - s, n)]
+    lines.append(f"-1 T>={2 * n + 1}")
+    words = [_block_word(table, h, size) for h in range(blocks)]
+    lines.append(f"{word}={words[0]}:")
+    lines += [
+        f"{words[h] - words[h - 1]:+d} {high}>={h}"
+        for h in range(1, blocks)
+        if words[h] != words[h - 1]
+    ]
+    lines.append(f"{thr}={1 << (size - 1)}:")
+    for i, name in enumerate(stages):
+        lines += [
+            f"-{1 << (size - 2 - i)} {name}>=1",
+            f"+{1 << (size - 1 - i)} {name}>=2",
+        ]
+    for i, name in enumerate(stages):
+        tick = 2 * n + 2 + 2 * i
+        lines += [
+            f"{name}:",
+            f"+1 {word}>={thr}",
+            f"+1 T>={tick}",
+            f"-5 T>={tick + 1}",
+            f"-2 T<={tick - 1}",
+            f"-3 {low}<=0",
+        ]
+    end = 2 * n + 2 * size
+    lines += [
+        f"{fin}:",
+        f"+1 {word}>={thr}",
+        f"-2 T<={end - 1}",
+        f"-2 T>={end + 1}",
+        "OUT=48:",
+        f"+1 {fin}>=1",
+        "PRINT:",
+        f"+1 T>={end + 1}",
+        "EXIT=1:",
+        f"-1 T>={end + 1}",
+    ]
+    return "\n".join(lines)
+
+
 def balance_container(table: str, default: str) -> str:
     """Return the squarer of the default and the threshold program, narrowed."""
     # Narrowing at w costs no characters until a rule stops fitting, so the
     # square side is isqrt(CELL_ASPECT * characters).  The threshold program
-    # is the named alternative ([ablations.balance_candidates]).
+    # is the named alternative ([ablations.balance_candidates]); the block
+    # program joins from n=4 ([ablations.balance_blocks]).
     side = isqrt(CELL_ASPECT * len(default))
-    return min(
-        (_narrow_rules(p, side) for p in (default, _container_threshold(table))),
-        key=balance_score,
-    )
+    candidates = [
+        _narrow_rules(p, side) for p in (default, _container_threshold(table))
+    ]
+    if len(table) >= 16:
+        candidates.append(_container_blocks(table))
+    return min(candidates, key=balance_score)
 
 
 LANGUAGE = Language(
