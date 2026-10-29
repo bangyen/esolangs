@@ -769,6 +769,10 @@ The first-implementation route also excludes a language whose generator
 re-spells a collected generator: the construction transfers step for step
 by token substitution and uses nothing the older language lacks. Same
 family is not enough; Rubic's tree branches on cube parity, not a jump.
+A generator built differently to avoid a re-spelling must be no larger, in
+characters and in balanced area, than the re-spelling build with its free
+wins (2026-10-28): admission buys a whole language, so the 10% bar for a
+size trick grants no allowance.
 Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
 prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
