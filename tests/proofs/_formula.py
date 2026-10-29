@@ -162,7 +162,7 @@ def ledger_formulas(
     local: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
     for row in load().rows:
         if column is not None:
-            # The registered id: a name like "Piet++" slugs to another's.
+            # The registered id: "Piet++" slugs to Piet's, but its id is its own.
             lang = LANGUAGES.get(row.generator)
             stem = lang.id if lang else canonical_id(row.generator)
             path = (

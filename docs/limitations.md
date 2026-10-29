@@ -41,7 +41,7 @@ Exceptions and per-language notes:
 
 <!-- RASTER-SOURCES:START -->
 
-Line and Piet carry a raster source: `generate` returns an
+Line, Piet and Piet++ carry a raster source: `generate` returns an
 `esolangs.Raster`, `run` takes it or a PNG path through the shared
 codec, and `describe` reports `source_kind="raster"`.
 
@@ -506,8 +506,8 @@ requires a construction exemption rather than a sub-gate bound.
 <!-- SHARING-COUNTS:START -->
 
 A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 37
-of 59 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 22 are
+of 60 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 23 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -696,7 +696,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 98 languages.
+The collection has 101 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -708,6 +708,7 @@ incompatible embeds; ZTOALC L for a searched syntax-level lookup table. The 2D s
 verdicts, co-categories, I/O and branch vocabulary, and page length.
 
 - Alight was admitted by the 2D screen.
+- Super SNUSP was admitted by the 2D screen.
 - Pinyin was rejected by the 2D screen.
 
 ### How a language is admitted
@@ -764,58 +765,43 @@ A generator built differently to avoid a re-spelling must be no larger, in
 characters and in balanced area, than the re-spelling build with its free
 wins (2026-10-28): admission buys a whole language, so the 10% bar for a
 size trick grants no allowance.
-The match must carry the older generator's construction past a shared
-decision diagram (2026-10-29): 35 generators build one (`subtree_ids`),
-and any language with a two-way branch hosts its node as a fixed gadget,
-so a diagram alone is family. Translation into a universal machine is no
-evidence either: Pilas, Aprknia, lol waht, Packlang and Qoibl run in
-Whitespace, Freestajlo, 1 + i and Modulous in FALSE, all by fixed gadgets.
+The match must be a bespoke construction (2026-10-29). A decision diagram
+is family: 35 generators build one (`subtree_ids`), and any language with
+a two-way branch hosts its node as a fixed gadget. So is a table held as
+data and indexed by the row (a packed literal, an indexed string or cell):
+any language with big-integer arithmetic or a fetch hosts it, and
+Shakespeare, Whitespace, Fish and Befunge, fame-admitted, all build one.
+Translation into a universal machine is no evidence either: Pilas,
+Aprknia, lol waht, Packlang and Qoibl run in Whitespace, Freestajlo,
+1 + i and Modulous in FALSE, all by fixed gadgets.
 Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
-prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
-(Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
-removed (Piet++ returned on 2026-10-28, packing 16 table bits to a pixel
-and `Read`ing it at a Horner address, which Piet cannot transcribe, and
-left again on 2026-10-29: that is Fish's packed cells fetched by `g`, a
-wider cell and no new primitive; every program translated op for op into
-Fish, 2,120 of 2,120 rows at n = 1-3 and 1,728 of 1,728 at n = 4, 6); IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
-48/49 normalization; dropping a step adds nothing), and Grapheme on
-2026-10-28 (Qoibl's packed literal: every shipped program translated block
-for block into Qoibl and computed its table, 190 of 190 at n = 1-6; a distinct rebuild, a row counter halving the
-literal in a loop, cost +9.8% chars and +20% balanced area at n = 7 over
-the shipped build with its free wins), and Sonata on 2026-10-28 (the
-Slashes unary index: every shipped program translated block for block into
-`///` and computed its table, 258 of 258 at n = 1-6; its symmetric count is
+prime product) was removed, and so were HQ9+ with headers (Qoibl's packed
+literal), Parenthesys (Alight's indexed string) and Piet++ (Piet's strip,
+recoloured); Piet++ returned on 2026-10-28 packing 16 table bits to a
+pixel. IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
+48/49 normalization), Grapheme on 2026-10-28 (Qoibl's packed literal,
+190 of 190 translated at n = 1-6), Sonata on 2026-10-28 (the Slashes
+unary index: every shipped program translated block for block into `///`
+and computed its table, 258 of 258 at n = 1-6; its symmetric count is
 Slashes' unary block less the doubling rule, 50 of 50; the pairwise
 halving it avoided re-spells Thue), and Decleq on 2026-10-29 (S\*bleq's
-decision tree: every shipped program translated instruction for
-instruction into S\*bleq, a constant pool for its indirect jumps and a
-two-instruction read, and computed its table, 2,676 of 2,676 at n = 1-6;
-copy-and-decrement, its one primitive S\*bleq lacks, is a fixed S\*bleq
-gadget, so no construction escapes). A family re-sweep on 2026-10-29
-removed three more. Super SNUSP and Blindfolded Arithmetic (Qoibl's
-packed literal shifted by the row): every program translated block for
-block into Qoibl and computed its table, 2,100 of 2,100 rows at n = 1-3
-and 960 of 960 at n = 4, 5 for Super SNUSP (the row index as an exponent;
-Qoibl has no shift), 276 of 276 tables at n = 1-3 and 33 of 33 at n = 4-6
-for Blindfolded Arithmetic. AddSubJump (S\*bleq's race of a shared tree
-against a packed decoder, phase for phase): both routes translated into
-S\*bleq, 276 of 276 each at n = 1-3, and the packed route, which ships
-from n = 6, 18 of 18 at n = 5-7. Broken translators failed throughout.
-Rescues checked on 2026-10-29 found
-none: Factor is brainfuck as a prime product, a token substitution;
-HQ9+ with headers' decimal literal is Qoibl's packed literal in another
-base, larger to n = 6; Parenthesys' packed decimal with a `^` bit test is
-Qoibl's literal again, larger at n <= 3; CreativeScript v2 has no branch,
-loop or index under any reading of its spec. On the same ground
-CARP (no indirect jump or load: S\*bleq's tree, via Decleq's, without the normalization)
-and CreativeScript v2 (Qoibl's packed literal under a
-`1 + x(Q - 1)` shift) were not admitted on 2026-10-27. Painfuck shares brainfuck's flag tree but stays: its moves use
-`d` and `r` and its I/O is numeric, none of them brainfuck's. Fame
-admissions are exempt. S\*bleq went on 2026-10-29 though collected
+decision tree with a constant pool for its indirect jumps, 2,676 of 2,676
+translated at n = 1-6). AddSubJump followed on 2026-10-29: S\*bleq's race
+of a shared tree against a packed decoder, phase for phase; both routes
+translated into S\*bleq, 276 of 276 each at n = 1-3, and the packed route,
+which ships from n = 6, 18 of 18 at n = 5-7, broken translators failing.
+The 2026-10-29 rule makes the literal and indexed-table grounds family, so
+HQ9+ with headers, Parenthesys, Grapheme and CreativeScript v2 (not
+admitted on 2026-10-27: a packed literal under a `1 + x(Q - 1)` shift) are
+re-judged (see the [roadmap](roadmap.md)); IEBEL, Decleq and CARP (not
+admitted: S\*bleq's tree without the normalization), excluded on diagram
+grounds, stay out by decision, not re-judged. Painfuck shares brainfuck's flag tree but stays: its
+moves use `d` and `r` and its I/O is numeric, none of them brainfuck's.
+Fame admissions are exempt. S\*bleq went on 2026-10-29 though collected
 first: it and Subleq re-spell each other, 276 of 276 tables at n = 1-3
 each way (a broken translator passes 6), and the fame route keeps the
-original. The rulings above that cite S\*bleq hold against Subleq,
-which builds the same tree and packed decoder.
+original. The rulings above that cite S\*bleq hold against Subleq, which
+builds the same tree and packed decoder.
 
 Nor does the first-implementation route admit a page the wiki categorizes as
 a Brainfuck derivative: the family already holds brainfuck and ten collected
@@ -869,7 +855,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 74 are first implementations.
+and 77 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

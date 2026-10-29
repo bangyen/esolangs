@@ -61,6 +61,11 @@ ignored-input tables included).
   [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)).
   Eight of the first thirteen lost a trick.  Record a finished audit as
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
+- **Re-judge table-as-data removals** (2026-10-29): a packed literal or
+  indexed table is family now, so HQ9+ with headers, Parenthesys and
+  Grapheme (removed packages) and CreativeScript v2 (never built) return
+  unless another ground excludes them: spec completeness, a fixed token
+  map, the Brainfuck-derivative ban.
 - **Malbolge per-arity layout** (parked 2026-10-29): live cells are 10-14% of
   the 59,049-cell image at n <= 12. Tables sit at 39,367-43,002 because the
   held top digit is 6; a bit-to-digit bijection putting it at 1, with hubs and
@@ -69,19 +74,19 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (65): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, Algebraic
+Audited (66): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, Algebraic
 Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark, Back,
-Befunge, BFStack, Bitdeque, bit~, Boolfuck, brainfuck, BrainIf, Circlefuck,
-Circuit Diagram, Clockwise, Collatz Multiverse, Container, Crement,
-CV(N)(C), Dig, Dimensional, EGL, FALSE, Fargo, Fish, Flowchart, Forbin,
-Forþ, FRACTRAN, Freestajlo, Home Row, Hot, Inject, INTERCAL, Interprogck8,
-LaserFuck, Line, Malbolge, Minifuck, Modulous, Packlang, Painfuck, Piet,
-Polynomial, Qoibl, RAM0, ROTfuck, SLOW ACV MAMMALIAN, Smallfuck, SStack,
-Streetcode, Subleq, Suffolk, Taglate, thisthat, Thue, Underload, Unlambda.
-Next by kept `[ablations]`: NOR machine 3, SendStuff 3, Smu 3, Unary 3,
-Balik 2, Bitwise Cyclic Tag 2, Bleh 2, Caballo 2, Codesick 2, Cyclic tag 2,
-Eval 2, Fackward 2, Minsky Swap 2, Pointless 2, Quassaunt 2, Stisp 2,
-SwitchCase 2, Unsquare 2.
+Befunge, BFStack, Bitdeque, bit~, Blindfolded Arithmetic, Boolfuck,
+brainfuck, BrainIf, Circlefuck, Circuit Diagram, Clockwise, Collatz
+Multiverse, Container, Crement, CV(N)(C), Dig, Dimensional, EGL, FALSE,
+Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row, Hot,
+Inject, INTERCAL, Interprogck8, LaserFuck, Line, Malbolge, Minifuck,
+Modulous, Packlang, Painfuck, Piet, Polynomial, Qoibl, RAM0, ROTfuck, SLOW
+ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, Suffolk, Taglate,
+thisthat, Thue, Underload, Unlambda. Next by kept `[ablations]`: NOR machine
+3, SendStuff 3, Smu 3, Unary 3, Balik 2, Bitwise Cyclic Tag 2, Bleh 2,
+Caballo 2, Codesick 2, Cyclic tag 2, Eval 2, Fackward 2, Minsky Swap 2,
+Pointless 2, Quassaunt 2, Stisp 2, Super SNUSP 2, SwitchCase 2, Unsquare 2.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
@@ -94,7 +99,7 @@ SwitchCase 2, Unsquare 2.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-12 of the 74 first implementations: Aprknia, Balik, BASICER, Bleh,
+12 of the 77 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, Stisp,
 SwitchCase, Tiangou.
 

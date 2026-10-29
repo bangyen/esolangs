@@ -1,0 +1,47 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 1
+
+[proof_status]
+labels = ["tree"]
+qualification = "each folding pass removes at least one pending unit"
+scaling = "linear: worst 3T/2 + 19n + 22 cells: one row, \"*\" an entry"
+execution = "linear: worst 3T/2 + 19n + 22 commands past n = 4: one straight line, half the rows marked"
+workspace = "linear: worst T + 2n + 12 + bl(L) + bl(n) bits past n = 4: the packed-table cell"
+
+[generator_sizes]
+"00000001" = { commands = 88, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 88, "5" = 88, "6" = 88, "7" = 88 }, source_units = 88 }
+"00001100" = { commands = 68, commands_by_row = { "0" = 68, "1" = 68, "2" = 68, "3" = 68, "4" = 68, "5" = 68, "6" = 68, "7" = 68 }, source_units = 68 }
+"00110110" = { commands = 91, commands_by_row = { "0" = 91, "1" = 91, "2" = 91, "3" = 91, "4" = 91, "5" = 91, "6" = 91, "7" = 91 }, source_units = 91 }
+"0110" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16 }, source_units = 16 }
+"01101001" = { commands = 91, commands_by_row = { "0" = 91, "1" = 91, "2" = 91, "3" = 91, "4" = 91, "5" = 91, "6" = 91, "7" = 91 }, source_units = 91 }
+"0110100110010110" = { commands = 122, commands_by_row = { "0" = 122, "1" = 122, "2" = 122, "3" = 122, "4" = 122, "5" = 122, "6" = 122, "7" = 122, "8" = 122, "9" = 122, "10" = 122, "11" = 122, "12" = 122, "13" = 122, "14" = 122, "15" = 122 }, source_units = 122 }
+"1101001101101101" = { commands = 120, commands_by_row = { "0" = 120, "1" = 120, "2" = 120, "3" = 120, "4" = 120, "5" = 120, "6" = 120, "7" = 120, "8" = 120, "9" = 120, "10" = 120, "11" = 120, "12" = 120, "13" = 120, "14" = 120, "15" = 120 }, source_units = 120 }
+"11111110" = { commands = 88, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 88, "5" = 88, "6" = 88, "7" = 88 }, source_units = 88 }
+
+[catalogue]
+folding_constant_local = "_emit_lookup"  # projected literal table
+
+[formula_arities]
+execution = [5, 6]
+workspace = [5]
+
+[ablations]
+audited = "2026-10-19"
+
+[ablations.input_projection]
+saving = 48.3
+arity = 12
+verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the packed integer is built over the essential inputs only; an ignored input is read into cell 1 and left for the next read or >0 to overwrite. 0.00% on random tables at n=8/10/12; with one ignored input 37.3% at n=8 rising to 44.9% at n=10 and 48.3% at n=12, with two ignored 57.4% / 67.7% / 72.6%, and on constant tables 91.5% / 97.0% / 99.1%"
+
+[ablations.two_input_short_forms]
+saving = 20.3
+arity = 2
+verdict = "kept: five fixed short forms at n=2 reuse 48 to decode each input and encode the answer, keeping the literal at the bottom of the stack. Over all 16 two-input tables they save 20.3% (723 against 907 chars), and 72 against 256 chars on the five tables themselves; both recorded figures reproduce exactly. The forms fire only at n=2 and cost nothing at any other arity"
+
+[ablations.plain_build]
+saving = 48.3
+arity = 12
+verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (48.3% at n=12 on the one-ignored corpus, 0.00% on random tables). The packed build itself -- one * per entry plus one ) per one entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and were not priced"

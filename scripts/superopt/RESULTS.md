@@ -209,6 +209,7 @@ n/a = unsupported):
 | SStack | 15 | 39 | $ $ $ $ |
 | Home Row | 8 | 53 | $ $ $ $ |
 | Minsky Swap | 15 | 46 | $ $ $ $ |
+| Super SNUSP | 21 | 44 | $ $ $ $ |
 | Minifuck | 7 | 70 | $ $ $ $ |
 | ArrowQueue | 6 | 84 | GAP $ $ $ |
 | Crement | 17 | 55 | $ $ $ $ |
@@ -233,6 +234,7 @@ n/a = unsupported):
 | Object disoriented | 19 | 96 | $ $ $ $ |
 | Forbin | 32 | 88 | $ $ $ $ |
 | Suffolk | 5 | 200 | $ $ $ $ |
+| Blindfolded Arithmetic | 12 | 131 | $ $ $ $ |
 | Ascenic | 3 | 300 | $ $ $ $ |
 | INTERCAL | 33 | 97 | $ $ $ $ |
 | Hot | 6 | 193 | $ $ $ $ |

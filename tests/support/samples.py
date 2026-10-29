@@ -221,6 +221,7 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Smallfuck": (">>*", ""),
     "Smu": ("(|+|+++|)", ""),
     "Streetcode": (STREETCODE, ""),
+    "Super SNUSP": ('"65.', ""),
     "Suffolk": ("!" * 66 + "<.", ""),
     "Taglate": ("abc\ni", ""),
     # One rule that prints and deletes its match, so the state empties.

@@ -43,6 +43,10 @@ from esolangs.languages.bitwise_cyclic_tag.generator import (
 from esolangs.languages.bitwise_cyclic_tag.generator import bitwise_cyclic_tag
 from esolangs.languages.bleh.generator import LANGUAGE as _BLEH_LANGUAGE
 from esolangs.languages.bleh.generator import bleh
+from esolangs.languages.blindfolded_arithmetic.generator import (
+    LANGUAGE as _BLINDFOLDED_ARITHMETIC_LANGUAGE,
+)
+from esolangs.languages.blindfolded_arithmetic.generator import blindfolded_arithmetic
 from esolangs.languages.boolfuck.generator import LANGUAGE as _BOOLFUCK_LANGUAGE
 from esolangs.languages.boolfuck.generator import boolfuck
 from esolangs.languages.brainfuck.generator import LANGUAGE as _BRAINFUCK_LANGUAGE
@@ -145,6 +149,10 @@ from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
 from esolangs.languages.painfuck.generator import painfuck
 from esolangs.languages.piet.generator import LANGUAGE as _PIET_LANGUAGE
 from esolangs.languages.piet.generator import piet
+from esolangs.languages.piet_plus_plus.generator import (
+    LANGUAGE as _PIET_PLUS_PLUS_LANGUAGE,
+)
+from esolangs.languages.piet_plus_plus.generator import piet_plus_plus
 from esolangs.languages.pilas.generator import LANGUAGE as _PILAS_LANGUAGE
 from esolangs.languages.pilas.generator import pilas
 from esolangs.languages.pointless.generator import LANGUAGE as _POINTLESS_LANGUAGE
@@ -187,6 +195,8 @@ from esolangs.languages.subleq.generator import LANGUAGE as _SUBLEQ_LANGUAGE
 from esolangs.languages.subleq.generator import subleq
 from esolangs.languages.suffolk.generator import LANGUAGE as _SUFFOLK_LANGUAGE
 from esolangs.languages.suffolk.generator import suffolk
+from esolangs.languages.super_snusp.generator import LANGUAGE as _SUPER_SNUSP_LANGUAGE
+from esolangs.languages.super_snusp.generator import super_snusp
 from esolangs.languages.switchcase.generator import LANGUAGE as _SWITCHCASE_LANGUAGE
 from esolangs.languages.switchcase.generator import switchcase
 from esolangs.languages.taglate.generator import LANGUAGE as _TAGLATE_LANGUAGE
@@ -230,6 +240,7 @@ _LANGUAGES = (
     _BITDEQUE_LANGUAGE,
     _BITWISE_CYCLIC_TAG_LANGUAGE,
     _BLEH_LANGUAGE,
+    _BLINDFOLDED_ARITHMETIC_LANGUAGE,
     _BOOLFUCK_LANGUAGE,
     _BRAINFUCK_LANGUAGE,
     _BRAINIF_LANGUAGE,
@@ -276,6 +287,7 @@ _LANGUAGES = (
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
     _PIET_LANGUAGE,
+    _PIET_PLUS_PLUS_LANGUAGE,
     _PILAS_LANGUAGE,
     _POINTLESS_LANGUAGE,
     _POLYNOMIAL_LANGUAGE,
@@ -296,6 +308,7 @@ _LANGUAGES = (
     _STREETCODE_LANGUAGE,
     _SUBLEQ_LANGUAGE,
     _SUFFOLK_LANGUAGE,
+    _SUPER_SNUSP_LANGUAGE,
     _SWITCHCASE_LANGUAGE,
     _TAGLATE_LANGUAGE,
     _THISTHAT_LANGUAGE,
@@ -329,6 +342,7 @@ __all__ = [
     "bitdeque",
     "bitwise_cyclic_tag",
     "bleh",
+    "blindfolded_arithmetic",
     "boolfuck",
     "brainfuck",
     "brainif",
@@ -375,6 +389,7 @@ __all__ = [
     "packlang",
     "painfuck",
     "piet",
+    "piet_plus_plus",
     "pilas",
     "pointless",
     "polynomial",
@@ -395,6 +410,7 @@ __all__ = [
     "streetcode",
     "subleq",
     "suffolk",
+    "super_snusp",
     "switchcase",
     "taglate",
     "thisthat",
