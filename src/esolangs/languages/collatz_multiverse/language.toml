@@ -3,6 +3,7 @@
 
 [curation]
 backlinks = 2
+admitted = 2026-08-13T21:46:33-04:00
 
 [proof_status]
 labels = ["finite lookup"]

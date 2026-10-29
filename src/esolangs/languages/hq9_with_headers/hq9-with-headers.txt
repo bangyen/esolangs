@@ -1,0 +1,23 @@
+==== HEADER ====
+COMMAND FLOW
+    1,2,3
+CHARACTER SEMANTICS
+    r
+        [>>. b]
+        [MUL p p p]
+        [ADD b one b]
+        [MUL p b p]
+    o
+        [DIV t p q]
+        [DIV q two h]
+        [ADD h h h]
+        [~:: q h 702822312229 702822302229]
+STARTUP
+    p = 1
+    one = 1
+    two = 2
+    t = 8
+CHECKSUM
+    382
+==== END HEADER ====
+rro

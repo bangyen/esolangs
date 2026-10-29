@@ -1,0 +1,35 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 3
+admitted = 2026-10-15T18:27:40-04:00
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the table is one string literal, and `ind` indexes it with a nested Horner expression over the reads"
+scaling = "linear: 12n + 5 + T characters: one string, Horner per input"
+execution = "poly n: worst 6n + 2 commands: six ops a later read, eight for the first and the answer"
+workspace = "linear: at most 8T + 8⌊n/3⌋ + 43 + bl(6n+2) + bl(2n) bits: the final call's stack"
+
+[catalogue]
+folding_constant = "a constant table is still a T-character string"
+folding_ignored = "the string holds every row; an ignored input is still read into the index"
+
+[generator_sizes]
+"00000001" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 49 }
+"00001100" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 49 }
+"00110110" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 49 }
+"0110" = { commands = 14, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14 }, source_units = 33 }
+"01101001" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 49 }
+"0110100110010110" = { commands = 26, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26, "8" = 26, "9" = 26, "10" = 26, "11" = 26, "12" = 26, "13" = 26, "14" = 26, "15" = 26 }, source_units = 69 }
+"1101001101101101" = { commands = 26, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26, "8" = 26, "9" = 26, "10" = 26, "11" = 26, "12" = 26, "13" = 26, "14" = 26, "15" = 26 }, source_units = 69 }
+"11111110" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 49 }
+
+[ablations]
+audited = "2026-10-29"
+
+[ablations.string_guard]
+saving = 0.0
+arity = 12
+verdict = "recorded: the `x` before the table keeps an all-digit table a string whatever a number's text would become; 1 char of a 2^n + 12n + 5 program, and without it `ind` reads a number. Correctness machinery"

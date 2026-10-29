@@ -246,19 +246,6 @@ def _grown(name: str, table: str, width: int | None) -> str:
     return esolangs.instantiate(name, generate(name, table), [0] * arity, width=width)
 
 
-# language-owners: ["Polynomial"]
-# Long enough that a run which has not finished is looping, short enough
-# that eight of them are not a wait.  123 answers by *looping forever* for a
-# one, so a timeout is one of the behaviours being compared rather than a
-# failure -- what must match is that the wrapped program loops exactly where
-# the unwrapped one does.
-#
-# The bound is the whole cost of the 123 rows: `mixed` has six ones, run
-# wrapped and unwrapped, so it was six times two times 5.0 -- 60s, to the
-# hundredth.  The floor is the slowest halting run in this corpus, since one
-# cut short would be misread as a loop; measured over every wrapped language
-# and both tables below, that is 0.296s (Polynomial). Two seconds is 6.8x
-# that here and about 2.7x with CI's slower cores.
 _RUN_TIMEOUT = 2.0
 
 

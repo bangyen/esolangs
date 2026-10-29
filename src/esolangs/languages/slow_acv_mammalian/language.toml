@@ -9,6 +9,7 @@ workspace_step_exempt = "increments track per-level residues, not T"
 
 [curation]
 backlinks = 1
+admitted = 2026-08-14T22:09:07-04:00
 
 [proof_status]
 labels = ["linear lookup"]

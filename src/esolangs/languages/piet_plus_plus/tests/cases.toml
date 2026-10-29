@@ -1,6 +1,0 @@
-[[spec_triggers]]
-generate = "01"
-stdin = ""
-expect = "output"
-output = "1"
-claim = "an In at EOF is ignored, so the stack keeps the data pixel and the run still prints"

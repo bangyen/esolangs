@@ -3,6 +3,9 @@
 ["abcdirection/generator.py"]
 "replaced (9,983,952 cells at ``n = 6``)." = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
 
+["addsubjump/generator.py"]
+"Interning equal packed cells saves 0.00% at n=8: a running operand reads" = "2ec25caccee980f4e9875d99f4d3c2d8b3a78815"
+
 ["alight/generator.py"]
 "# 2 chars: 0.47% at n=8, retired.)" = "c89c9d061f41050be04083635c299840931049cf"
 "# tables: without the guard n=8 at width 300 is 83% larger (0% at 50-160" = "c89c9d061f41050be04083635c299840931049cf"

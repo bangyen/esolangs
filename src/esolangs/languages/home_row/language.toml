@@ -3,6 +3,8 @@
 
 [curation]
 backlinks = 15
+admitted = 2021-05-24T01:49:00-04:00
+outside_implementation = { date = 2022-10-07, source = "BoundedBeans' interpreter, linked on the wiki page" }
 
 [proof_status]
 labels = ["parameterized tree"]

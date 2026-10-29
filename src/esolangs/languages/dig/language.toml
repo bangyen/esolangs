@@ -3,6 +3,8 @@
 
 [curation]
 backlinks = 11
+admitted = 2020-07-09T00:59:09-04:00
+outside_implementation = { date = 2020-07-09T19:30:00Z, source = "DeybisMelendez's Lua interpreter, wiki rev 75703" }
 
 [proof_status]
 labels = ["tree"]

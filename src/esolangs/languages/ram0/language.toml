@@ -3,6 +3,7 @@
 
 [curation]
 backlinks = 6
+admitted = 2020-07-11T16:22:36-04:00
 
 [proof_status]
 labels = ["parameterized tree"]

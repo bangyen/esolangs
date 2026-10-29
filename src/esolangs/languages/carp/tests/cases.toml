@@ -1,0 +1,28 @@
+[[spec_triggers]]
+program = "FOO r1 1"
+stdin = ""
+expect = "ProgramError"
+claim = "an unknown mnemonic"
+
+[[spec_triggers]]
+program = "INP r1 0"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "INP at EOF"
+
+[[spec_triggers]]
+program = "INP r1 0"
+stdin = "x"
+expect = "ArgumentError"
+claim = "a non-integer input token"
+
+[[spec_triggers]]
+program = "INP r1 0"
+stdin = "16"
+expect = "HaltError"
+claim = "an input that does not fit a nibble"
+
+[[generator_triggers]]
+table = "n=15 zero"
+expect = "GeneratorCapError"
+claim = "more than fourteen inputs"

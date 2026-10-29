@@ -1,0 +1,107 @@
+[[spec_triggers]]
+program = "COMMAND FLOW\n"
+stdin = ""
+expect = "ProgramError"
+claim = "no leading ==== HEADER ===="
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    277\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a missing end marker"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n==== HEADER ====\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a second header"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n   a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "indentation not a multiple of 4"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\n        a = 1\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "deeper than its section allows"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nBOOT\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "an unknown section"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a missing section"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nSTARTUP\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a repeated section"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    H\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a repeated subsection"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    QQ\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a subsection name longer than one character"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = zero\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a malformed semantic command"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,'X,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a malformed flow element"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,1\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a flow that is not a permutation of the commands"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3,'J_4\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    277\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a jump past the last command"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    284\n==== END HEADER ====\nQHX\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a program character with no semantics"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    2,1,3\nCHARACTER SEMANTICS\n    H\n        p(\"Hello, World!\")\n    Q\n        p({{CODE}})\nSTARTUP\n    a = 0\nCHECKSUM\n    278\n==== END HEADER ====\nQHQ\n"
+stdin = ""
+expect = "ProgramError"
+claim = "a wrong checksum"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    1\nCHARACTER SEMANTICS\n    x\n        p(Vv)\nSTARTUP\n    p()\nCHECKSUM\n    163\n==== END HEADER ====\nx\n"
+stdin = ""
+expect = "HaltError"
+claim = "reading a variable never set"
+
+[[spec_triggers]]
+program = "==== HEADER ====\nCOMMAND FLOW\n    1\nCHARACTER SEMANTICS\n    x\n        [DIV a b c]\nSTARTUP\n    a = 1\n    b = 0\nCHECKSUM\n    163\n==== END HEADER ====\nx\n"
+stdin = ""
+expect = "HaltError"
+claim = "DIV by 0"

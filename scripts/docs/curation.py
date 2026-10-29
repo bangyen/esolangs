@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -21,7 +22,9 @@ ROOT = Path(__file__).resolve().parents[2]
 # Fame admits at this many backlinks; below it, only a first implementation.
 FAME_BACKLINKS = 50
 
-_FIELDS = frozenset({"backlinks", "bf_derivative", "unassessed"})
+_FIELDS = frozenset(
+    {"admitted", "backlinks", "bf_derivative", "outside_implementation", "unassessed"}
+)
 _COLLECTED = {"checked": "curation", "bf_derivatives_checked": "bf_derivatives"}
 
 
@@ -42,6 +45,18 @@ def _validate(path: Path, row: dict[str, Any]) -> dict[str, Any]:
     for key in ("bf_derivative", "unassessed"):
         if key in row and not isinstance(row[key], bool):
             raise ValueError(f"{path}: {key} must be a bool")
+    # The original admission, kept through a removal later undone: the route
+    # is judged at this instant, never re-judged on a later count.
+    if "admitted" in row and not isinstance(row["admitted"], datetime):
+        raise ValueError(f"{path}: admitted must be an offset datetime")
+    outside = row.get("outside_implementation")
+    if outside is not None and (
+        not isinstance(outside, dict)
+        or set(outside) != {"date", "source"}
+        or not isinstance(outside["date"], date)
+        or not isinstance(outside["source"], str)
+    ):
+        raise ValueError(f"{path}: outside_implementation needs a date and a source")
     return dict(row)
 
 

@@ -3,6 +3,7 @@
 
 [curation]
 backlinks = 3
+admitted = 2021-06-21T00:20:21-04:00
 
 [proof_status]
 labels = ["linear lookup"]

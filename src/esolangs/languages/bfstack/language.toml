@@ -6,6 +6,7 @@ workspace = 9
 
 [curation]
 backlinks = 3
+admitted = 2020-07-08T17:23:03-04:00
 bf_derivative = true
 
 [proof_status]

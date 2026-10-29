@@ -1,0 +1,89 @@
+[[spec_triggers]]
+program = "(ab"
+stdin = ""
+expect = "ProgramError"
+claim = "an unmatched bracket"
+
+[[spec_triggers]]
+program = "(a|b)"
+stdin = ""
+expect = "ProgramError"
+claim = "a | outside [] and {}"
+
+[[spec_triggers]]
+program = "[a|b|c|d|e]"
+stdin = ""
+expect = "ProgramError"
+claim = "too many | in one bracket"
+
+[[spec_triggers]]
+program = "ab\\"
+stdin = ""
+expect = "ProgramError"
+claim = "a trailing \\"
+
+[[spec_triggers]]
+program = "($)"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "$ at EOF"
+
+[[spec_triggers]]
+program = "([+|a|1])"
+stdin = ""
+expect = "HaltError"
+claim = "TypeError: arithmetic on text that is no number"
+
+[[spec_triggers]]
+program = "({a})"
+stdin = ""
+expect = "HaltError"
+claim = "TypeError: {x} on text that is no number"
+
+[[spec_triggers]]
+program = "([gt|a|1])"
+stdin = ""
+expect = "HaltError"
+claim = "TypeError: a comparison on text that is no number"
+
+[[spec_triggers]]
+program = "([/|1|0])"
+stdin = ""
+expect = "HaltError"
+claim = "ValueError: division by 0"
+
+[[spec_triggers]]
+program = "([%|1|0])"
+stdin = ""
+expect = "HaltError"
+claim = "ValueError: % by 0"
+
+[[spec_triggers]]
+program = "([^|2|0.5])"
+stdin = ""
+expect = "HaltError"
+claim = "ValueError: a fractional power"
+
+[[spec_triggers]]
+program = "([ind|3|abc])"
+stdin = ""
+expect = "HaltError"
+claim = "ValueError: an index outside the string"
+
+[[spec_triggers]]
+program = "([chr|-1|])"
+stdin = ""
+expect = "HaltError"
+claim = "ValueError: a chr that is no character"
+
+[[spec_triggers]]
+program = "([ord||])"
+stdin = ""
+expect = "HaltError"
+claim = "ValueError: ord of empty text"
+
+[[spec_triggers]]
+program = "[+|x|y|[x]]"
+stdin = ""
+expect = "HaltError"
+claim = "AccessError: defining a built-in"

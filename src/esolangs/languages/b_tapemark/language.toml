@@ -7,6 +7,7 @@ workspace = 7
 
 [curation]
 backlinks = 2
+admitted = 2026-09-13T10:37:33-04:00
 
 [proof_status]
 labels = ["finite lookup"]

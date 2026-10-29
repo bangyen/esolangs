@@ -46,7 +46,7 @@ _UNIT = {
 }
 
 
-#: From 19 inputs a build passes the fast band (S*bleq's packed decoder took 1.8 s).
+#: From 19 inputs one build passes the fast band (S*bleq's packed decoder, 1.8 s).
 _MEDIUM_FROM = 19
 
 

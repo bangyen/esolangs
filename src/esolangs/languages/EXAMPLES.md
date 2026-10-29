@@ -22,6 +22,7 @@ don't edit by hand.
 | `six_five/6-5.txt` | 6-5 | `0001` | `01` | 01 | '0' |
 | `a_painter_ant/a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '..#\n###\n#o.' |
 | `abcdirection/abcdirection.txt` | ABCDirection | `0001` | `01` | 01 | '0' |
+| `addsubjump/addsubjump.txt` | AddSubJump | `0001` | `01` | 01 | '0' |
 | `algebraic_programming_language/algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight/alight.txt` | Alight | `0001` | `01` | 01 | '0' |
 | `aprknia/aprknia.txt` | Aprknia | `0001` | `01` | 01 | '0' |
@@ -42,6 +43,7 @@ don't edit by hand.
 | `brainfuck/brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif/brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
 | `caballo/caballo.txt` | Caballo | `0001` | `01` | 0 1 | '[]' |
+| `carp/carp.txt` | CARP | `0001` | `01` | 0 1 | '0' |
 | `chicken/chicken.txt` | Chicken | `0001` | `01` | 01 | '0' |
 | `circlefuck/circlefuck.txt` | Circlefuck | `0001` | `01` | 01 | '0' |
 | `circuit_diagram/circuit-diagram.txt` | Circuit Diagram | `0001` | `01` | 01 | '0' |
@@ -49,6 +51,7 @@ don't edit by hand.
 | `codesick/codesick.txt` | Codesick | `0001` | `01` | 01 | '0' |
 | `collatz_multiverse/collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
 | `container/container.txt` | Container | `0001` | `01` | 01 | '0' |
+| `creativescript_v2/creativescript-v2.txt` | CreativeScript v2 | `0001` | `01` | 0 1 | '0' |
 | `crement/crement.txt` | Crement | `0001` | `01` | embedded 01 | (nothing) |
 | `cvnc/cvnc.txt` | CV(N)(C) | `0001` | `01` | 0 1 | '0' |
 | `cyclic_tag/cyclic-tag.txt` | Cyclic tag | `0001` | `01` | embedded 01 | '0' |
@@ -69,6 +72,7 @@ don't edit by hand.
 | `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `hot/hot.txt` | Hot | `0001` | `01` | 01 | '0' |
+| `hq9_with_headers/hq9-with-headers.txt` | HQ9+ with headers | `0001` | `01` | 0 1 | '0' |
 | `iebel/iebel.txt` | IEBEL | `0001` | `01` | 01 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
@@ -86,22 +90,23 @@ don't edit by hand.
 | `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
+| `parenthesys/parenthesys.txt` | Parenthesys | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
-| `piet_plus_plus/piet-plus-plus.png` | Piet++ | `0001` | `01` | 0 1 | '0' |
 | `pilas/pilas.txt` | Pilas | `0001` | `01` | 01 | '0' |
 | `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |
-| `polynomial/polynomial.txt` | Polynomial | `0001` | `01` | 01 | '0' |
 | `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
 | `quassaunt/quassaunt.txt` | Quassaunt | `0001` | `01` | 01 | '0' |
 | `ram0/ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `rotfuck/rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
 | `rubic/rubic.txt` | Rubic | `0001` | `01` | 01 | '0' |
+| `s_bleq/s-bleq.txt` | S*bleq | `0001` | `01` | 01 | '0' |
 | `sendstuff/sendstuff.txt` | SendStuff | `0001` | `01` | 01 | '0' |
 | `shakespeare/shakespeare.txt` | Shakespeare | `0001` | `01` | 0 1 | '0' |
 | `slashes/slashes.txt` | /// | `0001` | `01` | embedded 01 | '0' |
 | `slow_acv_mammalian/slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck/smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `smu/smu.txt` | Smu | `0001` | `01` | 01 | '0' |
+| `sonata/sonata.txt` | Sonata | `0001` | `01` | 01 | '=0' |
 | `sstack/sstack.txt` | SStack | `0001` | `01` | 01 | '0' |
 | `stisp/stisp.txt` | Stisp | `0001` | `01` | embedded 01 | '0' |
 | `streetcode/streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
@@ -112,7 +117,6 @@ don't edit by hand.
 | `taglate/taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
 | `thisthat/thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
 | `thue/thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
-| `tiangou/tiangou.txt` | Tiangou | `0001` | `01` | 0 1 | '0' |
 | `unary/unary.txt.gz` | Unary | `0001` | `01` | '\x00ÿ' | not the answer -- see note |
 | `underload/underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda/unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |
@@ -149,6 +153,7 @@ don't edit by hand.
 - **slashes** -- Inputs fill the binary row index before unary selection; constant tables delete the input letters and print their answer.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
+- **sonata** -- Sonata's input is its initial string and its output the final one, = and the answer
 - **stisp** -- Stisp has no input or output: each input is the atom 0 or 1 in its frame, and the result, printed at halt, is the answer atom
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **unary** -- Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.

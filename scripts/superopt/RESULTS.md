@@ -222,6 +222,7 @@ n/a = unsupported):
 | Dimensional | 12 | 80 | $ $ $ $ |
 | bit~ | 7 | 102 | $ $ $ $ |
 | Alight | 34 | 58 | $ $ $ $ |
+| S*bleq | 12 | 85 | $ $ $ $ |
 | brainfuck | 8 | 115 | $ $ $ $ |
 | BFStack | 8 | 119 | $ $ $ $ |
 | Smu | 12 | 102 | $ $ $ $ |
@@ -252,7 +253,6 @@ n/a = unsupported):
 | Pointless | 15 | 346 | $ $ $ $ |
 | Decleq | 12 | 503 | $ $ $ $ |
 | Quassaunt | 41 | 388 | $ $ $ $ |
-| Polynomial | 19 | 619 | $ $ $ $ |
 | Collatz Multiverse | 43 | 751 | $ $ $ $ |
 | BrainIf | 26 | 883 | $ $ $ $ |
 | Interprogck8 | 25 | 1160 | $ $ $ $ |

@@ -6,6 +6,7 @@ execution = 6
 
 [curation]
 backlinks = 1
+admitted = 2021-05-18T21:49:00-04:00
 
 [proof_status]
 labels = ["finite lookup"]

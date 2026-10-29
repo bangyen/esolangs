@@ -7,6 +7,8 @@ workspace = 7
 
 [curation]
 backlinks = 8
+admitted = 2026-08-22T17:50:41-04:00
+outside_implementation = { date = 2026-08-26, source = "Aadenboy's interpreter.lua, wiki rev 190491" }
 
 [proof_status]
 labels = ["finite lookup"]

@@ -6,6 +6,7 @@ workspace = 7
 
 [curation]
 backlinks = 3
+admitted = 2026-08-07T14:43:11-04:00
 
 [proof_status]
 labels = ["tree"]

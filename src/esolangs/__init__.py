@@ -767,7 +767,7 @@ def run(
         HaltError: The program halted on an invalid operation (base of the two
             above).
         MissingDependencyError: The language needs an uninstalled extra
-            (``esolangs[image]`` for PNG, ``esolangs[math]`` for Polynomial).
+            (``esolangs[image]`` for PNG).
     """
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)  # validate before any route

@@ -53,6 +53,16 @@ def _brainif_worst(n: int) -> str:
     return "".join(map(str, seq))
 
 
+# language-owners: ["S*bleq"]
+def _sbleq_worst(n: int) -> str:
+    """Chunks of n bits, each a d-digit decimal, in a fixed pseudo-random order."""
+    chunks, rest = divmod(1 << n, n)
+    low = 10 ** (len(str((1 << n) - 1)) - 1)
+    span = (1 << n) - low
+    bits = [f"{low + (j * 0x9E3779B1) % span:0{n}b}"[::-1] for j in range(chunks)]
+    return "".join(bits) + "1" * rest
+
+
 # language-owners: ["Forbin"]
 def _forbin_worst(n: int) -> str:
     """The b = 7 build's worst: 2^(n-7) distinct nonconstant 128-entry blocks.

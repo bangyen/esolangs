@@ -6,6 +6,7 @@ workspace = 7
 
 [curation]
 backlinks = 9
+admitted = 2022-05-09T19:20:51-04:00
 
 [proof_status]
 labels = ["linear lookup"]

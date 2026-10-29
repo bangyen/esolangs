@@ -12,8 +12,6 @@ sit in bullets that start with its name.
 | Why a language is (not) in the collection | [Curation](#curation) |
 | Which languages use images as source | [Image-based languages](#image-based-languages) |
 
-- Polynomial has a [size lower bound](proofs/index.md#polynomial-bound).
-
 The measurement screens and profilers were removed once their
 findings were recorded here. Numbers attributed to them are evidence, not a
 command to rerun.
@@ -43,7 +41,7 @@ Exceptions and per-language notes:
 
 <!-- RASTER-SOURCES:START -->
 
-Line, Piet and Piet++ carry a raster source: `generate` returns an
+Line and Piet carry a raster source: `generate` returns an
 `esolangs.Raster`, `run` takes it or a PNG path through the shared
 codec, and `describe` reports `source_kind="raster"`.
 
@@ -436,16 +434,8 @@ Shipped limits, in inputs:
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell, seven-meaning packing is closed at the routing floor, and the composition routes since are closed on eligibility, mechanism or measured rates, with one decoder variant open (above; [scaling](proofs/index.md#malbolge-bound)). |
-| Polynomial | 10 | ≥11 | 1,934-instruction guard; a random n=11 table (2,390 instructions, a 58 MB program) factors for 522 s CPU before its first row (later rows reuse it) and peaks at 1.3 GB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 ### Size lower bounds
-
-- Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
-  instruction-root values even when roots repeat, and the slack certificate
-  prices every multiple of their distinct-root product. The routing lemma that
-  forces those values holds for every read count, so the language bound is
-  `Theta(T**2 / log T)` for every cofactor and operand sign. See
-  [polynomial](proofs/index.md#polynomial-bound).
 
 ### Scaling
 
@@ -507,9 +497,9 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 39
-of 63 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 24 are
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 41
+of 64 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (6 by a local helper); 23 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -532,7 +522,6 @@ exempt with a reason. One shrinking probe does not establish complete sharing.
   cloning remains unshipped: its 2.19% aggregate planned gain misses the
   bespoke gate; its native positive control passes all 256 rows, from
   33,700,800 to 32,865,600 pixels with the same 23-command maximum.
-- Polynomial declares `_polynomial_states`.
 - Piet is exempt: a strip has no jump, so a repeated subtable cannot be shared.
 
 - Line:
@@ -636,8 +625,8 @@ exact range (2026-10-23, counted from the ledger):
   n = 4, the shorter of two layouts to n = 5),
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
-  Smallfuck and Subleq (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
-  worst: 1,968 against 4,681 at n = 8); BFStack workspace below n = 9 but n = 5 (the bound charges every open loop
+  Smallfuck, Subleq and AddSubJump (per-candidate sums); Boolfuck scaling past n = 7 (the gates take its
+  worst: 1,968 against 4,681 at n = 8); S*bleq scaling below n = 11 and BFStack workspace below n = 9 but n = 5 (the bound charges every open loop
   bl(L) bits; positions below 2^(bl(L)-1) cost fewer. Smallest gap by table:
   n = 4 11 (exhaustive, 165 against 176), n = 5 0 (exact: 0^16 1 0^15 measures 321); n = 6..8 not re-measured since the decoder race went, 2026-10-28).
 - Layout slack: Slow ACV Mammalian scaling, execution and workspace bound
@@ -649,8 +638,9 @@ exact range (2026-10-23, counted from the ledger):
   random: 327,178 characters against 475,725; 8,824 commands against
   15,720). Exact needs the generator's own address solve, not a bound.
 - Address widths: the peak sums the bit-lengths of table-dependent
-  positions, which cross powers of two by layout. Caballo,
-  Crement, Pointless and Underload workspace;
+  positions, which cross powers of two by layout. AddSubJump, Caballo,
+  Crement, Pointless, S-BLEQ (1.002x: cell bits plus 6n, packed
+  route sampled to n = 10) and Underload workspace;
   Painfuck workspace (slack 1
   at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
   exhaustive); Bitdeque scaling (GOTO digits by layout; 358 against
@@ -690,6 +680,9 @@ exact range (2026-10-23, counted from the ledger):
     DIMENSION statements) and scaling past 19 (the shape needs 2^(n-4)
     distinct parents against 57,360 ordered pairs, failing from 20).
     Scaling reopens with a successor shape.
+  - S*bleq scaling past n = 28: one-off builds attain P at 26, 27 and 28
+    (105,463,455 characters, 3.30 GB peak), the harness at the scaling
+    arities to 25; the route's peak doubles per arity, about 6.5 GB at 29.
   - What!? past n = 22: the witness builds to 26 and E(22) = 8,519,845
     steps and W(22) = 587 bits are executed, but the interpreter's
     one-object-per-token parse loads n = 22 in 3.15 GB and dies at 23.
@@ -699,14 +692,12 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 104 languages.
+The collection has 108 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
 Its floor is 31; every language but the three interpreter-only classics
-(Deadfish, HQ9+, Nope.) has a generator. Removed: unused
-ordinary imperative entries with shared-shim generators; Nopstacle for
-incompatible embeds; ZTOALC L for a searched syntax-level lookup table. The 2D screen intersected
+(Deadfish, HQ9+, Nope.) has a generator. The 2D screen intersected
 1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
 verdicts, co-categories, I/O and branch vocabulary, and page length.
 
@@ -731,16 +722,17 @@ Record resolved title, date and count; missing data means unassessed
 backlinks count against only old languages; Wikipedia pageviews are not a
 gate.
 
-Below 50, a language is admitted only as a first implementation: when the
-repo adds it, no implementation exists but the maintainer's. Its page is in
-the Unimplemented category, or the edit that first tagged it Implemented is
-User:Bangyen's. An intrinsic axis can choose between such candidates; it
-admits nothing alone and removes nothing. Scaling removes: an uncapped
-generator whose `O(T)` generation time and emitted size are neither proved
-nor ruled out by a language lower bound takes its language with it
-(Polynomial, Unary and Ascenic keep theirs on proved bounds; Malbolge's cap
-leaves no asymptotic question). Adopted 2026-10-21; Vandevelo was removed
-under it.
+Below 50, a language is admitted only as a first implementation: at its
+original admission (a removal later undone keeps the date), no outside
+implementation exists. An outside implementation is posted publicly, as
+source or a runnable link, and implements the page's semantics; one a
+review shows misreads them does not count (ROTfuck's), one that only
+crashes on large programs does (Polynomial's). Each package records the
+date as `admitted` in `[curation]`, and a known outside implementation as
+`outside_implementation`; `tests/tooling/test_language_toml.py` refuses a
+member whose outside implementation predates its admission. A first
+implementation also needs a generator: interpreter-only is the fame
+route's alone.
 
 A route admits a language only when its specification fixes the core
 semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
@@ -750,69 +742,31 @@ does, so its interpreter invented the core, the invented semantics the
 2026-10-07 for the same reason: its page gives no grammar and no I/O, and
 its one loop example calls an undefined `or`.
 
-Nor does a route admit a command-for-command substitution of a collected
-language: a fixed token map under which every program behaves the same adds
-no interpreter or generator, the ground that excludes Trivial brainfuck
-substitution as a family. Adopted 2026-10-14 for candidates; no collected
-language is one (Painfuck adds +2/-1 steps, ROTfuck a rotating command set).
-The test follows Felleisen's expressiveness criterion: a construct a local,
-compositional translation eliminates while preserving observable behaviour
-adds no expressive power (Felleisen, "On the Expressive Power of Programming
-Languages", 1991).
+Nor does the first-implementation route admit a token substitution of a
+collected language: a fixed bijection between command tokens (whitespace
+and comment conventions aside) under which every program behaves the same,
+both ways. An implementation of the original plus the renaming already
+implements it. Ook! (brainfuck) is the anchor and excludes Trivial
+brainfuck substitution as a family. A 2026-10-29 screen of 13 nearest
+pairs found none among collected languages, each refuted by a run
+counterexample (S\*bleq reads 0 at EOF where Subleq raises; Piet++ has 32
+commands to Piet's 17). Fame admissions are never excluded.
 
-The first-implementation route also excludes a language whose generator
-re-spells a collected generator: the construction transfers step for step
-by token substitution and uses nothing the older language lacks. Same
-family is not enough; Rubic's tree branches on cube parity, not a jump.
-A generator built differently to avoid a re-spelling must be no larger, in
-characters and in balanced area, than the re-spelling build with its free
-wins (2026-10-28): admission buys a whole language, so the 10% bar for a
-size trick grants no allowance.
-The match must be a bespoke construction (2026-10-29). A decision diagram
-is family: 35 generators build one (`subtree_ids`), and any language with
-a two-way branch hosts its node as a fixed gadget. So is a table held as
-data and indexed by the row (a packed literal, an indexed string or cell):
-any language with big-integer arithmetic or a fetch hosts it, and
-Shakespeare, Whitespace, Fish and Befunge, fame-admitted, all build one.
-Translation into a universal machine is no evidence either: Pilas,
-Aprknia, lol waht, Packlang and Qoibl run in Whitespace, Freestajlo,
-1 + i and Modulous in FALSE, all by fixed gadgets.
-Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
-prime product) was removed, and so were HQ9+ with headers (Qoibl's packed
-literal), Parenthesys (Alight's indexed string) and Piet++ (Piet's strip,
-recoloured); Piet++ returned on 2026-10-28 packing 16 table bits to a
-pixel. IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
-48/49 normalization), Grapheme on 2026-10-28 (Qoibl's packed literal,
-190 of 190 translated at n = 1-6), Sonata on 2026-10-28 (the Slashes
-unary index: every shipped program translated block for block into `///`
-and computed its table, 258 of 258 at n = 1-6; its symmetric count is
-Slashes' unary block less the doubling rule, 50 of 50; the pairwise
-halving it avoided re-spells Thue), and Decleq on 2026-10-29 (S\*bleq's
-decision tree with a constant pool for its indirect jumps, 2,676 of 2,676
-translated at n = 1-6). AddSubJump followed on 2026-10-29: S\*bleq's race
-of a shared tree against a packed decoder, phase for phase; both routes
-translated into S\*bleq, 276 of 276 each at n = 1-3, and the packed route,
-which ships from n = 6, 18 of 18 at n = 5-7, broken translators failing.
-The 2026-10-29 rule makes the literal and indexed-table grounds family, so
-HQ9+ with headers, Parenthesys and CreativeScript v2 (not
-admitted on 2026-10-27: a packed literal under a `1 + x(Q - 1)` shift) are
-re-judged, and so is CARP (not admitted: Decleq's diagram without the
-normalization), excluded on diagram grounds (see the
-[roadmap](roadmap.md)); Decleq, Grapheme and IEBEL returned on 2026-10-29. Painfuck shares brainfuck's flag tree but stays: its
-moves use `d` and `r` and its I/O is numeric, none of them brainfuck's.
-Fame admissions are exempt. Between two first implementations the
-construction stays with the language created first on the wiki, not the
-one collected first, so the outcome is the same in any collection order
-(2026-10-29). S\*bleq went on 2026-10-29 though collected first: it and Subleq re-spell each other, 276 of 276 tables at n = 1-3
-each way (a broken translator passes 6), and the fame route keeps the
-original. The rulings above that cite S\*bleq hold against Subleq, which
-builds the same tree and packed decoder.
+Scaling removes: an uncapped generator whose `O(T)` generation time and
+emitted size are neither proved nor ruled out by a language lower bound
+takes its language with it (Unary and Ascenic keep theirs on proved
+bounds; Malbolge's cap leaves no asymptotic question). Adopted 2026-10-21;
+Vandevelo was removed under it. It is the one ground that depends on the
+repo's work.
 
-A Brainfuck derivative is judged like any language: the ban on them
-(2026-10-15) kept seven collected before it and refused the same
-languages after, so it went on 2026-10-29. Each package's `language.toml`
-records the category as `bf_derivative` in its `[curation]` section; a
-derivative whose generator copies brainfuck's flag tree re-spells it.
+Nothing else decides membership: not collection order, the repo's
+generators, their sizes or a construction they share. Re-spelling,
+family and bespoke-construction grounds (2026-10-15 to 2026-10-29) are
+gone; a macro-expressibility ground was tested and dropped because it
+excluded IEBEL, which three cold judges called distinct from Subleq. A
+Brainfuck derivative is judged like any language (`bf_derivative` in
+`[curation]` records the wiki category only). A rule change lands only
+with its membership diff, in one commit.
 
 ### Recognition sources
 
@@ -859,7 +813,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 80 are first implementations.
+and 84 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
@@ -871,6 +825,22 @@ Jaune, NoComment, Sophie; 2-10 backlinks) were removed on 2026-10-14.
 Vandevelo (3) was removed on 2026-10-21 under the scaling rule: its shipped
 source is `O(T log n)` characters and no bound for every program is known
 either way.
+Three left on 2026-10-29 on the route, an outside implementation predating
+admission: Polynomial (LegionMammal978's Mathematica on its Talk page,
+2015-07-09; collected 2020-07-12), Piet++ (`pietpp.py` in
+github.com/iannmiui-png/miusoft_paint-98, 2026-08-29; collected
+2026-10-03) and Tiangou (Monochromeninja's Python on TIO, 2021-06-01;
+collected 2026-10-27).
+
+Every exclusion and its ground:
+
+| Ground | Languages |
+|---|---|
+| route | 123, BF-PDA, BIO, Jaune, NoComment, Sophie, Funge-98, Emmental, Prelude, LOLCODE, Brainloller, Braincopter, Turing Paint, Befunk, Factor, Polynomial, Piet++, Tiangou |
+| spec | 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Bytemap, Gifunk, BitCode, PicCode, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
+| token substitution | Trivial brainfuck substitution |
+| scaling | Vandevelo, %^2^-1, WII2D, COD, ZTOALC L |
+| no generator | HuePrism (no input), Nopstacle (its blank and `#` spell no input embed) |
 
 Four languages left on 2026-09-18 with linearity unproved and no language
 lower bound; three stay out under the scaling rule:
@@ -894,6 +864,13 @@ lower bound; three stay out under the scaling rule:
 - SendStuff (3): the extended language (`/` commands, `{}` node sets,
   fragments, strings) is a separate version on the wiki and is not
   implemented.
+- S*bleq: the interpreter also runs the store targets `ab` (S*bl*q) and
+  `b` (Subl*q), each with an indirect form, but no registry entry or
+  dialect selects them and the generator emits base S*bleq only.
+  Registering one means generalizing the hoisted tree and packed decoder
+  to its store target, execution-gated; an indirect form dereferences its
+  operands, so it needs a pointer cell per operand, a different
+  construction.
 
 - [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
   (94) clears the fame gate despite duplicating an earlier queue language's

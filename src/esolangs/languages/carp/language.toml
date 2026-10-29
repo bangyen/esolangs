@@ -1,0 +1,26 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 1
+admitted = 2026-10-29T15:06:53-04:00
+
+[proof_status]
+labels = ["tree"]
+qualification = "the diagram branches on every essential input with DEC; an equal subtree is emitted once, reached by a jump through a register held at 15, and constants jump to one of two print gadgets"
+scaling = "linear: at most 2T + n + 20 lines"
+execution = "poly n: at most 3n + 19 commands"
+workspace = "poly n: worst n + 23 bits"
+
+[generator_sizes]
+"00000001" = { commands = 25, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 23, "5" = 23, "6" = 24, "7" = 25 }, source_units = 299 }
+"00001100" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 26, "5" = 26, "6" = 23, "7" = 23 }, source_units = 289 }
+"00110110" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 24, "3" = 24, "4" = 24, "5" = 25, "6" = 26, "7" = 23 }, source_units = 319 }
+"0110" = { commands = 21, commands_by_row = { "0" = 22, "1" = 23, "2" = 24, "3" = 21 }, source_units = 279 }
+"01101001" = { commands = 25, commands_by_row = { "0" = 24, "1" = 25, "2" = 26, "3" = 23, "4" = 27, "5" = 24, "6" = 24, "7" = 25 }, source_units = 319 }
+"0110100110010110" = { commands = 25, commands_by_row = { "0" = 26, "1" = 27, "2" = 28, "3" = 25, "4" = 29, "5" = 26, "6" = 26, "7" = 27, "8" = 30, "9" = 27, "10" = 27, "11" = 28, "12" = 26, "13" = 27, "14" = 28, "15" = 25 }, source_units = 359 }
+"1101001101101101" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 26, "3" = 27, "4" = 25, "5" = 25, "6" = 26, "7" = 26, "8" = 27, "9" = 28, "10" = 28, "11" = 25, "12" = 27, "13" = 27, "14" = 26, "15" = 27 }, source_units = 380 }
+"11111110" = { commands = 23, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 25, "5" = 25, "6" = 26, "7" = 23 }, source_units = 299 }
+
+[ablations]
+audited = "2026-10-29"

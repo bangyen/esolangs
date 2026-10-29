@@ -181,7 +181,7 @@ class Debugger:
         A position never reached is accepted (the protocol has no ``len``).
         """
         if isinstance(ip, int) and not isinstance(ip, bool):
-            pass  # Any int: Subleq halts at -1.
+            pass  # Any int: AddSubJump and Subleq halt at -8 and -1.
         elif not (
             isinstance(ip, tuple)
             and ip

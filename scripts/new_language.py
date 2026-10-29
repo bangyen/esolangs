@@ -40,6 +40,7 @@ ROOT = Path(__file__).parents[1]
 # this runs as a script or is imported as ``scripts.new_language``.
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
+from docs.curation import FAME_BACKLINKS  # noqa: E402
 from docs.curation import fragment_row as _curation_fragment  # noqa: E402
 from docs.proof_status import load as _proof_status_load  # noqa: E402
 from removal import language as removal  # noqa: E402
@@ -324,7 +325,8 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "protocol and debugger tests step it",
             )
         )
-    if not _curation(name):
+    row = _curation(name)
+    if not row:
         gaps.append(
             Gap(
                 f"src/esolangs/languages/{module}/language.toml",
@@ -333,6 +335,17 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "implementation), plus bf_derivative = true if the wiki tags it "
                 "Brainfuck derivatives (see docs/limitations.md#curation); "
                 "offline, unassessed = true until the count is recorded",
+            )
+        )
+    elif (
+        "admitted" not in row and row.get("backlinks", FAME_BACKLINKS) < FAME_BACKLINKS
+    ):
+        gaps.append(
+            Gap(
+                f"src/esolangs/languages/{module}/language.toml",
+                "a first implementation records admitted = <the admitting "
+                "commit's offset datetime> in [curation], and any outside "
+                "implementation as outside_implementation = { date, source }",
             )
         )
     return gaps
@@ -476,7 +489,7 @@ def quick_tests(name: str) -> list[str]:
         "tests/interpreters/test_interpreters_robustness.py"
         f"::test_empty_program_terminates[{name}]",
         # Whole modules or functions: each runs the registry in ~1-4 s, and
-        # Kiss/SwitchCase first failed all of these inside finish's
+        # Kiss/Sonata/SwitchCase first failed all of these inside finish's
         # 250 s gate (2026-10-21).
         "tests/interpreters/test_spec_triggers.py",
         "tests/api/test_catalog_contracts.py::TestTheSpecIsReachable",
@@ -691,7 +704,7 @@ def size_anchors(name: str) -> list[str]:
     """Return one line per ``Size:`` anchor in the generator's docstring.
 
     Each is re-measured as ``test_the_size_anchor_is_what_generate_emits``
-    does; SwitchCase's went stale twice while being built.
+    does; Sonata's and SwitchCase's went stale twice while being built.
     """
     import importlib
     import inspect

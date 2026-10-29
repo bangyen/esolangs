@@ -10,7 +10,7 @@ TREES = ("src", "scripts", "tests", "checks")
 #: Functions excused from ruff's ``max-complexity``.  A refactor that drops
 #: a ``noqa: C901`` lowers this; nothing raises it -- split the dispatch by
 #: the spec's sections instead (CONTRIBUTING, Code shape).
-C901_EXCUSED = 5
+C901_EXCUSED = 3
 _C901 = re.compile(r"#\s*noqa:[^#\n]*\bC901\b")
 
 

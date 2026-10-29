@@ -1,10 +1,13 @@
 """Admission routes, and API and VM integration for the interpreter-only three."""
 
+from datetime import datetime
+
 import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
+from scripts.docs.curation import FAME_BACKLINKS
 from scripts.docs.curation import rows as _curation_rows
 from tests.support.generator_support import CHECK
 from tests.support.pick import languages
@@ -24,6 +27,28 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
             continue  # offline; `finish` asks for the count before merging
         # The route is derived: fame at ``FAME_BACKLINKS``, else first impl.
         assert isinstance(row["backlinks"], int), name
+
+
+def test_every_first_implementation_was_one_when_admitted() -> None:
+    """Below fame: an admission date, nothing outside before it, a generator.
+
+    The facts are fixed at the original admission, so membership is
+    recomputable from them alone (docs/limitations.md, Curation).
+    """
+    for name, row in _CENSUS.items():
+        if row.get("unassessed") or row["backlinks"] >= FAME_BACKLINKS:
+            continue
+        admitted = row.get("admitted")
+        assert isinstance(admitted, datetime), f"{name}: record [curation] admitted"
+        outside = row.get("outside_implementation")
+        if outside is not None:
+            when = outside["date"]
+            if not isinstance(when, datetime):
+                admitted, when = admitted.date(), when  # a day: strict order only
+                assert when != admitted, f"{name}: same day; record the time"
+            assert when > admitted, f"{name}: implemented elsewhere first"
+        # Interpreter-only is the fame route's alone.
+        assert esolangs.describe(name)["boolean_generator"], name
 
 
 @pytest.mark.parametrize("language", languages(boolean_generator=False))

@@ -3,6 +3,7 @@
 
 [curation]
 backlinks = 5
+admitted = 2020-07-13T15:19:36-04:00
 
 [proof_status]
 labels = ["parameterized lookup"]

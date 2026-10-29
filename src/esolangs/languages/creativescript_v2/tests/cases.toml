@@ -1,0 +1,44 @@
+language = "CreativeScript v2"
+oldid = 0
+
+[[examples]]
+id = "hello-world"
+source = "say! Hello world!"
+stdin = ""
+expected = "Hello world!"
+
+[[examples]]
+id = "xkcd-random-number"
+source = "say! 4"
+stdin = ""
+expected = "4"
+
+[[examples]]
+id = "a-plus-b"
+source = "in! a\nin! b\nadd! a b c\nout! c"
+stdin = "2\n3\n"
+expected = "5"
+
+[[spec_triggers]]
+program = "jump! 2"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an unknown command"
+
+[[spec_triggers]]
+program = "in! a"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: in! at EOF"
+
+[[spec_triggers]]
+program = "in! a"
+stdin = "x"
+expect = "ArgumentError"
+claim = "ArgumentError: an input token that is not an integer"
+
+[[spec_triggers]]
+program = "set! a 1\nset! z 0\ndiv! a z c"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: div!/mod! by 0"

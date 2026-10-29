@@ -7,6 +7,8 @@ from esolangs.languages.a_painter_ant.generator import (
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
 from esolangs.languages.abcdirection.generator import LANGUAGE as _ABCDIRECTION_LANGUAGE
 from esolangs.languages.abcdirection.generator import abcdirection
+from esolangs.languages.addsubjump.generator import LANGUAGE as _ADDSUBJUMP_LANGUAGE
+from esolangs.languages.addsubjump.generator import addsubjump
 from esolangs.languages.algebraic_programming_language.generator import (
     LANGUAGE as _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
 )
@@ -55,6 +57,8 @@ from esolangs.languages.brainif.generator import LANGUAGE as _BRAINIF_LANGUAGE
 from esolangs.languages.brainif.generator import brainif
 from esolangs.languages.caballo.generator import LANGUAGE as _CABALLO_LANGUAGE
 from esolangs.languages.caballo.generator import caballo
+from esolangs.languages.carp.generator import LANGUAGE as _CARP_LANGUAGE
+from esolangs.languages.carp.generator import carp
 from esolangs.languages.chicken.generator import LANGUAGE as _CHICKEN_LANGUAGE
 from esolangs.languages.chicken.generator import chicken
 from esolangs.languages.circlefuck.generator import LANGUAGE as _CIRCLEFUCK_LANGUAGE
@@ -73,6 +77,10 @@ from esolangs.languages.collatz_multiverse.generator import (
 from esolangs.languages.collatz_multiverse.generator import collatz_multiverse
 from esolangs.languages.container.generator import LANGUAGE as _CONTAINER_LANGUAGE
 from esolangs.languages.container.generator import container
+from esolangs.languages.creativescript_v2.generator import (
+    LANGUAGE as _CREATIVESCRIPT_V2_LANGUAGE,
+)
+from esolangs.languages.creativescript_v2.generator import creativescript_v2
 from esolangs.languages.crement.generator import LANGUAGE as _CREMENT_LANGUAGE
 from esolangs.languages.crement.generator import crement
 from esolangs.languages.cvnc.generator import LANGUAGE as _CVNC_LANGUAGE
@@ -113,6 +121,10 @@ from esolangs.languages.home_row.generator import LANGUAGE as _HOME_ROW_LANGUAGE
 from esolangs.languages.home_row.generator import home_row
 from esolangs.languages.hot.generator import LANGUAGE as _HOT_LANGUAGE
 from esolangs.languages.hot.generator import hot
+from esolangs.languages.hq9_with_headers.generator import (
+    LANGUAGE as _HQ9_WITH_HEADERS_LANGUAGE,
+)
+from esolangs.languages.hq9_with_headers.generator import hq9_with_headers
 from esolangs.languages.iebel.generator import LANGUAGE as _IEBEL_LANGUAGE
 from esolangs.languages.iebel.generator import iebel
 from esolangs.languages.inject.generator import LANGUAGE as _INJECT_LANGUAGE
@@ -153,18 +165,14 @@ from esolangs.languages.packlang.generator import LANGUAGE as _PACKLANG_LANGUAGE
 from esolangs.languages.packlang.generator import packlang
 from esolangs.languages.painfuck.generator import LANGUAGE as _PAINFUCK_LANGUAGE
 from esolangs.languages.painfuck.generator import painfuck
+from esolangs.languages.parenthesys.generator import LANGUAGE as _PARENTHESYS_LANGUAGE
+from esolangs.languages.parenthesys.generator import parenthesys
 from esolangs.languages.piet.generator import LANGUAGE as _PIET_LANGUAGE
 from esolangs.languages.piet.generator import piet
-from esolangs.languages.piet_plus_plus.generator import (
-    LANGUAGE as _PIET_PLUS_PLUS_LANGUAGE,
-)
-from esolangs.languages.piet_plus_plus.generator import piet_plus_plus
 from esolangs.languages.pilas.generator import LANGUAGE as _PILAS_LANGUAGE
 from esolangs.languages.pilas.generator import pilas
 from esolangs.languages.pointless.generator import LANGUAGE as _POINTLESS_LANGUAGE
 from esolangs.languages.pointless.generator import pointless
-from esolangs.languages.polynomial.generator import LANGUAGE as _POLYNOMIAL_LANGUAGE
-from esolangs.languages.polynomial.generator import polynomial
 from esolangs.languages.qoibl.generator import LANGUAGE as _QOIBL_LANGUAGE
 from esolangs.languages.qoibl.generator import qoibl
 from esolangs.languages.quassaunt.generator import LANGUAGE as _QUASSAUNT_LANGUAGE
@@ -175,6 +183,8 @@ from esolangs.languages.rotfuck.generator import LANGUAGE as _ROTFUCK_LANGUAGE
 from esolangs.languages.rotfuck.generator import rotfuck
 from esolangs.languages.rubic.generator import LANGUAGE as _RUBIC_LANGUAGE
 from esolangs.languages.rubic.generator import rubic
+from esolangs.languages.s_bleq.generator import LANGUAGE as _S_BLEQ_LANGUAGE
+from esolangs.languages.s_bleq.generator import s_bleq
 from esolangs.languages.sendstuff.generator import LANGUAGE as _SENDSTUFF_LANGUAGE
 from esolangs.languages.sendstuff.generator import sendstuff
 from esolangs.languages.shakespeare.generator import LANGUAGE as _SHAKESPEARE_LANGUAGE
@@ -191,6 +201,8 @@ from esolangs.languages.smallfuck.generator import LANGUAGE as _SMALLFUCK_LANGUA
 from esolangs.languages.smallfuck.generator import smallfuck
 from esolangs.languages.smu.generator import LANGUAGE as _SMU_LANGUAGE
 from esolangs.languages.smu.generator import smu
+from esolangs.languages.sonata.generator import LANGUAGE as _SONATA_LANGUAGE
+from esolangs.languages.sonata.generator import sonata
 from esolangs.languages.sstack.generator import LANGUAGE as _SSTACK_LANGUAGE
 from esolangs.languages.sstack.generator import sstack
 from esolangs.languages.stisp.generator import LANGUAGE as _STISP_LANGUAGE
@@ -213,8 +225,6 @@ from esolangs.languages.three_x.generator import LANGUAGE as _THREE_X_LANGUAGE
 from esolangs.languages.three_x.generator import three_x
 from esolangs.languages.thue.generator import LANGUAGE as _THUE_LANGUAGE
 from esolangs.languages.thue.generator import thue
-from esolangs.languages.tiangou.generator import LANGUAGE as _TIANGOU_LANGUAGE
-from esolangs.languages.tiangou.generator import tiangou
 from esolangs.languages.unary.generator import LANGUAGE as _UNARY_LANGUAGE
 from esolangs.languages.unary.generator import unary
 from esolangs.languages.underload.generator import LANGUAGE as _UNDERLOAD_LANGUAGE
@@ -231,6 +241,7 @@ from esolangs.languages.whitespace.generator import whitespace
 _LANGUAGES = (
     _A_PAINTER_ANT_LANGUAGE,
     _ABCDIRECTION_LANGUAGE,
+    _ADDSUBJUMP_LANGUAGE,
     _ALGEBRAIC_PROGRAMMING_LANGUAGE_LANGUAGE,
     _ALIGHT_LANGUAGE,
     _APRKNIA_LANGUAGE,
@@ -251,6 +262,7 @@ _LANGUAGES = (
     _BRAINFUCK_LANGUAGE,
     _BRAINIF_LANGUAGE,
     _CABALLO_LANGUAGE,
+    _CARP_LANGUAGE,
     _CHICKEN_LANGUAGE,
     _CIRCLEFUCK_LANGUAGE,
     _CIRCUIT_DIAGRAM_LANGUAGE,
@@ -258,6 +270,7 @@ _LANGUAGES = (
     _CODESICK_LANGUAGE,
     _COLLATZ_MULTIVERSE_LANGUAGE,
     _CONTAINER_LANGUAGE,
+    _CREATIVESCRIPT_V2_LANGUAGE,
     _CREMENT_LANGUAGE,
     _CVNC_LANGUAGE,
     _CYCLIC_TAG_LANGUAGE,
@@ -278,6 +291,7 @@ _LANGUAGES = (
     _GRAPHEME_LANGUAGE,
     _HOME_ROW_LANGUAGE,
     _HOT_LANGUAGE,
+    _HQ9_WITH_HEADERS_LANGUAGE,
     _IEBEL_LANGUAGE,
     _INJECT_LANGUAGE,
     _INTERCAL_LANGUAGE,
@@ -295,16 +309,16 @@ _LANGUAGES = (
     _ONE_I_LANGUAGE,
     _PACKLANG_LANGUAGE,
     _PAINFUCK_LANGUAGE,
+    _PARENTHESYS_LANGUAGE,
     _PIET_LANGUAGE,
-    _PIET_PLUS_PLUS_LANGUAGE,
     _PILAS_LANGUAGE,
     _POINTLESS_LANGUAGE,
-    _POLYNOMIAL_LANGUAGE,
     _QOIBL_LANGUAGE,
     _QUASSAUNT_LANGUAGE,
     _RAM0_LANGUAGE,
     _ROTFUCK_LANGUAGE,
     _RUBIC_LANGUAGE,
+    _S_BLEQ_LANGUAGE,
     _SENDSTUFF_LANGUAGE,
     _SHAKESPEARE_LANGUAGE,
     _SIX_FIVE_LANGUAGE,
@@ -312,6 +326,7 @@ _LANGUAGES = (
     _SLOW_ACV_MAMMALIAN_LANGUAGE,
     _SMALLFUCK_LANGUAGE,
     _SMU_LANGUAGE,
+    _SONATA_LANGUAGE,
     _SSTACK_LANGUAGE,
     _STISP_LANGUAGE,
     _STREETCODE_LANGUAGE,
@@ -323,7 +338,6 @@ _LANGUAGES = (
     _THISTHAT_LANGUAGE,
     _THREE_X_LANGUAGE,
     _THUE_LANGUAGE,
-    _TIANGOU_LANGUAGE,
     _UNARY_LANGUAGE,
     _UNDERLOAD_LANGUAGE,
     _UNLAMBDA_LANGUAGE,
@@ -336,6 +350,7 @@ __all__ = [
     "BOOLEAN",
     "a_painter_ant",
     "abcdirection",
+    "addsubjump",
     "algebraic_programming_language",
     "alight",
     "aprknia",
@@ -356,6 +371,7 @@ __all__ = [
     "brainfuck",
     "brainif",
     "caballo",
+    "carp",
     "chicken",
     "circlefuck",
     "circuit_diagram",
@@ -363,6 +379,7 @@ __all__ = [
     "codesick",
     "collatz_multiverse",
     "container",
+    "creativescript_v2",
     "crement",
     "cvnc",
     "cyclic_tag",
@@ -383,6 +400,7 @@ __all__ = [
     "grapheme",
     "home_row",
     "hot",
+    "hq9_with_headers",
     "iebel",
     "inject",
     "intercal",
@@ -400,16 +418,16 @@ __all__ = [
     "one_i",
     "packlang",
     "painfuck",
+    "parenthesys",
     "piet",
-    "piet_plus_plus",
     "pilas",
     "pointless",
-    "polynomial",
     "qoibl",
     "quassaunt",
     "ram0",
     "rotfuck",
     "rubic",
+    "s_bleq",
     "sendstuff",
     "shakespeare",
     "six_five",
@@ -417,6 +435,7 @@ __all__ = [
     "slow_acv_mammalian",
     "smallfuck",
     "smu",
+    "sonata",
     "sstack",
     "stisp",
     "streetcode",
@@ -428,7 +447,6 @@ __all__ = [
     "thisthat",
     "three_x",
     "thue",
-    "tiangou",
     "unary",
     "underload",
     "unlambda",
