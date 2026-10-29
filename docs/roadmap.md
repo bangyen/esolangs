@@ -64,16 +64,17 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (51): ///, 1 + i, 3x, 6-5, A Painter Ant, AddSubJump, Algebraic
-Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark, Back,
-Befunge, BFStack, Boolfuck, brainfuck, BrainIf, Circlefuck, Circuit Diagram,
-Clockwise, Collatz Multiverse, Container, CV(N)(C), Dig, Dimensional, FALSE,
-Fargo, Fish, Flowchart, Forbin, FRACTRAN, Freestajlo, Inject, INTERCAL,
-LaserFuck, Line, Minifuck, Packlang, Painfuck, Piet, Polynomial, RAM0,
-ROTfuck, S*bleq, SLOW ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq,
-Suffolk, thisthat. Next by kept `[ablations]`: Malbolge 6, Bitdeque 3, bit~
-3, Blindfolded Arithmetic 3, Decleq 3, EGL 3, Forþ 3, Home Row 3, Hot 3, NOR
-machine 3, Qoibl 3, SendStuff 3, Smu 3, Taglate 3, Unary 3, Unlambda 3.
+Audited (56): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Algebraic Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark,
+Back, Befunge, BFStack, Bitdeque, Boolfuck, brainfuck, BrainIf, Circlefuck,
+Circuit Diagram, Clockwise, Collatz Multiverse, Container, CV(N)(C), Dig,
+Dimensional, FALSE, Fargo, Fish, Flowchart, Forbin, FRACTRAN, Freestajlo,
+Inject, INTERCAL, LaserFuck, Line, Minifuck, Packlang, Painfuck, Piet,
+Polynomial, Qoibl, RAM0, ROTfuck, S*bleq, SLOW ACV MAMMALIAN, Smallfuck,
+SStack, Streetcode, Subleq, Suffolk, Taglate, thisthat, Thue. Next by kept
+`[ablations]`: Malbolge 6, bit~ 3, Blindfolded Arithmetic 3, Decleq 3, EGL
+3, Forþ 3, Home Row 3, Hot 3, NOR machine 3, SendStuff 3, Smu 3, Unary 3,
+Unlambda 3.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 

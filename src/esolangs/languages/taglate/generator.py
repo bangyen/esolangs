@@ -292,14 +292,13 @@ def balance_taglate(_table: str, default: str) -> str:
     ]
     for program, lower, upper in regimes:
         length = len(program.partition("\n")[2])
-        # The seed adds one row: W=w, H=1+ceil(length/w). Widths on
-        # either side of w*w-A*w=A*length (A=CELL_ASPECT) bracket the
-        # smallest side.
+        # The seed adds one row: W=w, H=1+ceil(length/w); the floor of
+        # w*w-A*w=A*length (A=CELL_ASPECT).  Its upper neighbour as a second
+        # candidate saved under 1% (seed 4242, n=1..10).
         crossing = (CELL_ASPECT + isqrt(CELL_ASPECT**2 + 4 * CELL_ASPECT * length)) // 2
-        for width in (crossing, crossing + 1):
-            candidates.append(
-                wrap_program(program, "taglate", min(upper, max(lower, width)))
-            )
+        candidates.append(
+            wrap_program(program, "taglate", min(upper, max(lower, crossing)))
+        )
     return min(candidates, key=balance_score)
 
 

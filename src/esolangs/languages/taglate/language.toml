@@ -50,6 +50,11 @@ seed = "random.Random(184700 + n)"
 tables = "200 random per n=3..8, 20 at n=9..10, 5 at n=11"
 verdict = "kept: the strided reduces need an even count of input cells ahead of the value slots, so odd n carries one spare cell after the last input instead of a ghost input that doubled the table. Against the ghost build it saves 46.9% at n=7 (5,499 to 2,918 chars) and 48.8% / 49.6% at n=9 / 11 (21,025 to 10,760; 82,659 to 41,670), and 0.0% at even n, whose layout is unchanged. Exhaustive n <= 4 (65,536 tables at n=4) ran on every row, 0 bad; 181 random and projected tables at n=5..11 ran on every row, 0 bad; no table through n=4 grows"
 
+[ablations.crossing_bracket]
+saving = 0.98
+arity = 6
+verdict = "removed 2026-10-28: balance_taglate's second width (crossing + 1) saved 0.42% of balanced area at n=2, 0.98% / 0.70% at n=6/7, 0.71% / 0.50% at n=9/10 and nothing elsewhere (seed 4242, 24 tables an n, random plus parity/and/or/majority; changed programs executed at n<=7). The literal/bootstrapped race stays: retiring it costs 66% at n=6 to 2550% at n=10"
+
 [interpreter_ablations]
 audited = "2026-10-18"
 benchmark = "interp-audit-2026-10-18/tracediff-n3"
@@ -58,3 +63,6 @@ benchmark = "interp-audit-2026-10-18/tracediff-n3"
 price = 15.3
 workload = "run"
 verdict = "kept"
+
+[audits]
+plain_rewrite = 2026-10-28
