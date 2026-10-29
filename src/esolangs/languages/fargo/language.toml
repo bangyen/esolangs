@@ -92,3 +92,6 @@ plain_rewrite = 2026-10-28
 saving = 46.3
 arity = 12
 verdict = "kept: the complement's expression under `^ 1` is built too and the shorter packed program emitted. Nor (the complement of or, whose literal-heavy product of negated inputs costs 7n more) 45.3% / 45.9% / 46.0% / 46.2% / 46.3% at n=7 / 8 / 9 / 10 / 12 (122 -> 66 chars at n=8, 190 -> 102 at n=12, the share flat); random 0.06% / 0.00% at n=7 / 8 (20 seeded), balanced area equal on random, thr2 -28% at n=8; and, or, nand, parity, majority and the other thresholds unchanged. Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 20-40 random + named at n=4..8)"
+
+[balance_growth]
+open = "line-bound (each physical line is one command; expressions have no continuation); the balance hook only repacks whole lines, so balanced area grows as T**1.30 from n=10 to 12 (2026-10-29), unexamined"

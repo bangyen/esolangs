@@ -82,3 +82,6 @@ verdict = "threshold candidate kept, width-1 and unnarrowed candidates removed 2
 
 [audits]
 plain_rewrite = 2026-10-27
+
+[balance_growth]
+open = "line-bound (each line declares a container or one of its rules); the balance hook only repacks whole lines, so balanced area grows as T**1.79 from n=10 to 12 (2026-10-29), unexamined"

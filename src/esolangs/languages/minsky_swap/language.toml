@@ -44,3 +44,6 @@ arity = 8
 seed = "named symmetric tables"
 tables = 7
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 is indexed by their count, one + per input and n + 1 cascade rows, raced by length against the weighted build. Parity, majority, and, or, at-least-2 and exactly-1 all 32.4% at n=4, 64.2% at n=6, 76.9% at n=7, 85.8% at n=8, 95.3% at n=10, 98.6% at n=12; a symmetric table with an ignored input 75.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+
+[balance_growth]
+open = "line-bound (only line 1 is code; line 2 gives its numeric jump distances); the balance hook only repacks whole lines, so balanced area grows as T**1.96 from n=10 to 12 (2026-10-29), unexamined"

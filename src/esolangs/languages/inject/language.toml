@@ -72,3 +72,6 @@ verdict = "kept: balance hook races the banded lookup against the default by ren
 
 [audits]
 plain_rewrite = 2026-10-28
+
+[balance_growth]
+open = "line-bound (blocks and executable commands are delimited by source lines); the balance hook only repacks whole lines, so balanced area grows as T**1.87 from n=10 to 12 (2026-10-29), unexamined"

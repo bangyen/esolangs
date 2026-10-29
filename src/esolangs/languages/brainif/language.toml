@@ -56,3 +56,6 @@ verdict = "kept 2026-10-27: the narrow lookup walks its widest levels by a loop 
 
 [audits]
 plain_rewrite = 2026-10-27
+
+[balance_growth]
+open = "line-bound (each line is one instruction and goto targets are line numbers); the balance hook only repacks whole lines, so balanced area grows as T**1.57 from n=10 to 12 (2026-10-29), unexamined"
