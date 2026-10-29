@@ -286,6 +286,17 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
     )
 
 
+def test_balance_of_parity_n8_is_banded() -> None:
+    """Parity n=8 balances as a top tree over 2 inputs and four bands:
+    (side, length, width); the flat tree's side was 1,534."""
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+
+    table = "".join(str(bin(row).count("1") & 1) for row in range(256))
+    program = esolangs.generate("Flowchart", table, balance=True)
+    assert balance_score(program) == (878, 200404, 878)
+
+
 @pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])
 def test_balanced_tree_folds_and_still_computes(table: str) -> None:
     """Snaking chains beats the tall tree's side by a third and keeps the table."""

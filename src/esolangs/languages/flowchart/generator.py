@@ -198,11 +198,17 @@ class _TreePainter:
     closures over one function's locals.
     """
 
-    def __init__(self, truth_table: str, fold: int, answer_cols: int) -> None:
+    def __init__(
+        self,
+        truth_table: str,
+        fold: int,
+        answer_cols: int,
+        plan: tuple[str, list[int], int] | None = None,
+    ) -> None:
         self.fold = fold
         self.answer_cols = answer_cols
         self.cells: dict[tuple[int, int], str] = {}
-        self.truth_table, self.costs, self.tail = _plan(truth_table)
+        self.truth_table, self.costs, self.tail = plan or _plan(truth_table)
         self.constant = constant_span_test(self.truth_table)
         self.n = len(self.costs)
         self.lanes = [-(-cost // fold) for cost in self.costs]
@@ -356,6 +362,113 @@ class _TreePainter:
             cells[(base, bus + 1)] = "┐"
         else:
             _answer_column(cells, base, bus + 2)
+
+
+def _normalized(
+    cells: dict[tuple[int, int], str],
+) -> tuple[dict[tuple[int, int], str], int]:
+    """Return ``cells`` shifted to start at column 0, and the shift."""
+    left = min(x for x, _ in cells)
+    return {(x - left, y): c for (x, y), c in cells.items()}, left
+
+
+class _BandPainter(_TreePainter):
+    """One flat subtree of a banded drawing, entered from its east.
+
+    The ``( )`` is replaced by a corner taking the rail in along row 0, and
+    the bus stops at its west end for the caller to extend.
+    """
+
+    def paint_band(self) -> tuple[dict[tuple[int, int], str], int, int, int]:
+        """Return the cells, root column, bus west end and bus row."""
+        cells, middles = self.cells, self.middles
+        root = _folded_walk(
+            len(self.truth_table), self.constant, self.paint_leaf, self.paint_branch, 4
+        )
+        cells[(root, 0)] = "┌"
+        cells[(root, 1)] = "│"
+        bus = self.leaf_top + 2
+        base, last = min(middles), max(middles)
+        for x in range(base, last):
+            cells[(x, bus)] = "─"
+        for middle in middles:
+            cells[(middle, bus)] = "┴"
+        cells[(last, bus)] = "┘"
+        cells, left = _normalized(cells)
+        return cells, root - left, base - left, bus
+
+
+class _TopPainter(_TreePainter):
+    """The top ``k`` levels of a banded drawing, one leaf per band."""
+
+    def __init__(self, costs: list[int]) -> None:
+        size = 1 << len(costs)
+        super().__init__("0" * size, 1, 1, ("0" * size, costs, 0))
+        self.constant = lambda lo, hi: hi - lo == 1
+
+    def paint_leaf(self, _lo: int, _depth: int, _step: int) -> int:
+        """Return the entry column of the next band's channel."""
+        entry = self.middles[-1] + _FLOWCHART_PITCH if self.middles else 2
+        self.middles.append(entry)
+        return entry
+
+    def paint_top(self) -> tuple[dict[tuple[int, int], str], list[int], int]:
+        """Return the cells, the channel columns and the first channel row."""
+        cells = self.cells
+        root = _folded_walk(
+            len(self.truth_table), self.constant, self.paint_leaf, self.paint_branch, 4
+        )
+        _paint(cells, root - 1, 0, "( )")
+        cells[(root, 1)] = "│"
+        cells, left = _normalized(cells)
+        return cells, [m - left for m in self.middles], self.leaf_top
+
+
+def _banded(table: str, split: int, fold: int) -> str:
+    """Stack the ``2**split`` subtrees of ``table`` and join their buses.
+
+    A top tree over the first ``split`` inputs sits at the upper east and
+    drops one channel per subtree; channel ``b`` turns west into band ``b``,
+    and the channels leave in band order so no rail crosses another.  Each
+    band's bus runs west to a staircase column, turns down and joins the next
+    band's bus, so one answer column serves all.
+    """
+    reduced, costs, tail = _plan(table)
+    bands = len(reduced) >> (len(costs) - split)
+    size = len(reduced) // bands
+    subs = [reduced[b * size : (b + 1) * size] for b in range(bands)]
+    painted = [
+        _BandPainter(sub, fold, 1, (sub, costs[split:], tail)).paint_band()
+        for sub in subs
+    ]
+    height = painted[0][3] + 1
+    stairs = [2 * (bands - b) for b in range(bands)]
+    west = 2 * bands + 3
+    east = west + max(max(x for x, _ in cells) for cells, *_ in painted) + 2
+    top_cells, channels, start = _TopPainter(costs[:split]).paint_top()
+    out: dict[tuple[int, int], str] = {
+        (east + x, y): c for (x, y), c in top_cells.items()
+    }
+    for b, (cells, root, base, bus) in enumerate(painted):
+        row = start + b * height
+        for (x, y), c in cells.items():
+            out[(west + x, row + y)] = c
+        chan = east + channels[b]
+        for y in range(start, row):
+            out[(chan, y)] = "│"
+        out[(chan, row)] = "┘"
+        for x in range(west + root + 1, chan):
+            out[(x, row)] = "─"
+        wire = row + bus
+        for x in range(stairs[b] + 1, west + base):
+            out[(x, wire)] = "─"
+        out[(stairs[b], wire)] = "┌"
+        if b:
+            out[(stairs[b - 1], wire)] = "┴"
+            for y in range(wire - height + 1, wire):
+                out[(stairs[b - 1], y)] = "│"
+    _answer_column(out, stairs[-1], row + bus + 1)
+    return _flowchart_render(out)
 
 
 def _flowchart_cells(
@@ -804,8 +917,19 @@ def _flowchart_deque(truth_table: str) -> str:
     return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
 
 
+def _banded_candidates(table: str) -> list[str]:
+    """Return the banded drawing when ``m`` read levels leave room to split.
+
+    Split ``(m - 3) // 2`` levels off the top, folded over 3 columns: the
+    best split of random n=7..12 tables (area per row 1.6k-3.2k at n=7..12,
+    against the flat tree's 4.6k at n=8 and 77k at n=12).
+    """
+    split = (len(_plan(table)[1]) - 3) // 2
+    return [_banded(table, split, 3)] if split > 0 else []
+
+
 def _balance(table: str, default: str) -> str:
-    """Return the squarest of the default and trees snaked over columns.
+    """Return the squarest of the default, banded and trees snaked over columns.
 
     Candidates are the flat tree folded over 1, 3 or 5 columns per chain
     (``_snake``) and up to 6 for the answer.  Only nine of the 18 pairs ever
@@ -813,12 +937,15 @@ def _balance(table: str, default: str) -> str:
     tiled n=7 table by 11 characters (0.04%).  Folding trades height for
     width, so it fades from n=6, where the leaf row (~4.6 columns a leaf) is
     already the wider side: mean side 272 vs 274 at n=6, 558 vs 559 at n=7.
-    The deque (2 rows), the stacked fallback and the constant-input deque
-    never beat the flat tree: 0 wins of ~1.5k tables at n=1..12 (exhaustive
-    to n=3).
+    From 5 read levels the banded drawing joins them (``_banded``): the flat
+    tree's leaf row alone is ~4.6 columns a leaf, so its side grew with T and
+    its area as T^2.  The deque (2 rows), the stacked fallback and the
+    constant-input deque never beat the flat tree: 0 wins of ~1.5k tables at
+    n=1..12 (exhaustive to n=3).
     """
     return min(
         default,
+        *_banded_candidates(table),
         *(
             _flowchart_render(_flowchart_cells(table, fold, cols))
             for fold, cols in (
