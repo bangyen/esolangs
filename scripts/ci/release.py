@@ -14,7 +14,6 @@ import tarfile
 import tempfile
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from itertools import islice
 from pathlib import Path
 
@@ -101,7 +100,7 @@ def _refuses_timeout() -> None:
     assert "Unix main thread" in str(refusal)
 
 
-def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
+def _generator(name: str, *, image_extra: bool) -> None:
     """Execute all rows in one process; its parent supplies the deadline."""
     import esolangs
     from esolangs.registry import LANGUAGES, resolve
@@ -112,16 +111,13 @@ def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
     generated = esolangs.generate(name, table)
     if image_extra and isinstance(generated, esolangs.Raster):
         generated = esolangs.Raster.from_png(generated.to_png())
-    try:
-        assert (
-            _evaluate(name, generated, timeout=None, inputs=len(table).bit_length() - 1)
-            == table
-        ), name
-    except esolangs.MissingDependencyError:
-        assert not math_extra, name
+    assert (
+        _evaluate(name, generated, timeout=None, inputs=len(table).bit_length() - 1)
+        == table
+    ), name
 
 
-def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> None:
+def _generator_process(name: str, *, image_extra: bool) -> None:
     """Bound one language's four rows together, retaining process isolation."""
     args = [
         sys.executable,
@@ -131,8 +127,6 @@ def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> Non
         "--language",
         name,
     ]
-    if math_extra:
-        args.append("--math")
     if image_extra:
         args.append("--image")
     subprocess.run(args, timeout=30, check=True)
@@ -168,17 +162,17 @@ def _first_languages(
     )
 
 
-def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
+def smoke(*, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     import esolangs
 
     package = Path(esolangs.__file__).resolve().parent
     _smoke_install(package)
-    _smoke_generators(package, math_extra=math_extra, image_extra=image_extra)
+    _smoke_generators(package, image_extra=image_extra)
     _smoke_files()
     _smoke_rasters(image_extra=image_extra)
     _smoke_deadlines()
-    _smoke_extras(math_extra=math_extra, image_extra=image_extra)
+    _smoke_extras(image_extra=image_extra)
 
 
 def _smoke_install(package: Path) -> None:
@@ -217,14 +211,14 @@ def _smoke_install(package: Path) -> None:
     assert "brainfuck" in entrypoint.stdout
 
 
-def _smoke_generators(package: Path, *, math_extra: bool, image_extra: bool) -> None:
+def _smoke_generators(package: Path, *, image_extra: bool) -> None:
     """Run every generator in its own process and check its shipped examples."""
     import esolangs
 
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
-            _generator_process(name, math_extra=math_extra, image_extra=image_extra)
+            _generator_process(name, image_extra=image_extra)
             assert facts["examples"], name
             for filename in facts["examples"]:
                 assert not Path(filename).is_absolute(), filename
@@ -378,40 +372,21 @@ def _smoke_deadlines() -> None:
         )
 
 
-def _smoke_extras(*, math_extra: bool, image_extra: bool) -> None:
-    """Check each optional dependency is present exactly when its extra is."""
-    import esolangs
-    from esolangs.registry import LANGUAGES
-    from esolangs.runtime._evaluate import _evaluate
-
+def _smoke_extras(*, image_extra: bool) -> None:
+    """Check the optional dependency is present exactly when its extra is."""
     assert (importlib.util.find_spec("PIL") is not None) == image_extra
-    # Each language whose interpreter needs the math extra runs with it and
-    # refuses without it; none left means nothing to check.
-    for language in [n for n, lang in LANGUAGES.items() if lang.extra == "math"]:
-        program = esolangs.generate(language, "01")
-        if math_extra:
-            assert importlib.util.find_spec("sympy") is not None
-            assert _evaluate(language, program, timeout=None, inputs=1) == "01"
-        else:
-            assert importlib.util.find_spec("sympy") is None
-            _refused(
-                esolangs.MissingDependencyError,
-                partial(esolangs.run, language, program, stdin=""),
-                f"{language} ran without its math extra",
-            )
 
 
 def smoke_main(argv: list[str] | None = None) -> None:
     """Run the artifact smoke check with or without its optional extra."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--math", action="store_true")
     parser.add_argument("--image", action="store_true")
     parser.add_argument("--language", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.language is not None:
-        _generator(args.language, math_extra=args.math, image_extra=args.image)
+        _generator(args.language, image_extra=args.image)
         return
-    smoke(math_extra=args.math, image_extra=args.image)
+    smoke(image_extra=args.image)
     print("installed distribution smoke check passed")
 
 

@@ -76,8 +76,7 @@ class Language:
     id: str = ""
     #: Other names :func:`~esolangs.registry.resolve` accepts.
     aliases: tuple[str, ...] = ()
-    # Source: ``split`` passes ``run()`` one string per line; ``extra`` is
-    # the optional-dependency group its interpreter needs (``math``).
+    # Source: ``split`` passes ``run()`` one string per line.
     split: bool = False
     #: Source that looks like a file path is still source.
     path_like_source: bool = False
@@ -86,7 +85,6 @@ class Language:
     #: the default build races by area and Scaling states ``cells``.
     grid: bool = False
     compressed_source: bool = False
-    extra: str = ""
     # The Boolean generator, its limits, and how its programs read inputs
     # and give the answer (default: a 0/1 line per input, the bit printed).
     boolean: Generator | None = None

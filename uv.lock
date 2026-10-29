@@ -204,9 +204,6 @@ source = { editable = "." }
 image = [
     { name = "pillow" },
 ]
-math = [
-    { name = "sympy" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -227,11 +224,8 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "pillow", marker = "extra == 'image'", specifier = ">=11.3.0" },
-    { name = "sympy", marker = "extra == 'math'", specifier = ">=1.12.0" },
-]
-provides-extras = ["image", "math"]
+requires-dist = [{ name = "pillow", marker = "extra == 'image'", specifier = ">=11.3.0" }]
+provides-extras = ["image"]
 
 [package.metadata.requires-dev]
 dev = [

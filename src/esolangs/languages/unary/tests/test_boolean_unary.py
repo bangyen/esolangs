@@ -74,4 +74,4 @@ def test_compressed_budget_admits_nine_reads_but_blocks_raw_export() -> None:
 def test_distribution_smoke_uses_an_admitted_table() -> None:
     from scripts.ci.release import _generator
 
-    _generator("Unary", math_extra=False, image_extra=False)
+    _generator("Unary", image_extra=False)

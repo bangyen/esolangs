@@ -29,9 +29,6 @@ dependencies = []
 
 [project.optional-dependencies]
 image = ["Pillow>=11.3.0"]
-math = [
-    "sympy>=1.12.0",
-]
 
 # PEP 735: development tooling is not an installable extra, so its exact pins
 # stay out of the published METADATA.  `uv sync` installs this group by
