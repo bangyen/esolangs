@@ -44,3 +44,13 @@ arity = 8
 seed = "named symmetric tables"
 tables = 7
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds 1 an input and pushes n + 1 entries, raced by length against the weighted build. Parity, majority, and, or, at-least-2 and exactly-1 all 3.8% at n=4, 13.5% at n=6, 22.3% at n=7, 34.5% at n=8, 63.8% at n=10, 85.8% at n=12; a symmetric table with an ignored input 21.7% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+
+[ablations.balance_dead_widths]
+saving = 0.0
+arity = 12
+seed = "random.Random(6060 + n)"
+tables = 488
+verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also raced a numeric-token width (1-3), the narrow widths 4-8 and the whole table as one literal chunk. None ever won: dropping all three leaves balanced output byte-identical on 488 tables (40 random a arity at n=1..10, 8 at n=11..12, plus parity, and, or, majority, at-least-2, nand), so the code went. The width= path is untouched"
+
+[audits]
+plain_rewrite = 2026-10-29

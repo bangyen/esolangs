@@ -108,30 +108,17 @@ def _chunked_columns(size: int, suffix_lengths: list[int]) -> int:
 def _balance(table: str, default: str) -> str:
     """Return the squarest rendering of the table lookup program.
 
-    Renders ``modulous(table, width)`` at a family of candidate widths -- plus
-    the unwrapped ``default`` -- and keeps the one minimizing ``balance_score``
-    (rendered side, then program length, then width):
-
-    * whole bracket atoms (``[PSH STR "…"]`` stays intact), at the optimal
-      greedy width above the longest atom;
-    * the fine token stream rewrapped at narrow widths 1 through 8;
-    * the whole table as one literal chunk, at the optimal width between
-      ``size + 3`` and the longest atom;
-    * the chunked table at four widths around ``_chunked_columns``.
+    Keeps the ``balance_score`` minimum of the unwrapped ``default``, whole
+    bracket atoms (``[PSH STR "…"]`` intact) at the optimal greedy width above
+    the longest atom, and the chunked table at four widths around
+    ``_chunked_columns``.  Numeric, narrow (4-8) and whole-literal widths never
+    won on 488 tables at n=1..12 (``[ablations.balance_dead_widths]``).
     """
     atoms = re.findall(_BRACKET_LITERAL, default)
     floor = max(map(len, atoms))
     width = balanced_token_width(atoms, minimum=floor)
     candidates = [default, modulous(table, width)]
-    numeric = modulous(table, 1).split()
-    width = balanced_token_width(numeric, " ", maximum=3)
-    candidates.append(modulous(table, width))
-    # Below nine columns the three-word push prefix cannot share a row.
-    candidates.extend(modulous(table, width) for width in range(4, 9))
     size = len(table)
-    whole = modulous(table, size + 3).split()
-    width = balanced_token_width(whole, " ", minimum=size + 3, maximum=floor - 1)
-    candidates.append(modulous(table, width))
     # Skip the ``[PSH STR "`` prologue, the table, and the ``"]`` closer: the
     # rest is the instruction suffix the chunked rows pack beside the pushes.
     suffix = _TOKEN.findall(default[size + _TABLE_PUSH_OVERHEAD :])

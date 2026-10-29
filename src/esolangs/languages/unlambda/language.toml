@@ -45,3 +45,6 @@ verdict = "kept: canonical, exempt. A node whose halves agree reads and runs the
 saving = 1.9
 arity = 12
 verdict = "kept: bound races every repeated subtree within reach and keeps the shortest binding. Taking the first candidate instead costs +1.84 / +1.83 / +1.87% on random tables at n=8/10/12, but +51.64 / +50.26 / +70.04% on majority and +24.70 / +16.45 / +14.93% on threshold-3. The race takes a min over a superset, so it cannot lose. Its comment figures reproduce under the share-of-the-first-candidate reading (majority 34.1 / 33.4% at n=8/10 against the claimed 33-34%)"
+
+[audits]
+plain_rewrite = 2026-10-29
