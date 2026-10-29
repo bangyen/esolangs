@@ -93,5 +93,9 @@ saving = 46.3
 arity = 12
 verdict = "kept: the complement's expression under `^ 1` is built too and the shorter packed program emitted. Nor (the complement of or, whose literal-heavy product of negated inputs costs 7n more) 45.3% / 45.9% / 46.0% / 46.2% / 46.3% at n=7 / 8 / 9 / 10 / 12 (122 -> 66 chars at n=8, 190 -> 102 at n=12, the share flat); random 0.06% / 0.00% at n=7 / 8 (20 seeded), balanced area equal on random, thr2 -28% at n=8; and, or, nand, parity, majority and the other thresholds unchanged. Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 20-40 random + named at n=4..8)"
 
-[balance_growth]
-open = "line-bound (each physical line is one command; expressions have no continuation); the balance hook only repacks whole lines, so balanced area grows as T**1.30 from n=10 to 12 (2026-10-29), unexamined"
+[ablations.balance_unshared]
+saving = 26.7
+arity = 12
+seed = 4254
+tables = 2
+verdict = "kept: the balance walk also runs with profitability naming off (names only on width overflow), so shared one-line definitions no longer set the line count. Balanced area on the weekly test's tables: n=6..12 930 / 1,980 / 3,604 / 8,281 / 14,186 / 29,250 / 85,568 -> 841 / 1,681 / 3,482 / 6,400 / 14,186 / 25,930 / 62,762 (exponent n=10 to 12 T**1.30 -> T**1.07); random n=12 seed 12 298 -> 256 side (-26.2% area), program 6,217 -> 20,187 chars; measured 2026-10-29"

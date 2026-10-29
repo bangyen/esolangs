@@ -89,3 +89,15 @@ def test_narrow_packed_constants_consume_input() -> None:
         run(program, io)
         assert io.getvalue() == bit
         assert io.reads == 1
+
+
+def test_balance_unshared_packing_squares_random_n12() -> None:
+    """Shared one-line definitions floor the line count at 2H > side; the
+    unshared walk trades characters for squareness: (side, length, width)."""
+    import esolangs
+    from esolangs.generation.wrap import balance_score
+
+    rng = random.Random(12)
+    table = "".join(rng.choice("01") for _ in range(4096))
+    program = str(esolangs.generate("fargo", table, balance=True))
+    assert balance_score(program) == (256, 20187, 256)

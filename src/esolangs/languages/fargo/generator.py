@@ -19,7 +19,9 @@ Size:
     shortens halved it (from 3,728) and runs 8-14% fewer steps from n=8;
     at n=4 to 6, where the inline form was shortest, it trades 17-39% more
     steps (each name is a call) for 9-30% fewer characters.  ``balance``
-    packs the same nodes into lines of a chosen width.
+    packs the same nodes into lines of a chosen width, with or without
+    sharing (shared one-line definitions floor the line count; the unshared
+    walk keeps balanced area O(T)).
 
 Decisions:
     The complement's expression under ``^ 1`` is a candidate: nor at n=8
@@ -298,7 +300,7 @@ def _definition_program(expression: str, n: int) -> str:
     return "\n".join([*lines, f"% 0 {references[root]}", "$", ""])
 
 
-def _packed_program(expression: str, n: int, width: int) -> str:
+def _packed_program(expression: str, n: int, width: int, *, share: bool = True) -> str:
     """Return definitions that inline unshared nodes up to ``width`` columns.
 
     Children first, a node is named when sharing it is shorter or when
@@ -340,7 +342,7 @@ def _packed_program(expression: str, n: int, width: int) -> str:
         # name is a call, so naming costs steps too (an n=4 table took 66
         # commands for one character fewer than its 44-command inline).
         label = len(short_name(len(names), ascii_lowercase))
-        if uses[k] * inline[k] > label + inline[k] + 2 + uses[k] * label:
+        if share and uses[k] * inline[k] > label + inline[k] + 2 + uses[k] * label:
             name(k)
 
     def text(reference: int) -> str:
@@ -388,7 +390,7 @@ def fargo(truth_table: str, width: int | None = None) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Return the squarest of the default and five packings.
+    """Return the squarest of the default and ten packings (shared and unshared walks).
 
     A packing at width ``w`` has about ``w`` columns and ``H(w)`` lines, with
     ``H`` falling as ``w`` grows, so the squarest width solves ``w = 2 H(w)``.
@@ -402,14 +404,17 @@ def _balance(table: str, default: str) -> str:
     # The one-node-per-line form only seeds the walk: it never renders
     # squarer than the default or a packing (``[ablations.balance_race]``).
     shared = _definition_program(expression, n)
-    width = isqrt(2 * max(len(shared), len(f"% 0 {expression}\n$\n")))
+    compact = len(f"% 0 {expression}\n$\n")
     packed = []
-    for _ in range(4):
-        packed.append(_packed_program(expression, n, width))
-        width = max(1, (width + 2 * len(packed[-1].split("\n")) + 1) // 2)
-    packed.append(
-        _packed_program(expression, n, balance_score(min(packed, key=balance_score))[0])
-    )
+    for share, seed in ((True, max(len(shared), compact)), (False, compact)):
+        width = isqrt(2 * seed)
+        walk = []
+        for _ in range(4):
+            walk.append(_packed_program(expression, n, width, share=share))
+            width = max(1, (width + 2 * len(walk[-1].split("\n")) + 1) // 2)
+        side = balance_score(min(walk, key=balance_score))[0]
+        walk.append(_packed_program(expression, n, side, share=share))
+        packed += walk
     return min(default, *packed, key=balance_score)
 
 
