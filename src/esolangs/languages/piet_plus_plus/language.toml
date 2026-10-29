@@ -1,0 +1,36 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 8
+
+[proof_status]
+labels = ["finite lookup"]
+qualification = "the leading essential inputs fold into a pixel address, Read loads the pixel holding 2^k table bits, and the last k inputs square up the power of two that selects the bit"
+scaling = "linear: at most 3T/16 + 12n + 62 codels"
+execution = "linear: at most 6n + 5 steps"
+workspace = "linear: at most bl(T/16 + 4n + 21) + bl(n) + bl(2n-1) + 37 bits"
+
+[catalogue]
+sharing_exempt = "pixels are packed 2^k rows apiece; a repeated subtable is not drawn twice, only addressed"
+folding_constant_local = "essential_inputs"  # no essential input: pushes the constant, no pixels
+
+[generator_sizes]
+"00000001" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 57 }
+"00001100" = { commands = 19, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 19, "7" = 19 }, source_units = 63 }
+"00110110" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 57 }
+"0110" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17 }, source_units = 57 }
+"01101001" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 57 }
+"0110100110010110" = { commands = 21, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21, "8" = 21, "9" = 21, "10" = 21, "11" = 21, "12" = 21, "13" = 21, "14" = 21, "15" = 21 }, source_units = 69 }
+"1101001101101101" = { commands = 21, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21, "8" = 21, "9" = 21, "10" = 21, "11" = 21, "12" = 21, "13" = 21, "14" = 21, "15" = 21 }, source_units = 69 }
+"11111110" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 57 }
+
+[ablations]
+audited = "2026-10-28"
+
+[ablations.low_split]
+saving = 34.78
+arity = 4
+seed = "random.Random(20261028), n = 4..10 drawn in turn"
+tables = 20
+verdict = "kept under the random bar: the program builds the bit position from the last k inputs for k = 2, 3, 4 and keeps the narrowest image. Fixing k = 4 (16 of a pixel's 24 bits; k = 5 would need a 2^31 power, not a pixel) costs +34.78% area at n = 4 (93.0 against 69.0 codels, mean of 20), +14.81% at n = 5, +6.06% at n = 6, +5.41% at n = 7 and nothing from n = 8, where the pixels dominate; every build is executed, exhaustive through n = 3 and parity, and, or, majority and 20 random tables at n = 4..8 (balanced area is the default area: there is no other layout)"

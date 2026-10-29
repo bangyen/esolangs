@@ -21,6 +21,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from esolangs.registry import LANGUAGES
 from esolangs.registry._slug import canonical_id
 
 if TYPE_CHECKING:
@@ -28,7 +29,8 @@ if TYPE_CHECKING:
 
 #: The words a bound ends on: its unit.
 _UNITS = (
-    r"(?:commands|steps|rewrites|nodes|instructions|lines|rows|characters|cells|bits)"
+    r"(?:commands|steps|rewrites|nodes|instructions|lines|rows|characters|cells"
+    r"|codels|bits)"
 )
 _BOUND = re.compile(rf"^(worst|at most) (.+?) {_UNITS}\b(.*)$")
 #: ``past n = k``: the bound holds from k + 1 inputs.
@@ -160,7 +162,9 @@ def ledger_formulas(
     local: dict[str, tuple[Formula, Exact, tuple[int, ...]]] = {}
     for row in load().rows:
         if column is not None:
-            stem = canonical_id(row.generator)
+            # The registered id: "Piet++" slugs to Piet's, but its id is its own.
+            lang = LANGUAGES.get(row.generator)
+            stem = lang.id if lang else canonical_id(row.generator)
             path = (
                 Path(__file__).resolve().parents[2]
                 / "src/esolangs/languages"

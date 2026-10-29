@@ -44,7 +44,7 @@ Exceptions and per-language notes:
 
 <!-- RASTER-SOURCES:START -->
 
-Line and Piet carry a raster source: `generate` returns an
+Line, Piet and Piet++ carry a raster source: `generate` returns an
 `esolangs.Raster`, `run` takes it or a PNG path through the shared
 codec, and `describe` reports `source_kind="raster"`.
 
@@ -509,8 +509,8 @@ requires a construction exemption rather than a sub-gate bound.
 <!-- SHARING-COUNTS:START -->
 
 A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 40
-of 62 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (7 by a local helper); 22 are
+of 63 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (7 by a local helper); 23 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -704,7 +704,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 103 languages.
+The collection has 104 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -772,7 +772,9 @@ family is not enough; Rubic's tree branches on cube parity, not a jump.
 Adopted 2026-10-15, retroactively: Factor (brainfuck's flag tree as a
 prime product), HQ9+ with headers (Qoibl's packed literal), Parenthesys
 (Alight's indexed string) and Piet++ (Piet's strip, recoloured) were
-removed; IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
+removed (Piet++ returned on 2026-10-28: its generator packs 16 table bits to a
+pixel and `Read`s the pixel at a Horner address, which Piet, with no memory
+primitive, cannot transcribe); IEBEL followed on 2026-10-27 (Subleq's shared diagram without the
 48/49 normalization; dropping a step adds nothing), and Grapheme on
 2026-10-28 (Qoibl's packed literal: every shipped program translated block
 for block into Qoibl and computed its table, 190 of 190 at n = 1-6; a distinct rebuild, a row counter halving the
@@ -838,7 +840,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 23 clear the fame gate
-and 80 are first implementations.
+and 81 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

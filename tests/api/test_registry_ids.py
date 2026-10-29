@@ -43,8 +43,11 @@ def test_a_slug_drops_only_punctuation_the_language_has() -> None:
         if canonical_id(bare) == lang.id:
             assert resolve(bare) == name, bare
         if "+" not in name + "".join(lang.aliases):
-            with pytest.raises(UnknownLanguageError):
-                resolve(name + "++")
+            if name + "++" in LANGUAGES:
+                assert resolve(name + "++") == name + "++"
+            else:
+                with pytest.raises(UnknownLanguageError):
+                    resolve(name + "++")
         # Whitespace and dashes are separators, not symbols to own.
         assert resolve(f"\t{lang.id}\n") == name, lang.id
         assert resolve(name.replace(" ", "\xa0").replace("-", "\u2013")) == name
