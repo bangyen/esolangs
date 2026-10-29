@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import balance_score
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -34,3 +35,11 @@ def test_packed_words_start_at_code_35() -> None:
     """The packed literal's zero word is ``#`` and its decode subtracts 35."""
     program = esolangs.generate("Freestajlo", "11000100100111100001000100111100")
     assert program == r'"FG*E_#";2*;+2*;+2*;+2*;+$6%\6/1+&35-\2\^/2%:'
+
+
+def test_balance_of_n8_cuts_the_literal() -> None:
+    """The literal is cut into strings; uncut it held the width at 47+:
+    (side, length, width)."""
+    table = "".join("1" if (r * r * 7 + r) % 5 < 2 else "0" for r in range(256))
+    program = str(esolangs.generate("Freestajlo", table, balance=True))
+    assert balance_score(program) == (16, 113, 16)

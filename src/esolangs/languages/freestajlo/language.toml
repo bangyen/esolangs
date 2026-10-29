@@ -49,6 +49,11 @@ seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: six entries a printable character (codes 35-98, skipping the closing quote and DEL), raced by length against the plain literal: 15.1% on random tables at n=5, 56.1% at n=7, 67.5% at n=8, 78.4% at n=10, 81.9% at n=12, tending to 5/6; parity, majority and and at n=8 289 to 94 chars. Never fires through n=4 (exhaustive, no table changes); every random table at n=5..8 executed, 20 at n=9..10, 3 at n=12; plain-rewrite audit 2026-10-28, seed random.Random(1000n + k), 20 tables at n=7/8, every program run: 56.1/67.5% off the plain literal by length, 96.6/97.0% off by balanced area (squared side), parity, majority and, or, nand, nor, at-least-2/3 identical to random since size is table-independent; stays above the bar through n=10 (78.4% length, 97.2% balanced) -- kept"
 
+[ablations.split_literal]
+saving = 97.7
+arity = 10
+verdict = "kept: balanced area on seed 4242 random tables (20 an n; 4 at n=11/12) falls 97.7% at n=10 and 99.6% at n=12; with parity/and/or/majority/nor mixed in (unchanged symmetric tables) 11.8% at n=6, 52.8% at n=7, 69.9% at n=8, 78.2% at n=10, 44.3% at n=12; no table grows at n=1..12; uncut, the one literal set the floor width and area grew as T^2. Cut into strings of sqrt(2 * len) entries, row i read at i + i // c. Default byte-identical; every balanced program n=1..12 executed, complement control 0 matches"
+
 [ablations.symmetric_count]
 saving = 70.2
 arity = 8
