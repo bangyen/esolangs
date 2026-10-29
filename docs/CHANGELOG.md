@@ -5,6 +5,30 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 1.5.0
+
+- **Breaking:** Remove Polynomial and Tiangou; their names no longer
+  resolve. Each had an outside implementation before the repo's, so
+  neither was a first implementation.
+- **Breaking:** Remove the `math` extra; no language needs it.
+- Add CARP, Chicken, CreativeScript v2, HQ9+ with headers, IEBEL,
+  Parenthesys, Shakespeare and Whitespace (108 languages).
+- Generated programs change:
+  - Dig programs are 43% smaller at n = 7 and 63% at n = 9.
+  - Forbin programs are 12-50% smaller from n = 4.
+  - What!? programs are 11-34% smaller.
+  - Minifuck programs are up to 58% smaller at n = 2..3.
+  - Smallfuck, Packlang, A Painter Ant, Blindfolded Arithmetic,
+    Super SNUSP and Boolfuck programs are smaller for some tables, by up
+    to 21%.
+  - B-tapemark programs are 12-41% larger up to n = 5, FALSE programs
+    2-17% larger, and BFStack programs up to 6% larger: tricks that won
+    little were retired. Painfuck moves up to 9% either way; one 3-input
+    Container table grows 21%.
+- `balance=True` area is `O(T)` for ABCDirection, Container, Fargo,
+  Flowchart, Freestajlo, Inject, Packlang and Streetcode, and
+  `O(T log n)` for LaserFuck.
+
 ## 1.4.0
 
 - **Breaking:** `snapshot` leaves the public `VM` protocol; step through
