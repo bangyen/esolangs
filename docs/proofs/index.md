@@ -413,6 +413,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, a folded subtree targets the shared self-jump or the line past the end, and a subtree already emitted at its level is targeted, not repeated | linear: worst N lines: subtree ids | poly n: worst 5n + 2 commands, shared self-patching testers | linear: at most 2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2)) bits: whole program state |
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts, and a subtree already emitted at its level is entered by climbing the accumulator to its syllable and `j`, where shorter | linear: at most 17T/2 + 13 characters: pair 12, node 5, prologue 18 | linear: at most 17 + 4n + (n-1)(3 + sqrt(2L)) tokens: the path plus shared-subtree climbs | poly n: worst 17 + bl(2n-1) + bl(L) bits, n in 4..13 |
 | Cyclic tag | parameterized lookup | weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it | linear: worst 5T + 2n + 1 characters, weighted padding | linear: worst 2T + n + 1 steps: n input rules, 2 per row, 3 closers | linear: worst 16T + 1 + bl(2T+n) bits: a queue of up to 2T - 1 bits |
+| Decleq | tree | the tree branches on every essential input down to single entries; an equal subtree is emitted once, and constant subtrees jump to one of two shared print gadgets | linear: at most B characters: six cells per distinct subtree | poly n: worst 50n + 2 commands past n = 1: 47 a chain, n - 2 copy jumps | linear: worst M + 5n + bl(C) + bl(n) + 1 bits, one more on a constant: memory and registers |
 | Dig | tree | finite cell placement, the last six essential inputs left to a painted leaf table, an ignored input among or above them read and dropped | linear: worst A cells past n = 6: the dense table | linear: at most 125 + 74·2^((n-6)/2) for even n, 125 + 92·2^((n-7)/2) for odd, past n = 6 | linear: worst 8RC + bl(R-1) + bl(C-1) + bl(2n-1) + bl(n) + 10 bits past n = 4: the R×C grid |
 | Dimensional | linear lookup | a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1 | linear: worst 2T + 20n + 58 characters: two per entry | linear: worst 11T + ⌊(2T+1)/5⌋ - 4n + 45 commands past n = 3: zero runs of nine loop | T log T: worst Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+56) + bl(2n-1) bits |
 | EGL | finite lookup | row 1 is painted with the table and each essential input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell | linear: worst 3T + 52n + digits(T) + 6 characters: painted row | linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weights sum to T-1 | linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T |
@@ -489,6 +490,7 @@ Symbols the formula cells use:
 - **Codesick:** C = Σ_{d<n} min(2^d, 2^2^(n-d) - 2), the most non-constant nodes; digits counts decimal digits.
 - **Collatz Multiverse:** m = min(16, T/4), the distinct four-row cells; K = the constants closure: 30 for n = 6..8, 2n + 14 past n = 8; A = the cell array, an (index, value) pair per entry; D = the decoder array, one entry per set bit of the m cells.
 - **Crement:** P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared nodes per level; N = 3P + 2n + 3.
+- **Decleq:** M = bits of the program's cells; C = cell count.
 - **FALSE:** W = bl(n)+6n+2b constant, 5n-2+2b expression, n+1+2b(S+n+2) diagram.
 - **Fish:** c = 3 to n = 20, then 1 + 2bl(column): the packed column literal's characters; S = 9n + 33 + 2c commands run; s = the packed column, 15⌈(9n+39)/15⌉ to n = 20.
 - **Flowchart:** F = Σ over exit-memory cells of 4 + bl(column), plus deque keys and counters.
@@ -577,7 +579,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 96 theoretical totality arguments and
+Accordingly, this ledger records 97 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

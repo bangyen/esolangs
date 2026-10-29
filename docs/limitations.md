@@ -33,6 +33,8 @@ Exceptions and per-language notes:
 
 - Unsquare uses Unicode character codes where input framing is unspecified.
 - Minifuck uses Unicode character codes where input framing is unspecified.
+- Decleq uses Unicode character codes where input framing is unspecified;
+  optional memory-mapped I/O is enabled.
 - Forbin expression calls retain their documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
@@ -505,8 +507,8 @@ requires a construction exemption rather than a sub-gate bound.
 
 <!-- SHARING-COUNTS:START -->
 
-A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 37
-of 60 tree-shaped generators build parity or a repeated-block table at most
+A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 38
+of 61 tree-shaped generators build parity or a repeated-block table at most
 0.90x its dense or distinct-block twin (7 by a local helper); 23 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
@@ -650,7 +652,8 @@ exact range (2026-10-23, counted from the ledger):
   positions, which cross powers of two by layout. Caballo,
   Crement, Pointless and Underload workspace;
   Painfuck workspace (slack 1
-  at n = 3..6, never 0); Bitdeque scaling (GOTO digits by layout; 358 against
+  at n = 3..6, never 0); Decleq scaling (8, 10, 14 short at n = 2..4,
+  exhaustive); Bitdeque scaling (GOTO digits by layout; 358 against
   400 at n = 4, exhaustive); 3x workspace (exact key bits; 1.3-1.5x at n = 3..6, 1.8x at n = 9);
   Malbolge workspace (about 470 data-dependent re-encipher widths, the
   bound now 1.03x).
@@ -696,7 +699,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 101 languages.
+The collection has 102 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -793,9 +796,9 @@ which ships from n = 6, 18 of 18 at n = 5-7, broken translators failing.
 The 2026-10-29 rule makes the literal and indexed-table grounds family, so
 HQ9+ with headers, Parenthesys, Grapheme and CreativeScript v2 (not
 admitted on 2026-10-27: a packed literal under a `1 + x(Q - 1)` shift) are
-re-judged, and so are IEBEL, Decleq and CARP (not admitted: S\*bleq's
-tree without the normalization), excluded on diagram grounds (see the
-[roadmap](roadmap.md)). Painfuck shares brainfuck's flag tree but stays: its
+re-judged, and so are IEBEL and CARP (not admitted: Decleq's diagram without the
+normalization), excluded on diagram grounds (see the
+[roadmap](roadmap.md)); Decleq returned on 2026-10-29. Painfuck shares brainfuck's flag tree but stays: its
 moves use `d` and `r` and its I/O is numeric, none of them brainfuck's.
 Fame admissions are exempt. Between two first implementations the
 construction stays with the language created first on the wiki, not the
@@ -856,7 +859,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 77 are first implementations.
+and 78 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

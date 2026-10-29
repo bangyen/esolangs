@@ -63,7 +63,7 @@ ignored-input tables included).
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
 - **Re-judge family-ground removals** (2026-10-29): a decision diagram
   and a table held as data are family now, so HQ9+ with headers,
-  Parenthesys, Grapheme, IEBEL and Decleq (removed packages), CARP and
+  Parenthesys, Grapheme and IEBEL (removed packages), CARP and
   CreativeScript v2 (never built), and Brainfuck derivatives refused by
   the dropped ban return unless another ground excludes them: spec
   completeness, a fixed token map, a bespoke re-spelling.
@@ -75,13 +75,13 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (66): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, Algebraic
+Audited (67): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, Algebraic
 Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark, Back,
 Befunge, BFStack, Bitdeque, bit~, Blindfolded Arithmetic, Boolfuck,
 brainfuck, BrainIf, Circlefuck, Circuit Diagram, Clockwise, Collatz
-Multiverse, Container, Crement, CV(N)(C), Dig, Dimensional, EGL, FALSE,
-Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row, Hot,
-Inject, INTERCAL, Interprogck8, LaserFuck, Line, Malbolge, Minifuck,
+Multiverse, Container, Crement, CV(N)(C), Decleq, Dig, Dimensional, EGL,
+FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row,
+Hot, Inject, INTERCAL, Interprogck8, LaserFuck, Line, Malbolge, Minifuck,
 Modulous, Packlang, Painfuck, Piet, Polynomial, Qoibl, RAM0, ROTfuck, SLOW
 ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, Suffolk, Taglate,
 thisthat, Thue, Underload, Unlambda. Next by kept `[ablations]`: NOR machine
@@ -100,7 +100,7 @@ Pointless 2, Quassaunt 2, Stisp 2, Super SNUSP 2, SwitchCase 2, Unsquare 2.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-12 of the 77 first implementations: Aprknia, Balik, BASICER, Bleh,
+12 of the 78 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, Stisp,
 SwitchCase, Tiangou.
 

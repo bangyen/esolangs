@@ -79,6 +79,8 @@ from esolangs.languages.cvnc.generator import LANGUAGE as _CVNC_LANGUAGE
 from esolangs.languages.cvnc.generator import cvnc
 from esolangs.languages.cyclic_tag.generator import LANGUAGE as _CYCLIC_TAG_LANGUAGE
 from esolangs.languages.cyclic_tag.generator import cyclic_tag
+from esolangs.languages.decleq.generator import LANGUAGE as _DECLEQ_LANGUAGE
+from esolangs.languages.decleq.generator import decleq
 from esolangs.languages.dig.generator import LANGUAGE as _DIG_LANGUAGE
 from esolangs.languages.dig.generator import dig
 from esolangs.languages.dimensional.generator import LANGUAGE as _DIMENSIONAL_LANGUAGE
@@ -255,6 +257,7 @@ _LANGUAGES = (
     _CREMENT_LANGUAGE,
     _CVNC_LANGUAGE,
     _CYCLIC_TAG_LANGUAGE,
+    _DECLEQ_LANGUAGE,
     _DIG_LANGUAGE,
     _DIMENSIONAL_LANGUAGE,
     _EGL_LANGUAGE,
@@ -357,6 +360,7 @@ __all__ = [
     "crement",
     "cvnc",
     "cyclic_tag",
+    "decleq",
     "dig",
     "dimensional",
     "egl",

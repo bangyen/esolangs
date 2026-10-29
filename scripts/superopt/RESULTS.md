@@ -249,6 +249,7 @@ n/a = unsupported):
 | Packlang | 50 | 162 | $ $ $ $ |
 | Streetcode | 14 | 302 | $ $ $ $ |
 | Pointless | 15 | 346 | $ $ $ $ |
+| Decleq | 12 | 503 | $ $ $ $ |
 | Quassaunt | 41 | 388 | $ $ $ $ |
 | Polynomial | 19 | 619 | $ $ $ $ |
 | Collatz Multiverse | 43 | 751 | $ $ $ $ |
