@@ -6,6 +6,7 @@ from importlib import import_module
 
 import pytest
 
+from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.runtime._evaluate import _evaluate
 from tests.generators.boolean_runners import _runner
@@ -244,6 +245,28 @@ def test_balance_fold_target_uses_the_western_margin() -> None:
     constant = str(esolangs.generate("Streetcode", "0" * 64, balance=True))
     rows = constant.splitlines()
     assert (len(rows), max(map(len, rows))) == (21, 50)
+
+
+def test_balance_of_parity_n10_stacks_the_big_rooms() -> None:
+    """Rooms over 4 * sqrt(T) fold into stacks; chained, they held one
+    uncuttable block T/2 wide: (side, length, width)."""
+    import esolangs
+
+    parity = "".join(str(index.bit_count() & 1) for index in range(1024))
+    program = str(esolangs.generate("Streetcode", parity, balance=True))
+    assert balance_score(program) == (240, 16188, 186)
+
+
+@pytest.mark.medium
+def test_a_stacked_room_street_computes_its_table() -> None:
+    """The n=7 street with its widest room folded (piece 24) executes."""
+    generator = import_module("esolangs.languages.streetcode.generator")
+    table = _random_table(random.Random(7), 7)
+    flat = generator._streetcode_flat(table, 7, 24)  # noqa: SLF001
+    stacked = generator._streetcode_folded(flat, tall=True)  # noqa: SLF001
+    got = _evaluate("Streetcode", stacked, inputs=7)
+    assert got == table
+    assert got != "".join("1" if bit == "0" else "0" for bit in table)
 
 
 def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:

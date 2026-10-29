@@ -66,6 +66,11 @@ seed = "random.Random(n)"
 tables = 20
 verdict = "kept 2026-10-20: from n=6 the tree races the flat street by area, drawn only when its floor (4 rows a leaf by the setup width) is below flat's. Random tables unchanged; by area at n=6..10, and 51-74%, one zero 57-83%, top-3-input tables 17-42%, top-2 9-39%, constants 28% at n=6 falling to 0% by n=9. Mixed sample 9.4% / 3.2% at n=6 / 8"
 
+[ablations.balance_room_stack]
+saving = 68.2
+arity = 10
+verdict = "kept: balanced area on seed 4242 (25 tables an n, random plus parity/and/or/majority/nor; 9 at n=11/12) falls 41.3% at n=9, 68.2% at n=10, 61.4% at n=11, 64.3% at n=12 and is unchanged to n=8, no table grows at n=1..12; the rooms chained into one block T/2 wide that no cut could split, so area grew as T^2. Rooms over 4*sqrt(T) fold into a stack, rooms stand 9 columns apart; area per table row is 63 at n=9 and 33-36 at n=11..14. Default build byte-identical. Piece 2*sqrt(T) left 41-48 a row at n=11..12"
+
 [ablations.shared_kerb]
 saving = 22.2
 verdict = "kept: share of turned area, judged at the width floor"
