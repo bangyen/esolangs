@@ -187,3 +187,12 @@ def test_balance_keeps_the_widest_square_candidate() -> None:
     program = esolangs.generate("Packlang", table, balance=True)
     rows = program.rstrip("\n").split("\n")
     assert (max(map(len, rows)), len(rows), len(program)) == (72, 34, 1648)
+
+
+def test_balance_of_random_n10_refolds_the_body() -> None:
+    """The body refolds past the default's 72 columns; unrefolded it was
+    74 x 105: (side, length, width)."""
+    rng = random.Random(5)
+    table = "".join(rng.choice("01") for _ in range(1024))
+    program = str(esolangs.generate("Packlang", table, balance=True))
+    assert balance_score(program) == (134, 6295, 115)

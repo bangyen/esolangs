@@ -57,6 +57,11 @@ saving = 29.2
 arity = 10
 verdict = "kept: the race also paints the complement table and prints 49 ^ t, keeping the shorter (one input setter pair either way). or: 12.2% at n=8 (751 -> 659), 29.2% at n=10 (1,124 -> 796); threshold >= 2 20.8% at n=10 (1,196 -> 947); random 2.6% / 2.1% at n=7/8. An earlier 5-input race gained only 2.5-2.7% and was dropped; the dense classes were what it missed. Execution bound is now at most, not worst: exhaustive max steps 38 at n=3, 131 at n=4 against 69 and 144"
 
+[ablations.refold_body]
+saving = 51.2
+arity = 10
+verdict = "kept: balanced area on seed 4242 (20 random plus parity/and/or/majority/nor an n; 9 at n=11/12) falls 11.2% at n=5, 19.6% at n=6, 3.3% at n=8, 29.1% at n=9, 51.2% at n=10, 50.9% at n=11, 59.7% at n=12; no table grows at n=1..12. The default folds statements at 72 columns and a balance fit can only narrow a line, so rows grew with T (74x105 at n=10); the body is now cut after ; { } and repacked at the balanced width. Default byte-identical; balanced programs n<=8 all executed, 4 at n=9..10, complement control 0 matches"
+
 [ablations.block_cap]
 saving = 2.9
 arity = 10

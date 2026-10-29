@@ -12,6 +12,10 @@ shrinks the block until repeats align).  Each input doubles the register read
 so far into its partner two counts at a time and adds its bit, so the two
 alternate and no copy is needed.
 
+``balance=True`` also repacks the body past :data:`_WIDTH` (:func:`_refolded`);
+the default's 72-column lines capped a fit at narrowing, so balanced area
+grew as T^2 (74x105 at n=10).
+
 Size:
     O(T) with a small constant for constant tables (per block, not per row);
     n=8 and: 661 chars, n=10 and: 798 chars, n=10 random 1847: 6,679 chars.
@@ -33,8 +37,9 @@ from esolangs.generation.helpers import (
     same_ignoring_whitespace,
     subtree_ids,
 )
-from esolangs.generation.token_balance import run_widths
+from esolangs.generation.token_balance import balanced_token_width, run_widths
 from esolangs.generation.wrap import (
+    _join_tokens,
     balance_score,
     wrap_program,
 )
@@ -144,12 +149,41 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
     return min((_packlang(program, width) for width in starts), key=balance_score)
 
 
+def _refolded(program: str) -> str:
+    """Return ``program`` with the body refolded to its balanced width.
+
+    The default folds at :data:`_WIDTH`, and a fit can only narrow a line, so
+    the rows grew with T and balanced side with 2 * T / 72.  The body is
+    cut after each ``;``, ``{`` and ``}`` and packed at the width that
+    renders squarest.
+    """
+    head, mid, tail = program.partition("  Integer main {\n")
+    body, end, rest = tail.partition("  }\n}")
+    atoms = re.findall(
+        r"[^;{}]*[;{}]", "".join(line.strip() for line in body.split("\n"))
+    )
+    if (
+        not mid
+        or not end
+        or "".join(atoms) != "".join(map(str.strip, body.split("\n")))
+    ):
+        return program
+    width = balanced_token_width(atoms, minimum=_NAME_LEN)
+    candidates = []
+    for wide in range(max(_NAME_LEN, width - 3), width + 4):
+        lines = _join_tokens(atoms, wide, separator="").split("\n")
+        folded = "".join(f"  {line}\n" for line in lines)
+        candidates.append(head + mid + folded + end + rest)
+    return min(candidates, key=balance_score)
+
+
 def balance_packlang(_table: str, default: str) -> str:
-    """Compare ``default`` with token-fit layouts."""
+    """Compare ``default`` with token-fit layouts and the refolded body."""
     maximum = grid_width(default) - 1
     return min(
         default,
         _balance_form(default, _NAME_LEN, maximum),
+        _refolded(default),
         key=balance_score,
     )
 
