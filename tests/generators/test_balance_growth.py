@@ -39,12 +39,13 @@ def _mean_area(name: str, n: int) -> float:
 _LANGUAGES_DIR = pathlib.Path(esolangs.__file__).parent / "languages"
 
 
-def _open(name: str) -> str:
-    """The language's recorded open growth (``[balance_growth] open``), or ""."""
+def _recorded(name: str, key: str) -> str:
+    """The language's ``[balance_growth]`` entry: ``open`` growth, or a
+    proved ``wall`` citing the syntax rule; "" if none."""
     path = _LANGUAGES_DIR / LANGUAGES[name].id / "language.toml"
     if not path.exists():
         return ""
-    return tomllib.loads(path.read_text()).get("balance_growth", {}).get("open", "")
+    return tomllib.loads(path.read_text()).get("balance_growth", {}).get(key, "")
 
 
 def _cases() -> list[object]:
@@ -53,8 +54,8 @@ def _cases() -> list[object]:
     return [
         pytest.param(
             name,
-            marks=pytest.mark.xfail(strict=True, reason=_open(name))
-            if _open(name)
+            marks=pytest.mark.xfail(strict=True, reason=_recorded(name, "open"))
+            if _recorded(name, "open")
             else (),
         )
         for name in sorted(name for name, lang in LANGUAGES.items() if lang.boolean)
@@ -65,11 +66,14 @@ def _cases() -> list[object]:
 @pytest.mark.cost_evidence("T**2 balanced area: ABCDirection 6ae9ae798, five more")
 @pytest.mark.parametrize("name", _cases())
 def test_balanced_area_grows_about_linearly(name: str) -> None:
-    """Exempt: a capped generator, and a line-bound (``no_wrap``) language
-    with no ``balance`` hook, whose layout the generator does not choose."""
+    """Exempt: a capped generator, a line-bound (``no_wrap``) language with
+    no ``balance`` hook, whose layout the generator does not choose, and a
+    recorded ``wall``: a line carries O(log T) bits, so area >= T**2/log**2 T."""
     language = LANGUAGES[name]
     if language.no_wrap and language.balance is None:
         pytest.skip(language.no_wrap)
+    if wall := _recorded(name, "wall"):
+        pytest.skip(wall)
     try:
         high = _mean_area(name, 12)
     except GeneratorCapError as error:

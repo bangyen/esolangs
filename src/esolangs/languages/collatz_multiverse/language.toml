@@ -81,4 +81,4 @@ verdict = "kept 2026-10-28 by contract: the balance hook rebuilds the program at
 plain_rewrite = 2026-10-28
 
 [balance_growth]
-open = "line-bound (each line is one complete register assignment); the balance hook only repacks whole lines, so balanced area grows as T**1.50 from n=10 to 12 (2026-10-29), unexamined"
+wall = "a line is one assignment of identifiers only (interpreter.py _LINE fullmatch), so it carries O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.50 from n=10 to 12, 2026-10-29)"
