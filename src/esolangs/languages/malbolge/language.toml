@@ -49,7 +49,7 @@ audited = "2026-10-18"
 [ablations.full_store_render]
 saving = 0.0
 arity = 16
-verdict = "kept: the source is the whole memory image by design. The untouched tail is 2,186 of 59,049 characters (3.7%, under the bar) at every arity: the 56,863-character prefix still computes the table and 56,862 does not, on random and parity tables at n=3, 7, 10 and 12 (plain-rewrite audit 2026-10-29). The 2026-10-18 figures (44.7% at n=3..7, 11.1% at n=15) predate the one positional build"
+verdict = "kept: the source is the whole memory image by design. The untouched tail is 2,186 of 59,049 characters (3.7%, under the bar) at every arity: the 56,863-character prefix still computes the table and 56,862 does not, on random and parity tables at n=3, 7, 10 and 12 (plain-rewrite audit 2026-10-29). The 2026-10-18 figures (44.7% at n=3..7, 11.1% at n=15) predate the one positional build. Padding-free, the image is mostly dead: live cells (read before written by some row) are 5,882-6,688 at n=1..8, 6,228-6,999 at n=10 and 7,696-8,467 at n=12 (random, parity, and), 10-14% of 59,049; a 6,013-cell prefix holds the machinery, and a few scattered hub cells up to 56,862 pin the length. Corrupting 15 sampled dead cells changed no answer. A layout packing the live cells low would be the size lever, not any per-table trick"
 
 [ablations.tier_constructions]
 saving = 0.0
