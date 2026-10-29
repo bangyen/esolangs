@@ -30,9 +30,9 @@ input, still consumes its digit: its child is laid straight after it.
 Size:
     O(T) at every arity: a window is 126 lines and the cursor walk is a
     recursion over (height, entry offset), so the worst table takes about
-    193.7 T characters (tests/formulas.py, exact at n = 3..12; 24,874 at n = 7).
-    n=10 random 1847: 162,227 chars, n=10 parity: 190,154 chars,
-    n=10 and: 8,164 chars.
+    193.1 T characters at n = 10 (tests/formulas.py, exact at n = 3..12; 24,874
+    at n = 7).  n=10 random 1847: 160,984 chars, n=10 parity: 189,578 chars,
+    n=10 and: 8,160 chars.
 
 Raises:
     GeneratorCapError: more than forty inputs; a flight's column must stay
@@ -76,13 +76,11 @@ def _read(bit: int) -> str:
 
 
 def _arith(delta: int) -> list[str]:
-    """The fewest ``@id``/``@nd``/``@dd``/``@nt`` lines adding ``delta`` mod 256."""
+    """``@id``/``@nd`` (``@dd``/``@nt`` down) lines adding ``delta`` mod 256."""
     delta = (delta + 128) % 256 - 128
     tens, ones = divmod(abs(delta), 10)
-    big, near, far = ("@id", "@nd", "@nt") if delta >= 0 else ("@dd", "@nt", "@nd")
-    exact = [big] * tens + [near] * ones
-    over = [big] * (tens + 1) + [far] * (10 - ones)
-    return min(exact, over, key=len) if ones else exact
+    big, near = ("@id", "@nd") if delta >= 0 else ("@dd", "@nt")
+    return [big] * tens + [near] * ones
 
 
 def _block(target: int) -> list[str]:

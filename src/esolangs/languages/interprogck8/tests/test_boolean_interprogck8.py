@@ -66,7 +66,11 @@ def test_three_input_program_keeps_its_measured_length() -> None:
 
 
 def test_parity_costs_the_same_per_entry_at_every_arity() -> None:
-    """Windows are 126 lines whatever ``n``: a rung every 126 lines, and a flat size."""
+    """Windows are 126 lines whatever ``n``: a rung every 126 lines, and a flat size.
+
+    Flat within 1%: parity spans 184.8-185.9 characters an entry at n = 8..12
+    (185.4-185.9 before the overshoot spelling was retired).
+    """
     sizes = {}
     for n in (8, 10, 12):
         parity = "".join(str(bin(i).count("1") % 2) for i in range(1 << n))
@@ -74,11 +78,11 @@ def test_parity_costs_the_same_per_entry_at_every_arity() -> None:
         lines = program.split("\n")
         assert all(lines[k] == "DownAccLines" for k in range(0, len(lines) - 82, 126))
         sizes[n] = len(program) / (1 << n)
-    assert max(sizes.values()) - min(sizes.values()) < 0.5, sizes
+    assert max(sizes.values()) / min(sizes.values()) < 1.01, sizes
 
 
 def test_arith_adds_its_delta_mod_256() -> None:
-    """The fewest lines add ``delta`` mod 256, even for deltas past a byte."""
+    """Tens and ones add ``delta`` mod 256, even for deltas past a byte."""
     step = {"@id": 10, "@nd": 1, "@dd": -10, "@nt": -1}
     for delta in range(-600, 600):
         lines = generator._arith(delta)  # noqa: SLF001

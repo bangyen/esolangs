@@ -310,7 +310,10 @@ requirements:
   thresholds) are reported apart; 10% on one keeps a rule for that family,
   not the whole race. Smallfuck's residual forms saved 2.2% on random tables
   at n=8, 0% at n >= 9 and at most 1.0% on a named function, and were
-  retired. Cite the measurement beside the code.
+  retired. Cite the measurement beside the code.  A trick that fails on
+  size stays if it cuts the run by 25% or more: a proved step bound or the
+  baseline's command counts (Interprogck8's column search, 45% off the
+  n = 11 step bound for 3.6% of size).
 - **A genuine percentage, not a fixed saving**: the saving must not tend
   toward zero as tables grow. A trick that saves a fixed number of cells or
   columns — a tail segment, a prologue's width — dilutes as the construction

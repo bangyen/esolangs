@@ -637,15 +637,14 @@ def _what_sparse(n: int) -> SparseRows:
 
 # language-owners: ["Interprogck8"]
 def _interprogck8_sparse(n: int) -> SparseRows:
-    """The steps witness; the named witness row attains E, the rest stay under.
+    """The steps witness; the all-ones row attains E, the rest stay under.
 
-    n = 11: measured over all 2,048 rows, the maximum 38,022 is row 2034 =
-    T - 14 alone (2032, 2033, 2035 reach 38,004).  n = 12: rows 4093-4095
-    reach 76,006 (of 4000-4095 measured); the witness is the all-ones row.
+    n = 11: measured over all 2,048 rows, rows 2045-2047 reach the maximum
+    37,997 = E.  n = 12: rows 4093-4095 reach 76,011 (of 4032-4095 measured).
     """
     owner = importlib.import_module("esolangs.languages.interprogck8.tests.formulas")
     width = 1 << n
-    witness = width - 14 if n == 11 else width - 1
+    witness = width - 1
     rows = (0, 1, width // 2 - 1, width - 32, width // 2 - 16, width - 16, witness)
     return SparseRows(owner.steps_witness(n), tuple(dict.fromkeys(rows)), witness)
 

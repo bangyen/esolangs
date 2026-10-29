@@ -33,3 +33,20 @@ audited = "2026-10-22"
 saving = 32.6
 arity = 12
 verdict = "kept: canonical, exempt. A read whose halves agree is one read line over its single child, not a read over two copies: 32.6% off random tables at n=12 and 32.5% at n=8 (20 tables each, seed 1847 + n), 97.6% on AND and 99.7% on zeros at n=10, exactly 0.0% on parity, whose halves are complements. The fold is also how this generator absorbs ignored inputs and constants: there is no essential-input projection. Sizes only; the unfolded layout was not run"
+
+[ablations.arith_over_spelling]
+saving = 0.0
+arity = 10
+seed = "random.Random(5150 + n)"
+tables = 20
+verdict = "retired 2026-10-29 (plain-rewrite audit): _arith also raced an overshoot spelling (one more ten, then back by ones). It saved 0% at n <= 7 and made output 0.3% larger at n = 8..9 and 1.1% at n = 10 on random tables (thr2 2.2% at n = 10), through its pull on the column search. Balanced output is the default byte-for-byte (no_wrap, no balance hook), so balanced area moves the same. Steps: the proved n = 11 bound fell 38,022 -> 37,997. Every program executed, n = 1..10"
+
+[ablations.column_search]
+saving = 3.6
+arity = 8
+seed = "random.Random(5150 + n)"
+tables = 20
+verdict = "kept for steps (plain-rewrite audit 2026-10-29): flights fly at the highest column whose body is no longer than the floor _FREE + n - 3 - depth's. Size alone fails the bar: 2.9% / 3.6% off random tables at n = 7 / 8, at most 5.9% on a named function (nor, n = 8); balanced area is the same (no_wrap). But the floor walks every flight down to 40 and nearly doubles the run: retired with the overshoot spelling, the proved n = 11 step bound rose 38,022 -> 68,977 and benchmark rows ran 140 -> 220 and 277 -> 472 commands"
+
+[audits]
+plain_rewrite = 2026-10-29
