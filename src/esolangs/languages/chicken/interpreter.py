@@ -147,6 +147,15 @@ def _equal(left: _Value, right: _Value) -> bool:
     return _number(left) == _number(right)
 
 
+def _nan_once(value: int | float) -> int | float:
+    """Return ``value``, with any NaN as the one ``NAN`` object.
+
+    ``nan != nan``, and tuples compare equal only through identity, so a
+    fresh NaN from ``NAN - 0`` made equal states snapshot unequal.
+    """
+    return NAN if isinstance(value, float) else value
+
+
 def _advance(opcode: int, below: _Value, top: _Value) -> _Value:
     """Return the value opcode 2-5 or 9 pushes for ``below OP top``.
 
@@ -156,11 +165,11 @@ def _advance(opcode: int, below: _Value, top: _Value) -> _Value:
     if opcode == 2:
         if isinstance(below, str) or isinstance(top, str):
             return _text(below) + _text(top)
-        return _number(below) + _number(top)
+        return _nan_once(_number(below) + _number(top))
     if opcode == 3:
-        return _number(below) - _number(top)
+        return _nan_once(_number(below) - _number(top))
     if opcode == 4:
-        return _number(below) * _number(top)
+        return _nan_once(_number(below) * _number(top))
     if opcode == 5:
         return _equal(below, top)
     return "&#" + _text(top) + ";"
