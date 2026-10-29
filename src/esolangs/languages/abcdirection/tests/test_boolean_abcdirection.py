@@ -70,6 +70,14 @@ def test_balance_of_a_four_input_table_is_exact() -> None:
     assert balance_score(program) == (49, 1049, 49)
 
 
+def test_balance_of_parity_n8_cuts_the_long_runs() -> None:
+    """Runs over 2 * sqrt(T) split into gadgets; uncut, the 136-column first
+    gadget held the side at 140: (side, length, width)."""
+    table = "".join(str(bin(row).count("1") & 1) for row in range(256))
+    program = str(esolangs.generate("ABCDirection", table, balance=True))
+    assert balance_score(program) == (86, 3566, 86)
+
+
 def test_balance_of_not_n1_is_exact() -> None:
     """The tight width's slack is four columns, for the lap's landing
     and drop; a fifth widens even the one-input helix: (35, 575, 35)."""

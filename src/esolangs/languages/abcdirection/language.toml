@@ -38,6 +38,11 @@ saving = 1.5
 arity = 12
 verdict = "removed 2026-10-20 (retirement candidate #14): packing two reads per tooth priced 19.6% on random tables at n=5 in clear decline to 2.6% at n=11 and 1.5% at n=12 — the read block is O(n) columns against an O(2^n) table, so the share tends to zero. The absolute saving still grew (~484 cells a program at n=12) and on half-ignored tables, where the reads dominate, it earned 26.9-28.2%; the dispute is recorded in the candidates file. Reads now go one to a tooth in both the flat layout and the balance helix, which share _teeth. Restored 2026-10-20 capped at n <= 3: 10.1% / 16.8% / 16.2% by area at n=1/2/3 on exhaustive small tables, and reverted the same day: a cap chosen where a trick still pays is judged at n=7..8 (CONTRIBUTING)"
 
+[ablations.split_runs]
+saving = 85.7
+arity = 10
+verdict = "kept: balanced area on seed 4242 (25 tables an n, random plus parity/and/or/majority/nor) falls 3.5% at n=5, 62.3% at n=8, 85.7% at n=10, 96.7% at n=12, no table grows at n=1..12; uncut, the first gadget's T/2 run set the floor width and area grew as T^2/4. Default build byte-identical. Cap 2*sqrt(T): sqrt(T) grew n=3..5 by up to 20%"
+
 [interpreter_ablations]
 audited = "2026-10-18"
 benchmark = "interp-audit-2026-10-18/tracediff-n3"

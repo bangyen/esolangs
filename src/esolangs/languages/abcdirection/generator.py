@@ -31,14 +31,17 @@ chain, the reads and the band each fill a slab of rows (2, 5 and 4 a lap, so
 a drop has room above it) and drop to the next lap where a ``B`` precedes a
 2x2 up-and-over; a lap stays under the width, so it never meets its own
 landing.  Teeth alternate ``rise`` and plain to stay in five rows without
-wrapping.  The width is the narrowest the widest atom (a gadget, ``run + 8``)
-allows or where ``width == 2 * height`` (``_tight_width``), whichever is
-squarer; the flat layout stays a candidate.  ``n = 2``: 99x5 flat, 40x16
-balanced.
+wrapping.  A run over ``2 * sqrt(T)`` is cut into equal gadgets, each
+dequeuing its own copy of the input, enqueued once a gadget: uncut, the first
+gadget (``T / 2 + 8``) set the floor width and balanced area grew as ``T**2 /
+4``.  The width is the narrowest the widest atom allows or where ``width == 2
+* height`` (``_tight_width``), whichever is squarer; the flat layout stays a
+candidate.  ``n = 2``: 99x5 flat, 40x16 balanced.
 
 Size:
     O(T) cells, 7.69 a row at ``n = 12``; n=6 random 1847: 1,299 chars,
-    n=10 random 1847: 8,599 chars (1,075 cells at ``n = 6``).
+    n=10 random 1847: 8,599 chars (1,075 cells at ``n = 6``).  Balanced:
+    O(T) area, 23.5 cells a row at ``n = 12`` (was 1,036).
 
 Decisions:
     Constant subtrees are not folded nor repeated ones shared: every row
@@ -133,22 +136,30 @@ class _Walker:
         self.put("B" * abs(self.x - x))
 
 
-def _tooth(w: _Walker, reads: int, *, enqueue: bool, rise: bool = False) -> None:
-    """Heading left: ``reads`` up-reads, an enqueue if asked, down one row.
+def _enqueues(copies: int) -> str:
+    """``copies`` enqueues heading right, a ``B`` after every fifth.
+
+    The reader cuts the grid at the first line holding ``DDDDDD``.
+    """
+    return "B".join("D" * min(5, copies - i) for i in range(0, copies, 5))
+
+
+def _tooth(w: _Walker, reads: int, *, enqueue: int, rise: bool = False) -> None:
+    """Heading left: ``reads`` up-reads, ``enqueue`` copies of the last, down one row.
 
     The down column re-crosses the arrival row at a ``B`` the walk already
-    laid, so the next tooth starts two columns on (three after an enqueue).
+    laid, so the next tooth starts two columns on, plus the enqueues' width.
     ``rise`` pads the up column by a ``B`` and shortens the down one, so the
     tooth ends one row *up*; alternating the two keeps a run of teeth in five
     rows without wrapping.
     """
-    if enqueue:
-        w.put("B")
+    enqueues = _enqueues(enqueue)
+    w.put("B" * len(enqueues))
     x = w.x
     if rise:
-        w.put("AB" + "D" * reads + "A" + "D" * enqueue + "A" + "B" * reads + "A")
+        w.put("AB" + "D" * reads + "A" + enqueues + "A" + "B" * reads + "A")
     else:
-        w.put("A" + "D" * reads + "A" + "D" * enqueue + "A" + "B" * (reads + 1) + "A")
+        w.put("A" + "D" * reads + "A" + enqueues + "A" + "B" * (reads + 1) + "A")
     w.to(x - 2)
 
 
@@ -213,8 +224,8 @@ def _print(grid: _Grid, w: _Walker) -> None:
         _print_unit(grid, w, index)
 
 
-def _teeth(essential: set[int], n: int) -> list[tuple[int, bool]]:
-    """Each tooth's read count and whether it enqueues: one read a tooth.
+def _teeth(copies: dict[int, int], n: int) -> list[tuple[int, int]]:
+    """Each tooth's read count and how often it enqueues: one read a tooth.
 
     An essential input's value bit enqueues as it lands; an ignored input
     is read like any other bit and never enqueued.  Packing two reads a
@@ -224,7 +235,7 @@ def _teeth(essential: set[int], n: int) -> list[tuple[int, bool]]:
     against an O(2**n) table (retirement candidate #14).
     """
     return [
-        (1, index % _BITS == 0 and index // _BITS in essential)
+        (1, copies.get(index // _BITS, 0) if index % _BITS == 0 else 0)
         for index in range(_BITS * n)
     ]
 
@@ -238,12 +249,14 @@ def _layout(table: str, n: int) -> str:
     # 39-column print chain; with no gadget, the print chain alone.
     band = sum(run + 8 for run in runs) + 36 if runs else 39
     span = max(len(write), band)
-    teeth = _teeth(set(essential), n)
+    teeth = _teeth(dict.fromkeys(essential, 1), n)
     # The read block ends on the row the band starts on, past the wrap.
     start = _BASE if runs else _BASE - 2
     drift = (start - _WRITE - len(teeth)) % _HEIGHT
     shifts = [3] * (drift // 3) + ([drift % 3] if drift % 3 else [])
-    reads = 2 + sum(3 if enqueue else 2 for _, enqueue in teeth) + 2 * len(shifts)
+    reads = (
+        2 + sum(2 + len(_enqueues(enqueue)) for _, enqueue in teeth) + 2 * len(shifts)
+    )
     # Six columns left of the read block: column 0 and the terminator's D's.
     width = span + reads + 6
     grid = _Grid(width)
@@ -281,7 +294,7 @@ class _Plan(NamedTuple):
     """The three phases cut into laps of at most ``width`` columns."""
 
     write: list[str]
-    reads: list[list[tuple[int, bool]]]
+    reads: list[list[tuple[int, int]]]
     #: ``(kind, arg)``: ``gadget`` and ``last`` carry a run; ``print`` an index.
     band: list[list[tuple[str, int]]]
 
@@ -320,19 +333,46 @@ def _piece_size(kind: str, arg: int) -> int:
     return _PRINT_SIZES[arg if kind == "print" else 0]
 
 
+def _cap(table: str, n: int) -> int:
+    """The longest run a gadget walks: ``2 * sqrt(T)``, so no atom outgrows a lap.
+
+    Balanced area against no cap, seed 4242: -62% at n=8, -86% at n=10,
+    -97% at n=12; ``sqrt(T)`` grew n=3..5 by up to 20%, and ``2 * sqrt(T)``
+    splits nothing below n=5.
+    """
+    return 2 * isqrt(1 << len(essential_inputs(table, n)))
+
+
 def _sizes(
     table: str, n: int
-) -> tuple[str, list[tuple[int, bool]], list[tuple[str, int]]]:
-    """The write chain, the teeth, the band's atoms."""
+) -> tuple[str, list[tuple[int, int]], list[tuple[str, int]]]:
+    """The write chain, the teeth, the band's atoms.
+
+    A run longer than :func:`_cap` is cut into equal gadgets, each testing
+    its own enqueued copy of the input: a 0 walks them all, a 1 none.
+    """
     essential = essential_inputs(table, n)
     write = "".join("C" if bit == "1" else "CD" for bit in read_at(table, essential, n))
-    runs = [1 << (len(essential) - 1 - j) for j in range(len(essential))]
-    return write + "C", _teeth(set(essential), n), _pieces(runs)
+    cap = _cap(table, n)
+    runs: list[int] = []
+    copies = {}
+    for j, i in enumerate(essential):
+        run = 1 << (len(essential) - 1 - j)
+        copies[i] = -(-run // cap)
+        runs += [run // copies[i] + (c < run % copies[i]) for c in range(copies[i])]
+    return write + "C", _teeth(copies, n), _pieces(runs)
 
 
 def _floor(table: str, n: int) -> int:
-    """The least width: the widest atom plus its lap's cost, and room for ``DDDDDD``."""
-    return max(14, *(_piece_size(*piece) + 4 for piece in _sizes(table, n)[2]))
+    """The least width: the widest atom or tooth plus its lap's cost, or 14.
+
+    Fourteen leaves room for ``DDDDDD``.
+    """
+    _, teeth, pieces = _sizes(table, n)
+    atoms = [_piece_size(*piece) for piece in pieces]
+    return max(
+        14, *(size + 4 for size in atoms + [2 + len(_enqueues(c)) for _, c in teeth])
+    )
 
 
 def _plan(table: str, n: int, width: int) -> _Plan:
@@ -345,7 +385,9 @@ def _plan(table: str, n: int, width: int) -> _Plan:
         [write[i : i + chunk] for i in range(0, len(write), chunk)],
         [
             [teeth[i] for i in lap]
-            for lap in _laps([3 if enqueue else 2 for _, enqueue in teeth], room)
+            for lap in _laps(
+                [2 + len(_enqueues(enqueue)) for _, enqueue in teeth], room
+            )
         ],
         [
             [pieces[i] for i in lap]
@@ -414,7 +456,7 @@ def _tight_width(table: str, n: int) -> int:
     """
     _, teeth, pieces = _sizes(table, n)
     sizes = [_piece_size(*piece) for piece in pieces]
-    work = 5 * sum(3 if enqueue else 2 for _, enqueue in teeth) + 4 * sum(sizes)
+    work = 5 * sum(2 + len(_enqueues(enqueue)) for _, enqueue in teeth) + 4 * sum(sizes)
     slack = max(sizes) // 2 + 4  # the lap's landing and drop columns
     b = 12 - slack  # (w - slack) = 2 * (work / (w - slack) + 6)
     return (b + isqrt(b * b + 8 * work)) // 2 + slack + 1
