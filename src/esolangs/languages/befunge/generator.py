@@ -251,7 +251,7 @@ def balance_befunge(truth_table: str, default: str) -> str:
     count = 1 << n
     _check_cap(n)
     candidates = [default]
-    layouts = [(5 * n + _BOUND_NARROW, 4, 9), (5 * n + _BOUND_WIDE, 10, 80)]
+    layouts = [(5 * n + _BOUND_WIDE, 10, 80)]
     if n > 10:
         count = (count + 5) // 6
         layouts = [(5 * n + _BOUND_PACKED, 10, 80)]

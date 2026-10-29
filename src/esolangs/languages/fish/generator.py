@@ -211,21 +211,15 @@ def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
 
 
 def balance_fish(truth_table: str, default: str) -> str:
-    """Minimize the rendered side over every fold of the table and of the packed row.
+    """Minimize the rendered side over four folds of the packed row.
 
-    Fold c=2^k gives W=c+2, H=h+ceil(T/c), where h is the code height, about
-    (9n+11+6k)/c rows.  Folds run to the code's length, so about log2(9n)+1.
-    The packed row folds at four widths near ``sqrt(2 * length)``
-    ([ablations.balance_packed_fold]).
+    The widths lie near ``sqrt(2 * length)`` ([ablations.balance_packed_fold]);
+    folds of the unpacked table never won ([ablations.balance_unpacked_folds]).
     """
     n = _validate_truth_table(truth_table)
     candidates = [default]
     weights, table = input_weights(truth_table, n)
     reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
-    # Folds wider than the table leave it one row; they pay off for short tables.
-    candidates.extend(
-        _folded(reads, table, 1 << k) for k in range(len(reads).bit_length() + 1)
-    )
     root = (2 * len(_packed(reads, table))) ** 0.5
     candidates.extend(
         _packed_folded(reads, table, max(4, round(root * scale)))

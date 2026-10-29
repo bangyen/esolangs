@@ -47,3 +47,6 @@ verdict = "kept: a last-level node prints Bp or 1 - b (ici*Bii**+p) instead of p
 saving = 3.39
 arity = 12
 verdict = "recorded: the fold's drain spelling. After the constant prints, nothing reads the stack, so bare B replaces B$ — the Decisions figure (2n+5 -> n+5 a table) is the constant root's emission, verified: a constant table costs exactly n+5 chars. The B$ variant is execution-gated clean, so the price is real: spelling the drain B$ costs +3.60 / +3.44 / +3.41 / +3.39 / +3.39% on random tables at n=4/6/8/10/12 (one char per drained bit; the share is flat) and +70.59% on constant tables at n=12, where the program is nearly all drain. Part of the fold's realization, not a separate device"
+
+[audits]
+plain_rewrite = 2026-10-28

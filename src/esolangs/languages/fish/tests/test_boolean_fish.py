@@ -170,7 +170,7 @@ def test_the_fold_height_past_225_doubles_from_the_body_length() -> None:
 
 @pytest.mark.parametrize(("n", "side"), [(7, 20), (8, 22)])
 def test_balance_folds_the_packed_row(n: int, side: int) -> None:
-    """Seed n: the packed row folded beats every unpacked fold (30 / 34)."""
+    """Seed n: the packed row folded (an unpacked fold gave side 30 / 34)."""
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
     balanced = esolangs.generate("Fish", table, balance=True)
     assert balance_score(balanced)[0] == side

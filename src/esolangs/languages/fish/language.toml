@@ -56,3 +56,13 @@ arity = 8
 seed = "random.Random(131s + n), s = 0..19"
 tables = "20 random per n=7,8 (5 per n=9..12) plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7..10"
 verdict = "kept: balance folded only the unpacked table (n=8: side 34), never the packed row (169 cells in 1 row). The packed fold keeps the code as a snake of c columns, the six powers in the row under it and the cells in c-wide rows below, addressed by (i % c, rows + 1 + i // c) at about 19 extra characters; c is 0.9 / 1.0 / 1.1 / 1.2 times sqrt(2 len(packed row)), within 4.2% of the best width of a 4..89 sweep over 71 tables n=3..10. Balanced area (score squared): -55.6% / -58.1% on random tables at n=7 / 8 (side 30 -> 20, 34 -> 22), -64.6% / -82.0% / -76.4% / -88.5% at n=9..12 (5 tables each, still growing); named: and/or/majority/thresholds -55.6 / -58.1 / -64.6 / -82.0% at n=7..10, parity -55.6 / -58.1 / -64.6 / -66.0% (it beats the one-column parity program). The default is byte-identical on all 72 tables. Every balanced program ran on every row (72 tables, n=7..10, 0 bad), a wrong table failed on each; 1,416 tables (all n<=3, sampled n=4..6 with ignored inputs) and the fold at 12 widths 4..64 on 150 tables ran too, 0 bad"
+
+[ablations.balance_unpacked_folds]
+saving = 0.0
+arity = 8
+seed = "random.Random(4242 + n)"
+tables = "20 random per n=3..8, every table at n=1,2, plus parity/majority/and/or/nand/nor/threshold-3/threshold-(n-1)"
+verdict = "retired 2026-10-28 (plain-rewrite audit): balance also tried the unpacked table folded at every power-of-two width; it never beat the default or the packed fold, so balanced area is identical without it on every table at n=1..8. Every balanced program ran (0 bad), a complemented table failed. _folded still serves explicit widths"
+
+[audits]
+plain_rewrite = 2026-10-28

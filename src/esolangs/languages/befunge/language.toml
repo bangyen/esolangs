@@ -54,3 +54,13 @@ verdict = "kept: canonical, exempt. Ignored inputs weigh 0 in the Horner fold an
 saving = 0.0
 arity = 13
 verdict = "kept: cap machinery, not priced. Above 2^10 cells the table is packed six bits per printable-ASCII cell (at n=13, 8,192 cells ship as ~1,366 data cells, area 1,600). The unpacked table cannot fit the fixed 80x25 torus at all, so no valid ablated build exists to price against"
+
+[ablations.balance_narrow]
+saving = 0.0
+arity = 8
+seed = "random.Random(4242 + n); 777 + n for the n<=10 diff"
+tables = "20 random per n=3..8, every table at n=1,2, plus parity/xnor/majority/and/or; 15 random plus parity/majority/and/constant per n=3..10"
+verdict = "retired 2026-10-28 (plain-rewrite audit): balance's single-digit-column candidates (widths 4-9) won only at n=1 (32.5% balanced area) and n=2 (4.0%) and on constant tables to n=6 (side 12 -> 15), none of them a judged class; 0% on random and named tables at n=3..10. Every balanced program ran (0 bad), a complemented table failed. The narrow bound stays for explicit widths. The one-column parity candidate was priced with it and kept: 0% at n<=8 but side 48 against 51 at n=10 (12.9% area on parity)"
+
+[audits]
+plain_rewrite = 2026-10-28

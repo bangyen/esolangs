@@ -171,10 +171,10 @@ def test_requested_width_builds_the_exact_grid(
 @pytest.mark.parametrize(
     ("table", "shape"),
     [
-        ("1" * 16, (42, 6, 9)),
+        ("1" * 16, (50, 6, 11)),
         ("0010001010001001", (78, 7, 14)),  # the crossing's side + 2 wins
         (_seeded(6), (140, 9, 17)),
-        (_seeded(7), (218, 11, 20)),  # the narrow layout's floor passes 9 columns
+        (_seeded(7), (218, 11, 20)),
         (_seeded(11), (484, 15, 32)),
     ],
 )
