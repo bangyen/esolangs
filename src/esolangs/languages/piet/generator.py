@@ -17,7 +17,7 @@ from esolangs.generation.raster_lookup.balance import (
     balance,
     folded,
 )
-from esolangs.generation.raster_lookup.packing import smallest
+from esolangs.generation.raster_lookup.packing import _raster_score, smallest
 from esolangs.raster import Raster
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, SourceKind
@@ -50,6 +50,17 @@ def _smallest(truth_table: str) -> Raster:
     return packed if _area(packed) < _area(flat) else flat
 
 
+def _balance(truth_table: str, default: Raster) -> Raster:
+    """Balance the strip, keeping the packed default when it is squarer.
+
+    Seeded with the packed default, the balancer's area ceiling left it
+    unchanged on random tables; the strip gives -24.4% balanced area at
+    n=7 and parity / majority -14% to -26% at n=7..9
+    ([ablations.balance_strip_seed]).
+    """
+    return min(balance(truth_table, _generate(truth_table)), default, key=_raster_score)
+
+
 def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
     """Return a Piet raster computing the table."""
     if width is not None:
@@ -67,7 +78,7 @@ LANGUAGE = Language(
         note="the committed example is drawn at 80 pixels per codel; "
         "generate draws 1 unless --scale says otherwise"
     ),
-    balance=balance,
+    balance=_balance,
     eof="an exhausted input command is ignored, as the spec requires",
     example=Example(scale=80),
 )

@@ -58,6 +58,13 @@ seed = "random.Random(4242 + n)"
 tables = "20 random per n=3..8, 6 at n=9..10, every table at n=1,2, plus parity/majority/and/or/nand/nor/threshold-2/threshold-(n-1)"
 verdict = "retired 2026-10-28 (plain-rewrite audit): balance's dense two-row-bend plan and its closing repack of the default never changed the balanced side on any table at n=1..10; the default is already packed. Every program ran (0 bad)"
 
+[ablations.balance_strip_seed]
+saving = 24.4
+arity = 7
+seed = "random.Random(4242 + n)"
+tables = "20 random per n=3..8, 5 at n=9..12, every table at n=1,2, plus parity/majority/and/or/threshold-2/threshold-(n-1)"
+verdict = "kept 2026-10-28 for parity and majority: balance seeded with the strip instead of the packed default (the packed default stays a candidate). Balanced area (side^2) on random tables -8.3 / -20.5 / -26.6 / -24.4 / 0.0 / -3.2 / -2.5 / -1.8 / -3.9% at n=4..12, so random tables alone miss the bar at n=8; parity -27 / -39 / 0 / -26 / 0 / -14% at n=4..9, majority -39 / -15 / -26 / -23 / -14 / 0 / -9% at n=5..11; and/or unchanged; no table larger. The packed-seeded call was redundant beside the default (identical on 128 tables). Every changed program ran (0 bad)"
+
 [ablations.sum_form_and_flipped_table]
 saving = 46.2
 arity = 12
