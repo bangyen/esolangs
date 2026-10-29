@@ -41,3 +41,13 @@ verdict = "kept: canonical, exempt. The leaf chain covers the table read at the 
 saving = 63.2
 arity = 12
 verdict = "kept: a maximal run of equal rows is one leaf behind js clamped decrements instead of one leaf a row. Giving every row its own leaf costs +62.75% at n=10 and +63.19% at n=12 on random tables (confirmation set +63.34%), +34.57 / +34.87% on parity and +318.48 / +328.97% on AND. The Decisions note's n=7 figures for this mechanism do not reproduce on their stated shapes; see RETIREMENT-CANDIDATES entry F29"
+
+[ablations.negated_twin]
+saving = 130.0
+arity = 8
+seed = "random.Random + named tables"
+tables = 20
+verdict = "kept under the named-function rule (plain-rewrite audit 2026-10-29): the table reversed and negated is built beside the plain build and the shorter kept. Dropping it costs +100% on and/nand at n=7, +130% at n=8 (385 -> 885), +173% at n=10; majority and thr4 1-2%; random tables, or, nor, parity 0.0% at n=7..10, so it never grows a program"
+
+[audits]
+plain_rewrite = 2026-10-29

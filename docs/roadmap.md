@@ -64,18 +64,20 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (63): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Audited (68): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
 Algebraic Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark,
-Back, Befunge, BFStack, Bitdeque, Blindfolded Arithmetic, Boolfuck,
+Back, Befunge, BFStack, Bitdeque, bit~, Blindfolded Arithmetic, Boolfuck,
 brainfuck, BrainIf, Circlefuck, Circuit Diagram, Clockwise, Collatz
-Multiverse, Container, Crement, CV(N)(C), Dig, Dimensional, FALSE, Fargo,
-Fish, Flowchart, Forbin, FRACTRAN, Freestajlo, Inject, INTERCAL,
-Interprogck8, LaserFuck, Line, Malbolge, Minifuck, Modulous, Packlang,
-Painfuck, Piet, Polynomial, Qoibl, RAM0, ROTfuck, S*bleq, SLOW ACV
-MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, Suffolk, Taglate,
-thisthat, Thue, Underload, Unlambda. Next by kept `[ablations]`: bit~ 3,
-Decleq 3, EGL 3, Forþ 3, Home Row 3, Hot 3, NOR machine 3, SendStuff 3, Smu
-3, Unary 3.
+Multiverse, Container, Crement, CV(N)(C), Decleq, Dig, Dimensional, EGL,
+FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row,
+Inject, INTERCAL, Interprogck8, LaserFuck, Line, Malbolge, Minifuck,
+Modulous, Packlang, Painfuck, Piet, Polynomial, Qoibl, RAM0, ROTfuck,
+S*bleq, SLOW ACV MAMMALIAN, Smallfuck, SStack, Streetcode, Subleq, Suffolk,
+Taglate, thisthat, Thue, Underload, Unlambda. Next by kept `[ablations]`:
+Hot 3, NOR machine 3, SendStuff 3, Smu 3, Unary 3, Balik 2, Bitwise Cyclic
+Tag 2, Bleh 2, Caballo 2, Codesick 2, Cyclic tag 2, Eval 2, Fackward 2,
+Minsky Swap 2, Pointless 2, Quassaunt 2, Stisp 2, Super SNUSP 2, SwitchCase
+2, Unsquare 2.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 

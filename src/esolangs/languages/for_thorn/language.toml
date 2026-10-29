@@ -40,7 +40,7 @@ verdict = "kept: canonical, exempt. A repeated subtree is emitted once; a later 
 [ablations.subtree_floor]
 saving = 0.0
 arity = 12
-verdict = "recorded: a twin call is kept only when shorter than _FORTH_SUBTREE_FLOOR. Deleting the rule changes nothing: the no-floor build is byte-identical to the shipped build on all 744 tables checked, so every twin call that arises is already under the floor. The rule never binds"
+verdict = "retired 2026-10-29 (plain-rewrite audit): a twin call was kept only when shorter than a dispatch plus two scopes (17 characters). It never bound: the no-floor build is byte-identical on all 744 tables checked to n=12 and on random, parity and majority at n=14 and 16 (a floor of 0 does change output, 16,575 -> 57,838 at n=12), so balanced area is unchanged too. A call outgrows 17 characters only for twins 15**4 or more back, where keeping it could only stop the canonical sharing"
 
 [ablations.constant_fold]
 saving = 39.3
@@ -51,3 +51,6 @@ verdict = "kept: canonical, exempt, and load-bearing for the sharing. A constant
 saving = 0.0
 arity = 12
 verdict = "recorded: the tree tests the last bit first because each scope is entered with its bit below its index; the order is a property of the construction, not a choice. Dropping the permutation computes wrong functions (623 wrong of 2,048 gate executions). Correctness machinery; no price"
+
+[audits]
+plain_rewrite = 2026-10-29

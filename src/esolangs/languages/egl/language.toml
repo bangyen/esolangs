@@ -46,3 +46,13 @@ verdict = "kept: canonical, exempt. A constant reads its inputs into a scratch c
 saving = 90.7
 arity = 12
 verdict = "kept: canonical, exempt. Row 1 is painted with the table read at the essential inputs and each guard walks by its weight in that table; an ignored input is a bare read. Painting the full table with full weights instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +75.71 / +90.71%, two +190.45 / +251.55%, three +338.81 / +516.61%, a half-constant table +4077.03 / +14209.21%"
+
+[ablations.balance_width_search]
+saving = 0.0
+arity = 12
+seed = "random.Random(9100 + n)"
+tables = 564
+verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also tried widths square - 1, square + 1 and floor - 1. None ever won: the plain fold at max(floor, balance_width) gives byte-identical balanced output on 564 tables (60 random a arity to n=8, 6 above, plus parity, and, or, majority, at-least-2) at n=1..12, so balanced area is unchanged"
+
+[audits]
+plain_rewrite = 2026-10-29

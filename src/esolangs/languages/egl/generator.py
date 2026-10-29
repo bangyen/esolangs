@@ -73,15 +73,15 @@ def _wrap(program: str, width: int | None) -> str:
 
 
 def _balance(_table: str, default: str) -> str:
-    """Return the best character fold across the header-width regimes."""
-    header = default.partition(":")[0]
-    floor = len(header) + 1
-    square = balance_width(default)
-    # Below ``floor`` the header row is widest, so the side only falls with
-    # rows: the widest such width, floor - 1, is that regime's best.
-    widths = {max(floor, width) for width in (square - 1, square, square + 1)}
-    widths.add(max(1, floor - 1))
-    return min(default, *(_wrap(default, width) for width in widths), key=balance_score)
+    """Return the fold at the balanced width, never narrower than the header.
+
+    The neighbouring widths and ``floor - 1`` never won on 564 tables at
+    n=1..12 (``[ablations.balance_width_search]``).
+    """
+    floor = len(default.partition(":")[0]) + 1
+    return min(
+        default, _wrap(default, max(floor, balance_width(default))), key=balance_score
+    )
 
 
 LANGUAGE = Language(
