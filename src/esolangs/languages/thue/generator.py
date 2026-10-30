@@ -11,12 +11,14 @@ state reached has one rule at one position), so the answer is reproducible
 unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 A constant half is stored once (:func:`_fold`, shorter from nine inputs) on
-every path; and/or n=9/10 -19%/-32% chars, 0% balanced (the balancer's
-chunked layout wins).
+every path.  From seven inputs every layout stores each entry pair as one symbol
+(``cdef``) that ``R`` expands on its first sweep left: four rules for half the
+table ([ablations.pair_packing]).
 
 Size:
-    ``T + 187`` characters; n=4 random 1847: 203 chars, n=10 random 1847:
-    1,211 chars, n=10 and: 821 chars (constant half folded).
+    ``T + 187`` characters below seven inputs, ``T/2 + 223`` from seven; n=4
+    random 1847: 203 chars, n=10 random 1847: 735 chars, n=10 and: 585 chars
+    (constant half folded and packed).
 
 Decisions:
     A named repeated block, expanded before lookup, saved 0% on random tables
@@ -86,13 +88,28 @@ _QUEUED_RULES = "\n".join(
             "K" + rule[1:].replace("::=LM", "::=M") if "::=LM" in rule else rule
             for rule in _RULES.splitlines()[:-1]
         ),
-        "SR::=JR",
-        "J::=:::",
+        "SR::=MR",
         "0R::=R",
         "1R::=R",
         "::=",
     ]
 )
+
+
+#: Pair symbols of a packed layout, with the rules expanding each as ``R`` sweeps
+#: left over it: four rules replace half the table.
+_PAIRS = {"aa": "c", "ab": "d", "ba": "e", "bb": "f"}
+_PACK_RULES = tuple(f"{symbol}R::=R{pair}" for pair, symbol in _PAIRS.items())
+
+
+def _pair_symbols(entries: str) -> str:
+    """Return ``entries`` with each pair replaced by its symbol."""
+    return "".join(_PAIRS[entries[i : i + 2]] for i in range(0, len(entries), 2))
+
+
+def _is_packed(extra: tuple[str, ...]) -> bool:
+    """Return whether ``extra`` ends with the pair-expansion rules."""
+    return extra[-len(_PACK_RULES) :] == _PACK_RULES
 
 
 #: Chunk-name symbols: no table or control symbol.  A queued layout also
@@ -146,12 +163,11 @@ def thue(truth_table: str, width: int | None = None) -> str:
 #: deletes the entries to one (``V``) which the constant restores.  A queued
 #: ``K`` meeting that single entry only reads and deletes its line, as ``S`` does.
 _FOLD_RULES = (
-    "ZR::=YWR",
-    "Y::=:::",
+    "ZR::=MWR",
     "VRa::=VR",
     "VRb::=VR",
-    "KRaE::=JRaE",
-    "KRbE::=JRbE",
+    "KRaE::=MRaE",
+    "KRbE::=MRbE",
 )
 
 
@@ -159,8 +175,8 @@ def _fold(truth_table: str) -> tuple[str, str, tuple[str, ...]] | None:
     """Return ``(kept half, rounds, extra rules)`` storing one half of a table.
 
     The fold's nine rules cost about 110 characters, so it wins from nine
-    inputs (-19% at n=9, -32% at n=10 on a constant half); ``None`` when no
-    half is constant.
+    inputs ([ablations.constant_half_fold]); ``None`` when no half is
+    constant.
     """
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
@@ -195,7 +211,8 @@ _Layout = tuple[str, str | None, tuple[str, ...]]
 def _tables(truth_table: str) -> list[_Layout]:
     """Return the ``(table, rounds, extra rules)`` layouts.
 
-    Queued only if an input is ignored; folded only if a half is constant.
+    Queued only if an input is ignored; folded only if a half is constant;
+    each also packed once the table is long enough for its four rules to pay.
     """
     n = _validate_truth_table(truth_table)
     layouts: list[_Layout] = [(truth_table, None, ())]
@@ -205,6 +222,11 @@ def _tables(truth_table: str) -> list[_Layout]:
         layouts.append((read_at(truth_table, essential, n), rounds, ()))
     if (fold := _fold(truth_table)) is not None:
         layouts.append(fold)
+    layouts += [
+        (table, rounds, (*extra, *_PACK_RULES))
+        for table, rounds, extra in layouts
+        if len(table) >= 64
+    ]
     return layouts
 
 
@@ -256,16 +278,35 @@ def _thue_layout(
     queued = rounds is not None
     entries = _thue_entries(table)
     base = _QUEUED_RULES if queued else _RULES
+    if queued and len(entries) == 1:
+        # No essential input: every round is a read-and-delete, so no sweep
+        # or halving rule can fire and only the one printed answer is needed.
+        base = "\n".join(
+            [
+                f"LR{entries}E::=~{'ab'.index(entries)}",
+                "SR::=MR",
+                "M::=:::",
+                "0R::=R",
+                "1R::=R",
+                "::=",
+            ]
+        )
     if extra:
         base = "\n".join([base.removesuffix("\n::="), *extra, "::="])
-    start = f"L{rounds}R" if queued else "LM"
-    program = f"{base}\n{start}{entries}E"
+    start, end = (f"L{rounds}R", "E") if queued else ("LM", "E")
+    packed = _is_packed(extra)
+    if packed:
+        # The state is a finished read's: ``R`` expands each pair on its way left.
+        entries = _pair_symbols(entries)
+        start, end = f"L{rounds or ''}", "RE"
+    program = f"{base}\n{start}{entries}{end}"
     limit = _width_limit(width)
     if limit is None or grid_width(program) <= limit:
         return program
     # Contracting would merge the fold's ``KRaE`` with the final ``LRaE``.
-    rules_text = base if extra else _contracted(base, queued=queued)
-    narrow = f"{rules_text}\n{start}{entries}E"
+    folded = extra[: len(extra) - 4 * packed]
+    rules_text = base if folded else _contracted(base, queued=queued)
+    narrow = f"{rules_text}\n{start}{entries}{end}"
     if grid_width(narrow) <= limit:
         return narrow
     # One-symbol nodes fit only bounded arities (-40% at n=3, widths 1-8;
@@ -277,9 +318,15 @@ def _thue_layout(
 
 def _alphabet(rounds: str | None, extra: tuple[str, ...]) -> str:
     """Return the chunk-name symbols no rule of the layout matches."""
-    if extra:
-        return _FOLD_NAME_ALPHABET
-    return _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
+    if extra[: len(extra) - 4 * _is_packed(extra)]:
+        alphabet = _FOLD_NAME_ALPHABET
+    else:
+        alphabet = _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
+    return (
+        "".join(c for c in alphabet if c not in "cdef")
+        if _is_packed(extra)
+        else alphabet
+    )
 
 
 def _shared_layout(
@@ -289,6 +336,9 @@ def _shared_layout(
     entries = _thue_entries(table)
     if len(entries) < 2:
         return None
+    packed = _is_packed(extra)
+    # Pair symbols halve every span; the two extra frontier rules cost 18.
+    unit = 2 if packed else 1
     ids = subtree_ids(entries.translate(str.maketrans("ab", "01")))
     best: tuple[int, int, int] | None = None
     saved = 0
@@ -297,7 +347,7 @@ def _shared_layout(
         counts = Counter(layer)
         for index, state in enumerate(layer):
             copies = counts[state]
-            saving = (copies - 1) * span - copies - 31
+            saving = (copies - 1) * span // unit - copies - 31 - 9 * (unit - 1) * 2
             if state >= 2 and copies > 1 and saving > saved:
                 best, saved = (index * span, span, copies), saving
     if best is None:
@@ -314,6 +364,9 @@ def _shared_layout(
         return None
     alphabet = _alphabet(rounds, extra)
     front, name = alphabet[0], alphabet[1]
+    if packed:
+        entries = _pair_symbols(entries)
+        row, span, length = row // 2, span // 2, length // 2
     body = entries[row : row + span]
     encoded = "".join(
         name if entries[i : i + span] == body else entries[i : i + span]
@@ -323,8 +376,7 @@ def _shared_layout(
     rules = [
         *base.splitlines()[:-1],
         *extra,
-        f"{front}a::=a{front}",
-        f"{front}b::=b{front}",
+        *(f"{front}{c}::={c}{front}" for c in (_PAIRS.values() if packed else "ab")),
         f"{front}{name}::={body}{front}",
         f"{front}E::=RE",
         "::=",
@@ -394,7 +446,7 @@ def balance_thue(truth_table: str, default: str) -> str:
     candidates = [default, plain, thue(truth_table, 1)]
     cap = max(grid_width(default), grid_width(plain))
     for table, rounds, extra in _tables(truth_table):
-        size = len(table)
+        size = len(table) // (2 if _is_packed(extra) else 1)
         digits = _marker_digits(size, len(_alphabet(rounds, extra)))
         base = _RULES if rounds is None else _QUEUED_RULES
         rules = len(base.splitlines()) + len(extra)

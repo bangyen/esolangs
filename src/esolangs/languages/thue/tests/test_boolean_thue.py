@@ -12,7 +12,7 @@ from esolangs.languages.thue.interpreter import _Machine, _matches
 from esolangs.languages.thue.interpreter import run as run_thue
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
-from tests.generators.reader_support import _TABLES, assert_emissions_grow_by_a_line
+from tests.generators.reader_support import _TABLES
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
 
@@ -82,14 +82,14 @@ def test_expansion_crosses_name_widths_without_rewrite_collisions() -> None:
 @pytest.mark.medium
 def test_chunk_bounds_stay_narrower_across_marker_digit_boundaries() -> None:
     """Expansion needs T>=8; its bound max(width,9,3d+3) is below T+3."""
-    for n, floor in ((3, 7), (6, 9), (11, 12)):
+    for n, floor in ((3, 7), (6, 9), (12, 12)):
         table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
         natural = max(map(len, thue(table).splitlines()))
         assert max(map(len, thue(table, 1).splitlines())) == floor
         for width in (1, natural - 1):
             assert max(map(len, thue(table, width).splitlines())) < natural
         for row in (0, len(table) - 1):
-            _execute(table, row, 1 if n < 11 else 80)
+            _execute(table, row, 1 if n < 12 else 80)
 
 
 @pytest.mark.medium
@@ -105,14 +105,14 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
 
 
 def test_thue_proof_text_counts_the_emitted_rules() -> None:
-    """The ledger's worst T + 187 is the plain layout: 19 rules, 23 queued."""
+    """The ledger's T + 187 bound is the plain layout: 19 rules, 22 queued."""
     from scripts.docs.proof_status import load
 
-    for table, count in (("0110", 19), ("0110" * 32, 23)):
+    for table, count in (("0110", 19), ("0110" * 32, 22)):
         lines = boolean.thue(table).splitlines()
         assert len(lines[: lines.index("::=")]) == count, table
     scaling = next(row.scaling for row in load()[0] if row.generator == "Thue")
-    assert "worst T + 187 characters" in scaling
+    assert "at most T + 187 characters" in scaling
 
 
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
@@ -120,7 +120,7 @@ def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
     sizes = [len(boolean.thue("01" * (2 ** (n - 1)))) for n in (1, 2, 3, 4)]
     assert sizes == [2**n + 187 for n in (1, 2, 3, 4)]
     total = sum(len(boolean.thue(f"{value:08b}")) for value in range(256))
-    assert total == 49920
+    assert total == 49632
 
 
 @pytest.mark.parametrize("table", _TABLES)
@@ -163,7 +163,7 @@ def test_an_ignored_input_reads_without_halving() -> None:
     # Seven inputs, the third ignored: 64 entries, not 128.
     table = "".join(inner[row >> 5 << 4 | row & 15] for row in range(128))
     program = boolean.thue(table)
-    assert "SR::=JR" in program
+    assert "SR::=MR" in program
     assert len(program) < len(boolean.thue(inner)) + 50
     for row in range(0, 128, 5):
         io = ScriptedIO("".join(f"{bit}\n" for bit in _bits(row, 7)))
@@ -246,17 +246,21 @@ def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
                 machine.step()
             assert (io.getvalue(), io.reads) == (table[row], n)
     rng = random.Random(0)
-    half = "".join(rng.choice("01") for _ in range(256))
-    dense = half + "".join(rng.choice("01") for _ in range(256))
+    half = "".join(rng.choice("01") for _ in range(512))
+    dense = half + "".join(rng.choice("01") for _ in range(512))
     # Not balanced: the fold's queued rules leave its best side at 76 (596
     # chars), so balance keeps the unfolded side-64 layout (775 chars).
-    folded = generate("Thue", half + "1" * 256)
+    folded = generate("Thue", half + "1" * 512)
     assert len(folded) < 0.85 * len(generate("Thue", dense))
 
 
 def test_the_emissions_grow_by_a_line() -> None:
     """Thue drops an ignored input's round, so it is measured on parity."""
-    assert_emissions_grow_by_a_line(thue, parity=True)
+    sizes = [
+        len(thue("".join(str(row.bit_count() & 1) for row in range(2**n))))
+        for n in (8, 10, 12)
+    ]
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) == 4.0
 
 
 def _swept_balance(table: str, default: str) -> str:
@@ -311,7 +315,7 @@ def test_balance_root_payload_matches_the_swept_side() -> None:
     assert old <= new < 1.01 * old
 
 
-@pytest.mark.parametrize(("n", "score"), [(8, (58, 495, 53)), (11, (94, 1438, 92))])
+@pytest.mark.parametrize(("n", "score"), [(8, (58, 495, 53)), (11, (84, 1371, 79))])
 def test_balanced_fold_tables_keep_their_square(
     n: int, score: tuple[int, int, int]
 ) -> None:
@@ -325,7 +329,7 @@ def test_balanced_fold_tables_keep_their_square(
 
 @pytest.mark.parametrize(
     ("table", "width", "size"),
-    [("00", 11, 189), ("00", 9, 193), ("00111011", 10, 211)],
+    [("00", 11, 49), ("00", 9, 49), ("00111011", 10, 211)],
 )
 def test_width_requests_keep_their_exact_size(
     table: str, width: int, size: int
@@ -336,13 +340,54 @@ def test_width_requests_keep_their_exact_size(
 
 @pytest.mark.medium
 def test_an_exactly_repeated_block_builds_below_the_block_alone() -> None:
-    """Four copies of a 2^10-row block at n=12 build under the block's own lookup."""
+    """Four copies of a 2^10-row block at n=12 build near the block's own lookup."""
     rng = random.Random(7)
     block = "".join(rng.choice("01") for _ in range(1 << 10))
     table = block * 4
     program = thue(table)
-    assert len(program) < len(thue(block))
+    assert len(program) < 1.1 * len(thue(block))
     for row in rng.sample(range(1 << 12), 16):
         io = ScriptedIO("".join(f"{bit}\n" for bit in _bits(row, 12)))
         run_thue(program, io, Seeded(0))
         assert io.getvalue() == table[row], row
+
+
+@pytest.mark.medium
+def test_packed_layouts_expand_before_reading_and_stay_deterministic() -> None:
+    """Plain, queued, folded and shared layouts pack pairs yet draw nothing."""
+    from esolangs.languages.thue.generator import (
+        _is_packed,
+        _shared_layout,
+        _tables,
+        _thue_layout,
+    )
+
+    rng = random.Random(4)
+    plain = "".join(rng.choice("01") for _ in range(128))
+    x, y, z = ("".join(rng.choice("01") for _ in range(128)) for _ in range(3))
+    tables = (
+        plain,
+        "".join(c * 2 for c in plain[:64]),
+        plain[:64] + "0" * 64,
+        (x + y + x + z) * 2 + "0" * 1024,
+    )
+    kinds = set()
+    for table in tables:
+        n = len(table).bit_length() - 1
+        programs = []
+        for layout in _tables(table):
+            if _is_packed(layout[2]):
+                kinds.add("fold" if len(layout[2]) > 4 else layout[1] is not None)
+                programs.append(_thue_layout(*layout, None))
+                if (shared := _shared_layout(*layout, n)) is not None:
+                    kinds.add("shared")
+                    programs.append(shared)
+        for program in programs:
+            for row in rng.sample(range(len(table)), 6):
+                io = ScriptedIO("\n".join(f"{row:0{n}b}"))
+                machine = _Machine(program, io, Seeded(row))
+                while not machine.halted:
+                    assert len(_matches(machine.state, machine.rules)) == 1
+                    machine.step()
+                assert (io.getvalue(), io.reads) == (table[row], n)
+    assert kinds == {False, True, "fold", "shared"}

@@ -7,8 +7,8 @@ backlinks = 158
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per essential input and the last character is the answer; an ignored input's round reads its line and deletes it; the rules never overlap, so the language's random rule choice has nothing to choose"
-scaling = "linear: worst T + 187 characters: the plain layout and the table"
-execution = "linear: worst 2T + 3n - 2 rewrites: n rounds, each a marker sweep out and back"
+scaling = "linear: at most T + 187 characters: T/2 + 223 once pairs pack"
+execution = "linear: at most 5T/2 + 3n - 1 rewrites: n marker sweeps, one expanding pairs"
 workspace = "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string"
 
 [generator_sizes]
@@ -22,21 +22,26 @@ workspace = "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state stri
 "11111110" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
 
 [formula_arities]
-execution = [3, 6]
+execution = [3, 7]
 workspace = [3, 6]
 
 [ablations]
 audited = "2026-10-19"
 
 [ablations.queued_projection]
-saving = 60.4
+saving = 48.4
 arity = 10
-verdict = "kept: canonical projection, exempt; when an input is ignored the table is laid out at its essential inputs and a queue of K/S rounds (K halves, S reads and deletes) runs one round per input, raced against the plain layout by length. 0.0% on random tables (the layout is never offered and the plain layout is exactly T + 187 chars whatever the table), 21.2% / 35.7% on tables ignoring one or two inputs of 8, 39.3% / 60.4% at n=10, 46.1% / 80.0% on 16-row tiled tables at n=8/10, 49.9% / 81.5% on constant tables; priced by race marginal"
+verdict = "kept: canonical projection, exempt; when an input is ignored the table is laid out at its essential inputs and a queue of K/S rounds (K halves, S reads and deletes) runs one round per input, raced against the plain layout by length. 0.0% on random tables (the layout is never offered and the plain layout is exactly T + 187 chars whatever the table). Re-measured 2026-10-30 against the packed lookup (seed 5 tiled tables): 10.8% / 21.1% with one / two inputs of 8 ignored, 31.0% / 48.4% of 10; the S round reads through M (no J rule), a no-input table keeps only its print and read rules (49 chars at n=1), 46.1% / 80.0% earlier on 16-row tiled tables at n=8/10 before packing; priced by race marginal"
 
 [ablations.constant_half_fold]
-saving = 32.2
+saving = 20.4
 arity = 10
-verdict = "kept: a constant half of the table is stored once, with nine extra rules of about 110 chars restoring it, raced against the unfolded layouts by length; priced by race marginal. 1.8% on constant-half tables at n=8, 19.3% at n=9 and 32.2% at n=10 (the docstring's -19% / -32% and 'wins from nine inputs' reproduce), 32.2% on AND/OR at n=10 and 44.9% at n=12. The module docstring's balanced figures (-24% / -35%) do not reproduce under any current construction: 19.3% / 32.2% on the plain race, 0.0% under balance_thue, whose winner on constant-half tables is an unfolded chunked layout"
+verdict = "kept: a constant half of the table is stored once, with nine extra rules of about 110 chars restoring it, raced against the unfolded layouts by length; priced by race marginal. Re-measured 2026-10-30 against the packed lookup, which composes with it: 4.8% on constant-half tables at n=9, 20.4% at n=10 and 40.3% at n=12 (and/or 456 vs 479, 585 vs 735, 1,355 vs 2,271 chars); before packing 19.3% / 32.2% at n=9 / 10. The module docstring's balanced figures (-24% / -35%) do not reproduce: the unfolded chunked layout wins every balanced constant-half table (0.0%)"
+
+[ablations.pair_packing]
+saving = 20.8
+arity = 8
+verdict = "kept 2026-10-30 (random + named bar): each entry pair is one symbol of c/d/e/f and R, starting at the right end, expands it on its way left, so four rules (36 chars) replace half the table, in every layout (plain, queued, folded, shared). On 100 seeded random tables (random.Random(1847 + n)) chars fall 8.9% at n=7 (31,500 -> 28,700) and 20.8% at n=8 (44,300 -> 35,100), 15.8% over both; named parity / majority / threshold-3 8.9% / 20.8%, and / or 8.9% / 19.3% at n=7 / 8; n=7 is under the 10% bar alone, the 36-char rule block being fixed. Balanced area 0.0% on 30 random tables and the five named functions at n=7 and n=8 (the chunked layout's 27 rules push its side to 60 against 58). Executed: every row of the five named functions and 15 random tables at n=7 and n=8, balanced and not, plus width-limited builds, compute their tables; the wrong-table control fails on all 128 rows"
 
 [audits]
 plain_rewrite = 2026-10-28
