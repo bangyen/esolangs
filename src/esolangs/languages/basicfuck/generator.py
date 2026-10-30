@@ -8,9 +8,10 @@ whose halves agree skips the test, and an empty arm drops its ``if``.  A
 repeated subtree is a block ``if(f){..}`` after the tree, entered through a
 flag each caller sets (a run follows one path, so a flag is set once).  The
 answer cell starts at 0 and each marked leaf adds 1; a closing ``+= 48`` and
-``write`` print it.  The complement's tree (marking the zero rows, counting
-down, closing with ``+= 49``) races the plain one; ``o=wrap`` makes the
--1 come out as 255 and the sum land on 48 or 49.
+``write`` print it.  A table with more ones than zeros builds its
+complement's tree instead (marking the zero rows, counting down, closing
+with ``+= 49``); ``o=wrap`` makes the -1 come out as 255 and the sum land
+on 48 or 49.
 
 Size:
     O(T) at most 14T + 16n + 43 chars, O(n) for parity; n=4 parity: 284
@@ -41,9 +42,10 @@ _LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
 def basicfuck(truth_table: str) -> str:
     """Build a Basicfuck program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count("1") <= len(truth_table) // 2:
+        return _program(truth_table, n, "+", _ASCII_ZERO)
     flipped = truth_table.translate(str.maketrans("01", "10"))
-    plain = _program(truth_table, n, "+", _ASCII_ZERO)
-    return min(plain, _program(flipped, n, "-", _ASCII_ZERO + 1), key=len)
+    return _program(flipped, n, "-", _ASCII_ZERO + 1)
 
 
 type _Key = tuple[int, int]  # (depth, subtree id): a node that tests an input

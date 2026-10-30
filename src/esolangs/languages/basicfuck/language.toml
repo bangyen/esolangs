@@ -36,8 +36,9 @@ verdict = "kept: canonical, exempt. A repeated subtree is a block entered throug
 saving = 28.0
 arity = 10
 seed = "random.Random(184900 + n)"
-tables = 100
-verdict = "kept under the named-function rule: the complement's tree, counting down and closing with += 49, races the plain one. OR 410 -> 303 chars and NAND 411 -> 293 at n=10 (26-29%), NOR 303 and AND 293 already plain; parity and majority 0.0%; random tables 0.36% at n=10 and 0.25% at n=12"
+tables = "30 random at n<=8, 20 at n=9..10; parity, majority, and, or, thr3 with complements"
+verdict = "replaced by a rule, 2026-10-30: the race (min of the plain tree and the complement's, counting down and closing with += 49) saved 0.72% on 200 random tables at n=8, 0.46% at n=10, but 26-29% on OR and NAND at n=10 (410 -> 303, 411 -> 293). Per the bar's named-function clause the race goes and a rule for that family stays: build the complement when ones outnumber zeros. The rule keeps every named gain (OR, NAND, thr2 662 -> 563, thr3 853 -> 779) except !majority at n=9 (859 vs 852), and saves 0.48% at n=8, 0.36% at n=10 on random; it builds one tree instead of two"
 
 [audits]
 blind_reimplementation = 2026-10-29
+plain_rewrite = 2026-10-29
