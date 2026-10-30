@@ -31,3 +31,6 @@ folds_without_tree = true
 
 [ablations]
 audited = "2026-10-29"
+
+[audits]
+plain_rewrite = 2026-10-29
