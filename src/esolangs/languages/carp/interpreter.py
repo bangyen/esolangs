@@ -1,9 +1,10 @@
 """Interpreter for CARP.
 
-A program is one instruction per line, ``OP rR C`` (``#`` comments, blank
-lines skipped; lines are numbered from 1 over the instructions).  Fifteen
-4-bit registers ``r1``..``r15`` start at 0.  Jumping to line 0, or past the
-last line, halts.
+A program is one instruction per line, ``OP rR C`` (``#`` to end of line is
+a comment; blank and comment-only lines are skipped; lines are numbered from
+1 over the instructions).  Fifteen 4-bit registers ``r1``..``r15`` start at
+0.  Jumping to line 0, or past the last line, halts; so does running off the
+last line.
 
 Commands:
     ``INC rR C``  at 15 goto C (no wrap); else add one, next line
@@ -18,7 +19,7 @@ Input/output:
 
 Errors:
     ProgramError: a malformed line, an unknown mnemonic, a register outside
-        1..15, or a program with no instruction.
+        1..15, or a program of only blank and comment lines.
     InputExhaustedError: ``INP`` at EOF.
     ArgumentError: an input token that is not an integer.
     HaltError: ``INP`` of a value outside 0..15.

@@ -18,12 +18,14 @@ Cost: each run scans its program once for top-level literals; ``|`` and
 Input/output:
     One input bit per run, bits riding bytes little-endian: each input byte
     supplies eight runs' bits, low bit first, and output bits pack low bit
-    first into bytes, a partial byte padded with zeros at halt.  Input is
-    reduced modulo 256.  EOF is a value, ``=``, never an error.
+    first into bytes, a partial byte padded with zeros at halt.  Each input
+    character's code point is reduced modulo 256.  EOF is a value, ``=``, never an
+    error.
 
 Errors:
-    ProgramError: Unbalanced parentheses in the source; a second macro name
-        inside a definition; a definition left open.
+    ProgramError: Unbalanced parentheses in the source; a name inside a
+        definition that is neither defined nor the open one; a definition
+        left open.
     HaltError: Output of a string holding ``(`` or ``)`` (before any of it
         prints); an unbalanced string popped as the next program (before it
         runs).
@@ -37,9 +39,10 @@ Decisions:
       is a stream read one bit per run, so there is nothing to wait for.
     * Output of ``(`` or ``)`` is unspecified, so it halts.
     * Parentheses "must be nested correctly".
-    * A second macro name inside a definition is an error ("you cannot
-      define a macro inside of another macro"); digits not followed by a
-      letter are ignored.
+    * Inside a definition, a name neither defined nor the open one is an
+      error ("you cannot define a macro inside of another macro"); a
+      defined name expands there, as the page's ``g`` inside ``y``.  Digits
+      not followed by a letter are ignored.
 """
 
 from __future__ import annotations

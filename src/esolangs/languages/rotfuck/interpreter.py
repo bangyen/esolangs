@@ -5,14 +5,16 @@ non-comment characters one step around ``+-><,.[]``.  A comment is passed
 over without rotating: only executed commands advance the rotation.
 Tape as plain Brainfuck: 8-bit.  The rotation count is tracked and the
 effective character derived, not the text rewritten.  Brackets seek their
-partner in the program as it stands, then the program rotates; a jump lands
-one past the partner.  Unbalanced sources are legal.
+partner in the program as it stands, then the program rotates; a jump, ``[``
+or ``]``, resumes at the instruction after the partner (partner + 1).
+Unbalanced sources are legal.
 
 Errors:
     InputExhaustedError: ``,`` at EOF.
     ArgumentError: A ``rotation`` setting other than ``backward`` or
         ``forward`` (the interpreter itself raises ValueError).
-    HaltError: A partnerless bracket that fires, without rotating.
+    HaltError: A partnerless bracket that fires: the run aborts with this
+        error (not a clean halt), before that bracket rotates.
 
 Decisions:
     * Direction (``rotation``).  The prose turns ``+`` into ``-``, but then

@@ -5,8 +5,9 @@
 accumulator and rewinds, ``,`` reads a character, ``.`` prints the
 accumulator minus one; the code reruns forever.  ``self_halts`` is
 ``False``: it does not promise the run never ends -- a read that runs out of
-input ends it.  :func:`run` otherwise stops on a repeated state, never a
-pass count.
+input ends it.  :func:`run` otherwise stops silently the first time a
+state repeats, checked before every command (not per pass): cursor, pointer,
+accumulator, tape, input cursor, EOF flag.  There is no pass count.
 
 Input/output:
     Each ``,`` reads the next character and adds its code to the

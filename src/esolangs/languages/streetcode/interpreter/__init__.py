@@ -10,7 +10,9 @@ an implementation convention corroborated by the wiki examples.  The page
 gives no geometry, so these are readings: the car starts on the first of
 N, E, S, W with a wall to its right and road ahead (``C`` at a ring's
 corner heads down the side road, not into the turn); a dead end turns the
-car across the street in two steps, so a ``U`` on the corner, met heading
+car across the street in two steps (heading E at the end cell: onto the
+other lane's cell in the same column, heading across, then one cell back
+along that lane; both cells run), so a ``U`` on the corner, met heading
 across, reverses it into the lane it was turning into, and one past the
 corner sends it back into the dead end for good.  With no lane beside the
 dead end (a wall-free grid one cell wide) the car reverses where it stands

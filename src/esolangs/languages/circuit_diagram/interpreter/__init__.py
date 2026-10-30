@@ -47,23 +47,30 @@ Decisions:
       value lasts one generation (XOR of what fired into it, else Null).
       Per "the gate waits until the other input comes", each gate keeps a
       latch per input slot, overwritten by each non-null arrival, and fires
-      when every slot is filled *and* one input is live -- which stops a
-      filled latch re-firing forever.  ``:`` prints whenever its wire
-      carries a value; a program halts on a quiescent generation.  Feedback
-      circuits are bounded by :func:`esolangs.vm.run_until_halt_or_cycle`
-      (the flip-flop is period 2), and latches are part of the machine's
-      snapshot.
+      when every slot is filled *and* one input is live (a non-null value
+      arrives this generation, even one equal to its latch) -- which stops a
+      filled latch re-firing forever.  ``:`` prints in every generation its
+      wire carries a value, changed or not; a program halts on a quiescent
+      generation.  A feedback circuit (the flip-flop is period 2) never
+      halts: a plain run prints until killed, and
+      :func:`esolangs.vm.run_until_halt_or_cycle` stops it at the first
+      repeated state, having printed all along (the flip-flop's ``:``
+      printed ``111``).  Latches are part of the machine's snapshot.
     * **Wire 1 is the first bit read and the MSB**: the only ordering under
-      which the example's formula is primality.
+      which the example's formula is primality.  A multi-wire is a tuple in
+      that order, so ``<`` gives its first ``n // 2`` wires to the upper
+      output and the rest to the lower, and ``>`` puts its upper input first.
     * **Gate ports are direction-sets.**  The prime tester feeds ``<`` from
       the upper-left ``/`` on one line and the lower-left ``\`` on another,
-      so a gate accepts any of its three left neighbours and drives any of
-      its three right ones, under the spec's rule that **one wiring may not
-      touch both a gate's inputs and its output**.  ``<`` drives only its
+      so a gate takes inputs from its three left neighbours and drives its
+      three right ones, the count found being exactly its arity (more or
+      fewer is a ProgramError), under the spec's rule that **one wiring may
+      not touch both a gate's inputs and its output**.  ``<`` drives only its
       two right diagonals ("from the upper right or lower right"), ``~``
-      takes the level cell when other wirings pass diagonally.  One wiring
-      may feed both slots of a gate (the constant-output circuit), so ports
-      count per cell.
+      takes only the level cell as its input when other wirings pass
+      diagonally (outputs have no such rule).  One wiring may feed both
+      slots of a gate (the constant-output circuit), so ports count per
+      cell.
     * The page's prime tester omits five characters: two OR inputs are
       undriven.  The repair is derived and unique: the circuit is a product
       of sums ``(? | c)``, ``(? | ~a | ~b)``, ``(d | ~a)``, ``(~b | d)``;

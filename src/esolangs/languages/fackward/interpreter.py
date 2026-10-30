@@ -7,9 +7,9 @@ Each step looks at the forward top: a number is popped and printed as a
 character; a function whose arguments sit directly behind it pops them and
 pushes its results on the backward stack; anything else moves there
 unchanged.  An empty forward stack swaps with the backward one, so each
-pass reads the sequence the other way round.  The second of two swaps with
-nothing printed or executed between them reads a character and pushes its
-code point on the (empty) backward stack.  ``H`` halts.  The wiki's Hello
+pass reads the sequence the other way round.  A swap with nothing printed or
+executed since the previous swap reads a character and pushes its code point
+on the (empty) backward stack.  ``H`` halts.  The wiki's Hello
 world and ``::`` loop run as stated, and the null program is a cat.
 
 Commands:
@@ -33,8 +33,10 @@ Decisions:
       making ``~`` a no-op.  So a pass's output is read reversed next pass.
     * Functions and blocks are values: ``::`` loops only if ``:``
       duplicates a function.
-    * Every pair of consecutive quiet swaps reads, including one that
-      follows a read: the page names no reset.  The first swap never reads.
+    * Pairs overlap: every swap after the first reads when nothing printed
+      or executed since the swap before it, and a reading swap counts as
+      that swap (the page names no reset), so a null program reads two
+      characters per pass.  The first swap never reads.
     * ``/`` floors; dividing by 0 or copying a negative count raises, since
       the page gives no result.
     * A read at EOF halts: the page's cat "doesn't handle end of file", so
