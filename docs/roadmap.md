@@ -66,12 +66,44 @@ ignored-input tables included).
   (seed chains before the pointer priming, ~1,800 path cells of returns
   past 127) is the open route.  The layout's cost is where navigation lands
   each walked cell, so a navigation rule comes first.
+- **Qrain plain-vs-shared check:** `generator.py` keeps the plain tree
+  when no shared form is shorter, which never happens once a shared form
+  exists (0 of 65,536 n=4 tables, 0 of 920 random n=4..8, 0 of 90 named
+  n=2..10; 2026-10-29 audit).  The single- vs multi-block comparison
+  beside it is live.
+- **Quassaunt balanced layout:** the shared `balanced_token_width`
+  picks side 472 at n=10 against 326 from the 2026-10-30 audit's own
+  rule (unverified which is smaller in area); measure balance-mode area
+  before changing the shared helper.
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
   corpus.  With no outside interpreter, this is the only independent
-  check a first implementation gets; the first fourteen found one spec
-  contradiction (Tiangou halted on underflow), the rest spec gaps now in
-  the docstrings.  Record one as `[audits] blind_reimplementation = <date>`.
+  check a first implementation gets.  Found: one spec contradiction
+  (Tiangou halted on underflow), five generators emitting forms the page
+  does not license (Collatz Multiverse, Decleq, Minsky Swap, Modulous,
+  SendStuff), the rest spec gaps now in the docstrings.  Record one as
+  `[audits] blind_reimplementation = <date>`.
+  - *Streetcode:* the page gives no geometry; a clean room's turn
+    choices differ on 2,711 of 3,080 rows.  Executing the dead-end landing
+    cell (ours) still leaves 2,649: its turn at any two-wide side road
+    against our merge latches, so the gap is our 832-line geometry, not
+    one reading.  Reopen with a clean room briefed on the author's
+    revision 78016.
+  - *Weakly grounded readings the generators rely on:* each record
+    agrees only with the clean room patched to our reading.  Make the
+    generator run under both, or find page evidence.
+    - SLOW ACV MAMMALIAN: LEAPFROG "jump[s] to the ...th instruction"
+      but ours resumes after it (3,052 answers differ).
+    - B-tapemark: the swap-marker Decision's only evidence is that the
+      other reading hangs our own generated programs.
+    - Minifuck: non-commands count as instructions `[` can skip, against
+      "only 3 instructions"; the `[x` filler relies on it.  `[`'s zero
+      branch is the only conditional, so no generator runs under both.
+    - Qoibl: right-associative chains (page silent; 3,064 differ);
+      parenthesizing with `qe`..`qe` would do, size cost unmeasured.
+    - Inject: the pointer moves with resized text (1,724 differ); the
+      skip relies on block positions, so moving read blocks below the
+      code may not fit.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
