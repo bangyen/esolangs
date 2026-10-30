@@ -2,16 +2,19 @@
 
 Entries are pushed reversed as ``O``/``I`` so row ``r`` sits at depth ``r``;
 each input read pops its bit's weight, leaving the addressed entry on top.
-Runs of equal cells use a counted loop when shorter.
+Runs of equal cells use a counted loop when shorter.  The first ``d``
+essential inputs branch instead of popping (``_depth``): each pushes only its
+half, so those reads' ``2**k`` pops leave the program.
 
 Size:
-    Two bytes per row, O(T), against 32.5 for a decision tree; n=10 and:
-    1,176 chars, n=10 random 1847: 2,174 chars.
+    About 1.1 bytes per row, O(T), against 32.5 for a decision tree; n=10
+    and: 454 chars, n=10 random 1847: 1,360 chars.
 
 Decisions:
     Run loops: no saving on seeded random tables at n=6/7 (runs fall short
     of the ~9-entry break-even); the saving lives on run-rich tables
     ([ablations.run_loops]).
+    Branching reads: ``(m - 3) // 2`` levels ([ablations.branch_reads]).
 """
 
 from itertools import groupby
@@ -47,6 +50,16 @@ def _runs(bits: str) -> str:
     )
 
 
+def _depth(m: int) -> int:
+    """Branch levels for ``m`` essential inputs: ``(m - 3) // 2``, at least 0.
+
+    Level ``d + 1`` swaps one read's ``2**(m-d-1)`` pops for ``2**d`` nodes of
+    16 chars, paying while ``2**(m-d-1) + 10 > 16 * 2**d``; that holds up to
+    ``(m - 3) // 2`` levels from m=5 (m=4 gains 2%).
+    """
+    return max(0, (m - 3) // 2)
+
+
 def unsquare(truth_table: str) -> str:
     """Build an Unsquare program for a binary ``2**n``-entry table, MSB first.
 
@@ -55,17 +68,34 @@ def unsquare(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     weights, reduced = input_weights(truth_table, n)
-    bits = reduced[::-1]
-    cells = _runs(bits)
-    blocks: list[str] = []
-    for weight in weights:
+    m = len(reduced).bit_length() - 1
+    depth = _depth(m)
+    ess = [i for i in range(n) if weights[i]]
+
+    def node(rows: str, k: int, left: int) -> str:
+        """Read inputs from ``k``; branch on the next ``left`` essential ones."""
+        if left == 0:
+            return _runs(rows[::-1])
+        if not weights[k]:
+            return "iA" + node(rows, k + 1, left)
+        half = len(rows) // 2
+        # ``IA`` marks the taken branch so ``x->`` skips the else part.
+        return (
+            "iA>-<x>"
+            + node(rows[half:], k + 1, left - 1)
+            + "IA<x->"
+            + node(rows[:half], k + 1, left - 1)
+            + "OA<"
+        )
+
+    out = node(reduced, 0, depth)
+    first = (ess[depth - 1] + 1) if depth else 0
+    for weight in weights[first:]:
         if weight:
-            # ``>-<`` subtracts 2 to reach the input character's parity; ``x``
-            # doubles it, ``>`` pops only for 1, ``OA`` zeroes it for the ``<``.
-            blocks.append("iA>-<x>" + "A" * weight + "OA<")
+            out += "iA>-<x>" + "A" * weight + "OA<"
         else:
-            blocks.append("iA")  # consume the line, leave the stack alone
-    return cells + "".join(blocks) + "A" + "+" * (_ASCII_ZERO // 2) + "Po"
+            out += "iA"
+    return out + "A" + "+" * (_ASCII_ZERO // 2) + "Po"
 
 
 LANGUAGE = Language(

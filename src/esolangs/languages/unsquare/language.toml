@@ -7,30 +7,15 @@ admitted = 2021-05-25T18:40:26-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it"
-scaling = "linear: worst 2T + 10n + 26 characters: two a row"
-execution = "linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops"
-workspace = "linear: worst T + 12 + bl(L) + bl(max(0,L-33)) + 2bl(n) bits: T + 1 table cells on the stack"
-
-[generator_sizes]
-"00000001" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
-"00001100" = { commands = 194, commands_by_row = { "0" = 185, "1" = 185, "2" = 189, "3" = 189, "4" = 190, "5" = 190, "6" = 194, "7" = 194 }, source_units = 56 }
-"00110110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
-"0110" = { commands = 192, commands_by_row = { "0" = 183, "1" = 187, "2" = 188, "3" = 192 }, source_units = 54 }
-"01101001" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
-"0110100110010110" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
-"1101001101101101" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
-"11111110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+qualification = "the first (n-3)//2 essential reads branch on a half of the table, each branch pushes one O/I per row, reversed, and the remaining reads pop their bit's weight in cells off the top of it"
+scaling = "linear: worst T + T/2^d + 16·2^d + 10(n-d) + 10 characters"
+execution = "linear: at most 4T/2^d + 82n + 22 commands past n=5: 12- or 14-cell loops, one half pushed and popped"
+workspace = "linear: at most T/2^d + 12 + (d+1)bl(L) + bl(max(0,L-33)) + 2bl(n) bits: one half's cells on the stack"
+definitions = ["d = max(0,⌊(n-3)/2⌋), the reads that branch"]
 
 [catalogue]
 folding_constant = "a constant run is one counted Horner loop (_run), log-sized; a constant table is one run"
 sharing_exempt = "a stack lookup, one pushed entry per row, with no subtable branch"
-
-[formula_arities]
-# Past n = 5: loops of 12 or 14 cells cost 3 a cell (a run of c costs at
-# most 3c); two odd runs keep the last input essential, 2 under 3T each.
-execution = [6, 7]
-workspace = [3, 6]
 
 [schemes]
 folds_without_tree = true
@@ -46,7 +31,7 @@ verdict = "kept: canonical, exempt. The table is read on its essential inputs on
 [ablations.run_loops]
 saving = 95.2
 arity = 12
-verdict = "kept: a run of equal entries is pushed by a counted Horner loop when shorter than the literal run. 0.00-0.02% on random tables (runs are shorter than the loop's break-even); on run-rich classes at n=10/12, AND and OR +84.9 / +95.2%, half-constant +29.6 / +32.2%, sparse +13.2 / +13.8%, majority +7.7 / +11.1%. The Decisions figures for the loops do not reproduce on seeded tables (F27). Re-audited 2026-10-29 against the plain `entry*count` build (20 seeded random tables, seed 20261029): 0.00-0.02% n=3..9 (22,796 vs 22,800 chars at n=9); named, chars (balanced side^2 area in brackets): and/or and complements -37.9% [-36.0%] n=8, -42.8% [-41.5%] n=9; thr2 -27.8% [-22.5%] n=8, -35.6% [-32.1%] n=9; majority -3.9% n=8 [0] , -4.2% n=9 [0]; parity unchanged. A constant run is a constant subtree: canonical folding, ships at any saving; no other bespoke trick (the plain build differs only here). All tables n<=3 and priced tables n<=7 (named n<=8) execute, wrong-table control fails"
+verdict = "kept: a run of equal entries is pushed by a counted Horner loop when shorter than the literal run. 0.00-0.02% on random tables (runs are shorter than the loop's break-even); on run-rich classes at n=10/12, AND and OR +84.9 / +95.2%, half-constant +29.6 / +32.2%, sparse +13.2 / +13.8%, majority +7.7 / +11.1%. The Decisions figures for the loops do not reproduce on seeded tables (F27). Re-audited 2026-10-29 against the plain `entry*count` build (20 seeded random tables, seed 20261029): 0.00-0.02% n=3..9 (22,796 vs 22,800 chars at n=9); named, chars (balanced side^2 area in brackets): and/or and complements -37.9% [-36.0%] n=8, -42.8% [-41.5%] n=9; thr2 -27.8% [-22.5%] n=8, -35.6% [-32.1%] n=9; majority -3.9% n=8 [0] , -4.2% n=9 [0]; parity unchanged. A constant run is a constant subtree: canonical folding, ships at any saving; the plain build differs only here and in branch_reads. All tables n<=3 and priced tables n<=7 (named n<=8) execute, wrong-table control fails"
 
 [ablations.twin_halves]
 saving = 0.0
@@ -55,6 +40,23 @@ seed = 20261028
 tables = 20
 verdict = "retired 2026-10-28 (random + named bar): sharing one counted push body for the first block of two identical halves saved 0.03% at n=7 and 0.02% at n=8 on 20 seeded random tables (12,360 -> 12,358 chars at n=8; 2 of 20 changed) and 0 chars on parity, majority, and, or and a threshold at n=7..12; it earned 10-14% only on deep twins (block half the table), an ad hoc class. The command bound that gated it and the executed-count returns that fed it went with it; n=10 random 1847 grows 2,173 -> 2,174 chars. Execution 4T + 79n + 22 still reached at n=8 (1,678) and never exceeded at n=6..8; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
 
+[ablations.branch_reads]
+saving = 32.1
+arity = 9
+seed = 20261030
+tables = 20
+verdict = "kept: the first (m-3)//2 essential reads branch (`iA>-<x>`, push half, `IA<x->`, push other half, `OA<`: 16 chars a node) and push only their half, so their 2^k pops leave the program; level d+1 pays while 2^(m-d-1) + 10 > 16*2^d. Random chars, 20 seeded tables: -19.3% n=7 (7,037 -> 5,677), -26.5% n=8 (12,357 -> 9,077), -32.1% n=9 (22,797 -> 15,477), -12.2% n=6; n=10 (6 tables) -37.5%. Named n=7 / 8 / 9: parity -19.3 / -26.5 / -32.1%, majority -19.5 / -27.6 / -33.5%, and/or -14.8 / -33.6 / -43.1%, thr2 -20.1 / -34.3 / -43.6%. Balanced side^2 area on random -19.9 / -22.6 / -32.2% (n=7 / 8 / 9). Saving grows with n (the pops are half of 2T). Every row of every table n<=3, 20 random n=4..9, 6 at n=10 and named n=4..10 plus complements executes; wrong-table control fails"
+
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[generator_sizes]
+"00000001" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+"00001100" = { commands = 194, commands_by_row = { "0" = 185, "1" = 185, "2" = 189, "3" = 189, "4" = 190, "5" = 190, "6" = 194, "7" = 194 }, source_units = 56 }
+"00110110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+"0110" = { commands = 192, commands_by_row = { "0" = 183, "1" = 187, "2" = 188, "3" = 192 }, source_units = 54 }
+"01101001" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }
+"0110100110010110" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
+"1101001101101101" = { commands = 374, commands_by_row = { "0" = 347, "1" = 351, "2" = 352, "3" = 356, "4" = 354, "5" = 358, "6" = 359, "7" = 363, "8" = 358, "9" = 362, "10" = 363, "11" = 367, "12" = 365, "13" = 369, "14" = 370, "15" = 374 }, source_units = 98 }
+"11111110" = { commands = 279, commands_by_row = { "0" = 263, "1" = 267, "2" = 268, "3" = 272, "4" = 270, "5" = 274, "6" = 275, "7" = 279 }, source_units = 72 }

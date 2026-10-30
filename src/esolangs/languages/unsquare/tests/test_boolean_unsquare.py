@@ -31,12 +31,13 @@ class TestUnsquare:
         for value in range(256):
             assert boolean.unsquare(format(value, "08b")).count("i") == 3
 
-    def test_two_bytes_a_row(self) -> None:
+    def test_one_push_and_one_pop_a_row(self) -> None:
         """Size is the table plus its addressing, not a tree over it."""
         for n in range(2, 11):
             table = "".join("01"[(row * row) % 3 % 2] for row in range(2**n))
             size = len(boolean.unsquare(table))
-            assert size - 2 * 2**n == 10 * n + 26, n
+            d = max(0, (n - 3) // 2)
+            assert size == 2**n + 2 ** (n - d) + 16 * (2**d - 1) + 10 * (n - d) + 26, n
 
     @pytest.mark.medium
     def test_every_row_of_every_small_table(self) -> None:
