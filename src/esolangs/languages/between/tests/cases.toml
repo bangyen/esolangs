@@ -34,7 +34,7 @@ source = '''
 stdin = "1\n"
 expected = "1111"
 stop = "steps"
-band = "medium"
+max_steps = 30
 
 [[examples]]
 id = "cat"
