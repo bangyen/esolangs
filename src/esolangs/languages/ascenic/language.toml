@@ -53,4 +53,5 @@ arity = 11
 verdict = "kept: the scan is also built on the reversed table with the Horner signs flipped and a first-line SUB 2 (weight 2T after the last MULS) standing in for the 2T shift, rows read T-1-r; the shorter is emitted. and/nand 53.4% / 64.7% / 76.2% / 84.3% / 90.4% at n=7 / 8 / 9 / 10 / 11 (8,399 -> 2,965 chars at n=8), majority 16.6% / 17.6% at n=8 / 10, random 0.95% / 1.76% at n=7 / 8 (20 seeded); or, nor, parity, thresholds unchanged. Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 300 samples at n=4, named + 20 random at n=5..8)"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-21
