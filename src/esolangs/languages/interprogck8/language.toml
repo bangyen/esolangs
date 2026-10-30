@@ -1,6 +1,12 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[deep_arities]
+# At n = 7 the fixed layout still shows (163 chars per dense entry, then
+# 150-159 at n = 8..14), so the odd rungs 7, 9, 11 read 4.43; 9, 11, 13
+# read 3.95 (dense) and 4.01 (parity).  Builds take under a second.
+linearity = 14
+
 [curation]
 backlinks = 4
 admitted = 2026-09-08T20:10:20-04:00
