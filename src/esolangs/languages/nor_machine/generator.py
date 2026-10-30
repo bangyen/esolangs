@@ -9,7 +9,7 @@ chooses ``V`` or ``V >> h``.  The low bit of what is left is printed by the
 lone final ``V``.  Straight-line code, run once: it never loops.
 
 Size:
-    8T + O(r + n^2) chars for r runs of true rows, every input essential;
+    8T + 8r + O(n^2) chars for r runs of true rows, every input essential;
     n=4 parity: 653 chars
 
 Decisions:

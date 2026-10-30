@@ -14,7 +14,7 @@ folds_without_tree = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer built by Horner's rule; each essential bit, smeared over a half-width mask, keeps V or V >> h by NORs, and the lone final V prints the low bit"
-scaling = "linear: 8T + O(r + n^2) characters for r runs of 1s"
+scaling = "linear: 8T + 8r + O(n^2) characters for r runs of 1s"
 execution = "linear: at most 15T + 12n^2 + 93n - 20 commands past n = 1, each run once"
 workspace = "linear: at most 3T + 4n + bl(L) + 24 bits: V, its copy and three half-width masks"
 
