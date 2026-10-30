@@ -9,22 +9,22 @@ complete shared fold and banding rules.
 ## Construction and admission
 
 The generator projects ignored inputs and builds complete reduced residual
-DAGs in three fixed orders: natural order, and the last three or four
-essential inputs moved first. Each node is keyed by its selector level and
+DAGs in two fixed models: natural order, and the complement table with the
+root gate negated. Each node is keyed by its selector level and
 its two child identities. Equal children eliminate the selector; identical
 keys reuse a node. Thus every repeated residual in each ordered fold shares
 one signal, including residuals outside the former node and class caps.
 Projection preserves the function because an ignored input cannot change
 its output. The physical input ports remain in their original read order.
 
-All three interval models survive until final selection. A prefix H-layout
+Both interval models survive until final selection. A prefix H-layout
 or a bounded cofactor bank supplies the existing linear-size fallback.
 The generator renders that fallback, counts each complete model exactly,
 and renders a complete model only when its character count is no greater.
 A complete model wins a fallback tie; the first complete model in the fixed
 order wins subsequent ties. There is no order search or node-count cutoff.
 
-If the fallback wins, all three complete drawings are strictly larger in
+If the fallback wins, both complete drawings are strictly larger in
 emitted characters. This is a per-table instance of the average-larger
 canonical exemption in [Contributing](../CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 It is not an assertion that every possible physical embedding is larger.
@@ -54,8 +54,8 @@ insertion append and bound overlap inspections by a constant. Index
 bisection, glyph insertion searches and Fenwick column allocation take
 logarithmic time. The complete model costs
 $O((M+n)\log(M+n))=O(T)$ expected RAM work and $O(M+n)$ records.
-Essential-input detection, projection and each fixed transpose also cost
-$O(T)$; only three models are built.
+Essential-input detection, projection and the complement also cost
+$O(T)$; only two models are built.
 
 ## Counting and rendering
 
@@ -92,7 +92,7 @@ the original generator and its stronger bounds.
 ## Executed evidence
 
 The 17-input spread-pair witness contains 513 distinct seven-input classes.
-Its complete drawings emit 56,113,416, 34,953,320 and 30,802,168 characters;
+Its three complete drawings, measured before the transposes were retired, emit 56,113,416, 34,953,320 and 30,802,168 characters;
 the smallest occupies 24,101 by 1,463 cells and executes zero/one controls
 in 33 commands. The public sparse bank emits 30,228,859 characters in
 31,716,375 rectangle cells. Every class was checked at both of its one
@@ -106,6 +106,6 @@ every row at arities three through five, with projection and port-order
 controls at larger arities. Both dense families pass native growth cohorts
 8/10/12, 9/11/13 and 10/12/14. The deep diagnostic now reaches thirteen,
 supplying three rungs per parity after default H routing begins at eight.
-Its unchanged 4.4 threshold passes at 4.271 in 6.8 seconds. The former cap
+It reads 4.480 against the 4.4 threshold (4.476 before the transposes were retired); the language is exempt by its linear area ceiling, not by passing it. The former cap
 of ten mixed routing regimes and reported 4.758 before and after this change.
 These finite diagnostics are not the linearity proof above.

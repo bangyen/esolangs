@@ -27,13 +27,12 @@ one gate or port and a run prints one character.
 A repeated subtree is built once (:func:`_dag`, hash-consed on ``(level,
 zero, one)``); a shared output keeps its column group until its last read.
 At most one unfinished signal per input level is live.  Wide unconstrained
-builds compare natural order and two transposes moving the last three/four
-inputs first, and the complement table with the root gate negated (``A``,
-``O``); physical ports retain read order.
+builds compare natural order and the complement table with the root gate
+negated (``A``, ``O``); physical ports retain read order.
 
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
-    1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 747,092 chars.
+    1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 782,908 chars.
 
 Decisions:
     Sharing repeated subtrees, area vs the unshared build, mean of 20 seeded
@@ -624,21 +623,11 @@ def _circuit_diagram_model(
 
 
 def _linear_shared_layout(table: str, inputs: int, models: list[_Layout]) -> None:
-    """Append the complete fixed-order folds to ``models`` for the race."""
+    """Append the natural and complement folds to ``models`` for the race."""
     used, projected = _essential_table(table, inputs)
-    candidates = [(projected, used)]
-    for tail in (3, 4):
-        if len(used) > tail:
-            # A fixed block transpose moves the last inputs first in O(T),
-            # without changing port reads or searching selector orders.
-            rotated = "".join(projected[i :: 1 << tail] for i in range(1 << tail))
-            candidates.append((rotated, used[-tail:] + used[:-tail]))
-    for candidate, order in candidates:
-        models.append(
-            _circuit_diagram_model(
-                candidate, None, input_order=order, port_inputs=inputs
-            )
-        )
+    models.append(
+        _circuit_diagram_model(projected, None, input_order=used, port_inputs=inputs)
+    )
     # Output polarity: a table costs 3.2x its complement when only the
     # complement is a plain-rail chain (NAND vs AND): fold it, negate the root gate.
     flipped = projected.translate(_COMPLEMENT)
@@ -657,7 +646,7 @@ def _narrowest_present(*forms: str | None) -> str:
 def _competing_model_circuit(truth_table: str, inputs: int) -> str:
     """Return the smallest circuit, by area then characters, among the n>=4 layouts.
 
-    Three complete fixed-order folds compete against prefix H-layouts and
+    The natural and complement folds compete against prefix H-layouts and
     shared class banks; sharing wins ties of both.
     """
     from .compete import select_competing_model  # cycle: candidates import this module
@@ -737,7 +726,7 @@ LANGUAGE = Language(
     # invariants.
     scaling_rungs=(8, 9),
     boolean=circuit_diagram,
-    documented_sizes=(136_120, 298_272, 2.19),
+    documented_sizes=(147_264, 302_032, 2.05),
     split=True,
     contract=BooleanContract(
         input_shape="char_stream",

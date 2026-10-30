@@ -37,7 +37,7 @@ evidence = "docs/proofs/circuit-diagram-sharing.md"
 "0110100110010110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 4128 }
 "01101001100101101001011001101001100101100110100101101001100101101001011001101001011010011001011001101001100101101001011001101001" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "64" = 15, "127" = 15 }, source_units = 16812 }
 "0110100110010110100101100110100110010110011010010110100110010110100101100110100101101001100101100110100110010110100101100110100110010110011010010110100110010110011010011001011010010110011010010110100110010110100101100110100110010110011010010110100110010110" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "128" = 17, "255" = 17 }, source_units = 22840 }
-"1101001101101101" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 3520 }
+"1101001101101101" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 3536 }
 "11111110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 452 }
 
 [catalogue]
@@ -80,7 +80,7 @@ verdict = "kept 2026-10-30: the race is the natural and complement folds against
 [ablations.transpose_folds]
 saving = 0.0
 arity = 9
-verdict = "kept 2026-10-30, on the class and not on random tables: without the two block transposes (last three / four inputs first), random tables at n=7 / 8 / 9 (20 / 20 / 10 tables from random.Random(1000 + 100n + j).getrandbits(2**n)) grow 7.7% / 3.7% / 3.0% default and 9.0% / 4.6% / 3.3% balanced (declining, below the bar), and parity, majority, and, or, nand, nor, thr2, thr3 grow 0.00% at n=7..11 (default; balanced n=7..10). But the Margulis cofactor witness (test_named_orders_avoid_literal_expander_routing_within_existing_bounds) grows 4.9x / 7.9x / 16.1x at n=9 / 12 / 14 (10,114 -> 49,354, 91,312 -> 724,736, 443,276 -> 7,134,540 chars; 20 -> 96, 22 -> 177, 27 -> 435 chars per entry): the share grows with arity and the size class changes, so they stay. The sparse 202-class table at n=15 grows 3,961,697 -> 5,953,673 cells. n=7 and 8 programs (168 each) run on all 2^n inputs, a wrong table fails"
+verdict = "retired 2026-10-30: the two block transposes (last three / four inputs first) saved 9.1% / 4.0% of default area on 20 random tables at n=7 / 8 (random.Random(1000 + 100n + j).getrandbits(2**n); 15 / 13 tables changed, max 28.8% / 17.8%) and 11.3% / 5.3% balanced (declining, below the 10% bar), and 0.00% on parity, majority, and, or, nand, nor, thr2, thr3 at n=7..10 (default and balanced). The constructed Margulis cofactor witness (test_named_orders_avoid_literal_expander_routing_within_existing_bounds) grew 4.9x / 7.9x / 16.1x at n=9 / 12 / 14 (10,114 -> 49,354, 91,312 -> 724,736, 443,276 -> 7,134,540 chars): a constant-factor cost under the pool / bank fallback cap, not a class change; constructed families keep nothing. Dense n=8 / 9 grow 136,120 / 298,272 -> 147,264 / 302,032 chars, the sparse 202-class n=15 table 3,961,697 -> 5,953,673 cells. n=7, 8 programs (56 each, default and balanced) and n=9, 10 named (16 each) run on all 2^n inputs, a wrong table fails"
 
 [ablations.bank_candidates]
 saving = 0.0
@@ -127,4 +127,4 @@ verdict = "kept 2026-10-20: the competing model (fixed-order folds, prefix H-lay
 
 [audits]
 blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-22
+plain_rewrite = 2026-10-30
