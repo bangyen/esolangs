@@ -91,8 +91,12 @@ ignored-input tables included).
     - B-tapemark: the swap-marker Decision's only evidence is that the
       other reading hangs our own generated programs.
     - Minifuck: non-commands count as instructions `[` can skip, against
-      "only 3 instructions"; the `[x` filler relies on it.  `[`'s zero
-      branch is the only conditional, so no generator runs under both.
+      "only 3 instructions"; the `[x` filler relies on it.  No drop-in
+      for `[x` works under both: every real command in the slot differs by
+      branch (`<` ends at p vs p+1; `[` and `.` flip, print or read), and no
+      `<`/`[` string of length 1..14 matches `[x` on 300 random tapes.  A
+      both-readings construction would have to restructure the conditional,
+      untried.  The page's sole example has no non-command.
     - Qoibl: right-associative chains (page silent; 3,064 differ);
       parenthesizing with `qe`..`qe` would do, size cost unmeasured.
     - Inject: the pointer moves with resized text (1,724 differ); the
