@@ -75,7 +75,7 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (111): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Audited (112): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
 Algebraic Programming Language, Alight, Aprknia, ArrowQueue, Ascenic,
 B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between, BFStack,
 Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic, Boolfuck,
@@ -87,11 +87,11 @@ Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, INTERCAL,
 Interprogck8, Kiss, LaserFuck, Line, lol waht i cant edit talk pages,
 Malbolge, Minifuck, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
 Nandypants, NOR machine, Object disoriented, Packlang, Painfuck,
-Parenthesys, Piet, Pilas, Pointless, Qoibl, Quassaunt, RAM0, ROTfuck, Rubic,
-S*bleq, SendStuff, Shakespeare, SLOW ACV MAMMALIAN, Smallfuck, Smu, Sonata,
-SStack, Stisp, Streetcode, Subleq, Suffolk, Super SNUSP, SwitchCase,
+Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0, ROTfuck,
+Rubic, S*bleq, SendStuff, Shakespeare, SLOW ACV MAMMALIAN, Smallfuck, Smu,
+Sonata, SStack, Stisp, Streetcode, Subleq, Suffolk, Super SNUSP, SwitchCase,
 Taglate, thisthat, Thue, Unary, Underload, Unlambda, Unsquare, What!?,
-Whitespace. Next by kept `[ablations]`: Qrain 0.
+Whitespace.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
