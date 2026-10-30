@@ -66,22 +66,6 @@ ignored-input tables included).
   (seed chains before the pointer priming, ~1,800 path cells of returns
   past 127) is the open route.  The layout's cost is where navigation lands
   each walked cell, so a navigation rule comes first.
-- **Re-audit tricks kept on pre-rule evidence** (2026-10-30 triage of 266
-  kept `[ablations]` against the random + named bar):
-  - *Below the bar on random and named:* Circuit Diagram
-    `competing_model_race` (0.6-0.7% area random, 3.9% parity) and
-    `transpose_folds` (4.3% / 0.0% area); Dig `tree_max_race` (past n = 4
-    wins only top-essential tables); Algebraic Programming Language
-    `complement_twin_rule` (negative marginal; awaiting Bangyen).
-  - *Evidence stale or missing:* Boolfuck `command_bound` (its
-    parity-with-flips figures came from shared builds retired 2026-10-28;
-    random 10.7% at n = 7 only); Streetcode `mouth_overlap`,
-    `shared_lap_populate`, `flat_race_candidate`, `shared_kerb` (bare
-    "kept"); Circuit Diagram `column_recycling`, BrainIf `wide_tree_race`
-    and Inject `balance_square_chunk` (corpus unstated or two tables).
-  - *Borderline:* CV(N)(C) `leaf_accumulator_reuse` (parity 18.8% at
-    n = 8, -6.5% at n = 12); Smu `macro_naming_by_use` (random 11.5% at
-    n = 11 only).
 - **Qrain plain-vs-shared check:** `generator.py` keeps the plain tree
   when no shared form is shorter, which never happens once a shared form
   exists (0 of 65,536 n=4 tables, 0 of 920 random n=4..8, 0 of 90 named
@@ -105,7 +89,10 @@ ignored-input tables included).
     against our merge latches.  Merge timing is our own convention (the
     author's revision 78016 fixes only right-hand driving and the junction
     choice), and generated programs rely on it from n = 1 (the ``01``
-    program's island loop), so no clean room can agree.  Reopen with a
+    program's island loop), so no clean room can agree.  Traffic law
+    rejects the clean room's second turn inside one junction (a U-turn
+    past the centre, Wisconsin 346.31(3)(b); a right turn as three lefts,
+    NY VTL 1160(a)) but gives no latch timing.  Reopen with a
     generator that emits only geometry every reading drives alike (dead
     ends and T-junctions, no merges), then re-diff the unaltered clean
     room.
