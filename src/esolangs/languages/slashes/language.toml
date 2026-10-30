@@ -55,4 +55,5 @@ tables = "20 random per n=7,8,9 plus parity/and/or/majority/threshold-3/threshol
 verdict = "kept: emits only the sweeps that clear the first T-1 entries, not T: a sweep deletes two when a qA is followed by a qB, so a random table needs ~0.78T. Random totals 52,400 -> 41,168 (-21.4%) at n=7, 103,620 -> 80,760 (-22.1%) at n=8, 206,040 -> 160,464 (-22.1%) at n=9, a share that holds with n; named: parity 2,620 -> 1,846 / 5,181 -> 3,633 / 10,302 -> 7,224 (-29.5%, -29.9%, -29.9%), majority -14.4 / -12.5 / -12.4%, threshold-3 -11.0 / -7.6 / -5.1%, and/or -0.7% (all-qA prefix, one entry per sweep). Balanced area at n=7 / 8 (seed 131*3+n): side 74 -> 68 / 104 -> 92, area -15.6% / -21.7%. Every program ran on every row (n=2,3 all 276 tables; 26 tables at n=4,5,7,8,9, 0 bad) and a wrong table failed on each"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-28
