@@ -41,6 +41,7 @@ tables = 25
 verdict = "kept: a span whose halves are opposite constants prints its first input's byte (,.) or 97 minus it, then reads the rest away, not a 27-command node and its leaves. Against a build with the same ,:- read-and-drop spelling: random n=8 38.5% (n=7 38.6%); n=8 parity 51.5%, majority 31.0%, threshold-3 27.0%, and 10.6%, or 10.2%. Every row run: n<=3 exhaustive, random to n=8, named, quarter-block tables; a wrong table fails"
 
 [audits]
+trick_prototype = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
