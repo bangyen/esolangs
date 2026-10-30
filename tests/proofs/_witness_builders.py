@@ -229,10 +229,9 @@ def _befunge_worst(n: int) -> str:
 
 # language-owners: ["SwitchCase"]
 def _switchcase_worst(n: int) -> str:
-    """A lone one at row T - 2, or T - 3 where row 510 would be an arm of k = 10."""
+    """The top half's rows are ones but the last: most arms, longest indexes."""
     t = 1 << n
-    row = t - 2 if (t - 2) % 100 != 10 else t - 3
-    return "".join("1" if r == row else "0" for r in range(t))
+    return "".join("1" if t // 2 <= r < t - 1 else "0" for r in range(t))
 
 
 # language-owners: ["Circlefuck", "Modulous"]

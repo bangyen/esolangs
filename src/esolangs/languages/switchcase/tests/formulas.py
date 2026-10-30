@@ -1,4 +1,4 @@
-"""SwitchCase's emitted characters: jump loops per input, one arm a row."""
+"""SwitchCase's emitted characters: jump loops per input, an arm a minority row."""
 
 
 def _digits(x: int) -> int:
@@ -6,15 +6,18 @@ def _digits(x: int) -> int:
 
 
 def _chars(n: int, _: str) -> int:
-    """N: header, 71 + jump digits per input, 24 a block, 2 digits(k) + 3 an arm."""
+    """N: 14 header, 71 + jump digits per input, 36 + digits(7n + 4) closing, arms.
+
+    At most T/2 minority rows, each at most digits(k) + 4, the top half of
+    the rows costing most.
+    """
     jumps = sum(
-        71 + 2 * _digits(6 + 7 * i) + _digits(3 + 7 * i) + _digits(9 + 7 * i)
+        71 + 2 * _digits(7 + 7 * i) + _digits(4 + 7 * i) + _digits(10 + 7 * i)
         for i in range(n)
     )
     t = 1 << n
-    m = t % 100
-    arms = 680 * (t // 100) + 7 * m - 2 * min(m, 10)
-    return 12 + jumps + 24 * -(-t // 100) + arms
+    arms = sum(_digits(k) + 4 for k in range(t // 2, t))
+    return 14 + jumps + 36 + _digits(7 * n + 4) + arms
 
 
-FORMULAS = {"scaling": (_chars, True, (1, 2, 3, 4, 5, 6, 8, 9, 10, 12))}
+FORMULAS = {"scaling": (_chars, False, (1, 2, 3, 4, 5, 6, 8, 9, 10, 12))}

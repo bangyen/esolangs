@@ -1,30 +1,24 @@
-"""SwitchCase Boolean program generator: switch blocks over a row index.
+"""SwitchCase Boolean program generator: one switch over a row index.
 
 Each input is read into ``x`` as ``'0'`` or ``'1'``; an essential one then
 doubles the row index by a loop that moves it two at a time into the other
-of ``A``/``B``, and a loop moves ``x - 48`` after it.  The index then meets a
-block per hundred rows of the table read at the essential inputs: a switch whose
-arm ``k?...`` turns index ``k`` into its row's bit, then
-
-    $R
-    0?@-2
-    1?@-2
-    !-100
-
-which prints a bit and leaves the index negative for good, or takes a hundred
-off it for the next block.  The loops' jump targets come before any block, so
-they cost O(log n) digits each.  A symmetric table skips the doubling and
+of ``A``/``B``, and a loop moves ``x - 48`` after it.  The index then meets
+one switch with an arm ``k?'2`` for each row of the table's minority bit and
+a default that prints the majority bit; case 2, jumped over at the start,
+prints the minority bit and jumps to a last no-op case, so nothing runs
+after an answer.  The loops' jump targets come before the switch, so they
+cost O(log n) digits each.  A symmetric table skips the doubling and
 switches over m + 1 rows ([ablations.symmetric_count]).
 
 Size:
-    O(T): 7.06 chars a row at n=16, plus O(n log n) for the loops; n=4
-    parity: 238 chars, n=10 random 1847: 8,002 chars.
+    O(T): 4.42 chars a row at n=16, plus O(n log n) for the loops; n=4
+    parity: 238 chars, n=10 random 1847: 4,384 chars.
 
 Decisions:
-    A hundred rows a block, the most whose arm integers stay two digits:
-    7.10 chars a row at n=14, against 7.37 for ten and 7.53 for 128.  A
-    countdown of one zero-test a row was 14.0 chars a row and leaves the
-    switch's arms unused.
+    One switch, not a block a hundred rows: a default would fire on the
+    rows of the blocks after it.  An arm for the minority bit only is 4.42
+    chars a row at n=16 against 7.06 for an arm every row in blocks, though
+    the digits of k grow with n.
 """
 
 from esolangs.generation.helpers import (
@@ -35,21 +29,6 @@ from esolangs.generation.helpers import (
 )
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
-
-#: Rows a block's switch covers.
-BLOCK = 100
-
-
-def _blocks(table: str, index: str) -> list[str]:
-    """Return the selection cases for ``table`` on the index variable."""
-    cases = []
-    for start in range(0, len(table), BLOCK):
-        arms = []
-        for k, bit in enumerate(table[start : start + BLOCK]):
-            arms.append(f"{k}?{int(bit) - k:+d}")
-        cases.append(f"${index}\n" + "\n".join(arms))
-        cases.append(f"${index}\n0?@-2\n1?@-2\n!-{BLOCK}")
-    return cases
 
 
 def switchcase(truth_table: str) -> str:
@@ -66,9 +45,10 @@ def switchcase(truth_table: str) -> str:
 
 
 def _program(n: int, essential: list[int], table: str, *, doubling: bool) -> str:
-    """Return the reads, the index loops and the blocks over ``table``."""
+    """Return the reads, the index loops and the switch over ``table``."""
     kept = set(essential)
-    cases = ["$_\n0?=A=B=x"]
+    # Case 2 prints the minority bit; case 1 jumps over it to the reads.
+    cases = ["$_\n0?=A=B=x'3", ""]
     doubled = 0
     for i in range(n):
         cases.append("$x\n0?,\n!,")
@@ -89,7 +69,14 @@ def _program(n: int, essential: list[int], table: str, *, doubling: bool) -> str
         carry = len(cases) + 1
         cases += [f"$x\n48?'{carry + 3}\n!-1", f"${nxt}\n0?+1\n!+1", f"$_\n0?'{carry}"]
     index = "B" if doubled % 2 else "A"
-    cases += _blocks(table, index)
+    major = "1" if 2 * table.count("1") > len(table) else "0"
+    minor = "0" if major == "1" else "1"
+    # A case needs an arm: -1 never matches, for the table with no minority row.
+    rows = [k for k, bit in enumerate(table) if bit == minor] or [-1]
+    # The unreachable -1 arm keeps case 2 legal (a case needs an arm).
+    cases[1] = f"${index}\n-1?+0\n!={index}+{minor}@'{len(cases) + 2}"
+    arms = "\n".join(f"{k}?'2" for k in rows)
+    cases += [f"${index}\n{arms}\n!={index}+{major}@", "$_\n1?+0"]
     return "\n".join(cases) + "\n"
 
 

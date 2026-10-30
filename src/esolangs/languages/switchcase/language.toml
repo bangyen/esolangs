@@ -7,10 +7,10 @@ admitted = 2026-10-21T23:43:42-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "loops build the row index from the essential inputs, and a switch a hundred rows turns its own rows' index into the bit"
-scaling = "linear: worst N characters: one arm a row, jump loops an input"
-execution = "linear: worst 8T + 4⌈T/100⌉ + 7n steps: the index loops, four a block"
-workspace = "poly n: worst 2n + bl(7n - 4) + bl(n) + 46 bits past n = 2: the last doubling loop"
+qualification = "loops build the row index from the essential inputs, and one switch jumps the minority rows' index to a case printing their bit"
+scaling = "linear: at most N characters: a minority arm a row, loops an input"
+execution = "linear: worst 8T + 7n + 3 steps past n = 1: the index loops"
+workspace = "poly n: worst 2n + bl(7n - 3) + bl(n) + 46 bits past n = 2: the last doubling loop"
 
 [ablations]
 audited = "2026-10-29"
@@ -29,23 +29,31 @@ seed = "named symmetric tables"
 tables = 5
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each bit into one index without doubling and switches over m + 1 rows, a rule, not a race: the count build is never longer (byte-identical to the former length race on all 65,812 tables n<=4 and 112 tables n=5..8). Parity, majority, and, or and exactly-2 all 45.8-45.9% at n=4, 63.8% at n=6, 73.5% at n=7, 82.1% at n=8, 93.3% at n=10; a symmetric table with an ignored input 73.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
+[ablations.minority_arms]
+saving = 39.4
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: one switch with an arm `k?'2` only for the rows of the minority bit, a default printing the majority bit, and case 2 (jumped over at the start) printing the minority bit and jumping to a last no-op case, replacing blocks of a hundred arms that each turn the index into the bit. Random tables 33.9% at n=7, 39.4% at n=8; n=8 parity 2.3%, majority 2.3%, threshold-3 3.4%, and 5.7%, or 5.7% (the symmetric count build already switches over m + 1 rows). Every row run through esolangs.run: n<=3 exhaustive, 3,000 tables at n=4, 100 each at n=7 and n=8, named at n=8; a wrong table fails"
+
 [catalogue]
-folding_constant_local = "_blocks"  # no essential input: one block over the one-row table
+folding_constant_local = "_program"  # no essential input: one switch over the one-row table
 
 [generator_sizes]
-"00000001" = { commands = 51, commands_by_row = { "0" = 27, "1" = 35, "2" = 35, "3" = 43, "4" = 35, "5" = 43, "6" = 43, "7" = 51 }, source_units = 188 }
-"00001100" = { commands = 53, commands_by_row = { "0" = 29, "1" = 29, "2" = 37, "3" = 37, "4" = 45, "5" = 45, "6" = 53, "7" = 53 }, source_units = 220 }
-"00110110" = { commands = 89, commands_by_row = { "0" = 33, "1" = 41, "2" = 49, "3" = 57, "4" = 65, "5" = 73, "6" = 81, "7" = 89 }, source_units = 309 }
-"0110" = { commands = 38, commands_by_row = { "0" = 22, "1" = 30, "2" = 30, "3" = 38 }, source_units = 138 }
-"01101001" = { commands = 51, commands_by_row = { "0" = 27, "1" = 35, "2" = 35, "3" = 43, "4" = 35, "5" = 43, "6" = 43, "7" = 51 }, source_units = 188 }
-"0110100110010110" = { commands = 64, commands_by_row = { "0" = 32, "1" = 40, "2" = 40, "3" = 48, "4" = 40, "5" = 48, "6" = 48, "7" = 56, "8" = 40, "9" = 48, "10" = 48, "11" = 56, "12" = 48, "13" = 56, "14" = 56, "15" = 64 }, source_units = 238 }
-"1101001101101101" = { commands = 160, commands_by_row = { "0" = 40, "1" = 48, "2" = 56, "3" = 64, "4" = 72, "5" = 80, "6" = 88, "7" = 96, "8" = 104, "9" = 112, "10" = 120, "11" = 128, "12" = 136, "13" = 144, "14" = 152, "15" = 160 }, source_units = 439 }
-"11111110" = { commands = 51, commands_by_row = { "0" = 27, "1" = 35, "2" = 35, "3" = 43, "4" = 35, "5" = 43, "6" = 43, "7" = 51 }, source_units = 188 }
+"00000001" = { commands = 52, commands_by_row = { "0" = 26, "1" = 34, "2" = 34, "3" = 42, "4" = 34, "5" = 42, "6" = 42, "7" = 52 }, source_units = 188 }
+"00001100" = { commands = 52, commands_by_row = { "0" = 28, "1" = 28, "2" = 36, "3" = 36, "4" = 46, "5" = 46, "6" = 52, "7" = 52 }, source_units = 221 }
+"00110110" = { commands = 88, commands_by_row = { "0" = 32, "1" = 40, "2" = 50, "3" = 58, "4" = 64, "5" = 74, "6" = 82, "7" = 88 }, source_units = 305 }
+"0110" = { commands = 37, commands_by_row = { "0" = 21, "1" = 31, "2" = 31, "3" = 37 }, source_units = 143 }
+"01101001" = { commands = 52, commands_by_row = { "0" = 26, "1" = 36, "2" = 36, "3" = 42, "4" = 36, "5" = 42, "6" = 42, "7" = 52 }, source_units = 193 }
+"0110100110010110" = { commands = 63, commands_by_row = { "0" = 31, "1" = 41, "2" = 41, "3" = 47, "4" = 41, "5" = 47, "6" = 47, "7" = 57, "8" = 41, "9" = 47, "10" = 47, "11" = 57, "12" = 47, "13" = 57, "14" = 57, "15" = 63 }, source_units = 238 }
+"1101001101101101" = { commands = 159, commands_by_row = { "0" = 39, "1" = 47, "2" = 57, "3" = 63, "4" = 73, "5" = 81, "6" = 87, "7" = 95, "8" = 105, "9" = 111, "10" = 119, "11" = 129, "12" = 135, "13" = 143, "14" = 153, "15" = 159 }, source_units = 396 }
+"11111110" = { commands = 52, commands_by_row = { "0" = 26, "1" = 34, "2" = 34, "3" = 42, "4" = 34, "5" = 42, "6" = 42, "7" = 52 }, source_units = 188 }
 
 [schemes]
 folds_without_tree = true
 
 [audits]
+trick_prototype = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
