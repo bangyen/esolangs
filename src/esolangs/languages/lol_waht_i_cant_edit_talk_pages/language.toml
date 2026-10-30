@@ -26,7 +26,8 @@ sharing_exempt = "no procedures or jumps: a subtree runs only where it is writte
 "11111110" = { commands = 22, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 17, "5" = 17, "6" = 22, "7" = 22 }, source_units = 742 }
 
 [ablations]
-audited = "2026-10-27"
+audited = "2026-10-29"
 
 [audits]
 blind_reimplementation = 2026-10-27
+plain_rewrite = 2026-10-29
