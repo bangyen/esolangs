@@ -80,4 +80,5 @@ tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/t
 verdict = "kept, balanced: the balanced fold used the default comb base 5 only, so an even arity stayed a square-ish block (n=8 122-134 side). The fold's shape moves a factor of two per base, so racing bases 2..6 by balance_score finds the 2:1 block (n=8 base 6: 46 x 102, side 102): balanced area (score squared) off 31.5% on random tables at n=8, 7.4% at n=7 (base 4); named: and/nand 67% and or/nor 33-37% at n=9, 62% and 29-33% at n=7, majority and threshold 28% at n=7 / 4% at n=8, parity 0.0%; random n=10 about 30% (6 tables). Flat across even n, not declining. The default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad), and the fold at every base 2..6 ran on all n<=4 tables plus 600 random n=5,6 (132,378 programs, 0 bad); a wrong table failed"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
