@@ -47,5 +47,6 @@ tables = 200
 verdict = "kept: the tested bit is the one whose child only this edge reaches; its label `b#c` is then that child's own instruction, not a forwarder, and a constant on the missed side is jumped to without the delete node. Against the three-instruction node: random 24.3% at n=7, 21.6% at n=8 (balanced area 23.0% / 21.2% on 30 tables), then 20.4 / 20.3 / 15.9% at n=9 / 10 / 12 and 15.2 / 15.8 / 16.4% at n=14 / 16 / 18 (2-3 tables each, plateau); n=8 parity 6.8%, majority 23.0%, threshold-3 25.5%, and 59.1%, or 62.4%. Claiming a child with other in-edges lowered n=8 sizes further (25.4%) but lengthens every reference to it, so it cannot be bounded by the old worst case; the Scaling and Workspace cells are now `at most`, no longer `worst`. Every row run: n<=3 exhaustive (never longer than before), the 200 tables at n=7 and n=8, named; a one-bit wrong table fails"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
