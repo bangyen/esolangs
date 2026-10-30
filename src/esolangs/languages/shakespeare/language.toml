@@ -28,6 +28,7 @@ folds_without_tree = true
 "11111110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 886 }
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [ablations]

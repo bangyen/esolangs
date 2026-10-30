@@ -125,8 +125,8 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-12 of the 112 generators: Aprknia, BASICER, CARP, Chicken, CreativeScript
+13 of the 112 generators: Aprknia, BASICER, CARP, Chicken, CreativeScript
 v2, DINAC, HQ9+ with headers, Kiss, lol waht i cant edit talk pages,
-Monotonic Boolfuck, Movesum, Qrain.
+Monotonic Boolfuck, Movesum, Qrain, Shakespeare.
 
 <!-- TRICK-PROTOTYPES:END -->
