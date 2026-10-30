@@ -23,19 +23,22 @@ workspace = "poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, 
 "11111110" = { commands = 385, commands_by_row = { "0" = 358, "1" = 358, "2" = 358, "3" = 358, "4" = 368, "5" = 368, "6" = 378, "7" = 385 }, source_units = 457 }
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-29"
 
 [ablations.halves_agree_skip]
 saving = 1.5
 arity = 12
-verdict = "kept: canonical family, exempt. Equal halves read the character and call the one child without the branch test. 2.9% at n=6 declining to 1.5% at n=12 on random tables, 2.4-3.6% on the ignored-input classes; 0.00% on parity, AND, OR, majority and constant tables, whose agreeing nodes sit over constant subtables"
+verdict = "kept: canonical family, exempt. Equal halves read the character and call the one child without the branch test. 2.9% at n=6 declining to 1.5% at n=12 on random tables, 2.4-3.6% on the ignored-input classes; 0.00% on parity, AND, OR, majority and constant tables, whose agreeing nodes sit over constant subtables. Re-measured 2026-10-29, 20 random tables per n: 2.6% n=3, 3.2% n=7, 2.1% n=10; 0.00% on every named function and complement n=3..10"
 
 [ablations.inline_race]
 saving = 35.4
 arity = 12
-verdict = "kept: each function is pasted into its callers unless declaring it wins the cost model (uses times size against declaration plus call costs). 18.5% at n=6 rising to 36.0% at n=10 and 35.4% at n=12 on random tables; the docstring's 26% share at n=10 and its 8,558-char declaring-everything anchor both reproduce"
+verdict = "kept: each function is pasted into its callers unless declaring it wins the cost model (uses times size against declaration plus call costs). 18.5% at n=6 rising to 36.0% at n=10 and 35.4% at n=12 on random tables; the docstring's 26% share at n=10 and its 8,558-char declaring-everything anchor both reproduce. Re-measured 2026-10-29 against declaring every function, 20 random tables per n: 10.3% n=3, 18.5% n=7, 27.0% n=10; named functions (AND/OR/majority/threshold-2 and complements) 9.5-15.3% n=3..10 (majority 9.7% at n=10), parity 6.0% at n=3 falling to 2.8% at n=10 (its tables share every level, so little is pasted); a rule on usage count, not a race, so no build is duplicated"
 
 [ablations.constant_functions]
 saving = -1.0
 arity = 12
 verdict = "removed 2026-10-20 (retirement candidate #27): a constant subtable got one shared body per (bit, depth) that read all its remaining characters, moved to the print cell and back. Building constant subtables through the general machinery instead (descending level by level to the printing leaf) makes programs smaller almost everywhere: random tables -2.1% at n=10 and -1.0% at n=12, AND -8.7% / -14.0%, OR -6.8% / -12.2%, majority -7.6% / -10.7%; only constant tables themselves cost more (+21.1% / +24.4%). The shipped body re-paid the away-and-back moves, proportional to depth, at every depth where a constant occurred; the descent pays them once, at the leaf. Constant subtables now descend through the general machinery"
+
+[audits]
+plain_rewrite = 2026-10-29
