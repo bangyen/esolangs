@@ -1,20 +1,13 @@
-user:x0
-user:x1
-im awesome tottaly but no x0
-JUST LET ME CHANGE 1 MESSAGES ON x0 {
-im awesome tottaly but no x1
-JUST LET ME CHANGE 1 MESSAGES ON x1 {
+user:x
+im awesome tottaly but no x
+JUST LET ME CHANGE 1 MESSAGES ON x {
+im awesome tottaly but no x
+JUST LET ME CHANGE 1 MESSAGES ON x {
 1 --tommyaweosme
-edit user talk:x1 to change 1 messages
+waht i got banned
 }
-JUST LET ME CHANGE no MESSAGES ON x1 {
 0 --tommyaweosme
-edit user talk:x1 to change 1 messages
+waht i got banned
 }
-edit user talk:x0 to change 1 messages
-}
-JUST LET ME CHANGE no MESSAGES ON x0 {
-im awesome tottaly but no x1
+im awesome tottaly but no x
 0 --tommyaweosme
-edit user talk:x0 to change 1 messages
-}

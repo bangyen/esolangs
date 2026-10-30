@@ -8,25 +8,30 @@ admitted = 2026-10-27T11:08:53+00:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: at most 210T characters: two while-equal loops per branch"
-execution = "poly n: worst 7n + 1 commands"
-workspace = "poly n: at most 20n + 3 bits"
+scaling = "linear: at most 105T characters: one while-equal loop per branch"
+execution = "poly n: worst 2n + 3 commands"
+workspace = "poly n: at most bl(L) + 2bl(n) + 4 bits"
 
 [catalogue]
 sharing_exempt = "no procedures or jumps: a subtree runs only where it is written"
 
 [generator_sizes]
-"00000001" = { commands = 22, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 17, "5" = 17, "6" = 22, "7" = 22 }, source_units = 742 }
-"00001100" = { commands = 17, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 17, "5" = 17, "6" = 17, "7" = 17 }, source_units = 566 }
-"00110110" = { commands = 22, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 1123 }
-"0110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15 }, source_units = 647 }
-"01101001" = { commands = 22, commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 1475 }
-"0110100110010110" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 29, "5" = 29, "6" = 29, "7" = 29, "8" = 29, "9" = 29, "10" = 29, "11" = 29, "12" = 29, "13" = 29, "14" = 29, "15" = 29 }, source_units = 3123 }
-"1101001101101101" = { commands = 29, commands_by_row = { "0" = 24, "1" = 24, "2" = 29, "3" = 29, "4" = 24, "5" = 24, "6" = 24, "7" = 24, "8" = 29, "9" = 29, "10" = 29, "11" = 29, "12" = 24, "13" = 24, "14" = 29, "15" = 29 }, source_units = 2419 }
-"11111110" = { commands = 22, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 17, "5" = 17, "6" = 22, "7" = 22 }, source_units = 742 }
+"00000001" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 413 }
+"00001100" = { commands = 8, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 339 }
+"00110110" = { commands = 9, commands_by_row = { "0" = 7, "1" = 7, "2" = 8, "3" = 8, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 589 }
+"0110" = { commands = 7, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 7 }, source_units = 329 }
+"01101001" = { commands = 9, commands_by_row = { "0" = 8, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 737 }
+"0110100110010110" = { commands = 11, commands_by_row = { "0" = 10, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11, "8" = 11, "9" = 11, "10" = 11, "11" = 11, "12" = 11, "13" = 11, "14" = 11, "15" = 11 }, source_units = 1553 }
+"1101001101101101" = { commands = 11, commands_by_row = { "0" = 9, "1" = 9, "2" = 11, "3" = 11, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 11, "9" = 11, "10" = 11, "11" = 11, "12" = 10, "13" = 10, "14" = 11, "15" = 11 }, source_units = 1257 }
+"11111110" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 413 }
 
 [ablations]
-audited = "2026-10-29"
+audited = "2026-10-30"
+
+[ablations.halt_arm]
+saving = 47.5
+arity = 8
+verdict = "kept: clears on random tables (47.6% at n=7, 47.5% at n=8; 30 tables each, random.Random(n) seeds) and named functions (n=8 parity 50.3%, majority 46.3%, threshold2 41.7%, and/or 35.9%); the one arm ends in waht i got banned, so the zero loop, both bumps and n-1 variables go; n=3..8 rows executed (25 tables per arity, wrong-table control fails)"
 
 [audits]
 blind_reimplementation = 2026-10-27
