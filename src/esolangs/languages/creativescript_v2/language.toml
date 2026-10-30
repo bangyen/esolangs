@@ -18,6 +18,9 @@ folding_constant = "a constant table is the literal 0 or 1 with no essential inp
 [ablations]
 audited = "2026-10-29"
 
+[audits]
+plain_rewrite = 2026-10-29
+
 [generator_sizes]
 "00000001" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 251 }
 "00001100" = { commands = 18, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 188 }

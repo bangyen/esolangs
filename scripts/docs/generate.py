@@ -491,13 +491,10 @@ def render_plain_rewrite_section() -> str:
         ),
         key=lambda pair: (-pair[0], pair[1].casefold()),
     )
-    cut = queue[_NEXT_AUDITS - 1][0]
+    cut = queue[min(_NEXT_AUDITS, len(queue)) - 1][0] if queue else 0
     nxt = [f"{name} {kept}" for kept, name in queue if kept >= cut]
-    return textwrap.fill(
-        f"Audited ({len(done)}): {_names(done)}. "
-        f"Next by kept `[ablations]`: {', '.join(nxt)}.",
-        width=76,
-    )
+    tail = f" Next by kept `[ablations]`: {', '.join(nxt)}." if nxt else ""
+    return textwrap.fill(f"Audited ({len(done)}): {_names(done)}.{tail}", width=76)
 
 
 def render_blind_reimplementation_section() -> str:
