@@ -8,7 +8,7 @@ admitted = 2026-10-15T02:01:50-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "the inputs are the initial stack; each node is the wiki's conditional, `d` dropping a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack survives; equal halves pop untested and constant subtables fold"
-scaling = "linear: worst 10T - 13 characters past n = 1: subtree_ids folding"
+scaling = "linear: worst 10T - 13 characters past n = 2: subtree_ids folding"
 execution = "poly n: at most n(n+1)/2 + 14n + 6 commands past n = 1: empty groups skip whole, flip +8"
 workspace = "poly n: at most (n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3) bits: nested frames"
 
@@ -20,13 +20,16 @@ workspace = "poly n: at most (n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5
 "01101001" = { commands = 31, commands_by_row = { "0" = 31, "1" = 31, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 31, "7" = 31 }, source_units = 66 }
 "0110100110010110" = { commands = 57, commands_by_row = { "0" = 46, "1" = 46, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 46, "7" = 46, "8" = 57, "9" = 57, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 57, "15" = 57 }, source_units = 146 }
 "1101001101101101" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 48, "5" = 48, "6" = 48, "7" = 48, "8" = 46, "9" = 46, "10" = 57, "11" = 57, "12" = 47, "13" = 47, "14" = 47, "15" = 47 }, source_units = 117 }
-"11111110" = { commands = 44, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 43 }
+"11111110" = { commands = 46, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 35, "5" = 35, "6" = 46, "7" = 46 }, source_units = 45 }
 
 [catalogue]
 sharing_exempt = "no names or jumps: code runs once per place it is written"
 
+[audits]
+plain_rewrite = 2026-10-29
+
 [ablations]
-audited = "2026-10-20"
+audited = "2026-10-29"
 
 [ablations.equal_halves_skip]
 saving = 12.44
@@ -44,3 +47,15 @@ arity = 12
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: a last level with leaves 01 emits nothing, since the bit is the stack ([1], or a 0 the strip empties), and with 10 emits (d+(1+di-)i), against the 15-char conditional: 22.3% on random tables at n=4, 20.4% at n=5, 19.9-20.1% at n=6..12 (20 tables at 12), flat; parity 31.2%, majority 27.8%, and 10.6% at n=8. Exhaustive n<=3: 252 tables change (the root keeps its conditional, so n=1 never empties), none grows, every changed program executed; random samples executed at n=4..10"
+
+[ablations.complement_rule]
+saving = 0.64
+arity = 10
+seed = "random.Random(184700 + n)"
+tables = 20
+verdict = "retired as a race, kept as a rule: the race (min of the tree and the complement's tree plus a closing flip) saved 1.73% on 200 random tables at n=7, 1.30% at n=8, 0.73% at n=10 (20 tables), 0.34% at n=12: under the bar and declining. It wins on negated named functions: !majority 23.2% (n=6..10), !thr3 14.1% at n=10, !thr2 7.1%, !and 4.7%. The rule (complement when the table has two more 10 pairs than 01) matches the race on every named function at n=6/8/10/12 except !and (4.7% under the bar, dropped); it saves 1.58% / 1.23% / 0.64% under plain on random at n=7 / 8 / 10, +0.15% / +0.08% / +0.09% against the race, and builds one tree instead of two. Pins moved: 11111110 44 -> 46 commands; bound 10T - 13 holds from n = 3 (n=2 1110: 28 chars, was 27)"
+
+[ablations.last_level_forms_remeasured]
+saving = 20.7
+arity = 10
+verdict = "kept, re-measured 2026-10-29 against the build with the last-level forms removed (the root-style conditional at every level): 21.3% at n=7 (200 tables), 21.2% at n=8 (200), 20.7% at n=10 (20); parity 31.1%, majority 27.0%, thr3 18.5%, AND 8.1%, OR 7.7%, !AND 6.2%, !OR 1.6% at n=10"

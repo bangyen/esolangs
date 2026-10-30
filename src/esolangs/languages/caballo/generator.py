@@ -6,9 +6,9 @@ first branch, and the zero test ``(1+di-)`` cancels to nothing on a 1.
 Both branches pop the bit.  A node whose halves agree pops it untested; a
 constant subtable pops the rest and leaves ``[1]`` (``i``) or ``[]``, so
 one stack survives at weight 1 and the output is never drawn at random.
-The complement's tree plus a closing flip competes, the shorter winning:
-a last level costs nothing for leaves 01 and 12 characters for 10, so the
-flip cuts a table dense in 10s (negated thresholds, 17-23% at n=7..12).
+A last level costs nothing for leaves 01 and 12 characters for 10, so a
+table with two more 10 pairs than 01 builds the complement's tree plus a
+closing flip ([ablations.complement_rule]).
 
 Size:
     T-1 nodes at most, appended into one buffer: size and build time O(T);
@@ -31,12 +31,13 @@ _NOT = "(d+(1+di-)i)"
 def caballo(truth_table: str) -> str:
     """Build a Caballo program printing ``[1]`` or ``[]`` for each row.
 
-    The complement's tree plus a closing flip competes: a last level emits
-    nothing for leaves 01 and the flip for 10.
+    A table with two more 10 pairs than 01 builds the complement's tree plus
+    a closing flip ([ablations.complement_rule]).
     """
-    plain = _tree(truth_table)
-    flipped = _tree("".join("10"[c == "1"] for c in truth_table)) + _NOT
-    return min(plain, flipped, key=len)
+    pairs = [truth_table[i : i + 2] for i in range(0, len(truth_table), 2)]
+    if pairs.count("10") - pairs.count("01") > 1:
+        return _tree("".join("10"[c == "1"] for c in truth_table)) + _NOT
+    return _tree(truth_table)
 
 
 def _tree(truth_table: str) -> str:

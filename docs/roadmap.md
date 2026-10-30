@@ -75,10 +75,10 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (76): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Audited (77): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
 Algebraic Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark,
 Back, Balik, Basicfuck, Befunge, BFStack, Bitdeque, Bitwise Cyclic Tag,
-bit~, Bleh, Blindfolded Arithmetic, Boolfuck, brainfuck, BrainIf,
+bit~, Bleh, Blindfolded Arithmetic, Boolfuck, brainfuck, BrainIf, Caballo,
 Circlefuck, Circuit Diagram, Clockwise, Collatz Multiverse, Container,
 Crement, CV(N)(C), Decleq, Dig, Dimensional, EGL, FALSE, Fargo, Fish,
 Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Home Row, Hot, Inject,
@@ -86,9 +86,9 @@ INTERCAL, Interprogck8, LaserFuck, Line, Malbolge, Minifuck, Modulous, NOR
 machine, Packlang, Painfuck, Piet, Qoibl, RAM0, ROTfuck, S*bleq, SendStuff,
 SLOW ACV MAMMALIAN, Smallfuck, Smu, SStack, Streetcode, Subleq, Suffolk,
 Taglate, thisthat, Thue, Unary, Underload, Unlambda. Next by kept
-`[ablations]`: Caballo 2, Codesick 2, Cyclic tag 2, Eval 2, Fackward 2,
-Minsky Swap 2, Pointless 2, Quassaunt 2, Sonata 2, Stisp 2, Super SNUSP 2,
-SwitchCase 2, Unsquare 2.
+`[ablations]`: Codesick 2, Cyclic tag 2, Eval 2, Fackward 2, Minsky Swap 2,
+Pointless 2, Quassaunt 2, Sonata 2, Stisp 2, Super SNUSP 2, SwitchCase 2,
+Unsquare 2.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
