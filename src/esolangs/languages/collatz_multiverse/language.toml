@@ -80,6 +80,7 @@ verdict = "kept 2026-10-28 by contract: the balance hook rebuilds the program at
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [balance_growth]

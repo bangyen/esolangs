@@ -55,4 +55,5 @@ verdict = "recorded: the tree tests the last bit first because each scope is ent
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

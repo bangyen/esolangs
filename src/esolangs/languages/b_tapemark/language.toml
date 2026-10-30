@@ -83,4 +83,5 @@ verdict = "kept (re-priced 2026-10-28: the narrow staircase and the T-run folds 
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

@@ -11,7 +11,10 @@ No command halts, so the machine halts itself once its state provably
 repeats with no output, input, or memory write in between: from there it
 loops forever and changes nothing observable.  Brent's algorithm over an
 O(1) key (pointer, heading, tape position, write count), restarted at
-every write, finds that repeat a few steps into the loop.  A program that
+every write, finds that repeat a few steps into the loop.  A write is a
+real change: a tape bit taking a new value, an enqueue, a dequeue from a
+non-empty queue, a bit output, or an input bit consumed; rewriting the bit
+already there, dequeuing an empty queue and reading at EOF are not.  A program that
 keeps printing, or keeps writing new state, runs until the caller's
 budget stops it.
 

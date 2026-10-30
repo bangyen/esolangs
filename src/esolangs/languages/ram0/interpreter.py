@@ -2,7 +2,10 @@
 
 Two registers (z, n) and unbounded RAM; seven commands: Z, A, N, C, L,
 S, and goto.  The run halts when the cursor runs off the token list, and
-then dumps the RAM once, in the order its addresses were first written.
+then dumps the state once: ``z: <z>``, ``n: <n>``, ``ram: {``, one
+``    <address>: <value>,`` line per address in the order first written (the
+last without its comma), then ``}``, lines joined by newlines, none
+trailing; an empty RAM prints ``ram: {}``.
 A goto past the last command halts, as running off the end does.
 
 Errors:

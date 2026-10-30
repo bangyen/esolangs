@@ -56,4 +56,5 @@ verdict = "kept: the deepest, most repeated test sits in cell 0 and the root tes
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

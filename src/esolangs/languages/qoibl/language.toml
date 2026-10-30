@@ -66,4 +66,5 @@ verdict = "kept under the named-function rule: the table reversed with the digit
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

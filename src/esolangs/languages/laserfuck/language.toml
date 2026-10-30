@@ -89,6 +89,7 @@ verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column b
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-18
 
 [ablations.tiled_tree]

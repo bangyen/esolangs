@@ -5,8 +5,9 @@ A laser starts at ``o`` with a random heading.  ``>``/``<``/``+``/``-``/
 always and ``(``/``)`` only when the cell is nonzero, ``^v{}`` set the
 heading, ``#`` skips, ``x`` deletes the laser, ``*`` splits it
 perpendicular at random.  When no lasers remain the tape is printed:
-decimal by default, byte mode (no separators) when the first grid cell is
-``\xff``; negative cells are excluded.  Cells are signed 32-bit values.  The
+decimal by default (a newline between values, none trailing), byte mode
+(no separators) when the first grid cell is ``\xff``; negative cells are
+excluded.  Cells are signed 32-bit values.  The
 initial heading and every ``*`` split are drawn from ``rng``, so one argument
 makes a run reproducible; ``None`` draws for real, as the cross-check does.
 
@@ -20,7 +21,8 @@ Errors:
 Decisions:
     * "Used cells" are the cells a command wrote.
     * Ragged rows pad with spaces to a rectangle.
-    * A second ``o`` halts the run at once (every example has one start).
+    * A grid with a second ``o`` halts before any laser moves, printing
+      nothing (every example has one start).
     * Writes wrap in two's-complement order.
     * The spec leaves input representation unspecified; ``,`` reads a
       Unicode character code.

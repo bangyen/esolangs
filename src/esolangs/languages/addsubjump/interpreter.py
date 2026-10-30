@@ -1,8 +1,10 @@
 """Interpreter for AddSubJump (ASJ).
 
 An OISC: ``ASJ a b c d`` is ``if (*d > 0) {*a -= *b} else {*a += *b};
-goto c`` over a self-modifying integer memory, ``ip`` from 0. Source may
-be raw integers or assembly with labels, macros, directives, and comments.
+goto c`` over a self-modifying integer memory, ``ip`` from 0.  A source
+whose tokens (``#`` comments stripped) are all integers is a raw memory
+image, loaded in order across lines; any other source is assembly with
+labels, macros, directives, and comments.
 Special addresses: ``-1`` I/O (read a byte / print ``*b``),
 ``-2``..``-5`` Carry/Zero/Negative/Overflow, ``-6``/``-7``/``-8`` the
 constants 1/0/-1, ``-9`` the flag update mode (starts 0).  Jumping to a

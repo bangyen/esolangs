@@ -73,4 +73,5 @@ verdict = "kept: int bitvector over tuple tape"
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
