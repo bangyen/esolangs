@@ -83,19 +83,6 @@ ignored-input tables included).
   does not license (Collatz Multiverse, Decleq, Minsky Swap, Modulous,
   SendStuff), the rest spec gaps now in the docstrings.  Record one as
   `[audits] blind_reimplementation = <date>`.
-  - *Streetcode:* the page gives no geometry; a clean room's turn
-    choices differ on 2,711 of 3,080 rows.  Executing the dead-end landing
-    cell (ours) still leaves 2,649: its turn at any two-wide side road
-    against our merge latches.  Merge timing is our own convention (the
-    author's revision 78016 fixes only right-hand driving and the junction
-    choice), and generated programs rely on it from n = 1 (the ``01``
-    program's island loop), so no clean room can agree.  Traffic law
-    rejects the clean room's second turn inside one junction (a U-turn
-    past the centre, Wisconsin 346.31(3)(b); a right turn as three lefts,
-    NY VTL 1160(a)) but gives no latch timing.  Reopen with a
-    generator that emits only geometry every reading drives alike (dead
-    ends and T-junctions, no merges), then re-diff the unaltered clean
-    room.
   - *Weakly grounded readings the generators rely on:* each record
     agrees only with the clean room patched to our reading.  Make the
     generator run under both, or find page evidence.
@@ -114,7 +101,7 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-90 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+91 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
 BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
@@ -126,7 +113,7 @@ Kiss, LaserFuck, Line, lol waht i cant edit talk pages, Minifuck, Minsky
 Swap, Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object
 disoriented, Packlang, Painfuck, Parenthesys, Pilas, Pointless, Qoibl,
 Qrain, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff, SLOW ACV
-MAMMALIAN, Smu, Sonata, SStack, Stisp, Suffolk, Super SNUSP, SwitchCase,
-Taglate, thisthat, Unsquare, What!?.
+MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode, Suffolk, Super SNUSP,
+SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- BLIND-REIMPLEMENTATIONS:END -->

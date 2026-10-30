@@ -10,8 +10,9 @@ an implementation convention corroborated by the wiki examples.  The page
 gives no geometry, so these are readings: the car starts on the first of
 N, E, S, W with a wall to its right and road ahead (``C`` at a ring's
 corner heads down the side road, not into the turn); a dead end turns the
-car across the street in two steps, and a ``U`` on the cell where that
-turn lands does not reverse it again.
+car across the street in two steps, so a ``U`` on the corner, met heading
+across, reverses it into the lane it was turning into, and one past the
+corner sends it back into the dead end for good.
 
 Input/output:
     ``I`` reads a character, a newline storing code 10; ``O`` writes the
@@ -33,6 +34,13 @@ Decisions:
     * ``I``/``O``'s "Nth register" is the CPth cell.
     * The wiki's Turing-completeness sentence names ``<`` and ``>``; the
       command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
+    * Generated programs need three readings the page leaves open: a
+      cell the car turns around on (dead end or ``U``) runs like any
+      cell it occupies, and a junction takes one decision -- after a
+      turn the car goes straight where it can.  A blind reimplementation
+      differs on 2,711 of 3,080 corpus rows; with these patched, 0.
+      Traffic law rejects the alternative second turn inside a junction
+      (a U-turn past the centre, Wisconsin 346.31(3)(b)).
 """
 
 import functools
