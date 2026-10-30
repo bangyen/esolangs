@@ -56,4 +56,5 @@ tables = 20
 verdict = "retired 2026-10-28 (random + named bar): sharing one counted push body for the first block of two identical halves saved 0.03% at n=7 and 0.02% at n=8 on 20 seeded random tables (12,360 -> 12,358 chars at n=8; 2 of 20 changed) and 0 chars on parity, majority, and, or and a threshold at n=7..12; it earned 10-14% only on deep twins (block half the table), an ad hoc class. The command bound that gated it and the executed-count returns that fed it went with it; n=10 random 1847 grows 2,173 -> 2,174 chars. Execution 4T + 79n + 22 still reached at n=8 (1,678) and never exceeded at n=6..8; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
