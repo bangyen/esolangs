@@ -125,12 +125,12 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-43 of the 112 generators: ABCDirection, Alight, Aprknia, Ascenic, Balik,
+44 of the 112 generators: ABCDirection, Alight, Aprknia, Ascenic, Balik,
 BASICER, Basicfuck, Between, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, CARP,
 Chicken, Circlefuck, Codesick, CreativeScript v2, Cyclic tag, DINAC, Eval,
 Fackward, Hot, HQ9+ with headers, IEBEL, Interprogck8, Kiss, lol waht i cant
 edit talk pages, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
-Nandypants, Parenthesys, Pilas, Qrain, Rubic, Shakespeare, Sonata, Stisp,
-SwitchCase, Thue, What!?, Whitespace.
+Nandypants, NOR machine, Parenthesys, Pilas, Qrain, Rubic, Shakespeare,
+Sonata, Stisp, SwitchCase, Thue, What!?, Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->

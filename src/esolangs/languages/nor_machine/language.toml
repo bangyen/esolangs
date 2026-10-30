@@ -60,5 +60,6 @@ tables = "random n=7 (200), n=8 (100), n=9 (30); n=7..9 parity, and, or, majorit
 verdict = "kept: with every input essential the 1 and -2 are built from the packed integer after Horner, so the queue holds two values through the T shifts and the smear passes, not three or four; random 13.9% (n=7), 14.5% (n=8), 15.0% (n=9) in chars, 13.9/14.4/15.0% in balanced area; n=8 parity 15.4%, majority 12.9%, and/or 10.7%, threshold 12.0%; n=9 16.2/13.3/10.7/11.8%; share rises with n"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
