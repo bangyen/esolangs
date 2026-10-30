@@ -66,7 +66,6 @@ ignored-input tables included).
 - **Removed languages with no surviving ground** (re-check 2026-10-29,
   page + Talk + full history read): rebuild with `/new-language`; the old
   packages are in git history.
-  - Basicfuck (admitted 2026-08-13, removed 9070ffe12).
   - DINAC (2026-09-08, 9070ffe12). Core semantics are fixed; the page
     contradicts itself on literals (`[0-9A-F]{2}` vs "lowercase", bare
     `\0`, `add1(1)`), and its cat drops the first character.

@@ -777,7 +777,7 @@ FALSE, Piet, Fish and Chicken); a cold-judge "distinct reason" panel on
 Sonnet (IEBEL's verdict flipped with the prompt) and on Opus, over the 82
 nearest-member pairs too (judges agree, 93-95% run to run, but even S\*bleq's
 redundant verdicts lean on "Subleq is Turing-complete", so no bar flags it
-without counting strength); name similarity (cuts Boolfuck-like originals,
+without counting strength); name similarity (cuts originals named after a member,
 misses IEBEL); a size cap (choosing who leaves needs a ranking, and
 backlinks gate only the fame route).
 
