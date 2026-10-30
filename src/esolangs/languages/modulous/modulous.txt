@@ -7,4 +7,4 @@
 [ADD 1][JMP F 2][POP]
 [JMP F 5 IF 0][SUB 1]
 [SWP][POP][JMP B 4]
-[POP][PRT][END]
+[POP][PRT STR][END]

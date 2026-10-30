@@ -8,7 +8,7 @@ A symmetric table counts its inputs at weight 1 over n + 1 entries
 
 Size:
     T + a few dozen characters per input; one loop step per row index.
-    n=10 random 1847: 1,601 chars, n=12 random 1847: 4,777 chars.
+    n=10 random 1847: 1,605 chars, n=12 random 1847: 4,781 chars.
 
 Decisions:
     A string literal has no subtrees to fold or share.  Letting the first
@@ -73,7 +73,7 @@ def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
             reads.append("[INP INT][POP]")
     # ``SWP``/``POP`` discards the entry *under* the counter, which is what
     # keeps the counter reachable: nothing but the top two cells is.
-    walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT][END]"
+    walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT STR][END]"
     program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
     if width is None:
         return program

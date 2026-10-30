@@ -39,6 +39,9 @@ Decisions:
       with no output; a program that does nothing and reports success is the
       worst answer to a typo, so both raise.  ``[]``, which the empty-token
       rule skips, serves as a comment.
+    * A bare ``PRT`` prints a character, as ``PRT STR``; the wiki always
+      writes the mode, so generated programs do (a clean-room reading
+      rejected the bare form, 2026-10-30).
 """
 
 import re
