@@ -57,4 +57,5 @@ arity = 10
 verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29). The last guarded leaf omits its s decrement, which nothing after it reads; always emitting it costs 1 character a table (+1.4% at most, n=2..6; 0.0% at n=7..10)"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
