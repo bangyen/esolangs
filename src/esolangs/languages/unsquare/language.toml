@@ -46,7 +46,7 @@ verdict = "kept: canonical, exempt. The table is read on its essential inputs on
 [ablations.run_loops]
 saving = 95.2
 arity = 12
-verdict = "kept: a run of equal entries is pushed by a counted Horner loop when shorter than the literal run. 0.00-0.02% on random tables (runs are shorter than the loop's break-even); on run-rich classes at n=10/12, AND and OR +84.9 / +95.2%, half-constant +29.6 / +32.2%, sparse +13.2 / +13.8%, majority +7.7 / +11.1%. The Decisions figures for the loops do not reproduce on seeded tables (F27)"
+verdict = "kept: a run of equal entries is pushed by a counted Horner loop when shorter than the literal run. 0.00-0.02% on random tables (runs are shorter than the loop's break-even); on run-rich classes at n=10/12, AND and OR +84.9 / +95.2%, half-constant +29.6 / +32.2%, sparse +13.2 / +13.8%, majority +7.7 / +11.1%. The Decisions figures for the loops do not reproduce on seeded tables (F27). Re-audited 2026-10-29 against the plain `entry*count` build (20 seeded random tables, seed 20261029): 0.00-0.02% n=3..9 (22,796 vs 22,800 chars at n=9); named, chars (balanced side^2 area in brackets): and/or and complements -37.9% [-36.0%] n=8, -42.8% [-41.5%] n=9; thr2 -27.8% [-22.5%] n=8, -35.6% [-32.1%] n=9; majority -3.9% n=8 [0] , -4.2% n=9 [0]; parity unchanged. A constant run is a constant subtree: canonical folding, ships at any saving; no other bespoke trick (the plain build differs only here). All tables n<=3 and priced tables n<=7 (named n<=8) execute, wrong-table control fails"
 
 [ablations.twin_halves]
 saving = 0.0
@@ -54,3 +54,6 @@ arity = 8
 seed = 20261028
 tables = 20
 verdict = "retired 2026-10-28 (random + named bar): sharing one counted push body for the first block of two identical halves saved 0.03% at n=7 and 0.02% at n=8 on 20 seeded random tables (12,360 -> 12,358 chars at n=8; 2 of 20 changed) and 0 chars on parity, majority, and, or and a threshold at n=7..12; it earned 10-14% only on deep twins (block half the table), an ad hoc class. The command bound that gated it and the executed-count returns that fed it went with it; n=10 random 1847 grows 2,173 -> 2,174 chars. Execution 4T + 79n + 22 still reached at n=8 (1,678) and never exceeded at n=6..8; balanced area (max(rows, cols) squared) within 5% across the retiring commit on parity, majority, and, or, thr2, their complements and 10 random tables at n=7, 8, 10"
+
+[audits]
+plain_rewrite = 2026-10-29
