@@ -26,7 +26,8 @@ sharing_exempt = "no names or jumps but loops: code runs once per place it is wr
 "11111110" = { commands = 170, commands_by_row = { "0" = 106, "1" = 106, "2" = 106, "3" = 106, "4" = 131, "5" = 131, "6" = 156, "7" = 170 }, source_units = 308 }
 
 [ablations]
-audited = "2026-10-27"
+audited = "2026-10-29"
 
 [audits]
+plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
