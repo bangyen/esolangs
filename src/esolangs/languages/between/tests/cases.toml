@@ -1,0 +1,104 @@
+language = "Between"
+oldid = 194479
+
+[[examples]]
+id = "hello-world"
+source = '''
+'Hello, World!'p.
+.x.'''
+expected = "Hello, World!"
+
+[[examples]]
+id = "truth-machine-0"
+source = '''
+'in'v.
+[in]i.
+|5|f([in]='1')
+|0|p.
+.x.
+|1|p.
+|5|f.'''
+stdin = "0\n"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+source = '''
+'in'v.
+[in]i.
+|5|f([in]='1')
+|0|p.
+.x.
+|1|p.
+|5|f.'''
+stdin = "1\n"
+expected = "1111"
+stop = "steps"
+band = "medium"
+
+[[examples]]
+id = "cat"
+source = '''
+'in'v.
+[in]i.
+[in]p.
+.x.'''
+stdin = "abc\n"
+expected = "abc"
+
+[[examples]]
+id = "subtract"
+source = '''
+'a'v.
+[a]i.
+[a]s|[a]c.|
+'b'v.
+[b]i.
+[b]s|[b]c.|
+|13|f([b]>[a])
+'value'v.
+|11|f(|[value]+[b]|=[a])
+[value]s|[value]+|1||
+|8|f.
+[value]p.
+.x.
+'Error: can't subtract bigger number from smaller'p.
+.x.'''
+stdin = "9\n4\n"
+expected = "5"
+
+[[examples]]
+id = "subtract-too-big"
+source = '''
+'a'v.
+[a]i.
+[a]s|[a]c.|
+'b'v.
+[b]i.
+[b]s|[b]c.|
+|13|f([b]>[a])
+'value'v.
+|11|f(|[value]+[b]|=[a])
+[value]s|[value]+|1||
+|8|f.
+[value]p.
+.x.
+'Error: can't subtract bigger number from smaller'p.
+.x.'''
+stdin = "4\n9\n"
+expected = "Error: can't subtract bigger number from smaller"
+
+[[spec_triggers]]
+program = "'a'v"
+expect = "ProgramError"
+claim = "ProgramError: a malformed line"
+
+[[spec_triggers]]
+program = "'a'v.\n[a]i."
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: ``i`` at EOF."
+
+[[spec_triggers]]
+program = "[a]p."
+expect = "HaltError"
+claim = "HaltError: an undeclared variable"

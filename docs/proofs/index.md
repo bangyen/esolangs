@@ -354,6 +354,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | BASICER | tree | — | linear: at most T + 2 lines: one menu per diagram node | linear: worst n + 2 commands | linear: worst n + 4 bits |
 | Basicfuck | tree | each node tests its variable with if and if!, equal halves skip the test, a repeated subtree is a block entered through a flag, and marked leaves count in one cell | linear: at most 14T + 16n + 43 characters: the plain tree | poly n: at most 5n + 55 commands: reads, two tests and a call a level, block tests | poly n: at most 6n + 60 + bl(L) + bl(n) bits: digit cells, the answer, flags, counter |
 | Befunge | exception | six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables | linear: worst N cells past n = 6: 80 columns, one header row | unmeasured: worst 5n + 28 steps for n = 2..10, 5n + 67 to 13 | poly n: worst 2n + bl(5n+28) + bl(2n-1) + 10 bits for n = 2..10, then 2n + bl(2n-1) + 23 |
+| Between | tree | — | linear: at most 2T + 2n + 2 lines | poly n: worst 4n + 1 commands | poly n: at most 16n + bl(L) + bl(2n) + 1 bits |
 | BFStack | minterms | — | linear: worst N characters past n = 2: zero-row walk telescopes to T | poly n: worst 60n + 660 commands past n = 7 | poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-7,0) + min(T,128) + 1 |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: at most B characters: the shared tree's token bound | poly n: worst 7n + 8 commands past n = 2: prelude, load 2n, four a level, leaf n + 6 | poly n: worst n + 1 + bl(U) bits past n = 2: n deque bits, a register bit, the cursor |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: worst 8T+2n+1 characters: four per row, reads four a unit | linear: worst 5T + n commands: input segments, then 3 per walk cell | linear: worst 16T + 8 + bl(8T+n-2) + bl(2T+n+1) bits: a data queue of 2T bits |
@@ -549,7 +550,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 105 theoretical totality arguments and
+Accordingly, this ledger records 106 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

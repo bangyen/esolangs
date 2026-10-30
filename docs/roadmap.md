@@ -63,12 +63,6 @@ ignored-input tables included).
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
 - **Brainfuck derivatives refused by the 2026-10-15 ban** are eligible
   again: screen them on route, spec and token substitution.
-- **Removed languages with no surviving ground** (re-check 2026-10-29,
-  page + Talk + full history read): rebuild with `/new-language`; the old
-  packages are in git history.
-  - Between (2026-08-12, 8cdc37b24). The examples, marked untested,
-    fix what the prose leaves open: 0-based goto, unset variables are
-    Int 0, nested `|..|`/`(..)`.
 - **Movesum generator** (removed 9f3427b07, "no conditional means no
   generator story"): no ground excludes it, since ground 5 needs a proof
   that no generator exists, but it returns only with one.  With bits fed
@@ -111,7 +105,7 @@ Unsquare 2.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-13 of the 86 first implementations: Aprknia, Balik, BASICER, Bleh,
+13 of the 87 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, S*bleq,
 Sonata, Stisp, SwitchCase.
 

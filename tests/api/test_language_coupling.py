@@ -246,9 +246,10 @@ def _counts() -> dict[str, int]:
             for spellings, prefixes in owned
             if not path.startswith(prefixes)
             for spelling in spellings
-            # ``line`` and ``eval`` name a language and a common word: only
-            # an import or attribute of the module counts for those.
-            if spelling.startswith(".") or spelling not in {"line", "eval", "false"}
+            # ``line``, ``eval`` and ``between`` name a language and a common
+            # word: only an import or attribute of the module counts for those.
+            if spelling.startswith(".")
+            or spelling not in {"line", "eval", "false", "between"}
         )
         if total:
             counts[path] = total

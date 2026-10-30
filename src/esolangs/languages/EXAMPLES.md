@@ -34,6 +34,7 @@ don't edit by hand.
 | `basicer/basicer.txt` | BASICER | `0001` | `01` | 1 2 | '0\n' |
 | `basicfuck/basicfuck.txt` | Basicfuck | `0001` | `01` | 01 | '0' |
 | `befunge/befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
+| `between/between.txt` | Between | `0001` | `01` | 0 1 | '0' |
 | `bfstack/bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |
 | `bitdeque/bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
 | `bitwise_cyclic_tag/bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |

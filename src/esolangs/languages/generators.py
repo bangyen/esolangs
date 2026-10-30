@@ -35,6 +35,8 @@ from esolangs.languages.basicfuck.generator import LANGUAGE as _BASICFUCK_LANGUA
 from esolangs.languages.basicfuck.generator import basicfuck
 from esolangs.languages.befunge.generator import LANGUAGE as _BEFUNGE_LANGUAGE
 from esolangs.languages.befunge.generator import befunge
+from esolangs.languages.between.generator import LANGUAGE as _BETWEEN_LANGUAGE
+from esolangs.languages.between.generator import between
 from esolangs.languages.bfstack.generator import LANGUAGE as _BFSTACK_LANGUAGE
 from esolangs.languages.bfstack.generator import bfstack
 from esolangs.languages.bit_tilde.generator import LANGUAGE as _BIT_TILDE_LANGUAGE
@@ -257,6 +259,7 @@ _LANGUAGES = (
     _BASICER_LANGUAGE,
     _BASICFUCK_LANGUAGE,
     _BEFUNGE_LANGUAGE,
+    _BETWEEN_LANGUAGE,
     _BFSTACK_LANGUAGE,
     _BIT_TILDE_LANGUAGE,
     _BITDEQUE_LANGUAGE,
@@ -368,6 +371,7 @@ __all__ = [
     "basicer",
     "basicfuck",
     "befunge",
+    "between",
     "bfstack",
     "bit_tilde",
     "bitdeque",

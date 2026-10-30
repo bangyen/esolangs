@@ -226,6 +226,7 @@ Build language-specific stdin with `encode_inputs`:
 | BASICER | `line_per_bit` | `1`/`2` | `'2\n1\n2\n'` |
 | Balik | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Between | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Blindfolded Arithmetic | `row_number` | `0`/`1` | `'6\n'` |
 | CARP | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
