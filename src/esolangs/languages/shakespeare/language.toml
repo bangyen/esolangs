@@ -20,10 +20,10 @@ folds_without_tree = true
 [generator_sizes]
 "00000001" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 855 }
 "00001100" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 672 }
-"00110110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 906 }
-"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11 }, source_units = 662 }
+"00110110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 893 }
+"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11 }, source_units = 668 }
 "01101001" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 912 }
-"0110100110010110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1226 }
+"0110100110010110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1232 }
 "1101001101101101" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1219 }
 "11111110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 886 }
 
@@ -38,4 +38,11 @@ saving = 76.46
 arity = 8
 seed = "random.Random(184700 + n)"
 tables = 20
-verdict = "kept as a rule, the race retired: complement when ones outnumber zeros, no second build. Random 2.4% off the plain build at n=8 (5974.65 -> 5830.5 chars, 20 tables; 2.6% n=7, 40 tables, 0.8% n=2 .. 1.2% n=6) and the rule matches the min-race within 0.02% (5829.35); named: OR 8343 -> 1964 (76.5%) and ~AND 8337 -> 3548 (57.4%) and threshold-2 8191 -> 2902 (64.6%) at n=8, ~majority 18.6%, majority, AND, parity 0%. Layout is a plain re-wrap, so balanced area tracks chars. Exhaustive n<=3 (276) and 310 priced tables executed, control fails"
+verdict = "kept as a rule, the race retired (measured on the binary build, before signed_digits): complement when ones outnumber zeros, no second build. Random 2.4% off the plain build at n=8 (5974.65 -> 5830.5 chars, 20 tables; 2.6% n=7, 40 tables, 0.8% n=2 .. 1.2% n=6) and the rule matches the min-race within 0.02% (5829.35); named: OR 8343 -> 1964 (76.5%) and ~AND 8337 -> 3548 (57.4%) and threshold-2 8191 -> 2902 (64.6%) at n=8, ~majority 18.6%, majority, AND, parity 0%. Layout is a plain re-wrap, so balanced area tracks chars. Exhaustive n<=3 (276) and 310 priced tables executed, control fails"
+
+[ablations.signed_digits]
+saving = 11.72
+arity = 8
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept as a rule: Horner over the non-adjacent form, a minus one as `and pig`, a third of the digits nonzero against a half. Random 11.7% off the binary build at n=8 (5824.5 -> 5142.0 chars, 200 tables; 9.1% at n=7, 14.4% at n=9, 16.7% at n=10: the share grows with the packed share). Named at n=8: majority 17.2% (5265 -> 4359), threshold-2 0.7%, ~AND 0.4%, AND and OR 0% (polarity already took them), parity +0.1% (5924 -> 5930). Dropping polarity would give 12.0% on random but OR 1964 -> 3542, so both stay. Exhaustive n<=3 and 3000/400/150/40/30 random tables at n=4..8, every row executed, 0 wrong; control fails"

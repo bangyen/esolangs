@@ -1,8 +1,10 @@
 """Shakespeare Boolean program generator: the table is one number, shifted by the row.
 
-Hamlet is packed with the table as a binary number whose bit ``r`` is
-``table[r]``, by Horner's rule in sentences of 64 bits: a zero bit is
-``twice``, a one bit ``the sum of twice ... and joy``.  Romeo then reads each
+Hamlet is packed with the table as a number whose bit ``r`` is
+``table[r]``, by Horner's rule over its non-adjacent form (digits 0, 1, -1; a
+third of them nonzero against a half) in sentences of 64 digits: a zero digit
+is ``twice``, a one ``the sum of twice ... and joy``, a minus one
+``the sum of twice ... and pig``.  Romeo then reads each
 input into Juliet and multiplies himself by ``1 + bit * (2**w - 1)``, where
 ``w`` is that input's weight and ``2**w`` is ``w`` as a power of two reached
 by squaring ``2`` (``the square of`` nested ``log2 w`` times).  Romeo ends as
@@ -12,7 +14,7 @@ line of single-spaced words, so the squarest layout is a plain re-wrap.
 
 Size:
     at most ``16 * T`` characters for ``T = 2**m`` rows of the essential inputs
-    plus ``O(m**2)`` for the readers, so linear in T; n=4 parity: 1,226 chars
+    plus ``O(m**2)`` for the readers, so linear in T; n=4 parity: 1,232 chars
 
 Decisions:
     * A stack of ``Remember`` sentences, one per row, was not built: reading
@@ -39,8 +41,21 @@ _HEAD = (
 _READ = "Romeo: Listen to your heart."
 
 
+def _naf(value: int) -> str:
+    """Return ``value`` > 0 in non-adjacent form, most significant digit first.
+
+    Digits are ``1``, ``0`` and ``-`` (minus one); the first is ``1``.
+    """
+    digits = []
+    while value:
+        digit = 2 - value % 4 if value & 1 else 0
+        value = (value - digit) >> 1
+        digits.append("-" if digit < 0 else str(digit))
+    return "".join(reversed(digits))
+
+
 def _pack(bits: str) -> str:
-    """Return the sentences setting Hamlet to the binary number ``bits``.
+    """Return the sentences setting Hamlet to the signed-digit number ``bits``.
 
     ``bits`` starts with ``1``.  Romeo speaks, so ``yourself`` is Hamlet.
     """
@@ -49,7 +64,10 @@ def _pack(bits: str) -> str:
     rest = bits[1:]
     for start in range(0, len(rest), _CHUNK):
         for bit in rest[start : start + _CHUNK]:
-            acc = f"the sum of twice {acc} and joy" if bit == "1" else f"twice {acc}"
+            if bit == "0":
+                acc = f"twice {acc}"
+            else:
+                acc = f"the sum of twice {acc} and {'joy' if bit == '1' else 'pig'}"
         sentences.append(f"You are {acc}.")
         acc = "yourself"
     return " ".join(sentences) if rest else "You are joy."
@@ -72,7 +90,7 @@ def _program(table: str, n: int, essential: list[int], *, invert: bool) -> str:
     """Return the play for the reduced ``table`` over ``essential`` inputs."""
     m = len(essential)
     stored = "".join("1" if c == ("0" if invert else "1") else "0" for c in table)
-    bits = bin(int(stored[::-1], 2))[2:]
+    bits = _naf(int(stored[::-1], 2))
     parts = [
         _HEAD,
         "[Enter Romeo and Hamlet]",
