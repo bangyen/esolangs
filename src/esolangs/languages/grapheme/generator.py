@@ -2,7 +2,8 @@
 
 The literal (int mode, ~0.302 letters an entry) is indexed by Horner's rule
 run on the complemented or the direct input bits, and its bit or the
-complement is printed, whichever spells the shorter integer; it has no
+complement is printed.  The smallest of the four packings is taken when it
+fits in 3/4 of the table width (sparse and/or/threshold tables); it has no
 subtrees to fold or share.
 
 Size:
@@ -84,7 +85,7 @@ def grapheme(
     ``truth_table`` is a binary string of length ``2**n``, MSB first; prints
     ``'0'`` or ``'1'``.  The table is one int-mode literal, ~0.302 letters an
     entry, indexed by Horner's rule run on the complemented or direct input
-    bits; the answer bit or its complement is printed, whichever is shorter.
+    bits; the answer bit or its complement is printed (the smallest packing).
     """
     return _program(truth_table, integer_conversion=integer_conversion)
 
@@ -112,25 +113,29 @@ def _program(
     shift = "R"
     low_bit = "K" + two + "LR" + two + "SLB"
 
-    # The literal's length follows its magnitude, so build the four spellings
-    # of the table -- the index complemented (``2 - bit`` doubles on a 0) or
-    # direct (``1 + bit``), the answer stored or negated by ``T`` -- all of
-    # one length apart from that ``T``, and keep the shortest.
-    programs = []
+    # The literal's length follows its magnitude.  Four packings: the index
+    # complemented (``2 - bit`` doubles on a 0) or direct (``1 + bit``, the
+    # table reversed), the answer stored or negated by ``T``.  Sparse tables
+    # (and/or/threshold families) pack to a tiny integer in one of them, 30-62%
+    # off at n=10; on random tables the smallest packing is within a bit of the
+    # plain one, so a packing is taken only when it fits in 3/4 of the width.
+    packings = []
     for direct in (False, True):
-        double = one + "AS" if direct else two + "BS"
-        head = one + "".join(
-            square + read_bit + double if i in reading else drop_unread_line
-            for i in range(n)
-        )
         packed = table[::-1] if direct else table
         for negate in (False, True):
             entries = packed.translate(str.maketrans("01", "10")) if negate else packed
-            literal = _grapheme_literal(_grapheme_table(entries), dialect)
-            programs.append(
-                head + literal + shift + low_bit + ("T" if negate else "") + "Y"
-            )
-    return min(programs, key=len)
+            packings.append((int(entries, 2), direct, negate, entries))
+    value, direct, negate, entries = min(packings, key=lambda p: (p[0], p[2], p[1]))
+    if value.bit_length() * 4 > 3 * len(table):
+        direct = negate = False
+        entries = table
+    double = one + "AS" if direct else two + "BS"
+    head = one + "".join(
+        square + read_bit + double if i in reading else drop_unread_line
+        for i in range(n)
+    )
+    literal = _grapheme_literal(_grapheme_table(entries), dialect)
+    return head + literal + shift + low_bit + ("T" if negate else "") + "Y"
 
 
 LANGUAGE = Language(
