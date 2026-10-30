@@ -88,6 +88,7 @@ saving = 0.0
 verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column builder; no default-path effect"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-18
 
 [ablations.tiled_tree]
