@@ -36,3 +36,13 @@ arity = 8
 seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; one-ignored: a random 2^(n-1) table repeated, random.Random(7 * n + i)"
 tables = 20
 verdict = "kept: canonical, exempt. The literal covers the essential inputs only; an ignored one is read into the scratch and dropped (8 chars against 32 and a doubled literal). 0.0% on random tables at n=7/8; one ignored input 17.7% / 23.1%, constant tables 84.5% / 85.8%"
+
+[ablations.trailing_swap]
+saving = 0.5
+arity = 8
+seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20"
+tables = 20
+verdict = "kept: not a size trick. The 3-char swap after end ends the file on a tab so the example writer's trailing-newline strip cannot eat end's three line feeds; 0.46% of chars at n=8 (1.43% n=2). Plain rewrite otherwise identical: the construction is one literal with only the canonical input projection, nothing else bespoke. n<=3 exhaustive (276) and named/random tables n<=8 execute, control fails"
+
+[audits]
+plain_rewrite = 2026-10-29
