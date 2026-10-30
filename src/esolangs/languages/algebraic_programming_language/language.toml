@@ -32,9 +32,9 @@ arity = 10
 verdict = "kept: canonical, exempt from the bar; a node whose halves agree is that half -- 12.2% on random tables at n=10, 55.7% on ignored-input classes at n=10, 77.5% on single-block tilings; it is also the essential drop, since the reads prefix binds every input and a dropped test drops no read"
 
 [ablations.complement_twin_rule]
-saving = -1.7
+saving = 39.3
 arity = 10
-verdict = "kept: canonical sharing complex, but its marginal is negative on every corpus measured -- disabling it shrinks random tables by 1.7% at n=10 (0.1% at n=4, growing) and parity by 2.5% at every arity, where the reduced diagram is 2.5% larger than the plain tree and this rule is the whole growth; the canonical exemption lapses where a piece makes the average program larger on the tables it targets; retirement candidate, Bangyen to decide"
+verdict = "kept: canonical sharing; re-measured 2026-10-30 by disabling only the twin lookup (the _Ref negation kept): parity grows 68.5 / 73.7 / 77.7 / 64.8 / 66.9 / 68.6% at n=7..12 (n=10: 270 -> 445 chars; balanced area +78-96%), majority, and, nor unchanged; random tables (20 an n, seed random.Random(5150 + 100n + s)) +1.8 / +3.0 / +1.7 / +0.0% at n=4 / 7 / 8 / 10, balanced -1.0 to -2.7% from n=7. The former verdict (disabling it shrinks parity 2.5%, random 1.7% at n=10) did not reproduce"
 
 [ablations.subtree_interning]
 saving = 0.0
