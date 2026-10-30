@@ -94,4 +94,5 @@ tables = 200
 verdict = "kept 2026-10-27: key k is the closed-form wrapped-zero family (4 + 3 (bl(k) - 1) characters, the shortest grammar lengths) rather than the plain linear key, 3 wrapped k times (1 + 3k); linear keys grow random tables 10.6% at n=7 and 11.1% at n=8 over 200 tables, 11.2% at n=10 and n=12 over 5, and 19-40% on parity, and, or and majority at n=7..12. Borderline at n=7 (10.6%), flat near 11"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
