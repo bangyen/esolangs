@@ -24,3 +24,6 @@ workspace = "poly n: worst n + 23 bits"
 
 [ablations]
 audited = "2026-10-29"
+
+[audits]
+plain_rewrite = 2026-10-29
