@@ -6,6 +6,8 @@ current row's bits; it is rewritten (``and`` of its parent and one
 comparison) only when that prefix changes, which is ``tz(row)`` flags per
 row, T-1 in all.  Each 1-row folds ``and(f1, b0 = bit)`` into ``a`` with
 ``or``; the interpreter evaluates the whole scan and the program prints ``a``.
+Only essential inputs get a height; an ignored input is read into a scratch
+variable and a constant table is read and printed with no scan.
 No branch nests, so a line costs a constant number of characters.
 
 Size:
@@ -19,7 +21,11 @@ Decisions:
     again log T each.  The scan has neither.
 """
 
-from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -53,15 +59,31 @@ def dinac(truth_table: str) -> str:
     # Scan the rarer answer's rows and invert the print; the OR lines are the
     # only part that depends on the table, so the rarer side is the shorter
     # build (ties scan the 1-rows).
-    ones = truth_table.count("1")
-    return _scan(truth_table, n, "1" if 2 * ones <= len(truth_table) else "0")
+    # Ignored inputs are read into one scratch variable and left out of the
+    # scan; a constant table prints its answer with no scan at all.
+    keep = essential_inputs(truth_table, n)
+    if not keep:
+        return "\n".join([*_reads(n, keep), f"OUT '{truth_table[0]}"])
+    table = read_at(truth_table, keep, n)
+    mark = "1" if 2 * table.count("1") <= len(table) else "0"
+    return _scan(table, len(keep), mark, _reads(n, keep))
 
 
-def _scan(truth_table: str, n: int, mark: str) -> str:
+def _reads(n: int, keep: list[int]) -> list[str]:
+    """Read every input in order: kept ones into ``b<height>``, the rest into ``x``."""
+    lines = ["SET x:\\0"] if len(keep) < n else []
+    for i in range(n):
+        if i in keep:
+            h = len(keep) - 1 - keep.index(i)
+            lines += [f"SET b{h}:\\0", f"IN b{h}"]
+        else:
+            lines.append("IN x")
+    return lines
+
+
+def _scan(truth_table: str, n: int, mark: str, reads: list[str]) -> str:
     """The scan that ORs the ``mark`` rows and prints ``a`` or its complement."""
-    lines = list(_PRELUDE)
-    for h in range(n - 1, -1, -1):
-        lines += [f"SET b{h}:\\0", f"IN b{h}"]
+    lines = [*_PRELUDE, *reads]
     lines.append("SET a:00")
     for row, entry in enumerate(truth_table):
         for h in _refreshed(row, n):

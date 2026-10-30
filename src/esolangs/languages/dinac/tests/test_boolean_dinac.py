@@ -21,7 +21,9 @@ def test_every_row_prints_its_answer(table: str) -> None:
         assert esolangs.read_answer("DINAC", got) == table[row], (table, row)
 
 
-@pytest.mark.parametrize("table", ["1" * 32, "0" * 32, "01101001" * 4])
+@pytest.mark.parametrize(
+    "table", ["1" * 32, "0" * 32, "01101001" * 4, "0110" * 8, "00111100" * 4]
+)
 def test_larger_and_constant_tables(table: str) -> None:
     n = len(table).bit_length() - 1
     program = esolangs.generate("DINAC", table)

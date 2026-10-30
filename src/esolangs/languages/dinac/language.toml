@@ -13,12 +13,11 @@ execution = "linear: worst 15T/2 + 2n - 9 commands past n = 1"
 workspace = "linear: at most 106n + 424 bits: the scope's 2n + 1 slots, 48-bit type tags counted"
 
 [catalogue]
-folding_ignored = "every row is scanned, so an ignored input still doubles the scan"
-folding_constant = "a constant table still scans every row's flag rewrites"
+folding_constant_local = "essential_inputs"  # no kept input: read, then print the constant
 
 [generator_sizes]
 "00000001" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 377 }
-"00001100" = { commands = 43, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 43, "5" = 43, "6" = 43, "7" = 43 }, source_units = 405 }
+"00001100" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 285 }
 "00110110" = { commands = 57, commands_by_row = { "0" = 57, "1" = 57, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 57, "7" = 57 }, source_units = 461 }
 "0110" = { commands = 25, commands_by_row = { "0" = 25, "1" = 25, "2" = 25, "3" = 25 }, source_units = 299 }
 "01101001" = { commands = 57, commands_by_row = { "0" = 57, "1" = 57, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 57, "7" = 57 }, source_units = 461 }
