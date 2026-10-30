@@ -5,6 +5,11 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 1.5.1
+
+- Add Basicfuck, Between, DINAC, Monotonic Boolfuck, Movesum, Nandypants
+  and Qrain (115 languages).
+
 ## 1.5.0
 
 - **Breaking:** Remove Polynomial and Tiangou; their names no longer
