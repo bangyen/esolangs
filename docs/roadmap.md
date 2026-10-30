@@ -75,7 +75,7 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (95): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Audited (96): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
 Algebraic Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark,
 Back, Balik, Basicfuck, Befunge, BFStack, Bitdeque, Bitwise Cyclic Tag,
 bit~, Bleh, Blindfolded Arithmetic, Boolfuck, brainfuck, BrainIf, Caballo,
@@ -85,10 +85,10 @@ Dimensional, DINAC, EGL, Eval, Fackward, FALSE, Fargo, Fish, Flowchart,
 Forbin, Forþ, FRACTRAN, Freestajlo, Grapheme, Home Row, Hot, Inject,
 INTERCAL, Interprogck8, Kiss, LaserFuck, Line, Malbolge, Minifuck, Minsky
 Swap, Modulous, NOR machine, Object disoriented, Packlang, Painfuck, Piet,
-Pilas, Pointless, Qoibl, Quassaunt, RAM0, ROTfuck, S*bleq, SendStuff, SLOW
-ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Streetcode, Subleq,
-Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Thue, Unary, Underload,
-Unlambda, Unsquare. Next by kept `[ablations]`: Rubic 1, Shakespeare 1,
+Pilas, Pointless, Qoibl, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff,
+SLOW ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Streetcode,
+Subleq, Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Thue, Unary,
+Underload, Unlambda, Unsquare. Next by kept `[ablations]`: Shakespeare 1,
 What!? 1, Whitespace 1, Aprknia 0, BASICER 0, Between 0, CARP 0,
 CreativeScript v2 0, HQ9+ with headers 0, IEBEL 0, lol waht i cant edit talk
 pages 0, Monotonic Boolfuck 0, Movesum 0, Nandypants 0, Parenthesys 0, Qrain
