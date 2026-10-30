@@ -86,9 +86,13 @@ ignored-input tables included).
   - *Streetcode:* the page gives no geometry; a clean room's turn
     choices differ on 2,711 of 3,080 rows.  Executing the dead-end landing
     cell (ours) still leaves 2,649: its turn at any two-wide side road
-    against our merge latches, so the gap is our 832-line geometry, not
-    one reading.  Reopen with a clean room briefed on the author's
-    revision 78016.
+    against our merge latches.  Merge timing is our own convention (the
+    author's revision 78016 fixes only right-hand driving and the junction
+    choice), and generated programs rely on it from n = 1 (the ``01``
+    program's island loop), so no clean room can agree.  Reopen with a
+    generator that emits only geometry every reading drives alike (dead
+    ends and T-junctions, no merges), then re-diff the unaltered clean
+    room.
   - *Weakly grounded readings the generators rely on:* each record
     agrees only with the clean room patched to our reading.  Make the
     generator run under both, or find page evidence.
