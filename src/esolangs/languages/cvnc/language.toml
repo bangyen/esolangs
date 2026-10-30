@@ -56,4 +56,5 @@ arity = 10
 verdict = "kept: a leaf with no reads left reuses the accumulator's known value; 3.2% / 3.3% on random tables at n=9/10, flat — a genuine but sub-bar share, and the mechanism is a pass-through of a value the walk already carries, not a subsystem. On parity alone it swings 16.1% at n=10 to -7.0% at n=12; it does not make the average program larger on the tables it targets. Plain-rewrite audit 2026-10-27: kept; deleting it costs +4.25 / +4.18 / +3.76 / +1.79% on 200 random tables at n=5 / 6 / 7 / 8 (seed 4242), +1.71% at n=9 (40), +4.73% at n=10 (20) and +4.07% at n=12 (10), flat, though it is the longer build on 15 / 25 / 48 / 73 of 200 tables at n=5..8; parity +12.6 / +20.3 / +18.3 / +18.8 / +19.2% at n=6..10, -6.5% at n=12. Deleting it loosens the scaling bound to 19T/2 + 13 (a pair spelled alone costs 14, not 12) and removes four lines, since the walk carries the accumulator for the shared-subtree climbs anyway. Every changed program run on all rows through n=7, one in ten above"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
