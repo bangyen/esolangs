@@ -23,7 +23,8 @@ workspace = "linear: worst n + 4 bits"
 "11111110" = { commands = 5, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 5 }, source_units = 83 }
 
 [ablations]
-audited = "2026-10-27"
+audited = "2026-10-29"
 
 [audits]
+plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
