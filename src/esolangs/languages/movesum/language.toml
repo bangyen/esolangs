@@ -7,7 +7,7 @@ admitted = 2026-08-15T23:15:46-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "Horner-reads V = 44T + v with sum, then one rung per row: a test that is a no-op iff V equals the rung's counter, and a print; at the row two no-ops in a row halt it"
+qualification = "Horner-reads V = 44T + v with sum, then one rung per row: a print, then a test that is a no-op iff V equals the rung's counter; at the row its two no-ops halt the run right after the print"
 scaling = "linear: 5T + 6n + 4 commands, about 41 characters a row"
 execution = "linear: worst 5T + 6n + 4 commands"
 workspace = "poly n: at most 7n + 72 bits"
