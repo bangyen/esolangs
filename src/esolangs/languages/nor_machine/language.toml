@@ -19,7 +19,7 @@ execution = "linear: at most 15T + 12n^2 + 93n - 20 commands past n = 1, each ru
 workspace = "linear: at most 3T + 4n + bl(L) + 24 bits: V, its copy and three half-width masks"
 
 [ablations]
-audited = "2026-10-27"
+audited = "2026-10-29"
 
 [ablations.essential_inputs]
 saving = 88.0
@@ -43,11 +43,14 @@ saving = 46.7
 arity = 12
 seed = 0
 tables = "n=12 parity, all ones but the last row, and n=8 random"
-verdict = "kept: holding ~V through a run of 1s makes a 1 one shift, not a NOR, dup and inv; 46.7% on all ones but the last row and 10.0% on parity at n=12, about 12% on random tables at n=8; n=4 parity grows 775 to 783 chars"
+verdict = "kept: holding ~V through a run of 1s makes a 1 one shift, not a NOR, dup and inv; 46.7% on all ones but the last row and 10.0% on parity at n=12, about 12% on random tables at n=8; n=4 parity grows 775 to 783 chars; plain-rewrite audit 2026-10-29 against a per-1 OR with the stored 1: random 10.0% (n=7, 200 tables), 12.8% (n=8, 100), 15.1% (n=9) and 17.2% (n=10) in chars, 9.7/12.9/15.2/17.2% in balanced area; n=8 parity 8.3%, majority 12.7%, or 43.8%"
 
 [ablations.shared_rotations]
 saving = 22.3
 arity = 12
 seed = 0
 tables = "n=12 parity, all ones but the last row, and n=8 random"
-verdict = "kept: each level's h - 1 smear shifts ride the h half-shifts on one pass round the queue, not a pass each; 22.3% on parity and 28.9% on all ones but the last row at n=12, about 17% on random tables at n=8"
+verdict = "kept: each level's h - 1 smear shifts ride the h half-shifts on one pass round the queue, not a pass each; 22.3% on parity and 28.9% on all ones but the last row at n=12, about 17% on random tables at n=8; plain-rewrite audit 2026-10-29 against separate smear and half-shift passes: random 17.7% (n=7, 200 tables), 22.3% (n=8, 100), 26.1% (n=9) and 28.7% (n=10) in chars, 17.3/22.1/26.0/28.7% in balanced area; n=8 parity 21.4%, majority 23.8%, or 25.7%"
+
+[audits]
+plain_rewrite = 2026-10-29
