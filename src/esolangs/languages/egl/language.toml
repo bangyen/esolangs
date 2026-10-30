@@ -56,4 +56,5 @@ tables = 564
 verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also tried widths square - 1, square + 1 and floor - 1. None ever won: the plain fold at max(floor, balance_width) gives byte-identical balanced output on 564 tables (60 random a arity to n=8, 6 above, plus parity, and, or, majority, at-least-2) at n=1..12, so balanced area is unchanged"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
