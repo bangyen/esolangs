@@ -1,4 +1,4 @@
-"""Bleh's emitted characters: functions per level, ids by digit count."""
+"""Bleh's emitted characters: functions per level, ids by letter count."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from collections.abc import Callable
 from tests.proofs._diagram_bounds import (
     capped_level,
     capped_loss,
-    digits,
     pair_loss,
     parent_loss,
     profile,
@@ -15,33 +14,46 @@ from tests.proofs._diagram_bounds import (
 )
 
 
+def _width(i: int) -> int:
+    """Letters in id ``i``'s name: bijective base 52, id 2 is ``b``."""
+    size = 1
+    while i > 52 * (52**size - 1) // 51:
+        size += 1
+    return size
+
+
+def _widths(top: int, count: int) -> int:
+    """Return the most letters ``count`` distinct ids up to ``top`` hold."""
+    return sum(_width(i) for i in range(top - count + 1, top + 1))
+
+
 def _bound(n: int) -> int:
     """Bound on the characters, per level k of the reduced diagram.
 
-    A branching function is ``f<id>:"0"=<ref>:"1"=<ref>;`` (11 + name), an
-    equal-halved or constant one ``<name>:={io::next();<ref>};`` (16 + name).
-    A reference is the child's name and ``io::next()`` (11), or ``()`` (2)
-    for an equal-halved or constant child, or ``io::print"b"`` (12) at the
+    A branching function is ``<name>:"0"=<ref>:"1"=<ref>;`` (11 + name), an
+    equal-halved or constant one ``<name>:={a::next();<ref>};`` (15 + name).
+    A reference is the child's name and ``a::next()`` (10), or ``()`` (2)
+    for an equal-halved or constant child, or ``a::print"b"`` (11) at the
     leaves.  Ids of a level run up to ``top`` (profile): a function's own id
-    costs at most the digits of the highest ids, each child is referenced
+    costs at most the letters of the highest ids, each child is referenced
     once at its own cost and the other slots at the dearest.  A constant is
     ``z``/``o`` and its level, so a missing one is never cheaper.
     """
     branching, equal, constants, top = profile(n)
     name = [1 + len(str(k)) for k in range(n)]
-    total = 17 + 1 + len(str(top[0])) + 11
+    total = 19 + _width(top[0]) + 10
     for k in range(n):
         nodes = branching[k] + equal[k]
-        total += nodes + digits(top[k], nodes) + 11 * branching[k] + 16 * equal[k]
-        total += constants[k] * (name[k] + 16)
+        total += _widths(top[k], nodes) + 11 * branching[k] + 15 * equal[k]
+        total += constants[k] * (name[k] + 15)
         slots = 2 * branching[k] + equal[k] + constants[k]
         if k + 1 == n:
-            total += 12 * slots
+            total += 11 * slots
         else:
             below = branching[k + 1] + equal[k + 1]
-            widest = max(1 + len(str(top[k + 1])), name[k + 1]) + 11
-            total += below + digits(top[k + 1], below)
-            total += 11 * branching[k + 1] + 2 * equal[k + 1]
+            widest = _width(top[k + 1]) + 10
+            total += _widths(top[k + 1], below)
+            total += 10 * branching[k + 1] + 2 * equal[k + 1]
             total += constants[k + 1] * (name[k + 1] + 2)
             total += max(0, slots - below - constants[k + 1]) * widest
     return total
@@ -53,9 +65,9 @@ def _prices(
     """A reference's characters: name and call, a constant's, the dearest."""
     top = profile(n)[3]
     return (
-        lambda node, equal: (2 if equal else 11) + 1 + len(str(node)),
+        lambda node, equal: (2 if equal else 10) + _width(node),
         lambda level: 3 + len(str(level)),
-        lambda level: max(1 + len(str(top[level])), 1 + len(str(level))) + 11,
+        lambda level: _width(top[level]) + 10,
     )
 
 

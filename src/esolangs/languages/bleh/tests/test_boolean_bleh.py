@@ -22,5 +22,5 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def test_a_constant_still_reads_every_input() -> None:
     """Each level's constant reads one input as a statement."""
     assert esolangs.generate("Bleh", "1111") == (
-        '^:std::io;main:=o0();o0:={io::next();o1()};o1:={io::next();io::print"1"};'
+        '^:std::io=a;main:=o0();o0:={a::next();o1()};o1:={a::next();a::print"1"};'
     )

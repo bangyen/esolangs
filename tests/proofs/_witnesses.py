@@ -586,7 +586,8 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: (language, n) whose witness build alone passes the fast band, to its band:
 #: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included;
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
-#: Bleh's ten n = 21 tables take 9.4 s to generate between them, its
+#: Bleh's ten n = 18 tables take 1.7 s to generate between them, its
+#: ten n = 21 tables 9.4 s, its
 #: n = 22 tables 18.5 s, its n = 23 scaling test 23.8 s.
 #: Arities past the last one that adds a proof term run weekly: Bleh 21-23
 #: and Quassaunt 20, 21 only re-confirm the n - 4 loss term, ~1 min a run.
@@ -606,6 +607,7 @@ _WITNESS_BAND = {
     ("Back", 15): "medium",
     ("Back", 16): "medium",
     ("Back", 17): "weekly",
+    ("Bleh", 18): "medium",
     ("Bleh", 21): "weekly",
     ("Bleh", 22): "weekly",
     ("Bleh", 23): "weekly",
