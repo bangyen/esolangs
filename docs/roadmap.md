@@ -125,8 +125,8 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-20 of the 112 generators: Alight, Aprknia, BASICER, Bitwise Cyclic Tag,
-Bleh, CARP, Chicken, CreativeScript v2, Cyclic tag, DINAC, HQ9+ with
+21 of the 112 generators: Alight, Aprknia, BASICER, Bitwise Cyclic Tag,
+Bleh, CARP, Chicken, CreativeScript v2, Cyclic tag, DINAC, Eval, HQ9+ with
 headers, IEBEL, Kiss, lol waht i cant edit talk pages, Monotonic Boolfuck,
 Movesum, Parenthesys, Pilas, Qrain, Shakespeare.
 

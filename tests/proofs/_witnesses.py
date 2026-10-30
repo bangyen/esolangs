@@ -14,7 +14,7 @@ from typing import NamedTuple
 
 import pytest
 
-from esolangs.generation.helpers import reflected_table
+from esolangs.generation.helpers import permute_truth_table, reflected_table
 from esolangs.runtime._digits import digit_limit_for
 from tests.proofs._witness_builders import (
     _back_worst,
@@ -442,6 +442,13 @@ def _low_one(n: int) -> str:
     return "0" * ((1 << n) - 2) + "10"
 
 
+def _eval_alternating_upper(n: int) -> str:
+    """Parity below, ``1010..`` above in stack order; every input essential."""
+    half = 1 << n - 1
+    stacked = _parity(n - 1) + "10" * (half // 2)
+    return permute_truth_table(stacked, tuple(reversed(range(n))))
+
+
 # language-owners: ["1 + i"]
 def _one_i_swapped(m: int) -> str:
     """The largest m-input table: halves swapped, then doubled, from ``0010``."""
@@ -848,6 +855,8 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
+    # The two-stack build's worst: a run of ones per pair in the upper half.
+    "Eval": lambda n: (_eval_alternating_upper(n),) if n >= 4 else (),
     # Workspace: a negated setter's -1 bit on a program as long as the worst
     # (n = 3: a leading run of three zeros, then alternating; from 5, eight).
     "Home Row": lambda n: (

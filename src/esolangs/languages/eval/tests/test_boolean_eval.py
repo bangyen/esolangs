@@ -196,8 +196,24 @@ class TestEvalBoolean:
         table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
         template = generators.eval(table)
         # The template is the exact shape of every program it fills to.
-        assert len(template) == len(self.instantiate(template, [0] * n)) == 206
+        assert len(template) == len(self.instantiate(template, [0] * n)) == 192
         for combo in range(2**n):
             bits = row_bits(combo, n)
             got = self.run_eval(self.instantiate(template, bits))
             assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_two_stack_build_computes_its_table(self) -> None:
+        """From n=4 the staged inputs are three wide and every row still answers."""
+        from esolangs.languages import generators
+
+        for table in (
+            "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**5)),
+            "0" * 31 + "1",
+            "0110100110010110",
+        ):
+            n = len(table).bit_length() - 1
+            template = generators.eval(table)
+            assert template.count(TEMPLATE_CHAR) == 3 * n
+            for combo in range(2**n):
+                program = self.instantiate(template, row_bits(combo, n))
+                assert self.run_eval(program) == table[combo], (table, combo)

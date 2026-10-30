@@ -8,9 +8,9 @@ admitted = 2020-07-10T17:59:42-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "fixed reversed stack order selects the indexed row"
-scaling = "linear: worst 2T + 13n characters: T literal plus halving `;` runs"
-execution = "linear: worst 2T + 13n + 1 commands: one per program character, then the final frame pop"
-workspace = "linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a stack"
+scaling = "linear: worst 7T/4 + 15n - 5 characters past n = 3"
+execution = "linear: worst 7T/4 + 15n - 4 commands past n = 3: one per program character, then the final frame pop"
+workspace = "linear: worst 8L + T + 2n + 1 + bl(L) bits past n = 3: frame text and both stacks"
 
 [generator_sizes]
 "00000001" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
@@ -18,8 +18,8 @@ workspace = "linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a
 "00110110" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
 "0110" = { commands = 35, commands_by_row = { "0" = 31, "1" = 33, "2" = 33, "3" = 35 }, source_units = 34 }
 "01101001" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
-"0110100110010110" = { commands = 85, commands_by_row = { "0" = 77, "1" = 79, "2" = 79, "3" = 81, "4" = 79, "5" = 81, "6" = 81, "7" = 83, "8" = 79, "9" = 81, "10" = 81, "11" = 83, "12" = 81, "13" = 83, "14" = 83, "15" = 85 }, source_units = 84 }
-"1101001101101101" = { commands = 85, commands_by_row = { "0" = 77, "1" = 79, "2" = 79, "3" = 81, "4" = 79, "5" = 81, "6" = 81, "7" = 83, "8" = 79, "9" = 81, "10" = 81, "11" = 83, "12" = 81, "13" = 83, "14" = 83, "15" = 85 }, source_units = 84 }
+"0110100110010110" = { commands = 83, commands_by_row = { "0" = 76, "1" = 77, "2" = 78, "3" = 79, "4" = 78, "5" = 79, "6" = 80, "7" = 81, "8" = 78, "9" = 79, "10" = 80, "11" = 81, "12" = 80, "13" = 81, "14" = 82, "15" = 83 }, source_units = 82 }
+"1101001101101101" = { commands = 83, commands_by_row = { "0" = 76, "1" = 77, "2" = 78, "3" = 79, "4" = 78, "5" = 79, "6" = 80, "7" = 81, "8" = 78, "9" = 79, "10" = 80, "11" = 81, "12" = 80, "13" = 81, "14" = 82, "15" = 83 }, source_units = 82 }
 "11111110" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
 
 [catalogue]
@@ -42,6 +42,12 @@ saving = 138.5
 arity = 12
 verdict = "kept: a constant's ignored inputs are not drained — no halving step swaps back to the read stack, so the staged inputs sit until the final pop. Draining them anyway costs +136.36% at n=10 and +138.46% at n=12 on constant tables (2n+2 chars against 5n+2). Part of the canonical constant fold"
 
+[ablations.two_stack_split]
+saving = 13.8
+arity = 8
+verdict = "kept as a rule, not a race: from n=4, with the top input essential and 2^k >= 8n-20 essential inputs (never longer than the one-stack build), the lower half of the table goes on one stack and the upper on the other, each input is staged on both (`0^=`), and `~;~?~` pops the top input's copies and leaves the chosen half exposed; n-1 copy discards replace the first halving's T/2. A one costs `0+` on the second stack (`` ` `` pushes 0 there), `^` extends a run. Measured against the one-stack build over Random(9000+1000n+s), 200 tables: random 3.2% / 11.2% / 13.8% at n=4 / 7 / 8 (20 tables at n=9..10: 15.6% / 16.9%); n=8 parity 12.0%, majority 15.8%, and / or 18.8%, thr3 18.0% (n=7: 9.5 / 13.0 / 15.6 / 14.4). Every row of the 300 random tables at n=4..6 and 100 at n=7..8 run, plus the named ones and 240 ignored-input tables at n=4..7 (88,880 rows); a wrong-table program fails the check. Never longer than the one-stack build over all 65,536 tables at n=4 and 1,500 ignored-input tables at n=4..8. Reordering the staged inputs to move the cheapest top input in (a race) was not built"
+
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

@@ -5,9 +5,16 @@ discards the top half; a one reverses, discards, reverses back).  The halves
 are `;` runs totalling T/2 + T/4 + ... < T, shared by both branches by
 duplicating the input.
 
+From n = 4, when enough inputs are essential, the top input selects a stack
+instead of a half: the lower half goes on one stack and the upper on the
+other, every input is staged on both, and a conditional `~` leaves the chosen
+half exposed.  The first halving's T/2 discards become n-1 copy discards.  A
+one on the second stack costs `0+` (`^` extends a run), since `` ` `` pushes
+0 there.
+
 Size:
-    About 2T chars, no subtrees to fold or share; n=10 random 1847: 2,178
-    chars, n=16 and: 131,280 chars.
+    About 1.75T chars from n=4 (2T below), no subtrees to fold or share;
+    n=10 random 1847: 1,814 chars, n=16 and: 98,540 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -30,6 +37,11 @@ _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 PAIR = ("0=", "`=")
 _EVAL_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
+#: The two-stack build stages each bit on both stacks (``^`` copies it).
+DUAL_PAIR = ("0^=", "`^=")
+_DUAL_INPUT = TEMPLATE_CHAR * len(DUAL_PAIR[0])
+_DUAL_SELECT = "~;~?~"
+
 
 def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     """Build an Eval template for the given truth table.
@@ -42,7 +54,43 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     """
     n = _validate_truth_table(truth_table)
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))
+    used = essential_inputs(table, n)
+    # Never longer than the one-stack build: it saves 2**(k-2) - runs - 2n + 5
+    # >= 0 when 2**k >= 8n - 20 (k essential inputs, top one among them).
+    if n >= 4 and 0 in used and 2 ** len(used) >= 8 * n - 20:
+        return _eval_dual(table, used, n)
     return _eval_ordered(table, "")
+
+
+def eval_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return the per-input pair: three wide in the two-stack build."""
+    # Only the two-stack build holds ``~;~?~``; the one-stack drains are
+    # followed by ``~^=~?*`` or ``.``.
+    dual = _DUAL_SELECT in template.replace("\n", "")
+    return ((DUAL_PAIR if dual else PAIR),) * n
+
+
+def _eval_dual(table: str, used: list[int], n: int) -> str:
+    """Emit the two-stack lookup: the top input picks the stack holding its half."""
+    reduced = read_at(table, used, n)
+    half = len(reduced) // 2
+    lower, upper = reduced[:half], reduced[half:]
+    out = ["".join("`" if bit == "1" else "0" for bit in lower), "~"]
+    previous = "0"
+    for bit in upper:
+        out.append("0" if bit == "0" else "^" if previous == "1" else "0+")
+        previous = bit
+    out.extend(("~", _DUAL_INPUT * n, _DUAL_SELECT, ";" * (n - 1)))
+    used_set = set(used)
+    remaining = half
+    for level in range(1, n):
+        if level not in used_set:
+            out.append("~;~")
+            continue
+        remaining //= 2
+        out.extend(("~^=~?*", ";" * remaining, "~=~?*"))
+    out.append(".")
+    return "".join(out)
 
 
 def _eval_ordered(truth_table: str, ops: str) -> str:
@@ -79,5 +127,5 @@ LANGUAGE = Language(
     contract=BooleanContract(),
     # Print through a literal that must not be broken.
     wrap=_quote_literal,
-    example=Example(pair=PAIR),
+    example=Example(setters=eval_setters),
 )
