@@ -42,4 +42,5 @@ arity = 12
 verdict = "recorded: past 15 inputs, blocks of 2^15 rows reload the index behind a sentinel 65535 and a guard on the high bits. It never fires at the audited arities (n <= 12), and without it the countdown wraps at 2^15, so there is no correct removal to price. Correctness machinery"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
