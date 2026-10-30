@@ -85,4 +85,5 @@ workload = "run"
 verdict = "kept"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
