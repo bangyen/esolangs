@@ -37,12 +37,12 @@ def corridor_end(table: str) -> int:
     return len(table.rstrip(table[-1]))
 
 
-def is_flipped(table: str) -> bool:
-    """Whether the generator ships the mirror corridor for the projected table."""
-    weights = input_weights(table, len(table).bit_length() - 1)
-    kept = weights[1]
-    return len(set(kept)) > 1 and len(_flipped(kept, weights[0])) < len(
-        _east(kept, weights[0])
+def variant(table: str) -> tuple[bool, bool]:
+    """``(flipped, invert)`` of the corridor the generator ships, ties as ``min``."""
+    weights, kept = input_weights(table, len(table).bit_length() - 1)
+    return min(
+        ((f is _flipped, inv) for f in (_east, _flipped) for inv in (False, True)),
+        key=lambda c: len((_flipped if c[0] else _east)(kept, weights, invert=c[1])),
     )
 
 
@@ -51,17 +51,20 @@ def expected_grid(table: str) -> dict[tuple[int, int], int]:
     table = input_weights(table, len(table).bit_length() - 1)[1]
     if len(set(table)) == 1:
         return {(0, 0): 1}
-    if is_flipped(table):
+    flipped, invert = variant(table)
+    # An inverted corridor paints its answer cells on the zeros.
+    answer = "0" if invert else "1"
+    if flipped:
         run = len(table) - len(table.lstrip(table[0]))
         cells = table[run - 1 :][::-1]
         grid = {(x, 0): 1 for x in range(len(cells) + 1)}
-        grid.update({(x, 1): 1 for x, bit in enumerate(cells) if bit == "1"})
+        grid.update({(x, 1): 1 for x, bit in enumerate(cells) if bit == answer})
         # The lane stopper above the wall cell.
         grid[len(cells), -1] = 1
         return grid
     end = corridor_end(table)
     grid = {(x, 0): 1 for x in range(end + 1)}
-    grid.update({(x, 1): 1 for x in range(end + 1) if table[x] == "1"})
+    grid.update({(x, 1): 1 for x in range(end + 1) if table[x] == answer})
     return grid
 
 
@@ -122,7 +125,7 @@ def check_l2(max_n: int = 10) -> list[str]:
             assert outcome.position == (0, 0), (n, table)
             kept = input_weights(table, n)[1]
             end = corridor_end(kept)
-            if not is_flipped(table):
+            if not variant(table)[0]:
                 assert len(set(kept[end:])) == 1, (n, table)
                 assert end == 0 or kept[end - 1] != kept[end], (n, table)
         lines.append(f"  n={n}: {len(tables)} tables, head exact")
@@ -134,7 +137,8 @@ def check_l3(max_w: int = 10) -> list[str]:
     size = 1 << max_w
     # A last answer unlike the one before it keeps the whole corridor.
     table = "1" * (size - 1) + "0"
-    build = _east(table, input_weights(table, max_w)[0])
+    # The walks are the corridor's; inverting changes only answers and tail.
+    build = _east(table, input_weights(table, max_w)[0], invert=False)
     head = build[: build.index(TEMPLATE_CHAR)]
     powers = [1 << k for k in range(max_w)]
     for w in powers:
@@ -149,7 +153,7 @@ def check_l3(max_w: int = 10) -> list[str]:
             # An odd number of one rows makes every input essential, so
             # projection cannot shorten the corridor this lemma measures.
             table = "0" + table[1:]
-        short = _east(table, input_weights(table, max_w)[0])
+        short = _east(table, input_weights(table, max_w)[0], invert=False)
         head = short[: short.index(TEMPLATE_CHAR)]
         for w in powers:
             outcome = run(head + "N" + "E" * w + "SN", 1)
@@ -159,7 +163,7 @@ def check_l3(max_w: int = 10) -> list[str]:
         table = "0" * lead + "1" + "0" * (size - lead - 1)
         table = table[:-1] + "1"
         weights = input_weights(table, max_w)[0]
-        flipped = _flipped(input_weights(table, max_w)[1], weights)
+        flipped = _flipped(input_weights(table, max_w)[1], weights, invert=False)
         head = flipped[: flipped.index(TEMPLATE_CHAR)]
         cells = len(table.lstrip("0")) + 1
         for w in powers:
@@ -201,9 +205,10 @@ def phases(template: str) -> list[str]:
             out.extend(["ret", "ret"])
             i += 2
         else:
-            assert rest[i:] == "s", rest[i:]
-            out.append("read")
-            i += 1
+            # ``s``, then ``nN`` when the corridor is inverted.
+            assert rest[i:] in ("s", "snN"), rest[i:]
+            out.extend(["read"] * len(rest[i:]))
+            i = len(rest)
     assert len(out) == len(template)
     return out
 
