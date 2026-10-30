@@ -35,3 +35,6 @@ arity = 12
 seed = 7
 tables = 20
 verdict = "kept: named functions move. The scan marks the rarer answer's rows and prints the complement when that is the 0-rows; the shorter of the two builds ships. Chars (balanced area = side^2 of the squarest layout) against the 1-row scan, n=7..12: and' and or 53.3% / 54.6% / 55.2% / 55.6% / 55.8% / 55.9% (area 69% / 72% / 73% / 74% / 75% / 75%); the 1/3 threshold 33.6% / 42.4% / 47.8% / 40.4% / 46.1% / 49.8% (area 48% / 59% / 66% / 58% / 65% / 69%) and its complement 0.0%; majority' 18.7% / 17.3% / 16.1% at n=8 / 10 / 12 (area 29% / 28% / 26%) and 0.0% at odd n (a tie), majority 0.0%; parity, parity', and', or' 0.0%. Random tables (20 each): 1.9% chars / 2.9% area at n=7 (4 of 20 change), 1.8% / 2.9% at n=8 (8 of 20). Worst case falls from 51T to 40T + 18n + 120 (parity-like tables). Run: n<=3 exhaustive plus 8 rows of every changed priced table, 2,384 runs, 0 wrong"
+
+[audits]
+blind_reimplementation = 2026-10-29

@@ -38,3 +38,6 @@ arity = 10
 seed = "random.Random(184900 + n)"
 tables = 100
 verdict = "kept under the named-function rule: the complement's tree, counting down and closing with += 49, races the plain one. OR 410 -> 303 chars and NAND 411 -> 293 at n=10 (26-29%), NOR 303 and AND 293 already plain; parity and majority 0.0%; random tables 0.36% at n=10 and 0.25% at n=12"
+
+[audits]
+blind_reimplementation = 2026-10-29

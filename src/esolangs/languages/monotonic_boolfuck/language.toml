@@ -28,3 +28,6 @@ sharing_exempt = "structured loops only, no names or jumps: code runs once per p
 
 [ablations]
 audited = "2026-10-29"
+
+[audits]
+blind_reimplementation = 2026-10-29

@@ -24,3 +24,6 @@ workspace = "poly n: at most bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10 bits: 
 
 [ablations]
 audited = "2026-10-29"
+
+[audits]
+blind_reimplementation = 2026-10-29
