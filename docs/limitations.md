@@ -727,7 +727,9 @@ original admission (a removal later undone keeps the date), no outside
 implementation exists. An outside implementation is posted publicly, as
 source or a runnable link, and implements the page's semantics; one a
 review shows misreads them does not count (ROTfuck's), one that only
-crashes on large programs does (Polynomial's). Each package records the
+crashes on large programs does (Polynomial's), and a translation scheme
+written in prose does not (Stun Step's Talk-page mapping to Reversible
+Brainfuck). Each package records the
 date as `admitted` in `[curation]`, and a known outside implementation as
 `outside_implementation`; `tests/tooling/test_language_toml.py` refuses a
 member whose outside implementation predates its admission. A first
@@ -767,6 +769,17 @@ excluded IEBEL, which three cold judges called distinct from Subleq. A
 Brainfuck derivative is judged like any language (`bf_derivative` in
 `[curation]` records the wiki category only). A rule change lands only
 with its membership diff, in one commit.
+
+Cohesion is not a membership criterion: it is a property of the set, and
+no per-language test measured it. Tested 2026-10-29 and dropped: a
+model-of-computation niche classifier (one niche held Whitespace, Befunge,
+FALSE, Piet, Fish and Chicken); a cold-judge "distinct reason" panel on
+Sonnet (IEBEL's verdict flipped with the prompt) and on Opus, over the 82
+nearest-member pairs too (judges agree, 93-95% run to run, but even S\*bleq's
+redundant verdicts lean on "Subleq is Turing-complete", so no bar flags it
+without counting strength); name similarity (cuts Boolfuck-like originals,
+misses IEBEL); a size cap (choosing who leaves needs a ranking, and
+backlinks gate only the fame route).
 
 ### Recognition sources
 
