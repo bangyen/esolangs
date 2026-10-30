@@ -79,4 +79,5 @@ tables = 2
 verdict = "kept: balanced area (balance_score(p)[0]**2) at n=12 is 191,844 vs 13,942,756 with the narrow chunk (98.6% smaller); exponent n=10 to 12 0.56 vs 1.87, unchanged to n=7, n=8..12 down 30.1 / 71.0 / 91.5 / 95.4 / 98.6%. The narrow chunk (log m characters) left T / log m tree lines; the chunk of 2**((m + 4) // 2) characters balances 7 lines a leaf against its width. Default build byte-identical"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
