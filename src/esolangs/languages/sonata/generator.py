@@ -46,13 +46,13 @@ def sonata(truth_table: str) -> str:
     """Build a Sonata program whose final string ends in ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
-    programs = [_program(n, essential, read_at(truth_table, essential, n), _DOUBLE)]
+    table = read_at(truth_table, essential, n)
     symmetric = symmetric_weights(truth_table, n)
     if symmetric is not None:
-        # A symmetric table counts its ones over m + 1 entries
-        # ([ablations.symmetric_count]).
-        programs.append(_program(n, essential, symmetric[1], _COUNT))
-    return min(programs, key=len)
+        # A symmetric table counts its ones over m + 1 entries, never longer
+        # than the doubling build ([ablations.symmetric_count]).
+        return _program(n, essential, symmetric[1], _COUNT)
+    return _program(n, essential, table, _DOUBLE)
 
 
 def _program(n: int, essential: list[int], table: str, index: str) -> str:
