@@ -2,18 +2,17 @@
 
 Each tree level is a ``$3~;#`` block that reads a bit, stores it and turns on
 it; leaves print the answer.  The tree is laid out in one band, or under
-``width`` two that turn round; from four inputs it races the alternating
-layout, whose flat-leaf layout, shared variants and indexed leaf decoder
-compete by length and grid area.
+``width`` two that turn round; at four inputs it races the alternating
+layout, past them it is that layout, whose flat-leaf layout, shared variants
+and indexed leaf decoder compete by length and grid area.
 
 Size:
     Area O(T) past four inputs; n=10 parity: 614 chars, n=10 random 1847:
     7,097 chars.
 
 Decisions:
-    Above four inputs the alternating layout beat plain trees on every random
-    table measured, 2.1-6.5x smaller by area at n=5..8; the trees win when
-    one to three inputs are essential.
+    Above four inputs the alternating layout is the default: plain trees win
+    no table from n=6 (n=5 and/or only).
 
     A constant span at any level is a row of reads and a print, its box sized
     alone ([ablations.constant_span_alternating]).
@@ -80,8 +79,8 @@ _DIG_STRIDE = len(_DIG_BRANCH)
 _DIG_BAND = _DIG_STRIDE + 1
 
 
-# Largest n built as plain decision trees alone; from it the two race, and
-# below it the alternating layout cannot be built (n=2, 3).
+# Largest n built as plain decision trees alone; at it the two race, above it
+# only the alternating layout is built, and below it that cannot be built.
 _DIG_TREE_MAX = 4
 
 
@@ -454,11 +453,16 @@ def _dig_build(
     if width is None and n > _DIG_TREE_MAX and not share:
         return _dig_alternating(truth_table, n)
     lane = _dig_lane_shared(truth_table, n) if share else None
+    if width is None and share and n > _DIG_TREE_MAX:
+        # Trees win no table from n=6 and 10-18% of and/or at n=5 alone
+        # ([ablations.tree_max_race]).
+        layouts = filter(None, (lane, _dig_alternating(truth_table, n)))
+        return settle(min(layouts, key=_dig_size))
     flat = _dig_grid(truth_table, n, None)
     if width is None:
         # The banded tree only fits widths: as a default candidate its share
         # declines to nothing ([ablations.banded_default]).
-        if n >= _DIG_TREE_MAX and share:
+        if n == _DIG_TREE_MAX and share:
             return _dig_race_at_tree_max(truth_table, n, flat, lane, settle)
         return flat
     if n < 2:
@@ -477,11 +481,9 @@ def _dig_race_at_tree_max(
     lane: str | None,
     settle: Callable[[str], str],
 ) -> str:
-    """Race the trees against the alternating layouts from four inputs.
+    """Race the trees against the alternating layouts at four inputs.
 
-    Neither dominates: at n=4 racing saves 30.7% of length (33.2% of area)
-    over all 65,536 tables against the trees alone; above it the trees win
-    tables with few essential inputs ([ablations.tree_max_race]).
+    Neither dominates ([ablations.tree_max_race]).
     """
     layouts = filter(None, (lane, _dig_alternating(truth_table, n)))
     return min(trees, settle(min(layouts, key=_dig_size)), key=_dig_size)

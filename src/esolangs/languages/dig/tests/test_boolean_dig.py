@@ -658,7 +658,7 @@ def test_constant_columns_use_grid_area_and_read_every_input(
     assert max(map(len, rows)) == 1
     assert len(rows) < len(previous) * max(map(len, previous))
     if n == 8:
-        assert (len(rows), len(previous) * max(map(len, previous))) == (16, 32)
+        assert (len(rows), len(previous) * max(map(len, previous))) == (16, 51)
     for row in range(1 << n):
         io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
         machine = _Machine(rows, io)

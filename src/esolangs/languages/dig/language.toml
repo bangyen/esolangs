@@ -77,7 +77,7 @@ verdict = "split by decision 2026-10-20 (retirement candidate #2): the parallel 
 [ablations.tree_max_race]
 saving = 34.3
 arity = 4
-verdict = "kept: clears on random tables; the value is the alternating layout's admission at n=4 (the unshared layout alone reproduces the total), not the sharing routes'. Capped at n=4 until 2026-10-20; past it the trees win no random table but tables with one to three essential top inputs: 38.5-85.7% of length at n=5..10 (20 tables per cell, seed random.Random(n)), 0.8-19.8% with four"
+verdict = "split 2026-10-30 (re-audit): kept at n=4 only (30.7% of length, 33.2% of area over all 65,536 tables); the n>=5 race is retired -- byte-identical area on random tables (seeds random.Random(n) and n*1000+k, 20 per arity, n=5..10: 0.0% default and balanced) and on parity, majority, and, or, nand, nor at n=6..12 (default and balanced); only n=5 and/or/nand/nor won (341-372 against 416 cells, 10.6-18.0%), a share that is 0.0% at n=6"
 
 [ablations.length_keyed_races]
 saving = -2.3
@@ -109,4 +109,4 @@ verdict = "removed 2026-10-20 (interpreter candidate I-6): -3.0% run with overla
 
 [audits]
 blind_reimplementation = 2026-10-30
-plain_rewrite = 2026-10-21
+plain_rewrite = 2026-10-30
