@@ -51,4 +51,5 @@ tables = 200
 verdict = "kept under the named-function rule: a planted entry costs a ~ more than a skipped one, so a table with more ones than zeros plants its zeros and swaps the two print windows (0 at 1..8, 1 at 10..17). Or and nand 12.4% at n=6, 15.0% at n=7, 17.0% at n=8, 19.0% at n=10, rising; 90%-ones tables 10.1-15.1% and 80%-ones 7.4-11.3% at n=6..10; random tables 0.17-0.70%. Unconditional, and nothing grows: exhaustive n<=3 (96 change, every changed program executed) and every random table at n=6..10. Random samples executed through n=10, named tables through n=8"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
