@@ -408,6 +408,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Minifuck | parameterized construction | affine or two-residual byte accumulator; budgeted stored residuals; total positional `_mux` fallback | linear: worst 81T/2 + 59 - n characters, n = 3..12 | linear: worst 71T/2 + 50 - n commands for n = 3..12, at most after: the positional strip | linear: worst 6T + 14 + bl(6T+12) + bl(6T+14) + bl(L) bits past n = 4: a tape bit-integer |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`) | linear: worst N characters: cascade routes to two shared leaves, one-digit targets | linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down | poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: worst N characters: T-character literal, one read block an input | linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded | linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack |
+| Monotonic Boolfuck | tree | — | linear: worst 34T - 21 characters | poly n: worst 21n + 14 commands | poly n: at most bl(L) + bl(4n + 2) + 2n·bl(2n) + 25 bits |
 | Nandypants | tree | the first bit of each input byte is read into b and branched on, the other seven are discarded at the head of the next block; equal subtables share one block, laid out by depth so every jump is a forward odd label, and a constant subtable reads its remaining bits and prints the answer byte | linear: Θ(T / log T) blocks of O(log T) digits | poly n: at most 12n + 17 commands | poly n: at most bl(L-1) + bl(n) + 16 bits |
 | NOR machine | linear lookup | the table read at its essential inputs is one integer built by Horner's rule; each essential bit, smeared over a half-width mask, keeps V or V >> h by NORs, and the lone final V prints the low bit | linear: 9T + 12r + O(n^2) characters for r runs of 1s | linear: at most 15T + 12n^2 + 93n - 20 commands past n = 1, each run once | linear: at most 3T + 4n + bl(L) + 24 bits: V, its copy and three half-width masks |
 | Object disoriented | tree | a node keeps its input bit in `t` and its negation in `a`, via an object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; constant subtables fold, and a repeated branch is a class written once | linear: worst D characters to n = 8, at most min(38T+20, S) | poly n: worst 67n + 34 commands: one tree path, 67 ops a level | poly n: at most F + M + bl(6n+9) + bl(n) + 14 bits, c code ids, 2n+3 frames |
@@ -551,7 +552,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 107 theoretical totality arguments and
+Accordingly, this ledger records 108 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

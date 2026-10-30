@@ -76,6 +76,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Home Row](https://esolangs.org/wiki/Home_Row) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/home_row/interpreter.py))
 - [Line](https://esolangs.org/wiki/Line) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/line/interpreter/__init__.py))
 - [Minifuck](https://esolangs.org/wiki/Minifuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/minifuck/interpreter.py))
+- [Monotonic Boolfuck](https://esolangs.org/wiki/Monotonic_Boolfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/monotonic_boolfuck/interpreter.py))
 - [Nandypants](https://esolangs.org/wiki/Nandypants) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/nandypants/interpreter.py))
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/painfuck/interpreter.py))
 - [Pointless](https://esolangs.org/wiki/Pointless) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/pointless/interpreter.py))

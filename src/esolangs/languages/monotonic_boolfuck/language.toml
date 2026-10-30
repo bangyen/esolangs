@@ -1,0 +1,30 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 4
+admitted = 2026-10-29T21:49:41-04:00
+bf_derivative = true
+
+[proof_status]
+labels = ["tree"]
+qualification = "—"
+scaling = "linear: worst 34T - 21 characters"
+execution = "poly n: worst 21n + 14 commands"
+workspace = "poly n: at most bl(L) + bl(4n + 2) + 2n·bl(2n) + 25 bits"
+
+[catalogue]
+sharing_exempt = "structured loops only, no names or jumps: code runs once per place it is written"
+
+[generator_sizes]
+"00000001" = { commands = 77, commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 63, "5" = 63, "6" = 74, "7" = 77 }, source_units = 141 }
+"00001100" = { commands = 64, commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 65, "5" = 65, "6" = 64, "7" = 64 }, source_units = 118 }
+"00110110" = { commands = 75, commands_by_row = { "0" = 62, "1" = 62, "2" = 65, "3" = 65, "4" = 73, "5" = 76, "6" = 76, "7" = 75 }, source_units = 203 }
+"0110" = { commands = 54, commands_by_row = { "0" = 52, "1" = 55, "2" = 55, "3" = 54 }, source_units = 115 }
+"01101001" = { commands = 77, commands_by_row = { "0" = 72, "1" = 75, "2" = 75, "3" = 74, "4" = 75, "5" = 74, "6" = 74, "7" = 77 }, source_units = 251 }
+"0110100110010110" = { commands = 96, commands_by_row = { "0" = 92, "1" = 95, "2" = 95, "3" = 94, "4" = 95, "5" = 94, "6" = 94, "7" = 97, "8" = 95, "9" = 94, "10" = 94, "11" = 97, "12" = 94, "13" = 97, "14" = 97, "15" = 96 }, source_units = 523 }
+"1101001101101101" = { commands = 98, commands_by_row = { "0" = 84, "1" = 84, "2" = 93, "3" = 96, "4" = 83, "5" = 83, "6" = 86, "7" = 86, "8" = 93, "9" = 96, "10" = 96, "11" = 95, "12" = 86, "13" = 86, "14" = 95, "15" = 98 }, source_units = 429 }
+"11111110" = { commands = 75, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 65, "5" = 65, "6" = 76, "7" = 75 }, source_units = 145 }
+
+[ablations]
+audited = "2026-10-29"

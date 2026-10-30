@@ -1,0 +1,79 @@
+language = "Monotonic Boolfuck"
+oldid = 182685
+
+[[examples]]
+id = "hello"
+source = '''
+1
+>;;;<;>;;<;;;  H
+<;>;<;>;;<;;;; e
+;;<;;>;<;;;;   l
+;;<;;>;<;;;;   l
+<;;;;>;<;;;;   o
+;;<;;>;<;;;
+;;;;;<;;;
+<;;;>;<;;;;;   W
+<;;;;>;<;;;;   o
+;<;>;;<;;;;;   r
+;;<;;>;<;;;;   l
+;;<;>;;<;;;;   d
+<;>;;;;<;;;
+'''
+expected = "È5\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+note = "the page says it prints Hello, world!; run as written it does not (nine outputs per line, the pointer drifts off the one set bit), and no repair is unique"
+
+[[examples]]
+id = "truth-machine-0"
+source = ",;>;;;1;;>;;<<[;>>;;;<;;>;;<<]"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-1"
+source = ",;>;;;1;;>;;<<[;>>;;;<;;>;;<<]"
+stdin = "1"
+expected = "1111"
+stop = "steps"
+max_steps = 150
+note = "prints 1 forever: the loop never clears the input bit"
+
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "ProgramError"
+claim = "unmatched brackets"
+
+[[spec_triggers]]
+program = "1,;"
+stdin = "\u0000"
+expect = "output"
+output = "\u0001"
+claim = "a read on a set bit consumes a bit and leaves it set"
+
+[[spec_triggers]]
+program = ",;"
+stdin = "\u0001"
+expect = "output"
+output = "\u0001"
+claim = "a read on a clear bit stores the input bit; bits move least-significant first"
+
+[[spec_triggers]]
+program = ",;"
+stdin = ""
+expect = "output"
+output = "\u0000"
+claim = "EOF supplies zero bits; a partial output byte is padded at halt"
+
+[[spec_triggers]]
+program = "1>;<;"
+stdin = ""
+expect = "output"
+output = "\u0002"
+claim = "the tape is clear except for set bits, and the first output bit is the low bit"
+
+[[spec_triggers]]
+program = "11;"
+stdin = ""
+expect = "output"
+output = "\u0001"
+claim = "setting a set bit leaves it set"

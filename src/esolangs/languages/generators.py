@@ -159,6 +159,10 @@ from esolangs.languages.minsky_swap.generator import LANGUAGE as _MINSKY_SWAP_LA
 from esolangs.languages.minsky_swap.generator import minsky_swap
 from esolangs.languages.modulous.generator import LANGUAGE as _MODULOUS_LANGUAGE
 from esolangs.languages.modulous.generator import modulous
+from esolangs.languages.monotonic_boolfuck.generator import (
+    LANGUAGE as _MONOTONIC_BOOLFUCK_LANGUAGE,
+)
+from esolangs.languages.monotonic_boolfuck.generator import monotonic_boolfuck
 from esolangs.languages.nandypants.generator import LANGUAGE as _NANDYPANTS_LANGUAGE
 from esolangs.languages.nandypants.generator import nandypants
 from esolangs.languages.nor_machine.generator import LANGUAGE as _NOR_MACHINE_LANGUAGE
@@ -315,6 +319,7 @@ _LANGUAGES = (
     _MINIFUCK_LANGUAGE,
     _MINSKY_SWAP_LANGUAGE,
     _MODULOUS_LANGUAGE,
+    _MONOTONIC_BOOLFUCK_LANGUAGE,
     _NANDYPANTS_LANGUAGE,
     _NOR_MACHINE_LANGUAGE,
     _OBJECT_DISORIENTED_LANGUAGE,
@@ -428,6 +433,7 @@ __all__ = [
     "minifuck",
     "minsky_swap",
     "modulous",
+    "monotonic_boolfuck",
     "nandypants",
     "nor_machine",
     "object_disoriented",
