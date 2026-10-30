@@ -13,14 +13,14 @@ execution = "linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ c
 workspace = "poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor"
 
 [generator_sizes]
-"00000001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 92 }
-"00001100" = { commands = 26, commands_by_row = { "0" = 14, "1" = 14, "2" = 19, "3" = 19, "4" = 23, "5" = 23, "6" = 26, "7" = 26 }, source_units = 85 }
-"00110110" = { commands = 36, commands_by_row = { "0" = 13, "1" = 18, "2" = 22, "3" = 27, "4" = 24, "5" = 31, "6" = 33, "7" = 36 }, source_units = 112 }
-"0110" = { commands = 20, commands_by_row = { "0" = 10, "1" = 17, "2" = 17, "3" = 20 }, source_units = 69 }
-"01101001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 20, "2" = 20, "3" = 23, "4" = 20, "5" = 23, "6" = 23, "7" = 30 }, source_units = 92 }
-"0110100110010110" = { commands = 36, commands_by_row = { "0" = 16, "1" = 23, "2" = 23, "3" = 26, "4" = 23, "5" = 26, "6" = 26, "7" = 33, "8" = 23, "9" = 26, "10" = 26, "11" = 33, "12" = 26, "13" = 33, "14" = 33, "15" = 36 }, source_units = 115 }
-"1101001101101101" = { commands = 60, commands_by_row = { "0" = 18, "1" = 23, "2" = 23, "3" = 30, "4" = 27, "5" = 32, "6" = 36, "7" = 41, "8" = 35, "9" = 42, "10" = 44, "11" = 47, "12" = 48, "13" = 53, "14" = 53, "15" = 60 }, source_units = 170 }
-"11111110" = { commands = 28, commands_by_row = { "0" = 15, "1" = 20, "2" = 20, "3" = 25, "4" = 20, "5" = 25, "6" = 25, "7" = 28 }, source_units = 92 }
+"00000001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
+"00001100" = { commands = 26, commands_by_row = { "0" = 13, "1" = 14, "2" = 18, "3" = 19, "4" = 22, "5" = 23, "6" = 25, "7" = 26 }, source_units = 63 }
+"00110110" = { commands = 36, commands_by_row = { "0" = 13, "1" = 18, "2" = 22, "3" = 27, "4" = 24, "5" = 31, "6" = 33, "7" = 36 }, source_units = 81 }
+"0110" = { commands = 20, commands_by_row = { "0" = 10, "1" = 17, "2" = 17, "3" = 20 }, source_units = 49 }
+"01101001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 20, "2" = 20, "3" = 23, "4" = 20, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
+"0110100110010110" = { commands = 36, commands_by_row = { "0" = 16, "1" = 23, "2" = 23, "3" = 26, "4" = 23, "5" = 26, "6" = 26, "7" = 33, "8" = 23, "9" = 26, "10" = 26, "11" = 33, "12" = 26, "13" = 33, "14" = 33, "15" = 36 }, source_units = 81 }
+"1101001101101101" = { commands = 60, commands_by_row = { "0" = 18, "1" = 23, "2" = 23, "3" = 30, "4" = 27, "5" = 32, "6" = 36, "7" = 41, "8" = 35, "9" = 42, "10" = 44, "11" = 47, "12" = 48, "13" = 53, "14" = 53, "15" = 60 }, source_units = 125 }
+"11111110" = { commands = 28, commands_by_row = { "0" = 15, "1" = 20, "2" = 20, "3" = 25, "4" = 20, "5" = 25, "6" = 25, "7" = 28 }, source_units = 65 }
 
 [catalogue]
 folding_constant_local = "input_weights"  # zero projected index weights

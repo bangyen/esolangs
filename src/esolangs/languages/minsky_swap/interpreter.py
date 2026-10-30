@@ -11,6 +11,8 @@ Decisions:
     * "The code line is split into characters, each character being a command",
       but a character that is no command is ignored, not rejected.
     * Jump number ``0`` names no command: that ``~`` falls through.
+      Generated programs use neither leniency (a clean-room reading
+      rejected both, 2026-10-30).
     * The wiki defines no I/O; the end print is the repo's convention for
       interpreter-only languages, not the spec's; another spec pins newlines.
 """

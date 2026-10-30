@@ -8,8 +8,8 @@ counts instead ([ablations.symmetric_count]).  A ``width`` the program exceeds
 switches to RMSN, one command per line.
 
 Size:
-    O(T): one ``~`` per row; n=8 random 1847: 1,460 chars, n=10 random 1847:
-    5,354 chars, n=12 random 1847: 20,766 chars.
+    O(T): one ``~`` per row; n=8 random 1847: 1,151 chars, n=10 random 1847:
+    4,265 chars, n=12 random 1847: 16,593 chars.
 
 Decisions:
     Every leaf target is the digit 2 or 3: a leaf per row was Theta(T log T)
@@ -63,8 +63,12 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
 
 
 def _render(tokens: list[str], resolved: list[int]) -> str:
-    """Return the compact program: the commands, then the jump targets."""
-    return " ".join(tokens) + "\n" + " ".join(map(str, resolved))
+    """Return the compact program: the commands, then the jump targets.
+
+    The wiki splits the code line into characters, each a command, so no
+    separator; a jump names a command (1-based), so none is 0.
+    """
+    return "".join(tokens) + "\n" + " ".join(map(str, resolved))
 
 
 def _cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
@@ -88,11 +92,13 @@ def _cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
     run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
     for weight in weights:
         if not weight:
-            # An ignored input's two decrements drain its run, jumping nowhere
-            # (target 0), so ``reg[0]`` is zero either way and nothing is added.
+            # An ignored input's two decrements drain its run, both jumping
+            # to the command after them (a fall-through either way), so
+            # ``reg[0]`` is zero and nothing is added.
+            skip = pos + len(run) + 2 + 1
             tokens += [run, "~", "~"]
-            targets += [0, 0]
-            pos += len(run) + 2
+            targets += [skip, skip]
+            pos = skip - 1
             continue
         # run, 2 tildes, 2 stars, the + block, then +1 for the 1-based line
         skip = pos + len(run) + 2 + 2 + weight + 1
