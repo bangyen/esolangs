@@ -16,9 +16,11 @@ Size:
     nodes; n=10 random 1847: 51,591 chars, n=10 parity: 4,296 chars.
 """
 
+from math import isqrt
+
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
-from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import balance_score, wrap_space_delimited
+from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
+from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.quassaunt.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -90,28 +92,19 @@ def _cut(word: str, limit: int) -> list[str]:
     return out
 
 
-#: Piece limits tried; a node body cannot wrap, so it bounds the side.  Every
-#: limit from 3 up gives a side 54% smaller on average (76.7% at most) over
-#: 50 tables at n=2..6, at 29x the time.
-_LIMITS = (16, 24, 32, 48, 64, 96)
+#: Piece limit.  A node body cannot wrap, so a compact program is as wide as its
+#: longest word; cutting at 64 saves 35-88% of the balanced area on named
+#: functions n=3..10 and 1.2% on random n=7, so only compact programs are cut
+#: (the old race over six limits saved 13.8% n=7 and 5.3% n=8 on random).
+_CUT = 64
 
 
 def _balance(_table: str, default: str) -> str:
-    """The squarest of the whole-word wrap and the cut-body wraps."""
+    """The squarest wrap, cutting words when the program is narrower than one."""
     words = default.split()
-
-    def laid(tokens: list[str]) -> str:
-        width = balanced_token_width(tokens, " ")
-        return wrap_space_delimited(" ".join(tokens), width)
-
-    best = laid(words)
-    longest = max(map(len, words))
-    for limit in _LIMITS:
-        if limit < longest:
-            candidate = laid([t for w in words for t in _cut(w, limit)])
-            if balance_score(candidate) < balance_score(best):
-                best = candidate
-    return best
+    if isqrt(CELL_ASPECT * len(default)) < max(map(len, words)):
+        words = [t for w in words for t in _cut(w, _CUT)]
+    return wrap_space_delimited(" ".join(words), balanced_token_width(words, " "))
 
 
 LANGUAGE = Language(
