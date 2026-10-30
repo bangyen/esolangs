@@ -55,4 +55,5 @@ arity = 12
 verdict = "kept: the deepest, most repeated test sits in cell 0 and the root test in cell n-1, so the unary addresses make the frequent tests the cheap ones. Reversing the assignment costs 16.3% at n=8 rising to 30.4% at n=12 on random tables, 20.5% with one ignored input at n=12, 2.7% on parity, 0.0% on AND/OR. A numbering choice; the shipped order wins on the random corpus at the largest arities; plain-rewrite audit 2026-10-28, seed random.Random(1000n + k), 20 tables, every program run: 12.2/16.4% at n=7/8 default and 11.7/15.6% balanced; named functions within -1.1..+3.0% default, so it keeps on the random class"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
