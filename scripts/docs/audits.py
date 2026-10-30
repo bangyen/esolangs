@@ -2,9 +2,11 @@
 
 ``[audits]`` records when a language passed an audit the roadmap tracks:
 ``plain_rewrite`` (every bespoke trick priced against the plain
-construction) and ``blind_reimplementation`` (a clean-room interpreter
-from the wiki page, diffed over the generated corpus).  A package with no
-``[audits]`` section has passed neither.
+construction), ``blind_reimplementation`` (a clean-room interpreter
+from the wiki page, diffed over the generated corpus) and
+``docstring_reimplementation`` (the same, from the page plus the
+interpreter docstring).  A package with no ``[audits]`` section has passed
+none.
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from .fragments import registry, sections
 
 ROOT = Path(__file__).resolve().parents[2]
 
-FIELDS = ("plain_rewrite", "blind_reimplementation")
+FIELDS = ("plain_rewrite", "blind_reimplementation", "docstring_reimplementation")
 
 
 def _validate(path: Path, row: dict[str, Any]) -> dict[str, datetime.date]:

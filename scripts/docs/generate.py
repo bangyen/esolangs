@@ -461,17 +461,17 @@ def _names(names: list[str]) -> str:
     return ", ".join(sorted(names, key=str.casefold))
 
 
-def render_blind_reimplementation_section() -> str:
-    """Render the roadmap's blind-reimplementation progress over first impls."""
+def render_blind_reimplementation_section(
+    audit: str = "blind_reimplementation",
+) -> str:
+    """Render the roadmap's progress on one clean-room audit over first impls."""
     first = {
         name
         for name, row in _curation_rows().items()
         if row.get("backlinks", 0) < FAME_BACKLINKS
     }
     done = [
-        name
-        for name, row in _audit_rows().items()
-        if "blind_reimplementation" in row and name in first
+        name for name, row in _audit_rows().items() if audit in row and name in first
     ]
     return textwrap.fill(
         f"{len(done)} of the {len(first)} first implementations: {_names(done)}.",
@@ -485,6 +485,11 @@ def update_roadmap(root: pathlib.Path = ROOT) -> bool:
     text = path.read_text()
     text = splice(
         text, "BLIND-REIMPLEMENTATIONS", render_blind_reimplementation_section()
+    )
+    text = splice(
+        text,
+        "DOCSTRING-REIMPLEMENTATIONS",
+        render_blind_reimplementation_section("docstring_reimplementation"),
     )
     return _write_if_changed(path, text)
 

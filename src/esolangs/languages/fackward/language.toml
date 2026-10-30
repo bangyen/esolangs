@@ -44,4 +44,5 @@ verdict = "kept: a last level with leaves 01 prints the character it reads, )[[H
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
