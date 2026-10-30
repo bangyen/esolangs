@@ -56,4 +56,5 @@ arity = 10
 verdict = "kept: a table with a long leading run walks the mirror corridor (top index first, a zero input walks the lane east, a white wall cell and lane stopper clamp it), as cheap as the OR-like form. Dropping it costs +476.47 / +762.74% on and / nand at n=10 (6,174 vs 1,071, 9,240 vs 1,071) and 0.00% on parity; thresholds k=7 / 8 / 9 at n=10 +8.4 / +23.9 / +69.0% (+0.9% on majority); random tables at n=7 / 8 +0.31 / +0.16% (20 seeded). Share on and holds across n=7..12 (-79 to -83%, nand -86 to -89%). Plain-rewrite audit 2026-10-28 (same tables): random 0.17% / 0.10% at n=7 / 8 (balanced 0.44% / 0.16%); and 79.0% / 81.0% / 82.7% and nand 85.8% / 87.2% / 88.4% at n=7 / 8 / 10, balanced and 77.4% / 80.1% / 82.4%; majority 0.0% / 1.8% / 0.9%, parity, or, nor and thresholds 0.0%; kept for the and/nand family"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
