@@ -75,7 +75,7 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-22 of the 91 first implementations: 1 + i, 3x, Aprknia, Balik, BASICER,
+23 of the 91 first implementations: 1 + i, 3x, 6-5, Aprknia, Balik, BASICER,
 Basicfuck, Between, Bleh, DINAC, Freestajlo, Hot, Kiss, lol waht i cant edit
 talk pages, Monotonic Boolfuck, Movesum, Nandypants, Pilas, Qrain, S*bleq,
 Sonata, Stisp, SwitchCase.

@@ -87,4 +87,5 @@ tables = 200
 verdict = "kept: the walk returns home by a loop left to a sentinel 5 at cell 0 (7 characters) instead of one 3 per cell (2 per row); 36.4% at n=8, 38.0% / 38.9% at n=9 / 10 (200 tables), 39.4% / 39.7% at n=11 / 12 (40 tables); 5.54 -> 3.52 chars per row at n=8. Parity/and/or unchanged (the tree wins); majority n=12 19,765 -> 11,558. n <= 7 byte-identical (exhaustive n <= 3, 200 random each at n=4..7). All 200 changed n=8 programs, 6 at n=9 and 2 at n=10 executed on every row, 0 wrong; a wrong table is flagged"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
