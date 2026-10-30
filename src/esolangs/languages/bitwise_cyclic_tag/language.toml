@@ -6,20 +6,20 @@ backlinks = 179
 
 [proof_status]
 labels = ["parameterized lookup"]
-qualification = "the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below"
-scaling = "linear: worst 8T+2n+1 characters: four per row, reads four a unit"
-execution = "linear: worst 5T + n commands: input segments, then 3 per walk cell"
-workspace = "linear: worst 16T + 8 + bl(8T+n-2) + bl(2T+n+1) bits: a data queue of 2T bits"
+qualification = "the table is the program, one seven-bit cell per two rows; each embedded bit above the lowest appends three walk zeros per unit of its pair index, the lowest two, and a cell consumes exactly three whichever of its row bits is a delete or an operand, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire its first or second row; the trailing `00` consumes the answer it just appended, without which a 1 would cascade into the cells below"
+scaling = "linear: worst 13T/2+2n+3 characters: seven per two-row cell, reads six a unit"
+execution = "linear: worst 19T/4 + n + 2 commands past n = 2: input segments, then the walk"
+workspace = "linear: worst 12T + 16 + bl(13T/2+n) + bl(3T/2+n+2) bits: a data queue of 3T/2 + 1 bits"
 
 [generator_sizes]
-"00000001" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
-"00001100" = { commands = 23, commands_by_row = { "0" = 14, "1" = 14, "2" = 17, "3" = 17, "4" = 20, "5" = 20, "6" = 23, "7" = 23 }, source_units = 39 }
-"00110110" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
-"0110" = { commands = 22, commands_by_row = { "0" = 13, "1" = 16, "2" = 19, "3" = 22 }, source_units = 37 }
-"01101001" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
-"0110100110010110" = { commands = 84, commands_by_row = { "0" = 39, "1" = 42, "2" = 45, "3" = 48, "4" = 51, "5" = 54, "6" = 57, "7" = 60, "8" = 63, "9" = 66, "10" = 69, "11" = 72, "12" = 75, "13" = 78, "14" = 81, "15" = 84 }, source_units = 137 }
-"1101001101101101" = { commands = 84, commands_by_row = { "0" = 39, "1" = 42, "2" = 45, "3" = 48, "4" = 51, "5" = 54, "6" = 57, "7" = 60, "8" = 63, "9" = 66, "10" = 69, "11" = 72, "12" = 75, "13" = 78, "14" = 81, "15" = 84 }, source_units = 137 }
-"11111110" = { commands = 43, commands_by_row = { "0" = 22, "1" = 25, "2" = 28, "3" = 31, "4" = 34, "5" = 37, "6" = 40, "7" = 43 }, source_units = 71 }
+"00000001" = { commands = 36, commands_by_row = { "0" = 19, "1" = 23, "2" = 24, "3" = 28, "4" = 29, "5" = 33, "6" = 35, "7" = 36 }, source_units = 61 }
+"00001100" = { commands = 24, commands_by_row = { "0" = 13, "1" = 13, "2" = 17, "3" = 17, "4" = 18, "5" = 18, "6" = 24, "7" = 24 }, source_units = 35 }
+"00110110" = { commands = 43, commands_by_row = { "0" = 19, "1" = 23, "2" = 26, "3" = 26, "4" = 30, "5" = 31, "6" = 34, "7" = 43 }, source_units = 61 }
+"0110" = { commands = 23, commands_by_row = { "0" = 13, "1" = 14, "2" = 17, "3" = 23 }, source_units = 33 }
+"01101001" = { commands = 36, commands_by_row = { "0" = 20, "1" = 21, "2" = 24, "3" = 28, "4" = 29, "5" = 33, "6" = 35, "7" = 36 }, source_units = 61 }
+"0110100110010110" = { commands = 82, commands_by_row = { "0" = 33, "1" = 34, "2" = 37, "3" = 41, "4" = 42, "5" = 46, "6" = 48, "7" = 49, "8" = 52, "9" = 56, "10" = 58, "11" = 59, "12" = 63, "13" = 64, "14" = 67, "15" = 82 }, source_units = 115 }
+"1101001101101101" = { commands = 69, commands_by_row = { "0" = 34, "1" = 34, "2" = 38, "3" = 39, "4" = 42, "5" = 46, "6" = 49, "7" = 49, "8" = 53, "9" = 54, "10" = 57, "11" = 61, "12" = 64, "13" = 64, "14" = 68, "15" = 69 }, source_units = 115 }
+"11111110" = { commands = 43, commands_by_row = { "0" = 21, "1" = 21, "2" = 26, "3" = 26, "4" = 31, "5" = 31, "6" = 34, "7" = 43 }, source_units = 61 }
 
 [catalogue]
 folding_constant_local = "_program"  # delete inputs and a literal bit
@@ -40,5 +40,13 @@ saving = 695.8
 arity = 12
 verdict = "kept: canonical, exempt. input_weights reads the table at its essential inputs only; an ignored input weighs 0, so its command is a bare 0 and it appends nothing. Embedding the full table at full positional weights instead costs 0.00% on random tables at every arity; on its classes the deletion costs at n=10/12: one ignored input +99.49 / +99.85%, two +296.96 / +299.09%, three +685.93 / +695.75%"
 
+[ablations.paired_rows]
+saving = 18.5
+arity = 8
+seed = "2026103+n"
+tables = 50
+verdict = "kept: a cell `1 a 0 b 1 0 0` holds two rows, so the lowest input appends two zeros instead of the walk shifting a whole cell, and every other read halves; 6.5 chars a row against 8, at n=8 random 2065 -> 1683 chars (18.50%), n=7 18.29%, and the same on parity, and, or, majority and threshold since size is value-independent; each program run through esolangs.run on all 2^n rows"
+
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29
