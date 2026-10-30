@@ -8,26 +8,31 @@ admitted = 2026-08-15T23:15:46-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "Horner-reads V = 44T + v with sum, then one rung per row: a test that is a no-op iff V equals the rung's counter, and a print; at the row two no-ops in a row halt it"
-scaling = "linear: 6T + 6n + 4 commands, about 50 characters a row"
-execution = "linear: worst 6T + 6n + 4 commands"
-workspace = "poly n: at most 7n + 71 bits"
+scaling = "linear: 5T + 6n + 4 commands, about 41 characters a row"
+execution = "linear: worst 5T + 6n + 4 commands"
+workspace = "poly n: at most 7n + 72 bits"
 
 [catalogue]
 folding_ignored = "the Horner read takes every input; an ignored one still doubles the rung count"
 folding_constant = "a constant table still walks one rung per row"
 
 [generator_sizes]
-"00000001" = { commands = 70, commands_by_row = { "0" = 28, "1" = 34, "2" = 40, "3" = 46, "4" = 52, "5" = 58, "6" = 64, "7" = 70 }, source_units = 612 }
-"00001100" = { commands = 70, commands_by_row = { "0" = 28, "1" = 34, "2" = 40, "3" = 46, "4" = 52, "5" = 58, "6" = 64, "7" = 70 }, source_units = 612 }
-"00110110" = { commands = 70, commands_by_row = { "0" = 28, "1" = 34, "2" = 40, "3" = 46, "4" = 52, "5" = 58, "6" = 64, "7" = 70 }, source_units = 612 }
-"0110" = { commands = 40, commands_by_row = { "0" = 22, "1" = 28, "2" = 34, "3" = 40 }, source_units = 360 }
-"01101001" = { commands = 70, commands_by_row = { "0" = 28, "1" = 34, "2" = 40, "3" = 46, "4" = 52, "5" = 58, "6" = 64, "7" = 70 }, source_units = 612 }
-"0110100110010110" = { commands = 124, commands_by_row = { "0" = 34, "1" = 40, "2" = 46, "3" = 52, "4" = 58, "5" = 64, "6" = 70, "7" = 76, "8" = 82, "9" = 88, "10" = 94, "11" = 100, "12" = 106, "13" = 112, "14" = 118, "15" = 124 }, source_units = 1064 }
-"1101001101101101" = { commands = 124, commands_by_row = { "0" = 34, "1" = 40, "2" = 46, "3" = 52, "4" = 58, "5" = 64, "6" = 70, "7" = 76, "8" = 82, "9" = 88, "10" = 94, "11" = 100, "12" = 106, "13" = 112, "14" = 118, "15" = 124 }, source_units = 1064 }
-"11111110" = { commands = 70, commands_by_row = { "0" = 28, "1" = 34, "2" = 40, "3" = 46, "4" = 52, "5" = 58, "6" = 64, "7" = 70 }, source_units = 612 }
+"00000001" = { commands = 62, commands_by_row = { "0" = 24, "1" = 32, "2" = 37, "3" = 42, "4" = 47, "5" = 52, "6" = 57, "7" = 62 }, source_units = 542 }
+"00001100" = { commands = 62, commands_by_row = { "0" = 24, "1" = 32, "2" = 37, "3" = 42, "4" = 47, "5" = 52, "6" = 57, "7" = 62 }, source_units = 542 }
+"00110110" = { commands = 62, commands_by_row = { "0" = 24, "1" = 32, "2" = 37, "3" = 42, "4" = 47, "5" = 52, "6" = 57, "7" = 62 }, source_units = 542 }
+"0110" = { commands = 36, commands_by_row = { "0" = 18, "1" = 26, "2" = 31, "3" = 36 }, source_units = 326 }
+"01101001" = { commands = 62, commands_by_row = { "0" = 24, "1" = 32, "2" = 37, "3" = 42, "4" = 47, "5" = 52, "6" = 57, "7" = 62 }, source_units = 542 }
+"0110100110010110" = { commands = 108, commands_by_row = { "0" = 30, "1" = 38, "2" = 43, "3" = 48, "4" = 53, "5" = 58, "6" = 63, "7" = 68, "8" = 73, "9" = 78, "10" = 83, "11" = 88, "12" = 93, "13" = 98, "14" = 103, "15" = 108 }, source_units = 922 }
+"1101001101101101" = { commands = 108, commands_by_row = { "0" = 30, "1" = 38, "2" = 43, "3" = 48, "4" = 53, "5" = 58, "6" = 63, "7" = 68, "8" = 73, "9" = 78, "10" = 83, "11" = 88, "12" = 93, "13" = 98, "14" = 103, "15" = 108 }, source_units = 922 }
+"11111110" = { commands = 62, commands_by_row = { "0" = 24, "1" = 32, "2" = 37, "3" = 42, "4" = 47, "5" = 52, "6" = 57, "7" = 62 }, source_units = 542 }
 
 [ablations]
 audited = "2026-10-29"
+
+[ablations.print_before_test]
+saving = 17.3
+arity = 8
+verdict = "kept: 16.8% at n=7, 17.3% at n=8 on 200 random tables each, identical on parity, and, or, majority and threshold3 (size is table-independent); 6 -> 5 commands a rung, no step grows. Printing before the test lets cell 6, left holding V by the last rung, stand in for the scratch load, so the run halts on the print it names. Executed: every row of 3 random tables at n=7 and 8 and every table to n=3, output equal to the table prefix; a one-bit-wrong table fails. A loop-ful rotating register (table in the seed, one shift a row a pass) saved 29% / 37% at n=7 / 8 but runs T^2 commands, against the linear execution check, and was not built"
 
 [audits]
 blind_reimplementation = 2026-10-29
