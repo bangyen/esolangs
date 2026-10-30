@@ -35,5 +35,6 @@ arity = 8
 verdict = "kept: a node whose halves are the two different leaves prints bit 0 (x, or its negation by [>>;]>[;>>]) and the common 0 0 0 1 1 0 0 once, 25 / 35 characters instead of 45. Total emitted size falls 13.1% / 13.2% at n=7/8 on 200 seeded random tables (seeds 1234+n; 13.0% / 13.4% on 50), parity 22.2% / 22.1%, majority 14.5% / 13.9%, threshold-3 13.1% / 11.8%, and 4.7% / 3.9% on AND, 4.6% / 3.8% on OR; every row of every changed program run at n<=8 (all 2^2^n tables at n<=3), a wrong table fails"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29

@@ -479,6 +479,19 @@ def render_blind_reimplementation_section(
     )
 
 
+def render_trick_prototype_section() -> str:
+    """Render the roadmap's trick-prototype progress over the generators."""
+    done = [
+        name
+        for name, row in _audit_rows().items()
+        if "trick_prototype" in row and name in BOOLEAN
+    ]
+    return textwrap.fill(
+        f"{len(done)} of the {len(BOOLEAN)} generators: {_names(done)}.",
+        width=76,
+    )
+
+
 def update_roadmap(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the roadmap's audit progress between its markers."""
     path = root / "docs" / "roadmap.md"
@@ -491,6 +504,7 @@ def update_roadmap(root: pathlib.Path = ROOT) -> bool:
         "DOCSTRING-REIMPLEMENTATIONS",
         render_blind_reimplementation_section("docstring_reimplementation"),
     )
+    text = splice(text, "TRICK-PROTOTYPES", render_trick_prototype_section())
     return _write_if_changed(path, text)
 
 

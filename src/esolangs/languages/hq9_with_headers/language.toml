@@ -33,5 +33,6 @@ folds_without_tree = true
 audited = "2026-10-29"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

@@ -34,5 +34,6 @@ arity = 8
 verdict = "kept: clears on random tables (47.6% at n=7, 47.5% at n=8; 30 tables each, random.Random(n) seeds) and named functions (n=8 parity 50.3%, majority 46.3%, threshold2 41.7%, and/or 35.9%); the one arm ends in waht i got banned, so the zero loop, both bumps and n-1 variables go; n=3..8 rows executed (25 tables per arity, wrong-table control fails)"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29

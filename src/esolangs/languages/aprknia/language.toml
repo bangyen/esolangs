@@ -34,5 +34,6 @@ arity = 8
 verdict = "kept: nothing is dropped and each piece pushes what it uses (loops test only the top), so a read is 9 commands not 25 (byte mod 2 off a 2 under the selector), a read-and-ignore 4, -1 8 not 15, a zero leaf 8 not 17; 53.2% on 100 seeded random tables at n=7 and n=8 (seed 7), 48.3% parity, 68.8% and, 67.1% or, 55.4% majority, 56.6% threshold-3 at n=8; the cost is a stack that grows linearly (workspace 2n + 31 -> 32n + bl(L) + bl(n) + 13 bits); every row of every table at n<=3, a stride of n=4 and the named functions and random tables to n=8 run and print their table"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27

@@ -129,3 +129,18 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 Smu, Streetcode, Suffolk.
 
 <!-- DOCSTRING-REIMPLEMENTATIONS:END -->
+- **Trick prototypes:** one agent a generator searches for one admissible
+  size trick (CONTRIBUTING's bar, a rule, executed with a control) and
+  ships it or records the near miss.  The zero-trick pilot shipped four of
+  nine (Aprknia 53%, lol waht i cant edit talk pages 47.5%, Movesum 17.3%,
+  Monotonic Boolfuck 13.2% at n=8); CARP's best, a jump register sized to
+  the deepest path, reached 8.2%.  Next: the 7 one-trick generators, then
+  the 18 two-trick ones.  Record one as `[audits] trick_prototype = <date>`.
+
+<!-- TRICK-PROTOTYPES:START -->
+
+9 of the 112 generators: Aprknia, BASICER, CARP, CreativeScript v2, HQ9+
+with headers, lol waht i cant edit talk pages, Monotonic Boolfuck, Movesum,
+Qrain.
+
+<!-- TRICK-PROTOTYPES:END -->

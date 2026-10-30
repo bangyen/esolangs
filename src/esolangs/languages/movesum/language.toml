@@ -35,5 +35,6 @@ arity = 8
 verdict = "kept: 16.8% at n=7, 17.3% at n=8 on 200 random tables each, identical on parity, and, or, majority and threshold3 (size is table-independent); 6 -> 5 commands a rung, no step grows. Printing before the test lets cell 6, left holding V by the last rung, stand in for the scratch load, so the run halts on the print it names. Executed: every row of 3 random tables at n=7 and 8 and every table to n=3, output equal to the table prefix; a one-bit-wrong table fails. A loop-ful rotating register (table in the seed, one shift a row a pass) saved 29% / 37% at n=7 / 8 but runs T^2 commands, against the linear execution check, and was not built"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
