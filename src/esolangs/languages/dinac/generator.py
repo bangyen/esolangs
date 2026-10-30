@@ -9,7 +9,7 @@ row, T-1 in all.  Each 1-row folds ``and(f1, b0 = bit)`` into ``a`` with
 No branch nests, so a line costs a constant number of characters.
 
 Size:
-    Linear in T: at most 51T + 18n + 120 characters; names are indexed by
+    Linear in T: at most 40T + 18n + 120 characters; names are indexed by
     height, so the T/2**h references to height h cost O(1) on average
     (sum of T * len(h) / 2**h); n=4 parity: 767 chars
 
@@ -50,6 +50,13 @@ def _refreshed(row: int, n: int) -> range:
 def dinac(truth_table: str) -> str:
     """Build a DINAC program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    # Scan the rarer answer's rows and invert the print; the OR lines are the
+    # only part that depends on the table.
+    return min((_scan(truth_table, n, m) for m in "10"), key=len)
+
+
+def _scan(truth_table: str, n: int, mark: str) -> str:
+    """The scan that ORs the ``mark`` rows and prints ``a`` or its complement."""
     lines = list(_PRELUDE)
     for h in range(n - 1, -1, -1):
         lines += [f"SET b{h}:\\0", f"IN b{h}"]
@@ -59,10 +66,10 @@ def dinac(truth_table: str) -> str:
             test = f"b{h} = '{row >> h & 1}"
             expr = test if h == n - 1 else f"and(f{h + 1}, {test})"
             lines.append(f"SET f{h}:{expr}" if row == 0 else f"f{h} . {expr}")
-        if entry == "1":
+        if entry == mark:
             test = f"b0 = '{row & 1}"
             lines.append(f"a . or(a, {test if n == 1 else f'and(f1, {test})'})")
-    lines += ["IF a", "    OUT '1", "ELSE", "    OUT '0"]
+    lines += ["IF a", f"    OUT '{mark}", "ELSE", f"    OUT '{1 - int(mark)}"]
     return "\n".join(lines)
 
 

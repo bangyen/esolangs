@@ -8,8 +8,8 @@ admitted = 2026-09-08T19:52:09-04:00
 [proof_status]
 labels = ["minterms"]
 qualification = "each 1-row ORs the conjunction of its bits into one accumulator; a prefix flag is rewritten only when its bits change, so the whole table is one flat scan with no nested branch"
-scaling = "linear: at most 51T + 18n + 120 characters: flat row scan"
-execution = "linear: worst 11T + 2n - 9 commands"
+scaling = "linear: at most 40T + 18n + 120 characters: rarer-answer scan"
+execution = "linear: worst 15T/2 + 2n - 9 commands past n = 1"
 workspace = "linear: at most 106n + 424 bits: the scope's 2n + 1 slots, 48-bit type tags counted"
 
 [catalogue]
@@ -23,13 +23,15 @@ folding_constant = "a constant table still scans every row's flag rewrites"
 "0110" = { commands = 25, commands_by_row = { "0" = 25, "1" = 25, "2" = 25, "3" = 25 }, source_units = 299 }
 "01101001" = { commands = 57, commands_by_row = { "0" = 57, "1" = 57, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 57, "7" = 57 }, source_units = 461 }
 "0110100110010110" = { commands = 119, commands_by_row = { "0" = 119, "1" = 119, "2" = 119, "3" = 119, "4" = 119, "5" = 119, "6" = 119, "7" = 119, "8" = 119, "9" = 119, "10" = 119, "11" = 119, "12" = 119, "13" = 119, "14" = 119, "15" = 119 }, source_units = 767 }
-"1101001101101101" = { commands = 133, commands_by_row = { "0" = 133, "1" = 133, "2" = 133, "3" = 133, "4" = 133, "5" = 133, "6" = 133, "7" = 133, "8" = 133, "9" = 133, "10" = 133, "11" = 133, "12" = 133, "13" = 133, "14" = 133, "15" = 133 }, source_units = 823 }
-"11111110" = { commands = 78, commands_by_row = { "0" = 78, "1" = 78, "2" = 78, "3" = 78, "4" = 78, "5" = 78, "6" = 78, "7" = 78 }, source_units = 545 }
+"1101001101101101" = { commands = 105, commands_by_row = { "0" = 105, "1" = 105, "2" = 105, "3" = 105, "4" = 105, "5" = 105, "6" = 105, "7" = 105, "8" = 105, "9" = 105, "10" = 105, "11" = 105, "12" = 105, "13" = 105, "14" = 105, "15" = 105 }, source_units = 711 }
+"11111110" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 377 }
 
 [ablations]
 audited = "2026-10-29"
 
 [ablations.minority_polarity]
-saving = 0.0
+saving = 55.9
 arity = 12
-verdict = "not built: emitting the rarer answer's rows and inverting the print would cut a dense table from 50T to 22T characters (56%) but random tables by 0%; the plain build marks the 1-rows"
+seed = 7
+tables = 20
+verdict = "kept: named functions move. The scan marks the rarer answer's rows and prints the complement when that is the 0-rows; the shorter of the two builds ships. Chars (balanced area = side^2 of the squarest layout) against the 1-row scan, n=7..12: and' and or 53.3% / 54.6% / 55.2% / 55.6% / 55.8% / 55.9% (area 69% / 72% / 73% / 74% / 75% / 75%); the 1/3 threshold 33.6% / 42.4% / 47.8% / 40.4% / 46.1% / 49.8% (area 48% / 59% / 66% / 58% / 65% / 69%) and its complement 0.0%; majority' 18.7% / 17.3% / 16.1% at n=8 / 10 / 12 (area 29% / 28% / 26%) and 0.0% at odd n (a tie), majority 0.0%; parity, parity', and', or' 0.0%. Random tables (20 each): 1.9% chars / 2.9% area at n=7 (4 of 20 change), 1.8% / 2.9% at n=8 (8 of 20). Worst case falls from 51T to 40T + 18n + 120 (parity-like tables). Run: n<=3 exhaustive plus 8 rows of every changed priced table, 2,384 runs, 0 wrong"

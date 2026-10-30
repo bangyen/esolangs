@@ -34,5 +34,7 @@ def test_larger_and_constant_tables(table: str) -> None:
 
 @pytest.mark.parametrize("n", [3, 6, 11])
 def test_size_is_linear_in_the_table(n: int) -> None:
-    """The densest table stays within the stated bound, names included."""
-    assert len(esolangs.generate("DINAC", "1" * 2**n)) <= 51 * 2**n + 18 * n + 120
+    """A balanced table stays within the stated bound, names included."""
+    assert (
+        len(esolangs.generate("DINAC", "01" * 2 ** (n - 1))) <= 40 * 2**n + 18 * n + 120
+    )
