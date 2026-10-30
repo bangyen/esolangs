@@ -66,10 +66,6 @@ ignored-input tables included).
   (seed chains before the pointer priming, ~1,800 path cells of returns
   past 127) is the open route.  The layout's cost is where navigation lands
   each walked cell, so a navigation rule comes first.
-- **Quassaunt balanced layout:** the shared `balanced_token_width`
-  picks side 472 at n=10 against 326 from the 2026-10-30 audit's own
-  rule (unverified which is smaller in area); measure balance-mode area
-  before changing the shared helper.
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
   corpus.  With no outside interpreter, this is the only independent
