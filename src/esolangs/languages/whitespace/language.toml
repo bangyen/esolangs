@@ -42,7 +42,7 @@ saving = 22.2
 arity = 8
 seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named parity, and, or, majority, threshold 3"
 tables = 20
-verdict = "kept: 27.7% at n=7, 22.2% at n=8 on random tables; 27.7% / 22.2% on every named function (cost is T-independent). Table and index live on the stack ([table, index]) instead of heaps 1 and 2: Horner per input is dup add, dup read, dup retrieve, add (24 chars against 32) with the read cell addressed by the running index, and the loop is 43 chars against 87. n<=3 exhaustive (276) and named/random tables n<=8 execute, wrong-table control fails 32 of 32. balance: n/a, the language wraps nothing (no_wrap)"
+verdict = "kept on the run clause: the size share declines (27.7% at n=7, 22.2% at n=8, a fixed 8 chars an input and 44 in the loop against a growing table), but commands fall 44-45% on the size baseline (176 -> 98 at n=3, 336 -> 185 at n=4; 19T + 8n -> 10T + 7n - 3), no table slower or larger. Size: 27.7% / 22.2% on random tables; 27.7% / 22.2% on every named function (cost is T-independent). Table and index live on the stack ([table, index]) instead of heaps 1 and 2: Horner per input is dup add, dup read, dup retrieve, add (24 chars against 32) with the read cell addressed by the running index, and the loop is 43 chars against 87. n<=3 exhaustive (276) and named/random tables n<=8 execute, wrong-table control fails 32 of 32. balance: n/a, the language wraps nothing (no_wrap)"
 
 [ablations.trailing_swap]
 saving = 0.5
@@ -52,4 +52,5 @@ tables = 20
 verdict = "kept: not a size trick. The 3-char swap after end ends the file on a tab so the example writer's trailing-newline strip cannot eat end's three line feeds; 0.46% of chars at n=8 (1.43% n=2). Plain rewrite otherwise identical: the construction is one literal with only the canonical input projection, nothing else bespoke. n<=3 exhaustive (276) and named/random tables n<=8 execute, control fails"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29
