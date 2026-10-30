@@ -49,4 +49,5 @@ arity = 10
 verdict = "kept: the table integer is also built from the reversed table (and its complement) and the lookup divides by Q - bit*(Q-1) (`c=e-c` for `c=c+a`, same length), reading every input negated; the shortest of the four is emitted. and/nand 33.9% / 48.1% / 62.5% / 75.3% at n=7 / 8 / 9 / 10 (1,061 -> 551 chars at n=8, 2,717 -> 671 at n=10), majority 0.5% / 4.1% / 0.2% / 2.5%, random 0.08% / 0.17% at n=7 / 8 (20 seeded); or, nor, parity, thresholds unchanged. Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 20-40 random + named at n=4..8)"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

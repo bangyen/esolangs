@@ -75,11 +75,11 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-35 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+36 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
-BFStack, Bitdeque, bit~, Bleh, DINAC, Freestajlo, Hot, Kiss, lol waht i cant
-edit talk pages, Monotonic Boolfuck, Movesum, Nandypants, Pilas, Qrain,
-S*bleq, Sonata, Stisp, SwitchCase.
+BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, DINAC, Freestajlo,
+Hot, Kiss, lol waht i cant edit talk pages, Monotonic Boolfuck, Movesum,
+Nandypants, Pilas, Qrain, S*bleq, Sonata, Stisp, SwitchCase.
 
 <!-- BLIND-REIMPLEMENTATIONS:END -->
