@@ -56,15 +56,13 @@ def switchcase(truth_table: str) -> str:
     """Build a SwitchCase program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
-    programs = [
-        _program(n, essential, read_at(truth_table, essential, n), doubling=True)
-    ]
+    table = read_at(truth_table, essential, n)
     symmetric = symmetric_weights(truth_table, n)
     if symmetric is not None:
-        # A symmetric table adds its bits into one index over m + 1 rows
-        # ([ablations.symmetric_count]).
-        programs.append(_program(n, essential, symmetric[1], doubling=False))
-    return min(programs, key=len)
+        # A symmetric table adds its bits into one index over m + 1 rows,
+        # never longer than the doubling build ([ablations.symmetric_count]).
+        return _program(n, essential, symmetric[1], doubling=False)
+    return _program(n, essential, table, doubling=True)
 
 
 def _program(n: int, essential: list[int], table: str, *, doubling: bool) -> str:

@@ -13,7 +13,7 @@ execution = "linear: worst 8T + 4⌈T/100⌉ + 7n steps: the index loops, four a
 workspace = "poly n: worst 2n + bl(7n - 4) + bl(n) + 46 bits past n = 2: the last doubling loop"
 
 [ablations]
-audited = "2026-10-21"
+audited = "2026-10-29"
 
 [ablations.essential_projection]
 saving = 48.6
@@ -27,7 +27,7 @@ saving = 82.1
 arity = 8
 seed = "named symmetric tables"
 tables = 5
-verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each bit into one index without doubling and switches over m + 1 rows, raced by length against the doubling build. Parity, majority, and, or and exactly-2 all 45.8-45.9% at n=4, 63.8% at n=6, 73.5% at n=7, 82.1% at n=8, 93.3% at n=10; a symmetric table with an ignored input 73.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each bit into one index without doubling and switches over m + 1 rows, a rule, not a race: the count build is never longer (byte-identical to the former length race on all 65,812 tables n<=4 and 112 tables n=5..8). Parity, majority, and, or and exactly-2 all 45.8-45.9% at n=4, 63.8% at n=6, 73.5% at n=7, 82.1% at n=8, 93.3% at n=10; a symmetric table with an ignored input 73.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
 [catalogue]
 folding_constant_local = "_blocks"  # no essential input: one block over the one-row table
@@ -46,4 +46,5 @@ folding_constant_local = "_blocks"  # no essential input: one block over the one
 folds_without_tree = true
 
 [audits]
+plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
