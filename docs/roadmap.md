@@ -105,7 +105,7 @@ Unsquare 2.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-13 of the 87 first implementations: Aprknia, Balik, BASICER, Bleh,
+13 of the 88 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, S*bleq,
 Sonata, Stisp, SwitchCase.
 

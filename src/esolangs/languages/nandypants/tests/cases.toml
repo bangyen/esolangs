@@ -1,0 +1,21 @@
+language = "Nandypants"
+oldid = 35943
+
+[[examples]]
+id = "nand-writes"
+source = '''^^\ v^\'''
+expected = "\u0001"
+note = "the page's only example, cat, needs input (tested in test_nandypants.py); this one shows ^ is a NAND write: a stays 1 while b is 0 and clears once v sets b to 1"
+
+[[spec_triggers]]
+program = "/"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "a read past the end of input; the page's cat program 'does not handle EOF'"
+
+[[spec_triggers]]
+program = "^\\"
+stdin = ""
+expect = "output"
+output = "\u0001"
+claim = "a partial output byte is padded with zero bits at halt"
