@@ -126,4 +126,5 @@ tables = 25
 verdict = "kept 2026-10-20: the competing model (fixed-order folds, prefix H-layouts, shared banks, flat retained) now races from n=4, not n=8, against the claim that it could not beat the direct build below eight. On 25 tables a size (20 seeded random plus zeros, AND, parity, majority, one projection) it is never larger and saves 3.8% / 12.1% / 8.3% / 5.5% of chars at n=4/5/6/7 (13.1% on the random tables at n=5); on 10 tables a size from random.Random(n), 9.8% / 10.8% / 6.2% / 7.2%. It wins no n <= 3 table (0 of 632 corpus programs change), so the floor is 4. Programs stay inside the n <= 7 bounds (2n + 1 commands, 7T/2 + 2n - 5 bits): all n <= 3 tables and 13 a size at n=4..7, every row"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
