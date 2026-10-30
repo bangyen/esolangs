@@ -41,5 +41,6 @@ arity = 12
 verdict = "removed 2026-10-20 (retirement candidate #27): a constant subtable got one shared body per (bit, depth) that read all its remaining characters, moved to the print cell and back. Building constant subtables through the general machinery instead (descending level by level to the printing leaf) makes programs smaller almost everywhere: random tables -2.1% at n=10 and -1.0% at n=12, AND -8.7% / -14.0%, OR -6.8% / -12.2%, majority -7.6% / -10.7%; only constant tables themselves cost more (+21.1% / +24.4%). The shipped body re-paid the away-and-back moves, proportional to depth, at every depth where a constant occurred; the descent pays them once, at the leaf. Constant subtables now descend through the general machinery"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

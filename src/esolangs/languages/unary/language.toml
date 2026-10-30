@@ -52,4 +52,5 @@ arity = 2
 verdict = "kept: the all-but-one-zero table is spelled as nested guards around one loop. At n=2 it is 27,452,351 zeros shipped and unbuildable through the general tree path, whose zero count passes the cap; at n=3 the shipped form itself is over the cap, so n=2 is the largest arity where the form runs"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29

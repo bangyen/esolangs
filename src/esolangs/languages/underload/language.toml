@@ -40,4 +40,5 @@ arity = 10
 verdict = "recorded: the carried comment's saving figures do not reproduce. Deletion costs of the carried mechanism at the stated arities are majority +88.0% / +152.6% (n=8/10), threshold-3 +68.6% / +94.3%, random +12.1% / +12.4%; as shares of the plainer build, 46.8% / 60.4%, 40.7% / 48.5%, 10.8% / 11.0% — against the recorded 33%, 11-15% and 2%. See the stale-figures entry F23"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29
