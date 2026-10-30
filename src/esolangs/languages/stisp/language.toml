@@ -41,6 +41,7 @@ tables = 20
 verdict = "kept: canonical, exempt (a node ignoring its input is the ignored-input drop); one equation over a variable where a node's halves agree, against one per bit: 2.6-3.0% on random chars at n=3..7 (60 tables), 2.4% n=8, 1.7% n=9, 1.4% n=10 (20 tables); 0.00% on parity/majority/and/or/threshold and complements n=3..10; never larger. Plain-rewrite audit 2026-10-29: no other bespoke trick; n<=3 exhaustive and n<=7 priced tables executed on both builds, control fails"
 
 [audits]
+trick_prototype = 2026-10-30
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
