@@ -41,9 +41,11 @@ sharing_exempt = "a tree only through five inputs, where repeats hold at most 5.
 audited = "2026-10-18"
 
 [ablations.mouth_overlap]
-saving = 13.9
+saving = 13.3
 arity = 8
-verdict = "kept"
+seed = "random.Random(1000*n+i), i<20"
+tables = 20
+verdict = "kept 2026-10-30: gap to the next mouth is max(read run, room reach), the plain build their sum. Default area random n=6/7/8 9.2/11.9/13.3% (4,105/5,410/7,736 vs 4,519/6,139/8,924 cells; min 11.8, max 13.4 at n=7), balanced 17.7/19.1/20.9%; parity=majority 11.8/13.2% default at n=7/8 and 16.0/21.5% balanced, thr2 12.8/15.0%, thr3 12.4/14.6%; share falls past n=8 (parity 11.7/8.9/6% at n=9..11, 4% at n=12) while balanced stays 4-27%. Constants/and/or/nand/nor 0%. 336 programs, 55,552 rows run, a wrong table fails"
 
 [ablations.tail_overlap]
 saving = 6.0
@@ -53,12 +55,16 @@ verdict = "removed: fixed ~51 columns, share decays with arity"
 [ablations.shared_lap_populate]
 saving = 16.7
 arity = 5
-verdict = "kept"
+seed = "random.Random(1000*n+i), i<20"
+tables = 20
+verdict = "kept 2026-10-30 for the tree's family: the shared lap against the per-input hallway loops (plain build: hallway only). and/or/nand/nor, whose tree folds, 39.2/31.0/27.6/28.8% default at n=5..8 (1,440 vs 2,370 at n=5; 3,024 vs 4,248 at n=8) and 42.3-49.3% balanced; random n=3/4 43.1/22.0% (balanced 40.0/1.9%) but n=5 0.7%, n=6..7 0% (the flat street wins every random table), parity/majority/thr 0%. Random misses the 10% bar from n=5; the folding family carries it. 277 programs, 17,792 rows run, a wrong table fails"
 
 [ablations.flat_race_candidate]
-saving = 42.4
+saving = 34.5
 arity = 5
-verdict = "kept"
+seed = "random.Random(1000*n+i), i<20"
+tables = 20
+verdict = "kept 2026-10-30: the flat street joins the n=5 race (plain build: tree only). Random n=5 33.1% mean, 34.5% aggregate default (3,203 vs 4,891 cells; 19/20 tables differ, max 44.1%), balanced 0%; parity 57.8%, majority 32.5%, thr3 32.5%, thr2 12.3%, and/or 0%. n=4 and n>=6 identical (from n=6 flat is the canonical shape). 219 programs, 15,840 rows run, a wrong table fails"
 
 [ablations.flat_tree_race]
 saving = 54.4
@@ -74,7 +80,10 @@ verdict = "kept: balanced area on seed 4242 (25 tables an n, random plus parity/
 
 [ablations.shared_kerb]
 saving = 22.2
-verdict = "kept: share of turned area, judged at the width floor"
+arity = 8
+seed = "random.Random(1000*n+i), i<20"
+tables = 20
+verdict = "kept 2026-10-30, width<9 requests only: the turned street with shared kerb is 7 columns, the plain build 9. 22.2% of area at every table and arity (random n=3..8 22.2%, min=max; 6,017 vs 7,736 cells at n=8; parity/majority/and/or/thr n=3..10 all 22.2%), a constant share not a declining one. Default and balanced builds never reach it (balanced 0.0%, identical programs, n=3..10). 492 programs, 42,144 rows run, a wrong table fails"
 
 [ablations.lift]
 saving = 8.9
