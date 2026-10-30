@@ -34,7 +34,7 @@ TABLE = "deep_arities"
 #: Sections whose values are arity ceilings.
 ARITY_SECTIONS = ("linearity", "execution", "workspace")
 #: Sections whose values are exemption reasons.
-REASON_SECTIONS = ("workspace_step_exempt",)
+REASON_SECTIONS = ("workspace_step_exempt", "linearity_exempt")
 SECTIONS = ARITY_SECTIONS + REASON_SECTIONS
 
 

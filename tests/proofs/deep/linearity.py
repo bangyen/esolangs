@@ -268,6 +268,10 @@ def exempt_generators() -> dict[str, str]:
                 reasons[row.generator] = f"proof_status {label} row"
     for name in sorted(load_audit().unsettled):
         reasons[name] = "proof_status scaling audit: open"
+    # Settled by a construction bound the difference ratio cannot read: the
+    # size climbs toward a linear ceiling from below.
+    for key, why in deep_arities("linearity_exempt").items():
+        reasons[BY_BOOLEAN[key].name] = f"linear ceiling: {why}"
     return reasons
 
 

@@ -5,6 +5,11 @@
 # Default H routing starts at eight: three rungs per parity need
 # thirteen (6.8s).
 linearity = 13
+# The pool races first, unceilinged, and a rival replaces it only when
+# smaller, so cells <= F (tests/formulas.py), linear.  Chars per dense entry
+# climb toward it (623 at n = 9, 809 at 15; F/T ~ 4.4k): ratio 4.476 on
+# 9, 11, 13, 4.49 on 10, 12, 14.
+linearity_exempt = "area at most the H-tree pool's F, linear in T"
 # Loading through n=12 costs 27s.
 execution = 7
 # Below its n=8 route change, which leaves no five rungs in budget past

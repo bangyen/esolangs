@@ -10,6 +10,7 @@ from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import UNSETTLED_SCALING
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import SETTLED, TOTAL, Audit, AuditRow, load
+from tests.proofs.deep import deep_arities
 from tests.proofs.deep.execution import EXEMPT as _EXECUTION_EXEMPT
 from tests.proofs.deep.execution import exempt_generators as execution_exempt
 from tests.proofs.deep.linearity import exempt_generators
@@ -93,7 +94,8 @@ def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
 
 
 def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
-    """The bound's exemptions come from the status manifest and ``proofs/index.md``."""
+    """The bound's exemptions come from the status manifest, ``proofs/index.md``
+    and a language's ``linearity_exempt`` ceiling."""
     exempt = exempt_generators()
     ledger = load_ledger()
     qualified = {
@@ -101,7 +103,10 @@ def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
         for row in ledger.rows
         if "cap" in row.labels or "exception" in row.labels
     }
-    assert set(exempt) == audit.unsettled | qualified
+    ceiling = {BY_BOOLEAN[key].name for key in deep_arities("linearity_exempt")}
+    # A ceiling is a settled bound: it never stands in for an open audit row.
+    assert not ceiling & audit.unsettled
+    assert set(exempt) == audit.unsettled | qualified | ceiling
     assert set(exempt) <= {lang.name for lang in BY_BOOLEAN.values()}
     # Every exemption carries a reason naming which document granted it.
     assert all(why for why in exempt.values())
