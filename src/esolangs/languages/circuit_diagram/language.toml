@@ -55,7 +55,7 @@ audited = "2026-10-18"
 [ablations.column_recycling]
 saving = 79.5
 arity = 8
-verdict = "kept: share grows with arity (71.1% at n=7)"
+verdict = "kept 2026-10-30: area of the default build with column reuse patched out of _FreeColumns (no group ever reused), 20 tables a size from random.Random(1000 + 100n + j).getrandbits(2**n) plus parity, majority, and, or, nand, nor, thr2, thr3: reuse saves 70.4% / 79.4% of area on random tables at n=7 / 8 (still growing; min 66.3% / 77.7%), and on named functions 28.2% parity, 32.1% majority, 28.1% thr2, 37.3% thr3 at n=7 (17.2% mean of the eight at n=8, up to 41.5%; and / or / nand / nor 0.00%, a plain-rail chain reuses nothing). Balanced area is unchanged within 1.5% (the balanced route bands to a square and reclaims columns itself). 112 programs a size run on all 2^n inputs, a wrong table fails"
 
 [ablations.constant_folding]
 saving = 53.1
@@ -75,12 +75,12 @@ verdict = "kept: judged on its class; 0.0% on random tables. Re-priced 2026-10-2
 [ablations.competing_model_race]
 saving = 2.1
 arity = 9
-verdict = "kept: races folds by (area, chars): saves 0.7% / 0.6% of area at n=7 / 8 (200 seeded tables), 3.9% on n=10 parity, 8.1% on n=10 random 1847, at 0.9% more chars"
+verdict = "kept 2026-10-30: the race is the natural and complement folds against the pool / bundled candidates by (area, chars); without it (pool / bundled only) the area grows 31.6% / 41.8% / 84.3% / 61.4% on n=9 parity / majority / and / thr2, 29.0% / 34.0% on n=10 parity / majority, 25.5% / 51.2% on n=11 parity / majority, 20.6% on n=12 parity (parity 82,124 -> 56,153 at n=9, 129,816 -> 103,037 at n=12). At n <= 8 the pool candidate equals the natural fold (12 n=7 tables), so the race there adds only the complement fold (output_polarity) and the transposes (transpose_folds); the earlier 0.7% / 0.6% at n=7 / 8 priced only that remainder. Balanced area is equal at n=9, 10 except nand / nor (28,900 vs 9,604; the balanced route picks its own width). Every program run on all 2^n inputs (n=9, 10 named, default and balanced; n=11, 12 default)"
 
 [ablations.transpose_folds]
 saving = 0.0
 arity = 9
-verdict = "kept: part of the race; 4.3% of area at n=8, 0.0% at n=9 on random tables"
+verdict = "kept 2026-10-30, on the class and not on random tables: without the two block transposes (last three / four inputs first), random tables at n=7 / 8 / 9 (20 / 20 / 10 tables from random.Random(1000 + 100n + j).getrandbits(2**n)) grow 7.7% / 3.7% / 3.0% default and 9.0% / 4.6% / 3.3% balanced (declining, below the bar), and parity, majority, and, or, nand, nor, thr2, thr3 grow 0.00% at n=7..11 (default; balanced n=7..10). But the Margulis cofactor witness (test_named_orders_avoid_literal_expander_routing_within_existing_bounds) grows 4.9x / 7.9x / 16.1x at n=9 / 12 / 14 (10,114 -> 49,354, 91,312 -> 724,736, 443,276 -> 7,134,540 chars; 20 -> 96, 22 -> 177, 27 -> 435 chars per entry): the share grows with arity and the size class changes, so they stay. The sparse 202-class table at n=15 grows 3,961,697 -> 5,953,673 cells. n=7 and 8 programs (168 each) run on all 2^n inputs, a wrong table fails"
 
 [ablations.bank_candidates]
 saving = 0.0
