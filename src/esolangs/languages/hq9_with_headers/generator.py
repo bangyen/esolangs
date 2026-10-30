@@ -6,9 +6,9 @@ the last input ``p`` is ``2^row``.  ``o`` divides ``t`` by ``p`` and prints
 whether the quotient is odd: ``[~:: q h ...]`` against twice its half.
 
 Size:
-    339 + n chars plus the flow's n + 1 numbers, the checksum and the
-    table's decimal digits, at most floor(T log10 2) + 1; 4n + 10 steps;
-    n=10 parity: 683 chars, n=10 random 1847: 683 chars.
+    317 + n chars plus the flow's n + 1 numbers, the checksum and the
+    table's decimal digits, at most floor(T log10 2) + 1; 4n + 9 steps;
+    n=10 parity: 661 chars, n=10 random 1847: 661 chars.
 
 Decisions:
     A decision tree over ``'JZ`` jumps lists every command number in the
@@ -25,7 +25,7 @@ def _hex(command: str) -> str:
     return command.encode().hex().upper()
 
 
-_READ = ("[>>. b]", "[MUL p p p]", "[ADD b one b]", "[MUL p b p]")
+_READ = ("[>>. b]", "[MUL p p p]", "b++", "[MUL p b p]")
 _ANSWER = (
     "[DIV t p q]",
     "[DIV q two h]",
@@ -52,7 +52,6 @@ def hq9_with_headers(truth_table: str) -> str:
         *(pad + line for line in _ANSWER),
         "STARTUP",
         "    p = 1",
-        "    one = 1",
         "    two = 2",
         f"    t = {table}",
         "CHECKSUM",

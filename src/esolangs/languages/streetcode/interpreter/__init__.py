@@ -12,7 +12,9 @@ N, E, S, W with a wall to its right and road ahead (``C`` at a ring's
 corner heads down the side road, not into the turn); a dead end turns the
 car across the street in two steps, so a ``U`` on the corner, met heading
 across, reverses it into the lane it was turning into, and one past the
-corner sends it back into the dead end for good.
+corner sends it back into the dead end for good.  With no lane beside the
+dead end (a wall-free grid one cell wide) the car reverses where it stands
+and drives back the way it came.
 
 Input/output:
     ``I`` reads a character, a newline storing code 10; ``O`` writes the

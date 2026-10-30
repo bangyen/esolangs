@@ -5,7 +5,8 @@ choice (``1`` for 0, ``2`` for 1) and jumps to the zero or one child in a
 single step.  Equal subtables at a level share one line, so the program is
 the quasi-reduced diagram; a node whose children match still reads its
 input, as ``GOTO a a``.  The leaves come last: ``PRINT 0`` then ``GOTO 0``,
-a missing line that halts, and ``PRINT 1``, which halts by falling off.
+a missing line that halts, and ``PRINT 1``; the last leaf halts by falling
+off.
 
 Size:
     O(T) lines, fewer when subtables repeat; n=4 parity: 108 chars
@@ -36,14 +37,16 @@ def basicer(truth_table: str) -> str:
     leaf = len(order) + 1
     for bit in used:
         line[n, bit] = leaf
-        leaf += 2 if bit == 0 else 1
+        leaf += 2 if bit < used[-1] else 1
     rows = []
     for d, i in order:
         k = first[d][i]
         zero, one = ids[d + 1][2 * k], ids[d + 1][2 * k + 1]
         rows.append(f"GOTO {line[d + 1, zero]} {line[d + 1, one]}")
     for bit in used:
-        rows += ["PRINT 0", "GOTO 0"] if bit == 0 else ["PRINT 1"]
+        rows.append(f"PRINT {bit}")
+        if bit < used[-1]:  # the last leaf halts by falling off
+            rows.append("GOTO 0")
     return "\n".join(f"{num} {row}" for num, row in enumerate(rows, 1))
 
 
