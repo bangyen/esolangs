@@ -54,5 +54,6 @@ tables = 488
 verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also raced a numeric-token width (1-3), the narrow widths 4-8 and the whole table as one literal chunk. None ever won: dropping all three leaves balanced output byte-identical on 488 tables (40 random a arity at n=1..10, 8 at n=11..12, plus parity, and, or, majority, at-least-2, nand), so the code went. The width= path is untouched"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

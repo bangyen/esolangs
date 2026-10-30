@@ -56,6 +56,7 @@ tables = 20
 verdict = "kept for steps (plain-rewrite audit 2026-10-29): flights fly at the highest column whose body is no longer than the floor _FREE + n - 3 - depth's. Size alone fails the bar: 2.9% / 3.6% off random tables at n = 7 / 8, at most 5.9% on a named function (nor, n = 8); balanced area is the same (no_wrap). But the floor walks every flight down to 40 and nearly doubles the run: retired with the overshoot spelling, the proved n = 11 step bound rose 38,022 -> 68,977 and benchmark rows ran 140 -> 220 and 277 -> 472 commands"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

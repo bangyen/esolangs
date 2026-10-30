@@ -32,6 +32,7 @@ workspace = [3, 6]
 folds_without_tree = true
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

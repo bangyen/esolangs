@@ -59,6 +59,7 @@ workload = "traced"
 verdict = "kept: snapshot per step is O(1) once the table is written"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

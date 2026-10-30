@@ -65,5 +65,6 @@ tables = 7
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 adds each banked bit into one index digit and deletes that many of n + 1 entries, raced by length against the base-128 Horner index. Parity, majority, and, or, at-least-2 and exactly-1 all 6.0% at n=4, 13.5% at n=6, 21.5% at n=7, 44.9% at n=8, 65.6% at n=10, 85.2% at n=12; a symmetric table with an ignored input 19.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
