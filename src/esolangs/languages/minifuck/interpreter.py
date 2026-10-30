@@ -12,6 +12,14 @@ Input/output:
 
 Errors:
     InputExhaustedError: ``.`` reads at EOF.
+
+Decisions:
+    * ``[``'s "invert next bit" flips the cell beyond the pointer without
+      moving; the page's ``.`` says "move to next bit" where it means a move.
+    * A non-command character is an instruction ``[`` can skip; the page
+      says only "3 instructions", and the generator's ``[x`` filler relies
+      on it.  A blind reimplementation that moves and drops non-commands
+      differs on 3,079 of 3,080 corpus rows; with both readings patched, 0.
 """
 
 from esolangs.runtime._drive import drive
