@@ -11,6 +11,8 @@ A child that follows its parent in the layout takes the fall-through and needs
 no label.  Blocks are laid out by depth, so every jump is forward.  A constant
 subtable is one block that reads its remaining inputs and prints the answer
 byte, with b moved to a second cell holding 1 so ``^`` toggles a between bits.
+Constants at depth > 0 share one ladder per answer: a block reads 8 per level
+down to the next entry and falls into it, and only the last entry prints.
 
 Size:
     Theta(T / log T) blocks of O(log T) digits: Theta(T) characters; n=4
@@ -57,6 +59,16 @@ def nandypants(truth_table: str) -> str:
             following.setdefault(one, 2 * pos + 1)
         frontier = following
 
+    if ids[0][0] >= 2:
+        # Constants form one read ladder per answer, the answer with fewer
+        # blocks first ([ablations.read_ladder]).
+        constants = [k for k in order if kids[k] is None]
+        firsts = [str(k[1]) for k in constants]
+        ladders = []
+        for c in sorted(dict.fromkeys(firsts), key=firsts.count):
+            ladders += sorted(k for k in constants if str(k[1]) == c)
+        order = [k for k in order if kids[k] is not None] + ladders
+
     # Plan each node's tests against the block that follows it.
     plan: dict[tuple[int, int], list[tuple[str, tuple[int, int]]]] = {}
     for index, key in enumerate(order):
@@ -82,13 +94,17 @@ def nandypants(truth_table: str) -> str:
     label = dict(zip(jumped, _odd_labels(len(jumped)), strict=True))
 
     tokens = ["v^>v<"]
-    for key in order:
+    for index, key in enumerate(order):
         if key in label:
             tokens.append(label[key])
         pair = kids[key]
         reads = 8 * (n - key[0]) + (7 if key[0] else 0)
         if pair is None:
-            tokens += ["/" * reads, _PRINT[str(key[1])], _END]
+            after = order[index + 1] if index + 1 < len(order) else key
+            if ids[0][0] >= 2 and after[1] == key[1] and after[0] > key[0]:
+                tokens.append("/" * (8 * (after[0] - key[0])))
+            else:
+                tokens += ["/" * reads, _PRINT[str(key[1])], _END]
             continue
         tokens.append("/" * ((7 if key[0] else 0) + 1))
         for move, target in plan[key]:
