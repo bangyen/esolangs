@@ -8,19 +8,19 @@ admitted = 2026-10-15T02:43:43-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "every subtree undoes its `r2` store, so the cube is one of two states and each table expression is checked on both; equal halves read untested and constant subtables fold"
-scaling = "linear: worst 155T/2 - 57 characters: parity, no node folds; subtree_ids folding"
-execution = "poly n: worst ⌊39n/2⌋ + 7 commands: a differing node runs 19 or 20, alternating"
+scaling = "linear: worst 67T - 44 characters: parity, no node folds; subtree_ids folding"
+execution = "poly n: worst 16n + 7 commands: a differing node runs 16"
 workspace = "poly n: worst 3n² + 18n + 118 + bl(n) bits past n = 1: loop frames, the cube's 108"
 
 [generator_sizes]
-"00000001" = { commands = 65, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 47, "5" = 47, "6" = 61, "7" = 65 }, source_units = 295 }
-"00001100" = { commands = 51, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 47, "5" = 47, "6" = 51, "7" = 51 }, source_units = 234 }
-"00110110" = { commands = 65, commands_by_row = { "0" = 42, "1" = 42, "2" = 46, "3" = 46, "4" = 58, "5" = 62, "6" = 61, "7" = 65 }, source_units = 436 }
-"0110" = { commands = 46, commands_by_row = { "0" = 37, "1" = 41, "2" = 42, "3" = 46 }, source_units = 253 }
-"01101001" = { commands = 65, commands_by_row = { "0" = 52, "1" = 56, "2" = 57, "3" = 61, "4" = 58, "5" = 62, "6" = 61, "7" = 65 }, source_units = 563 }
-"0110100110010110" = { commands = 85, commands_by_row = { "0" = 67, "1" = 71, "2" = 72, "3" = 76, "4" = 73, "5" = 77, "6" = 76, "7" = 80, "8" = 74, "9" = 78, "10" = 77, "11" = 81, "12" = 76, "13" = 80, "14" = 81, "15" = 85 }, source_units = 1183 }
-"1101001101101101" = { commands = 85, commands_by_row = { "0" = 57, "1" = 57, "2" = 72, "3" = 76, "4" = 62, "5" = 62, "6" = 66, "7" = 66, "8" = 74, "9" = 78, "10" = 77, "11" = 81, "12" = 66, "13" = 66, "14" = 81, "15" = 85 }, source_units = 934 }
-"11111110" = { commands = 65, commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 32, "4" = 47, "5" = 47, "6" = 61, "7" = 65 }, source_units = 295 }
+"00000001" = { commands = 55, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 52, "7" = 55 }, source_units = 266 }
+"00001100" = { commands = 44, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 44, "7" = 44 }, source_units = 213 }
+"00110110" = { commands = 55, commands_by_row = { "0" = 38, "1" = 38, "2" = 41, "3" = 41, "4" = 49, "5" = 52, "6" = 52, "7" = 55 }, source_units = 386 }
+"0110" = { commands = 39, commands_by_row = { "0" = 33, "1" = 36, "2" = 36, "3" = 39 }, source_units = 224 }
+"01101001" = { commands = 55, commands_by_row = { "0" = 46, "1" = 49, "2" = 49, "3" = 52, "4" = 49, "5" = 52, "6" = 52, "7" = 55 }, source_units = 492 }
+"0110100110010110" = { commands = 71, commands_by_row = { "0" = 59, "1" = 62, "2" = 62, "3" = 65, "4" = 62, "5" = 65, "6" = 65, "7" = 68, "8" = 62, "9" = 65, "10" = 65, "11" = 68, "12" = 65, "13" = 68, "14" = 68, "15" = 71 }, source_units = 1028 }
+"1101001101101101" = { commands = 71, commands_by_row = { "0" = 51, "1" = 51, "2" = 62, "3" = 65, "4" = 54, "5" = 54, "6" = 57, "7" = 57, "8" = 62, "9" = 65, "10" = 65, "11" = 68, "12" = 57, "13" = 57, "14" = 68, "15" = 71 }, source_units = 816 }
+"11111110" = { commands = 55, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 52, "7" = 55 }, source_units = 266 }
 
 [catalogue]
 sharing_exempt = "no jump or call: code runs once per place it is written"
@@ -38,6 +38,14 @@ saving = 46.1
 arity = 12
 verdict = "kept: canonical, exempt. A node whose halves are the same subtree reads its bit and descends into one child instead of branching. Branching on equal halves instead costs +11.50% at n=10 and +11.32% at n=12 on random tables (second seed set +11.43 / +11.29%). Removing the whole descent (the plain build) costs +46.17 / +46.09% on random tables and at n=10/12: AND +5453.43 / +16809.06%, OR +5552.39 / +17083.70%, majority +94.88 / +112.00%, one ignored input +146.91 / +151.96%, two +372.69 / +331.83%, three +650.34 / +666.88%, half-constant +182.86 / +188.25%, sparse +149.75 / +151.57%"
 
+[ablations.undo_in_branch]
+saving = 12.5
+arity = 8
+seed = "random.Random(1847 + n), random.Random(5150 + n)"
+tables = "200 random per seed at n=7,8 vs the prior build (test, then undo-and-test branches), plus parity, and, or, majority, threshold-3"
+verdict = "kept: the 1 branch undoes the store as its first command, so every subtree runs on X and the closing test-and-undo (and the per-parity P/Q swap) goes. Random tables -12.48 / -12.50% at n=7 / 8 (second seed -12.47 / -12.50%); parity -13.49 / -13.52%, majority -12.93 / -11.34%, threshold-3 -10.70 / -10.33%, and -8.28 / -8.12%, or -6.65 / -6.31% (named functions reported apart; leaf-heavy and/or under the bar). A fixed 4.5 tokens of 20.5 a differing node, so the share holds across n. Commands 85 -> 71 at n=4 parity. Every row of all tables n<=3, 3000 random n=4, and random plus named n=5..8 (all rows) ran through the interpreter, a wrong-table control fails. A further 4.7 points (17.2% on random) comes from an opening r' d' u2, store l2, P = .wg, Q = .gw' (both one token), found by a search over openings of up to three turns; not shipped, a searched constant"
+
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
