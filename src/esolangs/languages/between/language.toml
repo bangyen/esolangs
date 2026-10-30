@@ -25,5 +25,16 @@ workspace = "poly n: at most 16n + bl(L) + bl(2n) + 1 bits"
 [ablations]
 audited = "2026-10-29"
 
+[ablations.fall_through]
+saving = 18.7
+arity = 8
+verdict = "kept: a node falls through to its unplaced one-child, so it costs one line instead of two. Plain-rewrite audit 2026-10-29 (30 random tables per n, Random(n), plus named tables; plain build = every node `|zero|f(..='0')` then `|one|f.`, children placed in any order): random 13.1% / 15.8% / 17.2% / 18.7% at n=2 / 4 / 6 / 8 (chars); n=8 parity 12.6%, majority 20.2%, and 19.2%, or 19.2%, thr2 21.5%, complements equal"
+
+[ablations.zero_fall_through]
+saving = 2.9
+arity = 8
+verdict = "kept as a rule, not a race: when the one-child is already placed, the node falls through to the zero-child under f(..='1'). Baseline = fall_through only. Random 0.7% / 2.7% / 3.2% / 2.9% at n=2 / 4 / 6 / 8 (fails 10% on random); n=8 parity 0.0%, and 0.0%, majority 14.8%, or 17.3%, thr2 18.8% (clears 10% on the majority/or/threshold family, not the whole build); one placement pass, no second build"
+
 [audits]
+plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-29
