@@ -51,8 +51,10 @@ def dinac(truth_table: str) -> str:
     """Build a DINAC program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
     # Scan the rarer answer's rows and invert the print; the OR lines are the
-    # only part that depends on the table.
-    return min((_scan(truth_table, n, m) for m in "10"), key=len)
+    # only part that depends on the table, so the rarer side is the shorter
+    # build (ties scan the 1-rows).
+    ones = truth_table.count("1")
+    return _scan(truth_table, n, "1" if 2 * ones <= len(truth_table) else "0")
 
 
 def _scan(truth_table: str, n: int, mark: str) -> str:
