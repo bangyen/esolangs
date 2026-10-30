@@ -44,4 +44,5 @@ arity = 8
 verdict = "kept 2026-10-30 (random + named bar): each entry pair is one symbol of c/d/e/f and R, starting at the right end, expands it on its way left, so four rules (36 chars) replace half the table, in every layout (plain, queued, folded, shared). On 100 seeded random tables (random.Random(1847 + n)) chars fall 8.9% at n=7 (31,500 -> 28,700) and 20.8% at n=8 (44,300 -> 35,100), 15.8% over both; named parity / majority / threshold-3 8.9% / 20.8%, and / or 8.9% / 19.3% at n=7 / 8; n=7 is under the 10% bar alone, the 36-char rule block being fixed. Balanced area 0.0% on 30 random tables and the five named functions at n=7 and n=8 (the chunked layout's 27 rules push its side to 60 against 58). Executed: every row of the five named functions and 15 random tables at n=7 and n=8, balanced and not, plus width-limited builds, compute their tables; the wrong-table control fails on all 128 rows"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-28
