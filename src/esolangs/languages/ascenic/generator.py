@@ -19,6 +19,9 @@ Size:
     parity: 1,545,756 chars, n=10 random 1847: 1,176,242 chars.
 
 Decisions:
+    An input the table ignores is read and popped, outside the Horner code
+    ([ablations.ignored_input_drop]).
+
     The shorter of the table and its reversal is built (the reversal's rows
     read ``T - 1 - r`` by flipped Horner signs and a first-line ``SUB 2``):
     the scale lines' arguments follow the last change point, so and at n=8
@@ -28,11 +31,16 @@ Decisions:
     plus its argument, both rising, so no two jumps land on one line.
 """
 
-from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+)
 from esolangs.languages.ascenic.proof_formulas import workspace
 from esolangs.registry._language import Language
 
 _PRINT, _INPUT, _PUSH, _ADD, _SUB, _MUL, _DIV, _MOD = 1, 2, 3, 4, 5, 6, 7, 8
+_POP = 10
 _LT, _ADDS, _SUBS, _MULS = 13, 16, 17, 18
 
 
@@ -65,16 +73,24 @@ class _Lines:
         return "\n".join("A" * op + "s" * arg for op, arg in self.lines)
 
 
-def _scan(table: str, n: int, *, mirror: bool) -> str:
+def _scan(table: str, n: int, used: list[int], *, mirror: bool) -> str:
     """Return the scan program for ``table``, its rows read forwards or mirrored.
 
     Mirrored, the Horner signs flip so ``x_n = r + e`` and a first-line
     ``+-2`` (weight ``(-2)**n`` after the last ``MULS``) adds ``2T``: the
     rows come out as ``T - 1 - r``, so ``table`` must be the reversed one.
+    ``table`` is over the inputs ``used``; the rest are read and popped.
     """
     out = _Lines()
-    # x_i = -2 x_(i-1) +- b_i, signed so that x_n is -r and -2 x_n is 2r.
-    for i in range(1, n + 1):
+    m = len(used)
+    # x_i = -2 x_(i-1) +- b_i, signed so that x_m is -r and -2 x_m is 2r.
+    i = 0
+    for pos in range(n):
+        if pos not in used:
+            out.add(_INPUT, odd=True)
+            out.add(_POP)
+            continue
+        i += 1
         if i > 1:
             out.negative_two()
             out.add(_MULS)
@@ -82,11 +98,11 @@ def _scan(table: str, n: int, *, mirror: bool) -> str:
         if mirror:
             if i == 1:
                 out.add(_SUB, 2)
-            if (n - i) % 2 == 1:
+            if (m - i) % 2 == 1:
                 out.add(_SUBS)  # a first bit subtracts from the empty stack's 0
             elif i > 1:
                 out.add(_ADDS)
-        elif (n - i) % 2 == 0:
+        elif (m - i) % 2 == 0:
             out.add(_SUBS)  # the first bit subtracts from the empty stack's 0
         elif i > 1:
             out.add(_ADDS)
@@ -111,12 +127,15 @@ def _scan(table: str, n: int, *, mirror: bool) -> str:
 def ascenic(truth_table: str) -> str:
     """Build an Ascenic program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    forward = _scan(truth_table, n, mirror=False)
-    if n == 0:
+    used = essential_inputs(truth_table, n)
+    table = read_at(truth_table, used, n)
+    forward = _scan(table, n, used, mirror=False)
+    # The mirror's ``SUB 2`` needs the first line's argument budget.
+    if not used or used[0] != 0:
         return forward
     # Threshold arguments climb with the last change point: a table whose
     # changes sit at the end is cheaper read from the other end.
-    mirrored = _scan(truth_table[::-1], n, mirror=True)
+    mirrored = _scan(table[::-1], n, used, mirror=True)
     return min(forward, mirrored, key=len)
 
 

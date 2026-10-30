@@ -4,11 +4,12 @@
 def workspace(n: int, _: str) -> int:
     """Line index, the larger of the Horner and scaled stacks, the input cursor.
 
-    The larger of the forward and mirrored scans, each at its alternating
-    table (the most lines, the last Horner push ``a``, the largest scaled
-    product).  Mirrored, the Horner value ends at ``r - T``, one bit wider
-    than the forward ``-r``; the pushes are ``8n - 5``, ``8n - 3``, the
-    base is ``8n + 3`` and the program has ``2T + 6n + 5 - n mod 2`` lines.
+    The larger of the forward and mirrored scans, each at its worst table
+    (a constant prefix then alternating: the most lines, the last Horner
+    push ``a``, the largest scaled product).  Mirrored, the Horner value
+    ends at ``r - T``, one bit wider than the forward ``-r``; the pushes
+    are ``8n - 5``, ``8n - 3``, the base is ``8n + 3`` and the program has
+    ``2T + 6n + 5 - n mod 2`` lines.
     The mirror is one bit over the forward scan from n = 2, but wins no table
     at n = 2, so the bound is exact from n = 3.
     """

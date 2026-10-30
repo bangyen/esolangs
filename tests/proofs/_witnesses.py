@@ -862,14 +862,17 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Home Row": lambda n: (
         ("00010101",) if n == 3 else ("0" * 8 + _parity(n)[8:],) if n >= 5 else ()
     ),
-    # Workspace: the mirrored scan is chosen for a constant prefix then
-    # alternating; its line count must still reach the alternating table's
-    # bit length (prefix T/8, and T/4 where T/8 stays forward: n = 4).
+    # Size and steps: the alternating table ignores all but its last input, so
+    # the worst keeps every input and flips the first pair.  Workspace: the
+    # mirrored scan is chosen for a constant prefix then alternating (prefix 2
+    # at n = 6, 7; T/8, and T/4 where T/8 stays forward: n = 4).
     "Ascenic": lambda n: (
-        "01" * (1 << n - 1),
+        ("11" if n % 2 == 0 else "10") + "01" * ((1 << n - 1) - 1),
+        # AND takes the mirror at every n, whose wider Horner value is the bound.
+        "0" * ((1 << n) - 1) + "1",
         *(
             "0" * p + ("01" * (1 << n))[: (1 << n) - p]
-            for p in ((1 << n - 3, 1 << n - 2) if n >= 3 else ())
+            for p in (2, *((1 << n - 3, 1 << n - 2) if n >= 3 else ()))
         ),
     ),
     # An 8-row cluster whose root block hops 15 lines (a 33-character body, held
