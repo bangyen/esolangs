@@ -79,6 +79,7 @@ arity = 8
 verdict = "kept 2026-10-28 by contract: the balance hook rebuilds the program at the default's own width and from the narrow builds, each in its original, compact, aliased and renamed spellings. Priced against balance = default on 20 seeded random tables (seed 1000n + i): 5.55% / 1.08% balanced area at n=7/8; named tables 0.0% except or and nor, 9.6% / 12.3% at n=7 then 54.4 / 37.0 / 23.1 / 13.7 / 7.8% at n=8..12, a share falling from its n=8 peak under the 10% bar. Alone, the narrow builds and the spellings each price 0.0% (the width-limited rebuild carries it). Fails the bar, but tests/generators/test_balance_remaining.py requires every native-width generator to balance within 5% of the best width layout and the default misses that on or/nor, so it stays; an invariant, not a size trick"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [balance_growth]
