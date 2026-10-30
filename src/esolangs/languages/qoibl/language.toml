@@ -41,21 +41,21 @@ verdict = "kept"
 audited = "2026-10-19"
 
 [ablations.input_projection]
-saving = 42.2
+saving = 42.6
 arity = 12
-verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the table is packed over the essential inputs only; an ignored read drains into a variable the packed literal overwrites. 0.00% on random tables at n=8/10/12 (projection almost never fires there); with one ignored input 19.4% at n=8 rising to 31.6% at n=10 and 42.2% at n=12, with two ignored 31.0% / 48.3% / 63.7%, and on constant tables 51.7% / 67.1% / 84.0% (a constant packs as a two-row table)"
+verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the table is packed over the essential inputs only; an ignored read drains into a variable the packed literal overwrites. 0.00% on random tables at n=8/10/12 (projection almost never fires there); with one ignored input 19.6% at n=8 rising to 32.1% at n=10 and 42.6% at n=12, with two ignored 31.3% / 49.1% / 64.3%, and on constant tables 41.5% / 44.9% / 47.4% (a constant packs as a two-row table)"
 
 [ablations.plain_build]
-saving = 42.2
+saving = 42.6
 arity = 12
 verdict = "recorded: the plain build is the projection removed (every input at its positional weight, the full table packed) and nothing else: the Horner squaring that accumulates 2**index is essential with only + - * / available, the ignored-read drain target and the bit-plus-one store are workspace correctness, and the Horner literal chunking is a width path, not the default sized path. Plain and shipped are byte-identical on every table whose inputs are all essential"
 
 [ablations.polarity_flip]
-saving = 30.6
+saving = 30.7
 arity = 8
 seed = "random.Random(184700 + n) and named tables"
 tables = 200
-verdict = "kept under the named-function rule: when the complemented table packs to fewer bits (a trailing run of ones, which the literal pays for while trailing zeros are free), the literal is the complement and the print is '1' minus the bit, same statement count. Or 12.3% at n=6, 19.8% at n=7, 30.6% at n=8, 59.2% at n=10, rising; at-least-3 2.9-14.7% at n=6..10; majority 1.4-2.3%, and 0.1-0.2%; random tables 0.05-0.19%. Exhaustive n<=3: 138 tables change, none grows, every changed program executed; random samples and named tables executed through n=8"
+verdict = "kept under the named-function rule: when the complemented table packs to fewer bits (a trailing run of ones, which the literal pays for while trailing zeros are free), the literal is the complement and the print is '1' minus the bit, same statement count. Or 11.8% at n=6, 19.5% at n=7, 30.7% at n=8, 60.0% at n=10, rising; at-least-3 1.5-14.6% at n=6..10; majority and and 0.0% (the negated build already packs them short); random tables 0.06-0.22%. Exhaustive n<=3: 113 tables change, none grows, every changed program executed; random samples and named tables executed through n=8"
 
 [ablations.negated_reads]
 saving = 60.0
