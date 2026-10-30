@@ -59,4 +59,5 @@ arity = 8
 verdict = "retired 2026-10-28: the balanced race also built the 1-, 5- and 6-column cascades and never beat the default or a fold on balanced area (side squared): 0.0% on 20 seeded tables at n=7/8 (seed 1000n + i), on the parity, majority, and, or, nand, nor and thresholds tables at n=7..12, on all 65,534 non-constant tables at n=1..4 and 300 each at n=5/6. Byte-identical on area; 76 of 80 differing tables at n<=4 and 4 larger ones only lose a 2-3 character tie on length (balanced area unchanged). width=N remains the user-requested layout. Executed: 616 default and balanced programs (every n<=3 table, random n=7/8, named n=7..9) all correct, a wrong table fails"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
