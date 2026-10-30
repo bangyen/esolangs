@@ -56,4 +56,5 @@ tables = 20
 verdict = "kept: clears the bar at its peak -- 0.00% at n=3..9 because it acts only past 52 macros, then growing to +11.54% at n=11 (seed 4242, 20 tables; +11.68% chars, +11.22% balanced area on 200 tables, seed 77), +9.83% at n=12 (+10.34% by balanced area), +6.36% / +3.66% / +2.67% / +2.95% at n=13..16 on random tables; 0.0% on every named function. Naming in discovery order is the plain form"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
