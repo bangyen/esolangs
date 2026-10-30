@@ -41,11 +41,11 @@ arity = 12
 verdict = "kept: canonical, exempt; the ignored-input layer skip earns 8.9% on mid-ignored tables at n=10 and ~0% at lead/trail, where sharing absorbs the kept layer; priced jointly with sharing removed it is worth a full layer on ignored classes (84-94% combined)"
 
 [ablations.wide_tree_race]
-saving = 32.2
+saving = 32.8
 arity = 8
-seed = "random.Random(n)"
-tables = 10
-verdict = "kept 2026-10-20: width requests past four essential inputs race the full tree against the linear lookup, keeping the tree where it fits and is shorter; at width 80 it is 28.2-32.2% shorter at n=5..8 and 59% at n=14 (the gate had shipped the lookup unmeasured). The lookup stays the narrow fallback (14-16 columns against the tree's 16)"
+seed = "random.Random(1030000 + 100 * n + i)"
+tables = 20
+verdict = "kept 2026-10-30 (re-audit): width requests past four essential inputs race the pruned tree against the linear lookup (the plain build). Fires only on width requests; balance=True and the default take the residual DAG, byte-identical, so it has no balanced-route effect. Re-measured at widths 40, 80 and 200 (identical sizes, the tree fits all three): 20 random tables a size, chars -27.5..-38.7% at n=5..10 (n=7 30.3%, n=8 32.8%, still growing; every table >= 21.8%), named parity, majority, and, or, nand, nor, threshold n/3 at n=7..12 -61.7..-98.2% (n=8 parity 9,680 -> 2,012; n=12 parity 108,283 -> 2,655); rendered area (balance_score side squared) 74-100% smaller. Executed 24,576 rows at width 80 (n<=8, new and old builds) and 21,504 at widths 40 and 200 (n<=7), each equal to its table; a flipped last bit failed in all 188 and 268 control runs. The lookup stays the narrow fallback"
 
 [ablations.lookup_loops]
 saving = 18.9
