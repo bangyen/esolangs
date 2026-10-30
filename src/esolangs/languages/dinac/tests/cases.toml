@@ -1,0 +1,11 @@
+[[spec_triggers]]
+program = "IF 01\n    OUT 'a"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: an IF without its ELSE"
+
+[[spec_triggers]]
+program = "OUT nope"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: an undeclared name"

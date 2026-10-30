@@ -1,0 +1,22 @@
+DEF/00 and a:00 b:00
+    IF a
+        GIVE ~~b
+    ELSE
+        GIVE 00
+DEF/00 or a:00 b:00
+    IF a
+        GIVE 01
+    ELSE
+        GIVE ~~b
+SET b1:\0
+IN b1
+SET b0:\0
+IN b0
+SET a:00
+SET f1:b1 = '0
+f1 . b1 = '1
+a . or(a, and(f1, b0 = '1))
+IF a
+    OUT '1
+ELSE
+    OUT '0

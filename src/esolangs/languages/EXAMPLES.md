@@ -59,6 +59,7 @@ don't edit by hand.
 | `decleq/decleq.txt` | Decleq | `0001` | `01` | 01 | '0' |
 | `dig/dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
 | `dimensional/dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
+| `dinac/dinac.txt` | DINAC | `0001` | `01` | 01 | '0' |
 | `egl/egl.txt` | EGL | `0001` | `01` | 01 | '0' |
 | `eval/eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
 | `fackward/fackward.txt` | Fackward | `0001` | `01` | 01 | '0' |

@@ -95,6 +95,8 @@ from esolangs.languages.dig.generator import LANGUAGE as _DIG_LANGUAGE
 from esolangs.languages.dig.generator import dig
 from esolangs.languages.dimensional.generator import LANGUAGE as _DIMENSIONAL_LANGUAGE
 from esolangs.languages.dimensional.generator import dimensional
+from esolangs.languages.dinac.generator import LANGUAGE as _DINAC_LANGUAGE
+from esolangs.languages.dinac.generator import dinac
 from esolangs.languages.egl.generator import LANGUAGE as _EGL_LANGUAGE
 from esolangs.languages.egl.generator import egl
 from esolangs.languages.eval.generator import LANGUAGE as _EVAL_LANGUAGE
@@ -280,6 +282,7 @@ _LANGUAGES = (
     _DECLEQ_LANGUAGE,
     _DIG_LANGUAGE,
     _DIMENSIONAL_LANGUAGE,
+    _DINAC_LANGUAGE,
     _EGL_LANGUAGE,
     _EVAL_LANGUAGE,
     _FACKWARD_LANGUAGE,
@@ -390,6 +393,7 @@ __all__ = [
     "decleq",
     "dig",
     "dimensional",
+    "dinac",
     "egl",
     "eval",
     "fackward",

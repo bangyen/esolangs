@@ -140,6 +140,7 @@ Languages that don't fit into the above categories.
 - [Bleh](https://esolangs.org/wiki/Bleh) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/bleh/interpreter.py))
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/cvnc/interpreter.py))
 - [Codesick](https://esolangs.org/wiki/Codesick) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/codesick/interpreter.py))
+- [DINAC](https://esolangs.org/wiki/DINAC) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/dinac/interpreter.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/fargo/interpreter.py))
 - [HQ9+ with headers](https://esolangs.org/wiki/HQ9+_with_headers) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/hq9_with_headers/interpreter.py))
 - [Hot](https://esolangs.org/wiki/Hot) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/hot/interpreter.py))
