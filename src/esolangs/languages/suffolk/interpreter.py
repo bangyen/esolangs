@@ -1,23 +1,23 @@
 """Interpreter for Suffolk.
 
-``>`` moves right, ``<`` sums the cell into the accumulator and rewinds,
-``!`` writes the cell a value from the accumulator clamped at zero, ``,``
-reads a byte, ``.`` prints the accumulator minus one; the code reruns
-forever.  ``self_halts`` is ``False``: it does not promise the run never
-ends -- a read that runs out of input ends it.  :func:`run` otherwise stops
-on a repeated state, never a pass count.
+``>`` moves right, ``<`` adds the cell to the accumulator and rewinds,
+``!`` sets the cell to cell + 1 - accumulator (at least zero), zeroes the
+accumulator and rewinds, ``,`` reads a character, ``.`` prints the
+accumulator minus one; the code reruns forever.  ``self_halts`` is
+``False``: it does not promise the run never ends -- a read that runs out of
+input ends it.  :func:`run` otherwise stops on a repeated state, never a
+pass count.
 
 Input/output:
-    ``,`` reads consecutive characters, summing each into the accumulator;
-    ``.`` prints the accumulator minus one.  At EOF ``,`` zeroes the
-    accumulator and ends the scripted run, never raising.
+    Each ``,`` reads the next character and adds its code to the
+    accumulator; ``.`` prints the accumulator minus one.  At EOF ``,`` zeroes
+    the accumulator and ends the scripted run, never raising.
 
 Errors:
     ProgramError: Empty program.
 
 Decisions:
-    * The wiki has ``,`` read one character with EOF zeroing the accumulator;
-      this reads consecutive characters, zeroes the accumulator at EOF, and
+    * The wiki has EOF zero the accumulator and the code rerun; this also
       ends the scripted run there.
 """
 
