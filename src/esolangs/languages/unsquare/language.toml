@@ -48,6 +48,7 @@ tables = 20
 verdict = "kept: the first (m-3)//2 essential reads branch (`iA>-<x>`, push half, `IA<x->`, push other half, `OA<`: 16 chars a node) and push only their half, so their 2^k pops leave the program; level d+1 pays while 2^(m-d-1) + 10 > 16*2^d. Random chars, 20 seeded tables: -19.3% n=7 (7,037 -> 5,677), -26.5% n=8 (12,357 -> 9,077), -32.1% n=9 (22,797 -> 15,477), -12.2% n=6; n=10 (6 tables) -37.5%. Named n=7 / 8 / 9: parity -19.3 / -26.5 / -32.1%, majority -19.5 / -27.6 / -33.5%, and/or -14.8 / -33.6 / -43.1%, thr2 -20.1 / -34.3 / -43.6%. Balanced side^2 area on random -19.9 / -22.6 / -32.2% (n=7 / 8 / 9). Saving grows with n (the pops are half of 2T). Every row of every table n<=3, 20 random n=4..9, 6 at n=10 and named n=4..10 plus complements executes; wrong-table control fails"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
