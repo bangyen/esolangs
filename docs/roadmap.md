@@ -75,7 +75,7 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (85): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Audited (86): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
 Algebraic Programming Language, Alight, ArrowQueue, Ascenic, B-tapemark,
 Back, Balik, Basicfuck, Befunge, BFStack, Bitdeque, Bitwise Cyclic Tag,
 bit~, Bleh, Blindfolded Arithmetic, Boolfuck, brainfuck, BrainIf, Caballo,
@@ -85,11 +85,11 @@ Eval, Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN,
 Freestajlo, Home Row, Hot, Inject, INTERCAL, Interprogck8, LaserFuck, Line,
 Malbolge, Minifuck, Minsky Swap, Modulous, NOR machine, Packlang, Painfuck,
 Piet, Pointless, Qoibl, Quassaunt, RAM0, ROTfuck, S*bleq, SendStuff, SLOW
-ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Streetcode, Subleq, Suffolk,
-Taglate, thisthat, Thue, Unary, Underload, Unlambda. Next by kept
-`[ablations]`: Stisp 2, Super SNUSP 2, SwitchCase 2, Unsquare 2, Chicken 1,
-DINAC 1, Grapheme 1, Kiss 1, Object disoriented 1, Pilas 1, Rubic 1,
-Shakespeare 1, What!? 1, Whitespace 1.
+ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Streetcode, Subleq,
+Suffolk, Taglate, thisthat, Thue, Unary, Underload, Unlambda. Next by kept
+`[ablations]`: Super SNUSP 2, SwitchCase 2, Unsquare 2, Chicken 1, DINAC 1,
+Grapheme 1, Kiss 1, Object disoriented 1, Pilas 1, Rubic 1, Shakespeare 1,
+What!? 1, Whitespace 1.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 

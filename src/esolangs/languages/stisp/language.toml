@@ -24,7 +24,7 @@ definitions = ["D = Σ_{k<n} min(2^k, 2^(2^(n-k)) - 2), the most nonconstant nod
 "11111110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 89 }
 
 [ablations]
-audited = "2026-10-21"
+audited = "2026-10-29"
 
 [ablations.subtree_sharing]
 saving = 76.1
@@ -34,11 +34,12 @@ tables = 200
 verdict = "kept: canonical, exempt; equations per reduced-diagram node against per tree position: 60.3% on random tables at n=8 rising to 76.1% at n=12, 72.6-84.8% one-ignored, 88.5-98.8% on parity/majority/and. Plain-rewrite audit: no bespoke tricks; the drain equation is how a leaf answers, not a device"
 
 [ablations.halves_agree_skip]
-saving = 0.9
-arity = 12
+saving = 1.4
+arity = 10
 seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept: canonical, exempt; one equation over a variable where a node's halves agree, against one per bit: 2.3% on random tables at n=8 declining to 0.9% at n=12, 5.2-7.8% one-ignored, 0.0% on constants (the drain answers them) and on parity/majority/and; never larger"
+tables = 20
+verdict = "kept: canonical, exempt (a node ignoring its input is the ignored-input drop); one equation over a variable where a node's halves agree, against one per bit: 2.6-3.0% on random chars at n=3..7 (60 tables), 2.4% n=8, 1.7% n=9, 1.4% n=10 (20 tables); 0.00% on parity/majority/and/or/threshold and complements n=3..10; never larger. Plain-rewrite audit 2026-10-29: no other bespoke trick; n<=3 exhaustive and n<=7 priced tables executed on both builds, control fails"
 
 [audits]
 blind_reimplementation = 2026-10-27
+plain_rewrite = 2026-10-29
