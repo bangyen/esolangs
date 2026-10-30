@@ -8,25 +8,30 @@ admitted = 2026-10-27T11:08:19+00:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: at most 78T characters: one 61-command node per branch"
-execution = "poly n: worst 51n + 17 commands"
-workspace = "poly n: at most 2n + 31 bits"
+scaling = "linear: at most 39T characters: one 30-command node per branch"
+execution = "poly n: worst 26n + 9 commands"
+workspace = "poly n: at most 32n + bl(L) + bl(n) + 13 bits: the stack keeps each level's read results"
 
 [catalogue]
 sharing_exempt = "no names or jumps but loops: code runs once per place it is written"
 
 [generator_sizes]
-"00000001" = { commands = 163, commands_by_row = { "0" = 113, "1" = 113, "2" = 113, "3" = 113, "4" = 138, "5" = 138, "6" = 163, "7" = 163 }, source_units = 322 }
-"00001100" = { commands = 145, commands_by_row = { "0" = 113, "1" = 113, "2" = 113, "3" = 113, "4" = 131, "5" = 131, "6" = 145, "7" = 145 }, source_units = 270 }
-"00110110" = { commands = 170, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 156, "5" = 156, "6" = 156, "7" = 170 }, source_units = 438 }
-"0110" = { commands = 119, commands_by_row = { "0" = 105, "1" = 105, "2" = 105, "3" = 119 }, source_units = 237 }
-"01101001" = { commands = 163, commands_by_row = { "0" = 149, "1" = 149, "2" = 149, "3" = 163, "4" = 149, "5" = 163, "6" = 163, "7" = 163 }, source_units = 535 }
-"0110100110010110" = { commands = 221, commands_by_row = { "0" = 193, "1" = 193, "2" = 193, "3" = 207, "4" = 193, "5" = 207, "6" = 207, "7" = 207, "8" = 193, "9" = 207, "10" = 207, "11" = 207, "12" = 207, "13" = 207, "14" = 207, "15" = 221 }, source_units = 1131 }
-"1101001101101101" = { commands = 214, commands_by_row = { "0" = 168, "1" = 168, "2" = 200, "3" = 200, "4" = 182, "5" = 182, "6" = 182, "7" = 182, "8" = 200, "9" = 200, "10" = 200, "11" = 214, "12" = 182, "13" = 182, "14" = 214, "15" = 214 }, source_units = 930 }
-"11111110" = { commands = 170, commands_by_row = { "0" = 106, "1" = 106, "2" = 106, "3" = 106, "4" = 131, "5" = 131, "6" = 156, "7" = 170 }, source_units = 308 }
+"00000001" = { commands = 87, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 59, "5" = 59, "6" = 81, "7" = 87 }, source_units = 135 }
+"00001100" = { commands = 64, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 60, "5" = 60, "6" = 64, "7" = 64 }, source_units = 101 }
+"00110110" = { commands = 86, commands_by_row = { "0" = 54, "1" = 54, "2" = 60, "3" = 60, "4" = 76, "5" = 82, "6" = 82, "7" = 86 }, source_units = 209 }
+"0110" = { commands = 60, commands_by_row = { "0" = 50, "1" = 56, "2" = 56, "3" = 60 }, source_units = 124 }
+"01101001" = { commands = 87, commands_by_row = { "0" = 71, "1" = 77, "2" = 77, "3" = 81, "4" = 77, "5" = 81, "6" = 81, "7" = 87 }, source_units = 278 }
+"0110100110010110" = { commands = 112, commands_by_row = { "0" = 92, "1" = 98, "2" = 98, "3" = 102, "4" = 98, "5" = 102, "6" = 102, "7" = 108, "8" = 98, "9" = 102, "10" = 102, "11" = 108, "12" = 102, "13" = 108, "14" = 108, "15" = 112 }, source_units = 586 }
+"1101001101101101" = { commands = 113, commands_by_row = { "0" = 76, "1" = 76, "2" = 97, "3" = 103, "4" = 80, "5" = 80, "6" = 86, "7" = 86, "8" = 97, "9" = 103, "10" = 103, "11" = 107, "12" = 86, "13" = 86, "14" = 107, "15" = 113 }, source_units = 449 }
+"11111110" = { commands = 86, commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 60, "5" = 60, "6" = 82, "7" = 86 }, source_units = 137 }
 
 [ablations]
-audited = "2026-10-29"
+audited = "2026-10-30"
+
+[ablations.leave_garbage]
+saving = 53.2
+arity = 8
+verdict = "kept: nothing is dropped and each piece pushes what it uses (loops test only the top), so a read is 9 commands not 25 (byte mod 2 off a 2 under the selector), a read-and-ignore 4, -1 8 not 15, a zero leaf 8 not 17; 53.2% on 100 seeded random tables at n=7 and n=8 (seed 7), 48.3% parity, 68.8% and, 67.1% or, 55.4% majority, 56.6% threshold-3 at n=8; the cost is a stack that grows linearly (workspace 2n + 31 -> 32n + bl(L) + bl(n) + 13 bits); every row of every table at n<=3, a stride of n=4 and the named functions and random tables to n=8 run and print their table"
 
 [audits]
 plain_rewrite = 2026-10-29
