@@ -39,8 +39,9 @@ Decisions:
       cell it occupies, and a junction takes one decision -- after a
       turn the car goes straight where it can.  A blind reimplementation
       differs on 2,711 of 3,080 corpus rows; with these patched, 0.
-      Traffic law rejects the alternative second turn inside a junction
-      (a U-turn past the centre, Wisconsin 346.31(3)(b)).
+      New York law rejects the alternative's second turn where it makes a
+      right turn as three lefts (VTL 1160(a), "as close as practicable to
+      the right hand curb"); its U-turn rule (1160(e)) fixes only lanes.
 """
 
 import functools
