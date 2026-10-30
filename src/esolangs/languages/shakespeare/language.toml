@@ -27,12 +27,15 @@ folds_without_tree = true
 "1101001101101101" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1219 }
 "11111110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 886 }
 
+[audits]
+plain_rewrite = 2026-10-29
+
 [ablations]
-audited = "2026-10-28"
+audited = "2026-10-29"
 
 [ablations.polarity]
 saving = 76.46
 arity = 8
 seed = "random.Random(184700 + n)"
-tables = 200
-verdict = "kept under the named-function rule: packing the complement of a table with more ones than zeros (and subtracting from 1) changes 96 of 200 random tables at n=7 and 100 at n=8, none grows, 1.83% / 1.89% in total; OR drops 64.74% at n=7 and 76.46% at n=8, majority 1.61% at n=7; AND and parity 0%. Exhaustive n<=3 and named tables to n=8 executed"
+tables = 20
+verdict = "kept as a rule, the race retired: complement when ones outnumber zeros, no second build. Random 2.4% off the plain build at n=8 (5974.65 -> 5830.5 chars, 20 tables; 2.6% n=7, 40 tables, 0.8% n=2 .. 1.2% n=6) and the rule matches the min-race within 0.02% (5829.35); named: OR 8343 -> 1964 (76.5%) and ~AND 8337 -> 3548 (57.4%) and threshold-2 8191 -> 2902 (64.6%) at n=8, ~majority 18.6%, majority, AND, parity 0%. Layout is a plain re-wrap, so balanced area tracks chars. Exhaustive n<=3 (276) and 310 priced tables executed, control fails"

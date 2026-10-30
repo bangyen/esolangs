@@ -114,9 +114,8 @@ def shakespeare(truth_table: str) -> str:
             "Open your heart."
         )
     table = read_at(truth_table, essential, n)
-    plain = _program(table, n, essential, invert=False)
-    flipped = _program(table, n, essential, invert=True)
-    return min(plain, flipped, key=len)
+    # A rule, not a race: see [ablations.polarity].
+    return _program(table, n, essential, invert=2 * table.count("1") > len(table))
 
 
 LANGUAGE = Language(
