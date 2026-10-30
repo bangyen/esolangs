@@ -86,4 +86,5 @@ tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/t
 verdict = "kept: the balanced spelling put a space between every token (n=8: 1,100 -> 2,096 chars, ratio 3.8 on a 23 x 47 fold). A space now stays only between two adjacent word tokens (identifier, keyword, number or underscore on both sides); a row break separates the rest and a row's trailing space is trimmed. Balanced area (score squared) -43.8% / -45.5% on random tables at n=7 / 8, named functions -37.1% to -47.1% at n=7..10 (parity -42.0 / -42.1 / -39.9 / -40.8%, majority -41.3 / -40.2 / -37.1 / -39.0%, and/or 43.8-45.7%, still ~40% at n=10 so not declining). No table got worse; the default is byte-identical on all 72 tables. Every balanced program ran on every row (72 tables, n=7..10, 0 bad) and a wrong table failed on each"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
