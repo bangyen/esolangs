@@ -89,7 +89,15 @@ ignored-input tables included).
     - SLOW ACV MAMMALIAN: LEAPFROG "jump[s] to the ...th instruction"
       but ours resumes after it (3,052 answers differ).
     - B-tapemark: the swap-marker Decision's only evidence is that the
-      other reading hangs our own generated programs.
+      other reading hangs our own generated programs (page re-read
+      2026-10-30, no Talk page; history unread).  In the traced ``01``
+      program, a swap round trip
+      (swap at X heading d0, back at Y heading d1) resumes the program at
+      X+d1 under ours, X+d0 under the other, and leaves the blank grid's
+      mark at Y vs Y+d1, so safe needs d1=d0 and a cancelling second round
+      trip per branch (the mark offset is the answer); the stage's turn
+      gives d1!=d0.  Not built; the extra trip would add about a
+      stage-sized block per input (estimated, unmeasured).
     - Minifuck: non-commands count as instructions `[` can skip, against
       "only 3 instructions"; the `[x` filler relies on it.  No drop-in
       for `[x` works under both: every real command in the slot differs by
