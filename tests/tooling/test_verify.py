@@ -602,32 +602,37 @@ def test_deadline_includes_output_from_an_exited_leaders_worker(
 ) -> None:
     verify = load_script()
     verify.ROOT = tmp_path
-    monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 0.2})
+    # Under load (load average 19) two interpreter startups outran a 0.2 s
+    # deadline and the worker was killed before its first write.  The leader
+    # now waits for that write, so the worker is provably live.
+    monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 1.0})
     marker = tmp_path / "worker"
     worker = f"""
 import time
 from pathlib import Path
 marker = Path({str(marker)!r})
-deadline = time.monotonic() + 1
+deadline = time.monotonic() + 4
 while time.monotonic() < deadline:
     marker.write_text(str(time.monotonic()))
     time.sleep(0.01)
 print('late worker output', flush=True)
 """
-    parent = (
-        "import subprocess, sys; "
-        f"subprocess.Popen([sys.executable, '-c', {worker!r}]); "
-        "print('leader exited', flush=True)"
-    )
+    parent = f"""
+import os, subprocess, sys, time
+subprocess.Popen([sys.executable, '-c', {worker!r}])
+while not os.path.exists({str(marker)!r}):
+    time.sleep(0.01)
+print('leader exited', flush=True)
+"""
     start = time.monotonic()
     failures, _, _ = verify._run_steps(  # noqa: SLF001
         [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=stream
     )
     assert len(failures) == 1
-    assert time.monotonic() - start < 0.9
+    assert time.monotonic() - start < 3.5
     output = capsys.readouterr().out
     assert "leader exited" in output
-    assert "deadline exceeded (0.2s)" in output
+    assert "deadline exceeded (1s)" in output
     assert "late worker output" not in output
     value = marker.read_text()
     time.sleep(0.1)
