@@ -37,7 +37,9 @@ Decisions:
       that a macro node named without ``$`` uses no ``$`` or ``%`` inside it
       is enforced.  Definitions are hoisted, so a macro may be invoked
       before it is defined.  ``$`` becomes ``$k`` for the invocation's
-      number ``k``, so it cannot meet a user name.
+      number ``k``, so it cannot meet a user name.  The wiki treats a
+      parameter as one word, so generated calls space each ``!`` (a
+      clean-room reading took ``o1!z`` as one parameter, 2026-10-30).
     * A finished node's frame is dropped before its last send, so a loop
       through one chain of single sends revisits a state and is a cycle.
     * The extended language (``/`` commands, ``{}`` node sets, fragments,

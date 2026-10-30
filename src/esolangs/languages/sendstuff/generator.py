@@ -12,7 +12,7 @@ Names are ``subtree_ids`` ids, the chains ``z<depth>``/``o<depth>``.
 
 Size:
     O(T) size and build time: at most T - 1 diagram nodes and 2n chain nodes;
-    n=10 parity: 466 chars, n=10 random 1847: 4,993 chars.
+    n=10 parity: 485 chars, n=10 random 1847: 5,220 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
@@ -49,7 +49,7 @@ def sendstuff(truth_table: str) -> str:
                 below.add(2 * k)
             else:
                 body = (
-                    f"Input!o {name(depth + 1, 2 * k + 1)}!z {name(depth + 1, 2 * k)}"
+                    f"Input!o {name(depth + 1, 2 * k + 1)} !z {name(depth + 1, 2 * k)}"
                 )
                 below |= {2 * k, 2 * k + 1}
             levels[depth][here] = f"|{here}({body})"

@@ -4,6 +4,6 @@ Subtract 1>%)))|z2(
 Constant 48>(Output
 ))|o2(Constant 49>(
 Output))|z1(Input
->z2)|2(Input!o o2!z
- z2)|3(Input!o 2!z 
-z1)>3
+>z2)|2(Input!o o2 
+!z z2)|3(Input!o 2 
+!z z1)>3
