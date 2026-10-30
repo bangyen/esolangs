@@ -47,6 +47,7 @@ tables = 200
 verdict = "kept: a rule, not a search; functions named by id in letters (the leaf-most ids are the most called, so the shortest) and io imported as `a`, against `f<id>` and `io`: 14.7% on random tables at n=8 (15.3% at n=7, 15.2% at n=9, 16.1% at n=10 on 100, 16.9% at n=12 on 20), 14.1% parity, 12.8% majority, 12.4% threshold 3, 7.3% and/or; the alias alone is 4.3%, the names alone 10.3%. Text, no balance route"
 
 [audits]
+trick_prototype = 2026-10-30
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
