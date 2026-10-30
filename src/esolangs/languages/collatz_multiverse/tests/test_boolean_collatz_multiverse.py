@@ -70,7 +70,7 @@ class TestCollatzMultiverse:
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], numbered=False)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (498255, 274190)
+        assert (plain, built) == (513929, 280220)
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
@@ -128,23 +128,23 @@ class TestCollatzMultiverse:
                     assert run_collatz_multiverse(program, bits) == table[row]
 
     def test_fitting_alias_layout_keeps_its_register_names(self) -> None:
-        program = boolean.collatz_multiverse("00", 27)
-        assert max(map(len, program.splitlines())) <= 27
+        program = boolean.collatz_multiverse("00", 28)
+        assert max(map(len, program.splitlines())) <= 28
         assert "k48" in program
         for bit in ("0", "1"):
             assert run_collatz_multiverse(program, [bit]) == "0"
 
     def test_narrow_xor_uses_the_complete_statement_floor(self) -> None:
         program = boolean.collatz_multiverse("0110", 1)
-        assert max(map(len, program.splitlines())) == 26
+        assert max(map(len, program.splitlines())) == 27
 
     def test_numbered_constants_narrow_complete_statements(self) -> None:
         """The narrow candidate changes source and actually reduces columns."""
         plain = boolean.collatz_multiverse("01101001")
         narrow = boolean.collatz_multiverse("01101001", 1)
         assert "negativeOne" not in narrow
-        assert narrow.splitlines()[0].endswith("=zx+lineNumber,NOT PRINT.")
-        assert max(map(len, narrow.splitlines())) == 26
+        assert narrow.splitlines()[0].endswith("=z x+lineNumber,NOT PRINT.")
+        assert max(map(len, narrow.splitlines())) == 27
         assert max(map(len, narrow.splitlines())) < max(map(len, plain.splitlines()))
 
     def test_narrow_statement_floor_is_idempotent(self) -> None:
@@ -282,17 +282,17 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
         (
             "0100001010101000011000010000010010111100100010000000101100100001",
             30,
-            2474,
+            2590,
         ),
         # A width request tries a rotated selector order from three inputs.
-        ("01000010", 30, 924),
+        ("01000010", 30, 897),
         # Three essential inputs exactly: the rotated order starts here.
-        ("00000111", 1, 1468),
+        ("00000111", 1, 1545),
         # A wide table of long zero runs and dense blocks, pinned end to end.
         (
             "00000000000000000000011100000111011101110111011101110111011101110000011100000000000000000111011101110111011100000111011100000111",
             None,
-            2325,
+            2392,
         ),
     ],
 )

@@ -2,7 +2,7 @@
 
 from esolangs.languages.collatz_multiverse.proof_formulas import _constants
 
-_PAD = len("z=zx+z,NOT PRINT.")
+_PAD = len("z=z x+z,NOT PRINT.")
 
 
 def _popcounts(m: int) -> int:
@@ -33,32 +33,32 @@ def _chars(n: int, _: str) -> int:
         c = (k - 2) % 4
         lens.append(len(f"k{k} = negativeOne x + k{(k - c) // 2}, NOT PRINT."))
         lens.append(len(f"k{k} = k2 x + {'k' + str(c) if c else 'z'}, NOT PRINT."))
-    lens.append(len("t=zx+lineNumber,NOT PRINT."))
+    lens.append(len("t=z x+lineNumber,NOT PRINT."))
     pop = _popcounts(m)
-    lens += [len("D[lineNumber]=zx+k1,NOT PRINT.")] * pop + [_PAD] * (4 * m - pop)
+    lens += [len("D[lineNumber]=z x+k1,NOT PRINT.")] * pop + [_PAD] * (4 * m - pop)
     # The cells block starts on an even line.
-    lens += [_PAD, len("s=zx+lineNumber,NOT PRINT.")]
+    lens += [_PAD, len("s=z x+lineNumber,NOT PRINT.")]
     # Code 0 is a pad, codes 1-2 are k4/k8 (30), the rest and every repeat 31.
     if m >= 4:
         lens += [_PAD, 30, 30] + [31] * (cells - 3)
     else:
         lens += [_PAD] + [30] * (cells - 1)
-    lens += [len(f"w{i}=zx+input,NOT PRINT.") for i in range(n)]
+    lens += [len(f"w{i}=z x+input,NOT PRINT.") for i in range(n)]
     for k in range(high - 1):
         lens += [
-            len(f"w{k}=k{2 ** (high - 1 - k)}x+z,NOT PRINT."),
-            len(f"s=k1x+w{k},NOT PRINT."),
+            len(f"w{k}=k{2 ** (high - 1 - k)} x+z,NOT PRINT."),
+            len(f"s=k1 x+w{k},NOT PRINT."),
         ]
     lens += [
-        len(f"w{high - 1}=k1x+k1,NOT PRINT."),
-        len(f"s=k1x+w{high - 1},NOT PRINT."),
-        len("t=k1x+A[s],NOT PRINT."),
-        len(f"w{high}=k2x+z,NOT PRINT."),
-        len(f"t=k1x+w{high},NOT PRINT."),
-        len(f"w{high + 1}=k1x+k1,NOT PRINT."),
-        len(f"t=k1x+w{high + 1},NOT PRINT."),
-        len("o=zx+D[t],NOT PRINT."),
-        len("o=k1x+k48,DO PRINT."),
+        len(f"w{high - 1}=k1 x+k1,NOT PRINT."),
+        len(f"s=k1 x+w{high - 1},NOT PRINT."),
+        len("t=k1 x+A[s],NOT PRINT."),
+        len(f"w{high}=k2 x+z,NOT PRINT."),
+        len(f"t=k1 x+w{high},NOT PRINT."),
+        len(f"w{high + 1}=k1 x+k1,NOT PRINT."),
+        len(f"t=k1 x+w{high + 1},NOT PRINT."),
+        len("o=z x+D[t],NOT PRINT."),
+        len("o=k1 x+k48,DO PRINT."),
     ]
     return sum(lens) + len(lens) - 1
 

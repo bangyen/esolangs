@@ -7,8 +7,8 @@ prints one constant.  The shortest build over the essential inputs wins.
 
 Size:
     O(T): one line per four-row cell plus four decoder lines per distinct
-    cell.  n=10 parity: 8,377 chars, n=10 and: 6,687 chars, n=10 random 1847:
-    12,469 chars.
+    cell.  n=10 parity: 8,677 chars, n=10 and: 6,987 chars, n=10 random 1847:
+    12,825 chars.
 
 Decisions:
     Cells of eight rows: more decoder lines than the ``T / 8`` they save
@@ -41,12 +41,12 @@ __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 _CM_CHUNK = 4
 
 #: The shortest line that does nothing -- ``z`` is the zero register.
-_CM_PAD = "z=zx+z,NOT PRINT."
+_CM_PAD = "z=z x+z,NOT PRINT."
 
-#: The fold line ``{dst}=k1x+{src}``: ``d = A x + B`` is ``d := B + d*A``
+#: The fold line ``{dst}=k1 x+{src}``: ``d = A x + B`` is ``d := B + d*A``
 #: for a destination holding zero and ``d := d // 2`` for an even one, so
 #: folding ``src`` into ``dst`` accumulates without a separate add line.
-_CM_FOLD = "{dst}=k1x+{src},NOT PRINT."
+_CM_FOLD = "{dst}=k1 x+{src},NOT PRINT."
 
 
 #: Renamable registers in a laid-out program.
@@ -69,9 +69,9 @@ def _cm_cells(
     """
     if len(lines) % 2:
         lines.append(_CM_PAD)
-    lines.append(f"{capture}=zx+lineNumber,NOT PRINT.")
+    lines.append(f"{capture}=z x+lineNumber,NOT PRINT.")
     lines += [
-        f"{array}[lineNumber]=zx+{value},NOT PRINT." if value else _CM_PAD
+        f"{array}[lineNumber]=z x+{value},NOT PRINT." if value else _CM_PAD
         for value in values
     ]
 
@@ -100,7 +100,7 @@ def _cm_narrow_constants(needed: set[int]) -> list[str]:
     """Capture constants at their numbered lines; intervening pads are inert."""
     needed = needed | {1, 2, 3, 4}  # k1..k4: the cursor and address code reads them
     return [
-        f"k{value}=zx+lineNumber,NOT PRINT." if value in needed else _CM_PAD
+        f"k{value}=z x+lineNumber,NOT PRINT." if value in needed else _CM_PAD
         for value in range(1, max(needed) + 1)
     ]
 
@@ -109,12 +109,12 @@ def _cm_narrow_cells(
     lines: list[str], array: str, values: list[str | None], capture: str
 ) -> None:
     """Write at odd indices 3+2i; an odd cursor advances without halving."""
-    lines += [f"{capture}=zx+k1,NOT PRINT.", "r=zx+k3,NOT PRINT."]
+    lines += [f"{capture}=z x+k1,NOT PRINT.", "r=z x+k3,NOT PRINT."]
     end = max((i for i, value in enumerate(values) if value), default=-1) + 1
     for value in values[:end]:
         if value:
-            lines.append(f"{array}[r]=zx+{value},NOT PRINT.")
-        lines.append("r=k1x+k2,NOT PRINT.")
+            lines.append(f"{array}[r]=z x+{value},NOT PRINT.")
+        lines.append("r=k1 x+k2,NOT PRINT.")
 
 
 def _cm_build(
@@ -208,47 +208,48 @@ def _cm_emit_address(
     decoded cell.  The output lines follow the cells phase's arrays.
     """
     for i in range(n):
-        lines.append(f"w{i}=zx+input,NOT PRINT.")
+        lines.append(f"w{i}=z x+input,NOT PRINT.")
     # ``s`` sits one below the first cell, so the address wants the missing
     # one -- folded into the only odd weight, which has to be added last:
     # ``d = A x + B`` is ``d := B + d*A`` for a destination holding zero and
     # ``d := d // 2`` for an even one, so nothing may halve the address.
     cells, select = order[:high], order[high:]
     for k, i in enumerate(cells[:-1]):
-        lines.append(f"w{i}=k{address_scale * 2 ** (high - 1 - k)}x+z,NOT PRINT.")
+        lines.append(f"w{i}=k{address_scale * 2 ** (high - 1 - k)} x+z,NOT PRINT.")
         lines.append(_CM_FOLD.format(dst="s", src=f"w{i}"))
     if cells:
-        lines.append(f"w{cells[-1]}=k{address_scale}x+k{address_scale},NOT PRINT.")
+        lines.append(f"w{cells[-1]}=k{address_scale} x+k{address_scale},NOT PRINT.")
         lines.append(_CM_FOLD.format(dst="s", src=f"w{cells[-1]}"))
     else:
-        lines.append(f"s=k1x+k{address_scale},NOT PRINT.")
-    lines.append("t=k1x+A[s],NOT PRINT.")
+        lines.append(f"s=k1 x+k{address_scale},NOT PRINT.")
+    lines.append("t=k1 x+A[s],NOT PRINT.")
     if len(select) == 2:
-        lines.append(f"w{select[0]}=k{2 * address_scale}x+z,NOT PRINT.")
+        lines.append(f"w{select[0]}=k{2 * address_scale} x+z,NOT PRINT.")
         lines.append(_CM_FOLD.format(dst="t", src=f"w{select[0]}"))
-    one = f"k{address_scale}x+k{address_scale}"
+    one = f"k{address_scale} x+k{address_scale}"
     lines.append(f"w{select[-1]}={one},NOT PRINT.")
     lines.append(_CM_FOLD.format(dst="t", src=f"w{select[-1]}"))
-    lines.append("o=zx+D[t],NOT PRINT.")
+    lines.append("o=z x+D[t],NOT PRINT.")
     # ``o`` holds the bit: ``0 * a + b`` for a zero, ``1 * a + b`` for a one.
     if invert:
         lines.append(f"o=negativeOne x+k{_ASCII_ZERO + 1},DO PRINT.")
     else:
-        lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
+        lines.append(f"o=k1 x+k{_ASCII_ZERO},DO PRINT.")
 
 
 def _cm_layout(program: str, width: int) -> str:
     """Narrow complete assignments; an even prefix preserves address parity."""
     if grid_width(program) <= width:
         return program
-    compact = program.replace(" ", "").replace("NOTPRINT", "NOT PRINT")
+    compact = program.replace(" ", "").replace("x+", " x+")
+    compact = compact.replace("NOTPRINT", "NOT PRINT")
     compact = compact.replace("DOPRINT", "DO PRINT")
     if grid_width(compact) <= width:
         return compact
     # Generated names exclude '_'.  Captured lineNumber addresses shift
     # together; two prefix lines keep the odd capture used by weighted sums.
     if "negativeOne" in compact:
-        aliased = "_=zx+negativeOne,NOT PRINT.\n" + "z=zx+z,NOT PRINT.\n"
+        aliased = "_=z x+negativeOne,NOT PRINT.\n" + "z=z x+z,NOT PRINT.\n"
         aliased += compact.replace("negativeOne", "_")
         if grid_width(aliased) < grid_width(compact):
             compact = aliased
@@ -281,8 +282,8 @@ def _cm_constant_program(n: int, value: int, *, narrow: bool = False) -> str:
     """Read every input and print one constant."""
     if narrow:
         lines = _cm_narrow_constants({value})
-        lines += [f"b{i}=zx+input,NOT PRINT." for i in range(n)]
-        lines.append(f"out=zx+k{value},DO PRINT.")
+        lines += [f"b{i}=z x+input,NOT PRINT." for i in range(n)]
+        lines.append(f"out=z x+k{value},DO PRINT.")
     else:
         lines = _cm_constants({value})
         lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]

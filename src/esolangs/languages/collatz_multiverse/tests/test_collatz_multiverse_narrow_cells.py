@@ -22,7 +22,7 @@ def test_every_small_narrow_table_executes_at_its_floor() -> None:
         for value in range(1 << size):
             table = f"{value:0{size}b}"
             source = esolangs.generate("collatz-multiverse", table, width=1)
-            assert max(map(len, source.splitlines())) == 26
+            assert max(map(len, source.splitlines())) == 27
             for row, expected in enumerate(table):
                 assert run_collatz_multiverse(source, list(f"{row:0{n}b}")) == expected
             assert _cm_layout(source, 1) == source
@@ -54,7 +54,7 @@ def test_larger_narrow_address_weights_execute(n: int) -> None:
 
 
 def test_alias_prefix_is_not_inserted_when_it_cannot_narrow() -> None:
-    source = "a=zx+negativeOne,NOT PRINT.\na=zx+z,DO PRINT."
+    source = "a=z x+negativeOne,NOT PRINT.\na=z x+z,DO PRINT."
     narrowed = _cm_layout(source, 1)
     assert narrowed == source
     assert esolangs.run("collatz-multiverse", narrowed) == "\x00"
@@ -62,7 +62,7 @@ def test_alias_prefix_is_not_inserted_when_it_cannot_narrow() -> None:
 
 def test_xor_floor_and_numbered_constant_source_size() -> None:
     source = collatz_multiverse("0110", 1)
-    assert max(map(len, source.splitlines())) == 26
-    assert len(source) == 1269
+    assert max(map(len, source.splitlines())) == 27
+    assert len(source) == 1336
     for table in ("00", "11"):
-        assert max(map(len, collatz_multiverse(table, 1).splitlines())) == 26
+        assert max(map(len, collatz_multiverse(table, 1).splitlines())) == 27

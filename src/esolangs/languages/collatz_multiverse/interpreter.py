@@ -27,6 +27,9 @@ Decisions:
       pointer moves to N and then advances as usual, so line N is skipped and
       N = 0 resumes at line 1; only this reading gives "doesn't execute it"
       meaning.  Blank lines are not numbered.
+    * ``Bx+`` splits at its last ``x``; the page allows ``x`` inside names
+      (``k1x`` is one), so generated lines space it as ``B x+`` (a
+      clean-room reading rejected every unspaced line, 2026-10-30).
 """
 
 from __future__ import annotations
