@@ -28,7 +28,7 @@ folding_constant_local = "_program"  # empty production deletes inputs and a lit
 folds_without_tree = true
 
 [ablations]
-audited = "2026-10-20"
+audited = "2026-10-29"
 
 [ablations.input_projection]
 saving = 99.76
@@ -39,3 +39,6 @@ verdict = "kept: canonical, exempt. input_weights gives an ignored input weight 
 saving = 114.29
 arity = 12
 verdict = "kept: canonical, exempt. A constant table is one empty production and the literal answer (n + 2 chars): the inputs are deleted unread. Taking the general walk instead costs +116.67% at n=10 and +114.29% at n=12 on constant tables, and jointly with the projection removed +42,741.67 / +146,364.29% (the full walk over a table with no essential inputs). Every other class measures 0.00%: the size is a function of n and the essential count alone (5,141 chars at n=10, 20,505 at n=12 when all inputs are essential), so the plain build is the shipped build there"
+
+[audits]
+plain_rewrite = 2026-10-29
