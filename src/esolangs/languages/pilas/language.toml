@@ -9,21 +9,21 @@ admitted = 2026-10-27T10:54:26+00:00
 labels = ["tree"]
 qualification = "—"
 scaling = "linear: at most 38T characters: one 27-command node per branch"
-execution = "poly n: worst 46n + 21 commands"
+execution = "poly n: worst 46n - 17 commands"
 workspace = "poly n: at most 3n + 24 bits"
 
 [catalogue]
 sharing_exempt = "no names or jumps across lines: code runs once per place it is written"
 
 [generator_sizes]
-"00000001" = { commands = 159, commands_by_row = { "0" = 111, "1" = 111, "2" = 111, "3" = 111, "4" = 133, "5" = 133, "6" = 155, "7" = 159 }, source_units = 160 }
-"00001100" = { commands = 133, commands_by_row = { "0" = 111, "1" = 111, "2" = 111, "3" = 111, "4" = 137, "5" = 137, "6" = 133, "7" = 133 }, source_units = 136 }
-"00110110" = { commands = 155, commands_by_row = { "0" = 133, "1" = 133, "2" = 137, "3" = 137, "4" = 155, "5" = 159, "6" = 159, "7" = 155 }, source_units = 224 }
-"0110" = { commands = 109, commands_by_row = { "0" = 109, "1" = 113, "2" = 113, "3" = 109 }, source_units = 126 }
-"01101001" = { commands = 159, commands_by_row = { "0" = 155, "1" = 159, "2" = 159, "3" = 155, "4" = 159, "5" = 155, "6" = 155, "7" = 159 }, source_units = 274 }
-"0110100110010110" = { commands = 201, commands_by_row = { "0" = 201, "1" = 205, "2" = 205, "3" = 201, "4" = 205, "5" = 201, "6" = 201, "7" = 205, "8" = 205, "9" = 201, "10" = 201, "11" = 205, "12" = 201, "13" = 205, "14" = 205, "15" = 201 }, source_units = 570 }
-"1101001101101101" = { commands = 205, commands_by_row = { "0" = 183, "1" = 183, "2" = 201, "3" = 205, "4" = 179, "5" = 179, "6" = 183, "7" = 183, "8" = 201, "9" = 205, "10" = 205, "11" = 201, "12" = 183, "13" = 183, "14" = 201, "15" = 205 }, source_units = 472 }
-"11111110" = { commands = 155, commands_by_row = { "0" = 115, "1" = 115, "2" = 115, "3" = 115, "4" = 137, "5" = 137, "6" = 159, "7" = 155 }, source_units = 164 }
+"00000001" = { commands = 97, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 117, "5" = 117, "6" = 97, "7" = 97 }, source_units = 92 }
+"00001100" = { commands = 79, commands_by_row = { "0" = 79, "1" = 79, "2" = 79, "3" = 79, "4" = 79, "5" = 79, "6" = 79, "7" = 79 }, source_units = 66 }
+"00110110" = { commands = 121, commands_by_row = { "0" = 55, "1" = 55, "2" = 55, "3" = 55, "4" = 97, "5" = 97, "6" = 121, "7" = 121 }, source_units = 82 }
+"0110" = { commands = 75, commands_by_row = { "0" = 51, "1" = 51, "2" = 75, "3" = 75 }, source_units = 50 }
+"01101001" = { commands = 97, commands_by_row = { "0" = 97, "1" = 97, "2" = 121, "3" = 121, "4" = 121, "5" = 121, "6" = 97, "7" = 97 }, source_units = 122 }
+"0110100110010110" = { commands = 167, commands_by_row = { "0" = 143, "1" = 143, "2" = 167, "3" = 167, "4" = 167, "5" = 167, "6" = 143, "7" = 143, "8" = 167, "9" = 167, "10" = 143, "11" = 143, "12" = 143, "13" = 143, "14" = 167, "15" = 167 }, source_units = 266 }
+"1101001101101101" = { commands = 143, commands_by_row = { "0" = 167, "1" = 167, "2" = 143, "3" = 143, "4" = 101, "5" = 101, "6" = 101, "7" = 101, "8" = 143, "9" = 143, "10" = 167, "11" = 167, "12" = 167, "13" = 167, "14" = 143, "15" = 143 }, source_units = 226 }
+"11111110" = { commands = 121, commands_by_row = { "0" = 83, "1" = 83, "2" = 83, "3" = 83, "4" = 121, "5" = 121, "6" = 121, "7" = 121 }, source_units = 108 }
 
 [ablations]
 audited = "2026-10-29"
@@ -32,6 +32,13 @@ audited = "2026-10-29"
 saving = 0.0
 arity = 10
 verdict = "kept: canonical. A constant span reads and drops its inputs, then prints once; the equal-halves fold already gives the same text, so 0.0% at n=8/10 on random and half-constant tables"
+
+[ablations.input_literal]
+saving = 38.5
+arity = 8
+seed = "random.Random(4242)"
+tables = 25
+verdict = "kept: a span whose halves are opposite constants prints its first input's byte (,.) or 97 minus it, then reads the rest away, not a 27-command node and its leaves. Against a build with the same ,:- read-and-drop spelling: random n=8 38.5% (n=7 38.6%); n=8 parity 51.5%, majority 31.0%, threshold-3 27.0%, and 10.6%, or 10.2%. Every row run: n<=3 exhaustive, random to n=8, named, quarter-block tables; a wrong table fails"
 
 [audits]
 docstring_reimplementation = 2026-10-30
