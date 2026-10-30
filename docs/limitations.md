@@ -149,7 +149,8 @@ Each missed the 10% bar:
 ### Searches kept
 
 Malbolge's generator keeps two table-independent searches, run once per
-process; no rule reproduces the first:
+process.  Neither has a rule yet; for the first, the three closed forms
+tried all overrun, which is evidence, not a proof that none exists:
 
 - Navigation (`emitter.py` `goto`, breadth-first shortest paths). The main
   line ends at cell 6,532 at n=1 (5,487 at n=16), over 5,089 path cells;

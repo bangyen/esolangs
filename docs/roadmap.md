@@ -63,6 +63,12 @@ ignored-input tables included).
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
 - **Malbolge n = 14..16 layout:** n <= 13 now ends at its highest live cell
   (13,144 characters); 14..16 still emit the 59,049-cell image.
+- **Malbolge's two searches as rules:** navigation (`emitter.py` `goto`)
+  and the short layout (`digits.py` `_short_layout`) are the repo's only
+  table-independent searches ([limitations](limitations.md#searches-kept)).
+  A closed-form navigation must end the main line below 6,561 at n=1; the
+  three tried end at 13,501.  The layout's cost is where navigation lands
+  each walked cell, so a navigation rule comes first.
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
