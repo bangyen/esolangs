@@ -44,6 +44,7 @@ folding_ignored_read = "a read is itself the branch: S reads on every path, so a
 "11111110" = { commands = 5, commands_by_row = { "0" = 7, "1" = 7, "2" = 9, "3" = 9, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 36 }
 
 [audits]
+trick_prototype = 2026-10-30
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
