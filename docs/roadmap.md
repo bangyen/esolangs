@@ -66,11 +66,6 @@ ignored-input tables included).
   (seed chains before the pointer priming, ~1,800 path cells of returns
   past 127) is the open route.  The layout's cost is where navigation lands
   each walked cell, so a navigation rule comes first.
-- **Qrain plain-vs-shared check:** `generator.py` keeps the plain tree
-  when no shared form is shorter, which never happens once a shared form
-  exists (0 of 65,536 n=4 tables, 0 of 920 random n=4..8, 0 of 90 named
-  n=2..10; 2026-10-29 audit).  The single- vs multi-block comparison
-  beside it is live.
 - **Quassaunt balanced layout:** the shared `balanced_token_width`
   picks side 472 at n=10 against 326 from the 2026-10-30 audit's own
   rule (unverified which is smaller in area); measure balance-mode area

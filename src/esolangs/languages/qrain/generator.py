@@ -77,17 +77,12 @@ def _qrain_ordered(table: str, perm: tuple[int, ...]) -> str:
     header = "".join(parts)
     tail = _move(result, z) + "."
     budget = _command_budget(n) - len(header) - len(tail) - 1
-    plain, cost = flag_tree_body(
-        table, perm, pos, result, dialect=_DIALECT, fold_zero=True
-    )
-    if cost > budget:  # pragma: no cover - the plain tree stays under the ceiling
-        raise AssertionError("plain tree exceeds the execution ceiling")
-    best = plain
     shared = repeated_block(table)
+    forms = []
     if shared is not None:
-        forms = [
+        forms.append(
             flag_tree_body(table, perm, pos, result, shared=shared, dialect=_DIALECT)
-        ]
+        )
         blocks = repeated_blocks(table)
         if len(blocks) > 1:
             forms.append(
@@ -95,9 +90,17 @@ def _qrain_ordered(table: str, perm: tuple[int, ...]) -> str:
                     table, perm, pos, result, shared_blocks=blocks, dialect=_DIALECT
                 )
             )
-        for body, commands in forms:
-            if commands <= budget and len(body) < len(best):
-                best = body
+    # A shared form is always shorter than the plain tree (0 of 65,536 n=4
+    # tables, 920 random n=4..8); the plain tree serves only tables with none.
+    fits = [(body, c) for body, c in forms if c <= budget]
+    if fits:
+        best = min(fits, key=lambda form: len(form[0]))[0]
+    else:
+        best, cost = flag_tree_body(
+            table, perm, pos, result, dialect=_DIALECT, fold_zero=True
+        )
+        if cost > budget:  # pragma: no cover - the plain tree stays under the ceiling
+            raise AssertionError("plain tree exceeds the execution ceiling")
     return header + best + "." + tail
 
 
