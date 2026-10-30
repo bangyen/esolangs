@@ -4,11 +4,12 @@ Derived, not transliterated (the page is unimplemented).  Alight's
 ``at{list, index}`` takes the index as an expression, so the table is a
 string literal and the input bits fold into its row by Horner's rule,
 ``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset.  The reads
-are unconditional and first.
+are unconditional and first.  From six essential inputs the literal holds
+two rows per character and a second ``at`` unpacks the last input's bit.
 
 Size:
     O(n) commands over an O(2**n) literal, no branching.
-    n=10 random 1847: 1,227 chars, n=16 random 1847: 65,837 chars.
+    n=10 random 1847: 738 chars, n=16 random 1847: 33,092 chars.
     A zero fold is the construction working (``shape`` is ``LOOKUP``): a
     literal has no subtrees to fold or share.
 """
@@ -53,6 +54,12 @@ _ALIGHT_WEST_TURN = "turn left;"
 #: Width of a chunk's guard and lookup around the index text: ``skip i < I;``
 #: is 10 + I, ``set r at{"", i-I};`` is 18 + I.
 _ALIGHT_OVERHEAD = 28
+
+
+#: Essential inputs from which the straight lookup packs two rows per character:
+#: the 8-character bit table plus a nested ``at`` costs more than the halved
+#: literal saves below it ([ablations.packed_pairs]).
+_PACK_FROM = 6
 
 
 def _half_before(value: int) -> str:
@@ -165,13 +172,33 @@ def _alight_flat_compact(
     # Every input is its character code; the final half selects Alight's
     # half-integer list slot.  (Folding it into the offset, ``-N.5``, saved
     # 2 chars: 0.47% at n=8, retired.)
-    expr += f"-{_ASCII_ZERO * ((1 << m) - 1)}+0.5"
     reads = iter(names[:m])
+    if m >= _PACK_FROM:
+        lookup = _packed_lookup(truth_table, names[:m])
+    else:
+        offset = _ASCII_ZERO * ((1 << m) - 1)
+        lookup = f'at{{"{truth_table}",{expr}-{offset}+0.5}}'
     return ";".join(
         ["begin", *(f"var {name}" for name in names[:m]), "var r"]
         + [f"inp {next(reads) if kept else 'r'}" for kept in essential]
-        + [f'set r at{{"{truth_table}",{expr}}}', "out r", "end", ""]
+        + [f"set r {lookup}", "out r", "end", ""]
     )
+
+
+def _packed_lookup(table: str, names: list[str]) -> str:
+    """Return the lookup expression with two rows to a literal character.
+
+    Character ``h`` is ``'0' + 2*table[2h] + table[2h+1]``; the outer ``at``
+    indexes ``"00011011"`` by that value and the last input to pick the
+    row's bit.  Infix has no precedence, so each index is a Horner chain.
+    """
+    pairs = "".join(
+        chr(_ASCII_ZERO + 2 * int(table[row]) + int(table[row + 1]))
+        for row in range(0, len(table), 2)
+    )
+    head = "*2+".join(names[:-1])
+    inner = f'at{{"{pairs}",{head}-{_ASCII_ZERO * ((1 << (len(names) - 1)) - 1)}+0.5}}'
+    return f'at{{"00011011",{inner}*2+{names[-1]}-{3 * _ASCII_ZERO}+0.5}}'
 
 
 def _alight_folded(units: list[list[str]], width: int) -> str:

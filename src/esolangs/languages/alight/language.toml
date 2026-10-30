@@ -7,8 +7,8 @@ admitted = 2026-09-08T20:09:04-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches"
-scaling = "linear: worst T + 16n + 38 + digits(48(T-1)) characters: one literal"
+qualification = "inputs folded into a row index by Horner's rule; the table is a string literal read with `at` (two rows to a character from n=6), so the program has no branches"
+scaling = "linear: worst T/2 + 16n + 61 + digits(48(T/2-1)) characters: one literal"
 execution = "poly n: worst 2n + 5 commands, n Horner reads and one `at`"
 workspace = "poly n: worst 72n + 762 + bl(6n+12) + bl(n) bits, n in 2..25"
 
@@ -40,6 +40,11 @@ verdict = "kept: canonical, exempt from the bar; the identity on random tables (
 saving = 1.5
 arity = 12
 verdict = "kept: the default layout folds the Horner index inside the at{...} expression instead of the units form's per-input set i fold -- 13.2% on random tables at n=7 and 9.9% at n=8, declining to 1.5% at n=12, since the saving is a per-input overhead against a 2^n literal; a construction choice, not a removable mechanism (the units machinery stays for the width and postfix paths); the docstring's 13.8%/10.3% figures price at 13.2%/9.9% when rebuilt, on totals and on the random-1847 table alike"
+
+[ablations.packed_pairs]
+saving = 24.8
+arity = 8
+verdict = "kept: two rows to a literal character ('0' + 2a + b) and a nested at{\"00011011\", ...} on the last input unpacks the bit; a rule, from six essential inputs -- 200 seeded random tables (seed 777n+s) vs main: 4.5% at n=6, 14.5% at n=7, 24.8% at n=8, 33.3% at n=9, 39.9% at n=10 (toward 50%); parity, and, or, majority and threshold-3 are 321 vs 427 chars at n=8 (size is table-independent); n=5 loses 3.9% so it starts at six; balance=True area unchanged (0.0% at n=7/8, the fold race builds unpacked units); every row of 3 random and 5 named tables at n=6..8 ran through the interpreter, a flipped-row control fails"
 
 [audits]
 blind_reimplementation = 2026-10-30
