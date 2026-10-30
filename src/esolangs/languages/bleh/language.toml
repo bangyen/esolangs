@@ -41,3 +41,4 @@ verdict = "kept: canonical, exempt; a node whose halves agree reads its input as
 
 [audits]
 blind_reimplementation = 2026-10-27
+plain_rewrite = 2026-10-29
