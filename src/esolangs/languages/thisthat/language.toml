@@ -71,4 +71,5 @@ tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/t
 verdict = "kept, balanced: the balance hook raced the default and the narrowest grid, so an even-arity H-tree stayed a cell square (243 x 241 at n=8, side 486). Halving the vertical pitch (vertical spans 4 * 2^k - 2) makes it 2:1 (123 x 241, side 246): balanced area (score squared) off 74.4% on random tables at n=8, 0.0% at n=7 (odd arities were already 2:1); named at n=8 parity 17.0%, majority and threshold-n/2 50.6%, threshold-3 44.0%, and/or/nand/nor 74.2%; n=9 0.0%; n=10 and/or/nand/nor 74.6%, majority 3.1% (the shared DAG wins the rest). Flat ~74% over even n, not declining. The default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad). Soundness is no cell shared by two wires, checked on all 65,812 tables n<=4, and execution of every n<=3 table plus 1,500 random n=4; halved-everywhere spans fail to produce an answer"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
