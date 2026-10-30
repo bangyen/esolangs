@@ -76,7 +76,9 @@ ignored-input tables included).
     agrees only with the clean room patched to our reading.  Make the
     generator run under both, or find page evidence.
     - SLOW ACV MAMMALIAN: LEAPFROG "jump[s] to the ...th instruction"
-      but ours resumes after it (3,052 answers differ).
+      but ours resumes after it.  The cell-256 programs now run under
+      both; the cell-255 chains (`_mammalian_compact`, `_mammalian255`)
+      still need resume-after.
     - B-tapemark: the swap-marker Decision's only evidence is that the
       other reading hangs our own generated programs (page re-read
       2026-10-30, no Talk page; history unread).  In the traced ``01``

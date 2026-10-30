@@ -8,7 +8,9 @@ length is bounded by the largest value its residues allow:
 * a route (L1) takes at most 28 tokens out of array 0 and 58 into it, for
   every head; an exact append (L2) at most 255 SEEDs and two more;
 * a node (L3) at most 115 aiming SEEDs and 21 more; the dispatch (L4) at
-  most 55 SEEDs;
+  most 155 SEEDs, the first count putting array 16's head on its class and
+  both print heads at or past their digit's code (exhaustive over every
+  head triple: 55 for the class alone);
 * greedy chunks on array 16 (L5) are a deterministic walk on (head, sum mod
   255): one 495-chunk cycle of 1246 tokens and 121,890 bytes, so tokens
   <= 623 bytes / 60,945 + 23.5 for any start and any count; each appends
@@ -34,16 +36,16 @@ position, rising in w with c_R(7) = c_R(8).  For m > 5 the non-pool weights
 are termwise at most the full ones, also with the first node dropped.  For
 m <= 5 inputs 0..m-1 dominate and gain one c_R(0) a level, the full layout
 at least c_R(255), so the gap grows from n = 7, where it is >= 0.  At n <= 6
-list sums exceed the full bound (by up to 281 tokens, 9037 characters), so
+list sums exceed the full bound, so
 every essential set was built with each leaf slot at its dearer value (slot
-costs add: 0 of 189 random mixed tables off): at most 8440 tokens and 44872
-characters at n = 6, against 13,870 and 103,582.
+costs add; the emitted maximum over 211 random mixed tables): at most 8440
+tokens and 44,870 characters at n = 6, against 13,972 and 104,508.
 """
 
 from fractions import Fraction
 from typing import NamedTuple
 
-_ROUTE_OUT, _ROUTE_BACK, _EXACT, _NODE, _DISPATCH = 28, 58, 257, 136, 55
+_ROUTE_OUT, _ROUTE_BACK, _EXACT, _NODE, _DISPATCH = 28, 58, 257, 136, 155
 _ROUTE_PRINT, _ROUTE_POOL = (29, 40), 44
 
 
@@ -63,9 +65,9 @@ def _layout(n: int) -> tuple[list[int], list[int | None], int]:
 
 def _window(table: int) -> tuple[int, int]:
     """Exact first-jump target and chunk count (``_merge_address`` at rest 0)."""
-    chunks = max(1, _cdiv(table + 5, 251))
+    chunks = max(1, _cdiv(table + 6, 251))
     spent = 254 + 3 * chunks - 1 + (254 + chunks - 1) // 255
-    chunks += table + spent + 6 > 254 * (chunks + 1)
+    chunks += table + spent + 7 > 254 * (chunks + 1)
     return 254 * (chunks + 1), chunks
 
 
@@ -105,11 +107,11 @@ def _plan(n: int) -> _Plan:
     table = sum(weights) + unit
     window, chunks = _window(table)
     jump = 3 * chunks + 259 + ((chunks - 2) // 255 + 1 if chunks >= 2 else 0)
-    # base = window - table <= 254 (ceil((table + 5) / 251) + 2) - table
-    base = (3 * table + 1270) // 251 + 763
+    # base = window - table <= 254 (ceil((table + 6) / 251) + 2) - table
+    base = (3 * table + 1270) // 251 + 764
     free = min(n, 5)
     delta = [8 << k for k in range(1, free)]
-    prologue = 2 * (28 + _EXACT + 1) + sum(_ROUTE_PRINT)
+    prologue = 2 * (28 + _EXACT + 2) + sum(_ROUTE_PRINT)
     prologue += sum(28 + 2 * _EXACT + 2 * d + _ROUTE_POOL for d in delta)
     prologue += 28 + _raise(base) + _ROUTE_BACK
     levels = []
@@ -124,7 +126,7 @@ def _plan(n: int) -> _Plan:
         m = 0 if cs <= 514 else max(1, _cdiv(cs - 513, 251)) + 1
         arm = cs + 3 * m + 8 + m // 255
         if i == 0:
-            kb = _cdiv(prologue - 253 + 14 + 255 + 224 + chain, 251) + 1
+            kb = _cdiv(prologue - 253 + 14 + 255 + 225 + chain, 251) + 1
             pn = 1 + _EXACT + 3 * (kb - 1) + _cdiv(kb, 255) + _NODE
             spill = Fraction(3 * prologue, 251) + Fraction(254 * (240 + chain), 251)
             z = int(spill + 746) + 1
@@ -156,8 +158,9 @@ def _tokens(n: int) -> int:
 def characters(n: int, _: str) -> int:
     """V: leaf slots and gaps exactly, every other token at its list bound.
 
-    A slot is 50 + 5 (unit - 6) characters and the rest of the table SEEDs, so
-    the table is 20 T + 5 table; the jump, prologue and levels count 5 per
+    A slot is 5 unit + 19 characters (a guard SPRINT ends it; another replaces
+    a gap SEED at each block start) and the rest of the table SEEDs, so the
+    table is at most 20 T + 5 table; the jump, prologue and levels count 5 per
     token plus 4 more for each non-SEED one.
     """
     plan = _plan(n)
@@ -165,7 +168,7 @@ def characters(n: int, _: str) -> int:
     delta = sum(8 << k for k in range(1, pools + 1))
     chunks = _window(plan.table)[1]
     head = 5 * (plan.window - plan.table) + 4 * (2 * chunks + 4)
-    non_seed = 2 * delta + 2 * (4 + 2 * pools) + 3 * (6 + 2 * pools)
+    non_seed = 2 * delta + 2 * (6 + 2 * pools) + 3 * (6 + 2 * pools)
     non_seed += _raise(plan.base)
     body = 5 * plan.prologue + 4 * non_seed
     for r in plan.levels:

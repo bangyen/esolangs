@@ -262,11 +262,46 @@ class TestSlowAcvMammalian:
         """Exact sizes per arity, and the leaf table is the whole growth."""
         tables = ("01", "0110", "01101001")
         sizes = [len(boolean.slow_acv_mammalian(table)) for table in tables]
-        assert sizes == [11_954, 18_813, 24_423]
+        assert sizes == [11_962, 18_823, 24_713]
         sizes = [
             len(boolean.slow_acv_mammalian(table, io_modulus=256)) for table in tables
         ]
-        assert sizes == [11_994, 18_878, 24_508]
+        assert sizes == [12_002, 18_888, 24_798]
+
+    @pytest.mark.parametrize("io_modulus", [255, 256])
+    @pytest.mark.parametrize("table", ["01101001", "0110100110010110" * 4])
+    def test_the_programs_run_whether_leapfrog_resumes_at_or_after_its_target(
+        self, table: str, io_modulus: int, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Every jump target is preceded by a no-op, so the reading is moot."""
+        from esolangs.languages.slow_acv_mammalian import interpreter
+        from esolangs.languages.slow_acv_mammalian.interpreter import (
+            DEFAULT_MODULI,
+            _Machine,
+        )
+        from esolangs.languages.slow_acv_mammalian.interpreter import (
+            _advance as advance,
+        )
+        from esolangs.runtime.io import ScriptedIO
+
+        def at_target(state, n, byte=None, *, moduli=DEFAULT_MODULI):
+            out = advance(state, n, byte, moduli=moduli)
+            fired = n == 7 and not out[4] and out[3] != state[3] + 1
+            return (*out[:3], out[3] - 1, out[4]) if fired else out
+
+        program = boolean.slow_acv_mammalian(table, io_modulus=io_modulus)
+        bits = len(table).bit_length() - 1
+        rng = random.Random(5)
+        for row in rng.sample(range(len(table)), 6):
+            answers = []
+            for step in (advance, at_target):
+                monkeypatch.setattr(interpreter, "_advance", step)
+                io = ScriptedIO(f"{row:0{bits}b}")
+                machine = _Machine(program, io, io_modulus=io_modulus)
+                while not machine.halted:
+                    machine.step()
+                answers.append(io.getvalue())
+            assert answers == [table[row]] * 2
 
     def test_a_slot_is_the_same_width_for_either_digit(self) -> None:
         """The table's stride is a leaf, and a leaf does not read the sum."""

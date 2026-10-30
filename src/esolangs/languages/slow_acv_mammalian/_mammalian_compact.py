@@ -386,7 +386,7 @@ class _Chain:
                 digit = table[(group << free) | suffix]
                 start = base + group * stride + offset * unit
                 tokens[start : start + unit] = _leaf(
-                    int(digit) * self.digit_seeds, unit=unit
+                    int(digit) * self.digit_seeds, unit=unit, guard=False
                 )
         return " ".join(tokens)
 

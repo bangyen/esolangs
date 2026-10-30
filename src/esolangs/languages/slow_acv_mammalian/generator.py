@@ -11,6 +11,9 @@ unconditionally, and the merge equalities are asserted on every build.
 Three identities carry the control flow, each proved where it is used:
 ``landing = rest - 15`` (:func:`_node`), ``target = nonhead + b``
 (:func:`_trampoline`), ``leaf = nonhead of array 16`` (:func:`_weights`).
+A SPRINT guards each jump target (the token before it, never executed in
+sequence), so a LEAPFROG that resumes at its target runs the same; it is a
+no-op because the accumulator, a token address, exceeds every array here.
 Every address is solved, none searched: the leaf table sits first, behind
 a jump sized against its own end (:func:`_emit`); an arm merges at its
 chunk window's end (:func:`_merge_address`); ballast is a division
@@ -18,7 +21,7 @@ chunk window's end (:func:`_merge_address`); ballast is a division
 
 Size:
     O(T) size and build.
-    n=10 random 1847: 127,016 chars, n=12 random 1847: 327,178 chars.
+    n=10 random 1847: 126,380 chars, n=12 random 1847: 323,670 chars.
     Executed evidence: every table through ``n == 3``, plus sampled rows of
     dense tables through ``n == 12``.
 
@@ -229,6 +232,19 @@ def _plant(st: _Sums) -> list[str]:
     return ["EXCRETE"]
 
 
+def _print_tail(st: _Sums) -> list[str]:
+    """Append a nonzero cell after a print array's digit, so its last cell survives.
+
+    The leaf's ``CONSUME`` lifts the digit from the middle, and the
+    ``LEAPFROG`` after it fires only if the cell left at the end is nonzero.
+    """
+    tokens = ["DIGEST", "EXCRETE"]
+    _replay(st, tokens)
+    if not st.cells[st.ptr][-1]:  # pragma: no cover - head + digit is nonzero
+        raise AssertionError("the print array ends in a zero cell")
+    return tokens
+
+
 def _route(st: _Sums, dest: int) -> list[str]:
     """Move the pointer to ``dest``, emitting the tokens that do it.
 
@@ -418,15 +434,27 @@ def _arm_core(st: _Sums, weight: int, pool: int | None) -> list[str]:
     return tokens + _route(st, 0)
 
 
-def _dispatch_head(hw: int) -> int:
+def _dispatch_head(st: _Sums) -> int:
     """Seeds putting array 16's head on the class both print arrays need.
 
     A leaf SPRINTs with the head as written and the other leaf one SEED
     later, so the head has to land on ``_PRINT[0]``'s residue *and* stay
     below 239 -- past that the extra 17 wraps and the second leaf misses.
+    The leaf ends in a LEAPFROG with accumulator ``'0'`` or ``'1'`` on its
+    print array, which halts only when that array's head is at least the
+    digit's ASCII code, so both print heads must clear it as well.
     """
     want = (_PRINT[0] - _W) % _ARRAYS
-    return _seeds_onto(hw, _W_STEP, range(want, _GREEDY_MIN, _ARRAYS))
+    heads = st.heads
+    for count in range(_MODULUS):
+        head = (heads[_W] + _W_STEP * count) % _MODULUS
+        if head % _ARRAYS != want or head >= _GREEDY_MIN:
+            continue
+        zero = (heads[_PRINT[0]] + (_PRINT[0] + 1) * count) % _MODULUS
+        one = (heads[_PRINT[1]] + (_PRINT[1] + 1) * (count + 1)) % _MODULUS
+        if zero >= _ASCII_ZERO and one > _ASCII_ZERO:
+            return count
+    raise AssertionError("no seed count clears the print heads")  # pragma: no cover
 
 
 def _prologue(st: _Sums, pairs: Sequence[tuple[int, int]], base: int) -> list[str]:
@@ -440,7 +468,7 @@ def _prologue(st: _Sums, pairs: Sequence[tuple[int, int]], base: int) -> list[st
     for digit, arr in enumerate(_PRINT):
         tokens += _route(st, arr)
         tokens += _exact_append(st, _ASCII_ZERO + digit)
-        tokens += _plant(st)
+        tokens += _print_tail(st)
         tokens += _route(st, 0)
     for weight, pool in pairs:
         tokens += _build_pool(st, weight, pool)
@@ -468,12 +496,12 @@ def _level(
     arm_toks, merged, cont = _settle(one, zero, weight, pool, landing)
     z = _laundered(zero)
     t0 = _lead(zero) + _jump(z, cont)
-    if landing < node_end + len(t0):  # pragma: no cover - _ballast reserves it
-        raise AssertionError(f"the 0-branch runs past the landing at {landing}")
+    if landing <= node_end + len(t0):  # pragma: no cover - _ballast reserves it
+        raise AssertionError(f"the 0-branch leaves no guard before landing {landing}")
     _check_merge(merged, z, weight)
     tokens += node_toks + t0
-    tokens += ["SEED"] * (landing - node_end - len(t0))
-    return tokens + arm_toks, z, cont
+    tokens += ["SEED"] * (landing - node_end - len(t0) - 1)
+    return [*tokens, "SPRINT", *arm_toks], z, cont
 
 
 def _node_prefix(
@@ -509,10 +537,10 @@ def _ballast(st: _Sums, pos: int, chain: int) -> int:
     _replay(zero, node, bit=0)
     lead = _laundered(zero)
     first = _stash_run(lead.h0, lead.n0, 1, io_modulus)[0]
-    if landing >= pos + len(node) + 2 + first + chain + 6:
+    if landing > pos + len(node) + 2 + first + chain + 6:
         return 0
     byte = io_modulus - 1
-    prefix = 224 + chain
+    prefix = 225 + chain
     seeds = _stash_run(st.h0, rest, 1, io_modulus)[0] - 2
     chunks = max(1, -(-(pos - rest + 14 + seeds + prefix) // (byte - 3)))
     spent = _stash_run(st.h0, rest, chunks, io_modulus)[0]
@@ -590,9 +618,10 @@ def _settle(
         tokens += _digest_excrete(st, (beta - st.h0 - st.n0) % _MODULUS)
     cont = _merge_address(st.h0, st.n0, landing + len(tokens), st.io_modulus)
     tokens += _jump(st, cont)
-    if len(tokens) > cont - landing:  # pragma: no cover - the solve reserves it
-        raise AssertionError(f"the arm overran its merge at {cont}")
-    return [*tokens, *["SEED"] * (cont - landing - len(tokens))], st, cont
+    if len(tokens) >= cont - landing:  # pragma: no cover - the solve reserves it
+        raise AssertionError(f"the arm leaves no guard before its merge at {cont}")
+    pad = ["SEED"] * (cont - landing - len(tokens) - 1)
+    return [*tokens, *pad, "SPRINT"], st, cont
 
 
 def _stash_run(
@@ -630,13 +659,13 @@ def _merge_address(head: int, rest: int, start: int, io_modulus: int) -> int:
     """
     byte = io_modulus - 1
     seeds = _stash_run(head, rest, 1, io_modulus)[0] - 2
-    if start + seeds + 4 <= rest + byte:
+    if start + seeds + 5 <= rest + byte:
         return rest + byte
     run = 1 if io_modulus == _IO_MODULUS else 2
-    chunks = max(1, -(-(start + seeds + 3 + run - rest - byte) // (byte - 3)))
+    chunks = max(1, -(-(start + seeds + 4 + run - rest - byte) // (byte - 3)))
     # Under I/O 255 a head wrap adds a SEED and may need one window more.
     spent = _stash_run(head, rest, chunks, io_modulus)[0]
-    chunks += start + spent + 4 + run > rest + byte * (chunks + 1)
+    chunks += start + spent + 5 + run > rest + byte * (chunks + 1)
     return rest + byte * (chunks + 1)
 
 
@@ -741,6 +770,8 @@ def _emit(
     cont = _merge_address(st.h0, st.n0, table, io_modulus)
     base = cont - table
     tokens = _jump(st, cont)
+    if len(tokens) >= base:  # pragma: no cover - _merge_address reserves it
+        raise AssertionError("the table jump leaves no guard before the table")
     tokens += ["SEED"] * (cont - len(tokens))
     pairs = [(w, p) for w, p in zip(weights, pools, strict=True) if p is not None]
     tokens += _prologue(st, pairs, base)
@@ -751,7 +782,7 @@ def _emit(
         if len(tokens) != pos:  # pragma: no cover - the merge address is the length
             raise AssertionError(f"level ended at {len(tokens)}, merged at {pos}")
     tokens += _route(st, _W)
-    tail = [*["SEED"] * _dispatch_head(st.hw), "DIGEST", "LEAPFROG"]
+    tail = [*["SEED"] * _dispatch_head(st), "DIGEST", "LEAPFROG"]
     _replay(st, tail)
     tokens += tail
     if st.nw != base:  # pragma: no cover - the prologue raise is exact
@@ -778,6 +809,8 @@ def _with_leaves(
         banked = sum(w for i, w in enumerate(weights) if (row >> (n - 1 - i)) & 1)
         start = base + banked
         out[start : start + unit] = _leaf(int(entry), unit=unit)
+        if out[start - 1] == "SEED":
+            out[start - 1] = "SPRINT"
     return out
 
 

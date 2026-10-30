@@ -172,17 +172,24 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
         st.ptr = (st.ptr + cells[st.acc]) % _ARRAYS
 
 
-def _leaf(digit: int, *, unit: int) -> list[str]:
+def _leaf(digit: int, *, unit: int, guard: bool = True) -> list[str]:
     """Return the tokens run ``digit`` executes, padded to one slot.
 
     ``EXCRETE`` clears the accumulator the dispatch left, ``SPRINT`` rides
     array 16's head to a print array, ``CONSUME`` lifts its middle cell
     (``'0'`` or ``'1'``) and ``PRONOUNCE`` writes it.  The closing
-    ``EXCRETE`` leaves a nonzero cell so ``LEAPFROG`` fires; with a zero
-    accumulator it can only aim before the program, which halts the run.
-    One SEED separates the two print arrays (``generator._dispatch_head``),
-    so the digit is the step count, and nothing reads array 16's sum: every
-    leaf has the same length whatever row reached it.
+    ``LEAPFROG`` fires on the cell the print array keeps last, and aims at
+    the digit's code less the array's head, which is before the program
+    (a halt) once the head is that large (``generator._dispatch_head``).
+    One SEED separates the two print arrays, so the digit is the step count,
+    and nothing reads array 16's sum: every leaf has the same length
+    whatever row reached it.
+
+    ``guard`` ends the slot in a ``SPRINT``: a LEAPFROG that resumes at its
+    target instead of after it lands one token early, here, and the
+    accumulator exceeds the array, so it does nothing before falling into
+    the leaf.  The unguarded form (the cell-255 chains) keeps the closing
+    ``EXCRETE`` that zeroes the accumulator for the halt.
     """
     body = [
         "EXCRETE",
@@ -193,7 +200,12 @@ def _leaf(digit: int, *, unit: int) -> list[str]:
         "EXCRETE",
         "LEAPFROG",
     ]
-    return [*body, *["SEED"] * (unit - len(body))]
+    if not guard:
+        return [*body, *["SEED"] * (unit - len(body))]
+    del body[-2]
+    if len(body) >= unit:  # pragma: no cover - callers pass unit >= 8
+        raise AssertionError(f"a {len(body)}-token leaf leaves no guard in {unit}")
+    return [*body, *["SEED"] * (unit - len(body) - 1), "SPRINT"]
 
 
 def _crossing_head(rest: int) -> int:
