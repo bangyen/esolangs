@@ -31,3 +31,4 @@ audited = "2026-10-29"
 
 [audits]
 blind_reimplementation = 2026-10-29
+plain_rewrite = 2026-10-29
