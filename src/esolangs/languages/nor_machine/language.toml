@@ -53,4 +53,5 @@ tables = "n=12 parity, all ones but the last row, and n=8 random"
 verdict = "kept: each level's h - 1 smear shifts ride the h half-shifts on one pass round the queue, not a pass each; 22.3% on parity and 28.9% on all ones but the last row at n=12, about 17% on random tables at n=8; plain-rewrite audit 2026-10-29 against separate smear and half-shift passes: random 17.7% (n=7, 200 tables), 22.3% (n=8, 100), 26.1% (n=9) and 28.7% (n=10) in chars, 17.3/22.1/26.0/28.7% in balanced area; n=8 parity 21.4%, majority 23.8%, or 25.7%"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
