@@ -105,4 +105,4 @@ def _chars(n: int, _: str) -> int:
     return 68 * total + 43 + 8 * (_digit_sum(total + 1) - 1) + edges
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))}
+FORMULAS = {"scaling": (_chars, False, (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))}

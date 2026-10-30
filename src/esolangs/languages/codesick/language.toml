@@ -8,20 +8,20 @@ admitted = 2026-10-15T12:56:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "each distinct subtable is one labelled node; it appends its marker to the unread bits, and a substring test for `0` before the marker reads the last bit, deleting it on a hit; a miss deletes `1` and the marker by a self-jump"
-scaling = "linear: worst W characters, n = 2..132"
-execution = "poly n: worst 3n + 1 steps: three a level, the leaf one"
-workspace = "poly n: worst 16n + 8 + 8·digits(C+1) + bl(3C+1) bits: the input as key, the unread bits, the ip"
+scaling = "linear: at most W characters, n = 2..132"
+execution = "poly n: worst 3n - 1 steps: three a level, two at the last"
+workspace = "poly n: at most 16n + 8 + 8·digits(C+1) + bl(3C+1) bits: the input as key, the unread bits, the ip"
 definitions = ["C = Σ_{d<n} min(2^d, 2^2^(n-d) - 2), the most non-constant nodes; digits counts decimal digits"]
 
 [generator_sizes]
-"00000001" = { commands = 10, commands_by_row = { "0" = 3, "1" = 6, "2" = 3, "3" = 9, "4" = 3, "5" = 6, "6" = 3, "7" = 10 }, source_units = 277 }
-"00001100" = { commands = 7, commands_by_row = { "0" = 7, "1" = 8, "2" = 6, "3" = 7, "4" = 8, "5" = 9, "6" = 6, "7" = 7 }, source_units = 277 }
-"00110110" = { commands = 10, commands_by_row = { "0" = 5, "1" = 8, "2" = 6, "3" = 9, "4" = 5, "5" = 9, "6" = 6, "7" = 10 }, source_units = 433 }
-"0110" = { commands = 7, commands_by_row = { "0" = 5, "1" = 6, "2" = 6, "3" = 7 }, source_units = 277 }
-"01101001" = { commands = 10, commands_by_row = { "0" = 7, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 10 }, source_units = 433 }
-"0110100110010110" = { commands = 13, commands_by_row = { "0" = 9, "1" = 10, "2" = 10, "3" = 11, "4" = 10, "5" = 11, "6" = 11, "7" = 12, "8" = 10, "9" = 11, "10" = 11, "11" = 12, "12" = 11, "13" = 12, "14" = 12, "15" = 13 }, source_units = 589 }
-"1101001101101101" = { commands = 10, commands_by_row = { "0" = 9, "1" = 8, "2" = 10, "3" = 11, "4" = 10, "5" = 11, "6" = 11, "7" = 10, "8" = 10, "9" = 8, "10" = 11, "11" = 12, "12" = 11, "13" = 12, "14" = 12, "15" = 10 }, source_units = 753 }
-"11111110" = { commands = 10, commands_by_row = { "0" = 3, "1" = 6, "2" = 3, "3" = 9, "4" = 3, "5" = 6, "6" = 3, "7" = 10 }, source_units = 277 }
+"00000001" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 2, "3" = 4, "4" = 2, "5" = 3, "6" = 2, "7" = 4 }, source_units = 143 }
+"00001100" = { commands = 5, commands_by_row = { "0" = 5, "1" = 6, "2" = 4, "3" = 5, "4" = 5, "5" = 6, "6" = 4, "7" = 5 }, source_units = 195 }
+"00110110" = { commands = 8, commands_by_row = { "0" = 3, "1" = 6, "2" = 3, "3" = 8, "4" = 3, "5" = 6, "6" = 3, "7" = 8 }, source_units = 295 }
+"0110" = { commands = 5, commands_by_row = { "0" = 3, "1" = 5, "2" = 3, "3" = 5 }, source_units = 193 }
+"01101001" = { commands = 8, commands_by_row = { "0" = 5, "1" = 7, "2" = 6, "3" = 8, "4" = 5, "5" = 7, "6" = 6, "7" = 8 }, source_units = 349 }
+"0110100110010110" = { commands = 11, commands_by_row = { "0" = 7, "1" = 9, "2" = 8, "3" = 10, "4" = 8, "5" = 10, "6" = 9, "7" = 11, "8" = 7, "9" = 9, "10" = 8, "11" = 10, "12" = 8, "13" = 10, "14" = 9, "15" = 11 }, source_units = 505 }
+"1101001101101101" = { commands = 8, commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 10, "4" = 7, "5" = 8, "6" = 9, "7" = 8, "8" = 6, "9" = 6, "10" = 8, "11" = 10, "12" = 7, "13" = 8, "14" = 9, "15" = 8 }, source_units = 564 }
+"11111110" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 2, "3" = 4, "4" = 2, "5" = 3, "6" = 2, "7" = 4 }, source_units = 143 }
 
 [catalogue]
 folding_ignored_read = "a bit is exposed only by deleting the one read before it, so an ignored one costs a delete node per residual below it"
@@ -38,6 +38,13 @@ verdict = "kept: canonical, exempt. subtree_ids interns every distinct subtable 
 saving = 0.93
 arity = 12
 verdict = "kept: canonical, exempt. A constant subtable collapses to its value id and prints in one instruction. Expanding constant subtables into branching nodes instead costs +2.26% at n=10 and +0.93% at n=12 on random tables (few constant subtables arise there), and on the classes that have them at n=10/12: constant tables +1,897.56 / +2,326.83%, AND and OR +94.17 / +95.56%, majority +30.56 / +26.60%. The plain build (no sharing, no fold) costs +333.43% at n=10 and +488.64% at n=12 on random tables"
+
+[ablations.inline_children]
+saving = 21.6
+arity = 8
+seed = "random.Random(9000 + n)"
+tables = 200
+verdict = "kept: the tested bit is the one whose child only this edge reaches; its label `b#c` is then that child's own instruction, not a forwarder, and a constant on the missed side is jumped to without the delete node. Against the three-instruction node: random 24.3% at n=7, 21.6% at n=8 (balanced area 23.0% / 21.2% on 30 tables), then 20.4 / 20.3 / 15.9% at n=9 / 10 / 12 and 15.2 / 15.8 / 16.4% at n=14 / 16 / 18 (2-3 tables each, plateau); n=8 parity 6.8%, majority 23.0%, threshold-3 25.5%, and 59.1%, or 62.4%. Claiming a child with other in-edges lowered n=8 sizes further (25.4%) but lengthens every reference to it, so it cannot be bounded by the old worst case; the Scaling and Workspace cells are now `at most`, no longer `worst`. Every row run: n<=3 exhaustive (never longer than before), the 200 tables at n=7 and n=8, named; a one-bit wrong table fails"
 
 [audits]
 blind_reimplementation = 2026-10-30
