@@ -7,13 +7,13 @@ admitted = 2026-10-15T18:27:40-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table is one string literal, and `ind` indexes it with a nested Horner expression over the reads"
-scaling = "linear: 12n + 5 + T characters: one string, Horner per input"
-execution = "poly n: worst 6n + 2 commands: six ops a later read, eight for the first and the answer"
-workspace = "linear: at most 8T + 8⌊n/3⌋ + 43 + bl(6n+2) + bl(2n) bits: the final call's stack"
+qualification = "the table is one string literal; from n = 5 a character packs eight rows and `ind` indexes it with a nested Horner expression over the reads (below, one row a character)"
+scaling = "linear: 12n + 23 + T/8 characters past n = 4"
+execution = "poly n: worst 6n + 8 commands past n = 4: Horner reads, one lookup, one bit test"
+workspace = "linear: at most T + 8⌊(n-1)/3⌋ + 113 + bl(n) + bl(6n+8) bits past n = 4: the final call's stack"
 
 [catalogue]
-folding_constant = "a constant table is still a T-character string"
+folding_constant = "a constant table is still a T/8-character string"
 folding_ignored = "the string holds every row; an ignored input is still read into the index"
 
 [generator_sizes]
@@ -33,6 +33,13 @@ audited = "2026-10-29"
 saving = 0.0
 arity = 12
 verdict = "recorded: the `x` before the table keeps an all-digit table a string whatever a number's text would become; 1 char of a 2^n + 12n + 5 program, and without it `ind` reads a number. Correctness machinery"
+
+[ablations.packed_codes]
+saving = 57.7
+arity = 8
+seed = "77+n"
+tables = 200
+verdict = "kept: from n=5 each table character holds eight rows as U+4E00 + v and a bit test (`ord`, `*` by 2^s, `% 256`, `gt 127`) reads one, against one character a row. Total characters on 200 seeded random tables fall 10.3% at n=5, 27.0% at n=6, 43.3% at n=7, 57.7% at n=8; parity, and, or, majority and threshold-3 the same, since the size depends only on n. Below n=5 it is larger (n=4: 72 against 69 on average, and 36 against 19 at n=1), so the plain string stays there. Every row of 200 random tables at n=5..7, 50 at n=8 and the five named functions at n=5..8 executed, exhaustive n<=3; a one-bit wrong table fails. a row count per character is a power of two (the bit position is a Horner read); 16 rows (plane 1, 20 tables) saves 61.1% at n=8 but needs all 65,536 codes, which include NFC-unstable and unassigned characters, while 8 fits U+4E00..4EFF"
 
 [audits]
 blind_reimplementation = 2026-10-30

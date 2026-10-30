@@ -8,7 +8,13 @@ import esolangs
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
+#: n=5 and 6 take the packed route, whose bit test reads every position.
+PACKED = ["0110100110010110" * 2, "00010111" * 8, "1" + "0" * 63, "0" * 63 + "1"]
+
+
+@pytest.mark.parametrize(
+    "table", [*TABLES, "00010111", "01101001", "11101000", *PACKED]
+)
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
