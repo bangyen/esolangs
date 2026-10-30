@@ -89,4 +89,5 @@ tables = 2
 verdict = "kept: balanced area (balance_score(p)[0]**2, mean of 2 seeded tables) falls 24.4 / 60.2 / 77.8 / 88.7 / 94.6% at n=8..12 (501,840 -> 199,810 at n=9, 19,300,298 -> 1,032,256 at n=12) and is unchanged to n=7; growth n=10 -> 12 from T**1.79 to T**0.77. One line per table step made side 2*lines = T; S-bit block words in a loaded W, bits read greedily by a pipelined threshold, give O(sqrt T) lines. Default build byte-identical"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
