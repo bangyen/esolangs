@@ -57,5 +57,6 @@ arity = 6
 verdict = "kept: canonical, exempt from the bar. An input the table ignores is read and popped (INPUT, POP) outside the Horner code, so it no longer doubles the row count (and the mirror is forward-only when input 0 is ignored). 13,160 -> 2,715 chars with 2 of 6 inputs ignored (4-row core); 1,500 seeded tables with random ignored subsets at n=3..7 never grew (8.52M -> 1.98M chars); random, parity, and/or, majority and thresholds unchanged at n=7 / 8. Every program executed (n<=3 exhaustive, 80 ignored-subset tables at n=4,5, one at n=6)"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-21
