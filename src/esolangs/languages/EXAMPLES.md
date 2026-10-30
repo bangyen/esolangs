@@ -89,6 +89,7 @@ don't edit by hand.
 | `minsky_swap/minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
 | `modulous/modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
 | `monotonic_boolfuck/monotonic-boolfuck.txt` | Monotonic Boolfuck | `0001` | `01` | 01 | '0' |
+| `movesum/movesum.txt` | Movesum | `0001` | `01` | 0 1 | '0 0' |
 | `nandypants/nandypants.txt` | Nandypants | `0001` | `01` | 01 | '0' |
 | `nor_machine/nor-machine.txt` | NOR machine | `0001` | `01` | 0 1 | '0' |
 | `object_disoriented/object-disoriented.txt` | Object disoriented | `0001` | `01` | 01 | '0' |

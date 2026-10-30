@@ -1,0 +1,40 @@
+1=175 2=1 5=44 7=3 8=1 9=175
+move -1 10
+move 5 1
+move 5 3
+move 10 2
+sum
+move 0 5
+move -1 10
+move 5 1
+move 5 3
+move 10 2
+sum
+move 0 5
+move 9 1
+move 8 2
+move 4 3
+sum
+move 0 1
+move 7 6
+move 1 6
+move 5 6
+move 4 -1
+sum
+move 0 1
+move 7 6
+move 1 6
+move 5 6
+move 4 -1
+sum
+move 0 1
+move 7 6
+move 1 6
+move 5 6
+move 4 -1
+sum
+move 0 1
+move 7 6
+move 1 6
+move 5 6
+move 2 -1
