@@ -43,4 +43,5 @@ arity = 12
 verdict = "kept: a constant's ignored inputs are not drained — no halving step swaps back to the read stack, so the staged inputs sit until the final pop. Draining them anyway costs +136.36% at n=10 and +138.46% at n=12 on constant tables (2n+2 chars against 5n+2). Part of the canonical constant fold"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
