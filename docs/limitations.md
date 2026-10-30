@@ -169,12 +169,15 @@ tried all overrun, which is evidence, not a proof that none exists:
   5,776, 5,548, 5,501 at n=16; unlimited reproduces the BFS exactly).
   A rule must therefore jump about four times per `goto` at n=1, or write
   the cells in a different order.
-- Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 13): each
+- Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15): each
   label's hub, then stub, takes the lowest address clear of the tables and
   the picks before it that a chain of at most five ops on a pointer-region
-  `g` reaches (about 0.2 s), by the fewest ops and the nearest walked cell.
-  That puts the source at 13,144 characters; the smallest `g` instead ends
-  the main code past the lowest table cell.
+  `g` reaches (about 0.2 s), by the fewest ops and the nearest walked cell;
+  a hub's chain value must have no 0 trit, or the second pointer cell's
+  re-swap reads 0 (n = 14 failed rows 28, 29 on it).  That puts the source
+  at 13,144 characters to n = 13, 19,683 at 14, 52,480 at 15; the smallest
+  `g` instead ends the main code past the lowest table cell.  n = 16's
+  tables span 6,561..59,039, so it keeps the whole store.
 
 ### Largest input counts
 

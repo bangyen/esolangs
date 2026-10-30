@@ -7,10 +7,10 @@ backlinks = 130
 [proof_status]
 labels = ["exception"]
 qualification = "finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound))"
-scaling = "measured: worst 13144 characters to n = 13, then 59049: the 3^10-cell store whole"
-execution = "unmeasured: worst 6,484 commands at n=1 to 5,686 at n=16: main code through closing i, then the longest stub (197/199)"
+scaling = "measured: worst 13144 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole"
+execution = "unmeasured: worst 6,484 commands at n=1 to 5,686 at n=16: main code through closing i, then the longest stub (197..200)"
 workspace = "poly n: at most B + E + 10(P+S) + 49 + bl(n) bits: a bit a step, ten a write"
-definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before the main code's closing i", "S = the longest stub, 197 commands (199 past thirteen inputs)"]
+definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before the main code's closing i", "S = the longest stub, 197 commands (200 at fourteen inputs, 199 at sixteen)"]
 
 [proof_status.audit]
 totality = "Exception"
@@ -41,19 +41,19 @@ workspace = [2, 3]
 # tables, seed 184700+n, 200 per arity).  Prices are contextual --
 # joint removals were measured separately before landing.  Rows for
 # removed tricks stay as the record of why they left.  The emitted
-# size is one constant per arity (13,144 to n = 13, the full 59,049-cell
-# store above), so every per-table trick prices at 0.0% by construction.
+# size is one constant per arity (13,144 to n = 13, 19,683 at 14, 52,480
+# at 15, the full 59,049-cell store at 16), so every per-table trick prices at 0.0% by construction.
 [ablations]
 audited = "2026-10-18"
 
 [ablations.full_store_render]
 saving = 0.0
 arity = 16
-verdict = "kept: from n = 14 the source is the whole memory image; to n = 13 it ends at its highest live cell, 13,144 characters (59,049 before the short layout, 2026-10-30). The 2026-10-29 tail and prefix figures describe the 59,049-character build and no longer apply below n = 14"
+verdict = "kept: n = 16 is the whole memory image (its tables reach 59,039); n <= 15 ends at its highest live cell, 13,144 characters to n = 13, 19,683 at 14, 52,480 at 15 (59,049 before the short layout, 2026-10-30). The 2026-10-29 tail and prefix figures describe the 59,049-character build and no longer apply below n = 16"
 
 [ablations.tier_constructions]
 saving = 0.0
-verdict = "kept: one positional build serves every arity; size is 13,144 to n = 13 and 59,049 above"
+verdict = "kept: one positional build serves every arity; size is 13,144 to n = 13, 19,683 at 14, 52,480 at 15 and 59,049 above"
 
 [ablations.shortest_path_planner]
 saving = 0.0
@@ -61,7 +61,7 @@ verdict = "kept: not separately priceable -- typed into the build's emission, an
 
 [ablations.searched_constants]
 saving = 0.0
-verdict = "kept: no frozen table remains -- the labels, gadget outputs, gadget values, seeds, hubs, stubs and operands are closed forms above n = 13; only navigation and the n <= 13 seeds and stubs (lowest clear address, fewest ops) are searched, once per process, no rule reproducing navigation (limitations)"
+verdict = "kept: no frozen table remains -- the labels, gadget outputs, gadget values, seeds, hubs, stubs and operands are closed forms above n = 15; only navigation and the n <= 15 seeds and stubs (lowest clear address, fewest ops) are searched, once per process, no rule reproducing navigation (limitations)"
 
 [ablations.constant_folding]
 saving = 0.0

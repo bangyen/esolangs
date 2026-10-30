@@ -9,7 +9,7 @@ answer stub reads.  The whole fixed-size source is the program: constants,
 labels and stubs are all source characters, so there is no initializer.
 Fewer than sixteen inputs hold the unused reads at ``'0'``, so every
 arity's cells are a subset of sixteen's and one placement serves all; up to
-thirteen the tables sit low enough that the source stops at its highest live
+fifteen the tables sit low enough that the source stops at its highest live
 cell.
 Seventeen inputs are built only when the table ignores an input or is
 constant on Hamming-weight classes: the sixteen build over the
@@ -17,9 +17,9 @@ projection, kept aligned by one discarded read, or the popcount build,
 whose first group folds four inputs into their weight.
 
 Size:
-    Constant to n=13, ending at the highest live cell; n=10 random 1847:
-    13,144 chars, from n=14 the whole 59049-cell memory, n=16 and: 59,049
-    chars.
+    Constant per arity, ending at the highest live cell; n=10 random 1847:
+    13,144 chars to n=13, 19,683 at n=14, 52,480 at n=15, and the whole
+    59,049-cell memory from n=16.
 
 Raises:
     GeneratorCapError: past seventeen inputs, or seventeen in neither family.

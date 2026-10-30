@@ -55,8 +55,6 @@ Dead-code leads, unmeasured against the
 A removal must leave the generated corpus byte-identical (tiled, constant and
 ignored-input tables included).
 
-- **Malbolge n = 14..16 layout:** n <= 13 now ends at its highest live cell
-  (13,144 characters); 14..16 still emit the 59,049-cell image.
 - **Malbolge's two searches as rules:** navigation (`emitter.py` `goto`)
   and the short layout (`digits.py` `_short_layout`) are the repo's only
   table-independent searches ([limitations](limitations.md#searches-kept)).

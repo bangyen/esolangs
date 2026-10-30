@@ -59,12 +59,13 @@ def test_ten_inputs_execute_every_row() -> None:
     assert _rows(table) == list(table)
 
 
-def test_program_is_the_full_store_from_fourteen_inputs() -> None:
-    """From fourteen inputs every build is 59049 source characters."""
-    assert len(boolean.malbolge("01" * 2**13)) == 3**10
+@pytest.mark.parametrize(("n", "size"), [(14, 19683), (15, 52480), (16, 3**10)])
+def test_program_size_from_fourteen_inputs(n: int, size: int) -> None:
+    """Fourteen and fifteen end at their top live cell; sixteen is the store."""
+    assert len(boolean.malbolge("01" * 2 ** (n - 1))) == size
 
 
-@pytest.mark.parametrize("n", [1, 4, 13])
+@pytest.mark.parametrize("n", [1, 4, 13, 14, 15])
 def test_short_builds_execute(n: int) -> None:
     """The short layout answers the first, last and middle rows of a random table."""
     table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
@@ -74,9 +75,9 @@ def test_short_builds_execute(n: int) -> None:
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-@pytest.mark.parametrize("n", [1, 5, 13])
+@pytest.mark.parametrize("n", [1, 5, 13, 14, 15])
 def test_short_builds_end_at_their_highest_live_cell(n: int) -> None:
-    """Up to thirteen inputs the source ends at its highest live cell."""
+    """Up to fifteen inputs the source ends at its highest live cell."""
     build = _digits._digits(n)  # noqa: SLF001
     live = max(max(build.code), max(build.data), max(build.tables))
     assert build.words == live + 1 < 3**10
@@ -88,6 +89,18 @@ def test_short_builds_share_one_length_above_their_tables() -> None:
     lengths = {_digits._digits(n).words for n in range(1, 14)}  # noqa: SLF001
     (length,) = lengths
     assert 13114 <= length < 3**10
+
+
+@pytest.mark.parametrize("n", [14, 15])
+def test_hub_cells_pair_under_the_all_one_reswap(n: int) -> None:
+    """Each hub's seed has no 0 trit, so ``p`` under all-1 re-swaps its cells.
+
+    n=14 hubs at 19,687 did not: every second pointer cell read 0 and rows
+    28 and 29 of a random table never reached a stub.
+    """
+    layout = _digits._short_layout(n)  # noqa: SLF001
+    for seed in _digits._seed_values(layout).values():  # noqa: SLF001
+        assert _digits._crazy(29524, seed) == _digits._s01(seed)  # noqa: SLF001
 
 
 @pytest.mark.parametrize("n", [1, 4, 11])

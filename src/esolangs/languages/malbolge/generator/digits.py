@@ -23,17 +23,20 @@ and on group 1's ``u`` and a final ``swap01`` of the whole word make the top
 digit miss ``(0, 0)`` and digit 1 miss ``(2, 2)``: every readout lies in
 6561..59039, so the code fits below the table and no cell wraps past 59048.
 
-Up to thirteen inputs the last group's held reads are ``'1','0','1'``, which
-packs every table into 6562..13113 and lets each label have one hub and a stub
-just above or inside it (:func:`_short_layout`): the source ends at its
-highest live cell, 13,144 characters, instead of the 59,049-cell store.
+Up to fifteen inputs the last group's held reads are chosen so the tables
+pack low (``'1','0','1'`` to thirteen: 6562..13113; fourteen ``'1','0'``:
+..19674; fifteen ``'0'``: 19684..52479), and each label has one hub and a
+stub in the gaps or just past the tables (:func:`_short_layout`): the source
+ends at its highest live cell, 13,144 characters to thirteen inputs, 19,683
+at fourteen, 52,480 at fifteen, instead of the 59,049-cell store.
 
-Fewer than sixteen inputs hold ``16 - n`` of the fifteen reads at the
-constant ``'0'``: three per group from the last group, a group's leading
-reads first.  A held read is ``p`` with ``A = all-2`` over a cell holding 69
-(``crazy(all-2, 69) == 48``), which leaves 48 there and 69 again after the
-next such ``p``, so one cell serves every held read.  Every build's cells are
-then a subset of sixteen's, and the hubs and stubs are placed once for all.
+Fewer than sixteen inputs hold ``16 - n`` of the fifteen reads at a
+constant, ``'0'`` unless the arity's tables need the ``'1'`` above: three per
+group from the last group, a group's leading reads first.  A held read is
+``p`` with ``A = all-2`` over a cell holding 69 (``crazy(all-2, 69) == 48``),
+which leaves 48 there and 69 again after the next such ``p``, so one cell
+serves every held read.  Without the short layout every build's cells are a
+subset of sixteen's and the hubs and stubs are placed once for all.
 
 The row's cell ``S + 1`` holds a label character naming one of four answers
 as a function of the last input -- ``0``, ``1``, ``x`` or ``not x`` -- and
@@ -91,6 +94,7 @@ from .core import (
 )
 from .emitter import _Planner, _valid_chars
 from .isa import (
+    _ALL1,
     _CONSTS,
     _WORDS,
     _first_free,
@@ -135,12 +139,18 @@ _D_LABEL = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
 #: Each label's seed ``g`` (:func:`~.core._seed_g`).
 _D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 
-#: At most this many inputs build the short layout: the last group's three
+#: Up to ``_SHORT_N`` inputs share one short layout: the last group's three
 #: held reads are ``'1','0','1'`` (49, 48, 49), which puts every table in
 #: 6562..13113.  Each label has one hub (pointer value ``s01(chain(g))``, all
 #: its cells equal) at 13122..13130; its stub sits in the table-free run
-#: 11664..12392 or past 13113, so the source ends at 13,144.
+#: 11664..12392 or past 13113, so the source ends at 13,144.  Arities up to
+#: ``_SHORT_MAX`` get their own layout over their own tables: 14 holds
+#: ``'1','0'`` (tables 6562..19674), 15 holds ``'0'`` (tables 19684..52479;
+#: ``'1'`` would reach 59,039); 16 fills the store.
 _SHORT_N = 13
+_SHORT_MAX = 15
+#: Arities up to this hold the last group's reads at ``_TOP_HELD``.
+_TOP_HELD_N = 14
 _TOP_HELD = (49, 48, 49)
 #: ``p`` under ``A = all-2`` swaps 71 and 49 as it does 69 and 48.
 _ONE_CELL_G = 71
@@ -170,29 +180,38 @@ def _chains(values: dict[int, int], depth: int) -> Iterator[tuple[str, dict[int,
 
 
 @cache
-def _short_layout() -> _Layout:
-    """Return the seeds and stubs of the ``n <= 13`` layout.
+def _short_layout(arity: int = _SHORT_N) -> _Layout:
+    """Return the seeds and stubs for ``arity`` inputs (``n <= 13`` share 13's).
 
     Greedy, hubs in ``n01x`` order then stubs in ``1n0x``: each takes the
     lowest address that clears the tables and the picks before it, by the
     shortest chain, then the ``g`` whose walked cell is nearest the first: each
     op walks to its cell, and the main code must end below the lowest table
-    cell (6532 against 6562).
+    cell (6532 against 6562).  A hub is any seedable address whose two data
+    cells are free, below the top table cell too (14's land in its gaps).
     """
-    tables = {s + 1 for s in _readouts(_SHORT_N)}
-    top = max(tables)
+    tables = {s + 1 for s in _readouts(arity)}
     chains: dict[int, list[tuple[int, str, int]]] = {}
     for ops, out in _chains({g: g for g in _SHORT_G}, _SHORT_DEPTH):
         for g, v in out.items():
             chains.setdefault(v, []).append((len(ops.split()), ops, g))
     reach: dict[int, list[tuple[int, str, int]]] = {}
+    seedable: set[int] = set()
     for v, picks in chains.items():
         reach.setdefault(_s01(v), []).extend(picks)
+        # A label's second cell is re-swapped by ``p`` under ``A = all-1``, which
+        # is ``s01`` only if ``crazy(all-1, v) == s01(v)``: ``v`` has no 0 trit.
+        if _crazy(_ALL1, v) == _s01(v):
+            seedable.add(_s01(v))
     addresses = sorted(reach)
     taken: set[int] = set()
     at: dict[tuple[str, str], int] = {}
     for lab in _T_HUB_LABELS:
-        hub = next(a for a in addresses if a > top and not {a + 1, a + 2} & taken)
+        hub = next(
+            a
+            for a in addresses
+            if a > _D_FLOOR and a in seedable and not {a + 1, a + 2} & (tables | taken)
+        )
         at["seed", lab] = hub
         taken |= {hub + 1, hub + 2}
     operands = _operand_cells()
@@ -224,6 +243,19 @@ def _short_layout() -> _Layout:
     )
 
 
+def _longest_stub(n: int) -> int:
+    """Return the commands of the longest short-layout stub at ``n`` inputs.
+
+    A ``1`` or ``n`` stub runs every character; ``0`` and ``x`` run three.
+    """
+    hubs = _hubs(_short_layout(max(n, _SHORT_N)))
+    cells = _operand_cells()
+    return max(
+        len(_operand_stub(min(_valid_chars(hubs[lab][0] + 2)) + 1, cells[lab]))
+        for lab in "1n"
+    )
+
+
 def _held(n: int, group: int) -> int:
     """Return how many of ``group``'s leading reads ``n`` inputs hold at ``'0'``.
 
@@ -235,12 +267,12 @@ def _held(n: int, group: int) -> int:
 
 def _short(n: int) -> bool:
     """Return whether ``n`` inputs build the short layout."""
-    return n <= _SHORT_N
+    return n <= _SHORT_MAX
 
 
 def _held_read(n: int, group: int, index: int) -> int:
     """Return the value of ``group``'s ``index``-th held read."""
-    if _short(n) and group == _D_GROUPS - 1:
+    if n <= _TOP_HELD_N and group == _D_GROUPS - 1:
         return _TOP_HELD[index]
     return 48
 
@@ -468,10 +500,11 @@ def _digits(n: int, drop: tuple[int, int] | None = None) -> _Digits:
     if len(set(tables)) != len(tables) or max(tables) >= _WORDS:
         raise AssertionError("readouts collide or wrap")
     # Sixteen's cells hold every arity's, so every build avoids the same set.
-    layout = _short_layout() if _short(n) else None
+    arity = max(n, _SHORT_N)
+    layout = _short_layout(arity) if _short(n) else None
     if layout:
         # Smaller arities' cells are a subset of the largest short one's.
-        cells_of_tables = {s + 1 for s in _readouts(_SHORT_N)}
+        cells_of_tables = {s + 1 for s in _readouts(arity)}
     else:
         cells_of_tables = set(_readouts_cells())
     cells = _allocate_cells(layout)
