@@ -94,8 +94,6 @@ ignored-input tables included).
       `<`/`[` string of length 1..14 matches `[x` on 300 random tapes.  A
       both-readings construction would have to restructure the conditional,
       untried.  The page's sole example has no non-command.
-    - Qoibl: right-associative chains (page silent; 3,064 differ);
-      parenthesizing with `qe`..`qe` would do, size cost unmeasured.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 

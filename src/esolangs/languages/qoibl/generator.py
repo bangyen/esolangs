@@ -9,10 +9,13 @@ is packed reversed under complemented reads, if shorter ([ablations.negated_read
 
 Size:
     O(T) characters for the literal, O(n) statements;
-    n=10 parity: 1,728 chars, n=16 random 1847: 66,624 chars.
+    n=10 parity: 1,703 chars, n=16 random 1847: 66,539 chars.
 
 Decisions:
-    A packed literal has no subtrees to fold or share.
+    A packed literal has no subtrees to fold or share.  Variables 48 and 49
+    hold ``2**bit`` so a read is one operand, and every chain is a pure
+    product or a plus-first ``+``/``-``: the page leaves association open,
+    and the program is the same under either.
 """
 
 from esolangs.generation.helpers import (
@@ -140,13 +143,16 @@ def _read_statements(
 
     With ``flip`` the literal is the complement and ``zero`` is ``'1'``.
     """
-    # The input digit is 48 or 49, so minus 47 it is 2**bit: multiplying it
-    # in appends the new bit to the row index accumulating in the exponent.
-    two_to_bit = _arith(_INPUT, _SUB, _qoibl_enc(_ASCII_ZERO - 1))
-    drain = two_to_bit
-    if negated:
-        two_to_bit = _arith(two, _DIV, two_to_bit)
-    lines = []
+    # Variables 48 and 49 (the digits' codes) hold ``2**bit`` (``2**(1 - bit)``
+    # negated), so ``qe et qe`` reads a digit as its factor in one operand.
+    # An arithmetic form (``et - 47``) is a chain whose association the page
+    # leaves open; here every chain is a pure product or a plus-first +/-.
+    low, high = (2, 1) if negated else (1, 2)
+    lines = [
+        _assign(_qoibl_enc(_ASCII_ZERO), _qoibl_enc(low)),
+        _assign(_qoibl_enc(_ASCII_ZERO + 1), _qoibl_enc(high)),
+    ]
+    two_to_bit = drain = _read_var(_INPUT)
     counted = False
     for weight in weights:
         if not weight:
@@ -176,13 +182,15 @@ def _read_statements(
             counted = True
     # ``row = packed // power``: shift the table right by the row index.
     lines.append(_assign(row, _arith(_qoibl_enc(packed), _DIV, _read_var(power))))
-    # Print ``'0' + (row mod 2)``, or ``'1' - (row mod 2)`` flipped.
-    halves = _arith(two, _MUL, _arith(_read_var(row), _DIV, two))
-    if flip:
-        answer = _arith(zero, _SUB, _arith(_read_var(row), _SUB, halves))
-    else:
-        answer = _arith(_read_var(row), _ADD, _arith(zero, _SUB, halves))
-    lines.append(_print(answer))
+    # ``power`` is dead now: reuse it for ``2 * (row // 2)``, one operator per
+    # statement.  The print chains ``row + zero - half`` and ``zero + half -
+    # row`` are +/- with the plus first, so left and right association agree
+    # (the page fixes neither).
+    lines.append(_assign(power, _arith(_read_var(row), _DIV, two)))
+    lines.append(_assign(power, _arith(_read_var(power), _MUL, two)))
+    row_read, half = _read_var(row), _read_var(power)
+    first, second, third = (zero, half, row_read) if flip else (row_read, zero, half)
+    lines.append(_print(_arith(first, _ADD, _arith(second, _SUB, third))))
     return lines
 
 
@@ -216,29 +224,26 @@ def _horner_lines(lines: list[str], limit: int) -> list[str]:
 
 
 def _qoibl(program: str, width: int) -> str:
-    """Wrap Qoibl, folding each of its lines but keeping them apart.
+    """Wrap Qoibl across statements.
 
-    A newline between tokens is whitespace (measured), so each statement
-    line folds on its own; joining first would fold across statements.
+    A newline between tokens is whitespace (measured), so rows fill instead
+    of each statement taking its own.
     """
-    return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
+    return wrap_space_delimited(program, width)
 
 
 def balance_qoibl(table: str, default: str) -> str:
     """Return the best of three wraps at closed-form widths.
 
-    With ``h`` default rows, ``s`` characters and a ``lit``-character literal,
-    ``h - 1/2 + sqrt((h - 1/2)^2 + 2s)`` is the square width of a plain wrap
-    (0.9 times it covers n<=5).  Past that the literal splits into Horner
-    chunks, each costing about four rows, so ``h + sqrt(h^2 + 8 lit)`` is the
-    square width (1.15 and 1.3 times it cover n>=6).  The three stay within
-    5% of the old fit and chunk sweeps on 225 random tables of 2-1024 rows.
+    With ``s`` default characters and a ``lit``-character literal, a plain
+    wrap is square at ``sqrt(2 s)`` (a row is twice a column).  Past n=5 the
+    literal splits into Horner chunks, each adding overhead, which fits
+    ``w**2 = 2 s + a lit`` with ``a`` between 5.2 and 6.5 for n=6..11; the
+    three ``a`` values 0, 3 and 6 stay within a few percent of the best
+    width on random tables of 8-2048 rows.
     """
-    rows = default.count("\n") + 1
     literal = max(map(len, default.split()))
-    plain = rows - 0.5 + (rows * rows - rows + 0.25 + 2 * len(default)) ** 0.5
-    chunked = rows + (rows * rows + 8 * literal) ** 0.5
-    widths = [0.9 * plain, 1.15 * chunked, 1.3 * chunked]
+    widths = [(2 * len(default) + a * literal) ** 0.5 for a in (0, 3, 6)]
     return min((qoibl(table, round(width)) for width in widths), key=balance_score)
 
 

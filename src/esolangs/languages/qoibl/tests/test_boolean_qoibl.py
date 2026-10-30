@@ -42,14 +42,14 @@ class TestQoibl:
     def test_narrow_horner_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
         assert (
-            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 493428
+            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 407184
         )
 
     def test_the_table_is_one_literal(self) -> None:
         """The whole table rides in a single binary literal, bit k for row k."""
-        program = boolean.qoibl("0010")
+        program = boolean.qoibl("00100000")
         # 0b100: row 2 is the only one set, and it is bit 2 (its
-        # complement, 0b1011, packs no shorter, so it is not flipped).
+        # complement packs no shorter, and reversed it packs longer).
         assert program.count(" yee ") == 1
         assert program.endswith("tt")
 
@@ -61,7 +61,7 @@ class TestQoibl:
             ).count("\n")
             for n in range(1, 6)
         ]
-        assert counts == [2, 3, 4, 5, 6]
+        assert counts == [6, 7, 8, 9, 10]
 
     def test_a_constant_table_still_reads_its_inputs(self) -> None:
         """A constant function packs to zero but keeps the reads it owes."""
@@ -84,34 +84,12 @@ def test_constant_table_reads_cost_one_line_each() -> None:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """One read into a register the next write clears."""
-    assert_an_ignored_input_costs("Qoibl", 6, 30)
+    assert_an_ignored_input_costs("Qoibl", 6, 20)
 
 
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.qoibl, range(7, 11), 800)
-
-
-def test_qoibl_affine_row_envelope_minima() -> None:
-    from itertools import product
-
-    from esolangs.generation.wrap import balance_score
-    from esolangs.languages.qoibl.tests.balance_oracle import _best_width
-
-    for negative, constant, positive, extra in product(
-        [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]
-    ):
-        rows = [(-2, negative), (0, constant), (1, positive)] + [(0, 1)] * extra
-        length = (
-            sum(slope for slope, _ in rows),
-            sum(offset for _, offset in rows) + len(rows) - 1,
-        )
-        width = _best_width(rows, length, 1, 15)
-        layouts = [
-            "\n".join("x" * (slope * columns + offset) for slope, offset in rows)
-            for columns in range(1, 16)
-        ]
-        assert balance_score(layouts[width - 1]) == min(map(balance_score, layouts))
 
 
 @pytest.mark.parametrize("seed", range(6))
@@ -148,11 +126,11 @@ class TestQoiblSweepPins:
     @pytest.mark.parametrize(
         ("table", "shape"),
         [
-            ("00000000", (190, 12, 18)),
-            ("0000000000000000", (220, 14, 19)),
+            ("00000000", (235, 11, 22)),
+            ("0000000000000000", (255, 12, 23)),
             (
                 "0110000101111110000011100110010100101011000101100000100001111110101010110100111010111101001001001011011010000100010001000100000011001101000110010000110110011110011110001010001001101011011100100101110101000111100010101011000110110001010001100111100010110001",
-                (1233, 32, 65),
+                (1300, 27, 56),
             ),
         ],
     )

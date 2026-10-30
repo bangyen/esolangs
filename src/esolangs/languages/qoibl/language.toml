@@ -8,19 +8,19 @@ admitted = 2021-06-21T00:20:21-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is one binary literal, divided by the power of two the reads build"
-scaling = "linear: worst T+64n+64 characters: T-1 bit literal, 64 an input"
-execution = "poly n: worst n + 2 commands, one statement per input"
-workspace = "linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1"
+scaling = "linear: worst T+54n+139 characters: T-1 bit literal, 54 an input"
+execution = "poly n: worst n + 6 commands, one statement per input"
+workspace = "linear: worst 2T + 19 + bl(n) bits: the row, its half, two digit cells"
 
 [generator_sizes]
-"00000001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
-"00001100" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 226 }
-"00110110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
-"0110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 196 }
-"01101001" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
-"0110100110010110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 336 }
-"1101001101101101" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 336 }
-"11111110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 264 }
+"00000001" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 303 }
+"00001100" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 270 }
+"00110110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 308 }
+"0110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8 }, source_units = 251 }
+"01101001" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 309 }
+"0110100110010110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 371 }
+"1101001101101101" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 10, "9" = 10, "10" = 10, "11" = 10, "12" = 10, "13" = 10, "14" = 10, "15" = 10 }, source_units = 370 }
+"11111110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 303 }
 
 [catalogue]
 folding_constant = "a constant table is a one-bit literal"
@@ -58,11 +58,11 @@ tables = 200
 verdict = "kept under the named-function rule: when the complemented table packs to fewer bits (a trailing run of ones, which the literal pays for while trailing zeros are free), the literal is the complement and the print is '1' minus the bit, same statement count. Or 12.3% at n=6, 19.8% at n=7, 30.6% at n=8, 59.2% at n=10, rising; at-least-3 2.9-14.7% at n=6..10; majority 1.4-2.3%, and 0.1-0.2%; random tables 0.05-0.19%. Exhaustive n<=3: 138 tables change, none grows, every changed program executed; random samples and named tables executed through n=8"
 
 [ablations.negated_reads]
-saving = 52.2
+saving = 60.0
 arity = 10
 seed = "named tables"
 tables = 14
-verdict = "kept under the named-function rule: the table reversed with each read as 2 / 2**bit (inputs complemented) is built beside the plain build and the shorter kept, so the one-hot-at-the-top and/nand pay the one-hot-at-the-bottom literal plus 12 characters a read. and/nand 6.6% at n=7, 19.0% at n=8, 34.9% at n=9, 52.2% at n=10, rising with the literal; or/nor and random tables unchanged (random 0.0% at n=7/8). Balanced area on and 52.3% at n=7, 60.2% at n=8, 84.4% at n=10. Executed on 20 random tables per arity and the named tables through n=9"
+verdict = "kept under the named-function rule: the table reversed with the digit cells swapped (2**(1 - bit), inputs complemented) is built beside the plain build and the shorter kept, at no extra cost per read, so the one-hot-at-the-top and/nand pay the one-hot-at-the-bottom literal. and/nand 19.5% at n=7, 30.7% at n=8, 44.9% at n=9, 60.0% at n=10, rising with the literal; or/nor unchanged; random tables 0.03% at n=7 and 0.13% at n=8 (20 each). Measured 2026-10-30 after the digit-cell rewrite"
 
 [audits]
 blind_reimplementation = 2026-10-30

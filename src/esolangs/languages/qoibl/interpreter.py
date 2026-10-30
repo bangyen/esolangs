@@ -17,7 +17,9 @@ Errors:
 
 Decisions:
     * The wiki fixes no precedence: a chain splits at its first ``yr``
-      (else ``ry``) and the right side is evaluated whole.
+      (else ``ry``) and the right side is evaluated whole.  Generated
+      programs do not depend on it: each chain is a pure product or a
+      plus-first ``+``/``-``, equal under either association.
     * "``rr x rr y rr``" is read literally, a loop body being one statement.
 """
 
