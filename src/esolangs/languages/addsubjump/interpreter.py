@@ -23,6 +23,8 @@ Decisions:
     * The spec leaves input representation unspecified; this interpreter
       reads consecutive Unicode characters, including newlines.
     * It is silent past ``-9`` too: those addresses read 0 and drop writes.
+    * A write to a constant (``-6``..``-8``) is dropped: the wiki's macro
+      example halts through ``-7 -7 -7 -7`` after printing ``H``.
     * Writing the port prints ``*b`` whatever ``*d`` is ("writing to it
       outputs" names no difference), and with FUM set every write sets the
       flags, read-only ones included.

@@ -82,4 +82,5 @@ arity = 8
 verdict = "kept: canonical, exempt; the packed build's projection onto essential inputs earns 6.1% at build level with one ignored input at n=8 and 10.7% with two (4.4% / 8.7% at n=6); the full-table build it replaces never won its race (0 of 322 tables, in-code record) and survives only as a balance candidate"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
