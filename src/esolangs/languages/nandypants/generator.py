@@ -14,7 +14,7 @@ byte, with b moved to a second cell holding 1 so ``^`` toggles a between bits.
 
 Size:
     Theta(T / log T) blocks of O(log T) digits: Theta(T) characters; n=4
-    parity: 128 chars
+    parity: 130 chars
 
 Decisions:
     A space separates adjacent labels, since any digit run is one number.
@@ -59,7 +59,6 @@ def nandypants(truth_table: str) -> str:
 
     # Plan each node's tests against the block that follows it.
     plan: dict[tuple[int, int], list[tuple[str, tuple[int, int]]]] = {}
-    refs: dict[tuple[int, int], int] = {}
     for index, key in enumerate(order):
         pair = kids[key]
         if pair is None:
@@ -76,12 +75,11 @@ def nandypants(truth_table: str) -> str:
         else:
             tests = [("", c0), ("v", c1)]
         plan[key] = tests
-        for _, target in tests:
-            refs[target] = refs.get(target, 0) + 1
 
-    place = {key: index for index, key in enumerate(order)}
-    ranked = sorted(refs, key=lambda k: (-refs[k], place[k]))
-    label = dict(zip(ranked, _odd_labels(len(ranked)), strict=True))
+    # Jump targets take labels in layout order ([ablations.label_rank]).
+    targets = {target for tests in plan.values() for _, target in tests}
+    jumped = [key for key in order if key in targets]
+    label = dict(zip(jumped, _odd_labels(len(jumped)), strict=True))
 
     tokens = ["v^>v<"]
     for key in order:

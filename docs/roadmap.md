@@ -75,7 +75,7 @@ ignored-input tables included).
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 
-Audited (109): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
+Audited (110): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
 Algebraic Programming Language, Alight, Aprknia, ArrowQueue, Ascenic,
 B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between, BFStack,
 Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic, Boolfuck,
@@ -85,13 +85,13 @@ Crement, CV(N)(C), Cyclic tag, Decleq, Dig, Dimensional, DINAC, EGL, Eval,
 Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo,
 Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, INTERCAL,
 Interprogck8, Kiss, LaserFuck, Line, lol waht i cant edit talk pages,
-Malbolge, Minifuck, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum, NOR
-machine, Object disoriented, Packlang, Painfuck, Piet, Pilas, Pointless,
-Qoibl, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff, Shakespeare, SLOW
-ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Streetcode, Subleq,
-Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Thue, Unary, Underload,
-Unlambda, Unsquare, What!?, Whitespace. Next by kept `[ablations]`:
-Nandypants 0, Parenthesys 0, Qrain 0.
+Malbolge, Minifuck, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
+Nandypants, NOR machine, Object disoriented, Packlang, Painfuck, Piet,
+Pilas, Pointless, Qoibl, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff,
+Shakespeare, SLOW ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp,
+Streetcode, Subleq, Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat,
+Thue, Unary, Underload, Unlambda, Unsquare, What!?, Whitespace. Next by kept
+`[ablations]`: Parenthesys 0, Qrain 0.
 
 <!-- PLAIN-REWRITE-AUDITS:END -->
 
