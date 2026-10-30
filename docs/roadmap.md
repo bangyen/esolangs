@@ -61,8 +61,6 @@ ignored-input tables included).
   [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)).
   Eight of the first thirteen lost a trick.  Record a finished audit as
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
-- **Brainfuck derivatives refused by the 2026-10-15 ban** are eligible
-  again: screen them on route, spec and token substitution.
 - **Malbolge per-arity layout** (parked 2026-10-29): live cells are 10-14% of
   the 59,049-cell image at n <= 12. Tables sit at 39,367-43,002 because the
   held top digit is 6; a bit-to-digit bijection putting it at 1, with hubs and
