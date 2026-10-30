@@ -31,7 +31,10 @@ execution = [3, 4, 5, 6, 7, 8]
 "11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 53431 }
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-29"
+# 2026-10-29 plain-rewrite audit: no trick retired. Buildable tables under the 256 Mi cap: n=1 4/4, n=2 7/16
+# (0000 1111 0011 0101 1010 1100 0001), n=3 8/256, n=4 10/65,536; the plain tree builds none at n>=2 (every
+# one passes the cap), so no random or named-function sample at n>=3 can price a trick by size.
 
 [ablations.constant_fold]
 saving = 7212.0
@@ -47,3 +50,6 @@ verdict = "kept: a table one input decides is spelled as reads up to that input,
 saving = 0.0
 arity = 2
 verdict = "kept: the all-but-one-zero table is spelled as nested guards around one loop. At n=2 it is 27,452,351 zeros shipped and unbuildable through the general tree path, whose zero count passes the cap; at n=3 the shipped form itself is over the cap, so n=2 is the largest arity where the form runs"
+
+[audits]
+plain_rewrite = 2026-10-29
