@@ -21,6 +21,9 @@ Decisions:
     * An input symbol that is no command runs as a blank once a swap puts it
       on the first grid: the wiki rejects other symbols only "when the
       program is loaded".
+    * After a swap, the marker that moves is the new first grid's: the wiki
+      says only "the position marker".  Moving the old one's instead hangs
+      generated programs (n=2 ``0110``, every row; 2026-10-30).
 """
 
 from __future__ import annotations
