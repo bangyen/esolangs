@@ -40,3 +40,16 @@ verdict = "kept: canonical, exempt. A node whose halves agree reads its bit and 
 saving = 36.1
 arity = 12
 verdict = "kept: canonical, exempt. A constant subtable is a chain reading the remaining inputs into Constant 48 or 49. Branching on constants instead costs +33.65% at n=10 and +36.10% at n=12 on constant tables, +15.61 / +16.60% on AND and OR (whose agreeing halves are constants), and +0.68 / +0.28% on random tables. The plain build (no sharing, no chain, no fold) costs +986.83% at n=10 and +1317.35% at n=12 on random tables, +26526.54 / +95869.29% on constant tables"
+
+[ablations.branch_macros]
+saving = 158.0
+arity = 10
+verdict = "kept: bespoke, clears the bar. `!o`/`!z` replace the two inlined branch bodies `>(Subtract 49>X)>(Divide 48>(Subtract 1>Y))`. Inlining costs, on 20 random tables per arity (chars / balanced area), +37.6 / +36.8% at n=3, +104.3 / +98.9% at n=5, +152.9 / +151.0% at n=8, +158.0 / +156.7% at n=10 (min +156.3% chars); named at n=10 (chars / area): parity +131.8 / +125.0, majority +124.4 / +125.0, threshold 3 +115.2 / +117.2, AND and OR +72.9 / +69.0 (complements equal)"
+
+[ablations.equal_halves_chain_audit]
+saving = 1.0
+arity = 10
+verdict = "kept: canonical (an ignored input at one node), exempt. Plain-rewrite audit 2026-10-29, 20 random tables per arity, branching to both children instead: +0.99% chars / +1.08% area at n=10 (+1.75 / +1.22 at n=8, max +6.67% chars at n=3); named functions 0.00% at n=3..10. All plain-rewrite programs executed: n <= 3 exhaustive (276 tables, three builds), n=4..6 sampled, wrong-table control fails every row"
+
+[audits]
+plain_rewrite = 2026-10-29
