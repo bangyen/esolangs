@@ -21,14 +21,20 @@ from tests.support.witness_tables import witnesses
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
 def test_source_length_is_the_documented_formula(n: int) -> None:
-    """limitations.md: 20 * 2**m + n + 53, plus k + 10 for k ignored inputs."""
+    """Worst case 20 * 2**m + n + 35, plus k + 10 for k ignored inputs.
+
+    Reached when the first 2**m - 1 entries are all ``0``: one entry per
+    sweep.  A ``0`` before a ``1`` shares a sweep and trims 18 characters.
+    """
     for table in witnesses(n):
         m = len(essential_inputs(table, n))
         k = n - m
-        size = 20 * 2**m + n + 53 + (k + 10 if k else 0)
+        size = 20 * 2**m + n + 35 + (k + 10 if k else 0)
         if len(set(table)) == 1:
             size = n + 9
-        assert len(esolangs.generate("///", table)) == size, table
+        assert len(esolangs.generate("///", table)) <= size, table
+    table = "0" * (2**n - 1) + "1"
+    assert len(esolangs.generate("///", table)) == 20 * 2**n + n + 35
 
 
 @pytest.mark.medium
@@ -67,7 +73,7 @@ def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix) -> N
 
 def test_all_slots_ignored_is_still_a_template() -> None:
     # read == 0: the one slot is an ignored X and the table has one entry.
-    program = _IGNORE + _UNARY + _SWEEP + _DECODE + "X$>qA"
+    program = _IGNORE + _UNARY + _DECODE + "X$>qA"
     assert _is_unfilled_template(program)
 
 
@@ -119,12 +125,12 @@ def test_balanced_program_folds_behind_the_newline_rule(table: str) -> None:
 
 
 def test_balanced_side_is_square_at_n8() -> None:
-    """Seed 8: 5181 chars on one line fold to 52 x 104 behind the rule."""
+    """Seed 8: 4011 chars on one line fold to 46 x 92 behind the rule."""
     import random
 
     from esolangs.generation.wrap import balance_score
 
     table = format(random.Random(8).getrandbits(256), "0256b")
     balanced = str(esolangs.generate("///", table, balance=True))
-    assert balance_score(balanced)[0] == 104
+    assert balance_score(balanced)[0] == 92
     assert balanced.startswith("/\n//")

@@ -16,8 +16,9 @@ The table is a literal with no subtrees to fold or share.  Constants delete
 the input letters and print their literal answer.
 
 Size:
-    O(T) chars, independent of the table's values bar constants; n=10 random
-    1847: 20,543 chars, n=12 random 1847: 81,985 chars.
+    O(T) chars, ~22% fewer on random tables than T full sweeps
+    ([ablations.sweep_count]); worst case unchanged; n=10 random
+    1847: 15,809 chars, n=12 random 1847: 63,805 chars.
 
 Decisions:
     ``balance=True`` prefixes a rule deleting every later newline, and
@@ -53,11 +54,25 @@ _IGNORE = "/Xa///Xb//"
 _CONSTANT = "/a///b//"
 
 
+def _sweeps(bits: str) -> int:
+    """Sweeps that delete the first ``len(bits) - 1`` entries.
+
+    A sweep deletes one entry, or two when a ``0`` is followed by a ``1``
+    (``qA`` then ``qB``); fewer stars than entries leave later sweeps idle.
+    """
+    done = sweeps = 0
+    while done < len(bits) - 1:
+        done += 2 if bits[done : done + 2] == "01" else 1
+        sweeps += 1
+    return sweeps
+
+
 def slashes(truth_table: str) -> str:
     """Return the rules, then the input slots, the cursor and the table.
 
-    Each sweep deletes at least one entry while stars remain, so 2^m sweeps
-    reach any row of the 2^m entries for the m inputs the table depends on.
+    Each sweep deletes at least one entry while stars remain, so the sweeps
+    that clear the first 2^m - 1 entries (at most 2^m - 1) reach any row of
+    the 2^m entries for the m inputs the table depends on.
     The unary rules use letters the table and decoder never contain.
     """
     n = _validate_truth_table(truth_table)
@@ -70,7 +85,7 @@ def slashes(truth_table: str) -> str:
         TEMPLATE_CHAR if weight else "X" + TEMPLATE_CHAR for weight in weights
     )
     prefix = _IGNORE if 0 in weights else ""
-    return prefix + _UNARY + _SWEEP * len(bits) + _DECODE + slots + ">" + table
+    return prefix + _UNARY + _SWEEP * _sweeps(bits) + _DECODE + slots + ">" + table
 
 
 #: Deletes every later newline, so the rest wraps anywhere.
@@ -110,11 +125,13 @@ def _is_unfilled_template(code: str) -> bool:
         return False
     if not re.fullmatch(r"(?:q[AB])*", table):
         return False
-    size = len(table) // 2
     ignored = slots.count("X")
     head = _IGNORE if ignored else ""
     read = len(slots) - 2 * ignored  # negative: more X than slots, not ours
-    return read >= 0 and size == 1 << read and prefix == head + _UNARY + _SWEEP * size
+    if read < 0 or len(table) != 2 << read:
+        return False
+    bits = table.replace("qA", "0").replace("qB", "1")
+    return prefix == head + _UNARY + _SWEEP * _sweeps(bits)
 
 
 LANGUAGE = Language(

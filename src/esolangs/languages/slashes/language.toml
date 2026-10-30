@@ -7,19 +7,19 @@ backlinks = 86
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix"
-scaling = "linear: worst 20T + n + 53 characters: T sweeps, 2T table"
-execution = "linear: worst 6T + n + 19 steps: rule parses, failed searches and substitutions"
+scaling = "linear: worst 20T + n + 35 characters: T sweeps, 2T table"
+execution = "linear: worst 6T + n + 15 steps: rule parses, failed searches and substitutions"
 workspace = "linear: worst 8L + 56 + 8max(0,T-15) bits: the program string, rewritten in place"
 
 [generator_sizes]
-"00000001" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
-"00001100" = { commands = 50, commands_by_row = { "0" = 47, "1" = 47, "2" = 48, "3" = 48, "4" = 49, "5" = 49, "6" = 50, "7" = 50 }, source_units = 147 }
-"00110110" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
-"0110" = { commands = 45, commands_by_row = { "0" = 42, "1" = 43, "2" = 44, "3" = 45 }, source_units = 135 }
-"01101001" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
-"0110100110010110" = { commands = 119, commands_by_row = { "0" = 104, "1" = 105, "2" = 106, "3" = 107, "4" = 108, "5" = 109, "6" = 110, "7" = 111, "8" = 112, "9" = 113, "10" = 114, "11" = 115, "12" = 116, "13" = 117, "14" = 118, "15" = 119 }, source_units = 377 }
-"1101001101101101" = { commands = 119, commands_by_row = { "0" = 104, "1" = 105, "2" = 106, "3" = 107, "4" = 108, "5" = 109, "6" = 110, "7" = 111, "8" = 112, "9" = 113, "10" = 114, "11" = 115, "12" = 116, "13" = 117, "14" = 118, "15" = 119 }, source_units = 377 }
-"11111110" = { commands = 70, commands_by_row = { "0" = 63, "1" = 64, "2" = 65, "3" = 66, "4" = 67, "5" = 68, "6" = 69, "7" = 70 }, source_units = 216 }
+"00000001" = { commands = 66, commands_by_row = { "0" = 59, "1" = 60, "2" = 61, "3" = 62, "4" = 63, "5" = 64, "6" = 65, "7" = 66 }, source_units = 198 }
+"00001100" = { commands = 42, commands_by_row = { "0" = 39, "1" = 39, "2" = 40, "3" = 40, "4" = 41, "5" = 41, "6" = 42, "7" = 42 }, source_units = 111 }
+"00110110" = { commands = 58, commands_by_row = { "0" = 51, "1" = 52, "2" = 53, "3" = 54, "4" = 55, "5" = 56, "6" = 57, "7" = 58 }, source_units = 162 }
+"0110" = { commands = 37, commands_by_row = { "0" = 34, "1" = 35, "2" = 36, "3" = 37 }, source_units = 99 }
+"01101001" = { commands = 58, commands_by_row = { "0" = 51, "1" = 52, "2" = 53, "3" = 54, "4" = 55, "5" = 56, "6" = 57, "7" = 58 }, source_units = 162 }
+"0110100110010110" = { commands = 95, commands_by_row = { "0" = 80, "1" = 81, "2" = 82, "3" = 83, "4" = 84, "5" = 85, "6" = 86, "7" = 87, "8" = 88, "9" = 89, "10" = 90, "11" = 91, "12" = 92, "13" = 93, "14" = 94, "15" = 95 }, source_units = 269 }
+"1101001101101101" = { commands = 99, commands_by_row = { "0" = 84, "1" = 85, "2" = 86, "3" = 87, "4" = 88, "5" = 89, "6" = 90, "7" = 91, "8" = 92, "9" = 93, "10" = 94, "11" = 95, "12" = 96, "13" = 97, "14" = 98, "15" = 99 }, source_units = 287 }
+"11111110" = { commands = 66, commands_by_row = { "0" = 59, "1" = 60, "2" = 61, "3" = 62, "4" = 63, "5" = 64, "6" = 65, "7" = 66 }, source_units = 198 }
 
 [catalogue]
 folding_constant_local = "_CONSTANT"  # delete inputs and print the literal answer
@@ -45,7 +45,14 @@ saving = 100.0
 arity = 8
 seed = "random.Random(131s + n), s = 0..19"
 tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-(n-1) at n=7,8"
-verdict = "kept: the balanced build was a no-op (one line, no wrapper), 1 x 2,620 and 1 x 5,181 chars at n=7 / 8. A leading rule /<newline>// deletes every later newline before the next rule is read, so the rest folds at any column, inside a rule too; the 4-char prefix and template runs kept whole fold it to side 74 / 104 (balance_score(p)[0]), balanced area (score squared) -99.9% / -100.0% on random tables and on every named function (sizes are table-independent; 6,864,400 -> 5,476 and 26,842,761 -> 10,816). The default is byte-identical on all 56 tables. Every balanced program ran on every row (56 tables, 0 bad) and a wrong table failed on each; a constant, an ignored-input and full tables at n<=4 ran too (test)"
+verdict = "kept: the balanced build was a no-op (one line, no wrapper), 1 x 2,620 and 1 x 5,181 chars at n=7 / 8. A leading rule /<newline>// deletes every later newline before the next rule is read, so the rest folds at any column, inside a rule too; the 4-char prefix and template runs kept whole fold it to side 74 / 104 (balance_score(p)[0]), balanced area (score squared) -99.9% / -100.0% on random tables and on every named function (sizes were table-independent before [ablations.sweep_count]; 6,864,400 -> 5,476 and 26,842,761 -> 10,816). The default is byte-identical on all 56 tables. Every balanced program ran on every row (56 tables, 0 bad) and a wrong table failed on each; a constant, an ignored-input and full tables at n<=4 ran too (test)"
+
+[ablations.sweep_count]
+saving = 22.1
+arity = 9
+seed = "random.Random(131s + n), s = 0..19"
+tables = "20 random per n=7,8,9 plus parity/and/or/majority/threshold-3/threshold-(n-1) at n=7,8,9"
+verdict = "kept: emits only the sweeps that clear the first T-1 entries, not T: a sweep deletes two when a qA is followed by a qB, so a random table needs ~0.78T. Random totals 52,400 -> 41,168 (-21.4%) at n=7, 103,620 -> 80,760 (-22.1%) at n=8, 206,040 -> 160,464 (-22.1%) at n=9, a share that holds with n; named: parity 2,620 -> 1,846 / 5,181 -> 3,633 / 10,302 -> 7,224 (-29.5%, -29.9%, -29.9%), majority -14.4 / -12.5 / -12.4%, threshold-3 -11.0 / -7.6 / -5.1%, and/or -0.7% (all-qA prefix, one entry per sweep). Balanced area at n=7 / 8 (seed 131*3+n): side 74 -> 68 / 104 -> 92, area -15.6% / -21.7%. Every program ran on every row (n=2,3 all 276 tables; 26 tables at n=4,5,7,8,9, 0 bad) and a wrong table failed on each"
 
 [audits]
 plain_rewrite = 2026-10-28
