@@ -66,9 +66,6 @@ ignored-input tables included).
 - **Removed languages with no surviving ground** (re-check 2026-10-29,
   page + Talk + full history read): rebuild with `/new-language`; the old
   packages are in git history.
-  - DINAC (2026-09-08, 9070ffe12). Core semantics are fixed; the page
-    contradicts itself on literals (`[0-9A-F]{2}` vs "lowercase", bare
-    `\0`, `add1(1)`), and its cat drops the first character.
   - Between (2026-08-12, 8cdc37b24). The examples, marked untested,
     fix what the prose leaves open: 0-based goto, unset variables are
     Int 0, nested `|..|`/`(..)`.
@@ -114,7 +111,7 @@ Unsquare 2.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-13 of the 85 first implementations: Aprknia, Balik, BASICER, Bleh,
+13 of the 86 first implementations: Aprknia, Balik, BASICER, Bleh,
 Freestajlo, Hot, Kiss, lol waht i cant edit talk pages, Pilas, S*bleq,
 Sonata, Stisp, SwitchCase.
 
