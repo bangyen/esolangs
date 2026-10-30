@@ -14,7 +14,6 @@ import pathlib
 import re
 import shlex
 import textwrap
-import tomllib
 import typing
 
 import esolangs
@@ -458,43 +457,8 @@ def render_sharing_counts_section() -> str:
     )
 
 
-#: How many unaudited generators the roadmap names as next, ties included.
-_NEXT_AUDITS = 9
-
-
-def _kept_ablations(name: str) -> int:
-    """Count a generator's ``[ablations]`` entries whose verdict is kept."""
-    path = ROOT / "src/esolangs/languages" / LANGUAGES[name].id / "language.toml"
-    table = tomllib.loads(path.read_text(encoding="utf-8")).get("ablations", {})
-    return sum(
-        isinstance(entry, dict) and str(entry.get("verdict", "")).startswith("kept")
-        for entry in table.values()
-    )
-
-
 def _names(names: list[str]) -> str:
     return ", ".join(sorted(names, key=str.casefold))
-
-
-def render_plain_rewrite_section() -> str:
-    """Render the roadmap's plain-rewrite progress from ``[audits]`` dates.
-
-    Next are the unaudited generators with the most kept tricks to price.
-    """
-    audits = _audit_rows()
-    done = [name for name, row in audits.items() if "plain_rewrite" in row]
-    queue = sorted(
-        (
-            (_kept_ablations(name), name)
-            for name, lang in LANGUAGES.items()
-            if lang.boolean is not None and name not in done
-        ),
-        key=lambda pair: (-pair[0], pair[1].casefold()),
-    )
-    cut = queue[min(_NEXT_AUDITS, len(queue)) - 1][0] if queue else 0
-    nxt = [f"{name} {kept}" for kept, name in queue if kept >= cut]
-    tail = f" Next by kept `[ablations]`: {', '.join(nxt)}." if nxt else ""
-    return textwrap.fill(f"Audited ({len(done)}): {_names(done)}.{tail}", width=76)
 
 
 def render_blind_reimplementation_section() -> str:
@@ -519,7 +483,6 @@ def update_roadmap(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the roadmap's audit progress between its markers."""
     path = root / "docs" / "roadmap.md"
     text = path.read_text()
-    text = splice(text, "PLAIN-REWRITE-AUDITS", render_plain_rewrite_section())
     text = splice(
         text, "BLIND-REIMPLEMENTATIONS", render_blind_reimplementation_section()
     )

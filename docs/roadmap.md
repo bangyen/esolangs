@@ -55,12 +55,6 @@ Dead-code leads, unmeasured against the
 A removal must leave the generated corpus byte-identical (tiled, constant and
 ignored-input tables included).
 
-- **Plain-rewrite audits:** write the plain canonical construction, price
-  every bespoke trick against it, and remove the ones whose saving is a
-  fixed amount rather than a genuine percentage (see
-  [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)).
-  Eight of the first thirteen lost a trick.  Record a finished audit as
-  `[audits] plain_rewrite = <date>` in the language's `language.toml`.
 - **Malbolge n = 14..16 layout:** n <= 13 now ends at its highest live cell
   (13,144 characters); 14..16 still emit the 59,049-cell image.
 - **Malbolge's two searches as rules:** navigation (`emitter.py` `goto`)
@@ -72,29 +66,6 @@ ignored-input tables included).
   (seed chains before the pointer priming, ~1,800 path cells of returns
   past 127) is the open route.  The layout's cost is where navigation lands
   each walked cell, so a navigation rule comes first.
-
-<!-- PLAIN-REWRITE-AUDITS:START -->
-
-Audited (112): ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection, AddSubJump,
-Algebraic Programming Language, Alight, Aprknia, ArrowQueue, Ascenic,
-B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between, BFStack,
-Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic, Boolfuck,
-brainfuck, BrainIf, Caballo, CARP, Chicken, Circlefuck, Circuit Diagram,
-Clockwise, Codesick, Collatz Multiverse, Container, CreativeScript v2,
-Crement, CV(N)(C), Cyclic tag, Decleq, Dig, Dimensional, DINAC, EGL, Eval,
-Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo,
-Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, INTERCAL,
-Interprogck8, Kiss, LaserFuck, Line, lol waht i cant edit talk pages,
-Malbolge, Minifuck, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
-Nandypants, NOR machine, Object disoriented, Packlang, Painfuck,
-Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0, ROTfuck,
-Rubic, S*bleq, SendStuff, Shakespeare, SLOW ACV MAMMALIAN, Smallfuck, Smu,
-Sonata, SStack, Stisp, Streetcode, Subleq, Suffolk, Super SNUSP, SwitchCase,
-Taglate, thisthat, Thue, Unary, Underload, Unlambda, Unsquare, What!?,
-Whitespace.
-
-<!-- PLAIN-REWRITE-AUDITS:END -->
-
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
   corpus.  With no outside interpreter, this is the only independent
