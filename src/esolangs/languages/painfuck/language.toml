@@ -69,4 +69,5 @@ tables = 8
 verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) sums its counted bits two cells a step, halves a copy and subtracts the half twice, printing the sum mod 2, raced by length against the flag tree. Parity 69.7% at n=4, 77.9% at n=6, 81.0% at n=7, 83.4% at n=8, 86.9% at n=10, 89.2% at n=12; random affine tables 41-67% where the sum wins. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 10 tables change, none grows, every changed program executed; named and affine tables executed through n=10. Plain-rewrite audit 2026-10-28 (after the complement tree): parity 81.0% / 83.4% / 86.9% / 89.2% at n=7 / 8 / 10 / 12 (balanced 80.9% / 80.2% / 86.3% / 89.3%), the 20 random tables at n=7 / 8 and 3 at n=10 / 12 unchanged, majority, and, or, nand, nor and thresholds 0.0%"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
