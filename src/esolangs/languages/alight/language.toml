@@ -47,5 +47,6 @@ arity = 8
 verdict = "kept: two rows to a literal character ('0' + 2a + b) and a nested at{\"00011011\", ...} on the last input unpacks the bit; a rule, from six essential inputs -- 200 seeded random tables (seed 777n+s) vs main: 4.5% at n=6, 14.5% at n=7, 24.8% at n=8, 33.3% at n=9, 39.9% at n=10 (toward 50%); parity, and, or, majority and threshold-3 are 321 vs 427 chars at n=8 (size is table-independent); n=5 loses 3.9% so it starts at six; balance=True area unchanged (0.0% at n=7/8, the fold race builds unpacked units); every row of 3 random and 5 named tables at n=6..8 ran through the interpreter, a flipped-row control fails"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
