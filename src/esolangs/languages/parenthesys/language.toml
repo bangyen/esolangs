@@ -42,5 +42,6 @@ tables = 200
 verdict = "kept: from n=5 each table character holds eight rows as U+4E00 + v and a bit test (`ord`, `*` by 2^s, `% 256`, `gt 127`) reads one, against one character a row. Total characters on 200 seeded random tables fall 10.3% at n=5, 27.0% at n=6, 43.3% at n=7, 57.7% at n=8; parity, and, or, majority and threshold-3 the same, since the size depends only on n. Below n=5 it is larger (n=4: 72 against 69 on average, and 36 against 19 at n=1), so the plain string stays there. Every row of 200 random tables at n=5..7, 50 at n=8 and the five named functions at n=5..8 executed, exhaustive n<=3; a one-bit wrong table fails. a row count per character is a power of two (the bit position is a Horner read); 16 rows (plane 1, 20 tables) saves 61.1% at n=8 but needs all 65,536 codes, which include NFC-unstable and unassigned characters, while 8 fits U+4E00..4EFF"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
