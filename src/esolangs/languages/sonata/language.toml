@@ -53,6 +53,7 @@ folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @
 folds_without_tree = true
 
 [audits]
+trick_prototype = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
