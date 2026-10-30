@@ -39,4 +39,5 @@ arity = 12
 verdict = "kept: canonical, exempt. A node whose halves are the same subtree reads its bit and descends into one child instead of branching. Branching on equal halves instead costs +11.50% at n=10 and +11.32% at n=12 on random tables (second seed set +11.43 / +11.29%). Removing the whole descent (the plain build) costs +46.17 / +46.09% on random tables and at n=10/12: AND +5453.43 / +16809.06%, OR +5552.39 / +17083.70%, majority +94.88 / +112.00%, one ignored input +146.91 / +151.96%, two +372.69 / +331.83%, three +650.34 / +666.88%, half-constant +182.86 / +188.25%, sparse +149.75 / +151.57%"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
