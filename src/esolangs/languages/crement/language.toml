@@ -47,4 +47,5 @@ arity = 5
 verdict = "recorded: the module docstring's Decisions sharing figures do not reproduce. The n=3 endpoint (37,862 chars over all 256 tables) is exact, but no flag combination of the current emitter gives the 39,156 start (fold kept 39,702, sharing only 39,742, neither 43,596); at n=5 neither endpoint matches the fleet's 200-table five-input sample (shipped 84,600, fold kept 113,858, against the recorded 83,070 / 114,791). See the stale-figures entry F19"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
