@@ -4,15 +4,17 @@ A subtract-and-branch machine: each instruction ``a b c`` does ``mem[a] -= mem[b
 and, if the result is ``<= 0``, jumps to ``mem[c]`` (indirect); otherwise
 the pointer advances by three.  Address ``-1`` is the instruction
 pointer, ``-2`` the next input character (zero at EOF), ``-3``
-outputs the other operand; none appears in ``c``.  ``store`` selects the
-base (``a``), ``S*bl*q`` (``a`` and ``b``) or ``Subl*q`` (``b``)
-variant, and ``indirect`` the ``S**bleq``/``Subl**q``/``S**bl**q`` family,
-which replaces ``a`` and ``b`` by ``*a`` and ``*b``.
+outputs the other operand; none appears in ``c``.  An instruction with a
+``-3`` operand only prints: no store, no branch, the pointer advances by
+three.  ``store`` selects the base (``a``), ``S*bl*q`` (``a`` and ``b``)
+or ``Subl*q`` (``b``) variant, and ``indirect`` the
+``S**bleq``/``Subl**q``/``S**bl**q`` family, which replaces ``a`` and
+``b`` by ``*a`` and ``*b``.
 
 Programs are whitespace-separated integers loaded at address zero; reads
-past the end are zero.  Execution halts off the end of the program (fewer
-than three cells left at the pointer) or on a negative jump target; the
-wiki names no halt.
+past the end are zero, and a store past the end extends memory.
+Execution halts off the end of memory (fewer than three cells left at the
+pointer) or on a negative jump target; the wiki names no halt.
 
 Input/output:
     ``-2`` reads one input character, zero at EOF; ``-2`` in both operands

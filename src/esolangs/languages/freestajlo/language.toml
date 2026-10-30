@@ -63,5 +63,6 @@ tables = 7
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 sums its reads (;+) and picks one of n + 1 literal entries, raced by length against the plain and packed literals. Against the packed literal: parity, majority, and, or, at-least-2 and exactly-1 all 51.5% at n=4, 59.3% at n=6, 63.8% at n=7, 70.2% at n=8, 85.2% at n=10, 94.7% at n=12; a symmetric table with an ignored input 62.0% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=12. plain-rewrite audit 2026-10-28, same tables, every program run: against the packed literal parity, majority, and, or, nand, nor and at-least-2/3 are 63.8/70.2% shorter at n=7/8 (82.6/94.0% by balanced area), 85.2% (99.4%) at n=10; 0.0% on 20 random tables at n=7/8 both ways -- kept for the named family. Replaces the family-D change-point compare (and/or only, 80-96% against the plain literal): the count covers and/or, every threshold and parity with one mechanism"
 
 [audits]
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 blind_reimplementation = 2026-10-27

@@ -43,5 +43,6 @@ tables = "20 random per arity n=4..11 and parity, majority, and, or, thr2 with c
 verdict = "kept: side by side only at odd levels from 3 below the root is the least area over all 2^n sequences except n = 4 (840 vs 832). Against the natural alternation (side by side at every odd level) it saves 21.2% chars and 21.6% area on random at n=10, 21.0% and 21.6% at n=11. Against the other phase (even levels) it saves 5.5% chars and 7.8% area at n=10, 6.6% and 4.7% at n=11 on random, and 10.4% and 13.0% chars on majority at n=10 and 11; parity 4.9% and 4.3%. Under the bar against that phase, but switching deletes no code (each phase is one predicate), so the smaller one stays"
 
 [audits]
+docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
