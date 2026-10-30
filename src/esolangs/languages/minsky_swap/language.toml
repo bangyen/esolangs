@@ -31,6 +31,9 @@ workspace = [3, 6]
 [schemes]
 folds_without_tree = true
 
+[audits]
+plain_rewrite = 2026-10-29
+
 [ablations]
 audited = "2026-10-19"
 
@@ -44,7 +47,12 @@ saving = 85.8
 arity = 8
 seed = "named symmetric tables"
 tables = 7
-verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 is indexed by their count, one + per input and n + 1 cascade rows, raced by length against the weighted build. Parity, majority, and, or, at-least-2 and exactly-1 all 32.4% at n=4, 64.2% at n=6, 76.9% at n=7, 85.8% at n=8, 95.3% at n=10, 98.6% at n=12; a symmetric table with an ignored input 75.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
+verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 is indexed by their count, one + per input and n + 1 cascade rows, a rule (symmetric whenever it applies, never longer than the weighted build: 0 of 38 changed tables grow, none at n<=3), no race; byte-identical to the former min over both builds on 426 programs. Parity, majority, and, or, at-least-2 and exactly-1 all 32.4% at n=4, 64.2% at n=6, 76.9% at n=7, 85.8% at n=8, 95.3% at n=10, 98.6% at n=12; a symmetric table with an ignored input 75.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
 [balance_growth]
 wall = "code is one command per line (RMSN) or line 1 only (compact; interpreter.py _parse), O(log m) bits per command; T table bits need m >= c*T/log T commands on one line or m lines, so area >= c*T**2/log**2 T (measured T**1.96 from n=10 to 12, 2026-10-29)"
+
+[ablations.balance_route]
+saving = 0.0
+arity = 8
+verdict = "kept: invariant, not a size trick. Native-width generators must carry a balance rule (tests/generators/test_balance_remaining.py; retiring it failed 4 tests). Measured: picks the one-command-per-line RMSN build 0.00% area on 200 random tables at n=4..8 and 20 at n=9..12, 0.0% on every named function at n=3..12; it changes only n<=2 (exhaustive: 4/4 at n=1, 16/16 at n=2, 80-83% of a trivial area), 0 of 256 at n=3. Cost: one min over two renders"

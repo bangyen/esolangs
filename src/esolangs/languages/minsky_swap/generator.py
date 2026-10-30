@@ -4,8 +4,8 @@ Each input is a run (``++`` or ``**``) then a stage ``~ ~ * +...+ *`` adding
 ``2**(n-1-i)`` to ``reg[1]``; a ``*`` then points at ``reg[1]`` and ``2**n``
 ``~``s route the index to one of two shared leaves.  A row is one ``~``, so
 no span shrinks; a symmetric table adds 1 an input and routes its n + 1
-counts instead ([ablations.symmetric_count]).  A ``width`` the program
-exceeds switches to RMSN, one command per line.
+counts instead ([ablations.symmetric_count]).  A ``width`` the program exceeds
+switches to RMSN, one command per line.
 
 Size:
     O(T): one ``~`` per row; n=8 random 1847: 1,460 chars, n=10 random 1847:
@@ -51,11 +51,9 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     # A symmetric table counts its inputs, one ``+`` each, into n + 1 rows
-    # ([ablations.symmetric_count]).
-    builds = [_cascade(*input_weights(truth_table, n))]
-    if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        builds.append(_cascade(*symmetric))
-    tokens, resolved = min(builds, key=lambda build: len(_render(*build)))
+    # ([ablations.symmetric_count]); never longer, so no race.
+    symmetric = symmetric_weights(truth_table, n)
+    tokens, resolved = _cascade(*(symmetric or input_weights(truth_table, n)))
     program = _render(tokens, resolved)
     if width is None or grid_width(program) <= width:
         return program
