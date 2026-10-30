@@ -55,12 +55,12 @@ class TestInject:
             assert all(v == 2 for v in counts.values()), (table, counts)
 
     def test_an_input_block_starts_empty(self) -> None:
-        """An empty block is two *adjacent* delimiters, with nothing between."""
+        """An empty block is two *adjacent* delimiters, after all executed code."""
         for n, table in ((1, "01"), (2, "0001"), (3, "01101001")):
             lines = boolean.inject(table).splitlines()
-            head = lines[: 2 * n]
-            assert all(head[2 * d] == head[2 * d + 1] for d in range(n))
-            assert len(set(head[::2])) == n
+            tail = lines[-2 * n :]
+            assert all(tail[2 * d] == tail[2 * d + 1] for d in range(n))
+            assert len(set(tail[::2])) == n
 
     def test_small_tree_uses_one_character_labels(self) -> None:
         """Inputs, branches, leaves, and constants share the short namespace."""

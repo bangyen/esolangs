@@ -98,9 +98,6 @@ ignored-input tables included).
       untried.  The page's sole example has no non-command.
     - Qoibl: right-associative chains (page silent; 3,064 differ);
       parenthesizing with `qe`..`qe` would do, size cost unmeasured.
-    - Inject: the pointer moves with resized text (1,724 differ); the
-      skip relies on block positions, so moving read blocks below the
-      code may not fit.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 

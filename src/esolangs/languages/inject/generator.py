@@ -132,12 +132,21 @@ def _tree(table: str, depth: int, n: int, names: _Names) -> list[str]:
     return walk(depth, 0)
 
 
-def _preamble(names: _Names, table_line: str) -> list[str]:
-    """Empty input blocks, the table ``t``, constants ``z``/``o``, then the reads."""
-    lines = [f"{name};\n{name};" for name in names.inputs]
-    lines += ["t;", table_line, "t;", "z;", "0", "z;", "o;", "1", "o;"]
-    lines += [f"readto {name}" for name in names.inputs]
-    return lines
+def _reads(names: _Names) -> list[str]:
+    """One ``readto`` per input."""
+    return [f"readto {name}" for name in names.inputs]
+
+
+def _data(names: _Names, table_line: str | None) -> list[str]:
+    """Table ``t`` (unless ``None``), constants ``z``/``o``, input blocks: inert tail.
+
+    Every block that ``readto``/``inject`` resizes sits after all executed
+    code, so the pointer is unaffected whether or not it moves with resized
+    text (the wiki is silent).
+    """
+    lines = [] if table_line is None else ["t;", table_line, "t;"]
+    lines += ["z;", "0", "z;", "o;", "1", "o;"]
+    return lines + [f"{name};\n{name};" for name in names.inputs]
 
 
 def _halve(names: _Names, halvings: list[tuple[int, str]]) -> list[str]:
@@ -197,7 +206,7 @@ def _inject_banded(truth_table: str, *, square: bool = False) -> str:
         low = min(m, (m + 4) // 2)
     high = m - low
     names = _Names(n)
-    lines = _preamble(names, "0")
+    lines = _reads(names)
 
     def walk(start: int, stop: int, level: int) -> None:
         if level == high:
@@ -220,7 +229,7 @@ def _inject_banded(truth_table: str, *, square: bool = False) -> str:
         [(1 << (m - d - 1), names.inputs[essential[d]]) for d in range(high, m)],
     )
     lines.append("send t")
-    return "\n".join(lines)
+    return "\n".join([*lines, *_data(names, "0")])
 
 
 def _inject_halving(truth_table: str) -> str:
@@ -232,12 +241,12 @@ def _inject_halving(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     weights, projected = input_weights(truth_table, n)
     names = _Names(n)
-    lines = _preamble(names, projected)
+    lines = _reads(names)
     lines += _halve(
         names, [(h, i) for h, i in zip(weights, names.inputs, strict=True) if h]
     )
     lines.append("send t")
-    return "\n".join(lines)
+    return "\n".join([*lines, *_data(names, projected)])
 
 
 def _inject_ordered(truth_table: str) -> str:
@@ -253,13 +262,9 @@ def _inject_ordered(truth_table: str) -> str:
     tail = [f"{escape};" for escape in names.escapes]
 
     # ``z`` is also every node's comparison operand; after the closes, so no
-    # escape lands inside the constants.
-    tail += ["z;", "0", "z;", "o;", "1", "o;"]
-
-    # The input blocks start empty: ``readto`` fills them, and an empty
-    # block is two adjacent delimiters.
-    head = [f"{name};\n{name};" for name in names.inputs]
-    return "\n".join([*head, *body, *tail])
+    # escape lands inside the constants.  The input blocks start empty:
+    # ``readto`` fills them.
+    return "\n".join([*body, *tail, *_data(names, None)])
 
 
 def _balance(table: str, default: str) -> str:

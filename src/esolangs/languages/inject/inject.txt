@@ -1,7 +1,3 @@
-a;
-a;
-b;
-b;
 readto a
 readto b
 skipq a z
@@ -27,3 +23,7 @@ z;
 o;
 1
 o;
+a;
+a;
+b;
+b;
