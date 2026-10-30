@@ -46,15 +46,10 @@ def _names() -> Iterator[str]:
 
 
 def object_disoriented(truth_table: str) -> str:
-    """Build an Object disoriented program printing ``truth_table[row]``.
-
-    The shared build is kept only when shorter, so no table grows.
-    """
+    """Build an Object disoriented program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
-    plain = _program(ids, n, {})
-    shared = _program(ids, n, _shared_names(ids, n))
-    return min(plain, shared, key=len)
+    return _program(ids, n, _shared_names(ids, n))
 
 
 def _body(
@@ -102,9 +97,8 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
     """Name each branch written as an object at least twice, when shorter.
 
     Top-down, so a use counts once per text the parent's body is written in;
-    a branch's own length is taken unshared (an estimate: the plain build
-    competes).  ``m`` uses of a ``c``-character body save
-    ``m (c + 5) - (c + |name| + 7) - m (|name| + 2)``.
+    a branch's own length is taken unshared (an estimate).  ``m`` uses of a
+    ``c``-character body save ``m (c + 5) - (c + |name| + 7) - m (|name| + 2)``.
     """
     plain = [dict[int, int]() for _ in ids]
     for depth in range(n, -1, -1):

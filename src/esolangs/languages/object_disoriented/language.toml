@@ -29,7 +29,7 @@ audited = "2026-10-19"
 [ablations.subtree_sharing]
 saving = 302.6
 arity = 12
-verdict = "kept: canonical, exempt. A branch written as an object at least twice becomes a class written once, named by an estimated cost model, and the shared build is kept only when shorter than the plain tree. Deleting it (the plain build) costs +138.4% at n=8, +217.4% at n=10 and +302.6% at n=12 on random tables; at n=12, parity +16,251.7%, half-constant +7,689.3%, majority +3,725.1%, sparse +314.5%, dense +302.2%; 0.00% on AND, OR and constant tables, where the shipped build names nothing"
+verdict = "kept: canonical, exempt. A branch written as an object at least twice becomes a class written once, named by an estimated cost model. Deleting it (the plain build) costs +138.4% at n=8, +217.4% at n=10 and +302.6% at n=12 on random tables; at n=12, parity +16,251.7%, half-constant +7,689.3%, majority +3,725.1%, sparse +314.5%, dense +302.2%; 0.00% on AND, OR and constant tables, where the shipped build names nothing"
 
 [ablations.halves_agree_skip]
 saving = -0.4
@@ -40,3 +40,11 @@ verdict = "removed 2026-10-20 (retirement candidate #28): a node whose halves ag
 saving = 0.0
 arity = 12
 verdict = "recorded: not a separable mechanism. A constant subtable's leaf spelling (read the remaining bytes, print the bit) is exactly the per-level descent summed (measured 2026-10-19, against the then-shipped skip), so removing the leaf case alone changed no length on any corpus (0.00% everywhere). It bites only jointly: the plain build (sharing, skip and fold removed) costs +480.5% at n=12 on random tables"
+
+[ablations.plain_or_shared_race]
+saving = 0.0
+arity = 10
+verdict = "retired 2026-10-29: `min(plain, shared)` kept the plain tree only when the shared build was longer. It never was: 0 of 60 random tables per arity n=2..8, 20 at n=9..10, 0 of 5,000/3,000/1,000 at n=5/6/7, 0 of all 65,536 n=4 tables and all n<=3 tables; every named function (parity, majority, AND, OR, 2-threshold and complements) n=2..10 picks shared. Race saving 0.000% of chars at every arity (balanced area identical: same text). The shipped build is shared only, byte-identical"
+
+[audits]
+plain_rewrite = 2026-10-29

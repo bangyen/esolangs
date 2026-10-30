@@ -1,4 +1,4 @@
-"""Object Disoriented's emitted characters: plain tree or shared classes."""
+"""Object Disoriented's emitted characters: shared classes."""
 
 from esolangs.languages.object_disoriented.generator import _HEADER
 
