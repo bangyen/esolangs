@@ -62,4 +62,5 @@ tables = 200
 verdict = "kept: the one-band lookup races the stacked one by area and wins every random table, 54.9% at n=7, 55.5% at n=8, 58.3% at n=10 -- the same on parity, and, or and majority, since a table's bits move no cell; it wins every two-or-more-essential table through n=3. The race is live: stacked wins on few essential inputs with many trailing ones, whose reads the band takes down a tall rail (62 of the probed projections; essential (0, 1) at n=9 is 1,848 cells against 2,120)"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
