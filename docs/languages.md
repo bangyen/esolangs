@@ -68,6 +68,7 @@ Languages that operate on a tape (similar to Turing machines).
 
 - [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/six_five/interpreter.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/back/interpreter.py))
+- [Basicfuck](https://esolangs.org/wiki/Basicfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/basicfuck/interpreter.py))
 - [Boolfuck](https://esolangs.org/wiki/Boolfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/boolfuck/interpreter.py))
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/brainif/interpreter.py))
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/languages/circlefuck/interpreter.py))

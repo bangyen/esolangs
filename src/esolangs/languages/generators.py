@@ -31,6 +31,8 @@ from esolangs.languages.balik.generator import LANGUAGE as _BALIK_LANGUAGE
 from esolangs.languages.balik.generator import balik
 from esolangs.languages.basicer.generator import LANGUAGE as _BASICER_LANGUAGE
 from esolangs.languages.basicer.generator import basicer
+from esolangs.languages.basicfuck.generator import LANGUAGE as _BASICFUCK_LANGUAGE
+from esolangs.languages.basicfuck.generator import basicfuck
 from esolangs.languages.befunge.generator import LANGUAGE as _BEFUNGE_LANGUAGE
 from esolangs.languages.befunge.generator import befunge
 from esolangs.languages.bfstack.generator import LANGUAGE as _BFSTACK_LANGUAGE
@@ -251,6 +253,7 @@ _LANGUAGES = (
     _BACK_LANGUAGE,
     _BALIK_LANGUAGE,
     _BASICER_LANGUAGE,
+    _BASICFUCK_LANGUAGE,
     _BEFUNGE_LANGUAGE,
     _BFSTACK_LANGUAGE,
     _BIT_TILDE_LANGUAGE,
@@ -360,6 +363,7 @@ __all__ = [
     "back",
     "balik",
     "basicer",
+    "basicfuck",
     "befunge",
     "bfstack",
     "bit_tilde",

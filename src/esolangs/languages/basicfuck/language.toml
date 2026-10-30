@@ -1,0 +1,40 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 2
+admitted = 2026-08-13T14:31:11-04:00
+
+[proof_status]
+labels = ["tree"]
+qualification = "each node tests its variable with if and if!, equal halves skip the test, a repeated subtree is a block entered through a flag, and marked leaves count in one cell"
+scaling = "linear: at most 14T + 16n + 43 characters: the plain tree"
+execution = "poly n: at most 5n + 55 commands: reads, two tests and a call a level, block tests"
+workspace = "poly n: at most 6n + 60 + bl(L) + bl(n) bits: digit cells, the answer, flags, counter"
+
+[generator_sizes]
+"00000001" = { commands = 12, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 10, "5" = 10, "6" = 11, "7" = 12 }, source_units = 131 }
+"00001100" = { commands = 9, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 10, "5" = 10, "6" = 9, "7" = 9 }, source_units = 119 }
+"00110110" = { commands = 13, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 12, "4" = 13, "5" = 14, "6" = 14, "7" = 13 }, source_units = 172 }
+"0110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 10, "2" = 10, "3" = 9 }, source_units = 129 }
+"01101001" = { commands = 14, commands_by_row = { "0" = 13, "1" = 14, "2" = 14, "3" = 13, "4" = 14, "5" = 13, "6" = 13, "7" = 14 }, source_units = 200 }
+"0110100110010110" = { commands = 20, commands_by_row = { "0" = 20, "1" = 21, "2" = 21, "3" = 20, "4" = 21, "5" = 20, "6" = 20, "7" = 21, "8" = 21, "9" = 20, "10" = 20, "11" = 21, "12" = 20, "13" = 21, "14" = 21, "15" = 20 }, source_units = 284 }
+"1101001101101101" = { commands = 18, commands_by_row = { "0" = 17, "1" = 17, "2" = 19, "3" = 18, "4" = 17, "5" = 17, "6" = 16, "7" = 16, "8" = 19, "9" = 18, "10" = 18, "11" = 19, "12" = 17, "13" = 17, "14" = 19, "15" = 18 }, source_units = 258 }
+"11111110" = { commands = 12, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 10, "5" = 10, "6" = 11, "7" = 12 }, source_units = 131 }
+
+[ablations]
+audited = "2026-10-29"
+
+[ablations.subtree_sharing]
+saving = 49.5
+arity = 12
+seed = "random.Random(184900 + n)"
+tables = 30
+verdict = "kept: canonical, exempt. A repeated subtree is a block entered through a flag when m * body > body + 5m + 9. 43.3% at n=10 and 49.5% at n=12 on random tables; parity 94.5% / 98.3% (789 chars against 14,283 at n=10); majority 83.6% / 93.7%; AND, OR, NAND and NOR 0.0% (no repeated subtree). Never larger than the plain tree on 253 tables, n=2..12"
+
+[ablations.complement_race]
+saving = 28.0
+arity = 10
+seed = "random.Random(184900 + n)"
+tables = 100
+verdict = "kept under the named-function rule: the complement's tree, counting down and closing with += 49, races the plain one. OR 410 -> 303 chars and NAND 411 -> 293 at n=10 (26-29%), NOR 303 and AND 293 already plain; parity and majority 0.0%; random tables 0.36% at n=10 and 0.25% at n=12"

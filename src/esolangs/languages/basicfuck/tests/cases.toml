@@ -1,0 +1,24 @@
+[[spec_triggers]]
+program = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\nif (a { a += 1; }"
+stdin = ""
+expect = "ProgramError"
+claim = "a statement missing its )"
+
+[[spec_triggers]]
+program = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\nread -> a;"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "read at EOF"
+
+[[spec_triggers]]
+program = "#basicfuck t=1 r=0~255 o=halt\n#allocate a\na -= 1;"
+stdin = ""
+expect = "HaltError"
+claim = "an underflow under o=halt"
+
+[[spec_triggers]]
+program = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\na += 65; write <- a;"
+stdin = ""
+expect = "output"
+output = "A"
+claim = "write prints the cell as a character"

@@ -1,0 +1,3 @@
+#basicfuck t=3 r=0~255 o=wrap
+#allocate a,b,c
+read->a;a-=48;read->b;b-=48;if(a){if(b){c+=1;}}c+=48;write<-c;

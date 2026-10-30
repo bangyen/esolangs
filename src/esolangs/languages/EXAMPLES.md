@@ -32,6 +32,7 @@ don't edit by hand.
 | `back/back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
 | `balik/balik.txt` | Balik | `0001` | `01` | 0 1 | '0' |
 | `basicer/basicer.txt` | BASICER | `0001` | `01` | 1 2 | '0\n' |
+| `basicfuck/basicfuck.txt` | Basicfuck | `0001` | `01` | 01 | '0' |
 | `befunge/befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
 | `bfstack/bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |
 | `bitdeque/bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
