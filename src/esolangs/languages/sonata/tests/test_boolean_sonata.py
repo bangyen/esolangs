@@ -19,3 +19,15 @@ def test_every_row_prints_its_answer(table: str) -> None:
         got = esolangs.run("Sonata", program, stdin=stdin, timeout=5)
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Sonata", got) == table[row], (table, row)
+
+
+def test_pair_table_prints_its_answer() -> None:
+    """Seven essential bits store a char per row pair (all four symbols)."""
+    table = "".join(f"{(r * 2654435761) >> 7 & 1}" for r in range(128))
+    program = esolangs.generate("Sonata", table)
+    assert "@#b_T0->=1" in program
+    for row in range(128):
+        bits = [(row >> (6 - i)) & 1 for i in range(7)]
+        stdin = esolangs.encode_inputs("Sonata", bits)
+        got = esolangs.run("Sonata", program, stdin=stdin, timeout=5)
+        assert esolangs.read_answer("Sonata", got) == table[row], row

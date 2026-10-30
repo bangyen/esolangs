@@ -29,6 +29,13 @@ seed = "named symmetric tables"
 tables = 5
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 counts them, one u a 1, and appends m + 1 entries, a rule, not a race: the count build is never longer (byte-identical to the former length race on all 65,812 tables n<=4 and 168 tables n=5..10). Parity, majority, and, or and exactly-2 all 11.3% at n=4, 32.3% at n=6, 48.2% at n=7, 64.5% at n=8, 87.3% at n=10; a symmetric table with an ignored input 47.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10"
 
+[ablations.pair_table]
+saving = 23.9
+arity = 8
+seed = "random.Random(184700 + n * 1000 + s), s < 200"
+tables = 200
+verdict = "kept: one char per row pair (0/1 for 00/11, a for 01 = the last bit, b for 10 = its negation), the last essential bit after the table, from m = 7 essential bits (m = 6: larger on 300 of 300). Random tables 11.3% at n=7, 23.9% at n=8; named symmetric tables 0.0% (they take the count build); one-ignored n=8 tables take it at m = 7. Never larger from m = 7. Executed: every row of 60 random n=7, 30 n=8, 3 n=9 tables, all 8 one-ignored n=8 shapes, and the named tables n=7..8; a wrong-table control fails. No balance (text)"
+
 [catalogue]
 folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @#c
 
