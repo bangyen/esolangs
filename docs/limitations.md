@@ -161,6 +161,14 @@ tried all overrun, which is evidence, not a proof that none exists:
   cells against 609: its `p p` returns to the cell it just wrote 74 times,
   a forward-only pass leaves `A` equal to the cell just written, and no row
   of `crazy` is constant, so it cannot bring the next cell to the same value.
+  Paths stay short because an unwritten cell jumps to `g(a) + 1`, which
+  permutes the pointer region 34..127 (cycles 1, 1, 2, 2, 7, 17, 64); once
+  it is written, a cell past 127 costs a walk up from 127.  Replaying the
+  BFS's memory states, the cheapest navigation with at most 1, 2, 3, 4
+  jumps per `goto` ends at 8,457, 6,876, 6,607, 6,558 at n=1 (6,965,
+  5,776, 5,548, 5,501 at n=16; unlimited reproduces the BFS exactly).
+  A rule must therefore jump about four times per `goto` at n=1, or write
+  the cells in a different order.
 - Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 13): each
   label's hub, then stub, takes the lowest address clear of the tables and
   the picks before it that a chain of at most five ops on a pointer-region

@@ -67,7 +67,10 @@ ignored-input tables included).
   and the short layout (`digits.py` `_short_layout`) are the repo's only
   table-independent searches ([limitations](limitations.md#searches-kept)).
   A closed-form navigation must end the main line below 6,561 at n=1; the
-  three tried end at 13,501.  The layout's cost is where navigation lands
+  three tried end at 13,501, and on the BFS's memory states no navigation
+  with at most three jumps per `goto` fits.  Reordering the label phase
+  (seed chains before the pointer priming, ~1,800 path cells of returns
+  past 127) is the open route.  The layout's cost is where navigation lands
   each walked cell, so a navigation rule comes first.
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
