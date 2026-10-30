@@ -59,7 +59,9 @@ def test_all_tables_up_to_three_inputs(n: int) -> None:
 def test_nodes_diverge_by_pointer_not_by_flag() -> None:
     """A tested input is one read and a pair of loops; an ignored one tests nothing."""
     tested = monotonic_boolfuck("0110")
-    assert tested.count("[") == 6  # three nodes
+    assert (
+        tested.count("[") == 4
+    )  # root node; bottom nodes: x prints bare, not x one pair
     ignored = monotonic_boolfuck("0011")  # depends on input 0 only
     assert ignored.count("[") == 2  # one node
     assert out(monotonic_boolfuck("0101"), "11") == "1"  # ignores the first input

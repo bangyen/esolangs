@@ -12,10 +12,12 @@ On ``x=0`` the first loop is skipped and ``>`` lands on the 1 at ``p+1``, so
 only the zero-subtree runs.  A leaf prints ``'0'``/``'1'`` (bits ``v 0 0 0 1
 1 0 0``) reading the 1 on its left.  A constant span is a leaf and an input
 whose halves are equal is consumed untested; both read the 1 on the entry
-cell's left, ``<`` then eight ``,`` a byte then ``>``.
+cell's left, ``<`` then eight ``,`` a byte then ``>``.  A node whose halves are
+the two different leaves prints bit 0 itself (``x`` or its negation, by one
+loop pair) and the shared ``0 0 0 1 1 0 0`` once.
 
 Size:
-    Linear in T = 2^n: worst 34T - 21 chars (parity); n=4 parity: 523 chars
+    Linear in T = 2^n: worst 53T/2 - 21 chars (parity, n >= 2); n=4 parity: 403 chars
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
@@ -25,6 +27,9 @@ from esolangs.registry._language import Language
 
 #: Read onto ``p``, then consume the byte's other seven bits on a set bit.
 _READ = ">1<,>,,,,,,,<"
+#: Leaves ``'0'`` and ``'1'`` differ only in bit 0: print ``x`` or its negation
+#: there, then the common ``0 0 0 1 1 0 0`` on the cells right of the 1 at ``p+1``.
+_PAIR = {0: ";>>;;;<;;>;;", 1: "[>>;]>[;>>];;;<<;;>>;;"}
 _LEAF = {0: ";;;;<;;>;;", 1: "<;>;;;<;;>;;"}
 
 
@@ -44,6 +49,8 @@ def monotonic_boolfuck(truth_table: str) -> str:
         if node < 2:
             return _consume(pending + n - depth) + _LEAF[node]
         zero, one = 2 * k, 2 * k + 1
+        if depth + 1 == n:  # two different leaves: print their shared byte once
+            return _consume(pending) + _READ + _PAIR[ids[n][zero]]
         if ids[depth + 1][zero] == ids[depth + 1][one]:
             return tree(depth + 1, zero, pending + 1)
         return (

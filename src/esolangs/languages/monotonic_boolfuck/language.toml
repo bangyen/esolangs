@@ -9,25 +9,30 @@ bf_derivative = true
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: worst 34T - 21 characters"
-execution = "poly n: worst 21n + 14 commands"
+scaling = "linear: worst 53T/2 - 21 characters past n = 1"
+execution = "poly n: worst 21n + 13 commands"
 workspace = "poly n: at most bl(L) + bl(4n + 2) + 2n·bl(2n) + 25 bits"
 
 [catalogue]
 sharing_exempt = "structured loops only, no names or jumps: code runs once per place it is written"
 
 [generator_sizes]
-"00000001" = { commands = 77, commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 63, "5" = 63, "6" = 74, "7" = 77 }, source_units = 141 }
+"00000001" = { commands = 69, commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 63, "5" = 63, "6" = 69, "7" = 69 }, source_units = 121 }
 "00001100" = { commands = 64, commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 65, "5" = 65, "6" = 64, "7" = 64 }, source_units = 118 }
-"00110110" = { commands = 75, commands_by_row = { "0" = 62, "1" = 62, "2" = 65, "3" = 65, "4" = 73, "5" = 76, "6" = 76, "7" = 75 }, source_units = 203 }
-"0110" = { commands = 54, commands_by_row = { "0" = 52, "1" = 55, "2" = 55, "3" = 54 }, source_units = 115 }
-"01101001" = { commands = 77, commands_by_row = { "0" = 72, "1" = 75, "2" = 75, "3" = 74, "4" = 75, "5" = 74, "6" = 74, "7" = 77 }, source_units = 251 }
-"0110100110010110" = { commands = 96, commands_by_row = { "0" = 92, "1" = 95, "2" = 95, "3" = 94, "4" = 95, "5" = 94, "6" = 94, "7" = 97, "8" = 95, "9" = 94, "10" = 94, "11" = 97, "12" = 94, "13" = 97, "14" = 97, "15" = 96 }, source_units = 523 }
-"1101001101101101" = { commands = 98, commands_by_row = { "0" = 84, "1" = 84, "2" = 93, "3" = 96, "4" = 83, "5" = 83, "6" = 86, "7" = 86, "8" = 93, "9" = 96, "10" = 96, "11" = 95, "12" = 86, "13" = 86, "14" = 95, "15" = 98 }, source_units = 429 }
-"11111110" = { commands = 75, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 65, "5" = 65, "6" = 76, "7" = 75 }, source_units = 145 }
+"00110110" = { commands = 76, commands_by_row = { "0" = 62, "1" = 62, "2" = 65, "3" = 65, "4" = 68, "5" = 68, "6" = 76, "7" = 76 }, source_units = 173 }
+"0110" = { commands = 55, commands_by_row = { "0" = 47, "1" = 47, "2" = 55, "3" = 55 }, source_units = 85 }
+"01101001" = { commands = 69, commands_by_row = { "0" = 67, "1" = 67, "2" = 75, "3" = 75, "4" = 75, "5" = 75, "6" = 69, "7" = 69 }, source_units = 191 }
+"0110100110010110" = { commands = 97, commands_by_row = { "0" = 87, "1" = 87, "2" = 95, "3" = 95, "4" = 95, "5" = 95, "6" = 89, "7" = 89, "8" = 95, "9" = 95, "10" = 89, "11" = 89, "12" = 89, "13" = 89, "14" = 97, "15" = 97 }, source_units = 403 }
+"1101001101101101" = { commands = 90, commands_by_row = { "0" = 84, "1" = 84, "2" = 88, "3" = 88, "4" = 83, "5" = 83, "6" = 86, "7" = 86, "8" = 88, "9" = 88, "10" = 96, "11" = 96, "12" = 86, "13" = 86, "14" = 90, "15" = 90 }, source_units = 359 }
+"11111110" = { commands = 76, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 65, "5" = 65, "6" = 76, "7" = 76 }, source_units = 135 }
 
 [ablations]
 audited = "2026-10-29"
+
+[ablations.pair_leaf]
+saving = 13.2
+arity = 8
+verdict = "kept: a node whose halves are the two different leaves prints bit 0 (x, or its negation by [>>;]>[;>>]) and the common 0 0 0 1 1 0 0 once, 25 / 35 characters instead of 45. Total emitted size falls 13.1% / 13.2% at n=7/8 on 200 seeded random tables (seeds 1234+n; 13.0% / 13.4% on 50), parity 22.2% / 22.1%, majority 14.5% / 13.9%, threshold-3 13.1% / 11.8%, and 4.7% / 3.9% on AND, 4.6% / 3.8% on OR; every row of every changed program run at n<=8 (all 2^2^n tables at n<=3), a wrong table fails"
 
 [audits]
 blind_reimplementation = 2026-10-29
