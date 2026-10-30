@@ -20,13 +20,13 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
 
     three = [format(value, "08b") for value in range(256)]
     assert boolean.unlambda("01101001") == (
-        "``@`d`k``s``?0i`d`@`d`k``s``?0ii``?1i`d`@`d`k``s``?0i`d`.1v``?1i`d`.0v"
-        "``?1i`d`@`d`k``s``?1ii``?0i`d`@`d`k``s``?0i`d`.1v``?1i`d`.0v"
-        "`d`@`d`k``s``?0i`d`.0v``?1i`d`.1v"
+        "``@`d`k``s``?0i`d`@`d`k``s``?1ii``?0i`d`@`d`k`|``si`kv"
+        "``?1i`d`@`d`k``s``?0ii``?1i`d`@`d`k`|``si`kv"
+        "`d`@`d`k``s``?0i``s.1e.0"
     )
     for tables, before, after in (
-        (three, 41074, 32522),
-        (five_input_sample(), 144722, 100963),
+        (three, 41074, 28115),
+        (five_input_sample(), 144722, 91017),
     ):
         plain = [len(unlambda_plain(table)) for table in tables]
         shared = [len(boolean.unlambda(table)) for table in tables]

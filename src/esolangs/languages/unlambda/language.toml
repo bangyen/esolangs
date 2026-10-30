@@ -16,14 +16,14 @@ workspace = "T log T: at most 16(P + n·S) + (3n+9)bl(3n+9) + 9 + bl(n) bits: a 
 definitions = ["P = the program's leaves, each k and s counted twice", "S = the same count for its largest X in an @-node's `N`dX"]
 
 [generator_sizes]
-"00000001" = { commands = 243, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 243, "7" = 243 }, source_units = 113 }
+"00000001" = { commands = 217, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 217, "7" = 217 }, source_units = 97 }
 "00001100" = { commands = 192, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 192, "7" = 192 }, source_units = 96 }
-"00110110" = { commands = 243, commands_by_row = { "0" = 192, "1" = 192, "2" = 192, "3" = 192, "4" = 243, "5" = 243, "6" = 243, "7" = 243 }, source_units = 161 }
-"0110" = { commands = 166, commands_by_row = { "0" = 166, "1" = 166, "2" = 166, "3" = 166 }, source_units = 87 }
-"01101001" = { commands = 243, commands_by_row = { "0" = 243, "1" = 243, "2" = 243, "3" = 243, "4" = 243, "5" = 243, "6" = 243, "7" = 243 }, source_units = 163 }
-"0110100110010110" = { commands = 320, commands_by_row = { "0" = 320, "1" = 320, "2" = 320, "3" = 320, "4" = 320, "5" = 320, "6" = 320, "7" = 320, "8" = 320, "9" = 320, "10" = 320, "11" = 320, "12" = 320, "13" = 320, "14" = 320, "15" = 320 }, source_units = 315 }
-"1101001101101101" = { commands = 320, commands_by_row = { "0" = 269, "1" = 269, "2" = 320, "3" = 320, "4" = 269, "5" = 269, "6" = 269, "7" = 269, "8" = 320, "9" = 320, "10" = 320, "11" = 320, "12" = 269, "13" = 269, "14" = 320, "15" = 320 }, source_units = 274 }
-"11111110" = { commands = 243, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 243, "7" = 243 }, source_units = 113 }
+"00110110" = { commands = 227, commands_by_row = { "0" = 192, "1" = 192, "2" = 192, "3" = 192, "4" = 217, "5" = 217, "6" = 227, "7" = 227 }, source_units = 136 }
+"0110" = { commands = 150, commands_by_row = { "0" = 140, "1" = 140, "2" = 152, "3" = 150 }, source_units = 62 }
+"01101001" = { commands = 217, commands_by_row = { "0" = 217, "1" = 217, "2" = 222, "3" = 227, "4" = 229, "5" = 227, "6" = 217, "7" = 217 }, source_units = 122 }
+"0110100110010110" = { commands = 304, commands_by_row = { "0" = 294, "1" = 294, "2" = 290, "3" = 304, "4" = 297, "5" = 304, "6" = 294, "7" = 294, "8" = 297, "9" = 304, "10" = 294, "11" = 294, "12" = 294, "13" = 294, "14" = 304, "15" = 304 }, source_units = 242 }
+"1101001101101101" = { commands = 294, commands_by_row = { "0" = 269, "1" = 269, "2" = 294, "3" = 294, "4" = 269, "5" = 269, "6" = 269, "7" = 269, "8" = 294, "9" = 294, "10" = 302, "11" = 304, "12" = 269, "13" = 269, "14" = 294, "15" = 294 }, source_units = 233 }
+"11111110" = { commands = 227, commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 227, "7" = 227 }, source_units = 104 }
 
 [formula_arities]
 execution = [3, 7]
@@ -46,5 +46,11 @@ saving = 1.9
 arity = 12
 verdict = "kept: bound races every repeated subtree within reach and keeps the shortest binding. Taking the first candidate instead costs +1.84 / +1.83 / +1.87% on random tables at n=8/10/12, but +51.64 / +50.26 / +70.04% on majority and +24.70 / +16.45 / +14.93% on threshold-3. The race takes a min over a superset, so it cannot lose. Its comment figures reproduce under the share-of-the-first-candidate reading (majority 34.1 / 33.4% at n=8/10 against the claimed 33-34%)"
 
+[ablations.leaf_pair]
+saving = 10.0
+arity = 8
+verdict = "kept 2026-10-30 (named-function clause, as Nandypants read_ladder): a last-level node over leaves 0 and 1 is the echo `|``si`kv (13 chars with the read, against ~31); over 1 and 0 it is ``s``?0i``s.1e.0 (print 1 and exit on a 0 read, else print 0; the exit is safe because that read is the last). 200 seeded random tables (Random(1000n+s)): chars fall 10.13% at n=7 (408,679 -> 367,266), 9.98% at n=8 (820,997 -> 739,058), 9.92% at n=9; parity 21.04 / 20.81 / 20.36%, majority 9.63 / 10.13 / 9.16%, threshold-3 9.21 / 8.59 / 7.69%, and/or 4.64 / 3.83 / 3.22% (a fixed 16 chars) at n=7 / 8 / 9; 0 of 600 random tables grew. Executed through esolangs.run: every row of every table at n<=3 (2,120 rows), of the five named functions and of 50 random tables at n=7 and n=8; the wrong-table control (or program against the and table) fails on 6 rows"
+
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29

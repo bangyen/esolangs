@@ -10,7 +10,7 @@ each node binds the one within ``_REACH`` levels that shortens it most, if
 any does, and a bound node's subtree sees only its own share.
 
 Size:
-    ~4x per two inputs, ``and`` ~n**2; n=10 random 1847: 16,977 chars.
+    ~4x per two inputs, ``and`` ~n**2; n=10 random 1847: 15,159 chars.
 
 Decisions:
     Inline halves read twice a level (arguments evaluate first); ``?1``
@@ -49,6 +49,12 @@ _FORCE_BOUND = "``si`kv"
 #: How many levels below a node a bound subtree may sit; bounds the candidates
 #: per node (2**4) so the build visits O(T) nodes.
 _REACH = 4
+#: A last-level node over leaves ``0`` and ``1`` is the input itself: ``|``
+#: hands ``.c`` for the character read; ``s i (k v)`` prints it and keeps ``v``.
+_ECHO = "`|``si`kv"
+#: Over ``1`` and ``0`` it is the complement: on a ``0`` read print ``1`` and
+#: exit (safe, the read is the last), else print ``0``.
+_NOT = "``s``?0i``s.1e.0"
 #: One ``?`` test and one promise wrapper.
 _TEST = "``?{}i"
 _PROMISE = "`d"
@@ -84,6 +90,8 @@ def unlambda(truth_table: str) -> str:
     def node(key: int, share: int | None) -> str:
         zero, one = halves[key]
         level = level_of[key] + 1
+        if level == n and zero + one == 1:
+            return _OPEN + (_ECHO if zero == 0 else _NOT)
         if zero == one:
             # Halves agree: read, then run the one half.
             return _OPEN + (_FORCE_BOUND if zero == share else tree(level, zero, share))
