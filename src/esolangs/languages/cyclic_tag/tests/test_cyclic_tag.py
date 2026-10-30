@@ -2,7 +2,12 @@
 
 import pytest
 
-from esolangs.generation.helpers import TEMPLATE_CHAR, essential_inputs, fill_runs
+from esolangs.generation.helpers import (
+    TEMPLATE_CHAR,
+    essential_inputs,
+    fill_runs,
+    read_at,
+)
 from esolangs.languages.cyclic_tag.generator import cyclic_tag
 from esolangs.languages.cyclic_tag.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -14,10 +19,13 @@ def test_all_three_input_tables() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
             template = cyclic_tag(table)
-            # limitations.md: 5 * 2**m + 2n + 1 for m essential inputs, else
-            # n + 2 for a constant; an ignored input's rule is empty.
-            m = len(essential_inputs(table, n))
-            size = n + 2 if len(set(table)) == 1 else 5 * 2**m + 2 * n + 1
+            # 2 * 2**m + 2n + 2 plus a 0 per 0 row for m essential inputs
+            # (worst 3 * 2**m + 2n + 1), else n + 2 for a constant; an ignored
+            # input's rule is empty.
+            essential = essential_inputs(table, n)
+            m = len(essential)
+            zeros = read_at(table, essential, n).count("0")
+            size = n + 2 if len(set(table)) == 1 else 2 * 2**m + 2 * n + 2 + zeros
             assert len(template) == size, table
             for row in range(1 << n):
                 bits = [int(c) for c in f"{row:0{n}b}"]

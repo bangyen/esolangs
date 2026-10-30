@@ -4,18 +4,18 @@ Each step deletes the queue's first bit and, if it was 1, appends the
 current production; the production pointer advances either way.  The queue
 is the inputs, then a marker ``1``:
 
-- Production i belongs to input i: a 1 appends two ``0`` per unit of the
-  input's weight, so the queue gains 2 * row zeros.
+- Production i belongs to input i: a 1 appends one ``0`` per unit of the
+  input's weight, so the queue gains ``row`` zeros.
 - The marker meets production n, ``1``, re-appends itself, then meets its
-  row's production, which appends the answer; the empty next production lets
-  the queue run dry, and the last deleted bit is the answer.
+  row's production: empty for a 1 (the marker is the last bit deleted),
+  ``0`` for a 0 (the appended 0 is).  The queue then runs dry.
 
-``0110`` on row 2 is ``0000;00;1;0;;1;;1;;0;,101``.  A constant table is one
-empty production: the inputs are deleted unread, then the literal answer.
+``0110`` on row 2 is ``00;0;1;0;;;0,101``.  A constant table is one empty
+production: the inputs are deleted unread, then the literal answer.
 
 Size:
-    About 5T chars, two productions per row, none shared (a rule runs once a
-    cycle); n=10 random 1847: 5,141 chars, n=16 and: 327,713 chars.
+    About 3T chars, one production per row, none shared (a rule runs once a
+    cycle); n=8 and: 785 chars, n=16 and: 196,641 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -43,10 +43,11 @@ def _program(truth_table: str) -> str:
         return "," + TEMPLATE_CHAR * n + truth_table[0]
     # An ignored input's rule is empty: its symbol is deleted unread.
     weights, table = input_weights(truth_table, n)
-    rules = ["0" * (2 * weight) for weight in weights]
+    rules = ["0" * weight for weight in weights]
     rules.append("1")
-    for answer in table:
-        rules.extend((answer, ""))  # the answer, then an empty rule to delete it
+    # The marker is the last bit deleted when its row's rule is empty (a 1);
+    # a 0 appends one 0 that is deleted last.
+    rules.extend("" if answer == "1" else "0" for answer in table)
     return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
 
 

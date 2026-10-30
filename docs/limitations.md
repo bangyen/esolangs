@@ -912,21 +912,22 @@ lower bound; three stay out under the scaling rule:
   final-deleted-bit answer. Serialize productions with semicolons, then a comma
   and the initial queue; preserve empty productions and require at least one.
 
-  For T = 2**n, productions i = 0..n-1 append 2**(n-i) zeros; production n
-  appends `1`. The remaining 2T productions alternate table bits with empty
-  productions. Initial data embeds the n ordered bits with uniform `0`/`1` fills,
-  then `1`. For row r, the inputs leave 2r zeros before a new sentinel; those
-  zeros skip 2r productions, and the sentinel appends table[r]. The next empty
-  production consumes the answer and halts.
+  For T = 2**n, productions i = 0..n-1 append 2**(n-1-i) zeros; production n
+  appends `1`. The remaining T productions are empty for a 1 and `0` for a 0.
+  Initial data embeds the n ordered bits with uniform `0`/`1` fills, then `1`.
+  For row r, the inputs leave r zeros before a new sentinel; those zeros skip
+  r productions, and the sentinel meets row r's: empty, so the sentinel is
+  the last bit deleted (1), or `0`, which is deleted last. The queue runs dry.
 
-  A non-constant table's source is exactly 5 * 2^m + 2n + 1 characters for
-  m essential inputs (5T + 2n + 1 when all are) and execution takes
-  n + 3 + 2r steps; a constant table's source is n + 2.
-  Emission writes 2(T-1) padding zeros and 2T table productions without
+  A non-constant table's source is exactly 2 * 2^m + 2n + 2 + z characters for
+  m essential inputs and z zeros in the reduced table (at most 3T + 2n + 1
+  when all are essential) and execution takes at most n + 3 + r steps; a
+  constant table's source is n + 2.
+  Emission writes T-1 padding zeros and T table productions without
   search: O(T) build work. Tests execute 309 tables and 3,352 rows,
   exhaustive through three inputs, then constants, parity and eight seeded
   random tables per arity four through six; probes sampled through n=14
-  reach at most 81,949 characters and 32,783 steps. Published evolution,
+  reach at most 49,181 characters and 16,400 steps. Published evolution,
   zero-no-append, empty-data, empty-rule and nontermination controls passed.
 
 - Emmental (43) is implemented elsewhere and fails the backlink gate;

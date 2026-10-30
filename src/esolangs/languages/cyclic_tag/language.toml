@@ -7,19 +7,19 @@ backlinks = 91
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it"
-scaling = "linear: worst 5T + 2n + 1 characters, weighted padding"
-execution = "linear: worst 2T + n + 1 steps: n input rules, 2 per row, 3 closers"
-workspace = "linear: worst 16T + 1 + bl(2T+n) bits: a queue of up to 2T - 1 bits"
+scaling = "linear: worst 3T + 2n + 1 characters, weighted padding"
+execution = "linear: worst T + n + 2 steps: n input rules, 1 per row, 3 closers"
+workspace = "linear: worst 8T + 9 + bl(T+n) bits: a queue of up to T + 1 bits"
 
 [generator_sizes]
-"00000001" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
-"00001100" = { commands = 12, commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 8, "4" = 10, "5" = 10, "6" = 12, "7" = 12 }, source_units = 27 }
-"00110110" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
-"0110" = { commands = 11, commands_by_row = { "0" = 5, "1" = 7, "2" = 9, "3" = 11 }, source_units = 25 }
-"01101001" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
-"0110100110010110" = { commands = 37, commands_by_row = { "0" = 7, "1" = 9, "2" = 11, "3" = 13, "4" = 15, "5" = 17, "6" = 19, "7" = 21, "8" = 23, "9" = 25, "10" = 27, "11" = 29, "12" = 31, "13" = 33, "14" = 35, "15" = 37 }, source_units = 89 }
-"1101001101101101" = { commands = 37, commands_by_row = { "0" = 7, "1" = 9, "2" = 11, "3" = 13, "4" = 15, "5" = 17, "6" = 19, "7" = 21, "8" = 23, "9" = 25, "10" = 27, "11" = 29, "12" = 31, "13" = 33, "14" = 35, "15" = 37 }, source_units = 89 }
-"11111110" = { commands = 20, commands_by_row = { "0" = 6, "1" = 8, "2" = 10, "3" = 12, "4" = 14, "5" = 16, "6" = 18, "7" = 20 }, source_units = 47 }
+"00000001" = { commands = 12, commands_by_row = { "0" = 6, "1" = 7, "2" = 8, "3" = 9, "4" = 10, "5" = 11, "6" = 12, "7" = 12 }, source_units = 31 }
+"00001100" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 7, "3" = 7, "4" = 7, "5" = 7, "6" = 9, "7" = 9 }, source_units = 19 }
+"00110110" = { commands = 13, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 10, "5" = 10, "6" = 11, "7" = 13 }, source_units = 28 }
+"0110" = { commands = 8, commands_by_row = { "0" = 5, "1" = 5, "2" = 6, "3" = 8 }, source_units = 16 }
+"01101001" = { commands = 12, commands_by_row = { "0" = 6, "1" = 6, "2" = 7, "3" = 9, "4" = 9, "5" = 11, "6" = 12, "7" = 12 }, source_units = 28 }
+"0110100110010110" = { commands = 22, commands_by_row = { "0" = 7, "1" = 7, "2" = 8, "3" = 10, "4" = 10, "5" = 12, "6" = 13, "7" = 13, "8" = 14, "9" = 16, "10" = 17, "11" = 17, "12" = 19, "13" = 19, "14" = 20, "15" = 22 }, source_units = 50 }
+"1101001101101101" = { commands = 21, commands_by_row = { "0" = 6, "1" = 7, "2" = 9, "3" = 9, "4" = 11, "5" = 12, "6" = 12, "7" = 13, "8" = 15, "9" = 15, "10" = 16, "11" = 18, "12" = 18, "13" = 19, "14" = 21, "15" = 21 }, source_units = 48 }
+"11111110" = { commands = 13, commands_by_row = { "0" = 5, "1" = 6, "2" = 7, "3" = 8, "4" = 9, "5" = 10, "6" = 11, "7" = 13 }, source_units = 25 }
 
 [catalogue]
 folding_constant_local = "_program"  # empty production deletes inputs and a literal bit
@@ -31,14 +31,22 @@ folds_without_tree = true
 audited = "2026-10-29"
 
 [ablations.input_projection]
-saving = 99.76
+saving = 99.49
 arity = 12
-verdict = "kept: canonical, exempt. input_weights gives an ignored input weight 0 (an empty rule, its symbol deleted unread) and reads the answers off the reduced table, so the walk is sized by the essential inputs alone. Building with full positional weights and the full answer list instead costs 0.00% wherever every input is essential (the programs are identical), and on its class at n=10/12: one ignored input +99.19 / +99.76%, two +295.16 / +298.54%, three +677.76 / +693.23%"
+verdict = "kept: canonical, exempt. input_weights gives an ignored input weight 0 (an empty rule, its symbol deleted unread) and reads the answers off the reduced table, so the walk is sized by the essential inputs alone. Building with full positional weights and the full answer list instead costs 0.00% wherever every input is essential (the programs are identical), and on its class at n=10/12: one ignored input +98.31 / +99.49%, two +290.13 / +297.02%, three +654.71 / +686.04%"
 
 [ablations.constant_root]
-saving = 114.29
+saving = 107.14
 arity = 12
-verdict = "kept: canonical, exempt. A constant table is one empty production and the literal answer (n + 2 chars): the inputs are deleted unread. Taking the general walk instead costs +116.67% at n=10 and +114.29% at n=12 on constant tables, and jointly with the projection removed +42,741.67 / +146,364.29% (the full walk over a table with no essential inputs). Every other class measures 0.00%: the size is a function of n and the essential count alone (5,141 chars at n=10, 20,505 at n=12 when all inputs are essential), so the plain build is the shipped build there"
+verdict = "kept: canonical, exempt. A constant table is one empty production and the literal answer (n + 2 chars): the inputs are deleted unread. Taking the general walk instead costs +108.33% at n=10 and +107.14% at n=12 on the constant 0 table (+100.00% on the constant 1), and jointly with the projection removed +25,683.33 / +87,857.14% (the full walk over a table with no essential inputs). Every other class measures 0.00%: the size is a function of n and the essential count alone (2,570 chars at n=10, 10,255 at n=12 when all inputs are essential), so the plain build is the shipped build there"
+
+[ablations.single_stride]
+saving = 49.2
+arity = 8
+seed = "77+n"
+tables = 200
+verdict = "kept: one production a row and one zero a unit of weight, where the old build spent two of each. A row's production is empty for a 1 (the marker is then the last bit deleted) and `0` for a 0 (it appends the 0 that is deleted last), so no empty rule follows the answer. Total characters on 200 seeded random tables fall 46.2% at n=5, 47.9% at n=6, 48.7% at n=7, 49.2% at n=8; at n=8 parity 49.3%, and 39.5%, or 59.1%, majority 46.6%, threshold-3 56.3%; balance=True at n=8 (20 tables) 48.8%. Every row of those 200 tables at n=5..8, the named functions at n=7..8 and 30 tables at each n<=4 executed through the interpreter; a one-bit wrong table fails. Steps 2T+n+1 become T+n+2"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29
