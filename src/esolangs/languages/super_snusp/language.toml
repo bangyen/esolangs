@@ -46,3 +46,13 @@ verdict = "kept: five fixed short forms at n=2 reuse 48 to decode each input and
 saving = 48.3
 arity = 12
 verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (48.3% at n=12 on the one-ignored corpus, 0.00% on random tables). The packed build itself -- one * per entry plus one ) per one entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and were not priced"
+
+[ablations.polarity_rule]
+saving = 45.2
+arity = 10
+seed = "random.Random(1)"
+tables = 20
+verdict = "kept as a rule (not a race): mark the rarer value, encode with 49 ^ bit when ones outnumber zeros, against always marking ones. Random tables fail the bar (chars 0.8-1.7% n=3..8 over 40 tables, 1.1% n=9/10 over 20; balanced area 0.0-5.1%), but the rule clears it on a named family: or / nand 37.1% chars, 33.4% area at n=8 and 45.2% / 43.2% at n=10; threshold-2 35.2% / 29.1% n=8, 44.6% / 43.2% n=10; complement of majority 11.8% / 10.8% n=8, 13.4% / 15.2% n=10; parity, majority, and, nor and the other complements 0.00%. Never larger; no race, one count. Plain-rewrite audit 2026-10-29: no other bespoke trick (input_projection, two_input_short_forms recorded above; folds are balance layouts); n<=3 exhaustive and n<=7 random and named tables executed on both builds (340 tables), control fails; generator unchanged"
+
+[audits]
+plain_rewrite = 2026-10-29
