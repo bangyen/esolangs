@@ -52,4 +52,5 @@ arity = 4
 verdict = "recorded: the comment's routing-race example (0100010011111111 at 1345 vs 1371) half reproduces — 1371 is the shipped essential routing exactly, but 1345 arises under no flag combination of the current emitter; full routing measures 1,763 on this table, so the example's direction has reversed. The race itself is a rejected variant, not shipped, and was not priced. See the stale-figures entry F22"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
