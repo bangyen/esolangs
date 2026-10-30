@@ -23,4 +23,12 @@ workspace = "poly n: worst n + 275 bits"
 "11111110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10 }, source_units = 111 }
 
 [ablations]
-audited = "2026-10-27"
+audited = "2026-10-29"
+
+[ablations.fall_through]
+saving = 4.6
+arity = 8
+verdict = "kept as a one-pass layout rule, not a race, on the named family: a block falls through to its unplaced one-child, saving its `1 3 c` jump line. Plain-rewrite audit 2026-10-29 (20-40 random tables per n, Random(n); plain build = every block ends in a jump to its one-child, same sharing): random 15.2% / 12.9% / 6.5% / 5.6% / 4.6% at n=2 / 4 / 6 / 7 / 8 (fails 10% on random); n=8 parity 2.3%, majority 9.7%, and 17.7%, or 18.5%, thr2 13.2%, complements equal (clears 10% on and/or/threshold); steps 12-14% fewer over random tables (under the 25% run clause); no ignored-input, constant or sharing code beyond subtree_ids; no race, no alternate build"
+
+[audits]
+plain_rewrite = 2026-10-29
