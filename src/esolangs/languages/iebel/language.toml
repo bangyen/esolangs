@@ -31,5 +31,6 @@ arity = 8
 verdict = "kept as a per-level greedy rule, not a race, replacing the one-child fall-through (4.6% at n=8): every block falls into one still-unclaimed child, either polarity (`2 1 Z` jumps on 0, `2 3 O` on 1), one-child blocks first, so each block is the fall target of at most one. Measured against the previous generator over Random(n), 200 tables: random 14.3% / 18.7% / 16.9% at n=4 / 7 / 8 (40 tables at n=4), 15.7% / 16.5% / 17.6% at n=9 / 10 / 11 (12 / 6 / 3 tables); n=8 parity 27.8%, majority 22.3%, and 19.5%, or 19.9%, thr2 13.1% (n=7: 27.1 / 20.4 / 18.8 / 19.3 / 12.9). Every row of every table run: all tables n<=3, the 400 random tables at n=7..8 and the named ones; a wrong-table program fails the check. A maximum matching per level (augmenting paths, 40 tables) saves 0.9 points more at n=7 and loses 0.2 at n=8, so the greedy stays. No ignored-input, constant or sharing code beyond subtree_ids (every input is read in order); no race, no alternate build"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
