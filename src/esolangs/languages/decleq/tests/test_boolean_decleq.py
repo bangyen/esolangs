@@ -83,10 +83,14 @@ class TestDecleq:
             assert run_decleq(program, [str(b) for b in bits]) == table[combo]
 
     def test_untaken_jumps_target_zero(self) -> None:
-        """A jump no run can take is spelt ``0``, not the next address."""
+        """A jump no run can take is spelt ``0``; I/O targets the next address.
+
+        I/O falls through here but jumps to ``c`` in SUBBIG's reading.
+        """
         cells = [int(tok) for tok in boolean.decleq("01101001").split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
-        assert [c for a, _b, c in instrs if a == -1] == [0, 0, 0]  # the reads
+        io = [(3 * i, c) for i, (a, _b, c) in enumerate(instrs) if a in (-1, -2)]
+        assert io == [(3, 6), (9, 12), (21, 24), (24, 27), (27, 30)]
         for rc in (17, 18, 19):  # each chain, then its one branch
             assert instrs.count([rc, rc, 0]) == 47
 

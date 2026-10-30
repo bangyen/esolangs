@@ -9,7 +9,7 @@ All n inputs are read; only essential ones pay the normalization.
 
 Size:
     O(T) cells, O(n) steps: one three-cell branch per distinct subtree,
-    one three-cell jump per entry reached; n=10 random 1847: 7,587 chars.
+    one three-cell jump per entry reached; n=10 random 1847: 7,598 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -31,14 +31,14 @@ __all__ = ["decleq"]
 
 # Fixed low-memory layout. Cells 0-2 hold the entry instruction ``0 0 code``;
 # every unconditional decrement targets cell 0, whose value never triggers a
-# branch. Cells 3-14 hold two print gadgets, each a ``-2 K 0`` decrement pair
+# branch. Cells 3-14 hold two print gadgets, each a ``-2 K next`` decrement pair
 # followed by a ``0 0 END`` terminator; a constant subtree reaches a gadget by
 # jumping to its address (11110000 needs one branch).
 # Cells 15-16 hold the print constants; cells 17 onward hold the per-input
 # read cells.
-_OUT_ZERO = 3  # print-"0" gadget: ``-2 k48 0``
+_OUT_ZERO = 3  # print-"0" gadget: ``-2 k48 6``
 _HALT = 6  # halt: ``0 0 END`` of the first gadget, jumping one past memory
-_OUT_ONE = 9  # print-"1" gadget: ``-2 k49 0``
+_OUT_ONE = 9  # print-"1" gadget: ``-2 k49 12``
 _K48 = 15  # constant 48 (ASCII "0"), the print-"0" gadget's operand
 _K49 = 16  # constant 49 (ASCII "1"), the print-"1" gadget's operand
 _READ_BASE = 17  # input i is read at ``_READ_BASE + i``
@@ -85,7 +85,7 @@ class _CodeBuilder:
 
     def build(self) -> str:
         """Emit the full program and return it as a space-separated string."""
-        self.mem = [0, 0, self.code, -2, _K48, 0, 0, 0, 0, -2, _K49, 0, 0, 0, 0]
+        self.mem = [0, 0, self.code, -2, _K48, 6, 0, 0, 0, -2, _K49, 12, 0, 0, 0]
         pad = self.code - _READ_BASE
         self.mem += [_ASCII_ZERO, _ASCII_ONE] + [0] * pad
         self._emit_preamble()
@@ -107,9 +107,10 @@ class _CodeBuilder:
         return len(self.mem)
 
     def _emit_preamble(self) -> None:
-        # A read falls through and these decrements never reach 0: target 0.
+        # These decrements never reach 0: target 0.  I/O targets the next
+        # instruction, so SUBBIG's jump-to-c reading runs the same program.
         for rc in self.read_cells:
-            self.emit(-1, rc, 0)
+            self.emit(-1, rc, self.pc() + 3)
         for i in self.routes:
             for _ in range(47):
                 self.emit(self.read_cells[i], self.read_cells[i], 0)

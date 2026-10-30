@@ -19,7 +19,9 @@ Decisions:
     * The page is ten lines and names no halt: its optional I/O ("Memory-mapped
       I/O: It is optional / -2 b c Outputs b / -1 b c Set b to user input") is
       implemented, falling through where SUBBIG, whose assembly the example
-      uses, jumps to ``c``.
+      uses, jumps to ``c``.  Generated I/O sets ``c`` to the next
+      instruction, so both readings run it (a clean room taking SUBBIG's
+      looped on every row, 2026-10-30).
     * The pointer halts off the end of the store as it has grown (not of the
       source).  A read out of range is zero; a write past the end grows the
       store; a negative write indexes from the right (an error is the other
