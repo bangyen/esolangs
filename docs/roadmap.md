@@ -115,20 +115,6 @@ MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode, Suffolk, Super SNUSP,
 SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- BLIND-REIMPLEMENTATIONS:END -->
-- **Docstring reimplementation of first implementations:** the blind round
-  again, the clean room given the page plus our interpreter docstring; a
-  remaining corpus diff is a decision the docstring does not state.  Pilot
-  (the seven largest first-round gaps): six agree on all 3,080 rows as
-  written, Suffolk after its docstring stopped reading as one `,`
-  swallowing all input (3,072 rows).  Record one as
-  `[audits] docstring_reimplementation = <date>`.
-
-<!-- DOCSTRING-REIMPLEMENTATIONS:START -->
-
-7 of the 91 first implementations: CARP, Circuit Diagram, Fackward, ROTfuck,
-Smu, Streetcode, Suffolk.
-
-<!-- DOCSTRING-REIMPLEMENTATIONS:END -->
 - **Trick prototypes:** one agent a generator searches for one admissible
   size trick (CONTRIBUTING's bar, a rule, executed with a control) and
   ships it or records the near miss.  The zero-trick pilot shipped four of

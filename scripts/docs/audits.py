@@ -1,13 +1,13 @@
 """Load the one-off audit dates from each language package's ``language.toml``.
 
-``[audits]`` records when a language passed an audit the roadmap tracks:
+``[audits]`` records when a language passed a one-off audit:
 ``plain_rewrite`` (every bespoke trick priced against the plain
 construction), ``blind_reimplementation`` (a clean-room interpreter
-from the wiki page, diffed over the generated corpus) and
+from the wiki page, diffed over the generated corpus),
 ``docstring_reimplementation`` (the same, from the page plus the
-interpreter docstring) and ``trick_prototype`` (a generator searched for one
-admissible size trick, shipped or not).  A package with no ``[audits]``
-section has passed none.
+interpreter docstring; a spot check, not a round) and ``trick_prototype``
+(a generator searched for one admissible size trick, shipped or not).  A
+package with no ``[audits]`` section has passed none.
 """
 
 from __future__ import annotations
