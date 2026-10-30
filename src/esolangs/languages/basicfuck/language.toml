@@ -40,5 +40,6 @@ tables = "30 random at n<=8, 20 at n=9..10; parity, majority, and, or, thr3 with
 verdict = "replaced by a rule, 2026-10-30: the race (min of the plain tree and the complement's, counting down and closing with += 49) saved 0.72% on 200 random tables at n=8, 0.46% at n=10, but 26-29% on OR and NAND at n=10 (410 -> 303, 411 -> 293). Per the bar's named-function clause the race goes and a rule for that family stays: build the complement when ones outnumber zeros. The rule keeps every named gain (OR, NAND, thr2 662 -> 563, thr3 853 -> 779) except !majority at n=9 (859 vs 852), and saves 0.48% at n=8, 0.36% at n=10 on random; it builds one tree instead of two"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
