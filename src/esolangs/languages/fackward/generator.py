@@ -10,9 +10,9 @@ the character it reads, or its complement ([ablations.last_level_forms]).
 Each function is released one pass before it runs, so nothing fires early.
 
 Size:
-    At most 45T/2 - 31 chars (reached) without equal halves, O(n) for a constant;
-    repeated subtables are copied; 40n - 28 steps at most; n=10 parity:
-    22,241 chars, n=10 random 1847: 19,531 chars.
+    At most 43T/2 - 29 chars (reached) without equal halves, O(n) for a constant;
+    repeated subtables are copied; 38n - 26 steps at most; n=10 parity:
+    21,219 chars, n=10 random 1847: 18,655 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table
@@ -22,8 +22,13 @@ from esolangs.registry._language import Language
 
 
 def _node(zero: str, one: str) -> str:
-    """A level choosing ``zero``'s or ``one``'s contents by the bit read."""
-    return f")[/~[[$~[)[[!))[]])][{one}][{zero}]~])])49])]"
+    """A level choosing ``zero``'s or ``one``'s contents by the bit read.
+
+    The dispatch padding is ``[!~)]``, not ``[!))[]]``: 2 of 34 template
+    chars, 4.2-4.4% at n=4..8 on random tables, parity 4.6%, and/or 3.0% at
+    n=8; executed through the interpreter on 322 full programs.
+    """
+    return f")[/~[[$~[)[[!~)])][{one}][{zero}]~])])49])]"
 
 
 def _skip(child: str) -> str:

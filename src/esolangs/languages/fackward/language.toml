@@ -8,19 +8,19 @@ admitted = 2026-10-15T15:50:46-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a level is a block whose quiet pass reads the bit; `/ c 49` makes it 0 or 1, that many `~` swap the two child blocks, `!` drops one and `)` runs the other; equal halves fold"
-scaling = "linear: worst 45T/2 - 31 characters past n = 1: block per node"
-execution = "poly n: worst 40n - 28 steps: 40 a level, the last printing what it reads"
+scaling = "linear: worst 43T/2 - 29 characters past n = 1: block per node"
+execution = "poly n: worst 38n - 26 steps: 38 a level, the last printing what it reads"
 workspace = "linear: worst 159T - 225 + bl(n) bits past n = 1: the two stacks hold the program's tokens"
 
 [generator_sizes]
-"00000001" = { commands = 91, commands_by_row = { "0" = 60, "1" = 60, "2" = 60, "3" = 60, "4" = 92, "5" = 92, "6" = 91, "7" = 91 }, source_units = 105 }
-"00001100" = { commands = 92, commands_by_row = { "0" = 60, "1" = 60, "2" = 60, "3" = 60, "4" = 92, "5" = 92, "6" = 92, "7" = 92 }, source_units = 108 }
-"00110110" = { commands = 92, commands_by_row = { "0" = 92, "1" = 92, "2" = 92, "3" = 92, "4" = 91, "5" = 91, "6" = 92, "7" = 92 }, source_units = 144 }
-"0110" = { commands = 52, commands_by_row = { "0" = 51, "1" = 51, "2" = 52, "3" = 52 }, source_units = 56 }
-"01101001" = { commands = 91, commands_by_row = { "0" = 91, "1" = 91, "2" = 92, "3" = 92, "4" = 92, "5" = 92, "6" = 91, "7" = 91 }, source_units = 143 }
-"0110100110010110" = { commands = 132, commands_by_row = { "0" = 131, "1" = 131, "2" = 132, "3" = 132, "4" = 132, "5" = 132, "6" = 131, "7" = 131, "8" = 132, "9" = 132, "10" = 131, "11" = 131, "12" = 131, "13" = 131, "14" = 132, "15" = 132 }, source_units = 317 }
-"1101001101101101" = { commands = 131, commands_by_row = { "0" = 132, "1" = 132, "2" = 131, "3" = 131, "4" = 132, "5" = 132, "6" = 132, "7" = 132, "8" = 131, "9" = 131, "10" = 132, "11" = 132, "12" = 132, "13" = 132, "14" = 131, "15" = 131 }, source_units = 314 }
-"11111110" = { commands = 92, commands_by_row = { "0" = 60, "1" = 60, "2" = 60, "3" = 60, "4" = 92, "5" = 92, "6" = 92, "7" = 92 }, source_units = 110 }
+"00000001" = { commands = 87, commands_by_row = { "0" = 58, "1" = 58, "2" = 58, "3" = 58, "4" = 88, "5" = 88, "6" = 87, "7" = 87 }, source_units = 101 }
+"00001100" = { commands = 88, commands_by_row = { "0" = 58, "1" = 58, "2" = 58, "3" = 58, "4" = 88, "5" = 88, "6" = 88, "7" = 88 }, source_units = 104 }
+"00110110" = { commands = 88, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 87, "5" = 87, "6" = 88, "7" = 88 }, source_units = 138 }
+"0110" = { commands = 50, commands_by_row = { "0" = 49, "1" = 49, "2" = 50, "3" = 50 }, source_units = 54 }
+"01101001" = { commands = 87, commands_by_row = { "0" = 87, "1" = 87, "2" = 88, "3" = 88, "4" = 88, "5" = 88, "6" = 87, "7" = 87 }, source_units = 137 }
+"0110100110010110" = { commands = 126, commands_by_row = { "0" = 125, "1" = 125, "2" = 126, "3" = 126, "4" = 126, "5" = 126, "6" = 125, "7" = 125, "8" = 126, "9" = 126, "10" = 125, "11" = 125, "12" = 125, "13" = 125, "14" = 126, "15" = 126 }, source_units = 303 }
+"1101001101101101" = { commands = 125, commands_by_row = { "0" = 126, "1" = 126, "2" = 125, "3" = 125, "4" = 126, "5" = 126, "6" = 126, "7" = 126, "8" = 125, "9" = 125, "10" = 126, "11" = 126, "12" = 126, "13" = 126, "14" = 125, "15" = 125 }, source_units = 300 }
+"11111110" = { commands = 88, commands_by_row = { "0" = 58, "1" = 58, "2" = 58, "3" = 58, "4" = 88, "5" = 88, "6" = 88, "7" = 88 }, source_units = 106 }
 
 [catalogue]
 sharing_exempt = "a block nests its subtrees, so a repeated subtable is copied"
@@ -46,3 +46,4 @@ verdict = "kept: a last level with leaves 01 prints the character it reads, )[[H
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+trick_prototype = 2026-10-30
