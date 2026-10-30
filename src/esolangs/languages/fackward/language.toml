@@ -43,4 +43,5 @@ tables = 200
 verdict = "kept: a last level with leaves 01 prints the character it reads, )[[H])], and with 10 prints 2352 / c, )[2352/[H])], against the 37-char node and two 3-char leaves: 28.2% on random tables at n=4, 25.7% at n=5..6, 25.4% at n=7, 8, 10 and 12 (20 tables at 12), flat; parity 41.4%, majority 22.1%, and 6.6% at n=8. Exhaustive n<=3: 254 tables change, none grows, every changed program executed; random samples executed at n=4..10. Re-audited 2026-10-29 (20 random tables per n, balanced area side^2 at n<=8): random chars 27.0 / 26.3 / 26.0 / 25.7 / 25.4 / 25.6 / 25.5% at n=4..10, area 27.8 / 25.6 / 25.1 / 25.4 / 25.3% at n=4..8; parity 41.2%, majority 21.5%, and/or 4.8%, thr3 15.6% at n=10 (complements 4.1-18.2%); 552 builds n<=3 execute, control fails. The only bespoke trick; the equal-halves skip is canonical and the memo changes no emitted char"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
