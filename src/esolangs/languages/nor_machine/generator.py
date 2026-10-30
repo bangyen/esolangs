@@ -9,13 +9,14 @@ chooses ``V`` or ``V >> h``.  The low bit of what is left is printed by the
 lone final ``V``.  Straight-line code, run once: it never loops.
 
 Size:
-    9T + 12r + 12n^2 + 93n - 20 chars for r runs of true rows, every
-    input essential, n >= 2; n=4 parity: 748 chars
+    8T + O(r + n^2) chars for r runs of true rows, every input essential;
+    n=4 parity: 653 chars
 
 Decisions:
     Horner holds ``~V`` through each run of 1s ([ablations.complement_runs]),
-    and the smear shares its rotations with the half-shift
-    ([ablations.shared_rotations]).
+    the smear shares its rotations with the half-shift
+    ([ablations.shared_rotations]), and with every input essential the
+    constants wait until after Horner ([ablations.late_constants]).
 
     An ignored input is absorbed as ``1 = nor(nor(x, 1), 0)``: ``x`` is 0
     or 1, so ``nor(x, 1)`` is -2 for both.
@@ -110,17 +111,22 @@ def nor_machine(truth_table: str) -> str:
     essential = essential_inputs(truth_table, n)
     table = read_at(truth_table, essential, n)
     q = _Queue(n)
-    # 0 = nor(~x, x) and 1 = nor(-1 << 1, 0) from the first input.
+    # 0 = nor(~x, x) from the first input.
     c = q.dup("x0")
     c_b = q.dup(c)
     zero = q.nor(q.dup(c), q.nor(c, c_b))
-    ones = q.nor(q.dup(zero), q.dup(zero))
-    q.unary("L", ones, ones)
-    one = q.nor(ones, q.dup(zero))
-    for i in range(n):
-        if i not in essential:
-            # nor(x, 1) is -2 for x in {0, 1}, and nor(-2, 0) is 1.
-            one = q.nor(q.nor(f"x{i}", one), q.dup(zero))
+    # With every input essential no 1 is needed until the mux, so none rides
+    # the queue through the T Horner shifts and the smear passes.
+    lean = len(essential) == n
+    one = ""
+    if not lean:
+        # 1 = nor(-1 << 1, 0).
+        ones = q.nor(q.dup(zero), q.dup(zero))
+        q.unary("L", ones, ones)
+        one = q.nor(ones, q.dup(zero))
+        for i in range(n):
+            if i not in essential:
+                one = q.nor(q.nor(f"x{i}", one), q.dup(zero))
     packed = f"x{essential[-1]}" if essential else ""
     for i in reversed(essential[:-1]):
         q.shift("L", packed, 1)
@@ -134,7 +140,14 @@ def nor_machine(truth_table: str) -> str:
         q.unary("L", v, v)
     if inverted:
         v = q.inv(v)
-    low = q.inv(one)  # -2: NOR with it keeps bit 0 of the complement
+    if lean:
+        # -2 from packed: nor(p, ~p) is 0, ~0 is -1, and one shift gives -2.
+        p0 = q.dup(packed)
+        minus_one = q.inv(q.nor(p0, q.inv(q.dup(p0))))
+        q.unary("L", minus_one, minus_one)
+        low = minus_one
+    else:
+        low = q.inv(one)  # -2: NOR with it keeps bit 0 of the complement
     for level in range(1, len(essential) + 1):
         h = len(table) >> level
         bit = q.dup(packed) if level < len(essential) else packed

@@ -14,7 +14,7 @@ folds_without_tree = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer built by Horner's rule; each essential bit, smeared over a half-width mask, keeps V or V >> h by NORs, and the lone final V prints the low bit"
-scaling = "linear: 9T + 12r + O(n^2) characters for r runs of 1s"
+scaling = "linear: 8T + O(r + n^2) characters for r runs of 1s"
 execution = "linear: at most 15T + 12n^2 + 93n - 20 commands past n = 1, each run once"
 workspace = "linear: at most 3T + 4n + bl(L) + 24 bits: V, its copy and three half-width masks"
 
@@ -29,14 +29,14 @@ tables = "20 random and 20 with a random proper subset of inputs essential, n=8 
 verdict = "kept: a table ignoring inputs packs only the essential-input table; 76.7% at n=8 and 88.0% at n=10 on those tables, 0.0% on random ones"
 
 [generator_sizes]
-"00000001" = { commands = 451, commands_by_row = { "0" = 451, "1" = 451, "2" = 451, "3" = 451, "4" = 451, "5" = 451, "6" = 451, "7" = 451 }, source_units = 451 }
+"00000001" = { commands = 402, commands_by_row = { "0" = 402, "1" = 402, "2" = 402, "3" = 402, "4" = 402, "5" = 402, "6" = 402, "7" = 402 }, source_units = 402 }
 "00001100" = { commands = 293, commands_by_row = { "0" = 293, "1" = 293, "2" = 293, "3" = 293, "4" = 293, "5" = 293, "6" = 293, "7" = 293 }, source_units = 293 }
-"00110110" = { commands = 463, commands_by_row = { "0" = 463, "1" = 463, "2" = 463, "3" = 463, "4" = 463, "5" = 463, "6" = 463, "7" = 463 }, source_units = 463 }
-"0110" = { commands = 262, commands_by_row = { "0" = 262, "1" = 262, "2" = 262, "3" = 262 }, source_units = 262 }
-"01101001" = { commands = 475, commands_by_row = { "0" = 475, "1" = 475, "2" = 475, "3" = 475, "4" = 475, "5" = 475, "6" = 475, "7" = 475 }, source_units = 475 }
-"0110100110010110" = { commands = 748, commands_by_row = { "0" = 748, "1" = 748, "2" = 748, "3" = 748, "4" = 748, "5" = 748, "6" = 748, "7" = 748, "8" = 748, "9" = 748, "10" = 748, "11" = 748, "12" = 748, "13" = 748, "14" = 748, "15" = 748 }, source_units = 748 }
-"1101001101101101" = { commands = 760, commands_by_row = { "0" = 760, "1" = 760, "2" = 760, "3" = 760, "4" = 760, "5" = 760, "6" = 760, "7" = 760, "8" = 760, "9" = 760, "10" = 760, "11" = 760, "12" = 760, "13" = 760, "14" = 760, "15" = 760 }, source_units = 760 }
-"11111110" = { commands = 451, commands_by_row = { "0" = 451, "1" = 451, "2" = 451, "3" = 451, "4" = 451, "5" = 451, "6" = 451, "7" = 451 }, source_units = 451 }
+"00110110" = { commands = 410, commands_by_row = { "0" = 410, "1" = 410, "2" = 410, "3" = 410, "4" = 410, "5" = 410, "6" = 410, "7" = 410 }, source_units = 410 }
+"0110" = { commands = 239, commands_by_row = { "0" = 239, "1" = 239, "2" = 239, "3" = 239 }, source_units = 239 }
+"01101001" = { commands = 418, commands_by_row = { "0" = 418, "1" = 418, "2" = 418, "3" = 418, "4" = 418, "5" = 418, "6" = 418, "7" = 418 }, source_units = 418 }
+"0110100110010110" = { commands = 653, commands_by_row = { "0" = 653, "1" = 653, "2" = 653, "3" = 653, "4" = 653, "5" = 653, "6" = 653, "7" = 653, "8" = 653, "9" = 653, "10" = 653, "11" = 653, "12" = 653, "13" = 653, "14" = 653, "15" = 653 }, source_units = 653 }
+"1101001101101101" = { commands = 661, commands_by_row = { "0" = 661, "1" = 661, "2" = 661, "3" = 661, "4" = 661, "5" = 661, "6" = 661, "7" = 661, "8" = 661, "9" = 661, "10" = 661, "11" = 661, "12" = 661, "13" = 661, "14" = 661, "15" = 661 }, source_units = 661 }
+"11111110" = { commands = 402, commands_by_row = { "0" = 402, "1" = 402, "2" = 402, "3" = 402, "4" = 402, "5" = 402, "6" = 402, "7" = 402 }, source_units = 402 }
 
 [ablations.complement_runs]
 saving = 46.7
@@ -51,6 +51,13 @@ arity = 12
 seed = 0
 tables = "n=12 parity, all ones but the last row, and n=8 random"
 verdict = "kept: each level's h - 1 smear shifts ride the h half-shifts on one pass round the queue, not a pass each; 22.3% on parity and 28.9% on all ones but the last row at n=12, about 17% on random tables at n=8; plain-rewrite audit 2026-10-29 against separate smear and half-shift passes: random 17.7% (n=7, 200 tables), 22.3% (n=8, 100), 26.1% (n=9) and 28.7% (n=10) in chars, 17.3/22.1/26.0/28.7% in balanced area; n=8 parity 21.4%, majority 23.8%, or 25.7%"
+
+[ablations.late_constants]
+saving = 15.0
+arity = 9
+seed = 2026
+tables = "random n=7 (200), n=8 (100), n=9 (30); n=7..9 parity, and, or, majority, threshold 3"
+verdict = "kept: with every input essential the 1 and -2 are built from the packed integer after Horner, so the queue holds two values through the T shifts and the smear passes, not three or four; random 13.9% (n=7), 14.5% (n=8), 15.0% (n=9) in chars, 13.9/14.4/15.0% in balanced area; n=8 parity 15.4%, majority 12.9%, and/or 10.7%, threshold 12.0%; n=9 16.2/13.3/10.7/11.8%; share rises with n"
 
 [audits]
 blind_reimplementation = 2026-10-30
