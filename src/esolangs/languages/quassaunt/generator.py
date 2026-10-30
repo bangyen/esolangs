@@ -4,16 +4,17 @@ Every distinct subtable's code is stored once, as a one-string set in a
 global ``[id]``, and a node runs a child by obtaining it and turning the
 set back into its string (the wiki's ``@@ %%Swap @@ %%Swap @@
 %%Concatenateall``, here as ``@@?@@?@@[id]?%%Obtain?@@?%%Concatenateall``).
-A branching node pushes its 1-child's code, the set ``{2, c}`` of the
-character it reads, its 0-child's code and ``{1}``: ``{1}`` is a proper
-subset only when ``c`` is ``1``, so ``%%Ifpropersubset`` runs the right
-child.  A node whose halves agree, and a constant subtable's chain, reads
+A branching node pushes the two children's names as one-word strings,
+the set ``{c}`` of the character it reads, and ``[one]`` (``{1}``):
+``%%Ifdisjoint`` runs the 0-child's name when ``c`` is ``0`` -- the
+chosen name is then obtained, so one ``_code`` dance serves both children.
+A node whose halves agree, and a constant subtable's chain, reads
 its bit into a local and runs its child with ``%%Evaluatereplace``.
 Names are ``subtree_ids`` ids, the chains ``z<depth>``/``o<depth>``.
 
 Size:
     O(T) size and build time: at most T - 1 diagram nodes and 2n chain
-    nodes; n=10 random 1847: 51,591 chars, n=10 parity: 4,296 chars.
+    nodes; n=10 random 1847: 41,645 chars, n=10 parity: 3,502 chars.
 """
 
 from math import isqrt
@@ -42,6 +43,7 @@ def quassaunt(truth_table: str) -> str:
 
     # Reachable nodes; stored code is only looked up when it runs.
     nodes: dict[str, str] = {}
+    branching = False
     frontier = {0}
     for depth in range(n + 1):
         below: set[int] = set()
@@ -60,15 +62,18 @@ def quassaunt(truth_table: str) -> str:
                 below.add(zero)
             else:
                 body = (
-                    f"{_code(name(depth + 1, one))}?@@2?%%Inputchar?%%Empty?"
-                    f"%%Makecontain?%%Makecontain?{_code(name(depth + 1, zero))}?"
-                    "@@1?%%Empty?%%Makecontain?%%Ifpropersubset"
+                    f"@@?@@?@@@@[{name(depth + 1, zero)}]?"
+                    "%%Inputchar?%%Empty?%%Makecontain?"
+                    f"@@@@[{name(depth + 1, one)}]?@@[one]?%%Obtain?"
+                    "%%Ifdisjoint?%%Obtain?@@?%%Concatenateall?%%Evaluatereplace"
                 )
+                branching = True
                 below |= {zero, one}
             nodes[here] = f"@@[{here}] @@{body} %%Empty %%Makecontain %%Store"
         frontier = below
     start = _code(name(0, 0)).replace("?", " ") + " %%Evaluate"
-    return " ".join([*nodes.values(), start])
+    shared = ["@@[one] @@1 %%Empty %%Makecontain %%Store"] * branching
+    return " ".join([*nodes.values(), *shared, start])
 
 
 def _cut(word: str, limit: int) -> list[str]:

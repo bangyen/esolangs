@@ -15,7 +15,9 @@ from tests.proofs._diagram_bounds import (
 )
 
 #: Empty-name lengths of a ``_code`` push, a chain/equal node, a branch, a leaf.
-_CODE, _EQUAL, _BRANCH, _LEAF = 39, 140, 211, 57
+_CODE, _EQUAL, _BRANCH, _LEAF = 39, 140, 167, 57
+#: The ``[one]`` definition and its space, present once any node branches.
+_ONE = 42
 
 
 def _bound(n: int) -> int:
@@ -31,7 +33,7 @@ def _bound(n: int) -> int:
     """
     branching, equal, constants, top = profile(n)
     name = [1 + len(str(k)) for k in range(n + 1)]
-    total = _CODE + len(str(top[0])) + 11 + 2 * (_LEAF + name[n] + 1)
+    total = _ONE + _CODE + len(str(top[0])) + 11 + 2 * (_LEAF + name[n] + 1)
     for k in range(n):
         nodes = branching[k] + equal[k]
         total += _BRANCH * branching[k] + _EQUAL * (equal[k] + constants[k])

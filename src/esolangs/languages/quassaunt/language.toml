@@ -7,21 +7,21 @@ admitted = 2026-10-15T12:24:04-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched"
+qualification = "each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {c} against the stored {1} with `%%Ifdisjoint` to pick a child's name, then obtains that code once; equal halves and constant chains read their bits unbranched"
 scaling = "linear: worst F characters, n = 3..21; at most beyond"
-execution = "linear: worst 5N + 21n + 9 steps: five a stored node, 21 a level"
-workspace = "linear: worst 16L - 328D - 8r + 32w + bl(5D+6) + bl(n) + 2490 bits past n = 2: frames"
-definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "D = the program's definitions", "r = the root name's length", "w = the longest name, max(digits(D+1), 1+digits(n))"]
+execution = "linear: worst 5N + 15n + 14 steps: five a stored node, 15 a level"
+workspace = "linear: worst 16L - 328D - 8r + 8W + bl(5D+6) + bl(n) - 302 bits past n = 2: frames"
+definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "D = the program's definitions", "r = the root name's length", "W = the longest word's characters"]
 
 [generator_sizes]
-"00000001" = { commands = 107, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 107, "7" = 107 }, source_units = 1110 }
-"00001100" = { commands = 98, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 98, "7" = 98 }, source_units = 1039 }
-"00110110" = { commands = 117, commands_by_row = { "0" = 108, "1" = 108, "2" = 108, "3" = 108, "4" = 117, "5" = 117, "6" = 117, "7" = 117 }, source_units = 1542 }
-"0110" = { commands = 76, commands_by_row = { "0" = 76, "1" = 76, "2" = 76, "3" = 76 }, source_units = 820 }
-"01101001" = { commands = 107, commands_by_row = { "0" = 107, "1" = 107, "2" = 107, "3" = 107, "4" = 107, "5" = 107, "6" = 107, "7" = 107 }, source_units = 1250 }
-"0110100110010110" = { commands = 138, commands_by_row = { "0" = 138, "1" = 138, "2" = 138, "3" = 138, "4" = 138, "5" = 138, "6" = 138, "7" = 138, "8" = 138, "9" = 138, "10" = 138, "11" = 138, "12" = 138, "13" = 138, "14" = 138, "15" = 138 }, source_units = 1680 }
-"1101001101101101" = { commands = 153, commands_by_row = { "0" = 144, "1" = 144, "2" = 153, "3" = 153, "4" = 144, "5" = 144, "6" = 144, "7" = 144, "8" = 153, "9" = 153, "10" = 153, "11" = 153, "12" = 144, "13" = 144, "14" = 153, "15" = 153 }, source_units = 2188 }
-"11111110" = { commands = 107, commands_by_row = { "0" = 89, "1" = 89, "2" = 89, "3" = 89, "4" = 98, "5" = 98, "6" = 107, "7" = 107 }, source_units = 1110 }
+"00000001" = { commands = 94, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 91, "5" = 91, "6" = 94, "7" = 94 }, source_units = 1020 }
+"00001100" = { commands = 91, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 91, "5" = 91, "6" = 91, "7" = 91 }, source_units = 993 }
+"00110110" = { commands = 104, commands_by_row = { "0" = 101, "1" = 101, "2" = 101, "3" = 101, "4" = 104, "5" = 104, "6" = 104, "7" = 104 }, source_units = 1364 }
+"0110" = { commands = 69, commands_by_row = { "0" = 69, "1" = 69, "2" = 69, "3" = 69 }, source_units = 730 }
+"01101001" = { commands = 94, commands_by_row = { "0" = 94, "1" = 94, "2" = 94, "3" = 94, "4" = 94, "5" = 94, "6" = 94, "7" = 94 }, source_units = 1072 }
+"0110100110010110" = { commands = 119, commands_by_row = { "0" = 119, "1" = 119, "2" = 119, "3" = 119, "4" = 119, "5" = 119, "6" = 119, "7" = 119, "8" = 119, "9" = 119, "10" = 119, "11" = 119, "12" = 119, "13" = 119, "14" = 119, "15" = 119 }, source_units = 1414 }
+"1101001101101101" = { commands = 134, commands_by_row = { "0" = 131, "1" = 131, "2" = 134, "3" = 134, "4" = 131, "5" = 131, "6" = 131, "7" = 131, "8" = 134, "9" = 134, "10" = 134, "11" = 134, "12" = 131, "13" = 131, "14" = 134, "15" = 134 }, source_units = 1878 }
+"11111110" = { commands = 94, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 91, "5" = 91, "6" = 94, "7" = 94 }, source_units = 1020 }
 
 [ablations]
 audited = "2026-10-19"
@@ -35,6 +35,13 @@ verdict = "kept: canonical, exempt. Every distinct subtable is stored once under
 saving = 0.9
 arity = 12
 verdict = "kept: canonical, exempt. A node whose halves agree (or whose subtable is constant) takes a chain body that reads the input and evaluates the one child; it is also how an ignored input is absorbed, there being no separate projection step. Deleting the collapse costs +3.32 / +1.71 / +0.92% on random tables at n=8/10/12, but +45.91 / +46.74 / +47.31% on constant tables and +9.25 / +8.24 / +7.41% on majority"
+
+[ablations.disjoint_branch]
+saving = 18.5
+arity = 8
+seed = "random.Random(1000 * n + s)"
+tables = 20
+verdict = "kept: a branch pushes the two children's names, {c} and a stored {1} and tests with %%Ifdisjoint, then obtains the chosen code once, where it pushed both bodies and {2, c} for %%Ifpropersubset. Reverting costs +21.5% / +22.7% / +23.4% chars on random tables at n=7/8/9 (204,251 / 344,281 / 596,346 against 168,131 / 280,529 / 483,138) and the saving is 10-18% on parity, and, or, majority, threshold-2 at n=8 (3,418 / 2,915 / 5,523 / 4,219 against 2,800 / 2,605 / 4,685 / 3,645). Every n<=9 row of parity, and, or, majority, threshold-2, constants and 3 random tables executes and matches its table, a wrong table fails; balanced area -3.4..34.7% on random n=3..9, named -3.4..21.5% at n=8."
 
 [ablations.balance_cut]
 saving = 0.0
