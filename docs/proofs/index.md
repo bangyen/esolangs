@@ -422,6 +422,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Pilas | tree | — | linear: at most 38T characters: one 27-command node per branch | poly n: worst 46n + 21 commands | poly n: at most 3n + 24 bits |
 | Pointless | tree | each distinct subtable is one function, pasted in where that is shorter; `,=` maps a character to its bit through the cells 48 and 49, and `[` tests the bit's cell; the one `!` seeds the 1s that make `+` an increment | linear: at most F characters: every function declared | poly n: worst 26n + 309 steps past n = 2: setup 6n + 305, 16 a level | poly n: at most (n+1)(2bl(L)+4) + 16n + 430 bits: a frame a level, the tape |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: worst T+64n+64 characters: T-1 bit literal, 64 an input | poly n: worst n + 2 commands, one statement per input | linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1 |
+| Qrain | tree | each input byte is read onto its own queue and tested in place by a flag-dispatched decision tree; repeated residuals defer through level flags; the first byte splits into a test bit and a fixed seven-bit tail that completes the answer byte | linear: at most 29T + 10n + 25 characters: the plain tree | poly n: at most 36n + 60 commands: reads, split, one tree path, print | poly n: at most bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10 bits: queues, indices, flags |
 | Quassaunt | tree | each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {2, c} against {1} with `%%Ifpropersubset`; equal halves and constant chains read their bits unbranched | linear: worst F characters, n = 3..21; at most beyond | linear: worst 5N + 21n + 9 steps: five a stored node, 21 a level | linear: worst 16L - 328D - 8r + 32w + bl(5D+6) + bl(n) + 2490 bits past n = 2: frames |
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out | linear: at most C characters: tokens per distinct subtable | poly n: worst n^2 + 8n + 5 commands, one root-to-leaf path | poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits past n = 2, S the token count |
 | ROTfuck | finite lookup | every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count | linear: worst P characters, n = 2..10: a lone zero | linear: worst 8T² + 43T + 15n - 5 commands for n = 2..6: a lone zero second to last | linear: worst W bits for n = 2..6, at most V after: 2T + 7 cells |
@@ -555,7 +556,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 109 theoretical totality arguments and
+Accordingly, this ledger records 110 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

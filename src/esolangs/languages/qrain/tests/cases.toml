@@ -1,0 +1,28 @@
+language = "Qrain"
+oldid = 198382
+
+[[spec_triggers]]
+program = "["
+stdin = ""
+expect = "ProgramError"
+claim = "unmatched brackets"
+
+[[spec_triggers]]
+program = "-"
+stdin = ""
+expect = "HaltError"
+claim = "dequeuing an empty queue is an error"
+
+[[spec_triggers]]
+program = ",."
+stdin = "A"
+expect = "output"
+output = "A"
+claim = "a byte enqueues low bit first and prints when eight bits reach the output queue"
+
+[[spec_triggers]]
+program = "+."
+stdin = ""
+expect = "output"
+output = ""
+claim = "bits short of a byte stay in the output queue"

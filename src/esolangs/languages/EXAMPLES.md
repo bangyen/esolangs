@@ -101,6 +101,7 @@ don't edit by hand.
 | `pilas/pilas.txt` | Pilas | `0001` | `01` | 01 | '0' |
 | `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |
 | `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
+| `qrain/qrain.txt` | Qrain | `0001` | `01` | 01 | '0' |
 | `quassaunt/quassaunt.txt` | Quassaunt | `0001` | `01` | 01 | '0' |
 | `ram0/ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `rotfuck/rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |

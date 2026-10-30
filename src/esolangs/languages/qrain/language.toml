@@ -1,0 +1,26 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 2
+admitted = 2026-10-29T22:10:00-04:00
+
+[proof_status]
+labels = ["tree"]
+qualification = "each input byte is read onto its own queue and tested in place by a flag-dispatched decision tree; repeated residuals defer through level flags; the first byte splits into a test bit and a fixed seven-bit tail that completes the answer byte"
+scaling = "linear: at most 29T + 10n + 25 characters: the plain tree"
+execution = "poly n: at most 36n + 60 commands: reads, split, one tree path, print"
+workspace = "poly n: at most bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10 bits: queues, indices, flags"
+
+[generator_sizes]
+"00000001" = { commands = 89, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 74, "5" = 74, "6" = 81, "7" = 89 }, source_units = 94 }
+"00001100" = { commands = 85, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 90, "5" = 90, "6" = 85, "7" = 85 }, source_units = 100 }
+"00110110" = { commands = 102, commands_by_row = { "0" = 59, "1" = 59, "2" = 71, "3" = 71, "4" = 88, "5" = 96, "6" = 103, "7" = 102 }, source_units = 143 }
+"0110" = { commands = 73, commands_by_row = { "0" = 48, "1" = 56, "2" = 74, "3" = 73 }, source_units = 97 }
+"01101001" = { commands = 99, commands_by_row = { "0" = 70, "1" = 78, "2" = 85, "3" = 84, "4" = 100, "5" = 99, "6" = 91, "7" = 99 }, source_units = 175 }
+"0110100110010110" = { commands = 135, commands_by_row = { "0" = 96, "1" = 104, "2" = 111, "3" = 110, "4" = 108, "5" = 107, "6" = 99, "7" = 107, "8" = 127, "9" = 126, "10" = 118, "11" = 126, "12" = 121, "13" = 129, "14" = 136, "15" = 135 }, source_units = 278 }
+"1101001101101101" = { commands = 132, commands_by_row = { "0" = 101, "1" = 101, "2" = 99, "3" = 107, "4" = 85, "5" = 85, "6" = 97, "7" = 97, "8" = 115, "9" = 123, "10" = 130, "11" = 129, "12" = 126, "13" = 126, "14" = 124, "15" = 132 }, source_units = 234 }
+"11111110" = { commands = 102, commands_by_row = { "0" = 68, "1" = 68, "2" = 68, "3" = 68, "4" = 93, "5" = 93, "6" = 103, "7" = 102 }, source_units = 137 }
+
+[ablations]
+audited = "2026-10-29"

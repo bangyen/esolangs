@@ -189,6 +189,8 @@ from esolangs.languages.pointless.generator import LANGUAGE as _POINTLESS_LANGUA
 from esolangs.languages.pointless.generator import pointless
 from esolangs.languages.qoibl.generator import LANGUAGE as _QOIBL_LANGUAGE
 from esolangs.languages.qoibl.generator import qoibl
+from esolangs.languages.qrain.generator import LANGUAGE as _QRAIN_LANGUAGE
+from esolangs.languages.qrain.generator import qrain
 from esolangs.languages.quassaunt.generator import LANGUAGE as _QUASSAUNT_LANGUAGE
 from esolangs.languages.quassaunt.generator import quassaunt
 from esolangs.languages.ram0.generator import LANGUAGE as _RAM0_LANGUAGE
@@ -334,6 +336,7 @@ _LANGUAGES = (
     _PILAS_LANGUAGE,
     _POINTLESS_LANGUAGE,
     _QOIBL_LANGUAGE,
+    _QRAIN_LANGUAGE,
     _QUASSAUNT_LANGUAGE,
     _RAM0_LANGUAGE,
     _ROTFUCK_LANGUAGE,
@@ -449,6 +452,7 @@ __all__ = [
     "pilas",
     "pointless",
     "qoibl",
+    "qrain",
     "quassaunt",
     "ram0",
     "rotfuck",
