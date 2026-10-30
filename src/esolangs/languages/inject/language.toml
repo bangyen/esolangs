@@ -74,10 +74,9 @@ verdict = "kept: balance hook races the banded lookup against the default by ren
 [ablations.balance_square_chunk]
 saving = 98.6
 arity = 12
-seed = "random.Random(4242 + n)"
-tables = 2
-verdict = "kept: balanced area (balance_score(p)[0]**2) at n=12 is 191,844 vs 13,942,756 with the narrow chunk (98.6% smaller); exponent n=10 to 12 0.56 vs 1.87, unchanged to n=7, n=8..12 down 30.1 / 71.0 / 91.5 / 95.4 / 98.6%. The narrow chunk (log m characters) left T / log m tree lines; the chunk of 2**((m + 4) // 2) characters balances 7 lines a leaf against its width. Default build byte-identical"
-
+seed = "random.Random(4242 + 1000 * n + s).getrandbits(1 << n)"
+tables = 20
+verdict = "kept: re-audit 2026-10-30, balanced area (balance_score(p)[0]**2) of the balance hook with vs without the square-chunk candidate (default, narrow banded only); 20 random tables n=7..10 (s=0..19), 6 at n=11, 12, plus parity, majority, and, or, nand, nor and three thresholds per n=7..12.  Saving 0.0 / 30.1 / 70.9 / 91.5 / 95.4 / 98.6% at n=7 / 8 / 9 / 10 / 11 / 12, identical on every table and named function (area depends only on the essential-input count); n=12 191,844 vs 13,942,756.  Exponent n=10 to 12 0.56 vs 1.87.  Executed with a wrong-table positive control (93,568 rows, 154 controls).  The default build is untouched: square=True is reached only from the balance hook"
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
