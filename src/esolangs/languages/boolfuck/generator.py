@@ -27,10 +27,9 @@ Size:
 Decisions:
     Deferring repeated residuals to unused level flags was retired: it paid
     only on guarded affine tables ([ablations.shared_blocks]).
-    Every candidate is admitted up to the ledger's execution clause,
-    4n^2 + 30n + 8 commands, which the count build attains; the tree's own
-    2n^2 + 27n + 8 refused shared builds of parity with flipped rows only
-    5-6% past it ([ablations.command_bound]).
+    The gates are admitted up to the tree's own 2n^2 + 27n + 8 commands;
+    admitting them up to the execution clause, 4n^2 + 30n + 8, was retired
+    ([ablations.command_bound]).
     The count build is a class rule for
     symmetric tables, not a race-wide win: 0.0% on random tables at
     n=10/12, where the class does not occur, and a within-class saving
@@ -345,10 +344,9 @@ _SCRATCH = -1
 def _command_bound(n: int) -> int:
     """Return the most commands a Boolfuck candidate over ``n`` inputs may take.
 
-    The ledger's execution clause, attained by the count build's all-ones row:
-    any candidate within it keeps the clause true.
+    The tree's own bound; the count build alone reaches the ledger's wider clause.
     """
-    return 4 * n * n + 30 * n + 8
+    return 2 * n * n + 27 * n + 8
 
 
 def normal_gates(table: str) -> str | None:
