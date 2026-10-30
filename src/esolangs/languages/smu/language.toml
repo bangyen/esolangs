@@ -24,7 +24,7 @@ definitions = ["E = 95T - 80, the macro-expanded program with no constant subtre
 "11111110" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 123 }
 
 [ablations]
-audited = "2026-10-19"
+audited = "2026-10-29"
 
 [ablations.constant_fold]
 saving = -5.8
@@ -42,6 +42,18 @@ arity = 12
 verdict = "kept: canonical, exempt. A multiply-used subtree is defined once as a macro and named at each use, shortest names to the most-used. Deleting every macro costs +164.46% at n=10 and +225.48% at n=12 on random tables, +8,289.80% on parity at n=12"
 
 [ablations.profitability_test]
-saving = 1.2
+saving = 1.6
 arity = 12
-verdict = "kept: a macro is defined only when (uses-1)*len(text) > (uses+2)*len(name). Defining every multiply-used subtree regardless costs +0.00% at n=8/10 and +1.17% at n=12 on random tables: the test binds only at the largest arity and earns its keep there"
+seed = 4242
+tables = 20
+verdict = "kept: canonical, exempt -- the guard that keeps subtree sharing from lengthening the program (a macro only when (uses-1)*len(text) > (uses+2)*len(name)); without it sharing costs +0.00% at n=3..10, +1.65% at n=11, +1.59% at n=12 (+2.09% by balanced area), +0.54% at n=13, <=0.03% at n=14..16 on random tables (seed 4242, 20 an n; re-measured +1.60% at n=11 on 200 tables, seed 77), majority +1.9% at n=16, and the docstring's never-longer-than-the-plain-tree guarantee would fail"
+
+[ablations.macro_naming_by_use]
+saving = 9.8
+arity = 12
+seed = 4242
+tables = 20
+verdict = "kept: clears the bar at its peak -- 0.00% at n=3..9 because it acts only past 52 macros, then growing to +11.54% at n=11 (seed 4242, 20 tables; +11.68% chars, +11.22% balanced area on 200 tables, seed 77), +9.83% at n=12 (+10.34% by balanced area), +6.36% / +3.66% / +2.67% / +2.95% at n=13..16 on random tables; 0.0% on every named function. Naming in discovery order is the plain form"
+
+[audits]
+plain_rewrite = 2026-10-29
