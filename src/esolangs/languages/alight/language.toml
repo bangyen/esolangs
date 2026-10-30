@@ -42,4 +42,5 @@ arity = 12
 verdict = "kept: the default layout folds the Horner index inside the at{...} expression instead of the units form's per-input set i fold -- 13.2% on random tables at n=7 and 9.9% at n=8, declining to 1.5% at n=12, since the saving is a per-input overhead against a 2^n literal; a construction choice, not a removable mechanism (the units machinery stays for the width and postfix paths); the docstring's 13.8%/10.3% figures price at 13.2%/9.9% when rebuilt, on totals and on the random-1847 table alike"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
