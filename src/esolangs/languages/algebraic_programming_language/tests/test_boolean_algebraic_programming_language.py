@@ -2,6 +2,7 @@
 
 import itertools
 import random
+import re
 
 import pytest
 
@@ -79,6 +80,18 @@ class TestAlgebraicProgrammingLanguage:
         """A nullary table is a constant, not a function of any input."""
         with pytest.raises(ValueError, match="a one-entry table is a constant"):
             boolean.algebraic_programming_language("0")
+
+    def test_no_function_definition_omits_its_parentheses(self) -> None:
+        """The wiki defines ``F() = ...``; the bare ``A=`` form is our extension."""
+        rng = random.Random(0)
+        tables = [t for n in (1, 2, 3) for t in witnesses(n)]
+        for n in range(4, 9):
+            tables += ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(5)]
+        for table in tables:
+            for width in (None, 1, 30):
+                program = boolean.algebraic_programming_language(table, width)
+                for line in program.splitlines():
+                    assert not re.match(r"[A-Z]+=", line), (table, width, line)
 
     def test_a_width_spreads_the_sum_over_definitions(self) -> None:
         """A narrower program is the same sum, named a piece at a time."""
@@ -227,8 +240,8 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 18201, 16527),
-            (five_input_sample(), 47399, 35147),
+            (three, 18201, 16531),
+            (five_input_sample(), 47399, 37369),
         ):
             inline = [
                 len(_apl_tree_ordered(t, tuple(range(len(t).bit_length() - 1))))
@@ -362,7 +375,7 @@ def test_default_reuses_emitted_frames() -> None:
     table = corpus(8)["tiled"]
     plain = _apl_reduced_ordered(table, tuple(range(8)))
     program = boolean.algebraic_programming_language(table)
-    assert (len(plain), len(program)) == (1019, 428)
+    assert (len(plain), len(program)) == (1019, 450)
     assert (
         execute("Algebraic Programming Language", program, table, {}, all_rows=True)
         == 256

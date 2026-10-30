@@ -8,8 +8,8 @@ with ``width`` the tree splits into definitions, since APL cannot
 continue an expression across lines.
 
 Size:
-    O(T) chars.  n=10 parity: 254 chars, n=10 and: 120 chars, n=10 random
-    1847: 3,047 chars.
+    O(T) chars.  n=10 parity: 270 chars, n=10 and: 120 chars, n=10 random
+    1847: 3,157 chars.
 
 Decisions:
     A greedy input order saves 4.8% at n=8, under the 10% bar, so the order
@@ -139,7 +139,7 @@ def _apl_repeated_expressions(program: str) -> str:
     for index in range(len(nodes) - 1, -1, -1):
         count = copies[index]
         if index < len(sizes) and (count - 1) * sizes[index] > (
-            count * call_width + name_width + 2
+            count * call_width + name_width + 4
         ):
             names[index] = short_name(offset + len(names), ascii_uppercase)
             count = 1
@@ -152,7 +152,8 @@ def _apl_repeated_expressions(program: str) -> str:
         return program
 
     definitions = [
-        f"{names[index]}={_render_dag(nodes, names, index)}" for index in sorted(names)
+        f"{names[index]}()={_render_dag(nodes, names, index)}"
+        for index in sorted(names)
     ]
     return "\n".join(
         [_NOT_TIGHT, *definitions, prefix + _render_dag(nodes, names, len(nodes) - 1)]
@@ -372,14 +373,14 @@ class _Splitter:
             call = self._made[body]
         else:
             name = short_name(len(self._definitions), ascii_uppercase)
-            self._definitions.append(f"{name}={body}")
+            self._definitions.append(f"{name}()={body}")
             call = self._made[body] = f"{name}()"
         return call, len(call), 0
 
     def trim(self, parts: list[tuple[_Rope, int, int]], budget: int) -> None:
         """Define the largest fresh pieces until the frame fits the budget."""
         while (span := sum(length for _, length, _ in parts)) > budget:
-            self._events.add(span + self._name_width + 1)
+            self._events.add(span + self._name_width + 3)
             eligible = [
                 (length, index)
                 for index, (_, length, fresh) in enumerate(parts)
@@ -398,7 +399,7 @@ class _Splitter:
             elif char == ")":
                 parts = self._frames.pop()
                 parts.append((")", 1, 1))
-                self.trim(parts, self._limit - self._name_width - 1)
+                self.trim(parts, self._limit - self._name_width - 3)
                 self._frames[-1].append(_join(parts))
             else:
                 self._frames[-1].append((char, 1, 1))
@@ -450,7 +451,7 @@ def _apl_narrow_layout(
         body = f"{left}{operator}{right}"
         if body not in made:
             name = short_name(len(definitions), ascii_uppercase)
-            definitions.append(f"{name}={body}")
+            definitions.append(f"{name}()={body}")
             made[body] = f"{name}()"
         return made[body]
 
