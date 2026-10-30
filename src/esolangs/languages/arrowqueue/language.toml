@@ -60,4 +60,5 @@ verdict = "retired 2026-10-28: the balanced race also built the 1-, 5- and 6-col
 
 [audits]
 blind_reimplementation = 2026-10-30
+docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

@@ -3,7 +3,8 @@
 A 2D queue-based tarpit after Re:direction: ``*`` turns the IP clockwise,
 ``~`` pushes the current direction, ``+`` pops and points the IP that way;
 the program halts on an empty pop or off the grid.  There is no input; the
-queue is dumped when the run ends.
+queue is dumped when the run ends, front first: each heading as an index
+(0 right, 1 down, 2 left, 3 up), space-separated, no trailing newline.
 
 Decisions:
     * The IP starts top-left moving right.
