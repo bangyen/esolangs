@@ -1,15 +1,16 @@
 """Whitespace Boolean program generator: one literal, halved per index step.
 
-The program reads one number per input, folds them into a row index with
-Horner's rule, and pushes the whole table as a single binary number whose bit
-``r`` is ``table[r]``.  A loop halves that number once per index step and
-leaves the answer in the low bit, so no per-row address is ever spelled.  An
+The program pushes the whole table as a single binary number whose bit ``r``
+is ``table[r]``, then reads one number per input and folds them into a row
+index with Horner's rule on top of it.  A loop halves the table once per index
+step and leaves the answer in the low bit, so no per-row address is ever
+spelled.  An
 ignored input is read and dropped, and the literal covers only the essential
 inputs.
 
 Size:
-    O(T) characters and O(T) commands; n=4 parity: 290 chars,
-    n=8 random 1847: 658 chars.
+    O(T) characters and O(T) commands; n=4 parity: 176 chars,
+    n=8 random 1847: 512 chars.
 
 Decisions:
     Horner-chunking the literal to a width was rejected for ``balance``: every
@@ -33,7 +34,9 @@ _LINE = "\n"
 
 #: The tab/space/line tokens each command is built from, named so a run of
 #: whitespace at the emission site cannot silently become another command.
+_DUP = _SPACE + _LINE + _SPACE
 _SWAP = _SPACE + _LINE + _TAB
+_DROP = _SPACE + _LINE + _LINE
 _ADD = _TAB + _SPACE + _SPACE + _SPACE
 _SUB = _TAB + _SPACE + _SPACE + _TAB
 _MUL = _TAB + _SPACE + _SPACE + _LINE
@@ -68,8 +71,9 @@ def _jz(label: str) -> str:
 def whitespace(truth_table: str) -> str:
     """Build a Whitespace program printing ``truth_table[row]`` for the inputs.
 
-    Heap 0 is the read scratch, 1 the index and 2 the table.  An ignored input
-    is read into the scratch and dropped; a constant table prints its bit.
+    The stack holds ``[table, index]`` throughout; a read lands in the heap
+    cell the running index addresses (heap 0 for the first and for an ignored
+    input, which is dropped); a constant table prints its bit.
     The trailing ``swap`` is dead code past ``end``: the example writer strips
     trailing newlines, and ``end`` is three of them.
     """
@@ -77,38 +81,34 @@ def whitespace(truth_table: str) -> str:
     essential = essential_inputs(truth_table, n)
     table = int(read_at(truth_table, essential, n)[::-1], 2)
     loop, done = _SPACE, _TAB
-    parts = [_push(0)]
-    for i in range(n):
-        parts += [_push(0), _READ_NUM]
-        if i in essential:
-            parts += [_push(0), _RETRIEVE, _SWAP, _push(2), _MUL, _ADD]
     if not essential:
-        return "".join([*parts[1:], _push(table), _OUT_NUM, _END])
-    parts += [_push(1), _SWAP, _STORE]
-    parts += [_push(table), _push(2), _SWAP, _STORE]
+        parts = [_push(0), _READ_NUM] * n
+        return "".join([*parts, _push(table), _OUT_NUM, _END])
+    # Stack [table, index]: Horner doubles the index, reads into the heap cell
+    # the index itself addresses, and adds that cell back.
+    parts = [_push(table)]
+    first = True
+    for i in range(n):
+        if i not in essential:
+            parts += [_push(0), _READ_NUM]
+        elif first:
+            parts += [_push(0), _DUP, _READ_NUM, _RETRIEVE]
+            first = False
+        else:
+            parts += [_DUP, _ADD, _DUP, _READ_NUM, _DUP, _RETRIEVE, _ADD]
     parts += [
         _mark(loop),
-        _push(1),
-        _RETRIEVE,
+        _DUP,
         _jz(done),
-        _push(2),
-        _RETRIEVE,
+        _SWAP,
         _push(2),
         _DIV,
-        _push(2),
         _SWAP,
-        _STORE,
-        _push(1),
-        _RETRIEVE,
         _push(1),
         _SUB,
-        _push(1),
-        _SWAP,
-        _STORE,
         _jump(loop),
         _mark(done),
-        _push(2),
-        _RETRIEVE,
+        _DROP,
         _push(2),
         _MOD,
         _OUT_NUM,

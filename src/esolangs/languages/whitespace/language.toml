@@ -7,9 +7,9 @@ backlinks = 58
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the inputs form a Horner row index and the table is one binary literal halved once per index step"
-scaling = "linear: worst T + 32n + 147 characters: one literal"
-execution = "linear: worst 19T + 8n commands: the loop runs once per index step"
-workspace = "linear: at most 2T + n + 19 bits: the literal on the stack and in the heap"
+scaling = "linear: worst T + 24n + 65 characters: one literal"
+execution = "linear: worst 10T + 7n - 3 commands: the loop runs once per index step"
+workspace = "linear: at most T + n^2 + 20 bits: the literal and index on the stack, n heap cells"
 
 [catalogue]
 folding_constant = "a constant table prints its bit; any other is one literal, with no subtable to fold"
@@ -18,14 +18,14 @@ folding_constant = "a constant table prints its bit; any other is one literal, w
 folds_without_tree = true
 
 [generator_sizes]
-"00000001" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 251 }
-"00001100" = { commands = 94, commands_by_row = { "0" = 37, "1" = 37, "2" = 56, "3" = 56, "4" = 75, "5" = 75, "6" = 94, "7" = 94 }, source_units = 222 }
-"00110110" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 250 }
-"0110" = { commands = 92, commands_by_row = { "0" = 35, "1" = 54, "2" = 73, "3" = 92 }, source_units = 214 }
-"01101001" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 251 }
-"0110100110010110" = { commands = 336, commands_by_row = { "0" = 51, "1" = 70, "2" = 89, "3" = 108, "4" = 127, "5" = 146, "6" = 165, "7" = 184, "8" = 203, "9" = 222, "10" = 241, "11" = 260, "12" = 279, "13" = 298, "14" = 317, "15" = 336 }, source_units = 290 }
-"1101001101101101" = { commands = 336, commands_by_row = { "0" = 51, "1" = 70, "2" = 89, "3" = 108, "4" = 127, "5" = 146, "6" = 165, "7" = 184, "8" = 203, "9" = 222, "10" = 241, "11" = 260, "12" = 279, "13" = 298, "14" = 317, "15" = 336 }, source_units = 291 }
-"11111110" = { commands = 176, commands_by_row = { "0" = 43, "1" = 62, "2" = 81, "3" = 100, "4" = 119, "5" = 138, "6" = 157, "7" = 176 }, source_units = 250 }
+"00000001" = { commands = 98, commands_by_row = { "0" = 28, "1" = 38, "2" = 48, "3" = 58, "4" = 68, "5" = 78, "6" = 88, "7" = 98 }, source_units = 145 }
+"00001100" = { commands = 53, commands_by_row = { "0" = 23, "1" = 23, "2" = 33, "3" = 33, "4" = 43, "5" = 43, "6" = 53, "7" = 53 }, source_units = 124 }
+"00110110" = { commands = 98, commands_by_row = { "0" = 28, "1" = 38, "2" = 48, "3" = 58, "4" = 68, "5" = 78, "6" = 88, "7" = 98 }, source_units = 144 }
+"0110" = { commands = 51, commands_by_row = { "0" = 21, "1" = 31, "2" = 41, "3" = 51 }, source_units = 116 }
+"01101001" = { commands = 98, commands_by_row = { "0" = 28, "1" = 38, "2" = 48, "3" = 58, "4" = 68, "5" = 78, "6" = 88, "7" = 98 }, source_units = 145 }
+"0110100110010110" = { commands = 185, commands_by_row = { "0" = 35, "1" = 45, "2" = 55, "3" = 65, "4" = 75, "5" = 85, "6" = 95, "7" = 105, "8" = 115, "9" = 125, "10" = 135, "11" = 145, "12" = 155, "13" = 165, "14" = 175, "15" = 185 }, source_units = 176 }
+"1101001101101101" = { commands = 185, commands_by_row = { "0" = 35, "1" = 45, "2" = 55, "3" = 65, "4" = 75, "5" = 85, "6" = 95, "7" = 105, "8" = 115, "9" = 125, "10" = 135, "11" = 145, "12" = 155, "13" = 165, "14" = 175, "15" = 185 }, source_units = 177 }
+"11111110" = { commands = 98, commands_by_row = { "0" = 28, "1" = 38, "2" = 48, "3" = 58, "4" = 68, "5" = 78, "6" = 88, "7" = 98 }, source_units = 144 }
 
 [ablations]
 audited = "2026-10-28"
@@ -36,6 +36,13 @@ arity = 8
 seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; one-ignored: a random 2^(n-1) table repeated, random.Random(7 * n + i)"
 tables = 20
 verdict = "kept: canonical, exempt. The literal covers the essential inputs only; an ignored one is read into the scratch and dropped (8 chars against 32 and a doubled literal). 0.0% on random tables at n=7/8; one ignored input 17.7% / 23.1%, constant tables 84.5% / 85.8%"
+
+[ablations.stack_resident]
+saving = 22.2
+arity = 8
+seed = "random.Random(1000 * n + i).getrandbits(1 << n), i < 20; named parity, and, or, majority, threshold 3"
+tables = 20
+verdict = "kept: 27.7% at n=7, 22.2% at n=8 on random tables; 27.7% / 22.2% on every named function (cost is T-independent). Table and index live on the stack ([table, index]) instead of heaps 1 and 2: Horner per input is dup add, dup read, dup retrieve, add (24 chars against 32) with the read cell addressed by the running index, and the loop is 43 chars against 87. n<=3 exhaustive (276) and named/random tables n<=8 execute, wrong-table control fails 32 of 32. balance: n/a, the language wraps nothing (no_wrap)"
 
 [ablations.trailing_swap]
 saving = 0.5
