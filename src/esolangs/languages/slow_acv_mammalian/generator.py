@@ -444,17 +444,20 @@ def _dispatch_head(st: _Sums) -> int:
     print array, which halts only when that array's head is at least the
     digit's ASCII code, so both print heads must clear it as well.
     """
-    want = (_PRINT[0] - _W) % _ARRAYS
     heads = st.heads
-    for count in range(_MODULUS):
-        head = (heads[_W] + _W_STEP * count) % _MODULUS
-        if head % _ARRAYS != want or head >= _GREEDY_MIN:
-            continue
-        zero = (heads[_PRINT[0]] + (_PRINT[0] + 1) * count) % _MODULUS
-        one = (heads[_PRINT[1]] + (_PRINT[1] + 1) * (count + 1)) % _MODULUS
-        if zero >= _ASCII_ZERO and one > _ASCII_ZERO:
-            return count
-    raise AssertionError("no seed count clears the print heads")  # pragma: no cover
+    want = (_PRINT[0] - _W) % _ARRAYS
+    # Each target head is one seed count (the step is a unit); the print
+    # heads then only filter those counts.
+    counts = sorted(
+        (target - heads[_W]) * _W_INV % _MODULUS
+        for target in range(want, _GREEDY_MIN, _ARRAYS)
+    )
+    return next(
+        count
+        for count in counts
+        if (heads[_PRINT[0]] + (_PRINT[0] + 1) * count) % _MODULUS >= _ASCII_ZERO
+        and (heads[_PRINT[1]] + (_PRINT[1] + 1) * (count + 1)) % _MODULUS > _ASCII_ZERO
+    )
 
 
 def _prologue(st: _Sums, pairs: Sequence[tuple[int, int]], base: int) -> list[str]:
