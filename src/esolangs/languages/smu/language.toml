@@ -49,11 +49,11 @@ tables = 20
 verdict = "kept: canonical, exempt -- the guard that keeps subtree sharing from lengthening the program (a macro only when (uses-1)*len(text) > (uses+2)*len(name)); without it sharing costs +0.00% at n=3..10, +1.65% at n=11, +1.59% at n=12 (+2.09% by balanced area), +0.54% at n=13, <=0.03% at n=14..16 on random tables (seed 4242, 20 an n; re-measured +1.60% at n=11 on 200 tables, seed 77), majority +1.9% at n=16, and the docstring's never-longer-than-the-plain-tree guarantee would fail"
 
 [ablations.macro_naming_by_use]
-saving = 9.8
+saving = 1.0
 arity = 12
 seed = 4242
 tables = 20
-verdict = "kept: clears the bar at its peak -- 0.00% at n=3..9 because it acts only past 52 macros, then growing to +11.54% at n=11 (seed 4242, 20 tables; +11.68% chars, +11.22% balanced area on 200 tables, seed 77), +9.83% at n=12 (+10.34% by balanced area), +6.36% / +3.66% / +2.67% / +2.95% at n=13..16 on random tables; 0.0% on every named function. Naming in discovery order is the plain form"
+verdict = "kept: canonical, exempt -- pure spelling: the macro names are fresh, interchangeable letters, so handing the shortest to the most-used renames the same program (same macros, same structure, same output; the sort is two lines). It no longer clears the bar either: re-audit 2026-10-30, 20 random tables an n (seed 4242 + 1000n + i), vs naming in discovery order: 0.00% chars and balanced area at n=7..10, +0.75% (balanced +1.01%) at n=11, +1.01% (+0.47%) at n=12, +0.80 / +0.84 / +0.69 / +0.81% chars at n=13..16; 0.00% on parity, majority, and, or, nand, nor and two thresholds at n=7..12. The earlier +11.5% at n=11 / +9.8% at n=12 was measured against builds since retired. Executed: all 2**n rows of 20 tables each at n=7,8, both builds, correct; a flipped-row table fails"
 
 [audits]
 blind_reimplementation = 2026-10-30
