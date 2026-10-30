@@ -63,14 +63,6 @@ ignored-input tables included).
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
 - **Brainfuck derivatives refused by the 2026-10-15 ban** are eligible
   again: screen them on route, spec and token substitution.
-- **Movesum generator** (removed 9f3427b07, "no conditional means no
-  generator story"): no ground excludes it, since ground 5 needs a proof
-  that no generator exists, but it returns only with one.  With bits fed
-  one per input, a first-line `42` key reads a single bit (index 0 or 1),
-  and at run time there are only fixed-address copies, `sum` and halting
-  when two commands leave the array unchanged.  With the row fed as one
-  number v, `42=1` marks cell v and summing the 1-rows' cells prints
-  f(v) in O(T) moves, but the stdin contract is per bit.
 - **Malbolge per-arity layout** (parked 2026-10-29): live cells are 10-14% of
   the 59,049-cell image at n <= 12. Tables sit at 39,367-43,002 because the
   held top digit is 6; a bit-to-digit bijection putting it at 1, with hubs and
