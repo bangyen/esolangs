@@ -87,6 +87,7 @@ arity = 10
 verdict = "rejected: the naming loop's exact-fit stop (round-3 mutant 339: break on < budget instead of <=) is a no-op on the default path -- 0.00% at every arity n=6..12, 0 of 1,400 seeded random tables change, because at the default width no node's inlined text ever lands exactly on the budget; only w=40 moves, declining monotonically from 11.42% at n=6 through -0.02% at n=8 to -0.78% at n=11, where all 200 sampled tables grow (worst +60 chars) -- a local effect that inverts as tables grow, not a genuine percentage. Execution gate clean (932 changed programs, 0 mismatches), so the rejection is a pure size verdict; priced 2026-10-25. Plain-rewrite audit 2026-10-28: unchanged"
 
 [audits]
+blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [ablations.complement_expression]
