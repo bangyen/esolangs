@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from collections.abc import Sequence
 
 import pytest
@@ -58,9 +59,35 @@ def test_ten_inputs_execute_every_row() -> None:
     assert _rows(table) == list(table)
 
 
-def test_program_is_the_full_store() -> None:
-    """Every build is 59049 source characters, the whole address space."""
-    assert len(boolean.malbolge("0110")) == 3**10
+def test_program_is_the_full_store_from_fourteen_inputs() -> None:
+    """From fourteen inputs every build is 59049 source characters."""
+    assert len(boolean.malbolge("01" * 2**13)) == 3**10
+
+
+@pytest.mark.parametrize("n", [1, 4, 13])
+def test_short_builds_execute(n: int) -> None:
+    """The short layout answers the first, last and middle rows of a random table."""
+    table = format(random.Random(n).getrandbits(1 << n), f"0{1 << n}b")
+    rows = sorted(
+        {0, 1, 2, (1 << n) // 2, (1 << n) - 2, (1 << n) - 1} & set(range(1 << n))
+    )
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.parametrize("n", [1, 5, 13])
+def test_short_builds_end_at_their_highest_live_cell(n: int) -> None:
+    """Up to thirteen inputs the source ends at its highest live cell."""
+    build = _digits._digits(n)  # noqa: SLF001
+    live = max(max(build.code), max(build.data), max(build.tables))
+    assert build.words == live + 1 < 3**10
+    assert len(boolean.malbolge("01" * 2 ** (n - 1))) == build.words
+
+
+def test_short_builds_share_one_length_above_their_tables() -> None:
+    """Every arity to thirteen shares one length, past the top table cell."""
+    lengths = {_digits._digits(n).words for n in range(1, 14)}  # noqa: SLF001
+    (length,) = lengths
+    assert 13114 <= length < 3**10
 
 
 @pytest.mark.parametrize("n", [1, 4, 11])
@@ -109,7 +136,7 @@ def test_lower_arities_reuse_sixteens_cells(n: int) -> None:
 @pytest.mark.parametrize("n", [15, 16])
 def test_digit_builds_label_every_cell(n: int) -> None:
     """Each table cell's residue admits the four single-cell answers."""
-    _, _, tables, labels = _digits._digits(n)  # noqa: SLF001
+    _, _, tables, labels, _ = _digits._digits(n)  # noqa: SLF001
     for h in tables:
         for label in "01xn":
             _table_char(h, label, labels)
@@ -117,7 +144,7 @@ def test_digit_builds_label_every_cell(n: int) -> None:
 
 def test_label_rule_admits_every_label_at_every_residue() -> None:
     """The label rule covers all 94 residues, not only today's table cells."""
-    _, _, _, labels = _digits._digits(16)  # noqa: SLF001
+    _, _, _, labels, _ = _digits._digits(16)  # noqa: SLF001
     for h in range(94):
         for label in "01xn":
             _table_char(h, label, labels)

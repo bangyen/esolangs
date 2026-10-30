@@ -45,9 +45,9 @@ def _program(code: dict[int, str]) -> dict[int, int]:
     return {a: _char_for(op, a) for a, op in code.items()}
 
 
-def _render(program: dict[int, int]) -> str:
-    """Return the full store: ``program``, every other cell an ``o``."""
-    return "".join(chr(program.get(a, _char_for("o", a))) for a in range(_WORDS))
+def _render(program: dict[int, int], words: int = _WORDS) -> str:
+    """Return the first ``words`` cells: ``program``, every other cell an ``o``."""
+    return "".join(chr(program.get(a, _char_for("o", a))) for a in range(words))
 
 
 def _progression(value: int, lo: int, hi: int) -> range:

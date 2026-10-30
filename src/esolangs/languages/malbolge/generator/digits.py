@@ -23,6 +23,11 @@ and on group 1's ``u`` and a final ``swap01`` of the whole word make the top
 digit miss ``(0, 0)`` and digit 1 miss ``(2, 2)``: every readout lies in
 6561..59039, so the code fits below the table and no cell wraps past 59048.
 
+Up to thirteen inputs the last group's held reads are ``'1','0','1'``, which
+packs every table into 6562..13113 and lets each label have one hub and a stub
+just above or inside it (:func:`_short_layout`): the source ends at its
+highest live cell, 13,144 characters, instead of the 59,049-cell store.
+
 Fewer than sixteen inputs hold ``16 - n`` of the fifteen reads at the
 constant ``'0'``: three per group from the last group, a group's leading
 reads first.  A held read is ``p`` with ``A = all-2`` over a cell holding 69
@@ -55,6 +60,7 @@ from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
     _ANSWER,
+    _ENTRY,
     _K_CELL,
     _OPERAND_CHAIN,
     _SEED_CHAIN,
@@ -62,6 +68,7 @@ from .core import (
     _T_HUB_LABELS,
     _T_LABELS,
     _T_LOW,
+    _T_STUBS,
     _Build,
     _build_constants,
     _chain,
@@ -70,6 +77,7 @@ from .core import (
     _main_planner,
     _merge_code,
     _operand_cells,
+    _operand_stub,
     _pointers,
     _prime,
     _s01,
@@ -81,10 +89,11 @@ from .core import (
     _walker,
     _write_hubs,
 )
-from .emitter import _Planner
+from .emitter import _Planner, _valid_chars
 from .isa import (
     _CONSTS,
     _WORDS,
+    _first_free,
     _program,
     _render,
     _rot,
@@ -126,6 +135,94 @@ _D_LABEL = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
 #: Each label's seed ``g`` (:func:`~.core._seed_g`).
 _D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 
+#: At most this many inputs build the short layout: the last group's three
+#: held reads are ``'1','0','1'`` (49, 48, 49), which puts every table in
+#: 6562..13113.  Each label has one hub (pointer value ``s01(chain(g))``, all
+#: its cells equal) at 13122..13130; its stub sits in the table-free run
+#: 11664..12392 or past 13113, so the source ends at 13,144.
+_SHORT_N = 13
+_TOP_HELD = (49, 48, 49)
+#: ``p`` under ``A = all-2`` swaps 71 and 49 as it does 69 and 48.
+_ONE_CELL_G = 71
+#: Short layout: seeds and stubs are chains of at most this many ops on a
+#: pointer-region ``g`` (:func:`_short_layout`).
+_SHORT_DEPTH = 5
+_SHORT_G = range(33, 127)
+#: Stubs sit in the table-free run 11664..12392 (3**6 cells) or past the tables.
+_SHORT_STUB_FLOOR = 11664
+
+
+class _Layout(NamedTuple):
+    """Each label's ``(g, chain)``: its seed (hub) and its stub address."""
+
+    seeds: dict[str, tuple[int, str]]
+    stubs: dict[str, tuple[int, str]]
+
+
+def _chains(values: dict[int, int], depth: int) -> Iterator[tuple[str, dict[int, int]]]:
+    """Yield every chain of at most ``depth`` ops with its result per ``g``."""
+    yield "", values
+    if depth:
+        for op in ("K0", "K1", "K2", "rot"):
+            moved = {g: _chain(v, op) for g, v in values.items()}
+            for ops, out in _chains(moved, depth - 1):
+                yield f"{op} {ops}".strip(), out
+
+
+@cache
+def _short_layout() -> _Layout:
+    """Return the seeds and stubs of the ``n <= 13`` layout.
+
+    Greedy, hubs in ``n01x`` order then stubs in ``1n0x``: each takes the
+    lowest address that clears the tables and the picks before it, by the
+    shortest chain, then the ``g`` whose walked cell is nearest the first: each
+    op walks to its cell, and the main code must end below the lowest table
+    cell (6532 against 6562).
+    """
+    tables = {s + 1 for s in _readouts(_SHORT_N)}
+    top = max(tables)
+    chains: dict[int, list[tuple[int, str, int]]] = {}
+    for ops, out in _chains({g: g for g in _SHORT_G}, _SHORT_DEPTH):
+        for g, v in out.items():
+            chains.setdefault(v, []).append((len(ops.split()), ops, g))
+    reach: dict[int, list[tuple[int, str, int]]] = {}
+    for v, picks in chains.items():
+        reach.setdefault(_s01(v), []).extend(picks)
+    addresses = sorted(reach)
+    taken: set[int] = set()
+    at: dict[tuple[str, str], int] = {}
+    for lab in _T_HUB_LABELS:
+        hub = next(a for a in addresses if a > top and not {a + 1, a + 2} & taken)
+        at["seed", lab] = hub
+        taken |= {hub + 1, hub + 2}
+    operands = _operand_cells()
+    for lab in "1n0x":
+        hub = at["seed", lab]
+        stub = _T_STUBS.get(lab) or _operand_stub(
+            min(_valid_chars(hub + 2)) + 1, operands[lab]
+        )
+        busy = tables | taken
+        address = next(
+            a
+            for a in addresses
+            if a >= _SHORT_STUB_FLOOR and busy.isdisjoint(range(a, a + 1 + len(stub)))
+        )
+        at["stub", lab] = address
+        taken |= set(range(address, address + 1 + len(stub)))
+
+    def pick(address: int) -> tuple[int, str]:
+        """Return the ``(g, chain)``: fewest ops, then the nearest walked cell."""
+        _, ops, g = min(
+            reach[address],
+            key=lambda c: (c[0], _first_free(c[2], 128, _ENTRY, set()), c[1]),
+        )
+        return g, ops
+
+    return _Layout(
+        {lab: pick(at["seed", lab]) for lab in _T_HUB_LABELS},
+        {lab: pick(at["stub", lab]) for lab in "1n0x"},
+    )
+
 
 def _held(n: int, group: int) -> int:
     """Return how many of ``group``'s leading reads ``n`` inputs hold at ``'0'``.
@@ -134,6 +231,18 @@ def _held(n: int, group: int) -> int:
     """
     spare = _DIGITS_N - n - _READS * (_D_GROUPS - 1 - group)
     return max(0, min(_READS, spare))
+
+
+def _short(n: int) -> bool:
+    """Return whether ``n`` inputs build the short layout."""
+    return n <= _SHORT_N
+
+
+def _held_read(n: int, group: int, index: int) -> int:
+    """Return the value of ``group``'s ``index``-th held read."""
+    if _short(n) and group == _D_GROUPS - 1:
+        return _TOP_HELD[index]
+    return 48
 
 
 def _swap12(value: int) -> int:
@@ -327,7 +436,7 @@ def _readouts(n: int) -> tuple[int, ...]:
         for s in states:
             for bits in range(1 << free):
                 reads = iter(
-                    [48] * held
+                    [_held_read(n, group, k) for k in range(held)]
                     + [48 + ((bits >> k) & 1) for k in reversed(range(free))]
                 )
                 following.append(_fold_state(_GADGET, init, reads, group, s))
@@ -342,6 +451,7 @@ class _Digits(NamedTuple):
     data: dict[int, int]
     tables: tuple[int, ...]
     labels: dict[int, str]
+    words: int
 
 
 @cache
@@ -358,22 +468,33 @@ def _digits(n: int, drop: tuple[int, int] | None = None) -> _Digits:
     if len(set(tables)) != len(tables) or max(tables) >= _WORDS:
         raise AssertionError("readouts collide or wrap")
     # Sixteen's cells hold every arity's, so every build avoids the same set.
-    cells_of_tables = set(_readouts_cells())
-    cells = _allocate_cells()
-    _, pointer = _pointers(_D_LABEL, _seed_values().items())
-    data, stubs = _hub_layout(_hubs(), cells_of_tables, _D_FLOOR)
+    layout = _short_layout() if _short(n) else None
+    if layout:
+        # Smaller arities' cells are a subset of the largest short one's.
+        cells_of_tables = {s + 1 for s in _readouts(_SHORT_N)}
+    else:
+        cells_of_tables = set(_readouts_cells())
+    cells = _allocate_cells(layout)
+    _, pointer = _pointers(
+        _D_LABEL, _seed_values(layout).items(), single=layout is not None
+    )
+    builds = _stub_builds(_hubs(layout), layout.stubs) if layout else None
+    data, stubs = _hub_layout(_hubs(layout), cells_of_tables, _D_FLOOR, builds)
 
     main, _ = _main_planner(data)
     _emit_digit_setup(main, cells)
     _emit_digit_groups(main, n, cells, drop)
-    _emit_digit_jump(main, cells, pointer)
+    _emit_digit_jump(main, cells, pointer, layout)
     code_end = main.c
 
     code = _merge_code(
         (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
     )
     labels = {p - 1: lab for p, lab in _D_LABEL.items()}
-    return _Digits(code, data, tables, labels)
+    words = _WORDS
+    if layout:
+        words = max(max(code), max(data), max(tables)) + 1
+    return _Digits(code, data, tables, labels, words)
 
 
 class _DCells(NamedTuple):
@@ -389,9 +510,10 @@ class _DCells(NamedTuple):
     builds: list[_Build]
     builders: list[int]
     operand: int
+    to_49: int = -1
 
 
-def _allocate_cells() -> _DCells:
+def _allocate_cells(layout: _Layout | None = None) -> _DCells:
     """Allocate the working cells, each the least free one of its ``g`` value.
 
     Cells dead before the labels are written -- the setup helpers, the
@@ -412,13 +534,28 @@ def _allocate_cells() -> _DCells:
     two = low(38)
     # ``p`` under ``A = all-2`` swaps 69 and 48.
     to_48 = walked(69)
-    seeds = {lab: walked(g) for lab, g in _D_SEEDS.items()}
-    builds = _stub_builds(_hubs())
+    if layout:
+        seeds = {lab: walked(g) for lab, (g, _) in layout.seeds.items()}
+        builds = _stub_builds(_hubs(layout), layout.stubs)
+    else:
+        seeds = {lab: walked(g) for lab, g in _D_SEEDS.items()}
+        builds = _stub_builds(_hubs())
     builders = [walked(g) for g, _, _ in builds]
     # Every operand stub shares the middle cell.
     operand = operands["1"][1]
+    to_49 = low(_ONE_CELL_G) if layout else -1
     return _DCells(
-        helper, gadget, s_cell, z_cell, two, to_48, seeds, builds, builders, operand
+        helper,
+        gadget,
+        s_cell,
+        z_cell,
+        two,
+        to_48,
+        seeds,
+        builds,
+        builders,
+        operand,
+        to_49,
     )
 
 
@@ -433,7 +570,12 @@ def _emit_digit_setup(main: _Planner, cells: _DCells) -> None:
     )
 
 
-def _emit_labels(main: _Planner, cells: _DCells, pointer: dict[int, int]) -> None:
+def _emit_labels(
+    main: _Planner,
+    cells: _DCells,
+    pointer: dict[int, int],
+    layout: _Layout | None = None,
+) -> None:
     """Emit the label cells, the hubs' stub addresses and the middle operand.
 
     Run after the gadget, so the pointer region holds walked ``g`` values
@@ -445,8 +587,13 @@ def _emit_labels(main: _Planner, cells: _DCells, pointer: dict[int, int]) -> Non
     for p in sorted(_D_LABEL):
         main.op("p", p)
         main.op("p", p)
+    chains = (
+        {lab: chain for lab, (_, chain) in layout.seeds.items()}
+        if layout
+        else dict.fromkeys(_D_SEEDS, _SEED_CHAIN)
+    )
     _seed_label_chains(
-        main, helper, dict.fromkeys(_D_SEEDS, _SEED_CHAIN), cells.seeds, _D_LABEL
+        main, helper, chains, cells.seeds, _D_LABEL, single=layout is not None
     )
     _write_hubs(main, helper, pointer, cells.builds, cells.builders)
     _emit_chain(main, cells.operand, _OPERAND_CHAIN, helper)
@@ -459,14 +606,15 @@ def _emit_swap12(main: _Planner, target: int, two: int, helper: dict[str, int]) 
     main.op("p", target)
 
 
-def _emit_zero(main: _Planner, cells: _DCells) -> None:
-    """Emit ``A = '0'``: ``p`` under ``A = all-2`` over the to-48 cell.
+def _emit_zero(main: _Planner, cells: _DCells, *, one: bool = False) -> None:
+    """Emit ``A = '0'`` (``'1'``): ``p`` under ``A = all-2`` over the to-48 (49) cell.
 
-    One ``p`` while it holds 69, two once it holds 48.
+    One ``p`` while it holds 69 (71), two once it holds 48 (49).
     """
-    for _ in range(1 if main.mem[cells.to_48] == 69 else 2):
+    cell, fresh = (cells.to_49, 71) if one else (cells.to_48, 69)
+    for _ in range(1 if main.mem[cell] == fresh else 2):
         main.op("*", cells.helper["all2"])
-        main.op("p", cells.to_48)
+        main.op("p", cell)
 
 
 def _emit_gadget_reads(
@@ -485,14 +633,15 @@ def _emit_gadget_reads(
     it reloads ``A`` (a read or a constant).
     """
     helper = cells.helper
-    held = _held(n, group)
+    held, taken = _held(n, group), 0
     for index, op in enumerate(_GADGET):
         if index == drop_token:
             main.raw("/")
         if op == "/":
             if held:
                 held -= 1
-                _emit_zero(main, cells)
+                _emit_zero(main, cells, one=_held_read(n, group, taken) == 49)
+                taken += 1
             else:
                 main.raw("/")
         elif op[0] == "K":
@@ -525,10 +674,15 @@ def _emit_digit_groups(
         s = cell[1]
 
 
-def _emit_digit_jump(main: _Planner, cells: _DCells, pointer: dict[int, int]) -> None:
+def _emit_digit_jump(
+    main: _Planner,
+    cells: _DCells,
+    pointer: dict[int, int],
+    layout: _Layout | None = None,
+) -> None:
     """Emit the finish: the readout, the labels, then the jump to the row's stub."""
     main.op("p", cells.z_cell)
-    _emit_labels(main, cells, pointer)
+    _emit_labels(main, cells, pointer, layout)
     _emit_zero(main, cells)
     _t_jump(main, cells.z_cell)
 
@@ -538,25 +692,32 @@ def _readouts_cells() -> tuple[int, ...]:
     return tuple(s + 1 for s in _readouts(_DIGITS_N))
 
 
-def _seed_values() -> dict[str, int]:
+def _seed_values(layout: _Layout | None = None) -> dict[str, int]:
     """Return each label's seed chain value, the second hub its cells name."""
+    if layout:
+        return {lab: _chain(g, chain) for lab, (g, chain) in layout.seeds.items()}
     return {lab: _chain(g, _SEED_CHAIN) for lab, g in _D_SEEDS.items()}
 
 
-def _hubs() -> dict[str, tuple[int, ...]]:
-    """Return each label's two hubs: its seed value and that value's 0/1 swap."""
+def _hubs(layout: _Layout | None = None) -> dict[str, tuple[int, ...]]:
+    """Return each label's hubs: its seed value and that value's 0/1 swap.
+
+    The short layout's cells all hold the swap, its one hub.
+    """
+    if layout:
+        return {lab: (_s01(a),) for lab, a in _seed_values(layout).items()}
     return {lab: tuple(sorted((a, _s01(a)))) for lab, a in _seed_values().items()}
 
 
 def _render_build(truth_table: str, build: _Digits) -> str:
     """Return ``build``'s program with ``truth_table``'s answer cells filled."""
-    code, data, tables, labels = build
+    code, data, tables, labels, words = build
     program = _program(code)
     program.update(data)
     for row, h in enumerate(tables):
         label = _ANSWER[truth_table[2 * row : 2 * row + 2]]
         program[h] = _table_char(h, label, labels)
-    return _render(program)
+    return _render(program, words)
 
 
 def _digits_program(truth_table: str, n: int) -> str:

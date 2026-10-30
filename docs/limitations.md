@@ -148,11 +148,11 @@ Each missed the 10% bar:
 
 ### Searches kept
 
-Malbolge's generator keeps one table-independent search, run once per
-process; no rule reproduces it:
+Malbolge's generator keeps two table-independent searches, run once per
+process; no rule reproduces the first:
 
 - Navigation (`emitter.py` `goto`, breadth-first shortest paths). The main
-  line ends at cell 6,013 at n=1 (5,487 at n=16), over 5,089 path cells;
+  line ends at cell 6,532 at n=1 (5,487 at n=16), over 5,089 path cells;
   the code must end below 6,561, where the hubs and stubs start. Closed-form
   navigation -- a forward walk, a `j` through the cell at `d`, or a walk to
   the next unwritten cell with `g = t - 1`, then one more hop -- ends at
@@ -160,6 +160,12 @@ process; no rule reproduces it:
   cells against 609: its `p p` returns to the cell it just wrote 74 times,
   a forward-only pass leaves `A` equal to the cell just written, and no row
   of `crazy` is constant, so it cannot bring the next cell to the same value.
+- Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 13): each
+  label's hub, then stub, takes the lowest address clear of the tables and
+  the picks before it that a chain of at most five ops on a pointer-region
+  `g` reaches (about 0.2 s), by the fewest ops and the nearest walked cell.
+  That puts the source at 13,144 characters; the smallest `g` instead ends
+  the main code past the lowest table cell.
 
 ### Largest input counts
 

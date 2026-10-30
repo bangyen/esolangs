@@ -297,7 +297,7 @@ def corpus_for(name: str, *, arity3_size_cap: int = 2000) -> Corpus:
     emissions would swamp the collection for no vocabulary the small
     arities do not already show).  Characters are taken from programs
     under 20,000 chars; a language whose programs are all longer
-    (Malbolge: 59,049) yields an empty alphabet and is out of scope.
+    (Unary: 53,431) yields an empty alphabet and is out of scope.
     """
     lang = esolangs.Language(name)
     sizes: dict[int, dict[str, int]] = {1: {}, 2: {}}

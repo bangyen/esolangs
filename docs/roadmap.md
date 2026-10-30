@@ -61,11 +61,8 @@ ignored-input tables included).
   [CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)).
   Eight of the first thirteen lost a trick.  Record a finished audit as
   `[audits] plain_rewrite = <date>` in the language's `language.toml`.
-- **Malbolge per-arity layout** (parked 2026-10-29): live cells are 10-14% of
-  the 59,049-cell image at n <= 12. Tables sit at 39,367-43,002 because the
-  held top digit is 6; a bit-to-digit bijection putting it at 1, with hubs and
-  stubs re-placed below ~14k, would cut n <= 12 programs about 4-5x. It
-  re-derives the fold's digit math and its 2,464-sequence check.
+- **Malbolge n = 14..16 layout:** n <= 13 now ends at its highest live cell
+  (13,144 characters); 14..16 still emit the 59,049-cell image.
 
 <!-- PLAIN-REWRITE-AUDITS:START -->
 

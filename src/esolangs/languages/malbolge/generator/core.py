@@ -137,18 +137,24 @@ def _seed_label_chains(
     chains: dict[str, str],
     seeds: dict[str, int],
     label: dict[int, str],
+    *,
+    single: bool = False,
 ) -> None:
     """Run each label's seed chain, then ``p`` every pointer cell of that label.
 
     ``chains[lab]`` is the op string :func:`_emit_chain` runs on
     ``seeds[lab]``; a class's pointer cells then alternate that value and
-    its 0/1 swap.
+    its 0/1 swap.  ``single`` re-swaps every second cell (``A = all-1``,
+    ``p``), so the whole class holds the first value and needs one hub.
     """
     for lab, chain in chains.items():
         _emit_chain(main, seeds[lab], chain, helper)
-        for p in sorted(label):
-            if label[p] == lab:
-                main.op("p", p)
+        cells = [p for p in sorted(label) if label[p] == lab]
+        for p in cells:
+            main.op("p", p)
+        for p in cells[1::2] if single else ():
+            main.op("*", helper["all1"])
+            main.op("p", p)
 
 
 def _t_jump(path: _Planner, readout: int) -> None:
@@ -177,19 +183,21 @@ def _walker(used: set[int], lo: int = 128, hi: int = _ENTRY) -> Callable[..., in
 
 
 def _pointers(
-    label: dict[int, str], starts: Iterable[tuple[str, int]]
+    label: dict[int, str], starts: Iterable[tuple[str, int]], *, single: bool = False
 ) -> tuple[dict[int, int], dict[int, int]]:
     """Return each label cell's pointer value and the first cell per value.
 
     ``starts`` gives each label's first chain value in order; a label's cells
-    then alternate it and its 0/1 swap, one ``p`` over all-1 each.
+    then alternate it and its 0/1 swap, one ``p`` over all-1 each (``single``:
+    all hold the first).
     """
     values: dict[int, int] = {}
     for lab, a in starts:
+        first = _crazy(a, _ALL1)
         for p in sorted(label):
             if label[p] == lab:
                 a = _crazy(a, _ALL1)
-                values[p] = a
+                values[p] = first if single else a
     pointer: dict[int, int] = {}
     for p in sorted(values):
         pointer.setdefault(values[p], p)
@@ -238,12 +246,17 @@ def _operand_stub(landing: int, cells: Iterable[int]) -> str:
 type _Build = tuple[int, str, tuple[int, ...]]
 
 
-def _stub_builds(hubs: dict[str, tuple[int, ...]]) -> list[_Build]:
+def _stub_builds(
+    hubs: dict[str, tuple[int, ...]], single: dict[str, tuple[int, str]] | None = None
+) -> list[_Build]:
     """Return each stub-address build: ``g``, chain, and the hubs it writes.
 
     The chain value ``C`` leaves ``A = C``; the build's hubs, primed to
-    all-1, then take ``s01(C)``, ``C``, ... in turn.
+    all-1, then take ``s01(C)``, ``C``, ... in turn.  ``single`` gives each
+    label's own ``(g, chain)`` for its one hub.
     """
+    if single is not None:
+        return [(g, chain, hubs[lab]) for lab, (g, chain) in single.items()]
     builds = [(g, _SHORT_STUB_CHAIN, hubs[lab]) for lab, g in _SHORT_STUB_G.items()]
     for lab, gs in _LONG_STUB_G.items():
         pairs = zip(gs, hubs[lab], strict=True)
@@ -252,7 +265,10 @@ def _stub_builds(hubs: dict[str, tuple[int, ...]]) -> list[_Build]:
 
 
 def _hub_layout(
-    hubs: dict[str, tuple[int, ...]], avoid: set[int], floor: int
+    hubs: dict[str, tuple[int, ...]],
+    avoid: set[int],
+    floor: int,
+    builds: list[_Build] | None = None,
 ) -> tuple[dict[int, int], dict[int, str]]:
     """Return the hubs' ``j`` characters and the stub code, by label's hubs.
 
@@ -264,7 +280,7 @@ def _hub_layout(
     data: dict[int, int] = {}
     stubs: dict[int, str] = {}
     reserved: list[int] = []
-    for g, chain, vs in _stub_builds(hubs):
+    for g, chain, vs in _stub_builds(hubs) if builds is None else builds:
         address = _chain(g, chain)
         for v in vs:
             address = _s01(address)
