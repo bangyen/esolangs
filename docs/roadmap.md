@@ -75,7 +75,7 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-75 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+76 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
 BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
@@ -86,6 +86,6 @@ with headers, IEBEL, Inject, Interprogck8, Kiss, LaserFuck, lol waht i cant
 edit talk pages, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
 Nandypants, NOR machine, Object disoriented, Packlang, Painfuck,
 Parenthesys, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0, ROTfuck,
-Rubic, S*bleq, Sonata, Stisp, SwitchCase.
+Rubic, S*bleq, SLOW ACV MAMMALIAN, Sonata, Stisp, SwitchCase.
 
 <!-- BLIND-REIMPLEMENTATIONS:END -->
