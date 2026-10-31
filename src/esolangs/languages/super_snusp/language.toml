@@ -45,14 +45,14 @@ verdict = "kept: five fixed short forms at n=2 reuse 48 to decode each input and
 [ablations.plain_build]
 saving = 42.7
 arity = 12
-verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (42.7% at n=12 on the one-ignored corpus, 0.00% on random tables). The decimal literal itself -- the table as its binary integer written in base ten, 0.30103 digits an entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and a fold cannot split the digit run, so a literal wider than the fold is laid out whole"
+verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (42.7% at n=12 on the one-ignored corpus, 0.00% on random tables). The decimal literal itself -- the table as its binary integer written in base ten, 0.30103 digits an entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and the balance hook chunks the literal (decimal_literal)"
 
 [ablations.decimal_literal]
 saving = 63.6
 arity = 9
 seed = "random.Random(1)"
 tables = 40
-verdict = "kept: the table is written as one decimal integer in cell 1 (a digit run is cell * 10 + digit) instead of one * per entry plus one ) per rarer entry. Total chars against the former build: random 44.0% n=7, 54.7% n=8, 63.6% n=9 (20 tables); parity 44.4 / 55.2 / 64.0%, majority 45.8 / 53.0 / 64.9%, and 32.0 / 42.0 / 51.0%, or 45.4 / 59.6 / 72.7%, threshold-2 40.2 / 51.7 / 62.2%; balanced area random 35.8% n=7, 33.6% n=8, 37.9% n=9, parity 34.9 / 33.6 / 38.3%, and 21.2 / 15.1 / 17.9%, or 42.3 / 57.0 / 69.6%. A rule, not a race: the literal is int(reversed table, 2) in base ten. Executed through esolangs.run: all 276 tables at n<=3, random tables n=4..7 on the flat, balanced and folded layouts, named functions at n=7..9, random tables at n=10/12/14 (n=14 is past str's 4,300-digit limit); a wrong-table control fails"
+verdict = "kept: the table is written as one decimal integer in cell 1 (a digit run is cell * 10 + digit) instead of one * per entry plus one ) per rarer entry. Total chars against the former build: random 44.0% n=7, 54.7% n=8, 63.6% n=9 (20 tables); parity 44.4 / 55.2 / 64.0%, majority 45.8 / 53.0 / 64.9%, and 32.0 / 42.0 / 51.0%, or 45.4 / 59.6 / 72.7%, threshold-2 40.2 / 51.7 / 62.2%; balanced area (chunked-literal balance, below) random 29.8% n=7, 35.8% n=8, 37.8% n=9, parity 26.5 / 36.0 / 38.8%, and 28.4 / 40.1 / 57.8%, or 40.8 / 58.4 / 69.8%; the balanced area is ~T**0.70 from n=10 to 12 (T**2.00 with the whole literal: a fold cannot split a digit run, so every fold was 0.3T wide). The balance hook rewrites the literal as Horner chunks, acc = (acc << bits) + chunk, in cell 1 with the shift in cell 2 and chunks of side/2, side/4, side/8 digits, min over the plain layout; the flat program is unchanged A rule, not a race: the literal is int(reversed table, 2) in base ten. Executed through esolangs.run: all 276 tables at n<=3, random tables n=4..7 on the flat, balanced and folded layouts, named functions at n=7..9, random tables at n=10/12/14 (n=14 is past str's 4,300-digit limit); a wrong-table control fails"
 
 [ablations.polarity_rule]
 saving = 59.2

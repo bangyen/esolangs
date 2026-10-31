@@ -14,7 +14,9 @@ Decisions:
     A packed integer has no subtrees to fold or share.  A bounded ANF
     evaluator beat the former ``*``-per-entry lookup by only 2.83% at its n=4
     cap (all 65,536 tables; 0.80% without the polarity pass), under the 10%
-    bar, and the decimal literal is smaller still.
+    bar, and the decimal literal is smaller still.  The balanced layout writes
+    the literal as Horner chunks (:func:`_chunked`), since a fold cannot split
+    a digit run and one run ~0.3T wide made the balanced area T**2.
 """
 
 import re
@@ -57,8 +59,26 @@ def _decimal(value: int, width: int = 0) -> str:
     return _decimal(high, max(width - half, 0)) + _decimal(low, half)
 
 
-def _emit_lookup(truth_table: str) -> str:
+def _chunked(value: int, bits: int) -> str:
+    """Return the Horner code that leaves ``value`` in cell 1, stack as before.
+
+    Cell 2 holds the shift ``bits``; each
+    chunk is cell 1 ``<<= bits`` then ``+= chunk`` (pushed, added, popped).
+    """
+    count = -(-value.bit_length() // bits)
+    mask = (1 << bits) - 1
+    chunks = [
+        _decimal((value >> (bits * (count - 1 - i))) & mask) for i in range(count)
+    ]
+    steps = [f"<[>{chunk}{{<+$" for chunk in chunks[1:]]
+    return f"<{chunks[0]}>{bits}{{" + ">".join(steps) + "$"
+
+
+def _emit_lookup(truth_table: str, chunk_digits: int = 0) -> str:
     """Emit a linear-size integer lookup for ``truth_table``.
+
+    ``chunk_digits`` > 0 writes the literal as Horner chunks of at most that
+    many digits (:func:`_chunked`), for the balanced layout only.
 
     The input row is accumulated by Horner's rule in cell 0.  Cell 1 then
     holds the reversed table as one decimal integer, shifts it by that row,
@@ -82,7 +102,13 @@ def _emit_lookup(truth_table: str) -> str:
     # either way, so use whichever integer has fewer digits.
     plain, other = _decimal(value), _decimal((1 << len(truth_table)) - 1 - value)
     flip = len(other) < len(plain)
-    out.append(f">>2{{<{other if flip else plain}")
+    literal = (1 << len(truth_table)) - 1 - value if flip else value
+    if chunk_digits and len(other if flip else plain) > chunk_digits:
+        # The largest bit count whose chunk, 2**bits - 1, fits the digits.
+        bits = (10**chunk_digits).bit_length() - 1
+        out.append(f">>2{{{_chunked(literal, bits)}")
+    else:
+        out.append(f">>2{{<{other if flip else plain}")
     # Shift by the row saved in cell 0, reduce modulo 2, encode as ASCII.
     out.append("<{>]$%$>49{<^$." if flip else "<{>]$%$>48{<+$.")
     return "".join(out)
@@ -209,9 +235,22 @@ def balance_super_snusp(flat: str) -> str:
     return min((flat, *folds, vertical), key=balance_score)
 
 
-def _balance(_table: str, default: str) -> str:
-    """Balance the already-generated straight line."""
-    return balance_super_snusp(default)
+def _balance(table: str, default: str) -> str:
+    """Balance the straight line, or the same lookup with a chunked literal.
+
+    A digit run is one unsplittable token, so every fold of the plain
+    literal is that wide (T**2 area).  The chunked literal's tokens are
+    a fraction of the fold side, so the fold is O(T); chunk widths of 1/2, 1/4
+    and 1/8 of the side are tried against the plain layout.
+    """
+    side = isqrt(CELL_ASPECT * len(default) - 1) + 1
+    layouts = [balance_super_snusp(default)]
+    if max(map(len, _super_snusp_tokens(default))) > 4:
+        layouts += [
+            balance_super_snusp(_emit_lookup(table, max(2, side // divisor)))
+            for divisor in (2, 4, 8)
+        ]
+    return min(layouts, key=balance_score)
 
 
 LANGUAGE = Language(

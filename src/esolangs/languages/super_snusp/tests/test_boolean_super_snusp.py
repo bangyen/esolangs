@@ -169,6 +169,19 @@ def test_super_snusp_balance_keeps_a_long_literal_whole() -> None:
     )
 
 
+def test_balanced_chunked_literal_computes_the_table() -> None:
+    """The balance hook's Horner-chunked literal (a ``[`` shift) is the same table."""
+    table = "".join(str((r * 2654435761 >> 7) & 1) for r in range(1 << 7))
+    program = esolangs.generate("Super SNUSP", table, balance=True)
+    assert "[" in program
+    for row in range(1 << 7):
+        bits = [(row >> (6 - i)) & 1 for i in range(7)]
+        stdin = esolangs.encode_inputs("Super SNUSP", bits, truth_table=table)
+        assert (
+            esolangs.run("Super SNUSP", program, stdin=stdin).strip()[-1] == table[row]
+        )
+
+
 def test_xor_has_one_column() -> None:
     xor = esolangs.generate("Super SNUSP", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
