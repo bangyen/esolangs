@@ -63,6 +63,7 @@ tables = 20
 verdict = "kept: proof machinery, below the size bar. Naming by use fixes which macros take the 47 one-letter names, which makes the n=12..16 worst case an exact closed form (tests/formulas.py _chars, witness _smu_worst); in discovery order the table picks them, and hill-climbing finds 6,717 chars at n=12 against the exact 6,267 with no closed form found (2026-10-30). Size alone fails: re-audit 2026-10-30, 20 random tables an n (seed 4242 + 1000n + i), vs naming in discovery order: 0.00% chars and balanced area at n=7..10, +0.75% (balanced +1.01%) at n=11, +1.01% (+0.47%) at n=12, +0.80 / +0.84 / +0.69 / +0.81% chars at n=13..16; 0.00% on parity, majority, and, or, nand, nor and two thresholds at n=7..12. The earlier +11.5% at n=11 / +9.8% at n=12 did not reproduce. Executed: all 2**n rows of 20 tables each at n=7,8, both builds, correct; a flipped-row table fails"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
