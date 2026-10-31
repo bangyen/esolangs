@@ -89,8 +89,11 @@ ignored-input tables included).
       grid's marker moves after a swap: re-read 2026-10-31, it says the
       symbol on the first grid is executed and then "the position
       marker" is moved, each grid has one, and neither example program
-      swaps; the page history could not be checked (the history
-      endpoint refused the fetch).  Measured: under the other reading
+      swaps.  The page history was checked later the same day: all
+      five revisions, back to the 2013 creation, leave the swap and
+      marker wording unchanged, and no example in any revision
+      swaps, so history does not settle it either.  Measured: under
+      the other reading
       (the executing grid's marker moves), 147 of 218 corpus rows hang
       (step cap at least 50,000 against at most 759 shipped steps) and
       the 71 clean rows are exactly the swap-free executions --
@@ -107,7 +110,8 @@ ignored-input tables included).
       lanes and lane funnels on the match branch of every stage, in all
       three layouts: a stage redesign priced at about a stage-sized
       block per input (the 2026-10-30 estimate, still unmeasured), not
-      a bounded patch.  Reopen on page or history evidence, or on
+      a bounded patch.  Reopen on new page evidence (a Talk page,
+      an author statement, or a reference implementation), or on
       taking the stage redesign as its own priced item.
     - Minifuck: non-commands count as instructions `[` can skip, against
       "only 3 instructions"; the `[x` filler relies on it.  FENCED
