@@ -65,6 +65,7 @@ tables = 14
 verdict = "kept under the named-function rule: the table reversed with the digit cells swapped (2**(1 - bit), inputs complemented) is built beside the plain build and the shorter kept, at no extra cost per read, so the one-hot-at-the-top and/nand pay the one-hot-at-the-bottom literal. and/nand 19.5% at n=7, 30.7% at n=8, 44.9% at n=9, 60.0% at n=10, rising with the literal; or/nor unchanged; random tables 0.03% at n=7 and 0.13% at n=8 (20 each). Measured 2026-10-30 after the digit-cell rewrite"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

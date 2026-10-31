@@ -46,6 +46,7 @@ arity = 12
 verdict = "kept: canonical, exempt, and load-bearing. A constant table takes a short drain-and-print branch (121-127 chars at n=10/12). Without the branch the general sweep faces a one-row reduced table with empty halves and indexes table[0] of an empty half: the ablated build fails on every constant table and is byte-identical everywhere else, so there is no alternative build to price against"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
