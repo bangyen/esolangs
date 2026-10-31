@@ -13,17 +13,24 @@ execution = "poly n: at most 7n + 3 commands, six a tree node plus guarded dispa
 workspace = "poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes"
 
 [generator_sizes]
-"00000001" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 96 }
+"00000001" = { commands = 17, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 17, "7" = 17 }, source_units = 78 }
 "00001100" = { commands = 16, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 75 }
-"00110110" = { commands = 21, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 21, "5" = 21, "6" = 21, "7" = 21 }, source_units = 141 }
-"0110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15 }, source_units = 87 }
-"01101001" = { commands = 21, commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21 }, source_units = 183 }
-"0110100110010110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27, "8" = 27, "9" = 27, "10" = 27, "11" = 27, "12" = 27, "13" = 27, "14" = 27, "15" = 27 }, source_units = 375 }
-"1101001101101101" = { commands = 27, commands_by_row = { "0" = 22, "1" = 22, "2" = 27, "3" = 27, "4" = 22, "5" = 22, "6" = 22, "7" = 22, "8" = 27, "9" = 27, "10" = 27, "11" = 27, "12" = 22, "13" = 22, "14" = 27, "15" = 27 }, source_units = 291 }
+"00110110" = { commands = 21, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 17, "5" = 17, "6" = 21, "7" = 21 }, source_units = 123 }
+"0110" = { commands = 15, commands_by_row = { "0" = 11, "1" = 11, "2" = 15, "3" = 15 }, source_units = 69 }
+"01101001" = { commands = 17, commands_by_row = { "0" = 17, "1" = 17, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 17, "7" = 17 }, source_units = 147 }
+"0110100110010110" = { commands = 27, commands_by_row = { "0" = 23, "1" = 23, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 23, "7" = 23, "8" = 27, "9" = 27, "10" = 23, "11" = 23, "12" = 23, "13" = 23, "14" = 27, "15" = 27 }, source_units = 303 }
+"1101001101101101" = { commands = 28, commands_by_row = { "0" = 27, "1" = 27, "2" = 28, "3" = 28, "4" = 23, "5" = 23, "6" = 23, "7" = 23, "8" = 24, "9" = 24, "10" = 28, "11" = 28, "12" = 27, "13" = 27, "14" = 28, "15" = 28 }, source_units = 222 }
 "11111110" = { commands = 21, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 16, "5" = 16, "6" = 21, "7" = 21 }, source_units = 96 }
 
 [ablations]
 audited = "2026-10-19"
+
+[ablations.identity_pair]
+saving = 11.8
+arity = 10
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: a last-level node over \"01\" is the input byte itself, so `;a;:a:~a~` (9 chars) replaces the 27-char two-arm node; the pop keeps the enclosing loop from re-entering. A rule on the node, not a search. 10.9/11.8% at n=7/8 on 200 random tables (12.6/11.6% at n=9/10 on 30; balanced area 10.7/11.8% at n=7/8); named functions parity 12.4% at n=8 and 12.3% at n=10, majority 16.8/59.4%, threshold 12.2/10.7%, and/or 6.2% at n=8 falling to 4.6% at n=10 (one 01 pair); every measured program run on every row, a one-bit wrong table failing"
 
 [ablations.halves_agree_skip]
 saving = 54.9
@@ -53,5 +60,6 @@ arity = 12
 verdict = "kept: 0.0% race marginal on random tables at every arity n=4..12 (both seed sets) and on dense, mosaic and half-constant corpora; stays under the named-function rule -- 71.0% on parity at n=8 rising to 95.6% at n=16, a share growing with arity, and 26.5% on majority at n=10; its class is a level whose residuals repeat across the whole level"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-21

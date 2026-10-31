@@ -46,7 +46,9 @@ def _inline_metrics(ids: list[list[int]]) -> list[dict[int, _Metric]]:
                 zero, one = ids[depth + 1][2 * block : 2 * block + 2]
                 left, right = result[depth + 1][zero], result[depth + 1][one]
                 value = (
-                    _Metric(3 + left.chars, 1 + left.commands)
+                    _Metric(9, 3)
+                    if remaining == 1 and (zero, one) == (0, 1)
+                    else _Metric(3 + left.chars, 1 + left.commands)
                     if zero == one
                     else _Metric(
                         21 + left.chars + right.chars,
@@ -139,6 +141,7 @@ def _prefix_hooks(
         branched=lambda one, zero: _Metric(
             21 + zero.chars + one.chars, 6 + max(zero.commands, one.commands)
         ),
+        ident=lambda: _Metric(9, 3),
         leaf_at=lambda depth, key: depth == stop_depth or key < 2,
     )
 

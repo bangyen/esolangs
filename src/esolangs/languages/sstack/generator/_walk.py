@@ -37,6 +37,7 @@ class _Hooks[C]:
     leaf: _Leaf[C]
     skipped: Callable[[C], C]
     branched: Callable[[C, C], C]
+    ident: Callable[[], C]
     leaf_at: Callable[[int, int], bool] = field(default=lambda _depth, key: key < 2)
 
 
@@ -63,6 +64,9 @@ class _TreeWalk[C]:
         if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
             self._emit(";d;")
             return self._hooks.skipped(self.walk(remaining - 1, lo, context))
+        if remaining == 1 and (below[lo], below[mid]) == (0, 1):
+            self._emit(";a;:a:~a~")
+            return self._hooks.ident()
         self._emit(";a;[a\\b/~a~")
         one = self.walk(remaining - 1, mid, context)
         self._emit("][a\\c/~a~")

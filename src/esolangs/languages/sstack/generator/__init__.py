@@ -8,11 +8,12 @@ A leaf prints ``:b:`` or ``:c:``; a constant subtree reads its remaining inputs
 onto ``d`` and prints once.  Repeated residuals defer through labels on stack
 ``e``, then run once after the prefix unwinds.  Six-bit labels preserve
 workspace; inline text and 7n + 3 commands guard admission.  Binary banks
-price every level before emitting one.
+price every level before emitting one.  A last-level ``01`` node prints its
+input byte, ``;a;:a:~a~``, not two arms.
 
 Size:
-    21 characters a node: O(T) size and build; n=10 random 1847: 16,158
-    chars, n=12 random 1847: 61,217 chars, n=16 parity: 18,921 chars.
+    21 characters a node: O(T) size and build; n=10 random 1847: 13,658
+    chars, n=12 random 1847: 53,351 chars, n=16 parity: 16,617 chars.
 
 Decisions:
     Popping before descent is the one-shot loop skeleton every form
@@ -119,6 +120,7 @@ def _sstack_shared(
             leaf=leaf,
             skipped=lambda child: ContinuationCost(1, (child,)),
             branched=lambda one, zero: ContinuationCost(6, (one, zero)),
+            ident=lambda: ContinuationCost(3),
         ),
     )
     prefix = walk.walk(n, 0)
@@ -177,6 +179,7 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
             leaf=leaf,
             skipped=lambda child: add_cost(child, 1),
             branched=lambda one, zero: add_cost(merge_cost(one, zero), 6),
+            ident=lambda: (3, None),
         ),
     )
     cost = walk.walk(n, 0, shared)

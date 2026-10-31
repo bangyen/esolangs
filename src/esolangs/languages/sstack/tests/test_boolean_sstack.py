@@ -17,7 +17,7 @@ def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:
 
     A deferral needs two unread inputs, so subtables of size 2 (the deepest
     level) cannot be labeled; the screen counts them anyway. The constructs
-    reach the size >= 4 repeats and save 4.8% of the plain tree.
+    reach the size >= 4 repeats and save 4.0% of the plain tree.
     """
     from esolangs.languages.sstack.generator import _sstack_tree, sstack
     from tests.generators.sample_tables import five_input_sample
@@ -41,8 +41,8 @@ def test_screen_sharing_potential_is_mostly_below_the_label_reach() -> None:
     assert totals[2] > 4 * (sum(totals.values()) - totals[2])  # over 80%
     plain = sum(len(_sstack_tree(table)[0]) for table in sample)
     shipped = sum(len(sstack(table)) for table in sample)
-    assert (plain, shipped) == (102_108, 97_194)
-    assert round(100 * (plain - shipped) / plain, 2) == 4.81
+    assert (plain, shipped) == (89_400, 85_843)
+    assert round(100 * (plain - shipped) / plain, 2) == 3.98
 
 
 @pytest.mark.parametrize(
@@ -73,13 +73,14 @@ def test_every_two_input_table_on_every_row() -> None:
 
 
 def test_a_full_tree_is_21_characters_a_node_and_3_a_leaf() -> None:
-    """O(T): 21(T - 1) + 3T + 12 for the prologue, parity folds nothing."""
+    """O(T): 21(T - 1) + 3T + 12 for the prologue, less 18 a ``01`` pair."""
     from esolangs.languages.sstack.generator import _sstack_tree
 
     for n in (1, 4, 6):
         parity = "".join(str(r.bit_count() % 2) for r in range(1 << n))
         plain, _ = _sstack_tree(parity)
-        assert len(plain) == 24 * (1 << n) - 9
+        pairs = sum(parity[i : i + 2] == "01" for i in range(0, 1 << n, 2))
+        assert len(plain) == 24 * (1 << n) - 9 - 18 * pairs
         assert len(boolean.sstack(parity)) <= len(plain)
 
 
