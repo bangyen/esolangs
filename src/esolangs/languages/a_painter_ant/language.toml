@@ -61,5 +61,6 @@ arity = 9
 verdict = "kept: the east corridor is built west from its far end, ending the build at the origin; later passes reach the far end with one run of E (it halts at the black cell past the corridor), so the pass-1 return run of W is gone. Reverting costs +13.01 / +13.18 / +13.27% on 20 random tables at n=7 / 8 / 9 (Random(1000n+s).getrandbits(1<<n); balanced area +12.54 / +12.98 / +13.27%), parity +12.99 / +13.14 / +13.22%, majority +13.05 / +12.40 / +13.27%, popcount>=2 +12.95 / +13.49 / +13.83%; and, nand and the flipped corridor unchanged, or / nor 0.2-0.6%; share flat to rising across n, run through the interpreter on every row (all tables n<=3, 3000 at n=4, 20 random plus named at n=7, 8, 20 and 4 at n=9)"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
