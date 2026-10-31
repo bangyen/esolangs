@@ -125,16 +125,16 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-72 of the 112 generators: ///, 1 + i, A Painter Ant, ABCDirection, Algebraic
+73 of the 112 generators: ///, 1 + i, A Painter Ant, ABCDirection, Algebraic
 Programming Language, Alight, Aprknia, ArrowQueue, Ascenic, Balik, BASICER,
 Basicfuck, Befunge, Between, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh,
 Blindfolded Arithmetic, BrainIf, Caballo, CARP, Chicken, Circlefuck,
 Clockwise, Codesick, CreativeScript v2, Crement, Cyclic tag, DINAC, EGL,
-Eval, Fackward, Forþ, Freestajlo, Grapheme, Hot, HQ9+ with headers, IEBEL,
-Interprogck8, Kiss, lol waht i cant edit talk pages, Minsky Swap, Modulous,
-Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object disoriented,
-Parenthesys, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0, Rubic,
-Shakespeare, Smu, Sonata, Stisp, Suffolk, Super SNUSP, SwitchCase, Taglate,
-Thue, Unary, Underload, Unlambda, Unsquare, What!?, Whitespace.
+Eval, Fackward, Forþ, Freestajlo, Grapheme, Home Row, Hot, HQ9+ with
+headers, IEBEL, Interprogck8, Kiss, lol waht i cant edit talk pages, Minsky
+Swap, Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object
+disoriented, Parenthesys, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0,
+Rubic, Shakespeare, Smu, Sonata, Stisp, Suffolk, Super SNUSP, SwitchCase,
+Taglate, Thue, Unary, Underload, Unlambda, Unsquare, What!?, Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->
