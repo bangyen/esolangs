@@ -14,7 +14,7 @@ halves one table string with ``inject`` regexes instead (linear regex text).
 
 Size:
     O(T) at n<=4 tree, O(T) halving above; n=4 random 1847: 262 chars,
-    n=10 random 1847: 3,809 chars, n=12 random 1847: 13,167 chars.
+    n=10 random 1847: 1,851 chars, n=12 random 1847: 5,093 chars.
 
 Decisions:
     A subtree repeated at its level is written once, at its last occurrence,
@@ -23,6 +23,8 @@ Decisions:
     ([ablations.subtree_sharing]).  At n=5 the shared tree is 1.01x the halving lookup,
     so the n<=4
     crossover stays.  A node whose halves agree is passed over.
+    Counted regex repetition uses the spec-permitted optional Python feature
+    ([ablations.counted_repetition]).
 """
 
 import string
@@ -149,21 +151,37 @@ def _data(names: _Names, table_line: str | None) -> list[str]:
     return lines + [f"{name};\n{name};" for name in names.inputs]
 
 
+def _half_pattern(half: int) -> str:
+    """Match exactly half characters without overflowing Python's repeat count."""
+    # Python's repeat count is unsigned 32-bit; its maximum is reserved.
+    # Split at the largest representable power of two instead of capping arity.
+    chunk = 1 << 31
+    full, tail = divmod(half, chunk)
+    pattern = f".{{{chunk}}}" * full
+    if tail:
+        counted = f".{{{tail}}}"
+        pattern += counted if len(counted) < tail else "." * tail
+    return pattern
+
+
 def _halve(names: _Names, halvings: list[tuple[int, str]]) -> list[str]:
     """Narrow ``t`` by each ``(half, input name)``: a zero keeps the front half."""
     lines: list[str] = []
     for half, input_name in halvings:
         one = names.fresh()
         zero = names.fresh()
+        # Counted repetition is licensed as an optional regex feature; Python
+        # supports it. Keep literal dots where their spelling is shorter.
+        pattern = _half_pattern(half)
         # A zero skips the prefix deletion; a one skips the suffix deletion.
         lines += [
             f"skipq {input_name} z",
             f"{one};",
-            "inject t=^" + "." * half + "/",
+            "inject t=^" + pattern + "/",
             f"{one};",
             f"skipq {input_name} o",
             f"{zero};",
-            "inject t=" + "." * half + "$/",
+            "inject t=" + pattern + "$/",
             f"{zero};",
         ]
     return lines

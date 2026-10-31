@@ -24,7 +24,7 @@ class TestInject:
         """Parity n=10: ~sqrt(T)-wide chunks, ~sqrt(T) lines (default: 1024 wide)."""
         table = "".join(str(bin(i).count("1") % 2) for i in range(1 << 10))
         program = esolangs.generate("inject", table, balance=True)
-        assert balance_score(str(program)) == (298, 2170, 142)
+        assert balance_score(str(program)) == (298, 1968, 142)
 
     def test_constant_subtrees_are_folded(self) -> None:
         """A table ignoring its later inputs costs one test, not ``n``."""
@@ -157,3 +157,34 @@ def test_a_width_the_program_exactly_fills_keeps_the_program() -> None:
     assert widest == 64
     assert esolangs.generate("Inject", table, width=widest) == program
     assert len(esolangs.generate("Inject", table, width=widest - 1)) == 686
+
+
+def test_counted_halving_keeps_the_exact_offset() -> None:
+    table = "0" * 32 + "1" + "0" * 31
+    program = boolean.inject(table)
+    assert ".{32}" in program
+    for row, expected in enumerate(table):
+        assert run_inject(program, list(f"{row:06b}")) == expected + "\n"
+    broken = program.replace(".{32}", ".{31}", 1)
+    assert run_inject(broken, list("100000")) != "1\n"
+
+
+def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
+    import re
+
+    from esolangs.languages.inject.generator import _half_pattern
+
+    for half in (1, 2, 4, 8, 16):
+        pattern = _half_pattern(half)
+        assert re.fullmatch(pattern, "x" * half)
+        assert re.fullmatch(pattern, "x" * (half - 1)) is None
+        assert re.fullmatch(pattern, "x" * (half + 1)) is None
+    half = 1 << 32
+    pattern = _half_pattern(half)
+    assert re.fullmatch(r"(?:\.\{\d+\})+", pattern)
+    counts = [int(value) for value in re.findall(r"\{(\d+)\}", pattern)]
+    assert sum(counts) == half
+    assert max(counts) < half
+    assert re.compile(pattern).fullmatch("") is None
+    with pytest.raises(OverflowError):
+        re.compile(f".{{{half}}}")
