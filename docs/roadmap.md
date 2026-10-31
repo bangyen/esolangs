@@ -126,9 +126,34 @@ ignored-input tables included).
       run cells, the compare turn).  A working construction must
       relocate the run, the descent and the exit funnel together --
       the stage redesign above, whose price is the rejoin's, not the
-      correction's.  Reopen on new page evidence (a Talk page,
-      an author statement, or a reference implementation), or on
-      taking the stage redesign as its own priced item.
+      correction's.  The redesign was taken the same day: the wide
+      stage is built (the cancelling lane plus an intercept dropping
+      the alt beam to a travel row that re-enters the next stage down
+      its own entry column, the exit `|` changed to `*`; witnesses
+      n=1..4 all rows and n=5..6 samples clean under both readings)
+      at about +30% size (221 to 281 chars at n=2, 2,489 to 3,311 at
+      n=8), and is held unlanded on its prototype branch --
+      invariance against an unevidenced reading does not pay a third
+      more size on every wide program.  Folded is fenced: the fold
+      links at local column 9 sever the lane's east passage (the alt
+      beam turns N at the link; a parity control runs 31 of 32 rows
+      alt-bad), and fold 0's run is unrideable with a deficit that
+      cannot be paid.  Narrow is fenced: at weights 1..2 the only
+      candidate intercept column is the shipped descent column
+      itself, and with the lane hand-patched and accounted exactly
+      the template `\` at local 7 turns the beam N.  Both readings
+      were also implemented as a registered dialect with a
+      dialect-parameterized generator (a 222-row corpus correct
+      under each reading's own semantics, the alt dialect's programs
+      no larger than the default's) and withdrawn the same day by
+      decision: no consumer needs the second reading executable and
+      the page gives it no grounding, so the dialect commitment is
+      not owed; the verified implementation is kept unlanded on its
+      local branch.  Reopen on new page evidence (a Talk page, an
+      author statement, or a reference implementation), on a folded
+      or narrow construction beating the obstructions named here, or
+      on a real consumer for the other reading -- the dialect branch
+      is the ready implementation if one appears.
     - Minifuck: non-commands count as instructions `[` can skip, against
       "only 3 instructions"; the `[x` filler relies on it.  FENCED
       (2026-10-31): the page does not settle the reading -- re-read
