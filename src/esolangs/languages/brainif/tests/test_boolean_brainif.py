@@ -114,7 +114,7 @@ class TestBrainIf:
                 unpruned = _brainif_tree(table, None, prune=False)
                 assert len(_brainif_tree(table, None)) <= len(unpruned)
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.brainif(t)) for t in tables) == 291_524
+        assert sum(len(boolean.brainif(t)) for t in tables) == 271_918
         assert sum(len(_brainif_tree(t, None, prune=False)) for t in tables) == 336_716
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:

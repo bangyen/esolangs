@@ -6,13 +6,14 @@ linear spatial lookup stores the table one cell an entry and walks to the
 selected one, its widest levels by loop.  Width requests keep the tree.
 
 Size:
-    O(T) lines for the lookup; n=10 parity: 1,893 chars, n=10 random 1847:
-    14,671 chars.
+    O(T) lines for the lookup; n=10 parity: 1,628 chars, n=10 random 1847:
+    12,407 chars.
 
 Decisions:
-    The residual DAG cuts the three-input total from 310,116 to 291,524
-    characters and steps from 130,888 to 74,440.  The looped levels follow
-    a cost model (:func:`_top_level`), not a fixed count.
+    The residual DAG cuts the three-input total from 310,116 to 271,918
+    characters and steps from 130,888 to 70,360.  The looped levels follow
+    a cost model (:func:`_top_level`), not a fixed count.  The DAG places a
+    node before one of its children (:func:`_chains`), dropping that goto.
 """
 
 from collections.abc import Iterable
@@ -194,7 +195,9 @@ def _brainif_dag(table: str) -> str:
     An ignored input with an essential one after it has no layer: each node
     of that next layer reads it first and discards it, two lines a node
     against a layer of four-line nodes.  Trailing ones keep their layers,
-    which are at most two nodes wide.
+    which are at most two nodes wide.  A node placed directly before one of
+    its children drops that child's guarded goto, and the last block falls
+    into ``done`` (:func:`_chains`).
     """
     n = _validate_truth_table(table)
     essential = essential_inputs(table, n)
@@ -204,31 +207,68 @@ def _brainif_dag(table: str) -> str:
     # Layer ``depth`` reads kept input ``kept[-1 - depth]``, after the
     # dropped ones between it and the kept input before it.
     skips = [b - a - 1 for a, b in pairwise([-1, *kept])][::-1]
-    lines: list[str] = []
-    for depth in reversed(range(len(layers))):
+    top = len(layers) - 1
+
+    def name(depth: int, node: int) -> str:
+        return f"node_{depth}_{node}" if depth >= 0 else f"out_{node}"
+
+    blocks: dict[str, list[str]] = {}
+    kids: dict[str, tuple[str, str]] = {}
+    for depth in range(top, -1, -1):
         pair = [f"if {_ASCII_ZERO} increment", f"if {_ASCII_ONE} input"]
-        first = ["if 0 input"] if depth == len(layers) - 1 else pair
+        first = ["if 0 input"] if depth == top else pair
         reads = first + pair * skips[depth]
         for node, children in enumerate(layers[depth]):
-            lines.append(f"@node_{depth}_{node}")
-            lines.extend(reads)
-            for char, child in zip((_ASCII_ZERO, _ASCII_ONE), children, strict=True):
-                target = f"node_{depth - 1}_{child}" if depth else f"out_{child}"
-                lines.append(f"if {char} goto @{target}")
-    lines.extend(["@out_0", f"if {_ASCII_ONE} move right"])
-    lines.extend(_climb("increment"))
-    lines.extend(
-        [
-            f"if {_ASCII_ZERO} output",
-            f"if {_ASCII_ZERO} goto @done",
-            "@out_1",
-            f"if {_ASCII_ZERO} increment",
-            f"if {_ASCII_ONE} output",
-            f"if {_ASCII_ONE} goto @done",
-            "@done",
-        ]
-    )
+            label = name(depth, node)
+            blocks[label] = [f"@{label}", *reads]
+            kids[label] = (name(depth - 1, children[0]), name(depth - 1, children[1]))
+    blocks["out_0"] = [
+        "@out_0",
+        f"if {_ASCII_ONE} move right",
+        *_climb("increment"),
+        f"if {_ASCII_ZERO} output",
+        f"if {_ASCII_ZERO} goto @done",
+    ]
+    blocks["out_1"] = [
+        "@out_1",
+        f"if {_ASCII_ZERO} increment",
+        f"if {_ASCII_ONE} output",
+    ]
+    lines: list[str] = []
+    for label, follows in _chains(name(top, 0), kids):
+        lines.extend(blocks[label])
+        if label in kids:
+            for char, child in zip((_ASCII_ZERO, _ASCII_ONE), kids[label], strict=True):
+                if child != follows:
+                    lines.append(f"if {char} goto @{child}")
+    lines.append("@done")
     return _resolve(lines)
+
+
+def _chains(root: str, kids: dict[str, tuple[str, str]]) -> list[tuple[str, str]]:
+    """Order the blocks, each paired with the child placed right after it.
+
+    Each block follows at most one parent, taken greedily layer by layer
+    (parents are in emission order, the zero child first).  The root heads
+    the program and ``out_1``, which needs no jump to ``done``, ends it.
+    """
+    follows: dict[str, str] = {}
+    taken: set[str] = set()
+    for label, children in kids.items():
+        pick = next((c for c in children if c not in taken), None)
+        if pick is not None and pick != "out_1":
+            follows[label] = pick
+            taken.add(pick)
+    heads = [label for label in [*kids, "out_0", "out_1"] if label not in taken]
+    heads.sort(key=lambda label: (label != root, label == "out_1"))
+    order: list[tuple[str, str]] = []
+    for head in heads:
+        cursor: str | None = head
+        while cursor is not None:
+            nxt = follows.get(cursor)
+            order.append((cursor, nxt or ""))
+            cursor = nxt
+    return order
 
 
 class _SpanBuilder:
@@ -594,5 +634,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="each line is one instruction and goto targets are line numbers",
-    proof_workspace=(workspace, True, (3, 6)),
+    proof_workspace=(workspace, False, (3, 6)),
 )

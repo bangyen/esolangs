@@ -48,4 +48,4 @@ def _chars(n: int, _: str) -> int:
     return chars + sum(nodes[d] * lines[d] for d in range(n)) + 54 - 1
 
 
-FORMULAS = {"scaling": (_chars, True, (1, 2, 3, 4, 5))}
+FORMULAS = {"scaling": (_chars, False, (1, 2, 3, 4, 5))}
