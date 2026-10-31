@@ -7,20 +7,20 @@ admitted = 2026-10-15T02:01:50-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "the inputs are the initial stack; each node is the wiki's conditional, `d` dropping a 0 bit's branch and the zero test `(1+di-)` cancelling a 1 bit's, so one stack survives; equal halves pop untested and constant subtables fold"
-scaling = "linear: worst 10T - 13 characters past n = 2: subtree_ids folding"
-execution = "poly n: at most n(n+1)/2 + 14n + 6 commands past n = 1: empty groups skip whole, flip +8"
+qualification = "the inputs are the initial stack; selectors `di` (keeps a 1), `(1+di-)` (keeps a 0) and `p` build a tree leaving an empty stack of weight 1 on each 1 row, a 0 subtable no branch and a constant 1 its pops; `(i+-)` beside n pops makes that `[1]` and the 0 rows `[]`; more ones than zeros builds the complement; equal halves pop untested"
+scaling = "linear: worst 39T/4 + n - 6 characters past n = 1: parity"
+execution = "poly n: worst (3n^2 + 27n + 10)/2 commands past n = 2: a skipped dip chain, 3 a level"
 workspace = "poly n: at most (n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3) bits: nested frames"
 
 [generator_sizes]
-"00000001" = { commands = 32, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 32, "5" = 32, "6" = 32, "7" = 32 }, source_units = 31 }
-"00001100" = { commands = 34, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 34, "5" = 34, "6" = 34, "7" = 34 }, source_units = 33 }
-"00110110" = { commands = 42, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 31, "5" = 31, "6" = 42, "7" = 42 }, source_units = 57 }
-"0110" = { commands = 27, commands_by_row = { "0" = 16, "1" = 16, "2" = 27, "3" = 27 }, source_units = 26 }
-"01101001" = { commands = 31, commands_by_row = { "0" = 31, "1" = 31, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 31, "7" = 31 }, source_units = 66 }
-"0110100110010110" = { commands = 57, commands_by_row = { "0" = 46, "1" = 46, "2" = 57, "3" = 57, "4" = 57, "5" = 57, "6" = 46, "7" = 46, "8" = 57, "9" = 57, "10" = 46, "11" = 46, "12" = 46, "13" = 46, "14" = 57, "15" = 57 }, source_units = 146 }
-"1101001101101101" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 48, "5" = 48, "6" = 48, "7" = 48, "8" = 46, "9" = 46, "10" = 57, "11" = 57, "12" = 47, "13" = 47, "14" = 47, "15" = 47 }, source_units = 117 }
-"11111110" = { commands = 46, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 35, "5" = 35, "6" = 46, "7" = 46 }, source_units = 45 }
+"00000001" = { commands = 21, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 17, "5" = 17, "6" = 17, "7" = 21 }, source_units = 20 }
+"00001100" = { commands = 20, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 24, "5" = 24, "6" = 20, "7" = 20 }, source_units = 23 }
+"00110110" = { commands = 51, commands_by_row = { "0" = 27, "1" = 27, "2" = 31, "3" = 31, "4" = 45, "5" = 49, "6" = 55, "7" = 51 }, source_units = 54 }
+"0110" = { commands = 32, commands_by_row = { "0" = 26, "1" = 30, "2" = 36, "3" = 32 }, source_units = 35 }
+"01101001" = { commands = 46, commands_by_row = { "0" = 42, "1" = 46, "2" = 52, "3" = 48, "4" = 52, "5" = 48, "6" = 42, "7" = 46 }, source_units = 75 }
+"0110100110010110" = { commands = 64, commands_by_row = { "0" = 58, "1" = 62, "2" = 68, "3" = 64, "4" = 68, "5" = 64, "6" = 58, "7" = 62, "8" = 68, "9" = 64, "10" = 58, "11" = 62, "12" = 58, "13" = 62, "14" = 68, "15" = 64 }, source_units = 154 }
+"1101001101101101" = { commands = 51, commands_by_row = { "0" = 47, "1" = 47, "2" = 58, "3" = 53, "4" = 58, "5" = 58, "6" = 53, "7" = 53, "8" = 74, "9" = 69, "10" = 63, "11" = 68, "12" = 45, "13" = 45, "14" = 56, "15" = 51 }, source_units = 112 }
+"11111110" = { commands = 23, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 23 }, source_units = 22 }
 
 [catalogue]
 sharing_exempt = "no names or jumps: code runs once per place it is written"
@@ -31,33 +31,31 @@ docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
 [ablations]
-audited = "2026-10-29"
+audited = "2026-10-30"
 
 [ablations.equal_halves_skip]
-saving = 12.44
-arity = 12
-verdict = "kept: canonical, exempt. A node whose halves agree pops its input untested and recurses once. Branching to both children instead costs +12.51% at n=10 and +12.44% at n=12 on random tables (second seed set +12.47 / +12.38%), and at n=10/12: one ignored input +17.36 / +13.90%, two +8.19 / +11.80%, three +4.85 / +10.22%, half-constant +9.60 / +12.66%. Parity, AND, OR and the constants measure 0.00% (their agreeing nodes are constant subtables, taken by the fold)"
+saving = 11.45
+arity = 10
+verdict = "kept: canonical, exempt. A node whose halves agree pops its input untested and recurses once. Branching to both children instead costs +12.02 / +11.99 / +12.27 / +11.45% on random tables at n=7 / 8 / 9 / 10 (seed 184700 + n, 200 / 200 / 50 / 20 tables) in the signed-sum build, and 0.00% on parity, AND, OR, majority and thr3 (their agreeing nodes are constants, taken by the fold). Re-measured 2026-10-30; the earlier 12.44% was against the previous build"
 
 [ablations.constant_fold]
 saving = 0.0
-arity = 12
-verdict = "recorded: canonical, exempt, with no separable price in the shipped context. Removing the fold while the skip stays is byte-identical on every table tried (124 seeded and named tables at n=6/10): a constant subtable's skip chain emits the fold's own string, one p per level plus the answer char. The fold's value is joint with the skip: the plain build (neither) costs +53.10% at n=10 and +53.07% at n=12 on random tables, and on constant tables +143,120.00 / +477,650.00%, AND +7,600.54 / +24,296.17%, majority +110.29 / +125.83%"
+arity = 10
+verdict = "recorded: canonical, exempt, with no separable price in the shipped context. Expanding a constant 1 subtable into its equal-halves skips is byte-identical on every table tried (random 200 / 200 / 50 / 20 at n=7 / 8 / 9 / 10 and five named functions): the skip chain emits the fold's own p per level. A constant 0 subtable is no branch, which is the construction itself. Re-measured 2026-10-30 against the signed-sum build"
 
-[ablations.last_level_forms]
-saving = 20.1
-arity = 12
+[ablations.signed_sum]
+saving = 16.08
+arity = 8
 seed = "random.Random(184700 + n)"
 tables = 200
-verdict = "kept: a last level with leaves 01 emits nothing, since the bit is the stack ([1], or a 0 the strip empties), and with 10 emits (d+(1+di-)i), against the 15-char conditional: 22.3% on random tables at n=4, 20.4% at n=5, 19.9-20.1% at n=6..12 (20 tables at 12), flat; parity 31.2%, majority 27.8%, and 10.6% at n=8. Exhaustive n<=3: 252 tables change (the root keeps its conditional, so n=1 never empties), none grows, every changed program executed; random samples executed at n=4..10"
+verdict = "kept: a rule. The tree leaves an empty stack of weight 1 on each 1 row and nothing on a 0 row, so a 0 subtable is no branch (a node with one live child drops its sum: `dip` or `(1+di-)p`) and a 1 leaf is its pops; one `(i+-)` and a sibling `p`*n turn it into `[1]` / `[]` after the tree, against `i` at every 1 leaf, and a table with more ones than zeros builds the complement's tree ending `(1+i-)` beside `p`*n`i` (+2 chars). Against the previous build (last-level forms and the 10-pair complement): 15.03% at n=7 (200 tables, seed 184700 + n), 16.08% at n=8, 16.17% at n=9 (50), 16.51% at n=10 (20), rising; balanced area 14.87 / 16.04 / 16.23 / 16.57%. Named functions at n=7 / 8 / 9 / 10: and 65.7 / 68.3 / 70.3 / 71.9%, nand 69.1 / 71.0 / 72.6 / 74.0, nor 39.3 / 42.0 / 44.4 / 46.5, or 34.2 / 38.4 / 41.7 / 44.4, thr2 21.7 / 27.5 / 31.9 / 35.6, majority 17.0 / 25.0 / 19.2 / 25.2, thr3 6.1 / 13.2 / 18.8 / 23.4, parity 1.3 / 1.9 / 2.2 / 2.3 (every node stays full). Dropping the complement costs +1.57 / +1.32 / +1.32 / +0.72% on random tables, or +68 to +92% and thr3 up to +26%; dropping the equal-halves skip +12.02 / +11.99 / +12.27 / +11.45% on random tables and 0.00% on every named function. Executed through esolangs.run on every row: all 276 tables at n<=3, all 65,536 tables at n=4, 45 tables at n=4..7 and 30 at n=8 (named functions, constants, random and 5%/30%/50%/70%/95% densities), every program equals its table; a table with its last bit flipped fails on 1 row and an OR program against AND on 30 of 32. Bounds re-derived: exhaustive max over all 65,534 non-constant tables at n=4 is 83 commands, a path-model max over live rows 36 / 59 / 83 / 110 / 140 at n=2..6 matches (3n^2 + 27n + 10)/2 from n=3"
+
+[ablations.last_level_forms]
+saving = 0.0
+arity = 12
+verdict = "retired 2026-10-30: superseded by signed_sum, which has no last-level forms (a `dip` / `(1+di-)p` pair costs 3 / 8 against 0 / 12, and a 0 pair is no branch). The forms saved 20.7% at n=7..10 against the root-style conditional at every level (re-measured 2026-10-29); signed_sum is 15.03% (n=7) to 16.51% (n=10) under the build that kept them, balanced area 14.87 to 16.57%"
 
 [ablations.complement_rule]
-saving = 0.64
+saving = 0.0
 arity = 10
-seed = "random.Random(184700 + n)"
-tables = 20
-verdict = "retired as a race, kept as a rule: the race (min of the tree and the complement's tree plus a closing flip) saved 1.73% on 200 random tables at n=7, 1.30% at n=8, 0.73% at n=10 (20 tables), 0.34% at n=12: under the bar and declining. It wins on negated named functions: !majority 23.2% (n=6..10), !thr3 14.1% at n=10, !thr2 7.1%, !and 4.7%. The rule (complement when the table has two more 10 pairs than 01) matches the race on every named function at n=6/8/10/12 except !and (4.7% under the bar, dropped); it saves 1.58% / 1.23% / 0.64% under plain on random at n=7 / 8 / 10, +0.15% / +0.08% / +0.09% against the race, and builds one tree instead of two. Pins moved: 11111110 44 -> 46 commands; bound 10T - 13 holds from n = 3 (n=2 1110: 28 chars, was 27)"
-
-[ablations.last_level_forms_remeasured]
-saving = 20.7
-arity = 10
-verdict = "kept, re-measured 2026-10-29 against the build with the last-level forms removed (the root-style conditional at every level): 21.3% at n=7 (200 tables), 21.2% at n=8 (200), 20.7% at n=10 (20); parity 31.1%, majority 27.0%, thr3 18.5%, AND 8.1%, OR 7.7%, !AND 6.2%, !OR 1.6% at n=10"
+verdict = "retired 2026-10-30: the complement is now chosen by ones above zeros (signed_sum), not 10 pairs above 01 pairs plus a closing flip. The pair rule saved 1.58% / 1.23% / 0.64% on random tables at n=7 / 8 / 10 under the previous build; the ones rule costs 2 chars for the closing `(1+i-)` and `i`, and dropping it from signed_sum costs +1.57 / +1.32 / +0.72% on random tables at n=7 / 8 / 10, balanced area within 0.1 point"

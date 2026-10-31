@@ -132,6 +132,20 @@ def _morse(a: str, b: str, n: int) -> str:
     return a
 
 
+# language-owners: ["Caballo"]
+def _caballo_chain(n: int) -> str:
+    """The execution worst: every zero child holds a lone-1 dip chain.
+
+    Row 0...0 skips one chain per level, 3 items a level; the tree is built
+    on the complement, which has the fewer ones.
+    """
+    tree, size = "10", 2
+    while size < 2**n:
+        tree += "0" * (size - 1) + "1"
+        size *= 2
+    return "".join("10"[c == "1"] for c in tree) if n > 2 else tree
+
+
 # language-owners: ["Bitdeque"]
 def _bitdeque_worst(n: int) -> str:
     """Every level's zero child an already-placed subtree, read permuted.
@@ -909,7 +923,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         ),
     ),
     "Circlefuck": lambda n: (_row_one(n),),
-    "Caballo": lambda n: ("0010" + _morse("0110", "1001", n)[4:],) if n >= 2 else (),
+    # Parity is the size worst; the chain is the execution worst.
+    "Caballo": lambda n: (
+        (_morse("0110", "1001", n), _caballo_chain(n)) if n >= 2 else ()
+    ),
     "Codesick": lambda n: (
         (_codesick_worst(n), _codesick_chars_worst(n)) if n >= 2 else ()
     ),

@@ -1,18 +1,22 @@
-"""Caballo Boolean program generator: the wiki's conditional as a tree.
+"""Caballo Boolean program generator: the wiki's conditional, as a signed sum.
 
-The inputs are the stack, the first on top.  A node tests the top with
-``(dip R1+(1+di-)p R0)``: ``d`` drops the stack on a 0 bit, emptying the
-first branch, and the zero test ``(1+di-)`` cancels to nothing on a 1.
-Both branches pop the bit.  A node whose halves agree pops it untested; a
-constant subtable pops the rest and leaves ``[1]`` (``i``) or ``[]``, so
-one stack survives at weight 1 and the output is never drawn at random.
-A last level costs nothing for leaves 01 and 12 characters for 10, so a
-table with two more 10 pairs than 01 builds the complement's tree plus a
-closing flip ([ablations.complement_rule]).
+The inputs are the stack, the first on top.  Selectors split the stack by the
+top bit: ``di`` keeps a 1 (a 0 drops), ``(1+di-)`` keeps a 0 (the 1's ``-1``
+cancels the ``1``), and ``p`` pops it.  A tree of them leaves one empty stack
+of weight 1 per row where the table is 1 and no stack where it is 0, so a
+0-subtable costs nothing and a node with one live child drops its sum:
+``dip`` or ``(1+di-)p``, then the child.  The empty stack is turned into
+the answer once, after the tree: ``(i+-)`` maps ``[]`` to ``[1]`` plus ``-[]``,
+and a sibling branch of n pops adds the ``[]`` of weight 1, so a 1 row ends as
+``[1]`` and a 0 row as ``[]``.  A table with more ones than zeros builds the
+complement's tree and ends ``(1+i-)`` beside n pops and an ``i``
+([ablations.signed_sum]).
+A constant subtable pops what is left (``p`` per level); a node whose halves
+agree pops its input untested.
 
 Size:
-    T-1 nodes at most, appended into one buffer: size and build time O(T);
-    n=10 and: 171 chars, n=10 random 1847: 7,663 chars.
+    39T/4 + n - 6 chars at most (parity); n=10 and: 48 chars, n=10 random
+    1847: 6,531 chars.
 
 Decisions:
     Repeated subtrees are not shared: Caballo has no names or jumps, so code
@@ -24,53 +28,50 @@ from esolangs.generation.wrap import wrap_chars
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
-#: Flips the surviving stack, ``[]`` <-> ``[1]``: the 10 last level's form.
-_NOT = "(d+(1+di-)i)"
-
 
 def caballo(truth_table: str) -> str:
     """Build a Caballo program printing ``[1]`` or ``[]`` for each row.
 
-    A table with two more 10 pairs than 01 builds the complement's tree plus
-    a closing flip ([ablations.complement_rule]).
+    A table with more ones than zeros builds the complement's tree
+    ([ablations.signed_sum]).
     """
-    pairs = [truth_table[i : i + 2] for i in range(0, len(truth_table), 2)]
-    if pairs.count("10") - pairs.count("01") > 1:
-        return _tree("".join("10"[c == "1"] for c in truth_table)) + _NOT
-    return _tree(truth_table)
-
-
-def _tree(truth_table: str) -> str:
-    """The conditional tree for ``truth_table``."""
     n = _validate_truth_table(truth_table)
+    if "1" not in truth_table:
+        return "p" * n
+    if "0" not in truth_table:
+        return "p" * n + "i"
+    if 2 * truth_table.count("1") > len(truth_table):
+        flipped = "".join("10"[c == "1"] for c in truth_table)
+        return f"({_tree(flipped, n)}(1+i-)+{'p' * n}i)"
+    return f"({_tree(truth_table, n)}(i+-)+{'p' * n})"
+
+
+def _tree(truth_table: str, n: int) -> str:
+    """Selectors leaving an empty stack of weight 1 on each 1 row."""
     ids = subtree_ids(truth_table)
     out: list[str] = []
 
     def node(depth: int, k: int) -> None:
         if ids[depth][k] < 2:
-            # The pops empty the stack, where ``q`` would be a round
-            # trip (push a zero, the strip eats it), so ``i`` alone
-            # leaves [1]; the leaf costs one ``p`` per remaining level
-            # plus the answer char.
-            out.append("p" * (n - depth) + ("i" if ids[depth][k] else ""))
+            # Reached only as a live constant 1: a 0 child is never entered.
+            out.append("p" * (n - depth))
             return
         zero, one = ids[depth + 1][2 * k], ids[depth + 1][2 * k + 1]
         if zero == one:
             out.append("p")
             node(depth + 1, 2 * k)
-            return
-        # The root keeps its conditional: an empty program is no program.
-        if depth == n - 1 and depth:
-            # The last bit is the stack: [1] already answers 1 and a 0
-            # strips to [].  The complement drops a 1 bit's stack and
-            # turns a 0 into [1] ([ablations.last_level_forms]).
-            out.append("" if (zero, one) == (0, 1) else "(d+(1+di-)i)")
-            return
-        out.append("(dip")
-        node(depth + 1, 2 * k + 1)
-        out.append("+(1+di-)p")
-        node(depth + 1, 2 * k)
-        out.append(")")
+        elif zero == 0:
+            out.append("dip")
+            node(depth + 1, 2 * k + 1)
+        elif one == 0:
+            out.append("(1+di-)p")
+            node(depth + 1, 2 * k)
+        else:
+            out.append("(dip")
+            node(depth + 1, 2 * k + 1)
+            out.append("+(1+di-)p")
+            node(depth + 1, 2 * k)
+            out.append(")")
 
     node(0, 0)
     return "".join(out)
