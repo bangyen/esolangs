@@ -139,7 +139,7 @@ Each missed the 10% bar:
 - Defaulting to the smaller-area balance layout (2026-10-22; shipped for
   Piet, ArrowQueue and B-tapemark):
   - Clockwise's narrow route and banded strips (49-58T cells at n=10..12)
-    lose to the flat default's 30T + 48n + 24; the strips also grow
+    lose to the flat default's 25T + 40n + 20; the strips also grow
     superlinearly in time (2.9 s at n=14).
   - LaserFuck's balance widths save 35.5% at n=6, 21.5% at n=7 and 11.9%
     at n=8.

@@ -12,12 +12,12 @@ n <= 2, else ``2*n + 5``).  ``balance`` may instead split the table into
 strips the first inputs select (:func:`_clockwise_banded`): n=6 random
 184 -> 106 on a side, n=9 1107 -> 270.  The default is
 :func:`_clockwise_flat`, which lays the gadgets in one band
-(six rows, ``5T + 8n + 4`` wide): area ``30T + 48n + 24`` where the stack
+(five rows, ``5T + 8n + 4`` wide): area ``25T + 40n + 20`` where the stack
 costs ``(2T + 9n + 2)(2n + 15)`` ([ablations.flat_band]).
 
 Size:
-    O(T) cells; n=8 random 1847: 7,572 chars, n=10 random 1847: 29,172 chars,
-    n=12 random 1847: 115,284 chars.
+    O(T) cells; n=8 random 1847: 6,223 chars, n=10 random 1847: 23,967 chars,
+    n=12 random 1847: 94,703 chars.
 """
 
 from math import ceil
@@ -45,7 +45,7 @@ _CLIMB = 2
 # leg climbs -- the next gadget's corner, so the head width is the pitch too.
 _READS = 7
 
-# The lookup table occupies rows 1 to 5; row 0 is the entry descent.
+# The stacked lookup table occupies rows 1 to 5; row 0 is the entry descent.
 _TABLE_ROWS = 5
 
 # The six digit bits both answers share: 0110000 and 0110001 differ in the
@@ -164,7 +164,7 @@ def _clockwise_flat(truth_table: str) -> str:
     past its east end, turns back under it and climbs into the next head on
     the same two rows, so the stack of ``n`` gadget rows becomes one band.
     The digit run opens row 0.  Rows: 0 start and wire, 1-2 gadgets, 3 wire
-    dip, 1-5 table.  Trailing inputs are read on the return row west of the
+    dip, 1-4 table.  Trailing inputs are read on the return row west of the
     table, or down a left rail when that stretch is too short.
     """
     total = _validate_truth_table(truth_table)
@@ -212,17 +212,20 @@ def _clockwise_flat(truth_table: str) -> str:
         if bit == "1":
             grid.place(x, top + 1, "+")
         grid.place(x, top + 2, ";")
-        grid.place(x, top + 3, "S")
-        grid.place(x, top + 4, "!")
+        # A one turns on ``?`` (acc 1), a zero on ``!`` (acc 0).
+        grid.place(x, top + 3, "?" if bit == "1" else "!")
         if entry + 1 < len(indexed):
             grid.place(x + 1, top, "-")
-            grid.place(x + 1, top + 4, "+")
-    grid.place(0, top + 4, "R")
+        if entry:
+            # The return row's gap west of the turn: ``S`` lets the previous
+            # entry's ``?`` pass, ``+`` keeps its ``!`` passing.
+            grid.place(x - 1, top + 3, "S" if indexed[entry - 1] == "1" else "+")
+    grid.place(0, top + 3, "R")
     if on_return:
         for x in range(1, _READS * trailing + 1):
-            grid.place(x, top + 4, ".")
+            grid.place(x, top + 3, ".")
     else:
-        for y in range(1, top + 4):
+        for y in range(1, top + 3):
             grid.place(0, y, "." if y <= _READS * trailing else "+")
     return grid.render()
 
@@ -231,7 +234,7 @@ def _clockwise_program(truth_table: str, width: int | None = None) -> str:
     """Build the flat band, or under a width the narrower of it and the lookup."""
     flat = _clockwise_flat(truth_table)
     if width is None:
-        # Area 30T + 48n + 24 against the stack's (2T + 9n + 2)(2n + 15) >= 34T:
+        # Area 25T + 40n + 20 against the stack's (2T + 9n + 2)(2n + 15) >= 34T:
         # the band wins at every n ([ablations.flat_band]).
         return flat
     total = _validate_truth_table(truth_table)

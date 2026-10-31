@@ -8,19 +8,19 @@ admitted = 2021-05-25T19:49:44-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit"
-scaling = "linear: worst 30T + 48n + 24 cells past n = 1"
-execution = "linear: worst 16T + 22n + 4 steps past n = 1: the pointer's path to the last row"
-workspace = "poly n: worst 57n + 53 + bl(5*2^n+8n+3) bits: 7n-character queue"
+scaling = "linear: worst 25T + 40n + 20 cells past n = 1"
+execution = "linear: worst 16T + 22n + 2 steps past n = 1: the pointer's path to the last row"
+workspace = "poly n: worst 57n + 54 + bl(5*2^n+8n+3) bits: 7n-character queue"
 
 [generator_sizes]
-"00000001" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 390 }
-"00001100" = { commands = 112, commands_by_row = { "0" = 94, "1" = 94, "2" = 98, "3" = 98, "4" = 108, "5" = 108, "6" = 112, "7" = 112 }, source_units = 228 }
-"00110110" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 388 }
-"0110" = { commands = 112, commands_by_row = { "0" = 94, "1" = 98, "2" = 108, "3" = 112 }, source_units = 228 }
-"01101001" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 390 }
-"0110100110010110" = { commands = 348, commands_by_row = { "0" = 222, "1" = 226, "2" = 236, "3" = 240, "4" = 256, "5" = 260, "6" = 270, "7" = 274, "8" = 296, "9" = 300, "10" = 310, "11" = 314, "12" = 330, "13" = 334, "14" = 344, "15" = 348 }, source_units = 660 }
-"1101001101101101" = { commands = 348, commands_by_row = { "0" = 222, "1" = 226, "2" = 236, "3" = 240, "4" = 256, "5" = 260, "6" = 270, "7" = 274, "8" = 296, "9" = 300, "10" = 310, "11" = 314, "12" = 330, "13" = 334, "14" = 344, "15" = 348 }, source_units = 662 }
-"11111110" = { commands = 198, commands_by_row = { "0" = 146, "1" = 150, "2" = 160, "3" = 164, "4" = 180, "5" = 184, "6" = 194, "7" = 198 }, source_units = 388 }
+"00000001" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 321 }
+"00001100" = { commands = 110, commands_by_row = { "0" = 92, "1" = 92, "2" = 96, "3" = 96, "4" = 106, "5" = 106, "6" = 110, "7" = 110 }, source_units = 187 }
+"00110110" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 319 }
+"0110" = { commands = 110, commands_by_row = { "0" = 92, "1" = 96, "2" = 106, "3" = 110 }, source_units = 187 }
+"01101001" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 321 }
+"0110100110010110" = { commands = 346, commands_by_row = { "0" = 220, "1" = 224, "2" = 234, "3" = 238, "4" = 254, "5" = 258, "6" = 268, "7" = 272, "8" = 294, "9" = 298, "10" = 308, "11" = 312, "12" = 328, "13" = 332, "14" = 342, "15" = 346 }, source_units = 543 }
+"1101001101101101" = { commands = 346, commands_by_row = { "0" = 220, "1" = 224, "2" = 234, "3" = 238, "4" = 254, "5" = 258, "6" = 268, "7" = 272, "8" = 294, "9" = 298, "10" = 308, "11" = 312, "12" = 328, "13" = 332, "14" = 342, "15" = 346 }, source_units = 545 }
+"11111110" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 319 }
 
 [catalogue]
 folding_constant_local = "_constant_ring"  # read rotation and literal output
@@ -60,6 +60,13 @@ arity = 8
 seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: the one-band lookup races the stacked one by area and wins every random table, 54.9% at n=7, 55.5% at n=8, 58.3% at n=10 -- the same on parity, and, or and majority, since a table's bits move no cell; it wins every two-or-more-essential table through n=3. The race is live: stacked wins on few essential inputs with many trailing ones, whose reads the band takes down a tall rail (62 of the probed projections; essential (0, 1) at n=9 is 1,848 cells against 2,120)"
+
+[ablations.table_rows]
+saving = 16.7
+arity = 9
+seed = "random.Random(184700 + n)"
+tables = 20
+verdict = "kept: a four-row table (the one's `?` turns where the zero's `!` does, the return row's gaps `S` before a `?` and `+` before a `!`) drops the `S` row and the flat band from six rows to five; area 5(5T + 8n + 4) against 6(5T + 8n + 4), 16.67% on random tables at n=7, 8 and 9 (84,000 to 70,000, 161,760 to 134,800, 316,320 to 263,600 over 20 tables) and on parity, and, or, majority, threshold at every n=3..9 -- a fixed share, not falling with n. balance=True is 0.00% there: its banded strips keep the five-row table and win"
 
 [audits]
 blind_reimplementation = 2026-10-30
