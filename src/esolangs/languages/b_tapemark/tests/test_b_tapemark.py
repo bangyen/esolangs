@@ -31,6 +31,20 @@ def test_copy_and_character_input() -> None:
     assert execute(">-+!", "Z\n") == "Z"
 
 
+@pytest.mark.parametrize(
+    ("reading", "expected"),
+    [("new", ((1, 0), (1, 0))), ("old", ((2, 0), (0, 0)))],
+)
+def test_the_swap_marker_dialect_names_the_marker_that_moves(
+    reading: str, expected: tuple[tuple[int, int], tuple[int, int]]
+) -> None:
+    """After a swap, ``new`` steps the new grid's marker, ``old`` the old one's."""
+    state = _load(">?", reading)
+    state = _advance(_advance(state)[0])[0]
+    assert state.program == 1
+    assert state.positions == expected
+
+
 def test_quoted_text_is_blank() -> None:
     assert execute('>A"IGNORED"B!') == "AB"
     # a form feed is a column in a comment, not a row break (only LF/CRLF/CR split)

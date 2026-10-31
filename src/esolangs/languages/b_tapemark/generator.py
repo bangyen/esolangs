@@ -5,7 +5,12 @@ walks the mark pointer by its weight when the bit is 0, and ``+`` prints the
 mark it ends on.  Constant roots read all inputs into disposable marks and
 print a literal answer without that walk.
 
-Size:
+The ``swap_marker="old"`` dialect rebuilds each stage around its own
+round-trip landing (see :meth:`_Builder._stage_old`); the copy phase, the
+climb and the tail are shared, and on the measured corpus its programs are
+no larger than the default dialect's.
+
+Size (default dialect):
     O(T) source and construction in every layout; the narrow XOR2 needs
     nine columns. Constants: 2n + 2 cells in one row. The default is the least
     by area of the wide strip and the
@@ -29,6 +34,10 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.b_tapemark.interpreter import (
+    SWAP_MARKERS,
+    validate_swap_marker,
+)
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -93,6 +102,8 @@ class _Builder:
         weight: int,
         lines: tuple[str, ...] = _STAGE,
         run_start: int | None = None,
+        *,
+        swap_marker: str = "new",
     ) -> None:
         """Place one input's branch, whose ``0`` side adds ``weight``.
 
@@ -101,6 +112,9 @@ class _Builder:
         The beam arrives and leaves downwards, and only the ``0`` side
         crosses the run of ``|``, which is what moves the pointer.
         """
+        if swap_marker == "old":
+            self._stage_old(x, y, weight, lines)
+            return
         for offset, line in enumerate(lines):
             self.row(x, y + offset, line)
         start = x + _RUN_COLUMN if run_start is None else run_start
@@ -109,6 +123,34 @@ class _Builder:
         turn = start + weight
         self.put(turn, y + 1, "\\")
         self.put(turn, y + 4, "/")
+
+    def _stage_old(self, x: int, y: int, weight: int, lines: tuple[str, ...]) -> None:
+        """Place one input's branch for the ``old`` swap-marker dialect.
+
+        Under ``old`` the match side's round trip leaves the beam on the
+        compare column's next row, heading east across the very ``|``
+        the other side steps south through, and the pointer two columns
+        further east than the other side's own dance leaves it: the
+        walk still owed is ``weight - 2``, taken as a run of ``|`` on
+        that row (or, for weight under 2, as west-stepping ``|`` on
+        the funnel row, clear of the other side's south crossing).
+        The beam turns south past the stage's last row-3 cell and
+        rejoins the shared funnel at row 4's ``/``.
+        """
+        for offset, line in enumerate(lines):
+            self.row(x, y + offset, line)
+        landing = 5 if lines is _NARROW_STAGE else 6
+        run = max(0, weight - 2)
+        for offset in range(run):
+            self.put(x + landing + 1 + offset, y + 2, "|")
+        turn = x + max(landing + 3, landing + 1 + run)
+        self.put(turn, y + 2, "\\")
+        self.put(turn, y + 4, "/")
+        if weight == 1:
+            self.put(x + landing + 1, y + 4, "|")
+        elif weight == 0:
+            self.put(x + landing + 1, y + 4, "|")
+            self.put(x + landing, y + 4, "|")
 
     def climb(self, y: int, depth: int) -> None:
         """Turn up at ``(0, y)`` into the ``2 * depth`` climb above the copy."""
@@ -159,7 +201,9 @@ class _Builder:
         return "\n".join(lines)
 
 
-def _b_tapemark_narrow(table: str, depth: int, weights: list[int]) -> str:
+def _b_tapemark_narrow(
+    table: str, depth: int, weights: list[int], swap_marker: str = "new"
+) -> str:
     """Narrow layout: copy on a staircase, compares vertical, indices horizontal.
 
     ``table`` is painted at the essential inputs; ``weights`` has one stage
@@ -188,7 +232,9 @@ def _b_tapemark_narrow(table: str, depth: int, weights: list[int]) -> str:
         row = first + _STAGE_ROWS * level
         weight = weights[level]
         # Column 8 clears the other arm's turn in column 7, even at weight 1.
-        builder.stage(0, row, weight, _NARROW_STAGE, max(6, 8 - weight))
+        builder.stage(
+            0, row, weight, _NARROW_STAGE, max(6, 8 - weight), swap_marker=swap_marker
+        )
     # Correct the stages' shared horizontal displacement inside their columns.
     tail = first + _STAGE_ROWS * depth
     builder.put(0, tail, "\\")
@@ -198,7 +244,14 @@ def _b_tapemark_narrow(table: str, depth: int, weights: list[int]) -> str:
     return builder.render()
 
 
-def b_tapemark(truth_table: str, width: int | None = None) -> str:
+def _dialect(swap_marker: str = "new") -> None:
+    """Validate which grid's marker moves after a swap."""
+    validate_swap_marker(swap_marker)
+
+
+def b_tapemark(
+    truth_table: str, width: int | None = None, *, swap_marker: str = "new"
+) -> str:
     """Build a B-tapemark program computing ``truth_table``.
 
     The table is copied onto the blank grid one cell per row, the inputs
@@ -206,7 +259,12 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     it ends on. When the wide layout exceeds ``width``, a staircase copies one
     entry per row and compact stages retain vertical comparisons. Both
     layouts have O(T) source and construction; narrow XOR2 needs nine columns.
+
+    ``swap_marker`` selects the dialect the stages are built for (see the
+    interpreter's ``Dialects`` note); the constant layout swaps nothing
+    and serves both.
     """
+    validate_swap_marker(swap_marker)
     depth = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         answer = truth_table[0]
@@ -217,15 +275,20 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
         # so the literal digit prints rather than comparing the data mark.
         return "v\n" + "-\n|\n" * (depth - 1) + "-\n\\" + answer + "!"
     program = _b_tapemark_program(truth_table, width)
+    program = _b_tapemark_program(truth_table, width, swap_marker=swap_marker)
     if width is not None:
         return program
     # Judged by area: the wide strip or the least of the closed-form layouts.
     # No width sweep, so O(T).  See [ablations.area_default].
-    return min([program, *_closed_forms(truth_table)], key=grid_rank)
+    return min([program, *_closed_forms(truth_table, swap_marker)], key=grid_rank)
 
 
 def _b_tapemark_program(
-    truth_table: str, width: int | None = None, *, keep_full_narrow: bool = False
+    truth_table: str,
+    width: int | None = None,
+    *,
+    keep_full_narrow: bool = False,
+    swap_marker: str = "new",
 ) -> str:
     """Build the copied-table walk, retaining the former constant layout."""
     depth = _validate_truth_table(truth_table)
@@ -252,7 +315,7 @@ def _b_tapemark_program(
     builder.climb(0, depth)
 
     for stage, weight in enumerate(weights):
-        builder.stage(-1, 1 + _STAGE_ROWS * stage, weight)
+        builder.stage(-1, 1 + _STAGE_ROWS * stage, weight, swap_marker=swap_marker)
 
     # A stage adds one to the pointer whichever way it branches, so the
     # walk overshoots the addressed row by one per stage but the first.
@@ -273,10 +336,49 @@ def _b_tapemark_program(
             # without restoring ignored selectors or their exponentially
             # larger table; padding after it shifts every addressed answer.
             painted = "0" * (depth + 1 - len(painted)) + painted
-    return _b_tapemark_narrow(painted, depth, weights)
+    return _b_tapemark_narrow(painted, depth, weights, swap_marker)
 
 
-def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
+def _folded_stage_old(builder: _Builder, top: int, weight: int, run: int) -> int:
+    """Place one folded stage for the ``old`` dialect; return the next top.
+
+    The run owed is ``weight - 2`` (see :meth:`_Builder._stage_old`),
+    snaking east from the shipped run's first column on the landing row
+    and the blank rows inserted after row 3, so a segment holds ``run``
+    cells to the shipped east extent; the funnel row is stage row 4's,
+    past the inserted band.
+    """
+    total = max(0, weight - 2)
+    segments = [run] * (total // run) + ([total % run] if total % run else [])
+    inserted = max(0, 2 * len(segments) - 3) if segments else 0
+    for offset, line in enumerate(_STAGE):
+        builder.row(-1, top + offset + (inserted if offset >= 4 else 0), line)
+    start, link = -1 + _RUN_COLUMN + 1, -1 + _RUN_COLUMN
+    if not segments:
+        builder.put(link, top + 2, "\\")
+        builder.put(link, top + 4, "/")
+    for fold, length in enumerate(segments):
+        row = top + 2 + 2 * fold
+        for col in range(start, start + length):
+            builder.put(col, row, "|")
+        builder.put(start + length, row, "\\")
+        if fold + 1 < len(segments):
+            builder.put(start + length, row + 1, "/")
+            builder.put(link, row + 1, "/")
+            builder.put(link, row + 2, "\\")
+        else:
+            builder.put(start + length, top + 4 + inserted, "/")
+    if weight == 1:
+        builder.put(start - 3, top + 4 + inserted, "|")
+    elif weight == 0:
+        builder.put(start - 3, top + 4 + inserted, "|")
+        builder.put(start - 4, top + 4 + inserted, "|")
+    return top + _STAGE_ROWS + inserted
+
+
+def _b_tapemark_folded(
+    truth_table: str, copy: int, run: int, swap_marker: str = "new"
+) -> str:
     """Build the copied-table walk with its long rows snaked into strips.
 
     The copy and the weight runs each act in one direction only (``|``
@@ -309,6 +411,9 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
 
     top = last + 1
     for weight in weights:
+        if swap_marker == "old":
+            top = _folded_stage_old(builder, top, weight, run)
+            continue
         rows = [run] * (weight // run) + ([weight % run] if weight % run else [])
         rows = rows or [0]
         inserted = max(0, 2 * len(rows) - 4)
@@ -332,7 +437,7 @@ def _b_tapemark_folded(truth_table: str, copy: int, run: int) -> str:
     return builder.render()
 
 
-def _closed_forms(table: str) -> list[str]:
+def _closed_forms(table: str, swap_marker: str = "new") -> list[str]:
     """Return the formula's folded strips (not constant)."""
     candidates = []
     depth = len(table).bit_length() - 1
@@ -350,18 +455,23 @@ def _closed_forms(table: str) -> list[str]:
     area_copy = max(5, isqrt(104 * len(table) // (63 * depth)))
     for copy in {best, best * 17 // 20, area_copy}:
         candidates.append(
-            _b_tapemark_folded(table, max(1, copy), max(1, 3 * copy - 12))
+            _b_tapemark_folded(table, max(1, copy), max(1, 3 * copy - 12), swap_marker)
         )
     return candidates
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(table: str, default: str, *, swap_marker: str = "new") -> str:
     """Return the default or the closed-form layout with the least balanced side."""
     if len(set(table)) == 1:
         return default
     # Preserve the wide form that the old default supplied on small tables.
     return min(
-        [default, _b_tapemark_program(table), *_closed_forms(table)], key=balance_score
+        [
+            default,
+            _b_tapemark_program(table, swap_marker=swap_marker),
+            *_closed_forms(table, swap_marker),
+        ],
+        key=balance_score,
     )
 
 
@@ -370,6 +480,8 @@ LANGUAGE = Language(
     "b_tapemark",
     category="grid_based",
     boolean=b_tapemark,
+    dialect=_dialect,
+    dialect_values={"swap_marker": SWAP_MARKERS},
     # Not a tree: the table copied onto the grid, one mark per row.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

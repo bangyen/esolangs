@@ -15,11 +15,46 @@ from tests.support.generator_support import assert_an_ignored_input_costs
 from tests.support.witness_tables import witnesses
 
 
-def execute(program: str, bits: str) -> tuple[str, int]:
+def execute(program: str, bits: str, swap_marker: str = "new") -> tuple[str, int]:
     """Run ``program`` with one input line per bit."""
     io = ScriptedIO("".join(f"{bit}" for bit in bits))
-    run(program, io)
+    run(program, io, swap_marker=swap_marker)
     return io.getvalue(), io.reads
+
+
+@pytest.mark.parametrize("swap_marker", ["new", "old"])
+def test_each_dialect_answers_its_own_programs(swap_marker: str) -> None:
+    """A dialect's generated programs run under that dialect's semantics."""
+    settings = esolangs.DialectSettings(swap_marker=swap_marker)
+    tables = [table for n in (1, 2, 3) for table in witnesses(n)]
+    tables += ["01101001", "0110100110010110"]
+    for table in tables:
+        n = len(table).bit_length() - 1
+        program = str(esolangs.generate("B-tapemark", table, settings=settings))
+        for row, expected in enumerate(table):
+            assert execute(program, format(row, f"0{n}b"), swap_marker) == (
+                expected,
+                n,
+            )
+
+
+def test_a_default_program_is_not_claimed_under_the_old_dialect() -> None:
+    """The readings are not interchangeable: ``0110`` hangs under ``old``."""
+    from esolangs.languages.b_tapemark.interpreter import _Machine
+
+    machine = _Machine(tools.b_tapemark("0110"), ScriptedIO("00"), swap_marker="old")
+    for _ in range(5000):
+        if machine.halted:
+            break
+        machine.step()
+    assert not machine.halted
+
+
+def test_swap_marker_must_be_a_registered_value() -> None:
+    with pytest.raises(esolangs.ArgumentError):
+        esolangs.DialectSettings(swap_marker="sideways")
+    with pytest.raises(ValueError, match="swap_marker"):
+        tools.b_tapemark("01", swap_marker="sideways")
 
 
 @pytest.mark.medium

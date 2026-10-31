@@ -16,14 +16,23 @@ Errors:
     requires), a missing or repeated start marker, an unmatched quote.
     InputExhaustedError: ``-`` on a blank data cell at EOF, following the
     package convention.
+    ArgumentError: A ``swap_marker`` setting other than ``"new"`` or
+        ``"old"``.
+
+Dialects:
+    * ``swap_marker``: after a swap, which grid's marker takes the step
+      the wiki leaves as just "the position marker".  ``"new"`` (the
+      default) moves the new first grid's marker; ``"old"`` moves the
+      marker of the grid that executed the symbol.  The wiki and its
+      revision history do not settle which, so both are registered and
+      the generator builds for the chosen one; a program built for one
+      dialect is not claimed under the other (the default dialect's
+      n=2 ``0110`` hangs on every row under ``"old"``; 2026-10-30).
 
 Decisions:
     * An input symbol that is no command runs as a blank once a swap puts it
       on the first grid: the wiki rejects other symbols only "when the
       program is loaded".
-    * After a swap, the marker that moves is the new first grid's: the wiki
-      says only "the position marker".  Moving the old one's instead hangs
-      generated programs (n=2 ``0110``, every row; 2026-10-30).
 """
 
 from __future__ import annotations
@@ -36,6 +45,16 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
 type _Point = tuple[int, int]
+
+#: The two readings of the post-swap step, named by whose marker moves.
+SWAP_MARKERS = ("new", "old")
+
+
+def validate_swap_marker(value: str) -> str:
+    """Validate which grid's marker moves after a swap."""
+    if value not in SWAP_MARKERS:
+        raise ValueError("swap_marker must be new or old")
+    return value
 
 
 class _Grid:
@@ -116,6 +135,7 @@ class _State:
     direction: int
     grids: _Grids
     halted: bool = False
+    swap_marker: str = "new"
 
 
 def _move(point: _Point, direction: int) -> _Point:
@@ -124,7 +144,7 @@ def _move(point: _Point, direction: int) -> _Point:
     return point[0] + dx, point[1] + dy
 
 
-def _load(source: str) -> _State:
+def _load(source: str, swap_marker: str = "new") -> _State:
     """Validate and load ``source`` into an initial immutable state."""
     cells: dict[tuple[int, int], str] = {}
     starts: list[tuple[_Point, int]] = []
@@ -161,7 +181,13 @@ def _load(source: str) -> _State:
             "keep exactly one direction start marker outside comments",
         )
     point, direction = starts[0]
-    return _State(0, (point, point), direction, (_Grid(cells), _Grid({})))
+    return _State(
+        0,
+        (point, point),
+        direction,
+        (_Grid(cells), _Grid({})),
+        swap_marker=validate_swap_marker(swap_marker),
+    )
 
 
 def _advance(
@@ -181,7 +207,17 @@ def _advance(
     output = None
 
     if command == "!":
-        return _State(program, positions, direction, grids, halted=True), None
+        return (
+            _State(
+                program,
+                positions,
+                direction,
+                grids,
+                halted=True,
+                swap_marker=state.swap_marker,
+            ),
+            None,
+        )
     if command in _MIRRORS:
         direction = _MIRRORS[command][direction]
     elif command == "+":
@@ -214,9 +250,16 @@ def _advance(
         elif data_symbol == command:
             program = data
 
-    moved = _move(positions[program], direction)
-    positions = (moved, positions[1]) if program == 0 else (positions[0], moved)
-    return _State(program, positions, direction, grids), output
+    # A swap hands execution to the other grid; which marker takes the
+    # step is the dialect: the new first grid's (``new``) or the grid
+    # that executed the symbol (``old``).
+    stepped = state.program if state.swap_marker == "old" else program
+    moved = _move(positions[stepped], direction)
+    positions = (moved, positions[1]) if stepped == 0 else (positions[0], moved)
+    return (
+        _State(program, positions, direction, grids, swap_marker=state.swap_marker),
+        output,
+    )
 
 
 class _Machine:
@@ -224,8 +267,8 @@ class _Machine:
 
     ip_shape = "grid"
 
-    def __init__(self, source: str, io: IO) -> None:
-        self.state = _load(source)
+    def __init__(self, source: str, io: IO, *, swap_marker: str = "new") -> None:
+        self.state = _load(source, swap_marker)
         self.io = io
 
     @property
@@ -259,9 +302,9 @@ class _Machine:
             self.io.print_char(output)
 
 
-def run(source: str, io: IO) -> None:
+def run(source: str, io: IO, *, swap_marker: str = "new") -> None:
     """Run a B-tapemark program until ``!`` executes."""
-    machine = _Machine(source, io)
+    machine = _Machine(source, io, swap_marker=swap_marker)
     drive(machine)
 
 
