@@ -66,5 +66,6 @@ workload = "run"
 verdict = "kept"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
