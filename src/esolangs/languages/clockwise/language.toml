@@ -69,5 +69,6 @@ tables = 20
 verdict = "kept: a four-row table (the one's `?` turns where the zero's `!` does, the return row's gaps `S` before a `?` and `+` before a `!`) drops the `S` row and the flat band from six rows to five; area 5(5T + 8n + 4) against 6(5T + 8n + 4), 16.67% on random tables at n=7, 8 and 9 (84,000 to 70,000, 161,760 to 134,800, 316,320 to 263,600 over 20 tables) and on parity, and, or, majority, threshold at every n=3..9 -- a fixed share, not falling with n. balance=True is 0.00% there: its banded strips keep the five-row table and win"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
