@@ -905,8 +905,18 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "1" * (2 ** (n - 1) + 1) + "0" * (2 ** (n - 1) - 1),
         "1" * (2 ** (n - 1) - 1) + "0" * 2 ** (n - 1) + "1",
     ),
-    # Balanced, row 0 a planted one: the longest prologue, and a mark.
-    "bit~": lambda n: ("1" * (2 ** (n - 1) - 1) + "01" + "0" * (2 ** (n - 1) - 1),),
+    # Every pair differs and half the pairs start with a one: all the planted
+    # cells the minority rule leaves, in a table that is not affine.
+    "bit~": lambda n: (
+        "".join(
+            f"{e}{1 - e}"
+            for e in (
+                [1] * (2 ** (n - 2) - 1) + [0, 1] + [0] * (2 ** (n - 2) - 1)
+                if n >= 2
+                else [1]
+            )
+        ),
+    ),
     "Circlefuck": lambda n: (_row_one(n),),
     "Caballo": lambda n: ("0010" + _morse("0110", "1001", n)[4:],) if n >= 2 else (),
     "Codesick": lambda n: (

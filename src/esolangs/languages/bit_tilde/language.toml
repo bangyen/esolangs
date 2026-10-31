@@ -7,10 +7,10 @@ admitted = 2026-08-13T17:57:16-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows"
-scaling = "linear: worst 9T/2 + 18n + 75 characters past n = 2: minority"
-execution = "linear: worst 13T/2 + 17n + 93 commands past n = 2: the walk crosses the table once"
-workspace = "linear: worst 2T + 49 + bl(2T+41) + bl(5T+18n+74) + bl(n) bits past n = 1: 2T + 49 tape cells"
+qualification = "three tape cells an entry pair, and each input's one-shot loop jumps the pointer left by that input's weight over a zero sentinel lane, so the reads chain into a Horner index; the last input selects within the block and a self-erasing walk carries the landed bit to one of two print windows"
+scaling = "linear: worst 15T/4 + 19n + 99 characters past n = 5: minority"
+execution = "linear: worst 19T/4 + 18n + 96 commands past n = 5: the walk crosses the table once"
+workspace = "linear: worst 3T/2 + 38 + bl(3T/2+30) + bl(15T/4+19n+99) + bl(n) bits past n = 5: 3T/2 + 38 tape cells"
 
 [generator_sizes]
 "00000001" = { commands = 182, commands_by_row = { "0" = 173, "1" = 172, "2" = 170, "3" = 169, "4" = 166, "5" = 165, "6" = 163, "7" = 182 }, source_units = 162 }
@@ -41,14 +41,21 @@ saving = 98.8
 arity = 8
 seed = "named and random affine tables"
 tables = 8
-verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) XORs each counted input byte into one window, flips cells 2 and 3 back for an even count and cell 7 for the bias, and prints it, about n + 9 chars, raced by length against the planted lookup. Parity 94.1% at n=4, 96.8% at n=6, 99.0% at n=7, 98.8% at n=8, 99.6% at n=10 (21 chars at n=12); random affine tables 23-76% at n=4..10. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 28 tables change, none grows, every changed program executed; named and affine tables executed through n=12"
+verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) XORs each counted input byte into one window, flips cells 2 and 3 back for an even count and cell 7 for the bias, and prints it, about n + 9 chars, raced by length against the planted lookup. Parity 94.5% at n=4, 96.7% at n=6, 98.9% at n=7, 98.6% at n=8, 99.5% at n=10 (re-measured on the block lookup 2026-10-30); random affine tables 25-96% at n=4..10. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 28 tables change, none grows, every changed program executed; named and affine tables executed through n=12"
 
 [ablations.minority_planting]
-saving = 17.0
+saving = 11.0
 arity = 8
 seed = "random.Random(184700 + n) and named tables"
 tables = 200
-verdict = "kept under the named-function rule: a planted entry costs a ~ more than a skipped one, so a table with more ones than zeros plants its zeros and swaps the two print windows (0 at 1..8, 1 at 10..17). Or and nand 12.4% at n=6, 15.0% at n=7, 17.0% at n=8, 19.0% at n=10, rising; 90%-ones tables 10.1-15.1% and 80%-ones 7.4-11.3% at n=6..10; random tables 0.17-0.70%. Unconditional, and nothing grows: exhaustive n<=3 (96 change, every changed program executed) and every random table at n=6..10. Random samples executed through n=10, named tables through n=8"
+verdict = "kept under the named-function rule: a planted e0 costs a ~ more than a skipped one, so a table with more e0 ones than zeros plants its zeros and swaps the two print windows (0 at 1..8, 1 at 10..17). Or and nand 6.9% at n=6, 9.1% at n=7, 11.0% at n=8, 13.2% at n=10, rising; 90%-ones tables 4.6-10.2% at n=6..10; random tables 0.3-0.5% (re-measured on the block lookup 2026-10-30). Unconditional, and nothing grows: exhaustive n<=3 (78 change, none grows, every changed program executed) and every random table at n=6..10. Random samples executed through n=8, named tables through n=8"
+
+[ablations.block_lane]
+saving = 16.3
+arity = 8
+seed = "random.Random(184700 + n + 1000 * s), s < 200"
+tables = 200
+verdict = "kept: a zero sentinel and the two cells e0, e0 ^ e1 make a stride-3 block, 1.5 cells an entry where the stride-2 lane spent 2; plant walk and read jumps both shrink by a quarter. The last input is read into the sentinel (flipped first, so it holds not x) and clears e0 ^ e1 for x = 0, then both cells XOR into it; one input read, no conditional read. Random tables 12.4% at n=7, 16.3% at n=8, 18.8% at n=9, rising; and 13.6 / 18.0 / 21.0%, or 13.4 / 17.9 / 20.9%, majority 15.3 / 18.9 / 22.5%, threshold-3 12.0 / 16.5 / 19.7%, threshold-2 12.8 / 17.4 / 20.6% at n=7 / 8 / 9; parity is the xor window, unchanged. Alone it grows at n<=4 (12.0% at n=3, 5.9% at n=4) and at n=5 (16 of 200), so up to five essential inputs the stride-2 lane races it by length: no table grows at any n (exhaustive n<=4, 200 random at n=5..9, named tables), n=3 and n=4 totals unchanged, n=5 saves 0.9%, n=6 7.0%. With T entries the stride-2 build is 4T + 18w + 75 + P_s chars and the block 3T + 19w + 99 + P_b over w essential inputs; P_b - P_s <= T/4, so the stride-2 build wins only if 3T/4 <= 24 + w, never at w >= 6 (1309 tables match both closed forms). Executed through the interpreter: every row of every n<=3 table, named and 50 random tables at n=7..8, width-<=6 tables at n=7..8, a wrong table caught"
 
 [audits]
 trick_prototype = 2026-10-30
