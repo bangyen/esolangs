@@ -85,16 +85,30 @@ ignored-input tables included).
   - *Weakly grounded readings the generators rely on:* each record
     agrees only with the clean room patched to our reading.  Make the
     generator run under both, or find page evidence.
-    - B-tapemark: the swap-marker Decision's only evidence is that the
-      other reading hangs our own generated programs (page re-read
-      2026-10-30, no Talk page; history unread).  In the traced ``01``
-      program, a swap round trip
-      (swap at X heading d0, back at Y heading d1) resumes the program at
-      X+d1 under ours, X+d0 under the other, and leaves the blank grid's
-      mark at Y vs Y+d1, so safe needs d1=d0 and a cancelling second round
-      trip per branch (the mark offset is the answer); the stage's turn
-      gives d1!=d0.  Not built; the extra trip would add about a
-      stage-sized block per input (estimated, unmeasured).
+    - B-tapemark: FENCED (2026-10-31).  The page does not settle which
+      grid's marker moves after a swap: re-read 2026-10-31, it says the
+      symbol on the first grid is executed and then "the position
+      marker" is moved, each grid has one, and neither example program
+      swaps; the page history could not be checked (the history
+      endpoint refused the fetch).  Measured: under the other reading
+      (the executing grid's marker moves), 147 of 218 corpus rows hang
+      (step cap at least 50,000 against at most 759 shipped steps) and
+      the 71 clean rows are exactly the swap-free executions --
+      constant programs and each stage program's all-ones row, the only
+      row whose every compare misses (witnesses n=1..4 all rows,
+      parity/random n=5..6 sampled, narrow layout included; ours is
+      correct on all 218).  The traced ``0110`` round trip (swap at X
+      heading d0, back heading d1) fixes the algebra: the program
+      marker's offset between readings is d0-d1 and the data marker's
+      is +d1, so no single trip is invariant and a cancelling second
+      trip per branch must satisfy sum(d1) = 0 with sum(d0-d1) = 0 --
+      e.g. each trip beam-safe (d1 = d0) with opposite exit headings.
+      Building it means a second copied gadget, entry and exit turning
+      lanes and lane funnels on the match branch of every stage, in all
+      three layouts: a stage redesign priced at about a stage-sized
+      block per input (the 2026-10-30 estimate, still unmeasured), not
+      a bounded patch.  Reopen on page or history evidence, or on
+      taking the stage redesign as its own priced item.
     - Minifuck: non-commands count as instructions `[` can skip, against
       "only 3 instructions"; the `[x` filler relies on it.  FENCED
       (2026-10-31): the page does not settle the reading -- re-read
