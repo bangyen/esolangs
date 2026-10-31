@@ -11,7 +11,12 @@ from esolangs.generation.helpers import (
     constant_span_test,
 )
 from esolangs.languages.intercal import generator
-from esolangs.languages.intercal.generator import PAIR, TEMPLATE_CHAR, intercal
+from esolangs.languages.intercal.generator import (
+    PAIR,
+    TEMPLATE_CHAR,
+    _unfolded_mux,
+    intercal,
+)
 from esolangs.languages.intercal.interpreter import run
 from esolangs.runtime._evaluate import _evaluate
 from tests.proofs._witnesses import _intercal_worst
@@ -23,6 +28,23 @@ def _run(table: str, row: int) -> str:
     output = run_filled(run, intercal(table), [PAIR] * n, row, n, TEMPLATE_CHAR)
     assert output in {"_\n\n", "I\n"}
     return "1" if output == "I\n" else "0"
+
+
+@pytest.mark.parametrize("table", ["0001", "0111", "1110", "1000", "0101", "1010"])
+def test_constant_mux_folds_preserve_assignments_and_execute(
+    table: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folded = intercal(table)
+    with monkeypatch.context() as patch:
+        patch.setattr(generator, "_mux", _unfolded_mux)
+        unfolded = intercal(table)
+    targets = r"(?m)^(DO|PLEASE) (.*?) <- "
+    assert re.findall(targets, folded) == re.findall(targets, unfolded)
+    assert len(folded) <= len(unfolded) - 33
+    for row, expected in enumerate(table):
+        for template in (folded, unfolded):
+            output = run_filled(run, template, [PAIR] * 2, row, 2, TEMPLATE_CHAR)
+            assert output == ("I\n" if expected == "1" else "_\n\n")
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
@@ -57,10 +79,10 @@ def test_repeated_subexpressions_are_assigned_once() -> None:
     parity = "01101001100101101001011001101001"
     template = intercal(parity)
     assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 6 + [False]
-    assert len(template) < len(_unshared(parity)) // 2
+    assert (len(template), len(_unshared(parity))) == (509, 853)
     for tables, pinned in (
-        ([f"{value:08b}" for value in range(256)], (74152, 64072)),
-        (_five_input_sample(), (216624, 139920)),
+        ([f"{value:08b}" for value in range(256)], (43319, 39773)),
+        (_five_input_sample(), (118669, 100584)),
     ):
         old = new = 0
         for table in tables:

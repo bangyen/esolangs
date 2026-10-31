@@ -1,4 +1,4 @@
-"""INTERCAL's emitted characters: diagram nodes priced per level."""
+"""INTERCAL characters: the unchanged naming policy, then constant folding."""
 
 from math import isqrt
 
@@ -272,8 +272,8 @@ def _shifted(n: int) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-def _chars(n: int, program: str) -> int:
-    """U: the most nodes per level; exact for n = 3..23.
+def _unfolded_chars(n: int, program: str) -> int:
+    """Unfolded U: the most nodes per level; exact before mux folding at n = 3..23.
 
     From n = 11 level n - 3 holds its 240 distinct pairs (:func:`_capped`);
     from n = 20 the cap shifts one level down (:func:`_shifted`), from
@@ -328,4 +328,29 @@ def _chars(n: int, program: str) -> int:
     return total + 4 * statements + 4 * polite - 1
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 24)), tuple(range(3, 25)))}
+def _chars(n: int, program: str) -> int:
+    """U minus at least 33 characters, or the constant template.
+
+    Names and statements match the unfolded build. Every nonconstant diagram
+    reaches a node with opposite constant children. Its unfolded mux costs
+    42 + 2s with an inline complement, or 31 + s + g with a named one;
+    folding leaves s or 11+s, or s or g. Since s,g >= 2, it saves at least
+    33 characters. Other folds cannot grow an expression. Constants do not
+    fold; their n+3 statements are priced separately.
+    """
+    statements = n + 3
+    constant = sum(7 + _digits(k) for k in range(1, n + 1))
+    constant += 24 + 2 * _digits(n + 1)
+    constant += 4 * statements + 4 * ((statements + 4) // 5) - 1
+    if n < 3:
+        # No shared names at n <= 2: price the full unfolded tree directly.
+        unfolded = constant - 2 + 2 * (1 << n)
+        unfolded += sum(
+            (1 << level) * (38 + 2 * (1 + _digits(n - level))) for level in range(n)
+        )
+    else:
+        unfolded = _unfolded_chars(n, program)
+    return max(constant, unfolded - 33)
+
+
+FORMULAS = {"scaling": (_chars, False, tuple(range(3, 25)))}

@@ -6,8 +6,8 @@ expression would repeat are assigned once to spare variables and named where
 they recur (:func:`_intercal_shared`).
 
 Size:
-    O(n) for structured tables, O(T) for random; n=10 parity: 1,262 chars,
-    n=10 random 1847: 8,947 chars.
+    O(n) for structured tables, O(T) for random; n=10 parity: 1,185 chars,
+    n=10 random 1847: 8,241 chars.
 
 Decisions:
     Greedy input order costs +0.00% on three inputs and on the
@@ -135,9 +135,30 @@ def _wrap_intercal(program: str, width: int) -> str:
 def _mux(
     selector: _Expr, zero: _Expr, one: _Expr, negated: "_Expr | None" = None
 ) -> _Expr:
-    """Return ``(~selector & zero) V (selector & one)``.
+    """Return ``(~selector & zero) V (selector & one)``, constant halves folded.
 
     ``negated`` names a variable already holding ``~selector``.
+    """
+    if negated is None:
+        negated = _Expr("not", children=(selector,))
+    if zero == _ZERO:
+        return selector if one == _ONE else _Expr("and", children=(selector, one))
+    if one == _ZERO:
+        return negated if zero == _ONE else _Expr("and", children=(negated, zero))
+    if zero == _ONE:
+        return _Expr("or", children=(negated, one))
+    if one == _ONE:
+        return _Expr("or", children=(selector, zero))
+    return _unfolded_mux(selector, zero, one, negated)
+
+
+def _unfolded_mux(
+    selector: _Expr, zero: _Expr, one: _Expr, negated: "_Expr | None" = None
+) -> _Expr:
+    """Price the established assignment policy before folding constants.
+
+    Keeping its names preserves the exact execution and workspace bounds;
+    folded expressions only shorten their right-hand sides.
     """
     if negated is None:
         negated = _Expr("not", children=(selector,))
@@ -150,12 +171,11 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
 
     The Shannon tree is reduced to a diagram (:func:`_diagram`); a node read
     by two or more parents gets a spare variable, ``.k <- expr``, named
-    wherever it recurs, when that is shorter.  The rule weighs the node's
-    inlined text against one statement plus a name per reader, so it is local
-    to the node.  A level's ``~selector`` recurs in every node of the level
-    and is assigned once by the same rule.  Variables are numbered from
-    ``.{n + 2}``: the complements, then the nodes bottom-up, so the short
-    names go to the deep nodes, the most numerous and most often read.
+    wherever it recurs, when its unfolded form is shorter.  The rule weighs
+    that form's inlined text against one statement plus a name per reader.
+    A level's ``~selector`` is assigned once by the same rule. Names start
+    at ``.{n + 2}``: complements, then nodes bottom-up, giving short names
+    to the deep nodes, the most numerous and most often read.
     """
     n = _validate_truth_table(truth_table)
     nodes, root = _diagram(truth_table, n)
@@ -167,10 +187,9 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
         readers[zero] += 1
         readers[one] += 1
 
-    # A node's inlined length is its level's frame -- the mux over two
-    # ``#0`` leaves, less the leaves -- plus its halves' text.
+    # Keep the unfolded naming policy; _mux shortens only emitted expressions.
     frames = [
-        len(_mux(selector, _ZERO, _ZERO, _variable(name)).render()) - 4
+        len(_unfolded_mux(selector, _ZERO, _ZERO, _variable(name)).render()) - 4
         for selector, name in zip(selectors, negated, strict=True)
     ]
     text = [2, 2] + [0] * (len(nodes) - 2)

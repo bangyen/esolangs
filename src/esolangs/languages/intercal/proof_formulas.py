@@ -1,4 +1,8 @@
-"""Executed command and snapshot-bit bounds."""
+"""Executed command and snapshot-bit bounds.
+
+Constant-mux folding keeps every assignment and its one-bit value width,
+so the unfolded naming policy's exact bounds and witnesses still apply.
+"""
 
 from math import isqrt
 
