@@ -45,6 +45,20 @@ def _arg_key(arg: Any) -> tuple[Any, bool]:
 _NODE_CACHE: dict[tuple[Any, ...], _Node] = {}
 _INTERNED: set[int] = set()
 
+#: The cache's size cap.  Keeping the cache costs a key tuple, a dict
+#: entry and an interned id per distinct node -- measured at about
+#: 291 B against the node's own 88 B -- so an unbounded cache is what a
+#: giant load dies of: the n = 26 witness's ~20M distinct nodes were
+#: killed at 5,954 MB RSS in 2026-10.  Past the cap both maps clear
+#: and interning restarts.  Parse trees stay equal by value; only
+#: sharing is lost, and sharing is window-local (over the n = 24
+#: witness a 100,000 cap rebuilds 8% more nodes than a 1,000,000 cap,
+#: whose cache costs ten times the transient memory).  A node built
+#: before a clear keys no parent after it -- its id has left
+#: ``_INTERNED``, so ``_arg_key`` declines and the parent is built
+#: uninterned: a lost dedup, never a wrong tree.
+_CACHE_CAP = 100_000
+
 
 class _Node(NamedTuple):
     """A parse-tree node: ``tag`` names the form, ``arg1``-``arg3`` its parts.
@@ -88,6 +102,9 @@ def _node(tag: str, arg1: Any = None, arg2: Any = None, arg3: Any = None) -> _No
         node = _Node(tag, arg1, arg2, arg3)
         _NODE_CACHE[cache_key] = node
         _INTERNED.add(id(node))
+        if len(_NODE_CACHE) > _CACHE_CAP:
+            _NODE_CACHE.clear()
+            _INTERNED.clear()
     return node
 
 
