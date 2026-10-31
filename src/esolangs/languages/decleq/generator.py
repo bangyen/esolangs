@@ -1,15 +1,16 @@
 """Decleq Boolean program generator: a shared decision tree over the inputs.
 
-Branches on each essential input (48/49 made 1/2 by decrement-and-branch in 47
-steps; zero decrements to 0 and jumps, one falls through) down to single
+Branches on each essential input (48/49 made 1/2 by 47 passes of a loop that
+decrements every essential cell once per pass; zero decrements to 0 and jumps,
+one falls through) down to single
 entries.  A width-1 span is constant, so the bottom of the tree is one jump to
 a shared print gadget, and an equal subtree is emitted once, which collapses
 the low levels (only 4 distinct 2-row subtrees exist, 16 at the next level).
-All n inputs are read; only essential ones pay the normalization.
+All n inputs are read; only essential ones are normalized.
 
 Size:
     O(T) cells, O(n) steps: one three-cell branch per distinct subtree,
-    one three-cell jump per entry reached; n=10 random 1847: 7,598 chars.
+    one three-cell jump per entry reached; n=10 random 1847: 3,631 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -76,7 +77,8 @@ class _CodeBuilder:
         self.read_cells = list(range(_READ_BASE, _READ_BASE + n))
         # The code starts on a multiple of three so wrap_grid's columns are
         # the operand columns; at most two pad cells.
-        self.code = -(-(_READ_BASE + n) // 3) * 3
+        self.counter = _READ_BASE + n  # the pass counter, after the read cells
+        self.code = -(-(self.counter + 1) // 3) * 3
         self.mem: list[int] = []
         self.ends = [_HALT + 2, _HALT + 8]  # the two END operands, patched last
         # A constant prints at the root and never looks an id up.
@@ -86,8 +88,9 @@ class _CodeBuilder:
     def build(self) -> str:
         """Emit the full program and return it as a space-separated string."""
         self.mem = [0, 0, self.code, -2, _K48, 6, 0, 0, 0, -2, _K49, 12, 0, 0, 0]
-        pad = self.code - _READ_BASE
-        self.mem += [_ASCII_ZERO, _ASCII_ONE] + [0] * pad
+        pad = self.code - self.counter - 1
+        self.mem += [_ASCII_ZERO, _ASCII_ONE] + [0] * (self.counter - _READ_BASE)
+        self.mem += [47] + [0] * pad
         self._emit_preamble()
         self.node(0, 0)
         # Deriving END from the cell count keeps it out of wrap_grid's way:
@@ -111,9 +114,15 @@ class _CodeBuilder:
         # instruction, so SUBBIG's jump-to-c reading runs the same program.
         for rc in self.read_cells:
             self.emit(-1, rc, self.pc() + 3)
+        if not self.routes:
+            return
+        # 47 passes over the essential cells (48/49 -> 1/2), counted down in a
+        # cell of 47 that exits the loop on reaching 0.
+        top = self.pc()
         for i in self.routes:
-            for _ in range(47):
-                self.emit(self.read_cells[i], self.read_cells[i], 0)
+            self.emit(self.read_cells[i], self.read_cells[i], 0)
+        self.emit(self.counter, self.counter, self.pc() + 6)
+        self.emit(0, 0, top)
 
     def earlier(self, level: int, row: int) -> int | None:
         """Address of an equal non-constant subtree already emitted, if any."""

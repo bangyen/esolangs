@@ -14,8 +14,8 @@ run_decleq = _runner("decleq")
 
 
 class TestDecleq:
-    def test_essential_bits_get_one_chain_each(self) -> None:
-        """An essential bit is decremented 47 times, then tested at each node.
+    def test_essential_bits_share_one_pass_loop(self) -> None:
+        """An essential bit is decremented once in the loop, then tested at each node.
 
         ``0110`` tests its second input under both halves of the first.
         """
@@ -28,7 +28,7 @@ class TestDecleq:
             for i in range(n):
                 rc = 17 + i
                 decs = sum(1 for ins in instrs if ins[0] == ins[1] == rc)
-                assert decs == (47 + tests[i] if tests[i] else 0), (table, i)
+                assert decs == (1 + tests[i] if tests[i] else 0), (table, i)
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant subtree is a one-instruction jump to a print gadget."""
@@ -91,8 +91,8 @@ class TestDecleq:
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
         io = [(3 * i, c) for i, (a, _b, c) in enumerate(instrs) if a in (-1, -2)]
         assert io == [(3, 6), (9, 12), (21, 24), (24, 27), (27, 30)]
-        for rc in (17, 18, 19):  # each chain, then its one branch
-            assert instrs.count([rc, rc, 0]) == 47
+        for rc in (17, 18, 19):  # each loop decrement
+            assert instrs.count([rc, rc, 0]) == 1
 
 
 def test_mixed_digit_operands_share_one_grid_cell() -> None:
