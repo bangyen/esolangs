@@ -130,9 +130,21 @@ ignored-input tables included).
       fleet rows.  No drop-in for `[x` works under both: every real
       command in the slot differs by branch (`<` ends at p vs p+1;
       `[` and `.` flip, print or read), and no `<`/`[` string of
-      length 1..14 matches `[x` on 300 random tapes.  Reopen with: a
+      length 1..14 matches `[x` on 300 random tapes.  A filler-free
+      walk law was prototyped (2026-10-31): with the search stepper
+      pinned to the interpreter (a 20,000-case differential; both
+      shipped laws reproduced exactly), no string over `<`/`[` of
+      length 2..12 that never backtracks below its entry cell has
+      constant pointer advance over all window patterns, for any
+      tape effect and any exit skip; and no string meets the full
+      standard (constant advance, self-contained exit, no writes
+      outside its window) at lengths 13..14 sampled without
+      backtracking, or with up to two cells of backtracking at
+      lengths 2..8 exhaustive or 9..12 sampled.  Reopen with: a
       walk law over real instructions whose crossing leaves every
-      row's pointer converged, or page evidence.
+      row's pointer converged -- now known to need length over
+      14, deeper backtracking, or a non-block form -- or page
+      evidence.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
