@@ -2,7 +2,7 @@
 
 Straight-line code, run once.  ``b`` is built as the integer whose bit ``r``
 is row ``r``'s answer in the table read at the essential inputs, by Horner's
-rule in base 8 with the digit summed from registers holding 1, 2 and 4.  The
+rule in base 8 with the digit summed from registers holding 1, 2, 4 and 8.  The
 input ``i`` is the row plus one, so ``i - 1`` is the row; each essential bit,
 least significant first, divides ``b`` by ``1 + bit * (Q - 1)`` for
 ``Q = 2**2**m``, kept by squaring, and an ignored bit is dropped unused.
@@ -17,6 +17,10 @@ Decisions:
     Base 8 is the widest Horner base whose digit registers (1, 2, 4), radix
     and accumulator fit beside ``i``; base 2 costs 9,851 chars at n=10
     parity.
+
+    Each octal digit is added as ``v`` or as ``v - 8`` with a carry up,
+    whichever totals fewer terms of +-1, +-2, +-4, +-8
+    ([ablations.signed_digits]).
 
     The shorter of the table and its complement is built, the complement's
     answer negated by ``i = a - i``: or at n=10 8,849 -> 677 chars
@@ -41,21 +45,51 @@ from esolangs.registry._language import Language, Shape
 
 #: One instruction and its separator; a break after ``;`` is whitespace.
 _INSTRUCTION = r"[^;]*;?"
+#: The registers holding 1, 2, 4 and 8 once the table integer starts.
+_REGISTER = {1: "a", 2: "c", 4: "d", 8: "e"}
+
+
+def _terms(value: int) -> list[tuple[str, int]]:
+    """Return ``value`` (|value| <= 8) as at most two signed terms of 1, 2, 4, 8."""
+    if not value:
+        return []
+    sign, other = ("+", "-") if value > 0 else ("-", "+")
+    magnitude = abs(value)
+    if magnitude in _REGISTER:
+        return [(sign, magnitude)]
+    big = 8 if magnitude == 7 else 4
+    if magnitude in (3, 7):
+        return [(sign, big), (other, big - magnitude)]
+    return [(sign, big), (sign, magnitude - big)]
 
 
 def _table_integer(truth_table: str) -> list[str]:
     """Return the code leaving ``b`` = the table, bit ``r`` = row ``r``.
 
-    ``i`` is untouched; ``a``, ``c``, ``d`` hold 1, 2, 4 and ``e`` 8 on exit.
+    ``i`` is untouched; ``a``, ``c``, ``d``, ``e`` hold 1, 2, 4, 8 on exit.
+    Each octal digit ``v`` (plus the carry in) is added as ``v`` or as
+    ``v - 8`` carrying one up, whichever the cheaper rounds out over the
+    whole table: two states, one pass.
     """
     code = ["a=i/i", "c=a+a", "d=c+c", "e=d+d"]
-    digits = format(int(truth_table[::-1], 2), "o")
-    for position, digit in enumerate(int(char) for char in digits):
+    digits = [int(char) for char in format(int(truth_table[::-1], 2), "o")][::-1]
+    # ``best[carry]`` = (term count, digit terms, least significant first).
+    best: dict[int, tuple[int, list[list[tuple[str, int]]]]] = {0: (0, [])}
+    for digit in [*digits, 0]:
+        step: dict[int, tuple[int, list[list[tuple[str, int]]]]] = {}
+        for carry, (cost, plan) in best.items():
+            for value, out in ((digit + carry, 0), (digit + carry - 8, 1)):
+                terms = _terms(value)
+                if out not in step or cost + len(terms) < step[out][0]:
+                    step[out] = (cost + len(terms), [*plan, terms])
+        best = step
+    plan = best[0][1]
+    while plan and not plan[-1]:
+        plan.pop()
+    for position, terms in enumerate(reversed(plan)):
         if position:
             code.append("b=b*e")
-        code += [
-            f"b=b+{reg}" for bit, reg in ((1, "a"), (2, "c"), (4, "d")) if digit & bit
-        ]
+        code += [f"b=b{sign}{_REGISTER[size]}" for sign, size in terms]
     return code
 
 
