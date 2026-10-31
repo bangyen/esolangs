@@ -109,8 +109,24 @@ ignored-input tables included).
       Building it means a second copied gadget, entry and exit turning
       lanes and lane funnels on the match branch of every stage, in all
       three layouts: a stage redesign priced at about a stage-sized
-      block per input (the 2026-10-30 estimate, still unmeasured), not
-      a bounded patch.  Reopen on new page evidence (a Talk page,
+      block per input, not a bounded patch.  A prototype (2026-10-31,
+      wide layout, `0110` stage 0) built and measured the data half of
+      the cancellation: a parallel walk on stage row 2 (weight-1 `|`
+      cells -- the beam already executes the stage's own
+      compare-column `|` heading E, the mismatch branch's +1 cell)
+      plus one W `|` on row 3 cancels the +d1 offset exactly (the alt
+      data marker reaches the descent column at the shipped post-walk
+      position; shipped behaviour on all rows unchanged; +12 chars for
+      the stage, 5 of them the lane's cells).  The program half is
+      blocked in the shipped geometry: the lane crosses the descent
+      column (a `%` there is a no-op under both readings), but the
+      beam travelling W on stage row 3 meets that row's own `\` and is
+      turned N into the copy row, and every other exit from the row-2
+      corridor is blocked by a named shipped cell (the copy row, the
+      run cells, the compare turn).  A working construction must
+      relocate the run, the descent and the exit funnel together --
+      the stage redesign above, whose price is the rejoin's, not the
+      correction's.  Reopen on new page evidence (a Talk page,
       an author statement, or a reference implementation), or on
       taking the stage redesign as its own priced item.
     - Minifuck: non-commands count as instructions `[` can skip, against
