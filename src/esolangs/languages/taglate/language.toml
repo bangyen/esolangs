@@ -11,19 +11,19 @@ admitted = 2026-08-07T14:43:11-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: worst 20T+(7n²+40n-10)/2+(n-2⌊n/2⌋)(10n+33)/2 characters past n = 2: fixed slots"
-execution = "linear: worst 16T+(7n^2+26n-22)/2 for even n, 16T+(7n^2+36n+5)/2 for odd, past n = 2"
-workspace = "linear: worst 24T+12n+12+bl(n)+bl(L-4T-7n+1) bits for even n, 24T+12n+18+bl(n)+bl(L-4T-7n-6) for odd, past n = 2"
+scaling = "linear: worst 14T+4n²+17n+24 characters past n = 2: fixed slots"
+execution = "linear: worst 10T+4n^2+11n+14 past n = 2"
+workspace = "linear: worst 24T+18n+12+bl(n)+bl(L-4T-6n-5) bits past n = 2"
 
 [generator_sizes]
-"00000001" = { commands = 216, commands_by_row = { "0" = 155, "1" = 158, "2" = 182, "3" = 185, "4" = 186, "5" = 189, "6" = 213, "7" = 216 }, source_units = 278 }
-"00001100" = { commands = 86, commands_by_row = { "0" = 73, "1" = 73, "2" = 76, "3" = 76, "4" = 83, "5" = 83, "6" = 86, "7" = 86 }, source_units = 122 }
-"00110110" = { commands = 216, commands_by_row = { "0" = 155, "1" = 158, "2" = 182, "3" = 185, "4" = 186, "5" = 189, "6" = 213, "7" = 216 }, source_units = 278 }
-"0110" = { commands = 85, commands_by_row = { "0" = 72, "1" = 75, "2" = 82, "3" = 85 }, source_units = 121 }
-"01101001" = { commands = 216, commands_by_row = { "0" = 155, "1" = 158, "2" = 182, "3" = 185, "4" = 186, "5" = 189, "6" = 213, "7" = 216 }, source_units = 278 }
-"0110100110010110" = { commands = 353, commands_by_row = { "0" = 252, "1" = 255, "2" = 264, "3" = 267, "4" = 291, "5" = 294, "6" = 303, "7" = 306, "8" = 299, "9" = 302, "10" = 311, "11" = 314, "12" = 338, "13" = 341, "14" = 350, "15" = 353 }, source_units = 451 }
-"1101001101101101" = { commands = 353, commands_by_row = { "0" = 252, "1" = 255, "2" = 264, "3" = 267, "4" = 291, "5" = 294, "6" = 303, "7" = 306, "8" = 299, "9" = 302, "10" = 311, "11" = 314, "12" = 338, "13" = 341, "14" = 350, "15" = 353 }, source_units = 451 }
-"11111110" = { commands = 216, commands_by_row = { "0" = 155, "1" = 158, "2" = 182, "3" = 185, "4" = 186, "5" = 189, "6" = 213, "7" = 216 }, source_units = 278 }
+"00000001" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
+"00001100" = { commands = 93, commands_by_row = { "0" = 78, "1" = 78, "2" = 81, "3" = 81, "4" = 90, "5" = 90, "6" = 93, "7" = 93 }, source_units = 131 }
+"00110110" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
+"0110" = { commands = 92, commands_by_row = { "0" = 77, "1" = 80, "2" = 89, "3" = 92 }, source_units = 130 }
+"01101001" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
+"0110100110010110" = { commands = 282, commands_by_row = { "0" = 215, "1" = 218, "2" = 231, "3" = 234, "4" = 235, "5" = 238, "6" = 251, "7" = 254, "8" = 243, "9" = 246, "10" = 259, "11" = 262, "12" = 263, "13" = 266, "14" = 279, "15" = 282 }, source_units = 380 }
+"1101001101101101" = { commands = 282, commands_by_row = { "0" = 215, "1" = 218, "2" = 231, "3" = 234, "4" = 235, "5" = 238, "6" = 251, "7" = 254, "8" = 243, "9" = 246, "10" = 259, "11" = 262, "12" = 263, "13" = 266, "14" = 279, "15" = 282 }, source_units = 380 }
+"11111110" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
 
 [catalogue]
 sharing_exempt = "indexed table reduction, with no subtable branch"
@@ -44,12 +44,12 @@ saving = 100.0
 arity = 12
 verdict = "kept: canonical, exempt. A constant table is one seed char, one read per input, and the print: 99.94% at n=10 and 99.98% at n=12 against the full layout it would otherwise pay. The docstring's 451 -> 7 is the n=4 full layout against the shortcut; 11110000 goes 278 -> 16 chars at n=3"
 
-[ablations.spare_cell]
-saving = 46.9
-arity = 7
-seed = "random.Random(184700 + n)"
-tables = "200 random per n=3..8, 20 at n=9..10, 5 at n=11"
-verdict = "kept: the strided reduces need an even count of input cells ahead of the value slots, so odd n carries one spare cell after the last input instead of a ghost input that doubled the table. Against the ghost build it saves 46.9% at n=7 (5,499 to 2,918 chars) and 48.8% / 49.6% at n=9 / 11 (21,025 to 10,760; 82,659 to 41,670), and 0.0% at even n, whose layout is unchanged. Exhaustive n <= 4 (65,536 tables at n=4) ran on every row, 0 bad; 181 random and projected tables at n=5..11 ran on every row, 0 bad; no table through n=4 grows"
+[ablations.paired_inputs]
+saving = 27.3
+arity = 8
+seed = "random.Random(1847 + n)"
+tables = "5 random per n=7..8, 3 for balance; parity, and, or, majority and threshold (size does not depend on the table)"
+verdict = "kept: each input travels with a ghost cell, so the group ahead of the value slots is even at every level and every reduce is the cheap even one (the odd reduce's full-queue j/swap passes, 14P against 4P, are gone, and with them the odd-n spare cell, the j fold and its rotation); the read converts 48-bit to 0/1 with one b per input. Against the odd/even build it saves 27.0% / 27.3% / 28.7% / 29.0% at n=7 / 8 / 9 / 10 (2,918 to 2,131; 5,499 to 4,000; 10,760 to 7,669; 21,025 to 14,930), identical on parity, and, or, majority and threshold; balance area 1.4% / 1.0% at n=7 / 8 (the bootstrapped seed dominates it). The 2n ghost constants cost the smallest arities: n=2 grows 121 to 130, 10 of 16 tables, 30 of 256 at n=3 and 60 of 65,536 at n=4 (at most +13). Exhaustive n <= 4 (65,536 tables at n=4) ran on every row, 0 bad; random and projected tables at n=5..9 ran on every row, 0 bad; a wrong table fails"
 
 [ablations.crossing_bracket]
 saving = 0.98

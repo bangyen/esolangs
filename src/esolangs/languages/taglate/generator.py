@@ -4,8 +4,8 @@ Rows are fixed queue slots the strided reduces walk, two characters for a 0 or
 a 1, so a constant half or repeat has nothing to fold or share.
 
 Size:
-    O(T) slots, independent of the table's values; n=10 random 1847: 21,025
-    chars, n=10 parity: 21,025 chars, n=9 random 1847: 10,760 chars.  A table
+    O(T) slots, independent of the table's values; n=10 random 1847: 14,930
+    chars, n=10 parity: 14,930 chars, n=9 random 1847: 7,669 chars.  A table
     ignoring inputs is built over its essential inputs only.
 """
 
@@ -35,9 +35,8 @@ def _reorder_tt(tt: str, n: int) -> str:
     splitting a pair.  Sorting the input index ``i`` by ``(-(i >> 1),
     i & 1)`` puts the 1-group of the current input first, then the 0-group,
     with the two sub-cases of the next input adjacent inside each group.
-    Odd-reduce levels (which branch the other way) then re-apply the same
-    ordering, so the sort key serves both.  That key is the pairs in
-    reverse, each pair in place, written out directly: O(2**n), no sort.
+    That key is the pairs in reverse, each pair in place, written out
+    directly: O(2**n), no sort.
     """
     return "".join(tt[i : i + 2] for i in range(2**n - 2, -1, -2))
 
@@ -56,20 +55,21 @@ def _half_select(pairs: int, ahead: int, n: int) -> str:
     )
 
 
-def _even_reduce(pairs: int, level: int, n: int) -> str:
-    """Even-reduction block: select half the value pairs, keep all inputs.
+def _even_reduce(pairs: int, retired: int, cells: int) -> str:
+    """Reduce block: select half the value slots, keep every input cell.
 
     The queue holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then
-    two 48s, then the ``n`` input cells.  The ``rot`` rotation brings the
-    next input to the front; ``gy ... gz`` branches on it so the ``e^pairs``
-    strides past the half of the value slots the input rejects; ``e^ahead``
-    skips the untouched half and ``f^pairs`` drops it.  Every input stays on
-    the queue, so the level that follows still sees all ``n`` of them.
+    two 48s, then the ``cells`` input cells, ``retired`` of them already
+    used.  The rotation brings the next input to the front; ``gy ... gz``
+    branches on it so the ``e^pairs`` strides past the half of the value
+    slots the input rejects; ``e^ahead`` skips the untouched half and
+    ``f^pairs`` drops it.  The stride lands on a 0 slot only if ``ahead``
+    is even.
     """
-    return "e" * (2 * pairs + 2 + level) + _half_select(pairs, n - level, n)
+    return "e" * (2 * pairs + 2 + retired) + _half_select(pairs, cells - retired, cells)
 
 
-# Final odd-reduce block: the committed n==2 pattern.  Given the 8-cell
+# Final select: the committed n==2 pattern.  Given the 8-cell
 # queue [0, v0, 0, v1, 48, 48, prev, curr] (v0/v1 the two candidate values,
 # prev/curr the two remaining inputs), it rotates curr and prev to the front,
 # drops the candidate the inputs reject, adds the surviving value to one of
@@ -92,33 +92,6 @@ _SEL1_N2: str = (
     + "e" * 4
     + "i"
 )
-
-
-def _odd_reduce(pairs: int, level: int, n: int) -> str:
-    """Odd-reduction block: retire one input, reduce, keep the rest.
-
-    ``level`` is the 0-based reduce level (odd here: 1, 3, ...).  The queue
-    holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then two 48s,
-    then the ``n`` input cells.  Unlike the even reduce, the odd level
-    branches on a *retired* (previous) input whose bit has already been
-    used, so ``e^rot`` brings that input to the front and the block runs
-    ``zero`` (``gy j e^(qlen-1) gz``) to fold it away, ``swap`` (``e gy j
-    e^(qlen-2) j gz``) to encode the current input as the ghost cell the
-    even-reduce branches on, and ``bring`` (``e^(qlen-1)``) to put the
-    value slots back at the front before ``er`` runs the even-reduce body.
-
-    The ZS adds an extra ghost cell at the front, so the even-reduce body
-    uses ``ahead = n - level + 1`` instead of ``n - level``.  No input is
-    popped; the final ``f^pairs`` in ``er`` drops only the rejected value
-    slots.
-    """
-    qlen = 2 * pairs + 2 + n
-    rot = 2 * pairs + 1 + level
-    zero = "gy" + "j" + "e" * (qlen - 1) + "gz"
-    swap = "e" + "gy" + "j" + "e" * (qlen - 2) + "j" + "gz"
-    bring = "e" * (qlen - 1)
-    er = _half_select(pairs, n - level + 1, n)  # +1: the swap's ghost cell
-    return "e" * rot + zero + swap + bring + er
 
 
 def _with_discards(reduced: str, used: list[int], n: int) -> str:
@@ -157,48 +130,24 @@ def _affine(truth_table: str) -> str:
 def _full_layout(truth_table: str, n: int) -> str:
     """Program for a table that uses every input, ``n >= 2``.
 
-    The seed holds ``n - 1`` literal ``'1'``s around a run of ``'0'``s and
-    one trailing ``'1'``.  ``h``/``e``/``b``/``d``/``j`` read the ``n``
-    inputs and interleave the reordered table into value slots
-    ``[0, s0, 0, s1, ...]``, then two 48s and the inputs.  Alternating
-    even/odd reduce blocks halve the slots without popping inputs;
-    ``e^6 f^(n - 2) e^2`` reshapes the queue into the 8-cell layout
-    ``_SEL1_N2`` selects on.  The strided reduces need an even number ``m``
-    of input cells ahead of the value slots, so odd ``n`` carries one extra
-    ``'1'`` cell after the last input: a spare cell, not a ghost input, so
-    the table stays ``2**n`` entries.
+    The seed holds ``2n`` literal ``'0'`` constants ahead of the zero run.
+    Each read is followed by ``ee``, which parks two constants behind the
+    input, and a ``be`` turns ``[x, c, c']`` into ``[x - 48, c']``: every
+    input travels with a ghost cell, so the group ahead of the value slots
+    is ``2(n - level)`` cells at every level and every level is an even
+    reduce.  ``bb``/``bd`` interleave the reordered table into value slots
+    ``[0, s0, 0, s1, ...]`` behind the inputs.  The tail reshapes the queue
+    into the 8-cell layout ``_SEL1_N2`` selects on.
     """
-    spare = n % 2
-    cells = n + spare
-
-    seed = "1" * (n - 1 + spare) + "0" * (2 ** (n + 2) + 2) + "1"
-
+    seed = "0" * (2 * n + 2 ** (n + 2) + 2)
     ordered = _reorder_tt(truth_table, n)
     selectors = "".join("bd" if c == "1" else "bb" for c in ordered)
+    prefix = "hee" * n + selectors + "ee" + "be" * n
 
-    # The spare cell is the seed's last leading '1' (rotated behind the
-    # inputs by the extra ``e``); ``b`` pairs skip it, and the last ``e``
-    # puts it behind the inputs again after ``j`` has run.
-    prefix = (
-        "he" * (n - 1)
-        + "h"
-        + "e" * spare
-        + selectors
-        + "ee"
-        + "b" * n
-        + "e" * (2 ** (n + 1) + 2 + spare)
-        + "j" * n
-        + "e" * spare
-    )
-
-    select_parts: list[str] = []
-    for level in range(n - 1):
-        pairs = 2 ** (n - level)
-        reduce = _even_reduce if level % 2 == 0 else _odd_reduce
-        select_parts.append(reduce(pairs, level, cells))
-
-    if n > 2:
-        select_parts.append("e" * 6 + "f" * (n - 2) + "e" * 2 + "f" * spare)
+    select_parts = [
+        _even_reduce(2 ** (n - level), 2 * level, 2 * n) for level in range(n - 1)
+    ]
+    select_parts.append("e" * 6 + "f" * (2 * n - 4) + "efef")
     select_parts.append(_SEL1_N2)
 
     result: str = seed + "\n" + prefix + "".join(select_parts)

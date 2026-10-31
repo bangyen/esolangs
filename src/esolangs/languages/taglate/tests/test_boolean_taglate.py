@@ -14,11 +14,11 @@ def run_taglate(program: str, inputs: list[str]) -> str:
     return esolangs.run("Taglate", program, stdin="".join(inputs))
 
 
-def test_execution_bound_splits_on_input_parity() -> None:
+def test_execution_bound_is_one_form() -> None:
     from esolangs.languages.taglate.proof_formulas import execution
 
-    assert execution(4, "") == 353
-    assert execution(5, "") == 692
+    assert execution(4, "") == 282
+    assert execution(5, "") == 489
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
@@ -75,7 +75,7 @@ class TestTaglate:
         """A table that ignores inputs is emitted as the smaller table."""
         full = len(boolean.taglate("10010110"))  # depends on all three
         for table in ("11110000", "11001100", "10101010", "00000000"):
-            assert len(boolean.taglate(table)) < full // 10, table
+            assert len(boolean.taglate(table)) < full // 8, table
 
     def test_gapped_dependencies_reduce_without_reordering_inputs(self) -> None:
         """Every n=3 function of inputs 0 and 2 uses the small program."""
@@ -100,11 +100,11 @@ class TestTaglate:
                 bits = [str((combo >> shift) & 1) for shift in (2, 1, 0)]
                 assert run_taglate(program, bits) == table[combo], (table, bits)
 
-    def test_three_inputs_of_five_use_the_odd_layout(self) -> None:
-        """An odd dependency set of three in n=5 is built over three inputs."""
+    def test_three_inputs_of_five_are_built_over_three(self) -> None:
+        """A dependency set of three in n=5 is built over three inputs."""
         table = "".join(bit * 4 for bit in "01101001")
         program = boolean.taglate(table)
-        assert len(program) == 280
+        assert len(program) == 225
         for combo in range(32):
             bits = [str((combo >> shift) & 1) for shift in (4, 3, 2, 1, 0)]
             assert run_taglate(program, bits) == table[combo], bits
