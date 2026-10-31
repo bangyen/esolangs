@@ -148,26 +148,33 @@ Each missed the 10% bar:
 
 ### Searches kept
 
-Malbolge's generator keeps two table-independent searches, run once per
-process.  Neither has a rule yet; for the first, the three closed forms
-tried all overrun, which is evidence, not a proof that none exists:
+Malbolge's generator keeps one table-independent search, run once per
+process; the first of its two former searches is a rule now:
 
-- Navigation (`emitter.py` `goto`, breadth-first shortest paths). The main
-  line ends at cell 6,532 at n=1 (5,487 at n=16), over 5,089 path cells;
-  the code must end below 6,561, where the hubs and stubs start. Closed-form
-  navigation -- a forward walk, a `j` through the cell at `d`, or a walk to
-  the next unwritten cell with `g = t - 1`, then one more hop -- ends at
-  13,501 at n=1 (12,816 at n=16). The label priming alone takes 2,653 path
+- Navigation (`emitter.py` `goto`) is a rule, the chain-valued
+  scan-greedy: from the current cell, scan the next 32 cells' jump
+  landings, price each by its walk to the source plus a value built from
+  deterministic pointer-chase chains, `g`-cycle follows and bounded
+  second-jump scans, jump via the cheapest when it beats walking, and
+  repeat.  The main line ends at cell 6,548 at n=1 (5,499 at n=16); the
+  code must end below 6,561, where the hubs and stubs start.  The
+  breadth-first search it replaced ended at 6,532 at n=1 (5,487 at
+  n=16), over 5,571 path cells.  Closed-form navigation -- a forward
+  walk, a `j` through the cell at `d`, or a walk to the next unwritten
+  cell with `g = t - 1`, then one more hop -- ends at 41,244 at n=1 for
+  the best of the three pure forms. The label priming alone takes 2,653 path
   cells against 609: its `p p` returns to the cell it just wrote 74 times,
   a forward-only pass leaves `A` equal to the cell just written, and no row
   of `crazy` is constant, so it cannot bring the next cell to the same value.
   Paths stay short because an unwritten cell jumps to `g(a) + 1`, which
   permutes the pointer region 34..127 (cycles 1, 1, 2, 2, 7, 17, 64); once
   it is written, a cell past 127 costs a walk up from 127.  Replaying the
-  BFS's memory states, the cheapest navigation with at most 1, 2, 3, 4
-  jumps per `goto` ends at 8,457, 6,876, 6,607, 6,558 at n=1 (6,965,
-  5,776, 5,548, 5,501 at n=16; unlimited reproduces the BFS exactly).
-  A rule must therefore jump about four times per `goto` at n=1, or write
+  search's memory states, the cheapest navigation with at most 1, 2, 3, 4
+  jumps per `goto` ends at 8,534, 6,876, 6,607, 6,558 at n=1 (7,784,
+  5,817, 5,548, 5,501 at n=16; unlimited reproduces the search exactly).
+  So no navigation with at most three jumps per `goto` fits at n=1 --
+  that side is proved, on the shipped write order -- and a rule must
+  jump about four times per `goto` at n=1, as this one does, or write
   the cells in a different order.
 - Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15): each
   label's hub, then stub, takes the lowest address clear of the tables and

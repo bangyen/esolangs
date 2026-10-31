@@ -7,8 +7,9 @@ the table cell, ``j`` to the pointer cell ``T + 1``, ``j`` to the *hub*
 holds the labels, but they are written last: until then the working cells
 dead by that point (the setup helpers and the gadget's) sit there, where
 every ``j`` through an unwritten cell lands, and the rest in the walked
-cells ``128..419``.  Navigation is a shortest path over ``o`` and ``j``
-through every cell whose value is known.
+cells ``128..419``.  Navigation is the chain-valued scan-greedy rule
+over ``o`` and ``j`` through every cell whose value is known
+(:class:`~.emitter._ScanGreedy`).
 
 The readouts are a product set: each two-trit digit of ``S`` misses one
 value, digit 1 (trits 2, 3) missing ``(2, 2)`` and digit 3 (trits 6, 7)

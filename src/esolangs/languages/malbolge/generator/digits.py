@@ -187,7 +187,7 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
     lowest address that clears the tables and the picks before it, by the
     shortest chain, then the ``g`` whose walked cell is nearest the first: each
     op walks to its cell, and the main code must end below the lowest table
-    cell (6532 against 6562).  A hub is any seedable address whose two data
+    cell (6548 against 6562).  A hub is any seedable address whose two data
     cells are free, below the top table cell too (14's land in its gaps).
     """
     tables = {s + 1 for s in _readouts(arity)}
@@ -553,9 +553,9 @@ def _allocate_cells(layout: _Layout | None = None) -> _DCells:
     gadget's, ``s`` and ``two`` -- take pointer cells, where every ``j``
     through an unwritten cell lands, so a back jump is a short walk.  ``g``
     has period 94, so a value has one cell there.  The rest take walked
-    cells ``128..``, past the operand cells.  With every cell walked, n=16's
-    main line ends at 9,977 against 5,487 and n=1's at 16,414 against
-    6,013, past the tables.
+    cells ``128..``, past the operand cells.  With every cell walked the
+    main line would end past the tables; as allocated, n=1's ends at
+    6,548 and n=16's at 5,499.
     """
     operands = _operand_cells()
     used = {*_T_LOW, *(cell for cells in operands.values() for cell in cells)}
