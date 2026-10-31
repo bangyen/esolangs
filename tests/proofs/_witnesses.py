@@ -451,6 +451,15 @@ def _underload_worst(n: int) -> str:
     return reflected_table(tree, n)
 
 
+def _home_row_worst(n: int) -> tuple[str, ...]:
+    """The all-leaf table, and (n >= 3) it with its first pairs set to ``00``."""
+    base = "0110" * ((1 << n) // 4 - 1) + "0111" if n > 1 else "0111"
+    if n < 3:
+        return (base,)
+    head = 2 * min(4, n - 1)
+    return (base, "0" * head + base[head:])
+
+
 def _low_one(n: int) -> str:
     """One-hot at row T - 2: every input essential, no symmetry."""
     return "0" * ((1 << n) - 2) + "10"
@@ -862,11 +871,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "ArrowQueue": lambda n: (_low_one(n),),
     # The two-stack build's worst: a run of ones per pair in the upper half.
     "Eval": lambda n: (_eval_alternating_upper(n),) if n >= 4 else (),
-    # Workspace: a negated setter's -1 bit on a program as long as the worst
-    # (n = 3: a leading run of three zeros, then alternating; from 5, eight).
-    "Home Row": lambda n: (
-        ("00010101",) if n == 3 else ("0" * 8 + _parity(n)[8:],) if n >= 5 else ()
-    ),
+    # Pairs 01, 10 alternating but for a last 11: every input essential, no two
+    # adjacent pairs agree, so each is a leaf (size, steps).  Workspace: the
+    # first pairs 00, so the reversed twin is shorter yet as long as the worst.
+    "Home Row": lambda n: _home_row_worst(n),
     # Size and steps: the alternating table ignores all but its last input, so
     # the worst keeps every input and flips the first pair.  Workspace: the
     # mirrored scan is chosen for a constant prefix then alternating (prefix 2

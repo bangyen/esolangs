@@ -92,21 +92,25 @@ class TestParameterizedHomeRow:
         template = generators.home_row("0110")
         assert "{X" not in template
         # each packing line opens with its two-character run
-        assert "a$lsffffaafla$lsffffafl" in template
+        assert "a$lsfffaffla$lsfafffsfl" in template
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
         assert len(runs(template, "$", (HOME_ROW_PAIR,) * 2)) == 2
         assert "{C0}" not in template
         assert "{C1}" not in template
 
-    def test_rows_that_agree_with_the_last_share_its_leaf(self) -> None:
-        """Only the rows before the table's trailing run get a guarded leaf."""
+    def test_pairs_that_agree_with_the_last_share_its_leaf(self) -> None:
+        """Only the pairs before the table's trailing run get a guarded leaf."""
         from esolangs.languages import generators
+        from esolangs.languages.home_row.generator import _SETUP
 
-        setup = "aaaaaalsffaaaaaaaaffflfa$lsffffaafla$lsffffafl"
-        assert generators.home_row("0111") == setup + "fffflflfflk;lffffak"
-        # The two rows of the middle run are one leaf behind a clamped decrement.
-        assert generators.home_row("0110") == setup + (
-            "fffflsflfflk;lffjslflfflak;lffffk"
+        gates = "a$lsfffaffla$lsfafffsfl"
+        assert generators.home_row("0111") == (
+            _SETUP + gates + "fff" + "jfffflk;lf" + "dddk"
+        )
+        # The two pairs of the first run are one leaf behind a clamped decrement.
+        gates = "a$lsfffaaffla$lsfffaffla$lsfafffsfl"
+        assert generators.home_row("00000110") == _SETUP + gates + "fff" + (
+            "jsjddlk;lddds" + "jfffflk;lf" + "fk"
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
@@ -114,4 +118,4 @@ class TestParameterizedHomeRow:
         from esolangs.languages import generators
 
         tables = (format(v, "08b") for v in range(256))
-        assert sum(len(generators.home_row(t)) for t in tables) == 28314
+        assert sum(len(generators.home_row(t)) for t in tables) == 32778

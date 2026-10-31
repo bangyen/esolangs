@@ -1,24 +1,27 @@
 """Home Row Boolean program generator: a weighted index counted down a leaf chain.
 
-Each input adds its binary weight to an index cell; guarded leaves count it
-down onto a zero cell, printing at the selected row and skipping the rest.
-Setters clear or preserve a fresh one; position-stable l/s/l gates add binary
-weights without nested loops.  Ignored inputs keep a zero-weight gate; a
-constant table discards all setters and prints a literal.  No goto, and ``l``
-re-runs only its own block: no leaf of the linear chain is reached twice.
+Each input but the last essential one adds its binary weight to an index
+cell; guarded leaves count it down onto a zero cell, printing at the selected
+pair of rows and skipping the rest.  The last essential input sets two of four
+flag cells (``48 + x``, ``49 - x``; the others hold 48 and 49), so a leaf
+prints the flag its pair names: ``00``, ``11``, ``x`` or ``not x``.  Setters
+clear or preserve a fresh one; position-stable l/s/l gates add binary weights
+without nested loops.  Ignored inputs keep a zero-weight gate; a constant
+table discards all setters and prints a literal.  No goto, and ``l`` re-runs
+only its own block: no leaf of the linear chain is reached twice.
 
 Size:
-    Up to 2**n leaves in a linear chain; n=10 and: 1,175 chars (was 3,209),
-    n=10 random 1847: 8,711 chars, n=10 parity: 10,359 chars.
+    Up to 2**(n-1) leaves in a linear chain; n=10 and: 703 chars (was 1,175),
+    n=10 random 1847: 5,241 chars (was 8,711), n=10 parity: 4,773 chars (was
+    10,359).
 
 Decisions:
-    A negated twin takes a table when shorter: ``and`` at n=8 885 -> 385.
-    Sharing runs of equal rows through ``js`` clamped decrements saves, at n=7,
-    56.48% on random, 54.66% on tiled, 120.15% with one half constant and
-    29.67% with constant blocks (deletion costs, 200 tables a class).
+    A negated twin takes a table when shorter: ``and`` at n=8 543 -> 297.
+    Sharing runs of equal pairs through ``js`` clamped decrements: see
+    [ablations.run_sharing].
 """
 
-from itertools import accumulate, groupby
+from itertools import groupby
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -35,13 +38,22 @@ __all__ = ["HOME_ROW_PAIR", "home_row"]
 
 
 HOME_ROW_PAIR = ("s", "j")
-_SETUP = "aaaaaalsffaaaaaaaaffflf"
-
-
-def _runs(rows: str) -> list[tuple[int, str]]:
-    """Return ``(end, run)`` for each maximal run of equal characters in ``rows``."""
-    runs = ["".join(group) for _, group in groupby(rows)]
-    return list(zip(accumulate(map(len, runs)), runs, strict=True))
+_CONSTANT_SETUP = "aaaaaalsffaaaaaaaaffflf"
+# Cell 0 is the index, cell 2 the gates' scratch.  Flags: cell 1 = 49 - x,
+# cell 3 = 48 + x, cell 5 = 48, cell 15 = 49.  A mismatch lands one move past
+# its flag, so cells 2, 4, 10 and 20 stay zero.
+_SETUP = (
+    "aaaaaal" + "s" + "f" + "a" * 8 + "ff" + "a" * 8 + "ffd" + "a" * 8
+    + "dd" + "a" * 8 + "dd" + "l" + "fa" + "ffff" + "ddd" + "a" + "ddff"
+)  # fmt: skip
+# Pair -> (test and step to its flag, home after a mismatch, flag from home).
+# ``j`` skips the first move on a zero index, so a match is one move nearer.
+_FLAGS = {
+    "10": ("jff", "fff", "f"),
+    "01": ("jffff", "f", "fff"),
+    "00": ("jdd", "ddd", "d"),
+    "11": ("jdddd", "d", "ddd"),
+}
 
 
 def home_row(truth_table: str) -> str:
@@ -58,36 +70,47 @@ def _program(truth_table: str, *, negated: bool = False) -> str:
         # On zero, s/a decrements then restores; j/a skips the increment.
         # Every setter thus leaves the scratch cell zero, without an index gate.
         return (
-            _SETUP + (TEMPLATE_CHAR + "a") * n + "f" + "a" * int(truth_table[0]) + "k"
+            _CONSTANT_SETUP
+            + (TEMPLATE_CHAR + "a") * n
+            + "f"
+            + "a" * int(truth_table[0])
+            + "k"
         )
-    # The leaf chain is up to 2**n leaves, so dropping an ignored input
+    # The leaf chain is up to 2**(n-1) leaves, so dropping an ignored input
     # halves the program; its gate stays with weight zero, so nothing moves
     # and no setter changes width.
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing and reduces to a one-input table,
     # never to the length-1 table, which is not a valid shape.
     table = truth_table if len(used) == n else read_at(truth_table, used or [0], n)
-    weights = {i: 2 ** (len(used) - 1 - slot) for slot, i in enumerate(used)}
+    # The last essential input is no weight: it moves the flags, so a leaf
+    # covers a pair of rows and prints one of 0, 1, x, not x.
+    last = used[-1] if used else None
+    weights = {i: 2 ** (len(used) - 2 - slot) for slot, i in enumerate(used[:-1])}
 
-    head = "a" + TEMPLATE_CHAR + ("slaffff" if negated else "lsffff")
-    bit_lines = [head + "a" * weights.get(i, 0) + "fl" for i in range(n)]
-    guarded = table.rstrip(table[-1])
-    # A run of equal rows is one leaf behind ``js`` clamped decrements: ``j``
-    # skips the ``s`` on a zero cell, so the index reaches the leaf as
-    # ``max(index - (k - 1), 0)`` and the leaf's test lands on the run's rows.
-    # Nothing after the last guard reads the index: it need not decrement.
-    leaves = [
-        "js" * (len(run) - 1)
+    lead = "a" + TEMPLATE_CHAR + ("sla" if negated else "ls")
+    gates = "".join(
+        lead
+        + ("fafffsf" if i == last else "fff" + "a" * weights.get(i, 0) + "ff")
         + "l"
-        + "s" * (stop < len(guarded))
-        + "flffl"
-        + "a" * (run[0] == "1")
-        + "k;lff"
-        for stop, run in _runs(guarded)
+        for i in range(n)
+    )
+    pairs = [table[i : i + 2] for i in range(0, len(table), 2)]
+    runs = [(pair, len(list(group))) for pair, group in groupby(pairs)]
+    # A run of equal pairs is one leaf behind ``js`` clamped decrements: ``j``
+    # skips the ``s`` on a zero cell, so the index reaches the leaf as
+    # ``max(index - (k - 1), 0)`` and the leaf's test lands on the run's pairs.
+    # The last run needs no leaf, and nothing after the last guard reads the
+    # index: that leaf need not decrement.
+    leaves = [
+        "js" * (length - 1)
+        + _FLAGS[pair][0]
+        + "lk;l"
+        + _FLAGS[pair][1]
+        + "s" * (at < len(runs) - 1)
+        for at, (pair, length) in enumerate(runs[:-1], 1)
     ]
-    # The source's end halts, so the last answer needs no ``;``.
-    last = ("ff" if guarded else "f") + "a" * (table[-1] == "1") + "k"
-    return _SETUP + "".join(bit_lines) + "ffff" * bool(guarded) + "".join(leaves) + last
+    return _SETUP + gates + "fff" + "".join(leaves) + _FLAGS[runs[-1][0]][2] + "k"
 
 
 LANGUAGE = Language(

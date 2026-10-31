@@ -9,19 +9,19 @@ outside_implementation = { date = 2022-10-07, source = "BoundedBeans' interprete
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "—"
-scaling = "linear: worst 27T/2 + 10n + 6 characters past n = 1: runs"
-execution = "linear: worst 10T + 10n + 88 commands past n = 1: every guarded leaf run, one equal pair of rows"
-workspace = "poly n: worst n + 32 + bl(27T/2+10n+6) + [n!=4] bits past n = 1: index cell, cursor, a -1 setter cell"
+scaling = "linear: worst 6T + 10n + 61 characters past n = 1: pairs"
+execution = "linear: worst 9T/2 + 10n + 284 commands past n = 1: every leaf run, all weights set"
+workspace = "poly n: worst n + 49 + bl(6T+10n+61) bits past n = 1: index cell, four flags, cursor, a -1 setter cell"
 
 [generator_sizes]
-"00000001" = { commands = 120, commands_by_row = { "0" = 153, "1" = 145, "2" = 144, "3" = 136, "4" = 142, "5" = 134, "6" = 133, "7" = 120 }, source_units = 82 }
-"00001100" = { commands = 157, commands_by_row = { "0" = 117, "1" = 124, "2" = 126, "3" = 133, "4" = 137, "5" = 144, "6" = 150, "7" = 157 }, source_units = 89 }
-"00110110" = { commands = 183, commands_by_row = { "0" = 117, "1" = 126, "2" = 138, "3" = 147, "4" = 149, "5" = 168, "6" = 170, "7" = 183 }, source_units = 122 }
-"0110" = { commands = 147, commands_by_row = { "0" = 113, "1" = 132, "2" = 134, "3" = 147 }, source_units = 79 }
-"01101001" = { commands = 191, commands_by_row = { "0" = 116, "1" = 135, "2" = 137, "3" = 153, "4" = 157, "5" = 174, "6" = 176, "7" = 191 }, source_units = 133 }
-"0110100110010110" = { commands = 259, commands_by_row = { "0" = 119, "1" = 138, "2" = 140, "3" = 156, "4" = 160, "5" = 177, "6" = 179, "7" = 198, "8" = 186, "9" = 203, "10" = 205, "11" = 223, "12" = 225, "13" = 244, "14" = 246, "15" = 259 }, source_units = 219 }
-"1101001101101101" = { commands = 260, commands_by_row = { "0" = 121, "1" = 130, "2" = 139, "3" = 157, "4" = 160, "5" = 169, "6" = 181, "7" = 190, "8" = 185, "9" = 204, "10" = 206, "11" = 222, "12" = 227, "13" = 236, "14" = 245, "15" = 260 }, source_units = 220 }
-"11111110" = { commands = 119, commands_by_row = { "0" = 154, "1" = 146, "2" = 145, "3" = 137, "4" = 143, "5" = 135, "6" = 134, "7" = 119 }, source_units = 82 }
+"00000001" = { commands = 304, commands_by_row = { "0" = 335, "1" = 326, "2" = 327, "3" = 318, "4" = 326, "5" = 317, "6" = 313, "7" = 304 }, source_units = 118 }
+"00001100" = { commands = 330, commands_by_row = { "0" = 301, "1" = 308, "2" = 310, "3" = 317, "4" = 314, "5" = 321, "6" = 323, "7" = 330 }, source_units = 113 }
+"00110110" = { commands = 348, commands_by_row = { "0" = 301, "1" = 310, "2" = 319, "3" = 328, "4" = 328, "5" = 337, "6" = 339, "7" = 348 }, source_units = 137 }
+"0110" = { commands = 320, commands_by_row = { "0" = 300, "1" = 309, "2" = 311, "3" = 320 }, source_units = 103 }
+"01101001" = { commands = 344, commands_by_row = { "0" = 303, "1" = 312, "2" = 318, "3" = 327, "4" = 320, "5" = 329, "6" = 335, "7" = 344 }, source_units = 130 }
+"0110100110010110" = { commands = 382, commands_by_row = { "0" = 306, "1" = 315, "2" = 321, "3" = 330, "4" = 323, "5" = 332, "6" = 341, "7" = 350, "8" = 341, "9" = 350, "10" = 360, "11" = 369, "12" = 362, "13" = 371, "14" = 373, "15" = 382 }, source_units = 177 }
+"1101001101101101" = { commands = 396, commands_by_row = { "0" = 306, "1" = 315, "2" = 322, "3" = 331, "4" = 329, "5" = 338, "6" = 347, "7" = 356, "8" = 349, "9" = 358, "10" = 363, "11" = 372, "12" = 374, "13" = 383, "14" = 387, "15" = 396 }, source_units = 197 }
+"11111110" = { commands = 336, commands_by_row = { "0" = 305, "1" = 314, "2" = 314, "3" = 323, "4" = 316, "5" = 325, "6" = 327, "7" = 336 }, source_units = 119 }
 
 [catalogue]
 folding_constant_local = "_program"  # direct constant input-discard sequence
@@ -35,26 +35,35 @@ arity = 12
 verdict = "kept: canonical, exempt. A constant table discards all setters and prints a literal after the setup. Routing constants through the one-input lookup instead costs +175.8% at n=10 and +193.9% at n=12 (45 to 125 and 49 to 145 chars)"
 
 [ablations.projection]
-saving = 99.2
+saving = 98.0
 arity = 12
-verdict = "kept: canonical, exempt. The leaf chain covers the table read at the essential inputs only; an ignored input keeps a zero-weight gate line and adds no leaves. Building the chain over the full table instead costs +97.25% at n=10 and +99.18% at n=12 on one-ignored tables, +283.83 / +295.12% on two-ignored tables, and 0.00% on random tables"
+verdict = "kept: canonical, exempt. The leaf chain covers the table read at the essential inputs only; an ignored input keeps a zero-weight gate line and adds no leaves. Building the chain over the full table instead costs +85.5% at n=10 and +98.0% at n=12 on one-ignored tables, +220.4 / +244.5% on two-ignored tables (10 seeded each), and 0.00% on random tables. Re-measured 2026-10-30 after pair_flags (it was +97.25 / +99.18% one-ignored, +283.83 / +295.12% two-ignored)"
+
+[ablations.pair_flags]
+saving = 66.9
+arity = 10
+seed = "random.Random(n) + named tables"
+tables = 30
+verdict = "kept: the last essential input moves four flag cells (48 + x, 49 - x, 48, 49) instead of weighting the index, so one leaf covers a pair of rows and prints its pair's flag (00, 11, x, not x); the leaf chain halves. Dropping it costs +52.3% / +58.7% / +64.9% / +66.9% on random at n=7 / 8 / 9 / 10 (200 / 200 / 30 / 30), +51.8 / +57.2 / +62.6% balance=True area (20, n=7..9); parity +93.4 / +105 / +113 / +117%, majority +39.7 / +48.3 / +54.8 / +59.0%, thr4 +39.7 / +48.4 / +55.5 / +62.3%, and +10.8 / +29.6 / +49.5 / +67.1%, or +10.1 / +29.6 / +49.9 / +67.6%. Its 65-char setup grows small tables: +38.5% at n=2, +15.4% at n=3 (100 random each), then saves 5.3% / 19.8% / 27.5% at n=4 / 5 / 6. Measured 2026-10-30 chars, every program executed (n<=3 exhaustive, 300 random at n=4, 10-60 random + named at n=5..8, one-ignored tables n=3..6, named rows sampled at n=9..10); a wrong-table control fails"
 
 [ablations.run_sharing]
-saving = 63.2
-arity = 12
-verdict = "kept: a maximal run of equal rows is one leaf behind js clamped decrements instead of one leaf a row. Giving every row its own leaf costs +62.75% at n=10 and +63.19% at n=12 on random tables (confirmation set +63.34%), +34.57 / +34.87% on parity and +318.48 / +328.97% on AND. The Decisions note's n=7 figures for this mechanism do not reproduce on their stated shapes; see RETIREMENT-CANDIDATES entry F29"
+saving = 23.2
+arity = 10
+seed = "random.Random(n) + named tables"
+tables = 20
+verdict = "kept: a maximal run of equal pairs is one leaf behind js clamped decrements instead of one leaf a pair. Giving every pair its own leaf costs +18.19% / +20.48% / +23.24% on random at n=7 / 8 / 10 (100 / 100 / 20 seeded), +26.6 / +29.1 / +32.1% on parity, +305 / +465 / +797% on AND, +45.7 / +60.8 / +75.2% on majority. Re-measured 2026-10-30 after pair_flags (it was +62.75% at n=10 with a leaf a row)"
 
 [ablations.negated_twin]
-saving = 130.0
-arity = 8
+saving = 144.0
+arity = 10
 seed = "random.Random + named tables"
 tables = 20
-verdict = "kept under the named-function rule (plain-rewrite audit 2026-10-29): the table reversed and negated is built beside the plain build and the shorter kept. Dropping it costs +100% on and/nand at n=7, +130% at n=8 (385 -> 885), +173% at n=10; majority and thr4 1-2%; random tables, or, nor, parity 0.0% at n=7..10, so it never grows a program"
+verdict = "kept under the named-function rule (plain-rewrite audit 2026-10-29): the table reversed and negated is built beside the plain build and the shorter kept. Dropping it costs +53.6% on and, +51.3% on nand at n=7, +82.8% / +80.9% at n=8 (297 -> 543), +144% / +143% at n=10; majority 0.0-1.0%, thr4, or, nor, parity and random tables 0.0% at n=7..10, so it never grows a program. Re-measured 2026-10-30 after pair_flags (it was +100% at n=7, +173% at n=10)"
 
 [ablations.last_leaf_decrement]
 saving = 0.0
 arity = 10
-verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29). The last guarded leaf omits its s decrement, which nothing after it reads; always emitting it costs 1 character a table (+1.4% at most, n=2..6; 0.0% at n=7..10)"
+verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29). The last guarded leaf omits its s decrement, which nothing after it reads; always emitting it costs 1 character a table (+3.5% at most, n=2..3; +0.8% at n=4, 0.13% at n=7, 0.02% at n=10)"
 
 [audits]
 blind_reimplementation = 2026-10-30
