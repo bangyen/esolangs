@@ -96,12 +96,25 @@ ignored-input tables included).
       gives d1!=d0.  Not built; the extra trip would add about a
       stage-sized block per input (estimated, unmeasured).
     - Minifuck: non-commands count as instructions `[` can skip, against
-      "only 3 instructions"; the `[x` filler relies on it.  No drop-in
-      for `[x` works under both: every real command in the slot differs by
-      branch (`<` ends at p vs p+1; `[` and `.` flip, print or read), and no
-      `<`/`[` string of length 1..14 matches `[x` on 300 random tapes.  A
-      both-readings construction would have to restructure the conditional,
-      untried.  The page's sole example has no non-command.
+      "only 3 instructions"; the `[x` filler relies on it.  FENCED
+      (2026-10-31): the page does not settle the reading -- re-read
+      2026-10-31, it says "only 3 instructions", its sole example
+      (`<[<.[<.`) has no non-command, and nothing on the page defines
+      one -- and a filler-free build is a generator rebuild, not a
+      patch, because the dependence is the emission model itself: the
+      `[x` walk law (the core movement primitive), the `xx` zero
+      setter, the parity columns' `x` joins and `q` prefix, and wrap
+      newlines all put a non-command character in a skip slot.
+      Measured on the package corpus (witness tables at n=1..4, parity
+      and random tables at n=5..6): the clean-room reading, which drops
+      non-commands, differs on 258 of 258 rows, and 24 of 24 programs
+      carry filler -- in line with the blind audit's 3,079 of 3,080
+      fleet rows.  No drop-in for `[x` works under both: every real
+      command in the slot differs by branch (`<` ends at p vs p+1;
+      `[` and `.` flip, print or read), and no `<`/`[` string of
+      length 1..14 matches `[x` on 300 random tapes.  Reopen with: a
+      walk law over real instructions whose crossing leaves every
+      row's pointer converged, or page evidence.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
