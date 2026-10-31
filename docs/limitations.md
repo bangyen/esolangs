@@ -151,7 +151,8 @@ Each missed the 10% bar:
 Malbolge's generator had two table-independent searches.  The short
 layout is a construction now; navigation is a bounded heuristic, and
 its closed-form question is closed under the bounded-read
-definition below, with one signature-relative route still open:
+definition below; the one signature-relative route past that
+definition was attempted and its preservation form is closed:
 
 - Navigation (`emitter.py` `goto`) is a deterministic bounded
   heuristic, the chain-valued scan-greedy -- not a closed form.  From
@@ -229,15 +230,29 @@ definition below, with one signature-relative route still open:
   over a signature with equality and conditionals is moreover
   constructively false: a greedy decision tree interpolates the
   optimal first-step function in 424 nodes over the 525 reachable
-  states, and 5,667 over the full 30,926-state domain.  One route
-  remains open, signature-relative: inexpressibility of any size
+  states, and 5,667 over the full 30,926-state domain.  The signature-relative route -- inexpressibility of any size
   for the restricted algebraic signature (reads only at derived
   indices, per-trit algebra, no equality against arbitrary value
   constants, no random access), by a preservation argument over
-  the algebra's invariant relations -- priced at 2-3.5 agent-days,
-  and it dies at its invariant computation if only the trivial
-  congruences survive `crazy`, `rot` and `+1`, which the record
-  so far suggests is likely.
+  the algebra's invariant relations -- was attempted
+  (2026-10-31), and its invariant computation is complete on
+  both factors.  On values, the only equivalences preserved by
+  `crazy`, `rot`, tritwise ops and `+1` are equality and the
+  universal relation: `+1` is a single 59,049-cycle, so its
+  invariant equivalences are exactly the mod-3^k partitions,
+  which `crazy` and the tritwise ops all preserve and `rot`
+  kills at every 1<=k<=9.  On positions, the period-94
+  congruences (mod 94, 188, 282, 376) genuinely survive the
+  successor and walk steps -- but each fails separation at the
+  relation level, and the domain test is empty: among 17,615
+  same-memory state pairs at distinct positions, none is
+  jointly congruent in effective start and target, so no
+  product relation separates the optimal first step, for the
+  optimum or for the cheapest four-jump paths.  The statement
+  itself, that no term of the restricted signature of any size
+  computes the optimal first step, remains open in both
+  directions: a proof would need non-product or non-uniform
+  relations (unpriced), and no such term has been exhibited.
 - Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15) are
   a construction, the canonical-action rule: a chain's action on a
   pointer-region value is fully determined by `(r, F)` -- `r` its number

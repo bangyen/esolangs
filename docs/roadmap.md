@@ -66,9 +66,13 @@ ignored-input tables included).
   over the restricted algebraic signature (reads only at derived
   indices, per-trit algebra, no equality against arbitrary value
   constants, no random access) computes the optimal first step.
-  Priced at 2-3.5 agent-days by a preservation argument over the
-  algebra's invariant relations; it dies at that computation if
-  only the trivial congruences survive.  See
+  The preservation route to it was attempted (2026-10-31) and is
+  closed: the invariant relations are fully classified (values
+  admit only the trivial two; positions admit a period-94
+  family), no surviving relation separates, and the joint
+  domain test is empty.  What remains is a proof by
+  non-product or non-uniform relations, unpriced, or a term
+  exhibiting the contrary.  See
   [limitations](limitations.md#searches).
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
