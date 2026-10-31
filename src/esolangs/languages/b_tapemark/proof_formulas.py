@@ -1,4 +1,4 @@
-"""Snapshot-bit bounds."""
+"""Snapshot-bit bounds for the default (``swap_marker="new"``) dialect."""
 
 
 def workspace(n: int, program: str) -> int:
