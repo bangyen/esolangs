@@ -54,5 +54,6 @@ arity = 10
 verdict = "kept: each octal digit of the table integer is added as v or as v - 8 carrying one up (terms +-1, +-2, +-4, +-8, at most two a digit, the registers already hold them), a two-state pass choosing the fewer terms; the unsigned build is the carry-free path, so no table grows. Random 9.3% / 12.3% / 14.9% / 17.1% at n=7 / 8 / 9 / 10 (200 / 200 / 40 / 40 seeded; share rising with n), majority 20.9% / 18.6% / 32.1% / 27.6%, thresholds 0.3-1.4%, parity, and, or 0.00% (parity digits are already two-term). Measured 2026-10-30 chars, every program executed (n<=3 exhaustive, 300 random at n=4, 8-40 random + named at n=5..8, named rows sampled at n=9..10)"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
