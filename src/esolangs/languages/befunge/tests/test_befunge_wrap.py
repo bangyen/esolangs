@@ -13,6 +13,7 @@ from esolangs.languages.befunge.generator import (
     _BOUND_PACKED,
     _BOUND_WIDE,
     _min_columns,
+    _plain_befunge,
     balance_befunge,
     befunge,
 )
@@ -50,10 +51,18 @@ def test_befunge_keeps_a_header_that_already_fits() -> None:
 
 
 def test_befunge_default_lays_the_table_at_the_grid_width() -> None:
-    # Candidate 20: the default path no longer tries the sqrt width.
+    # Candidate 20: the default path no longer tries the sqrt width.  From
+    # n=8 the packed grid wins the area race: two header rows, 43 data cells.
     rows = befunge(_seeded(8)).splitlines()
-    assert len(rows) == 5  # header + 256 cells at 80 per row
+    assert len(rows) == 3
     assert max(map(len, rows)) == 80
+
+
+def test_the_packed_grid_wins_only_when_it_is_smaller() -> None:
+    # n=7 ties (240 cells each), so the plain build stays; n=9 packs.
+    assert befunge(_seeded(7)).count("\n") == 2
+    assert not befunge(_seeded(7)).splitlines()[0].endswith("v")
+    assert befunge(_seeded(9)).splitlines()[0].endswith("v")
 
 
 @pytest.mark.parametrize("width", [None, 1, 80, 1000])
@@ -156,7 +165,7 @@ def _shape(program: str) -> tuple[int, int, int]:
     [
         (1, 11, (49, 5, 11)),  # two-digit columns just reachable from width 10
         (4, 20, (79, 4, 20)),
-        (7, 1, (224, 20, 11)),  # the row floor of the narrowest request
+        (7, 1, (169, 20, 8)),  # the packed row floor of the narrowest request
         (11, 1, (500, 21, 23)),  # the packed count's ceiling sets 23 columns
         (13, 1, (1522, 23, 67)),  # the packed lookup's row floor
     ],
@@ -173,8 +182,8 @@ def test_requested_width_builds_the_exact_grid(
     [
         ("1" * 16, (50, 6, 11)),
         ("0010001010001001", (78, 7, 14)),  # the crossing's side + 2 wins
-        (_seeded(6), (140, 9, 17)),
-        (_seeded(7), (218, 11, 20)),
+        (_seeded(6), (130, 8, 16)),
+        (_seeded(7), (143, 8, 19)),
         (_seeded(11), (484, 15, 32)),
     ],
 )
@@ -189,7 +198,7 @@ def test_the_plain_build_never_exceeds_the_torus_width() -> None:
     # The _seeded(9) header is 81 cells: the fit check's cap at the
     # torus width sends it to the folded build (592 cells) instead of
     # emitting a row the 80-wide playfield would refuse.
-    program = befunge(_seeded(9), 81)
+    program = _plain_befunge(_seeded(9), "&\\2*+" * 9, 81)
     assert _shape(program) == (592, 8, 80)
 
 

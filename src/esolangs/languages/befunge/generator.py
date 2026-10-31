@@ -2,11 +2,11 @@
 
 Reads one ``0``/``1`` integer token per input, folds them into a row index
 with Horner's rule, and ``g`` fetches the answer from a table the instruction
-pointer never walks: one cell per entry through ten inputs, six per cell above.
+pointer never walks: one cell per entry through seven inputs, six per cell from eight.
 
 Size:
     O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 65
-    chars, n=10 random 1847: 1,115 chars, n=13 random 1847: 1,545 chars.
+    chars, n=10 random 1847: 335 chars, n=13 random 1847: 1,545 chars.
 
 Raises:
     GeneratorCapError: more than thirteen inputs, past the 80x25 grid.
@@ -143,6 +143,33 @@ def befunge(truth_table: str, width: int | None = None) -> str:
             # at n=10, within the native torus.
             header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
             return "\n".join(header)
+    plain = _plain_befunge(table, reads, width)
+    # Race the six-bit packed grid: its header costs more cells but the data
+    # takes a sixth of the rows, so it wins from n=8 (-40% area, -50% at n=9;
+    # tied at n=7, where the plain build stays) and never grows a table
+    # ([ablations.six_bit_packing]).
+    packed = _packed_befunge(table, reads, width)
+    if _wins(packed, plain):
+        return packed
+    return plain
+
+
+def _area(program: str) -> tuple[int, int]:
+    """Return ``(area, widest row)`` of a grid."""
+    rows = program.split("\n")
+    widest = max(map(len, rows))
+    return len(rows) * widest, widest
+
+
+def _wins(candidate: str, incumbent: str) -> bool:
+    """Return whether ``candidate`` has strictly less area and is no wider."""
+    area, widest = _area(candidate)
+    base_area, base_widest = _area(incumbent)
+    return area < base_area and widest <= base_widest
+
+
+def _plain_befunge(table: str, reads: str, width: int | None) -> str:
+    """Return the one-cell-per-entry grid, at most ``width`` wide."""
     count = len(table)
     if width is None:
         # The default build lays the table at the grid's width: at the
@@ -276,7 +303,7 @@ LANGUAGE = Language(
     "Befunge",
     "befunge",
     category="grid_based",
-    layout_switch=(10, 11),
+    layout_switch=(7, 8),
     random=True,
     generator_max_inputs=MAX_INPUTS,
     boolean=befunge,
