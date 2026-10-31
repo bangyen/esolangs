@@ -67,9 +67,9 @@ class TestParameterizedRam0:
         return before, after
 
     def test_sharing_three_input_total(self) -> None:
-        """All 256 three-input tables: 31,898 to 24,562 characters, 23.0%."""
+        """All 256 three-input tables: 27,554 to 22,318 characters, 19.0%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._sharing_totals(tables) == (31898, 24562)
+        assert self._sharing_totals(tables) == (27554, 22318)
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""

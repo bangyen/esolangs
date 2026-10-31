@@ -7,12 +7,14 @@ one-subtree.  A leaf sets the answer and jumps to a fixed low-address halt
 trampoline.  A repeated subtree is emitted once and jumped to: a one-subtree
 equal to one already emitted at its level costs nothing, a zero-subtree costs
 one ``goto``, a leaf is shared the same way, and a test whose halves agree is
-skipped, so the tree has one node per distinct subtable.  Width 1 through
+skipped, so the tree has one node per distinct subtable.  A node's leading
+``A`` is the part of its address a taken ``C`` already holds (``z`` = 1), so
+a jump enters one token in, and a leaf one is just ``A 2``.  Width 1 through
 three inputs uses unary-address NAND circuits instead.
 
 Size:
-    O(T) tokens, O(n) executed steps; n=10 random 1847: 4,347 chars,
-    n=10 parity: 595 chars.
+    O(T) tokens, O(n) executed steps; n=10 random 1847: 3,885 chars,
+    n=10 parity: 557 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -150,9 +152,11 @@ def _ram0_ordered(
     for i in range(n):
         address = address_of[i]
         tokens.extend(_address(address, "N"))
-        tokens.extend(("Z", _RAM0_INPUT))  # reset, then set the bit
+        # reset, then set the bit; ``Z N`` already left z at 0 for cell 0
+        tokens.extend((_RAM0_INPUT,) if address == 0 else ("Z", _RAM0_INPUT))
         tokens.append("S")
 
+    tokens.append("Z")  # the root is entered with z the last input bit
     emitter = _TreeEmitter(n, subtree_ids(truth_table), share=share, pos=len(tokens))
     emitter.emit(0, 0)
     tokens += emitter.tree
@@ -181,6 +185,14 @@ class _TreeEmitter:
         """Return the 1-based address the next emitted token will occupy."""
         return self.pos + len(self.tree) + 1
 
+    def skips(self, slot: tuple[int, int]) -> int:
+        """Return 1 when a subtree's leading ``A`` is skipped by a taken ``C``.
+
+        ``C`` jumps with ``z`` = 1, so a leaf one needs no ``A`` and a node
+        needs one ``A`` fewer; a zero leaf or the cell-0 node leads with ``Z``.
+        """
+        return int(slot[1] == 1) if slot[0] < 0 else int(slot[0] < self.n - 1)
+
     def resolve(self, level: int, block: int) -> tuple[int, int, tuple[int, int]]:
         """Return the canonical ``(level, block, slot)`` for a subtree.
 
@@ -207,19 +219,22 @@ class _TreeEmitter:
         if self.share:
             self.placed.setdefault(slot, self.addr())
         if slot[0] < 0:
-            self.tree.extend(["Z", "A" if slot[1] else "Z", "2"])
+            self.tree.extend(["A" if slot[1] else "Z", "2"])
             return
         at = len(self.tree)
-        head = [*_address(self.n - 1 - level, "L"), "C"]
+        a = self.n - 1 - level
+        head = [*(["A"] * a if a else ["Z"]), "L", "C"]
         # Reserve the head plus its goto operand; the one-subtree address is
         # backpatched once the fall-through zero subtree is laid out.
         self.tree.extend([""] * (len(head) + 1))
         self.emit(level + 1, 2 * block)
         # The one subtree is jumped to, so an earlier copy costs nothing.
-        one = self.placed.get(self.resolve(level + 1, 2 * block + 1)[2])
+        one_slot = self.resolve(level + 1, 2 * block + 1)[2]
+        one = self.placed.get(one_slot)
         if one is None:
             one = self.addr()
             self.emit(level + 1, 2 * block + 1)
+        one += self.skips(one_slot)
         self.tree[at : at + len(head) + 1] = [*head, str(one)]
 
 

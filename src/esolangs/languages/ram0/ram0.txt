@@ -1,6 +1,5 @@
-C 30 Z A N
-Z Z S Z N
-Z A S Z A
-L C 22 Z Z
-2 Z L C 27
-19 Z A 2
+C 27 Z A N
+Z Z S Z N A
+S Z A L C
+20 Z 2 Z L
+C 26 18 A 2
