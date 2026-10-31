@@ -9,7 +9,7 @@ admitted = 2021-05-25T18:40:26-04:00
 labels = ["linear lookup"]
 qualification = "the first (n-3)//2 essential reads branch on a half of the table, each branch pushes one O/I per row, reversed, and the remaining reads pop their bit's weight in cells off the top of it"
 scaling = "linear: worst T + T/2^d + 16·2^d + 10(n-d) + 10 characters"
-execution = "linear: at most 4T/2^d + 82n + 22 commands past n=5: 12- or 14-cell loops, one half pushed and popped"
+execution = "linear: worst 4T/2^d + 79n + 3d + 26 commands past n=7: 12- or 14-cell loops, one half pushed and popped"
 workspace = "linear: at most T/2^d + 12 + (d+1)bl(L) + bl(max(0,L-33)) + 2bl(n) bits: one half's cells on the stack"
 definitions = ["d = max(0,⌊(n-3)/2⌋), the reads that branch"]
 

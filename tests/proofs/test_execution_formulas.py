@@ -140,12 +140,15 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "Home Row":
         # Alternating but for one equal pair: every input essential, T - 2 leaves.
         tables += ("10" * (width // 2 - 1) + "01",)
-    if name == "Unsquare" and n >= 6:
-        # Ends of one cell, runs of 12 and 14 between: 12a + 14b = 2**(n-1) - 1.
-        b = (2 ** (n - 1) - 1) % 6
-        a = (2 ** (n - 1) - 1 - 7 * b) // 6
-        runs = [1, *[12] * (a // 2), *[14] * b, *[12] * (a - a // 2), 1]
-        tables += ("".join(str(i % 2) * c for i, c in enumerate(runs)),)
+    if name == "Unsquare" and n >= 8:
+        # One leaf of 12- and 14-cell runs (12a + 14b = S, 3 a cell); the
+        # others alternate, so every input stays essential.
+        leaf = 2 ** (n - max(0, (n - 3) // 2))
+        b = (leaf // 2) % 6
+        a = (leaf // 2 - 7 * b) // 6
+        runs = [*[12] * a, *[14] * b]
+        head = "".join(str(i % 2) * c for i, c in enumerate(runs))
+        tables += (head + "01" * (leaf // 2) * (width // leaf - 1),)
     if name == "Packlang" and n >= 3:
         # The most zeros a 128-row fill block may punch, in every block;
         # zeros are isolated, since a run of ones would be a shorter loop.
