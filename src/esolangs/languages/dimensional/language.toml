@@ -70,5 +70,6 @@ arity = 12
 verdict = "kept: from n=7 two entries share one painted cell when that is shorter (values 0-3 for (low, high); the last input is not read into the index but decoded by `[->4+<4[->5+<5[->4-<4]]]` onto dimension 4 or 5 and stepped onto by `d++++>`). Random tables (Random(1000n+s), 200 at n=8, 20 at n=7 / 9 / 10 / 11, 10 at n=12) 7.5% / 11.6% / 13.6% / 15.7% / 17.2% / 17.7% at n=7..12, rising toward the cap; 0 of 300 random tables lose from n=7 and 8 of 300 at n=6, which is why it starts at 7 (n=7 misses the bar, n=8 clears it). Balanced area 7.6% / 11.3% / 13.2% / 15.1% at n=7 / 8 / 9 / 10. Named: parity 4.8% / 7.4% / 9.4% / 10.7% / 11.9% and majority 1.1% / 4.8% / 3.9% / 6.7% / 7.3% at n=7 / 8 / 9 / 10 / 12, and/or/threshold 0-5% (they loop their runs; the plain build stays the shorter and keeps them O(n)). Every changed program executed through the interpreter: all rows of 200 random tables at n=8 and 20 at n=7 plus parity and majority, 0 wrong; a complemented-table program fails all rows"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
