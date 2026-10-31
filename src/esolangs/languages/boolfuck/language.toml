@@ -75,3 +75,11 @@ verdict = "kept as a class rule, landed 2026-10-21: a symmetric table (its outpu
 
 [audits]
 plain_rewrite = 2026-10-30
+trick_prototype = 2026-10-31
+
+[ablations.count_walk_cancellation]
+saving = 6.742
+arity = 12
+seed = 20261031
+tables = 348
+verdict = "near miss, not shipped: cancel the adjacent >< in _COUNT_BLOCK's ><<] tail, 25 -> 23 chars per input. The candidate saves 2n against at least 25n chars, so its race-wide saving is below 8% at every arity, under the 10% bar. Majority n=7/8/10/12/14: 215 -> 201 / 244 -> 228 / 300 -> 280 / 356 -> 332 / 412 -> 384 chars (6.5-6.8%); or 6.7-7.0%, and 6.3-6.6%. Execution saves two commands per set input, below 25% against the read phase's 13n alone. All 276 tables at n=1..3 plus 20 random and parity/majority/and/or per n=4..6: 348 tables, 24 changed, both programs executed on every row (9,616 executions, 0 wrong); named n=7/8/10/12/14 boundary rows also executed, complemented-expectation control fired. n=3 total 33,336 -> 33,264 chars, 180,252 -> 179,964 commands (0.16%, below the 5% execution bar). Prototype stays in ignored notes; generator, bounds and pins unchanged"
