@@ -8,19 +8,19 @@ admitted = 2026-09-13T09:46:59-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "row 1 is painted with the table and each essential input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell"
-scaling = "linear: worst 3T + 52n + digits(T) + 6 characters: painted row"
-execution = "linear: worst 3T + 52n + 3 commands: paint at most T-1 ones; weights sum to T-1"
-workspace = "linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T"
+scaling = "linear: worst 3T + 25n + digits(T) + 8 characters: painted row"
+execution = "linear: worst 3T + 85n + 5 commands: paint at most T-1 ones; weights sum to T-1"
+workspace = "linear: worst 3T + 2n + 10 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T"
 
 [generator_sizes]
-"00000001" = { commands = 169, commands_by_row = { "0" = 160, "1" = 163, "2" = 163, "3" = 166, "4" = 163, "5" = 166, "6" = 166, "7" = 169 }, source_units = 173 }
-"00001100" = { commands = 118, commands_by_row = { "0" = 111, "1" = 111, "2" = 114, "3" = 114, "4" = 115, "5" = 115, "6" = 118, "7" = 118 }, source_units = 122 }
-"00110110" = { commands = 180, commands_by_row = { "0" = 167, "1" = 170, "2" = 171, "3" = 174, "4" = 173, "5" = 176, "6" = 177, "7" = 180 }, source_units = 184 }
-"0110" = { commands = 115, commands_by_row = { "0" = 109, "1" = 112, "2" = 112, "3" = 115 }, source_units = 119 }
-"01101001" = { commands = 170, commands_by_row = { "0" = 161, "1" = 164, "2" = 164, "3" = 167, "4" = 164, "5" = 167, "6" = 167, "7" = 170 }, source_units = 174 }
-"0110100110010110" = { commands = 224, commands_by_row = { "0" = 212, "1" = 215, "2" = 215, "3" = 218, "4" = 215, "5" = 218, "6" = 218, "7" = 221, "8" = 215, "9" = 218, "10" = 218, "11" = 221, "12" = 218, "13" = 221, "14" = 221, "15" = 224 }, source_units = 228 }
-"1101001101101101" = { commands = 254, commands_by_row = { "0" = 231, "1" = 234, "2" = 235, "3" = 238, "4" = 237, "5" = 240, "6" = 241, "7" = 244, "8" = 241, "9" = 244, "10" = 245, "11" = 248, "12" = 247, "13" = 250, "14" = 251, "15" = 254 }, source_units = 259 }
-"11111110" = { commands = 171, commands_by_row = { "0" = 162, "1" = 165, "2" = 165, "3" = 168, "4" = 165, "5" = 168, "6" = 168, "7" = 171 }, source_units = 175 }
+"00000001" = { commands = 270, commands_by_row = { "0" = 261, "1" = 264, "2" = 264, "3" = 267, "4" = 264, "5" = 267, "6" = 267, "7" = 270 }, source_units = 94 }
+"00001100" = { commands = 186, commands_by_row = { "0" = 179, "1" = 179, "2" = 182, "3" = 182, "4" = 183, "5" = 183, "6" = 186, "7" = 186 }, source_units = 70 }
+"00110110" = { commands = 281, commands_by_row = { "0" = 268, "1" = 271, "2" = 272, "3" = 275, "4" = 274, "5" = 277, "6" = 278, "7" = 281 }, source_units = 105 }
+"0110" = { commands = 183, commands_by_row = { "0" = 177, "1" = 180, "2" = 180, "3" = 183 }, source_units = 67 }
+"01101001" = { commands = 271, commands_by_row = { "0" = 262, "1" = 265, "2" = 265, "3" = 268, "4" = 265, "5" = 268, "6" = 268, "7" = 271 }, source_units = 95 }
+"0110100110010110" = { commands = 358, commands_by_row = { "0" = 346, "1" = 349, "2" = 349, "3" = 352, "4" = 349, "5" = 352, "6" = 352, "7" = 355, "8" = 349, "9" = 352, "10" = 352, "11" = 355, "12" = 352, "13" = 355, "14" = 355, "15" = 358 }, source_units = 122 }
+"1101001101101101" = { commands = 388, commands_by_row = { "0" = 365, "1" = 368, "2" = 369, "3" = 372, "4" = 371, "5" = 374, "6" = 375, "7" = 378, "8" = 375, "9" = 378, "10" = 379, "11" = 382, "12" = 381, "13" = 384, "14" = 385, "15" = 388 }, source_units = 153 }
+"11111110" = { commands = 272, commands_by_row = { "0" = 263, "1" = 266, "2" = 266, "3" = 269, "4" = 266, "5" = 269, "6" = 269, "7" = 272 }, source_units = 96 }
 
 [ablations.symmetric_count]
 saving = 62.3
@@ -37,6 +37,13 @@ folds_without_tree = true
 
 [ablations]
 audited = "2026-10-19"
+
+[ablations.counter_offset]
+saving = 27.0
+arity = 7
+seed = "random.Random(n)"
+tables = 200
+verdict = "kept 2026-10-30 on the named-function clause (random declines, named functions flat; Nandypants read_ladder precedent): the 48 `-` per input that subtract '0' from each read become a 6x8 counter loop on a scratch cell one row below the read cell (`v++++++(-^--------v)^`, 21 chars for 48), grid `size,3` with the table in row 2 and the program ending `vv=`, on every route including the symmetric race. A fixed 27n saving, so random tables fall 27.0 / 20.1 / 13.7 / 8.7% at n=7 / 8 / 9 / 10 (200 tables at n<=8, 100 above: 138,770 -> 101,370 and 213,140 -> 170,340 chars at n=7, 8), 41.5 / 42.9 / 41.3 / 38.1 / 33.3% at n=2..6, while parity, and, or, majority and threshold-2 fall about 48% at every n=7..10 (parity 392 -> 205 / 446 -> 232 / 502 -> 261 / 556 -> 288) and balanced area alike (parity 392 -> 210 / 450 -> 242 at n=7 / 8). 0 of 200 per n=2..8, 0 of 100 at n=9, 10 and 0 of the 276 tables at n<=3 grew. Executed through esolangs.run: every row of every table at n<=3, of the five named functions and of 50 random tables at n=7 and n=8; the wrong-table control (or program against the and table) fails"
 
 [ablations.constant_fold]
 saving = 48938.9
@@ -56,5 +63,6 @@ tables = 564
 verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also tried widths square - 1, square + 1 and floor - 1. None ever won: the plain fold at max(floor, balance_width) gives byte-identical balanced output on 564 tables (60 random a arity to n=8, 6 above, plus parity, and, or, majority, at-least-2) at n=1..12, so balanced area is unchanged"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

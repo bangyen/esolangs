@@ -17,9 +17,10 @@ def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
 
 
 def test_the_walk_is_branch_free() -> None:
-    """One guard an input, and no other loop: the table is not a tree."""
+    """One guard and one counter loop an input, no other: the table is not a tree."""
     program = tools.egl("01101001")
-    assert program.count("(") == 3
+    assert program.count("(") == 6
+    assert program.count("(->") == 3
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

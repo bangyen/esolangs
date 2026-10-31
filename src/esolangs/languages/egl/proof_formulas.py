@@ -6,7 +6,7 @@ def _egl(n: int, p: str) -> int:
     bl = int.bit_length
     d = len(str(1 << n))
     return (
-        2 * (1 << n) + 2 * n + 7 + bl(len(p) - d - 3) + bl(len(p) - d - 9) + 2 * bl(n)
+        3 * (1 << n) + 2 * n + 10 + bl(len(p) - d - 3) + bl(len(p) - d - 9) + 2 * bl(n)
     )
 
 
