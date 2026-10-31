@@ -5,11 +5,13 @@ one final print reads the result.  Equal sibling halves merge; repeated
 residuals use one unused flag per level and emit once in depth order within
 the command bound.  Affine tables stream through three cells instead, at
 most 66 commands per selected input.  Every input is read with its ASCII
-subtract into its own cell, ignored ones included.
+subtract into its own cell, ignored ones included.  Literal conjunctions
+and disjunctions share a two-pass ASCII subtraction counter.
 
 Size:
     O(T) for dense tables, O(n) for affine ones; n=10 parity: 760 chars,
-    n=12 parity: 902 chars, n=10 random 1847: 10,792 chars.
+    n=12 parity: 902 chars, n=10 and: 589 chars,
+    n=10 random 1847: 10,792 chars.
 
 Decisions:
     Flags cut n=10 sparse from 2,646 to 754 chars; folding and shared output
@@ -108,6 +110,18 @@ def _flipped_ordered(complement: str, perm: tuple[int, ...]) -> str:
     return _tree_for(complement, perm, _FLIPPED)
 
 
+def _counter_reads(n: int) -> str:
+    """Read all bytes, subtract 24 twice, restore the zero flags and head.
+
+    For n>=2: 35n-7 characters, 63n-9 commands; the raw ASCII cells and
+    counter occupy at most 7n tape bits before the original tree starts.
+    """
+    back = "<" * (2 * n - 3)
+    forward = ">" * (2 * n - 3)
+    sweep = "<" + ">>".join("-" * 24 for _ in range(n)) + back + "-"
+    return ">>".join("," for _ in range(n)) + back + "++[" + sweep + "]" + forward
+
+
 def _tree_for(truth_table: str, perm: tuple[int, ...], tail: str) -> str:
     """Emit a tree whose result cell is printed by ``tail``."""
     n = _validate_truth_table(truth_table)
@@ -139,6 +153,10 @@ def _tree_for(truth_table: str, perm: tuple[int, ...], tail: str) -> str:
         candidate = header + shared[0] + tail
         if len(candidate) < len(plain):
             plain = candidate
+    if n >= 2 and truth_table.count("1") in (1, len(truth_table) - 1):
+        # Literal products/sums qualify as named families; random-table savings
+        # dilute. Keep the original body budget ([ablations.shared_ascii_counter]).
+        plain = _counter_reads(n) + plain[len(header) :]
     return plain
 
 

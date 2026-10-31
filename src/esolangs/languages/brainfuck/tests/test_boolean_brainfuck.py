@@ -101,3 +101,35 @@ def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
             *[prefix * len(residual) + len(residual) - 1 for prefix in range(15)],
         ],
     )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [2, 3, 6])
+def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
+    from esolangs.debugger import make_vm
+    from esolangs.languages.brainfuck.generator import brainfuck
+    from scripts.benchmark import WrittenState
+
+    size = 1 << n
+    for exceptional in (0, size // 3, size - 1):
+        product = "0" * exceptional + "1" + "0" * (size - exceptional - 1)
+        for table in (product, product.translate(str.maketrans("01", "10"))):
+            source = brainfuck(table)
+            for row, expected in enumerate(table):
+                vm = make_vm(REFERENCE, source, stdin=f"{row:0{n}b}")
+                written = WrittenState(vm.snapshot())
+                commands = 0
+                while not vm.halted and commands <= 81 * n + 47:
+                    vm.step()
+                    written.sample(vm.snapshot())
+                    commands += 1
+                assert vm.halted
+                assert vm.output == expected
+                assert vm.snapshot()[-1] == n
+                assert commands <= 81 * n + 47
+                assert written.bits <= (
+                    max(7 * n, 2 * n + 7)
+                    + (2 * n).bit_length()
+                    + n.bit_length()
+                    + len(source).bit_length()
+                )
