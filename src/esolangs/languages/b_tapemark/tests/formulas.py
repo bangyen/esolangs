@@ -252,7 +252,8 @@ def _model_workspace(n: int) -> int:
 
     A snapshot counts the program's cells (8 + both coordinates, the start
     marker apart), the data grid's marks the same way, both pointers, the swap,
-    the heading and the halted flag, and bl(n) for the input consumed.  The
+    the heading and the halted flag, the state's ``swap_marker`` string at
+    8 bits a character, and bl(n) for the input consumed.  The
     layout is a function of n alone and never reads a table digit, so any
     table with every input essential reaches W.  The marks are the table's T
     at (x0 - k, y0), then for stage s, y = y0 - 2n + 2s: the input at (x, y)
@@ -281,7 +282,7 @@ def _model_workspace(n: int) -> int:
             x += 1 + (0 if row >> (n - 1 - s) & 1 else 1 << (n - 1 - s))
         last = (x, y0 - 2)
         worst = max(worst, marks + _tail(cells, data, stages[-1], last, str(row & 1)))
-    return sum(_mark(*p) for p in cells) + worst + n.bit_length()
+    return sum(_mark(*p) for p in cells) + worst + n.bit_length() + 8 * len("new")
 
 
 def _workspace(n: int, program: str) -> int:

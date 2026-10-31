@@ -27,6 +27,13 @@ expect = "InputExhaustedError"
 claim = "- on a blank data cell at EOF"
 
 [[spec_triggers]]
+program = ">!"
+settings = { swap_marker = "sideways" }
+expect = "ArgumentError"
+claim = "a swap_marker setting other than new or old"
+stdin = ""
+
+[[spec_triggers]]
 program = "+"
 stdin = ""
 expect = "ProgramError"

@@ -19,17 +19,16 @@ Errors:
     ArgumentError: A ``swap_marker`` setting other than ``"new"`` or
         ``"old"``.
 
-Dialects:
-    * ``swap_marker``: after a swap, which grid's marker takes the step
-      the wiki leaves as just "the position marker".  ``"new"`` (the
-      default) moves the new first grid's marker; ``"old"`` moves the
-      marker of the grid that executed the symbol.  The wiki and its
-      revision history do not settle which, so both are registered and
-      the generator builds for the chosen one; a program built for one
-      dialect is not claimed under the other (the default dialect's
-      n=2 ``0110`` hangs on every row under ``"old"``; 2026-10-30).
-
 Decisions:
+    * The ``swap_marker`` dialect names which grid's marker takes the
+      step after a swap, where the wiki says only "the position
+      marker": ``"new"`` (the default) moves the new first grid's
+      marker, ``"old"`` the marker of the grid that executed the
+      symbol.  The wiki and its revision history do not settle which,
+      so both are registered and the generator builds for the chosen
+      one; a program built for one dialect is not claimed under the
+      other (the default dialect's n=2 ``0110`` hangs on every row
+      under ``"old"``; 2026-10-30).
     * An input symbol that is no command runs as a blank once a swap puts it
       on the first grid: the wiki rejects other symbols only "when the
       program is loaded".
