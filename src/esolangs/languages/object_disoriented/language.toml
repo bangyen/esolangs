@@ -47,5 +47,6 @@ arity = 10
 verdict = "retired 2026-10-29: `min(plain, shared)` kept the plain tree only when the shared build was longer. It never was: 0 of 60 random tables per arity n=2..8, 20 at n=9..10, 0 of 5,000/3,000/1,000 at n=5/6/7, 0 of all 65,536 n=4 tables and all n<=3 tables; every named function (parity, majority, AND, OR, 2-threshold and complements) n=2..10 picks shared. Race saving 0.000% of chars at every arity (balanced area identical: same text). The shipped build is shared only, byte-identical"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

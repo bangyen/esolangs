@@ -56,5 +56,6 @@ arity = 10
 verdict = "replaced 2026-10-29 by a rule: the min-length race over four packings (index complemented or direct x answer stored or negated) saved 0.82% n=2, 0.11% n=8, 0.06% n=10, 0.01% n=12 on random tables (20 per arity n<=10, 8 at n=11,12), under the bar; on named functions it saved 30.6-61.9% n=10 on or/and/thr2 and complements (parity and majority 0.0%, majority' 2.15% n=8). The rule picks the smallest packed integer (ties: stored before negated, complemented before direct) only when its bit length is within 3/4 of the table width, else the plain complemented build: byte-identical to the race on every or/and/thr2 and complement table n=4..12 measured, identical to plain on random tables n>=5, +1-2 chars on parity/majority/thr2 complements n<=8 and random n=3 (+0.6%). No bespoke search left; characters only, the generator has no balanced route"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

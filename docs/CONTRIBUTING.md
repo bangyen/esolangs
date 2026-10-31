@@ -288,6 +288,10 @@ the tables it targets at the largest arity measured (cite the figure).
 Writing a construct minimally is spelling, not a trick, and ships without the
 bar: no redundant grouping, no trailing no-op (Hot's bare leaf arguments,
 Home Row's last `s`).
+Size counts characters, so a packed literal carries at most 8 bits a
+character: code points above U+00FF only move bits into wider UTF-8
+(Freestajlo's W-bit packing, -13% at W=8 and -47% at W=16 by characters
+at n=10, no saving in bytes).
 
 Anything else is a bespoke size optimization and must meet all of these
 requirements:

@@ -54,6 +54,7 @@ arity = 12
 verdict = "recorded: the tree tests the last bit first because each scope is entered with its bit below its index; the order is a property of the construction, not a choice. Dropping the permutation computes wrong functions (623 wrong of 2,048 gate executions). Correctness machinery; no price"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
