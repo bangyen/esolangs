@@ -8,19 +8,19 @@ admitted = 2026-09-03T18:39:07-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "each folding pass removes at least one pending unit"
-scaling = "linear: worst 3T/2 + 19n + 22 cells: one row, \"*\" an entry"
-execution = "linear: worst 3T/2 + 19n + 22 commands past n = 4: one straight line, half the rows marked"
+scaling = "linear: worst ⌈30103(T-1)/100000⌉ + 19n + 21 cells: one row"
+execution = "linear: worst ⌈30103(T-1)/100000⌉ + 19n + 21 commands past n = 4: one straight line"
 workspace = "linear: worst T + 2n + 12 + bl(L) + bl(n) bits past n = 4: the packed-table cell"
 
 [generator_sizes]
-"00000001" = { commands = 88, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 88, "5" = 88, "6" = 88, "7" = 88 }, source_units = 88 }
-"00001100" = { commands = 68, commands_by_row = { "0" = 68, "1" = 68, "2" = 68, "3" = 68, "4" = 68, "5" = 68, "6" = 68, "7" = 68 }, source_units = 68 }
-"00110110" = { commands = 91, commands_by_row = { "0" = 91, "1" = 91, "2" = 91, "3" = 91, "4" = 91, "5" = 91, "6" = 91, "7" = 91 }, source_units = 91 }
+"00000001" = { commands = 81, commands_by_row = { "0" = 81, "1" = 81, "2" = 81, "3" = 81, "4" = 81, "5" = 81, "6" = 81, "7" = 81 }, source_units = 81 }
+"00001100" = { commands = 63, commands_by_row = { "0" = 63, "1" = 63, "2" = 63, "3" = 63, "4" = 63, "5" = 63, "6" = 63, "7" = 63 }, source_units = 63 }
+"00110110" = { commands = 81, commands_by_row = { "0" = 81, "1" = 81, "2" = 81, "3" = 81, "4" = 81, "5" = 81, "6" = 81, "7" = 81 }, source_units = 81 }
 "0110" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16 }, source_units = 16 }
-"01101001" = { commands = 91, commands_by_row = { "0" = 91, "1" = 91, "2" = 91, "3" = 91, "4" = 91, "5" = 91, "6" = 91, "7" = 91 }, source_units = 91 }
-"0110100110010110" = { commands = 122, commands_by_row = { "0" = 122, "1" = 122, "2" = 122, "3" = 122, "4" = 122, "5" = 122, "6" = 122, "7" = 122, "8" = 122, "9" = 122, "10" = 122, "11" = 122, "12" = 122, "13" = 122, "14" = 122, "15" = 122 }, source_units = 122 }
-"1101001101101101" = { commands = 120, commands_by_row = { "0" = 120, "1" = 120, "2" = 120, "3" = 120, "4" = 120, "5" = 120, "6" = 120, "7" = 120, "8" = 120, "9" = 120, "10" = 120, "11" = 120, "12" = 120, "13" = 120, "14" = 120, "15" = 120 }, source_units = 120 }
-"11111110" = { commands = 88, commands_by_row = { "0" = 88, "1" = 88, "2" = 88, "3" = 88, "4" = 88, "5" = 88, "6" = 88, "7" = 88 }, source_units = 88 }
+"01101001" = { commands = 81, commands_by_row = { "0" = 81, "1" = 81, "2" = 81, "3" = 81, "4" = 81, "5" = 81, "6" = 81, "7" = 81 }, source_units = 81 }
+"0110100110010110" = { commands = 102, commands_by_row = { "0" = 102, "1" = 102, "2" = 102, "3" = 102, "4" = 102, "5" = 102, "6" = 102, "7" = 102, "8" = 102, "9" = 102, "10" = 102, "11" = 102, "12" = 102, "13" = 102, "14" = 102, "15" = 102 }, source_units = 102 }
+"1101001101101101" = { commands = 102, commands_by_row = { "0" = 102, "1" = 102, "2" = 102, "3" = 102, "4" = 102, "5" = 102, "6" = 102, "7" = 102, "8" = 102, "9" = 102, "10" = 102, "11" = 102, "12" = 102, "13" = 102, "14" = 102, "15" = 102 }, source_units = 102 }
+"11111110" = { commands = 81, commands_by_row = { "0" = 81, "1" = 81, "2" = 81, "3" = 81, "4" = 81, "5" = 81, "6" = 81, "7" = 81 }, source_units = 81 }
 
 [catalogue]
 folding_constant_local = "_emit_lookup"  # projected literal table
@@ -33,26 +33,33 @@ workspace = [5]
 audited = "2026-10-19"
 
 [ablations.input_projection]
-saving = 48.3
+saving = 42.7
 arity = 12
-verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the packed integer is built over the essential inputs only; an ignored input is read into cell 1 and left for the next read or >0 to overwrite. 0.00% on random tables at n=8/10/12; with one ignored input 37.3% at n=8 rising to 44.9% at n=10 and 48.3% at n=12, with two ignored 57.4% / 67.7% / 72.6%, and on constant tables 91.5% / 97.0% / 99.1%"
+verdict = "kept: canonical, exempt. Ignored inputs are dropped by input_weights and the decimal literal is built over the essential inputs only; an ignored input is read into cell 1 and left for the next read or the literal's first digit to overwrite. 0.00% on random tables at n=8/10/12; with one ignored input 21.6% at n=8 rising to 32.7% at n=10 and 42.7% at n=12, with two ignored 35.4% / 50.5% / 64.5%, and on constant tables 73.6% / 75.5% / 76.8% (10 tables each, seed 1)"
 
 [ablations.two_input_short_forms]
-saving = 20.3
+saving = 19.7
 arity = 2
-verdict = "kept: five fixed short forms at n=2 reuse 48 to decode each input and encode the answer, keeping the literal at the bottom of the stack. Over all 16 two-input tables they save 20.3% (723 against 907 chars), and 72 against 256 chars on the five tables themselves; both recorded figures reproduce exactly. The forms fire only at n=2 and cost nothing at any other arity"
+verdict = "kept: five fixed short forms at n=2 reuse 48 to decode each input and encode the answer, keeping the literal at the bottom of the stack. Over all 16 two-input tables they save 19.7% (668 against 832 chars), and 72 against 236 chars on the five tables themselves; both recorded figures reproduce exactly. The forms fire only at n=2 and cost nothing at any other arity"
 
 [ablations.plain_build]
-saving = 48.3
+saving = 42.7
 arity = 12
-verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (48.3% at n=12 on the one-ignored corpus, 0.00% on random tables). The packed build itself -- one * per entry plus one ) per one entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and were not priced"
+verdict = "recorded: the plain build is the projection removed plus the lookup at n=2 (42.7% at n=12 on the one-ignored corpus, 0.00% on random tables). The decimal literal itself -- the table as its binary integer written in base ten, 0.30103 digits an entry -- is the construction; the folded and vertical layouts are width paths chosen by the balance hook, not the default sized path, and a fold cannot split the digit run, so a literal wider than the fold is laid out whole"
+
+[ablations.decimal_literal]
+saving = 63.6
+arity = 9
+seed = "random.Random(1)"
+tables = 40
+verdict = "kept: the table is written as one decimal integer in cell 1 (a digit run is cell * 10 + digit) instead of one * per entry plus one ) per rarer entry. Total chars against the former build: random 44.0% n=7, 54.7% n=8, 63.6% n=9 (20 tables); parity 44.4 / 55.2 / 64.0%, majority 45.8 / 53.0 / 64.9%, and 32.0 / 42.0 / 51.0%, or 45.4 / 59.6 / 72.7%, threshold-2 40.2 / 51.7 / 62.2%; balanced area random 35.8% n=7, 33.6% n=8, 37.9% n=9, parity 34.9 / 33.6 / 38.3%, and 21.2 / 15.1 / 17.9%, or 42.3 / 57.0 / 69.6%. A rule, not a race: the literal is int(reversed table, 2) in base ten. Executed through esolangs.run: all 276 tables at n<=3, random tables n=4..7 on the flat, balanced and folded layouts, named functions at n=7..9, random tables at n=10/12/14 (n=14 is past str's 4,300-digit limit); a wrong-table control fails"
 
 [ablations.polarity_rule]
-saving = 45.2
+saving = 59.2
 arity = 10
 seed = "random.Random(1)"
 tables = 20
-verdict = "kept as a rule (not a race): mark the rarer value, encode with 49 ^ bit when ones outnumber zeros, against always marking ones. Random tables fail the bar (chars 0.8-1.7% n=3..8 over 40 tables, 1.1% n=9/10 over 20; balanced area 0.0-5.1%), but the rule clears it on a named family: or / nand 37.1% chars, 33.4% area at n=8 and 45.2% / 43.2% at n=10; threshold-2 35.2% / 29.1% n=8, 44.6% / 43.2% n=10; complement of majority 11.8% / 10.8% n=8, 13.4% / 15.2% n=10; parity, majority, and, nor and the other complements 0.00%. Never larger; no race, one count. Plain-rewrite audit 2026-10-29: no other bespoke trick (input_projection, two_input_short_forms recorded above; folds are balance layouts); n<=3 exhaustive and n<=7 random and named tables executed on both builds (340 tables), control fails; generator unchanged"
+verdict = "kept as a rule (not a race): write the integer or its complement, whichever has fewer digits, encoding with 49 ^ bit for the complement against 48 + bit. Random tables fail the bar (chars 0.7% n=3, 0.1% n=8..10 over 20-40 tables; balanced area 0.1-0.3%), but the rule clears it on named functions: or 30.7% chars, 50.0% area at n=8 and 59.2% / 74.1% at n=10; threshold-2 15.5% / 28.2% n=8, 29.6% / 32.7% n=10; majority 2.0% / 6.2% n=8; parity, and, nand, nor and the complement of majority 0.00%. Never larger; no race, one count. Plain-rewrite audit 2026-10-29: no other bespoke trick (input_projection, two_input_short_forms recorded above; folds are balance layouts); n<=3 exhaustive and n<=7 random and named tables executed on both builds (340 tables), control fails"
 
 [audits]
 blind_reimplementation = 2026-10-30

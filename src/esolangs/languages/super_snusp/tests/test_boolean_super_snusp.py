@@ -46,8 +46,11 @@ class TestSuperSNUSPWidth:
         """``48`` has to stay on one row: a mirror in between would make it 4, 8."""
         for width in range(4, 20):
             narrow = boolean.super_snusp("0110100110010110", width)
-            # A westward row reads right to left on the page.
-            assert "48" in narrow or "84" in narrow, (width, narrow)
+            # A westward row reads right to left on the page; a column of
+            # one reads bottom to top.
+            rows = narrow.split("\n")
+            text = "".join(rows) if max(map(len, rows)) == 1 else narrow
+            assert "48" in text or "84" in text, (width, narrow)
 
 
 @pytest.mark.parametrize("inputs", [1, 3, 5, 8])
@@ -144,10 +147,10 @@ class TestSuperSNUSP:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("1010", 47),  # one dependency at two inputs
-            ("1111", 29),  # constant at two
-            ("00000000", 32),  # constant at three
-            ("00000011", 68),  # depends on the last two of three
+            ("1010", 44),  # one dependency at two inputs
+            ("1111", 28),  # constant at two
+            ("00000000", 31),  # constant at three
+            ("00000011", 63),  # depends on the last two of three
         ],
     )
     def test_the_lookup_length_is_pinned(self, table: str, length: int) -> None:
@@ -157,9 +160,13 @@ class TestSuperSNUSP:
         assert len(super_snusp(table)) == length
 
 
-def test_super_snusp_balance_rejects_long_literals() -> None:
-    with pytest.raises(ValueError, match="at most two cells"):
-        balance_super_snusp("123.")
+def test_super_snusp_balance_keeps_a_long_literal_whole() -> None:
+    """A fold cannot split a digit run, so the balanced layout holds it on one line."""
+    flat = '"' + "1234567890123456789" + "."
+    rows = balance_super_snusp(flat).split("\n")
+    assert any(
+        "1234567890123456789" in row or "9876543210987654321" in row for row in rows
+    )
 
 
 def test_xor_has_one_column() -> None:
@@ -189,7 +196,7 @@ class TestSuperSNUSPSweepPins:
 
     @pytest.mark.parametrize(
         ("table", "shape"),
-        [("1100", (60, 5, 12)), ("1111", (39, 4, 9))],
+        [("1100", (56, 5, 11)), ("1111", (39, 4, 9))],
     )
     def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
         program = str(esolangs.generate("Super SNUSP", table, balance=True))
