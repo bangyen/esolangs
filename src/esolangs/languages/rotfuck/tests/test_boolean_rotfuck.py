@@ -187,6 +187,15 @@ class TestRotfuck:
             bits = row_bits(combo, n)
             assert run_rotfuck_forward(program, [str(b) for b in bits]) == table[combo]
 
+    def test_raw_digits_shed_the_bias_once_per_digit_from_n_7(self) -> None:
+        """Parity at n=7 reads raw (295 characters) and answers every row."""
+        table = "".join(str(bin(row).count("1") & 1) for row in range(128))
+        program = boolean.rotfuck(table)
+        assert len(program) == 295
+        for combo in range(0, 128, 5):
+            got = run_rotfuck(program, [str(b) for b in row_bits(combo, 7)])
+            assert got == table[combo], combo
+
     @pytest.mark.parametrize(
         ("table", "length"),
         [

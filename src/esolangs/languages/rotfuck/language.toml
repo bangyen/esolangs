@@ -57,6 +57,13 @@ seed = "random.Random(184700 + n)"
 tables = 200
 verdict = "kept: the index's short digit is read lowest, so the top digit's walk strides 2**(short width + 1) cells, not 128. 41.4% at n=7, 32.3% at n=8, 21.9% / 12.6% / 5.0% / 0.0% at n=9/10/11/12, 65.2% at n=13 -- periodic in n mod 6, zero where every digit is full. Identical output through n=6; parity, and, or, majority 0.0% (symmetric, one count walk). No table grew; every changed program run (30 at n=7..9, both rotations) was correct. Plain-rewrite audit 2026-10-28, 20 random tables per n, balanced area too: 41.4/32.3/21.9/12.6% at n=7/8/9/10 (balanced 40.4/34.0/20.5/12.1%), 0 named functions change; the saving falls below the 10% bar after n=10 and returns at n=13, so kept on the n=7..8 bar"
 
+[ablations.raw_digits]
+saving = 16.7
+arity = 10
+seed = "random.Random(184700 + n)"
+tables = 200
+verdict = "kept: from n=7 a digit sums its raw characters (Horner on 48/49) and one shortest +/- run sheds the bias, 48 * (2**width - 1) mod 256, instead of 48 minuses after every read. Random (200 tables at n=7/8, 100 at n=9, 40 at n=10): 25.8 / 16.7 / 14.4 / 10.8% (185,743 -> 137,743 and 268,673 -> 223,873 at n=7/8), balanced area 25.7 / 16.5 / 14.3% (20/20/10 tables) -- a fixed 48-per-input-class saving, so the random share falls with n but stays over the bar through n=10. Named functions rise: parity 551 -> 295 (46.5%), 621 -> 365 (41.2%), 692 -> 340 (50.9%), 762 -> 314 (58.8%) at n=7..10; and/or/majority/threshold 3 within 4 chars of it; balanced area n=8 40.0-42.2%. Gated at n>=7: raw Horner doubles up to 255 per bit, which breaks the proved n=2..6 execution bound (n=3 parity 4,413 against 896 commands), so the ledger clauses are untouched. Executed on the real interpreter, backward and forward: every row of a random table at n=7 and 8, of parity/and/or/majority/threshold-3 at n=8 and parity at n=7, 100 sampled rows at n=9 (random, parity, and); 0 wrong, the wrong-table control failed on all rows tried"
+
 [interpreter_ablations]
 audited = "2026-10-18"
 benchmark = "interp-audit-2026-10-18/tracediff-n3"

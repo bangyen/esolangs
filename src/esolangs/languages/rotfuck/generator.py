@@ -16,11 +16,12 @@ no-op runs (:meth:`_Builder._pad`), each command placed to hide from every open
 seek.
 
 A symmetric table sums its bits on the carrier and walks n + 1 entries
-([ablations.symmetric_count]).
+([ablations.symmetric_count]).  From n = 7 the inputs are read raw and the
+ASCII bias leaves once per digit ([ablations.raw_digits]).
 
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
-    strides; n=10 random 1847: 3,549 chars, n=10 and: 758 chars.
+    strides; n=10 random 1847: 3,165 chars, n=10 and: 310 chars.
 
 Decisions:
     A repeated block is not shared: a brainfuck copy is at least 19 commands
@@ -62,6 +63,11 @@ _INVERSE = {"+": "-", "-": "+", "<": ">", ">": "<"}
 #: Bits per digit of the index.  A digit's walk takes ``count**2 / 2`` moves,
 #: so wider digits trade shorter walk text for quadratic run time.
 _RADIX_BITS = 6
+
+#: From this arity digits sum raw characters and shed the ASCII bias once per
+#: digit.  The raw Horner doubles up to 255 a bit, so below it the proved
+#: execution bound (n = 2..6) would break (n = 3 parity: 4,413 against 896).
+_RAW_FROM = 7
 
 #: A tree of brainfuck: commands, and nested lists for loop bodies.
 type _Tree = list[str | _Tree]
@@ -278,7 +284,26 @@ def _strip(table: str) -> str:
     return "".join(out)
 
 
-def _select(n: int, used: list[int], groups: list[int]) -> str:
+def _unbias(weight: int, raw: bool) -> str:
+    """The run correcting ``weight`` ASCII biases, or ``""`` when ``raw`` is off.
+
+    Raw characters sum to ``48 * weight`` extra, mod 256: ``2**width - 1`` for a
+    Horner digit, the input count for a plain sum.  One shortest ``+``/``-``
+    run per digit replaces the 48 ``-`` after every read
+    ([ablations.raw_digits]).
+    """
+    if not raw:
+        return ""
+    back = -_ASCII_ZERO * weight % 256
+    return "+" * back if back <= 128 else "-" * (256 - back)
+
+
+def _read(raw: bool) -> str:
+    """One input read, its bias removed unless the digit's run does it."""
+    return "," if raw else "," + "-" * _ASCII_ZERO
+
+
+def _select(n: int, used: list[int], groups: list[int], raw: bool) -> str:
     """Brainfuck reading the inputs and walking to the entry they select.
 
     One digit at a time, highest first, accumulated by Horner's rule on the
@@ -289,7 +314,6 @@ def _select(n: int, used: list[int], groups: list[int]) -> str:
     in total; the caller's one ``<`` reads the entry.
     """
     chosen = set(used)
-    digit = "-" * _ASCII_ZERO
     out = []
     cursor = 0
     for width, stride in zip(reversed(groups), reversed(_strides(groups)), strict=True):
@@ -298,13 +322,13 @@ def _select(n: int, used: list[int], groups: list[int]) -> str:
             if cursor not in chosen:
                 out.append(">,<")
             elif taken == 0:
-                out.append("," + digit)
+                out.append(_read(raw))
                 taken += 1
             else:
-                out.append(f"[->>++<<],{digit}>>[-<<+>>]<<")
+                out.append(f"[->>++<<]{_read(raw)}>>[-<<+>>]<<")
                 taken += 1
             cursor += 1
-        out.append(_walk(stride))
+        out.append(_unbias((1 << width) - 1, raw) + _walk(stride))
     out.append(">,<" * (n - cursor))
     return "".join(out)
 
@@ -322,9 +346,10 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     # Ignored inputs are still read but do not enter the index.
     used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    lookups = [(table, _select(n, used, _groups(len(used))))]
+    raw = n >= _RAW_FROM
+    lookups = [(table, _select(n, used, _groups(len(used)), raw))]
     if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        lookups.append((symmetric[1], _count(n, used)))
+        lookups.append((symmetric[1], _count(n, used, raw)))
     texts = []
     for entries, select in lookups:
         out = _Builder(cycle)
@@ -333,23 +358,22 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     return min(texts, key=len)
 
 
-def _count(n: int, used: list[int]) -> str:
+def _count(n: int, used: list[int], raw: bool) -> str:
     """Brainfuck summing the essential bits on the carrier, then one walk.
 
     A symmetric table is indexed by that count ([ablations.symmetric_count]);
     an ignored input lands above, as in :func:`_select`.
     """
-    digit = "-" * _ASCII_ZERO
     chosen = set(used)
     out = []
     for cursor in range(n):
         if cursor not in chosen:
             out.append(">,<")
         elif cursor == used[0]:
-            out.append("," + digit)
+            out.append(_read(raw))
         else:
-            out.append(f">,{digit}[-<+>]<")
-    return "".join(out) + _walk(2)
+            out.append(f">{_read(raw)}[-<+>]<")
+    return "".join(out) + _unbias(len(used), raw) + _walk(2)
 
 
 def _dialect(rotation: str = "backward") -> None:
