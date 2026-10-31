@@ -73,5 +73,6 @@ tables = "200 random at n=7,8; 20 at n=9,10; parity/majority/and/or/one-third th
 verdict = "kept 2026-10-30 (random bar, gated at n>=8 by the byte): a block holds eight essential inputs when the byte start + row wraps a zero row to byte 0, which the outer [ skips, so that row must be a zero row; the start is the smallest putting one there (row 0, then the last rows up: 0 extra chars on half the tables, 1 on a quarter). Random tables -26.4% of chars at n=8 (200 tables, 340,723 -> 250,877; none grows, all change), -25.8% at n=9 and -25.6% at n=10 (20 tables), balanced area -26.3% / -25.8% at n=8 / 9 (20 tables), flat in n; n=7 is one block already, 0.0% on 200 tables. Named functions 0.0% at n=7..10: they take the symmetric count first. The worst table falls 1,958 -> 1,509 at n=8 and 3,978 -> 3,083 at n=9, while the worst execution rises 1,140 -> 1,769 commands at n=8 (60n + 660 -> 60n + 1,290) and the workspace term min(T,128) -> min(T,255); same growth classes. Every program ran on all rows (109 tables at n=8 including forced starts 0, 1, 3, 5, 20 random at n=9, 4 at n=10, 0 mismatches; the wrong-table control fails 256/256, 512/512, 1024/1024)"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27

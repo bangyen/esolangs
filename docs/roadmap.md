@@ -125,10 +125,10 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-77 of the 112 generators: ///, 1 + i, A Painter Ant, ABCDirection, Algebraic
+78 of the 112 generators: ///, 1 + i, A Painter Ant, ABCDirection, Algebraic
 Programming Language, Alight, Aprknia, ArrowQueue, Ascenic, Balik, BASICER,
-Basicfuck, Befunge, Between, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh,
-Blindfolded Arithmetic, BrainIf, Caballo, CARP, Chicken, Circlefuck,
+Basicfuck, Befunge, Between, BFStack, Bitdeque, Bitwise Cyclic Tag, bit~,
+Bleh, Blindfolded Arithmetic, BrainIf, Caballo, CARP, Chicken, Circlefuck,
 Clockwise, Codesick, CreativeScript v2, Crement, Cyclic tag, Dimensional,
 DINAC, EGL, Eval, Fackward, Forþ, Freestajlo, Grapheme, Home Row, Hot, HQ9+
 with headers, IEBEL, Interprogck8, Kiss, lol waht i cant edit talk pages,
