@@ -32,7 +32,7 @@ class TestFlowchart:
 
     @pytest.mark.parametrize(
         ("table", "length"),
-        [("0011", 210), ("00000000000000111100001111000000", 606)],
+        [("0011", 210), ("00000000000000111100001111000000", 582)],
     )
     def test_levels_past_the_last_switch_join_the_tail_at_eight_reads(
         self, table: str, length: int

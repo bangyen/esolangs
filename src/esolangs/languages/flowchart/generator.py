@@ -9,14 +9,16 @@ whole byte.  The answer is printed as R and then the seven high bits of
 ASCII ``'0'`` (:data:`_ANSWER`), so the output byte is ``'0'`` or ``'1'``.
 
 The default is a deque lookup, one pushed entry a row (a run of equal entries
-sets the register once), so it has no subtrees to share.  With ``width`` it
+sets the register once), so it has no subtrees to share.  A deque holds
+``2 ** ceil(n / 2)`` entries and the low inputs pop pairs off both ends to
+reach theirs, so the cursor rails shrink to ``sqrt(T)``.  With ``width`` it
 draws a decision tree, stacked if narrower; the stacked one draws a repeated
 subtree once when ``width`` leaves room for its rail columns and characters
 and rectangle both shrink.
 
 Size:
-    O(T) characters; n=10 random 1847: 15,154 chars, n=12 random 1847:
-    58,138 chars.
+    O(T) characters; n=10 random 1847: 9,754 chars, n=12 random 1847:
+    35,074 chars.
 """
 
 from collections import Counter
@@ -830,6 +832,15 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     return stacked
 
 
+def _deque_depth(levels: int) -> int:
+    """Return ``k``: the deque holds ``2 ** k`` entries, ``levels`` read levels.
+
+    Rails and ``[ >`` cost 12 cells a deque, the pops 24 a pair: minimised
+    at ``k = (levels + 1) // 2``.
+    """
+    return max(1, (levels + 1) // 2)
+
+
 def _flowchart_deque(truth_table: str) -> str:
     r"""Address one preloaded answer by walking the deque cursor to it.
 
@@ -843,6 +854,12 @@ def _flowchart_deque(truth_table: str) -> str:
     Two rows; the pointer runs east to west, so the selector sits in the low
     columns and the upper row stays short (a line is padded to its last
     non-space cell).
+
+    A deque holds ``2 ** k`` entries, ``k = ceil(m / 2)`` for ``m`` essential
+    inputs (:func:`_deque_depth`): the even ones are pushed to the bottom, the
+    odd to the top, so pair ``p`` sits ``p`` from both ends.  A switch among
+    the last ``k - 1`` levels takes its bypass on a zero, ``2 ** (m - 2 -
+    level)`` pairs popped off both ends, and the final pick takes the end.
 
     Input ``p``'s value bit is stream bit ``8p``, so an ignored input costs
     only the eight ``/ /`` that skip it, and the deque holds the table over
@@ -868,6 +885,10 @@ def _flowchart_deque(truth_table: str) -> str:
         col = left - 2
         return left
 
+    m = len(skips)
+    # A deque holds ``2 ** k`` entries, the even ones pushed to the bottom and
+    # the odd to the top, so the pairs nest from the ends inward.
+    deep = _deque_depth(m)
     west("( )")
     # ``\[ ]/`` and ``[ >`` both leave the register alone, so a run of equal
     # entries is set once and pushed however many times it is long.
@@ -876,23 +897,27 @@ def _flowchart_deque(truth_table: str) -> str:
         if register != bit:
             west(_set(bit))
             register = bit
-        west("\\[ ]/")
-        if index % 2 and index + 1 < len(truth_table):
+        west("/[ ]\\" if deep > 1 and index % 2 == 0 else "\\[ ]/")
+        if (index + 1) % (1 << deep) == 0 and index + 1 < len(truth_table):
             west("[ >")
 
-    m = len(skips)
     for level in range(m - 1):
         for _ in range(skips[level]):
             west("/ /")
         switch = west("< >")
         # Travelling west a switch sends 1 straight on and 0 up, and the
-        # rail west of the switch is the one-branch's bypass.
-        count = 1 << (m - 2 - level)
-        # "< ]─" is 4 cells
-        junction = col - 4 * count + 1
+        # rail west of the switch is the one-branch's bypass.  The top
+        # levels step the cursor over deques; the next ``deep - 1`` pop
+        # ``2 ** (m - 2 - level)`` pairs off both ends, so the last switch
+        # still finds its pair at the ends.
+        if level < m - deep:
+            count, unit = 1 << (m - deep - 1 - level), "< ]─"
+        else:
+            count, unit = 1 << (m - 2 - level), "/{ }\\─\\{ }/─"
+        junction = col - len(unit) * count + 1
         _paint(cells, switch, spine - 1, "─┐")
-        _paint(cells, junction + 1, spine - 1, "< ]─" * count)
-        _paint(cells, junction + 1, spine, "─" * (4 * count))
+        _paint(cells, junction + 1, spine - 1, unit * count)
+        _paint(cells, junction + 1, spine, "─" * (len(unit) * count))
         cells[(junction, spine - 1)] = "┌"
         cells[(junction, spine)] = "┴"
         col = junction - 1
