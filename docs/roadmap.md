@@ -55,18 +55,21 @@ Dead-code leads, unmeasured against the
 A removal must leave the generated corpus byte-identical (tiled, constant and
 ignored-input tables included).
 
-- **Malbolge navigation, closed form:** `emitter.py`'s `goto` runs a
-  deterministic bounded heuristic (chain-valued scan-greedy; its chains
-  were fitted on the replaced breadth-first search's traces, and it
-  still prices candidate landings).  The main line ends at 6,548 at
-  n=1 against the 6,561 ceiling.  Wanted: a closed form — each
-  `goto`'s path computed by a formula from the state, every constant
-  and case split derived from the machine's algebra (the `g`
-  permutation's cycles 1, 1, 2, 2, 7, 17, 64 on 34..127; `crazy`'s
-  rows) — or a proof that none fits.  Proved companion: no navigation
-  with at most three jumps per `goto` fits at n=1 on the shipped write
-  order (the cheapest ends at 6,607); the at-most-four-jump oracle
-  ends at 6,558.  See [limitations](limitations.md#searches).
+- **Malbolge navigation, inexpressibility for an algebraic
+  signature:** the closed-form question is closed under the
+  bounded-read definition in [limitations](limitations.md#searches)
+  — a lower bound excludes every rule factoring through cycle data
+  plus bounded algebraic features (a reproducing formula needs at
+  least 59 forced cell reads; no navigation with at most three
+  jumps per `goto` fits at n=1, the cheapest ending at 6,607).
+  The open remainder is signature-relative: no term of any size
+  over the restricted algebraic signature (reads only at derived
+  indices, per-trit algebra, no equality against arbitrary value
+  constants, no random access) computes the optimal first step.
+  Priced at 2-3.5 agent-days by a preservation argument over the
+  algebra's invariant relations; it dies at that computation if
+  only the trivial congruences survive.  See
+  [limitations](limitations.md#searches).
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
   corpus.  With no outside interpreter, this is the only independent

@@ -150,7 +150,8 @@ Each missed the 10% bar:
 
 Malbolge's generator had two table-independent searches.  The short
 layout is a construction now; navigation is a bounded heuristic, and
-its closed-form question is still open:
+its closed-form question is closed under the bounded-read
+definition below, with one signature-relative route still open:
 
 - Navigation (`emitter.py` `goto`) is a deterministic bounded
   heuristic, the chain-valued scan-greedy -- not a closed form.  From
@@ -167,28 +168,76 @@ its closed-form question is still open:
   where the hubs and stubs start.  The breadth-first search it
   replaced ended at 6,532 at n=1 (5,487 at n=16), over 5,571 path
   cells; against the traced corpus (5,194 programs) the heuristic's
-  behaviour is byte-equivalent to the search's.  Whether a closed
-  form exists -- each `goto`'s path computed by a formula from the
-  state, every constant and case split derived from the machine's
-  algebra -- is OPEN.  The pure closed forms tried so far fail
-  outright (a forward walk, a `j` through the cell at `d`, or a walk
-  to the next unwritten cell with `g = t - 1`, then one more hop):
-  the best of the three ends at 41,244 at n=1.  The label priming
-  alone takes 2,653 path
-  cells against 609: its `p p` returns to the cell it just wrote 74 times,
-  a forward-only pass leaves `A` equal to the cell just written, and no row
-  of `crazy` is constant, so it cannot bring the next cell to the same value.
+  behaviour is byte-equivalent to the search's.  The pure closed
+  forms tried first fail outright (a forward walk, a `j` through
+  the cell at `d`, or a walk to the next unwritten cell with
+  `g = t - 1`, then one more hop): the best of the three ends at
+  41,244 at n=1.  The label priming is not where a form could win:
+  its span costs 609 path cells under the search, within 112 of a
+  proved floor of 497 in its frame (its `p p` returns to the cell
+  it just wrote 74 times, a forward-only pass leaves `A` equal to
+  the cell just written, and no row of `crazy` is constant, so it
+  cannot bring the next cell to the same value).
   Paths stay short because an unwritten cell jumps to `g(a) + 1`, which
   permutes the pointer region 34..127 (cycles 1, 1, 2, 2, 7, 17, 64); once
   it is written, a cell past 127 costs a walk up from 127.  Replaying the
   search's memory states, the cheapest navigation with at most 1, 2, 3, 4
   jumps per `goto` ends at 8,534, 6,876, 6,607, 6,558 at n=1 (7,784,
   5,817, 5,548, 5,501 at n=16; unlimited reproduces the search exactly).
-  So no navigation with at most three jumps per `goto` fits at n=1 --
-  that side is proved, on the shipped write order, and it is the open
-  question's lower-bound companion: a closed form must jump about
-  four times per `goto` at n=1, or write the cells in a different
-  order.
+  So no navigation with at most three jumps per `goto` fits at n=1:
+  a fitting navigation jumps about four times per `goto` there, or
+  writes the cells in a different order (the phase order is in fact
+  legally forced; see below).
+  A closed form, as the term is now used, carries a complexity
+  bound: each `goto`'s path is computed by a formula whose
+  dependence on the state factors through the cycle data (the
+  effective start and the target) and a fixed set of algebraic
+  features of `mem` -- cell values at a fixed probe set, the
+  written pattern on a fixed region, a fixed trit partition at a
+  fixed probe set -- the set fixed before any trace is seen and
+  totalling at most 58 cell reads per decision.  A formula that
+  reads the whole state, or whose term size or reads are
+  unbounded, is outside the term.  Under that definition the
+  question is closed, by a lower bound.  A `goto`'s state is fixed
+  by the emission stream, so the traced states are the build's
+  reachable states; among them are pairs with the same cycle data
+  whose optimal -- and cheapest-at-most-four-jump -- first steps
+  are disjoint, and every such pair's difference contains cell
+  130, so any probe set omitting cell 130 is excluded at any
+  size.  The `{0, 2}`-seedability partition agrees on the minimal
+  pair at all 420 cells while its first steps are disjoint, so
+  that class is excluded at all cells; the other trit partitions
+  and the written-pattern regions are excluded short of their
+  hitting sets (minimum size 2).  On the perturbation domain --
+  the traced states plus their single-cell unwrite variants, in
+  scope because a formula correct only on the traced states is a
+  table in function form -- 345 single-cell flips change the
+  optimal first step (368 for the four-jump qualification),
+  spread over 59 cells (64): a surviving probe set must contain
+  all of them, so a reproducing formula needs at least 59 cell
+  reads, over the bound; one `goto` (392) alone forces 15 reads
+  before its first step, adaptive procedures included, and a
+  single revalue flip (at `goto` 511) excludes even the full
+  written pattern.  Full-state formulas of unbounded size and reads are
+  the remainder, outside the amended definition by construction.
+  The narrowed record behind the bound: cycle-follow schemas hold
+  an optimum for only 32 of 525 `goto`s at n=1, and the best
+  successor-follow schema on the full `mem` functional graph ends
+  at 9,172; reordering is closed (the A-closed blocks are the
+  finest legal granularity, and the one algebra-derived order
+  loses 878 cells of oracle headroom).  Any-size inexpressibility
+  over a signature with equality and conditionals is moreover
+  constructively false: a greedy decision tree interpolates the
+  optimal first-step function in 424 nodes over the 525 reachable
+  states, and 5,667 over the full 30,926-state domain.  One route
+  remains open, signature-relative: inexpressibility of any size
+  for the restricted algebraic signature (reads only at derived
+  indices, per-trit algebra, no equality against arbitrary value
+  constants, no random access), by a preservation argument over
+  the algebra's invariant relations -- priced at 2-3.5 agent-days,
+  and it dies at its invariant computation if only the trivial
+  congruences survive `crazy`, `rot` and `+1`, which the record
+  so far suggests is likely.
 - Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15) are
   a construction, the canonical-action rule: a chain's action on a
   pointer-region value is fully determined by `(r, F)` -- `r` its number
