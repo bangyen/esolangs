@@ -55,13 +55,6 @@ Dead-code leads, unmeasured against the
 A removal must leave the generated corpus byte-identical (tiled, constant and
 ignored-input tables included).
 
-- **Malbolge's two searches as rules:** navigation is done -- the
-  chain-valued scan-greedy rule (`emitter.py` `goto`) replaced the
-  breadth-first search and ends the main line at 6,548 at n=1, below
-  the 6,561 bar; on the search's memory states no navigation with at
-  most three jumps per `goto` fits, which is proved.  The short layout
-  (`digits.py` `_short_layout`) remains a search, the repo's only
-  table-independent one left ([limitations](limitations.md#searches-kept)).
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
   corpus.  With no outside interpreter, this is the only independent

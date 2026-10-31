@@ -146,10 +146,10 @@ Each missed the 10% bar:
   - Circuit Diagram's balance saves 12.4% at n=7 and 15.2% at n=8 but
     searches: 1.3 s at n=10, 24 s at n=12, 524 s at n=14.
 
-### Searches kept
+### Searches replaced by rules
 
-Malbolge's generator keeps one table-independent search, run once per
-process; the first of its two former searches is a rule now:
+Malbolge's generator keeps no table-independent search; both of its
+former searches are rules now:
 
 - Navigation (`emitter.py` `goto`) is a rule, the chain-valued
   scan-greedy: from the current cell, scan the next 32 cells' jump
@@ -176,15 +176,28 @@ process; the first of its two former searches is a rule now:
   that side is proved, on the shipped write order -- and a rule must
   jump about four times per `goto` at n=1, as this one does, or write
   the cells in a different order.
-- Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15): each
-  label's hub, then stub, takes the lowest address clear of the tables and
-  the picks before it that a chain of at most five ops on a pointer-region
-  `g` reaches (about 0.2 s), by the fewest ops and the nearest walked cell;
-  a hub's chain value must have no 0 trit, or the second pointer cell's
-  re-swap reads 0 (n = 14 failed rows 28, 29 on it).  That puts the source
-  at 13,144 characters to n = 13, 19,683 at 14, 52,480 at 15; the smallest
-  `g` instead ends the main code past the lowest table cell.  n = 16's
-  tables span 6,561..59,039, so it keeps the whole store.
+- Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15) are
+  a construction, the canonical-action rule: a chain's action on a
+  pointer-region value is fully determined by `(r, F)` -- `r` its number
+  of `rot` ops and `F` the composition of its `K` ops' per-trit maps
+  (`K0 = [1, 1, 2]`, `K1 = [0, 0, 2]`, `K2 = [0, 2, 1]`) -- so the 1,365
+  chains of at most five ops collapse to 59 actions, and the rule takes
+  one shortest chain per action (the identity action, whose shortest
+  chain is empty, is carried by `K2 K2`, because chains must be
+  non-empty).  Each label's hub, then stub, takes the lowest feasible
+  address over those 59 canonical chains, by the fewest ops, then the
+  nearest walked cell, then the chain string.  The canonical chains'
+  address set equals the full reach of all chains of at most five ops
+  (939 addresses on both sides), and feasibility depends only on the
+  address, so the lowest-feasible-address choice is exact, not a
+  search's pick.  A hub address is feasible when every trit of it lies
+  in {0, 2} -- the seedability condition, restated without a chain: the
+  chain value must have no 0 trit, or the second pointer cell's re-swap
+  reads 0 (n = 14 failed rows 28, 29 on it) -- and its two data cells
+  clear the tables and the picks before it.  Measured source lengths
+  are unchanged: 13,144 characters to n = 13, 19,683 at 14, 52,480 at
+  15; the smallest `g` instead ends the main code past the lowest table
+  cell.  n = 16's tables span 6,561..59,039, so it keeps the whole store.
 
 ### Largest input counts
 

@@ -94,7 +94,6 @@ from .core import (
 )
 from .emitter import _Planner, _valid_chars
 from .isa import (
-    _ALL1,
     _CONSTS,
     _WORDS,
     _first_free,
@@ -169,40 +168,103 @@ class _Layout(NamedTuple):
     stubs: dict[str, tuple[int, str]]
 
 
-def _chains(values: dict[int, int], depth: int) -> Iterator[tuple[str, dict[int, int]]]:
-    """Yield every chain of at most ``depth`` ops with its result per ``g``."""
-    yield "", values
-    if depth:
-        for op in ("K0", "K1", "K2", "rot"):
-            moved = {g: _chain(v, op) for g, v in values.items()}
-            for ops, out in _chains(moved, depth - 1):
-                yield f"{op} {ops}".strip(), out
+#: The per-trit maps of the three ``K`` ops: ``Kk`` is ``crazy`` with the
+#: constant whose trits are all ``k``, and ``crazy`` works trit by trit, so
+#: trit 0 of the result names the map (``K0 = [1, 1, 2]``, ``K1 = [0, 0, 2]``,
+#: ``K2 = [0, 2, 1]``, the images of 0, 1, 2).
+_K_MAPS: dict[str, tuple[int, int, int]] = {
+    op: (_crazy(const, 0) % 3, _crazy(const, 1) % 3, _crazy(const, 2) % 3)
+    for op, const in zip(("K0", "K1", "K2"), _CONSTS, strict=True)
+}
+
+
+def _k_action(word: tuple[str, ...]) -> tuple[int, int, int]:
+    """Return the per-trit map ``F`` the ``K`` ops of ``word`` compose to."""
+    action = (0, 1, 2)
+    for op in word:
+        kmap = _K_MAPS[op]
+        action = (kmap[action[0]], kmap[action[1]], kmap[action[2]])
+    return action
+
+
+def _canonical_chains() -> tuple[str, ...]:
+    """Return one shortest chain per chain action, 59 in all.
+
+    A chain's action on a pointer-region value is fully determined by
+    ``(r, F)``: ``r`` its number of ``rot`` ops and ``F`` the composition
+    of its ``K`` ops' per-trit maps in string order -- a trit travelling
+    through the chain meets the ``K`` ops in that order wherever the
+    ``rot`` ops sit, and lands at the position ``r`` below its start.  So
+    a chain's landing ``s01(chain(g))`` depends only on its action and
+    ``g``, and the 1,365 chains of at most ``_SHORT_DEPTH`` ops collapse
+    to 59 actions.  For each of the 17 maps ``F`` composable from
+    ``K0, K1, K2`` this takes its shortest word over those ops (in every
+    case unique; the enumeration is in increasing length and in
+    lexicographic order, so the first word met for an ``F`` is the
+    lexicographically least shortest one), followed by ``r >= 0``
+    ``rot`` ops with total length at most ``_SHORT_DEPTH``, and never
+    the empty chain: the identity action at ``r = 0``, whose shortest
+    chain is empty, is carried by ``K2 K2``, its shortest non-empty
+    chain (``K2`` composed with itself is the identity map).
+    """
+    words: dict[tuple[int, int, int], str] = {}
+    for length in range(_SHORT_DEPTH + 1):
+        for word in product(("K0", "K1", "K2"), repeat=length):
+            words.setdefault(_k_action(word), " ".join(word))
+    chains = set()
+    for k_word in words.values():
+        k = len(k_word.split()) if k_word else 0
+        for r in range(_SHORT_DEPTH - k + 1):
+            parts = ([k_word] if k_word else []) + ["rot"] * r
+            if parts:
+                chains.add(" ".join(parts))
+    chains.add("K2 K2")
+    return tuple(sorted(chains))
+
+
+def _seedable(address: int) -> bool:
+    """Return whether ``address`` is seedable: every trit of it is 0 or 2.
+
+    A label's second cell is re-swapped by ``p`` under ``A = all-1``,
+    which is ``s01`` only if the chain value ``v = s01(address)`` has no
+    0 trit.  ``s01`` swaps 0 and 1 trits, so that is exactly the trits
+    of ``address`` lying in {0, 2} -- a form that names no chain.
+    """
+    while address:
+        if address % 3 == 1:
+            return False
+        address //= 3
+    return True
 
 
 @cache
 def _short_layout(arity: int = _SHORT_N) -> _Layout:
     """Return the seeds and stubs for ``arity`` inputs (``n <= 13`` share 13's).
 
+    A construction over the canonical chains of :func:`_canonical_chains`,
+    not a search over all chains of at most five ops: because a chain's
+    landing depends only on its action ``(r, F)`` and the canonical set
+    holds a chain of every action any such chain realises, its landing
+    set over ``g`` in 33..126 equals the full reach (939 addresses on
+    both sides), and feasibility of an address depends only on the
+    address and the picks before it, never on which chain reaches it --
+    so the lowest feasible address over the canonical chains is the
+    lowest over all chains, in every pick state.
+
     Greedy, hubs in ``n01x`` order then stubs in ``1n0x``: each takes the
     lowest address that clears the tables and the picks before it, by the
     shortest chain, then the ``g`` whose walked cell is nearest the first: each
     op walks to its cell, and the main code must end below the lowest table
-    cell (6548 against 6562).  A hub is any seedable address whose two data
-    cells are free, below the top table cell too (14's land in its gaps).
+    cell (6548 against 6562).  A hub is any seedable address (every trit
+    0 or 2, :func:`_seedable`) whose two data cells are free, below the
+    top table cell too (14's land in its gaps).
     """
     tables = {s + 1 for s in _readouts(arity)}
-    chains: dict[int, list[tuple[int, str, int]]] = {}
-    for ops, out in _chains({g: g for g in _SHORT_G}, _SHORT_DEPTH):
-        for g, v in out.items():
-            chains.setdefault(v, []).append((len(ops.split()), ops, g))
     reach: dict[int, list[tuple[int, str, int]]] = {}
-    seedable: set[int] = set()
-    for v, picks in chains.items():
-        reach.setdefault(_s01(v), []).extend(picks)
-        # A label's second cell is re-swapped by ``p`` under ``A = all-1``, which
-        # is ``s01`` only if ``crazy(all-1, v) == s01(v)``: ``v`` has no 0 trit.
-        if _crazy(_ALL1, v) == _s01(v):
-            seedable.add(_s01(v))
+    for chain in _canonical_chains():
+        n_ops = len(chain.split())
+        for g in _SHORT_G:
+            reach.setdefault(_s01(_chain(g, chain)), []).append((n_ops, chain, g))
     addresses = sorted(reach)
     taken: set[int] = set()
     at: dict[tuple[str, str], int] = {}
@@ -210,7 +272,7 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
         hub = next(
             a
             for a in addresses
-            if a > _D_FLOOR and a in seedable and not {a + 1, a + 2} & (tables | taken)
+            if a > _D_FLOOR and _seedable(a) and not {a + 1, a + 2} & (tables | taken)
         )
         at["seed", lab] = hub
         taken |= {hub + 1, hub + 2}

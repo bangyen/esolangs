@@ -191,8 +191,8 @@ class _Emitter:
 class _ScanGreedy:
     """One ``goto``'s chain-valued scan-greedy navigation state.
 
-    The rule (docs/limitations.md, "Searches kept"): from the current position
-    ``p``, scan the cells ``q`` in ``[p, p + 32]`` whose jump landing
+    The rule (docs/limitations.md, "Searches replaced by rules"): from the
+    current position ``p``, scan the cells ``q`` in ``[p, p + 32]`` whose jump landing
     ``L = mem[q] + 1`` is usable; price each by ``(q - p + 1) + V(L)`` and
     jump via the cheapest (ties to the smallest ``q``) when that beats the
     forward-walk cost ``W`` from ``p``; otherwise walk to the target.
