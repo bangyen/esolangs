@@ -33,7 +33,7 @@ verdict = "kept: canonical, exempt from the bar; saving on its trailing-ignored 
 [ablations.same_halves_prune]
 saving = 0.0
 arity = 10
-verdict = "removed 2026-10-20 (Bangyen's decision): 0.0% by area on every corpus at n>=8 (0.2-0.9% by chars on random and ignored classes, 5.6-7.5% by chars on mosaic/tiled) -- failed the bar as a separate mechanism. Removal verified on 4,068 corpus records (155,440 executions, 0 mismatches): area identical except two stencil-edge records at +3.4%, shipped chars +0.85% at most per class. A second seeded corpus found one tiled n=9 table at +17.8% area (2,295 -> 2,703) and +20.5% chars over the 256 three-input tables (area unchanged). The width path's streaming tree keeps its own copy, unpriced and untouched"
+verdict = "removed 2026-10-20: 0.0% by area on every corpus at n>=8 (0.2-0.9% by chars on random and ignored classes, 5.6-7.5% by chars on mosaic/tiled) -- failed the bar as a separate mechanism. Removal verified on 4,068 corpus records (155,440 executions, 0 mismatches): area identical except two stencil-edge records at +3.4%, shipped chars +0.85% at most per class. A second seeded corpus found one tiled n=9 table at +17.8% area (2,295 -> 2,703) and +20.5% chars over the 256 three-input tables (area unchanged). The width path's streaming tree keeps its own copy, unpriced and untouched"
 
 [ablations.constant_span_fold]
 saving = 13.7
