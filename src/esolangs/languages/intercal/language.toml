@@ -64,3 +64,9 @@ verdict = "kept: the balanced build kept one statement per row (n=8 random: 63 r
 
 [audits]
 plain_rewrite = 2026-10-22
+
+[ablations.constant_mux_prototype]
+saving = 6.35
+arity = 12
+seed = "random.Random(1847+n), 20 per arity"
+verdict = "unshipped: fold mux(0,x), mux(1,x), mux(x,0), mux(x,1) with Boolean identities and price the folded frames before naming. Random size savings n=7/8/10/12: 21.85/17.53/11.18/6.35%; and/or n=12: 732 -> 322 chars, parity 1536 -> 1440. Both builds executed on all rows of all 256 three-input tables and sampled random, parity, and/or and worst-witness tables through n=8: 9,160 executions, no wrong answers; 34 complemented-expectation controls fired. Exhaustive n=3 statement maxima change 8 -> 6, so the existing exact execution/workspace and character witnesses cannot certify this draft. It remains archived pending new exact bounds; generator, pins and proofs unchanged"
