@@ -13,8 +13,8 @@ bf_derivative = true
 labels = ["minterms"]
 qualification = "—"
 scaling = "linear: worst N characters past n = 2: zero-row walk telescopes to T"
-execution = "poly n: worst 60n + 660 commands past n = 7"
-workspace = "poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-7,0) + min(T,128) + 1"
+execution = "poly n: worst 60n + 1290 commands past n = 8"
+workspace = "poly n: worst n+6+bl(n)+(d+1)bl(L) bits at n = 5 and past n = 8, d = max(n-8,0) + min(T,255) + 1"
 
 [generator_sizes]
 "00000001" = { commands = 242, commands_by_row = { "0" = 211, "1" = 220, "2" = 220, "3" = 229, "4" = 220, "5" = 229, "6" = 229, "7" = 242 }, source_units = 234 }
@@ -64,6 +64,13 @@ arity = 8
 seed = "named symmetric tables"
 tables = 7
 verdict = "kept under the named-function rule: a table depending only on how many essential inputs are 1 takes the byte-indexed decoder over that count (1 + count fits the byte at any width, so the seven-input block limit does not bind), raced by length against the shipped build. Parity 43.9% at n=7, 60.0% at n=8, 76.9% at n=10, 86.7% at n=12; majority 43.3% / 68.2% / 90.4% / 97.1%; at-least-2 and exactly-1 60.3% at n=8; and 28.4%, or 23.1% at n=8; a symmetric table with an ignored input 36.9% at n=8. Random tables: 0 of 200 change at n=5..8. Exhaustive n<=3: 38 tables change, none grows, every changed program executed; named tables executed through n=10. Plain-rewrite audit 2026-10-27: kept; the race against the plain build is removed because the count form always wins: all 12,596 symmetric tables at n=8 (every subset of 2..8 essential inputs, all count vectors; 4,106 / 1,320 / 414 / 124 / 34 / 8 at n=7..2) ship byte-identical programs without it. Random tables: 0 of 200 change at n=4..8, 0 of 20 at n=9..12; random symmetric tables (200) cost +67.3 / +208.9% at n=7/8, +32.4% at n=6 (10 tables), and at n=10/12 (100) +941.7 / +3478.1%; symmetric over a random essential subset (100) +16.8 / +23.0 / +208.6 / +796.6% at n=7/8/10/12; named at n=8: parity +150.1%, AND +39.6%, OR +30.0%, majority +215.0%. Every changed program run on all rows through n=8"
+
+[ablations.eighth_input]
+saving = 26.4
+arity = 10
+seed = "random.Random(20261030 + n)"
+tables = "200 random at n=7,8; 20 at n=9,10; parity/majority/and/or/one-third threshold at n=7..10"
+verdict = "kept 2026-10-30 (random bar, gated at n>=8 by the byte): a block holds eight essential inputs when the byte start + row wraps a zero row to byte 0, which the outer [ skips, so that row must be a zero row; the start is the smallest putting one there (row 0, then the last rows up: 0 extra chars on half the tables, 1 on a quarter). Random tables -26.4% of chars at n=8 (200 tables, 340,723 -> 250,877; none grows, all change), -25.8% at n=9 and -25.6% at n=10 (20 tables), balanced area -26.3% / -25.8% at n=8 / 9 (20 tables), flat in n; n=7 is one block already, 0.0% on 200 tables. Named functions 0.0% at n=7..10: they take the symmetric count first. The worst table falls 1,958 -> 1,509 at n=8 and 3,978 -> 3,083 at n=9, while the worst execution rises 1,140 -> 1,769 commands at n=8 (60n + 660 -> 60n + 1,290) and the workspace term min(T,128) -> min(T,255); same growth classes. Every program ran on all rows (109 tables at n=8 including forced starts 0, 1, 3, 5, 20 random at n=9, 4 at n=10, 0 mismatches; the wrong-table control fails 256/256, 512/512, 1024/1024)"
 
 [audits]
 blind_reimplementation = 2026-10-30

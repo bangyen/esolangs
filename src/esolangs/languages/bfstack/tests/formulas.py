@@ -7,13 +7,17 @@ from esolangs.languages.bfstack.proof_formulas import workspace
 
 
 def _chars(n: int, _: str) -> int:
-    """N = 4T + 54n + 57 through n = 7, then 505T/64 - 62 (62 a split, 948 a block).
+    """N = 4T + 54n + 57 through n = 7, 1,509 at n = 8, then 393T/64 - 61.
 
-    A block is the encoder's ``3 + 54n + T - 1``, a cascade over the ``T - 1``
-    zero rows ending at ``T`` (``T + 2(T - 1) + 7``) and the printing 50.
+    Past n = 8 a tree of 256-row blocks: one 1,511 (start 1, a one at row 0),
+    the rest 1,510 (start 0, a one past row 1), 62 a split.  A block is the
+    encoder's ``2 + 54*8 + 255``, a cascade over 254 zero rows ending at 255
+    (``255 + 2*254 + 7``) and the printing 50.
     """
     t = 1 << n
-    return 4 * t + 54 * n + 57 if n <= 7 else 505 * t // 64 - 62
+    if n == 8:
+        return 1509
+    return 4 * t + 54 * n + 57 if n <= 7 else 393 * t // 64 - 61
 
 
 def witness(n: int) -> str:

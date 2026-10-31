@@ -16,7 +16,7 @@ class TestBfstack:
     @pytest.mark.medium
     @pytest.mark.parametrize("n", [7, 8, 9, 12])
     def test_byte_index_boundaries(self, n: int) -> None:
-        """Seven-input blocks preserve the sentinel and high input bits."""
+        """Eight-input blocks preserve the byte-0 row and high input bits."""
         rng = random.Random(n)
         table = "".join(rng.choice("01") for _ in range(1 << n))
         program = boolean.bfstack(table)
@@ -52,7 +52,7 @@ class TestBfstack:
         # first: that half is one seven-input block repeated.
         table = dense[:128] * 2 + dense
         program = boolean.bfstack(table)
-        assert len(program) < len(boolean.bfstack(other + dense)) - 500
+        assert len(program) < len(boolean.bfstack(other + dense)) - 300
         for row in range(0, 512, 3):
             bits = [str((row >> i) & 1) for i in range(8, -1, -1)]
             assert run_bfstack(program, bits) == table[row], row
@@ -62,6 +62,23 @@ class TestBfstack:
         """Index 256 previously skipped the decoder's outer loop."""
         table = "0" * 255 + "1"
         assert run_bfstack(boolean.bfstack(table), ["1"] * 8) == "1"
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize("ones", range(4))
+    def test_the_byte_zero_row_is_a_zero_row(self, ones: int) -> None:
+        """An eight-input block starts at the smallest start whose byte-0 row is 0."""
+        rng = random.Random(ones)
+        body = [rng.choice("01") for _ in range(256)]
+        body[0] = "1"
+        for k in range(1, ones + 1):
+            body[256 - k] = "1"
+        body[255 - ones] = "0"
+        table = "".join(body)
+        program = boolean.bfstack(table)
+        assert program.startswith(">>" + "+" * (ones + 1) + ",")
+        for row in range(256):
+            bits = [str((row >> i) & 1) for i in range(7, -1, -1)]
+            assert run_bfstack(program, bits) == table[row], row
 
     def test_encode_decode_structure(self) -> None:
         """The program encodes the inputs, tests the zero rows, and prints."""

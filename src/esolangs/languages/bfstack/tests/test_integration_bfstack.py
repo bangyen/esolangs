@@ -84,19 +84,19 @@ def _bounds(profile: dict[str, Any]) -> None:
     commands = profile["worst_row_commands"]
     memory = profile["peak_memory_cells"]
     stack = profile["peak_stack_items"]
-    # Prefix arms cost <100 each. The <=7-bit leaf normalizes <=7
-    # bytes, adds <=127 weights and visits <=128 cascade guards;
+    # Prefix arms cost <100 each. The <=8-bit leaf normalizes <=8
+    # bytes, adds <=255 weights and visits <=256 cascade guards;
     # even charging 256 iterations for every final byte loop fits 8192.
     assert commands <= 100 * n + 8192
     assert memory == 0
-    assert stack <= 2 * max(n - 7, 0) + 3
-    # Each seven-bit cascade nests one loop per listed row, plus its
+    assert stack <= 2 * max(n - 8, 0) + 3
+    # Each eight-bit cascade nests one loop per listed row, plus its
     # outer loop and payload; each prefix branch adds one live loop.
-    assert profile["peak_control_stack_items"] <= max(n - 7, 0) + 2 ** min(n, 7) + 2
+    assert profile["peak_control_stack_items"] <= max(n - 8, 0) + 2 ** min(n, 8) + 2
     assert profile["peak_integer_bits"] <= max(8, units.bit_length())
     assert profile["peak_machine_bits"] <= (
-        8 * (2 * max(n - 7, 0) + 3)
-        + (max(n - 7, 0) + 2 ** min(n, 7) + 3) * units.bit_length()
+        8 * (2 * max(n - 8, 0) + 3)
+        + (max(n - 8, 0) + 2 ** min(n, 8) + 3) * units.bit_length()
     )
 
 

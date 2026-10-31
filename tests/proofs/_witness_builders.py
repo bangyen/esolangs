@@ -108,16 +108,19 @@ def _bfstack_block(i: int, e: int) -> str:
     """2^e rows of zeros but one: the worst block, distinct by its row.
 
     The cascade lists every other row and ends at the last; the one sits at row
-    ``1 + i``, never row 0 or the last, whose symmetric tables take the count.
+    ``i`` of 256 rows (row 0 is the dearest start, 1), else at row 1.  A lone
+    one at row 0 or the last of a whole table is symmetric: the count takes it.
     """
     rows = 2**e
-    at = 1 + i if e == 7 else 1
+    at = i if e == 8 else 1
     return "0" * at + "1" + "0" * (rows - at - 1)
 
 
 def _bfs_chars(n: int) -> str:
-    """Distinct worst blocks of up to 128 rows under a tree of blocks."""
-    e = min(n, 7)
+    """Distinct worst blocks of up to 256 rows under a tree of blocks."""
+    e = min(n, 8)
+    if n == 8:
+        return _bfstack_block(1, e)
     return "".join(_bfstack_block(i, e) for i in range(2 ** (n - e)))
 
 

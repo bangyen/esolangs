@@ -115,7 +115,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         "1" + "0" * (width - 2) + "1",
         "01" * (width // 2),
     )
-    if name == "BFStack" and n >= 7:
+    if name == "BFStack" and n >= 8:
         tables += (_bfstack_worst(n),)
     if name == "BFStack" and n >= 9:
         tables += (_bfstack_ws_worst(n),)
