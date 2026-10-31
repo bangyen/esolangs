@@ -284,7 +284,7 @@ def _strip(table: str) -> str:
     return "".join(out)
 
 
-def _unbias(weight: int, raw: bool) -> str:
+def _unbias(weight: int, *, raw: bool) -> str:
     """The run correcting ``weight`` ASCII biases, or ``""`` when ``raw`` is off.
 
     Raw characters sum to ``48 * weight`` extra, mod 256: ``2**width - 1`` for a
@@ -298,12 +298,12 @@ def _unbias(weight: int, raw: bool) -> str:
     return "+" * back if back <= 128 else "-" * (256 - back)
 
 
-def _read(raw: bool) -> str:
+def _read(*, raw: bool) -> str:
     """One input read, its bias removed unless the digit's run does it."""
     return "," if raw else "," + "-" * _ASCII_ZERO
 
 
-def _select(n: int, used: list[int], groups: list[int], raw: bool) -> str:
+def _select(n: int, used: list[int], groups: list[int], *, raw: bool) -> str:
     """Brainfuck reading the inputs and walking to the entry they select.
 
     One digit at a time, highest first, accumulated by Horner's rule on the
@@ -322,13 +322,13 @@ def _select(n: int, used: list[int], groups: list[int], raw: bool) -> str:
             if cursor not in chosen:
                 out.append(">,<")
             elif taken == 0:
-                out.append(_read(raw))
+                out.append(_read(raw=raw))
                 taken += 1
             else:
-                out.append(f"[->>++<<]{_read(raw)}>>[-<<+>>]<<")
+                out.append(f"[->>++<<]{_read(raw=raw)}>>[-<<+>>]<<")
                 taken += 1
             cursor += 1
-        out.append(_unbias((1 << width) - 1, raw) + _walk(stride))
+        out.append(_unbias((1 << width) - 1, raw=raw) + _walk(stride))
     out.append(">,<" * (n - cursor))
     return "".join(out)
 
@@ -347,9 +347,9 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     raw = n >= _RAW_FROM
-    lookups = [(table, _select(n, used, _groups(len(used)), raw))]
+    lookups = [(table, _select(n, used, _groups(len(used)), raw=raw))]
     if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        lookups.append((symmetric[1], _count(n, used, raw)))
+        lookups.append((symmetric[1], _count(n, used, raw=raw)))
     texts = []
     for entries, select in lookups:
         out = _Builder(cycle)
@@ -358,7 +358,7 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     return min(texts, key=len)
 
 
-def _count(n: int, used: list[int], raw: bool) -> str:
+def _count(n: int, used: list[int], *, raw: bool) -> str:
     """Brainfuck summing the essential bits on the carrier, then one walk.
 
     A symmetric table is indexed by that count ([ablations.symmetric_count]);
@@ -370,10 +370,10 @@ def _count(n: int, used: list[int], raw: bool) -> str:
         if cursor not in chosen:
             out.append(">,<")
         elif cursor == used[0]:
-            out.append(_read(raw))
+            out.append(_read(raw=raw))
         else:
-            out.append(f">{_read(raw)}[-<+>]<")
-    return "".join(out) + _unbias(len(used), raw) + _walk(2)
+            out.append(f">{_read(raw=raw)}[-<+>]<")
+    return "".join(out) + _unbias(len(used), raw=raw) + _walk(2)
 
 
 def _dialect(rotation: str = "backward") -> None:
@@ -394,6 +394,9 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    # Parity's bias run is 48 * n mod 256 (128 at n=8, 32 at n=10), so its size
+    # dips by up to 51 between rungs 8 and 10; 10, 12, 14 grow by 77 each.
+    scaling_rungs=(10, 12, 14),
     proof_execution=(execution, True, (3, 5)),
     proof_workspace=(workspace, True, (3, 4, 5)),
 )
