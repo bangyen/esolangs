@@ -112,6 +112,9 @@ _README_HEADINGS = [
 _SAMPLE_BITS = [1, 0, 1]
 
 
+REPO_URL = "https://github.com/bangyen/esolangs"
+
+
 def render_package_count_section() -> str:
     """Render the total and source-shape counts in the README lead."""
     text_count = sum(lang.source_kind is SourceKind.TEXT for lang in LANGUAGES.values())
@@ -123,12 +126,16 @@ def render_package_count_section() -> str:
 
 
 def _source_link(name: str) -> str:
-    """Return the GitHub URL of the language's Python interpreter."""
+    """Return the path of the language's Python interpreter from ``docs/``.
+
+    Relative, since only GitHub renders ``docs/languages.md``; the README is
+    also PyPI's page, so its links stay absolute (:data:`REPO_URL`).
+    """
     canonical = ROOT / "src/esolangs/languages" / LANGUAGES[name].id / "interpreter"
     for source in (canonical.with_suffix(".py"), canonical / "__init__.py"):
         if source.is_file():
             relative = source.relative_to(ROOT).as_posix()
-            return f"https://github.com/bangyen/esolangs/blob/main/{relative}"
+            return f"../{relative}"
     raise FileNotFoundError(f"no canonical interpreter for {name}")
 
 
@@ -137,7 +144,7 @@ def render_languages_section() -> str:
 
     Each language with an in-repo interpreter is grouped by the interpreter's
     category, sorted by display name, and linked to both its esolangs wiki
-    page and the interpreter's source file on GitHub.
+    page and the interpreter's source file.
     """
     out: list[str] = []
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
@@ -185,7 +192,7 @@ def render_examples_section() -> str:
             f"Ready-to-run programs for each of the {count}",
             "languages with a boolean generator live in",
             "each language's [directory]"
-            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/languages).",
+            f"({REPO_URL}/tree/main/src/esolangs/languages).",
         ]
     )
 
