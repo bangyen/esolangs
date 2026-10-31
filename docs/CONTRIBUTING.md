@@ -354,7 +354,7 @@ Judge a module by what the language does not demand.
 
 - A named rule beats a frozen table, and both beat a search. A searched
   table stays only when no rule reproduces it, and its comment names the
-  search (Malbolge's navigation, [limitations](limitations.md#searches-replaced-by-rules)).
+  search (Malbolge's navigation, [limitations](limitations.md#searches)).
 - One path per semantics. A fast path beside the plain one needs a reader
   the fast path cannot serve (Thue keeps `_advance` for
   `branching_successors`); otherwise delete one.

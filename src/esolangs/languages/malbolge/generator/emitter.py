@@ -3,7 +3,7 @@
 The emitter writes into a ``code`` dict at a code pointer ``c`` while a data
 pointer ``d`` tracks where execution will point: every instruction advances
 both by one.  :class:`_Planner` knows the walked cells' values, so it steers
-``d`` by the chain-valued scan-greedy rule (:class:`_ScanGreedy`), and it
+``d`` by the chain-valued scan-greedy heuristic (:class:`_ScanGreedy`), and it
 tracks the accumulator and the walked cells' contents across the writes it
 emits.
 """
@@ -191,7 +191,7 @@ class _Emitter:
 class _ScanGreedy:
     """One ``goto``'s chain-valued scan-greedy navigation state.
 
-    The rule (docs/limitations.md, "Searches replaced by rules"): from the
+    The heuristic (docs/limitations.md, "Searches"): from the
     current position ``p``, scan the cells ``q`` in ``[p, p + 32]`` whose jump landing
     ``L = mem[q] + 1`` is usable; price each by ``(q - p + 1) + V(L)`` and
     jump via the cheapest (ties to the smallest ``q``) when that beats the
@@ -212,6 +212,11 @@ class _ScanGreedy:
     landing (ties to the smallest ``q``), where ``U(z)`` is the least of
     the walk cost from ``z``, cycle-follow from ``z`` and one more jump
     within 3 cells of ``z`` then walk.
+
+    This is a heuristic, not a closed form: it prices candidate
+    landings, and the clause-(d) chains were fitted on the replaced
+    breadth-first search's traces, not derived from the machine's
+    algebra.  Whether a closed form exists is open (limitations).
 
     ``mem`` does not change during a ``goto``, so the jump table, the walk
     costs, the step-predicate candidate lists and every chain/value
@@ -750,7 +755,7 @@ class _ScanGreedy:
 
 
 class _Planner(_Emitter):
-    """Emitter steering ``d`` by the chain-valued scan-greedy rule.
+    """Emitter steering ``d`` by the chain-valued scan-greedy heuristic.
 
     ``mem`` maps walked addresses to their known values (``None`` once
     written to an unknown value); ``a`` is the accumulator ``A`` when the ops
@@ -758,7 +763,7 @@ class _Planner(_Emitter):
     above the code to source characters, which a ``j`` from there reads to
     come back below the walked region.  Knowing ``mem``/``a`` is only an
     optimisation: a cell whose value is still known stays usable as a ``j``
-    target, so the rule sees the shortcuts the run-time pointers provide.
+    target, so the heuristic sees the shortcuts the run-time pointers provide.
     No path may step to ``ceiling`` or beyond.
     """
 
@@ -830,7 +835,7 @@ class _Planner(_Emitter):
         return pos
 
     def goto(self, target: int) -> None:
-        """Steer ``d`` to ``target`` by the chain-valued scan-greedy rule.
+        """Steer ``d`` to ``target`` by the chain-valued scan-greedy heuristic.
 
         Fixed prefix: from ``d >= ceiling``, one ``j`` through the data
         cell there.  Then repeat (at most 16 jumps; a position is never

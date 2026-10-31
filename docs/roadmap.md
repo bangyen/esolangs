@@ -55,6 +55,18 @@ Dead-code leads, unmeasured against the
 A removal must leave the generated corpus byte-identical (tiled, constant and
 ignored-input tables included).
 
+- **Malbolge navigation, closed form:** `emitter.py`'s `goto` runs a
+  deterministic bounded heuristic (chain-valued scan-greedy; its chains
+  were fitted on the replaced breadth-first search's traces, and it
+  still prices candidate landings).  The main line ends at 6,548 at
+  n=1 against the 6,561 ceiling.  Wanted: a closed form — each
+  `goto`'s path computed by a formula from the state, every constant
+  and case split derived from the machine's algebra (the `g`
+  permutation's cycles 1, 1, 2, 2, 7, 17, 64 on 34..127; `crazy`'s
+  rows) — or a proof that none fits.  Proved companion: no navigation
+  with at most three jumps per `goto` fits at n=1 on the shipped write
+  order (the cheapest ends at 6,607); the at-most-four-jump oracle
+  ends at 6,558.  See [limitations](limitations.md#searches).
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
   corpus.  With no outside interpreter, this is the only independent

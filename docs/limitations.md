@@ -146,23 +146,35 @@ Each missed the 10% bar:
   - Circuit Diagram's balance saves 12.4% at n=7 and 15.2% at n=8 but
     searches: 1.3 s at n=10, 24 s at n=12, 524 s at n=14.
 
-### Searches replaced by rules
+### Searches
 
-Malbolge's generator keeps no table-independent search; both of its
-former searches are rules now:
+Malbolge's generator had two table-independent searches.  The short
+layout is a construction now; navigation is a bounded heuristic, and
+its closed-form question is still open:
 
-- Navigation (`emitter.py` `goto`) is a rule, the chain-valued
-  scan-greedy: from the current cell, scan the next 32 cells' jump
-  landings, price each by its walk to the source plus a value built from
+- Navigation (`emitter.py` `goto`) is a deterministic bounded
+  heuristic, the chain-valued scan-greedy -- not a closed form.  From
+  the current cell it scans the next 32 cells' jump landings and
+  prices each by its walk to the source plus a value built from
   deterministic pointer-chase chains, `g`-cycle follows and bounded
-  second-jump scans, jump via the cheapest when it beats walking, and
-  repeat.  The main line ends at cell 6,548 at n=1 (5,499 at n=16); the
-  code must end below 6,561, where the hubs and stubs start.  The
-  breadth-first search it replaced ended at 6,532 at n=1 (5,487 at
-  n=16), over 5,571 path cells.  Closed-form navigation -- a forward
-  walk, a `j` through the cell at `d`, or a walk to the next unwritten
-  cell with `g = t - 1`, then one more hop -- ends at 41,244 at n=1 for
-  the best of the three pure forms. The label priming alone takes 2,653 path
+  second-jump scans; it jumps via the cheapest when that beats
+  walking, and repeats.  The chains were fitted on the replaced
+  search's traces, not derived from the machine's algebra, and the
+  heuristic still prices candidate landings, so it is a cheaper
+  search in kind, not a formula.  Whole navigations are memoised
+  (438 distinct states serve 5,551 `goto`s).  The main line ends at
+  cell 6,548 at n=1 (5,499 at n=16); the code must end below 6,561,
+  where the hubs and stubs start.  The breadth-first search it
+  replaced ended at 6,532 at n=1 (5,487 at n=16), over 5,571 path
+  cells; against the traced corpus (5,194 programs) the heuristic's
+  behaviour is byte-equivalent to the search's.  Whether a closed
+  form exists -- each `goto`'s path computed by a formula from the
+  state, every constant and case split derived from the machine's
+  algebra -- is OPEN.  The pure closed forms tried so far fail
+  outright (a forward walk, a `j` through the cell at `d`, or a walk
+  to the next unwritten cell with `g = t - 1`, then one more hop):
+  the best of the three ends at 41,244 at n=1.  The label priming
+  alone takes 2,653 path
   cells against 609: its `p p` returns to the cell it just wrote 74 times,
   a forward-only pass leaves `A` equal to the cell just written, and no row
   of `crazy` is constant, so it cannot bring the next cell to the same value.
@@ -173,9 +185,10 @@ former searches are rules now:
   jumps per `goto` ends at 8,534, 6,876, 6,607, 6,558 at n=1 (7,784,
   5,817, 5,548, 5,501 at n=16; unlimited reproduces the search exactly).
   So no navigation with at most three jumps per `goto` fits at n=1 --
-  that side is proved, on the shipped write order -- and a rule must
-  jump about four times per `goto` at n=1, as this one does, or write
-  the cells in a different order.
+  that side is proved, on the shipped write order, and it is the open
+  question's lower-bound companion: a closed form must jump about
+  four times per `goto` at n=1, or write the cells in a different
+  order.
 - Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15) are
   a construction, the canonical-action rule: a chain's action on a
   pointer-region value is fully determined by `(r, F)` -- `r` its number

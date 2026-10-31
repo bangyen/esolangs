@@ -61,7 +61,7 @@ verdict = "kept: not separately priceable -- typed into the build's emission, an
 
 [ablations.searched_constants]
 saving = 0.0
-verdict = "kept: no frozen table remains -- the labels, gadget outputs, gadget values, seeds, hubs, stubs and operands are closed forms above n = 15; only navigation and the n <= 15 seeds and stubs (lowest clear address, fewest ops) are searched, once per process, no rule reproducing navigation (limitations)"
+verdict = "kept: no frozen table remains -- the labels, gadget outputs, gadget values, seeds, hubs, stubs and operands are closed forms above n = 15; the n <= 15 seeds and stubs are a construction (canonical actions, limitations); navigation is a deterministic bounded heuristic whose chains were fitted on the breadth-first search it replaced, no closed form known (limitations)"
 
 [ablations.constant_folding]
 saving = 0.0
