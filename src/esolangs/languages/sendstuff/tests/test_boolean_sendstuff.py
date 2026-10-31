@@ -23,4 +23,4 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_equal_subtables_share_one_node() -> None:
     # Parity: one node per (level, parity), not one per row prefix.
-    assert sendstuff("0110100110010110").count("Input!o") == 7
+    assert sendstuff("0110100110010110").count("!y ") == 7

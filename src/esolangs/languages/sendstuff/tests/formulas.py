@@ -18,10 +18,10 @@ def _chars(n: int, _: str) -> int:
     pos = [(1 << s[d]) if full[d] else 1 << d for d in range(n)]
     lam = [_digits(1 + sum(bra[j] + eq[j] for j in range(d, n))) for d in range(n)]
     # Macros, ">root", the two leaves.
-    total = 51 + 1 + lam[0] + 2 * (24 + _digits(n))
+    total = 64 + 1 + lam[0] + 2 * (24 + _digits(n))
     for d in range(n):
         kap = 1 + _digits(d)  # z<d> / o<d>
-        total += bra[d] * (15 + lam[d]) + eq[d] * (9 + lam[d]) + con[d] * (9 + kap)
+        total += bra[d] * (10 + lam[d]) + eq[d] * (9 + lam[d]) + con[d] * (9 + kap)
         slots = 2 * bra[d] + eq[d] + con[d]
         if d + 1 == n:
             total += slots * (1 + _digits(n))

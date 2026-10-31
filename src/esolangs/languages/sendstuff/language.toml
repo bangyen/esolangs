@@ -14,14 +14,14 @@ workspace = "poly n: worst 10n + 12 + bl(n) + Σ_{d<n} bl(N_d) bits past n = 2, 
 definitions = ["N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last depth-d Input", "V_j = 4b + min(2^j - b, 2^(s/2)), b = min(2^j, 2^s - 2^(s/2)), s = 2^(n-j)"]
 
 [generator_sizes]
-"00000001" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 187 }
-"00001100" = { commands = 11, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 181 }
-"00110110" = { commands = 14, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 225 }
-"0110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10 }, source_units = 161 }
-"01101001" = { commands = 14, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 197 }
-"0110100110010110" = { commands = 18, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 18, "13" = 18, "14" = 18, "15" = 18 }, source_units = 233 }
-"1101001101101101" = { commands = 18, commands_by_row = { "0" = 15, "1" = 15, "2" = 18, "3" = 18, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 15, "13" = 15, "14" = 18, "15" = 18 }, source_units = 280 }
-"11111110" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 187 }
+"00000001" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 185 }
+"00001100" = { commands = 11, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 11, "7" = 11 }, source_units = 184 }
+"00110110" = { commands = 14, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 213 }
+"0110" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10 }, source_units = 159 }
+"01101001" = { commands = 14, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 185 }
+"0110100110010110" = { commands = 18, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 18, "13" = 18, "14" = 18, "15" = 18 }, source_units = 211 }
+"1101001101101101" = { commands = 18, commands_by_row = { "0" = 15, "1" = 15, "2" = 18, "3" = 18, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 18, "9" = 18, "10" = 18, "11" = 18, "12" = 15, "13" = 15, "14" = 18, "15" = 18 }, source_units = 253 }
+"11111110" = { commands = 14, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 185 }
 
 [ablations]
 audited = "2026-10-19"
@@ -45,6 +45,11 @@ verdict = "kept: canonical, exempt. A constant subtable is a chain reading the r
 saving = 158.0
 arity = 10
 verdict = "kept: bespoke, clears the bar. `!o`/`!z` replace the two inlined branch bodies `>(Subtract 49>X)>(Divide 48>(Subtract 1>Y))`. Inlining costs, on 20 random tables per arity (chars / balanced area), +37.6 / +36.8% at n=3, +104.3 / +98.9% at n=5, +152.9 / +151.0% at n=8, +158.0 / +156.7% at n=10 (min +156.3% chars); named at n=10 (chars / area): parity +131.8 / +125.0, majority +124.4 / +125.0, threshold 3 +115.2 / +117.2, AND and OR +72.9 / +69.0 (complements equal)"
+
+[ablations.input_macro]
+saving = 27.3
+arity = 10
+verdict = "kept: bespoke, clears the bar. `@y(Input!o %)` writes `Input!o` once for every branching node. Inlining it costs, on 20 random tables per arity (seed 700 + n; chars / balanced area), +23.6 / +23.9% at n=7, +26.2 / +26.7% at n=8, +27.4 / +27.3% at n=9, +27.3 / +27.6% at n=10 (the macro saves 19.1 / 20.8 / 21.5 / 21.5%, not falling); named at n=10 (chars / area): parity +20.3 / +21.9, majority +19.7 / +19.3, threshold 3 +17.8 / +17.6, AND and OR +9.7 / +10.8 and +14.8. Not shipped with it: base-64 node names ranked by reference count save 7.7 / 7.8 / 8.0 / 9.5% at n=7..10, under the bar. Every program executed: n=6..8 sampled tables, all rows, wrong-table control fails"
 
 [ablations.equal_halves_chain_audit]
 saving = 1.0

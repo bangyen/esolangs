@@ -5,14 +5,15 @@ send to it and reached from the last line, ``>root``.  A node is an
 ``Input``, which reads the next ``0`` (48) or ``1`` (49) whatever it
 receives; ``Subtract 49`` passes only a 1, and ``Divide 48`` (48 // 48 is
 1, 48 // 49 is 0) then ``Subtract 1`` only a 0, so each bit reaches one
-child.  The macros ``!o`` and ``!z`` write the two branches.  A node whose
+child.  The macros ``!o`` and ``!z`` write the two branches and ``!y`` an ``Input``
+with its ``!o`` (-19% to -22% at n=7..10 on random tables).  A node whose
 halves agree reads its bit and sends on; a constant subtable is a chain
 reading the remaining inputs into ``Constant 48`` or ``49`` and Output.
 Names are ``subtree_ids`` ids, the chains ``z<depth>``/``o<depth>``.
 
 Size:
     O(T) size and build time: at most T - 1 diagram nodes and 2n chain nodes;
-    n=10 parity: 485 chars, n=10 random 1847: 5,220 chars.
+    n=10 parity: 403 chars, n=10 random 1847: 4,098 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
@@ -21,7 +22,7 @@ from esolangs.languages.sendstuff.proof_formulas import workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
-_MACROS = "@o(>(Subtract 49>%))@z(>(Divide 48>(Subtract 1>%)))"
+_MACROS = "@o(>(Subtract 49>%))@z(>(Divide 48>(Subtract 1>%)))@y(Input!o %)"
 
 
 def sendstuff(truth_table: str) -> str:
@@ -48,9 +49,7 @@ def sendstuff(truth_table: str) -> str:
                 body = f"Input>{name(depth + 1, 2 * k)}"
                 below.add(2 * k)
             else:
-                body = (
-                    f"Input!o {name(depth + 1, 2 * k + 1)} !z {name(depth + 1, 2 * k)}"
-                )
+                body = f"!y {name(depth + 1, 2 * k + 1)} !z {name(depth + 1, 2 * k)}"
                 below |= {2 * k, 2 * k + 1}
             levels[depth][here] = f"|{here}({body})"
         frontier = below
