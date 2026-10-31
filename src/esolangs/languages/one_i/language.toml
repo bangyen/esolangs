@@ -8,20 +8,20 @@ admitted = 2026-10-15T13:25:54-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched"
-scaling = "linear: worst 37T/4 - 10 characters past n = 1: ten a node"
-execution = "poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b"
+scaling = "linear: worst 25T/4 - 6 characters past n = 1: six a node"
+execution = "poly n: worst 4n + 3 steps: four a level, seven to print 1 - b"
 workspace = "poly n: worst W bits, n = 2..27: frame, stack and input position"
-definitions = ["W = 51, 61, 64, 70 at n = 2..5; 3n+52+bl(2n-1) to 13; 3n+48+bl(n+2)+bl(2n-1) to 24; 5n-1+bl(n+5)+bl(2n-1) from 25"]
+definitions = ["W = 2n^2 + 36n - 23 + bl(2n-1); 104 at n = 3"]
 
 [generator_sizes]
-"00000001" = { commands = 14, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 18, "5" = 18, "6" = 14, "7" = 14 }, source_units = 35 }
-"00001100" = { commands = 18, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 39 }
-"00110110" = { commands = 23, commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 14, "5" = 14, "6" = 23, "7" = 23 }, source_units = 55 }
-"0110" = { commands = 17, commands_by_row = { "0" = 8, "1" = 8, "2" = 17, "3" = 17 }, source_units = 23 }
-"01101001" = { commands = 14, commands_by_row = { "0" = 14, "1" = 14, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 14, "7" = 14 }, source_units = 56 }
-"0110100110010110" = { commands = 29, commands_by_row = { "0" = 20, "1" = 20, "2" = 29, "3" = 29, "4" = 29, "5" = 29, "6" = 20, "7" = 20, "8" = 29, "9" = 29, "10" = 20, "11" = 20, "12" = 20, "13" = 20, "14" = 29, "15" = 29 }, source_units = 122 }
-"1101001101101101" = { commands = 20, commands_by_row = { "0" = 24, "1" = 24, "2" = 20, "3" = 20, "4" = 24, "5" = 24, "6" = 24, "7" = 24, "8" = 20, "9" = 20, "10" = 29, "11" = 29, "12" = 24, "13" = 24, "14" = 20, "15" = 20 }, source_units = 111 }
-"11111110" = { commands = 23, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 18, "5" = 18, "6" = 23, "7" = 23 }, source_units = 44 }
+"00000001" = { commands = 10, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 10, "7" = 10 }, source_units = 27 }
+"00001100" = { commands = 12, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 21 }
+"00110110" = { commands = 15, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 10, "5" = 10, "6" = 15, "7" = 15 }, source_units = 24 }
+"0110" = { commands = 11, commands_by_row = { "0" = 6, "1" = 6, "2" = 11, "3" = 11 }, source_units = 15 }
+"01101001" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 10, "7" = 10 }, source_units = 36 }
+"0110100110010110" = { commands = 19, commands_by_row = { "0" = 14, "1" = 14, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 14, "7" = 14, "8" = 19, "9" = 19, "10" = 14, "11" = 14, "12" = 14, "13" = 14, "14" = 19, "15" = 19 }, source_units = 78 }
+"1101001101101101" = { commands = 14, commands_by_row = { "0" = 18, "1" = 18, "2" = 14, "3" = 14, "4" = 11, "5" = 11, "6" = 11, "7" = 11, "8" = 14, "9" = 14, "10" = 19, "11" = 19, "12" = 18, "13" = 18, "14" = 14, "15" = 14 }, source_units = 64 }
+"11111110" = { commands = 15, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 15, "7" = 15 }, source_units = 32 }
 
 [catalogue]
 sharing_exempt = "a deeper function literal needs a whole-stack roll to reuse"
@@ -37,18 +37,40 @@ verdict = "kept: canonical, exempt. A constant subtable prints its literal at on
 [ablations.equal_halves_sharing]
 saving = 6.65
 arity = 12
-verdict = "kept: canonical, exempt. A node whose halves agree pushes one function literal and ':'s it, so its bit is read but never really tested. Removing the sharing costs +6.67% at n=10 and +6.65% at n=12 on random tables, and on the ignored-input classes at n=12 +10.75% (one), +9.40% (two), +11.15% (three); it is 0.00% on parity, where no halves agree"
+verdict = "kept: canonical, exempt. A node whose halves agree reads its bit and drops it (B$, then the child), so the bit is never tested; measured with the earlier ':'-ing spelling [$$child]:B?. Removing the sharing costs +6.67% at n=10 and +6.65% at n=12 on random tables, and on the ignored-input classes at n=12 +10.75% (one), +9.40% (two), +11.15% (three); it is 0.00% on parity, where no halves agree"
 
 [ablations.last_level_forms]
 saving = 39.8
 arity = 12
-verdict = "kept: a last-level node prints Bp or 1 - b (ici*Bii**+p) instead of pushing two leaf literals for B? to choose between. Removing the short forms costs +39.88% at n=10 and +39.80% at n=12 on random tables and +81.92 / +81.84% on parity — above the bar outright, no exemption needed"
+verdict = "kept: a last-level node prints Bp or 1 - b (Biic+>p) instead of pushing two leaf literals for B? to choose between (measured with the earlier spelling ici*Bii**+p for 1 - b). Removing the short forms costs +39.88% at n=10 and +39.80% at n=12 on random tables and +81.92 / +81.84% on parity — above the bar outright, no exemption needed"
 
 [ablations.bare_b_drain]
 saving = 3.39
 arity = 12
 verdict = "recorded: the fold's drain spelling. After the constant prints, nothing reads the stack, so bare B replaces B$ — the Decisions figure (2n+5 -> n+5 a table) is the constant root's emission, verified: a constant table costs exactly n+5 chars. The B$ variant is execution-gated clean, so the price is real: spelling the drain B$ costs +3.60 / +3.44 / +3.41 / +3.39 / +3.39% on random tables at n=4/6/8/10/12 (one char per drained bit; the share is flat) and +70.59% on constant tables at n=12, where the program is nearly all drain. Part of the fold's realization, not a separate device"
 
+[ablations.literal_leak]
+saving = 25.9
+arity = 9
+seed = 20261030
+tables = 20
+verdict = "kept: `?` leaves both literals and nothing returns to them, so a child no longer opens with `$$` (2 chars a literal). Removing it costs +34.7 / +34.8 / +34.9% on 20 seeded random tables at n=7 / 8 / 9 (11,326 -> 15,258 / 22,844 -> 30,800 / 45,544 -> 61,432 chars; share flat); n=9 parity +38.0%, majority +37.1%, thr3 +34.4%, and/or +25.4%. Costs workspace: the stack grows two literals a level, so the exact bit worst goes from linear in n to 2n^2 + 36n - 23 + bl(2n-1) (poly n still). Every row of every table n<=3, 300 random n=4, named n=5..8, random n=5..8 and sampled rows at n=9 execute; wrong-table control fails"
+
+[ablations.compare_negate]
+saving = 9.8
+arity = 9
+seed = 20261030
+tables = 20
+verdict = "recorded: 1 - b is `Biic+>p` (b > 0, 0 built as i + conj i; 7 chars), not `ici*Bii**+p` (11). A spelling of the last-level negation: removing it costs +11.0 / +10.9 / +10.9% on random tables at n=7 / 8 / 9 (flat) and +19.1% on parity at n=8 and 9; 0.0% on and, or, majority and thr3, which have no last-level (1,0) node. Same execution gate as literal_leak"
+
+[ablations.constant_pair]
+saving = 6.9
+arity = 9
+seed = 20261030
+tables = 20
+verdict = "kept: canonical, exempt. A depth n-2 node of two different constants ignores its last input: it prints b (`Bp`) or 1 - b and drains the last bit (`BpB`, 3 chars) instead of branching between two constant drains (18). Removing it costs +7.5 / +7.7 / +8.4% on random tables at n=7 / 8 / 9 and 0.0% on parity, and, or, majority and thr3 at n=7..9; it is what keeps an ignored last input under half a real one (catalogue test)"
+
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

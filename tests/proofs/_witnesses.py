@@ -451,21 +451,12 @@ def _eval_alternating_upper(n: int) -> str:
 
 # language-owners: ["1 + i"]
 def _one_i_swapped(m: int) -> str:
-    """The largest m-input table: halves swapped, then doubled, from ``0010``."""
+    """The largest m-input table, the workspace worst: swap halves, double."""
     table = "0010"
     while len(table) < 1 << m:
         half = len(table) // 2
         table = table[half:] + table[:half] + table
     return table
-
-
-def _one_i_worst(n: int) -> str:
-    """The all-ones path past maximal zero siblings, a constant at its end."""
-    if n <= 13:
-        return _one_i_swapped(n)
-    if n <= 24:
-        return "".join(_one_i_swapped(n - 1 - i) for i in range(4)) + "0" * 2 ** (n - 4)
-    return _one_i_swapped(n - 1) + "0" * 2 ** (n - 1)
 
 
 # language-owners: ["INTERCAL"]
@@ -853,7 +844,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     # The last input ignored: n - 1 essential inputs can outrun all n.
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
-    "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_worst(n)) if n >= 2 else (),
+    "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_swapped(n)) if n >= 2 else (),
     "ArrowQueue": lambda n: (_low_one(n),),
     # The two-stack build's worst: a run of ones per pair in the upper half.
     "Eval": lambda n: (_eval_alternating_upper(n),) if n >= 4 else (),

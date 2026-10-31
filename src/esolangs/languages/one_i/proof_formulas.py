@@ -2,23 +2,16 @@
 
 
 def workspace(n: int, _: str) -> int:
-    """Snapshot bits of the worst row: frame + stack + input position, by range."""
-    bl = int.bit_length
-    io = bl(2 * n - 1)
-    if n == 1:
-        return 23
-    if n <= 13:
-        # s: largest start of a depth n-2 node; the literal pair sits at s and s+10,
-        # the last frame at s+13; offsets cost bits and bl(0) is one bit.
-        s = 37 * 2 ** (n - 2) - 3 * n - 31
-        return 40 + (bl(s) or 1) + bl(s + 10) + bl(s + 13) + io
-    if n <= 24:
-        # Peaks add per component: stack 2n+44 (bit, two literals of 16 + n+4
-        # bits; offsets stay under 37T/4 < 2^(n+4)) + frame n+4+bl(n+2) (a
-        # depth-4 constant at an n+4 bit offset, body n+3 ops with the `$$`),
-        # executed to n = 24 (row 11110000..); 4(n-1) of a depth-1 constant
-        # overtakes at n = 25.
-        return 3 * n + 48 + bl(n + 2) + io
-    # a constant half (bare B x (n-1), 4 bits each) outweighs the node terms;
-    # executed to n = 27 (any row opening 1: frame n+8, stack 4(n-1))
-    return 5 * n - 1 + bl(n + 5) + io
+    """Snapshot bits of the worst row: frame + stack + input position.
+
+    The stack holds two ``("fn", offset)`` literals (16 bits and the offset) per
+    branching level, 2(n-1) in all, then 13 bits of numbers in the last leaf's
+    ``Biic+>p``; the frame holds that leaf's offset and a 3-bit command number.
+    Offsets come from the left siblings at maximal length 25 * 2^k / 4 - 6: the
+    root's first is 0 (1 bit), its second and the next first take n+2 bits, the
+    remaining 2n-5 and the leaf's frame take n+3 (offsets pass 2^(n+2) from
+    depth 2); at n = 3 the last offset stays at n+2 bits, so 104.
+    """
+    if n == 3:
+        return 104
+    return 2 * n * n + 36 * n - 23 + (2 * n - 1).bit_length()

@@ -339,7 +339,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 | Generator | Proof | Qualification | Scaling | Execution | Workspace |
 | --- | --- | --- | --- | --- | --- |
 | /// | parameterized lookup | binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix | linear: worst 20T + n + 35 characters: T sweeps, 2T table | linear: worst 6T + n + 15 steps: rule parses, failed searches and substitutions | linear: worst 8L + 56 + 8max(0,T-15) bits: the program string, rewritten in place |
-| 1 + i | tree | a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched | linear: worst 37T/4 - 10 characters past n = 1: ten a node | poly n: worst 6n + 5 steps: six a level, eleven to print 1 - b | poly n: worst W bits, n = 2..27: frame, stack and input position |
+| 1 + i | tree | a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched | linear: worst 25T/4 - 6 characters past n = 1: six a node | poly n: worst 4n + 3 steps: four a level, seven to print 1 - b | poly n: worst W bits, n = 2..27: frame, stack and input position |
 | 3x | tree | — | linear: at most K characters: the plain tree under fixed keys | linear: worst L commands: the all-ones row enters every guard, no loop repeats | linear: at most n·bl(L) + bl(2n-1) + 3G + 2n + 2K(N) + 6bl(N-1) + 9 + Σ_{i≤N}(K(i)+3) bits |
 | 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks | linear, time n log: at most N characters: two raced orders over canonical subtree IDs | linear: worst L commands: loop-free, each token runs at most once; constant tables run every token | linear: worst 2T + 6n + 6 + bl(n) + bl(L) bits past n = 6: a tape of 2T cells |
 | A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike | linear: worst 13T/2 + 3n - 2 characters | linear: worst 2L commands: one pass to the fixed point, one proving the repeat | T log T: at most 2(n+1)T + 3 + bl(L-1) bits: corridor, answers, ant, cursor |
@@ -453,7 +453,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n.
 
 Symbols the formula cells use:
 
-- **1 + i:** W = 51, 61, 64, 70 at n = 2..5; 3n+52+bl(2n-1) to 13; 3n+48+bl(n+2)+bl(2n-1) to 24; 5n-1+bl(n+5)+bl(2n-1) from 25.
+- **1 + i:** W = 2n^2 + 36n - 23 + bl(2n-1); 104 at n = 3.
 - **3x:** K(i) = bits of the ith key's value, exact; G = the program's ( count; N = 1 + n + min(G, ⌊T/24⌋).
 - **ABCDirection:** d = (2n + 4) mod 5, the rows the read block drops.
 - **AddSubJump:** C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C; Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23.
