@@ -62,5 +62,6 @@ tables = 20
 verdict = "kept as a rule (not a race): write the integer or its complement, whichever has fewer digits, encoding with 49 ^ bit for the complement against 48 + bit. Random tables fail the bar (chars 0.7% n=3, 0.1% n=8..10 over 20-40 tables; balanced area 0.1-0.3%), but the rule clears it on named functions: or 30.7% chars, 50.0% area at n=8 and 59.2% / 74.1% at n=10; threshold-2 15.5% / 28.2% n=8, 29.6% / 32.7% n=10; majority 2.0% / 6.2% n=8; parity, and, nand, nor and the complement of majority 0.00%. Never larger; no race, one count. Plain-rewrite audit 2026-10-29: no other bespoke trick (input_projection, two_input_short_forms recorded above; folds are balance layouts); n<=3 exhaustive and n<=7 random and named tables executed on both builds (340 tables), control fails"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
