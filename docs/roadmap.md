@@ -34,12 +34,26 @@ evidence, not optimization tasks.
     placement and threaded rates inside the 9,897-cell complement), or
     new mathematics toward the 46,076 bits an impossibility proof needs
     beyond counting.
-  - *Next lead (2026-10-27, untested):* a `p` or `*` run during the
-    initial walk or a lockstep sweep deposits a full word for one source
-    cell, against 25-30 in the shipped label phase; its words fall in
-    five value bands, so one window sweep places about 30 labels and
-    leaves 29 of 94 residues uncovered. Try steering the sweep from
-    words prepared in the window.
+  - *Next lead (2026-10-27; tested 2026-10-31, refuted as stated):*
+    the deposit half of the claim is true -- a lockstep fall-through
+    sweep deposits a full word for exactly one source cell (a real
+    296-cell program in the shipped interpreter, 94 of 94 deposits
+    matching the stepper), against 21 cells measured for the shipped
+    label phase.  The application half fails: the sweep placed 0 of
+    the 74 shipped label cells in every configuration (best steered
+    case 8-10), because a prescribed word at a prescribed cell is
+    exactly what a sweep cannot do (still about 21 cells, as shipped).
+    The stated residue count matches nothing measured -- `p` sweeps
+    leave 36-41 of 94 residues uncovered, the `*` family 11, never
+    29; steering completes coverage only through two windows or the
+    k=5 family at 5 cells per word.  The five value bands are not
+    there either: `p` deposits form two narrow bands, `*` deposits
+    three rotation rails of width at most 31.  Nor does the lead move
+    the paused reseed's economics: the deposits its first stage
+    counts are few (12) and all prescribed, so the saving is at most
+    about 240 cells against that stage's 1,113-cell kill line; any
+    value is bulk seeding at the later stages' scale, through a
+    redesign inside the paused loop.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
