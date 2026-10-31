@@ -57,5 +57,6 @@ arity = 10
 verdict = "kept: canonical (an ignored input at one node), exempt. Plain-rewrite audit 2026-10-29, 20 random tables per arity, branching to both children instead: +0.99% chars / +1.08% area at n=10 (+1.75 / +1.22 at n=8, max +6.67% chars at n=3); named functions 0.00% at n=3..10. All plain-rewrite programs executed: n <= 3 exhaustive (276 tables, three builds), n=4..6 sampled, wrong-table control fails every row"
 
 [audits]
+trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
