@@ -8,7 +8,12 @@ drop the byte's other bits, one run each, and ``()`` is the node's own
 (empty) output.  A leaf ``z``/``o`` drops its bit and outputs the eight bits
 of ``'0'``/``'1'``.  A node whose halves are equal, as at an input the
 table ignores, is a pad of its one half; a constant subtree is pads all
-the way down to its leaf.  Source: 5 characters a node, 3 a pad.
+the way down to its leaf.  Source: 3 characters a node, 2 a pad, once
+the delimiter macros pay (below); 5 and 3 otherwise.
+
+``X`` = ``)(``, ``Y`` = ``)n`` and ``W`` = ``)m`` spell a node as ``(aXbY``
+and a pad as ``(aW``; each is defined (4 characters) only when it occurs
+more than 4 times.
 
 Equal subtables at one level are one subtree, and a subtree two parents
 reach is a macro of its own when that is shorter: defined once, named at
@@ -16,8 +21,8 @@ each use.
 
 Size:
     O(T) worst case, never longer than the plain tree; O(n) steps, one run
-    per input bit.  n=10 parity: 258 chars, n=10 and: 207 chars, n=10
-    random 1847: 1,650 chars.
+    per input bit.  n=10 parity: 228 chars, n=10 and: 186 chars, n=10
+    random 1847: 1,194 chars.
 
 Decisions:
     Inlining a kept macro never saves: its test only gets easier as its
@@ -48,10 +53,12 @@ _MACROS = (
     "z(())=(||||++||)z"
     "o(())=(+|||++||)o"
 )
+#: Delimiter macros, each defined only where its uses pay the 4 characters.
+_DELIMS = {"X": "X)(X", "Y": "Y)nY", "W": "W)mW"}
 
 
 #: Macro names end in a letter, any but the five above; digits extend them.
-_LETTERS = "".join(c for c in ascii_letters if c not in "knmzo")
+_LETTERS = "".join(c for c in ascii_letters if c not in "knmzoXYW")
 
 
 def _name(index: int) -> str:
@@ -84,19 +91,29 @@ def smu(truth_table: str) -> str:
     uses = Counter(child for pair in kids.values() for child in pair)
     shared = sorted((k for k in kids if uses[k] > 1 and kids[k]), key=uses.__getitem__)
     names = {key: _name(index) for index, key in enumerate(reversed(shared))}
-    parts = [_MACROS]
-    for key, pair in kids.items():  # post-order: children are rendered first
-        if len(pair) == 1:
-            text[key] = f"({text[pair[0]]})m"
-        elif pair:
-            zero, one = (text[child] for child in pair)
-            text[key] = f"({zero})({one})n"
-        name = names.get(key)
-        if name and (uses[key] - 1) * len(text[key]) > (uses[key] + 2) * len(name):
-            parts.append(name + text[key] + name)
-            text[key] = name
-    parts.append(text[root])
-    return "".join(parts)
+
+    def render(delims: str) -> str:
+        """The program with the delimiter macros in ``delims`` defined."""
+        join, close, pad = (c if c in delims else _DELIMS[c][1:-1] for c in "XYW")
+        parts = [_MACROS + "".join(_DELIMS[c] for c in delims)]
+        body: dict[tuple[int, int], str] = {}
+        for key, pair in kids.items():  # post-order: children are rendered first
+            if len(pair) == 1:
+                body[key] = f"({body[pair[0]]}{pad}"
+            elif pair:
+                zero, one = (body[child] for child in pair)
+                body[key] = f"({zero}{join}{one}{close}"
+            else:
+                body[key] = text[key]
+            name = names.get(key)
+            if name and (uses[key] - 1) * len(body[key]) > (uses[key] + 2) * len(name):
+                parts.append(name + body[key] + name)
+                body[key] = name
+        parts.append(body[root])
+        return "".join(parts)
+
+    used = render("XYW")[len(_MACROS) + 12 :]
+    return render("".join(c for c in "XYW" if used.count(c) > 4))
 
 
 LANGUAGE = Language(

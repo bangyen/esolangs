@@ -2,10 +2,15 @@
 
 
 def _chars(n: int, _: str) -> int:
-    """C: 95 + per level 5 a node, 3 a pad, plus 2D + E or 4(E - D) of macro names.
+    """C: 107 + per level 3 a node, 2 a pad, plus 2D + E or 3(E - D) of macro names.
 
-    From n = 12 the 256 eight-bit subtables are each named, one-letter names
-    going to the most used; exact to n = 15.  From n = 16 (32 uses, above the
+    Exact at n = 3, 5, 9, 10, 11 (n = 7: no table reaches it, the 4 level-5 pads
+    used twice stay inline, 3 < 4).  From n = 12 it is the price before
+    the delimiter macros, an upper bound only (witness 4,256 at n = 12, 42,532
+    at n = 16, against 6,267 and 59,330): the old constants no longer fit
+    and the exact worst case is open.  Before them, from n = 12 the 256
+    eight-bit subtables are each named, one-letter names going to the most
+    used; exact to n = 15.  From n = 16 (32 uses, above the
     4-bit tables' 31) the 8-bit tables outrank the lower macros: 47 get
     one-letter names, the rest and every 4- and 2-bit macro two letters, so
     5T/8 + 465T/2048 + 3490, exact at n = 16 only.  Past n = 16 that price
@@ -39,23 +44,27 @@ def _chars(n: int, _: str) -> int:
         lower = 8 * tail + 22 + 104 + 28 * tail  # the 2- and 4-bit macros
         named = 16 * pad(1) + (short - 16) * unequal(1) + (256 - short) * unequal(2)
         return 95 + 5 * ((1 << (n - 3)) - 1) + lower + named
-    total, edges = 95, 1
+    # 107 = 95 + the X, Y, W delimiter macros (4 each), a delimiter defined
+    # only past 4 uses: with 6 or fewer pads (n <= 5) W is not, and each pad
+    # is one character longer.
+    total, edges, pads_all = 107, 1, 0
     for j in range(n):
         s = 1 << (n - j)
         nodes = min(1 << j, 1 << s)
         unequal = min(nodes, (1 << s) - (1 << (s // 2)))
         pads = nodes - unequal
+        pads_all += pads
         if j:
-            total += 2 * nodes + edges if edges >= 2 * nodes else 4 * (edges - nodes)
-        total += 5 * unequal + 3 * pads
+            total += 2 * nodes + edges if edges >= 2 * nodes else 3 * (edges - nodes)
+        total += 3 * unequal + 2 * pads
         edges = 2 * unequal + pads
-    return total + edges
+    return total + edges - (4 - pads_all if pads_all <= 4 else 0)
 
 
 FORMULAS = {
     "scaling": (
         _chars,
-        frozenset((3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16)),
+        frozenset((3, 5, 9, 10, 11)),
         (3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18),
     )
 }

@@ -7,8 +7,8 @@ admitted = 2026-10-07T12:46:28-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-scaling = "linear: worst C characters to n = 16, at most 6T+90 after"
+qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros and up to three delimiter macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
+scaling = "linear: at most C characters to n = 16, 6T+90 after"
 execution = "poly n: worst 55n + 5 commands, one tree path of eight runs a level"
 workspace = "linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables"
 definitions = ["E = 95T - 80, the macro-expanded program with no constant subtree"]
@@ -16,11 +16,11 @@ definitions = ["E = 95T - 80, the macro-expanded program with no constant subtre
 [generator_sizes]
 "00000001" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 123 }
 "00001100" = { commands = 166, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 166, "7" = 166 }, source_units = 120 }
-"00110110" = { commands = 164, commands_by_row = { "0" = 166, "1" = 166, "2" = 166, "3" = 166, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 132 }
+"00110110" = { commands = 164, commands_by_row = { "0" = 166, "1" = 166, "2" = 166, "3" = 166, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 130 }
 "0110" = { commands = 111, commands_by_row = { "0" = 111, "1" = 111, "2" = 111, "3" = 111 }, source_units = 114 }
-"01101001" = { commands = 164, commands_by_row = { "0" = 164, "1" = 164, "2" = 164, "3" = 164, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 132 }
-"0110100110010110" = { commands = 217, commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 217, "5" = 217, "6" = 217, "7" = 217, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 217, "13" = 217, "14" = 217, "15" = 217 }, source_units = 150 }
-"1101001101101101" = { commands = 217, commands_by_row = { "0" = 219, "1" = 219, "2" = 217, "3" = 217, "4" = 219, "5" = 219, "6" = 219, "7" = 219, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 219, "13" = 219, "14" = 217, "15" = 217 }, source_units = 159 }
+"01101001" = { commands = 164, commands_by_row = { "0" = 164, "1" = 164, "2" = 164, "3" = 164, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 130 }
+"0110100110010110" = { commands = 217, commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 217, "5" = 217, "6" = 217, "7" = 217, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 217, "13" = 217, "14" = 217, "15" = 217 }, source_units = 144 }
+"1101001101101101" = { commands = 217, commands_by_row = { "0" = 219, "1" = 219, "2" = 217, "3" = 217, "4" = 219, "5" = 219, "6" = 219, "7" = 219, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 219, "13" = 219, "14" = 217, "15" = 217 }, source_units = 151 }
 "11111110" = { commands = 164, commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 123 }
 
 [ablations]
@@ -30,6 +30,13 @@ audited = "2026-10-29"
 saving = -5.8
 arity = 12
 verdict = "removed (retirement candidate 33): a constant span no longer folds to a leaf wrapped in one pad per skipped level; constant spans descend the pad chain instead, so a recurring constant subtree is one shared subtree that can be defined as a macro. The folded leaf had no children, so it could never be defined as a macro, and its text was embedded whole at every parent. The audit measured the descent smaller: -8.75% at n=10 and -5.78% at n=12 on random tables, -8.79% on majority at n=12, 0.00% on parity and constant tables. See RETIREMENT-CANDIDATES entry 33"
+
+[ablations.delimiter_macros]
+saving = 40.4
+arity = 12
+seed = 4242
+tables = 20
+verdict = "kept: ``X`` = ``)(``, ``Y`` = ``)n``, ``W`` = ``)m`` each defined only past 4 uses (4 characters), a node ``(aXbY`` 5 characters and a pad ``(aW`` 3 instead of 7 and 4. Executed: all 2**n rows of 20 random tables at n=7,8 and five named functions at n=7, correct; a flipped-row table fails. Measured 2026-10-30, 20 random tables an n (seed 4242 + n) against the generator without them: chars -19.5% / -23.1% / -26.2% / -28.8% at n=7/8/9/12 (deleting them costs +40.4% at n=12) (8,133 -> 6,545; 12,411 -> 9,546; 19,620 -> 14,489; 110,875 -> 78,943 at n=12), balanced area -19.4 / -22.8 / -25.8%. Named functions at n=7 / n=9: parity -8.8 / -10.8%, and -6.4 / -9.2%, or the same, majority -11.2 / -14.9%, threshold-3 -11.3 / -14.0%; the saving is per node, so it grows with n on random tables while the n=3 total over all 256 tables falls 0.5% (32,322 -> 32,174). The 'worst' ledger clause is exact only at n = 3, 5, 9, 10, 11 now (see formulas.py); n = 7 and 12..16 are 'at most' (old constants, exact worst case open)"
 
 [ablations.halves_agree_pad]
 saving = 1.1
