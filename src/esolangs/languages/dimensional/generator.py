@@ -8,11 +8,13 @@ a *coordinate* (its ``{`` arm), so the index doubles.
 The table is painted in full, two characters an entry: a run of zeros is
 a counter loop where that is shorter, any other entry is painted one by
 one.  Whichever of the table and its complement paints shorter is painted;
-the complement is read out as ``1 - c`` through a fresh cell.
+the complement is read out as ``1 - c`` through a fresh cell.  From n=7 a pair
+of entries shares one cell (:func:`_packed`) where that is shorter: random and
+parity tables, not the looped runs of and, or and thresholds.
 
 Size:
-    O(T) for dense tables, O(n) for and; n=10 random 1847: 2,306 chars,
-    n=10 and: 377 chars, n=10 majority: 1,995 chars.
+    O(T) for dense tables, O(n) for and; n=10 random 1847: 1,997 chars,
+    n=10 and: 372 chars, n=10 majority: 1,861 chars.
 
 Decisions:
     The bare leaf-coordinate form (width 1, n<=2) is 97-217 characters against
@@ -52,6 +54,12 @@ _READ = "d>!0"
 _FLIP = str.maketrans("01", "10")
 # Move the painted bit c onto a fresh cell as -c; 49 more then prints 1 - c.
 _NEGATE = f"[->{_COUNTER}-<{_COUNTER}]>{_COUNTER}"
+# Packed cell value for an entry pair; _UNPACK splits it onto dimensions 4, 5.
+# Packing won on every random table sampled from n=7 (0 of 300 lost) and lost
+# on 8 of 300 at n=6, 114 at n=5.
+_PACK_FROM = 7
+_PACK = {"00": 0, "10": 1, "11": 2, "01": 3}
+_UNPACK = f"[->{_COUNTER}+<{_COUNTER}[->{_SPARE}+<{_SPARE}[->{_COUNTER}-<{_COUNTER}]]]"
 
 
 def dimensional(truth_table: str, width: int | None = None) -> str:
@@ -86,7 +94,43 @@ def _program(truth_table: str, width: int | None = None) -> str:
     else:
         tail = "+" * _ASCII_ZERO
     program = painted + index + f">{_PLANE}" + tail + "."
+    packed = _packed(truth_table, weights) if n >= _PACK_FROM else None
+    if packed is not None and len(packed) < len(program):
+        program = packed
     return wrap_program(program, "dimensional", width)
+
+
+def _packed(truth_table: str, weights: list[int]) -> str | None:
+    """Pack two entries a cell; the last input is not read but decoded.
+
+    The cell for a doubled index holds 0, 1, 2, 3 for (low, high) = (0,0),
+    (1,0), (1,1), (0,1).  ``d`` reads the last bit and ``++++>`` steps onto
+    dimension 4 (low) or 5 (high), where the decoder left them.  None unless
+    the last input is essential and a second one is read.
+    """
+    if not weights[-1] or sum(map(bool, weights)) < 2:
+        return None
+    values = [_PACK[truth_table[i : i + 2]] for i in range(0, len(truth_table), 2)]
+    cells = [
+        _advance(len(run))
+        if value == 0
+        else ("+>" if value == 1 else "+" * value + f">{_INDEX}") * len(run)
+        for value, group in groupby(values)
+        for run in ["".join(map(str, group))]
+    ]
+    painted = f">{_PLANE}" + "".join(cells) + f"+!{_INDEX}<{_PLANE}"
+    reads = (_DOUBLE + _READ if weight else "d" for weight in weights[:-1])
+    return (
+        painted
+        + "".join(reads)
+        + f">{_PLANE}"
+        + _UNPACK
+        + "d"
+        + "+" * _COUNTER
+        + ">"
+        + "+" * _ASCII_ZERO
+        + "."
+    )
 
 
 def _paint(truth_table: str) -> str:

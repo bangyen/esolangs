@@ -64,6 +64,11 @@ saving = 93.7
 arity = 12
 verdict = "kept: the table or its complement is painted, whichever paints shorter, and a complement is read out through a fresh dimension-4 cell as 49 - c (`[->4-<4]>4` and one more `+`, 11 chars). Zero runs loop and ones cost two characters each, so or/nand paid per one. 0.00% on random tables (20 seeded) at n=7 and n=8, parity, majority, and, nor 0.0%; or/nand 40.1% / 58.9% / 83.2% / 93.7% at n=7 / 8 / 10 / 12 (730 -> 300 chars at n=8, 2,306 -> 388 at n=10), popcount>=2 26.4% / 42.9% / 72.7% / 88.4%, popcount>=3 8.8% / 23.4% / 54.6% / 77.3%, popcount>=4 0.0% / 5.5% / 31.7% / 58.5% (share rising with n). Balanced area follows (or at n=10 4,624 -> 841). Measured 2026-10-28 chars, every program executed (n<=3 exhaustive, 60-300 samples at n=4..6, named tables to n=10). Plain-rewrite audit 2026-10-28 (20 random tables per n, Random(1000n+s).getrandbits(1<<n), plus named tables): balanced area or/nand 40.1% / 55.6% / 81.8% at n=7 / 8 / 10, popcount>=2 29.7% / 40.8% / 72.0%, popcount>=3 6.3% / 24.0% / 54.2%; random 0.00% size and balanced; kept for the or/nand and threshold family"
 
+[ablations.pair_packing]
+saving = 17.7
+arity = 12
+verdict = "kept: from n=7 two entries share one painted cell when that is shorter (values 0-3 for (low, high); the last input is not read into the index but decoded by `[->4+<4[->5+<5[->4-<4]]]` onto dimension 4 or 5 and stepped onto by `d++++>`). Random tables (Random(1000n+s), 200 at n=8, 20 at n=7 / 9 / 10 / 11, 10 at n=12) 7.5% / 11.6% / 13.6% / 15.7% / 17.2% / 17.7% at n=7..12, rising toward the cap; 0 of 300 random tables lose from n=7 and 8 of 300 at n=6, which is why it starts at 7 (n=7 misses the bar, n=8 clears it). Balanced area 7.6% / 11.3% / 13.2% / 15.1% at n=7 / 8 / 9 / 10. Named: parity 4.8% / 7.4% / 9.4% / 10.7% / 11.9% and majority 1.1% / 4.8% / 3.9% / 6.7% / 7.3% at n=7 / 8 / 9 / 10 / 12, and/or/threshold 0-5% (they loop their runs; the plain build stays the shorter and keeps them O(n)). Every changed program executed through the interpreter: all rows of 200 random tables at n=8 and 20 at n=7 plus parity and majority, 0 wrong; a complemented-table program fails all rows"
+
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

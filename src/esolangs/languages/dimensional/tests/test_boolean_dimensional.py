@@ -111,6 +111,21 @@ class TestDimensional:
         parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.dimensional(parity)) < 10_000
 
+    def test_a_pair_of_entries_shares_a_cell_from_n7(self) -> None:
+        """Random tables pack two entries a cell and execute; or keeps its loop."""
+        rng = random.Random(7)
+        table = "".join(rng.choice("01") for _ in range(128))
+        program = generate("Dimensional", table)
+        assert "[->4+<4[->5+<5[->4-<4]]]" in program
+        for row in range(0, 128, 5):
+            stdin = "\n".join(format(row, "07b"))
+            assert (
+                run("Dimensional", program, stdin=stdin, max_steps=100_000)
+                == table[row]
+            )
+        either = "0" + "1" * 127
+        assert "[->4+<4[->5" not in generate("Dimensional", either)
+
     def test_a_sparse_table_with_trailing_zeros_executes(self) -> None:
         """Trailing zeros are painted like any other run; every row answers."""
         table = "0" * 9 + "1" + "0" * 6
