@@ -68,6 +68,14 @@ seed = "named and random affine tables"
 tables = 8
 verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) sums its counted bits two cells a step, halves a copy and subtracts the half twice, printing the sum mod 2, raced by length against the flag tree. Parity 69.7% at n=4, 77.9% at n=6, 81.0% at n=7, 83.4% at n=8, 86.9% at n=10, 89.2% at n=12; random affine tables 41-67% where the sum wins. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 10 tables change, none grows, every changed program executed; named and affine tables executed through n=10. Plain-rewrite audit 2026-10-28 (after the complement tree): parity 81.0% / 83.4% / 86.9% / 89.2% at n=7 / 8 / 10 / 12 (balanced 80.9% / 80.2% / 86.3% / 89.3%), the 20 random tables at n=7 / 8 and 3 at n=10 / 12 unchanged, majority, and, or, nand, nor and thresholds 0.0%"
 
+[ablations.fourfold_move_runs]
+saving = 2.26
+arity = 8
+seed = "random.Random(i * 1000 + n), i < 20 at n=7..8, i < 3 at n=9..12"
+tables = 20
+verdict = "rejected 2026-10-31: decode, replace each llll/rrrr by lt/rt (t repeats the preceding move three times), then re-encode. Saves two chars per four moves, at most half the eligible movement text. Random totals 24,853->24,223 / 48,225->47,133 at n=7/8 (2.535/2.264%); 2.201/2.032/1.950/1.757% at n=9..12, declining. Named and/or 4.0-6.1%, parity 0%; majority peaks 8.50% at n=11, falls to 7.99% at n=12; threshold <=n//3 peaks 8.27% at n=8, 7.24% at n=12. No family meets 10%. Executed both programs for every table/row n=1..3 (n=3 total 20,234->19,882), four seeded tables per n=4..6 on every row, four rows per larger random/named table: 5,792 row executions pass output and input-read count checks; workspace stays within ledger. Positive control psllllo -> pslto executes identically; psltpso prints the wrong answer. Pre-existing execution-ledger witness, not a regression: table 01111101 row 111 takes baseline 65 commands (99 chars), compressed 63 (97 chars), versus stated 4n^2+9n+5-6floor(n/2)=62 at n=3. Reproduce by generating that table, applying the decoded replacement, and stepping each program on input 1/1/1. Prototype only; bounds unchanged."
+
 [audits]
 blind_reimplementation = 2026-10-30
+trick_prototype = 2026-10-31
 plain_rewrite = 2026-10-28

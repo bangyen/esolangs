@@ -6,8 +6,8 @@ kept input is tested at every node.  A bounded DAG replaces the tree when
 smaller; narrow widths try rotation, strips and streaming trees.
 
 Size:
-    Linear area in T for the plain tree; n=8 parity: 6,379 chars, n=10 and:
-    113,005 chars, n=10 random 1847: 240,317 chars.
+    Linear area in T for the plain tree; n=8 parity: 6,139 chars, n=10 and:
+    3,015 chars, n=10 random 1847: 66,063 chars.
 
 Decisions:
     Greedy input order saves 0.2% at n=8 and swapping the root's arms 0.5%,
@@ -345,7 +345,39 @@ class _LayoutTree(_TreeEmitter):
         return children
 
 
+def _coalesce(program: str) -> str:
+    """Contract repeated straight transit strips, retaining one wire cell."""
+    rows = program.splitlines()
+    width = max(map(len, rows))
+    rows = [row.ljust(width) for row in rows]
+
+    def strips(lines: list[str], alphabet: str) -> list[str]:
+        kept: list[str] = []
+        allowed = set(alphabet)
+        for line in lines:
+            if not (kept and line == kept[-1] and set(line) <= allowed):
+                kept.append(line)
+        return kept
+
+    # Ordinary generated diagrams carry one pointer at a time: a data arrival
+    # starts the next execution leg. Contracting transit cannot change a merge.
+    # Native XOR has concurrent starts but no repeated transit strips.
+    rows = strips(rows, " │║")
+    columns = strips(["".join(row[x] for row in rows) for x in range(width)], " ─═")
+    return "\n".join(
+        "".join(column[y] for column in columns).rstrip() for y in range(len(rows))
+    )
+
+
 def thisthat(truth_table: str, width: int | None = None) -> str:
+    """Return a diagram with identical straight transit strips coalesced.
+
+    See ``[ablations.transit_strip_coalescing]`` for the executed corpus.
+    """
+    return _coalesce(_diagram(truth_table, width))
+
+
+def _diagram(truth_table: str, width: int | None = None) -> str:
     """Return a linear-area tree or a bounded DAG with shared residuals.
 
     The DAG uses directed crossings within the O(T) area of the plain tree;
@@ -367,6 +399,7 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
             program = candidate
     if width is None or width <= 0:
         return program
+    plain, program = _coalesce(plain), _coalesce(program)
     narrow_plain = _narrow_tree(truth_table, plain, width)
     if program == plain:
         return narrow_plain
@@ -550,7 +583,7 @@ def _balance(truth_table: str, default: str) -> str:
     return min(
         default,
         thisthat(truth_table, 1),
-        _tree(truth_table, flat=True),
+        _coalesce(_tree(truth_table, flat=True)),
         key=balance_score,
     )
 
@@ -764,7 +797,7 @@ LANGUAGE = Language(
     no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
     eof="an exhausted '◇' sends the spec's empty transfer",
     empty_program="thisthat needs at least one start node",
-    proof_execution=(execution, True, (3, 4)),
-    proof_workspace=(workspace, True, (3, 5)),
+    proof_execution=(execution, False, (3, 4)),
+    proof_workspace=(workspace, False, (3, 5)),
     grid=True,
 )

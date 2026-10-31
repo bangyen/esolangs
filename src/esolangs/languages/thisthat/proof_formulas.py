@@ -1,4 +1,4 @@
-"""Executed command and snapshot-bit bounds."""
+"""Uncontracted command and snapshot-bit upper bounds."""
 
 
 def execution(n: int, _: str) -> int:

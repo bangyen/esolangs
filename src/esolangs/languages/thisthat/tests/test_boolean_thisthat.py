@@ -74,7 +74,7 @@ def test_pruning_never_grows_a_table() -> None:
             size = len(thisthat(table))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 164_548
+    assert sum(len(thisthat(table)) for table in tables) == 77_192
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
 
@@ -133,7 +133,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert max(map(len, thisthat("0110", 1).splitlines())) == 1
     assert len(thisthat("0110", 1)) == 17
-    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1028
+    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 784
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
@@ -198,7 +198,7 @@ def test_shared_residual_buses_execute_within_ledger() -> None:
     def area(source):
         return len(source.splitlines()) * max(map(len, source.splitlines()))
 
-    assert (area(plain), area(program)) == (12995, 5831)
+    assert (area(plain), area(program)) == (12995, 5537)
     shared = shared_tree(table)
     assert shared is not None
     assert shared[1] == 335
@@ -263,7 +263,7 @@ def test_shared_unequal_bus_banks_execute_all_rows() -> None:
     table = "".join(parts[i] for i in (0, 1, 2, 0, 2, 1, 0, 2))
     source = thisthat(table)
     area = len(source.splitlines()) * max(map(len, source.splitlines()))
-    assert area == 13455 < 14283  # Preceding equal-bank emitted area.
+    assert area == 13065 < 14283  # Preceding equal-bank emitted area.
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:09b}")
         run(source.splitlines(), io)
@@ -310,15 +310,15 @@ def test_a_dag_over_the_cycle_bound_is_refused() -> None:
     """The shared form is smaller here but runs past 32 * 2^(n/2) - 29 cycles."""
     table = "0000111011101111"
     source = esolangs.generate("thisthat", table)
-    assert len(source) == 2053
+    assert len(source) == 799
     assert evaluate_generated("thisthat", table) == table
 
 
 @pytest.mark.parametrize(
-    ("n", "side"), [(6, 118), pytest.param(8, 246, marks=pytest.mark.medium)]
+    ("n", "side"), [(6, 106), pytest.param(8, 218, marks=pytest.mark.medium)]
 )
 def test_balance_races_the_flat_tree(n: int, side: int) -> None:
-    """Halved vertical pitch makes an even-arity tree 2:1 (cell square: 230 / 486)."""
+    """Contracted flat trees retain their balanced size pins."""
     from esolangs.generation.wrap import balance_score
     from esolangs.runtime._evaluate import _evaluate
 
@@ -326,3 +326,28 @@ def test_balance_races_the_flat_tree(n: int, side: int) -> None:
     balanced = esolangs.generate("thisthat", table, balance=True)
     assert balance_score(balanced)[0] == side
     assert _evaluate("thisthat", balanced, 60, inputs=n, max_rows=None) == table
+
+
+def test_coalescing_preserves_the_single_pointer_schedule() -> None:
+    """Ordinary diagrams cannot race when transit legs contract."""
+    from esolangs.generation.helpers import grid_area
+    from esolangs.languages.thisthat.generator import _coalesce
+    from esolangs.languages.thisthat.interpreter import _Machine
+
+    for table in witnesses(3):
+        raw = _tree(table)
+        program = _coalesce(raw)
+        assert grid_area(program) <= grid_area(raw)
+        for row, expected in enumerate(table):
+            io = ScriptedIO(f"{row:03b}")
+            machine = _Machine(program.splitlines(), io)
+            for _ in range(1000):
+                if machine.halted:
+                    break
+                assert len(machine.pointers) == 1
+                assert machine.cursor == 0
+                machine.step()
+            assert machine.halted
+            assert (io.getvalue(), io.reads) == (expected, 3)
+    native = "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
+    assert _coalesce(native) == native

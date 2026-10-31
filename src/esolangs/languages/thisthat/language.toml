@@ -7,20 +7,20 @@ admitted = 2026-09-27T20:34:26-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop"
-scaling = "linear: worst N cells past n = 2: an H-tree of `O(sqrt(T))` sides"
-execution = "linear: worst 32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T"
-workspace = "poly n: worst 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n = 2"
+qualification = "inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop; repeated identical straight transit strips contract to one"
+scaling = "linear: at most N cells past n = 2: H-tree `O(sqrt(T))` sides"
+execution = "linear: at most 32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T"
+workspace = "poly n: at most 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n = 2"
 
 [generator_sizes]
-"00000001" = { commands = 59, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 51, "5" = 51, "6" = 59, "7" = 59 }, source_units = 621 }
-"00001100" = { commands = 39, commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 39, "5" = 39, "6" = 39, "7" = 39 }, source_units = 401 }
-"00110110" = { commands = 59, commands_by_row = { "0" = 51, "1" = 51, "2" = 51, "3" = 51, "4" = 59, "5" = 59, "6" = 59, "7" = 59 }, source_units = 629 }
-"0110" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37 }, source_units = 363 }
-"01101001" = { commands = 67, commands_by_row = { "0" = 67, "1" = 67, "2" = 67, "3" = 67, "4" = 67, "5" = 67, "6" = 67, "7" = 67 }, source_units = 781 }
-"0110100110010110" = { commands = 99, commands_by_row = { "0" = 99, "1" = 99, "2" = 99, "3" = 99, "4" = 99, "5" = 99, "6" = 99, "7" = 99, "8" = 99, "9" = 99, "10" = 99, "11" = 99, "12" = 99, "13" = 99, "14" = 99, "15" = 99 }, source_units = 2381 }
-"1101001101101101" = { commands = 99, commands_by_row = { "0" = 91, "1" = 91, "2" = 99, "3" = 99, "4" = 91, "5" = 91, "6" = 91, "7" = 91, "8" = 99, "9" = 99, "10" = 99, "11" = 99, "12" = 91, "13" = 91, "14" = 99, "15" = 99 }, source_units = 2381 }
-"11111110" = { commands = 59, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 51, "5" = 51, "6" = 59, "7" = 59 }, source_units = 621 }
+"00000001" = { commands = 39, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 41, "7" = 39 }, source_units = 299 }
+"00001100" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 31, "5" = 31, "6" = 29, "7" = 29 }, source_units = 225 }
+"00110110" = { commands = 39, commands_by_row = { "0" = 43, "1" = 43, "2" = 41, "3" = 41, "4" = 43, "5" = 41, "6" = 41, "7" = 39 }, source_units = 303 }
+"0110" = { commands = 27, commands_by_row = { "0" = 33, "1" = 31, "2" = 29, "3" = 27 }, source_units = 199 }
+"01101001" = { commands = 43, commands_by_row = { "0" = 51, "1" = 51, "2" = 49, "3" = 49, "4" = 47, "5" = 45, "6" = 45, "7" = 43 }, source_units = 355 }
+"0110100110010110" = { commands = 59, commands_by_row = { "0" = 67, "1" = 69, "2" = 67, "3" = 69, "4" = 67, "5" = 65, "6" = 67, "7" = 65, "8" = 63, "9" = 65, "10" = 61, "11" = 63, "12" = 63, "13" = 61, "14" = 61, "15" = 59 }, source_units = 883 }
+"1101001101101101" = { commands = 59, commands_by_row = { "0" = 63, "1" = 63, "2" = 67, "3" = 69, "4" = 61, "5" = 61, "6" = 61, "7" = 61, "8" = 63, "9" = 65, "10" = 61, "11" = 63, "12" = 57, "13" = 57, "14" = 61, "15" = 59 }, source_units = 883 }
+"11111110" = { commands = 39, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 41, "7" = 39 }, source_units = 299 }
 
 [ablations]
 audited = "2026-10-27"
@@ -70,7 +70,15 @@ seed = "random.Random(s), s = 0..19, n = 7, 8"
 tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/threshold-n/2 at n=7..10"
 verdict = "kept, balanced: the balance hook raced the default and the narrowest grid, so an even-arity H-tree stayed a cell square (243 x 241 at n=8, side 486). Halving the vertical pitch (vertical spans 4 * 2^k - 2) makes it 2:1 (123 x 241, side 246): balanced area (score squared) off 74.4% on random tables at n=8, 0.0% at n=7 (odd arities were already 2:1); named at n=8 parity 17.0%, majority and threshold-n/2 50.6%, threshold-3 44.0%, and/or/nand/nor 74.2%; n=9 0.0%; n=10 and/or/nand/nor 74.6%, majority 3.1% (the shared DAG wins the rest). Flat ~74% over even n, not declining. The default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad). Soundness is no cell shared by two wires, checked on all 65,812 tables n<=4, and execution of every n<=3 table plus 1,500 random n=4; halved-everywhere spans fail to produce an answer"
 
+[ablations.transit_strip_coalescing]
+saving = 74.2
+arity = 14
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "20 random per n=7..10, three per n=11/12, one n=14; and/or/parity/majority/two-thirds threshold separately"
+verdict = "kept 2026-10-31: coalesce consecutive identical vertical-only rows and horizontal-only columns, retaining one transit cell. Random emitted area n=7 554300→163724 (70.46%), n=8 1171260→342500 (70.76%), n=10 4960060→1351020 (72.76%); chars n=8 1112468→330396. Random area n=11/12/14 saves 73.52%/73.70%/74.21%; the full stencil halves both spans up to the O(n) loader, approaching 75%. At n=10 and/or 97.51%/98.02%, parity/majority/threshold 3.59%/2.35%/2.51%. n=3 area 202212→88160, chars 164548→77192. Executed 9844 default/control and 14976 narrow/balanced rows, including exhaustive n<=3 and sampled n=4..6; stretched-strip and wrong-answer controls passed. Ordinary builds carry one live pointer; native XOR is unchanged. Unchanged cursor, shorter transit and smaller coordinates preserve the original numerical bounds, now upper bounds."
+
 [audits]
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+trick_prototype = 2026-10-31
