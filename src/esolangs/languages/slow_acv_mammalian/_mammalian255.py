@@ -108,7 +108,12 @@ def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
     def build(rows: str, depth: int, pos: int, state: _State) -> list[str]:
         if not depth:
             tokens = _leaf_tokens(state, rows)
-            return tokens + ["SEED"] * (sizes[0] - len(tokens))
+            # The slot ends in a SPRINT guard, never executed in
+            # sequence (the leaf's LEAPFROG halts first): a jump that
+            # resumes at its target instead of after it lands here,
+            # with a token address in the accumulator, which exceeds
+            # every array here, so the SPRINT is a no-op.
+            return [*tokens, *["SEED"] * (sizes[0] - len(tokens) - 1), "SPRINT"]
 
         one_pos = pos + blocks[depth]
         zero_pos = one_pos + sizes[depth - 1]
@@ -116,7 +121,13 @@ def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
         tokens += zero.jump(zero_pos)
         if len(tokens) > blocks[depth]:  # pragma: no cover - fixed region bound
             raise AssertionError("decision node exceeds its reserved region")
-        tokens += ["SEED"] * (blocks[depth] - len(tokens))
+        pad = blocks[depth] - len(tokens)
+        if pad < 1:  # pragma: no cover - the overhead leaves a guard token
+            raise AssertionError("decision node leaves no guard before its one branch")
+        # The header's last padding token is the one branch's guard, and
+        # each subtree ends in its own guard, so the zero branch's jump
+        # is guarded by the one subtree's last token.
+        tokens += ["SEED"] * (pad - 1) + ["SPRINT"]
         middle = len(rows) // 2
         tokens += build(rows[middle:], depth - 1, one_pos, one)
         tokens += build(rows[:middle], depth - 1, zero_pos, zero)

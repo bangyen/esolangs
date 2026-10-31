@@ -188,8 +188,9 @@ def _leaf(digit: int, *, unit: int, guard: bool = True) -> list[str]:
     ``guard`` ends the slot in a ``SPRINT``: a LEAPFROG that resumes at its
     target instead of after it lands one token early, here, and the
     accumulator exceeds the array, so it does nothing before falling into
-    the leaf.  The unguarded form (the cell-255 chains) keeps the closing
-    ``EXCRETE`` that zeroes the accumulator for the halt.
+    the leaf.  The unguarded form keeps the closing ``EXCRETE`` that
+    zeroes the accumulator for the halt; the compact chain builds with
+    it and turns the slot's last padding token into the guard itself.
     """
     body = [
         "EXCRETE",

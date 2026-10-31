@@ -265,18 +265,31 @@ class _Chain:
         arm = self.bank_arm(one, zero, weight, pool, cont, hop)
         if len(tokens) > prefix_size or len(arm) > arm_size:  # pragma: no cover
             raise AssertionError("chain node exceeds its reserved regions")
-        tokens += ["SEED"] * (prefix_size - len(tokens))
-        tokens += arm + ["SEED"] * (arm_size - len(arm))
+        pad = prefix_size - len(tokens)
+        arm_pad = arm_size - len(arm)
+        if pad < 1 or arm_pad < 1:  # pragma: no cover - reserve leaves room
+            raise AssertionError("chain node leaves no room for its guards")
+        # Each region's last padding token is a SPRINT guard for the
+        # jump that lands past it (the node's one branch, the merge):
+        # a LEAPFROG that resumes at its target instead of after it
+        # lands on the guard with a token address in the accumulator,
+        # which exceeds every array here, so it does nothing.
+        tokens += ["SEED"] * (pad - 1) + ["SPRINT"]
+        tokens += arm + ["SEED"] * (arm_pad - 1) + ["SPRINT"]
         return tokens, zero
 
     def plan(self, inputs: int) -> tuple[list[tuple[int, int | None]], int, int, int]:
         free = min(inputs, len(self.pools) + 1)
         fixed = inputs - free
-        unit = 8
+        # The unit leaves one token past the longest leaf (6 tokens plus
+        # its digit SEEDs) for the SPRINT guard that ends the slot.
+        unit = 7 + self.digit_seeds
         stride = lcm(self.io_modulus, unit)
         if self.io_modulus == 255 and inputs > free:
-            unit = 6 + self.digit_seeds
-            free = min(free, (self.io_modulus // unit).bit_length() - 1)
+            unit = 7 + self.digit_seeds
+            # A group's leaf offsets must stay under the stride:
+            # (2**free - 1) * unit < io_modulus.
+            free = min(free, ((self.io_modulus - 1) // unit + 1).bit_length() - 1)
             fixed = inputs - free
             stride = self.io_modulus
         weights = [stride * (1 << (fixed - bit - 1)) for bit in range(fixed)]
@@ -354,6 +367,11 @@ class _Chain:
         if len(tokens) > base:  # pragma: no cover - reserve bounds the jump
             raise AssertionError(f"the table jump overran its {base} tokens")
         tokens += ["SEED"] * (base + table - len(tokens))
+        if tokens[base - 1] != "SEED":  # pragma: no cover - the fill precedes it
+            raise AssertionError("no fill token guards the leaf table")
+        # The fill token before the table guards the first leaf slot,
+        # as each leaf's own last token guards the next.
+        tokens[base - 1] = "SPRINT"
         tokens += self.plant_tables(state, plan, base)
         for weight, pool in plan:
             level, state = self.level(state, weight, len(tokens), pool)
@@ -385,9 +403,15 @@ class _Chain:
                 suffix = int(f"{offset:0{free}b}"[::-1], 2)
                 digit = table[(group << free) | suffix]
                 start = base + group * stride + offset * unit
-                tokens[start : start + unit] = _leaf(
-                    int(digit) * self.digit_seeds, unit=unit, guard=False
-                )
+                leaf = _leaf(int(digit) * self.digit_seeds, unit=unit, guard=False)
+                if leaf[-1] != "SEED":  # pragma: no cover - plan sizes the unit
+                    raise AssertionError("leaf slot leaves no room for its guard")
+                # The unguarded body keeps the closing EXCRETE the halt
+                # needs; the slot's last padding token becomes the
+                # SPRINT guard the next slot's dispatch lands on when a
+                # LEAPFROG resumes at its target instead of after it.
+                leaf[-1] = "SPRINT"
+                tokens[start : start + unit] = leaf
         return " ".join(tokens)
 
 

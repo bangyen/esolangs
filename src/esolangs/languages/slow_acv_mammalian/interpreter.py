@@ -19,8 +19,10 @@ Errors:
 Decisions:
     * LEAPFROG "jump[s] to the (x - first value in array)th instruction"
       counting from 1 and resumes after it, so a count of 0 or past the end
-      halts.  Cell-256 generated programs also run if it resumes at it;
-      the cell-255 chains do not.
+      halts.  Generated programs run if it resumes at it instead, in every
+      dialect: each jump target is preceded by a SPRINT that the jump's
+      accumulator -- a token address, beyond every array's length --
+      makes a no-op.
     * SEED skips an empty array and CONSUME, FISSION and LEAPFROG ignore one.
     * A CONFLAGRATE pair with a zero divisor is left alone.
     * Cells default to modulus 256 ("any value from 0-255"), I/O to 255 (the

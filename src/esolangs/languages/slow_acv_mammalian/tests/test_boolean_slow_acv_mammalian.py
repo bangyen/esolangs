@@ -303,6 +303,44 @@ class TestSlowAcvMammalian:
                 answers.append(io.getvalue())
             assert answers == [table[row]] * 2
 
+    @pytest.mark.medium
+    @pytest.mark.parametrize("io_modulus", [255, 256])
+    @pytest.mark.parametrize("table", ["0110", "01101001", "0110100110010110" * 4])
+    def test_the_cell_255_programs_run_whether_leapfrog_resumes_at_or_after(
+        self, table: str, io_modulus: int, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The decision tree and the compact chain guard their targets too."""
+        from esolangs.languages.slow_acv_mammalian import interpreter
+        from esolangs.languages.slow_acv_mammalian.interpreter import (
+            DEFAULT_MODULI,
+            _Machine,
+        )
+        from esolangs.languages.slow_acv_mammalian.interpreter import (
+            _advance as advance,
+        )
+        from esolangs.runtime.io import ScriptedIO
+
+        def at_target(state, n, byte=None, *, moduli=DEFAULT_MODULI):
+            out = advance(state, n, byte, moduli=moduli)
+            fired = n == 7 and not out[4] and out[3] != state[3] + 1
+            return (*out[:3], out[3] - 1, out[4]) if fired else out
+
+        program = boolean.slow_acv_mammalian(
+            table, cell_modulus=255, io_modulus=io_modulus
+        )
+        bits = len(table).bit_length() - 1
+        rng = random.Random(5)
+        for row in rng.sample(range(len(table)), min(6, len(table))):
+            answers = []
+            for step in (advance, at_target):
+                monkeypatch.setattr(interpreter, "_advance", step)
+                io = ScriptedIO(f"{row:0{bits}b}")
+                machine = _Machine(program, io, cell_modulus=255, io_modulus=io_modulus)
+                while not machine.halted:
+                    machine.step()
+                answers.append(io.getvalue())
+            assert answers == [table[row]] * 2
+
     def test_a_slot_is_the_same_width_for_either_digit(self) -> None:
         """The table's stride is a leaf, and a leaf does not read the sum."""
         from esolangs.languages.slow_acv_mammalian.generator import _program
@@ -676,7 +714,7 @@ def test_compact_pool_retrieves_weight_and_routes(
     assert sum(machine.lst[pool][1:]) == (chain.weight - pool) % 23
 
 
-@pytest.mark.parametrize(("modulus", "budget"), [(255, 65_757), (256, 64_158)])
+@pytest.mark.parametrize(("modulus", "budget"), [(255, 65_787), (256, 66_253)])
 def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -> None:
     from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
     from esolangs.languages.slow_acv_mammalian.interpreter import run
@@ -894,10 +932,12 @@ def test_equal_modulus_eleven_input_read_calibration(row: int) -> None:
         peak = max(peak, sum(map(len, machine.lst)))
     assert io.getvalue() == table[row]
     assert io.reads == 11
-    # The slowest sampled path took 10,062 steps; peak was 591 cells.
-    assert steps <= 10_062
-    assert peak <= 591
-    assert len(source) <= 346_181
+    # The slowest sampled path took 10,863 steps; peak was 624 cells.
+    # (Both grew with the both-readings SPRINT guards: the leaf unit
+    # widened by one token, so every downstream address and raise did.)
+    assert steps <= 10_863
+    assert peak <= 624
+    assert len(source) <= 352_552
 
 
 def test_mammalian_uses_seed_sized_cells() -> None:
