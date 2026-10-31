@@ -65,4 +65,5 @@ tables = "20 random per n=3..8, every table at n=1,2, plus parity/majority/and/o
 verdict = "retired 2026-10-28 (plain-rewrite audit): balance also tried the unpacked table folded at every power-of-two width; it never beat the default or the packed fold, so balanced area is identical without it on every table at n=1..8. Every balanced program ran (0 bad), a complemented table failed. _folded still serves explicit widths"
 
 [audits]
+trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-28
