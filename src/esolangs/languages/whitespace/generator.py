@@ -42,7 +42,6 @@ _SUB = _TAB + _SPACE + _SPACE + _TAB
 _MUL = _TAB + _SPACE + _SPACE + _LINE
 _DIV = _TAB + _SPACE + _TAB + _SPACE
 _MOD = _TAB + _SPACE + _TAB + _TAB
-_STORE = _TAB + _TAB + _SPACE
 _RETRIEVE = _TAB + _TAB + _TAB
 _OUT_NUM = _TAB + _LINE + _SPACE + _TAB
 _READ_NUM = _TAB + _LINE + _TAB + _TAB
