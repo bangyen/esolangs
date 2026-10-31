@@ -8,18 +8,18 @@ admitted = 2026-08-13T22:20:56-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike"
-scaling = "linear: worst 15T/2 + 3n - 3 characters"
+scaling = "linear: worst 13T/2 + 3n - 2 characters"
 execution = "linear: worst 2L commands: one pass to the fixed point, one proving the repeat"
-workspace = "T log T: at most 2(n+1)T + 2 + bl(L-1) bits: corridor, answers, ant, cursor"
+workspace = "T log T: at most 2(n+1)T + 3 + bl(L-1) bits: corridor, answers, ant, cursor"
 
 [generator_sizes]
 "00000001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 34 }
-"00001100" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 33 }
-"00110110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 66 }
-"0110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3], source_units = 33 }
-"01101001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 66 }
-"0110100110010110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 129 }
-"1101001101101101" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 125 }
+"00001100" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 30 }
+"00110110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 59 }
+"0110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3], source_units = 30 }
+"01101001" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 59 }
+"0110100110010110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 114 }
+"1101001101101101" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], source_units = 110 }
 "11111110" = { commands_by_row = {}, commands_by_row_nulls = [0, 1, 2, 3, 4, 5, 6, 7], source_units = 34 }
 
 [catalogue]
@@ -54,6 +54,11 @@ verdict = "kept: the corridor ends where the trailing run of equal answers start
 saving = 5103.0
 arity = 10
 verdict = "kept: a table with a long leading run walks the mirror corridor (top index first, a zero input walks the lane east, a white wall cell and lane stopper clamp it), as cheap as the OR-like form. Dropping it costs +476.47 / +762.74% on and / nand at n=10 (6,174 vs 1,071, 9,240 vs 1,071) and 0.00% on parity; thresholds k=7 / 8 / 9 at n=10 +8.4 / +23.9 / +69.0% (+0.9% on majority); random tables at n=7 / 8 +0.31 / +0.16% (20 seeded). Share on and holds across n=7..12 (-79 to -83%, nand -86 to -89%). Plain-rewrite audit 2026-10-28 (same tables): random 0.17% / 0.10% at n=7 / 8 (balanced 0.44% / 0.16%); and 79.0% / 81.0% / 82.7% and nand 85.8% / 87.2% / 88.4% at n=7 / 8 / 10, balanced and 77.4% / 80.1% / 82.4%; majority 0.0% / 1.8% / 0.9%, parity, or, nor and thresholds 0.0%; kept for the and/nand family"
+
+[ablations.westward_build]
+saving = 13.3
+arity = 9
+verdict = "kept: the east corridor is built west from its far end, ending the build at the origin; later passes reach the far end with one run of E (it halts at the black cell past the corridor), so the pass-1 return run of W is gone. Reverting costs +13.01 / +13.18 / +13.27% on 20 random tables at n=7 / 8 / 9 (Random(1000n+s).getrandbits(1<<n); balanced area +12.54 / +12.98 / +13.27%), parity +12.99 / +13.14 / +13.22%, majority +13.05 / +12.40 / +13.27%, popcount>=2 +12.95 / +13.49 / +13.83%; and, nand and the flipped corridor unchanged, or / nor 0.2-0.6%; share flat to rising across n, run through the interpreter on every row (all tables n<=3, 3000 at n=4, 20 random plus named at n=7, 8, 20 and 4 at n=9)"
 
 [audits]
 blind_reimplementation = 2026-10-30

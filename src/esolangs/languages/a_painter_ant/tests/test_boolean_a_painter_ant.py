@@ -87,7 +87,7 @@ class TestAPainterAnt:
             "E" * 2 + "SN",
             "E" * 1 + "SNs",
         ]
-        assert a_painter_ant("0111").split(TEMPLATE_CHAR)[0].startswith("NWP")
+        assert a_painter_ant("0111").split(TEMPLATE_CHAR)[0].startswith("NEP")
 
 
 @pytest.mark.medium

@@ -17,8 +17,12 @@ instead of the ones, which reads complemented; a start ``S`` for ``N`` and a
 tail ``nN`` (a zero rests on the lane, a one a cell up) undo it, so a table
 mostly ones costs what its complement does.  The shortest of the four ships.
 
+The east corridor is built westward from its far end, so the ant ends the
+build at the origin and the program needs one ``E`` run (to the far end, for
+later passes) instead of two ``W`` runs.
+
 Size:
-    O(T) characters, one corridor cell per row; n=10 parity: 7,707 chars,
+    O(T) characters, one corridor cell per row; n=10 parity: 6,684 chars,
     n=10 and: 1,071 chars (6,174 unflipped).
 
 Decisions:
@@ -75,14 +79,14 @@ def _answers(out: list[str], bit: str, *, invert: bool) -> None:
 def _east(table: str, weights: list[int], *, invert: bool) -> str:
     """Corridor from index 0 east to the trailing run's first answer."""
     size = len(table.rstrip(table[-1])) + 1
-    # Pass 1 paints the origin; later ``N`` lifts off the answer, ``W`` returns.
-    out = ["SN"[not invert], "W" * (size - 1), "P"]
-    _answers(out, table[0], invert=invert)
-    for bit in table[1:size]:
-        # ``e`` paints on pass 1, ``E`` enters white later: one cell per pass.
-        out.append("ePE")
+    # Later passes start on the answer: ``E`` runs to the east end, and the
+    # build walks west back to the origin, so no return walk is needed.
+    cells = table[:size][::-1]
+    out = ["SN"[not invert], "E" * (size - 1), "P"]
+    _answers(out, cells[0], invert=invert)
+    for bit in cells[1:]:
+        out.append("wPW")
         _answers(out, bit, invert=invert)
-    out.append("W" * (size - 1))
     for weight in weights:
         out.append(TEMPLATE_CHAR)
         out.append("E" * weight + "SN")
@@ -131,6 +135,6 @@ LANGUAGE = Language(
         "shown by 'o' (on black, a zero) or '@' (on white, a one)",
     ),
     wrap=wrap_chars,
-    example=Example(pair=PAIR, expected="..#\n###\n#o."),
+    example=Example(pair=PAIR, expected="....\n####\n.o.#"),
     proof_execution=(execution, True, (3, 6)),
 )

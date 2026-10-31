@@ -62,9 +62,10 @@ def expected_grid(table: str) -> dict[tuple[int, int], int]:
         # The lane stopper above the wall cell.
         grid[len(cells), -1] = 1
         return grid
+    # The east corridor is built westward from the start: cell i sits at i - end.
     end = corridor_end(table)
-    grid = {(x, 0): 1 for x in range(end + 1)}
-    grid.update({(x, 1): 1 for x in range(end + 1) if table[x] == answer})
+    grid = {(x - end, 0): 1 for x in range(end + 1)}
+    grid.update({(x - end, 1): 1 for x in range(end + 1) if table[x] == answer})
     return grid
 
 
@@ -122,7 +123,12 @@ def check_l2(max_n: int = 10) -> list[str]:
             outcome = run(head, 1)
             white = {cell for cell, colour in outcome.grid.items() if colour == 1}
             assert white == set(expected_grid(table)), (n, table)
-            assert outcome.position == (0, 0), (n, table)
+            origin = (
+                (0, 0)
+                if variant(table)[0]
+                else (-corridor_end(input_weights(table, n)[1]), 0)
+            )
+            assert outcome.position == origin, (n, table)
             kept = input_weights(table, n)[1]
             end = corridor_end(kept)
             if not variant(table)[0]:
@@ -141,10 +147,12 @@ def check_l3(max_w: int = 10) -> list[str]:
     build = _east(table, input_weights(table, max_w)[0], invert=False)
     head = build[: build.index(TEMPLATE_CHAR)]
     powers = [1 << k for k in range(max_w)]
+    # The build ends at the corridor's west end, the origin of every walk.
+    base = run(head, 1).position[0]
     for w in powers:
         for bit, spelled in ((0, "n"), (1, "N")):
             outcome = run(head + spelled + "E" * w + "SN", 1)
-            assert outcome.position == (w if bit else 0, 0), (w, bit)
+            assert outcome.position == (base + (w if bit else 0), 0), (w, bit)
             if bit == 0:
                 assert run(head + "nESN", 1).position == outcome.position
     for end in powers:
@@ -155,9 +163,10 @@ def check_l3(max_w: int = 10) -> list[str]:
             table = "0" + table[1:]
         short = _east(table, input_weights(table, max_w)[0], invert=False)
         head = short[: short.index(TEMPLATE_CHAR)]
+        base = run(head, 1).position[0]
         for w in powers:
             outcome = run(head + "N" + "E" * w + "SN", 1)
-            assert outcome.position == (min(w, end), 0), (end, w)
+            assert outcome.position == (base + min(w, end), 0), (end, w)
     # The mirror: a zero walks the lane east and stops under the stopper.
     for lead in powers:
         table = "0" * lead + "1" + "0" * (size - lead - 1)
