@@ -3,13 +3,15 @@
 A zero-valued reads prefix names every input in order, since a variable is
 bound by appearing on an executed line; the rest is a reduced decision
 diagram selecting subtrees with ``x`` and ``!x``, so every value stays 0 or
-1.  Default compares the diagram with its repeated expressions named once;
+1.  Default is spaceless and parenthesizes only where ``&`` (tighter than
+``|``) needs it ([ablations.minimal_parentheses]).  Default compares the
+diagram with its repeated expressions named once;
 with ``width`` the tree splits into definitions, since APL cannot
 continue an expression across lines.
 
 Size:
-    O(T) chars.  n=10 parity: 270 chars, n=10 and: 120 chars, n=10 random
-    1847: 3,157 chars.
+    O(T) chars.  n=10 parity: 192 chars, n=10 and: 56 chars, n=10 random
+    1847: 2,498 chars.
 
 Decisions:
     A greedy input order saves 4.8% at n=8, under the 10% bar, so the order
@@ -72,7 +74,7 @@ def _apl_shared_ordered(table: str, perm: tuple[int, ...]) -> str:
     Bounded shared frames, a third candidate, were strictly best on 0 of 3,785
     tables (n=2..10; random, ignored, tiled, sparse, threshold, named): retired.
     """
-    plain = _apl_reduced_ordered(table, perm)
+    plain = _apl_reduced_ordered(table, perm, lean=True)
     return min(plain, _apl_repeated_expressions(plain), key=len)
 
 
@@ -99,10 +101,10 @@ def _render_dag(
 
 
 def _split_reads(program: str) -> tuple[str, str]:
-    """Return a tree program's spaceless reads prefix, through ``)|``, and rest."""
-    source = program.removeprefix(_NOT + "\n").replace(" ", "")
-    prefix, rest = source.split(")|", 1)
-    return prefix + ")|", rest
+    """Return a tree program's spaceless reads prefix, through ``|``, and rest."""
+    source = program.replace(" ", "").removeprefix(_NOT_TIGHT + "\n")
+    cut = source.index("|" if source[0] != "(" else ")|") + 1 + (source[0] == "(")
+    return source[:cut], source[cut:]
 
 
 def _apl_repeated_expressions(program: str) -> str:
@@ -152,7 +154,7 @@ def _apl_repeated_expressions(program: str) -> str:
         return program
 
     definitions = [
-        f"{names[index]}()={_render_dag(nodes, names, index)}"
+        f"{names[index]}()={_render_dag(nodes, names, index)[1:-1]}"
         for index in sorted(names)
     ]
     return "\n".join(
@@ -211,7 +213,9 @@ _Key = tuple[int, int]
 _Ref = tuple[_Key, bool]
 
 
-def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _apl_reduced_ordered(
+    truth_table: str, perm: tuple[int, ...], *, lean: bool = False
+) -> str:
     """Emit one input order as a reduced diagram.
 
     The tree of :func:`_apl_tree_ordered`, reduced: a node whose halves
@@ -253,8 +257,13 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
                 made[depth, zero, one] = key
                 split[key] = (_NAMES[perm[depth]], zero, one)
 
-    def emit(half: _Ref, out: list[str]) -> None:
-        """Append a half's text: the inline tree's shapes, ``!`` if flipped."""
+    def emit(half: _Ref, out: list[str], *, tight: bool = False) -> None:
+        """Append a half's text: the inline tree's shapes, ``!`` if flipped.
+
+        ``lean`` drops spaces and every parenthesis ``&``'s precedence makes
+        redundant; ``tight`` marks an ``&`` operand, where an ``|`` form needs
+        them.  Otherwise the inline tree's shapes parenthesize every node.
+        """
         (key, negated) = half
         bang = "!" * negated
         if key[1] < 2:
@@ -269,9 +278,19 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             constant_one = min(low, high) == 1
             lit = name if (high >= 2) != constant_one else f"!{name}"
             op = "|" if constant_one else "&"
-            out.append(f"{bang}({lit} {op} ")
-            emit(one if high >= 2 else zero, out)
-            out.append(")")
+            wrap = negated or not lean or (tight and op == "|")
+            out.append(f"{bang}(" * wrap)
+            out.append(f"{lit}{op}" if lean else f"{lit} {op} ")
+            emit(one if high >= 2 else zero, out, tight=lean and op == "&")
+            out.append(")" * wrap)
+        elif lean:
+            wrap = negated or tight
+            out.append(f"{bang}(" * wrap)
+            out.append(f"!{name}&")
+            emit(zero, out, tight=True)
+            out.append(f"|{name}&")
+            emit(one, out, tight=True)
+            out.append(")" * wrap)
         else:
             out.append(f"{bang}((!{name} & ")
             emit(zero, out)
@@ -281,6 +300,8 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     root: list[str] = []
     emit(resolve((0, ids[0][0])), root)
+    if lean:
+        return f"{_NOT_TIGHT}\n{_reads(n, '&')}|{''.join(root)}"
     return f"{_NOT}\n({reads}) | {''.join(root)}"
 
 

@@ -72,9 +72,9 @@ class TestAlgebraicProgrammingLanguage:
             assert self._run(program, 2, combo).strip() in {"0", "1"}
 
     def test_the_complement_operator_is_the_wikis_own(self) -> None:
-        """The header is the wiki's ``!x`` definition, verbatim."""
+        """The header is the wiki's ``!x`` definition, spaces aside."""
         program = boolean.algebraic_programming_language("0001")
-        assert program.startswith("!x = {\nx & $0\n$1\n}\n")
+        assert program.startswith("!x={\nx&$0\n$1\n}\n")
 
     def test_a_one_entry_table_is_refused(self) -> None:
         """A nullary table is a constant, not a function of any input."""
@@ -212,14 +212,14 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
 
         tail = {
-            "0110": "((!a & b) | (a & !b))",
-            "0001": "(a & b)",
-            "0111": "(a | b)",
-            "1101": "(!a | b)",
+            "0110": "!a&b|a&!b",
+            "0001": "a&b",
+            "0111": "a|b",
+            "1101": "!a|b",
         }
         for table, expression in tail.items():
             program = boolean.algebraic_programming_language(table)
-            assert program.endswith(f"(a & b & 0) | {expression}")
+            assert program.endswith(f"a&b&0|{expression}")
             self._check(table, 2)
         total = sum(
             len(_apl_tree_ordered(f"{value:08b}", (0, 1, 2))) for value in range(256)
@@ -233,15 +233,15 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
 
         assert boolean.algebraic_programming_language("00011110").endswith(
-            "(a & b & c & 0) | ((!a & (b & c)) | (a & !(b & c)))"
+            "a&b&c&0|!a&b&c|a&!(b&c)"
         )
         assert boolean.algebraic_programming_language("0101010100110011").endswith(
-            "(a & b & c & d & 0) | ((!a & d) | (a & c))"
+            "a&b&c&d&0|!a&d|a&c"
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 18201, 16531),
-            (five_input_sample(), 47399, 37369),
+            (three, 18201, 9215),
+            (five_input_sample(), 47399, 21733),
         ):
             inline = [
                 len(_apl_tree_ordered(t, tuple(range(len(t).bit_length() - 1))))
@@ -375,7 +375,7 @@ def test_default_reuses_emitted_frames() -> None:
     table = corpus(8)["tiled"]
     plain = _apl_reduced_ordered(table, tuple(range(8)))
     program = boolean.algebraic_programming_language(table)
-    assert (len(plain), len(program)) == (1019, 450)
+    assert (len(plain), len(program)) == (1019, 310)
     assert (
         execute("Algebraic Programming Language", program, table, {}, all_rows=True)
         == 256
