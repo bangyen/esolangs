@@ -11,6 +11,9 @@
 # the bottom and east walls, and halts in place.
 def execution(n: int, program: str) -> int:
     """The stated execution bound, evaluated for n and the program."""
+    rows = program.splitlines()
+    if len(rows) == 4 and rows[2].startswith("|C" + "I" * n + "="):
+        return n + 52 + rows[2].count("^") - 48
     if "U" in program:
         rows = program.splitlines()
         setup, west = (724, 21) if n == 1 else (294 * n + 333, 4 * n + 16)
@@ -20,9 +23,14 @@ def execution(n: int, program: str) -> int:
     return 7 * (1 << n - 1) + 14 * n + 652
 
 
-def workspace(n: int, _: str) -> int:
+def workspace(n: int, program: str) -> int:
     """The stated workspace bound, evaluated for n and the program."""
     bl = int.bit_length
+    rows = program.splitlines()
+    if len(rows) == 4 and rows[2].startswith("|C" + "I" * n + "="):
+        # Fixed row, heading and latch, CP, two six-bit cells and halt: 27 bits.
+        bit = rows[2].count("^") - 48
+        return 27 + bl(n + 52 + bit) + 2 * bl(n)
     # Peak car state is 13 + bl(width), width = 2T + 57 + G.  A tree holds
     # 2n + 4 cells under 100 and a narrower car, inside nT from n = 5.
     return (

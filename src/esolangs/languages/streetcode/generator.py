@@ -19,10 +19,12 @@ subtrees and draws equal nonconstant sibling cofactors once, advancing CP
 past their selector. Nonadjacent repeats still have separate drawings: they
 hold 2.4% of tree nodes at n=4 and 5.1% at n=5 (200 random tables), an
 upper bound on sharing before the routing that would merge two paths.
+Constants read in a closed two-lane corridor, then seed a fresh answer cell.
 
 Size:
     O(T) area from five inputs, at most the flat street's; n=4 parity: 1,851
     chars, n=10 random 1847: 16,705 chars, n=10 parity: 16,705 chars.
+    Constants use 4(n+54+bit) cells; n=8 zero: 251 chars.
 
 Decisions:
     A half-turn rotation only strips trailing blanks (0.0% by area at n=2-8),
@@ -935,6 +937,14 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``width`` chooses among the shapes rather than reflowing (rows are streets).
     """
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # A closed two-lane corridor needs no junction, normalization or lookup.
+        body = "C" + "I" * n + "=" + "^" * (48 + int(truth_table[0])) + "O;"
+        wall = "+" + "-" * len(body) + "+"
+        program = "\n".join((wall, "|" + " " * len(body) + "|", "|" + body + "|", wall))
+        if width is not None and grid_width(program) > width:
+            return _streetcode_quarter_turn(program)
+        return program
     programs = _tree_shapes(truth_table, n, hallway=width is not None)
     if width is not None:
         fitting = [p for p in programs if grid_width(p) <= width]
@@ -963,6 +973,9 @@ def _balance(table: str, default: str) -> str:
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]
+    if len(set(table)) == 1:
+        # The corridor wins area; small constants' loop shapes are squarer.
+        candidates.extend(shapes)
     candidates.extend(streetcode(table, grid_width(shape)) for shape in shapes)
     candidates.append(_streetcode_folded(_streetcode_flat(table, n)))
     return min(candidates, key=balance_score)

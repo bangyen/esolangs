@@ -22,7 +22,7 @@ def _constants(n: int) -> set[int]:
     return seen
 
 
-def execution(n: int, _: str) -> int:
+def execution(n: int, program: str) -> int:
     """Lines of an all-essential table with min(16, T/4) distinct cells.
 
     No line branches, so every line runs once: constants 4 + 2K, the decoder
@@ -31,11 +31,13 @@ def execution(n: int, _: str) -> int:
     c = (k - 2) mod 4, as ``_cm_plan`` splits a constant.  Both terms grow
     with the essential inputs and the distinct cells, so this is the worst.
     """
+    if program.startswith("r=z x+input,NOT PRINT."):
+        return n + 10
     m = min(16, 1 << (n - 2))
     return (1 << n) // 4 + 3 * n + 4 * m + 10 + 2 * len(_constants(n))
 
 
-def workspace(n: int, _: str) -> int:
+def workspace(n: int, program: str) -> int:
     """Bound on the end state of the all-ones row, per snapshot part.
 
     Registers: the constants closure, negativeOne, z, o, s (the last cell's
@@ -47,6 +49,9 @@ def workspace(n: int, _: str) -> int:
     is any: the bound is not reached.
     """
     bl = int.bit_length
+    if program.startswith("r=z x+input,NOT PRINT."):
+        # negativeOne, r, a, b and c: 132 bits; then ip and the input cursor.
+        return 132 + bl(n + 11) + bl(2 * n - 1)
     cells, high = 1 << (n - 2), n - 2
     m = min(16, cells)
     consts = _constants(n)

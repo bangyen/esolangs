@@ -6,6 +6,7 @@ from importlib import import_module
 
 import pytest
 
+import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages import generators as boolean
 from esolangs.runtime._evaluate import _evaluate
@@ -52,6 +53,8 @@ class TestStreetcode:
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
+                if len(set(table)) == 1:
+                    continue
                 tree = module._streetcode_tree(table)  # noqa: SLF001
                 shared = module._streetcode_shared_program(n, tree)  # noqa: SLF001
                 assert boolean.streetcode(table) == shared
@@ -165,7 +168,7 @@ class TestStreetcode:
 
     @pytest.mark.parametrize(
         ("table", "length"),
-        [("01", 302), ("0000", 340), ("0101", 348)],
+        [("01", 302), ("0000", 227), ("0101", 348)],
     )
     def test_the_emitted_program_has_an_exact_length(
         self, table: str, length: int
@@ -353,3 +356,39 @@ def test_the_folded_street_computes_random_tables(n: int, count: int) -> None:
         assert _evaluate("Streetcode", fold, inputs=n) == table
         balanced = esolangs.generate("Streetcode", table, balance=True)
         assert _evaluate("Streetcode", balanced, inputs=n) == table
+
+
+@pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])
+def test_constants_read_first_and_leave_the_next_record(n) -> None:
+    from esolangs.languages.streetcode.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    for bit in "01":
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("Streetcode", bit * (1 << n), **options)
+            if not options:
+                assert len(program) == 4 * n + 219 + 4 * int(bit)
+            if options.get("balance") and n <= 5:
+                assert balance_score(program)[0] <= max(29, 5 * n + 23)
+            rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+            for row in rows:
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                run(program.splitlines(), io)
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_char() == ord("Q")
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(
+            len(esolangs.generate("Streetcode", format(value, "08b")))
+            for value in range(256)
+        )
+        == 227464
+    )

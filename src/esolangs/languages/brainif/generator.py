@@ -3,15 +3,17 @@
 Each input is read with ``if 0 input`` and tested with ``if 49 goto``.  Up to
 four essential inputs the residual DAG shares equal cofactors; beyond that a
 linear spatial lookup stores the table one cell an entry and walks to the
-selected one, its widest levels by loop.  Width requests keep the tree.
+selected one, its widest levels by loop. Width requests keep the tree.
+Whole constants use one read chain and only their own output tail.
 
 Size:
     O(T) lines for the lookup; n=10 parity: 1,628 chars, n=10 random 1847:
-    12,407 chars.
+    12,407 chars. Constants: 22n+483 chars for zero, 22n+11 for one;
+    n=8 zero: 659 chars.
 
 Decisions:
-    The residual DAG cuts the three-input total from 310,116 to 271,918
-    characters and steps from 130,888 to 70,360.  The looped levels follow
+    The DAG and constant paths cut the three-input total from 310,116 to
+    270,722 characters and steps from 130,888 to 70,340.  The looped levels follow
     a cost model (:func:`_top_level`), not a fixed count.  The DAG places a
     node before one of its children (:func:`_chains`), dropping that goto.
 """
@@ -88,6 +90,16 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     no table growing or slowing.  Width requests retain the tree/spatial
     construction.
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # Normalize the previous digit before each next read; no branch is needed.
+        reads = ["if 0 input"] + ["if 48 inc", "if 49 input"] * (n - 1)
+        tail = (
+            ["if 49 right", *_climb("inc"), "if 48 output"]
+            if truth_table[0] == "0"
+            else ["if 48 inc", "if 49 output"]
+        )
+        return _resolve(reads + tail, width)
     if width is not None:
         plain = _brainif_tree(truth_table, width)
         n = _validate_truth_table(truth_table)

@@ -92,3 +92,10 @@ arity = 8
 seed = "random.Random(1847+n); final corpus random.Random(1847)"
 tables = "20 random per n=4..16; and/or/parity and complements n=1..16; exhaustive n<=3"
 verdict = "kept for endpoint products and parity, including complements, from seven essential inputs: eight-row cells halve the table while keeping at most two codes. n=8 and/or 2,938/2,947 -> 2,350/2,359 chars (20.0%), parity 3,380 -> 2,636 (22.0%); n=16 and/or 314,695/314,704 -> 159,052/159,061 (49.5%), parity 421,217 -> 212,378 (49.6%). Random eight-row builds lose 38.5% / 104.0% at n=7/8 and still lose 22.9% at n=14, so other families keep four-row cells. Final builds: 10,868 baseline/candidate/width-1/balanced executions correct, all rows through n=6, boundary rows thereafter; 5,344 complemented controls rejected. All 256 n=3 tables remain byte-identical (281,500 chars); 54 VM measurements at n=7/8/10/12/14/16 fit unchanged command and written-workspace bounds. The eight-row decoder has at most 16 lines, code <=8, fewer table cells and a constant closure contained in the old envelope"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 49.5
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept for whole constants: reuse one discard register, then build the ASCII byte with signed halving m=2b+d, b odd and -1<=d<=2, reusing one accumulator instead of copying each precursor. This is a derived rule, not a searched table. At n=7, chars 796/796 -> 389/409; n=8 835/835 -> 412/432; n=12 993/993 -> 504/524. Both n=7/8 clear 20% for declining savings. Default constants use 23n+228+20bit chars, n+10 commands and 132+bl(n+11)+bl(2n-1) written bits (141 at n=8). The line-number builder remains necessary for the 27-column floor; it also reuses its discard register. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 281500 -> 280834. Default, width=1 and balanced constants n=1..12 execute; sentinels cover n=1,3,4,5,6,8,12, and all 256 helper byte values execute."

@@ -67,3 +67,10 @@ plain_rewrite = 2026-10-27
 
 [balance_growth]
 wall = "a line is one guarded command, if <int> <command> [operand] (interpreter.py _parse), carrying O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.57 from n=10 to 12, 2026-10-29)"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 59.8
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept: canonical whole-constant output tail and minimal supported inc/right spellings. Read first with one initial input and a normalize/read pair thereafter; zero prints the final 48 or climbs a fresh cell, one normalizes to 49 and prints. Zero/one use 22n+483 / 22n+11 chars and 2n+49 / 2n+1 commands. At n=8, chars 1037/1065 -> 659/187; n=12 1149/1177 -> 747/275. The one-tail workspace is 6+bl(lines)+bl(n), measured 15 bits at n=8; the zero envelope stays unchanged. The 270 nonconstant programs through n=3 are byte-identical. n=3 corpus chars 271918 -> 270722 and row commands 70360 -> 70340; width=1 chars 216498 -> 215828. Both constants at n=1..12 ran in default, width=1 and balanced layouts, with command/workspace checks; sentinels cover n=1,3,4,5,6,8,12."

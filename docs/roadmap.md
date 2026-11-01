@@ -140,9 +140,9 @@ headers, Qrain.
 <!-- TRICK-PROTOTYPES:END -->
 
 - **Constant-table audit:** size census 111/111 at n=1..8,10,12; n=0 is
-  outside every generator's contract. Optimization reviews 9/111: Movesum,
+  outside every generator's contract. Optimization reviews 12/111: Movesum,
   Parenthesys, Unary, Malbolge, Quassaunt, LaserFuck, Interprogck8 and
-  ABCDirection improved; Line retains its
+  ABCDirection, BrainIf, Collatz Multiverse and Streetcode improved; Line retains its
   existing read-first constant path. Malbolge also drains its final ignored
-  byte before output on seventeen-input projections. Next: BrainIf,
-  Collatz Multiverse, Streetcode. Keep this counter separate from trick prototypes.
+  byte before output on seventeen-input projections. Next: Hot, Ascenic,
+  Circuit Diagram. Keep this counter separate from trick prototypes.

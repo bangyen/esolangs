@@ -3,12 +3,14 @@
 Each input is read into a register; the essential ones are summed into an
 address that indexes an array ``A`` of packed cells; the last two or three
 inputs select a bit inside the decoded cell.  A constant table reads every input and
-prints one constant.  The shortest build over the essential inputs wins.
+prints one constant, deriving its ASCII byte by signed halving with odd
+precursors. The shortest build over the essential inputs wins.
 
 Size:
     O(T): at most one line per four rows plus a bounded decoder.
     n=10 parity: 5,481 chars, n=10 and: 4,571 chars,
-    n=10 random 1847: 12,825 chars.
+    n=10 random 1847: 12,825 chars. Constants use 23n+228+20bit chars;
+    n=8 zero: 412 chars.
 
 Decisions:
     Eight-row cells serve endpoint products and parity from seven inputs;
@@ -288,13 +290,32 @@ def _cm_orders(essential: list[int], *, expanded: bool) -> list[list[int]]:
 def _cm_constant_program(n: int, value: int, *, narrow: bool = False) -> str:
     """Read every input and print one constant."""
     if narrow:
+        # Line-number constants retain the 27-column floor without negativeOne.
         lines = _cm_narrow_constants({value})
-        lines += [f"b{i}=z x+input,NOT PRINT." for i in range(n)]
+        lines += ["r=z x+input,NOT PRINT."] * n
         lines.append(f"out=z x+k{value},DO PRINT.")
-    else:
-        lines = _cm_constants({value})
-        lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
-        lines.append(f"out = negativeOne x + k{value}, DO PRINT.")
+        return "\n".join(lines)
+    # All reads leave r in {0, 1}, so its next assignment takes the affine arm.
+    lines = ["r=z x+input,NOT PRINT."] * n
+    lines += [
+        "a=negativeOne x+negativeOne,NOT PRINT.",
+        "a=negativeOne x+z,NOT PRINT.",
+        "b=z x+a,NOT PRINT.",
+        "c=z x+a,NOT PRINT.",
+        "b=a x+a,NOT PRINT.",
+    ]
+    # Signed halving keeps each precursor odd: m = 2b + d, -1 <= d <= 2.
+    # The same accumulator can therefore double at every step, without copies.
+    addends = []
+    while value > 1:
+        delta = -1 if value % 4 == 1 else 1 if value % 4 == 3 else 2 - value % 4
+        addends.append({-1: "negativeOne", 0: "z", 1: "c", 2: "b"}[delta])
+        value = (value - delta) // 2
+    if not addends:
+        lines.append(f"o=z x+{'a' if value else 'z'},DO PRINT.")
+    for index, addend in enumerate(reversed(addends)):
+        flag = "DO" if index == len(addends) - 1 else "NOT"
+        lines.append(f"a=b x+{addend},{flag} PRINT.")
     return "\n".join(lines)
 
 

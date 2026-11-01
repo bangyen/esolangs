@@ -4,4 +4,10 @@
 def workspace(n: int, p: str) -> int:
     """The stated workspace bound, evaluated for n and the program."""
     bl = int.bit_length
-    return 13 + bl(len(p.splitlines())) + bl(n)
+    lines = p.splitlines()
+    cells = (
+        6
+        if len(lines) == 2 * n + 1 and lines[-2:] == ["if 48 inc", "if 49 output"]
+        else 13
+    )
+    return cells + bl(len(lines)) + bl(n)

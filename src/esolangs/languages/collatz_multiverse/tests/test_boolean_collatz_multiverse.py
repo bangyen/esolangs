@@ -130,7 +130,8 @@ class TestCollatzMultiverse:
     def test_fitting_alias_layout_keeps_its_register_names(self) -> None:
         program = boolean.collatz_multiverse("00", 28)
         assert max(map(len, program.splitlines())) <= 28
-        assert "k48" in program
+        assert "r=z x+input" in program
+        assert "a=b x+b,DO PRINT." in program
         for bit in ("0", "1"):
             assert run_collatz_multiverse(program, [bit]) == "0"
 
@@ -215,10 +216,10 @@ def test_cm_plan_chain_is_valid_and_near_minimal() -> None:
 
 
 def test_cm_constants_print_the_right_value() -> None:
-    """A constant program prints chr(value) for every byte value above 2."""
+    """A constant program prints chr(value) for every byte value."""
     from esolangs.languages.collatz_multiverse.generator import _cm_constant_program
 
-    for value in range(3, 256):
+    for value in range(256):
         program = _cm_constant_program(1, value)
         assert run_collatz_multiverse(program, ["0"]) == chr(value)
 
@@ -327,3 +328,37 @@ def test_eight_row_named_cells(family: str, *, invert: bool) -> None:
     assert len(program) < 0.9 * len(unfolded)
     for row in (0, 1, 42, 85, 126, 127):
         assert run_collatz_multiverse(program, row_bits(row, n)) == table[row]
+
+
+@pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])
+def test_constants_read_first_and_leave_the_next_record(n) -> None:
+    from esolangs.languages.collatz_multiverse.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    for bit in "01":
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("Collatz Multiverse", bit * (1 << n), **options)
+            if not options:
+                assert len(program) == 23 * n + 228 + 20 * int(bit)
+            rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+            for row in rows:
+                io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+                run(program, io)
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_token() == "Q"
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(
+            len(esolangs.generate("Collatz Multiverse", format(value, "08b")))
+            for value in range(256)
+        )
+        == 280834
+    )

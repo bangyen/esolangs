@@ -67,8 +67,8 @@ def test_brainif_selection_size_and_steps_never_regress() -> None:
                 new_total += len(new)
                 old_steps += counts[0]
                 new_steps += counts[1]
-    assert (old_total, new_total) == (310116, 271918)
-    assert (old_steps, new_steps) == (130888, 70360)
+    assert (old_total, new_total) == (310116, 270722)
+    assert (old_steps, new_steps) == (130888, 70340)
 
 
 @pytest.mark.medium

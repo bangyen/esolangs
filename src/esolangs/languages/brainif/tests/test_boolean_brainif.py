@@ -5,6 +5,7 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
 from esolangs.languages import generators as boolean
 from tests.generators.boolean_runners import _runner
 from tests.support.generator_support import assert_parity_at_most_doubles
@@ -20,7 +21,10 @@ class TestBrainIf:
         """The climb to 48 is paid before the tree, not once per digit."""
         for table in ("10", "0110", "11111110", "01101001"):
             assert boolean.brainif(table, width=1000).count("increment") == 49
-        assert boolean.brainif("00000000", width=1000).count("increment") == 48
+        assert all(
+            f"if {value} inc" in boolean.brainif("00000000", width=1000)
+            for value in range(48)
+        )
 
     def test_one_shared_output_tail(self) -> None:
         """Both answers print from the same two lines."""
@@ -60,11 +64,11 @@ class TestBrainIf:
             program = boolean.brainif(table, width=1000)
             n = len(table).bit_length() - 1
             assert self._tests(program) == 0
-            assert program.count("if 0 input") == n
+            assert program.count("input") == n
             for row in range(2**n):
                 bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
                 assert run_brainif(program, bits) == table[0]
-        assert len(boolean.brainif("0" * 8, width=1000)) == 976  # 1015 before
+        assert len(boolean.brainif("0" * 8, width=1000)) == 549
         assert (
             len(boolean.brainif("0" * 32, width=1000)) < 1200
         )  # a 2,864-character lookup before
@@ -114,7 +118,7 @@ class TestBrainIf:
                 unpruned = _brainif_tree(table, None, prune=False)
                 assert len(_brainif_tree(table, None)) <= len(unpruned)
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.brainif(t)) for t in tables) == 271_918
+        assert sum(len(boolean.brainif(t)) for t in tables) == 270_722
         assert sum(len(_brainif_tree(t, None, prune=False)) for t in tables) == 336_716
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:
@@ -150,7 +154,7 @@ def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
     assert len(program) == 818
     assert (
         sum(len(boolean.brainif(format(value, "08b"), 1)) for value in range(256))
-        == 216498
+        == 215828
     )
     for row, expected in enumerate("0110"):
         assert run_brainif(program, list(format(row, "02b"))) == expected
@@ -246,3 +250,27 @@ def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
     program = esolangs.generate("brainif", table, width=1)
     assert len(str(program)) == 2731
     assert _evaluate("BrainIf", program, inputs=5) == table
+
+
+@pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])
+def test_constants_read_first_and_leave_the_next_record(n) -> None:
+    from esolangs.languages.brainif.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    for bit in "01":
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("BrainIf", bit * (1 << n), **options)
+            if not options:
+                assert len(program) == 22 * n + (483 if bit == "0" else 11)
+            rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+            for row in rows:
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                run(program.splitlines(), io)
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_char() == ord("Q")
