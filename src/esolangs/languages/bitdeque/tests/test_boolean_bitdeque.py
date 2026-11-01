@@ -58,12 +58,12 @@ class TestParameterizedBitdeque:
             assert self.run_bitdeque(self.instantiate(template, bits)) == str(bits[1])
 
     def test_constant_leaf_and_shared_halt_trampoline(self) -> None:
-        """A constant table is a branching-free leaf; both leaves use GOTO 1."""
+        """Whole constants need no trampoline; branching leaves still share one."""
         from esolangs.languages import generators
 
         template = generators.bitdeque("0000")
         assert "POP" in template
-        assert "GOTO" in template
+        assert "GOTO" not in template
         template = generators.bitdeque("0011")
         assert template.startswith("GOTO 4 INVERT GOTO 5 GOTO ")
         assert f"{template} ".count("GOTO 1 ") == 2
@@ -156,3 +156,50 @@ def test_bitdeque_filled_template_is_one_width() -> None:
             for bits in itertools.product((0, 1), repeat=n)
         }
         assert len(lengths) == 1, (n, sorted(lengths))
+
+
+@pytest.mark.medium
+def test_constant_native_and_short_loads_keep_all_slots() -> None:
+    import esolangs
+    from esolangs.generation.helpers import TEMPLATE_CHAR
+    from esolangs.languages.bitdeque.generator import bitdeque_setters
+    from esolangs.languages.bitdeque.interpreter import _Machine
+    from esolangs.languages.bitdeque.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                table = bit * (1 << n)
+                template = esolangs.generate("Bitdeque", table, **options)
+                short = options == {"width": 1} and n <= 4
+                assert template.count(TEMPLATE_CHAR) == n * (5 if short else 11)
+                assert len(bitdeque_setters(str(template), n)) == n
+                if not options:
+                    assert len(template) == 16 * n + 8 + 7 * int(bit)
+                rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+                for row in rows:
+                    inputs = list(map(int, format(row, f"0{n}b")))
+                    program = esolangs.instantiate("Bitdeque", str(template), inputs)
+                    assert len(program) == len(template)
+                    io = ScriptedIO()
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted and steps < 500:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                    assert machine.halted
+                    assert machine.deq == (int(bit),)
+                    assert not io.getvalue()
+                    machine.step()
+                    assert io.getvalue() == bit
+                    if not options:
+                        assert steps + 1 == 3 * n + 3 + int(bit)
+                        assert written.bits == workspace(n, template)
+    assert (
+        sum(len(esolangs.generate("Bitdeque", format(v, "08b"))) for v in range(256))
+        == 51358
+    )

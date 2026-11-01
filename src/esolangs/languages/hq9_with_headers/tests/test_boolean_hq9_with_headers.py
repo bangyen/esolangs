@@ -25,18 +25,44 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 
 @pytest.mark.parametrize("bit", ["0", "1"])
-@pytest.mark.parametrize("n", [1, 8])
-def test_constant_output_consumes_every_input(bit: str, n: int) -> None:
-    """Direct output still consumes exactly one number per input."""
-    from esolangs.languages.hq9_with_headers.interpreter import run
+def test_constant_output_consumes_every_input(bit: str) -> None:
+    """Direct output follows all reads and leaves the next number untouched."""
+    from esolangs.languages.hq9_with_headers.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
-    program = esolangs.generate("HQ9+ with headers", bit * (1 << n))
-    stdin = esolangs.encode_inputs("HQ9+ with headers", [1] * n)
-    io = ScriptedIO(stdin + "7\n")
-    run(str(program), io)
-    assert io.getvalue() == bit
-    assert io.position() == len(stdin)
-    assert io.input_num() == 7
-    if n == 8:
-        assert len(str(program)) == 180
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = 2 * n
+
+            def _write(self, value):
+                if value:
+                    assert self.position() == self.expected
+                super()._write(value)
+
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("HQ9+ with headers", bit * (1 << n), **options)
+            for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                stdin = esolangs.encode_inputs(
+                    "HQ9+ with headers", list(map(int, format(row, f"0{n}b")))
+                )
+                io = ReadFirstIO(stdin + "7\n")
+                machine = _Machine(program, io)
+                steps = 0
+                while not machine.halted and steps < n + 3:
+                    machine.step()
+                    steps += 1
+                assert machine.halted
+                assert steps == n + 2
+                assert io.getvalue() == bit
+                assert io.position() == len(stdin)
+                assert io.input_num() == 7
+            if n == 8:
+                assert len(program) == 180
+    assert (
+        sum(
+            len(esolangs.generate("HQ9+ with headers", format(v, "08b")))
+            for v in range(256)
+        )
+        == 84802
+    )

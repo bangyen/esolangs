@@ -8,7 +8,8 @@ become one function nested in ``main``.  ``b`` is the width in 3..7 that
 gives the shortest program.
 
 Size:
-    Two characters per painted entry, O(T); n=10 random 1847: 3,111 chars,
+    Two characters per painted entry, O(T);
+    n=8 constant zero: 168 chars; n=10 random 1847: 3,111 chars,
     n=12 random 1847: 10,224 chars.
 
 Decisions:
@@ -103,7 +104,21 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
     """
-    n = len(truth_table).bit_length() - 1
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: no printer closure.
+        program = (
+            "main{"
+            + ",".join(["a"] * (8 * n))
+            + "=(in 0);"
+            + f"return(out {_byte(int(truth_table[0]))})"
+            + "}"
+        )
+        if width is None or grid_width(program) <= width:
+            return program
+        # The default needs return to keep its two-step bound; narrow out falls off.
+        narrow = program.replace("return(out ", "out ").removesuffix(")}") + ";}"
+        return _wrapped(narrow, width)
     widths = dict.fromkeys(min(n, bits) for bits in _BLOCK_WIDTHS)
     return min((_build(truth_table, width, bits) for bits in widths), key=len)
 
@@ -139,7 +154,11 @@ def _build(truth_table: str, width: int | None, bits: int) -> str:
     program = "\n".join(lines)
     if width is None:
         return program
-    # Whitespace separates every grammar token; identifiers and '..' stay whole.
+    return _wrapped(program, width)
+
+
+def _wrapped(program: str, width: int) -> str:
+    """Wrap grammar tokens, preserving identifiers and range punctuation."""
     tokens = re.findall(r"[A-Za-z_][A-Za-z_0-9]*|\.\.|[^\s]", program)
     return wrap_space_delimited(" ".join(tokens), width)
 

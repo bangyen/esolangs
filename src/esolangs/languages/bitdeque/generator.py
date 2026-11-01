@@ -10,7 +10,8 @@ subtrees are one leaf and a repeated subtree at its level is reached by
 ``GOTO``.
 
 Size:
-    O(n) for parity and and, O(T) for dense tables; n=10 parity: 580 chars,
+    O(n) for parity and and, O(T) for dense tables;
+    n=8 constant zero: 136 chars; n=10 parity: 580 chars,
     n=10 and: 441 chars, n=10 random 1847: 5,470 chars.
 
 Decisions:
@@ -199,6 +200,11 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     (``row ^ mask``), a relabelling that folds as the table did.
     """
     n = _validate_truth_table(truth_table)
+    if not short and truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: no branch needs a trampoline.
+        tokens = [_SETTER] * n + ["POP"] * (n + 1)
+        tokens += (["INVERT"] if truth_table[0] == "1" else []) + ["PUSH"]
+        return " ".join(tokens)
     # Level ``level`` tests input ``level``, whose load position is its name;
     # the row bit for a level is ``n - 1 - level``.
     mask = 0 if short else sum(1 << (n - 1 - level) for level in range(n) if level % 2)

@@ -95,3 +95,10 @@ verdict = "rejected: merge the two constant printers into one bit-parameterized 
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 6.1
+seed = "both constant values; witnesses(n) at n=4..6"
+tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
+verdict = "kept: canonical whole-constant output, inlining a single-use printer. One multi-assignment drains all 8n bits into scratch a, then a literal out. A return expression retains the two-command default bound; narrow/balanced statements fall off in three commands instead of the old five, a 40% command reduction. Default chars 16n+40, workspace 76+2bl(n). At n=8 both bits 179 -> 168 chars; n=12 243 -> 232. The smaller default size gain is canonical; the narrow path independently clears the 25% command gate. n=3 corpus 46748 -> 46726 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions. All 270 nonconstant programs per language through n=3 remain byte-identical; Bitdeque and Forbin also retain all 540 nonconstant narrow/balanced programs each. All 24 old balanced constant scores per changed language improve or match. Both constants n=1..12 execute in default, width=1 and balanced layouts; owned regressions cover complete input consumption and resource bounds, with sentinel preservation for stream readers."

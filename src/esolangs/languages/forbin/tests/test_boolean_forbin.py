@@ -243,3 +243,47 @@ def test_balanced_spaces_only_separate_word_tokens(n: int, side: int) -> None:
     assert balance_score(balanced)[0] == side
     assert not re.search(r"[^\w\n] | [^\w\n]", balanced)
     assert _evaluate("forbin", balanced, inputs=n) == table
+
+
+@pytest.mark.medium
+def test_constants_read_whole_bytes_then_print_inline() -> None:
+    import esolangs
+    from esolangs.languages.forbin.interpreter import _Machine
+    from esolangs.languages.forbin.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Forbin", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 16 * n + 40
+                rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+                for row in rows:
+                    io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted and steps < 4:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                    assert machine.halted
+                    assert io.getvalue() == bit
+                    assert steps == (3 if options else 2)
+                    assert io.input_char() == ord("Q")
+                    if not options:
+                        assert written.bits == workspace(n, program)
+    assert (
+        sum(len(esolangs.generate("Forbin", format(v, "08b"))) for v in range(256))
+        == 46726
+    )
