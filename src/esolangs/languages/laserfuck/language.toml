@@ -88,6 +88,7 @@ saving = 0.0
 verdict = "kept: feasibility -- flip, vertical tree, raise funnel, four-column builder; no default-path effect"
 
 [audits]
+trick_prototype = 2026-10-31
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-18
@@ -96,3 +97,10 @@ plain_rewrite = 2026-10-18
 saving = 71.6
 arity = 10
 verdict = "kept: balanced area on seed 4242 (25 tables an n, 9 at n=11/12) falls 24.6% at n=9, 71.6% at n=10, 82.8% at n=11, 92.6% at n=12 (area a row 109/109/95 at n=10..12, was 385/637/1275); no table grows at n=1..12, n<=8 unchanged. The upright tree is one row per leaf, so its square is T/2 on a side; cut at depth (n-5)//2 and the subtrees side by side, wires blank. Ink is O(Tn), so area is O(T log n) a row. Default byte-identical (corpus hash n=1..12)"
+
+[ablations.six_by_eight_reader_prototype]
+saving = 0.0
+arity = 6
+seed = "random.Random(1847+n)"
+tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
+verdict = "near miss, not shipped: bootstrap the normalization counter as six groups of eight instead of eight groups of six, keeping 48 and all input reads unchanged. The loop bodies change but total reader length does not. Random n=6 area unchanged at 85,176 cells over 20 tables; exhaustive n=3 area unchanged at 88,849 cells. Above six inputs the default is the weighted lookup, unaffected by reader factors; named functions have no area saving through n=12. Forced candidate command count over every n=3 row: 3,209,432 -> 3,143,896 (2.04%), no larger or slower table, below the 5% execution bar. 5,110 raced baseline/candidate output checks correct with 2,555 complemented controls; forced six-by-eight programs additionally pass all 2,048 n=3 rows and all 120 parity rows at n=3..6, with changed emitted readers as the positive control. Prototype stays in ignored notes; generator, bounds and pins unchanged"
