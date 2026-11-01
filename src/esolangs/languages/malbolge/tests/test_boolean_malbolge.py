@@ -30,14 +30,16 @@ class _ReadFirstIO(ScriptedIO):
 
 
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
-    """Return the program's output for ``rows`` (default: every row) in order."""
+    """Run the requested rows, requiring every input and leaving the sentinel."""
     n = len(table).bit_length() - 1
     program = boolean.malbolge(table)
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = row_bits(value, n)
-        io = ScriptedIO("".join(f"{bit}" for bit in bits))
+        io = ScriptedIO("".join(f"{bit}" for bit in bits) + "Q")
         run(program, io)
+        assert io.reads == n, (n, value, io.reads)
+        assert io.input_char() == ord("Q"), (n, value)
         outputs.append(io.getvalue())
     return outputs
 
