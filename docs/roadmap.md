@@ -99,87 +99,12 @@ ignored-input tables included).
   - *Weakly grounded readings the generators rely on:* each record
     agrees only with the clean room patched to our reading.  Make the
     generator run under both, or find page evidence.
-    - B-tapemark: FENCED (2026-10-31).  The page does not settle which
-      grid's marker moves after a swap: re-read 2026-10-31, it says the
-      symbol on the first grid is executed and then "the position
-      marker" is moved, each grid has one, and neither example program
-      swaps.  The page history was checked later the same day: all
-      five revisions, back to the 2013 creation, leave the swap and
-      marker wording unchanged, and no example in any revision
-      swaps, so history does not settle it either.  Measured: under
-      the other reading
-      (the executing grid's marker moves), 147 of 218 corpus rows hang
-      (step cap at least 50,000 against at most 759 shipped steps) and
-      the 71 clean rows are exactly the swap-free executions --
-      constant programs and each stage program's all-ones row, the only
-      row whose every compare misses (witnesses n=1..4 all rows,
-      parity/random n=5..6 sampled, narrow layout included; ours is
-      correct on all 218).  The traced ``0110`` round trip (swap at X
-      heading d0, back heading d1) fixes the algebra: the program
-      marker's offset between readings is d0-d1 and the data marker's
-      is +d1, so no single trip is invariant and a cancelling second
-      trip per branch must satisfy sum(d1) = 0 with sum(d0-d1) = 0 --
-      e.g. each trip beam-safe (d1 = d0) with opposite exit headings.
-      Building it means a second copied gadget, entry and exit turning
-      lanes and lane funnels on the match branch of every stage, in all
-      three layouts: a stage redesign priced at about a stage-sized
-      block per input, not a bounded patch.  A prototype (2026-10-31,
-      wide layout, `0110` stage 0) built and measured the data half of
-      the cancellation: a parallel walk on stage row 2 (weight-1 `|`
-      cells -- the beam already executes the stage's own
-      compare-column `|` heading E, the mismatch branch's +1 cell)
-      plus one W `|` on row 3 cancels the +d1 offset exactly (the alt
-      data marker reaches the descent column at the shipped post-walk
-      position; shipped behaviour on all rows unchanged; +12 chars for
-      the stage, 5 of them the lane's cells).  The program half is
-      blocked in the shipped geometry: the lane crosses the descent
-      column (a `%` there is a no-op under both readings), but the
-      beam travelling W on stage row 3 meets that row's own `\` and is
-      turned N into the copy row, and every other exit from the row-2
-      corridor is blocked by a named shipped cell (the copy row, the
-      run cells, the compare turn).  A working construction must
-      relocate the run, the descent and the exit funnel together --
-      the stage redesign above, whose price is the rejoin's, not the
-      correction's.  The redesign was taken the same day: the wide
-      stage is built (the cancelling lane plus an intercept dropping
-      the alt beam to a travel row that re-enters the next stage down
-      its own entry column, the exit `|` changed to `*`; witnesses
-      n=1..4 all rows and n=5..6 samples clean under both readings)
-      at about +30% size (221 to 281 chars at n=2, 2,489 to 3,311 at
-      n=8), and is held unlanded on its prototype branch --
-      invariance against an unevidenced reading does not pay a third
-      more size on every wide program.  Folded is fenced: the fold
-      links at local column 9 sever the lane's east passage (the alt
-      beam turns N at the link; a parity control runs 31 of 32 rows
-      alt-bad), and fold 0's run is unrideable with a deficit that
-      cannot be paid.  Narrow is fenced: at weights 1..2 the only
-      candidate intercept column is the shipped descent column
-      itself, and with the lane hand-patched and accounted exactly
-      the template `\` at local 7 turns the beam N.  Both readings
-      were also implemented as a registered dialect with a
-      dialect-parameterized generator (a 222-row corpus correct
-      under each reading's own semantics, the alt dialect's programs
-      no larger than the default's) and withdrawn the same day by
-      decision: no consumer needs the second reading executable and
-      the page gives it no grounding, so the dialect commitment is
-      not owed; the verified implementation is kept unlanded on its
-      local branch.  Reopen on new page evidence (a Talk page, an
-      author statement, or a reference implementation), on a folded
-      or narrow construction beating the obstructions named here, or
-      on a real consumer for the other reading -- the dialect branch
-      is the ready implementation if one appears.
-    - Minifuck: REMOVED (2026-10-31) under the spec ground (see
-      limitations.md, Removed languages).  Non-commands count as
-      instructions `[` can skip, against "only 3 instructions"; the
-      `[x` filler the emission model is built on relies on it, and
-      under the clean-room reading the shipped generator diverges on
-      258 of 258 corpus rows.  A rebuild grounded the general,
-      two-state, parity, constant, unary and gap routes, but the
-      stored route is structurally blocked (no command-only
-      equivalents at lengths up to 12 and 15 on exact searches; its
-      travel crosses row-dependent cells), so full grounding is
-      unreachable and the language was removed rather than kept
-      fenced.  The rebuild branch stays unlanded as the record.
+    - B-tapemark: FENCED (2026-10-31); evidence in
+      [limitations](limitations.md#notes-on-individual-languages).  Reopen
+      on new page evidence (Talk page, author statement, reference
+      implementation), a folded or narrow construction beating the named
+      obstructions, or a real consumer for the other reading (the dialect
+      branch is ready).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 

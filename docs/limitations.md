@@ -989,7 +989,8 @@ shipped generator diverges on 258 of 258 corpus rows. A rebuild grounded
 the general, two-state, parity, constant, unary and gap routes, but the
 stored route is structurally blocked — no command-only equivalents at
 lengths up to 12 and 15 on exact searches, and its travel crosses
-row-dependent cells — so full grounding is unreachable.
+row-dependent cells — so full grounding is unreachable. The rebuild branch
+stays unlanded as the record.
 
 Every exclusion and its ground:
 
@@ -1016,6 +1017,56 @@ lower bound; three stay out under the scaling rule:
 
 ### Notes on individual languages
 
+- B-tapemark (fenced 2026-10-31): the page does not settle which grid's
+  marker moves after a swap.  It says the symbol on the first grid is
+  executed and then "the position marker" is moved, each grid has one, and
+  neither example swaps.  All five page revisions back to the 2013 creation
+  leave the swap and marker wording unchanged, and no example in any
+  revision swaps.  The shipped generator assumes the program grid's marker
+  moves; ours is correct on all 218 corpus rows.  Under the other reading
+  (the executing grid's marker moves) 147 of 218 rows hang (step cap at
+  least 50,000 against at most 759 shipped steps); the 71 clean rows are
+  exactly the swap-free executions (constant programs and each stage
+  program's all-ones row, the only row whose every compare misses;
+  witnesses n=1..4 all rows, parity/random n=5..6 sampled, narrow layout
+  included).
+  - Algebra: the traced `0110` round trip (swap at X heading d0, back
+    heading d1) puts the program marker's offset between readings at d0-d1
+    and the data marker's at +d1, so no single trip is invariant; a
+    cancelling second trip per branch needs sum(d1) = 0 with sum(d0-d1) = 0,
+    e.g. each trip beam-safe (d1 = d0) with opposite exit headings.  That
+    is a second copied gadget, entry and exit turning lanes and lane
+    funnels on the match branch of every stage, in all three layouts.
+  - Wide prototype (`0110` stage 0): a parallel walk on stage row 2
+    (weight-1 `|` cells; the beam already executes the stage's own
+    compare-column `|` heading E, the mismatch branch's +1 cell) plus one W
+    `|` on row 3 cancels the +d1 offset exactly (+12 chars for the stage, 5
+    of them the lane's cells; shipped behaviour unchanged).  The program
+    half is blocked in the shipped geometry: the lane crosses the descent
+    column (a `%` there is a no-op under both readings), but the beam
+    travelling W on row 3 meets that row's own `\` and turns N into the
+    copy row, and every other exit from the row-2 corridor is blocked by
+    the copy row, the run cells or the compare turn.  A construction must
+    relocate the run, descent and exit funnel together.
+  - Wide redesign: built the same day (cancelling lane plus an intercept
+    dropping the alt beam to a travel row that re-enters the next stage
+    down its own entry column, exit `|` changed to `*`; witnesses n=1..4
+    all rows and n=5..6 samples clean under both readings) at about +30%
+    size (221 to 281 chars at n=2, 2,489 to 3,311 at n=8); held unlanded on
+    its prototype branch.
+  - Folded is fenced: the fold links at local column 9 sever the lane's
+    east passage (the alt beam turns N at the link; a parity control runs
+    31 of 32 rows alt-bad), and fold 0's run is unrideable with a deficit
+    that cannot be paid.
+  - Narrow is fenced: at weights 1..2 the only candidate intercept column
+    is the shipped descent column itself, and with the lane hand-patched
+    and accounted exactly the template `\` at local 7 turns the beam N.
+  - Both readings were implemented as a registered dialect with a
+    dialect-parameterized generator (222-row corpus correct under each
+    reading's own semantics, the alt dialect's programs no larger than the
+    default's) and withdrawn the same day: no consumer needs the second
+    reading executable; the verified implementation is kept unlanded on its
+    local branch.
 - Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis.
 - Deadfish (315) is interpreter-only because it has no input vocabulary.
 - Quassaunt (3): the `%%Multithread` extension the wiki lists apart from
