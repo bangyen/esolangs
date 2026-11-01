@@ -69,5 +69,13 @@ arity = 10
 verdict = "kept: _BLOCK = 7 caps the painted block at 128 rows, which is termination machinery (a 512-row array did not terminate in 30 s; the Char index wraps). The value is flat as the comment claims: block sizes 5/6/8 against 7 on random tables at n=10 measure +1.2% / -1.2% / +3.0% (claimed +1.2% / -1.2% / +2.7%). Six would win random by 1.2% but loses 14.9% on 90%-dense tables at n=10; eight is the reverse, so seven is a measured compromise, not a leftover"
 
 [audits]
+trick_prototype = 2026-10-31
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
+
+[ablations.span_fill_prototype]
+saving = 0.2671
+arity = 8
+seed = "random.Random(1847+n)"
+tables = "20 random per n=3..12; and/or/parity/majority plus every threshold n=7..12; exhaustive n<=3"
+verdict = "near miss, not shipped: fill only the interval from the first one through the last, then punch its internal zeros, competing with singles, run loops and whole-block fill. Random n=7/8: 24,762 -> 24,762 / 40,806 -> 40,697 chars (0.00% / 0.267%); n=12 0.462%. Majority n=8: 1,169 -> 1,135 (2.91%); every threshold n=7..12 stays below 10%, peaking at 7.34% (n=9, >=5), then majority falls to 2.78% at n=12. and/or/parity unchanged. All 256 n=3 programs byte-identical (78,262 chars). 10,162 baseline/candidate output checks correct, including every row through n=6 and three boundary rows through n=12; 342 complemented controls rejected. Positive control: the 64-row table 0^8 1^23 0 1^24 0^8 shrinks 597 -> 566 chars and both builds execute correctly. A further 5,888 VM runs count every row of all thresholds at n=7/8: no command savings, changed cases cost 11.0%-546.1% more commands. Prototype stays in ignored notes; generator, bounds and pins unchanged"
