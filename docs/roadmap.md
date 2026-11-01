@@ -69,9 +69,13 @@ implementation-status category; the heuristic link filter retained 2,248.
 Missing categories and links do not establish first-implementation eligibility.
 Screen these in order under [curation](limitations.md#curation):
 
-- **[NQ](https://esolangs.org/wiki/NQ):** trit queue with guarded execution.
-  Check the WIP specification, restricted output alphabet and contribution
-  beyond existing queue/tag languages.
+- **[NQ](https://esolangs.org/wiki/NQ):** admission probe passed 313 tables /
+  12,282 rows through n=10 (seed 1847); native grouped guards give a loop-less
+  tree of `10T - 6` characters. Space / `#` encode false / true; preserve
+  whitespace in answer extraction. Wiki revision 156166 has one backlink;
+  no public implementation found on 2026-11-01. Next: production interpreter,
+  constant/ignored-input folds, sharing audit and full admission gates. Follow
+  the instruction table; the cyclic-tag example reverses its guard value.
 
 Before admission, check public implementations beyond wiki links, resolve core
 semantics, and execute a loop-less Boolean generator with proved O(T)
