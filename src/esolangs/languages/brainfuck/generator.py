@@ -4,14 +4,15 @@ Input bits sit at cells ``2i`` with flags at ``2i+1``; branches clear both and
 one final print reads the result.  Equal sibling halves merge; repeated
 residuals use one unused flag per level and emit once in depth order within
 the command bound.  Affine tables stream through three cells instead, at
-most 66 commands per selected input.  Every input is read with its ASCII
-subtract into its own cell, ignored ones included.  Literal conjunctions
+most 66 commands per selected input.  Tree inputs are read with their ASCII
+subtract into separate cells, ignored ones included.  Literal conjunctions
 and disjunctions share a two-pass ASCII subtraction counter.
 
 Size:
     O(T) for dense tables, O(n) for affine ones; n=10 parity: 760 chars,
     n=12 parity: 902 chars, n=10 and: 589 chars,
-    n=10 random 1847: 10,792 chars.
+    n=10 random 1847: 10,792 chars. Constants from n=2: n+22+b chars,
+    n+82+b commands and 16+bl(n+22+b)+bl(n) written bits, b the answer.
 
 Decisions:
     Flags cut n=10 sparse from 2,646 to 754 chars; folding and shared output
@@ -50,6 +51,15 @@ _RIGHT, _LEFT = ">", "<"
 
 def bf_tree(truth_table: str) -> str:
     """Return a compact program, consuming every input unconditionally."""
+    n = _validate_truth_table(truth_table)
+    if n >= 2 and truth_table == truth_table[0] * len(truth_table):
+        # Three cells fit from n=2; clearing the one-input byte costs 99 commands.
+        return (
+            "," * n
+            + ">++++++[>++++++++<-]>"
+            + ("+" if truth_table[0] == "1" else "")
+            + "."
+        )
     tree = min(
         in_input_order(truth_table, _bf_ordered),
         in_input_order(truth_table.translate(_COMPLEMENT), _flipped_ordered),

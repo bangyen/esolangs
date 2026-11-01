@@ -11,6 +11,7 @@ def test_affine_stream_all_small_coefficients_within_ledger() -> None:
     from esolangs.languages.brainfuck.generator import _affine_stream
     from scripts.benchmark import WrittenState
 
+    _check_constants()
     admitted = 0
     for n in range(1, 6):
         for mask in range(1 << n):
@@ -133,3 +134,47 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
                     + n.bit_length()
                     + len(source).bit_length()
                 )
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.brainfuck.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(2, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("brainfuck", bit * (1 << n), **options)
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "brainfuck", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "Q")
+                    machine = _Machine("".join(program.split()), io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= n + 82 + int(bit)
+                    assert steps == n + 82 + int(bit)
+                    assert io.getvalue() == bit
+                    assert (
+                        written.bits
+                        == 16 + (n + 22 + int(bit)).bit_length() + n.bit_length()
+                    )
+                    assert io.input_char() == ord("Q")
+    assert (
+        sum(len(esolangs.generate("brainfuck", f"{v:08b}")) for v in range(256))
+        == 70418
+    )

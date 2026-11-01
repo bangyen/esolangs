@@ -15,9 +15,13 @@ bit moves to cell 0 as ``1`` or an empty queue, and Z keeps the seven bits
 ``0,0,0,1,1,0,0`` either way, through a flag (cell ``2n + 2``).  The answer
 byte is R then Z: ``.`` on each completes ``0``/``1``.
 
+Constants drain later bytes into one scratch queue, print a literal low bit,
+then complete the answer from the first byte's fixed seven-bit tail.
+
 Size:
     O(T): at most 19 characters a node, trips to R summing to 10T; the
     shared form is kept when shorter; n=4 parity: 278 chars.
+    Constants: n+10-2b characters and commands, b the answer.
 
 Decisions:
     A tree cannot print Z unless its bits are fixed, and the tree consumes
@@ -106,6 +110,10 @@ def _qrain_ordered(table: str, perm: tuple[int, ...]) -> str:
 
 def qrain(truth_table: str) -> str:
     """Return a Qrain program for an MSB-first truth table."""
+    n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        low = "+" if truth_table[0] == "1" else "++-"
+        return ",>" + "," * (n - 1) + ">" + low + ".<<-."
     return in_input_order(truth_table, _qrain_ordered)
 
 
