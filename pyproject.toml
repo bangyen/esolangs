@@ -1,7 +1,7 @@
 [build-system]
 # The SPDX-string `license` below is PEP 639, which setuptools implements
 # from 77.0; pin the measured backend so rebuilding a tag uses the same tool.
-requires = ["setuptools==84.0.0"]
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -42,8 +42,8 @@ dev = [
     "click>=8.3.3",
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
-    "ruff==0.16.9",
-    "mypy==2.3.1",
+    "ruff==0.17.3",
+    "mypy==2.4.0",
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",

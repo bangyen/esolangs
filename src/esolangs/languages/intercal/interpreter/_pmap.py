@@ -51,10 +51,10 @@ class _PMap[K: Hashable, V](Mapping[K, V]):
             size += key not in buckets[at]
             buckets[at][key] = value
         fresh = object.__new__(type(self))
-        fresh._buckets = tuple(buckets)  # noqa: SLF001
-        fresh._size = size  # noqa: SLF001
+        fresh._buckets = tuple(buckets)
+        fresh._size = size
         if size > 2 * len(buckets) ** 2:
-            fresh._rebuild(dict(fresh.items()))  # noqa: SLF001
+            fresh._rebuild(dict(fresh.items()))
         return fresh
 
     def set(self, key: K, value: V) -> _PMap[K, V]:
@@ -63,14 +63,14 @@ class _PMap[K: Hashable, V](Mapping[K, V]):
         at = hash(key) & (len(buckets) - 1)
         bucket = buckets[at]
         fresh = object.__new__(type(self))
-        fresh._buckets = (  # noqa: SLF001
+        fresh._buckets = (
             *buckets[:at],
             {**bucket, key: value},
             *buckets[at + 1 :],
         )
-        fresh._size = self._size + (key not in bucket)  # noqa: SLF001
-        if fresh._size > 2 * len(buckets) ** 2:  # noqa: SLF001
-            fresh._rebuild(dict(fresh.items()))  # noqa: SLF001
+        fresh._size = self._size + (key not in bucket)
+        if fresh._size > 2 * len(buckets) ** 2:
+            fresh._rebuild(dict(fresh.items()))
         return fresh
 
     def __getitem__(self, key: K) -> V:
