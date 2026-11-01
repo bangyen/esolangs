@@ -62,3 +62,10 @@ verdict = "kept: snapshot per step is O(1) once the table is written"
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 37.3
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept for wholly constant tables: two input bits per tooth, with no enqueue, in both flat and helix layouts. Unlike general tooth packing, the read block is the scaling term for constants: area saving is 33.5% at n=7 (805 -> 535 cells), 37.3% at n=8 (885 -> 555), and 39.0% at n=12 (1205 -> 735); both constant values share these sizes. Meets the 20% declining gate at the same n=7/8 arities; no arity cap. Nonconstant packing stays retired. Default, width=1 and balanced constants n=1..12 execute; sentinel regressions check complete input bytes and read-before-output at n=1,3,7,8,12. All 270 nonconstant programs through n=3 are byte-identical; n=3 totals 159344 -> 159084 chars and 158320 -> 158060 cells. Existing worst-case formula witnesses and benchmark pins remain unchanged."

@@ -54,7 +54,7 @@ def test_balance_is_near_the_swept_optimum() -> None:
 def test_balance_of_the_constant_zero_n3_is_exact() -> None:
     """The helix's print units are priced at their real width: (side, length, width)."""
     program = str(esolangs.generate("ABCDirection", "00000000", balance=True))
-    assert balance_score(program) == (42, 839, 39)
+    assert balance_score(program) == (34, 559, 34)
 
 
 def test_balance_of_xor_n2_is_exact() -> None:
@@ -83,3 +83,37 @@ def test_balance_of_not_n1_is_exact() -> None:
     and drop; a fifth widens even the one-input helix: (35, 575, 35)."""
     program = str(esolangs.generate("ABCDirection", "01", balance=True))
     assert balance_score(program) == (35, 575, 35)
+
+
+@pytest.mark.parametrize("n", [1, 3, 7, 8, 12])
+@pytest.mark.parametrize("bit", ["0", "1"])
+@pytest.mark.parametrize("balanced", [False, True])
+def test_constant_teeth_consume_whole_bytes(n, bit, balanced) -> None:
+    from esolangs.languages.abcdirection.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    program = esolangs.generate("ABCDirection", bit * (1 << n), balance=balanced)
+    if n == 8 and not balanced:
+        assert len(program) == 559
+    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+    for row in rows:
+        io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+        run(program, io)
+        assert io.getvalue() == bit
+        assert io.reads == n
+        assert io.input_char() == ord("Q")
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(
+            len(esolangs.generate("ABCDirection", format(value, "08b")))
+            for value in range(256)
+        )
+        == 159084
+    )

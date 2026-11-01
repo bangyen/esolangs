@@ -103,3 +103,10 @@ arity = 6
 seed = "random.Random(1847+n)"
 tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
 verdict = "near miss, not shipped: bootstrap the normalization counter as six groups of eight instead of eight groups of six, keeping 48 and all input reads unchanged. The loop bodies change but total reader length does not. Random n=6 area unchanged at 85,176 cells over 20 tables; exhaustive n=3 area unchanged at 88,849 cells. Above six inputs the default is the weighted lookup, unaffected by reader factors; named functions have no area saving through n=12. Forced candidate command count over every n=3 row: 3,209,432 -> 3,143,896 (2.04%), no larger or slower table, below the 5% execution bar. 5,110 raced baseline/candidate output checks correct with 2,555 complemented controls; forced six-by-eight programs additionally pass all 2,048 n=3 rows and all 120 parity rows at n=3..6, with changed emitted readers as the positive control. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 95.8
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept: canonical constants, percentage gate exempt. Default constants overwrite one cell with n reads, then zero the final ASCII digit in one ring and add the answer bit. 2n+20+bit characters, 3(n+9+bit) cells, at most n+491+bit commands across all initial headings. At n=7, area 1098/1101 -> 48/51 cells; n=8 1245/1248 -> 51/54; n=12 1833/1836 -> 63/66. Explicit widths retain the existing reader layout. Constants at n=1..12 ran with default, width=1 and balance=True; owned regressions check sentinel preservation and every initial heading across n=1,3,6,7,8,12. The 270 nonconstant programs through n=3 are byte-identical; n=3 totals fall 87727 -> 87555 chars and 88849 -> 88555 cells."

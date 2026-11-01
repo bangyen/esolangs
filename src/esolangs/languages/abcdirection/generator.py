@@ -42,6 +42,7 @@ Size:
     O(T) cells, 7.69 a row at ``n = 12``; n=6 random 1847: 1,299 chars,
     n=10 random 1847: 8,599 chars (1,075 cells at ``n = 6``).  Balanced:
     O(T) area, 23.5 cells a row at ``n = 12`` (was 1,036).
+    Constants read two bits per tooth; n=8 zero: 559 chars.
 
 Decisions:
     Constant subtrees are not folded nor repeated ones shared: every row
@@ -225,7 +226,7 @@ def _print(grid: _Grid, w: _Walker) -> None:
 
 
 def _teeth(copies: dict[int, int], n: int) -> list[tuple[int, int]]:
-    """Each tooth's read count and how often it enqueues: one read a tooth.
+    """Each tooth's read count and enqueues; constants pair reads without enqueues.
 
     An essential input's value bit enqueues as it lands; an ignored input
     is read like any other bit and never enqueued.  Packing two reads a
@@ -233,7 +234,12 @@ def _teeth(copies: dict[int, int], n: int) -> list[tuple[int, int]]:
     2026-10: priced by area on random tables it fell steadily with n
     ([ablations.tooth_packing]) -- the read block is O(n) columns
     against an O(2**n) table (retirement candidate #14).
+    Constants retain two-read teeth: their read block is the scaling term
+    ([ablations.constant_table_audit_20261101]).
     """
+    if not copies:
+        # Constants enqueue nothing, so two reads fit each five-row tooth.
+        return [(2, 0)] * (_BITS * n // 2)
     return [
         (1, copies.get(index // _BITS, 0) if index % _BITS == 0 else 0)
         for index in range(_BITS * n)

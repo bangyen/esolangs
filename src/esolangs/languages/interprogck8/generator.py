@@ -25,14 +25,16 @@ flight in the air shares.
   every flight's, and prints ``0`` or ``1``.
 
 A read whose halves are equal (``subtree_ids``), a constant or an ignored
-input, still consumes its digit: its child is laid straight after it.
+input, still consumes its digit: its child is laid straight after it. Whole
+constants use n reads and a fixed arithmetic tail, without windows.
 
 Size:
     O(T) at every arity: a window is 126 lines and the cursor walk is a
     recursion over (height, entry offset), so the worst table takes about
     193.1 T characters at n = 10 (tests/formulas.py, exact at n = 3..12; 24,874
     at n = 7).  n=10 random 1847: 160,984 chars, n=10 parity: 189,578 chars,
-    n=10 and: 8,160 chars.
+    n=10 and: 8,160 chars. Constants use 2n+28+4bit chars and n+7+bit commands;
+    n=8 zero: 44 chars.
 
 Raises:
     GeneratorCapError: more than forty inputs; a flight's column must stay
@@ -212,6 +214,12 @@ def interprogck8(truth_table: str) -> str:
                 f"{_MAX_INPUTS} inputs, not {n}"
             ),
             "a table past forty inputs is a terabyte; no width enlarges the columns",
+        )
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # A constant needs no windows: read first, then load 65 - 20 + 3 + bit.
+        bit = int(truth_table[0])
+        return "\n".join(
+            ["u"] * n + ["nNnN", "@dd", "@dd"] + ["@nd"] * (3 + bit) + ["div"]
         )
     plan = _Plan(truth_table, n)
     plan.lay(0, 0)

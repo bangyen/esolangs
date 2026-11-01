@@ -6,6 +6,7 @@ import re
 
 import pytest
 
+import esolangs
 from esolangs.languages import generators as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
@@ -472,3 +473,32 @@ def test_balance_tiles_subtrees_at_n9() -> None:
     balanced = esolangs.generate("LaserFuck", table, balance=True)
     assert balance_score(balanced) == (292, 25252, 292)
     assert _evaluate("LaserFuck", balanced, 60, inputs=9, max_rows=None) == table
+
+
+@pytest.mark.parametrize("n", [1, 3, 6, 7, 8, 12])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constants_drain_before_dump_at_every_heading(n, bit) -> None:
+    from esolangs.languages.laserfuck.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+    from esolangs.runtime.randomness import FirstDraw
+
+    program = boolean.laserfuck(bit * (1 << n))
+    assert len(program) == 2 * n + 20 + int(bit)
+    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+    for row in rows:
+        for heading in range(4):
+            io = ScriptedIO(format(row, f"0{n}b") + "Q")
+            run(program.splitlines(), io, rng=FirstDraw(heading))
+            assert io.getvalue() == bit
+            assert io.reads == n
+            assert io.input_char() == ord("Q")
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(
+            len(esolangs.generate("LaserFuck", format(value, "08b")))
+            for value in range(256)
+        )
+        == 87555
+    )

@@ -5,13 +5,16 @@ them with ``>#v)`` nodes, one row per *one* edge, and each leaf retires the
 cells and adds ``+`` for a one.  Subtrees that agree become leaves, but equal
 subtrees are never shared.  Input order stays the identity (see
 :func:`_laserfuck_pool`).  Above sixty-four entries (without a width)
-the weighted linear-space lookup replaces the tree.
+the weighted linear-space lookup replaces the tree. Constants without a width
+read into one cell, zero it with a ring, then add their answer bit.
 
 Size:
     About 23T chars from n=7 (weighted lookup); the tree under it:
     n=4 random 1847: 548 chars, n=5 random 1847: 1,640 chars,
     n=6 random 1847: 4,241 chars, n=10 random 1847: 24,605 chars,
     n=16 and: 1,443,471 chars.
+    Constants without a width use 2n+20+bit chars and 3(n+9+bit) cells;
+    n=8 zero: 36 chars.
     Balanced (tiled subtrees from n=9): about 110 cells of area a row at
     n=10..12 (random 4242).
 
@@ -700,7 +703,13 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     placement already trade rows against columns, so the narrowest program is
     often not the shortest.
     """
-    _validate_truth_table(truth_table)
+    n = _validate_truth_table(truth_table)
+    if width is None and truth_table.count(truth_table[0]) == len(truth_table):
+        # Overwrite one cell while reading, then drain it before the dump.
+        # The zeroing ring removes the last ASCII digit without a second cell.
+        top = " }}" + "," * n + "}-#/)" + ("+" if truth_table[0] == "1" else "") + "x"
+        middle = "|o^" + " " * n + "^  {"
+        return top + "\n" + middle + "\n _"
     if width is None and len(truth_table) > 64:
         return _laserfuck_weighted(truth_table)
     return _laserfuck_pool(truth_table, width)

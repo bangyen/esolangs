@@ -113,7 +113,8 @@ def test_the_input_cap_is_forty(monkeypatch: pytest.MonkeyPatch) -> None:
         "_Plan",
         lambda *_: type("P", (), {"lay": lambda *_: None, "text": lambda _: "ok"})(),
     )
-    assert generator.interprogck8("0") == "ok"
+    assert generator.interprogck8("01") == "ok"
+    assert generator.interprogck8("0").splitlines().count("u") == 40
 
 
 def test_flight_columns_keep_the_stop_in_the_cursors_window() -> None:
@@ -153,3 +154,35 @@ def test_a_subtree_advances_at_most_two_to_the_h_minus_one_windows(n: int) -> No
     for _ in range(10):
         table = "".join(rng.choice(["00", "11", "01", "10"]) for _ in range(width // 2))
         assert len(generator.interprogck8(table)) <= 226 * width + 224
+
+
+@pytest.mark.parametrize("n", [1, 3, 7, 8, 12])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constants_read_before_the_arithmetic_tail(n, bit) -> None:
+    from esolangs.languages.interprogck8.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    program = esolangs.generate("Interprogck8", bit * (1 << n))
+    assert len(program) == 2 * n + 28 + 4 * int(bit)
+    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+    for row in rows:
+        io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+        run(program, io)
+        assert io.getvalue() == bit
+        assert io.reads == n
+        assert io.input_str() == "Q"
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(
+            len(esolangs.generate("Interprogck8", format(value, "08b")))
+            for value in range(256)
+        )
+        == 340172
+    )

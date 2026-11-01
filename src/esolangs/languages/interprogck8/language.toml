@@ -59,3 +59,10 @@ verdict = "kept for steps (plain-rewrite audit 2026-10-29): flights fly at the h
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 95.5
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept: canonical constants, percentage gate exempt. n u reads followed by nNnN, two @dd, 3+bit @nd, div: 2n+28+4bit chars and exactly n+7+bit commands. At n=7, chars 958/960 -> 42/46; n=8 1022/1024 -> 44/48; n=12 1278/1280 -> 52/56. No slot or frame: workspace bound is 7+bl(R)+bl(2n), measured 16/17 written bits at n=8; generic bounds remain unchanged. Default, width=1 and balanced constants n=1..12 execute; sentinel regressions cover n=1,3,7,8,12. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 341506 -> 340172."

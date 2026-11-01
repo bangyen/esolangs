@@ -1,8 +1,11 @@
 """Executed command and snapshot-bit bounds the ledger notation cannot state."""
 
 
-def execution(n: int, _: str) -> int:
-    """Tree to n = 6: every node distinct, all-ones row; then T - 1 ones."""
+def execution(n: int, program: str) -> int:
+    """Constants drain at most 49; otherwise tree to n=6, then T-1 ones."""
+    if program.startswith(" }}" + "," * n + "}-#/)"):
+        # Ten steps a ring pass, with the final reflection skipped; any heading.
+        return n + 491 + program.split("\n", 1)[0].endswith("+x")
     if n < 7:
         return (1 << n) + 296 * n + 682
     return 18 * (1 << n) + 56 * n + 4
