@@ -60,6 +60,7 @@ Languages whose primary data structure is a queue or deque.
 - [Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag) ([code](../src/esolangs/languages/bitwise_cyclic_tag/interpreter.py))
 - [Cyclic tag](https://esolangs.org/wiki/Cyclic_tag) ([code](../src/esolangs/languages/cyclic_tag/interpreter.py))
 - [NOR machine](https://esolangs.org/wiki/NOR_machine) ([code](../src/esolangs/languages/nor_machine/interpreter.py))
+- [NQ](https://esolangs.org/wiki/NQ) ([code](../src/esolangs/languages/nq/interpreter.py))
 - [Qrain](https://esolangs.org/wiki/Qrain) ([code](../src/esolangs/languages/qrain/interpreter.py))
 - [Taglate](https://esolangs.org/wiki/Taglate) ([code](../src/esolangs/languages/taglate/interpreter.py))
 

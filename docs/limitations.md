@@ -36,6 +36,10 @@ Exceptions and per-language notes:
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
 
+- NQ ignores input whitespace; `R` reads through EOF. Empty-queue reads
+  and writes fail. The instruction table governs guards; its cyclic-tag
+  example switches `>1` to `>0` for the same production.
+
 ### Image-based languages
 
 <!-- RASTER-SOURCES:START -->
@@ -611,8 +615,8 @@ requires a construction exemption rather than a sub-gate bound.
 <!-- SHARING-COUNTS:START -->
 
 A test (`tests/generators/test_boolean_sharing_catalogue.py`) checks that 46
-of 71 tree-shaped generators build parity or a repeated-block table at most
-0.90x its dense or distinct-block twin (6 by a local helper); 25 are
+of 72 tree-shaped generators build parity or a repeated-block table at most
+0.90x its dense or distinct-block twin (6 by a local helper); 26 are
 exempt with a reason. One shrinking probe does not establish complete sharing.
 
 <!-- SHARING-COUNTS:END -->
@@ -829,7 +833,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 116 languages.
+The collection has 117 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -963,7 +967,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 92 are first implementations.
+and 93 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 

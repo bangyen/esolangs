@@ -3,11 +3,15 @@
 import pytest
 
 from esolangs.languages.refractran.interpreter import _Machine, run
+from esolangs.languages.refractran.tests.test_integration_refractran import (
+    check_serialized_narrow_template_and_vm,
+)
 from esolangs.runtime.io import ScriptedIO
 
 
 def test_fraction_search() -> None:
-    """Forward multiplication, reverse division and invalid sources."""
+    """Directions, malformed sources and serialized templates."""
+    check_serialized_narrow_template_and_vm()
     cases = [
         ("2 3/2", "11"),
         ("8 2/3", "1000"),

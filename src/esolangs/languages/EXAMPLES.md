@@ -91,6 +91,7 @@ don't edit by hand.
 | `movesum/movesum.txt` | Movesum | `0001` | `01` | 0 1 | '0 0' |
 | `nandypants/nandypants.txt` | Nandypants | `0001` | `01` | 01 | '0' |
 | `nor_machine/nor-machine.txt` | NOR machine | `0001` | `01` | 0 1 | '0' |
+| `nq/nq.txt` | NQ | `0001` | `01` | 01 | ' ' |
 | `object_disoriented/object-disoriented.txt` | Object disoriented | `0001` | `01` | 01 | '0' |
 | `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
@@ -155,6 +156,7 @@ don't edit by hand.
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **malbolge** -- the answer is one character and is printed with no newline
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
+- **nq** -- The whole output is a space for false or # for true.
 - **object-disoriented** -- Object disoriented reads input bits most significant first, so a program keeps each input byte's eighth bit and drops the seven before it
 - **piet** -- the committed example is drawn at 80 pixels per codel; generate draws 1 unless --scale says otherwise
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register

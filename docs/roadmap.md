@@ -62,25 +62,6 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
-## First-implementation candidates
-
-The 2026-11-01 wiki API screen found 2,537 language pages in neither
-implementation-status category; the heuristic link filter retained 2,248.
-Missing categories and links do not establish first-implementation eligibility.
-Screen these in order under [curation](limitations.md#curation):
-
-- **[NQ](https://esolangs.org/wiki/NQ):** admission probe passed 313 tables /
-  12,282 rows through n=10 (seed 1847); native grouped guards give a loop-less
-  tree of `10T - 6` characters. Space / `#` encode false / true; preserve
-  whitespace in answer extraction. Wiki revision 156166 has one backlink;
-  no public implementation found on 2026-11-01. Next: production interpreter,
-  constant/ignored-input folds, sharing audit and full admission gates. Follow
-  the instruction table; the cyclic-tag example reverses its guard value.
-
-Before admission, check public implementations beyond wiki links, resolve core
-semantics, and execute a loop-less Boolean generator with proved O(T)
-construction and emitted size. Apply the existing verification gates.
-
 ## Engineering
 
 Dead-code leads, unmeasured against the
@@ -127,7 +108,7 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-90 of the 92 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+90 of the 93 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
 BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
@@ -153,7 +134,7 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-5 of the 113 generators: BASICER, CARP, CreativeScript v2, HQ9+ with
+5 of the 114 generators: BASICER, CARP, CreativeScript v2, HQ9+ with
 headers, Qrain.
 
 <!-- TRICK-PROTOTYPES:END -->

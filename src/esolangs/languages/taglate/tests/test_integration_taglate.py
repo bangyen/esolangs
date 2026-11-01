@@ -25,13 +25,15 @@ class TestAnswerMode:
                 continue
             program = esolangs.generate(name, XOR)
             got = "".join(
-                esolangs.run(
+                esolangs.read_answer(
                     name,
-                    program,
-                    stdin=esolangs.encode_inputs(name, [(row >> 1) & 1, row & 1]),
-                    timeout=30,
-                ).strip()[-1:]
-                or "?"
+                    esolangs.run(
+                        name,
+                        program,
+                        stdin=esolangs.encode_inputs(name, [(row >> 1) & 1, row & 1]),
+                        timeout=30,
+                    ),
+                )
                 for row in range(4)
             )
             if got != XOR:

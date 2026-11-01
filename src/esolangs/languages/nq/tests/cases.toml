@@ -1,0 +1,32 @@
+language = "NQ"
+oldid = 156166
+
+[[spec_triggers]]
+program = "+"
+stdin = ""
+expect = "ProgramError"
+claim = "enqueue requires a trit operand"
+
+[[spec_triggers]]
+program = "rH"
+stdin = "x"
+expect = "ArgumentError"
+claim = "input must consist of trits and whitespace"
+
+[[spec_triggers]]
+program = "rH"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "r raises at EOF"
+
+[[spec_triggers]]
+program = "-H"
+stdin = ""
+expect = "HaltError"
+claim = "dequeue on an empty queue fails"
+
+[[spec_triggers]]
+program = "WH"
+stdin = ""
+expect = "HaltError"
+claim = "output on an empty queue fails"

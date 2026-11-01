@@ -4,7 +4,7 @@ import esolangs
 from esolangs.debugger import make_vm
 
 
-def test_serialized_narrow_template_and_vm() -> None:
+def check_serialized_narrow_template_and_vm() -> None:
     language = esolangs.Language("REFRACTRAN")
     template = language.generate("0110", width=1)
     restored = language.load_program(language.dump_program(template))

@@ -167,6 +167,8 @@ from esolangs.languages.nandypants.generator import LANGUAGE as _NANDYPANTS_LANG
 from esolangs.languages.nandypants.generator import nandypants
 from esolangs.languages.nor_machine.generator import LANGUAGE as _NOR_MACHINE_LANGUAGE
 from esolangs.languages.nor_machine.generator import nor_machine
+from esolangs.languages.nq.generator import LANGUAGE as _NQ_LANGUAGE
+from esolangs.languages.nq.generator import nq
 from esolangs.languages.object_disoriented.generator import (
     LANGUAGE as _OBJECT_DISORIENTED_LANGUAGE,
 )
@@ -328,6 +330,7 @@ _LANGUAGES = (
     _MOVESUM_LANGUAGE,
     _NANDYPANTS_LANGUAGE,
     _NOR_MACHINE_LANGUAGE,
+    _NQ_LANGUAGE,
     _OBJECT_DISORIENTED_LANGUAGE,
     _ONE_I_LANGUAGE,
     _PACKLANG_LANGUAGE,
@@ -445,6 +448,7 @@ __all__ = [
     "movesum",
     "nandypants",
     "nor_machine",
+    "nq",
     "object_disoriented",
     "one_i",
     "packlang",
