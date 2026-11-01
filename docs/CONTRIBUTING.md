@@ -304,3 +304,15 @@ before the next input. `answer_mode` covers state-dump and termination answers.
 
 - Boolfuck packs input bits into bytes.
 - Smu packs input bits into bytes.
+
+Contract tests must check answers and consumption together, including asymmetric
+rows that expose input permutations. Fixed-frame readers leave a following record
+untouched; whole-stream readers own stdin, and EOF probes are limited to one.
+Crashes and timeouts are failures, never answers; divergence requires a proof
+such as a repeated state.
+Saved text, compressed source and PNGs execute independently of generator caches.
+Width, wrapping and balancing preserve answers and input consumption.
+
+Exercise constants, ignored inputs and every construction switch on both sides,
+including the supported arity boundary. Keep expensive boundary witnesses in
+language-owned tests; shared small-input checks do not establish their coverage.

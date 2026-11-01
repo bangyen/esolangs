@@ -4,9 +4,11 @@ import pytest
 
 import esolangs
 from esolangs import vm
+from esolangs.runtime._evaluate import _row_answerer
 from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.reference import REFERENCE
+from tests.support.witness_tables import witnesses
 
 IGNORING = [
     "00000000",
@@ -15,17 +17,37 @@ IGNORING = [
     "01100110",
     "0011",
     "00111100",
+    "00001111",  # first-input projection distinguishes reversed reads
+    "00101101",  # asymmetric, with every input essential
     "".join(c * 2 for c in "0110" * 8),
 ]
 INFOS = {n: esolangs.describe(n) for n in esolangs.list_languages()}
 
 
-def _audit(name, program, n, mp):
+def _audit(
+    name,
+    program,
+    n,
+    mp,
+    *,
+    table=None,
+    selected=None,
+    sentinel=False,
+    whole_stream=None,
+):
     """Run every row; return rows, unread rows, past-end reads, early-output rows."""
     made, early = [], []
 
     def new(stdin=""):
-        io = made.append(ScriptedIO(stdin)) or made[-1]
+        io = made.append(ScriptedIO(stdin + ("Q\n" if sentinel else ""))) or made[-1]
+        read_all = io.input_all
+
+        def all_input(*args, **kwargs):
+            if whole_stream is not None:
+                whole_stream.append(True)
+            return read_all(*args, **kwargs)
+
+        io.input_all = all_input
         write = io._write  # noqa: SLF001
 
         def checked(value):
@@ -39,13 +61,29 @@ def _audit(name, program, n, mp):
     mp.setattr(esolangs, "ScriptedIO", new)
     mp.setattr(vm, "ScriptedIO", new)
     rows = unread = past = 0
-    for row in range(1 << n):
+    for row in range(1 << n) if selected is None else selected:
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])
         if INFOS[name]["answer_mode"] != "termination":
-            esolangs.run(name, program, stdin=stdin, timeout=10)
+            output = esolangs.run(name, program, stdin=stdin, timeout=10)
+            if table is not None:
+                assert esolangs.read_answer(name, output) == table[row], (name, row)
         else:
             # A proven cycle is an answer too; its input must still be consumed.
-            vm.run_until_halt_or_cycle(vm.make_vm(name, program, stdin=stdin))
+            if table is None:
+                vm.run_until_halt_or_cycle(vm.make_vm(name, program, stdin=stdin))
+            else:
+                answer = _row_answerer(
+                    name,
+                    terminating=True,
+                    isolated=False,
+                    settings=None,
+                    scale=None,
+                    max_output=None,
+                    max_memory=None,
+                )
+                assert answer(program, stdin, 10) == table[row], (name, row)
+        if sentinel:
+            assert made[-1].position() <= len(stdin), (name, row, "over-read")
         rows += 1
         unread += bool(stdin[made[-1].position() :].strip())
         past += made[-1].past_end
@@ -82,7 +120,7 @@ def test_the_audit_checks_cycling_answers(monkeypatch) -> None:
         (name, path)
         for path in ({}, {"width": 1}, {"balance": True})
         for name in GENERATED
-        if "width" not in path or INFOS[name]["width_effect"] == "layout"
+        if "width" not in path or INFOS[name]["width_effect"] != "none"
     ],
     ids=str,
 )
@@ -97,10 +135,78 @@ def test_every_input_is_read(monkeypatch, name, path) -> None:
                 assert_proved_resource_cap(name)
                 continue
             built += 1
-            rows, unread, past, early = _audit(name, program, n, monkeypatch)
+            whole_stream = []
+            rows, unread, past, early = _audit(
+                name, program, n, monkeypatch, table=table, whole_stream=whole_stream
+            )
             assert rows > 0
             assert unread == 0, (name, table)
             assert early == 0, (name, table)  # output follows the last read
             # A language that ends at EOF probes it once a row, no more.
             assert past in (0, rows), (name, table)
+            if past == 0 and not whole_stream:
+                assert _audit(
+                    name, program, n, monkeypatch, table=table, sentinel=True
+                ) == (rows, 0, 0, 0)
     assert built, f"{name} never built an input-consumption control"
+
+
+@pytest.mark.medium
+def test_the_audit_sees_overreading(monkeypatch) -> None:
+    with pytest.raises(AssertionError, match="over-read"):
+        _audit(REFERENCE, ",,", 1, monkeypatch, sentinel=True)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name", GENERATED)
+def test_contract_at_larger_arities(monkeypatch, name) -> None:
+    """Sample rows at n=4 and n=6 (or the declared cap); never sweep 2**cap."""
+    cap = INFOS[name]["generator_max_inputs"] or 6
+    for n in sorted({min(4, cap), min(6, cap)}):
+        for table in witnesses(n):
+            try:
+                program = esolangs.generate(name, table)
+            except esolangs.GeneratorCapError:
+                assert_proved_resource_cap(name)
+                continue
+            selected = sorted({0, 1, (1 << n) - 1, *[1 << bit for bit in range(n)]})
+            rows, unread, past, early = _audit(
+                name, program, n, monkeypatch, table=table, selected=selected
+            )
+            assert (unread, early) == (0, 0), (name, n)
+            assert past in (0, rows), (name, n)
+
+
+@pytest.mark.medium
+def test_the_audit_rejects_wrong_input_order(monkeypatch) -> None:
+    with pytest.raises(AssertionError):
+        _audit(REFERENCE, ",>,.", 2, monkeypatch, table="0011")
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "name", [name for name in GENERATED if INFOS[name]["generator_max_inputs"]]
+)
+def test_contract_at_declared_cap(monkeypatch, name) -> None:
+    """Exercise constants and either-end projections at and below the cap."""
+    cap = INFOS[name]["generator_max_inputs"]
+    for n in (cap - 1, cap):
+        size = 1 << n
+        tables = (
+            "0" * size,
+            "1" * size,
+            "01" * (size // 2),
+            "0" * (size // 2) + "1" * (size // 2),
+        )
+        for table in tables:
+            try:
+                program = esolangs.generate(name, table)
+            except esolangs.GeneratorCapError:
+                assert_proved_resource_cap(name)
+                continue
+            selected = sorted({0, 1, size - 1, *[1 << bit for bit in range(n)]})
+            rows, unread, past, early = _audit(
+                name, program, n, monkeypatch, table=table, selected=selected
+            )
+            assert (unread, early) == (0, 0), (name, n)
+            assert past in (0, rows), (name, n)

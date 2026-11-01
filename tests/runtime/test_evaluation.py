@@ -239,3 +239,24 @@ def test_invalid_total_deadlines(budget) -> None:
 def test_isolated_evaluation_requires_at_least_one_finite_budget() -> None:
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
         _evaluate(REFERENCE, ",.", inputs=1, timeout=None, isolated=True)
+
+
+@pytest.mark.parametrize("mode", ["output", "termination"])
+@pytest.mark.parametrize(
+    "error_type", [esolangs.HaltError, esolangs.ExecutionTimeoutError]
+)
+def test_execution_failure_never_becomes_an_answer(
+    monkeypatch, mode, error_type
+) -> None:
+    name = first(boolean_generator=True, answer_mode=mode)
+    program = esolangs.generate(name, "01")
+    error = error_type("contract failure control")
+
+    def fail(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr(esolangs, "run", fail)
+    monkeypatch.setattr(evaluator, "run_until_halt_or_cycle", fail)
+    with pytest.raises(error_type) as caught:
+        _evaluate(name, program, inputs=1)
+    assert caught.value is error
