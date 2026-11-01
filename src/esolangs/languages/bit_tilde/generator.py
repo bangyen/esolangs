@@ -7,11 +7,13 @@ The last essential input is read into the sentinel and clears the cell it
 does not select; up to five essential inputs the stride-2 lane races it
 and the shorter wins.  The minority ``e0`` is planted, the print windows swapped
 when it is 0 ([ablations.minority_planting]).  An affine table XORs its inputs
-into one window instead ([ablations.xor_window]).
+into one window instead ([ablations.xor_window]). Constants drain that window
+and print from the untouched next one.
 
 Size:
     O(T) cells, three per entry pair; n=10 random 1847: 3,856 chars, n=10 and:
-    3,362 chars.
+    3,362 chars. Constants: n+17+9b characters and commands,
+    23+4b+bl(n+17+9b)+bl(n) written bits, b the answer.
 """
 
 from itertools import pairwise
@@ -64,6 +66,10 @@ def bit_tilde(truth_table: str) -> str:
 def _program(truth_table: str) -> str:
     """Build the planted lookup, or the XOR window for an affine table."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        # Reads share one window; the untouched next window holds the answer.
+        flips = [2, 3] + ([7] if truth_table[0] == "1" else [])
+        return ")" * n + ">" * 8 + _plant(flips) + "<" * max(flips) + "("
     lookup = _lookup(truth_table, n)
     if (form := affine_form(truth_table, n)) is None:
         return lookup

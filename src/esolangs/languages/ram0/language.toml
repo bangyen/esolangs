@@ -65,3 +65,10 @@ verdict = "kept: the deepest, most repeated test sits in cell 0 and the root tes
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 76.4
+seed = 0
+tables = "both constant tables n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole-constant folding. Execute all fixed-width Z/setter pairs, then reset z and optionally increment it. No RAM cells are touched. Exactly 4n+1+2b chars and 2n+2+b commands including the post-halt dump, b the answer; written bits at most 1+bl(2n+1+b), reached by a row with a one. n=8 zero/one 144/144 -> 33/35 chars; n=12 261/261 -> 49/51. n=3 default corpus 22318 -> 22258 chars; width-one 309606 -> 309490. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check exact resources and every input slot; stream readers preserve an unread sentinel and read before output."

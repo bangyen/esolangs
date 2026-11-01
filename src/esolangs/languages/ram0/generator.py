@@ -14,7 +14,7 @@ three inputs uses unary-address NAND circuits instead.
 
 Size:
     O(T) tokens, O(n) executed steps; n=10 random 1847: 3,885 chars,
-    n=10 parity: 557 chars.
+    n=10 parity: 557 chars; constants: 4n+1+2b chars, 2n+2+b commands.
 """
 
 from esolangs.generation.helpers import (
@@ -43,8 +43,16 @@ _RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 def ram0(truth_table: str, width: int | None = None) -> str:
     """Build a RAM0 template; ``width=1`` through three inputs uses NAND circuits.
 
-    Only final ``z`` is the answer.
+    Only final ``z`` is the answer. Constants execute every setter, then reset z.
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        tokens = ["Z", _RAM0_INPUT] * n + ["Z"]
+        if truth_table[0] == "1":
+            tokens.append("A")
+        return (
+            wrap_space_delimited(" ".join(tokens), width) if width else " ".join(tokens)
+        )
     if width == 1 and len(truth_table) <= 8:  # three inputs
         return wrap_space_delimited(_ram0_nand(truth_table), width)
     program = in_input_order(truth_table, _ram0_shared)

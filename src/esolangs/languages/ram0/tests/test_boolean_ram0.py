@@ -67,9 +67,9 @@ class TestParameterizedRam0:
         return before, after
 
     def test_sharing_three_input_total(self) -> None:
-        """All 256 three-input tables: 27,554 to 22,318 characters, 19.0%."""
+        """All 256 three-input tables: 27,554 to 22,258 characters, 19.2%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._sharing_totals(tables) == (27554, 22318)
+        assert self._sharing_totals(tables) == (27554, 22258)
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""
@@ -86,3 +86,40 @@ class TestParameterizedRam0:
 @pytest.mark.medium
 def test_parity_source_at_most_doubles_per_input() -> None:
     assert_parity_at_most_doubles(boolean.ram0, range(11, 15))
+
+
+@pytest.mark.medium
+def test_constants_execute_every_fixed_width_setter() -> None:
+    import esolangs
+    from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+    from esolangs.languages.ram0.generator import PAIR
+    from esolangs.languages.ram0.interpreter import _Machine
+    from esolangs.languages.ram0.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("RAM0", bit * (1 << n), **options)
+                assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * n)) == n
+                assert len(template) == 4 * n + 1 + 2 * int(bit)
+                peak = 0
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    program = esolangs.instantiate("RAM0", template, row_bits(row, n))
+                    io = ScriptedIO()
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= 2 * n + 1 + int(bit)
+                    machine.step()  # RAM0's post-halt dump is one command.
+                    written.sample(machine.snapshot())
+                    assert steps + 1 == 2 * n + 2 + int(bit)
+                    assert esolangs.read_answer("RAM0", io.getvalue()) == bit
+                    assert written.bits <= workspace(n, template)
+                    peak = max(peak, written.bits)
+                assert peak == workspace(n, template)

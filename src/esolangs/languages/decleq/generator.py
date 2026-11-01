@@ -11,6 +11,7 @@ All n inputs are read; only essential ones are normalized.
 Size:
     O(T) cells, O(n) steps: one three-cell branch per distinct subtree,
     one three-cell jump per entry reached; n=10 random 1847: 3,631 chars.
+    Constants: n+2 commands; n=8: 93 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -48,6 +49,12 @@ _READ_BASE = 17  # input i is read at ``_READ_BASE + i``
 def decleq(truth_table: str) -> str:
     """Return a Decleq program for a binary, MSB-first ``2**n`` truth table."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        digit, scratch, zero, end = 3 * n + 6, 3 * n + 7, 3 * n + 8, 3 * n + 9
+        cells = [v for i in range(n) for v in (-1, scratch, 3 * i + 3)]
+        # Full triples keep I/O fall-through and jump-to-c readings identical.
+        cells += [-2, digit, 3 * n + 3, zero, zero, end, 48 + int(truth_table[0]), 0, 0]
+        return " ".join(map(str, cells))
     essential = essential_inputs(truth_table, n)
     # Routing only the essential inputs drops an ignored one's level and the
     # subtree it doubles.  Racing it against the full routing (which can keep a

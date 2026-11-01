@@ -26,16 +26,41 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
-    from tests.support.generator_support import assert_shared_program
+    import esolangs
+    from esolangs.languages.bit_tilde.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
 
-    language = "bit~"
-    table = bit * 256
-    commands = 7 * 256 + 17 * 8 + 92
+    for n in range(1, 13):
 
-    def workspace(_p):
-        return 2 * 256 + 49 + (553).bit_length() + (1498).bit_length() + 4
+        class ReadFirstIO(ScriptedIO):
+            expected = n
 
-    assert_shared_program(language, table, None, commands, workspace)
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("bit~", bit * (1 << n), **options)
+            commands = n + 17 + 9 * int(bit)
+            # Tape through cell 18/22, four pointer bits, cursor and input.
+            workspace = 23 + 4 * int(bit) + commands.bit_length() + n.bit_length()
+            for row in range(1 << n) if n in (1, 2, 3, 8) else (0, 1, (1 << n) - 1):
+                stdin = esolangs.encode_inputs("bit~", list(map(int, f"{row:0{n}b}")))
+                io = ReadFirstIO(stdin + "Q")
+                machine = _Machine("".join(program.split()), io)
+                written = WrittenState(machine.snapshot())
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    steps += 1
+                    assert steps <= commands
+                assert steps == commands
+                assert written.bits == workspace
+                assert io.getvalue() == bit
+                assert io.input_char() == ord("Q")
+    assert sum(len(boolean.bit_tilde(format(v, "08b"))) for v in range(256)) == 39208
 
 
 def test_xor_window_scratch_read_comes_back_eight() -> None:

@@ -121,3 +121,48 @@ def test_nonpositive_width_does_not_wrap(width: int) -> None:
 def test_multiline_source_is_untouched() -> None:
     program = "line one\nline two"
     assert wrap_program(program, "decleq", 4) == program
+
+
+@pytest.mark.medium
+def test_constants_reuse_scratch_and_print_after_every_read() -> None:
+    import esolangs
+    from esolangs.languages.decleq.interpreter import _Machine
+    from esolangs.languages.decleq.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Decleq", bit * (1 << n), **options)
+                cells = list(map(int, program.split()))
+                assert len(cells) == 3 * n + 9
+                assert all(
+                    cells[3 * i : 3 * i + 3] == [-1, 3 * n + 7, 3 * i + 3]
+                    for i in range(n)
+                )
+                assert cells[3 * n : 3 * n + 3] == [-2, 3 * n + 6, 3 * n + 3]
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs("Decleq", row_bits(row, n))
+                    io = ReadFirstIO(stdin + "Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= n + 2
+                    assert steps == n + 2
+                    assert written.bits == workspace(n, program)
+                    assert io.getvalue() == bit
+                    assert io.input_char() == ord("Q")
+    assert sum(len(boolean.decleq(format(v, "08b"))) for v in range(256)) == 46204

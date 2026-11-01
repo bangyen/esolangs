@@ -42,4 +42,4 @@ def test_unary_address_cost_is_bounded_to_small_arities() -> None:
 
 def test_one_column_corpus_size() -> None:
     assert len(ram0("0110", 1)) == 735
-    assert sum(len(ram0(format(value, "08b"), 1)) for value in range(256)) == 309606
+    assert sum(len(ram0(format(value, "08b"), 1)) for value in range(256)) == 309490
