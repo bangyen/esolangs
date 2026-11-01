@@ -623,13 +623,14 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine) -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_wide_constant_uses_only_its_scalar_clock_frame(bit) -> None:
+def test_wide_constant_uses_native_sources_after_all_ports(bit) -> None:
     from esolangs.languages.circuit_diagram.generator import _circuit_diagram_at
     from esolangs.runtime._evaluate import _evaluate
 
     table = bit * 256
     program = boolean.circuit_diagram(table)
-    assert program == _circuit_diagram_at(table, None)
+    assert program == "-\n" * 8 + ("(" if bit == "0" else ")") + "-:"
+    assert len(program) < len(_circuit_diagram_at(table, None))
     assert _evaluate("Circuit Diagram", program, inputs=8) == table
 
 
@@ -767,3 +768,37 @@ def test_a_single_input_table_past_the_competing_floor_builds(
     )
     program = esolangs.generate("Circuit Diagram", table)
     assert _evaluate("Circuit Diagram", program, inputs=inputs) == table
+
+
+@pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
+def test_constants_read_first_and_leave_the_next_record(n) -> None:
+    from esolangs.languages.circuit_diagram.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+    for bit in "01":
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("Circuit Diagram", bit * (1 << n), **options)
+            if not options:
+                assert len(program) == 2 * n + 3
+            for row in rows:
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                run(program.splitlines(), io)
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_char() == ord("Q")
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(
+            len(esolangs.generate("Circuit Diagram", format(value, "08b")))
+            for value in range(256)
+        )
+        == 183742
+    )

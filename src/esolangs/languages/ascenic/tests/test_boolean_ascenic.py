@@ -28,3 +28,37 @@ def test_ignored_inputs_are_popped_not_scanned() -> None:
     """Two ignored inputs of six leave a four-row scan, not a 64-row one."""
     table = "0110" * 16
     assert len(esolangs.generate("Ascenic", table)) < 1000
+
+
+@pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
+def test_constants_read_first_and_leave_the_next_record(n) -> None:
+    from esolangs.languages.ascenic.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+    for bit in "01":
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("Ascenic", bit * (1 << n), **options)
+            if not options:
+                assert len(program) == 2 * n * n + 17 * n - 1 + 6 * int(bit)
+            for row in rows:
+                io = ReadFirstIO("\n".join(format(row, f"0{n}b")) + "\nQ\n")
+                run(program, io)
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_token() == "Q"
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(
+            len(esolangs.generate("Ascenic", format(value, "08b")))
+            for value in range(256)
+        )
+        == 271188
+    )

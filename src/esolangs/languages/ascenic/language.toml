@@ -59,3 +59,10 @@ verdict = "kept: canonical, exempt from the bar. An input the table ignores is r
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-21
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 58.8
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept: canonical whole-constant tail. Read/pop all but the last input, then DIV by 2n forces zero or LT against 2n pushes one; PRINT has odd argument 2n+1. Arguments are exactly 1..2n+1, with no jumps. Zero/one take 2n^2+17n-1 / 2n^2+17n+5 chars and 2n+1 commands. The stack stays at one/two bits, so workspace is 1+bit+bl(2n+1)+bl(2n-1), measured 10/11 bits at n=8. At n=7 chars 567/577 -> 216/222; n=8 640/650 -> 263/269; n=12 972/982 -> 491/497. Declining savings clear 20% at both n=7/8 without an arity cap. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 271686 -> 271188. Default, width=1 and balanced constants n=1..12 execute; all balanced scores improve or match their old counterparts, and sentinels remain unread."

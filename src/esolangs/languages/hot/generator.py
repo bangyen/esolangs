@@ -12,10 +12,13 @@ compiled to ``S``/``K`` by bracket abstraction, each holding the next as a
 constant.  ``f`` is an appended ``F``, which hands ``B`` and ``A``; ``a (a
 ...)`` reads a marker (the next stage's ``m``) and a bit, and the tree
 applied to the bits picks ``D`` or ``C`` between the opening 1 and closing 0.
+Whole constants instead discard both stream bits per input with ``A0``,
+then emit ``DCC`` or ``DDC``.
 
 Size:
     Theta(T) text worst case: 18 chars a pair and 73 a reader stage;
     n=4 parity: 594 chars, n=10 parity: 14,640.
+    Constants use 4n+3 characters and rewrites; n=8 zero: 35 chars.
 
 Decisions:
     The identity is ``0K`` (``0 K y -> y``), not ``SKK``: with the ``(1, 0)``
@@ -24,6 +27,7 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.hot.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -57,6 +61,9 @@ def _grouped(term: str) -> str:
 def hot(truth_table: str) -> str:
     """Build a Hot program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # A0 drops one stream bit; each input is a marker followed by its value.
+        return "A0" * (2 * n) + "D" + ("D" if truth_table[0] == "1" else "C") + "C"
     program = _ANSWER
     for _ in range(n):
         program = _READ.format(program)
@@ -70,6 +77,8 @@ LANGUAGE = Language(
     boolean=hot,
     contract=BooleanContract(input_shape="char_stream"),
     wrap=wrap_chars,
+    proof_execution=(execution, True, (1, 2, 3, 6)),
+    proof_workspace=(workspace, True, (2, 3, 6)),
     eof="the stream past the input string is 0 bits",
     empty_program="a Hot program needs at least one combinator",
 )

@@ -81,6 +81,9 @@ def _drawn_at(table: str, flat: str, width: int) -> str:
 
 def balance_circuit_diagram(table: str, default: str) -> str:
     """Compare the default, the flat drawing and drawings at the square widths."""
+    if len(set(table)) == 1:
+        # Native sources beat the clock/gate layouts; no H lattice is needed.
+        return default
     flat = _circuit_diagram_at(table, None)
     candidates = [default, flat]
     # Folding can shrink a wide default while increasing its imbalance.

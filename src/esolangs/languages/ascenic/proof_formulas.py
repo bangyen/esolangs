@@ -1,7 +1,7 @@
 """Snapshot-bit bounds."""
 
 
-def workspace(n: int, _: str) -> int:
+def workspace(n: int, program: str) -> int:
     """Line index, the larger of the Horner and scaled stacks, the input cursor.
 
     The larger of the forward and mirrored scans, each at its worst table
@@ -14,6 +14,11 @@ def workspace(n: int, _: str) -> int:
     at n = 2, so the bound is exact from n = 3.
     """
     bl = int.bit_length
+    lines = program.splitlines()
+    if len(lines) == 2 * n + 1:
+        # A single last input bit, plus LT's flag only for constant one.
+        stack = 2 if lines[-2].count("A") == 13 else 1
+        return bl(2 * n + 1) + stack + bl(2 * n - 1)
     t = 1 << n
 
     def scan(lines: int, a: int, b: int, sign: int) -> int:

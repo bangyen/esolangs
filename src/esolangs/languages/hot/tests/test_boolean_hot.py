@@ -29,3 +29,41 @@ def test_an_ignored_input_folds_its_subtree() -> None:
     """Inputs 0 and 1 are ignored, so their pairs are ``K`` of one half."""
     folded = len(esolangs.generate("Hot", "0110" * 4))
     assert folded < len(esolangs.generate("Hot", "0110100110010110"))
+
+
+@pytest.mark.parametrize("n", [1, 3, 4, 6, 7, 8, 12])
+def test_constants_read_first_and_leave_the_next_record(n) -> None:
+    from esolangs.languages.hot.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
+    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+    for bit in "01":
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("Hot", bit * (1 << n), **options)
+            if not options:
+                assert len(program) == 4 * n + 3
+            for row in rows:
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                machine = _Machine(program, io)
+                steps = 0
+                while not machine.halted and steps <= 4 * n + 3:
+                    machine.step()
+                    steps += 1
+                assert machine.halted
+                assert steps == 4 * n + 3
+                assert machine.pending is None
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_char() == ord("Q")
+
+
+def test_three_input_corpus_size() -> None:
+    assert (
+        sum(len(esolangs.generate("Hot", format(value, "08b"))) for value in range(256))
+        == 98266
+    )

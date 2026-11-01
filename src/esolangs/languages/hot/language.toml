@@ -49,3 +49,10 @@ verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29): a leaf 
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 95.1
+seed = "both constant values"
+tables = "both constants n=1..12; every table and row n<=3; six structured/random witnesses n=4..6"
+verdict = "kept: canonical constants. A0 consumes and discards one virtual stream bit; two pairs per physical input consume its marker and value, followed by DCC or DDC for the opening bit, answer and closing zero. Both constants use 4n+3 characters and rewrites, and 32n+27+bl(n) written bits. At n=7 chars 635 -> 31; n=8 711 -> 35; n=12 1015 -> 51. All 270 nonconstant programs through n=3 are byte-identical; n=3 corpus chars 98898 -> 98266. Default, width=1 and balanced constants n=1..12 execute; every optimized balance score improves or matches its old counterpart. Sentinel regressions also check the pending payload is cleared and exact rewrite counts."

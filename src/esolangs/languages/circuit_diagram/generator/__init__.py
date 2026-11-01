@@ -4,8 +4,9 @@ Each of ``n`` inputs arrives on its own line as a ``-`` input port (not one
 ``-n-`` multi-wire, which would need a ``<`` splitter tree back to rails).
 A left-to-right binary-carry fold combines adjacent cofactors: equal ones
 share a signal, ``0/1`` is the selector itself, the rest use a one- or
-three-gate mux rule.  The answer prints through ``:``.  A constant table is
-one self-fed ``x`` or ``X`` gate, the wiki's constant-output shape.  A
+three-gate mux rule. The answer prints through ``:``. Whole constants use
+native ``(``/``)`` sources after isolated input ports; subtrees still use
+self-fed ``x``/``X`` gates. A
 (negated) projection is one direct wire instead: every port is drawn,
 as each is read, but only the essential port's row runs on to the
 ``:``, through a ``~`` when negated.
@@ -33,6 +34,7 @@ negated (``A``, ``O``); physical ports retain read order.
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
     1,207 chars, n=10 parity: 37,788 chars, n=10 random 1847: 782,908 chars.
+    Constants use 3(n+1) cells and 2n+3 chars; n=8 zero: 19 chars.
 
 Decisions:
     Sharing repeated subtrees, area vs the unshared build, mean of 20 seeded
@@ -676,6 +678,10 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # Input ports are loaded before sources; each isolated dash still reads.
+        source = "(" if truth_table[0] == "0" else ")"
+        return "-\n" * inputs + source + "-:"
     # A (negated) projection is one direct wire, not the whole port grid;
     # below the wire's own width the fitted builds below decide as before.
     wire = _projection_wire(truth_table, inputs)
