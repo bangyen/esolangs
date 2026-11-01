@@ -549,7 +549,9 @@ class _Digits(NamedTuple):
 
 
 @cache
-def _digits(n: int, drop: tuple[int, int] | None = None) -> _Digits:
+def _digits(
+    n: int, drop: tuple[int, int] | None = None, *, drain_last: bool = False
+) -> _Digits:
     """Return ``(code, data, table cell per prefix, labels)`` for ``n`` inputs.
 
     ``drop`` is a ``(group, token)`` pair naming one discarded read in
@@ -579,7 +581,9 @@ def _digits(n: int, drop: tuple[int, int] | None = None) -> _Digits:
     main, _ = _main_planner(data)
     _emit_digit_setup(main, cells)
     _emit_digit_groups(main, n, cells, drop)
-    _emit_digit_jump(main, cells, pointer, layout)
+    _emit_digit_jump(main, cells, pointer, layout, drain_last=drain_last)
+    if drain_last:
+        stubs = {a: "o" if op == "/" else op for a, op in stubs.items()}
     code_end = main.c
 
     code = _merge_code(
@@ -774,11 +778,30 @@ def _emit_digit_jump(
     cells: _DCells,
     pointer: dict[int, int],
     layout: _Layout | None = None,
+    *,
+    drain_last: bool = False,
 ) -> None:
     """Emit the finish: the readout, the labels, then the jump to the row's stub."""
     main.op("p", cells.z_cell)
     _emit_labels(main, cells, pointer, layout)
     _emit_zero(main, cells)
+    if drain_last:
+        # An unlabelled boot cell is dead. Save the final essential read there;
+        # two all-2 swaps restore it after the discarded byte, then all-1
+        # undoes the initial save. Stubs now receive A instead of reading it.
+        helper = cells.helper
+        scratch = next(a for a in range(34, 128) if a not in _D_LABEL)
+        main.op("*", helper["all1"])
+        main.op("p", scratch)
+        main.op("p", scratch)
+        main.raw("/")
+        main.op("p", scratch)
+        main.raw("/")
+        main.op("*", helper["all2"])
+        main.op("p", scratch)
+        main.op("*", helper["all2"])
+        main.op("p", scratch)
+        main.op("p", helper["all1"])
     _t_jump(main, cells.z_cell)
 
 
@@ -849,7 +872,7 @@ def _seventeen_program(truth_table: str) -> str | None:
     """Return a program for a seventeen-input table ignoring an input.
 
     The projection's sixteen build computes the table, once the stream
-    is aligned: dropping the last input is that build unchanged, and
+    is aligned: dropping the last input saves and restores the preceding read, and
     dropping stream position ``p`` (counting from 1) discards one read
     in the gadget group that would have folded position ``p``.  Returns
     ``None`` when the table uses all seventeen inputs.
@@ -859,7 +882,7 @@ def _seventeen_program(truth_table: str) -> str | None:
         return None
     projected = _project(truth_table, bit)
     if bit == 0:
-        return _digits_program(projected, _DIGITS_N)
+        return _render_build(projected, _digits(_DIGITS_N, drain_last=True))
     position = _DIGITS_N + 1 - bit
     if position == _DIGITS_N:
         drop = (_D_GROUPS - 1, _DROP_TOKEN[4])

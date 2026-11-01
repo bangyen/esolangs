@@ -18,7 +18,9 @@ def execution(n: int, program: str) -> int:
     (n <= 15) has one hub each, the longest 199 to n = 13, 200 at 14, 199 at
     15; the full one has two each, the longest 199.
     """
-    end = next(a for a, char in enumerate(program) if _op(ord(char), a) == "i")
+    end = next((a for a, char in enumerate(program) if _op(ord(char), a) == "i"), None)
+    if end is None:
+        return len(program)
     return end + 1 + _stub(n)
 
 
@@ -31,8 +33,12 @@ def workspace(n: int, program: str) -> int:
     ``i``; a stub runs at most 200 steps, each at most one write.
     """
     bits = sum(word.bit_length() for word in _initial_memory(program))
-    end = next(a for a, char in enumerate(program) if _op(ord(char), a) == "i")
+    end = next(
+        (a for a, char in enumerate(program) if _op(ord(char), a) == "i"),
+        len(program) - 1,
+    )
+    stub = _stub(n) if end < len(program) - 1 else 0
     writes = sum(
         1 for a, c in enumerate(program[: end + 1]) if _op(ord(c), a) in ("*", "p")
     )
-    return bits + execution(n, program) + 10 * (writes + _stub(n)) + 49 + n.bit_length()
+    return bits + execution(n, program) + 10 * (writes + stub) + 49 + n.bit_length()

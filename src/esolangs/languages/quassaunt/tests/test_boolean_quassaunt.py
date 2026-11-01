@@ -6,6 +6,8 @@ import pytest
 
 import esolangs
 from esolangs.languages.quassaunt.generator import quassaunt
+from esolangs.languages.quassaunt.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 
 #: Every one- and two-input table; a diagram's sharing bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -38,3 +40,16 @@ def test_balance_cuts_only_compact_programs() -> None:
     assert max(map(len, balanced.splitlines())) < max(map(len, default.split()))
     wide = format(random.Random(8).getrandbits(256), "0256b")
     assert _balance(wide, quassaunt(wide)).split() == quassaunt(wide).split()
+
+
+@pytest.mark.parametrize("n", range(1, 13))
+@pytest.mark.parametrize("bit", "01")
+def test_constants_read_every_input(n: int, bit: str) -> None:
+    program = quassaunt(bit * (1 << n))
+    if n == 8:
+        assert len(program) == 116
+    for stdin in ("0" * n, "1" * n, ("01" * n)[:n]):
+        io = ScriptedIO(stdin + "Q")
+        run(program, io)
+        assert io.getvalue() == bit
+        assert io.input_char() == ord("Q")

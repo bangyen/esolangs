@@ -18,6 +18,17 @@ from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import dense, row_bits
 
 
+class _ReadFirstIO(ScriptedIO):
+    def __init__(self, stdin: str, inputs: int) -> None:
+        super().__init__(stdin)
+        self.inputs = inputs
+
+    def _write(self, value: object) -> None:
+        if str(value).strip():
+            assert self.reads == self.inputs
+        super()._write(value)
+
+
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     """Return the program's output for ``rows`` (default: every row) in order."""
     n = len(table).bit_length() - 1
@@ -105,10 +116,10 @@ def test_hub_cells_pair_under_the_all_one_reswap(n: int) -> None:
 
 @pytest.mark.parametrize("n", [1, 4, 11])
 def test_tables_differ_in_one_cell_per_row_pair(n: int) -> None:
-    """Every row pair owns one answer cell; nothing else depends on the table."""
-    zeros = boolean.malbolge("0" * 2**n)
-    ones = boolean.malbolge("1" * 2**n)
-    assert sum(a != b for a, b in zip(zeros, ones, strict=True)) == 2 ** (n - 1)
+    """Each nonconstant row pair owns one answer cell."""
+    direct = boolean.malbolge("01" * 2 ** (n - 1))
+    flipped = boolean.malbolge("10" * 2 ** (n - 1))
+    assert sum(a != b for a, b in zip(direct, flipped, strict=True)) == 2 ** (n - 1)
 
 
 def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
@@ -298,3 +309,36 @@ def test_first_free_matches_the_cell_scan() -> None:
                         _first_free(value, lo, hi, blocked)
                 else:
                     assert _first_free(value, lo, hi, blocked) == scan
+
+
+@pytest.mark.parametrize("n", range(1, 18))
+@pytest.mark.parametrize("bit", "01")
+def test_constants_read_every_input(n: int, bit: str) -> None:
+    program = boolean.malbolge(bit * (1 << n))
+    assert len(program) <= 639
+    if n == 8:
+        assert len(program) == (632 if bit == "0" else 625)
+    for stdin in ("0" * n, "1" * n, ("01" * n)[:n]):
+        io = _ReadFirstIO(stdin + "Q", n)
+        run(program, io)
+        assert io.getvalue() == bit
+        assert io.reads == n
+        assert io.input_char() == ord("Q")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("kind", ["parity", "all_pairs"])
+def test_seventeen_last_ignored_input_is_still_consumed(kind: str) -> None:
+    base = (
+        "".join(str(row.bit_count() % 2) for row in range(1 << 16))
+        if kind == "parity"
+        else "00011011" * (1 << 13)
+    )
+    table = "".join(bit * 2 for bit in base)
+    program = boolean.malbolge(table)
+    for row in (*range(16), 65535, 65536, 131070, 131071):
+        io = _ReadFirstIO(f"{row:017b}" + "Q", 17)
+        run(program, io)
+        assert io.getvalue() == table[row]
+        assert io.reads == 17
+        assert io.input_char() == ord("Q")

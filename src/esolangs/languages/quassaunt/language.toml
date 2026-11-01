@@ -7,10 +7,10 @@ admitted = 2026-10-15T12:24:04-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {c} against the stored {1} with `%%Ifdisjoint` to pick a child's name, then obtains that code once; equal halves and constant chains read their bits unbranched"
+qualification = "constants read every input before printing directly; otherwise each distinct subtable's code is stored once in a global and run by name; a node tests its character's set {c} against the stored {1} with `%%Ifdisjoint` to pick a child's name, then obtains that code once; equal halves and constant chains read their bits unbranched"
 scaling = "linear: worst F characters, n = 3..21; at most beyond"
 execution = "linear: worst 5N + 15n + 14 steps: five a stored node, 15 a level"
-workspace = "linear: worst 16L - 328D - 8r + 8W + bl(5D+6) + bl(n) - 302 bits past n = 2: frames"
+workspace = "linear: worst 16L-328D-8r+8W+bl(5D+6)+bl(n)-302 bits past n = 2; constants 96n+161+bl(n+1)+bl(n)"
 definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "D = the program's definitions", "r = the root name's length", "W = the longest word's characters"]
 
 [generator_sizes]
@@ -53,3 +53,8 @@ verdict = "retired as a race, kept as a rule for compact programs. The balance r
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 12
+tables = "both constants at n=1..12, every row through n=3 and four rows thereafter"
+verdict = "kept: canonical constant output, percentage gate exempt. Read all inputs then print the literal without definitions or evaluated chains: 12n+20 characters, n+2 commands, and exactly 96n+161+bl(n+1)+bl(n) written bits. At n=8, characters 1272 -> 116, commands 150 -> 10, sampled written peaks 17948 -> 937 bits; warm generation medians 34.83/34.46 -> 2.21/2.17 us for zero/one. At n=12, characters 1858 -> 164, commands 218 -> 14, peaks 26029 -> 1321 bits. Both versions passed 200 executions; all 270 nonconstant programs through n=3 are byte-identical. Sentinel regressions pin n=8 size and every required read. The workspace formula handles direct constant frames separately; generic envelopes and existing size pins remain unchanged."

@@ -6,11 +6,11 @@ backlinks = 130
 
 [proof_status]
 labels = ["exception"]
-qualification = "finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound))"
+qualification = "constants read every input before building ASCII 48/49; finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound))"
 scaling = "measured: worst 13340 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole"
 execution = "unmeasured: worst 6,486 commands at n=1 to 5,686 at n=16: main code through closing i, then the longest stub (199..200)"
 workspace = "poly n: at most B + E + 10(P+S) + 49 + bl(n) bits: a bit a step, ten a write"
-definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before the main code's closing i", "S = the longest stub, 199 commands (200 at fourteen inputs)"]
+definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before closing i, or in all constant code", "S = zero for constants; otherwise the longest stub, 199 commands (200 at fourteen inputs)"]
 
 [proof_status.audit]
 totality = "Exception"
@@ -30,7 +30,7 @@ evidence = "docs/proofs/index.md#malbolge-bound"
 
 [catalogue]
 folding_ignored = "fixed-size source; an extra input port adds no cells"
-folding_constant = "fixed-size source; a constant table is no smaller"
+folding_constant = "direct constant builder after all reads: 618..639 characters over n=1..17"
 
 [formula_arities]
 # Every word and register is below 3^10 < 2^16; measured ~394k bits.
@@ -96,3 +96,8 @@ arity = 8
 seed = "random.Random(1847+n)"
 tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
 verdict = "Not shipped: removing trailing address-correct no-op source finds no suffix to remove in the screened programs; the live store already reaches the source end. Omitting all but the first table cell for each repeated answer pair changes programs but fails execution (no readable answer at n=3): equal values at different addressed cells are not shared storage. Unmodified suffix candidate passes 70 checks; this is not a general storage lower bound."
+
+[ablations.constant_table_audit_20261101]
+arity = 17
+tables = "both constants at every n=1..17; zero, one and alternating input rows"
+verdict = "kept: canonical constant output, percentage gate exempt. Read every input, then build ASCII 48/49 directly, without indexing or stubs. At n=8 zero/one source and command counts are 632/625; at n=17, 639/632. Generic programs through n=13 use 13340 characters under the read-before-output contract. Sampled n=8 written peaks are 646886/646910 bits; fixed store remains 59049 cells and program-dependent workspace bounds cover its fill. The seventeen-input last-ignored projection now saves the preceding essential read, drains the ignored byte, restores the saved value and enters non-reading stubs; all output follows all input. This replaces the incompatible print-first prototype and post-output drain. Existing generic size pins remain unchanged."

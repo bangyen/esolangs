@@ -25,6 +25,15 @@ def workspace(n: int, p: str) -> int:
     chain above it, whose local rides the same row.
     """
     text = str(p)
+    if "%%Store" not in text:
+        # Frames retain every word; input strings remain stacked after printing.
+        return (
+            8 * sum(map(len, text.split()))
+            + 8 * (n + 1)
+            + (n + 1).bit_length()
+            + 1
+            + n.bit_length()
+        )
     defs = text.count(" %%Empty %%Makecontain %%Store")
     root = len(text.split()[-5]) - 4
     longest = max(map(len, text.split()))

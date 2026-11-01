@@ -94,3 +94,8 @@ arity = 8
 seed = "random.Random(1847+n)"
 tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
 verdict = "Not shipped: reversed test order saves 19.88% at n=7 but 4.66% at n=8 on 20 random tables; explicit level skipping saves 6.12% then 0.00%. Neither saves on parity/majority/and/or at either arity. Each passes 70 output checks, with actual rendered pixels measured at unit=20. Declining savings fail the 20% bar; no execution-saving claim."
+
+[ablations.constant_table_audit_20261101]
+arity = 12
+tables = "both constants at n=1..12"
+verdict = "No new optimization: the existing projected loader reads all inputs, moves to a fresh zeroed cell and prints the constant. Printing first would save area but violates the read-before-output contract, so that prototype is withdrawn. At n=8 zero/one area remains 97600/132000 pixels at unit=20; at n=12, 136000/180000. PNG and sentinel regressions cover the retained read-first path."

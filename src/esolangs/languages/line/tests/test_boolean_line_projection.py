@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.languages.line.generator import balance, line, projected_boolean
 from esolangs.languages.line.interpreter import _Machine
+from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 
@@ -132,3 +133,25 @@ def test_public_multiple_returns_reduce_mixed_residual_area() -> None:
     assert len(image.rows) * len(image.rows[0]) == 23496000 < 47454400 < 4031899200
     rows = [row | fill for row in range(512) for fill in (0, 127 << 9)]
     assert _execute(table, image, rows) == 32
+
+
+@pytest.mark.parametrize("n", [1, 3, 5, 6, 8, 12])
+@pytest.mark.parametrize("bit", "01")
+def test_constants_read_every_input_before_printing(n: int, bit: str) -> None:
+    image = line(bit * (1 << n))
+    if n == 8:
+        assert len(image.rows) * len(image.rows[0]) == (
+            97_600 if bit == "0" else 132_000
+        )
+    image = Raster.from_png(image.to_png())
+    for row in sorted({0, (1 << n) // 3, (1 << n) - 1}):
+        io = ScriptedIO(" ".join(f"{row:0{n}b}") + " 9")
+        machine = _Machine(image, io)
+        commands = 0
+        while not machine.halted and commands < 5 * n:
+            machine.step()
+            commands += 1
+        assert machine.halted
+        assert io.getvalue() == bit
+        assert io.input_token() == "9"
+        assert commands == n + 3 + int(bit)

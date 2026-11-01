@@ -17,15 +17,16 @@ projection, kept aligned by one discarded read, or the popcount build,
 whose first group folds four inputs into their weight.
 
 Size:
-    Constant per arity, ending at the highest live cell; n=10 random 1847:
+    Nonconstants end at the highest live cell; n=10 random 1847:
     13,340 chars to n=13, 19,683 at n=14, 52,480 at n=15, and the whole
-    59,049-cell memory from n=16.
+    59,049-cell memory from n=16. Constants use 618..639 chars over
+    n=1..17; n=8 zero/one: 632/625 chars.
 
 Raises:
     GeneratorCapError: past seventeen inputs, or seventeen in neither family.
 
 Decisions:
-    Folding or sharing stubs cannot shrink the fixed store.
+    Constants read every input before building and printing ASCII 48/49.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.runtime.source_hints import with_hint
 
+from .constant import _constant_program
 from .digits import _DIGITS_N, _digits_program, _seventeen_program
 from .symmetric import _symmetric_program
 
@@ -51,6 +53,8 @@ def malbolge(truth_table: str) -> str:
     constant on Hamming-weight classes; else ``n`` <= 16.
     """
     n = _validate_truth_table(truth_table)
+    if n <= _DIGITS_N + 1 and truth_table.count(truth_table[0]) == len(truth_table):
+        return _constant_program(n, int(truth_table[0]))
     if n > _DIGITS_N:
         if n == _DIGITS_N + 1 and (
             program := _seventeen_program(truth_table)

@@ -140,7 +140,8 @@ headers, Qrain.
 <!-- TRICK-PROTOTYPES:END -->
 
 - **Constant-table audit:** size census 111/111 at n=1..8,10,12; n=0 is
-  outside every generator's contract. Optimization reviews 3/111: Movesum,
-  Parenthesys and Unary shrink constants while reading every input.
-  Keep this counter separate from trick prototypes. Next: Line, Malbolge,
-  Quassaunt; compare source size, commands, written state and generation time.
+  outside every generator's contract. Optimization reviews 6/111: Movesum,
+  Parenthesys, Unary, Malbolge and Quassaunt improved; Line retains its
+  existing read-first constant path. Malbolge also drains its final ignored
+  byte before output on seventeen-input projections. Next: LaserFuck,
+  Interprogck8, ABCDirection. Keep this counter separate from trick prototypes.

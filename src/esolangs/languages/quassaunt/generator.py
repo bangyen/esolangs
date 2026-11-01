@@ -15,6 +15,7 @@ Names are ``subtree_ids`` ids, the chains ``z<depth>``/``o<depth>``.
 Size:
     O(T) size and build time: at most T - 1 diagram nodes and 2n chain
     nodes; n=10 random 1847: 41,645 chars, n=10 parity: 3,502 chars.
+    Constants use 12n + 20 chars and n + 2 commands; n=8: 116 chars.
 """
 
 from math import isqrt
@@ -35,6 +36,8 @@ def _code(name: str) -> str:
 def quassaunt(truth_table: str) -> str:
     """Build a Quassaunt program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return "%%Inputchar " * n + f"@@{truth_table[0]} %%Printtoconsole"
     ids = subtree_ids(truth_table)
 
     def name(depth: int, k: int) -> str:
