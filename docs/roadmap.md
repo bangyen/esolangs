@@ -62,6 +62,26 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
+## First-implementation candidates
+
+The 2026-11-01 wiki API screen found 2,537 language pages in neither
+implementation-status category; the heuristic link filter retained 2,248.
+Missing categories and links do not establish first-implementation eligibility.
+Screen these in order under [curation](limitations.md#curation):
+
+- **[REFRACTRAN](https://esolangs.org/wiki/REFRACTRAN):** bidirectional
+  fraction execution. Establish compliant input embedding and answer extraction.
+- **[Retrograde](https://esolangs.org/wiki/Retrograde):** reversible blocks
+  with direction-dependent instructions. Resolve input and answer conventions
+  without adding instructions to the language.
+- **[NQ](https://esolangs.org/wiki/NQ):** trit queue with guarded execution.
+  Check the WIP specification, restricted output alphabet and contribution
+  beyond existing queue/tag languages.
+
+Before admission, check public implementations beyond wiki links, resolve core
+semantics, and execute a loop-less Boolean generator with proved O(T)
+construction and emitted size. Apply the existing verification gates.
+
 ## Engineering
 
 Dead-code leads, unmeasured against the
