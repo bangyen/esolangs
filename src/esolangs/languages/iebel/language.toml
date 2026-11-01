@@ -33,3 +33,10 @@ verdict = "kept as a per-level greedy rule, not a race, replacing the one-child 
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 16.9
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole constants. Through n=7, a read into register 48+b also initializes r0 to that literal; later equal loads restore the same value. A fresh-zero comparison register protects the final print. This uses 8n+6 chars and n+1 commands. From n=8 the shorter spelling reads into scratch, initializes one answer register, prints and falls off: 7n+13 chars, n+2 commands. At n=7 the two spellings tie at 62 chars but the merged read saves one command; at n=8 it loses 70 vs 69 chars. Written bits 266+bl(commands)+bl(n), from two six-bit registers, 254 zero registers and both cursors. n=8 83 -> 69 chars; n=12 111 -> 97. n=3 corpus 28252 -> 28216 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; CARP owned checks reach its n=14 cap. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, every read before output and an unread following record. Existing tests expanded without new cases."

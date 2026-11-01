@@ -8,7 +8,8 @@ block falls into the other: ``2 1 Z`` jumps on ``'0'``, ``2 3 O`` on ``'1'``.
 register 1 or 3 (``1 3 -2`` / ``3 1 -2``) and halts (``0 0 -1``).
 
 Size:
-    O(T) lines: one block per distinct subtable; n=4 parity: 137 chars
+    O(T) lines: one block per distinct subtable; n=4 parity: 137 chars.
+    Constants: 8n+6 chars through n=7, 7n+13 thereafter; n+1/n+2 commands.
 
 Decisions:
     Jumps name line numbers, so a plain tree's jump fields cost T log T
@@ -18,7 +19,7 @@ Decisions:
     one-child blocks first: a path cover that drops most ``1 3 c`` lines.
 """
 
-from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -31,6 +32,13 @@ type _Node = tuple[int, int]  # (level, subtable id)
 
 def iebel(truth_table: str) -> str:
     """Build an IEBEL program printing ``truth_table[row]`` for the inputs."""
+    n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        value = 48 + int(truth_table[0])
+        if n <= 7:
+            # The read also initializes r0; later equal loads restore that same literal.
+            return "\n".join([*[f"0 {value} -3"] * n, "0 1 -2"])
+        return "\n".join([*["0 0 -3"] * n, f"1 {value} 0", "1 2 -2"])
     ids = subtree_ids(truth_table)
     n = len(ids) - 1
     root: _Node = (0, ids[0][0])

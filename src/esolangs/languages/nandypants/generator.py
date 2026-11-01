@@ -16,7 +16,7 @@ down to the next entry and falls into it, and only the last entry prints.
 
 Size:
     Theta(T / log T) blocks of O(log T) digits: Theta(T) characters; n=4
-    parity: 130 chars
+    parity: 130 chars. Constants: 8n+11+2b characters and commands, b the answer.
 
 Decisions:
     A space separates adjacent labels, since any digit run is one number.
@@ -41,6 +41,11 @@ def _odd_labels(count: int) -> list[str]:
 def nandypants(truth_table: str) -> str:
     """Build a Nandypants program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        bit = truth_table[0]
+        # Reads leave a at zero; v makes the current b a NAND toggle partner.
+        prefix, tail = ("v^", _PRINT[bit][1:]) if bit == "1" else ("v", _PRINT[bit][2:])
+        return "/" * (8 * n) + prefix + tail
     ids = subtree_ids(truth_table)
     # (depth, id) -> (child ids) for a node, None for a constant block.
     order: list[tuple[int, int]] = []

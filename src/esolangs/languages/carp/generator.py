@@ -12,6 +12,7 @@ Size:
     O(T) lines: at most 2T + n + 20, one ``DEC`` per distinct non-constant
     subtree and at most one jump each, plus a 15-line constant and two
     gadgets; n=4 parity: 359 chars, n=8 parity: 519 chars.
+    Constants: 9n+8+9b chars and n+1+b commands, b the answer.
 
 Raises:
     GeneratorCapError: more than fourteen inputs (registers r1..r14).
@@ -44,11 +45,11 @@ def carp(truth_table: str) -> str:
         )
     essential = essential_inputs(truth_table, n)
     if not essential:
-        # Every input is still read, into a register the answer then clears.
-        reads = ["INP r1 0"] * n + ["CLR r1 0"]
+        # Read into scratch; the fresh answer register already holds zero.
+        reads = ["INP r1 0"] * n
         if truth_table[0] == "1":
-            reads.append("INC r1 0")
-        return "\n".join([*reads, "OUT r1 0"])
+            reads.append("INC r2 0")
+        return "\n".join([*reads, "OUT r2 0"])
     return _Builder(read_at(truth_table, essential, n), essential, n).build()
 
 
