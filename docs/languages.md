@@ -111,6 +111,7 @@ Languages that use registers to store and manipulate data.
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](../src/esolangs/languages/minsky_swap/interpreter.py))
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](../src/esolangs/languages/qoibl/interpreter.py))
 - [RAM0](https://esolangs.org/wiki/RAM0) ([code](../src/esolangs/languages/ram0/interpreter.py))
+- [REFRACTRAN](https://esolangs.org/wiki/REFRACTRAN) ([code](../src/esolangs/languages/refractran/interpreter.py))
 - [Rubic](https://esolangs.org/wiki/Rubic) ([code](../src/esolangs/languages/rubic/interpreter.py))
 
 ### Self-modifying Languages

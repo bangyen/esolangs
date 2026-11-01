@@ -69,14 +69,6 @@ implementation-status category; the heuristic link filter retained 2,248.
 Missing categories and links do not establish first-implementation eligibility.
 Screen these in order under [curation](limitations.md#curation):
 
-- **[REFRACTRAN](https://esolangs.org/wiki/REFRACTRAN):** bidirectional
-  fraction execution. Admission probe (2026-11-01): a four-fraction controlled
-  swap builds Boolean muxes; integer and prime-exponent execution agree on all
-  276 tables at n=1..3 and five seeded tables each at n=4..6. Inputs occupy
-  ordered prime-exponent embeds; the answer is a final-state prime flag.
-  No outside implementation found in the spec, Talk page, author links or
-  targeted web searches. Next: production integration, linearity and exact
-  resource proofs, then the full language gate; admission remains open.
 - **[Retrograde](https://esolangs.org/wiki/Retrograde):** reversible blocks
   with direction-dependent instructions. Resolve input and answer conventions
   without adding instructions to the language.
@@ -134,7 +126,7 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-90 of the 90 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+90 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
 BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
@@ -160,7 +152,7 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-5 of the 111 generators: BASICER, CARP, CreativeScript v2, HQ9+ with
+5 of the 112 generators: BASICER, CARP, CreativeScript v2, HQ9+ with
 headers, Qrain.
 
 <!-- TRICK-PROTOTYPES:END -->

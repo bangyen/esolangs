@@ -1,0 +1,27 @@
+[curation]
+backlinks = 2
+admitted = 2026-11-01T16:02:12-05:00
+
+[proof_status]
+labels = ["parameterized tree"]
+qualification = "bottom-up reduced decision DAG: three controlled rail swaps compute each mux; a swap is four fractions and restores the control primes and shared scratch; every input has one ordered exponent embed"
+scaling = "linear: O(T/log T) shared nodes, O(log T) digits per node"
+execution = "linear: at most 2L + 1 commands: each four-fraction swap takes at most eight inspections, plus the final dump"
+workspace = "linear: at most 8L + bl(L) + 16 bits: squarefree prime rails, fraction cursor and direction"
+
+[catalogue]
+folding_ignored_local = "_diagram"
+folding_constant_local = "_diagram"
+
+[generator_sizes]
+"00000001" = { commands = 57, commands_by_row = { "0" = 41, "1" = 45, "2" = 41, "3" = 49, "4" = 41, "5" = 45, "6" = 41, "7" = 57 }, source_units = 384 }
+"00001100" = { commands = 35, commands_by_row = { "0" = 33, "1" = 33, "2" = 35, "3" = 35, "4" = 41, "5" = 41, "6" = 35, "7" = 35 }, source_units = 272 }
+"00110110" = { commands = 91, commands_by_row = { "0" = 69, "1" = 79, "2" = 85, "3" = 93, "4" = 69, "5" = 87, "6" = 91, "7" = 91 }, source_units = 622 }
+"0110" = { commands = 57, commands_by_row = { "0" = 45, "1" = 59, "2" = 53, "3" = 57 }, source_units = 383 }
+"01101001" = { commands = 93, commands_by_row = { "0" = 73, "1" = 87, "2" = 87, "3" = 85, "4" = 81, "5" = 85, "6" = 85, "7" = 93 }, source_units = 633 }
+"0110100110010110" = { commands = 125, commands_by_row = { "0" = 101, "1" = 115, "2" = 115, "3" = 113, "4" = 115, "5" = 113, "6" = 113, "7" = 127, "8" = 109, "9" = 113, "10" = 113, "11" = 121, "12" = 113, "13" = 121, "14" = 121, "15" = 125 }, source_units = 892 }
+"1101001101101101" = { commands = 159, commands_by_row = { "0" = 121, "1" = 135, "2" = 123, "3" = 143, "4" = 119, "5" = 135, "6" = 137, "7" = 153, "8" = 119, "9" = 141, "10" = 131, "11" = 141, "12" = 127, "13" = 143, "14" = 135, "15" = 159 }, source_units = 999 }
+"11111110" = { commands = 59, commands_by_row = { "0" = 57, "1" = 59, "2" = 63, "3" = 61, "4" = 63, "5" = 65, "6" = 69, "7" = 59 }, source_units = 394 }
+
+[ablations]
+audited = "2026-11-01"

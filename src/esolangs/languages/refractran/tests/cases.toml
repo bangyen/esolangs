@@ -1,0 +1,21 @@
+language = "REFRACTRAN"
+oldid = 201357
+
+[[spec_triggers]]
+program = ""
+stdin = ""
+expect = "ProgramError"
+claim = "the initial positive integer is required"
+
+[[spec_triggers]]
+program = "2 3/0"
+stdin = ""
+expect = "ProgramError"
+claim = "fractions have positive terms"
+
+[[spec_triggers]]
+program = "2 3/2"
+stdin = ""
+expect = "output"
+output = "11"
+claim = "the final integer is dumped in binary without reading input"

@@ -103,6 +103,7 @@ don't edit by hand.
 | `qrain/qrain.txt` | Qrain | `0001` | `01` | 01 | '0' |
 | `quassaunt/quassaunt.txt` | Quassaunt | `0001` | `01` | 01 | '0' |
 | `ram0/ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
+| `refractran/refractran.txt` | REFRACTRAN | `0001` | `01` | embedded 01 | not the answer -- see note |
 | `rotfuck/rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
 | `rubic/rubic.txt` | Rubic | `0001` | `01` | 01 | '0' |
 | `s_bleq/s-bleq.txt` | S*bleq | `0001` | `01` | 01 | '0' |
@@ -156,6 +157,7 @@ don't edit by hand.
 - **object-disoriented** -- Object disoriented reads input bits most significant first, so a program keeps each input byte's eighth bit and drops the seven before it
 - **piet** -- the committed example is drawn at 80 pixels per codel; generate draws 1 unless --scale says otherwise
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
+- **refractran** -- Inputs are ordered prime exponents in the initial integer; the final binary state ends in the answer bit.
 - **slashes** -- Inputs fill the binary row index before unary selection; constant tables delete the input letters and print their answer.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
