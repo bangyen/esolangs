@@ -99,14 +99,50 @@ class TestParameterizedBack:
         assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * 2)) == 2
 
     def test_each_input_is_stored_once(self) -> None:
-        """Each input is embedded once in the tape load, not re-embedded."""
+        """Constant runs clear one scratch cell before the fixed answer cell."""
+        import esolangs
+        from esolangs.languages.back.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
+        from scripts.benchmark import WrittenState
 
-        from esolangs.languages import generators
-
-        for n in (1, 2, 3):
-            table = format(0, f"0{2**n}b")
-            template = generators.back(table)
-            assert template.count(TEMPLATE_CHAR) == n
+        for n in range(1, 13):
+            for bit in "01":
+                for options in ({}, {"width": 1}, {"balance": True}):
+                    template = esolangs.generate("Back", bit * (1 << n), **options)
+                    assert template.count(TEMPLATE_CHAR) == n
+                    if not options:
+                        assert len(template) == 3 * n + 1 + int(bit)
+                    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+                    for row in rows:
+                        bits = list(map(int, format(row, f"0{n}b")))
+                        program = esolangs.instantiate("Back", str(template), bits)
+                        assert len(program) == len(template)
+                        io = ScriptedIO()
+                        machine = _Machine(program.splitlines(), io)
+                        written = WrittenState(machine.snapshot())
+                        steps = 0
+                        while not machine.halted and steps < 3 * n + 4:
+                            machine.step()
+                            written.sample(machine.snapshot())
+                            steps += 1
+                        assert machine.halted
+                        assert machine.tape == (0,) * n + (int(bit),)
+                        assert not io.getvalue()
+                        machine.step()
+                        assert io.getvalue().split()[n] == bit
+                        if not options:
+                            assert steps + 1 == 3 * n + 2 + int(bit) - row.bit_count()
+                            assert (
+                                written.bits
+                                == n
+                                + 1
+                                + (3 * n + int(bit)).bit_length()
+                                + n.bit_length()
+                            )
+        assert (
+            sum(len(esolangs.generate("Back", format(v, "08b"))) for v in range(256))
+            == 57123
+        )
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
         """The reflected decision tree retains its skip and both mirrors."""

@@ -13,7 +13,8 @@ above the tree, two entry columns fewer) or, for an unfitting parity table, a
 one-column accumulator in cell ``n`` (earlier cells stay scratch).
 
 Size:
-    O(T) cells; n=8 random 1847: 2,443 chars, n=10 random 1847: 7,807 chars.
+    O(T) cells; n=8 constant zero: 25 chars; n=8 random 1847: 2,443 chars,
+    n=10 random 1847: 7,807 chars.
     Area, rows x longest row: the comb's is Theta(nT) (3n + 5 wide, 3T/4 + 1
     tall); a smaller folded build (``_back_htree``) caps it at 27.5T from n=6.
 
@@ -54,7 +55,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.back.proof_formulas import execution
+from esolangs.languages.back.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -258,8 +259,13 @@ def back(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     if len(table) == 1:
-        # A constant already folds to one leaf; it keeps every input.
-        weights, table = [1] * n, truth_table
+        # [ablations.constant_table_audit_20261101]: each run clears cell 0.
+        units = [_BACK_INPUT, "-"] * n + list(">" * n)
+        units += (["-"] if table == "1" else []) + ["*"]
+        flat = "".join(units)
+        return (
+            flat if width is None or width >= len(flat) else "\n".join(["\\", *units])
+        )
     levels = len(table).bit_length() - 1
     order = tuple(range(levels))
     if width is None and all(
@@ -551,5 +557,6 @@ LANGUAGE = Language(
     empty_program="Back program cannot be empty",
     example=Example(pair=PAIR, expected="1 0 0"),
     proof_execution=(execution, True, (3, 5, 6, 7, 8, 9)),
+    proof_workspace=(workspace, True, (3, 6)),
     grid=True,
 )

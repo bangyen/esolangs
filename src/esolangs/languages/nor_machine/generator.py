@@ -10,7 +10,7 @@ lone final ``V``.  Straight-line code, run once: it never loops.
 
 Size:
     8T + 8r + O(n^2) chars for r runs of true rows, every input essential;
-    n=4 parity: 653 chars
+    n=4 parity: 653 chars; n=8 constant zero: 12 chars
 
 Decisions:
     Horner holds ``~V`` through each run of 1s ([ablations.complement_runs]),
@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.nor_machine.proof_formulas import execution, workspace
 from esolangs.registry._language import Language, Shape
 
 
@@ -110,6 +111,9 @@ def nor_machine(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
     table = read_at(truth_table, essential, n)
+    if not essential:
+        # [ablations.constant_table_audit_20261101]: NOR all inputs, then x NOR ~x.
+        return "V" * (n - 1) + "AAVV" + ("V" if table == "0" else "AVLAVV")
     q = _Queue(n)
     # 0 = nor(~x, x) from the first input.
     c = q.dup("x0")
@@ -177,6 +181,8 @@ LANGUAGE = Language(
     "nor_machine",
     category="queue_based",
     boolean=nor_machine,
+    proof_execution=(execution, False, (2, 3, 5)),
+    proof_workspace=(workspace, False, (1, 2, 3, 5)),
     # Not a tree: Horner's rule packs every row of the essential-input table.
     shape=Shape.LOOKUP,
     wrap=wrap_chars,

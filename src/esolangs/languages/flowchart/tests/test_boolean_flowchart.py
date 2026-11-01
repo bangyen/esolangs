@@ -285,6 +285,35 @@ def test_constant_lookup_reads_without_deque_or_selector(bit) -> None:
         ),
     )
 
+    import esolangs
+    from esolangs.languages.flowchart.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in (1, 3, 8, 12):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate("Flowchart", bit * (1 << n), **options)
+            if not options:
+                assert len(program) == 32 * n + 29
+            for row in (0, 1, (1 << n) - 1):
+                io = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                machine = _Machine(program.splitlines(), io)
+                steps = 0
+                while not machine.halted and steps < 1000:
+                    machine.step()
+                    steps += 1
+                assert machine.halted
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_char() == ord("Q")
+
 
 def test_balance_of_parity_n8_is_banded() -> None:
     """Parity n=8 balances as a top tree over 2 inputs and four bands:
