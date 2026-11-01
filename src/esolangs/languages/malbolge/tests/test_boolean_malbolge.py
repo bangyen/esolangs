@@ -36,7 +36,7 @@ def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = row_bits(value, n)
-        io = ScriptedIO("".join(f"{bit}" for bit in bits) + "Q")
+        io = _ReadFirstIO("".join(f"{bit}" for bit in bits) + "Q", n)
         run(program, io)
         assert io.reads == n, (n, value, io.reads)
         assert io.input_char() == ord("Q"), (n, value)

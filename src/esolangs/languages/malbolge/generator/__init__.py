@@ -5,7 +5,7 @@
 two-trit digit (:mod:`esolangs.languages.malbolge.generator.digits`), so
 every row pair owns a distinct table cell; that cell holds a source
 character naming the answer as a function of the last input, which the
-answer stub reads.  The whole fixed-size source is the program: constants,
+answer stub reads. For nonconstants the whole source is the program: constants,
 labels and stubs are all source characters, so there is no initializer.
 Fewer than sixteen inputs hold the unused reads at ``'0'``, so every
 arity's cells are a subset of sixteen's and one placement serves all; up to

@@ -8,7 +8,15 @@ from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.reference import REFERENCE
 
-IGNORING = ["0101", "01100110", "0011", "00111100", "".join(c * 2 for c in "0110" * 8)]
+IGNORING = [
+    "00000000",
+    "11111111",
+    "0101",
+    "01100110",
+    "0011",
+    "00111100",
+    "".join(c * 2 for c in "0110" * 8),
+]
 INFOS = {n: esolangs.describe(n) for n in esolangs.list_languages()}
 
 
@@ -35,8 +43,9 @@ def _audit(name, program, n, mp):
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])
         if INFOS[name]["answer_mode"] != "termination":
             esolangs.run(name, program, stdin=stdin, timeout=10)
-        elif not vm.run_until_halt_or_cycle(vm.make_vm(name, program, stdin=stdin)):
-            continue  # a 1 is a hang
+        else:
+            # A proven cycle is an answer too; its input must still be consumed.
+            vm.run_until_halt_or_cycle(vm.make_vm(name, program, stdin=stdin))
         rows += 1
         unread += bool(stdin[made[-1].position() :].strip())
         past += made[-1].past_end
@@ -56,6 +65,13 @@ def test_the_audit_sees_unread_input(monkeypatch) -> None:
 @pytest.mark.medium
 def test_the_audit_sees_early_output(monkeypatch) -> None:
     assert _audit("brainfuck", ",+.,", 2, monkeypatch) == (4, 0, 0, 4)
+
+
+@pytest.mark.medium
+def test_the_audit_checks_cycling_answers(monkeypatch) -> None:
+    info = {**INFOS[REFERENCE], "answer_mode": "termination"}
+    monkeypatch.setitem(INFOS, REFERENCE, info)
+    assert _audit(REFERENCE, ",[]", 1, monkeypatch) == (2, 0, 0, 0)
 
 
 # One case per language and path: the whole sweep in one test overran its band.
