@@ -1318,6 +1318,9 @@ one reading. These are those choices.
   Decoded Brainfuck uses wrapping bytes, a tape growing in both directions
   and zero at EOF.
 
+  Constant true decrements the last 0/255 read, then loops on the nonzero
+  cell: six reads fit the cap at 230,087,415 zeros.
+
   Nine-input constant false emits 230,087,533 zeros and 223,664 gzip bytes.
   Generation took 0.658 s; all-zero/all-one rows halted after nine reads in
   0.209/0.208 s. Ten-input constant false needs 1,840,700,269 zeros and was

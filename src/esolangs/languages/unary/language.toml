@@ -7,7 +7,7 @@ bf_derivative = true
 
 [proof_status]
 labels = ["tree", "cap"]
-qualification = "complemented-byte decision tree; constants, projections and conjunction guards avoid flags"
+qualification = "complemented-byte decision tree; constants decrement the final byte before a fixed loop; projections and conjunction guards avoid flags"
 scaling = "lower bound: worst source length at least 2**T - 1; zero-count encoding"
 execution = "unmeasured: worst max(n, min(n + 4, 8)) commands past n = 2: at most nine commands, the last ] never run"
 workspace = "poly n: worst W bits past n = 1: the programs of at most nine commands"
@@ -28,7 +28,7 @@ execution = [3, 4, 5, 6, 7, 8]
 "0001" = { commands_by_row = { "0" = 4, "1" = 7, "2" = 4 }, commands_by_row_nulls = [3], source_units = 27452351 }
 "01" = { commands_by_row = { "0" = 2 }, commands_by_row_nulls = [1], source_units = 887 }
 "10" = { commands = 3, commands_by_row = { "1" = 3 }, commands_by_row_nulls = [0], source_units = 6839 }
-"11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 53431 }
+"11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 6903 }
 
 [ablations]
 audited = "2026-10-29"
@@ -53,3 +53,8 @@ verdict = "kept: the all-but-one-zero table is spelled as nested guards around o
 
 [audits]
 plain_rewrite = 2026-10-29
+
+[ablations.constant_one_decrement]
+arity = 6
+tables = "constant one at n=1..6, zero/255/alternating input bytes"
+verdict = "kept: canonical constant output. Decrement maps either final input byte, 0 or 255, to a nonzero byte, so -[] replaces >+[] after n reads. Actual zero counts at n=1..5 fall 53431 -> 6903, 446647 -> 56055, 3592375 -> 449271, 28758199 -> 3594999, 230084791 -> 28760823. At n=6 the old form exceeds the cap; the new form emits 230087415 characters within the existing budgets. All 18 generated-source executions prove a repeated state after exactly n reads. Constant zero and every nonconstant decoded construction are unchanged; generic command/workspace envelopes remain unchanged. The nine-command proof corpus now includes constant one at n=6."

@@ -15,6 +15,7 @@ Size:
     Each command multiplies the count by eight, so growth is exponential
     in the command count.  n=1 parity: 887 chars, n=2 and: 27,452,351
     chars (n=2's ``0001``), n=2 random 1847: 109 chars.
+    n=1 constant one: 6,903 chars.
 
 Raises:
     GeneratorCapError: the zero count passes 256 Mi (n=2's ``0110``).
@@ -44,8 +45,8 @@ def _decoded(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     kept = essential_inputs(truth_table, n)
     if not kept:
-        # A constant: read the inputs, then halt or loop on a cell set to 1.
-        return "," * n + (">+[]" if truth_table[0] == "1" else "")
+        # Decrement maps both input bytes, 0 and 255, to a nonzero cell.
+        return "," * n + ("-[]" if truth_table[0] == "1" else "")
     if len(kept) == 1:
         # One input decides: loop on its cell, after + if the table negates it.
         index = kept[0]

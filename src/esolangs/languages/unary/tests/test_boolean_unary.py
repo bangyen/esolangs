@@ -75,3 +75,18 @@ def test_distribution_smoke_uses_an_admitted_table() -> None:
     from scripts.ci.release import _generator
 
     _generator("Unary", image_extra=False)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", range(1, 7))
+def test_constant_one_cycles_after_every_input(n: int) -> None:
+    source = unary("1" * (1 << n))
+    assert decode(source) == "," * n + "-[]"
+    if n == 1:
+        assert len(source) == 6_903
+    if n == 6:
+        assert len(source) == 230_087_415
+    for stdin in ("\x00" * n, "\xff" * n, ("\x00\xff" * n)[:n]):
+        io = ScriptedIO(stdin + "Q")
+        assert _answer(_Machine(source, io)) == ("1", n)
+        assert io.input_char() == ord("Q")
