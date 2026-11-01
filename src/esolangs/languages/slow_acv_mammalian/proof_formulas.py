@@ -141,8 +141,10 @@ def _plan(n: int) -> _Plan:
     return _Plan(table, window, jump, prologue, base, levels, weights)
 
 
-def execution(n: int, _: str) -> int:
+def execution(n: int, program: str) -> int:
     """E: first jump, prologue, per-level lists on the all-ones path, tail."""
+    if "LEAPFROG" not in program and program:
+        return n + 3 + program.split().count("SEED")
     plan = _plan(n)
     levels = sum(r["lvl"] for r in plan.levels)
     return plan.jump + plan.prologue + levels + _ROUTE_OUT + _DISPATCH + 9
@@ -177,13 +179,17 @@ def characters(n: int, _: str) -> int:
     return head + 20 * (1 << n) + 5 * plan.table + body + tail
 
 
-def workspace(n: int, _: str) -> int:
+def workspace(n: int, program: str) -> int:
     """B: 8 bits a cell on arrays 0 and 16, the pools' zeros, heads, counters.
 
     Array 0 ends holding its sum over 254 plus four small cells a level (the
     plant, the input bit, the launder, the tuning byte) and one more; array 16
     its sum over 238 plus two a level and four; both only grow.
     """
+    if "LEAPFROG" not in program and program:
+        seeds = program.split().count("SEED")
+        heads = sum((k * seeds).bit_length() for k in range(1, 24))
+        return 6 * n + heads + 9 + (n + seeds + 3).bit_length() + n.bit_length()
     plan = _plan(n)
     length = _tokens(n)
     banked = plan.base + sum(plan.weights)

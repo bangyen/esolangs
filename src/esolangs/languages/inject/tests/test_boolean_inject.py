@@ -188,3 +188,47 @@ def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
     assert re.compile(pattern).fullmatch("") is None
     with pytest.raises(OverflowError):
         re.compile(f".{{{half}}}")
+
+
+@pytest.mark.medium
+def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> None:
+    from esolangs.languages.inject.interpreter import _Machine
+    from esolangs.languages.inject.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Inject", bit * (1 << n), **options)
+                assert len(program) == 9 * n + 20
+                assert program.splitlines().count("readto a") == n
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Inject", list(map(int, format(row, f"0{n}b")))
+                    )
+                    stream = ReadFirstIO(stdin + "Q\n")
+                    machine = _Machine(program, stream)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted and steps <= n + 7:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                    assert machine.halted
+                    assert steps == n + 7
+                    assert written.bits == workspace(n, program)
+                    assert stream.getvalue() == bit + "\n"
+                    assert stream.input_str() == "Q"
+    assert (
+        sum(len(esolangs.generate("Inject", format(v, "08b"))) for v in range(256))
+        == 47658
+    )

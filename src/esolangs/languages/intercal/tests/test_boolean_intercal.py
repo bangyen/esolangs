@@ -81,7 +81,7 @@ def test_repeated_subexpressions_are_assigned_once() -> None:
     assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 6 + [False]
     assert (len(template), len(_unshared(parity))) == (509, 853)
     for tables, pinned in (
-        ([f"{value:08b}" for value in range(256)], (43319, 39773)),
+        ([f"{value:08b}" for value in range(256)], (43319, 39741)),
         (_five_input_sample(), (118669, 100584)),
     ):
         old = new = 0
@@ -169,3 +169,43 @@ def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
         return _mux(_Expr("input", n - 1 - perm[level]), zero, one)
 
     return _program(n, [], tree(0, 0, len(truth_table)))
+
+
+@pytest.mark.medium
+def test_constants_reuse_one_variable_and_print_the_literal() -> None:
+    from esolangs.languages.intercal.interpreter import _Machine
+    from esolangs.languages.intercal.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("INTERCAL", bit * (1 << n), **options)
+                assert template.count(TEMPLATE_CHAR) == 2 * n
+                if not options:
+                    assert template.count(".1 <-") == n
+                    assert f"READ OUT #{bit}" in template
+                    if n == 8:
+                        assert len(template) == 129
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    inputs = list(map(int, format(row, f"0{n}b")))
+                    program = esolangs.instantiate("INTERCAL", str(template), inputs)
+                    assert len(program) == len(template)
+                    stream = ScriptedIO()
+                    machine = _Machine(program, stream)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted and steps <= n + 2:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                    assert machine.halted
+                    assert steps == n + 2
+                    assert esolangs.read_answer("INTERCAL", stream.getvalue()) == bit
+                    if not options:
+                        assert written.bits == workspace(n, template)
+    assert (
+        sum(len(esolangs.generate("INTERCAL", format(v, "08b"))) for v in range(256))
+        == 39741
+    )

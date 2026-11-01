@@ -31,7 +31,7 @@ def _bl_sum(m: int) -> int:
     return (b - 2) * (1 << (b - 1)) + 1 + b * (m - (1 << (b - 1)) + 1)
 
 
-def execution(n: int, _: str) -> int:
+def execution(n: int, program: str) -> int:
     """N + 3 fixed, at most n - 3 named negations, the named shared nodes, and arrays.
 
     Edges into levels 1..l number Q_l - 1 + M_l <= 2Q_{l-1}, so r levels
@@ -43,13 +43,15 @@ def execution(n: int, _: str) -> int:
     far; n <= 4 exhaustive, naming 0, 0, 2, 3 nodes); equal to the bound to
     n = 38, past it the next level's cap makes this an upper bound.
     """
+    if "READ OUT #" in program:
+        return n + 2
     if n <= 4:
         return (4, 5, 8, 11)[n - 1]
     named = _named(n)
     return 2 * n + named + _arrays(n, named)
 
 
-def workspace(n: int, _: str) -> int:
+def workspace(n: int, program: str) -> int:
     """Nine bits and a key per variable; past .65535 the spilled names cost less.
 
     Exact to n = 27: the written snapshot only grows and the statement
@@ -64,6 +66,8 @@ def workspace(n: int, _: str) -> int:
     scalar, every element of the full arrays — prices to this sum
     exactly, as the 25 and 26 write sets do to theirs.
     """
+    if "READ OUT #" in program:
+        return 10 + (n + 2).bit_length()
     bl = int.bit_length
     s = execution(n, "")
     named = _named(n) if n > 4 else 0

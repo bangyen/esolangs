@@ -6,7 +6,8 @@ expression would repeat are assigned once to spare variables and named where
 they recur (:func:`_intercal_shared`).
 
 Size:
-    O(n) for structured tables, O(T) for random; n=10 parity: 1,185 chars,
+    O(n) for structured tables, O(T) for random;
+    n=8 constant zero: 129 chars; n=10 parity: 1,185 chars,
     n=10 random 1847: 8,241 chars.
 
 Decisions:
@@ -78,7 +79,18 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     Inputs are tested in input order.  A ``width`` breaks over-wide
     statements between tokens.
     """
-    natural = in_input_order(truth_table, _intercal_shared)
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: all setters overwrite .1.
+        natural = _polite(
+            [
+                *[f".1 <- {TEMPLATE_CHAR * 2}"] * n,
+                f"READ OUT #{truth_table[0]}",
+                "GIVE UP",
+            ]
+        )
+    else:
+        natural = in_input_order(truth_table, _intercal_shared)
     if width is None:
         return natural
     return _wrap_intercal(natural, width)
@@ -336,6 +348,11 @@ def _program(
     ]
     statements.append(f".{n + 1} <- {result.render()}")
     statements += [f"READ OUT .{n + 1}", "GIVE UP"]
+    return _polite(statements)
+
+
+def _polite(statements: list[str]) -> str:
+    """Mark one statement in five PLEASE, rounding up."""
     polite = max(1, (len(statements) + 4) // 5)  # one statement in five
     return "\n".join(
         f"{'PLEASE' if i < polite else 'DO'} {statement}"

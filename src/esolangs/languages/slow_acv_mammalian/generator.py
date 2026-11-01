@@ -20,7 +20,7 @@ chunk window's end (:func:`_merge_address`); ballast is a division
 (:func:`_ballast`).
 
 Size:
-    O(T) size and build.
+    O(T) size and build; n=8 constant zero: 119 chars.
     n=10 random 1847: 126,380 chars, n=12 random 1847: 323,670 chars.
     Executed evidence: every table through ``n == 3``, plus sampled rows of
     dense tables through ``n == 12``.
@@ -703,7 +703,7 @@ def _program(
     moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        return _constant_read(truth_table[0], n, moduli.cell_modulus)
+        return _constant_read(truth_table[0], n)
     if moduli.cell_modulus == 255:
         return _program_255(truth_table, n, moduli.io_modulus)
     return _program_256(truth_table, n, moduli.io_modulus)
@@ -817,12 +817,12 @@ def _with_leaves(
     return out
 
 
-def _constant_read(bit: str, inputs: int, modulus: int) -> str:
-    """Read into array zero and print the constant from a coprime array."""
-    # Array one's step is coprime to 255; array two's is coprime to 256.
-    # ACCEPT only appends to array zero, leaving the print head intact.
-    array = 1 + int(modulus % 2 == 0)
-    seeds = ((_ASCII_ZERO + int(bit)) * pow(array + 1, -1, modulus) - array) % modulus
+def _constant_read(bit: str, inputs: int) -> str:
+    """Seed an untouched print head using 48=6*8 or 49=7*7, then drain inputs."""
+    # [ablations.constant_table_audit_20261101]: no head wraps in either dialect.
+    value = int(bit)
+    array = 5 + value
+    seeds = 3 - 2 * value
     return " ".join(
         [
             *["SEED"] * array,

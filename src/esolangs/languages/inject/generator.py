@@ -13,7 +13,8 @@ blocks may overlap, so each leaf has its own escape label.  Above n=4 it
 halves one table string with ``inject`` regexes instead (linear regex text).
 
 Size:
-    O(T) at n<=4 tree, O(T) halving above; n=4 random 1847: 262 chars,
+    O(T) at n<=4 tree, O(T) halving above;
+    n=8 constant zero: 92 chars; n=4 random 1847: 262 chars,
     n=10 random 1847: 1,851 chars, n=12 random 1847: 5,093 chars.
 
 Decisions:
@@ -39,7 +40,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.inject.proof_formulas import workspace
+from esolangs.languages.inject.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 
@@ -196,6 +197,10 @@ def inject(truth_table: str, width: int | None = None) -> str:
     Width selects a chunked lookup with an O(n) floor; complete commands
     never split.
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: one scratch block, inert tail.
+        return "readto a\n" * n + f"send z\nz;\n{truth_table[0]}\nz;\na;\na;"
     if len(truth_table) <= 16:
         program = _inject_ordered(truth_table)
     else:
@@ -315,4 +320,5 @@ LANGUAGE = Language(
     # with a newline after it -- there is no other output command.
     example=Example(expected="0\n"),
     proof_workspace=(workspace, True, (5,)),
+    proof_execution=(execution, True, (5, 6)),
 )

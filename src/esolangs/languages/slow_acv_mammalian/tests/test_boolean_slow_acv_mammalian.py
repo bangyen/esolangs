@@ -982,16 +982,44 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> No
 @pytest.mark.parametrize("io", [255, 256])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> None:
+    import esolangs
     from esolangs.languages.slow_acv_mammalian.interpreter import _Machine
+    from esolangs.languages.slow_acv_mammalian.proof_formulas import workspace
     from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
 
-    program = boolean.slow_acv_mammalian(bit * 8, cell_modulus=cell, io_modulus=io)
-    stream = ScriptedIO("0101")
-    machine = _Machine(program, stream, cell_modulus=cell, io_modulus=io)
-    while not machine.halted:
-        machine.step()
-    assert stream.position() == 3
-    assert stream.getvalue() == bit
+    settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate(
+                "SLOW ACV MAMMALIAN", bit * (1 << n), settings=settings, **options
+            )
+            if not options:
+                assert len(program) == 7 * n + 63 - 5 * int(bit)
+            for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                stream = ReadFirstIO(format(row, f"0{n}b") + "Q")
+                machine = _Machine(program, stream, cell_modulus=cell, io_modulus=io)
+                written = WrittenState(machine.snapshot())
+                steps = 0
+                while not machine.halted and steps <= n + 11:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    steps += 1
+                assert machine.halted
+                assert steps == n + 11 - int(bit)
+                assert machine.ptr == 5 + int(bit)
+                assert machine.lst[machine.ptr] == (48 + int(bit),)
+                assert written.bits == workspace(n, program)
+                assert stream.getvalue() == bit
+                assert stream.input_char() == ord("Q")
 
 
 def test_equal_cells_reach_the_global_minimum() -> None:

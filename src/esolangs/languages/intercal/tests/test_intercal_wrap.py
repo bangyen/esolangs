@@ -16,7 +16,7 @@ from esolangs.languages.intercal.generator import (
 
 def test_intercal_token_floor_and_wrapped_corpus_size() -> None:
     assert max(map(len, intercal("0110", 1).splitlines())) == 6
-    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 54524
+    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 54492
 
 
 @pytest.mark.parametrize("width", [1, 6, 9, 17, 22, 40])

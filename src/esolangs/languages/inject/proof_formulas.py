@@ -35,4 +35,17 @@ def _inject(n: int, _: str) -> int:
 
 def workspace(n: int, p: str) -> int:
     """The stated workspace bound, evaluated for n and the program."""
+    if _constant(p):
+        bl = int.bit_length
+        spans = sum(bl(n + k) for k in (1, 3, 4, 6))
+        return 64 * n + 144 + bl(n + 7) + bl(2 * n) + bl(n) + spans
     return _inject(n, p)
+
+
+def _constant(program: str) -> bool:
+    return program.startswith(("readto a\nreadto a\n", "readto a\nsend z\n"))
+
+
+def execution(n: int, program: str) -> int:
+    """Native constants have n reads and seven literal-tail steps."""
+    return n + 7 if _constant(program) else 9 * n + 10
