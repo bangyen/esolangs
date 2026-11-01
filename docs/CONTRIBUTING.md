@@ -295,9 +295,11 @@ characters at n=10, no saving in bytes; Fish's cells from U+10000).
 Anything else is a bespoke size optimization and must meet all of these
 requirements:
 
-- **10% or more** off the total emitted size at the largest arity where it
-  runs: seeded random tables at n=7..8, or at its cap if it stops earlier,
-  and 200 tables when the result is within two points of the bar. Only
+- **10% sustained or 20% declining** off the total emitted size at both
+  of the two largest evaluation arities. Use the same arities for both:
+  seeded random tables at n=7..8, or the two largest arities through a valid
+  earlier cap. Fix the evaluation range before judging the candidate;
+  use 200 tables when either result is within two points of its bar. Only
   random tables and named functions count: a class drawn to show where a
   trick fires (sparse rows, two-block tilings, guarded affine residuals)
   keeps nothing, since the canonical set already covers repeated and
@@ -312,30 +314,29 @@ requirements:
   at n=7..8 (FALSE's literal pairs, 6-5's fallback orders and
   ABCDirection's tooth packing were restored that way and retired again). A saving still growing at n=8 is measured on
   past it, to its peak. Named functions (parity, majority, and/or,
-  thresholds) are reported apart; 10% on one keeps a rule for that family,
-  not the whole race. Smallfuck's residual forms saved 2.2% on random tables
-  at n=8, 0% at n >= 9 and at most 1.0% on a named function, and were
+  thresholds) are reported apart; meeting the applicable 10% or 20% bar on
+  one keeps a rule for that family, not the whole race. Smallfuck's residual
+  forms saved 2.2% on random tables at n=8, 0% at n >= 9 and at most 1.0% on a named function, and were
   retired. Cite the measurement beside the code.  A trick that fails on
   size stays if it cuts the run by 25% or more: a proved step bound or the
   baseline's command counts (Interprogck8's column search, 45% off the
   n = 11 step bound for 3.6% of size).
-- **A genuine percentage, not a fixed saving**: the saving must not tend
-  toward zero as tables grow. A trick that saves a fixed number of cells or
-  columns — a tail segment, a prologue's width — dilutes as the construction
-  around it grows: judge the share at the two largest arities where it runs,
-  and a share in clear decline across them fails, however it prices at a
-  single arity. Streetcode's tail-overlap placement saved 8.6% at n=7 and
-  6.0% at n=8: a fixed ~51 columns against a widening street. A saving
-  proportional to the construction — per room, per leaf, per entry — holds
-  its share and passes. B-tapemark's area-oriented strip width is an
-  explicit exception: we prefer its large measured grid-footprint reduction
+- **Persistence sets the bar**: a sustained saving must not tend toward
+  zero as tables grow and must not clearly decline across the two largest
+  evaluation arities. It needs 10% at both; a declining saving needs 20%
+  at both, even if it tends to zero. The higher bar is a policy premium
+  for limited persistence, not an asymptotic equivalence. Do not shorten
+  the evaluation range to qualify a declining saving. Streetcode's fixed
+  ~51-column overlap saved 8.6% at n=7 and 6.0% at n=8 and fails either bar.
+  B-tapemark's area-oriented strip width retains its separately approved
+  exception: we prefer its large measured grid-footprint reduction
   (46.8% at n=8, 22.1% at n=12, 12.5% at n=14) despite dilution. Area is
   the grid metric; at n=8 we accept 23.9% more commands, 15.4% more written
   workspace and 57.0% more text characters. One additional closed-form
   candidate buys this reduction without search, a frozen table or an arity
   cap. Correctness, exact resource bounds and linear construction remain
   required. The relative saving tends to zero; this exception covers only
-  this strip-width rule, not the general sustained-share requirement.
+  this strip-width rule, not the general persistence thresholds.
 - **No size class breaks**: some tables may grow; the old build stays a
   candidate only where the new one alone would leave the Scaling class. A
   fallback kept to spare scattered tables a few characters is itself a
