@@ -6,7 +6,9 @@ Each node computes z XOR (x AND z) XOR (x AND o) in three swaps. Inputs are
 ordered one-digit prime exponents; a final swap puts the answer in parity.
 At depth d there are at most min(2**d, 2**2**(n-d)) distinct nodes, hence
 O(T/log T) nodes. Their O(log T)-digit fractions and a linear sieve through
-O((nodes+n) log(nodes+n)) give O(T) construction and text. Constants omit gates.
+O((nodes+n) log(nodes+n)) give O(T) construction and text. Construction counts
+O(log T)-bit word operations and expected constant-time interning lookups.
+Constants omit gates.
 Each swap takes at most eight inspections. Every live exponent is zero or
 one, so the integer is bounded by the product of prime factors appearing in
 the source: fewer than 4L bits. The cursor and flags fit bl(L)+16 more bits.
@@ -58,9 +60,11 @@ def _diagram(table: str, n: int) -> tuple[list[tuple[int, int, int]], int]:
             return int(table[lo])
         mid = (lo + hi) // 2
         zero, one = walk(depth + 1, lo, mid), walk(depth + 1, mid, hi)
+        # Canonical folds: [ablations.constant_fold], [ablations.ignored_input].
         if zero == one:
             return zero
         key = (depth, zero, one)
+        # Repeated subfunctions share rails: [ablations.subtree_sharing].
         if key not in seen:
             seen[key] = len(nodes) + 2
             nodes.append(key)
@@ -106,7 +110,7 @@ def refractran(truth_table: str, width: int | None = None) -> str:
 
 
 def _balance(_table: str, default: str) -> str:
-    """Return the squarest token-preserving layout."""
+    """Return the better of the plain and closed-form wrapped layouts."""
     tokens = default.split()
     width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
     return min([default, wrap_space_delimited(default, width)], key=balance_score)

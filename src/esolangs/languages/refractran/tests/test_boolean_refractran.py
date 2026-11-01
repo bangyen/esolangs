@@ -33,8 +33,11 @@ def test_controlled_swap_restores_controls() -> None:
         program = _swap(2, 3, (19, 23))
         expected = (3 if target ^ (c0 & c1) else 2) * 19**c0 * 23**c1
         machine = _Machine(f"{before} " + " ".join(program), ScriptedIO())
-        while not machine.halted:
+        for _ in range(16):
+            if machine.halted:
+                break
             machine.step()
+        assert machine.halted
         assert machine.state.value == _rational_run(before, program) == expected
 
     assert _rational_run(2 * 19 * 23, _swap(2, 3, (19, 23))[:-1]) != 3 * 19 * 23
