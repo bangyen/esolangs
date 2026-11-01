@@ -209,20 +209,21 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-103 of the 111 generators: ///, 1 + i, 6-5, A Painter Ant, ABCDirection,
+106 of the 111 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
 AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
-Ascenic, Back, Balik, BASICER, Basicfuck, Befunge, Between, BFStack,
-Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic, Boolfuck,
-brainfuck, BrainIf, Caballo, CARP, Chicken, Circlefuck, Clockwise, Codesick,
-Collatz Multiverse, Container, CreativeScript v2, Crement, CV(N)(C), Cyclic
-tag, Decleq, Dimensional, DINAC, EGL, Eval, Fackward, FALSE, Fargo, Fish,
-Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo, Grapheme, Home Row, Hot, HQ9+
-with headers, IEBEL, Inject, INTERCAL, Interprogck8, Kiss, LaserFuck, lol
-waht i cant edit talk pages, Minsky Swap, Modulous, Monotonic Boolfuck,
-Movesum, Nandypants, NOR machine, Object disoriented, Packlang, Painfuck,
-Parenthesys, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0, ROTfuck,
-Rubic, S*bleq, SendStuff, Shakespeare, SLOW ACV MAMMALIAN, Smallfuck, Smu,
-Sonata, SStack, Stisp, Subleq, Suffolk, Super SNUSP, SwitchCase, Taglate,
-thisthat, Thue, Unary, Underload, Unlambda, Unsquare, What!?, Whitespace.
+Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
+BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
+Boolfuck, brainfuck, BrainIf, Caballo, CARP, Chicken, Circlefuck, Circuit
+Diagram, Clockwise, Codesick, Collatz Multiverse, Container, CreativeScript
+v2, Crement, CV(N)(C), Cyclic tag, Decleq, Dimensional, DINAC, EGL, Eval,
+Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo,
+Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, INTERCAL,
+Interprogck8, Kiss, LaserFuck, lol waht i cant edit talk pages, Minsky Swap,
+Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object
+disoriented, Packlang, Painfuck, Parenthesys, Pilas, Pointless, Qoibl,
+Qrain, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff, Shakespeare, SLOW
+ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Subleq, Suffolk, Super
+SNUSP, SwitchCase, Taglate, thisthat, Thue, Unary, Underload, Unlambda,
+Unsquare, What!?, Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->
