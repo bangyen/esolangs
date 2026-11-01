@@ -79,9 +79,17 @@ arity = 8
 verdict = "kept 2026-10-28 by contract: the balance hook rebuilds the program at the default's own width and from the narrow builds, each in its original, compact, aliased and renamed spellings. Priced against balance = default on 20 seeded random tables (seed 1000n + i): 5.55% / 1.08% balanced area at n=7/8; named tables 0.0% except or and nor, 9.6% / 12.3% at n=7 then 54.4 / 37.0 / 23.1 / 13.7 / 7.8% at n=8..12, a share falling from its n=8 peak under the 10% bar. Alone, the narrow builds and the spellings each price 0.0% (the width-limited rebuild carries it). Fails the bar, but tests/generators/test_balance_remaining.py requires every native-width generator to balance within 5% of the best width layout and the default misses that on or/nor, so it stays; an invariant, not a size trick"
 
 [audits]
+trick_prototype = 2026-10-31
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
 [balance_growth]
 wall = "a line is one assignment of identifiers only (interpreter.py _LINE fullmatch), so it carries O(log L) bits; T table bits need L >= c*T/log T lines, so the side 2*L gives area >= c*T**2/log**2 T (measured T**1.50 from n=10 to 12, 2026-10-29)"
+
+[ablations.eight_row_cells]
+saving = 22.01
+arity = 8
+seed = "random.Random(1847+n); final corpus random.Random(1847)"
+tables = "20 random per n=4..16; and/or/parity and complements n=1..16; exhaustive n<=3"
+verdict = "kept for endpoint products and parity, including complements, from seven essential inputs: eight-row cells halve the table while keeping at most two codes. n=8 and/or 2,938/2,947 -> 2,350/2,359 chars (20.0%), parity 3,380 -> 2,636 (22.0%); n=16 and/or 314,695/314,704 -> 159,052/159,061 (49.5%), parity 421,217 -> 212,378 (49.6%). Random eight-row builds lose 38.5% / 104.0% at n=7/8 and still lose 22.9% at n=14, so other families keep four-row cells. Final builds: 10,868 baseline/candidate/width-1/balanced executions correct, all rows through n=6, boundary rows thereafter; 5,344 complemented controls rejected. All 256 n=3 tables remain byte-identical (281,500 chars); 54 VM measurements at n=7/8/10/12/14/16 fit unchanged command and written-workspace bounds. The eight-row decoder has at most 16 lines, code <=8, fewer table cells and a constant closure contained in the old envelope"

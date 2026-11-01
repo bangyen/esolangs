@@ -1,19 +1,21 @@
 """Collatz Multiverse Boolean program generator: a coded cell table and a decoder.
 
 Each input is read into a register; the essential ones are summed into an
-address that indexes an array ``A`` of four-row cells, and the last two inputs
-select a bit inside the decoded cell.  A constant table reads every input and
+address that indexes an array ``A`` of packed cells; the last two or three
+inputs select a bit inside the decoded cell.  A constant table reads every input and
 prints one constant.  The shortest build over the essential inputs wins.
 
 Size:
-    O(T): one line per four-row cell plus four decoder lines per distinct
-    cell.  n=10 parity: 8,677 chars, n=10 and: 6,987 chars, n=10 random 1847:
-    12,825 chars.
+    O(T): at most one line per four rows plus a bounded decoder.
+    n=10 parity: 5,481 chars, n=10 and: 4,571 chars,
+    n=10 random 1847: 12,825 chars.
 
 Decisions:
-    Cells of eight rows: more decoder lines than the ``T / 8`` they save
-    below fourteen inputs.  A decoder indexed by cell value rather than
-    code, and the empty cell on top code, lose or fall under the 10% bar
+    Eight-row cells serve endpoint products and parity from seven inputs;
+    other tables pay for too many distinct decoders
+    ([ablations.eight_row_cells]).
+    A decoder indexed by cell value rather than code, and the empty cell on
+    top code, lose or fall under the 10% bar
     (:func:`_cm_codes`).
 """
 
@@ -125,14 +127,15 @@ def _cm_build(
     numbered: bool = True,
     narrow: bool = False,
     invert: bool = False,
+    chunk: int = _CM_CHUNK,
 ) -> str:
     """Emit the cell-and-decoder program over ``order``'s inputs.
 
     ``order`` names the inputs the address is built from, most significant
-    first; its last two select a row within a cell and the rest index the
+    first; its last log2(chunk) select a row within a cell and the rest index the
     cells.  An input it leaves out is still read, and never added.
-    A cell's code ``c`` has constant ``4 c`` (:func:`_cm_codes`); the decoder
-    holds its bit ``j`` at ``4 c + j``.  ``numbered`` False stores each cell's
+    A cell's code ``c`` has constant ``chunk * c`` (:func:`_cm_codes`); the decoder
+    holds its bit ``j`` at ``chunk * c + j``.  ``numbered`` False stores each cell's
     own value as its code, the build before :func:`_cm_codes` numbered cells.
     ``narrow`` uses odd indices ``3 + 2 i`` and doubles address offsets.
     ``invert`` stores the complemented table -- an empty cell is a cheap pad
@@ -142,25 +145,26 @@ def _cm_build(
     if invert:
         truth_table = "".join("10"[int(bit)] for bit in truth_table)
     table = read_at(truth_table, order, n)
-    padded = table + "0" * (-len(table) % _CM_CHUNK)
+    padded = table + "0" * (-len(table) % chunk)
     chunks = [
-        sum(int(bit) << j for j, bit in enumerate(padded[base : base + _CM_CHUNK]))
-        for base in range(0, len(padded), _CM_CHUNK)
+        sum(int(bit) << j for j, bit in enumerate(padded[base : base + chunk]))
+        for base in range(0, len(padded), chunk)
     ]
     uses = Counter(chunks)
     codes = _cm_codes(uses) if numbered else {value: value for value in chunks}
 
-    high = max(len(order) - 2, 0)
+    high = max(len(order) - (chunk.bit_length() - 1), 0)
     weights = {address_scale * 2 ** (high - 1 - k) for k in range(high)}
     stored = sorted((code, value) for value, code in codes.items() if code)
     needed = {
         _ASCII_ZERO + invert,
         *weights,
-        *(address_scale * _CM_CHUNK * code for code, _ in stored),
+        *(address_scale * chunk * code for code, _ in stored),
     }
+    needed.update(address_scale * (1 << j) for j in range(len(order) - high))
     lines = _cm_emit_constants(needed, narrow=narrow)
-    names = {value: f"k{address_scale * _CM_CHUNK * code}" for code, value in stored}
-    _cm_emit_decoder(lines, codes, narrow=narrow)
+    names = {value: f"k{address_scale * chunk * code}" for code, value in stored}
+    _cm_emit_decoder(lines, codes, narrow=narrow, chunk=chunk)
     _cm_emit_cells(lines, chunks, names, narrow=narrow)
     _cm_emit_address(lines, n, order, high, address_scale, invert=invert)
     return "\n".join(lines)
@@ -173,13 +177,15 @@ def _cm_emit_constants(needed: set[int], *, narrow: bool) -> list[str]:
     return _cm_constants(needed)
 
 
-def _cm_emit_decoder(lines: list[str], codes: dict[int, int], *, narrow: bool) -> None:
+def _cm_emit_decoder(
+    lines: list[str], codes: dict[int, int], *, narrow: bool, chunk: int
+) -> None:
     """Decoder phase: write the decoder cells ``D`` the lookup reads back."""
-    decoder: list[str | None] = [None] * (_CM_CHUNK * (max(codes.values()) + 1))
+    decoder: list[str | None] = [None] * (chunk * (max(codes.values()) + 1))
     for value, code in codes.items():
-        for j in range(_CM_CHUNK):
+        for j in range(chunk):
             if (value >> j) & 1:
-                decoder[_CM_CHUNK * code + j] = "k1"
+                decoder[chunk * code + j] = "k1"
     cells_builder = _cm_narrow_cells if narrow else _cm_cells
     cells_builder(lines, "D", decoder, "t")
 
@@ -223,9 +229,10 @@ def _cm_emit_address(
     else:
         lines.append(f"s=k1 x+k{address_scale},NOT PRINT.")
     lines.append("t=k1 x+A[s],NOT PRINT.")
-    if len(select) == 2:
-        lines.append(f"w{select[0]}=k{2 * address_scale} x+z,NOT PRINT.")
-        lines.append(_CM_FOLD.format(dst="t", src=f"w{select[0]}"))
+    for k, i in enumerate(select[:-1]):
+        weight = address_scale * 2 ** (len(select) - 1 - k)
+        lines.append(f"w{i}=k{weight} x+z,NOT PRINT.")
+        lines.append(_CM_FOLD.format(dst="t", src=f"w{i}"))
     one = f"k{address_scale} x+k{address_scale}"
     lines.append(f"w{select[-1]}={one},NOT PRINT.")
     lines.append(_CM_FOLD.format(dst="t", src=f"w{select[-1]}"))
@@ -299,6 +306,19 @@ def _cm_narrow_choice(fitted: str, layouts: list[str]) -> str:
     )
 
 
+def _cm_chunk(table: str) -> int:
+    """Use eight-row cells for endpoint products and parity from seven inputs."""
+    if len(table) < 128:
+        return _CM_CHUNK
+    ones = table.count("1")
+    if ones in (1, len(table) - 1) and table[0] != table[-1]:
+        return 8
+    bias = int(table[0])
+    if all(int(bit) == (row.bit_count() & 1) ^ bias for row, bit in enumerate(table)):
+        return 8
+    return _CM_CHUNK
+
+
 def _cm_candidates(
     truth_table: str, n: int, *, narrow: bool, expanded: bool
 ) -> list[str]:
@@ -310,8 +330,9 @@ def _cm_candidates(
             _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=narrow)
         ]
     orders = _cm_orders(essential_inputs(truth_table, n), expanded=expanded)
+    chunk = _cm_chunk(read_at(truth_table, orders[0], n))
     return [
-        _cm_build(truth_table, n, order, narrow=narrow, invert=invert)
+        _cm_build(truth_table, n, order, narrow=narrow, invert=invert, chunk=chunk)
         for order in orders
         for invert in (False, True)
     ]
@@ -413,5 +434,5 @@ LANGUAGE = Language(
     balance=balance_collatz_multiverse,
     no_wrap="each line is one complete register assignment",
     proof_execution=(execution, False, (3, 5, 6, 8)),
-    proof_workspace=(workspace, False, (3, 4, 5, 6, 9)),
+    proof_workspace=(workspace, False, (3, 4, 5, 6, 7, 9)),
 )

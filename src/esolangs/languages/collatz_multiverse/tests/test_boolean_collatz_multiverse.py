@@ -298,3 +298,32 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
 )
 def test_layout_sizes(table: str, width: int | None, size: int) -> None:
     assert len(esolangs.generate("collatz_multiverse", table, width=width)) == size
+
+
+@pytest.mark.parametrize("family", ["and", "or", "parity"])
+@pytest.mark.parametrize("invert", [False, True])
+def test_eight_row_named_cells(family: str, *, invert: bool) -> None:
+    from esolangs.languages.collatz_multiverse.generator import _cm_build
+
+    n = 7
+    table = "".join(
+        str(
+            int(
+                {
+                    "and": row == 127,
+                    "or": row != 0,
+                    "parity": bool(row.bit_count() & 1),
+                }[family]
+            )
+            ^ invert
+        )
+        for row in range(1 << n)
+    )
+    program = boolean.collatz_multiverse(table)
+    unfolded = min(
+        (_cm_build(table, n, list(range(n)), invert=bias) for bias in (False, True)),
+        key=len,
+    )
+    assert len(program) < 0.9 * len(unfolded)
+    for row in (0, 1, 42, 85, 126, 127):
+        assert run_collatz_multiverse(program, row_bits(row, n)) == table[row]

@@ -1,4 +1,10 @@
-"""Executed command and snapshot-bit bounds."""
+"""Executed command and snapshot-bit bounds.
+
+Eight-row endpoint/parity cells have at most two codes from n=7: at most
+16 decoder lines, half as many table cells, code values at most 8, and a
+constant closure contained in the four-row envelope. Their extra selector
+replaces one address bit; each snapshot part stays below that envelope.
+"""
 
 
 def _constants(n: int) -> set[int]:

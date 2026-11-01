@@ -18,6 +18,7 @@ def _popcounts(m: int) -> int:
 def _chars(n: int, _: str) -> int:
     """N: the line lengths summed, plus a newline between lines.
 
+    Eight-row named builds are dominated by this four-row envelope.
     A cell line is 31 characters, 30 for codes 1 and 2 and a pad for code 0;
     the decoder takes 31 characters a set bit of the m largest popcounts.
     """
