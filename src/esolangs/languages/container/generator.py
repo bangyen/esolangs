@@ -1,6 +1,7 @@
 """Container Boolean program generator: a tick-timed tree, or a threshold sum.
 
-The shorter of two programs ships.  In the tree, the empty container reads
+Constants use a two-state pulse and countdown. Otherwise the shorter of two
+programs ships.  In the tree, the empty container reads
 one bit per pulse and a pruned, shared tree of containers survives bit by bit
 to a leaf that adds its entry to ``OUT`` at tick ``2n`` (see
 :func:`_container_tree`).  In the threshold sum, each bit latches into its own
@@ -11,7 +12,8 @@ adds a third route, :func:`_container_blocks`, with ``O(sqrt T)`` lines.
 
 Size:
     Tree up to 2**n lines in the worst case, threshold one line per table
-    step; n=6 random 1847: 835 chars, n=10 parity: 2,241 chars.
+    step; n=8 constant zero: 88 chars; n=6 random 1847: 835 chars,
+    n=10 parity: 2,241 chars.
 """
 
 from collections.abc import Iterable, Iterator
@@ -528,6 +530,16 @@ def _narrow_rules(program: str, width: int) -> str:
 
 def container(truth_table: str, width: int | None = None) -> str:
     """Build Container rules; narrow widths factor constants and deltas."""
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: one pulse per two ticks.
+        program = (
+            f"T={n}:\n-1 P>=1\nP=1:\n-1 P>=1\n1 P<=0\n:\n"
+            "1 P>=1\n-1 P<=0\n"
+            f"IN:\nOUT={_ASCII_ZERO + int(truth_table[0])}:\n"
+            "PRINT:\n1 T<=0\nEXIT:\n1 T<=0"
+        )
+        return program if width is None else _narrow_rules(program, width)
     # The tree wins constants, projections and structured tables, the
     # threshold most other tables from n=3: 26 of the 256 n=3 tables keep the
     # tree, ties included (it halts two ticks sooner).
@@ -628,6 +640,8 @@ def _container_blocks(table: str) -> str:
 
 def balance_container(table: str, default: str) -> str:
     """Return the squarer of the default and the threshold program, narrowed."""
+    if default.startswith("T="):
+        return default
     # Narrowing at w costs no characters until a rule stops fitting, so the
     # square side is isqrt(CELL_ASPECT * characters).  The threshold program
     # is the named alternative ([ablations.balance_candidates]); the block

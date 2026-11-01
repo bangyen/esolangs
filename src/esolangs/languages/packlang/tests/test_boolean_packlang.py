@@ -196,3 +196,49 @@ def test_balance_of_random_n10_refolds_the_body() -> None:
     table = "".join(rng.choice("01") for _ in range(1024))
     program = str(esolangs.generate("Packlang", table, balance=True))
     assert balance_score(program) == (134, 6295, 115)
+
+
+@pytest.mark.medium
+def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
+    from esolangs.languages.packlang.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for policy in ("decimal", "binary_digits"):
+                for options in ({}, {"width": 1}, {"balance": True}):
+                    program = esolangs.generate(
+                        "Packlang",
+                        bit * (1 << n),
+                        settings=esolangs.DialectSettings(literal_policy=policy),
+                        **options,
+                    )
+                    if not options:
+                        assert "Array" not in program
+                    rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+                    for row in rows:
+                        stdin = esolangs.encode_inputs(
+                            "Packlang", list(map(int, format(row, f"0{n}b")))
+                        )
+                        io = ReadFirstIO(stdin + "Q")
+                        machine = _Machine(program, io, literal_policy=policy)
+                        steps = 0
+                        while not machine.halted and steps < 4 * n + 10:
+                            machine.step()
+                            steps += 1
+                        assert machine.halted
+                        assert io.getvalue() == bit
+                        assert steps == n + 3
+                        assert io.input_char() == ord("Q")
+    assert (
+        sum(len(esolangs.generate("Packlang", format(v, "08b"))) for v in range(256))
+        == 78174
+    )

@@ -434,7 +434,7 @@ class TestBooleanGenerator:
                 while not machine.halted:
                     machine.step()
                     steps += 1
-        assert (size, steps) == (78262, 48216)
+        assert (size, steps) == (78174, 48216)
 
     def test_full_table_growth_is_linear(self) -> None:
         """Parity paints half the rows, and its emitted size still doubles."""

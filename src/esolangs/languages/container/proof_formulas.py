@@ -1,9 +1,9 @@
 """Executed command and snapshot-bit bounds."""
 
 
-def execution(n: int, _: str) -> int:
+def execution(n: int, program: str) -> int:
     """The stated execution bound, evaluated for n and the program."""
-    return 2 * n + 2
+    return 2 * n if program.startswith("T=") else 2 * n + 2
 
 
 def workspace(n: int, program: str) -> int:
@@ -14,6 +14,9 @@ def workspace(n: int, program: str) -> int:
     deltas each; a zero value still costs a bit.  The EXIT code is at most
     EXIT's peak, and input progress and the read count at most one a tick.
     """
+    if program.startswith("T="):
+        # Fixed port names, six-bit IN/OUT, countdown and two read cursors.
+        return 145 + 3 * n.bit_length()
     bl = int.bit_length
     ticks = execution(n, program)
     peaks: dict[str, int] = {}

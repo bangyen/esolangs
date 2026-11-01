@@ -44,3 +44,10 @@ seed = "random.Random(6100+n)"
 tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
 baseline = "a8602c4f0^"
 verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: characters 154910 -> 80844, sampled commands 841 -> 298, largest sampled written-state peak 160 -> 24 bits. Sum of seven-repeat cold generation medians: 1262708 -> 791832 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. The shared variable reduces both commands and sampled workspace. Current resource bounds pass where their stated domains apply"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = "both constant values; witnesses(n) at n=4..6"
+tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
+verdict = "retained: the existing constant span emits user:x, exactly n numeric reads, then its literal signature print. Both bits remain 28n+23 chars and n+2 commands; n=8 247 chars, n=12 359. The n=3 corpus stays 128652 chars. No new construction accepted; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts within their resource bounds. Owned regressions require all reads before output and retain a following record; both Packlang literal policies execute."

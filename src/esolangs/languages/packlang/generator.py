@@ -17,8 +17,9 @@ the default's 72-column lines capped a fit at narrowing, so balanced area
 grew as T^2 (74x105 at n=10).
 
 Size:
-    O(T) with a small constant for constant tables (per block, not per row);
-    n=8 and: 661 chars, n=10 and: 798 chars, n=10 random 1847: 6,679 chars.
+    O(T) characters; whole constants use one byte and n reads;
+    n=8 constant zero: 168 chars; n=8 and: 661 chars, n=10 and: 798 chars,
+    n=10 random 1847: 6,679 chars.
 
 Decisions:
     The complement painted and printed as ``49 ^ t`` races the direct paint;
@@ -87,14 +88,24 @@ def packlang(
     """
     literals = PacklangLiterals(literal_policy)
     weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
+    if not any(weights):
+        candidates = [_constant_program(len(weights), int(table))]
+    else:
+        complement = table.translate(str.maketrans("01", "10"))
+        candidates = [
+            _painted(
+                complement if flip else table,
+                weights,
+                runs=runs,
+                block=block,
+                flip=flip,
+            )
+            for (runs, block), flip in product(
+                product((False, True), _blocks(table)), (False, True)
+            )
+        ]
     built = []
-    complement = table.translate(str.maketrans("01", "10"))
-    for (runs, block), flip in product(
-        product((False, True), _blocks(table)), (False, True)
-    ):
-        program = _painted(
-            complement if flip else table, weights, runs=runs, block=block, flip=flip
-        )
+    for program in candidates:
         if literal_policy != "decimal":
             program = re.sub(
                 r"(?<!\w)\d+", lambda match: literals.emit(int(match[0])), program
@@ -106,6 +117,18 @@ def packlang(
             program = wrap_program(program, "packlang", width)
         built.append(program)
     return min(built, key=len)
+
+
+def _constant_program(n: int, bit: int) -> str:
+    """Read into one byte, then print the constant without an array."""
+    # [ablations.constant_table_audit_20261101].
+    body = ["charGet(c);"] * n + [f"charPut({_ASCII_ZERO + bit});", "0;"]
+    statements = "".join(f"  {line}\n" for line in _folded(body))
+    return (
+        "Package : IO {\n  Char c;\n  Integer main {\n"
+        + statements
+        + "  }\n} truthTable;\n"
+    )
 
 
 def _blocks(table: str) -> list[int]:
