@@ -93,19 +93,6 @@
     "line: return None",
 ]
 
-"minifuck/generator/__init__.py" = [
-    "arm: if len(default) <= len(positional): -> candidates.extend(shared for shared in forms if len(shared) <= len(positional))",
-]
-
-"minifuck/generator/stored.py" = [
-    "arm: if control == target: -> raise ValueError(\"control and target must be distinct\")",
-    "arm: if count < 0: -> raise ValueError(\"negative repetition\")",
-    "arm: if target in (left, right): -> raise ValueError(\"controls and target must be distinct\")",
-    "line: raise ValueError(\"control and target must be distinct\")",
-    "line: raise ValueError(\"controls and target must be distinct\")",
-    "line: raise ValueError(\"negative repetition\")",
-]
-
 "object_disoriented/generator.py" = [
     "arm: for chars in product(_NAME_CHARS, repeat=size): -> for size in count(1):",
     "arm: for size in count(1): -> <exit>",
