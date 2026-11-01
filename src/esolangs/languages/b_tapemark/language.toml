@@ -12,20 +12,20 @@ admitted = 2026-09-13T10:37:33-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on"
-scaling = "linear: worst A cells past n = 1: the least-area of three layouts"
+scaling = "linear: worst A cells past n = 1: the least-area of four layouts"
 execution = "linear: worst E steps: the all-zero row of the least-area layout"
 workspace = "T log T: worst W bits to n = 8, at most B after: program cells, marks, pointers"
 definitions = ["B = 8 + coordinate bits per program cell, plus a widest-coordinate mark per * or - cell"]
 
 [generator_sizes]
-"00000001" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"00000001" = { commands = 164, commands_by_row = { "0" = 201, "1" = 192, "2" = 190, "3" = 181, "4" = 184, "5" = 175, "6" = 173, "7" = 164 }, source_units = 416 }
 "00001100" = { commands = 126, commands_by_row = { "0" = 147, "1" = 142, "2" = 140, "3" = 135, "4" = 138, "5" = 133, "6" = 131, "7" = 126 }, source_units = 344 }
-"00110110" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"00110110" = { commands = 164, commands_by_row = { "0" = 201, "1" = 192, "2" = 190, "3" = 181, "4" = 184, "5" = 175, "6" = 173, "7" = 164 }, source_units = 416 }
 "0110" = { commands = 89, commands_by_row = { "0" = 105, "1" = 98, "2" = 96, "3" = 89 }, source_units = 221 }
-"01101001" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
-"0110100110010110" = { commands = 187, commands_by_row = { "0" = 237, "1" = 230, "2" = 228, "3" = 221, "4" = 224, "5" = 217, "6" = 215, "7" = 208, "8" = 216, "9" = 209, "10" = 207, "11" = 200, "12" = 203, "13" = 196, "14" = 194, "15" = 187 }, source_units = 545 }
-"1101001101101101" = { commands = 187, commands_by_row = { "0" = 237, "1" = 230, "2" = 228, "3" = 221, "4" = 224, "5" = 217, "6" = 215, "7" = 208, "8" = 216, "9" = 209, "10" = 207, "11" = 200, "12" = 203, "13" = 196, "14" = 194, "15" = 187 }, source_units = 545 }
-"11111110" = { commands = 134, commands_by_row = { "0" = 163, "1" = 156, "2" = 154, "3" = 147, "4" = 150, "5" = 143, "6" = 141, "7" = 134 }, source_units = 364 }
+"01101001" = { commands = 164, commands_by_row = { "0" = 201, "1" = 192, "2" = 190, "3" = 181, "4" = 184, "5" = 175, "6" = 173, "7" = 164 }, source_units = 416 }
+"0110100110010110" = { commands = 271, commands_by_row = { "0" = 335, "1" = 326, "2" = 324, "3" = 315, "4" = 318, "5" = 309, "6" = 307, "7" = 298, "8" = 308, "9" = 299, "10" = 297, "11" = 288, "12" = 291, "13" = 282, "14" = 280, "15" = 271 }, source_units = 717 }
+"1101001101101101" = { commands = 271, commands_by_row = { "0" = 335, "1" = 326, "2" = 324, "3" = 315, "4" = 318, "5" = 309, "6" = 307, "7" = 298, "8" = 308, "9" = 299, "10" = 297, "11" = 288, "12" = 291, "13" = 282, "14" = 280, "15" = 271 }, source_units = 717 }
+"11111110" = { commands = 164, commands_by_row = { "0" = 201, "1" = 192, "2" = 190, "3" = 181, "4" = 184, "5" = 175, "6" = 173, "7" = 164 }, source_units = 416 }
 
 [catalogue]
 folding_constant_local = "b_tapemark"  # direct read-and-print constant
@@ -92,4 +92,4 @@ saving = 46.7606
 arity = 8
 seed = "random.Random(1847+n)"
 tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..8; named through n=10; parity n=12/14"
-verdict = "near miss, not shipped: offer copy width max(5,floor(sqrt(104T/(63n)))) and run width 3*copy-12, balancing the area model rather than the existing square-side model. Random n=7/8: 168,480 -> 99,360 / 241,400 -> 128,520 cells (41.0% / 46.8%). Named functions have the same full-essential geometry: n=10 25,908 -> 16,578 (36.0%), n=12 64,999 -> 50,654 (22.1%), n=14 194,691 -> 170,348 (12.5%). The share dilutes: both folded strips have area 8T+o(T), so this width rule cannot save a genuine percentage and no arity cap is justified. Exhaustive n=3 area 222,558 -> 180,266 cells; commands 298,152 -> 357,448 (+19.9%), 218 tables slower. Positive control: 353 corpus programs change. 5,058 baseline/candidate output checks correct, exhaustive n<=3 and boundary rows through n=10 plus two parity rows at n=12/14; 2,525 complemented controls rejected. The n=16 probe was stopped after n=12/14 established dilution: the interpreter copies its growing mark dictionary on every write. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+verdict = "kept by explicit user-approved sustained-share exception, 2026-10-31: copy=max(5,floor(sqrt(104T/(63n)))), run=3*copy-12. n=8 area 12,070 -> 6,426 cells (-46.8%); serialized text 3,303 -> 5,185 chars (+57.0%); all-row commands 458,496 -> 568,064 (+23.9%); exact written workspace 30,563 -> 35,281 bits (+15.4%). n=10 area 25,908 -> 16,578 (-36.0%), sampled commands +6.85%; n=12 area 64,999 -> 50,654 (-22.1%), sampled commands +5.82%; n=14 area 194,691 -> 170,348 (-12.5%), sampled commands +3.06%. The saving tends to zero (both layouts are 8T+o(T)); the exception accepts the practical area/runtime tradeoff only for this rule, without an arity cap. Larger command samples use rows 0, T/3 rounded down, T-1; n=7/8 ran every row. n=3 area total 222,558 -> 180,266 cells; commands 298,152 -> 357,448. Prior prototype executed 5,058 baseline/candidate outputs correctly with 2,525 complemented controls; final verification passes 13,112 baseline/candidate/balanced output checks with 3,278 complemented controls; width calls remain byte-identical. Exact resource formulas match VM peaks over every row through n=8, and B dominates all ignored-input sets there. The n=16 probe was stopped to avoid quadratic interpreter copying after n=12/14 established dilution"

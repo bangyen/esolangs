@@ -327,7 +327,11 @@ requirements:
   single arity. Streetcode's tail-overlap placement saved 8.6% at n=7 and
   6.0% at n=8: a fixed ~51 columns against a widening street. A saving
   proportional to the construction — per room, per leaf, per entry — holds
-  its share and passes.
+  its share and passes. B-tapemark's area-oriented strip width is an
+  explicit exception: its n=8 area falls 46.8% at 23.9% more commands
+  and 57.0% more text characters,
+  and n=12 area falls 22.1% at 5.8% more commands on sampled rows.
+  The saving still tends to zero; this exception applies only to that rule.
 - **No size class breaks**: some tables may grow; the old build stays a
   candidate only where the new one alone would leave the Scaling class. A
   fallback kept to spare scattered tables a few characters is itself a

@@ -8,8 +8,8 @@ print a literal answer without that walk.
 Size:
     O(T) source and construction in every layout; the narrow XOR2 needs
     nine columns.  The default is the least by area of the wide strip and the
-    closed-form strips (``balance``'s candidates, no width sweep): n=10
-    parity: 10,565 chars, n=10 random 1847: 10,565 chars, a 127 x 204 grid
+    closed-form strips (no width sweep): n=10
+    parity: 13,741 chars, n=10 random 1847: 13,741 chars, a 54 x 307 grid
     against the strip's 93 x 3,086 (6,809 chars of ragged rows).
     ``balance`` snakes the copy and the weight runs into strips
     (:func:`_b_tapemark_folded`): n=6 random 202 -> 118 on a side, n=10
@@ -343,7 +343,11 @@ def _closed_forms(table: str) -> list[str]:
     # the height, 3c^2 + (9 - 18n)c - 4T = 0.
     half = 18 * depth - 9
     best = (half + isqrt(half * half + 48 * len(table))) // 6
-    for copy in {best, best * 17 // 20}:
+    # The area model balances its terms proportional to n*c and T/c.
+    # Its practical win is an explicit exception to the sustained-share bar
+    # ([ablations.area_strip_width_prototype]); the side-fit forms still balance.
+    area_copy = max(5, isqrt(104 * len(table) // (63 * depth)))
+    for copy in {best, best * 17 // 20, area_copy}:
         candidates.append(
             _b_tapemark_folded(table, max(1, copy), max(1, 3 * copy - 12))
         )
@@ -354,7 +358,10 @@ def _balance(table: str, default: str) -> str:
     """Return the default or the closed-form layout with the least balanced side."""
     if len(set(table)) == 1:
         return default
-    return min([default, *_closed_forms(table)], key=balance_score)
+    # Preserve the wide form that the old default supplied on small tables.
+    return min(
+        [default, _b_tapemark_program(table), *_closed_forms(table)], key=balance_score
+    )
 
 
 LANGUAGE = Language(

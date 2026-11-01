@@ -67,7 +67,8 @@ def _candidates(n: int, m: int) -> list[tuple[str, int, int, tuple[int, int, int
     out = [("wide", 0, 0, _wide(n, m))]
     half = 18 * n - 9
     best = (half + isqrt(half * half + 48 * t)) // 6
-    for c in dict.fromkeys([best, best * 17 // 20]):
+    area_copy = max(5, isqrt(104 * t // (63 * n)))
+    for c in dict.fromkeys([best, best * 17 // 20, area_copy]):
         r = max(1, 3 * c - 12)
         if c < 1 << m:
             out.append(("fold", c, r, _fold(n, c, r, m)))
@@ -75,7 +76,7 @@ def _candidates(n: int, m: int) -> list[tuple[str, int, int, tuple[int, int, int
 
 
 def _cells(n: int, _: str) -> int:
-    """A: cells (width x rows) of the least-area of wide and two folds."""
+    """A: cells (width x rows) of the least-area of wide and three folds."""
     return min(w * h for *_, (_, w, h) in _candidates(n, n))
 
 
@@ -109,8 +110,8 @@ def _steps_for(n: int, m: int) -> int:
 def _steps(n: int, _: str) -> int:
     """E: the longest all-zero row over the essential counts m (T > n entries).
 
-    Fewer essential inputs mean fewer table entries but a stage each for the
-    ignored ones, so m = n - 1 beats m = n at n = 7 (1,206 against 1,201).
+    Fewer essential inputs mean fewer table entries but still a stage each
+    for the ignored ones, so maximize over the essential counts.
     """
     return max(_steps_for(n, m) for m in range(1, n + 1) if 1 << m > n)
 
@@ -256,16 +257,11 @@ def _model_workspace(n: int) -> int:
     table with every input essential reaches W.  The marks are the table's T
     at (x0 - k, y0), then for stage s, y = y0 - 2n + 2s: the input at (x, y)
     and the pair ``\\`` ``%`` at (x, y + 1), (x + 1, y + 1), with x = x0 - T + s
-    plus the weights of the zero bits before s.  Both steps below are exhaustive
-    on the shipped generator and interpreter, every essential set and every row
-    (n = 3..8; a table's digits move no cell and no beam, so the set fixes the
-    run: 3 random tables per set agree row for row, n <= 5), the snapshot counted
-    as ``WrittenState`` does.  The peak falls in the last stage's walk to ``!``,
-    at least 29 bits above every earlier snapshot, so earlier stages sum in
-    closed form and ``_tail`` walks the last.  An ignored input only shrinks the
-    table: the largest peak over sets of m < n essential inputs (n = 3..8: 2,034,
-    3,167, 4,943, 8,062, 13,951, 17,639; constant tables at most 334) stays below W
-    (2,615, 4,363, 7,469, 9,652, 16,590, 30,563).
+    plus the weights of the zero bits before s.
+    The peak falls in the last stage's exit: earlier stages sum in closed
+    form and ``_tail`` walks the last. Actual VM peaks over every row at
+    n=3..8 match this model. Every ignored-input set's program-cell bound B
+    stays below W at those arities (independent of the table digits).
     """
     t = 1 << n
     _, c, r, _ = min(_candidates(n, n), key=lambda k: (k[3][1] * k[3][2], k[3][0]))

@@ -212,7 +212,7 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Its stage, crossing no ``|``."""
-    assert_an_ignored_input_costs("B-tapemark", 5, 235)
+    assert_an_ignored_input_costs("B-tapemark", 5, 201)
 
 
 def test_render_is_the_bounding_box() -> None:
@@ -312,3 +312,13 @@ def test_fold_widths_match_the_swept_optimum(depth: int) -> None:
     )
     got = balance_score(_balance(table, tools.b_tapemark(table)))[0]
     assert got <= 1.03 * swept
+
+
+def test_area_oriented_fold_executes_every_five_input_row() -> None:
+    from esolangs.generation.helpers import grid_area
+
+    table = "".join(str(row.bit_count() & 1) for row in range(32))
+    program = tools.b_tapemark(table)
+    assert grid_area(program) == 1750
+    for row in range(32):
+        assert execute(program, format(row, "05b")) == (table[row], 5)
