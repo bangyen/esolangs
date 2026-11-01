@@ -108,5 +108,13 @@ workload = "run"
 verdict = "removed 2026-10-20 (interpreter candidate I-6): -3.0% run with overlapping spreads in the audit; no measurable earning"
 
 [audits]
+trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-30
+
+[ablations.smaller_leaf_prototype]
+saving = 0.0
+arity = 8
+seed = "random.Random(1847+n)"
+tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
+verdict = "Screened four- and five-input flat leaves against the shipped six-input leaves: neither saves area on 20 seeded random tables or parity/majority/and/or at n=7 or n=8. Both change 48 screened programs and pass 70 sampled output checks apiece. No size candidate; unshared leaf variants only, not a lower bound on other layouts."

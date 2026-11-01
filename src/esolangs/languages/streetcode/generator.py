@@ -1,14 +1,15 @@
 """Streetcode Boolean program generator: a decision tree, then a flat indexed street.
 
-Through five inputs, a decision tree from labelled loop strips
+Through four inputs, a decision tree from labelled loop strips
 (:func:`_streetcode_strip`), per-level blocks joined side by side.  Each
 per-input strip walks a cell by 48 (an ASCII digit to a bit, a fresh cell
 to a digit); its hallway loop spends the 48 as unary cells, 30 rows by 4
 columns.
 
-From six inputs the canonical shape is flat: the table is written one cell
+From five inputs the canonical shape is flat: the table is written one cell
 per entry and the inputs address it (:func:`_streetcode_flat`), which is
-nine rows of street however many entries there are; only the minority
+seven rows of street however many entries there are; room floors share
+the kerb ([ablations.shared_kerb_default]); only the minority
 entries are marked: a one by ``^``, or, when the zeros are fewer by two,
 a zero by ``~`` (the tail lifts 49 and the rooms steer with two ``^``), so
 a table dense in ones writes as short a street as its complement (thr2
@@ -20,8 +21,8 @@ hold 2.4% of tree nodes at n=4 and 5.1% at n=5 (200 random tables), an
 upper bound on sharing before the routing that would merge two paths.
 
 Size:
-    O(T) area from six inputs, at most the flat street's; n=4 parity: 3,391
-    chars, n=10 random 1847: 21,421 chars, n=10 parity: 21,421 chars.
+    O(T) area from five inputs, at most the flat street's; n=4 parity: 1,851
+    chars, n=10 random 1847: 16,705 chars, n=10 parity: 16,705 chars.
 
 Decisions:
     A half-turn rotation only strips trailing blanks (0.0% by area at n=2-8),
@@ -873,10 +874,11 @@ def _streetcode_folded(flat: str, *, tall: bool = False) -> str:
     return _streetcode_fold(flat, target, east=True)[0]
 
 
-# Arity from which the flat lookup is the canonical shape.  Random tables at
-# n=5 are 38% smaller flat (599555 vs 961692 chars over 200), and 64% at n=6;
-# the tree still wins tables that fold ([ablations.flat_tree_race]).
-_FLAT_FROM = 6
+# Shared-kerb lookup races the tree at four; dense tables win from five.
+# See [ablations.shared_kerb_default].
+_FLAT_FROM = 5
+# Only from six did the fold beat the tree fits; keep them below it.
+_FOLD_FROM = 6
 
 
 def _smallest(*programs: str) -> str:
@@ -913,17 +915,15 @@ def _tree_shapes(truth_table: str, n: int, *, hallway: bool) -> list[str]:
     # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
     # decisively as the input count grows.
     if n >= _FLAT_FROM:
-        flat = _streetcode_flat(truth_table, n)
+        flat = _streetcode_shared_kerb(_streetcode_flat(truth_table, n))
         if not _tree_may_win(truth_table, n, flat):
             return [flat]
     tree = _streetcode_tree(truth_table)
     programs = [_streetcode_hallway_program(n, tree)] if hallway else []
     programs.append(_streetcode_shared_program(n, tree))
-    # At five the flat lookup wins on dense and parity tables and loses on
-    # one that folds, so it is compared; without it parity at five costs
-    # 3251 against 2534 and the odd rungs stop growing linearly.
+    # At four the shared-kerb lookup wins dense tables but loses folded ones.
     if n == _FLAT_FROM - 1:
-        programs.append(_streetcode_flat(truth_table, n))
+        programs.append(_streetcode_shared_kerb(_streetcode_flat(truth_table, n)))
     if n >= _FLAT_FROM:
         programs.append(flat)
     return programs
@@ -954,7 +954,7 @@ def _balance(table: str, default: str) -> str:
     measured; the free default stays so balance never scores worse than it.
     """
     n = _validate_truth_table(table)
-    if n >= _FLAT_FROM:
+    if n >= _FOLD_FROM:
         folded = _streetcode_folded(_streetcode_flat(table, n))
         piece = _ROOM_PIECE * isqrt(1 << n)
         stacked = _streetcode_folded(_streetcode_flat(table, n, piece), tall=True)
@@ -972,7 +972,7 @@ LANGUAGE = Language(
     "Streetcode",
     "streetcode",
     category="grid_based",
-    layout_switch=(5, 6),
+    layout_switch=(4, 5),
     slow_scaling=True,
     boolean=streetcode,
     split=True,

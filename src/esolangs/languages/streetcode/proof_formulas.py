@@ -1,6 +1,8 @@
 """Executed command and snapshot-bit bounds."""
 
 
+# Sharing the floor and kerb removes two vertical road cells per room;
+# it adds no commands, tape cells or coordinate bits, so these bounds remain.
 # Flat: each marked entry costs a step, the minority polarity (at most T/2),
 # so T/2 + 1 ones, marked as the T/2 - 1 zeros, is the worst; the tail's 51
 # columns are crossed once.  A tree (the only program with the

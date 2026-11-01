@@ -85,5 +85,13 @@ workload = "run"
 verdict = "kept"
 
 [audits]
+trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
+
+[ablations.tree_orientation_prototype]
+saving = 4.6552
+arity = 8
+seed = "random.Random(1847+n)"
+tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
+verdict = "Not shipped: reversed test order saves 19.88% at n=7 but 4.66% at n=8 on 20 random tables; explicit level skipping saves 6.12% then 0.00%. Neither saves on parity/majority/and/or at either arity. Each passes 70 output checks, with actual rendered pixels measured at unit=20. Declining savings fail the 20% bar; no execution-saving claim."

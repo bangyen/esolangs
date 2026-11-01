@@ -36,14 +36,14 @@ class TestStreetcode:
         bits = row_bits(combo, n)
         assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
 
-    def test_the_flat_lookup_is_nine_rows_at_every_arity(self) -> None:
+    def test_the_flat_lookup_shares_its_kerb_at_every_arity(self) -> None:
         """The layout is a street, so the rectangle is linear by its height."""
-        for n in range(6, 12):
+        for n in range(5, 12):
             table = "".join(str(index.bit_count() & 1) for index in range(2**n))
             program = boolean.streetcode(table)
             rows = program.splitlines()
-            assert len(rows) == 9, n
-            assert len(rows) * max(map(len, rows)) <= 18 * 2**n + 3660, n
+            assert len(rows) == 7, n
+            assert len(rows) * max(map(len, rows)) <= 14 * 2**n + 3660, n
 
     def test_default_uses_only_shared_layouts(self) -> None:
         """Per-input loops are width fallbacks, never default candidates."""

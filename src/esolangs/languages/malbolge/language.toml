@@ -88,4 +88,12 @@ workload = "run"
 verdict = "candidate: unmeasurable; the fill is ~55 ms per source against multi-second executions"
 
 [audits]
+trick_prototype = 2026-11-01
 plain_rewrite = 2026-10-29
+
+[ablations.source_storage_prototype]
+saving = 0.0
+arity = 8
+seed = "random.Random(1847+n)"
+tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
+verdict = "Not shipped: removing trailing address-correct no-op source finds no suffix to remove in the screened programs; the live store already reaches the source end. Omitting all but the first table cell for each repeated answer pair changes programs but fails execution (no readable answer at n=3): equal values at different addressed cells are not shared storage. Unmodified suffix candidate passes 70 checks; this is not a general storage lower bound."

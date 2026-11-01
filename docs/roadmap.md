@@ -204,26 +204,28 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
   ships it or records the near miss.  The zero-trick pilot shipped four of
   nine (Aprknia 53%, lol waht i cant edit talk pages 47.5%, Movesum 17.3%,
   Monotonic Boolfuck 13.2% at n=8); CARP's best, a jump register sized to
-  the deepest path, reached 8.2%.  Next: the 7 one-trick generators, then
-  the 18 two-trick ones.  Record one as `[audits] trick_prototype = <date>`.
+  the deepest path, reached 8.2%. The round is complete; Streetcode's final
+  shared-kerb lookup saves 22.2% at n=7 and n=8. Record a new audit as
+  `[audits] trick_prototype = <date>`.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-106 of the 111 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
+111 of the 111 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
 AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
 Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
 BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
 Boolfuck, brainfuck, BrainIf, Caballo, CARP, Chicken, Circlefuck, Circuit
 Diagram, Clockwise, Codesick, Collatz Multiverse, Container, CreativeScript
-v2, Crement, CV(N)(C), Cyclic tag, Decleq, Dimensional, DINAC, EGL, Eval,
-Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN, Freestajlo,
-Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, INTERCAL,
-Interprogck8, Kiss, LaserFuck, lol waht i cant edit talk pages, Minsky Swap,
-Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object
-disoriented, Packlang, Painfuck, Parenthesys, Pilas, Pointless, Qoibl,
-Qrain, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff, Shakespeare, SLOW
-ACV MAMMALIAN, Smallfuck, Smu, Sonata, SStack, Stisp, Subleq, Suffolk, Super
-SNUSP, SwitchCase, Taglate, thisthat, Thue, Unary, Underload, Unlambda,
-Unsquare, What!?, Whitespace.
+v2, Crement, CV(N)(C), Cyclic tag, Decleq, Dig, Dimensional, DINAC, EGL,
+Eval, Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN,
+Freestajlo, Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject,
+INTERCAL, Interprogck8, Kiss, LaserFuck, Line, lol waht i cant edit talk
+pages, Malbolge, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
+Nandypants, NOR machine, Object disoriented, Packlang, Painfuck,
+Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0, ROTfuck,
+Rubic, S*bleq, SendStuff, Shakespeare, SLOW ACV MAMMALIAN, Smallfuck, Smu,
+Sonata, SStack, Stisp, Streetcode, Subleq, Suffolk, Super SNUSP, SwitchCase,
+Taglate, thisthat, Thue, Unary, Underload, Unlambda, Unsquare, What!?,
+Whitespace.
 
 <!-- TRICK-PROTOTYPES:END -->

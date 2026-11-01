@@ -104,7 +104,7 @@ class TestCommittedBaseline:
         assert recorded["records"]
         for name, rows in recorded["records"].items():
             assert sorted(rows) == sorted(
-                (*control_tables(name), *boundary_tables(name))
+                {*control_tables(name), *boundary_tables(name)}
             ), name
             for table, fields in rows.items():
                 assert fields["source_units"] > 0, (name, table)
