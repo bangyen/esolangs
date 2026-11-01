@@ -249,24 +249,14 @@ def test_rotation_is_checked() -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs import generate
+    from esolangs.languages.rotfuck.proof_formulas import workspace
     from tests.support.generator_support import assert_shared_program
 
-    language = "ROTfuck"
+    _check_native_constants(bit)
     table = bit * 256
-    commands = len(generate(language, table))
-
-    def workspace(p):
-        return (
-            2 * 256
-            + 5 * 8
-            + 35
-            + (2080 * len(p)).bit_length()
-            + (518).bit_length()
-            + len(p).bit_length()
-            + 4
-        )
-
-    assert_shared_program(language, table, None, commands, workspace)
+    # Four phase-neutral body commands repeat six times, adding eighty executions.
+    commands = len(generate("ROTfuck", table)) + 80
+    assert_shared_program("ROTfuck", table, None, commands, lambda p: workspace(8, p))
 
 
 run_rotfuck = _runner("rotfuck")
@@ -341,3 +331,48 @@ def _search_pad_until(builder: object, done: Callable[[int], bool]) -> int | Non
                     queue, (cost + len(run), (rot + len(run)) % 8, path + run)
                 )
     return None
+
+
+def _check_native_constants(bit: str) -> None:
+    import esolangs
+    from esolangs.languages.rotfuck.interpreter import _Machine
+    from esolangs.languages.rotfuck.proof_formulas import execution, workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for rotation in ("backward", "forward"):
+            settings = esolangs.DialectSettings(rotation=rotation)
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate(
+                    "ROTfuck", bit * (1 << n), settings=settings, **options
+                )
+                assert len("".join(program.split())) == n + 26 + int(bit)
+                commands = execution(n, program)
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    io = ReadFirstIO(f"{row:0{n}b}" + "Q")
+                    machine = _Machine(program, io, rotation=rotation)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= commands
+                    assert steps == commands
+                    assert machine.prog.rotation() == n + 106 + int(bit)
+                    assert written.bits == workspace(n, program)
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("Q")
+    assert (
+        sum(len(esolangs.generate("ROTfuck", f"{v:08b}")) for v in range(256)) == 72240
+    )

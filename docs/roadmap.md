@@ -140,7 +140,7 @@ headers, Qrain.
 <!-- TRICK-PROTOTYPES:END -->
 
 - **Constant-table audit:** size census 111/111 at n=1..8,10,12; n=0 is
-  outside every generator's contract. Optimization reviews 57/111: Movesum,
+  outside every generator's contract. Optimization reviews 60/111: Movesum,
   Parenthesys, Unary, Malbolge, Quassaunt, LaserFuck, Interprogck8,
   ABCDirection, BrainIf, Collatz Multiverse, Streetcode, Hot, Ascenic,
   Circuit Diagram, Pointless, Qoibl, Back, NOR machine, Packlang, Container,
@@ -148,10 +148,10 @@ headers, Qrain.
   INTERCAL, RAM0, bit~, Decleq, Basicfuck, SwitchCase, Rubic, Crement,
   AddSubJump, Object disoriented, Sonata, Suffolk, Smu, Qrain, brainfuck,
   Minsky Swap, Boolfuck, thisthat, CARP, IEBEL, Nandypants,
-  FRACTRAN and Chicken improved;
+  FRACTRAN, Chicken, Monotonic Boolfuck, ROTfuck and Whitespace improved;
   Line, Shakespeare,
   Flowchart, lol waht i cant edit talk pages, HQ9+ with headers, BASICER and Alight retain
   their read-first constant paths.
   Malbolge also drains its final ignored byte before output on seventeen-input
-  projections. Next: Monotonic Boolfuck, ROTfuck, Whitespace. Keep this counter
+  projections. Next: Blindfolded Arithmetic, Underload, Clockwise. Keep this counter
   separate from trick prototypes.

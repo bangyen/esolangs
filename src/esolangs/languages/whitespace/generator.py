@@ -10,7 +10,8 @@ inputs.
 
 Size:
     O(T) characters and O(T) commands; n=4 parity: 176 chars,
-    n=8 random 1847: 512 chars.
+    n=8 random 1847: 512 chars. Constants: 7n+11+b chars, 2n+3 commands,
+    b the answer.
 
 Decisions:
     Horner-chunking the literal to a width was rejected for ``balance``: every
@@ -81,8 +82,9 @@ def whitespace(truth_table: str) -> str:
     table = int(read_at(truth_table, essential, n)[::-1], 2)
     loop, done = _SPACE, _TAB
     if not essential:
-        parts = [_push(0), _READ_NUM] * n
-        return "".join([*parts, _push(table), _OUT_NUM, _END])
+        # Duplicate the answer as a read address; input only writes the heap.
+        parts = [_push(table), *[_DUP, _READ_NUM] * n, _OUT_NUM, _END]
+        return "".join(parts)
     # Stack [table, index]: Horner doubles the index, reads into the heap cell
     # the index itself addresses, and adds that cell back.
     parts = [_push(table)]

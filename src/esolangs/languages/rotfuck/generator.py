@@ -22,6 +22,7 @@ ASCII bias leaves once per digit ([ablations.raw_digits]).
 Size:
     O(T): two ``>`` and half a ``+`` per entry, the rest O(n) plus walk
     strides; n=10 random 1847: 3,165 chars, n=10 and: 310 chars.
+    Constants: n+26+b chars, n+106+b commands in either rotation, b the answer.
 
 Decisions:
     A repeated block is not shared: a brainfuck copy is at least 19 commands
@@ -343,6 +344,17 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     cycle = ROTFUCK_CYCLES[validate_rotation(rotation)]
     n = _validate_truth_table(truth_table)
 
+    if truth_table == truth_table[0] * len(truth_table):
+        out = _Builder(cycle)
+        # Fresh cells hold the counter and ASCII 48=6*8; raw reads share cell zero.
+        text = (
+            "," * n
+            + ">++++++[>++++++++<-]>"
+            + ("+" if truth_table[0] == "1" else "")
+            + "."
+        )
+        out.emit(_parse(text))
+        return out.text()
     # Ignored inputs are still read but do not enter the index.
     used = essential_inputs(truth_table, n)
     table = truth_table if len(used) == n else read_at(truth_table, used, n)

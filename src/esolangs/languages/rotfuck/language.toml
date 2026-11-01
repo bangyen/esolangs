@@ -84,3 +84,10 @@ verdict = "kept under the named-function rule: a table depending only on how man
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 54.3
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole constants. Raw reads share one cell, then a fresh six-count loop builds ASCII 48=6*8 and adds the answer bit. The existing phase builder emits both rotations; four neutral commands in the body repeat six times. Default source L=n+26+b chars and L+80 commands. Workspace 16+bl(L)+bl(L+80)+bl(n) backward, one more forward. Proof bounds also account for wrapped comments: executed steps are raw source length plus five times the open-to-close body span; rotation still counts L+80 commands. n=8 zero/one 75/76 -> 34/35 chars; commands 75/76 -> 114/115, backward workspace stays 33 bits and forward uses 34. n=12 87/88 -> 38/39. n=3 corpus 72302 -> 72240 chars. Every constant row at n=8 remains executed, plus both rotations through n=12 across all layouts. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, all reads before output and a preserved following record; bit readers also finish the whole last byte without EOF probes. No new collected cases."

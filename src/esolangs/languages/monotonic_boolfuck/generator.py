@@ -17,7 +17,8 @@ the two different leaves prints bit 0 itself (``x`` or its negation, by one
 loop pair) and the shared ``0 0 0 1 1 0 0`` once.
 
 Size:
-    Linear in T = 2^n: worst 53T/2 - 21 chars (parity, n >= 2); n=4 parity: 403 chars
+    Linear in T = 2^n: worst 53T/2 - 21 chars (parity, n >= 2); n=4 parity: 403 chars.
+    Constants from n=2: 3n+19+2b chars, 14n+9+2b commands, b the answer.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
@@ -41,6 +42,13 @@ def _consume(inputs: int) -> str:
 def monotonic_boolfuck(truth_table: str) -> str:
     """Build a Monotonic Boolfuck program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        bit = int(truth_table[0])
+        if n == 1:
+            tail = ">" + _LEAF[0] if not bit else _LEAF[1][1:]
+            return "1" + "," * 8 + tail
+        # Ones absorb every byte; the loop advances to a fresh zero after n reads.
+        return "1" + ">1" * (n - 1) + "<" * (n - 1) + "[,,,,,,,,>]" + _LEAF[bit]
     ids = subtree_ids(truth_table)
 
     def tree(depth: int, k: int, pending: int) -> str:
