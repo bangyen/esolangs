@@ -70,8 +70,18 @@ Missing categories and links do not establish first-implementation eligibility.
 Screen these in order under [curation](limitations.md#curation):
 
 - **[Retrograde](https://esolangs.org/wiki/Retrograde):** reversible blocks
-  with direction-dependent instructions. Resolve input and answer conventions
-  without adding instructions to the language.
+  with direction-dependent instructions. Admission probe (2026-11-01,
+  wiki revision 198201): native conditionals pass 4,848 row executions,
+  including all 276 tables through n=3 and five tables each at n=4..6.
+  Ordered single-instruction input setters and final-current-cell extraction
+  need no new opcode. Chunk emission is O(T), at most `14T + 4n - 13`
+  characters; AND witnesses through n=16 attain `12n - 1` native steps
+  (excluding the adapter dump). Three backlinks; no public implementation
+  found in the spec, author links/repositories or targeted searches.
+  Next: production integration, explicit zero-tape and dump conventions,
+  canonical ablations and size/step pins, then the full language gate.
+  The inline tree needs a construction-specific sharing exemption: native
+  turns have paired lexical targets, not named calls.
 - **[NQ](https://esolangs.org/wiki/NQ):** trit queue with guarded execution.
   Check the WIP specification, restricted output alphabet and contribution
   beyond existing queue/tag languages.
