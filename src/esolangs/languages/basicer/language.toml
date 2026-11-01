@@ -26,7 +26,14 @@ workspace = "linear: worst n + 4 bits"
 audited = "2026-10-29"
 
 [audits]
+trick_prototype = 2026-11-01
 docstring_reimplementation = 2026-10-30
-trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
+
+[ablations.print_leaf_order_round_two]
+saving = 0.0
+arity = 8
+seed = "random.Random(2847+n)"
+tables = "all n<=3; 20 random plus named per n=4..8"
+verdict = "Swap the numbered zero/one print gadgets and race by emitted characters. Random n=7/8 saving 0/0%; parity, majority and and/or unchanged there. Only four-input OR saves two characters. The n=3 race is byte-identical; raw swapped programs execute as a positive control. Not shipped. 7440 correct baseline/raced/raw output checks, exhaustive tables n<=3 and sampled rows of 20 random plus parity/majority/and/or per n=4..8; 396 independently generated complemented-program controls rejected. 1 raced program changes."

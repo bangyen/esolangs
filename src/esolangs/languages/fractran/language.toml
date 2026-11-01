@@ -76,4 +76,3 @@ verdict = "rejected 2026-10-31: assign smaller state primes to more frequent ref
 
 [audits]
 plain_rewrite = 2026-10-28
-trick_prototype = 2026-10-31

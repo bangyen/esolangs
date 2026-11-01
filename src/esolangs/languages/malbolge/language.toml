@@ -88,7 +88,6 @@ workload = "run"
 verdict = "candidate: unmeasurable; the fill is ~55 ms per source against multi-second executions"
 
 [audits]
-trick_prototype = 2026-11-01
 plain_rewrite = 2026-10-29
 
 [ablations.source_storage_prototype]

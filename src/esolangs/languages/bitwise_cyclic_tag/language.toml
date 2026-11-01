@@ -48,5 +48,4 @@ tables = 50
 verdict = "kept: a cell `1 a 0 b 1 0 0` holds two rows, so the lowest input appends two zeros instead of the walk shifting a whole cell, and every other read halves; 6.5 chars a row against 8, at n=8 random 2065 -> 1683 chars (18.50%), n=7 18.29%, and the same on parity, and, or, majority and threshold since size is value-independent; each program run through esolangs.run on all 2^n rows"
 
 [audits]
-trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29

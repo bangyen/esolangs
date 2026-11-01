@@ -46,6 +46,5 @@ tables = "200 random per seed at n=7,8 vs the prior build (test, then undo-and-t
 verdict = "kept: the 1 branch undoes the store as its first command, so every subtree runs on X and the closing test-and-undo (and the per-parity P/Q swap) goes. Random tables -12.48 / -12.50% at n=7 / 8 (second seed -12.47 / -12.50%); parity -13.49 / -13.52%, majority -12.93 / -11.34%, threshold-3 -10.70 / -10.33%, and -8.28 / -8.12%, or -6.65 / -6.31% (named functions reported apart; leaf-heavy and/or under the bar). A fixed 4.5 tokens of 20.5 a differing node, so the share holds across n. Commands 85 -> 71 at n=4 parity. Every row of all tables n<=3, 3000 random n=4, and random plus named n=5..8 (all rows) ran through the interpreter, a wrong-table control fails. A further 4.7 points (17.2% on random) comes from an opening r' d' u2, store l2, P = .wg, Q = .gw' (both one token), found by a search over openings of up to three turns; not shipped, a searched constant"
 
 [audits]
-trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

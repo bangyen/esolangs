@@ -48,5 +48,4 @@ tables = 200
 verdict = "kept: one production a row and one zero a unit of weight, where the old build spent two of each. A row's production is empty for a 1 (the marker is then the last bit deleted) and `0` for a 0 (it appends the 0 that is deleted last), so no empty rule follows the answer. Total characters on 200 seeded random tables fall 46.2% at n=5, 47.9% at n=6, 48.7% at n=7, 49.2% at n=8; at n=8 parity 49.3%, and 39.5%, or 59.1%, majority 46.6%, threshold-3 56.3%; balance=True at n=8 (20 tables) 48.8%. Every row of those 200 tables at n=5..8, the named functions at n=7..8 and 30 tables at each n<=4 executed through the interpreter; a one-bit wrong table fails. Steps 2T+n+1 become T+n+2"
 
 [audits]
-trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29

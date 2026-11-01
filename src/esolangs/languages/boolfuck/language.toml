@@ -75,7 +75,6 @@ verdict = "kept as a class rule, landed 2026-10-21: a symmetric table (its outpu
 
 [audits]
 plain_rewrite = 2026-10-30
-trick_prototype = 2026-10-31
 
 [ablations.count_walk_cancellation]
 saving = 6.742

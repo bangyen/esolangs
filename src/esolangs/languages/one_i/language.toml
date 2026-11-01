@@ -71,6 +71,5 @@ tables = 20
 verdict = "kept: canonical, exempt. A depth n-2 node of two different constants ignores its last input: it prints b (`Bp`) or 1 - b and drains the last bit (`BpB`, 3 chars) instead of branching between two constant drains (18). Removing it costs +7.5 / +7.7 / +8.4% on random tables at n=7 / 8 / 9 and 0.0% on parity, and, or, majority and thr3 at n=7..9; it is what keeps an ignored last input under half a real one (catalogue test)"
 
 [audits]
-trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

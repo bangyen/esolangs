@@ -93,6 +93,5 @@ tables = "all tables n=1..3; four random plus one mixed-constant n=4..6; 20 rand
 verdict = "rejected: merge the two constant printers into one bit-parameterized printer, changing calls of the one-printer to pass 1. Upside is one fixed definition: 22 emitted characters where both printers occur. Random totals at n=7 / 8 / 10 / 12: 14,420 / 22,000 / 62,220 / 204,480 characters, unchanged. Named functions: parity, and/or and threshold-3 unchanged; majority 0.0% / 0.0% / 1.728% / 1.223% (1,273 -> 1,251 at n=10, 1,799 -> 1,777 at n=12), below 10% and declining. Executed old/new on all 2,680 rows of 291 tables through n=6 (all tables through n=3), plus four rows per measured larger table; no differences, all input bytes consumed with no EOF reads and exactly the expected output. n=3 total 46,748 -> 46,748. Positive control: mixed-constant n=6, 458 -> 436 chars, both printer branches execute correctly; negating the printer parameter produces a wrong answer. No generator change"
 
 [audits]
-trick_prototype = 2026-10-31
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

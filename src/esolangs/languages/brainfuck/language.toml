@@ -94,4 +94,3 @@ verdict = "kept: steady-state warm cache; each program runs on all 2^n rows"
 
 [audits]
 plain_rewrite = 2026-10-28
-trick_prototype = 2026-10-31

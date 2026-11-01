@@ -64,7 +64,6 @@ verdict = "kept: the balanced build kept one statement per row (n=8 random: 63 r
 
 [audits]
 plain_rewrite = 2026-10-22
-trick_prototype = 2026-10-31
 
 [ablations.constant_mux_folding]
 saving = 5.5

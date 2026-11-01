@@ -74,7 +74,6 @@ tables = 8
 verdict = "kept under the named-function rule: an affine table (an XOR of inputs plus a bias) folds each counted input cell into the next one down with [*...*...], ending in cell 2, and flips it for the bias, raced by length against the banded tree. Parity 74.8% at n=4, 85.9% at n=6, 89.4% at n=7, 91.0% at n=8, 93.0% at n=10, 94.3% at n=12; random affine tables 70-86% where the chain wins. Random tables: 0 of 200 change at n=5..8; majority, and, or and thresholds unchanged. Exhaustive n<=3: 13 tables change, none grows, every changed program executed; named and affine tables executed through n=10; plain-rewrite audit 2026-10-27: parity 74.8/85.9/89.4/91.0/92.1/93.0/93.7/94.3% at n=4/6/7/8/9/10/11/12, 0 of 5 random tables change at every n"
 
 [audits]
-trick_prototype = 2026-10-31
 plain_rewrite = 2026-10-27
 
 [ablations.four_level_band_prototype]

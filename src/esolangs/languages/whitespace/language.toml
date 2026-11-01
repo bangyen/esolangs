@@ -52,5 +52,4 @@ tables = 20
 verdict = "kept: not a size trick. The 3-char swap after end ends the file on a tab so the example writer's trailing-newline strip cannot eat end's three line feeds; 0.46% of chars at n=8 (1.43% n=2). Plain rewrite otherwise identical: the construction is one literal with only the canonical input projection, nothing else bespoke. n<=3 exhaustive (276) and named/random tables n<=8 execute, control fails"
 
 [audits]
-trick_prototype = 2026-10-30
 plain_rewrite = 2026-10-29

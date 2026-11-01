@@ -19,7 +19,7 @@ folding_constant = "a constant table is the literal 0 or 1 with no essential inp
 audited = "2026-10-29"
 
 [audits]
-trick_prototype = 2026-10-30
+trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -32,3 +32,10 @@ plain_rewrite = 2026-10-29
 "0110100110010110" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 29, "5" = 29, "6" = 29, "7" = 29, "8" = 29, "9" = 29, "10" = 29, "11" = 29, "12" = 29, "13" = 29, "14" = 29, "15" = 29 }, source_units = 320 }
 "1101001101101101" = { commands = 29, commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 29, "5" = 29, "6" = 29, "7" = 29, "8" = 29, "9" = 29, "10" = 29, "11" = 29, "12" = 29, "13" = 29, "14" = 29, "15" = 29 }, source_units = 320 }
 "11111110" = { commands = 23, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 251 }
+
+[ablations.complement_literal_round_two]
+saving = 0.0
+arity = 8
+seed = "random.Random(2847+n)"
+tables = "all n<=3; 200 random plus named per n=4..8"
+verdict = "Store the complemented table integer, then subtract the selected bit from one before output; race against the original. Random n=7/8 saving 0.00%/0.00%; OR 4.50%/9.68%. The n=7 result fails the size bar; no arity cap is justified. A literal polarity change does not remove the per-input arithmetic. Not shipped. 15540 correct baseline/raced/raw output checks, exhaustive tables n<=3 and sampled rows of 200 random plus parity/majority/and/or per n=4..8; 1296 independently generated complemented-program controls rejected. 3 raced programs change."

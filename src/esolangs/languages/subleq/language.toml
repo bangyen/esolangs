@@ -69,7 +69,6 @@ arity = 12
 verdict = "kept: canonical, exempt. Inside the packed build: an ignored input is read into TMP and never joins the index, and the table is packed over the essential inputs only. Removing projection costs +34.98% on one-ignored and +66.52% on two-ignored tables at n=12 (direct: the unprojected build still ships); on three-ignored tables it grows past the tree, so the routed price caps at +22.52%. It is 0.00% wherever every input is essential"
 
 [audits]
-trick_prototype = 2026-10-31
 plain_rewrite = 2026-10-27
 
 [formula_arities]

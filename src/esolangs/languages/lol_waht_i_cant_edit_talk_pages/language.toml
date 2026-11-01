@@ -35,6 +35,5 @@ verdict = "kept: clears on random tables (47.6% at n=7, 47.5% at n=8; 30 tables 
 
 [audits]
 docstring_reimplementation = 2026-10-30
-trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29

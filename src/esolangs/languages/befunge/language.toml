@@ -66,4 +66,3 @@ verdict = "retired 2026-10-28 (plain-rewrite audit): balance's single-digit-colu
 
 [audits]
 plain_rewrite = 2026-10-28
-trick_prototype = 2026-10-30

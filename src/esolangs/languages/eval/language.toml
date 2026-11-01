@@ -48,6 +48,5 @@ arity = 8
 verdict = "kept as a rule, not a race: from n=4, with the top input essential and 2^k >= 8n-20 essential inputs (never longer than the one-stack build), the lower half of the table goes on one stack and the upper on the other, each input is staged on both (`0^=`), and `~;~?~` pops the top input's copies and leaves the chosen half exposed; n-1 copy discards replace the first halving's T/2. A one costs `0+` on the second stack (`` ` `` pushes 0 there), `^` extends a run. Measured against the one-stack build over Random(9000+1000n+s), 200 tables: random 3.2% / 11.2% / 13.8% at n=4 / 7 / 8 (20 tables at n=9..10: 15.6% / 16.9%); n=8 parity 12.0%, majority 15.8%, and / or 18.8%, thr3 18.0% (n=7: 9.5 / 13.0 / 15.6 / 14.4). Every row of the 300 random tables at n=4..6 and 100 at n=7..8 run, plus the named ones and 240 ignored-input tables at n=4..7 (88,880 rows); a wrong-table program fails the check. Never longer than the one-stack build over all 65,536 tables at n=4 and 1,500 ignored-input tables at n=4..8. Reordering the staged inputs to move the cheapest top input in (a race) was not built"
 
 [audits]
-trick_prototype = 2026-10-30
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29

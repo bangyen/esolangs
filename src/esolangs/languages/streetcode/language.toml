@@ -123,7 +123,6 @@ workload = "run()"
 verdict = "kept: run() skips revalidating identical geometry"
 
 [audits]
-trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-18

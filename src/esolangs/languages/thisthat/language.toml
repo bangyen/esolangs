@@ -81,4 +81,3 @@ verdict = "kept 2026-10-31: coalesce consecutive identical vertical-only rows an
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
-trick_prototype = 2026-10-31

@@ -199,33 +199,16 @@ MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode, Suffolk, Super SNUSP,
 SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- BLIND-REIMPLEMENTATIONS:END -->
-- **Trick prototypes:** one agent a generator searches for one admissible
-  size trick (CONTRIBUTING's bar, a rule, executed with a control) and
-  ships it or records the near miss.  The zero-trick pilot shipped four of
-  nine (Aprknia 53%, lol waht i cant edit talk pages 47.5%, Movesum 17.3%,
-  Monotonic Boolfuck 13.2% at n=8); CARP's best, a jump register sized to
-  the deepest path, reached 8.2%. The round is complete; Streetcode's final
-  shared-kerb lookup saves 22.2% at n=7 and n=8. Record a new audit as
-  `[audits] trick_prototype = <date>`.
+- **Trick prototypes, round 2:** one admissible size rule per generator,
+  executed with a control, shipped or recorded against CONTRIBUTING's gate.
+  Round 1 covered 111/111. Restart by increasing count of kept ablation
+  rules, alphabetically within ties. The zero-trick queue is BASICER,
+  CARP, CreativeScript v2, HQ9+ with headers, Qrain; the first three are
+  complete. Next: HQ9+ with headers, then Qrain. Record completion as
+  `[audits] trick_prototype = <date>`; retain earlier ablation evidence.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-111 of the 111 generators: ///, 1 + i, 3x, 6-5, A Painter Ant, ABCDirection,
-AddSubJump, Algebraic Programming Language, Alight, Aprknia, ArrowQueue,
-Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Befunge, Between,
-BFStack, Bitdeque, Bitwise Cyclic Tag, bit~, Bleh, Blindfolded Arithmetic,
-Boolfuck, brainfuck, BrainIf, Caballo, CARP, Chicken, Circlefuck, Circuit
-Diagram, Clockwise, Codesick, Collatz Multiverse, Container, CreativeScript
-v2, Crement, CV(N)(C), Cyclic tag, Decleq, Dig, Dimensional, DINAC, EGL,
-Eval, Fackward, FALSE, Fargo, Fish, Flowchart, Forbin, Forþ, FRACTRAN,
-Freestajlo, Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject,
-INTERCAL, Interprogck8, Kiss, LaserFuck, Line, lol waht i cant edit talk
-pages, Malbolge, Minsky Swap, Modulous, Monotonic Boolfuck, Movesum,
-Nandypants, NOR machine, Object disoriented, Packlang, Painfuck,
-Parenthesys, Piet, Pilas, Pointless, Qoibl, Qrain, Quassaunt, RAM0, ROTfuck,
-Rubic, S*bleq, SendStuff, Shakespeare, SLOW ACV MAMMALIAN, Smallfuck, Smu,
-Sonata, SStack, Stisp, Streetcode, Subleq, Suffolk, Super SNUSP, SwitchCase,
-Taglate, thisthat, Thue, Unary, Underload, Unlambda, Unsquare, What!?,
-Whitespace.
+3 of the 111 generators: BASICER, CARP, CreativeScript v2.
 
 <!-- TRICK-PROTOTYPES:END -->

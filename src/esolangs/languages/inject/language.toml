@@ -85,7 +85,6 @@ tables = "20 random per n=7/8, five n=10, three n=12, one n=14; and/or/parity/ma
 verdict = "kept: spell a half-length h as .{h} when shorter than h literal dots, in every halving path. The spec explicitly permits optional regex features (https://esolangs.org/wiki/Inject, checked 2026-10-31); Python re already supports counted repetition. Repeat counts above 2^31 split into concatenated safe chunks; a synthetic 2^32-length pattern compiles, while the unsplit control raises OverflowError. No interpreter change. Random default source n=7 908->706 (22.247%), n=8 1363->917 (32.722%), n=10 3809->1851 (51.405%), n=12 13167->5093 (61.320%), n=14 50173->17551 (65.019%); named functions identical at each n, balanced area unchanged on these functions. Two copies of each half-pattern shrink from 2(T-1) to 2R characters, R=sum of the chunked half-pattern widths, so the saving approaches about two-thirds and generation/size stay O(T). Default command count is unchanged; written program workspace drops exactly eight bits per removed character, giving the revised exact bound. Executed 14074 old/new/default/narrow/balanced/control rows, all n<=3 tables and sampled n=4..6 including constants/ignored inputs; named n=7/8 all rows and larger boundary rows, equal answers/reads/steps, no increased workspace. Wrong-offset control .{32}->.{31} fails. n=3 default total unchanged at 47720 chars."
 
 [audits]
-trick_prototype = 2026-10-31
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28

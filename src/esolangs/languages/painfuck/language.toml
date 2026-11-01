@@ -77,5 +77,4 @@ verdict = "rejected 2026-10-31: decode, replace each llll/rrrr by lt/rt (t repea
 
 [audits]
 blind_reimplementation = 2026-10-30
-trick_prototype = 2026-10-31
 plain_rewrite = 2026-10-28
