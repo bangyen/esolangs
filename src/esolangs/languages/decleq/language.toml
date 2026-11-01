@@ -57,5 +57,13 @@ arity = 4
 verdict = "recorded: the comment's routing-race example (0100010011111111 at 1345 vs 1371) half reproduces — 1371 is the shipped essential routing exactly, but 1345 arises under no flag combination of the current emitter; full routing measures 1,763 on this table, so the example's direction has reversed. The race itself is a rejected variant, not shipped, and was not priced. See the stale-figures entry F22"
 
 [audits]
+trick_prototype = 2026-10-31
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.shared_halt_prototype]
+saving = 0.0762
+arity = 8
+seed = "random.Random(1847+n)"
+tables = "all tables n=1..3; 20 random plus constants and parity per n=4..10"
+verdict = "near miss, not shipped: redirect the zero gadget's halt to the one gadget's halt (operand END -> 12). Output falls through, so deleting the first halt requires this jump and removes no cells. Only the decimal operand shrinks: 17,558 -> 17,537 / 27,565 -> 27,544 chars at n=7/8 (0.120% / 0.076%), below the size bar and diluting; zero outputs take an extra command. The n=3 total including constants/parity controls is unchanged at 46,643 chars. Both builds ran every row through n=6 and eight boundary/random rows per table at n=7..10: 10,948 executions correct; 5,474 complemented-expectation controls rejected. Prototype stays in ignored notes; generator, bounds and pins unchanged"
