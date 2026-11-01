@@ -53,7 +53,7 @@ def test_fractran_shares_equal_subtables() -> None:
     # A root, two nodes a level below it, two leaves: two fractions a node.
     assert len(parity.split()) - 1 == 2 * (2 * 5 - 1) + 2
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(len(boolean.fractran(t)) for t in tables) == 19_678
+    assert sum(len(boolean.fractran(t)) for t in tables) == 19_664
 
 
 def _fractran_steps(template: str, n: int) -> int:
@@ -73,15 +73,16 @@ def _fractran_steps(template: str, n: int) -> int:
 @pytest.mark.medium
 def test_fractran_runs_a_step_a_level() -> None:
     """A run fires at most n + 1 fractions; a constant table clears its set inputs."""
+    _check_native_constants()
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(_fractran_steps(boolean.fractran(t), 3) for t in tables) == 9_408
+    assert sum(_fractran_steps(boolean.fractran(t), 3) for t in tables) == 9_392
     for n in range(1, 8):
         table = "".join(str((row * row + 1) % 3 & 1) for row in range(2**n))
         # The machine's count includes the step that finds it halted.
         assert _fractran_steps(boolean.fractran(table), n) <= (n + 2) << n
-        # One leaf, a clear a set bit, the halt: 2 + popcount summed over rows.
+        # One clear per set input, then the halt: 1 + popcount per row.
         constant = _fractran_steps(boolean.fractran("1" * 2**n), n)
-        assert constant == 2 * 2**n + n * 2 ** (n - 1)
+        assert constant == 2**n + n * 2 ** (n - 1)
 
 
 def test_fractran_programs_are_indexed() -> None:
@@ -166,3 +167,37 @@ def test_fractran_parity_two_balances_and_executes() -> None:
 
     balanced = _fractran("0110", esolangs.generate("FRACTRAN", "0110", width=4))
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
+
+
+def _check_native_constants() -> None:
+    from esolangs.generation.helpers import runs
+    from esolangs.languages.fractran.proof_formulas import workspace
+    from esolangs.vm import make_vm
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("FRACTRAN", bit * (1 << n), **options)
+                assert len(runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n)) == n
+                assert len(template.split()) == n + 1
+                peak = 0
+                sizes = set()
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    bits = list(map(int, f"{row:0{n}b}"))
+                    program = esolangs.instantiate("FRACTRAN", str(template), bits)
+                    sizes.add(len(program))
+                    machine = make_vm("FRACTRAN", program)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= n + 1
+                    assert steps == 1 + sum(bits)
+                    assert esolangs.read_answer("FRACTRAN", machine.output) == bit
+                    assert written.bits <= workspace(n, template)
+                    peak = max(peak, written.bits)
+                assert len(sizes) == 1
+                assert peak == workspace(n, template)

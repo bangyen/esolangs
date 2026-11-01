@@ -209,6 +209,7 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
     import esolangs
     from esolangs.runtime._evaluate import _evaluate
 
+    _check_native_constants(syntax, update, bit)
     table = bit * 256
     settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
     program = esolangs.generate("Alight", table, settings=settings)
@@ -253,3 +254,53 @@ def test_alight_small_tables_at_width_40_keep_their_exact_silhouette() -> None:
     assert (len(packed), _dimensions(packed)) == (788, (34, 33))
     rooted = boolean.alight("00", 40)
     assert (len(rooted), _dimensions(rooted)) == (568, (24, 33))
+
+
+def _check_native_constants(syntax: str, update: str, bit: str) -> None:
+    from esolangs.languages.alight.interpreter import _Machine
+    from esolangs.languages.alight.proof_formulas import workspace
+    from scripts.benchmark import WrittenState
+
+    settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for options in ({}, {"width": 1}, {"balance": True}):
+            program = esolangs.generate(
+                "Alight", bit * (1 << n), settings=settings, **options
+            )
+            if not options:
+                assert (
+                    program
+                    == "begin;var r;"
+                    + "inp r;" * n
+                    + f"set r {48 + int(bit)};out r;end;"
+                )
+                assert len(program) == 6 * n + 31
+            for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                io = ReadFirstIO(f"{row:0{n}b}" + "Q")
+                machine = _Machine(
+                    program, io, expression_syntax=syntax, list_update=update
+                )
+                written = WrittenState(machine.snapshot())
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    steps += 1
+                    assert steps <= 1000
+                assert io.getvalue() == bit
+                assert io.reads == n
+                assert io.input_char() == ord("Q")
+                assert written.bits <= workspace(n, program)
+                if not options:
+                    assert steps == n + 5
+    assert (
+        sum(len(esolangs.generate("Alight", f"{v:08b}")) for v in range(256)) == 24154
+    )

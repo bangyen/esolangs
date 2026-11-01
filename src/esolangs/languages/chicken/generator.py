@@ -14,7 +14,8 @@ pushed first.
 Size:
     ``8 * (ones or zeros, whichever is fewer) + (T - that) + O(n)`` characters
     for m essential inputs and ``T = 2**m`` rows, so linear in T; n=4
-    parity: 1,678 chars
+    parity: 1,678 chars. Constants: 1/24 chars, 1/2 commands and
+    8n+4/8n+8 written bits for zero/one.
 
 Decisions:
     * Rows are the cheaper of the two polarities, inverted only past the 112
@@ -84,7 +85,8 @@ def chicken(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
     if not essential:
-        return _push(int(truth_table[0]))
+        # Explicit exit prints the pad zero; add the final data cell 1 for one.
+        return _line(_ADD) + "\nchicken" if truth_table[0] == "1" else "\n"
     return _program(read_at(truth_table, essential, n), essential)
 
 

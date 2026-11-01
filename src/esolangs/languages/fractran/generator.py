@@ -9,7 +9,8 @@ text's length, which the interpreter's index factors and buckets by state.
 
 Size:
     Theta(T) text, at most ``n + 1`` fractions fire a run; n=10 parity: 364
-    chars, n=10 random 1847: 4,466 chars.
+    chars, n=10 random 1847: 4,466 chars. Constants omit the state prime:
+    at most n+1 commands including the halt; n=8: 71/75 chars.
 """
 
 from __future__ import annotations
@@ -169,6 +170,12 @@ def fractran(truth_table: str, width: int | None = None) -> str:
     Halts at 1 or 2 for zero or one; input-prime exponents are filled by ``PAIR``.
     """
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        bit = int(truth_table[0])
+        inputs = _primes(n + bit)[bit:]
+        factors = (["2"] if bit else []) + [f"{p}^{TEMPLATE_CHAR}" for p in inputs]
+        program = " ".join(["*".join(factors), *[f"1/{p}" for p in inputs]])
+        return program if width is None else wrap_program(program, "fractran", width)
     program = _plain(truth_table, n)
     if width is None:
         return program

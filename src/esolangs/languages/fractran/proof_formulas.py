@@ -1,9 +1,20 @@
 """Executed command and snapshot-bit bounds."""
 
 
-def execution(n: int, _: str) -> int:
+def _constant_answer(p: str) -> int | None:
+    """Native constants have no state factor before their input powers."""
+    tokens = p.split()
+    if not tokens:
+        return None
+    head = tokens[0].split("*")[0]
+    if "^" in head:
+        return 0
+    return 1 if head == "2" else None
+
+
+def execution(n: int, p: str) -> int:
     """The stated execution bound, evaluated for n and the program."""
-    return n + 2
+    return n + (1 if _constant_answer(p) is not None else 2)
 
 
 def _diagram_cap(n: int) -> int:
@@ -24,9 +35,11 @@ def _primes(count: int) -> list[int]:
     return out
 
 
-def workspace(n: int, _: str) -> int:
+def workspace(n: int, p: str) -> int:
     """The stated workspace bound, evaluated for n and the program."""
     bl = int.bit_length
+    if (bit := _constant_answer(p)) is not None:
+        return sum(map(bl, _primes(n + bit)[bit:])) + n + 1 + 3 * bit
     return (
         bl(_primes(n + 1 + _diagram_cap(n))[-1])
         + n
