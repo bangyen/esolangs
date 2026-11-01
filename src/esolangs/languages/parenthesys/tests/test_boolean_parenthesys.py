@@ -3,6 +3,8 @@
 import pytest
 
 import esolangs
+from esolangs.languages.parenthesys.interpreter import run
+from esolangs.runtime.io import ScriptedIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -25,3 +27,17 @@ def test_every_row_prints_its_answer(table: str) -> None:
         got = esolangs.run("Parenthesys", program, stdin=stdin, timeout=5)
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Parenthesys", got) == table[row], (table, row)
+
+
+@pytest.mark.parametrize("n", range(1, 13))
+@pytest.mark.parametrize("bit", "01")
+def test_constants_read_every_input_and_leave_the_next(n: int, bit: str) -> None:
+    for row in sorted({0, (1 << n) // 3, (1 << n) - 1}):
+        program = esolangs.generate("Parenthesys", bit * (1 << n))
+        if n == 8:
+            assert len(program) == 11
+        io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n9\n")
+        run(program, io)
+        assert io.getvalue() == bit
+        assert io.reads == n
+        assert io.input_token() == "9"

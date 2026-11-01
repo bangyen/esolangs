@@ -7,14 +7,14 @@ admitted = 2026-08-15T23:15:46-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "Horner-reads V = 44T + v with sum, then one rung per row: a print, then a test that is a no-op iff V equals the rung's counter; at the row its two no-ops halt the run right after the print"
+qualification = "constants read and reset n inputs, then print and halt in 2n + 3 commands; otherwise Horner-reads V = 44T + v with sum, then one rung per row: a print, then a test that is a no-op iff V equals the rung's counter; at the row its two no-ops halt the run right after the print"
 scaling = "linear: 5T + 6n + 4 commands, about 41 characters a row"
 execution = "linear: worst 5T + 6n + 4 commands"
 workspace = "poly n: at most 7n + 72 bits"
 
 [catalogue]
 folding_ignored = "the Horner read takes every input; an ignored one still doubles the rung count"
-folding_constant = "a constant table still walks one rung per row"
+folding_constant = "reads and resets n inputs, then prints the constant: 19n + 27 characters"
 
 [generator_sizes]
 "00000001" = { commands = 62, commands_by_row = { "0" = 24, "1" = 32, "2" = 37, "3" = 42, "4" = 47, "5" = 52, "6" = 57, "7" = 62 }, source_units = 542 }
@@ -44,3 +44,8 @@ seed = "random.Random(6100+n)"
 tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
 baseline = "9769362f7^"
 verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: characters 79656 -> 65856, sampled commands 13284 -> 11208, largest sampled written-state peak 121 -> 128 bits. Sum of seven-repeat cold generation medians: 248583 -> 215668 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. The printed value remains live; its peak grows by seven bits. Current resource bounds pass where their stated domains apply"
+
+[ablations.constant_table_fold]
+arity = 12
+tables = "both constants at n=1..12; every row through n=4, four rows thereafter"
+verdict = "kept: canonical constant fold, percentage gate exempt. Constants shrink 10976 -> 179 characters at n=8 and 168627 -> 255 at n=12; worst sampled commands 1332 -> 19 and 20556 -> 27, written-state peaks 128 -> 21 and 157 -> 22 bits. Resetting the input cell to 2 after each read prevents two equal reads from halting before the input ends. Both generators together passed 496 old/new executions; all nonconstant programs through n=3 are byte-identical. Sentinel tests cover both bits and three input patterns at every n=1..12. Existing generic worst-case bounds and eight size pins remain unchanged."

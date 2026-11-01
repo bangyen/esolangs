@@ -13,7 +13,8 @@ printing table[v], the last number out.  Any other rung changes cell 6
 twice, so the walk goes on.
 
 Size:
-    Theta(T): 5 commands a row plus 6 an input; n=4 parity: 922 chars
+    O(T): 5 commands a row plus 6 an input; n=4 parity: 922 chars.
+    Constants use 2n + 3 commands; n=8: 179 chars.
 
 Decisions:
     The offset 44 keeps every first-line value off 42, which the page
@@ -35,6 +36,13 @@ _OFFSET = 44
 def movesum(truth_table: str) -> str:
     """Build a Movesum program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # Reset to 2 between bit reads: two unchanged reads would halt early.
+        return (
+            f"1=2 2={truth_table[0]}\n"
+            + "move -1 0\nmove 1 0\n" * n
+            + "move 2 -1\nmove 0 0\n"
+        )
     seed = _OFFSET * len(truth_table) - 1
     lines = [f"1={seed} 2=1 5={_OFFSET} 6={seed + 1} 8=1 9={seed}"]
     for _ in range(n):

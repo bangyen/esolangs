@@ -15,6 +15,7 @@ so the reads stay in order.
 Size:
     n<5: 12n + 5 + T chars, 6n + 2 steps; n>=5: 12n + 23 + T/8 chars,
     6n + 8 steps; n=10 parity: 271 chars, n=10 random 1847: 271 chars.
+    Constants read each input then print the bit: n + 3 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table
@@ -36,6 +37,8 @@ def _horner(reads: int) -> str:
 def parenthesys(truth_table: str) -> str:
     """Build a Parenthesys program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return "$" * n + f"({truth_table[0]})"
     if n < 5:
         return f"([ind|[+|{_horner(n)}|1]|x{truth_table}])"
     columns = len(truth_table) >> _BITS

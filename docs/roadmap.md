@@ -138,3 +138,9 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 headers, Qrain.
 
 <!-- TRICK-PROTOTYPES:END -->
+
+- **Constant-table audit:** size census 111/111 at n=1..8,10,12; n=0 is
+  outside every generator's contract. Optimization reviews 2/111: Movesum
+  and Parenthesys now emit direct constants while reading every input.
+  Keep this counter separate from trick prototypes. Next: Unary, Line,
+  Malbolge; compare source size, commands, written state and generation time.
