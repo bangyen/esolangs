@@ -43,7 +43,7 @@ class _Tagged(str):
         return program
 
     def __setattr__(self, name: str, value: object) -> None:
-        """Refuse: a retag (``p.language = "Minifuck"``) changed what ran."""
+        """Refuse: a retag (``p.language = "Brainfuck"``) changed what ran."""
         raise AttributeError(f"{type(self).__name__} is immutable")
 
     def __delattr__(self, name: str) -> None:

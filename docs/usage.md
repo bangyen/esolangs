@@ -68,19 +68,7 @@ output = esolangs.run("brainfuck", program, stdin=stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
-Two kinds of language need a different call:
-
-- Minifuck embeds inputs in its source:
-
-  ```python
-  template = esolangs.generate("Minifuck", table)
-  program = esolangs.instantiate("Minifuck", template, [1, 0])
-  output = esolangs.run("Minifuck", program)
-  assert esolangs.read_answer("Minifuck", output) == "1"
-  ```
-
-  `bits[0]` is the most significant input. Template languages are those with
-  `describe(name)["parameterized"]` (CLI: the `tmpl` mark of `list --details`).
+One kind of language needs a different call:
 
 - Piet returns an image source:
 
@@ -258,7 +246,7 @@ Build language-specific stdin with `encode_inputs`:
 | lol waht i cant edit talk pages | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
 The other 57 that read stdin take one `0`/`1` character per bit -- `'101'`.
-The remaining 18 embed their inputs and read no stdin: `instantiate` fills them.
+The remaining 17 embed their inputs and read no stdin: `instantiate` fills them.
 The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
 

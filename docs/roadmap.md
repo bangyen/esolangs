@@ -168,42 +168,22 @@ ignored-input tables included).
       or narrow construction beating the obstructions named here, or
       on a real consumer for the other reading -- the dialect branch
       is the ready implementation if one appears.
-    - Minifuck: non-commands count as instructions `[` can skip, against
-      "only 3 instructions"; the `[x` filler relies on it.  FENCED
-      (2026-10-31): the page does not settle the reading -- re-read
-      2026-10-31, it says "only 3 instructions", its sole example
-      (`<[<.[<.`) has no non-command, and nothing on the page defines
-      one -- and a filler-free build is a generator rebuild, not a
-      patch, because the dependence is the emission model itself: the
-      `[x` walk law (the core movement primitive), the `xx` zero
-      setter, the parity columns' `x` joins and `q` prefix, and wrap
-      newlines all put a non-command character in a skip slot.
-      Measured on the package corpus (witness tables at n=1..4, parity
-      and random tables at n=5..6): the clean-room reading, which drops
-      non-commands, differs on 258 of 258 rows, and 24 of 24 programs
-      carry filler -- in line with the blind audit's 3,079 of 3,080
-      fleet rows.  No drop-in for `[x` works under both: every real
-      command in the slot differs by branch (`<` ends at p vs p+1;
-      `[` and `.` flip, print or read), and no `<`/`[` string of
-      length 1..14 matches `[x` on 300 random tapes.  A filler-free
-      walk law was prototyped (2026-10-31): with the search stepper
-      pinned to the interpreter (a 20,000-case differential; both
-      shipped laws reproduced exactly), no string over `<`/`[` of
-      length 2..12 that never backtracks below its entry cell has
-      constant pointer advance over all window patterns, for any
-      tape effect and any exit skip; and no string meets the full
-      standard (constant advance, self-contained exit, no writes
-      outside its window) at lengths 13..14 sampled without
-      backtracking, or with up to two cells of backtracking at
-      lengths 2..8 exhaustive or 9..12 sampled.  Reopen with: a
-      walk law over real instructions whose crossing leaves every
-      row's pointer converged -- now known to need length over
-      14, deeper backtracking, or a non-block form -- or page
-      evidence.
+    - Minifuck: REMOVED (2026-10-31) under the spec ground (see
+      limitations.md, Removed languages).  Non-commands count as
+      instructions `[` can skip, against "only 3 instructions"; the
+      `[x` filler the emission model is built on relies on it, and
+      under the clean-room reading the shipped generator diverges on
+      258 of 258 corpus rows.  A rebuild grounded the general,
+      two-state, parity, constant, unary and gap routes, but the
+      stored route is structurally blocked (no command-only
+      equivalents at lengths up to 12 and 15 on exact searches; its
+      travel crosses row-dependent cells), so full grounding is
+      unreachable and the language was removed rather than kept
+      fenced.  The rebuild branch stays unlanded as the record.
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-91 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+90 of the 90 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
 BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
@@ -211,8 +191,8 @@ CARP, Circlefuck, Circuit Diagram, Clockwise, Codesick, Collatz Multiverse,
 Container, CreativeScript v2, Crement, CV(N)(C), Decleq, Dig, Dimensional,
 DINAC, EGL, Eval, Fackward, Fargo, Flowchart, Forbin, Forþ, Freestajlo,
 Grapheme, Home Row, Hot, HQ9+ with headers, IEBEL, Inject, Interprogck8,
-Kiss, LaserFuck, Line, lol waht i cant edit talk pages, Minifuck, Minsky
-Swap, Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object
+Kiss, LaserFuck, Line, lol waht i cant edit talk pages, Minsky Swap,
+Modulous, Monotonic Boolfuck, Movesum, Nandypants, NOR machine, Object
 disoriented, Packlang, Painfuck, Parenthesys, Pilas, Pointless, Qoibl,
 Qrain, Quassaunt, RAM0, ROTfuck, Rubic, S*bleq, SendStuff, SLOW ACV
 MAMMALIAN, Smu, Sonata, SStack, Stisp, Streetcode, Suffolk, Super SNUSP,
@@ -229,7 +209,7 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-82 of the 112 generators: ///, 1 + i, A Painter Ant, ABCDirection, Algebraic
+82 of the 111 generators: ///, 1 + i, A Painter Ant, ABCDirection, Algebraic
 Programming Language, Alight, Aprknia, ArrowQueue, Ascenic, Balik, BASICER,
 Basicfuck, Befunge, Between, BFStack, Bitdeque, Bitwise Cyclic Tag, bit~,
 Bleh, Blindfolded Arithmetic, BrainIf, Caballo, CARP, Chicken, Circlefuck,

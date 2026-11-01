@@ -243,17 +243,6 @@ def _row_one(n: int) -> str:
     return "01" + "0" * ((1 << n) - 2)
 
 
-def _minifuck_worst(n: int) -> str:
-    """Controls 1 but the last row's: the strip's writes cost most (4 a one).
-
-    The control is the table bit xor the zero-control row parity, popcount + n.
-    """
-    return "".join(
-        "0" if row == 2**n - 1 else str(1 ^ ((row.bit_count() + n) & 1))
-        for row in range(2**n)
-    )
-
-
 def _back_worst(n: int) -> tuple[str, ...]:
     """Back's comb-worst tables: Rudin-Shapiro, and from n = 7 the slot witness."""
     width = 1 << n

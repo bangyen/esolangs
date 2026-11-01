@@ -76,7 +76,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [Dimensional](https://esolangs.org/wiki/Dimensional) ([code](../src/esolangs/languages/dimensional/interpreter.py))
 - [Home Row](https://esolangs.org/wiki/Home_Row) ([code](../src/esolangs/languages/home_row/interpreter.py))
 - [Line](https://esolangs.org/wiki/Line) ([code](../src/esolangs/languages/line/interpreter/__init__.py))
-- [Minifuck](https://esolangs.org/wiki/Minifuck) ([code](../src/esolangs/languages/minifuck/interpreter.py))
 - [Monotonic Boolfuck](https://esolangs.org/wiki/Monotonic_Boolfuck) ([code](../src/esolangs/languages/monotonic_boolfuck/interpreter.py))
 - [Movesum](https://esolangs.org/wiki/Movesum) ([code](../src/esolangs/languages/movesum/interpreter.py))
 - [Nandypants](https://esolangs.org/wiki/Nandypants) ([code](../src/esolangs/languages/nandypants/interpreter.py))

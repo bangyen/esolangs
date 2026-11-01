@@ -30,7 +30,6 @@ Unless a language says otherwise:
 Exceptions and per-language notes:
 
 - Unsquare uses Unicode character codes where input framing is unspecified.
-- Minifuck uses Unicode character codes where input framing is unspecified.
 - Decleq uses Unicode character codes where input framing is unspecified;
   optional memory-mapped I/O is enabled.
 - Forbin expression calls retain their documented host-recursion limit.
@@ -91,7 +90,6 @@ under a fixed template and fill mapping.
 - Flowchart must read in order.
 - BrainIf must read in order.
 - SLOW ACV MAMMALIAN must read in order.
-- Minifuck has no derived instruction-only wire.
 
 ### Parameterized generators
 
@@ -732,8 +730,7 @@ exact range (2026-10-23, counted from the ledger):
   to the tree from n = 6: 883 against 1,076) and workspace, CVNC
   execution, FALSE scaling and execution (reached at n = 4, 5 only; at
   n = 6 diagram 292 against expression 293), Fargo all three, For Thorn
-  execution, Minifuck execution (from n = 13 the stored plan ships, under the
-  mux's worst), Object Disoriented scaling, Piet all three,
+  execution, Object Disoriented scaling, Piet all three,
   Smallfuck execution, Streetcode workspace; scaling for Algebraic Programming
   Language (144 against 182 at n = 4, exhaustive; the reduced
   diagram's 10T + 4n + 6 holds to n = 14), Packlang, Painfuck (232 against 239 at n = 4), 6-5 (105 against 166 at
@@ -829,7 +826,7 @@ exact range (2026-10-23, counted from the ledger):
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 115 languages.
+The collection has 114 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -963,7 +960,7 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`snapshot.json`) records each
 language's backlinks and route: 24 clear the fame gate
-and 91 are first implementations.
+and 90 are first implementations.
 
 <!-- CURATION-CENSUS:END -->
 
@@ -981,13 +978,22 @@ admission: Polynomial (LegionMammal978's Mathematica on its Talk page,
 github.com/iannmiui-png/miusoft_paint-98, 2026-08-29; collected
 2026-10-03) and Tiangou (Monochromeninja's Python on TIO, 2021-06-01;
 collected 2026-10-27).
+Minifuck was removed on 2026-10-31 under the spec rule: its generator's
+emission model depends on non-command characters occupying instruction
+positions for `[` skips, which the spec's text does not support (the page
+counts only 3 instructions), and under the spec's natural reading the
+shipped generator diverges on 258 of 258 corpus rows. A rebuild grounded
+the general, two-state, parity, constant, unary and gap routes, but the
+stored route is structurally blocked — no command-only equivalents at
+lengths up to 12 and 15 on exact searches, and its travel crosses
+row-dependent cells — so full grounding is unreachable.
 
 Every exclusion and its ground:
 
 | Ground | Languages |
 |---|---|
 | route | 123, BF-PDA, BIO, Jaune, NoComment, Sophie, Funge-98, Emmental, Prelude, LOLCODE, Brainloller, Braincopter, Turing Paint, Befunk, Factor, Polynomial, Piet++, Tiangou |
-| spec | 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Bytemap, Gifunk, BitCode, PicCode, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
+| spec | 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Bytemap, Gifunk, BitCode, PicCode, Minifuck, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
 | token substitution | Trivial brainfuck substitution |
 | scaling | Vandevelo, %^2^-1, WII2D, COD, ZTOALC L |
 | no generator | HuePrism (no input), Nopstacle (its blank and `#` spell no input embed) |

@@ -153,8 +153,6 @@ from esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator import (
 )
 from esolangs.languages.malbolge.generator import LANGUAGE as _MALBOLGE_LANGUAGE
 from esolangs.languages.malbolge.generator import malbolge
-from esolangs.languages.minifuck.generator import LANGUAGE as _MINIFUCK_LANGUAGE
-from esolangs.languages.minifuck.generator import minifuck
 from esolangs.languages.minsky_swap.generator import LANGUAGE as _MINSKY_SWAP_LANGUAGE
 from esolangs.languages.minsky_swap.generator import minsky_swap
 from esolangs.languages.modulous.generator import LANGUAGE as _MODULOUS_LANGUAGE
@@ -320,7 +318,6 @@ _LANGUAGES = (
     _LINE_LANGUAGE,
     _LOL_WAHT_I_CANT_EDIT_TALK_PAGES_LANGUAGE,
     _MALBOLGE_LANGUAGE,
-    _MINIFUCK_LANGUAGE,
     _MINSKY_SWAP_LANGUAGE,
     _MODULOUS_LANGUAGE,
     _MONOTONIC_BOOLFUCK_LANGUAGE,
@@ -436,7 +433,6 @@ __all__ = [
     "line",
     "lol_waht_i_cant_edit_talk_pages",
     "malbolge",
-    "minifuck",
     "minsky_swap",
     "modulous",
     "monotonic_boolfuck",

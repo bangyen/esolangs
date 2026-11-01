@@ -178,12 +178,6 @@ _DIMENSIONAL_COMMAND = r"[<>$?!{]~?\d*|=[\s\S]{0,2}|:[\s\S]?|[\s\S]"
 _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 
 
-# Minifuck ``[`` skips the next character (``ind + 2``), so a newline
-# there is what gets skipped; consecutive ``[`` chain, so the whole run
-# stays with the character after it, or with the input run after it.
-_MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|[\s\S])|[\s\S]"
-
-
 # A newline inside a bracketed literal prints; Eval also keeps each ``?x``
 # conditional whole.
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
@@ -219,19 +213,6 @@ _false = TokenWrapper(_FALSE_COMMAND)
 _unlambda = TokenWrapper(_UNLAMBDA_COMMAND)
 _bracket_literal = TokenWrapper(_BRACKET_LITERAL)
 _quote_literal = TokenWrapper(_EVAL_UNIT)
-
-
-def _minifuck(program: str, width: int) -> str:
-    """Wrap Minifuck, keeping a ``[`` run with the character it may skip.
-
-    ``[`` skips two *characters*, a newline included; a run chains, so in
-    ``[[x`` a break before ``x`` is unsafe.
-    """
-    tokens = _tokens(program, _MINIFUCK_COMMAND)
-    floor = max(map(len, tokens), default=0)
-    if "\n" in program and max(map(len, program.split("\n"))) <= max(width, floor):
-        return program
-    return _join_tokens(tokens, width, separator="")
 
 
 def __getattr__(name: str) -> Any:

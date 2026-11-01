@@ -208,7 +208,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "INTERCAL": ("PLEASE .1 <- #4\nDO READ OUT .1\nDO GIVE UP", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),
     "Malbolge": ("Q", ""),
-    "Minifuck": (".", ""),
     "Minsky Swap": ("+", ""),
     "Modulous": ("[PSH INT 5][DUP][PRT INT]", ""),
     "Packlang": (

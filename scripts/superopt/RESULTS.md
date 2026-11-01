@@ -210,7 +210,6 @@ n/a = unsupported):
 | Home Row | 8 | 53 | $ $ $ $ |
 | Minsky Swap | 15 | 46 | $ $ $ $ |
 | Super SNUSP | 21 | 44 | $ $ $ $ |
-| Minifuck | 7 | 70 | $ $ $ $ |
 | Grapheme | 19 | 47 | $ $ $ $ |
 | ArrowQueue | 6 | 84 | GAP $ $ $ |
 | Crement | 17 | 55 | $ $ $ $ |

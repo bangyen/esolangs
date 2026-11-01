@@ -38,8 +38,7 @@ Decisions:
       "when the 8th bit is sent".
     * The wiki's Hello world lacks ``r`` in ``p0``/``p1`` and, repaired, prints
       its data backwards ("hello wolrd" reversed, each byte bit-reversed): its
-      stack pops last-in first.  The Minifuck interpreter does not parse (``c
-      fnrfaz pz t`` leaves ``c`` without a destination).  Both are pinned.
+      stack pops last-in first.
 """
 
 from __future__ import annotations

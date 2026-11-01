@@ -25,7 +25,6 @@ from tests.proofs._witness_builders import (
     _collatz_chars_worst,
     _forbin_worst,
     _malbolge_stub,  # noqa: F401 -- re-exported for the formula suites
-    _minifuck_worst,
     _row_one,
     _sbleq_worst,
     _smu_worst,
@@ -1026,7 +1025,6 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     "Dimensional": lambda n: (_dimensional_worst(n),) if n >= 4 else (),
     "Fackward": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
-    "Minifuck": lambda n: (_minifuck_worst(n),) if n >= 3 else (),
     "Forbin": lambda n: (_forbin_worst(n),),
     # Six random subtables tiled by 4 random top inputs: the diagram wins and
     # stores the full 26 lambdas, the variables' peak.

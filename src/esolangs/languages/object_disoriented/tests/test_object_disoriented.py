@@ -84,12 +84,6 @@ def test_hello_world_repaired_pops_its_stack_last_in_first() -> None:
     )
 
 
-def test_the_minifuck_interpreter_leaves_c_without_a_destination() -> None:
-    """Its first ``c fnrfaz pz t``: the call takes ``t``, then ``c`` meets ``c``."""
-    with pytest.raises(ValueError, match=r"'c' at .* cannot be written"):
-        _run("dmain. c fnrfaz pz t c fnrfaz tz a rz zz")
-
-
 def test_bits_pack_most_significant_first() -> None:
     assert _run(_bits("z", "i", *["z"] * 5, "i"), "\x80") == "\x40"
 

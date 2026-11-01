@@ -119,7 +119,6 @@ Languages that show the axes in use:
 - LaserFuck uses a grid walk.
 - A Painter Ant uses a grid walk and answers by landing colour.
 - Streetcode uses a grid walk.
-- Minifuck gives a position-encoded answer.
 - ArrowQueue answers by termination.
 - Crement answers by termination.
 
@@ -310,9 +309,8 @@ requirements:
   only where the construction stops or the trick loses past it (cite the
   loss: Line's level skip saves 20-35% at n <= 5 and costs 12.2% at n=6).
   A cap set where the trick still saves, only less, is no cap: it is judged
-  at n=7..8 (FALSE's literal pairs, 6-5's fallback orders, Minifuck's
-  parity race and ABCDirection's tooth packing were restored that way and
-  retired again). A saving still growing at n=8 is measured on
+  at n=7..8 (FALSE's literal pairs, 6-5's fallback orders and
+  ABCDirection's tooth packing were restored that way and retired again). A saving still growing at n=8 is measured on
   past it, to its peak. Named functions (parity, majority, and/or,
   thresholds) are reported apart; 10% on one keeps a rule for that family,
   not the whole race. Smallfuck's residual forms saved 2.2% on random tables
