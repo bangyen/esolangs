@@ -26,7 +26,7 @@ def _rational_run(value: int, program: list[str]) -> int:
     raise AssertionError("reference step cap")
 
 
-def test_controlled_swap_restores_controls() -> None:
+def _check_controlled_swap() -> None:
     """Every target/control assignment, with an omitted-reflection control."""
     for target, c0, c1 in product((0, 1), repeat=3):
         before = (3 if target else 2) * 19**c0 * 23**c1
@@ -44,7 +44,8 @@ def test_controlled_swap_restores_controls() -> None:
 
 
 def test_tables_and_reference() -> None:
-    """All small tables and seeded larger tables, every input row."""
+    """Swap invariants, all small tables and seeded larger tables, every row."""
+    _check_controlled_swap()
     for n in (1, 2, 3):
         for value in range(2**2**n):
             table = format(value, f"0{2**n}b")
