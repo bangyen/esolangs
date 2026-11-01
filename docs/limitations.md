@@ -786,22 +786,25 @@ exact range (2026-10-23, counted from the ledger):
     with a width-class rule.
   - 1 + i workspace past n = 27: the n = 28 witness, ~1.7G characters, is
     OOM-killed while generating here.
-  - INTERCAL execution past n = 26 (the n = 26 witness's load, with the
-    interned parser, was killed at 5,954 MB RSS with the load unreturned
-    when measured on 2026-10-27 — the intern cache retains a key tuple
-    and a dict entry per distinct node and the 1.1M small statements'
-    ~20M nodes barely share, against the ~2.0–2.2 GB once extrapolated
-    for it; generation re-measured exact the same day at a 3,991 MB
-    peak; generating 27 is OOM-killed), workspace past 27 (exact to
-    27: the closed form matches final snapshots at 21, 22 and 25 and
+  - INTERCAL execution past n = 27 — n = 26 now executes end to end
+    (sampled rows 0, 2^25 and 2^26 − 1 each produce the table's bit,
+    and the priced snapshot equals the workspace bound at 12,091,691
+    bits; the run peaks at 4,461 MB RSS in the in-process harness,
+    under the 4,500 MB watchdog cap). What remains is the n = 27
+    load, unattempted: the 27 snapshot's load has never been tried
+    because generation of the 27 witness in the earlier workspace
+    item hit its own memory wall and the executed side has simply
+    not been run since. The bound now stands on the interpreter
+    retaining less, not on the witness shrinking.
+  - INTERCAL workspace past 27 (exact to 27: the closed form matches
+    final snapshots at 21, 22 and 25 and
     the n = 26 text's DIMENSION statements; at 27 a streamed
     generation of the 2,164,188-statement text — peak 680 MB,
     byte-identical machinery checked against the shipped generator
     to n = 20 and against the preserved n = 26 text — carries 1,448
     arrays of width 1,449, the last holding 500, and the write set
     read off the text's assignment targets prices to the closed form
-    exactly, 23,818,646 bits; a snapshot by execution at 27 waits on
-    the same load as execution at 26) and scaling past 23 (exact to
+    exactly, 23,818,646 bits) and scaling past 23 (exact to
     23 on the successor shape: the capped shape ends at 19 — at 20
     its level n - 4 would need 2^16 distinct parents from
     240 * 239 ordered pairs — and the successor shifts the cap one
