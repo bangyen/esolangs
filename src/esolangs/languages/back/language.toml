@@ -14,14 +14,14 @@ workspace = "poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits"
 definitions = ["R = 3T/4+1"]
 
 [generator_sizes]
-"00000001" = { commands = 36, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 30, "5" = 30, "6" = 33, "7" = 36 }, source_units = 239 }
+"00000001" = { commands = 32, commands_by_row = { "0" = 23, "1" = 26, "2" = 23, "3" = 29, "4" = 23, "5" = 26, "6" = 23, "7" = 32 }, source_units = 183 }
 "00001100" = { commands = 29, commands_by_row = { "0" = 25, "1" = 24, "2" = 25, "3" = 24, "4" = 29, "5" = 28, "6" = 30, "7" = 29 }, source_units = 181 }
 "00110110" = { commands = 36, commands_by_row = { "0" = 28, "1" = 28, "2" = 31, "3" = 31, "4" = 32, "5" = 35, "6" = 35, "7" = 36 }, source_units = 239 }
-"0110" = { commands = 25, commands_by_row = { "0" = 21, "1" = 24, "2" = 24, "3" = 25 }, source_units = 122 }
-"01101001" = { commands = 36, commands_by_row = { "0" = 29, "1" = 32, "2" = 32, "3" = 33, "4" = 32, "5" = 33, "6" = 33, "7" = 36 }, source_units = 239 }
-"0110100110010110" = { commands = 45, commands_by_row = { "0" = 37, "1" = 40, "2" = 40, "3" = 41, "4" = 40, "5" = 41, "6" = 41, "7" = 44, "8" = 40, "9" = 41, "10" = 41, "11" = 44, "12" = 41, "13" = 44, "14" = 44, "15" = 45 }, source_units = 392 }
+"0110" = { commands = 23, commands_by_row = { "0" = 19, "1" = 22, "2" = 22, "3" = 23 }, source_units = 100 }
+"01101001" = { commands = 32, commands_by_row = { "0" = 25, "1" = 28, "2" = 28, "3" = 29, "4" = 28, "5" = 29, "6" = 29, "7" = 32 }, source_units = 183 }
+"0110100110010110" = { commands = 39, commands_by_row = { "0" = 31, "1" = 34, "2" = 34, "3" = 35, "4" = 34, "5" = 35, "6" = 35, "7" = 38, "8" = 34, "9" = 35, "10" = 35, "11" = 38, "12" = 35, "13" = 38, "14" = 38, "15" = 39 }, source_units = 290 }
 "1101001101101101" = { commands = 52, commands_by_row = { "0" = 37, "1" = 37, "2" = 39, "3" = 42, "4" = 40, "5" = 40, "6" = 43, "7" = 43, "8" = 43, "9" = 46, "10" = 46, "11" = 47, "12" = 47, "13" = 47, "14" = 49, "15" = 52 }, source_units = 392 }
-"11111110" = { commands = 35, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 31, "5" = 31, "6" = 34, "7" = 35 }, source_units = 239 }
+"11111110" = { commands = 31, commands_by_row = { "0" = 24, "1" = 27, "2" = 24, "3" = 30, "4" = 24, "5" = 27, "6" = 24, "7" = 31 }, source_units = 183 }
 
 [formula_arities]
 workspace = [3, 6]
@@ -80,6 +80,14 @@ tables = "20 random per n=7,8 plus and/or/nand/nor/parity/majority/threshold-3/t
 verdict = "kept, balanced: the balanced fold used the default comb base 5 only, so an even arity stayed a square-ish block (n=8 122-134 side). The fold's shape moves a factor of two per base, so racing bases 2..6 by balance_score finds the 2:1 block (n=8 base 6: 46 x 102, side 102): balanced area (score squared) off 31.5% on random tables at n=8, 7.4% at n=7 (base 4); named: and/nand 67% and or/nor 33-37% at n=9, 62% and 29-33% at n=7, majority and threshold 28% at n=7 / 4% at n=8, parity 0.0%; random n=10 about 30% (6 tables). Flat across even n, not declining. The default is byte-identical on all 72 tables; every balanced program ran on every row (72 tables, n=7..10, 0 bad), and the fold at every base 2..6 ran on all n<=4 tables plus 600 random n=5,6 (132,378 programs, 0 bad); a wrong table failed"
 
 [audits]
+trick_prototype = 2026-10-31
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+
+[ablations.symmetric_reverse_loader]
+saving = 29.7872
+arity = 8
+seed = "random.Random(1847+n)"
+tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12; Back named to n=18 and popcount functions n=4..7"
+verdict = "kept for popcount-symmetric tables: reverse the comb's input cells without changing the table or tree drawing; template substitutions retain stream order and the loader walk shortens. The H-tree still competes by area. n=8 OR/parity/majority/threshold-third: 1,363 -> 957 cells (29.8%), AND unchanged at 902 cells because the H-tree wins. At n=18 those five named functions take 6,313 -> 4,307 cells (31.8%); a load-limited comb's height goes from 6n-1 to 4n+1, approaching one-third saved. Other functions retain identity order. n=3 corpus: 58,575 -> 57,299 chars, 58,319 -> 57,043 cells. Final verification: 28,375 baseline/candidate/width/balanced output checks correct, including all tables n<=3, every popcount function n=4..6 on every row and n=7 on three rows, named boundary rows through n=18; 2,600 complemented controls rejected. Source size and command pins regenerated; unchanged bounds still reached by nonsymmetric witnesses, with a penultimate-zero witness added at n=2"

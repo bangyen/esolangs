@@ -18,6 +18,8 @@ Size:
     tall); a smaller folded build (``_back_htree``) caps it at 27.5T from n=6.
 
 Decisions:
+    Popcount-symmetric tables reverse the comb's input cells: the drawing
+    stays fixed and the loader walk shortens ([ablations.symmetric_reverse_loader]).
     A node whose one-subtree equals the zero-subtree of the next node on its
     level draws none: the beam falls down the column onto that node's mirror
     and turns east into the zero side.  Straight-fall area: see
@@ -259,7 +261,14 @@ def back(truth_table: str, width: int | None = None) -> str:
         # A constant already folds to one leaf; it keeps every input.
         weights, table = [1] * n, truth_table
     levels = len(table).bit_length() - 1
-    program = _back_ordered(table, tuple(range(levels)), width, weights)
+    order = tuple(range(levels))
+    if width is None and all(
+        bit == table[(1 << row.bit_count()) - 1] for row, bit in enumerate(table)
+    ):
+        # Popcount functions are invariant under reversal. The same comb then
+        # needs a shorter loader walk ([ablations.symmetric_reverse_loader]).
+        order = tuple(reversed(order))
+    program = _back_ordered(table, order, width, weights)
     if width is None and len(table) > 1 << _FOLD_BASE:
         program = min(
             program,
@@ -540,7 +549,7 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
     empty_program="Back program cannot be empty",
-    example=Example(pair=PAIR, expected="0 1 0"),
+    example=Example(pair=PAIR, expected="1 0 0"),
     proof_execution=(execution, True, (3, 5, 6, 7, 8, 9)),
     grid=True,
 )

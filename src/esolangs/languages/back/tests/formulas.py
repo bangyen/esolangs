@@ -1,4 +1,8 @@
-"""Back's emitted cells: the comb, then the smaller of it and the fold."""
+"""Back's emitted cells: the comb, then the smaller of it and the fold.
+
+The shorter symmetric loader stays within the same rectangle; the recorded
+nonsymmetric witnesses keep the old loader and reach the envelope.
+"""
 
 
 def _comb(n: int) -> int:

@@ -1,4 +1,9 @@
-"""Executed command bounds."""
+"""Executed command bounds.
+
+Popcount-symmetric tables may reverse input cells: the comb drawing stays
+fixed and the shorter loader only lowers this bound. The nonsymmetric
+worst-case witnesses retain the original layout.
+"""
 
 
 def execution(n: int, _: str) -> int:

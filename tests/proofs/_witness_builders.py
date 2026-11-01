@@ -253,6 +253,9 @@ def _back_worst(n: int) -> tuple[str, ...]:
             str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1)) for i in range(width)
         ),
     )
+    if n == 2:
+        # The symmetric loader shrinks; a lone penultimate zero keeps its height.
+        tables += ("1" * (width - 2) + "01",)
     if n >= 7:
         tables += (
             importlib.import_module("esolangs.languages.back.tests.formulas").witness(

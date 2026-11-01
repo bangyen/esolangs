@@ -128,15 +128,17 @@ class TestParameterizedBack:
         assert scattered < parity
         assert aligned < parity
 
-    def test_the_identity_template_is_emitted(self) -> None:
-        """Back no longer contests input orders."""
+    def test_symmetric_tables_reverse_the_loader(self) -> None:
+        """Symmetric tables keep their tree and shorten the loader walk."""
         from esolangs.languages import generators
 
         # Every input matters in each; an ignored one is indexed past.
         for table in ("01101001", "00010111", "01111110", "00011110", "10010110"):
             n = (len(table) - 1).bit_length()
-            identity = _back_ordered(table, tuple(range(n)))
-            assert generators.back(table) == identity, table
+            order = tuple(range(n))
+            if table in ("01101001", "00010111", "01111110", "10010110"):
+                order = tuple(reversed(order))
+            assert generators.back(table) == _back_ordered(table, order), table
 
     def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
         """A permuted load spends rows on the walk, and keeps its runs in name order."""
@@ -286,7 +288,7 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
 @pytest.mark.medium
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """Two load rows on a borrowed cell; each leaf walks one more."""
-    assert_an_ignored_input_costs("Back", 6, 131)
+    assert_an_ignored_input_costs("Back", 6, 121)
 
 
 @pytest.mark.slow  # builds every permuting generator over several tables
