@@ -22,3 +22,21 @@ def test_every_row_prints_its_answer(table: str) -> None:
             table,
             row,
         )
+
+
+@pytest.mark.parametrize("bit", ["0", "1"])
+@pytest.mark.parametrize("n", [1, 8])
+def test_constant_output_consumes_every_input(bit: str, n: int) -> None:
+    """Direct output still consumes exactly one number per input."""
+    from esolangs.languages.hq9_with_headers.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    program = esolangs.generate("HQ9+ with headers", bit * (1 << n))
+    stdin = esolangs.encode_inputs("HQ9+ with headers", [1] * n)
+    io = ScriptedIO(stdin + "7\n")
+    run(str(program), io)
+    assert io.getvalue() == bit
+    assert io.position() == len(stdin)
+    assert io.input_num() == 7
+    if n == 8:
+        assert len(str(program)) == 180

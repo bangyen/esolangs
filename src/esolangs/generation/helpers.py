@@ -74,7 +74,7 @@ def subtree_ids(truth_table: str) -> list[list[int]]:
     quasi-reduced decision diagram, interned rather than searched), in O(T).
     """
     n = _validate_truth_table(truth_table)
-    level = [int(bit) for bit in truth_table]
+    level = [1 if bit == "1" else 0 for bit in truth_table]
     ids = [level]
     fresh = 2
     for _ in range(n):

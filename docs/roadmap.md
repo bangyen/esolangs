@@ -203,12 +203,13 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
   executed with a control, shipped or recorded against CONTRIBUTING's gate.
   Round 1 covered 111/111. Restart by increasing count of kept ablation
   rules, alphabetically within ties. The zero-trick queue is BASICER,
-  CARP, CreativeScript v2, HQ9+ with headers, Qrain; the first three are
-  complete. Next: HQ9+ with headers, then Qrain. Record completion as
-  `[audits] trick_prototype = <date>`; retain earlier ablation evidence.
+  CARP, CreativeScript v2, HQ9+ with headers, Qrain; all five are complete.
+  HQ9+ now folds constants. Next: Aprknia, Basicfuck, Chicken. Record
+  completion as `[audits] trick_prototype = <date>`; retain earlier evidence.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-3 of the 111 generators: BASICER, CARP, CreativeScript v2.
+5 of the 111 generators: BASICER, CARP, CreativeScript v2, HQ9+ with
+headers, Qrain.
 
 <!-- TRICK-PROTOTYPES:END -->

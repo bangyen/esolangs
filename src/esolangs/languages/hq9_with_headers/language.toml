@@ -7,14 +7,14 @@ admitted = 2026-10-15T17:48:43-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table is one decimal literal, divided by the power of two the reads square up, and `[~::]` tests the quotient's parity"
-scaling = "linear: one table literal, one read command per input"
+qualification = "constant tables consume every input and print directly in n+2 commands; otherwise the table is one decimal literal, divided by the power of two the reads square up, and `[~::]` tests the quotient's parity"
+scaling = "linear: at most one table literal, one read command per input"
 execution = "poly n: worst 4n + 9 commands"
 workspace = "linear: worst 3T + 4 + bl(4n+10) + bl(2n) bits: variables, op index and reads"
 
 [catalogue]
-folding_ignored = "the literal holds every row; an ignored input is still read and squared in"
-folding_constant = "a constant 1 table is the T-bit literal 2^T - 1"
+folding_ignored = "nonconstant tables retain the full literal and read/square ignored inputs; constants only consume them"
+folding_constant = "constant tables consume every input and print their value without a lookup literal"
 
 [schemes]
 folds_without_tree = true
@@ -33,5 +33,14 @@ folds_without_tree = true
 audited = "2026-10-29"
 
 [audits]
+trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.direct_constant_output_round_two]
+saving = 57.5472
+arity = 8
+source = "https://esolangs.org/w/index.php?title=HQ9%2B_with_headers&oldid=129344#Examples"
+seed = "random.Random(2847+n)"
+tables = "all n<=3; 20 random plus parity/majority/and/or/zero/one per n=4..8"
+verdict = "kept: canonical constant folding. Replace the read arithmetic by one read and the parity lookup by direct output, using the wiki examples' explicit p() STARTUP. At n=8, zero 347 -> 180 characters and one 424 -> 180; commands n+2 instead of up to 4n+9. Nonconstant programs and existing size/command pins stay byte-identical. n=3 totals 85138 -> 84802 characters, 41984 -> 41736 commands; no table slower. 7530 baseline/raced/raw output checks pass, exhaustive n<=3 and sampled n=4..8, including constant tables; 406 independently generated wrong-table controls reject the original answer. All inputs remain consumed, with a sentinel regression. At n=8 one, sampled worst commands 41 -> 10 and written-state peak 783 -> 10 bits; zero peak 274 -> 10. Nonconstant programs retain the exact worst execution/workspace bounds"

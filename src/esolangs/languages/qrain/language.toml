@@ -26,5 +26,13 @@ workspace = "poly n: at most bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10 bits: 
 audited = "2026-10-29"
 
 [audits]
+trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
+
+[ablations.reverse_tree_round_two]
+saving = 0.0
+arity = 8
+seed = "random.Random(2847+n)"
+tables = "all n<=3; 20 random plus named per n=4..8"
+verdict = "not shipped: reverse decision order after the unchanged input-order reader and permute the table accordingly, admitting candidates only within the existing command budget. Random n=7/8 saving 0/0%; OR 340 -> 320 and 403 -> 379 characters, below the size bar. n=3 totals 34277 -> 33079 characters and 163436 -> 157006 commands, a 3.93 percent command reduction with no slower tables, below the 5 percent execution gate. 7530 correct baseline/raced/raw output checks, exhaustive tables n<=3 and sampled n=4..8; 406 independently generated wrong-table controls rejected, 85 raced programs change"

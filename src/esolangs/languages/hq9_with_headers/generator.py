@@ -1,14 +1,14 @@
 """HQ9+ with headers Boolean program generator: the table as one integer.
 
-``STARTUP`` sets ``t`` to the table read as binary, row r at bit r.  Each
-``r`` command reads a bit b and sets ``p`` to ``p * p * (b + 1)``, so after
-the last input ``p`` is ``2^row``.  ``o`` divides ``t`` by ``p`` and prints
-whether the quotient is odd: ``[~:: q h ...]`` against twice its half.
+A constant table reads every input and prints its value directly. Otherwise,
+``STARTUP`` stores the table in ``t``, row r at bit r. Each ``r`` reads b and
+sets ``p`` to ``p * p * (b + 1)``, ending at ``2^row``. ``o`` divides ``t`` by
+``p`` and tests the quotient's parity against twice its half.
 
 Size:
-    317 + n chars plus the flow's n + 1 numbers, the checksum and the
+    Nonconstant: 317 + n chars plus the flow's n + 1 numbers, the checksum and the
     table's decimal digits, at most floor(T log10 2) + 1; 4n + 9 steps;
-    n=10 parity: 661 chars, n=10 random 1847: 661 chars.
+    n=10 parity: 661 chars, n=10 random 1847: 661 chars; n=8 zero: 180 chars.
 
 Decisions:
     A decision tree over ``'JZ`` jumps lists every command number in the
@@ -37,8 +37,16 @@ _ANSWER = (
 def hq9_with_headers(truth_table: str) -> str:
     """Build an HQ9+ with headers program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
-    with digit_limit_for(len(truth_table)):
-        table = str(int(truth_table[::-1], 2))
+    constant = truth_table.count(truth_table[0]) == len(truth_table)
+    if constant:
+        reads: tuple[str, ...] = (_READ[0],)
+        answer: tuple[str, ...] = (f'p("{truth_table[0]}")',)
+        startup: tuple[str, ...] = ("p()",)
+    else:
+        with digit_limit_for(len(truth_table)):
+            table = str(int(truth_table[::-1], 2))
+        reads, answer = _READ, _ANSWER
+        startup = ("p = 1", "two = 2", f"t = {table}")
     program = "r" * n + "o"
     pad = " " * 8
     lines = [
@@ -47,13 +55,11 @@ def hq9_with_headers(truth_table: str) -> str:
         "    " + ",".join(str(k) for k in range(1, n + 2)),
         "CHARACTER SEMANTICS",
         "    r",
-        *(pad + line for line in _READ),
+        *(pad + line for line in reads),
         "    o",
-        *(pad + line for line in _ANSWER),
+        *(pad + line for line in answer),
         "STARTUP",
-        "    p = 1",
-        "    two = 2",
-        f"    t = {table}",
+        *("    " + line for line in startup),
         "CHECKSUM",
         f"    {sum(map(ord, program)) % 1024 + 43}",
         "==== END HEADER ====",
