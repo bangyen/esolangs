@@ -15,7 +15,8 @@ on 48 or 49.
 
 Size:
     O(T) at most 14T + 16n + 43 chars, O(n) for parity; n=4 parity: 284
-    chars, n=10 parity: 789, n=10 and: 293.
+    chars, n=10 parity: 789, n=10 and: 293. Constants: 8n+48 chars,
+    n+2 commands, 12+bl(n+2)+bl(n) written bits.
 
 Decisions:
     A subtree is shared only when ``m * body > body + 5m + 9`` for its ``m``
@@ -42,6 +43,12 @@ _LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
 def basicfuck(truth_table: str) -> str:
     """Build a Basicfuck program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        return (
+            "#basicfuck t=2 r=~\n#allocate a,b\n"
+            + "read->a;" * n
+            + f"b+={48 + int(truth_table[0])};write<-b;"
+        )
     if truth_table.count("1") <= len(truth_table) // 2:
         return _program(truth_table, n, "+", _ASCII_ZERO)
     flipped = truth_table.translate(str.maketrans("01", "10"))

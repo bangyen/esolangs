@@ -12,7 +12,8 @@ switches over m + 1 rows ([ablations.symmetric_count]).
 
 Size:
     O(T): 4.42 chars a row at n=16, plus O(n log n) for the loops; n=4
-    parity: 238 chars, n=10 random 1847: 4,384 chars.
+    parity: 238 chars, n=10 random 1847: 4,384 chars. Constants: n+15+2b
+    chars, n+6+b commands, 25+bl(n+1)+bl(n) written bits, b the answer.
 
 Decisions:
     One switch, not a block a hundred rows: a default would fire on the
@@ -34,6 +35,15 @@ from esolangs.registry._language import Language, Shape
 def switchcase(truth_table: str) -> str:
     """Build a SwitchCase program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        # Read into _, leaving the fresh answer a at zero until the last case.
+        return (
+            "$_\n0?=a"
+            + "," * n
+            + "\n$a\n0?"
+            + ("+1" if truth_table[0] == "1" else "")
+            + "@\n"
+        )
     essential = essential_inputs(truth_table, n)
     table = read_at(truth_table, essential, n)
     symmetric = symmetric_weights(truth_table, n)

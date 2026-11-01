@@ -19,3 +19,48 @@ def test_every_row_prints_its_answer(table: str) -> None:
         got = esolangs.run("SwitchCase", program, stdin=stdin, timeout=5)
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("SwitchCase", got) == table[row], (table, row)
+
+
+@pytest.mark.medium
+def test_constant_reads_precede_output_and_preserve_the_next_character() -> None:
+    from esolangs.languages.switchcase.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            commands = n + 6 + int(bit)
+            workspace = 25 + (n + 1).bit_length() + n.bit_length()
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("SwitchCase", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == n + 15 + 2 * int(bit)
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "SwitchCase", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= commands
+                    assert steps == commands
+                    assert written.bits == workspace
+                    assert io.getvalue() == bit
+                    assert io.input_char() == ord("Q")
+    assert (
+        sum(len(esolangs.generate("SwitchCase", format(v, "08b"))) for v in range(256))
+        == 70218
+    )

@@ -40,3 +40,54 @@ def test_the_table_holds_on_both_cube_states() -> None:
         y = len(store)
         assert out(*state, *_TABLE["P"], "!") == chr(y)
         assert out(*state, *_TABLE["Q"], "!") == chr(1 - y)
+
+
+@pytest.mark.medium
+def test_constant_reads_precede_output_and_preserve_the_next_character() -> None:
+    from esolangs.languages.rubic.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            commands = n + 11
+            workspace = (
+                119
+                + (n + 11).bit_length()
+                + (n + 5).bit_length()
+                + (n + 6).bit_length()
+                + n.bit_length()
+            )
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Rubic", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 2 * n + 35
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Rubic", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= commands
+                    assert steps == commands
+                    assert written.bits == workspace
+                    assert io.getvalue() == bit
+                    assert io.input_char() == ord("Q")
+    assert (
+        sum(len(esolangs.generate("Rubic", format(v, "08b"))) for v in range(256))
+        == 83958
+    )

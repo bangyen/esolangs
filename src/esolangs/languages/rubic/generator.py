@@ -20,6 +20,8 @@ by induction each evaluates as stated wherever the program reaches it.
 Size:
     At most T-1 nodes of bounded tokens: O(T) size and build; n=10 parity:
     68,564 chars, n=10 random 1847: 48,096 chars, n=10 and: 1,323 chars.
+    Constants: 2n+35 chars, n+11 commands; written bits
+    119+bl(n+11)+bl(n+5)+bl(n+6)+bl(n).
 
 Decisions:
     Repeated subtrees are not shared: Rubic has no jump or call, so code runs
@@ -45,6 +47,17 @@ _TABLE: dict[str, tuple[str, ...]] = {
 def rubic(truth_table: str) -> str:
     """Build a Rubic program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        # One backwards pass executes all reads; read values cannot change its count.
+        return " ".join(
+            [
+                *_OPENING,
+                *_TABLE["read"][:3],
+                *["!"] * n,
+                ")",
+                *_TABLE["print" + truth_table[0]],
+            ]
+        )
     ids = subtree_ids(truth_table)
     out: list[str] = list(_OPENING)
 
