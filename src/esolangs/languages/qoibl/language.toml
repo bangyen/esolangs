@@ -23,7 +23,7 @@ workspace = "linear: worst 2T + 19 + bl(n) bits: the row, its half, two digit ce
 "11111110" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 303 }
 
 [catalogue]
-folding_constant = "a constant table is a one-bit literal"
+folding_constant = "n input assignments followed by a literal output"
 
 [schemes]
 folds_without_tree = true
@@ -68,3 +68,10 @@ verdict = "kept under the named-function rule: the table reversed with the digit
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 63.0
+seed = "both constant values; witnesses(n) for n=4..6"
+tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
+verdict = "kept: canonical whole constants. Assign each input directly to variable 0, then print the ASCII literal; no digit variables, power, packed table or decoder. Both bits take 14n+12 chars, n+1 commands and 7+bl(n+1)+bl(n) written bits. At n=8 335 -> 124 chars; n=12 415 -> 180. The n=3 corpus shrinks 77016 -> 76654 chars; width=1 407184 -> 405458. All 270 nonconstant programs through n=3 remain byte-identical; generic envelopes and all eight benchmark pins remain unchanged. Each language passed 5656 paired before/after row executions. Both constants n=1..12 execute in default, width=1 and balanced layouts; sentinel regressions require all input before output."

@@ -42,7 +42,7 @@ class TestQoibl:
     def test_narrow_horner_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
         assert (
-            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 407184
+            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 405458
         )
 
     def test_the_table_is_one_literal(self) -> None:
@@ -67,7 +67,7 @@ class TestQoibl:
         """A constant function packs to zero but keeps the reads it owes."""
         program = boolean.qoibl("0000")
         assert program.count(" et ") == 2
-        assert "we y we e ry yy ry" in program
+        assert program == "we e we et we\nwe e we et we\ntt yyeeee tt"
 
 
 def test_constant_table_reads_cost_one_line_each() -> None:
@@ -126,8 +126,8 @@ class TestQoiblSweepPins:
     @pytest.mark.parametrize(
         ("table", "shape"),
         [
-            ("00000000", (235, 11, 22)),
-            ("0000000000000000", (255, 12, 23)),
+            ("00000000", (54, 5, 11)),
+            ("0000000000000000", (68, 6, 12)),
             (
                 "0110000101111110000011100110010100101011000101100000100001111110101010110100111010111101001001001011011010000100010001000100000011001101000110010000110110011110011110001010001001101011011100100101110101000111100010101011000110110001010001100111100010110001",
                 (1300, 27, 56),
@@ -141,3 +141,49 @@ class TestQoiblSweepPins:
             program.count("\n") + 1,
             max(map(len, program.split("\n"))),
         ) == shape
+
+
+def test_constant_audit_read_first_and_sentinel() -> None:
+    from esolangs.languages.qoibl.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Qoibl", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 14 * n + 12
+                for row in rows:
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs(
+                            "Qoibl", list(map(int, format(row, f"0{n}b")))
+                        )
+                        + "Q"
+                    )
+                    machine = _Machine(program, io)
+                    steps = 0
+                    while not machine.halted and steps < 1000:
+                        machine.step()
+                        steps += 1
+                    assert machine.halted
+                    if not options:
+                        assert steps == n + 1
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.input_char() == ord("Q")
+
+
+def test_constant_audit_three_input_corpus_size() -> None:
+    assert (
+        sum(len(esolangs.generate("Qoibl", format(v, "08b"))) for v in range(256))
+        == 76654
+    )

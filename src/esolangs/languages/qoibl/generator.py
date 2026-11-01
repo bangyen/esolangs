@@ -9,7 +9,8 @@ is packed reversed under complemented reads, if shorter ([ablations.negated_read
 
 Size:
     O(T) characters for the literal, O(n) statements;
-    n=10 parity: 1,703 chars, n=16 random 1847: 66,539 chars.
+    n=8 constant zero: 124 chars; n=10 parity: 1,703 chars,
+    n=16 random 1847: 66,539 chars.
 
 Decisions:
     A packed literal has no subtrees to fold or share.  Variables 48 and 49
@@ -25,6 +26,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
+from esolangs.languages.qoibl.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -73,13 +75,12 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     # bit plus one: a raw 49 beside a live ``p`` broke the workspace bound
     # (17 > 16 bits on ``00111100``).
     weights, projected = input_weights(truth_table, n)
-    if any(weights):
-        truth_table = projected
-    else:
-        # A constant still needs the first read to set ``p``, so the first input
-        # stands as a two-row table; the rest are ignored reads.
-        weights = [1] + [0] * (n - 1)
-        truth_table = truth_table[0] * 2
+    if not any(weights):
+        # [ablations.constant_table_audit_20261101]: no power or decoder.
+        lines = [_assign(_qoibl_enc(0), _INPUT)] * n
+        lines.append(_print(_qoibl_enc(_ASCII_ZERO + int(truth_table[0]))))
+        return _fit("\n".join(lines), width)
+    truth_table = projected
     program = min(
         (
             _program(table, weights, negated=negated)
@@ -252,6 +253,8 @@ LANGUAGE = Language(
     "qoibl",
     category="register_based",
     boolean=qoibl,
+    proof_execution=(execution, True, (1, 2, 3, 6)),
+    proof_workspace=(workspace, True, (1, 2, 3, 6)),
     # Not a tree: the table is one binary literal the reads divide down.
     shape=Shape.LOOKUP,
     split=True,

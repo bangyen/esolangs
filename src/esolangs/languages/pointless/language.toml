@@ -43,3 +43,10 @@ verdict = "removed 2026-10-20 (retirement candidate #27): a constant subtable go
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 63.5
+seed = "both constant values; witnesses(n) for n=4..6"
+tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
+verdict = "kept: canonical whole constants. Read n characters into cell 0, = clears the last digit through untouched cell 48/49, ! seeds one, >+ fills cells 1..49, then 47+bit increments and output. Exactly n+148+bit chars/commands; workspace 408+bl(L)+bl(n) bits. At n=8 zero/one 430/428 -> 156/157 chars; n=12 490/488 -> 160/161. The n=3 corpus shrinks 121956 -> 121551 chars. All 270 nonconstant programs through n=3 remain byte-identical; generic envelopes and all eight benchmark pins remain unchanged. Each language passed 5656 paired before/after row executions. Both constants n=1..12 execute in default, width=1 and balanced layouts; sentinel regressions require all input before output."

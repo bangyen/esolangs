@@ -47,3 +47,41 @@ def test_the_majority_polarity_packs_the_complement() -> None:
     assert len(esolangs.generate("Shakespeare", "01111111")) < len(
         esolangs.generate("Shakespeare", "01101001")
     )
+
+
+def test_constant_audit_read_first_and_sentinel() -> None:
+    from esolangs.languages.shakespeare.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Shakespeare", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 29 * n + 155 - 4 * int(bit)
+                for row in rows:
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs(
+                            "Shakespeare", list(map(int, format(row, f"0{n}b")))
+                        )
+                        + "Q"
+                    )
+                    machine = _Machine(program, io)
+                    steps = 0
+                    while not machine.halted and steps <= n + 3:
+                        machine.step()
+                        steps += 1
+                    assert machine.halted
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.input_char() == ord("\n")
+                    assert io.input_char() == ord("Q")

@@ -16,7 +16,8 @@ at each call (:func:`_inlined`).
 
 Size:
     O(T) size and build time, 26n + 309 steps at most; n=10 parity: 1,060
-    chars, n=10 random 1847: 6,253 chars (8,558 declaring every function;
+    chars, n=8 constant zero: 156 chars; n=10 random 1847: 6,253 chars
+    (8,558 declaring every function;
     26% less over five random tables at n=10, 11% at n=3, no added steps).
 """
 
@@ -24,6 +25,7 @@ import re
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
+from esolangs.languages.pointless.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -105,6 +107,9 @@ class _Functions:
 def pointless(truth_table: str) -> str:
     """Build a Pointless program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: no diagram or return path.
+        return "," * n + "=!" + ">+" * 49 + "+" * (47 + int(truth_table[0])) + "."
     functions = _Functions(subtree_ids(truth_table), n)
     root = functions.child(0, 0)
     return _setup(n) + _inlined(functions.bodies, root)
@@ -177,6 +182,8 @@ LANGUAGE = Language(
     "pointless",
     category="tape_based",
     boolean=pointless,
+    proof_execution=(execution, True, (3, 6)),
+    proof_workspace=(workspace, False, (1, 2, 3, 6)),
     contract=BooleanContract(input_shape="char_stream"),
     # Whitespace is a comment, so a newline anywhere outside a name is harmless.
     wrap=_wrap,
