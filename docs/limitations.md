@@ -1022,8 +1022,8 @@ lower bound; three stay out under the scaling rule:
   executed and then "the position marker" is moved, each grid has one, and
   neither example swaps.  All five page revisions back to the 2013 creation
   leave the swap and marker wording unchanged, and no example in any
-  revision swaps.  The shipped generator assumes the program grid's marker
-  moves; ours is correct on all 218 corpus rows.  Under the other reading
+  revision swaps.  The shipped reading is correct on all 218 corpus rows.
+  Under the other reading
   (the executing grid's marker moves) 147 of 218 rows hang (step cap at
   least 50,000 against at most 759 shipped steps); the 71 clean rows are
   exactly the swap-free executions (constant programs and each stage
