@@ -82,6 +82,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](../src/esolangs/languages/painfuck/interpreter.py))
 - [Pointless](https://esolangs.org/wiki/Pointless) ([code](../src/esolangs/languages/pointless/interpreter.py))
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](../src/esolangs/languages/rotfuck/interpreter.py))
+- [Retrograde](https://esolangs.org/wiki/Retrograde) ([code](../src/esolangs/languages/retrograde/interpreter.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](../src/esolangs/languages/s_bleq/interpreter.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](../src/esolangs/languages/slow_acv_mammalian/interpreter.py))
 - [Smallfuck](https://esolangs.org/wiki/Smallfuck) ([code](../src/esolangs/languages/smallfuck/interpreter.py))

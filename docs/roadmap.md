@@ -69,19 +69,6 @@ implementation-status category; the heuristic link filter retained 2,248.
 Missing categories and links do not establish first-implementation eligibility.
 Screen these in order under [curation](limitations.md#curation):
 
-- **[Retrograde](https://esolangs.org/wiki/Retrograde):** reversible blocks
-  with direction-dependent instructions. Admission probe (2026-11-01,
-  wiki revision 198201): native conditionals pass 4,848 row executions,
-  including all 276 tables through n=3 and five tables each at n=4..6.
-  Ordered single-instruction input setters and final-current-cell extraction
-  need no new opcode. Chunk emission is O(T), at most `14T + 4n - 13`
-  characters; AND witnesses through n=16 attain `12n - 1` native steps
-  (excluding the adapter dump). Three backlinks; no public implementation
-  found in the spec, author links/repositories or targeted searches.
-  Next: production integration, explicit zero-tape and dump conventions,
-  canonical ablations and size/step pins, then the full language gate.
-  The inline tree needs a construction-specific sharing exemption: native
-  turns have paired lexical targets, not named calls.
 - **[NQ](https://esolangs.org/wiki/NQ):** trit queue with guarded execution.
   Check the WIP specification, restricted output alphabet and contribution
   beyond existing queue/tag languages.
@@ -136,7 +123,7 @@ ignored-input tables included).
 
 <!-- BLIND-REIMPLEMENTATIONS:START -->
 
-90 of the 91 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
+90 of the 92 first implementations: 1 + i, 3x, 6-5, A Painter Ant,
 ABCDirection, AddSubJump, Algebraic Programming Language, Alight, Aprknia,
 ArrowQueue, Ascenic, B-tapemark, Back, Balik, BASICER, Basicfuck, Between,
 BFStack, Bitdeque, bit~, Bleh, Blindfolded Arithmetic, BrainIf, Caballo,
@@ -162,7 +149,7 @@ SwitchCase, Taglate, thisthat, Unsquare, What!?.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-5 of the 112 generators: BASICER, CARP, CreativeScript v2, HQ9+ with
+5 of the 113 generators: BASICER, CARP, CreativeScript v2, HQ9+ with
 headers, Qrain.
 
 <!-- TRICK-PROTOTYPES:END -->

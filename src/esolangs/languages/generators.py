@@ -195,6 +195,8 @@ from esolangs.languages.ram0.generator import LANGUAGE as _RAM0_LANGUAGE
 from esolangs.languages.ram0.generator import ram0
 from esolangs.languages.refractran.generator import LANGUAGE as _REFRACTRAN_LANGUAGE
 from esolangs.languages.refractran.generator import refractran
+from esolangs.languages.retrograde.generator import LANGUAGE as _RETROGRADE_LANGUAGE
+from esolangs.languages.retrograde.generator import retrograde
 from esolangs.languages.rotfuck.generator import LANGUAGE as _ROTFUCK_LANGUAGE
 from esolangs.languages.rotfuck.generator import rotfuck
 from esolangs.languages.rubic.generator import LANGUAGE as _RUBIC_LANGUAGE
@@ -339,6 +341,7 @@ _LANGUAGES = (
     _QUASSAUNT_LANGUAGE,
     _RAM0_LANGUAGE,
     _REFRACTRAN_LANGUAGE,
+    _RETROGRADE_LANGUAGE,
     _ROTFUCK_LANGUAGE,
     _RUBIC_LANGUAGE,
     _S_BLEQ_LANGUAGE,
@@ -455,6 +458,7 @@ __all__ = [
     "quassaunt",
     "ram0",
     "refractran",
+    "retrograde",
     "rotfuck",
     "rubic",
     "s_bleq",

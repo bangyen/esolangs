@@ -1,0 +1,21 @@
+language = "Retrograde"
+oldid = 198201
+
+[[spec_triggers]]
+program = "?"
+stdin = ""
+expect = "ProgramError"
+claim = "unknown non-whitespace characters are rejected"
+
+[[spec_triggers]]
+program = "{"
+stdin = ""
+expect = "ProgramError"
+claim = "all braces must pair"
+
+[[spec_triggers]]
+program = "*"
+stdin = ""
+expect = "output"
+output = "1"
+claim = "no stdin is read; the final current bit is dumped"

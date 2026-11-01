@@ -1,0 +1,62 @@
+[curation]
+backlinks = 3
+admitted = 2026-11-01T17:12:11-05:00
+
+[proof_status]
+labels = ["parameterized tree"]
+qualification = "native paired turns choose one child while restoring the condition bit, pointer and forward direction; ordered input setters precede the tree and the final current cell carries the answer"
+scaling = "linear: at most 14T + 4n - 13 characters"
+execution = "poly n: worst 12n commands: native decisions and one final dump"
+workspace = "poly n: at most n + bl(L) + bl(n+1) + 16 bits: packed tape halves, pointers and direction"
+
+[catalogue]
+sharing_exempt = "the inline tree nests each body under paired lexical turns; there are no named calls or arbitrary target jumps for a local subtree-sharing rule"
+
+[ablations]
+audited = "2026-11-01"
+
+n3_source_units = 16081
+n3_commands = 58768
+executed_rows = 11456
+
+[ablations.constant_fold]
+saving = 27.6696763137
+arity = 12
+seed = "random.Random(1000*n+k), choice('01'), k=0..19; both constants"
+tables = 20
+n3_ablated_source_units = 22670
+n3_ablated_commands = 67936
+verdict = "kept: canonical. tests.ablations.ablate(table, 'constant_fold') expands constant spans while retaining nonconstant equal-halves skips and move cancellation. Random savings at n=7/8/10/12: 26.61/27.70/27.70/27.67%; both constants save 99.10/99.49/99.84/99.95%. At n=12 random: 678687 vs 938316 summed chars; constants: 49 vs 102466."
+
+[ablations.ignored_input]
+saving = 10.6286710427
+arity = 12
+seed = "random.Random(1000*n+k), choice('01'), k=0..19"
+tables = 20
+n3_ablated_source_units = 18105
+n3_ablated_commands = 61488
+verdict = "kept: canonical. tests.ablations.ablate(table, 'ignored_input') retains constant folds but emits tests at equal nonconstant siblings. Lift each n-1 input table at positions 0, n//2, n-1 (60 tables per arity). Savings at n=7: 10.01-54.63%; n=8: 11.59-55.51%; n=10: 10.71-55.22%; n=12: 10.63-55.24%. Eleven-build default medians at n=8/10/12 (k=0): 0.325/1.356/5.251 ms."
+
+[ablations.inverse_moves]
+saving = 0.0058933857
+arity = 12
+seed = "random.Random(1000*n+k), choice('01'), k=0..19"
+tables = 20
+n3_ablated_source_units = 16653
+n3_ablated_commands = 63344
+verdict = "kept: minimal spelling, exempt. tests.ablations.ablate(table, 'inverse_moves') leaves adjacent inverse shifts, retaining both canonical folds. Cancellation is valid in either execution direction. Random savings at n=7/8/10/12: 0.185/0.094/0.024/0.006%; n=12: 678687 vs 678727 summed chars."
+
+[ablations.execution_corpus]
+seed = "small exhaustive; random.Random(1000*n+k), choice('01')"
+tables = 276
+verdict = "Every row executes for all four builds over all 276 tables at n=1..3 and five tables each at n=4..6. Large builds execute row (1000*n+k) mod 2**n at n=7/8/10/12, with constant k equal to its bit. n3 totals sum source chars once per table and commands over all eight rows, including the adapter dump. The missing leading conditional-toggle control gives the wrong answer."
+
+[generator_sizes]
+"00000001" = { commands = 36, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 25, "5" = 25, "6" = 33, "7" = 36 }, source_units = 44 }
+"00001100" = { commands = 25, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 30, "5" = 30, "6" = 25, "7" = 25 }, source_units = 35 }
+"00110110" = { commands = 33, commands_by_row = { "0" = 25, "1" = 25, "2" = 30, "3" = 30, "4" = 33, "5" = 36, "6" = 36, "7" = 33 }, source_units = 74 }
+"0110" = { commands = 21, commands_by_row = { "0" = 21, "1" = 24, "2" = 24, "3" = 21 }, source_units = 43 }
+"01101001" = { commands = 36, commands_by_row = { "0" = 33, "1" = 36, "2" = 36, "3" = 33, "4" = 36, "5" = 33, "6" = 33, "7" = 36 }, source_units = 97 }
+"0110100110010110" = { commands = 45, commands_by_row = { "0" = 45, "1" = 48, "2" = 48, "3" = 45, "4" = 48, "5" = 45, "6" = 45, "7" = 48, "8" = 48, "9" = 45, "10" = 45, "11" = 48, "12" = 45, "13" = 48, "14" = 48, "15" = 45 }, source_units = 201 }
+"1101001101101101" = { commands = 48, commands_by_row = { "0" = 42, "1" = 42, "2" = 45, "3" = 48, "4" = 37, "5" = 37, "6" = 42, "7" = 42, "8" = 45, "9" = 48, "10" = 48, "11" = 45, "12" = 42, "13" = 42, "14" = 45, "15" = 48 }, source_units = 160 }
+"11111110" = { commands = 33, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 30, "5" = 30, "6" = 36, "7" = 33 }, source_units = 56 }
