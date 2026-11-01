@@ -1,118 +1,67 @@
 # Contributing
 
 Add stable, deterministic languages verifiable through the repo's I/O model.
-Each ships with an interpreter and a generator; only a famous language whose
-specification precludes a generator may ship without one (see below). Record
-rejections in [limitations](limitations.md).
+Each needs an interpreter and generator, except famous languages whose specs
+preclude generation. Record rejections in [limitations](limitations.md).
 
 ## Start here
 
-New here? This is the whole path, end to end. Each step points at the
-section that spells out its rules, so read those when a step asks for more
-than this page says; the rest of the page is reference, not a prerequisite.
+1. `just install-dev` (requires just >= 1.37), then `just test-quick`.
+   Without `just`, `python scripts/doctor.py` diagnoses setup problems.
+2. Improve a language, or check a new one's [admission](#what-makes-a-candidate-worth-adding).
+3. `just new-language "Name"` creates interpreter, generator and test stubs.
+   Follow [interpreter conventions](#interpreter-conventions) and the
+   [Boolean I/O contract](#the-boolean-io-contract).
+4. Run `just test-quick` while editing; `just check-language "Name"` lists
+   missing integration and checks the language.
+5. Run `just test` before committing. For a new language,
+   `just finish-language "Name"` regenerates artifacts and runs the full gate.
 
-1. **Set up once, then run the quick suite.**
-
-   ```bash
-   just install-dev   # needs just >= 1.37; ends with the doctor
-   just test-quick
-   ```
-
-   Something off? `python scripts/doctor.py` names each missing piece and
-   its fix, and runs without `just`, which older than 1.37 cannot read the
-   justfile. (See [Development](#development) for the full set of suites.)
-2. **Pick the work.** Improve an existing language, or add a new one. A new
-   language must add something no language here covers yet: a construction,
-   a branch mechanism, an answer convention, or an input interface
-   (see [What makes a candidate worth adding](#what-makes-a-candidate-worth-adding)).
-3. **Write the code where it belongs.** One folder per language, with the
-   registry connecting it to the API and CLI (see [Layout](#layout)).
-   For a new language, `just new-language "Name"` writes the interpreter,
-   generator and test stubs (see [Checklist](#checklist)).
-4. **Follow the interpreter rules.** Every interpreter starts from the
-   runtime template and exposes the same shape of `run` and `_Machine`, so
-   the API, the debugger and the tests can treat all languages alike
-   (see [Interpreter conventions](#interpreter-conventions)).
-5. **Check as you go.** `just test-quick` runs the fast suite.
-   `just check-language "Name"` lists whatever a new language is still
-   missing, so you never have to guess what is left.
-6. **Land it through the gate.** `just finish-language "Name"` regenerates
-   examples, docs and the size baseline, then runs the gate. Green
-   there is what "done" means; `just test-quick` alone is not the gate.
-
-Two strict sections are worth reading before you need them. A generator
-optimization ships only if it clears the size bar in
-[What makes a generator optimization worth shipping](#what-makes-a-generator-optimization-worth-shipping),
-and [Code shape](#code-shape) says how modules are judged. Every generated
-program also follows [the Boolean I/O contract](#the-boolean-io-contract):
-it reads all its inputs, in order, and prints the answer the way its
-contract says.
+Read [Code shape](#code-shape) before refactoring and the
+[optimization gate](#what-makes-a-generator-optimization-worth-shipping)
+before changing generated programs.
 
 ## Development
 
-Set up once. While you work, run the quick suite; before committing, run
-the full one.
+Use `uv run` or activate `.venv`. Without `just`, run the underlying scripts:
+`just test` is `python scripts/verify/gate.py`; language `check` and `finish`
+are subcommands of `scripts/new_language.py`.
+[Scripts reference](../scripts/README.md) maps the other recipes.
 
-```bash
-just install-dev
-source .venv/bin/activate        # or prefix each command with `uv run`
-just test-quick
-```
+| Command | Use |
+| --- | --- |
+| `just test-quick` | inner loop |
+| `just test` | required before committing; branch-scoped gate |
+| `just test-full` | whole tree, slow tests and every local gate step; release-scale changes |
+| `just test-py` | pytest, including weekly probes when selected; also scheduled in CI |
+| `just examples` / `just docs` | regenerate committed examples / generated documentation |
 
-No `just`? Every recipe is a thin wrapper over a script, so run the
-script in the project env (`uv run` or `.venv/bin/python`): `just test`
-is `python scripts/verify/gate.py`, and `just check-language` /
-`just finish-language` are `python scripts/new_language.py check` /
-`finish`. `scripts/README.md` maps every recipe to its script.
+The gate checks generated docs, pre-commit, mypy, pytest, dead definitions,
+size baselines, deep proofs and exception leaks. Out-of-scope steps stay in
+CI; `test-full` runs them locally. Delete unused helpers or move test-only
+helpers under `tests/`. Tests enforce a 1,200-line file cap and require each
+language's tests to be smaller than its source.
 
-Run `just test` before committing; use `just test-full` for release-scale
-changes (`test-full` includes slow tests; weekly probes run separately with
-`just test-py`, or in scheduled CI). Regenerate committed examples with
-`just examples`, generated doc sections with `just docs`.
+Tests have CPU-time bands: fast (default, 1 s), medium (5 s), slow and weekly.
+Exceeding the band fails. Rerun suite duration failures alone: rotating
+failures can be machine load; a test still over budget alone needs speeding
+up or the appropriate band. CI scales the ceilings.
 
-`gate.py` is the local gate. Its steps: generated-docs freshness,
-pre-commit (lint and format), mypy, pytest, dead definitions (a helper
-nothing calls is deleted, or moves under `tests/`), the generator size
-baseline, the deep proofs, and the exception-leak sweep.
-The gate scopes itself to the files your branch touched; steps outside
-that scope are skipped and left to CI. `just test-full` runs every step
-over the whole tree. Inside pytest, further pins hold: no file over
-1,200 lines, and a language's tests stay smaller than its source
-(`tests/tooling/test_file_sizes.py`).
-
-Tests carry cost bands, enforced per test on CPU time: fast (the
-default) budgets 1 second, `medium` 5 seconds, and `slow` and `weekly`
-tests belong to the fuller suites and CI. A test over its band fails on
-duration alone. When a test fails in a suite run but passes alone,
-rerun it alone before believing the failure: a rotating set of duration
-failures, different on each run, is machine load, not your change (the
-bands are calibrated for a quieter box, and CI scales the ceilings).
-One that still busts its band alone is genuinely too slow: speed it up,
-or mark it for the band its cost belongs in.
-
-Commits: one focused commit per change, with a short imperative
-subject — `git log` shows the house style.
-
-CI checks the wheel on Linux, macOS and Windows: packaged examples, CLI I/O,
-PNG execution, and installation with and without the mathematics extra.
+Make focused commits with short imperative subjects. CI checks wheels on
+Linux, macOS and Windows, including examples, CLI I/O, PNG execution and
+installation with and without the mathematics extra.
 
 ## What makes a candidate worth adding
 
-This section decides whether a proposed language is worth adding at all.
+A new language must add an uncovered construction, branch mechanism, answer
+convention or input interface:
 
-A new language must add an uncovered construction, branch mechanism,
-answer convention, or input interface:
-
-- **Construction shape** -- decision tree (the default), minterm sum
-  and ANF/XOR-of-products, grid walk.
-- **Branch mechanism** -- explicit conditional, value-testable jump, skip
-  guard, implicit comparator, pointer displacement.
-- **Answer convention** -- print 0/1, landing colour, position-encoded,
-  termination as the answer.
-- **Input interface** -- read-and-route, bit-addressable index,
-  parameterized embed.
-
-Languages that show the axes in use:
+| Axis | Examples |
+| --- | --- |
+| Construction | decision tree, minterm sum, ANF/XOR-of-products, grid walk |
+| Branch | conditional, value-testable jump, skip guard, comparator, pointer displacement |
+| Answer | printed bit, landing colour, position, termination |
+| Input | read-and-route, bit-addressable index, parameterized embed |
 
 - BFStack uses a minterm sum.
 - Fargo uses ANF/XOR-of-products and a bit-addressable input index.
@@ -122,373 +71,236 @@ Languages that show the axes in use:
 - ArrowQueue answers by termination.
 - Crement answers by termination.
 
-These are generator tests. A language whose specification precludes a
-generator qualifies only through the fame threshold under Curation in
-[limitations](limitations.md). Such languages are interpreter-only, marked
-`int` by `esolangs list --details`.
+A spec that precludes generation qualifies only through the fame threshold
+under Curation in [limitations](limitations.md). Interpreter-only entries
+show `int` in `esolangs list --details`.
 
 - Deadfish qualifies as interpreter-only.
 - HQ9+ qualifies as interpreter-only.
 - Nope. qualifies as interpreter-only.
 
-Curation also defines removal independently of admission. Generator audit
-axes never remove a language; a stalled row stays open on the
-[roadmap](roadmap.md).
+Curation governs removal independently. Generator audits do not remove
+languages; stalled rows remain open on the [roadmap](roadmap.md).
 
 ## Layout
 
-Where code lives, and how a language name becomes a running program.
-
-| Path | Holds |
+| Path | Contents |
 | --- | --- |
-| `src/esolangs/runtime/` | shared runtime machinery |
+| `src/esolangs/runtime/` | shared runtime |
 | `src/esolangs/generation/` | shared generator helpers |
-| `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures and examples |
-| `src/esolangs/registry/` | the source of truth for public integration |
-| `tests/` | shared contracts, infrastructure and proof runners |
-| `snapshot.json` | collection dates and the recorded slow-test durations |
+| `src/esolangs/languages/<id>/` | interpreter, generator, tests, fixtures, packaged examples |
+| `src/esolangs/registry/` | public integration |
+| `tests/` | shared contracts, infrastructure, proof runners |
+| `scripts/` / `checks/` | development tools / gate checks |
+| `snapshot.json` | collection dates and slow-test durations |
 
-Each language package carries a `language.toml` of language-owned
-data, one section per dataset; aggregators read only their own
-section and skip an absent file or section. The sections sort into
-three kinds:
+Each package's `language.toml` owns its data. Aggregators read only their
+section and skip absent files or sections.
 
-| Kind | Sections | Role |
+| Kind | Sections | Meaning |
 | --- | --- | --- |
-| Gates | `proof_status`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | a check or proof test consumes the data as the claim itself; wrong data fails |
-| Reference | `curation`, `formula_arities` | census facts and extra probe arities; informs decisions, gates nothing |
-| Record | `ablations`, `interpreter_ablations` | the plain-rewrite and interpreter audits' verdicts, kept so settled decisions are not relitigated; source cites `[ablations.<key>]` instead of restating a verdict's figure (tested), and a new entry records `seed` and `tables` so it reproduces |
+| Gates | `proof_status`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | claims consumed by checks; wrong data fails |
+| Reference | `curation`, `formula_arities` | census facts and extra probe arities; no gate |
+| Record | `ablations`, `interpreter_ablations` | reproducible audit verdicts; new entries include `seed` and `tables`; source cites `[ablations.<key>]` rather than duplicating figures (tested) |
 
-The registry connects the API and CLI to generators and interpreters:
+`Language` records names, interpreter, source shape, optional generator and
+typed I/O contract. `resolve` normalizes names; `RUNNERS` selects whole-source
+or split-line input. A generator declares `LANGUAGE = Language(...)`;
+`scripts/docs/generate.py` collects declarations into exports (`just docs`
+and `check`). Only interpreter-only entries live in `registry/_table.py`.
+
+Execution follows this path:
 
 ```text
-language name
-    │
-    ▼
-registry.Language ──► boolean generator ──► program or template
-    │                                              │
-    │                                      instantiate inputs
-    ▼                                              │
-interpreter module ◄──── source + encoded stdin ◄──┘
-    │
-    ├── run() ──► raw output ──► read_answer() ──► bit
-    └── make_vm() ──► step-and-inspect state
+resolve name → Language → generator → source or template
+                          instantiate → source + encode_inputs(stdin)
+                                      → interpreter.run(code, io)
+                                      → read_answer() → bit
 ```
 
-- `src/esolangs/registry/` owns integration. `Language` records names,
-  interpreter, source shape, optional generator and the typed input and
-  answer `contract`; `resolve` normalizes spelling, and `RUNNERS` selects
-  whole-source or split-line input.
-- A language with a generator declares its own `LANGUAGE = Language(...)`
-  at the end of its generator module, and generated exports collect those
-  explicitly for the registry. Only interpreter-only languages are listed
-  in `registry/_table.py`. `esolangs.languages.generators`'s imports come
-  from the declarations (`scripts/docs/generate.py`, run by `just docs`
-  and by `check`).
-- Interpreters and generators live in `src/esolangs/languages/<id>/`, each
-  as a module or package. Shared generator helpers live in
-  `src/esolangs/generation/`.
-- Most generators return runnable source; input-embedding languages return
-  a `$`-run template for `instantiate`. `encode_inputs` handles stdin
-  conventions, and `read_answer` reads printed and state-dump answers
-  through the contract; termination answers (halt or diverge) are read by
-  the evaluation harness, which runs every row.
-- `run` loads `src/esolangs/languages/<id>/interpreter`
-  and calls its `run(code, io)`; `make_vm` exposes its
-  step-capable machine to the debugger and the hang proofs.
-- Each language’s `tests/` holds its unit and integration suites, fixtures
-  and proofs; packaged examples live beside its modules. Shared contracts and
-  proof infrastructure live in `tests/`; `scripts/` holds development tools
-  (`scripts/README.md`) and `checks/` the gate's checks.
+Input-embedding generators return `$`-run templates for `instantiate`.
+`read_answer` handles printed and state-dump answers; the evaluation harness
+runs every row to read termination answers. `run` loads the language's
+interpreter; `make_vm` exposes its step-capable machine for debugging and
+hang proofs.
 
 ## Interpreter conventions
 
-Every interpreter exposes the same shape, so the API, the debugger and the
-tests can treat all languages alike. Start from
-`src/esolangs/runtime/_template.py`. Every interpreter:
+Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 
-- Exposes `run(code, io)` with required `IO`; uses `io` for all I/O.
-  Most grids receive lines via registry `split=True`.
-- Raises `ValueError` for a malformed program and `HaltError` for an
-  invalid runtime operation, where the spec has one. An empty program the
-  spec calls malformed declares its error as `empty_program=` in the
-  `LANGUAGE`, and an input command the spec gives an EOF value declares it
-  as `eof=`. Divergence is legal; tests bound execution of
-  empty programs rather than requiring termination.
-- Guards an input line before indexing it (`if val:`); an empty line is
-  legal, and running out raises `EOFError` either way.
+- Exposes `run(code, io)` with required `IO`, using it for all I/O.
+  Most grids use registry `split=True`.
+- Raises `ValueError` for malformed source and `HaltError` for invalid runtime
+  operations where specified. Declare spec-defined empty-program errors as
+  `empty_program=` and EOF values as `eof=` in `LANGUAGE`. Divergence is legal;
+  bound empty-program tests rather than requiring termination.
+- Guards input lines before indexing (`if val:`). Empty lines are legal;
+  exhausted input raises `EOFError` either way.
 - Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including
-  the input cursor; tests look up that exact name. Its top-level grouping is
-  measured: the workspace ledger counts each part only once written, so
-  splitting Cyclic tag's `(answer, printed)` dropped a bit from an exact
-  formula (`tests/proofs/test_workspace_formulas.py`). Regroup fields
-  inside, not in the snapshot, and diff it as is: mapping `///`'s nested
-  rule back to the old layout before comparing hid a 16-bit drop.
-- Treats every public `_Machine` property as a debugger view; adding or
-  renaming one changes what the debugger shows.
-- Declares the VM views `ip`, `memory` and `stack` only where they say
-  something: the VM defaults `ip` to `ind` and the other two to empty, so a
-  language with no stack writes no `stack`.
-- Writes the language as a pure transition (`_advance`) over an immutable
-  state, with `step` as the shell doing the I/O; a store that cannot be
-  threaded cheaply returns effects instead (`grapheme/interpreter.py`).
-- Follows explicit specification rules. Examples resolve omissions only when
-  consistent with those rules; internal consistency alone does not establish
-  author intent. Records contradictions rather than silently repairing them.
-  When explicit rules conflict, records the conflict and justifies the chosen
-  interpretation. Documents and tests any intentional deviation; documenting
-  a deviation does not make it spec-conformant.
-- Documents spec-gap decisions in its docstring (`suffolk/interpreter.py`); never defines
-  away invalid operations.
-- Provides a `__main__` block calling `run(data, IO())`.
+  the input cursor. Snapshot grouping affects exact written-workspace
+  accounting: regroup internal fields, not snapshot fields, and diff snapshots
+  directly without normalizing away changes.
+- Treats public `_Machine` properties as debugger views. Declare `ip`,
+  `memory` and `stack` only when meaningful; defaults are `ind`, empty, empty.
+- Uses a pure `_advance` transition over immutable state, with `step` doing
+  I/O. Stores too expensive to thread may return effects instead
+  (`grapheme/interpreter.py`).
+- Follows explicit spec rules. Examples resolve omissions only consistently
+  with those rules; internal consistency does not establish author intent.
+  Record contradictions, justify interpretations of conflicting rules, and
+  document and test deviations. Documentation does not make a deviation
+  conformant. Record spec gaps in the docstring; never define away invalid
+  operations.
+- Provides `__main__` calling `run(data, IO())`.
 
 - A Painter Ant receives whole source.
 - B-tapemark receives whole source.
 - EGL receives whole source.
 
-The module docstring is the language's spec (`describe()["spec"]`). Its
-shape (prose, then `Commands:`, `Input/output:`, `Errors:`, `Decisions:`) is
-`_template.py`'s own docstring, which `just new-language` copies.  `Errors:`
-names the public exception a caller catches, not the builtin the interpreter
-raises. `tests/interpreters/test_interpreter_conventions.py` checks the shape
-and that `Errors:` lists what the source raises; every entry needs a trigger
-in the language's own `tests/cases.toml` (`[[spec_triggers]]`: a program and
-the exception `run` gives), which `tests/interpreters/test_spec_triggers.py` runs. The exported API's Google
-`Raises:` sections are held to the same standard by
-`tests/api/test_public_docstrings.py`.
+The interpreter module docstring is `describe()["spec"]`: prose, then
+`Commands:`, `Input/output:`, `Errors:`, `Decisions:`. `Errors:` names public
+exceptions, not internal builtins. Each needs a `[[spec_triggers]]` program
+and expected exception in `tests/cases.toml`. Convention and trigger tests
+check these; public API Google `Raises:` sections are checked too.
 
-A generator's module docstring follows the `just new-language` stub: prose,
-then `Size:`, `Raises:`, `Decisions:`.  `Size:` gives at least one anchor —
-for example, `n=10 random 1847: 1,118 chars`.
-`tests/generators/test_generator_docstrings.py` regenerates the anchor, so
-a size change updates it. The anchors themselves are machine-read in
-exactly that shape (`n=10 random 1847: 1,118 chars`, `n=16 and:
-1,443,471 chars`): reword the prose around them freely, but keep each
-anchor line's form and figures as they are, or the docstring tests
-fail.  `Raises:` lists `GeneratorCapError` wherever the generator can
-refuse a table, with a `[[generator_triggers]]` entry in `tests/cases.toml`.  A figure
-in `Size:` or `Decisions:` appears nowhere else in the generator: a figure
-about one helper lives beside it instead.
+Generator docstrings use prose, then `Size:`, `Raises:`, `Decisions:`.
+`Size:` needs a measured anchor in the exact machine-read form
+`n=10 random 1847: 1,118 chars` or `n=16 and: 1,443,471 chars`.
+Tests regenerate anchors: update figures when size changes and preserve the
+syntax. List `GeneratorCapError` wherever generation may refuse a table,
+with a `[[generator_triggers]]` case. Do not duplicate docstring figures
+elsewhere in the generator; helper-specific figures belong beside the helper.
 
 ## What makes a generator optimization worth shipping
 
-This section is the bar a size optimization must clear before it ships.
-The bar is measured, not argued: every requirement below comes with its
-measurement protocol.
+Generators guarantee their Scaling class in [proofs](proofs/index.md), not
+their constant. Apply the canonical set or explain why it does not apply:
+ignored inputs (`essential_inputs`, `read_at`), constant subtrees
+(`constant_span_test`), repeated subtrees (`subtree_ids`). Canonical rules
+ship at any saving unless inapplicable or larger on average for their target
+at the largest measured arity; cite that measurement. Minimal spelling
+(no redundant grouping or trailing no-op) also needs no percentage gate.
 
-A generator guarantees its size class (the Scaling column in
-`docs/proofs/index.md`), not its constant. Every generator applies the
-canonical set, or its docstring says why one does not apply: ignored inputs
-dropped (`essential_inputs`, `read_at`), constant subtrees folded
-(`constant_span_test`), repeated subtrees shared (`subtree_ids`). A
-canonical piece ships at any saving: it is exempt only where the construction
-leaves it nothing to act on, or where it makes the average program larger on
-the tables it targets at the largest arity measured (cite the figure).
-Writing a construct minimally is spelling, not a trick, and ships without the
-bar: no redundant grouping, no trailing no-op (Hot's bare leaf arguments,
-Home Row's last `s`).
-Size counts characters, so a packed literal carries at most 8 bits a
-character or grid cell: code points above U+00FF only move bits into wider
-UTF-8 (Freestajlo's W-bit packing, -13% at W=8 and -47% at W=16 by
-characters at n=10, no saving in bytes; Fish's cells from U+10000).
+Size counts characters. Packed literals may carry at most 8 bits per
+character or grid cell; code points above U+00FF merely hide wider UTF-8.
 
-Anything else is a bespoke size optimization and must meet all of these
-requirements:
+Other size optimizations must meet all these rules:
 
-- **10% sustained or 20% declining** off the total emitted size at both
-  of the two largest evaluation arities. Use the same arities for both:
-  seeded random tables at n=7..8, or the two largest arities through a valid
-  earlier cap. Fix the evaluation range before judging the candidate;
-  use 200 tables when either result is within two points of its bar. Only
-  random tables and named functions count: a class drawn to show where a
-  trick fires (sparse rows, two-block tilings, guarded affine residuals)
-  keeps nothing, since the canonical set already covers repeated and
-  constant structure.
-  2D grids (`grid=True`) are judged by area, rows times the longest row: their
-  default build races by `grid_rank` and Scaling counts cells. The n=3 total is
-  context only: greedy order searches saved 8-15% there but at most 2.2% at
-  n >= 7, and were retired.  A cap counts
-  only where the construction stops or the trick loses past it (cite the
-  loss: Line's level skip saves 20-35% at n <= 5 and costs 12.2% at n=6).
-  A cap set where the trick still saves, only less, is no cap: it is judged
-  at n=7..8 (FALSE's literal pairs, 6-5's fallback orders and
-  ABCDirection's tooth packing were restored that way and retired again). A saving still growing at n=8 is measured on
-  past it, to its peak. Named functions (parity, majority, and/or,
-  thresholds) are reported apart; meeting the applicable 10% or 20% bar on
-  one keeps a rule for that family, not the whole race. Smallfuck's residual
-  forms saved 2.2% on random tables at n=8, 0% at n >= 9 and at most 1.0% on a named function, and were
-  retired. Cite the measurement beside the code.  A trick that fails on
-  size stays if it cuts the run by 25% or more: a proved step bound or the
-  baseline's command counts (Interprogck8's column search, 45% off the
-  n = 11 step bound for 3.6% of size).
-- **Persistence sets the bar**: a sustained saving must not tend toward
-  zero as tables grow and must not clearly decline across the two largest
-  evaluation arities. It needs 10% at both; a declining saving needs 20%
-  at both, even if it tends to zero. The higher bar is a policy premium
-  for limited persistence, not an asymptotic equivalence. Do not shorten
-  the evaluation range to qualify a declining saving. Streetcode's fixed
-  ~51-column overlap saved 8.6% at n=7 and 6.0% at n=8 and fails either bar.
-  B-tapemark's area-oriented strip width retains its separately approved
-  exception: we prefer its large measured grid-footprint reduction
-  (46.8% at n=8, 22.1% at n=12, 12.5% at n=14) despite dilution. Area is
-  the grid metric; at n=8 we accept 23.9% more commands, 15.4% more written
-  workspace and 57.0% more text characters. One additional closed-form
-  candidate buys this reduction without search, a frozen table or an arity
-  cap. Correctness, exact resource bounds and linear construction remain
-  required. The relative saving tends to zero; this exception covers only
-  this strip-width rule, not the general persistence thresholds.
-- **No size class breaks**: some tables may grow; the old build stays a
-  candidate only where the new one alone would leave the Scaling class. A
-  fallback kept to spare scattered tables a few characters is itself a
-  trick and meets this bar.
-- **Every table executes**: exhaustively through three inputs and sampled at
-  four to six. Pin the n=3 total before and after; update `just sizes` when its
-  baseline moves.
-- **The Boolean-generator conventions** in `docs/limitations.md`: reads and
-  template runs in input order, one uniform `(zero, one)` fill pair, at most
-  four named reorder candidates, no search, O(T) size and generation
-  (`tests/proofs/deep/linearity.py`).
-- **No interpreter leniency**: truncated keywords or missing operands do not
-  count as shorter programs.
+- **Saving:** at least 10% sustained or 20% declining at both of the two
+  largest evaluation arities. Sustained means neither tending to zero nor
+  clearly declining across those arities. The higher bar is a policy premium
+  for limited persistence, not asymptotic equivalence.
+- **Corpus:** use the same arities for both bars, normally seeded random
+  tables at n=7 and n=8. Fix the range before judging; never shorten it to
+  qualify. If saving is still growing at n=8, measure through its peak.
+  Use 200 tables when either result is within two percentage points of its
+  bar. Named functions (parity, majority, and/or, thresholds) are separate:
+  qualifying on one keeps only that family's rule. Constructed firing
+  classes (sparse rows, tilings, guarded affine residuals) do not qualify.
+- **Caps:** an earlier cap counts only where the construction stops or
+  loses; measure its two largest arities and cite the loss beyond it.
+  A cap where saving merely diminishes is invalid. The n=3 total is context,
+  not a qualifying corpus.
+- **Metric:** text uses characters; grids (`grid=True`) use rows × longest
+  row. Grid defaults race by `grid_rank`; Scaling counts cells. Cite evidence
+  beside the code or through its ablation record. Failing size may still
+  qualify with a 25% command reduction, from a proved bound or baseline counts.
+- **Scaling:** no size-class breaks. Keep an old candidate only if the new
+  build alone would leave the class. A fallback that only saves scattered
+  tables a few characters must itself clear the gate.
+- **Execution:** run every table exhaustively through n=3 and sample n=4..6.
+  Pin the n=3 totals before and after; update `just sizes` when its baseline
+  changes.
+- **Construction:** follow [Boolean-generator conventions](limitations.md):
+  input-order reads and template runs, one uniform `(zero, one)` fill pair,
+  at most four named reorder candidates, no search, O(T) size and generation
+  (`tests/proofs/deep/linearity.py`). Interpreter leniency, truncated keywords
+  and missing operands cannot buy size savings.
 
-Execution-time optimizations require 5% fewer commands summed over every row
-of the three-input tables, with no table slower or larger. Choose candidates
-by size, breaking ties by steps. Bound the per-piece upside before choosing.
+B-tapemark's strip-width rule retains its separately approved exception:
+area falls 46.8% at n=8, 22.1% at n=12 and 12.5% at n=14 despite tending to
+zero. We accept n=8 costs of +23.9% commands, +15.4% written workspace and
++57.0% text for that footprint reduction. One extra closed-form candidate
+needs no search, frozen table or arity cap. Correctness, exact resource bounds
+and linear construction still apply; the exception covers only this rule.
+
+Execution optimizations need 5% fewer commands summed over every row of the
+three-input tables, with no table slower or larger. Choose by size, then
+steps; bound each piece's upside before choosing it.
 
 ## Code shape
 
-Judge a module by what the language does not demand.
-
-- A named rule beats a frozen table, and both beat a search. A searched
-  table stays only when no rule reproduces it, and its comment names the
-  search (Malbolge's navigation, [limitations](limitations.md#searches)).
-- One path per semantics. A fast path beside the plain one needs a reader
-  the fast path cannot serve (Thue keeps `_advance` for
-  `branching_successors`); otherwise delete one.
-- A race, candidate or n-specific branch cites its saving at the largest n
-  where it runs, measured jointly with its siblings: Line's five extra folds
-  each saved 0% alone, yet streaming alone lost 25% on lifted cores until
-  projected streaming stayed beside it — and the projected form itself
-  later went, priced at 8.00/8.96% on its best class at n=14. Under 10%
-  it goes: Circuit Diagram's
-  cofactor bank won 0.00% at n=8..11, Back's bend 0-2.7%.
-- An index, cache or batch carries timings at three sizes; a replacement
-  must grow the same way.
-- Derive state; don't store it. A field computable from others is a
-  property: Cyclic tag deletes one bit a step, so `head` is
-  `read % len(program)` and `answer` is `data[read - 1]`, and four fields
-  became one counter. Try this before the next rule.
-- State past three fields is a NamedTuple, not a positional tuple
-  re-unpacked in every branch. Its constructor is Python code, so a step
-  that rebuilds the state pays for it: run `just tracediff <language>
-  --speed`. Piet lost 11% and kept a
-  type alias whose comment names the fields.
-- The module docstring teaches the language: source syntax, one step, halt
-  and output, then spec-gap decisions. Implementation notes are comments
-  beside the code they explain.
-- Past the complexity cap, split dispatch by the spec's sections, not with
-  a `noqa`: Fish's regular commands became tables (`_STACK_OPS`, `_TURNS`)
-  and the rest one `match`. A command the corpus never runs needs its own
-  check: no Fish program ran `@`, so old and new `_advance` were diffed on
-  200,000 random single steps. The excuses that remain are counted
-  (`C901_EXCUSED` in `tests/tooling/test_source_conventions.py`), and the
-  count only goes down: a change that removes an excuse lowers it in the
-  same commit.
-- Validators and debugger views sit beside the step, not inside it
-  (Streetcode's `interpreter/validation.py`).
-- A new CLI flag needs a shell workflow it serves; API parity is not one.
-  Ten `list` filters, `debug` and `--portable` went in 1.1.0 for lack of
-  one.
+- Prefer a named rule to a frozen table, and either to search. A searched
+  table stays only if no rule reproduces it; its comment names the search
+  ([search policy](limitations.md#searches)).
+- Keep one path per semantics. A parallel fast/plain path needs a reader
+  the other cannot serve.
+- A race, candidate or arity branch cites its measured saving at its largest
+  arity, jointly with siblings, and meets the optimization gate.
+- Indexes, caches and batches need timings at three sizes; replacements
+  must preserve growth rate.
+- Derive state rather than storing redundant fields. Beyond three fields,
+  use a NamedTuple instead of a repeatedly unpacked positional tuple.
+  Measure constructor overhead with `just tracediff <language> --speed`;
+  a justified type alias may avoid a regression (Piet measured 11%).
+- Docstrings teach syntax, a step, halt/output and spec decisions;
+  implementation notes sit beside the code.
+- Above the complexity cap, split dispatch by spec sections, not `noqa`.
+  Commands absent from the corpus need dedicated checks. Existing
+  `C901_EXCUSED` counts may only decrease; lower them in the same commit
+  when removing an excuse.
+- Keep validators and debugger views beside the step, outside it.
+- New CLI flags need a shell workflow; API parity alone is insufficient.
 
 ## Checklist
 
-Adding a language, step by step. Work in order; at any point,
-`just check-language` from step 2 tells you what is still missing.
+1. `just new-language "Name"` asks for category (`--category` overrides;
+   `--interpreter-only` requires fame admission), creates stubs and records
+   `[curation] unassessed = true` in `language.toml`. Replace placeholders.
+2. Repeat `just check-language "Name"` until no integration is missing.
+   It names files and entries: registry, exports, contract, example, width
+   policy, VM samples (derived for generators), curation, proof ledger and
+   formulas. Registry tests enforce the same checklist. It also runs local
+   tests, the committed example, generator shape, ledger word/fold checks
+   and formulas, and lists regenerated files.
+   Optional published examples belong in `tests/cases.toml` as `[[examples]]`
+   with stated output (schema: `tests/interpreters/test_published_programs.py`).
+   Bound potentially looping programs with `max_steps=10_000` or `timeout=5`.
+3. `just benchmark "Name" TABLE` records source units and commands, not wall
+   time (`--json` for details). `just bounds "Name"` prints worst steps and
+   written bits, witnesses and a pasteable `[proof_status]`. “Worst” must be
+   exact; otherwise say “at most”.
+4. `just finish-language "Name"` regenerates examples, docs and size baseline,
+   runs the whole-tree `--full` gate, then CI-only checks. Quick tests alone
+   do not qualify. Run this minutes-long check in the background; it reruns
+   failures alone and identifies load-only failures. Missing checklist items
+   are reported and fail the run, but do not prevent the gate from running.
 
-1. `just new-language "Name"` (it asks the matching category, or pass `--category`;
-   `--interpreter-only` for a fame admission) writes the interpreter,
-   generator and test stubs, and records the language as
-   `unassessed = true` in the `[curation]` section of its package's
-   `language.toml`. Replace the placeholder semantics and tests.
-2. `just check-language "Name"` lists every integration step still missing,
-   each with the file and entry to add: registry, exports, contract,
-   example, width policy, samples (interpreter-only languages; a
-   generator's VM sample is derived from its program), curation, proof
-   ledger and its formula tables. Repeat until it reports none; a test runs it over the registry,
-   so the list matches what the suite enforces. It then runs the
-   seconds-long checks `finish` would otherwise fail late: the language's
-   own tests, its committed example, the generator's shape, the ledger's
-   word limits and fold measure, and its formula rows. It lists the generated
-   files it refreshed.
-   Optional: the wiki page's own examples, with their stated output, go in
-   `src/esolangs/languages/<id>/tests/cases.toml` as `[[examples]]` (schema
-   in `tests/interpreters/test_published_programs.py`).
-   To try a program that may loop, bound it:
-   `esolangs.run("Name", program, stdin=..., max_steps=10_000)` or
-   `timeout=5`, never a bare `run`.
-3. Record generator evidence with `just benchmark "Name" TABLE`; compare
-   source units and commands, not wall-clock time (`--json` for the full
-   record). `just bounds "Name"` prints the worst steps and written bits
-   per arity, with the table reaching each, then a `[proof_status]`
-   section to paste: a cell's "worst" must equal them exactly, else it
-   says "at most".
-4. `just finish-language "Name"` regenerates examples, docs and the size
-   baseline, then runs the full `verify/gate.py` over the whole tree
-   (the `--full` run, like `just test-full`), not the branch-scoped
-   default the other recipes use, then the checks the gate leaves to CI.
-   That is the gate: `just
-   test-quick` skips the slower contract sweeps every generator must pass.
-   It takes minutes, so run it in
-   the background; it reruns failed tests
-   alone and says when every failure was machine load. Steps `check`
-   still lists don't stop it: it reports them, runs the gate anyway, and
-   fails.
+Keep language facts in their package: `LANGUAGE`, interpreter and own tests
+(`test_<id>.py`, `test_boolean_<id>.py`, `test_integration_<id>.py` for
+interpreter, generator and API/CLI/VM/debugger respectively). Shared tests
+must not key facts by language name; use `Language` metadata or local tests.
+`tests/api/test_language_coupling.py` rejects name lists, id branches and
+prose comparisons that state another language's facts.
 
-A comment cohort can declare `# language-owners: ["Name", "Other"]`.
-Removal drops that contiguous comment block when any owner goes; keep shared
-invariants outside it. Language-specific Markdown belongs in canonical-name
-bullets with indented continuations.
+Comment cohorts may declare `# language-owners: ["Name", "Other"]`; removing
+any owner removes the contiguous block. Keep shared invariants outside it.
+Language-specific Markdown uses canonical-name bullets and indented continuations.
 
-To take a language out, `just remove-language "Name"` deletes what `check`
-asks for and every test file `tests/api/test_language_coupling.py` counts as
-the language's own (committed or not). It prunes the helper modules only it
-imported and the per-language code the shared generators and
-`wrap.py` no longer reference. It drops its wiki fixtures, timing rows and
-prose entries, regenerates, and
-lists the mentions left to edit by hand (display name and aliases, quoted
-ids, dotted module paths), each labelled with the edit it needs -- a
-runnable example, prose, or a comment. brainfuck is the reference language
-shared tests, the examples and `scripts/docs/generate.py` spell out, so
-`remove` refuses it rather than leave a tree that cannot build.
-
-A language should live in its own files: its generator module's
-`LANGUAGE`, its interpreter, and its own test files. A fact another file
-keys by a language's name (a list of names in a shared test, a branch on
-an id) is coupling, and `tests/api/test_language_coupling.py` allows
-none. Put such a fact on `Language`, or the test in the language's own
-test file under `src/esolangs/languages/<id>/tests/`: `test_<id>.py` for
-its interpreter, `test_boolean_<id>.py` for its generator, and
-`test_integration_<id>.py` for its API, CLI, VM and debugger checks. A shared file states a language's own facts, never a second
-language's: an example or comparison that names another language (`as in
-X`, `unlike X`, `X's axis`) is coupling in prose too, and
-`tests/api/test_language_coupling.py` rejects it.
+`just remove-language "Name"` deletes integration and owned tests (including
+uncommitted files), prunes unused helpers and per-language shared-generator /
+`wrap.py` code, removes fixtures, timings and prose, and regenerates. It lists
+remaining name/alias, quoted-id and dotted-module mentions with their needed
+edits. Brainfuck is the shared reference language and cannot be removed.
 
 ### The Boolean I/O contract
 
-This contract fixes how every generated program reads its inputs and
-reports its answer.
-
-A generated program reads the inputs and prints the answer the way its
-`BooleanContract` (the `contract=` of its `LANGUAGE`) says; with none the
-default is one `0`/`1` line per input and a printed `0`/`1`. Every program
-reads all n inputs, in order, even when the table is constant or ignores an
-input. `input_shape="char_stream"` reads the bits as bare characters, and also
-covers languages whose stdin packs bits into bytes: each
-input is then the byte `'0'` (0x30) or `'1'` (0x31), whose low bit is the
-input's value, so a program that reads low bit first takes that bit and must
-read and drop the byte's other seven before the next input (see
-the language's generator). `answer_mode` covers state-dump and termination
-answers.
+Generated programs follow `LANGUAGE`'s `BooleanContract`: by default, one
+`0`/`1` line per input and a printed bit. Read all n inputs in order, even
+for constant or ignored-input tables. `input_shape="char_stream"` uses bare
+characters and also covers byte-packed stdin: each bit is byte `'0'` (0x30)
+or `'1'` (0x31). A low-bit-first reader must consume the other seven bits
+before the next input. `answer_mode` covers state-dump and termination answers.
 
 - Boolfuck packs input bits into bytes.
 - Smu packs input bits into bytes.
