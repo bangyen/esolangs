@@ -70,7 +70,13 @@ Missing categories and links do not establish first-implementation eligibility.
 Screen these in order under [curation](limitations.md#curation):
 
 - **[REFRACTRAN](https://esolangs.org/wiki/REFRACTRAN):** bidirectional
-  fraction execution. Establish compliant input embedding and answer extraction.
+  fraction execution. Admission probe (2026-11-01): a four-fraction controlled
+  swap builds Boolean muxes; integer and prime-exponent execution agree on all
+  276 tables at n=1..3 and five seeded tables each at n=4..6. Inputs occupy
+  ordered prime-exponent embeds; the answer is a final-state prime flag.
+  No outside implementation found in the spec, Talk page, author links or
+  targeted web searches. Next: production integration, linearity and exact
+  resource proofs, then the full language gate; admission remains open.
 - **[Retrograde](https://esolangs.org/wiki/Retrograde):** reversible blocks
   with direction-dependent instructions. Resolve input and answer conventions
   without adding instructions to the language.
