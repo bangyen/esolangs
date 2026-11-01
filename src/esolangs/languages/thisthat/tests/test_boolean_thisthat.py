@@ -24,6 +24,7 @@ def _run(table: str, row: int) -> tuple[str, int]:
 @pytest.mark.medium
 def test_source_growth_is_linear_in_the_table() -> None:
     """Parity exercises both inline trees and shared residual DAGs."""
+    _check_constants()
     sizes = [len(thisthat(parity(n))) for n in range(1, 13)]
     assert all(right <= 3 * left for left, right in pairwise(sizes[3:]))
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
@@ -44,7 +45,7 @@ def test_constants_test_nothing() -> None:
             io = ScriptedIO("".join(f"{bit}" for bit in bits))
             run(program.splitlines(), io)
             assert (io.getvalue(), io.reads) == (table[0], n)
-    assert len(thisthat("0" * 8)) == 49  # 1,169 before
+    assert len(thisthat("0" * 8)) == 11  # 49 before the direct chain
 
 
 def test_every_kept_level_is_tested_at_every_node() -> None:
@@ -74,7 +75,7 @@ def test_pruning_never_grows_a_table() -> None:
             size = len(thisthat(table))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 77_192
+    assert sum(len(thisthat(table)) for table in tables) == 77_116
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
 
@@ -133,7 +134,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert max(map(len, thisthat("0110", 1).splitlines())) == 1
     assert len(thisthat("0110", 1)) == 17
-    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 784
+    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 764
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
@@ -351,3 +352,45 @@ def test_coalescing_preserves_the_single_pointer_schedule() -> None:
             assert (io.getvalue(), io.reads) == (expected, 3)
     native = "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
     assert _coalesce(native) == native
+
+
+def _check_constants() -> None:
+    from esolangs.languages.thisthat.interpreter import _Machine
+    from esolangs.languages.thisthat.proof_formulas import workspace
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("thisthat", bit * (1 << n), **options)
+                if not options or "width" in options:
+                    assert (
+                        len(program.splitlines()) * max(map(len, program.splitlines()))
+                        == 2 * n + 5
+                    )
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    io = ReadFirstIO(f"{row:0{n}b}" + "1")
+                    machine = _Machine(program.splitlines(), io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= 2 * n + 5
+                    assert steps == 2 * n + 5
+                    assert written.bits <= workspace(n, program)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.input_char() == ord("1")
+    assert (
+        sum(len(esolangs.generate("thisthat", f"{v:08b}")) for v in range(256)) == 77116
+    )

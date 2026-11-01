@@ -81,3 +81,10 @@ verdict = "kept 2026-10-31: coalesce consecutive identical vertical-only rows an
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-27
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 77.9
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole constants. One execution chain reads all n bits, then a literal sends one data transfer to the output diamond. Default and narrow area are exactly 2n+5 cells, with 2n+5 cycles; width requests retain a fitting rotated default. Balance folds the same chain into serpentine rows at ceil(sqrt(n+3)) nodes per row, with no extra cycles. n=8 area 95 -> 21 cells, source 99 -> 21 chars, balanced dimensions 5x7 cells; n=12 area 135 -> 29 cells. n=3 corpus source 77192 -> 77116 chars, area 88160 -> 88092 cells; n=2 width-one source total 784 -> 764. Existing workspace envelope unchanged and checked in all layouts. The fitting-layout invariant remains intact. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, uniform embedded setters or all reads before output, and stream sentinels. No new collected cases."

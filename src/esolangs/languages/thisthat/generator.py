@@ -7,7 +7,8 @@ smaller; narrow widths try rotation, strips and streaming trees.
 
 Size:
     Linear area in T for the plain tree; n=8 parity: 6,139 chars, n=10 and:
-    3,015 chars, n=10 random 1847: 66,063 chars.
+    3,015 chars, n=10 random 1847: 66,063 chars. Constants: 2n+5 cells
+    and cycles; the balanced chain folds without adding transit cells.
 
 Decisions:
     Greedy input order saves 0.2% at n=8 and swapping the root's arms 0.5%,
@@ -369,11 +370,36 @@ def _coalesce(program: str) -> str:
     )
 
 
+def _constant_diagram(n: int, bit: str, columns: int) -> str:
+    """Fold one read/print chain into rows without adding transit cells."""
+    builder = _Builder()
+    glyphs = ["▣", *["◇"] * n, "■" if bit == "1" else "□", "◇"]
+    points = []
+    for i, glyph in enumerate(glyphs):
+        row, col = divmod(i, columns)
+        point = (2 * (columns - 1 - col if row % 2 else col), 2 * row)
+        builder.node(point, glyph)
+        points.append(point)
+    for i, (left, right) in enumerate(pairwise(points)):
+        builder.connect(
+            _path(left, right, "horizontal"), "double" if i == n + 1 else "single"
+        )
+    return builder.render()
+
+
 def thisthat(truth_table: str, width: int | None = None) -> str:
     """Return a diagram with identical straight transit strips coalesced.
 
     See ``[ablations.transit_strip_coalescing]`` for the executed corpus.
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        program = _constant_diagram(n, truth_table[0], n + 3)
+        return (
+            _rotate_tree(program)
+            if width and 0 < width < grid_width(program)
+            else program
+        )
     return _coalesce(_diagram(truth_table, width))
 
 
@@ -580,6 +606,13 @@ def _balance(truth_table: str, default: str) -> str:
     won (n=1..8, incl. tiled and constant-leaf tables); neither did walking
     down one column at a time (127 tables through n=11).
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        return min(
+            default,
+            _constant_diagram(n, truth_table[0], isqrt(n + 2) + 1),
+            key=balance_score,
+        )
     return min(
         default,
         thisthat(truth_table, 1),

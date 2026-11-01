@@ -9,7 +9,8 @@ switches to RMSN, one command per line.
 
 Size:
     O(T): one ``~`` per row; n=8 random 1847: 1,151 chars, n=10 random 1847:
-    4,265 chars, n=12 random 1847: 16,593 chars.
+    4,265 chars, n=12 random 1847: 16,593 chars. Constants: n=8: 27/30
+    chars, two/five commands including the dump.
 
 Decisions:
     Every leaf target is the digit 2 or 3: a leaf per row was Theta(T log T)
@@ -50,14 +51,20 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     A ``width`` the program exceeds switches to RMSN.
     """
     n = _validate_truth_table(truth_table)
-    # A symmetric table counts its inputs, one ``+`` each, into n + 1 rows
-    # ([ablations.symmetric_count]); never longer, so no race.
-    symmetric = symmetric_weights(truth_table, n)
-    tokens, resolved = _cascade(*(symmetric or input_weights(truth_table, n)))
+    constant = truth_table == truth_table[0] * len(truth_table)
+    if constant:
+        bit = int(truth_table[0])
+        run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
+        tokens = ["*+*~" if bit else "~", *[run, "*"] * (n - 1), run]
+        resolved = [3 * n + 1 + 3 * bit]
+    else:
+        # Symmetric tables count inputs into n+1 rows instead of a binary index.
+        symmetric = symmetric_weights(truth_table, n)
+        tokens, resolved = _cascade(*(symmetric or input_weights(truth_table, n)))
     program = _render(tokens, resolved)
     if width is None or grid_width(program) <= width:
         return program
-    if n <= 2 and width < 10:
+    if n <= 2 and width < 10 and not constant:
         return _rmsn_small(truth_table, n)
     return _rmsn_expand(tokens, resolved)
 
@@ -156,7 +163,7 @@ def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     pair = MINSKY_SWAP_PAIR
     if template.startswith(TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])):
         pair = _MINSKY_SMALL_RMSN_PAIR
-    elif template.startswith("decnz("):
+    elif template.startswith(("decnz(", "swap();")):
         pair = _MINSKY_SHORT_RMSN_PAIR
     return (pair,) * n
 
@@ -168,7 +175,9 @@ def _balance(table: str, default: str) -> str:
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
     """Its 10- and 15-wide layouts switch representation, so match them whole."""
-    return template in (layout(10), layout(15)) or same_up_to_wrapping(template, plain)
+    return template in (layout(1), layout(10), layout(15)) or same_up_to_wrapping(
+        template, plain
+    )
 
 
 LANGUAGE = Language(

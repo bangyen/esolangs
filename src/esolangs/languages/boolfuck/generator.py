@@ -387,6 +387,12 @@ def normal_gates(table: str) -> str | None:
 
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
+    n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        # Eight reads clear each unary counter cell: ASCII digits end with bit zero.
+        reads = "+>" * n + "<" * n + "[,,,,,,,,>]" if n >= 3 else "," * (8 * n)
+        flip = "+" if truth_table[0] == "1" else ""
+        return reads + flip + ";" + flip + ";;;+;;+;;"
     programs = [_boolfuck_tree(truth_table)]
     for candidate in (
         affine_stream(truth_table),

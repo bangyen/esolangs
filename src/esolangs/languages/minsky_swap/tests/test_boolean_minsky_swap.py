@@ -33,6 +33,8 @@ class TestParameterizedMinskySwap:
         from esolangs.generation.examples import BOOLEAN_EXAMPLES
         from esolangs.languages.minsky_swap.generator import minsky_swap_setters
 
+        if width == 1:
+            _check_constant_templates()
         example = BOOLEAN_EXAMPLES["minsky-swap"]
         assert example.fill is not None
         for n in (1, 2, 3, 5):
@@ -128,3 +130,48 @@ class TestParameterizedMinskySwap:
                 bits = list(map(int, f"{row:0{n}b}"))
                 program = esolangs.instantiate("Minsky Swap", str(template), bits)
                 assert self.run_minsky_swap(program) == table[row]
+
+
+def _check_constant_templates() -> None:
+    import esolangs
+    from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+    from esolangs.languages.minsky_swap.generator import minsky_swap_setters
+    from esolangs.languages.minsky_swap.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("Minsky Swap", bit * (1 << n), **options)
+                pairs = minsky_swap_setters(template, n)
+                assert len(set(pairs)) == 1
+                assert len(pairs[0][0]) == len(pairs[0][1])
+                assert len(runs(template, TEMPLATE_CHAR, pairs)) == n
+                sizes = set()
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    program = esolangs.instantiate(
+                        "Minsky Swap", str(template), list(map(int, f"{row:0{n}b}"))
+                    )
+                    sizes.add(len(program))
+                    io = ScriptedIO()
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= 1 + 3 * int(bit)
+                    assert steps == 1 + 3 * int(bit)
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    assert esolangs.read_answer("Minsky Swap", io.getvalue()) == bit
+                    assert written.bits == (
+                        3 * n + 3 * int(bit)
+                    ).bit_length() + 3 * int(bit)
+                assert len(sizes) == 1
+    assert (
+        sum(len(esolangs.generate("Minsky Swap", f"{v:08b}")) for v in range(256))
+        == 19597
+    )

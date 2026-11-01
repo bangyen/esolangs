@@ -58,3 +58,10 @@ wall = "code is one command per line (RMSN) or line 1 only (compact; interpreter
 saving = 0.0
 arity = 8
 verdict = "kept: invariant, not a size trick. Native-width generators must carry a balance rule (tests/generators/test_balance_remaining.py; retiring it failed 4 tests). Measured: picks the one-command-per-line RMSN build 0.00% area on 200 random tables at n=4..8 and 20 at n=9..12, 0.0% on every named function at n=3..12; it changes only n<=2 (exhaustive: 4/4 at n=1, 16/16 at n=2, 80-83% of a trivial area), 0 of 256 at n=3. Cost: one min over two renders"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 70.6
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole constants. A zero-register decrement jumps past all slots; constant one first sets register one and restores the pointer. Every embedded PAIR slot remains, separated by an unreachable swap so runs stay distinct. Compact length 3n+1+3b+digits(3n+1+3b), command count 2+3b including the post-halt dump, written bits bl(3n+3b)+3b. RMSN expansion preserves all targets; its swap-leading one path selects the existing uniform short setter pair. n=8 zero/one 97/97 -> 27/30 chars; n=12 137/137 -> 39/42. n=3 corpus 19664 -> 19597 chars, area 20016 -> 19950. Saved plain-string templates and all equal-width fills execute. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, uniform embedded setters or all reads before output, and stream sentinels. No new collected cases."
