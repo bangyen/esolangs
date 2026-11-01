@@ -25,8 +25,9 @@ def test_every_three_input_table_runs_every_row() -> None:
 
 def test_sharing_totals() -> None:
     """A macro is kept only where it is shorter; the totals pin the rule."""
+    _check_constants()
     three = [format(value, "08b") for value in range(256)]
-    assert sum(len(tools.smu(table)) for table in three) == 32174
+    assert sum(len(tools.smu(table)) for table in three) == 32096
     assert sum(len(tools.smu(table)) for table in five_input_sample()) == 36687
     # Past 47 macros names take a digit, so which ones earn the short names
     # and whether a long name still pays both show in the length.
@@ -73,3 +74,37 @@ def test_an_ignored_input_is_one_pad() -> None:
         for row in range(32):
             assert execute(program, row, 5) == (table[row], 5), (at, row)
     assert len(tools.smu(inner + inner)) - len(tools.smu(inner)) == 3
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.smu.interpreter import _Machine
+    from esolangs.languages.smu.proof_formulas import workspace
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Smu", bit * (1 << n), **options)
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    io = ReadFirstIO(f"{row:0{n}b}")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= 55 * n + 5
+                    assert steps == 55 * n + 5
+                    assert io.getvalue() == bit
+                    assert written.bits == workspace(n, program)
+                    assert io.past_end == 1

@@ -15,7 +15,8 @@ after the table and only the other m - 1 double ([ablations.pair_table]).
 Size:
     The projected table plus 4n + 101 chars (m <= 6); from m = 7 half the
     table plus 4n + 101 chars and at most 35 of final rules.  n=4 parity:
-    118 chars, n=10 random 1847: 688 chars.
+    118 chars, n=10 random 1847: 688 chars. Constants: 2n+5 chars (16 at n=2),
+    two commands and 8max(n,2)+2 written bits.
 
 Decisions:
     Halving the table pairwise by a walking cursor (T + 101 chars) was not
@@ -56,6 +57,12 @@ def _name(k: int) -> str:
 def sonata(truth_table: str) -> str:
     """Build a Sonata program whose final string ends in ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        # Only n=2 can match the two-character result again: guard its first bit.
+        if n == 2:
+            return "".join(f"{bit}^a->={truth_table[0]}\n" for bit in "01")
+        bits = "".join("^" + _name(k) for k in range(n))
+        return f"{bits}->={truth_table[0]}\n"
     essential = essential_inputs(truth_table, n)
     table = read_at(truth_table, essential, n)
     symmetric = symmetric_weights(truth_table, n)

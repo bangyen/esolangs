@@ -8,7 +8,8 @@ Either prints the answer from the accumulator after reading to exhaustion.
 Size:
     DAG route O(T) (nodes limited to O(n), rendering O(n**2)); sweep route
     O(T).  n=10 and: 1,910 chars, n=10 majority: 6,308 chars, n=10 random
-    1847: 7,780 chars.
+    1847: 7,780 chars. Constants: L=2n+51+b chars, L+1 commands,
+    13+bl(L-1)+bl(n) written bits, b the answer.
 """
 
 from typing import NamedTuple
@@ -77,10 +78,8 @@ def _suffolk_lookup(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        # A constant still drains the stream; those reads land on cell 0,
-        # which nothing else uses on this branch.
-        answer = _write(_TWO) * (_ASCII_ONE + int(truth_table[0]))
-        return answer + ",!" * n + _read(_TWO) + "."
+        # Reads clamp cell zero to zero; reuse it for the ASCII answer.
+        return ",!" * n + "!" * (_ASCII_ONE + int(truth_table[0])) + "<."
 
     used = essential_inputs(truth_table, n)
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)

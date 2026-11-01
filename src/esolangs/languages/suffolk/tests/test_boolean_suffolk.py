@@ -21,9 +21,46 @@ class TestSuffolk:
         assert sizes[2] < 2 * sizes[1]
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
-        """A constant table skips the minterms but still reads its inputs."""
-        for table in ("00", "11"):
-            assert boolean.suffolk(table).count(",") == 1  # n == 1
+        """Constants print after n reads, then stop at the first EOF probe."""
+        import esolangs
+        from esolangs.languages.suffolk.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
+        from scripts.benchmark import WrittenState
+
+        for n in range(1, 13):
+
+            class ReadFirstIO(ScriptedIO):
+                expected = n
+
+                def _write(self, value):
+                    assert self.reads == self.expected
+                    super()._write(value)
+
+            for bit in "01":
+                length = 2 * n + 51 + int(bit)
+                for options in ({}, {"width": 1}, {"balance": True}):
+                    program = esolangs.generate("Suffolk", bit * (1 << n), **options)
+                    for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                        stdin = f"{row:0{n}b}"
+                        io = ReadFirstIO(stdin + "Q")
+                        machine = _Machine("".join(program.split()), io)
+                        for _ in range(length):
+                            machine.step()
+                        assert io.getvalue() == bit
+                        assert io.input_char() == ord("Q")
+                        io = ReadFirstIO(stdin)
+                        machine = _Machine("".join(program.split()), io)
+                        written = WrittenState(machine.snapshot())
+                        for _ in range(length + 1):
+                            machine.step()
+                            written.sample(machine.snapshot())
+                        assert machine.halted
+                        assert io.getvalue() == bit
+                        assert (
+                            written.bits
+                            == 13 + (length - 1).bit_length() + n.bit_length()
+                        )
+        assert sum(len(boolean.suffolk(f"{v:08b}")) for v in range(256)) == 136707
 
     def test_size_tracks_steps_rather_than_ones(self) -> None:
         """Cost is one op per *step* of a half-table, not per one-row."""

@@ -22,7 +22,7 @@ each use.
 Size:
     O(T) worst case, never longer than the plain tree; O(n) steps, one run
     per input bit.  n=10 parity: 228 chars, n=10 and: 186 chars, n=10
-    random 1847: 1,194 chars.
+    random 1847: 1,194 chars. Constants: n=8: 77 chars; 55n+5 commands.
 
 Decisions:
     Inlining a kept macro never saves: its test only gets easier as its
@@ -46,13 +46,12 @@ from esolangs.registry._language import Language
 
 #: ``k`` drops a run's bit and outputs nothing; ``n`` is a node less its
 #: halves, ``m`` a pad; ``z``/``o`` print ``'0'`` (0x30), ``'1'`` (0x31) low bit first.
-_MACROS = (
-    "k((())=())k"
-    "n(+)=(|)=()+kkkkkkk()n"
-    "m(+)=(+)()+(|)=()+kkkkkkk()m"
-    "z(())=(||||++||)z"
-    "o(())=(+|||++||)o"
-)
+_SKIP = "k((())=())k"
+_NODE = "n(+)=(|)=()+kkkkkkk()n"
+_PAD = "m(+)=(+)()+(|)=()+kkkkkkk()m"
+_LEAVES = ("z(())=(||||++||)z", "o(())=(+|||++||)o")
+_MACROS = _SKIP + _NODE + _PAD + "".join(_LEAVES)
+
 #: Delimiter macros, each defined only where its uses pay the 4 characters.
 _DELIMS = {"X": "X)(X", "Y": "Y)nY", "W": "W)mW"}
 
@@ -70,6 +69,11 @@ def _name(index: int) -> str:
 def smu(truth_table: str) -> str:
     """Return a Smu program printing ``truth_table``'s row for its input bytes."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        bit = int(truth_table[0])
+        delimiter = _DELIMS["W"] if n > 4 else ""
+        close = "W" if n > 4 else ")m"
+        return _SKIP + _PAD + _LEAVES[bit] + delimiter + "(" * n + "zo"[bit] + close * n
     ids = subtree_ids(truth_table)
     kids: dict[tuple[int, int], tuple[tuple[int, int], ...]] = {}
     text: dict[tuple[int, int], str] = {}
