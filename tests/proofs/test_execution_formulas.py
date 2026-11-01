@@ -87,8 +87,8 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         return ("1" * (width - 1) + "0", _streetcode_worst(n))
     if name == "Malbolge":
         # Straight-line code: all 10 tables tie at every n measured; the
-        # all-ones or alternating label reaches the longest stub.
-        return (_dense(n), _malbolge_stub(n))
+        # all-zeros or alternating label reaches the longest stub.
+        return (_dense(n), _malbolge_stub(n), "0" * width)
     if name == "Befunge":
         # Straight-line code over the inputs that matter; parity has all, and
         # the longest scaling text needs a layout parity misses at n = 11, 12.

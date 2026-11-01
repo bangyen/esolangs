@@ -27,7 +27,7 @@ Up to fifteen inputs the last group's held reads are chosen so the tables
 pack low (``'1','0','1'`` to thirteen: 6562..13113; fourteen ``'1','0'``:
 ..19674; fifteen ``'0'``: 19684..52479), and each label has one hub and a
 stub in the gaps or just past the tables (:func:`_short_layout`): the source
-ends at its highest live cell, 13,144 characters to thirteen inputs, 19,683
+ends at its highest live cell, 13,340 characters to thirteen inputs, 19,683
 at fourteen, 52,480 at fifteen, instead of the 59,049-cell store.
 
 Fewer than sixteen inputs hold ``16 - n`` of the fifteen reads at a
@@ -142,7 +142,7 @@ _D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 #: held reads are ``'1','0','1'`` (49, 48, 49), which puts every table in
 #: 6562..13113.  Each label has one hub (pointer value ``s01(chain(g))``, all
 #: its cells equal) at 13122..13130; its stub sits in the table-free run
-#: 11664..12392 or past 13113, so the source ends at 13,144.  Arities up to
+#: 11664..12392 or past 13113, so the source ends at 13,340.  Arities up to
 #: ``_SHORT_MAX`` get their own layout over their own tables: 14 holds
 #: ``'1','0'`` (tables 6562..19674), 15 holds ``'0'`` (tables 19684..52479;
 #: ``'1'`` would reach 59,039); 16 fills the store.
@@ -314,7 +314,7 @@ def _longest_stub(n: int) -> int:
     cells = _operand_cells()
     return max(
         len(_operand_stub(min(_valid_chars(hubs[lab][0] + 2)) + 1, cells[lab]))
-        for lab in "1n"
+        for lab in "01n"
     )
 
 

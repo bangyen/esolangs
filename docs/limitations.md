@@ -72,8 +72,8 @@ undeclared or misspelled values. Opaque positions have no source coordinate.
 ### Input order
 
 Every path reads all n inputs in order; an ignored input is read and
-discarded, never left unread. Leaving a trailing ignored input unread would
-make input consumption depend on the table. The measured savings were 9-29%
+discarded, never left unread, and output follows the last read. Leaving a
+trailing ignored input unread would make input consumption depend on the table. The measured savings were 9-29%
 at n=7..8 across these generators:
 
 - Unlambda was included in the trailing-input measurement.
@@ -270,7 +270,7 @@ definition was attempted and its preservation form is closed:
   chain value must have no 0 trit, or the second pointer cell's re-swap
   reads 0 (n = 14 failed rows 28, 29 on it) -- and its two data cells
   clear the tables and the picks before it.  Measured source lengths
-  are unchanged: 13,144 characters to n = 13, 19,683 at 14, 52,480 at
+  are unchanged: 13,340 characters to n = 13, 19,683 at 14, 52,480 at
   15; the smallest `g` instead ends the main code past the lowest table
   cell.  n = 16's tables span 6,561..59,039, so it keeps the whole store.
 

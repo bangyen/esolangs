@@ -18,7 +18,7 @@ whose first group folds four inputs into their weight.
 
 Size:
     Constant per arity, ending at the highest live cell; n=10 random 1847:
-    13,144 chars to n=13, 19,683 at n=14, 52,480 at n=15, and the whole
+    13,340 chars to n=13, 19,683 at n=14, 52,480 at n=15, and the whole
     59,049-cell memory from n=16.
 
 Raises:

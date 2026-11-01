@@ -110,10 +110,10 @@ def _with_discards(reduced: str, used: list[int], n: int) -> str:
         between = "h" + "e" * (len(seed) + read) + "f"
         parts.append(between * (after - before - 1))
         parts.append(reads[read] + "h")
-    parts.append(reads[-1])
-    leading = used[0]
-    trailing = n - used[-1] - 1
-    return seed + "\n" + discard * leading + "".join(parts) + "h" * trailing
+    # Trailing ignored inputs queue behind everything, so they are read just
+    # before the closing print, which takes the front.
+    parts.append(reads[-1][:-1] + "h" * (n - used[-1] - 1) + reads[-1][-1])
+    return seed + "\n" + discard * used[0] + "".join(parts)
 
 
 def _affine(truth_table: str) -> str:

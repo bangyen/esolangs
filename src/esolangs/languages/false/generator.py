@@ -4,7 +4,7 @@ A node of the diagram reads with ``^``, keeps the bit with ``1&``, and
 runs the matching half as a ``[...]?`` lambda; a leaf prints its bit
 with ``.`` after reading the inputs below it with ``^%``, which a
 caller's next program would otherwise be handed; the leaf a fold
-chain reaches from the root prints first and reads bare ``^``.
+chain reaches from the root reads bare ``^`` and then prints.
 The reduced diagram (:func:`_shared`) shares repeated halves.
 
 The second build (:func:`_expression`) stores each essential input
@@ -180,8 +180,8 @@ def _root_text(
     """Render the root, draining bare at the end of a fold chain.
 
     A leaf reached from the root through folds only is the
-    last text the program runs, so it prints first and reads the
-    remaining inputs with bare ``^`` instead of ``^%`` (a constant
+    last text the program runs, so it reads the remaining inputs with bare
+    ``^`` instead of ``^%`` and then prints (a constant
     table: 2n+2 -> n+2, measured n = 2..8).  Under a split the same end
     stays stack-neutral: the split's ``?0=`` plumbing resumes above it
     and expects its bit back on top.
@@ -194,7 +194,7 @@ def _root_text(
         parts.append(_SKIP)
         key = node.child
     level, sub = key
-    parts.append(str(sub) + "." + "^" * (n - level) if sub < 2 else render(key))
+    parts.append("^" * (n - level) + str(sub) + "." if sub < 2 else render(key))
     return "".join(parts)
 
 

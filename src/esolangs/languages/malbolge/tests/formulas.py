@@ -7,9 +7,9 @@ _SHORT_CHARS = {14: 19683, 15: 52480}
 
 
 def _chars(n: int, _: str) -> int:
-    """13144 characters to thirteen inputs, 19683 and 52480 at fourteen and
+    """13340 characters to thirteen inputs, 19683 and 52480 at fourteen and
     fifteen, the whole 3^10-cell store from sixteen."""
-    return 13144 if n <= _SHORT_N else _SHORT_CHARS.get(n, 3**10)
+    return 13340 if n <= _SHORT_N else _SHORT_CHARS.get(n, 3**10)
 
 
 FORMULAS = {"scaling": (_chars, True, (3, 5))}

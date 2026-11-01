@@ -13,7 +13,7 @@ qualification = "—"
 scaling = "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15"
 execution = "linear: at most 9T/2 + 5n - 7 commands past n = 3: expression text executed whole; diagram one path"
 workspace = "poly n: at most W bits past n = 2, b = bl(L), S stores: the build's stack, variables, frames"
-definitions = ["W = bl(n)+6n+2b constant, 5n-2+2b expression, n+1+2b(S+n+2) diagram"]
+definitions = ["W = bl(n)+6n+2b+1 constant, 5n-2+2b expression, n+1+2b(S+n+2) diagram"]
 
 [generator_sizes]
 "00000001" = { commands = 26, commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26 }, source_units = 26 }
@@ -46,7 +46,7 @@ verdict = "removed 2026-10-20 (retirement candidate #23): a node over two consta
 [ablations.root_drain]
 saving = 46.2
 arity = 12
-verdict = "kept: a leaf reached from the root through folds only prints first and reads the remaining inputs with bare ^ instead of ^%, so a constant table costs n+2 instead of 2n+2 (44.4% / 45.5% / 46.2% at n=8/10/12, two constant tables). 0.00% on every other corpus: the drain fires only when a root fold chain ends at a leaf, i.e. constant tables"
+verdict = "kept: a leaf reached from the root through folds only reads the remaining inputs with bare ^ before printing instead of ^%, so a constant table costs n+2 instead of 2n+2 (44.4% / 45.5% / 46.2% at n=8/10/12, two constant tables). 0.00% on every other corpus: the drain fires only when a root fold chain ends at a leaf, i.e. constant tables"
 
 [ablations.expression_form]
 saving = 30.4

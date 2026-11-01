@@ -6,9 +6,10 @@ bl = int.bit_length
 def workspace(n: int, program: str) -> int:
     """Stack + variables + frames + input count, by route (b = bl(L)).
 
-    Constant: n unread-then-bare chars (6 bits each) on the stack, the root
-    frame (pc, end) alone.  Expression: n stored bits, a stack of at most
-    2(n - 1) values (a mux holds its zero half twice per level, 2 bits each).
+    Constant: n bare-read chars (6 bits each) and the literal to print (1
+    bit) on the stack, the root frame (pc, end) alone.  Expression: n stored
+    bits, a stack of at most 2(n - 1) values (a mux holds its zero half
+    twice per level, 2 bits each).
     Diagram: one kept bit a level plus a lambda in flight on the stack,
     S stored lambdas (a start and an end, 2b bits), and the root plus one
     lambda frame a level.
@@ -23,7 +24,7 @@ def workspace(n: int, program: str) -> int:
     elif program.endswith("1&."):
         stack, stored, frames = 4 * n - 2, n, 2 * b
     else:
-        stack, stored, frames = 6 * n, 0, 2 * b
+        stack, stored, frames = 6 * n + 1, 0, 2 * b
     return stack + stored + frames + bl(n)
 
 

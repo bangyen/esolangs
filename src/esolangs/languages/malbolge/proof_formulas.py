@@ -13,9 +13,9 @@ def execution(n: int, program: str) -> int:
     """The worst row: the straight-line main code, then the longest reachable stub.
 
     Main code runs from cell 0 through its closing ``i`` and depends on n only.
-    A row then runs one stub, in full: ``0`` and ``x`` three commands, ``1`` and
+    A row then runs one stub, in full: ``x`` three commands, ``0``, ``1`` and
     ``n`` four plus the span from landing to last operand.  The short layout
-    (n <= 15) has one hub each, the longest 197 to n = 13, 200 at 14, 197 at
+    (n <= 15) has one hub each, the longest 199 to n = 13, 200 at 14, 199 at
     15; the full one has two each, the longest 199.
     """
     end = next(a for a, char in enumerate(program) if _op(ord(char), a) == "i")

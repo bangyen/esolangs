@@ -35,9 +35,9 @@ _START_D = 34 + (7 - _ENTRY) % 94
 #: and read mod 10, meet every label's class at every ``h``.
 _T_LABELS = "".join("--0n1xn1x0"[23 * t % 47 % 10] for t in range(94))
 #: Every stub reads the last input (a program consumes all ``n`` whatever
-#: the table).  ``A`` arrives as ``'0'``, so ``0`` prints before it reads and
-#: ``x`` after; ``1`` and ``n`` are :func:`_operand_stub`.
-_T_STUBS = {"0": "</v", "x": "/<v"}
+#: the table) and prints only after it.  ``x`` prints the character read;
+#: ``0``, ``1`` and ``n`` are :func:`_operand_stub`.
+_T_STUBS = {"x": "/<v"}
 #: The labels in seed order (:func:`_seed_g`).
 _T_HUB_LABELS = "n01x"
 #: ``K0 K2`` sends trits 0 and 1 to 2 and 2 to 1; three rotations then put
@@ -61,9 +61,9 @@ _OPERAND_CHAIN = "K0 K2"
 #: ``g`` = 83 + 3 * ``k`` (trits 2, ``k`` in base 3, 0, 0, 1) swaps to 361
 #: cells into the 729-cell run of trits 6, 7 = ``(1, 2)`` that trits 1, 2
 #: pick, room for an operand stub; each ``1`` and ``n`` hub takes its own.
-_SHORT_STUB_G = {"0": 112, "x": 113}
+_SHORT_STUB_G = {"x": 113}
 _SHORT_STUB_CHAIN = "rot K2"
-_LONG_STUB_G = {"1": (83, 86), "n": (89, 92)}
+_LONG_STUB_G = {"1": (83, 86), "n": (89, 92), "0": (98, 101)}
 _LONG_STUB_CHAIN = "rot rot rot"
 #: Fresh all-1 and all-2 cells just past the pointer region, for the paths.
 _T_LOW = (128, 129)
@@ -222,7 +222,7 @@ def _seed_g(m: int) -> int:
 def _operand_cells() -> dict[str, tuple[int, ...]]:
     """Return the cells each operand stub ``p``s over, in address order."""
     middle = _progression(80, 128, _ENTRY)[0]
-    return {
+    cells = {
         lab: (
             _progression(below, 128, middle)[-1],
             middle,
@@ -230,6 +230,8 @@ def _operand_cells() -> dict[str, tuple[int, ...]]:
         )
         for lab, (below, _, above) in _OPERAND_G.items()
     }
+    # ``p`` over 1's last and n's last cell sends '0' and '1' alike to '0'.
+    return {"0": (cells["1"][2], cells["n"][2]), **cells}
 
 
 def _operand_stub(landing: int, cells: Iterable[int]) -> str:

@@ -7,10 +7,10 @@ backlinks = 130
 [proof_status]
 labels = ["exception"]
 qualification = "finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound))"
-scaling = "measured: worst 13144 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole"
-execution = "unmeasured: worst 6,484 commands at n=1 to 5,686 at n=16: main code through closing i, then the longest stub (197..200)"
+scaling = "measured: worst 13340 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole"
+execution = "unmeasured: worst 6,486 commands at n=1 to 5,686 at n=16: main code through closing i, then the longest stub (199..200)"
 workspace = "poly n: at most B + E + 10(P+S) + 49 + bl(n) bits: a bit a step, ten a write"
-definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before the main code's closing i", "S = the longest stub, 197 commands (200 at fourteen inputs, 199 at sixteen)"]
+definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before the main code's closing i", "S = the longest stub, 199 commands (200 at fourteen inputs)"]
 
 [proof_status.audit]
 totality = "Exception"
@@ -19,14 +19,14 @@ output_size = "Linear"
 evidence = "docs/proofs/index.md#malbolge-bound"
 
 [generator_sizes]
-"00000001" = { commands = 6480, commands_by_row = { "0" = 6480, "1" = 6480, "2" = 6480, "3" = 6480, "4" = 6480, "5" = 6480, "6" = 6480, "7" = 6480 }, source_units = 13144 }
-"00001100" = { commands = 6480, commands_by_row = { "0" = 6480, "1" = 6480, "2" = 6480, "3" = 6480, "4" = 6673, "5" = 6673, "6" = 6480, "7" = 6480 }, source_units = 13144 }
-"00110110" = { commands = 6674, commands_by_row = { "0" = 6480, "1" = 6480, "2" = 6673, "3" = 6673, "4" = 6480, "5" = 6480, "6" = 6674, "7" = 6674 }, source_units = 13144 }
-"0110" = { commands = 6708, commands_by_row = { "0" = 6514, "1" = 6514, "2" = 6708, "3" = 6708 }, source_units = 13144 }
-"01101001" = { commands = 6480, commands_by_row = { "0" = 6480, "1" = 6480, "2" = 6674, "3" = 6674, "4" = 6674, "5" = 6674, "6" = 6480, "7" = 6480 }, source_units = 13144 }
-"0110100110010110" = { commands = 6636, commands_by_row = { "0" = 6442, "1" = 6442, "2" = 6636, "3" = 6636, "4" = 6636, "5" = 6636, "6" = 6442, "7" = 6442, "8" = 6636, "9" = 6636, "10" = 6442, "11" = 6442, "12" = 6442, "13" = 6442, "14" = 6636, "15" = 6636 }, source_units = 13144 }
-"1101001101101101" = { commands = 6442, commands_by_row = { "0" = 6635, "1" = 6635, "2" = 6442, "3" = 6442, "4" = 6442, "5" = 6442, "6" = 6635, "7" = 6635, "8" = 6442, "9" = 6442, "10" = 6636, "11" = 6636, "12" = 6635, "13" = 6635, "14" = 6442, "15" = 6442 }, source_units = 13144 }
-"11111110" = { commands = 6674, commands_by_row = { "0" = 6673, "1" = 6673, "2" = 6673, "3" = 6673, "4" = 6673, "5" = 6673, "6" = 6674, "7" = 6674 }, source_units = 13144 }
+"00000001" = { commands = 6481, commands_by_row = { "0" = 6677, "1" = 6677, "2" = 6677, "3" = 6677, "4" = 6677, "5" = 6677, "6" = 6481, "7" = 6481 }, source_units = 13340 }
+"00001100" = { commands = 6677, commands_by_row = { "0" = 6677, "1" = 6677, "2" = 6677, "3" = 6677, "4" = 6674, "5" = 6674, "6" = 6677, "7" = 6677 }, source_units = 13340 }
+"00110110" = { commands = 6675, commands_by_row = { "0" = 6677, "1" = 6677, "2" = 6674, "3" = 6674, "4" = 6481, "5" = 6481, "6" = 6675, "7" = 6675 }, source_units = 13340 }
+"0110" = { commands = 6709, commands_by_row = { "0" = 6515, "1" = 6515, "2" = 6709, "3" = 6709 }, source_units = 13340 }
+"01101001" = { commands = 6481, commands_by_row = { "0" = 6481, "1" = 6481, "2" = 6675, "3" = 6675, "4" = 6675, "5" = 6675, "6" = 6481, "7" = 6481 }, source_units = 13340 }
+"0110100110010110" = { commands = 6637, commands_by_row = { "0" = 6443, "1" = 6443, "2" = 6637, "3" = 6637, "4" = 6637, "5" = 6637, "6" = 6443, "7" = 6443, "8" = 6637, "9" = 6637, "10" = 6443, "11" = 6443, "12" = 6443, "13" = 6443, "14" = 6637, "15" = 6637 }, source_units = 13340 }
+"1101001101101101" = { commands = 6443, commands_by_row = { "0" = 6636, "1" = 6636, "2" = 6443, "3" = 6443, "4" = 6639, "5" = 6639, "6" = 6636, "7" = 6636, "8" = 6443, "9" = 6443, "10" = 6637, "11" = 6637, "12" = 6636, "13" = 6636, "14" = 6443, "15" = 6443 }, source_units = 13340 }
+"11111110" = { commands = 6675, commands_by_row = { "0" = 6674, "1" = 6674, "2" = 6674, "3" = 6674, "4" = 6674, "5" = 6674, "6" = 6675, "7" = 6675 }, source_units = 13340 }
 
 [catalogue]
 folding_ignored = "fixed-size source; an extra input port adds no cells"
@@ -41,7 +41,7 @@ workspace = [2, 3]
 # tables, seed 184700+n, 200 per arity).  Prices are contextual --
 # joint removals were measured separately before landing.  Rows for
 # removed tricks stay as the record of why they left.  The emitted
-# size is one constant per arity (13,144 to n = 13, 19,683 at 14, 52,480
+# size is one constant per arity (13,340 to n = 13, 19,683 at 14, 52,480
 # at 15, the full 59,049-cell store at 16), so every per-table trick prices at 0.0% by construction.
 [ablations]
 audited = "2026-10-18"
@@ -49,11 +49,11 @@ audited = "2026-10-18"
 [ablations.full_store_render]
 saving = 0.0
 arity = 16
-verdict = "kept: n = 16 is the whole memory image (its tables reach 59,039); n <= 15 ends at its highest live cell, 13,144 characters to n = 13, 19,683 at 14, 52,480 at 15 (59,049 before the short layout, 2026-10-30). The 2026-10-29 tail and prefix figures describe the 59,049-character build and no longer apply below n = 16"
+verdict = "kept: n = 16 is the whole memory image (its tables reach 59,039); n <= 15 ends at its highest live cell, 13,340 characters to n = 13, 19,683 at 14, 52,480 at 15 (59,049 before the short layout, 2026-10-30). The 2026-10-29 tail and prefix figures describe the 59,049-character build and no longer apply below n = 16"
 
 [ablations.tier_constructions]
 saving = 0.0
-verdict = "kept: one positional build serves every arity; size is 13,144 to n = 13, 19,683 at 14, 52,480 at 15 and 59,049 above"
+verdict = "kept: one positional build serves every arity; size is 13,340 to n = 13, 19,683 at 14, 52,480 at 15 and 59,049 above"
 
 [ablations.shortest_path_planner]
 saving = 0.0

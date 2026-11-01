@@ -1,4 +1,4 @@
-"""Every generated program reads all n inputs; an ignored one is read, then dropped."""
+"""Every generated program reads all n inputs, then prints; ignored ones are dropped."""
 
 import pytest
 
@@ -13,9 +13,21 @@ INFOS = {n: esolangs.describe(n) for n in esolangs.list_languages()}
 
 
 def _audit(name, program, n, mp):
-    """Run every row; return (rows run, rows leaving input unread, past-end reads)."""
-    made = []
-    new = lambda stdin="": made.append(ScriptedIO(stdin)) or made[-1]  # noqa: E731
+    """Run every row; return rows, unread rows, past-end reads, early-output rows."""
+    made, early = [], []
+
+    def new(stdin=""):
+        io = made.append(ScriptedIO(stdin)) or made[-1]
+        write = io._write  # noqa: SLF001
+
+        def checked(value):
+            if str(value).strip() and stdin[io.position() :].strip():
+                early.append(len(made))
+            write(value)
+
+        io._write = checked  # noqa: SLF001
+        return io
+
     mp.setattr(esolangs, "ScriptedIO", new)
     mp.setattr(vm, "ScriptedIO", new)
     rows = unread = past = 0
@@ -28,7 +40,7 @@ def _audit(name, program, n, mp):
         rows += 1
         unread += bool(stdin[made[-1].position() :].strip())
         past += made[-1].past_end
-    return rows, unread, past
+    return rows, unread, past, len(set(early))
 
 
 GENERATED = [
@@ -38,7 +50,12 @@ GENERATED = [
 
 @pytest.mark.medium
 def test_the_audit_sees_unread_input(monkeypatch) -> None:
-    assert _audit(REFERENCE, ",.", 2, monkeypatch) == (4, 4, 0)
+    assert _audit(REFERENCE, ",.", 2, monkeypatch) == (4, 4, 0, 4)
+
+
+@pytest.mark.medium
+def test_the_audit_sees_early_output(monkeypatch) -> None:
+    assert _audit("brainfuck", ",+.,", 2, monkeypatch) == (4, 0, 0, 4)
 
 
 # One case per language and path: the whole sweep in one test overran its band.
@@ -64,9 +81,10 @@ def test_every_input_is_read(monkeypatch, name, path) -> None:
                 assert_proved_resource_cap(name)
                 continue
             built += 1
-            rows, unread, past = _audit(name, program, n, monkeypatch)
+            rows, unread, past, early = _audit(name, program, n, monkeypatch)
             assert rows > 0
             assert unread == 0, (name, table)
+            assert early == 0, (name, table)  # output follows the last read
             # A language that ends at EOF probes it once a row, no more.
             assert past in (0, rows), (name, table)
     assert built, f"{name} never built an input-consumption control"

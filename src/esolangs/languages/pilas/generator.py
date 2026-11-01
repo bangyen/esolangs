@@ -6,7 +6,8 @@ bit ``b`` and runs ``:{Z+2+1}1-:{O+1+1}1-``: the first ``{`` enters only
 on ``b = 0`` and leaves a 2 behind, the second only on the one arm.  Every
 subtree pushes exactly one 0, so ``+`` folds it into the flag below and
 each node, like each leaf, leaves one 0 for its parent.  A span whose
-halves are opposite constants prints its first input's byte, or 97 minus it.
+halves are opposite constants reads the rest, then prints its first input's
+byte, or 97 minus it.
 
 Size:
     O(T) in the tree's nodes; n=4 parity: 266 chars
@@ -46,11 +47,11 @@ def pilas(truth_table: str) -> str:
             return _DROP * left + _ZERO_BYTE + bump + ".0" + "+" * left
         mid = (lo + hi) // 2
         if constant(lo, mid) and constant(mid, hi):
-            # The first input is the answer: print its byte, or 97 minus it,
-            # then read the rest away.  See [ablations.input_literal].
+            # The first input is the answer: read the rest away (each folds
+            # into it as 0), then print its byte, or 97 minus it.
             rest = (hi - lo).bit_length() - 2
             head = "," if truth_table[lo] == "0" else _NINETY_SEVEN + ",-"
-            return head + "." + (_DROP * rest + "+" * (rest - 1) if rest else "0")
+            return head + _DROP * rest + "+" * rest + ".0"
         zero, one = build(lo, mid), build(mid, hi)
         if zero == one:
             # An ignored input is still read, then zeroed and folded away.

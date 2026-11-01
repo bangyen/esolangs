@@ -13,7 +13,7 @@ from itertools import islice
 
 # language-owners: ["Malbolge"]
 def _malbolge_stub(n: int) -> str:
-    """The all-``n`` label: the longest stub (197 commands; 199 past thirteen)."""
+    """The all-``n`` label: the longest stub at n = 14 (200 commands)."""
     return "10" * (1 << (n - 1))
 
 
