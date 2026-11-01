@@ -9,8 +9,8 @@ admitted = 2021-05-16T15:17:47-04:00
 labels = ["linear lookup"]
 qualification = "the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard"
 scaling = "linear: worst N characters: T-character literal, one read block an input"
-execution = "linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded"
-workspace = "linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack"
+execution = "linear: worst 5T+5n+1 commands past n=1; worst 7 at n=1"
+workspace = "linear: worst 6T+n+2+bl(6n+5)+bl(2n-1)+bl(n) bits past n=1; worst 13 at n=1"
 
 [generator_sizes]
 "00000001" = { commands = 36, commands_by_row = { "0" = 15, "1" = 22, "2" = 22, "3" = 29, "4" = 22, "5" = 29, "6" = 29, "7" = 36 }, source_units = 233 }
@@ -56,3 +56,10 @@ verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also raced
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 29.2
+seed = "both constant values; witnesses(n) at n=4..6"
+tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
+verdict = "kept: canonical whole constants. Each input is read and popped, then push ASCII 48/49, print and halt; no packed table, index or discard walk. Exactly 14n+26 chars, 2n+3 commands and 7+bl(2n+3)+bl(2n-1)+bl(n) written bits. At n=8 both bits 195 -> 138 chars; n=12 251 -> 194. Existing bracket/token wrapping serves narrow layouts; constants need no table-chunk balance candidates. n=3 corpus 58748 -> 58634 chars, width=1 100836 -> 100682. Generic envelopes past n=1 and all eight benchmark pins unchanged. The unchanged one-input lookup exposed a pre-existing workspace overrun, 22 > 21 bits; direct identity/complement base cases use at most 13 bits and seven commands, preserving the old envelope. Each language passed 5656 paired before/after row executions; 268 nonconstant programs through n=3 are byte-identical; only the two one-input projections also change. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."

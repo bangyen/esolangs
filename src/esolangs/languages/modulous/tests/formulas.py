@@ -2,7 +2,9 @@
 
 
 def _chars(n: int, _: str) -> int:
-    """N = T + 82 + 48n + Σ_{k<n} digits(2^k): the weights are 1, 2, 4, ..."""
+    """N = T + 82 + 48n + Σ digits(2^k); at n=1 the scalar complement is 68."""
+    if n == 1:
+        return 68
     return (1 << n) + 82 + 48 * n + sum(len(str(1 << k)) for k in range(n))
 
 

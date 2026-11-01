@@ -8,7 +8,8 @@ A symmetric table counts its inputs at weight 1 over n + 1 entries
 
 Size:
     T + a few dozen characters per input; one loop step per row index.
-    n=10 random 1847: 1,605 chars, n=12 random 1847: 4,781 chars.
+    n=8 constant zero: 138 chars; n=10 random 1847: 1,605 chars,
+    n=12 random 1847: 4,781 chars.
 
 Decisions:
     A string literal has no subtrees to fold or share.  Letting the first
@@ -33,6 +34,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_space_delimited,
 )
+from esolangs.languages.modulous.proof_formulas import execution, workspace
 from esolangs.registry._language import Language, Shape
 
 # Characters around the table in its literal push: ``[PSH STR "`` opens it
@@ -57,7 +59,27 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # the row index read MSB first, which is what the weights below build.  A
     # pushed zero is the counter; an ignored input is read and popped, and the
     # table is indexed by the rest.
-    builds = [input_weights(truth_table, n), symmetric_weights(truth_table, n)]
+    projected = input_weights(truth_table, n)
+    if not any(projected[0]) or n == 1:
+        # [ablations.constant_table_audit_20261101]: scalar paths need no table.
+        if not any(projected[0]):
+            program = (
+                "[INP INT][POP]" * n
+                + f"[PSH INT {_ASCII_ZERO + int(truth_table[0])}][PRT STR][END]"
+            )
+        elif truth_table[0] == "0":
+            program = "[INP INT][ADD 48][PRT STR][END]"
+        else:
+            program = (
+                "[INP INT][JMP F 3 IF 0][SUB 1][JMP F 2][ADD 1][ADD 48][PRT STR][END]"
+            )
+        if width is None:
+            return program
+        wrapped = _bracket_literal(program, width)
+        if grid_width(wrapped) <= width:
+            return wrapped
+        return wrap_space_delimited(" ".join(_TOKEN.findall(program)), width)
+    builds = [projected, symmetric_weights(truth_table, n)]
     return min(
         (_lookup(*build, width) for build in builds if build is not None), key=len
     )
@@ -118,6 +140,8 @@ def _balance(table: str, default: str) -> str:
     floor = max(map(len, atoms))
     width = balanced_token_width(atoms, minimum=floor)
     candidates = [default, modulous(table, width)]
+    if default.startswith("[INP INT]"):
+        return min(candidates, key=balance_score)
     size = len(table)
     # Skip the ``[PSH STR "`` prologue, the table, and the ``"]`` closer: the
     # rest is the instruction suffix the chunked rows pack beside the pushes.
@@ -133,6 +157,8 @@ LANGUAGE = Language(
     category="stack_based",
     random=True,
     boolean=modulous,
+    proof_execution=(execution, True, (1, 2, 3, 5)),
+    proof_workspace=(workspace, True, (3, 6)),
     # Not a tree: pops a ``PSH STR`` table down to the indexed character.
     shape=Shape.LOOKUP,
     balance=_balance,

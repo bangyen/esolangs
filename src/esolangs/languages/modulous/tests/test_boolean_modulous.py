@@ -43,7 +43,7 @@ class TestModulous:
         assert max(map(len, boolean.modulous("0110", 1).splitlines())) == 3
         assert (
             sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256))
-            == 100836
+            == 100682
         )
 
 
@@ -51,3 +51,66 @@ class TestModulous:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """``[INP INT][POP]``."""
     assert_an_ignored_input_costs("Modulous", 6, 14)
+
+
+@pytest.mark.medium
+def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
+    from esolangs.languages.modulous.interpreter import _Machine
+    from esolangs.languages.modulous.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        if n == 1:
+            for table in ("01", "10"):
+                for options in ({}, {"width": 1}, {"balance": True}):
+                    program = esolangs.generate("Modulous", table, **options)
+                    for bit in "01":
+                        io = ReadFirstIO(bit + "\nQ")
+                        machine = _Machine(program, io)
+                        written = WrittenState(machine.snapshot())
+                        steps = 0
+                        while not machine.halted and steps < 8:
+                            machine.step()
+                            written.sample(machine.snapshot())
+                            steps += 1
+                        assert machine.halted
+                        assert io.getvalue() == table[int(bit)]
+                        assert steps == (4 if table == "01" else 6 + int(bit))
+                        assert written.bits <= 13
+                        assert io.input_token() == "Q"
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Modulous", bit * (1 << n), **options)
+                if not options and n == 8:
+                    assert len(program) == 138
+                rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
+                for row in rows:
+                    stdin = esolangs.encode_inputs(
+                        "Modulous", list(map(int, format(row, f"0{n}b")))
+                    )
+                    io = ReadFirstIO(stdin + "Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted and steps <= 2 * n + 3:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                    assert machine.halted
+                    assert io.getvalue() == bit
+                    assert steps == 2 * n + 3
+                    assert written.bits <= workspace(n, program)
+                    assert io.input_token() == "Q"
+    assert (
+        sum(len(esolangs.generate("Modulous", format(v, "08b"))) for v in range(256))
+        == 58634
+    )

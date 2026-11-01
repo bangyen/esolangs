@@ -59,3 +59,10 @@ verdict = "kept: canonical (an ignored input at one node), exempt. Plain-rewrite
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 55.6
+seed = "both constant values; witnesses(n) at n=4..6"
+tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
+verdict = "kept: canonical whole constants. An anonymous chain of n single-send Input nodes reaches Constant 48/49 and Output; branch macros and node names are unnecessary. Exactly 8n+23 chars and n+2 sends, workspace 10+bl(n+1)+bl(n) bits for one active frame and input cursor. At n=8 both bits 196 -> 87 chars; n=12 254 -> 119. n=3 corpus 49504 -> 49336 chars; all eight benchmark pins unchanged. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 are byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."

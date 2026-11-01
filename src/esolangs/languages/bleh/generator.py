@@ -14,7 +14,7 @@ imported as ``a``.  For AND:
 
 Size:
     O(T) text: one function a shared node, one a constant a level;
-    n=4 parity: 268 chars, n=10 random 1847: 8,010 chars.
+    n=8 constant zero: 156 chars; n=4 parity: 268 chars, n=10 random 1847: 8,010 chars.
 """
 
 from itertools import pairwise
@@ -22,7 +22,7 @@ from string import ascii_letters
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
-from esolangs.languages.bleh.proof_formulas import workspace
+from esolangs.languages.bleh.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -37,6 +37,22 @@ _IO = "a"
 def bleh(truth_table: str) -> str:
     """Build a Bleh program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: bounded blocks preserve workspace.
+        chunks = [2] * ((n - 1) // 2) + ([1] if (n - 1) % 2 else []) + [1]
+        names = [
+            "main",
+            *(_name(int(truth_table[0]), k + 1) for k in range(len(chunks) - 1)),
+        ]
+        bodies = []
+        for k, (name, reads) in enumerate(zip(names, chunks, strict=True)):
+            tail = (
+                f"{names[k + 1]}()"
+                if k + 1 < len(names)
+                else f'{_IO}::print"{truth_table[0]}"'
+            )
+            bodies.append(f"{name}:={{{f'{_IO}::next();' * reads}{tail}}};")
+        return f"^:std::io={_IO};" + "".join(bodies)
     ids = subtree_ids(truth_table)
     # Each level's nodes with their halves, in first-occurrence order.
     kids = [
@@ -90,4 +106,5 @@ LANGUAGE = Language(
     underfed_raises=True,
     empty_program="a Bleh program needs a main function",
     proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
+    proof_execution=(execution, True, (1, 2, 3, 6)),
 )

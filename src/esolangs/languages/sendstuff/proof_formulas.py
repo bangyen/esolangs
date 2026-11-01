@@ -1,8 +1,10 @@
 """Snapshot-bit bounds."""
 
 
-def workspace(n: int, _: str) -> int:
+def workspace(n: int, program: str) -> int:
     """A pending Input frame per 1 taken, at the largest node indices N_d."""
+    if program.startswith(">(Input>"):
+        return 10 + (n + 1).bit_length() + n.bit_length()
     bl = int.bit_length
 
     def nodes(j: int) -> int:
@@ -15,3 +17,8 @@ def workspace(n: int, _: str) -> int:
 
     ws = [nodes(j) for j in range(n + 1)]
     return bl(n) + 12 + sum(bl(1 + sum(ws[d + 1 :]) + ws[d] - 4) + 10 for d in range(n))
+
+
+def execution(n: int, program: str) -> int:
+    """A constant is n inputs, a literal and output; other tables branch."""
+    return n + 2 if program.startswith(">(Input>") else 4 * n + 2

@@ -13,12 +13,12 @@ Names are ``subtree_ids`` ids, the chains ``z<depth>``/``o<depth>``.
 
 Size:
     O(T) size and build time: at most T - 1 diagram nodes and 2n chain nodes;
-    n=10 parity: 403 chars, n=10 random 1847: 4,098 chars.
+    n=8 constant zero: 87 chars; n=10 parity: 403 chars, n=10 random 1847: 4,098 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.wrap import TokenWrapper
-from esolangs.languages.sendstuff.proof_formulas import workspace
+from esolangs.languages.sendstuff.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -28,6 +28,14 @@ _MACROS = "@o(>(Subtract 49>%))@z(>(Divide 48>(Subtract 1>%)))@y(Input!o %)"
 def sendstuff(truth_table: str) -> str:
     """Build a SendStuff program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # [ablations.constant_table_audit_20261101]: anonymous, single-send chain.
+        return (
+            ">"
+            + "(Input>" * n
+            + f"(Constant {48 + int(truth_table[0])}>(Output))"
+            + ")" * n
+        )
     ids = subtree_ids(truth_table)
 
     def name(depth: int, k: int) -> str:
@@ -70,4 +78,5 @@ LANGUAGE = Language(
     wrap=_wrap,
     eof="an exhausted Input or InputNumber sends nothing, as the spec says",
     proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
+    proof_execution=(execution, True, (1, 2, 3, 6)),
 )
