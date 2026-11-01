@@ -49,3 +49,10 @@ verdict = "retired 2026-10-29: `min(plain, shared)` kept the plain tree only whe
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 24.6
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical whole-constant folding. Save the third MSB-first bit of the first ASCII digit in t: it is one for both legal input bytes. Drain all remaining bits, then print 0011000b using z and t. No helper class or conditional call remains. Exactly 8n+28 chars and 16n+28 commands; written bits 48+2bl(n), including pending input/output bits and caller frames. n=8 zero/one 121/123 -> 92/92 chars; n=12 153/155 -> 124/124. n=3 corpus 57872 -> 57812 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources and every embedded slot or stream read; stream output follows all reads and leaves a sentinel unread."

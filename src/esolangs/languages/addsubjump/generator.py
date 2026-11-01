@@ -8,6 +8,7 @@ over essential inputs, which indexes ``m``-bit cells; the shorter ships.
 Size:
     Packed is O(T) cells over O(T/log T) words; n=4 parity: 614 chars,
     n=10 random 1847: 2,043 chars, n=10 and: 1,107 chars.
+    Constants: 4n+6 cells, n+1 commands; n=8: 101 chars.
 
 Decisions:
     Interning equal packed cells saves 0.00% at n=8: a running operand reads
@@ -106,6 +107,12 @@ def _memory(
 def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program for ``truth_table`` (length ``2**n``, MSB first)."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        scratch = 4 * (n + 1)
+        # Cell zero holds the positive scratch address: reads subtract into scratch.
+        cells = [v for i in range(n) for v in (scratch, -1, 4 * (i + 1), 0)]
+        cells += [-1, scratch + 1, -8, 0, 0, 48 + int(truth_table[0])]
+        return " ".join(map(str, cells))
     # The shared tree wins on and/or and parity at every n and never on
     # random tables past n=5 ([ablations.residual_tree_route]).
     tree = _addsubjump_ordered(truth_table, tuple(range(n)), shared=True)

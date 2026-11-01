@@ -14,6 +14,7 @@ level is named, not re-emitted, and a node with equal halves is skipped.
 Size:
     At most ``5 n + 2`` executed commands over ``3 (2**n - 1) + 2 n + 3`` lines;
     n=10 parity: 633 chars, n=10 random 1847: 6,283 chars.
+    Constants: n+1 instructions, one step to halt or repeat; n=8: 62 chars.
 
 Decisions:
     Sharing cuts the 256 three-input tables from 38,884 to 37,120 characters
@@ -67,7 +68,12 @@ def crement(truth_table: str, width: int | None = None) -> str:
     input order. Below six columns, whitespace separates fields and only
     tester data is filled.
     """
-    template = in_input_order(truth_table, _crement_shared)
+    n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        target = 0 if truth_table[0] == "1" else n + 1
+        template = "\n".join([f"+J {target} 1", *[TEMPLATE_CHAR * len(PAIR[0])] * n])
+    else:
+        template = in_input_order(truth_table, _crement_shared)
     if width is None or grid_width(template) <= width:
         return template
     return _narrow(template, width)

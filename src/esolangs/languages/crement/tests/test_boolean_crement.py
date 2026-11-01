@@ -87,11 +87,29 @@ class TestCrementTree:
             crement(table)
 
     def test_constant_tables_fold_to_the_gadget_alone(self) -> None:
-        """A constant table has no node: line 0 jumps to the halt or the loop."""
-        assert crement("0000").splitlines()[:3] == ["+J 1 1", "+J 7 1", "+J @ 1"]
-        assert crement("1111").splitlines()[:3] == ["+J 2 1", "+J 7 1", "+J @ 1"]
-        assert _result(instantiate_crement(crement("0000"), [0, 1])) == "0"
-        assert _result(instantiate_crement(crement("1111"), [0, 1])) == "1"
+        """One control instruction precedes all fixed-width, unreachable slots."""
+        from esolangs.languages.crement.proof_formulas import workspace
+        from scripts.benchmark import WrittenState
+
+        for n in range(1, 13):
+            for bit in "01":
+                for options in ({}, {"width": 1}, {"balance": True}):
+                    template = esolangs.generate("Crement", bit * (1 << n), **options)
+                    for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                        bits = list(map(int, f"{row:0{n}b}"))
+                        program = esolangs.instantiate("Crement", template, bits)
+                        assert len(program.split()) == 3 * (n + 1)
+                        assert program.split()[3:] == [
+                            v for b in bits for v in ("+J", "0", str(b))
+                        ]
+                        machine = _Machine(program)
+                        before = machine.snapshot()
+                        written = WrittenState(before)
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        assert machine.halted == (bit == "0")
+                        assert (machine.snapshot() == before) == (bit == "1")
+                        assert written.bits == workspace(n, template)
 
     def test_constant_subtrees_fold(self) -> None:
         """A one-dependency table is one node; parity is five, shared."""
@@ -106,7 +124,7 @@ class TestCrementTree:
             for n in range(1, 11)
         ]
         sizes = [len(crement(table)) for table in tables]
-        assert sizes == [34, 48, 128, 278, 416, 681, 1229, 2102, 3456, 6551]
+        assert sizes == [13, 20, 128, 278, 416, 681, 1229, 2102, 3456, 6551]
         ratios = [b / a for a, b in pairwise(sizes)]
         assert all(r <= 2.25 for r in ratios[2:]), ratios
         assert all(1.6 <= r <= 2 for r in ratios[-3:]), ratios
@@ -128,7 +146,7 @@ class TestCrementTree:
             after = len(crement(table))
             assert after <= before, table
             old, new = old + before, new + after
-        assert (old, new) == {2: (1416, 1330), 3: (42580, 37120)}[n]
+        assert (old, new) == {2: (1416, 1274), 3: (42580, 37050)}[n]
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
         """One node per level: a halting row runs ``5 n + 2`` commands at most."""
@@ -160,7 +178,7 @@ class TestCrementSharing:
     def test_three_input_total(self) -> None:
         """All 256 three-input tables: 43,596 to 37,862 characters, 13.2%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (42580, 37120)
+        assert self._totals(tables) == (42580, 37050)
 
     def test_five_input_sample_total(self) -> None:
         """200 seeded five-input tables: 127,301 to 84,600 characters, 33.5%."""

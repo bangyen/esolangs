@@ -15,6 +15,7 @@ object twice or more is a class ``dS. ... rzzz``, written once and used as
 Size:
     T-1 nodes at most: size and build time O(T); n=8 parity: 640 chars,
     n=10 majority: 1,417 chars, n=10 and: 789 chars.
+    Constants: 8n+28 chars, 16n+28 commands, 48+2bl(n) written bits.
 
 Decisions:
     Shared branches, against the plain tree (8 seeded tables each): dense
@@ -48,6 +49,16 @@ def _names() -> Iterator[str]:
 def object_disoriented(truth_table: str) -> str:
     """Build an Object disoriented program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
+    if truth_table == truth_table[0] * len(truth_table):
+        # The third MSB-first bit of either ASCII input digit is one.
+        reads = "iicit" + "i" * (8 * n - 3)
+        return (
+            "dmain."
+            + reads
+            + "ozozototozozoz"
+            + ("ot" if truth_table[0] == "1" else "oz")
+            + "rzzz"
+        )
     ids = subtree_ids(truth_table)
     return _program(ids, n, _shared_names(ids, n))
 

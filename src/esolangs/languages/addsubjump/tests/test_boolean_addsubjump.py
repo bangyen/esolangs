@@ -117,12 +117,13 @@ class TestAddSubJump:
                 assert run_addsubjump(program, bits) == table[row]
 
     def test_three_input_total(self) -> None:
-        """Shared residuals reduce the n=3 total from 105,924 to 96,084."""
+        """Shared residuals reduce the n=3 total from 105,924 to 96,030."""
         total = sum(len(boolean.addsubjump(f"{value:08b}")) for value in range(256))
-        assert total == 96084
+        assert total == 96030
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table."""
+        _check_native_constants()
         for table, n in (("01101001", 3), ("11111111", 3), ("10101010", 3)):
             program = boolean.addsubjump(table)
             for combo in range(2**n):
@@ -186,7 +187,7 @@ def test_sharing_admission() -> None:
                 assert esolangs.read_answer("AddSubJump", vm.output) == expected
                 assert vm.snapshot()[-1] == n
         totals[n] = before, after
-    assert totals[3] == (105924, 96084)
+    assert totals[3] == (105924, 96030)
     assert totals[5] == (252406, 205998)
     assert new <= 0.95 * old
 
@@ -288,3 +289,40 @@ def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
     table = "00111001011001101010100000100011"
     assert len(esolangs.generate("AddSubJump", table)) == 993
     assert len(esolangs.generate("AddSubJump", table, balance=True)) == 1443
+
+
+def _check_native_constants() -> None:
+    from esolangs.languages.addsubjump.interpreter import _Machine
+    from esolangs.languages.addsubjump.proof_formulas import workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("AddSubJump", bit * (1 << n), **options)
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "AddSubJump", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "Q")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps <= n + 1
+                    assert steps == n + 1
+                    assert written.bits == workspace(n, program)
+                    assert io.getvalue() == bit
+                    assert io.input_char() == ord("Q")
