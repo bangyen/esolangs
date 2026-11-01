@@ -328,10 +328,14 @@ requirements:
   6.0% at n=8: a fixed ~51 columns against a widening street. A saving
   proportional to the construction — per room, per leaf, per entry — holds
   its share and passes. B-tapemark's area-oriented strip width is an
-  explicit exception: its n=8 area falls 46.8% at 23.9% more commands
-  and 57.0% more text characters,
-  and n=12 area falls 22.1% at 5.8% more commands on sampled rows.
-  The saving still tends to zero; this exception applies only to that rule.
+  explicit exception: we prefer its large measured grid-footprint reduction
+  (46.8% at n=8, 22.1% at n=12, 12.5% at n=14) despite dilution. Area is
+  the grid metric; at n=8 we accept 23.9% more commands, 15.4% more written
+  workspace and 57.0% more text characters. One additional closed-form
+  candidate buys this reduction without search, a frozen table or an arity
+  cap. Correctness, exact resource bounds and linear construction remain
+  required. The relative saving tends to zero; this exception covers only
+  this strip-width rule, not the general sustained-share requirement.
 - **No size class breaks**: some tables may grow; the old build stays a
   candidate only where the new one alone would leave the Scaling class. A
   fallback kept to spare scattered tables a few characters is itself a
