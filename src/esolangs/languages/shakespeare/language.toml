@@ -8,7 +8,7 @@ backlinks = 54
 labels = ["linear lookup"]
 qualification = "the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2"
 scaling = "linear: at most 16T + 7n^2 + 180n + 300 characters"
-execution = "linear: worst 2n + 7 commands"
+execution = "linear: worst 2n + 6 + ⌈(T-1)/64⌉ commands"
 workspace = "linear: at most 2T + 13 bits"
 
 [catalogue]

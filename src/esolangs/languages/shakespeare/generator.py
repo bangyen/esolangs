@@ -18,7 +18,7 @@ Size:
 
 Decisions:
     * A stack of ``Remember`` sentences, one per row, was not built: reading
-      it pops once per row, Theta(T) steps against 2n + 7 here.
+      it pops once per row, Theta(T) steps against 2n + 6 + ⌈(T-1)/64⌉ here.
 """
 
 from __future__ import annotations
