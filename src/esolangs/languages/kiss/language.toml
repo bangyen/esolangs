@@ -40,3 +40,10 @@ folding_ignored_read = "a read is itself the branch: S reads on every path, so a
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "retained: the existing skip chain consumes every input before output. A named Church-numeral alternative with I=SKK, B=S(KS)K, two=S(B)(I), three=S(B)(two) and D=SS(I) iterates D eight times as three(two)(D)(leaf). At n=8 it executes and shrinks 72 -> 54 chars (25%), but n=7 two(three(D)) plus one D is still 63 chars, no saving; the pair misses the gate. Worst n=8 commands 31 -> 106 and written bits 601 -> 889; n=7 27 -> 61 commands and 519 -> 615 bits. Positive control: all 768 candidate runs at n=7/8 print the right constant after exactly n reads and preserve a following character. No claim that other Kiss constructions are impossible. Current constants remain 9n chars and at most 4n-1 commands; n=12 108 chars. n=3 corpus unchanged at 12132 chars. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language match or improve; all 26 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probes and a preserved following record, without adding collected cases."

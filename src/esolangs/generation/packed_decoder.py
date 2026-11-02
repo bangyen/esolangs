@@ -10,13 +10,18 @@ from esolangs.generation.helpers import (
 
 
 def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
-    """Read every input and print the literal in the output's unused third cell."""
+    """Read every input and print a literal from an unused third cell."""
     # The reader writes into executed cell 0; the variant discards the write to -2:
     # subtracting cell 0's -2 keeps each ASCII read positive, so it falls through.
     cells = [-1 if direct else -2, 0, 0] * inputs
     literal = 3 * inputs + 2
     output = (literal, -1) if direct else (-3, literal)
-    cells.extend((*output, _ASCII_ZERO + int(bit)))
+    if direct or literal < 10:
+        cells.extend((*output, _ASCII_ZERO + int(bit)))
+    else:
+        # A positive read never branches: its third cell can hold the answer.
+        cells[2] = _ASCII_ZERO + int(bit)
+        cells.extend((-3, 2, 0))
     return " ".join(map(str, cells))
 
 

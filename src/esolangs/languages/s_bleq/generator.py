@@ -6,7 +6,8 @@ consumes all inputs before printing.
 
 Size:
     n=10 random 1847: 2,974 chars, n=10 parity: 487 chars,
-    n=10 and: 334 chars.
+    n=10 and: 334 chars. Constants use 7n+7 chars,
+    n+1 commands and bl(3n+3)+bl(n) written bits.
 """
 
 from functools import partial

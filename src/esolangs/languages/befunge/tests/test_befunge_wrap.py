@@ -43,6 +43,7 @@ def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -
 
 
 def test_befunge_keeps_a_header_that_already_fits() -> None:
+    _check_constants()
     table = "01101001"
     wide = befunge(table, 80)
     # The natural build: one header row over the 4-wide table, unfolded.
@@ -163,7 +164,7 @@ def _shape(program: str) -> tuple[int, int, int]:
 @pytest.mark.parametrize(
     ("inputs", "width", "shape"),
     [
-        (1, 11, (49, 5, 11)),  # two-digit columns just reachable from width 10
+        (1, 11, (5, 1, 5)),  # this seed is constant; no lookup header
         (4, 20, (79, 4, 20)),
         (7, 1, (169, 20, 8)),  # the packed row floor of the narrowest request
         (11, 1, (500, 21, 23)),  # the packed count's ceiling sets 23 columns
@@ -180,7 +181,7 @@ def test_requested_width_builds_the_exact_grid(
 @pytest.mark.parametrize(
     ("table", "shape"),
     [
-        ("1" * 16, (50, 6, 11)),
+        ("1" * 16, (20, 3, 6)),
         ("0010001010001001", (78, 7, 14)),  # the crossing's side + 2 wins
         (_seeded(6), (130, 8, 16)),
         (_seeded(7), (143, 8, 19)),
@@ -203,9 +204,8 @@ def test_the_plain_build_never_exceeds_the_torus_width() -> None:
 
 
 def test_a_header_exactly_as_wide_as_the_request_stays_plain() -> None:
-    # The constant four-input header is exactly 24 cells; at width 24
-    # the fit check's <= keeps the two-row plain build.
-    assert befunge("0" * 16, 24) == "0&$&$&$&$:1%\\1/1+g68*-.@\n0"
+    # The native constant header is exactly 11 cells; equality stays plain.
+    assert befunge("0" * 16, 11) == "&$&$&$&$0.@"
 
 
 @pytest.mark.parametrize("width", [81, 1000])
@@ -220,3 +220,68 @@ def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
             esolangs.run("Befunge", program, stdin=stdin, max_steps=500).strip()
             == table[row]
         )
+
+
+def _check_constants() -> None:
+    from esolangs.languages.befunge.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 14):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Befunge", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 2 * n + 3
+                peak = 0
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Befunge", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "\n7\n")
+                    machine = _Machine(program.splitlines(), io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 1000
+                    assert io.getvalue().strip() == bit
+                    assert io.past_end == 0
+                    assert io.input_num() == 7
+                    if not options:
+                        assert steps == 2 * n + 3
+                        assert (
+                            written.bits
+                            <= 2 + (2 * n + 2).bit_length() + (2 * n - 1).bit_length()
+                        )
+                        peak = max(peak, written.bits)
+                if not options:
+                    assert (
+                        peak == 2 + (2 * n + 2).bit_length() + (2 * n - 1).bit_length()
+                    )
+
+            default = befunge(bit * (1 << n))
+            assert befunge(bit * (1 << n), len(default)) == default
+            balanced = balance_befunge(bit * (1 << n), default)
+            oracle = min(
+                (
+                    befunge(bit * (1 << n), width)
+                    for width in range(1, len(default) + 1)
+                ),
+                key=balance_score,
+            )
+            assert balance_score(balanced) == balance_score(oracle)
+            for width in range(1, len(default) + 1):
+                rows = befunge(bit * (1 << n), width).splitlines()
+                assert len(rows) <= 25
+                assert max(map(len, rows)) <= 80

@@ -7,6 +7,8 @@ pointer never walks: one cell per entry through seven inputs, six per cell from 
 Size:
     O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 65
     chars, n=10 random 1847: 335 chars, n=13 random 1847: 1,545 chars.
+    Constants use 2n+3 cells/commands in one row, with
+    2+bl(2n+2)+bl(2n-1) written bits. Narrow requests fold within 80x25.
 
 Raises:
     GeneratorCapError: more than thirteen inputs, past the 80x25 grid.
@@ -127,6 +129,8 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     """Return a Befunge grid computing ``truth_table``, at most ``width`` wide."""
     n = _validate_truth_table(truth_table)
     _check_cap(n)
+    if len(set(truth_table)) == 1:
+        return _constant(n, truth_table[0], width)
     # An ignored input is read and popped; the table indexes the rest.
     weights, table = input_weights(truth_table, n)
     if width is None and len(table) <= _NATURAL_LAYOUT_MAX_COUNT:
@@ -152,6 +156,18 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     if _wins(packed, plain):
         return packed
     return plain
+
+
+def _constant(inputs: int, bit: str, width: int | None) -> str:
+    """Read/discard every input, print the literal, and halt within 80x25."""
+    header = "&$" * inputs + bit + _END
+    if width is None or len(header) <= width:
+        return header
+    if width < 4 and len(header) < 25:
+        return "\n".join("v" + header)
+    columns = max(4, width)
+    rows = (len(header) + columns - 3) // (columns - 2)
+    return "\n".join(_fold_header(header, columns, rows))
 
 
 def _area(program: str) -> tuple[int, int]:
@@ -277,6 +293,16 @@ def balance_befunge(truth_table: str, default: str) -> str:
     n = _validate_truth_table(truth_table)
     count = 1 << n
     _check_cap(n)
+    if len(set(truth_table)) == 1:
+        length = 2 * n + 3
+        # W = A*ceil(L/(W-2)); its crossing is 1+sqrt(1+A*L).
+        side = 1 + isqrt(1 + CELL_ASPECT * length)
+        candidates = [default, befunge(truth_table, 1)]
+        candidates.extend(
+            befunge(truth_table, max(4, width))
+            for width in range(side - 1, side + CELL_ASPECT + 2)
+        )
+        return min(candidates, key=balance_score)
     candidates = [default]
     layouts = [(5 * n + _BOUND_WIDE, 10, 80)]
     if n > 10:

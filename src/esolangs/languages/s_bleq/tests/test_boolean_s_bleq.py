@@ -24,6 +24,8 @@ run_sbleq = _runner("s_bleq")
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
+    if n == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << n)
     for program in (boolean.s_bleq(table), packed_decoder(table)):
         for row in range(1 << n):
@@ -131,3 +133,47 @@ def test_flipped_tree_ends_the_and_relay_jumps() -> None:
     nor = "1" + "0" * (2**n - 1)
     assert len(boolean.s_bleq(table)) < 0.9 * len(hoisted_tree(table, tuple(range(n))))
     assert len(boolean.s_bleq(table)) < 1.2 * len(boolean.s_bleq(nor))
+
+
+def _check_constants() -> None:
+    from esolangs.languages.s_bleq.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("S*bleq", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 7 * n + 7
+                peak = 0
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "S*bleq", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "7")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 1000
+                    assert io.getvalue().strip() == bit
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
+                    if not options:
+                        assert steps == n + 1
+                        assert written.bits <= (3 * n + 3).bit_length() + n.bit_length()
+                        peak = max(peak, written.bits)
+                if not options:
+                    assert peak == (3 * n + 3).bit_length() + n.bit_length()
