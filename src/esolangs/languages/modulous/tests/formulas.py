@@ -2,10 +2,12 @@
 
 
 def _chars(n: int, _: str) -> int:
-    """N = T + 82 + 48n + Σ digits(2^k); at n=1 the scalar complement is 68."""
+    """Worst source: direct tails through four, otherwise the old envelope minus28."""
     if n == 1:
         return 68
-    return (1 << n) + 82 + 48 * n + sum(len(str(1 << k)) for k in range(n))
+    if n <= 4:
+        return 6 * (1 << n) + 28 * n + 21
+    return (1 << n) + 54 + 48 * n + sum(len(str(1 << k)) for k in range(n))
 
 
 FORMULAS = {"scaling": (_chars, True, (3, 4, 5, 8))}

@@ -7,20 +7,21 @@ admitted = 2021-05-16T15:17:47-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard"
+qualification = "the PSH STR literal puts row0 on top; prefix inputs count large weights, then an ordered suffix discards its entries directly; symmetric tables need no counter"
 scaling = "linear: worst N characters: T-character literal, one read block an input"
-execution = "linear: worst 5T+5n+1 commands past n=1; worst 7 at n=1"
-workspace = "linear: worst 6T+n+2+bl(6n+5)+bl(2n-1)+bl(n) bits past n=1; worst 13 at n=1"
+execution = "linear: worst E commands past n=1; worst 7 at n=1"
+workspace = "linear: worst W bits past n=1; worst 13 at n=1"
+definitions = ["E = T+3n+2 at n=2..4, otherwise 5T+5n-33", "W = 6T+2+bl(T+3n+2)+bl(2n-1)+bl(n) at n=2..4; otherwise 6T+n+2+bl(6n+8)+bl(2n-1)+bl(n)"]
 
 [generator_sizes]
-"00000001" = { commands = 36, commands_by_row = { "0" = 15, "1" = 22, "2" = 22, "3" = 29, "4" = 22, "5" = 29, "6" = 29, "7" = 36 }, source_units = 233 }
-"00001100" = { commands = 33, commands_by_row = { "0" = 14, "1" = 14, "2" = 21, "3" = 21, "4" = 26, "5" = 26, "6" = 33, "7" = 33 }, source_units = 198 }
-"00110110" = { commands = 56, commands_by_row = { "0" = 15, "1" = 22, "2" = 27, "3" = 34, "4" = 37, "5" = 44, "6" = 49, "7" = 56 }, source_units = 237 }
-"0110" = { commands = 26, commands_by_row = { "0" = 12, "1" = 19, "2" = 19, "3" = 26 }, source_units = 183 }
-"01101001" = { commands = 36, commands_by_row = { "0" = 15, "1" = 22, "2" = 22, "3" = 29, "4" = 22, "5" = 29, "6" = 29, "7" = 36 }, source_units = 233 }
-"0110100110010110" = { commands = 46, commands_by_row = { "0" = 18, "1" = 25, "2" = 25, "3" = 32, "4" = 25, "5" = 32, "6" = 32, "7" = 39, "8" = 25, "9" = 32, "10" = 32, "11" = 39, "12" = 32, "13" = 39, "14" = 39, "15" = 46 }, source_units = 283 }
-"1101001101101101" = { commands = 101, commands_by_row = { "0" = 18, "1" = 25, "2" = 30, "3" = 37, "4" = 40, "5" = 47, "6" = 52, "7" = 59, "8" = 60, "9" = 67, "10" = 72, "11" = 79, "12" = 82, "13" = 89, "14" = 94, "15" = 101 }, source_units = 294 }
-"11111110" = { commands = 36, commands_by_row = { "0" = 15, "1" = 22, "2" = 22, "3" = 29, "4" = 22, "5" = 29, "6" = 29, "7" = 36 }, source_units = 233 }
+"00000001" = { commands = 15, commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
+"00001100" = { commands = 14, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 12, "4" = 13, "5" = 13, "6" = 14, "7" = 14 }, source_units = 115 }
+"00110110" = { commands = 19, commands_by_row = { "0" = 12, "1" = 13, "2" = 14, "3" = 15, "4" = 16, "5" = 17, "6" = 18, "7" = 19 }, source_units = 153 }
+"0110" = { commands = 11, commands_by_row = { "0" = 9, "1" = 10, "2" = 10, "3" = 11 }, source_units = 95 }
+"01101001" = { commands = 15, commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
+"0110100110010110" = { commands = 19, commands_by_row = { "0" = 15, "1" = 16, "2" = 16, "3" = 17, "4" = 16, "5" = 17, "6" = 17, "7" = 18, "8" = 16, "9" = 17, "10" = 17, "11" = 18, "12" = 17, "13" = 18, "14" = 18, "15" = 19 }, source_units = 163 }
+"1101001101101101" = { commands = 30, commands_by_row = { "0" = 15, "1" = 16, "2" = 17, "3" = 18, "4" = 19, "5" = 20, "6" = 21, "7" = 22, "8" = 23, "9" = 24, "10" = 25, "11" = 26, "12" = 27, "13" = 28, "14" = 29, "15" = 30 }, source_units = 229 }
+"11111110" = { commands = 15, commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
 
 [catalogue]
 folding_constant_local = "input_weights"  # one projected table entry
@@ -54,6 +55,7 @@ tables = 488
 verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also raced a numeric-token width (1-3), the narrow widths 4-8 and the whole table as one literal chunk. None ever won: dropping all three leaves balanced output byte-identical on 488 tables (40 random a arity at n=1..10, 8 at n=11..12, plus parity, and, or, majority, at-least-2, nand), so the code went. The width= path is untouched"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -63,3 +65,28 @@ saving = 29.2
 seed = "both constant values; witnesses(n) at n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "kept: canonical whole constants. Each input is read and popped, then push ASCII 48/49, print and halt; no packed table, index or discard walk. Exactly 14n+26 chars, 2n+3 commands and 7+bl(2n+3)+bl(2n-1)+bl(n) written bits. At n=8 both bits 195 -> 138 chars; n=12 251 -> 194. Existing bracket/token wrapping serves narrow layouts; constants need no table-chunk balance candidates. n=3 corpus 58748 -> 58634 chars, width=1 100836 -> 100682. Generic envelopes past n=1 and all eight benchmark pins unchanged. The unchanged one-input lookup exposed a pre-existing workspace overrun, 22 > 21 bits; direct identity/complement base cases use at most 13 bits and seven commands, preserving the old envelope. Each language passed 5656 paired before/after row executions; 268 nonconstant programs through n=3 are byte-identical; only the two one-input projections also change. Both constants n=1..12 execute in default, width=1 and balanced layouts; all 24 old balanced constant scores improve or match. Owned regressions enforce all reads before output, preserve a sentinel and check resource bounds."
+
+[ablations.trick_prototype_20261102_tail_reads]
+arity = 3
+saving = 54.6562
+verdict = "kept independently by execution gate. Tail a cheap final input-order suffix: a zero only pops its bit; a one pops its bit and weight entries. Ignored reads stay in that suffix, never move past output. Weight1/2/4 blocks save16/11/1 chars; weight8 grows19, so4 is the local crossover (the raw proposal incorrectly stopped at2). With four essential inputs unrolling8 additionally removes the counter/walk: the generic program266->229 chars and67->30 commands; at five, unrolling16 grows332->354, giving the actual whole-counter cutoff. With no prefix the counter is zero: omit it and its dead walk; symmetric weight1 builds become entirely direct reads. Across every three-input table/row commands67008->30384 (54.66%), no slower row or larger table; chars58634->37030,width1 100682->71908. Even retaining the zero counter/walk gives36480 commands (45.56%), no slower row or larger table: no bundling with other failed rules. Generic20 seeded tables6060+n n=7 chars11120->10560 (5.04%), n=8 14700->14140 (3.81%); these declining size gains do not admit the rule. Named parity/AND/OR/majority chars433->265 and483->299. All-small,16 seeded plus named/ignored tables per n=4..8 and exact resource controls give10972 generated-program runs, preserving a sentinel and checking reads before output. Exact E at2..4 is T+3n+2; thereafter5T+5n-33. W separates no-prefix n=2..4 from indexed prefixes, using the actual cursor length6n+8. Native boundary witnesses attain E/W at2..6; n4 newW109. The old program actually used114 bits against its old113 cap because6n+5 omitted the cursor crossing; the new accounting fixes that boundary. Wrong-table control fires. Constants and scalar fast paths unchanged."
+
+[ablations.trick_prototype_20261102_swap_fold]
+arity = 8
+saving = 4.3537
+verdict = "rejected independently: replace the read branch by SWP,ADD,SWP,POP. Actual default generic chars11120->10560 at7 (5.04%),14700->14060 at8 (4.35%), declining below20. Named weight1 builds433->405 /483->451, below10. Every small row and four rows per20 judge/named tables execute correctly, but1730 three-input rows become slower; aggregate commands67008->69888. No combination with failed raw reads or tails is used for admission."
+
+[ablations.trick_prototype_20261102_raw_input]
+arity = 8
+saving = 3.2653
+verdict = "rejected: corrected all-bare lookup reads and IF48 execute canonical one-bit-per-line inputs, but generic chars11120->10700 /14700->14220 save3.78%/3.27%, below the declining bar; named433->412 /483->459 also below10. Leaving ignored reads as INP INT, as the sketch suggests, is wrong: on table0101,row00 the following bare line read consumes the pending newline and SWP raises for a one-element stack. Baseline and corrected all-bare controls execute the row. No input-framing contract change or bundled saving ships."
+
+[ablations.trick_prototype_20261102_pair_packed_literal]
+arity = 8
+saving = 3.8095
+verdict = "rejected tested complete decoder: pack00/11/01/10 as digits0/1/2/3, halve higher weights, read the selector last, then branch to SUB2 for the zero arm or SUB1/SUB3 for the one arm. Keep trailing ignored reads before printing. All small rows and four rows per20 judge/named tables execute actual generated programs. Generic chars11120->11860 at7 (6.65% growth),14700->14140 at8 (3.81% saving), failing the fixed gate; racing old at7 would give zero gain there. Named symmetric builds also grow. Three-input chars58634->83678, so it fails the no-larger-table execution admission too. This rejects this explicit branch decoder, not every pair encoding."
+
+[ablations.trick_prototype_20261102_variable_counter_via_prt]
+arity = 2
+saving = 0.0000
+verdict = "rejected tested counter replacement: weighted one bits update VAR1 while the stack counter remains0. On table0001,row11 the actual mutant prints0 instead of1; baseline prints1. A direct PSH INT7,PSH VAR1,POP,PSH INT0 control leaves VAR1=7 and stack(0), proving PSH VAR1 stores rather than loads. PRT VAR1 prints without pushing a stack counter. No complete variable-to-stack walk was supplied; hypothetical size savings are not measurements and no interpreter change is admitted."

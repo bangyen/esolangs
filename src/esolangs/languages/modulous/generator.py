@@ -3,18 +3,17 @@
 ``PSH STR`` pushes the table so entry 0 is on top.  Each input is read and
 added into a counter at its weight (an ignored input is read and popped), then
 a ``JMP`` loop discards one entry per count and prints the entry left on top.
-A symmetric table counts its inputs at weight 1 over n + 1 entries
+Small-weight suffix reads discard entries directly after the walk.
+A symmetric table uses only these reads over n + 1 entries
 ([ablations.symmetric_count]).
 
 Size:
     T + a few dozen characters per input; one loop step per row index.
-    n=8 constant zero: 138 chars; n=10 random 1847: 1,605 chars,
-    n=12 random 1847: 4,781 chars.
+    n=8 constant zero: 138 chars; n=10 random 1847: 1,577 chars,
+    n=12 random 1847: 4,753 chars.
 
 Decisions:
-    A string literal has no subtrees to fold or share.  Letting the first
-    read be the counter saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under
-    the 10% bar.
+    The tail retains every ignored input in order, before output.
 """
 
 import re
@@ -87,15 +86,31 @@ def modulous(truth_table: str, width: int | None = None) -> str:
 
 def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
     """Return the literal push, the weighted reads and the discard walk."""
-    reads = ["[PSH INT 0]"]
-    for weight in weights:
+    # Local tails win through weight4. With at most four essential inputs,
+    # unrolling8 also removes the counter/walk:37 chars saved;16 loses22.
+    # Keep the entire suffix in input order, including ignored inputs.
+    # [ablations.trick_prototype_20261102_tail_reads]
+    split = (
+        0
+        if max(weights, default=0) <= 8
+        else max(i + 1 for i, weight in enumerate(weights) if weight > 4)
+    )
+    reads = ["[PSH INT 0]"] if split else []
+    for weight in weights[:split]:
         if weight:
             reads.append(f"[INP INT][JMP F 4 IF 0][POP][ADD {weight}][JMP F 2][POP]")
         else:
             reads.append("[INP INT][POP]")
-    # ``SWP``/``POP`` discards the entry *under* the counter, which is what
-    # keeps the counter reachable: nothing but the top two cells is.
-    walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT STR][END]"
+    tail = []
+    for weight in weights[split:]:
+        tail.append(
+            f"[INP INT][JMP F {weight + 1} IF 0]" + "[POP]" * (weight + 1)
+            if weight
+            else "[INP INT][POP]"
+        )
+    # With no prefix the counter is identically zero: omit it and its walk.
+    walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP]" if split else ""
+    walk += "".join(tail) + "[PRT STR][END]"
     program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
     if width is None:
         return program
@@ -158,7 +173,7 @@ LANGUAGE = Language(
     random=True,
     boolean=modulous,
     proof_execution=(execution, True, (1, 2, 3, 5)),
-    proof_workspace=(workspace, True, (3, 6)),
+    proof_workspace=(workspace, True, (2, 3, 4, 6)),
     # Not a tree: pops a ``PSH STR`` table down to the indexed character.
     shape=Shape.LOOKUP,
     balance=_balance,

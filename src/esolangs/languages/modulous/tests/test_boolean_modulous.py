@@ -42,8 +42,7 @@ class TestModulous:
     def test_narrow_literal_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.modulous("0110", 1).splitlines())) == 3
         assert (
-            sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256))
-            == 100682
+            sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256)) == 71908
         )
 
 
@@ -51,6 +50,32 @@ class TestModulous:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """``[INP INT][POP]``."""
     assert_an_ignored_input_costs("Modulous", 6, 14)
+
+    from esolangs.languages.modulous.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    base = "11100110001111100101010001000110"
+    table = "".join(
+        base[
+            ((row >> 6 & 1) << 4)
+            | ((row >> 4 & 1) << 3)
+            | ((row >> 3 & 1) << 2)
+            | ((row >> 1 & 1) << 1)
+            | (row & 1)
+        ]
+        for row in range(128)
+    )
+    for options in ({}, {"width": 1}, {"balance": True}):
+        program = esolangs.generate("Modulous", table, **options)
+        for row in range(128):
+            io = ScriptedIO("\n".join(f"{row:07b}") + "\n7")
+            machine = _Machine(program, io)
+            while not machine.halted:
+                if machine.tokens[machine.ind].startswith("PRT"):
+                    assert io.reads == 7
+                machine.step()
+            assert io.getvalue() == table[row]
+            assert io.input_token() == "7"
 
 
 @pytest.mark.medium
@@ -112,5 +137,5 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
                     assert io.input_token() == "Q"
     assert (
         sum(len(esolangs.generate("Modulous", format(v, "08b"))) for v in range(256))
-        == 58634
+        == 37030
     )
