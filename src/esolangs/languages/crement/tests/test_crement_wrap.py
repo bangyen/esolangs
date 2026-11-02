@@ -1,5 +1,7 @@
 """Crement narrows complete instructions with equivalent operand spellings."""
 
+import random
+
 import pytest
 
 import esolangs
@@ -7,12 +9,38 @@ from esolangs.languages.crement.generator import crement
 from tests.support.divergence import diverges
 
 
+@pytest.mark.medium
 def test_crement_width_narrows_the_widest_instruction() -> None:
     table = "01101001"
     assert max(map(len, crement(table, 1).splitlines())) < max(
         map(len, crement(table).splitlines())
     )
     assert crement(table, 80) == crement(table)
+
+    # A constant final quarter leaves the four-digit targets near their callers.
+    table = f"{random.Random(0).getrandbits(2048):02048b}"[:1536] + "0" * 512
+    default = esolangs.generate("Crement", table)
+    narrowed = esolangs.generate("Crement", table, width=9)
+    assert (
+        len(default),
+        len(default.splitlines()),
+        max(map(len, default.splitlines())),
+    ) == (9106, 1012, 10)
+    assert (
+        len(narrowed),
+        len(narrowed.splitlines()),
+        max(map(len, narrowed.splitlines())),
+    ) == (9103, 1012, 9)
+    rows = {0, 1, 511, 512, 1023, 1024, 1535, 1536, 2047}
+    rows.update(random.Random(1).sample(range(2048), 23))
+    assert {table[row] for row in rows} == {"0", "1"}
+    for row in sorted(rows):
+        bits = [int(bit) for bit in f"{row:011b}"]
+        for template in (default, narrowed):
+            source = esolangs.instantiate("Crement", template, bits)
+            assert diverges("Crement", source, "") is (table[row] == "1")
+    source = esolangs.instantiate("Crement", str(narrowed), [0] * 11, truth_table=table)
+    assert diverges("Crement", source, "") is (table[0] == "1")
 
 
 def test_crement_data_only_setters_survive_plain_template() -> None:
