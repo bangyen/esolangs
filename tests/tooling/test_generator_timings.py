@@ -42,6 +42,18 @@ def test_matching_cohorts_regressions_and_invalid_evidence():
     _rejects_duplicate_failed_and_mixed_evidence()
 
 
+def test_malformed_history_entries_are_dropped_not_crashed_on():
+    baseline = snapshot(_records())
+    slow = snapshot(_records(130))
+    # A restored history holding a raw measurements list (the 2026-11-02
+    # weekly crash) or other non-snapshot entries must not crash compare.
+    report, history = compare(slow, [[{"language": "test"}], "junk", baseline])
+    assert "candidate" in report
+    assert history == [baseline, slow]
+    report, _ = compare(slow, [[{"language": "test"}]])
+    assert "first reference" in report
+
+
 def _changed_cohort_starts_over(field):
     old = snapshot(_records())
     new = deepcopy(old)
