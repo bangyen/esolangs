@@ -1,9 +1,7 @@
-r' d' .wo -ow ( ! )
-%og ( r2 ) .wg' -gw
-( .wo -ow ( ! ) .ww
-+ww *ww -og ! ) .wg
-( r2 .wo -ow ( ! )
-%og ( r2 ) .wg' -gw
-( .ww +ww *ww -og !
-) .wg ( r2 .ww +ww
-*ww -ow ! ) )
+r' d' .wo -ow (
+! ) %og ( r2 )
+.wg' -gw ( .wo
+-ow ( ! ) .ww
++ww *ww -og ! )
+.wg ( r2 .wo
+-ow ( ! ) ! )

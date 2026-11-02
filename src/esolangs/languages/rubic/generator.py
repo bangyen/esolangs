@@ -14,12 +14,13 @@ The undo sits inside the 1 branch, so no branch tests or undoes after it
 and every subtree runs on X.  With P = ``.wg`` and Q = ``.wg' -gw``.  A node
 whose halves agree reads its bit and goes on; a constant subtable reads the
 rest and prints with ``.ww +ww *ww -og !`` (48) or ``-ow`` (49).  Every
-expression is in :data:`_TABLE`, whose values on X and Y the tests check, so
-by induction each evaluates as stated wherever the program reaches it.
+expression is in :data:`_TABLE`, whose values on X and Y the tests check.
+At the last bit, identity prints the read byte; negation stores the bit,
+prints 49-P, then undoes its store.
 
 Size:
     At most T-1 nodes of bounded tokens: O(T) size and build; n=10 parity:
-    68,564 chars, n=10 random 1847: 48,096 chars, n=10 and: 1,323 chars.
+    43,988 chars, n=10 random 1847: 36,837 chars, n=10 and: 1,254 chars.
     Constants: 2n+35 chars, n+11 commands; written bits
     119+bl(n+11)+bl(n+5)+bl(n+6)+bl(n).
 
@@ -37,6 +38,7 @@ _OPENING: tuple[str, ...] = ("r'", "d'")
 _TABLE: dict[str, tuple[str, ...]] = {
     "read": (".wo", "-ow", "(", "!", ")"),
     "bit": ("%og",),
+    "not": (".ww", "+ww", "*ww", "-ow", "-wg"),
     "print0": (".ww", "+ww", "*ww", "-og", "!"),
     "print1": (".ww", "+ww", "*ww", "-ow", "!"),
     "P": (".wg",),
@@ -67,6 +69,28 @@ def rubic(truth_table: str) -> str:
             out.extend(_TABLE["print1" if ids[depth][k] else "print0"])
             return
         out.extend(_TABLE["read"])
+        # At the last bit, the read byte itself is the identity answer.
+        # For negation, 49-P is 49 on X and 48 on Y; restore X after printing.
+        # [ablations.trick_prototype_20261102_last_bit_literal]
+        if depth == n - 1:
+            if ids[n][2 * k] == 0:
+                out.append("!")
+            else:
+                out.extend(
+                    (
+                        *_TABLE["bit"],
+                        "(",
+                        "r2",
+                        ")",
+                        *_TABLE["not"],
+                        "!",
+                        *_TABLE["P"],
+                        "(",
+                        "r2",
+                        ")",
+                    )
+                )
+            return
         if ids[depth + 1][2 * k] == ids[depth + 1][2 * k + 1]:
             node(depth + 1, 2 * k)
             return

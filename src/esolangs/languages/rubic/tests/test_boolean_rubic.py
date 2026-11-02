@@ -4,6 +4,8 @@ import pytest
 
 import esolangs
 from esolangs.languages.rubic.generator import _OPENING, _TABLE
+from esolangs.languages.rubic.interpreter import _Machine
+from esolangs.runtime.io import ScriptedIO
 
 #: Every one- and two-input table; a tree's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -14,10 +16,28 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
     program = esolangs.generate("Rubic", table)
+    opening = _Machine(" ".join(_OPENING), ScriptedIO())
+    while not opening.halted:
+        opening.step()
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.progress() == n
+            super()._write(value)
+
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Rubic", bits)
         got = esolangs.run("Rubic", program, stdin=stdin, timeout=5)
+        io = ReadFirstIO(stdin + "Q")
+        machine = _Machine(program, io)
+        while not machine.halted:
+            machine.step()
+        assert machine.state.cube == opening.state.cube
+        assert io.getvalue() == table[row]
+        assert io.progress() == n
+        assert io.past_end == 0
+        assert io.input_char() == ord("Q")
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Rubic", got) == table[row], (table, row)
 
@@ -38,6 +58,10 @@ def test_the_table_holds_on_both_cube_states() -> None:
             setter = _TABLE[f"print{bit}"][:-1]
             assert out(*state, *setter, *_TABLE["bit"], "!") == chr(bit)
         y = len(store)
+        expression = _Machine(" ".join((*state, *_TABLE["not"])), ScriptedIO())
+        while not expression.halted:
+            expression.step()
+        assert expression.state.v == 49 - y
         assert out(*state, *_TABLE["P"], "!") == chr(y)
         assert out(*state, *_TABLE["Q"], "!") == chr(1 - y)
 
@@ -89,5 +113,5 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("Rubic", format(v, "08b"))) for v in range(256))
-        == 83958
+        == 63126
     )

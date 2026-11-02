@@ -942,6 +942,7 @@ _SPARSE_BAND = {
 
 #: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
 _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
+    "Rubic": lambda n: ("1000",) if n == 2 else _diagram_witness("rubic", n),
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
     "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
     "Back": _back_worst,

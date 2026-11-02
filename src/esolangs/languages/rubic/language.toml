@@ -7,20 +7,20 @@ admitted = 2026-10-15T02:43:43-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "every subtree undoes its `r2` store, so the cube is one of two states and each table expression is checked on both; equal halves read untested and constant subtables fold"
-scaling = "linear: worst 67T - 44 characters: parity, no node folds; subtree_ids folding"
-execution = "poly n: worst 16n + 7 commands: a differing node runs 16"
-workspace = "poly n: worst 3n² + 18n + 118 + bl(n) bits past n = 1: loop frames, the cube's 108"
+qualification = "the last literal prints its byte or stores it and prints 49-P before undoing; every subtree preserves the opening cube, expressions are checked on X/Y, equal halves read untested and constants fold"
+scaling = "linear: worst max(63,47T-44) characters: distinct maximal children, seeded by constant/NOT pairs"
+execution = "poly n: worst 16n + 5 commands: the negated last bit costs 19, earlier differing nodes add 16"
+workspace = "poly n: worst 3n²+15n+117+bl(n)+I bits: I=1 for n<3, else 0; n frames, n+4-bit positions"
 
 [generator_sizes]
-"00000001" = { commands = 55, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 52, "7" = 55 }, source_units = 266 }
+"00000001" = { commands = 40, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 40, "7" = 40 }, source_units = 197 }
 "00001100" = { commands = 44, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 44, "7" = 44 }, source_units = 213 }
-"00110110" = { commands = 55, commands_by_row = { "0" = 38, "1" = 38, "2" = 41, "3" = 41, "4" = 49, "5" = 52, "6" = 52, "7" = 55 }, source_units = 386 }
-"0110" = { commands = 39, commands_by_row = { "0" = 33, "1" = 36, "2" = 36, "3" = 39 }, source_units = 224 }
-"01101001" = { commands = 55, commands_by_row = { "0" = 46, "1" = 49, "2" = 49, "3" = 52, "4" = 49, "5" = 52, "6" = 52, "7" = 55 }, source_units = 492 }
-"0110100110010110" = { commands = 71, commands_by_row = { "0" = 59, "1" = 62, "2" = 62, "3" = 65, "4" = 62, "5" = 65, "6" = 65, "7" = 68, "8" = 62, "9" = 65, "10" = 65, "11" = 68, "12" = 65, "13" = 68, "14" = 68, "15" = 71 }, source_units = 1028 }
-"1101001101101101" = { commands = 71, commands_by_row = { "0" = 51, "1" = 51, "2" = 62, "3" = 65, "4" = 54, "5" = 54, "6" = 57, "7" = 57, "8" = 62, "9" = 65, "10" = 65, "11" = 68, "12" = 57, "13" = 57, "14" = 68, "15" = 71 }, source_units = 816 }
-"11111110" = { commands = 55, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 52, "7" = 55 }, source_units = 266 }
+"00110110" = { commands = 53, commands_by_row = { "0" = 38, "1" = 38, "2" = 41, "3" = 41, "4" = 37, "5" = 37, "6" = 49, "7" = 53 }, source_units = 290 }
+"0110" = { commands = 37, commands_by_row = { "0" = 21, "1" = 21, "2" = 33, "3" = 37 }, source_units = 128 }
+"01101001" = { commands = 40, commands_by_row = { "0" = 34, "1" = 34, "2" = 46, "3" = 50, "4" = 46, "5" = 50, "6" = 40, "7" = 40 }, source_units = 300 }
+"0110100110010110" = { commands = 69, commands_by_row = { "0" = 47, "1" = 47, "2" = 59, "3" = 63, "4" = 59, "5" = 63, "6" = 53, "7" = 53, "8" = 59, "9" = 63, "10" = 53, "11" = 53, "12" = 53, "13" = 53, "14" = 65, "15" = 69 }, source_units = 644 }
+"1101001101101101" = { commands = 56, commands_by_row = { "0" = 51, "1" = 51, "2" = 50, "3" = 50, "4" = 54, "5" = 54, "6" = 57, "7" = 57, "8" = 50, "9" = 50, "10" = 62, "11" = 66, "12" = 57, "13" = 57, "14" = 56, "15" = 56 }, source_units = 582 }
+"11111110" = { commands = 53, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 49, "7" = 53 }, source_units = 239 }
 
 [catalogue]
 sharing_exempt = "no jump or call: code runs once per place it is written"
@@ -46,6 +46,7 @@ tables = "200 random per seed at n=7,8 vs the prior build (test, then undo-and-t
 verdict = "kept: the 1 branch undoes the store as its first command, so every subtree runs on X and the closing test-and-undo (and the per-parity P/Q swap) goes. Random tables -12.48 / -12.50% at n=7 / 8 (second seed -12.47 / -12.50%); parity -13.49 / -13.52%, majority -12.93 / -11.34%, threshold-3 -10.70 / -10.33%, and -8.28 / -8.12%, or -6.65 / -6.31% (named functions reported apart; leaf-heavy and/or under the bar). A fixed 4.5 tokens of 20.5 a differing node, so the share holds across n. Commands 85 -> 71 at n=4 parity. Every row of all tables n<=3, 3000 random n=4, and random plus named n=5..8 (all rows) ran through the interpreter, a wrong-table control fails. A further 4.7 points (17.2% on random) comes from an opening r' d' u2, store l2, P = .wg, Q = .gw' (both one token), found by a search over openings of up to three turns; not shipped, a searched constant"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -55,3 +56,18 @@ saving = 62.2
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole-constant folding. One backwards pass contains n input tokens; the frame stores its count before any read, so read values cannot change control. Keep the cube-neutral opening and ASCII print expression. Exactly 2n+35 chars and n+11 commands. Written bits 119+bl(n+11)+bl(n+5)+bl(n+6)+bl(n): cube 108, V six, instruction cursor, one frame and input cursor. n=8 135 -> 51 chars; n=12 191 -> 59. n=3 corpus 84006 -> 83958 chars. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources, every read before output and an unread sentinel."
+
+[ablations.trick_prototype_20261102_last_bit_literal]
+arity = 8
+saving = 21.7956586178
+verdict = "kept: the nonconstant final two-row table is a literal. Identity prints its read byte. Negation stores b using the existing bit/r2 spelling, evaluates the existing49 expression minus P, prints, then P(r2) restores X. The added .ww+ww*ww-ow-wg expression is exactly49 onX and48 onY, derived algebraically from the existing certificate, with no expression search or changed opening. Both literal polarities are one terminal construction. A differing terminal shrinks90->21 chars for01 or90->63 for10; all other nodes and root constants are unchanged.200 Random(1000*n+k).choice tables: n7 chars1181623->920506 (22.0982%),n8 2356116->1842585 (21.7957%), above the declining20% gate with near-bar200 tables. Another200 per9..12 stay21.842..21.960%. Two additional200-table streams per7/8, Random(1847+n) and Random(5150+n), also clear20%.575664 old/new native executions cover all small tables/rows,3000 randomn4, random/named5..12, and ALL verdict rows in all600 randomtables per7/8.9368 fresh-VM/parser controls agree with reused immutable parsed programs.3969576 executed subtree-end probes return cubeX; every print follows n reads, no EOF probe and followingQ survives. No source grows or tested row slows. n3 source83958->63126,commands87488->79296. Source worst max(63,47T-44): trailing-space weights at one input are32 for each constant,16 identity,58 NOT; two distinct maximal children give139 at two inputs, then S=2S+49, plus opening5. Token maximum is21 atn1 and63T/4-15 above, so positions use n+4 bits. At most n one-pass frames, with a root start one bit narrower fromn3, give W=3n\u00b2+15n+117+bl(n)+I(n<3); exact small maxima137,162,191. The cube costs108 and V six bits; root constants keep their earlier exact formula. Independent maximal-child witnesses attain both new bounds through9. Runtime worst16n+5: earlier nodes add16, a negated terminal costs19 after the opening2. Owned proof tests exercise the new witnesses and small cases. Independent ablation default is byte-identical; disabling the rule restores the frozen old emitter (396 tables), with4240 native small ablation runs and144 default/width1/balanced runs. Wrong E prints the wrong bit; missing undo still prints the right bit but leaves cubeY, so the cube control fires. Eleven-build median generation times for20tables n7/8/9:1.94/3.70/7.33ms ->1.58/3.06/5.91ms. Measured Size anchors, exact pins and example updated together."
+
+[ablations.trick_prototype_20261102_parity_store_drop_mod]
+arity = 8
+saving = 5.4472699986
+verdict = "rejected: remove %og and store with48+b repetitions of the involutionr2.2520 native pilot runs compute correct bits, read the full row and restore the cube; Boolean parity is sufficient. But200 seeded tables save only5.4437%/5.4473% at7/8, below10%, and each differing node adds95 executed commands. Native n8 NAND/all-ones takes895 commands versus135 before; worst111n+7 versus16n+7. This changes loop execution and intermediate state, not minimal spelling. No independent admission or bundle with the searched opening."
+
+[ablations.trick_prototype_20261102_searched_opening]
+arity = 8
+saving = 5.4218043594
+verdict = "rejected replay of the supplied rprime,dprime,u2 opening, l2 store and one-token P/Q; no new search. All X/Y read-prefix, print0/1, P/Q and negation values verify, and2520 native pilot runs compute their bits with restored cube, full read-first and sentinel consumption. But200 seeded n7/8 tables save only5.3929%/5.4218%, below10%; six small root constants grow3 chars. Its searched provenance remains as previously recorded. Neither this rule nor dropping the modulus independently qualifies, so no combined subthreshold bundle ships."
