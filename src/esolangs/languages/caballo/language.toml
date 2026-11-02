@@ -59,3 +59,10 @@ verdict = "retired 2026-10-30: superseded by signed_sum, which has no last-level
 saving = 0.0
 arity = 10
 verdict = "retired 2026-10-30: the complement is now chosen by ones above zeros (signed_sum), not 10 pairs above 01 pairs plus a closing flip. The pair rule saved 1.58% / 1.23% / 0.64% on random tables at n=7 / 8 / 10 under the previous build; the ones rule costs 2 chars for the closing `(1+i-)` and `i`, and dropping it from signed_sum costs +1.57 / +1.32 / +0.72% on random tables at n=7 / 8 / 10, balanced area within 0.1 point"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: n pops consume the initial stack, optionally followed by i. Chars n+b, commands n+1+b including completion/dump; n=8 8/9 chars, 9/10 commands and 39 written bits. Removing one pop on eight one inputs leaves [1] for requested zero and [2] for requested one, both wrong. Native positive controls pass; no universal optimum claim. Whole-stream input loading precedes the program; owned tests verify one complete input read and output only after loading. n=3 corpus chars 11410 unchanged. 1120 native/candidate row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute or prove their termination answer in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. No added collected cases."

@@ -9,7 +9,8 @@ ignored cascade inputs.
 
 Size:
     O(T) rows of one (``0``) or two (``1``) lines; n=10 and: 3,447 chars (was
-    5,500 at three lines a row).
+    5,500 at three lines a row). Constant-one setters pack outside the ring
+    in rectangles of at least n + 8 cells; n=8 uses 16 cells.
     Narrow paths drop ignored inputs for area
     ([ablations.essential_projection]).
     Unbounded, the cascade or its fold into side-by-side strips
@@ -81,12 +82,44 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     return program
 
 
+def _constant_ring(n: int, width: int) -> str:
+    """Pack ignored setters outside the one-heading ring's eight visited cells."""
+    height = max(3, -(-(n + 8) // width))
+    rows = [list(" " * width) for _ in range(height)]
+    ring = {
+        (0, 0): "~",
+        (0, 1): "*",
+        (1, 1): "+",
+        (1, 2): "~",
+        (1, 3): "*",
+        (2, 1): "*",
+        (2, 2): " ",
+        (2, 3): "*",
+    }
+    for (row, col), char in ring.items():
+        rows[row][col] = char
+    left = n
+    for row in range(height):
+        for col in range(width):
+            if left and (row, col) not in ring:
+                rows[row][col] = TEMPLATE_CHAR
+                left -= 1
+    assert left == 0
+    return "\n".join("".join(row).rstrip() for row in rows)
+
+
 def _program(truth_table: str, width: int | None = None) -> str:
     """Build the marker cascade, or a direct constant halt/ring."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         if truth_table[0] == "0":
             return "+" + ("\n" + TEMPLATE_CHAR) * n
+        if n >= 3:
+            forms = [_constant_ring(n, 4), _constant_ring(n, max(4, -(-(n + 8) // 3)))]
+            best = min(forms, key=grid_rank)
+            if width is None or max(map(len, best.splitlines())) <= max(4, width):
+                return best
+            return _constant_ring(n, max(4, width))
         # The initial ~ supplies R to the top-left +. The ring's top ~
         # replenishes it before three clockwise corners return to that +.
         # Column zero below the entry is never visited, so either setter

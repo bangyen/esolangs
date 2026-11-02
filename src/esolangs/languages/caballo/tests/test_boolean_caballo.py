@@ -11,6 +11,8 @@ TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
+    if table == "00":
+        _check_constants()
     n = len(table).bit_length() - 1
     program = esolangs.generate("Caballo", table)
     for row in range(len(table)):
@@ -19,3 +21,29 @@ def test_every_row_prints_its_answer(table: str) -> None:
         got = esolangs.run("Caballo", program, stdin=stdin, timeout=5)
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Caballo", got) == table[row], (table, row)
+
+
+def _check_constants() -> None:
+    from esolangs.languages.caballo.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value: object) -> None:
+            assert self.reads == 1
+            super()._write(value)
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Caballo", bit * (1 << n), **options)
+                assert program.replace("\n", "") == "p" * n + (
+                    "i" if bit == "1" else ""
+                )
+                for bits in ([0] * n, [1] * n):
+                    stdin = esolangs.encode_inputs("Caballo", bits)
+                    io = ReadFirstIO(stdin)
+                    run(program, io)
+                    assert esolangs.read_answer("Caballo", io.getvalue()) == bit
+                    assert io.reads == 1
+                    assert io.position() == len(stdin)
+                    assert io.past_end == 0

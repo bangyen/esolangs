@@ -107,6 +107,8 @@ def test_constant_balance_and_setters_off_path(bit: str) -> None:
     import esolangs
     from esolangs.runtime._evaluate import _evaluate
 
+    if bit == "0":
+        _check_constants()
     n = 8
     table = bit * (1 << n)
     template = esolangs.generate("ArrowQueue", table)
@@ -148,3 +150,51 @@ def test_ring_pops_rdlu_then_sustains() -> None:
     ]
     assert verdict(_ROWS["1"], entry) == "1"
     assert verdict(_ROWS["0"], entry) == "0"
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.arrowqueue.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+        for bit in "01":
+            table = bit * (1 << n)
+            default = esolangs.generate("ArrowQueue", table)
+            span = max(map(len, default.splitlines()))
+            assert esolangs.generate("ArrowQueue", table, width=span) == default
+            for options in (
+                {},
+                {"width": 1},
+                {"width": 4},
+                {"width": 7},
+                {"balance": True},
+            ):
+                template = esolangs.generate("ArrowQueue", table, **options)
+                rows = template.splitlines()
+                slots = {
+                    (r, c)
+                    for r, row in enumerate(rows)
+                    for c, char in enumerate(row)
+                    if char == "$"
+                }
+                assert len(slots) == n
+                if "width" in options:
+                    assert max(map(len, rows)) <= max(4, options["width"])
+                for bits in ([0] * n, [1] * n):
+                    io = ScriptedIO("7")
+                    program = esolangs.instantiate("ArrowQueue", template, bits)
+                    machine = _Machine(program.splitlines(), io)
+                    seen = set()
+                    for _ in range(32):
+                        if machine.halted or machine.snapshot() in seen:
+                            break
+                        assert (machine.row, machine.col) not in slots
+                        seen.add(machine.snapshot())
+                        machine.step()
+                    assert machine.halted == (bit == "0")
+                    if bit == "1":
+                        assert machine.snapshot() in seen
+                    assert not io.getvalue()
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

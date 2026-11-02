@@ -62,3 +62,10 @@ verdict = "retired 2026-10-28: the balanced race also built the 1-, 5- and 6-col
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 44.4
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant-root layout packing. The one-heading ring visits eight fixed cells; fill the other cells with ignored input setters, preserving the existing off-path input convention and the old n=1/2 layouts. Compare four-column and three-row rectangles by area; explicit narrower widths pack at a four-column floor and fitting widths preserve the default. At n=7 one area 32->15 (53.1%; both answers combined 42.5%), n=8 36->16 (55.6%; combined 44.4%), n=12 52->20 (61.5%; combined 49.2%). Zero area n+1 unchanged. One still diverges by the same nine-step repeated-state witness, not a finite execution claim; zero still halts at its first empty pop. Written workspace unchanged at 0/7 bits. n=3 corpus area 52634->52630; text chars 46508 unchanged. Owned trace coverage proves every setter stays outside the visited path. 1120 native/candidate row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute or prove their termination answer in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. No added collected cases."

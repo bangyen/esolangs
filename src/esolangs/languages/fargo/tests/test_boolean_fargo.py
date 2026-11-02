@@ -34,14 +34,15 @@ class TestFargo:
 
     def test_constant_tables_need_no_reads(self) -> None:
         """A constant table is its degree-zero coefficient alone."""
-        assert boolean.fargo("00000000") == "% 0 0\n$\n"
-        assert boolean.fargo("11111111") == "% 0 1\n$\n"
+        _check_constants()
+        assert boolean.fargo("00000000") == "$"
+        assert boolean.fargo("11111111") == "% 0 1\n$"
 
     def test_an_all_zero_table_wraps_to_a_constant(self) -> None:
         """No terms to combine: the factored path indexed an empty list."""
         for width in (1, 2, 3, 4):
-            assert boolean.fargo("0000", width=width) == "% 0 0\n$\n"
-            assert boolean.fargo("00000000", width=width) == "% 0 0\n$\n"
+            assert boolean.fargo("0000", width=width) == "$"
+            assert boolean.fargo("00000000", width=width) == "$"
 
     def test_narrow_dense_anf_keeps_constant_and_long_names(self) -> None:
         """Wrapping NOR keeps the constant term; wrapped, it shrinks vs the ANF form."""
@@ -101,7 +102,7 @@ class TestFargo:
                 else:
                     before += old
                     after += built
-        assert (before, after) == (9556, 8434)
+        assert (before, after) == (9556, 8426)
 
     @pytest.mark.parametrize(
         ("table", "program"),
@@ -213,3 +214,31 @@ def test_a_wide_definition_keeps_its_pinned_silhouette() -> None:
     rows = program.splitlines()
     assert len(program) == 680
     assert len(rows) * max(map(len, rows)) == 1406
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.fargo.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = 1
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Fargo", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs("Fargo", [int(b) for b in row]) + "7\n"
+                    )
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == 1
+                    assert io.past_end == 0
+                    assert io.input_num() == 7

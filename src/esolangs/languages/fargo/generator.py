@@ -15,7 +15,8 @@ form stays a candidate on every fitting path.
 
 Size:
     O(T) characters, O(T) word-RAM build work; n=10 parity: 80 chars,
-    n=10 random 1847: 1,810 chars.  Naming only the nodes whose sharing
+    n=10 random 1847: 1,810 chars. Root constants: 1/7 chars and 3/8 steps.
+    Naming only the nodes whose sharing
     shortens halved it (from 3,728) and runs 8-14% fewer steps from n=8;
     at n=4 to 6, where the inline form was shortest, it trades 17-39% more
     steps (each name is a call) for 9-30% fewer characters.  ``balance``
@@ -368,10 +369,13 @@ def fargo(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first).  Emits a Boolean expression (see the module
-    docstring); a constant table emits ``% 0 0`` or ``% 0 1``, sound because
-    the interpreter consumes the input line either way.
+    docstring); constants print the initial zero or set bit zero to one first.
+    Loading consumes the input token either way.
     """
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # Loading still reads input; the output number starts at zero.
+        return "$" if truth_table[0] == "0" else "% 0 1\n$"
     expression = _expression(truth_table, n)
     compact = f"% 0 {expression}\n$\n"
     # Naming only the nodes sharing shortens (``[ablations.profitability_packing]``);
