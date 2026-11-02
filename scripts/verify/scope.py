@@ -51,6 +51,8 @@ SHARED_INTERPRETER = (
 SHARED_TOOLING = (
     "scripts/verify/gate.py",
     "scripts/verify/scope.py",
+    "uv.lock",
+    ".python-version",
     "pyproject.toml",
     ".pre-commit-config.yaml",
     "justfile",
@@ -135,9 +137,16 @@ def widens_to_everything(changed: list[str]) -> str | None:
     """Return why *changed* forces a full run, or ``None`` if scoping is safe."""
     if not changed:
         return "no diff available"
-    if any(f.endswith(SHARED_INTERPRETER) for f in changed):
+    if any(
+        f.endswith(SHARED_INTERPRETER)
+        or f.startswith(("src/esolangs/runtime/", "src/esolangs/registry/"))
+        for f in changed
+    ):
         return "shared interpreter machinery changed"
-    if any(f.endswith(SHARED_TOOLING) for f in changed):
+    if any(
+        f.endswith(SHARED_TOOLING) or f.startswith(("scripts/verify/", "checks/"))
+        for f in changed
+    ):
         return "verification tooling changed"
     return None
 
@@ -397,18 +406,15 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # Only a generator, an interpreter (the step counts are executed), or the
     # baseline itself can move these numbers.
     "generator size baseline": (
-        "src/esolangs/languages/",
-        "src/esolangs/generation/",
-        "src/esolangs/runtime/",
+        "src/",
         "checks/check_generator_sizes.py",
         "scripts/benchmark.py",
         "checks/generator_sizes.py",
     ),
     "deep proofs (verify band)": (
-        "src/esolangs/languages/arrowqueue/generator.py",
-        "src/esolangs/generation/examples.py",
-        "tests/proofs/deep/",
-        "src/esolangs/languages/",
+        "src/",
+        "tests/proofs/",
+        "tests/support/",
     ),
     # Helpers outside interpreters can introduce leaks too. The sweep's
     # dependency graph narrows this to the languages that import them.
@@ -671,7 +677,7 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             continue
         if f.startswith("src/"):
             return WHOLE_SUITE  # non-interpreter source: not localisable
-        if f.startswith("scripts/") and f.endswith(".py"):
+        if f.startswith(("scripts/", "checks/")) and f.endswith(".py"):
             # The scripts have unit tests (the bundler's, for one) that do not
             # follow the interpreter naming convention, so there is no way to
             # tell which module covers them.

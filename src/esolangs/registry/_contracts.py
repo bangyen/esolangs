@@ -3,6 +3,10 @@
 from dataclasses import dataclass
 from typing import Literal
 
+type ProofStatus = Literal[
+    "linear", "linear-time-n-log", "measured", "open", "lower-bound"
+]
+
 type AnswerMode = Literal["output", "dump", "termination"]
 #: The input shapes whose bits arrive as one unseparated character run.
 CHAR_STREAMS: frozenset[str] = frozenset({"char_stream", "char_stream_cyclic"})

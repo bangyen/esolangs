@@ -56,6 +56,11 @@ _VALUE_OPTIONS = {
     "--max-output",
     "--max-memory",
     "--seed",
+    "--source-kind",
+    "--answer-mode",
+    "--input-shape",
+    "--proof-status",
+    "--inputs",
 }
 
 _SHORT_OPTIONS = {"-s": "--settings"}

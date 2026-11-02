@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -346,3 +347,14 @@ def update_docs(root: Path = ROOT) -> bool:
     for marker, lines in tables:
         text = splice(text, marker, "\n".join(lines))
     return _write_if_changed(path, text, encoding="utf-8")
+
+
+def update_catalogue(output_root: Path) -> bool:
+    """Package scaling statements from the validated proof ledger."""
+    proofs, _ = load()
+    from esolangs.registry import LANGUAGES
+
+    data = {LANGUAGES[row.generator].id: row.scaling for row in proofs}
+    path = output_root / "src/esolangs/registry/scaling.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return _write_if_changed(path, json.dumps(data, indent=2, sort_keys=True) + "\n")

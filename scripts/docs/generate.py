@@ -22,7 +22,7 @@ from docs.catalogue import load as _catalogue_load
 from docs.curation import FAME_BACKLINKS
 from docs.curation import dates as _curation_dates
 from docs.curation import rows as _curation_rows
-from docs.proof_status import splice, update_docs
+from docs.proof_status import splice, update_catalogue, update_docs
 from docs.writing import write_if_changed as _write_if_changed
 from esolangs.languages.generators import BOOLEAN
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
@@ -590,6 +590,10 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     report(
         "updated the generated tables of docs/proofs/index.md",
         changed=update_docs(output_root),
+    )
+    report(
+        "updated the packaged scaling catalogue",
+        changed=update_catalogue(output_root),
     )
     report(
         "updated the generated sections of README.md",

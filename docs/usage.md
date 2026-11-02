@@ -36,6 +36,11 @@ Options, each explained in full by its command's `--help`:
 | `--json` | list, describe | print JSON |
 | `--generator`, `--interpreter-only` | list | only languages with, or without, a generator |
 | `--grep REGEX` | list | only languages whose spec matches |
+| `--source-kind KIND` | list | text or raster source |
+| `--input-shape SHAPE` | list | stdin interface, or template for embedded inputs |
+| `--answer-mode MODE` | list | output, dump, or termination |
+| `--inputs N` | list | declared generator cap permits N; table restrictions still apply |
+| `--proof-status STATUS` | list | ledger category for size and generation time, independent of totality |
 | `--spec` | describe | print the interpreter's own description of the language |
 
 `encode` and `read-answer` wrap `run` for one input row:

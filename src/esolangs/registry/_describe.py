@@ -1,8 +1,9 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
+import json
 import pathlib
 import re
-from typing import TypedDict, get_args
+from typing import TypedDict, cast, get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.generation.wrap import takes_width as _takes_width
@@ -17,6 +18,7 @@ from esolangs.registry._contracts import (
     AnswerMode,
     GeneratorShape,
     InputShape,
+    ProofStatus,
     SourceForm,
     StateModel,
     WidthEffect,
@@ -25,6 +27,11 @@ from esolangs.registry._language import Shape
 from esolangs.runtime._execution import interpreter_module
 from esolangs.settings import DialectOption, dialect_choices
 from esolangs.vm import machine_traits
+
+#: Generated from the language-owned proof ledger by ``just docs``.
+_SCALING: dict[str, str] = json.loads(
+    pathlib.Path(__file__).with_name("scaling.json").read_text(encoding="utf-8")
+)
 
 #: The committed examples, inside the package so the wheel ships them.
 _LANGUAGES_DIR = pathlib.Path(__file__).resolve().parents[1] / "languages"
@@ -72,6 +79,8 @@ class LanguageInfo(TypedDict):
     shape: GeneratorShape | None
     generator_max_inputs: int | None
     generator_restrictions: str | None
+    generator_scaling: str | None
+    proof_status: ProofStatus | None
     boolean_generator: bool
     parameterized: bool
     reads_input: bool
@@ -108,6 +117,9 @@ def describe(language: str) -> LanguageInfo:
           ``"reducing"`` or ``"lookup"`` (None without a generator);
           ``parameterized``, a template filled by :func:`instantiate`
           (``reads_input`` false).
+        - Proof: ``generator_scaling`` is the ledger statement;
+          ``proof_status`` is its category (None without a recorded proof).
+          Linear refers to size and generation time, not totality.
         - Width: ``width_effect`` is ``"layout"`` (a shape built to fit; a
           hint), ``"wrap"`` (reflowed between tokens) or ``"none"`` (newlines
           are semantic).
@@ -147,6 +159,7 @@ def describe(language: str) -> LanguageInfo:
     parameterized = lang.parameterized
     contract = lang.contract
     width_effect = _width_effect(lang)
+    scaling = _SCALING.get(lang.id)
     generates = lang.boolean is not None
     reads_input = generates and not parameterized
     return {
@@ -158,6 +171,8 @@ def describe(language: str) -> LanguageInfo:
         "state_model": _STATE_MODELS[lang.category],
         "shape": lang.shape.value if generates else None,
         "boolean_generator": generates,
+        "generator_scaling": scaling,
+        "proof_status": _proof_status(scaling) if scaling is not None else None,
         "generator_max_inputs": lang.generator_max_inputs,
         "generator_restrictions": lang.generator_restrictions or None,
         "parameterized": parameterized,
@@ -217,3 +232,10 @@ def _spec(language: str) -> str:
 def list_languages() -> list[str]:
     """Return the supported language names, sorted."""
     return sorted(LANGUAGES)
+
+
+def _proof_status(scaling: str) -> ProofStatus:
+    """Return the ledger category without its argument."""
+    return cast(
+        ProofStatus, scaling.partition(":")[0].replace(", ", "-").replace(" ", "-")
+    )

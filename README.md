@@ -44,6 +44,8 @@ Image-based programs built in memory need neither extra.
 ```bash
 esolangs --help
 esolangs list
+esolangs list --input-shape char_stream --answer-mode output
+esolangs list --inputs 8 --proof-status linear --details
 esolangs generate Suffolk 0110 > program.txt
 printf '01' | esolangs run Suffolk program.txt
 ```

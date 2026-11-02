@@ -46,8 +46,11 @@ class TestWidensToEverything:
     def test_shared_interpreter_machinery_widens(self) -> None:
         """The shared IO layer can move every interpreter at once."""
         scope = load_script()
-        changed = ["src/esolangs/runtime/io.py"]
-        assert scope.widens_to_everything(changed) is not None
+        for path in (
+            "src/esolangs/runtime/io.py",
+            "src/esolangs/runtime/new_helper.py",
+        ):
+            assert scope.widens_to_everything([path]) is not None
 
     def test_every_registry_module_widens(self) -> None:
         """The registry package is shared machinery under any filename."""
@@ -57,20 +60,43 @@ class TestWidensToEverything:
             for path in sorted((REPO_ROOT / "src/esolangs/registry").rglob("*.py"))
         ]
         assert names, "registry package has no modules"
-        for name in names:
+        for name in [*names, "src/esolangs/registry/new_metadata.json"]:
             assert scope.widens_to_everything([name]) is not None
 
-    def test_verification_tooling_widens(self) -> None:
+    def test_verification_tooling_widens(self, monkeypatch) -> None:
         """A scoped run cannot be trusted to validate the scoping code itself."""
         scope = load_script()
-        for name in ("scripts/verify/gate.py", "scripts/verify/scope.py"):
-            assert scope.widens_to_everything([name]) is not None
+        monkeypatch.delenv("VERIFY_FULL", raising=False)
+        for name in (
+            "scripts/verify/gate.py",
+            "scripts/verify/scope.py",
+            "scripts/verify/process.py",
+            "scripts/verify/failures.py",
+            "checks/new_check.py",
+            "uv.lock",
+            ".python-version",
+            "pyproject.toml",
+        ):
+            monkeypatch.setattr(
+                scope, "_scope_changed_files", lambda name=name: (name,)
+            )
+            skip, reason = scope._scope_plan(full=False)  # noqa: SLF001
+            assert skip is None, (name, reason)
 
-    def test_ordinary_interpreter_does_not_widen(self) -> None:
+    def test_ordinary_interpreter_does_not_widen(self, monkeypatch) -> None:
         """A single interpreter is the case scoping exists to narrow."""
         scope = load_script()
-        changed = ["src/esolangs/runtime/brainfuck.py"]
+        changed = ["src/esolangs/languages/brainfuck/interpreter.py"]
         assert scope.widens_to_everything(changed) is None
+        selected = scope._pytest_scope(changed)  # noqa: SLF001
+        assert isinstance(selected, list)
+        assert "src/esolangs/languages/brainfuck/tests/test_brainfuck.py" in selected
+        assert set(scope.INTERPRETER_CONTRACT_TESTS) <= set(selected)
+        monkeypatch.delenv("VERIFY_FULL", raising=False)
+        monkeypatch.setattr(scope, "_scope_changed_files", lambda: ("docs/usage.md",))
+        skip, _ = scope._scope_plan(full=False)  # noqa: SLF001
+        assert skip == set(scope.STEP_SCOPE)
+        assert scope._scoped_cmd("pytest", ["pytest"], ["docs/usage.md"]) is None  # noqa: SLF001
 
 
 def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
@@ -153,3 +179,22 @@ def test_nul_paths_and_rename_sources_are_preserved(bad) -> None:
         assert scope.changed_files() == expected
     assert "-z" in run.call_args_list[0].args[0]
     assert "--untracked-files=all" in run.call_args_list[1].args[0]
+
+
+def test_shared_proof_dependencies_keep_their_checks(monkeypatch):
+    scope = load_script()
+    monkeypatch.delenv("VERIFY_FULL", raising=False)
+    cases = {
+        "src/esolangs/generation/shared_flag.py": {
+            "deep proofs (verify band)",
+            "generator size baseline",
+            "exception leaks",
+        },
+        "src/esolangs/vm.py": {"deep proofs (verify band)", "generator size baseline"},
+        "tests/proofs/formulas.py": {"deep proofs (verify band)"},
+    }
+    for path, required in cases.items():
+        monkeypatch.setattr(scope, "_scope_changed_files", lambda path=path: (path,))
+        skip, _ = scope._scope_plan(full=False)  # noqa: SLF001
+        assert skip is None or required.isdisjoint(skip), path
+        assert scope._pytest_scope([path]) == scope.WHOLE_SUITE, path  # noqa: SLF001

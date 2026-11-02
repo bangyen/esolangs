@@ -34,10 +34,10 @@ import json
 import os
 import re
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from itertools import pairwise
-from typing import cast
+from typing import cast, get_args
 
 from esolangs import (
     LanguageInfo,
@@ -78,6 +78,8 @@ from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES, Language, resolve
+from esolangs.registry._contracts import AnswerMode, ProofStatus, SourceForm
+from esolangs.registry._describe import INPUT_SHAPES
 from esolangs.runtime._program import Program
 
 
@@ -101,10 +103,45 @@ _FLAG_FILTERS: dict[str, Callable[[Language], bool]] = {
 }
 
 
+_CATALOG_FILTERS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "--source-kind": ("source_kind", get_args(SourceForm.__value__)),
+    "--answer-mode": ("answer_mode", get_args(AnswerMode.__value__)),
+    "--input-shape": ("input_shape", (*INPUT_SHAPES, "template")),
+    "--proof-status": ("proof_status", get_args(ProofStatus.__value__)),
+}
+
+
+def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
+    """Match declared interfaces, proof categories and arity caps."""
+    facts = describe(name)
+    for option, (field, _) in _CATALOG_FILTERS.items():
+        actual = cast(Mapping[str, object], facts)[field]
+        if option == "--input-shape" and facts["parameterized"]:
+            actual = "template"
+        if option in options and actual != options[option]:
+            return False
+    if inputs is not None:
+        cap = facts["generator_max_inputs"]
+        if not facts["boolean_generator"] or (cap is not None and cap < inputs):
+            return False
+    return True
+
+
 def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
     """Return candidates by declared capabilities, without generating a table."""
     if "--generator" in flags and "--interpreter-only" in flags:
         _fail("--generator and --interpreter-only cannot be combined")
+    for option, (_, choices) in _CATALOG_FILTERS.items():
+        if option in options and options[option] not in choices:
+            _fail(f"{option} must be one of {', '.join(choices)}")
+    inputs = None
+    if "--inputs" in options:
+        try:
+            inputs = int(options["--inputs"])
+        except ValueError:
+            _fail("--inputs must be a non-negative integer")
+        if inputs < 0:
+            _fail("--inputs must be a non-negative integer")
     pattern = None
     if "--grep" in options:
         try:
@@ -117,12 +154,13 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
         for name in list_languages()
         if all(test(LANGUAGES[name]) for test in wanted)
         and (pattern is None or pattern.search(describe(name)["spec"]))
+        and (not options or _catalog_matches(name, options, inputs))
     ]
 
 
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
-    value_options = {"--grep"}
+    value_options = {"--grep", "--inputs", *_CATALOG_FILTERS}
     flag_options = {"--details", "--json", *_FLAG_FILTERS}
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
@@ -140,6 +178,8 @@ def _list(rest: list[str]) -> None:
                 [
                     {
                         "name": name,
+                        "generator_scaling": facts["generator_scaling"],
+                        "proof_status": facts["proof_status"],
                         "source_kind": facts["source_kind"],
                         "state_model": facts["state_model"],
                         "shape": facts["shape"],
@@ -188,6 +228,8 @@ def _list(rest: list[str]) -> None:
         suffix = f" max-inputs={limit}" if limit is not None else ""
         if restriction:
             suffix += f" ({restriction})"
+        if facts["proof_status"] is not None:
+            suffix += f" proof={facts['proof_status']}"
         print(f"{name.ljust(width)}  {marks}{suffix}")
 
 
