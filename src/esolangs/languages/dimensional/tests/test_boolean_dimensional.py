@@ -23,6 +23,8 @@ run_dimensional = _runner("dimensional", newline=True)
 def test_constant_reads_into_scratch_and_prints_a_fresh_literal(
     n: int, bit: str
 ) -> None:
+    if n == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << n)
     programs = [generate("Dimensional", table, width=w) for w in (None, 1, 20)]
     programs.append(generate("Dimensional", table, balance=True))
@@ -182,3 +184,49 @@ def test_fourteen_input_lookup_stays_within_step_cap(kind: str) -> None:
             machine.step()
         assert machine.halted
         assert (io.getvalue(), io.reads) == (table[row], n)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.dimensional.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Dimensional", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == n + 3
+                if options == {"width": 1}:
+                    assert max(map(len, program.splitlines())) == (1 if n <= 2 else 2)
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Dimensional", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "\n7\n")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 2000
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_num() == 7
+                    if not options:
+                        assert steps == n + 2
+                    assert (
+                        written.bits
+                        == 6 + len(program).bit_length() + (2 * n - 1).bit_length()
+                    )

@@ -53,6 +53,7 @@ class TestForth:
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant subtree answers in place and drops its descendants."""
+        _check_constants()
         assert _forth_plain("1" * 8).count("{") == 2
         assert _forth_plain("01" * 4).count("{") == 2
         assert _forth_plain("0" * 4 + "1" * 4).count("{") == 14
@@ -61,7 +62,7 @@ class TestForth:
 
     def test_folded_subtree_leaves_no_orphans(self) -> None:
         """Folding drops the whole subtree, not just the two children."""
-        assert _forth_scope_keys("1" * 8) == {1, 2}
+        assert _forth_scope_keys("1" * 8) == set()
         # Nodes 2 and 4 are constant, so each drops its subtree: only 3's
         # leaves remain.
         assert _forth_scope_keys("00101010") == {1, 2, 3, 4, 7, 8}
@@ -87,7 +88,7 @@ class TestForth:
         """Calling a repeated subtree's twin cuts the totals, growing none."""
         three = [format(value, "08b") for value in range(256)]
         for tables, before, after in (
-            (three, 28672, 24418),
+            (three, 28672, 24364),
             (five_input_sample(), 93764, 63240),
         ):
             plain = [len(_forth_plain(table)) for table in tables]
@@ -146,3 +147,55 @@ class TestForth:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """``,0*+``."""
     assert_an_ignored_input_costs("Forþ", 6, 4)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.for_thorn.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Forþ", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 2 * n + 4
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Forþ", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "7\n")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 2000
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_str() == "7"
+                    if not options:
+                        assert steps == 2 * n + 5
+                    assert not machine.error
+                    assert not machine.stack
+                    assert not machine.table
+                    if not options:
+                        expected = (
+                            8 * len(program)
+                            + 10
+                            - int(bit)
+                            + 2 * (2 * n).bit_length()
+                            + n.bit_length()
+                        )
+                        assert written.bits == expected

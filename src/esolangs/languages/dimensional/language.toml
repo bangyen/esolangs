@@ -72,3 +72,10 @@ verdict = "kept: from n=7 two entries share one painted cell when that is shorte
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 81.5
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: fixed character literal after every input. Read into the origin, overwrite it with :0 or :1, print; no fresh plane or 48/49 increments are needed. L=n+3 chars, E=n+2 steps, W=6+bl(n+3)+bl(2n-1) written bits in the default. A literal cannot fit one column, so width=1 at n<=2 retains the one-column contract with clear/increment at the origin; all nonconstant layouts remain unchanged. n=7 zero/one 58/59 -> 10/10 chars (82.9% combined); n=8 59/60 -> 11/11 (81.5%), 58/59 -> 10/10 steps, 23 -> 14 written bits; n=12 63/64 -> 15/15 chars. Both evaluation arities exceed the declining-savings gate. n=3 corpus 33035 -> 32938 chars. Owned checks retain exact width floors and written-state bounds even with layout newlines. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probe and a preserved following record, without adding collected cases."

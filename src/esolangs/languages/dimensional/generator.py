@@ -15,6 +15,8 @@ parity tables, not the looped runs of and, or and thresholds.
 Size:
     O(T) for dense tables, O(n) for and; n=10 random 1847: 1,997 chars,
     n=10 and: 372 chars, n=10 majority: 1,861 chars.
+    Constants use n+3 chars, n+2 steps and 6+bl(n+3)+bl(2n-1) written bits;
+    width 1 at n<=2 clears/increments because a literal needs two columns.
 
 Decisions:
     The bare leaf-coordinate form (width 1, n<=2) is 97-217 characters against
@@ -76,8 +78,12 @@ def _program(truth_table: str, width: int | None = None) -> str:
     """Build an indexed lookup or read into scratch and print a fresh literal."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        move = "[-]+++>" if width == 1 and n <= 2 else f">{_PLANE}"
-        constant = "d" * n + move + "+" * (_ASCII_ZERO + int(truth_table[0])) + "."
+        if width == 1 and n <= 2:
+            # A character literal cannot fit the existing one-column layouts.
+            tail = "[-]" + "+" * (_ASCII_ZERO + int(truth_table[0])) + "."
+        else:
+            tail = f":{truth_table[0]}."
+        constant = "d" * n + tail
         return wrap_program(constant, "dimensional", width)
     if width == 1 and n <= 2:
         return wrap_program(_dimensional_bare(truth_table, n), "dimensional", width)
@@ -224,7 +230,7 @@ def _dimensional_bare(table: str, n: int) -> str:
 
 
 def _balance(table: str, default: str) -> str:
-    """Return the token-balanced layout; the default and one column never won."""
+    """Return a token-balanced layout with a two-column literal floor."""
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
     return _program(table, width)

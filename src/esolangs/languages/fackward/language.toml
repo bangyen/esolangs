@@ -46,3 +46,10 @@ verdict = "kept: a last level with leaves 01 prints the character it reads, )[[H
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "retained: the existing constant path already shares one child per ignored input. Its outer release shell is required by pass timing. Positive control: complete programs read n bits and output the fixed bit. Removing the shell at n=1 changes 13 -> 10 chars but halts without output or reads; at n=2, zero constant on input 11 followed by 7 prints 11 and consumes three characters. Reject this source shortening rather than relaxing input/output invariants; no general lower bound claimed. Current L=7n+6 chars and E=8n+4 steps; n=8 62 chars, 68 steps, 427 written bits; n=12 90 chars. n=3 corpus unchanged at 29795 chars. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probe and a preserved following record, without adding collected cases."

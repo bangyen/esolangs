@@ -21,9 +21,9 @@ def _chars(n: int, _: str) -> int:
     2^(2^(m-d)) - 2.  Where a twin can lie too far to call, every scope may
     dispatch.  A step longer than a digit needs 15^k - 1 absent heap indices
     between two scopes, disjoint across steps.  Reads are 5 an essential input,
-    4 an ignored one; a constant table is ``0{3F*3+}`` and n full reads.
+    4 an ignored one; a constant reads/calls empty scopes, then pushes its byte.
     """
-    best = 8 + 5 * n + 5
+    best = 2 * n + 4
     for m in range(1, n + 1):
         total, s, scopes = 0, 1, 0
         for d in range(m):

@@ -11,6 +11,8 @@ Constant subtrees collapse to a leaf; a same-level twin is called by distance
 Size:
     O(T) dense, near-linear in n for parity and and; n=10 parity: 444 chars,
     n=10 and: 292 chars, n=10 random 1847: 5,141 chars.
+    Constants use L=2n+4 chars, 2n+5 steps and
+    8L+10-b+2bl(2n)+bl(n) written bits.
 """
 
 from collections import deque
@@ -39,8 +41,8 @@ def for_thorn(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     if len(table) == 1:
-        # A constant already folds to one scope; it keeps every input.
-        weights, table = [1] * n, truth_table
+        # No scopes are defined: each read byte calls an empty scope and is popped.
+        return ",;" * n + ("68*." if table == "0" else "77*.")
     # The linear tree tests the last bit first; same-level twins use _FORTH_SHARE.
     natural = tuple(reversed(range(len(table).bit_length() - 1)))
     reads = "".join(_FORTH_READ if weight else _FORTH_DROP for weight in weights)

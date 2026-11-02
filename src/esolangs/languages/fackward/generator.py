@@ -13,6 +13,7 @@ Size:
     At most 43T/2 - 29 chars (reached) without equal halves, O(n) for a constant;
     repeated subtables are copied; 38n - 26 steps at most; n=10 parity:
     21,219 chars, n=10 random 1847: 18,655 chars.
+    Constants use 7n+6 chars and 8n+4 steps.
 """
 
 from esolangs.generation.helpers import _validate_truth_table

@@ -57,3 +57,10 @@ verdict = "recorded: the tree tests the last bit first because each scope is ent
 blind_reimplementation = 2026-10-30
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 67.7
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: a fixed-output path with empty-scope input discards. No scopes are defined, so each comma reads one input byte and semicolon consumes its key by calling the defined empty fallback; test_an_unstored_key_calls_an_empty_scope covers that language rule. Push 48 as 68* or 49 as 77*, then print. L=2n+4 chars, E=2n+5 steps, W=8L+10-b+2bl(2n)+bl(n) written bits: mutable frame/code, at most seven stack bits, input progress and read count. n=7 57 -> 18 chars (68.4%); n=8 62 -> 20 chars (67.7%), 56 -> 21 steps, 661 -> 184/183 written bits; n=12 82 -> 28 chars. Both evaluation arities exceed the declining-savings gate. n=3 corpus 24418 -> 24364 chars; the scaling bound now charges the native constant route. Final stack and scope table are empty, with no abort. Each language passed 5656 paired old/new row executions; 270 nonconstant default programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned regressions check reads before output, no EOF probe and a preserved following record, without adding collected cases."
