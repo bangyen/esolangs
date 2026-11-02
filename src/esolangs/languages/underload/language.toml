@@ -41,3 +41,10 @@ verdict = "recorded: the carried comment's saving figures do not reproduce. Dele
 
 [audits]
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 49.3
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical fixed-output spelling. Push the answer, push every input as a uniform three-character literal pair (0)/(1), drop all input literals, then print. Exactly 4n+4 chars, 2n+2 commands and 8(n+1)+bl(4n+4) written bits. n=7 63 -> 32 chars; n=8 71 -> 36 chars, 20 -> 18 commands, 1071 -> 78 written bits; n=12 103 -> 52 chars. n=3 corpus 17850 -> 17820 chars. Slot detection and token-preserving wrapping keep every input and reject newlines inside output literals. Each language passed 5656 paired old/new row executions; 270 nonconstant programs through n=3 remain byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run probe includes every row through n=8. All 24 balanced scores improve or match; all eight benchmark size/command pins remain unchanged."

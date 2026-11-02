@@ -30,6 +30,27 @@ def test_the_input_is_the_row_number() -> None:
     assert esolangs.describe("Blindfolded Arithmetic")["input_shape"] == "row_number"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [0, 0]) == "1\n"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [1, 0]) == "3\n"
+    from esolangs.vm import make_vm
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                source = esolangs.generate(
+                    "Blindfolded Arithmetic", bit * (1 << n), **options
+                )
+                assert len(source.replace("\n", "")) == 11
+                for row in (0, 1, (1 << n) - 1):
+                    vm = make_vm("Blindfolded Arithmetic", source, stdin=f"{row + 1}\n")
+                    state = WrittenState(vm.snapshot())
+                    steps = 0
+                    while not vm.halted:
+                        vm.step()
+                        state.sample(vm.snapshot())
+                        steps += 1
+                    assert vm.output == bit
+                    assert steps == 2
+                    assert state.bits <= n + 8
 
 
 @pytest.mark.parametrize("stdin", ["0\n", "5\n"])

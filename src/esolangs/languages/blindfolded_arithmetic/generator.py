@@ -11,7 +11,8 @@ prints it.
 
 Size:
     Theta(T) text, 9 or 10 instructions an essential input and at most two an
-    ignored one; n=4 parity: 377 chars, n=10 parity: 5,777 chars.
+    ignored one; constants use 11 chars and two commands (workspace <= n+8 bits).
+    n=4 parity: 377 chars, n=10 parity: 5,777 chars.
 
 Decisions:
     Base 8 is the widest Horner base whose digit registers (1, 2, 4), radix
@@ -131,6 +132,8 @@ def _lookup(n: int, essential: list[int], *, mirror: bool = False) -> list[str]:
 def blindfolded_arithmetic(truth_table: str) -> str:
     """Build a program printing ``truth_table[row]`` for input ``row + 1``."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        return "i=i-i;i=i/a" if truth_table[0] == "0" else "i=i/i;i=i/a"
     essential = essential_inputs(truth_table, n)
     projected = read_at(truth_table, essential, n)
     # A set bit costs an instruction: the complement or reversal may be shorter.

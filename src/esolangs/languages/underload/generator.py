@@ -24,6 +24,8 @@ Size:
     Each node is built as text and the shortest candidate kept; a half is
     copied into every enclosing node, O(T * n) characters.  n=10 parity: 3,695
     chars, n=10 and: 222 chars, n=10 random 1847: 6,138 chars.
+    Constants push/drop each literal input: 4n+4 chars, 2n+2 commands;
+    written workspace 8(n+1)+bl(4n+4) bits.
 
 Decisions:
     A cost model plus writer was no faster than building text to n=18.
@@ -117,6 +119,12 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
 
 def underload(truth_table: str, width: int | None = None) -> str:
     """Return a promise tree; narrow selectors defer execution to their node."""
+    n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        program = f"({truth_table[0]})" + TEMPLATE_CHAR * (3 * n) + "!" * n + "S"
+        return (
+            program if width is None else wrap_tokens(program, width, _token_pattern(3))
+        )
     short = width is not None and width < 5
     program = _shared(truth_table, short=short)
     if width is None:
@@ -136,7 +144,9 @@ def underload(truth_table: str, width: int | None = None) -> str:
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the uniform selector pair distinguished by its inert prefix."""
     clean = template.replace("\n", "")
-    if clean.startswith(_PREFIX + "(!)"):
+    if clean.startswith(("(0)", "(1)")):
+        pair = ("(0)", "(1)")
+    elif clean.startswith(_PREFIX + "(!)"):
         pair = _BIT_PAIR
     elif template.startswith(_PREFIX):
         pair = _SHORT_PAIR
@@ -147,17 +157,20 @@ def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 
 def _underload_layout_tokens(template: str) -> list[str]:
     """Ignore layout LF while retaining whole output literals as atoms."""
-    return re.findall(r"\${4}|\([01]\)|[^\n]", template)
+    return re.findall(r"\${3,4}|\([01]\)|[^\n]", template)
 
 
 def _balance(table: str, default: str) -> str:
     """Balance the selectors at their token fit; the default never won."""
-    normal = re.findall(_token_pattern(len(PAIR[0])), default)
+    slots = 3 if len(set(table)) == 1 else len(PAIR[0])
+    normal = re.findall(_token_pattern(slots), default)
     return underload(table, balanced_token_width(normal, minimum=5))
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
     """Compare the narrow layouts token by token."""
+    if plain.startswith(("(0)", "(1)")):
+        return _underload_layout_tokens(template) == _underload_layout_tokens(plain)
     for width in (1, 4):
         narrow = str(layout(width))
         if _underload_layout_tokens(template) == _underload_layout_tokens(narrow):

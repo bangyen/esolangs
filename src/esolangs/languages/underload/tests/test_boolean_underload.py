@@ -13,6 +13,8 @@ from esolangs.generation.helpers import (
 from esolangs.languages.underload.generator import PAIR, underload, underload_setters
 from esolangs.languages.underload.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import make_vm
+from scripts.benchmark import WrittenState
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import run_filled, verify_generated
 from tests.support.witness_tables import witnesses
@@ -37,6 +39,25 @@ def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
 
 @pytest.mark.medium
 def test_wrapped_public_templates_preserve_input_slots() -> None:
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("Underload", bit * (1 << n), **options)
+                assert len(str(template).replace("\n", "")) == 4 * n + 4
+                assert underload_setters(str(template), n) == (("(0)", "(1)"),) * n
+                for row in (0, 1, (1 << n) - 1):
+                    bits = list(map(int, f"{row:0{n}b}"))
+                    vm = make_vm("Underload", template.fill(bits))
+                    state = WrittenState(vm.snapshot())
+                    steps = 0
+                    while not vm.halted:
+                        vm.step()
+                        state.sample(vm.snapshot())
+                        steps += 1
+                    assert vm.output == bit
+                    if not options:
+                        assert steps == 2 * n + 2
+                        assert state.bits == 8 * (n + 1) + (4 * n + 4).bit_length()
     table = "0110100110010110"
     for width in (1, 7, 13, 40):
         template = esolangs.generate("Underload", table, width=width)
@@ -76,7 +97,7 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
     )
     three = [format(value, "08b") for value in range(256)]
     for tables, before, after in (
-        (three, 21032, 17850),
+        (three, 21032, 17820),
         (five_input_sample(), 58565, 44756),
     ):
         plain = [len(underload_plain(table)) for table in tables]
@@ -112,7 +133,7 @@ def test_short_selector_floor_and_actual_narrow_corpus() -> None:
     template = underload("0110", 1)
     assert max(map(len, template.splitlines())) == 3
     assert len(template) == 123
-    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 43800
+    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 43660
 
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
