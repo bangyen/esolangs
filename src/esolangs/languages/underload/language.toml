@@ -6,20 +6,20 @@ backlinks = 167
 
 [proof_status]
 labels = ["parameterized tree"]
-qualification = "equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate"
+qualification = "equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards unused selectors except in named AND/OR and threshold-2 tails; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate"
 scaling = "linear: at most F characters past n = 3: 241 a five-input half"
 execution = "poly n: worst 12n + 3 + 2⌊(n-1)/2⌋ commands past n = 2: n slots, 11 a level, carries"
-workspace = "linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, stack"
+workspace = "linear: at most 24L + 168T + 32n - 168 + bl(2L+14T+6n-14) bits: spliced program, stack"
 
 [generator_sizes]
-"00000001" = { commands = 37, commands_by_row = { "0" = 18, "1" = 27, "2" = 18, "3" = 36, "4" = 18, "5" = 27, "6" = 18, "7" = 37 }, source_units = 61 }
+"00000001" = { commands = 37, commands_by_row = { "0" = 16, "1" = 26, "2" = 16, "3" = 36, "4" = 16, "5" = 26, "6" = 16, "7" = 37 }, source_units = 58 }
 "00001100" = { commands = 19, commands_by_row = { "0" = 26, "1" = 26, "2" = 19, "3" = 19, "4" = 27, "5" = 27, "6" = 19, "7" = 19 }, source_units = 50 }
 "00110110" = { commands = 37, commands_by_row = { "0" = 26, "1" = 35, "2" = 27, "3" = 36, "4" = 26, "5" = 36, "6" = 27, "7" = 37 }, source_units = 80 }
 "0110" = { commands = 26, commands_by_row = { "0" = 24, "1" = 25, "2" = 25, "3" = 26 }, source_units = 51 }
 "01101001" = { commands = 41, commands_by_row = { "0" = 38, "1" = 39, "2" = 39, "3" = 40, "4" = 39, "5" = 40, "6" = 40, "7" = 41 }, source_units = 94 }
 "0110100110010110" = { commands = 52, commands_by_row = { "0" = 48, "1" = 49, "2" = 49, "3" = 50, "4" = 49, "5" = 50, "6" = 50, "7" = 51, "8" = 49, "9" = 50, "10" = 50, "11" = 51, "12" = 50, "13" = 51, "14" = 51, "15" = 52 }, source_units = 161 }
 "1101001101101101" = { commands = 44, commands_by_row = { "0" = 49, "1" = 41, "2" = 50, "3" = 51, "4" = 50, "5" = 50, "6" = 51, "7" = 44, "8" = 50, "9" = 41, "10" = 51, "11" = 52, "12" = 51, "13" = 51, "14" = 52, "15" = 44 }, source_units = 156 }
-"11111110" = { commands = 37, commands_by_row = { "0" = 18, "1" = 27, "2" = 18, "3" = 36, "4" = 18, "5" = 27, "6" = 18, "7" = 37 }, source_units = 61 }
+"11111110" = { commands = 37, commands_by_row = { "0" = 16, "1" = 26, "2" = 16, "3" = 36, "4" = 16, "5" = 26, "6" = 16, "7" = 37 }, source_units = 58 }
 
 [ablations]
 audited = "2026-10-19"
@@ -40,6 +40,7 @@ arity = 10
 verdict = "recorded: the carried comment's saving figures do not reproduce. Deletion costs of the carried mechanism at the stated arities are majority +88.0% / +152.6% (n=8/10), threshold-3 +68.6% / +94.3%, random +12.1% / +12.4%; as shares of the plainer build, 46.8% / 60.4%, 40.7% / 48.5%, 10.8% / 11.0% — against the recorded 33%, 11-15% and 2%. See the stale-figures entry F23"
 
 [audits]
+trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 
 [ablations.constant_table_audit_20261101]
@@ -48,3 +49,23 @@ saving = 49.3
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical fixed-output spelling. Push the answer, push every input as a uniform three-character literal pair (0)/(1), drop all input literals, then print. Exactly 4n+4 chars, 2n+2 commands and 8(n+1)+bl(4n+4) written bits. n=7 63 -> 32 chars; n=8 71 -> 36 chars, 20 -> 18 commands, 1071 -> 78 written bits; n=12 103 -> 52 chars. n=3 corpus 17850 -> 17820 chars. Slot detection and token-preserving wrapping keep every input and reject newlines inside output literals. Each language passed 5656 paired old/new row executions; 270 nonconstant programs through n=3 remain byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run probe includes every row through n=8. All 24 balanced scores improve or match; all eight benchmark size/command pins remain unchanged."
+
+[ablations.trick_prototype_20261102_named_terminal_drops]
+arity = 20
+saving = 32.239382239382245
+verdict = "kept only for AND/OR, threshold-2, their Hamming duals and output complements. Count the minority rows, then recognize endpoint or weight<=1/weight>=n-1 index sets in O(T); all inputs still push the same seven-character selectors before tree execution. Leave unused selectors/carried strings beneath the final bit. One-character intermediate markers preserve original carry prices/ties, then erase before emission; no old-program race. AND/OR source7:147->126 (14.2857%),8:171->143 (16.3743%); threshold-2 and its dual7:264->237 (10.2273%),8:326->285 (12.5767%). All output complements have identical source costs. Rising curves measured with native boundary controls through20: AND/OR537->347 (35.3818%), threshold-2 1554->1053 (32.2394%). No finite global peak: AND/OR has exactly n(n-1)/2 deleted drops from17n+7+n(n-1)/2 source. Threshold-2 is a single threshold spine with AND/OR side chains; reach4 can carry only a side chain at most4 levels down. Thus each at-most4-level segment contains a side chain with quadratic constant-leaf cleanup; old source is Theta(n\u00b3), cleaned source O(n\u00b2), so savings tend100%. Shape/choice coupling leaves execution bounded by the unchanged12n+3+2floor((n-1)/2); parity still reaches it. Stack peak is at most old+8 bits, code/cursor only shrink. At mostT/2 unused-selector drops and T missing-carry leaf drops occur in the unfolded tree; sharing only removes copies, so D<=2T deleted source chars. Substituting L_old=L_new+D in the old written bound gives24L+168T+32n-168+bl(2L+14T+6n-14), still linear in T. Source F is unchanged and generation retains the existing O(T*n) text-copy construction.8692 native runs per prototype (seven variants), including every small table/row, random4..8 boundary rows and all named7/8 rows, check output, unread following7, full-state caps and positive controls.776 independent old/default ablation comparisons pass; live4592 native runs plus312 width1/4/balanced controls;400 generic7/8 tables remain byte-identical. N3 source17820->17800 and commands61152->61096; width1 source43660->43620. Three-run median eight-family/all-row times7:0.072983->0.063843s,8:0.167313->0.146011s (~13% faster). Eleven-build generation medians eight families7:1.135->1.158ms,8:1.988->1.898ms. Named snapshot peaks7:9034->8114bits,8:11883->10403bits. Default and narrow routes share the same terminal deletion; constants remain unchanged."
+
+[ablations.trick_prototype_20261102_generic_terminal_drops]
+arity = 8
+saving = 5.035148368524545
+verdict = "rejected as a general size rule:200 seeded Random(1000*n+k).choice tables per7/8 save4.8762%/5.0351%, below10%; even n12 saves5.2121%. Correct deletion is not by itself an admission. Raw repricing and the cost-preserving repair each execute8692 native rows; n3 raw source17820->17232 and commands61152->59712. Only independently qualifying named tails ship."
+
+[ablations.trick_prototype_20261102_last_level_bare_bits]
+arity = 8
+saving = 8.600105380848955
+verdict = "rejected raw selector placement: native0001 row0 prints!(0), not0. Inputs are pushed in order but consumed LIFO; the bottom selector belongs to input0, not the last input. Repairing that placement computes all8692 tested native rows correctly and saves8.5585%/8.6001% on200 generic7/8 tables, below10%. It also violates the mandatory uniform pair within a template: one four-character non-running selector versus seven-character running selectors. No per-input pair exception or wrapper changes ship."
+
+[ablations.trick_prototype_20261102_space_padded_selectors]
+arity = 8
+saving = 1.028105843496585
+verdict = "rejected: the five-character ( !^)/(~!^) pair computes8692 tested native rows but embeds padding spaces, forbidden by the input convention. It saves only2n characters:1.7558%/1.0281% on200 generic7/8 tables, declining below20%. A conforming (!^:)/(~!^) repair duplicates the returned bit instead of padding; it also passes8692 native rows and has the same source counts. That repair misses the generic bar. It qualifies separately on projection families (best19.4444%/20.0% at7/8), but is not stacked onto the selected terminal-drop rule in this one-rule audit; it is not rejected on its named-family percentages."

@@ -11,19 +11,20 @@ and prints 1.  A node ``(A)~(B)~^`` tucks its halves under the input block
 on top, and the input's ``^`` keeps one and runs it: 0 runs ``!^`` (drop
 ``B``, run ``A``) and 1 swaps first.  ``()!`` and ``:!`` are padding, so
 both selectors have one width and the template one shape per table.  A leaf
-pushes its bit, ``(0)`` or ``(1)``.
+pushes its bit, ``(0)`` or ``(1)``. Named AND/OR and threshold-2 tails
+leave unused selectors below the answer instead of dropping them.
 
 A repeated subtree ``X`` is pushed once as ``(X)`` at a node above its copies
 and *carried*: kept on top, with the next input block right below it.  A
 carrying node opens with ``~`` to put that input back on top, and its selector
 leaves ``X`` on top again for the half it runs, so only one half ever needs it
-and nothing is duplicated.  A copy of ``X`` is then ``^``, and a half without
-one drops it with ``!``.
+and nothing is duplicated. A copy of ``X`` is ``^``; other halves drop it,
+except the named terminal tails that retain it beneath the answer.
 
 Size:
-    Each node is built as text and the shortest candidate kept; a half is
-    copied into every enclosing node, O(T * n) characters.  n=10 parity: 3,695
-    chars, n=10 and: 222 chars, n=10 random 1847: 6,138 chars.
+    Carries are priced before terminal drops are erased; halves are copied
+    into enclosing nodes, O(T * n) construction work. n=10 parity: 3,695
+    chars, n=10 and: 177 chars, n=10 random 1847: 6,138 chars.
     Constants push/drop each literal input: 4n+4 chars, 2n+2 commands;
     written workspace 8(n+1)+bl(4n+4) bits.
 
@@ -65,29 +66,47 @@ def _token_pattern(slots: int) -> str:
     return rf"\${{{slots}}}|\(\)!|\([01]\)|."
 
 
+def _terminal_family(table: str, n: int) -> bool:
+    """Recognize AND/OR, threshold-2, their duals and output complements."""
+    ones = table.count("1")
+    minority = min(ones, len(table) - ones)
+    if minority == 1:
+        return table.find("1" if ones == 1 else "0") in (0, len(table) - 1)
+    if minority != n + 1:
+        return False
+    bit = "1" if ones <= len(table) // 2 else "0"
+    positions = [i for i, value in enumerate(table) if value == bit]
+    return all(i.bit_count() <= 1 for i in positions) or all(
+        i.bit_count() >= n - 1 for i in positions
+    )
+
+
 def _shared(truth_table: str, *, short: bool = False) -> str:
     """Return the tree over the reduced diagram, carrying repeated subtrees.
 
     Subtrees are named by :class:`~esolangs.generation.helpers.SubtreeDiagram`.  A
     node whose halves agree is ``!`` and the half, a leaf pushes its bit and
     one ``S`` after the tree prints it, and each node carries the one
-    subtree within :data:`_REACH` levels that shortens it most, if any does.
+    subtree within :data:`_REACH` levels with the lowest pre-cleanup price.
     """
     n = _validate_truth_table(truth_table)
+    # Bill elided drops while pricing carries, preserving the original tree.
+    # The coupled runs bound peak stack growth by one answer byte.
+    drop = "\ue000" if _terminal_family(truth_table, n) else "!"
     diagram = SubtreeDiagram(reflected_table(truth_table, n))
     halves, level_of, reaches = diagram.halves, diagram.level, diagram.reaches
 
-    # Each candidate is built as text and the shortest kept, so the length
-    # chosen by is the program.  A half is copied into every enclosing node:
-    # O(T * n) characters, no slower than a cost model plus writer to n=18.
+    # Candidates are priced before terminal drops are erased. A half is
+    # copied into every enclosing node: O(T * n) characters, no slower than
+    # a cost model plus writer to n=18.
     @cache
     def tree(level: int, key: int, carry: int | None) -> str:
         if carry is not None and key == carry:
             return "^"
         if carry is not None and not reaches(key, carry):
-            return "!" + tree(level, key, None)
+            return (drop if key < 2 else "!") + tree(level, key, None)
         if key < 2:
-            return "!" * (n - level) + f"({key})"
+            return drop * (n - level) + f"({key})"
         if carry is None:
             return min((node(level, key, None), *carried(level, key)), key=len)
         return node(level, key, carry)
@@ -96,7 +115,7 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
         zero, one = halves[key]
         opening = "" if carry is None else "~"
         if zero == one:
-            return opening + "!" + tree(level + 1, zero, carry)
+            return opening + (drop if zero < 2 else "!") + tree(level + 1, zero, carry)
         closing = ")~^^" if short else ")~^"
         zero_text, one_text = tree(level + 1, zero, carry), tree(level + 1, one, carry)
         return opening + "(" + zero_text + ")~(" + one_text + closing
@@ -112,7 +131,7 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
         # threshold-3, 11% on random tables.
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
-    body = tree(0, diagram.ids[0][0], None)
+    body = tree(0, diagram.ids[0][0], None).replace("\ue000", "")
     slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
     return slots + "(" + body + ")^S"
 

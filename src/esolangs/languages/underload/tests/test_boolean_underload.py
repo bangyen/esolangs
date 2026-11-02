@@ -95,9 +95,10 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
     assert underload("01101001")[21:] == (
         "((((0))~((1))~^)~(~(^)~(!((1))~((0))~^)~^)~(~(!((1))~((0))~^)~(^)~^)~^)^S"
     )
+    _check_terminal_drops()
     three = [format(value, "08b") for value in range(256)]
     for tables, before, after in (
-        (three, 21032, 17820),
+        (three, 21032, 17800),
         (five_input_sample(), 58565, 44756),
     ):
         plain = [len(underload_plain(table)) for table in tables]
@@ -141,7 +142,7 @@ def test_short_selector_floor_and_actual_narrow_corpus() -> None:
     template = underload("0110", 1)
     assert max(map(len, template.splitlines())) == 3
     assert len(template) == 123
-    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 43660
+    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 43620
 
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
@@ -183,3 +184,32 @@ def underload_plain(truth_table: str, *, short: bool = False) -> str:
 
     slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
     return slots + f"({tree(0, 0, len(reflected))})^"
+
+
+def _check_terminal_drops() -> None:
+    from esolangs.languages.underload.generator import _terminal_family
+    from esolangs.languages.underload.tests.ablations import ablate
+
+    totals = [0, 0]
+    for value in range(256):
+        table = f"{value:08b}"
+        assert ablate(table, "default") == underload(table)
+        totals[0] += len(ablate(table, "terminal_drops"))
+        totals[1] += len(underload(table))
+    assert totals == [17820, 17800]
+    for n in (4, 7, 8):
+        for threshold in (1, 2, n - 1, n):
+            table = "".join(
+                str(int(row.bit_count() >= threshold)) for row in range(1 << n)
+            )
+            for candidate in (table, table.translate(str.maketrans("01", "10"))):
+                assert _terminal_family(candidate, n)
+                for width in (None, 1, 4, 7):
+                    template = underload(candidate, width)
+                    pairs = underload_setters(template, n)
+                    assert len(set(pairs)) == 1
+                    for row in (0, 1, (1 << n) - 1):
+                        assert _run(candidate, row, width) == candidate[row]
+    table = "0" * 127 + "1"
+    mutant = "1" + table[1:]
+    assert not _terminal_family(mutant, 7)
