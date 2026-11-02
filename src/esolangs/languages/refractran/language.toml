@@ -7,7 +7,7 @@ labels = ["parameterized tree"]
 qualification = "bottom-up reduced decision DAG: three controlled rail swaps compute each mux; a swap is four fractions and restores the control primes and shared scratch; every input has one ordered exponent embed"
 scaling = "linear: O(T/log T) shared nodes, O(log T) digits per node"
 execution = "linear: at most 2L + 1 commands: each four-fraction swap takes at most eight inspections, plus the final dump"
-workspace = "linear: at most 8L + bl(L) + 16 bits: squarefree prime rails, fraction cursor and direction"
+workspace = "linear: at most 8L + bl(L) + 16 bits: prime rails or summed constant exponents, fraction cursor and direction"
 
 [catalogue]
 folding_ignored_local = "_diagram"
@@ -26,7 +26,7 @@ folding_constant_local = "_diagram"
 [ablations]
 audited = "2026-11-01"
 
-n3_source_units = 123068
+n3_source_units = 123062
 n3_commands = 133528
 executed_rows = 11624
 balanced_executed_rows = 68
@@ -75,3 +75,10 @@ executed_rows = 11296
 widths = "default/1/8/80 at n<=3; default/8 at n=4..10"
 positive_control_rows_rejected = 1
 verdict = "Fresh spec-only subagent; no production or test exposure. Models frozen before comparison; all generated rows halt and match. All rows n<=6, rows 0/1/T//3/T-1 above that. Exact Fraction arithmetic agrees with final integer state; binary output is checked separately as an adapter. An additional 1000 numeric programs (seed 1847, positive seed 1..64, 0..8 fractions with terms 1..16) agree at every tested final/bounded state: 871 halt and 129 reach 200 inspections. Includes unreduced fractions. Zero/negative domains and native I/O remain outside this audit."
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 19.5
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical ignored-input constant fold, exempt. With no gates, all ordered input exponents may share odd prime 3; parity still holds the answer and every input exponent is parsed. Gated rails remain distinct and squarefree. Chars 4n+1: n=7 36->29 (19.4%), n=8 41->33 (19.5%), n=12 61->49. One final dump command and one written bit unchanged. Initial integer is exactly (2 for zero, 1 for one)*3**sum(inputs), at most 2*3**n, so existing resource caps remain valid. Owned tests inspect the parsed initial integer, every slot and output after parsing, with no port reads. n=3 corpus chars 123068->123062. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."

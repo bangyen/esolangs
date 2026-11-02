@@ -3,13 +3,15 @@
 Every node reads and dequeues one input. A true guard enters its lexical
 child; the false child follows the group. All leaves halt, so no branch
 returns into its sibling. Constant and equal-child folds retain every input
-read. Chunk emission and subtree ranks take O(T) time and space, with
+read. Root constants enqueue the answer before the reads append behind it.
+Chunk emission and subtree ranks take O(T) time and space, with
 expected constant-time rank lookups on O(log T)-bit words. An unfolded
 internal node costs six characters and a leaf four. Grouped guards make
 the same program valid under both guard-binding readings.
 
 Size:
     At most 10T-6 characters; n=10 random 1847: 7,154 chars.
+    Root constants: n + 4 chars and n + 3 commands.
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
@@ -23,6 +25,9 @@ def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
     """Build a program printing space for false or # for true."""
     guard_dialect(guard_binding)
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # Keep the answer at the front while reads append behind it.
+        return ("+0" if truth_table[0] == "0" else "+2") + "r" * n + "WH"
     ids = subtree_ids(truth_table)
     chunks: list[str] = []
     stack: list[tuple[int, int] | str] = [(0, 0)]

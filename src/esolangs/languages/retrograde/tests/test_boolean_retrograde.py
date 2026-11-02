@@ -42,6 +42,7 @@ def _reference(code: str) -> tuple[int, int, set[int]]:
 
 
 def check_boolean_tables() -> None:
+    _check_constants()
     for n in (1, 2, 3):
         for value in range(2 ** (1 << n)):
             table = format(value, f"0{1 << n}b")
@@ -63,3 +64,24 @@ def check_boolean_tables() -> None:
     at = source.index("*{{*")
     broken = source[:at] + source[at + 1 :]
     assert esolangs.run("Retrograde", broken, max_steps=1000) != "0"
+
+
+def _check_constants() -> None:
+    from esolangs.languages.retrograde.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("Retrograde", bit * (1 << n), **options)
+                assert template.count("$") == n
+                for bits in ([0] * n, [1] * n):
+                    source = esolangs.instantiate("Retrograde", template, bits)
+                    pointer, direction, tape = _reference(source.replace("\n", ""))
+                    assert (pointer, direction) == (n, 1)
+                    assert [int(i in tape) for i in range(n)] == bits
+                    io = ScriptedIO("7")
+                    run(source, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

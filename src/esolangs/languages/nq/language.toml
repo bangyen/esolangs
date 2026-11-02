@@ -7,7 +7,7 @@ labels = ["tree"]
 qualification = "a lexical guard selects the true child; every leaf halts before its sibling, and folded suffixes consume all remaining inputs in order; grouped guards work under both binding readings"
 scaling = "linear: at most 10T - 6 characters"
 execution = "poly n: at most 3n + 3 commands: read, dequeue, guard per input and enqueue, write, halt"
-workspace = "poly n: at most 2n + bl(L) + 32 bits: one queued trit, flag, cursor, lap and input progress"
+workspace = "poly n: at most 2n + bl(L) + 32 bits: queued trits, flag, cursor, lap and input progress"
 
 [catalogue]
 sharing_exempt = "lexical guard bodies halt rather than return; the language has no named calls or arbitrary target jumps for local subtree sharing"
@@ -15,8 +15,8 @@ sharing_exempt = "lexical guard bodies halt rather than return; the language has
 [ablations]
 audited = "2026-11-01"
 
-n3_source_units = 12632
-n3_commands = 22912
+n3_source_units = 12626
+n3_commands = 22864
 executed_rows = 9024
 
 [ablations.constant_fold]
@@ -74,3 +74,10 @@ executed_rows = 22592
 recursive_chain_programs = 1092
 reference_sha256 = "6ee4fcebb061e7d40a8caf4470eef3a9e7c86daf0406dc6b9709235766ec71d3"
 verdict = "All generated rows halt under opcode and recursive bindings with identical source, output, snapshots and command counts; 11296 rows each, every row through n=6 and rows 0/1/T//3/T-1 above. Widths default/1/8/80 through n=3, default/8 above. All 1092 chains (0..5 guards, trits 0/1/2, all flag values) match the frozen recursive model. The setting fences interpretation, not author intent: 13 revisions, missing Talk:NQ and an unlinked author profile supply no resolution. Fix wrapped opcode skip entering an initial group: >0(+2)W>1 now retains one queued trit across wraps. The default 5193-program trace corpus (2763 clean halts) is unchanged; an inverted guard differs on 2200. Generator diff: 632 byte-identical programs, wrong-answer control differs on all 632. Bounds, eight size/command pins and the Size anchor remain exact for both settings. CLI run and generate/run workflows pass."
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 40.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding, exempt. Enqueue the answer before reading; every r appends behind it and WH prints the untouched front only after all inputs. Nested leaves keep their drain skeleton. Chars n+4, commands n+3: n=7 18->11 (38.9%), n=8 20->12 (40.0%), n=12 28->16. n=8 commands 19->11; written workspace 13/14->19/20 bits because the binary input trits remain queued, within the unchanged 2n+bl(L)+32 cap. Both guard readings execute both answers and all layouts; raw queue inspection verifies answer then inputs, exact reads and following record. n=3 corpus chars 12632->12626 and executed aggregate commands 22912->22864. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."

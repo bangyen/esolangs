@@ -8,13 +8,13 @@ At depth d there are at most min(2**d, 2**2**(n-d)) distinct nodes, hence
 O(T/log T) nodes. Their O(log T)-digit fractions and a linear sieve through
 O((nodes+n) log(nodes+n)) give O(T) construction and text. Construction counts
 O(log T)-bit word operations and expected constant-time interning lookups.
-Constants omit gates.
-Each swap takes at most eight inspections. Every live exponent is zero or
-one, so the integer is bounded by the product of prime factors appearing in
-the source: fewer than 4L bits. The cursor and flags fit bl(L)+16 more bits.
+Constants omit gates and share prime 3 for their input exponents.
+Each swap takes at most eight inspections. Gated builds have squarefree
+rails; constants are at most 2*3**n. Both bound the integer to fewer than
+4L bits. The cursor and flags fit bl(L)+16 more bits.
 
 Size:
-    O(T) characters; n=10 random 1847: 32,137 chars.
+    O(T) characters; n=10 random 1847: 32,137 chars. Constants: 4n + 1 chars.
 """
 
 from __future__ import annotations
@@ -87,6 +87,10 @@ def refractran(truth_table: str, width: int | None = None) -> str:
     """Return a template whose final integer is odd exactly for answer one."""
     n = _validate_truth_table(truth_table)
     nodes, root = _diagram(truth_table, n)
+    if not nodes:
+        # Ignored exponents may share an odd prime: only parity carries output.
+        program = ("1" if root else "2") + f"*3^{TEMPLATE_CHAR}" * n
+        return wrap_space_delimited(program, width) if width is not None else program
     primes = _primes(9 + n + 2 * len(nodes))
     inputs = primes[9 : 9 + n]
     initial = ["1" if root == 1 else "2"]

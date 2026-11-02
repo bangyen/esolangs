@@ -15,6 +15,7 @@ from esolangs.languages.nq.tests.test_nq import check_instructions
 @pytest.mark.medium
 def test_language_contract() -> None:
     """Execute all small tables and sampled larger rows through the real VM."""
+    _check_constants()
     check_instructions()
     language = esolangs.Language("NQ")
     rng = Random(1847)
@@ -63,3 +64,38 @@ def test_language_contract() -> None:
                 steps += 1
             assert steps == 3 * n + 3
             assert vm.output == "#"
+
+
+def _check_constants() -> None:
+    from esolangs.languages.nq.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for binding in ("opcode", "recursive"):
+                for options in ({}, {"width": 1}, {"balance": True}):
+                    source = esolangs.generate("NQ", bit * (1 << n), **options)
+                    for bits in ([0] * n, [1] * n):
+                        io = ReadFirstIO("".join(map(str, bits)) + "7")
+                        machine = _Machine(source, io, guard_binding=binding)
+                        written = WrittenState(machine.snapshot())
+                        for _ in range(n + 3):
+                            assert not machine.halted
+                            machine.step()
+                            written.sample(machine.snapshot())
+                        assert machine.halted
+                        assert list(machine.queue) == [2 * int(bit), *bits]
+                        assert io.getvalue() == ("#" if bit == "1" else " ")
+                        assert io.reads == n
+                        assert io.past_end == 0
+                        assert io.input_char() == ord("7")
+                        assert written.bits <= 2 * n + len(source).bit_length() + 32

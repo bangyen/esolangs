@@ -45,6 +45,7 @@ def _check_controlled_swap() -> None:
 
 def test_tables_and_reference() -> None:
     """Swap invariants, all small tables and seeded larger tables, every row."""
+    _check_constants()
     _check_controlled_swap()
     for n in (1, 2, 3):
         for value in range(2**2**n):
@@ -65,3 +66,26 @@ def test_tables_and_reference() -> None:
             output = esolangs.run("REFRACTRAN", program)
             assert int(output, 2) == answer
             assert esolangs.read_answer("REFRACTRAN", output) == table[row]
+
+
+def _check_constants() -> None:
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("REFRACTRAN", bit * (1 << n), **options)
+                assert template.count("$") == n
+                for bits in ([0] * n, [1] * n):
+                    source = esolangs.instantiate("REFRACTRAN", template, bits)
+                    io = ScriptedIO("7")
+                    machine = _Machine(source, io)
+                    assert machine.state.value == (1 if bit == "1" else 2) * 3 ** sum(
+                        bits
+                    )
+                    assert machine.state.value.bit_length() <= 2 * n + 1
+                    assert not machine.fractions
+                    assert not io.getvalue()
+                    machine.step()
+                    assert machine.halted
+                    assert esolangs.read_answer("REFRACTRAN", io.getvalue()) == bit
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

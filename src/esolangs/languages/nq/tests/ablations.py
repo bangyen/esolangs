@@ -10,6 +10,8 @@ def ablate(
 ) -> str:
     """Disable exactly one fold, leaving input consumption intact."""
     n = _validate_truth_table(table)
+    if rule != "constant_fold" and table.count(table[0]) == len(table):
+        return "+" + ("2" if table[0] == "1" else "0") + "r" * n + "WH"
     ids = subtree_ids(table)
     chunks: list[str] = []
 

@@ -73,3 +73,10 @@ executed_rows = 11296
 widths = "default/1/8/80 at n<=3; default/8 at n=4..10"
 positive_control_rows_rejected = 1
 verdict = "Fresh spec-only subagent; no production or test exposure. Models frozen before comparison; all generated rows halt and match. All rows n<=6, rows 0/1/T//3/T-1 above that. Full final tape, pointer and direction agree; ten native-construct probes agree. The model emits no I/O: the final-current-bit adapter dump is checked separately. All-zero initialization is a scenario supported by the author's REFRACTRAN reduction, not stated by the Retrograde page. Whitespace and malformed-source rules remain adapter policies."
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: each ordered setter visits its own bit cell and advances to a fresh answer cell; one adds one toggle. Chars 2n+b, commands 2n+b+1 including dump: n=8 16/17 chars, 17/18 commands, 18/19 written bits; n=7 14/15 chars, n=12 24/25. Removing the final move makes all-one input witnesses print one for requested zero and zero for requested one. This rejects that candidate, not a universal optimum. Independent set-tape reference verifies preserved inputs, forward direction and final pointer n; native controls execute with no port reads. n=3 corpus chars 16081 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."
