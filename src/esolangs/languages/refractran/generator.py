@@ -9,6 +9,8 @@ O(T/log T) nodes. Their O(log T)-digit fractions and a linear sieve through
 O((nodes+n) log(nodes+n)) give O(T) construction and text. Construction counts
 O(log T)-bit word operations and expected constant-time interning lookups.
 Constants omit gates and share prime 3 for their input exponents.
+Balanced layouts can initialize rails with swaps between two unused odd
+fuel primes, keeping the initial token short without changing parity.
 Each swap takes at most eight inspections. Gated builds have squarefree
 rails; constants are at most 2*3**n. Both bound the integer to fewer than
 4L bits. The cursor and flags fit bl(L)+16 more bits.
@@ -19,7 +21,11 @@ Size:
 
 from __future__ import annotations
 
-from esolangs.generation.helpers import TEMPLATE_CHAR, _validate_truth_table
+from esolangs.generation.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    same_tokens,
+)
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
 from esolangs.registry._contracts import BooleanContract
@@ -113,11 +119,41 @@ def refractran(truth_table: str, width: int | None = None) -> str:
     return wrap_space_delimited(program, width) if width is not None else program
 
 
+# [ablations.balanced_initializer]: the initial product otherwise fixes width.
+def _initialize(program: str) -> str:
+    """Load constant rails through swaps, keeping the initial token short."""
+    words = program.split()
+    if len(words) == 1:
+        return program
+    initial = words[0].split("*")
+    inputs = [term for term in initial[1:] if "^" in term]
+    factors = [int(term) for term in initial[1:] if "^" not in term]
+    nodes = len(factors) - 2
+    # Neither fuel occurs in later fractions; its remaining factor is odd.
+    fuel, other = _primes(11 + len(inputs) + 2 * nodes)[-2:]
+    head = "*".join([initial[0], str(fuel), *inputs])
+    setup: list[str] = []
+    for factor in factors:
+        # Exactly one fuel rail is present; swapping it for other*factor
+        # deposits the new rail and restores the three shared scratch primes.
+        setup += _swap(fuel, other * factor, ())
+        fuel, other = other, fuel
+    return " ".join([head, *setup, *words[1:]])
+
+
 def _balance(_table: str, default: str) -> str:
-    """Return the better of the plain and closed-form wrapped layouts."""
-    tokens = default.split()
-    width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
-    return min([default, wrap_space_delimited(default, width)], key=balance_score)
+    """Balance plain text or a fraction-initialized build with a short header."""
+    candidates = [default]
+    for program in (default, _initialize(default)):
+        tokens = program.split()
+        width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
+        candidates.append(wrap_space_delimited(program, width))
+    return min(candidates, key=balance_score)
+
+
+def _same_layout(template: str, plain: str, _layout: object) -> bool:
+    """Recognize ordinary reflow and the canonical initialized layout."""
+    return same_tokens(template, plain) or same_tokens(template, _balance("", plain))
 
 
 LANGUAGE = Language(
@@ -135,6 +171,7 @@ LANGUAGE = Language(
     ),
     wrap=wrap_space_delimited,
     balance=_balance,
+    same_layout=_same_layout,
     empty_program="REFRACTRAN needs an initial integer",
     example=Example(pair=PAIR, expected_compared=False),
 )

@@ -1,5 +1,7 @@
 """REFRACTRAN templates survive serialization, reflow and VM execution."""
 
+from random import Random
+
 import esolangs
 from esolangs.debugger import make_vm
 
@@ -17,3 +19,11 @@ def check_serialized_narrow_template_and_vm() -> None:
             vm.step()
         assert vm.halted
         assert language.read_answer(vm.output) == answer
+
+    table = "".join(Random(4242 + 10).choices("01", k=1024))
+    template = language.generate(table, balance=True)
+    restored = language.load_program(language.dump_program(template))
+    for row in (0, 1, 511, 1023):
+        program = language.instantiate(restored, [int(b) for b in f"{row:010b}"])
+        output = language.run(program, max_steps=2 * len(program) + 1)
+        assert language.read_answer(output) == table[row]

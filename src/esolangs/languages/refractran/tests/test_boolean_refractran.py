@@ -4,9 +4,12 @@ from fractions import Fraction
 from itertools import product
 from random import Random
 
+import pytest
+
 import esolangs
 from esolangs.languages.refractran.generator import _swap
 from esolangs.languages.refractran.interpreter import _Machine
+from esolangs.runtime._evaluate import _evaluate
 from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import evaluate_generated
 
@@ -42,7 +45,22 @@ def _check_controlled_swap() -> None:
 
     assert _rational_run(2 * 19 * 23, _swap(2, 3, (19, 23))[:-1]) != 3 * 19 * 23
 
+    for parity, bit in product((1, 2), (0, 1)):
+        before = parity * 97 * 47**bit
+        fuel, other = 97, 101
+        fractions = []
+        for factor in (5, 23, 31):
+            fractions += _swap(fuel, other * factor, ())
+            fuel, other = other, fuel
+        expected = parity * fuel * 47**bit * 5 * 23 * 31
+        machine = _Machine(str(before) + " " + " ".join(fractions), ScriptedIO())
+        for _ in range(25):
+            machine.step()
+        assert machine.halted
+        assert machine.state.value == _rational_run(before, fractions) == expected
 
+
+@pytest.mark.medium
 def test_tables_and_reference() -> None:
     """Swap invariants, all small tables and seeded larger tables, every row."""
     _check_constants()
@@ -62,21 +80,24 @@ def test_tables_and_reference() -> None:
         for value in range(2**2**n):
             table = format(value, f"0{2**n}b")
             assert evaluate_generated("REFRACTRAN", table) == table
+            balanced = esolangs.generate("REFRACTRAN", table, balance=True)
+            assert _evaluate("REFRACTRAN", balanced, inputs=n) == table
     for n in (4, 5, 6):
         rng = Random(1847 + n)
         table = "".join(rng.choice("01") for _ in range(2**n))
-        template = esolangs.generate("REFRACTRAN", table)
-        for row, bits in enumerate(product((0, 1), repeat=n)):
-            program = esolangs.instantiate("REFRACTRAN", template, bits)
-            initial, *fractions = program.split()
-            value = 1
-            for term in initial.split("*"):
-                base, _, exponent = term.partition("^")
-                value *= int(base) ** int(exponent or "1")
-            answer = _rational_run(value, fractions)
-            output = esolangs.run("REFRACTRAN", program)
-            assert int(output, 2) == answer
-            assert esolangs.read_answer("REFRACTRAN", output) == table[row]
+        for options in ({}, {"balance": True}):
+            template = esolangs.generate("REFRACTRAN", table, **options)
+            for row, bits in enumerate(product((0, 1), repeat=n)):
+                program = esolangs.instantiate("REFRACTRAN", template, bits)
+                initial, *fractions = program.split()
+                value = 1
+                for term in initial.split("*"):
+                    base, _, exponent = term.partition("^")
+                    value *= int(base) ** int(exponent or "1")
+                answer = _rational_run(value, fractions)
+                output = esolangs.run("REFRACTRAN", program)
+                assert int(output, 2) == answer
+                assert esolangs.read_answer("REFRACTRAN", output) == table[row]
 
 
 def _check_constants() -> None:

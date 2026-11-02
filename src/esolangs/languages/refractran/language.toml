@@ -83,5 +83,9 @@ seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical ignored-input constant fold, exempt. With no gates, all ordered input exponents may share odd prime 3; parity still holds the answer and every input exponent is parsed. Gated rails remain distinct and squarefree. Chars 4n+1: n=7 36->29 (19.4%), n=8 41->33 (19.5%), n=12 61->49. One final dump command and one written bit unchanged. Initial integer is exactly (2 for zero, 1 for one)*3**sum(inputs), at most 2*3**n, so existing resource caps remain valid. Owned tests inspect the parsed initial integer, every slot and output after parsing, with no port reads. n=3 corpus chars 123068->123062. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."
 
-[balance_growth]
-open = "the initial integer is one whitespace-delimited token (the interpreter's grammar), carrying one distinct prime factor per reduced-DAG node — ~T/log T nodes on random tables — so the balanced layout's side is that token's length and its area is the token's square (measured T**1.71 from n=10 to 12, 2026-11-02); a construction that initialized rails through fractions instead of the initial integer would not face this, so the growth is recorded open, not as a syntax wall"
+[ablations.balanced_initializer]
+arity = 12
+saving = 98.091727598546
+seed = "random.Random(4242+n), choice('01'), two tables per arity"
+tables = 4
+verdict = "kept: repairs balanced growth with a named fraction initializer. Unused odd fuel primes alternate while each four-fraction swap deposits one constant rail. Mean squared balanced side falls 93.78% at n=10 and 98.09% at n=12; exponent 1.707 -> 0.855. At n=12 the first token shrinks 3736-3778 -> 67 chars and side 3736-3778 -> 518-520, costing 21.4% text. Default programs and bounds stay unchanged. Exhaustive n<=3, seeded n=4..6 and high-arity controls execute; serialized balanced templates retain provenance."
