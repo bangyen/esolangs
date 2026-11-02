@@ -47,6 +47,17 @@ def test_tables_and_reference() -> None:
     """Swap invariants, all small tables and seeded larger tables, every row."""
     _check_constants()
     _check_controlled_swap()
+    from esolangs.registry import LANGUAGES
+    from scripts.tracediff import _cap_digits, _random_programs
+
+    limit = LANGUAGES["REFRACTRAN"].fuzz_max_digits
+    assert limit == 3
+    programs = _random_programs([("2^3*3 3/2", "")], 300, limit)
+    assert len(programs) == 300
+    assert all(sum(c.isdigit() for c in code) <= 3 for code, _ in programs)
+    bounded = _cap_digits("9^999999999999", limit)
+    assert bounded == "9^99"
+    assert esolangs.run("REFRACTRAN", bounded) == format(9**99, "b")
     for n in (1, 2, 3):
         for value in range(2**2**n):
             table = format(value, f"0{2**n}b")

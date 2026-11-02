@@ -124,6 +124,8 @@ LANGUAGE = Language(
     "REFRACTRAN",
     "refractran",
     category="register_based",
+    # Three total random digits bound initial powers below 400 bits (737.6s uncapped).
+    fuzz_max_digits=3,
     boolean=refractran,
     contract=BooleanContract(
         answer_mode="dump",
