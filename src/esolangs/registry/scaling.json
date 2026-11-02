@@ -40,7 +40,7 @@
   "dig": "linear: worst A cells past n = 6: the dense table",
   "dimensional": "linear: worst 2T + 20n + 58 characters: two per entry",
   "dinac": "linear: at most 40T + 18n + 120 characters: rarer-answer scan",
-  "egl": "linear: worst 3T + 25n + digits(T) + 8 characters: painted row",
+  "egl": "linear: at most 3T+25n+digits(T)+8 characters: original row ceiling",
   "eval": "linear: worst 7T/4 + 15n - 5 characters past n = 3",
   "fackward": "linear: worst 43T/2 - 29 characters past n = 1: block per node",
   "false": "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15",
