@@ -11,7 +11,7 @@ admitted = 2026-09-13T10:37:33-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on; the bounds are the default swap_marker dialect's — the old dialect shares the constructions with each stage rebuilt for its own round-trip landing, a constant number of cells and steps per stage apart, and is verified by execution (both dialects over the package corpus, folded forms at n=6..8, wide and narrow strips at n=7..9) rather than re-derived"
+qualification = "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on; the bounds are the default swap_marker dialect's — the old dialect shares the constructions with each stage rebuilt for its own round-trip landing, a constant number of cells and steps per stage apart, and is verified by execution (each dialect over the generated corpus at n=1..4, plus a swap witness distinguishing the readings) rather than re-derived"
 scaling = "linear: worst A cells past n = 1: the least-area of four layouts"
 execution = "linear: worst E steps: the all-zero row of the least-area layout"
 workspace = "T log T: worst W bits to n = 8, at most B after: program cells, marks, pointers"
