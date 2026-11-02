@@ -29,6 +29,12 @@ class TestGrapheme:
         """Only int-mode digits and the commands used are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.grapheme(table)) <= set("ABCDEFGHIKLMPRSTWYZ"), table
+        for mode in ("between_letters", "after_each_letter"):
+            program = boolean.grapheme("01", integer_conversion=mode)
+            for line in ("B", "", "0", "1"):
+                io = ScriptedIO(line + "\n")
+                run(program, io, integer_conversion=mode)
+                assert io.getvalue() == "0"
 
 
 class TestGraphemeTable:

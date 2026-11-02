@@ -13,12 +13,25 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
+    from esolangs.languages.fackward.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
     n = len(table).bit_length() - 1
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value: object) -> None:
+            assert self.reads == n
+            super()._write(value)
+
     program = esolangs.generate("Fackward", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Fackward", bits)
-        got = esolangs.run("Fackward", program, stdin=stdin, timeout=5)
+        io = ReadFirstIO(stdin + "Q")
+        run(program, io)
+        got = io.getvalue()
+        assert io.past_end == 0
+        assert io.input_char() == ord("Q")
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Fackward", got) == table[row], (table, row)
 

@@ -47,3 +47,7 @@ def _check_constants() -> None:
                     assert io.reads == 1
                     assert io.position() == len(stdin)
                     assert io.past_end == 0
+
+    assert (
+        sum(len(esolangs.generate("Caballo", f"{v:08b}")) for v in range(256)) == 10072
+    )

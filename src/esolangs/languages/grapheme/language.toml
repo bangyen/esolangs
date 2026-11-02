@@ -56,6 +56,7 @@ arity = 10
 verdict = "replaced 2026-10-29 by a rule: the min-length race over four packings (index complemented or direct x answer stored or negated) saved 0.82% n=2, 0.11% n=8, 0.06% n=10, 0.01% n=12 on random tables (20 per arity n<=10, 8 at n=11,12), under the bar; on named functions it saved 30.6-61.9% n=10 on or/and/thr2 and complements (parity and majority 0.0%, majority' 2.15% n=8). The rule picks the smallest packed integer (ties: stored before negated, complemented before direct) only when its bit length is within 3/4 of the table width, else the plain complemented build: byte-identical to the race on every or/and/thr2 and complement table n=4..12 measured, identical to plain on random tables n>=5, +1-2 chars on parity/majority/thr2 complements n<=8 and random n=3 (+0.6%). No bespoke search left; characters only, the generator has no balanced route"
 
 [audits]
+trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -65,3 +66,18 @@ saving = 46.7
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Read/drop each input line, then push and print the answer literal using the selected integer-conversion dialect. Default chars and commands 2n+4: n=7 35/36->18/18 (49.3%), n=8 37/38->20/20 (46.7%), n=12 45/46->28/28. n=8 written workspace 363/371->217/217 bits. Both integer-conversion dialects execute both constants n=1..12. n=3 corpus chars 18136->18101. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged and global resource caps unchanged. Owned raw read-first checks verify exact read count and preserve the following input record."
+
+[ablations.trick_prototype_20261101_ord_quotient_read]
+arity = 8
+saving = 0.0
+verdict = "rejected: replacing the documented A-versus-any-other-line normalization by ord(line[0])//25 changes B from false to true and makes an empty line halt with division by zero. Both dialects reproduce these counterexamples; shipped controls print 0. All truth-table rows through n=3 execute on the normal %/A alphabet for both quotient and seed prototypes, 8480 runs, so the counterexamples are not vacuous. Forced direct packing also grows AND: n=8 156->169 chars, n=10 190->419, n=12 224->1361; all-ones witnesses execute correctly. Owned tests pin B, empty, 0 and 1 lines as false in both dialects. No contract weakening or old-candidate fallback."
+
+[ablations.trick_prototype_20261101_seed_first_read]
+arity = 8
+saving = 2.575
+verdict = "rejected: let the first essential input supply its factor directly, dropping the initial one, first square and first multiply. Six characters saved on each nonconstant default program: 35530->34330 (3.38%) at n=7 and 46602->45402 (2.57%) at n=8, 200 Random(184700+n) tables each. Every small table/row passes in both dialects; four rows per priced default table execute. Declining savings miss 20%; constants unchanged."
+
+[ablations.trick_prototype_20261101_quotient_low_bit_store]
+arity = 8
+saving = -3.8625
+verdict = "rejected: a concrete low-bit rewrite stores the shifted integer under key 9, divides a reload by two, doubles, reloads the original and subtracts. It executes all 4240 small-table rows across both dialects. The default low-bit fragment grows by nine characters: 200-table chars 35530->37330 at n=7 and 46602->48402 at n=8; four rows per priced table execute. Variable lookup does not shorten this construction. No claim that every alternative is impossible."

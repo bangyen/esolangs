@@ -133,9 +133,9 @@ def _morse(a: str, b: str, n: int) -> str:
 
 # language-owners: ["Caballo"]
 def _caballo_chain(n: int) -> str:
-    """The execution worst: every zero child holds a lone-1 dip chain.
+    """The execution worst: every zero child holds a lone-1 dp chain.
 
-    Row 0...0 skips one chain per level, 3 items a level; the tree is built
+    Row 0...0 skips one chain per level, 2 items a level; the tree is built
     on the complement, which has the fewer ones.
     """
     tree, size = "10", 2

@@ -1,11 +1,11 @@
 """Caballo Boolean program generator: the wiki's conditional, as a signed sum.
 
-The inputs are the stack, the first on top.  Selectors split the stack by the
-top bit: ``di`` keeps a 1 (a 0 drops), ``(1+di-)`` keeps a 0 (the 1's ``-1``
-cancels the ``1``), and ``p`` pops it.  A tree of them leaves one empty stack
-of weight 1 per row where the table is 1 and no stack where it is 0, so a
-0-subtable costs nothing and a node with one live child drops its sum:
-``dip`` or ``(1+di-)p``, then the child.  The empty stack is turned into
+The inputs are the stack, the first on top. ``dp`` keeps a positive top
+and pops it; ``(p+dp-)`` subtracts those stacks from the popped input,
+keeping just the zero rows. Signed weights make the subtraction exact.
+A tree of these selectors leaves one empty stack of weight 1 per true
+row and none per false row. A zero subtable costs nothing; a one-child
+node omits its sum. The empty stack is turned into
 the answer once, after the tree: ``(i+-)`` maps ``[]`` to ``[1]`` plus ``-[]``,
 and a sibling branch of n pops adds the ``[]`` of weight 1, so a 1 row ends as
 ``[1]`` and a 0 row as ``[]``.  A table with more ones than zeros builds the
@@ -15,8 +15,8 @@ A constant subtable pops what is left (``p`` per level); a node whose halves
 agree pops its input untested.
 
 Size:
-    39T/4 + n - 6 chars at most (parity); n=10 and: 48 chars, n=10 random
-    1847: 6,531 chars.
+    33T/4 + n - 4 chars at most for n>=2 (parity); n=10 and: 38 chars, n=10 random
+    1847: 5,541 chars.
 
 Decisions:
     Repeated subtrees are not shared: Caballo has no names or jumps, so code
@@ -61,15 +61,15 @@ def _tree(truth_table: str, n: int) -> str:
             out.append("p")
             node(depth + 1, 2 * k)
         elif zero == 0:
-            out.append("dip")
+            out.append("dp")
             node(depth + 1, 2 * k + 1)
         elif one == 0:
-            out.append("(1+di-)p")
+            out.append("(p+dp-)")
             node(depth + 1, 2 * k)
         else:
-            out.append("(dip")
+            out.append("(dp")
             node(depth + 1, 2 * k + 1)
-            out.append("+(1+di-)p")
+            out.append("+(p+dp-)")
             node(depth + 1, 2 * k)
             out.append(")")
 
