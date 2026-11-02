@@ -310,8 +310,7 @@ def balance_befunge(truth_table: str, default: str) -> str:
         layouts = [(5 * n + _BOUND_PACKED, 10, 80)]
     for bound, low, high in layouts:
         floor = max(low, _min_columns(count, bound))
-        if floor > high:
-            continue
+        # n <= 13 caps packed count+bound at 1495, hence floor <= 67 < 80.
         side = isqrt(CELL_ASPECT * (count + bound) - 1) + 1
         # H >= (B+T)/W and H <= (B+T)/(W-2)+2.  The winner is one of the
         # crossing's neighbours: over 192 layouts (n=1..13) offsets -1..2

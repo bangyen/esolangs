@@ -295,8 +295,12 @@ def test_every_answer_label_executes_at_every_arity(n: int) -> None:
         assert _rows(table, rows) == [table[row] for row in rows]
 
 
+@pytest.mark.medium
 def test_first_free_matches_the_cell_scan() -> None:
     """The arithmetic progression equals the old first-fit scan over cells."""
+    from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
+
+    check_navigation()
     from esolangs.languages.malbolge.generator.isa import _first_free, _g
 
     for value in range(33, 127):

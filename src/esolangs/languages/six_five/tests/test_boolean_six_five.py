@@ -60,6 +60,7 @@ class TestSixFive:
     def test_branch_structure(self) -> None:
         """The build reads, normalizes to 31/32, branches on ``7V``, and halts."""
 
+        _check_one_input_walk_returns_without_a_home_loop()
         program = _identity("0110")
         assert program.startswith("B")
         assert _SIX_FIVE_TREE_NORMALIZE in program
@@ -451,3 +452,13 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_one_input_walk_returns_without_a_home_loop() -> None:
+    from tests.generators.boolean_runners import _runner
+
+    run = _runner("six_five")
+    for table in ("01", "10"):
+        program = _six_five_walk(table)
+        for row in range(2):
+            assert run(program, [str(row)]) == table[row]

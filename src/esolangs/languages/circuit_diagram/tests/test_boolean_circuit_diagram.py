@@ -267,6 +267,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_invert_can_start_a_new_band(self) -> None:
         """A complement honors a width already exhausted by its input."""
+        _check_complemented_projection_inverts_a_bare_input_rail()
         from esolangs.languages.circuit_diagram.generator import _Builder
 
         builder = _Builder()
@@ -809,3 +810,13 @@ def test_three_input_corpus_size() -> None:
         )
         == 183742
     )
+
+
+def _check_complemented_projection_inverts_a_bare_input_rail() -> None:
+    from esolangs.languages.circuit_diagram.generator import _circuit_diagram_model
+    from esolangs.languages.circuit_diagram.tests import (
+        test_boolean_circuit_diagram_pool as pool,
+    )
+
+    model = _circuit_diagram_model("01", None, invert=True)
+    pool._execute("10", model.render(), (0, 1))  # noqa: SLF001

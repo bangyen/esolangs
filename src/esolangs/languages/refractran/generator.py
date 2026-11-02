@@ -102,19 +102,18 @@ def refractran(truth_table: str, width: int | None = None) -> str:
     initial = ["1" if root == 1 else "2"]
     initial += [f"{p}^{TEMPLATE_CHAR}" for p in inputs]
     fractions: list[str] = []
-    if nodes:
-        # Leaf constants have rails (5,7) and (19,23); output rails are (2,3).
-        rails = [(5, 7), (19, 23)] + [
-            (primes[9 + n + 2 * i], primes[10 + n + 2 * i]) for i in range(len(nodes))
-        ]
-        initial += ["5", "23", *(str(a) for a, _b in rails[2:])]
-        for target, (depth, zero, one) in enumerate(nodes, 2):
-            a, b = rails[target]
-            x, z, o = inputs[depth], rails[zero][1], rails[one][1]
-            fractions += _swap(a, b, (z,))
-            fractions += _swap(a, b, (x, z))
-            fractions += _swap(a, b, (x, o))
-        fractions += _swap(2, 3, (rails[root][1],))
+    # Leaf constants have rails (5,7) and (19,23); output rails are (2,3).
+    rails = [(5, 7), (19, 23)] + [
+        (primes[9 + n + 2 * i], primes[10 + n + 2 * i]) for i in range(len(nodes))
+    ]
+    initial += ["5", "23", *(str(a) for a, _b in rails[2:])]
+    for target, (depth, zero, one) in enumerate(nodes, 2):
+        a, b = rails[target]
+        x, z, o = inputs[depth], rails[zero][1], rails[one][1]
+        fractions += _swap(a, b, (z,))
+        fractions += _swap(a, b, (x, z))
+        fractions += _swap(a, b, (x, o))
+    fractions += _swap(2, 3, (rails[root][1],))
     program = " ".join(["*".join(initial), *fractions])
     return wrap_space_delimited(program, width) if width is not None else program
 

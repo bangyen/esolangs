@@ -809,7 +809,7 @@ def _laserfuck_turned(table: str) -> str:
     return _laserfuck_assemble(reader, tree, None, vertical_tree=True)
 
 
-def _laserfuck_tiled(table: str, cut: int | None = None) -> str:
+def _laserfuck_tiled(table: str) -> str:
     r"""Build the reader, then the tree cut at depth ``d``, subtrees side by side.
 
     The upright tree is one row per leaf, so balanced it is T/2 on a side
@@ -824,8 +824,7 @@ def _laserfuck_tiled(table: str, cut: int | None = None) -> str:
     when ``d`` is under 1.
     """
     n = _validate_truth_table(table)
-    if cut is None:
-        cut = (n - 5) // 2
+    cut = (n - 5) // 2
     if cut < 1:
         return ""
     top = _TreeEmitter(table, n)
