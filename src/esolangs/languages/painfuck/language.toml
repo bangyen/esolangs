@@ -78,3 +78,10 @@ verdict = "rejected 2026-10-31: decode, replace each llll/rrrr by lt/rt (t repea
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 66.7
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: root constant folding plus finite read batching. Read into one cell, clear, optionally add one and print. Base-seven digits d[k] of n emit (c repeated k then i) repeated d[k], so exactly n inputs are read without a loop or search. Chars sum(d[k]*(k+1))+2+2b, commands sum(d[k])+2+2b under native finite repetition. n=7 15/17->4/6 (68.8%), n=8 17/19->5/7 (66.7%), n=12 25/27->9/11. Against the unbatched native root alone, batching saves 50.0% at n=7 (20->10 chars across both answers) and 45.5% at n=8 (22->12): it independently meets the 20% declining gate at the fixed range. n=8 commands 17/19->4/6, workspace 35/36->12/13 bits. Direct read-count and following-record controls pass at 13 fixed arities through n=512, including both sides of powers of seven. n=3 corpus chars 20234->20230. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned IO/template checks verify input use before output and preserve the following record."

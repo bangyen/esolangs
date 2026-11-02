@@ -22,7 +22,7 @@ workspace = "linear: worst 8L + 56 + 8max(0,T-15) bits: the program string, rewr
 "11111110" = { commands = 66, commands_by_row = { "0" = 59, "1" = 60, "2" = 61, "3" = 62, "4" = 63, "5" = 64, "6" = 65, "7" = 66 }, source_units = 198 }
 
 [catalogue]
-folding_constant_local = "_CONSTANT"  # delete inputs and print the literal answer
+folding_constant_local = "_constant_pattern"  # parse inputs before the literal answer
 
 [schemes]
 folds_without_tree = true
@@ -56,3 +56,10 @@ verdict = "kept: emits only the sweeps that clear the first T-1 entries, not T: 
 
 [audits]
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 29.4
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding, exempt. Inputs fill one nonempty a/b pattern in /pattern// followed by the literal digit. Parsing consumes every slot, the pattern cannot match the answer, and the digit prints. Chars n+4, commands 3: n=7 16->11 (31.2%), n=8 17->12 (29.4%), n=12 21->16. Native workspace bound 16n+32 bits; n=8 rises 144->160 bits while commands fall 13->3, within unchanged global caps. Recognize these unfilled/partially filled templates and retain recognition of old templates. n=3 corpus chars 41316->41306. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned IO/template checks verify input use before output and preserve the following record."

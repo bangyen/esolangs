@@ -31,7 +31,7 @@ def test_source_length_is_the_documented_formula(n: int) -> None:
         k = n - m
         size = 20 * 2**m + n + 35 + (k + 10 if k else 0)
         if len(set(table)) == 1:
-            size = n + 9
+            size = n + 4
         assert len(esolangs.generate("///", table)) <= size, table
     table = "0" * (2**n - 1) + "1"
     assert len(esolangs.generate("///", table)) == 20 * 2**n + n + 35
@@ -40,10 +40,12 @@ def test_source_length_is_the_documented_formula(n: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("inputs", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
-def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit) -> None:
+def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> None:
+    if inputs == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << inputs)
     template = esolangs.generate("///", table)
-    assert len(template) == inputs + 9
+    assert len(template) == inputs + 4
     assert template.count("$") == inputs
     assert _evaluate("///", template, inputs=inputs) == table
     assert _is_unfilled_template(str(template))
@@ -62,8 +64,8 @@ def test_constant_root_deletes_inputs_without_selecting_a_table(inputs, bit) -> 
             commands += 1
         assert vm.halted
         assert vm.output == bit
-        assert commands == inputs + 5
-        assert state.bits <= 8 * len(program) + 56
+        assert commands == 3
+        assert state.bits <= 16 * inputs + 32
 
 
 @pytest.mark.parametrize("suffix", ["", "0", "$", "$2", "$x0", "ab0"])
@@ -134,3 +136,32 @@ def test_balanced_side_is_square_at_n8() -> None:
     balanced = str(esolangs.generate("///", table, balance=True))
     assert balance_score(balanced)[0] == 92
     assert balanced.startswith("/\n//")
+
+
+def _check_constants() -> None:
+    from esolangs.languages.slashes.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("///", bit * (1 << n), **options)
+                for bits in ([0] * n, [1] * n):
+                    program = esolangs.instantiate("///", template, bits)
+                    io = ScriptedIO("7")
+                    machine = _Machine(program, io)
+                    pattern = "".join("ab"[b] for b in bits)
+                    parsed = False
+                    for _ in range(20):
+                        if machine.halted:
+                            break
+                        machine.step()
+                        if machine.state[1] == (pattern, ""):
+                            parsed = True
+                        if io.getvalue():
+                            assert parsed
+                    assert machine.halted
+                    assert parsed
+                    assert io.getvalue() == bit
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

@@ -162,7 +162,7 @@ don't edit by hand.
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **refractran** -- Inputs are ordered prime exponents in the initial integer; the final binary state ends in the answer bit.
 - **retrograde** -- Inputs are ordered one-instruction setters; the final current tape bit is the whole answer dump.
-- **slashes** -- Inputs fill the binary row index before unary selection; constant tables delete the input letters and print their answer.
+- **slashes** -- Inputs fill the binary row index before unary selection; constant tables parse the input letters as a nonmatching rule pattern.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
 - **sonata** -- Sonata's input is its initial string and its output the final one, = and the answer

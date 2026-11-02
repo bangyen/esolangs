@@ -14,6 +14,7 @@ class TestPainfuck:
         must be the inverse shift; the translated commands are the BF moves."""
         from esolangs.languages.painfuck.interpreter import _translate
 
+        _check_constants()
         program = boolean.painfuck("0110")
         translated = _translate(program)
         assert "a" in translated  # [ loops
@@ -119,3 +120,42 @@ def test_admission_bound_keeps_the_winning_shared_form() -> None:
         )
         == 620
     )
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.painfuck.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Painfuck", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs("Painfuck", [int(b) for b in row])
+                        + "7\n"
+                    )
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_num() == 7
+
+    from esolangs.languages.painfuck.generator import _constant
+
+    for n in (6, 7, 8, 13, 14, 48, 49, 50, 342, 343, 344, 511, 512):
+        for bit in (0, 1):
+            io = ScriptedIO("1\n" * n + "7\n")
+            run(_constant(n, bit), io)
+            assert io.getvalue() == str(bit)
+            assert io.reads == n
+            assert io.input_num() == 7

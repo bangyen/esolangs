@@ -15,6 +15,7 @@ one on the second stack costs `0+` (`^` extends a run), since `` ` `` pushes
 Size:
     About 1.75T chars from n=4 (2T below), no subtrees to fold or share;
     n=10 random 1847: 1,814 chars, n=16 and: 98,540 chars.
+    Constants: n + 2 chars, n + 3 commands including frame completion.
 """
 
 from esolangs.generation.helpers import (
@@ -53,6 +54,8 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     inputs are drained, except a constant's, which no halving step reads.
     """
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return TEMPLATE_CHAR * n + ("0" if truth_table[0] == "0" else "`") + "."
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))
     used = essential_inputs(table, n)
     # Never longer than the one-stack build: it saves 2**(k-2) - runs - 2n + 5
@@ -66,7 +69,14 @@ def eval_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the per-input pair: three wide in the two-stack build."""
     # Only the two-stack build holds ``~;~?~``; the one-stack drains are
     # followed by ``~^=~?*`` or ``.``.
-    dual = _DUAL_SELECT in template.replace("\n", "")
+    clean = template.replace("\n", "")
+    if (
+        len(clean) == n + 2
+        and clean[-2:] in ("0.", "`.")
+        and not clean[:-2].strip("$0`")
+    ):
+        return (("0", "`"),) * n
+    dual = _DUAL_SELECT in clean
     return ((DUAL_PAIR if dual else PAIR),) * n
 
 

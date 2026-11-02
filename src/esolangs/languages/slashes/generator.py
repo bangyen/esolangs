@@ -12,13 +12,14 @@ data from ``ba>qAqBqBqA`` through
     >qBqA            sweeps      each star deletes the entry at the cursor
     1                decode      the entry at the cursor is its digit
 
-The table is a literal with no subtrees to fold or share.  Constants delete
-the input letters and print their literal answer.
+The table is a literal with no subtrees to fold or share.  Constants parse
+the input letters as a rule pattern that cannot match their literal answer.
 
 Size:
     O(T) chars, ~22% fewer on random tables than T full sweeps
     ([ablations.sweep_count]); worst case unchanged; n=10 random
     1847: 15,809 chars, n=12 random 1847: 63,805 chars.
+    Constants: n + 4 chars and three commands.
 
 Decisions:
     ``balance=True`` prefixes a rule deleting every later newline, and
@@ -50,7 +51,7 @@ _SWEEP = "/*\\>qA/>//*\\>qB/>/"
 _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
 #: Deletes an ignored input's ``X``-marked bit before the unary sweep reads it.
 _IGNORE = "/Xa///Xb//"
-#: A constant table needs no row: delete the inputs, leave the answer.
+#: Former constant prefix, retained to recognize old templates.
 _CONSTANT = "/a///b//"
 
 
@@ -77,8 +78,8 @@ def slashes(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        # Delete the input letters; no cursor or unary sweep selects a constant.
-        return _CONSTANT + TEMPLATE_CHAR * n + truth_table[0]
+        # The a/b pattern is parsed but cannot match the literal digit.
+        return _constant_pattern(n, truth_table[0])
     weights, bits = input_weights(truth_table, n)
     table = "".join("qA" if bit == "0" else "qB" for bit in bits)
     slots = "".join(
@@ -86,6 +87,11 @@ def slashes(truth_table: str) -> str:
     )
     prefix = _IGNORE if 0 in weights else ""
     return prefix + _UNARY + _SWEEP * _sweeps(bits) + _DECODE + slots + ">" + table
+
+
+def _constant_pattern(n: int, bit: str) -> str:
+    """Parse all input letters as a rule pattern that cannot match the answer."""
+    return "/" + TEMPLATE_CHAR * n + "//" + bit
 
 
 #: Deletes every later newline, so the rest wraps anywhere.
@@ -106,6 +112,8 @@ def _balance(program: str) -> str:
 
 def _is_unfilled_template(code: str) -> bool:
     """Recognize canonical templates without reserving literal dollars in ///."""
+    if TEMPLATE_CHAR in code and re.fullmatch(r"/[$ab]+//[01]", code):
+        return True
     if code.startswith(_CONSTANT):
         data = code[len(_CONSTANT) :]
         return (
@@ -146,7 +154,7 @@ LANGUAGE = Language(
     shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="Inputs fill the binary row index before unary selection; "
-        "constant tables delete the input letters and print their answer.",
+        "constant tables parse the input letters as a nonmatching rule pattern.",
     ),
     no_wrap="newlines are literal output and substitution data",
     wrap_balance=_balance,

@@ -32,10 +32,11 @@ class TestEvalBoolean:
         """A constant table pushes one result; its staged inputs never drain."""
         from esolangs.languages import generators
 
+        _check_constants()
         full = generators.eval("10010110")
         folded = generators.eval("11111111")
         assert len(folded) < len(full)
-        assert folded == _X * 3 + "`."
+        assert folded == TEMPLATE_CHAR * 3 + "`."
 
     def test_folding_keeps_both_bits_equal_width(self) -> None:
         """Folding shrinks the template, never one instantiation."""
@@ -70,7 +71,7 @@ class TestEvalBoolean:
             table = format(value, "08b")
             dispatched = len(generators.eval(table))
             staged = len(_eval_ordered(permute_truth_table(table, free), ""))
-            assert dispatched == staged, table
+            assert dispatched == staged - (3 if len(set(table)) == 1 else 0), table
 
     def test_reorder_cost_selects_the_emitted_template(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
@@ -91,6 +92,8 @@ class TestEvalBoolean:
                         _eval_ordered(permuted, ops)
                     )
                     costs.append(_eval_cost(permuted, ops))
+                if len(set(table)) == 1:
+                    costs.append(n + 2)
                 assert len(boolean.eval(table)) == min(costs)
 
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
@@ -217,3 +220,24 @@ class TestEvalBoolean:
             for combo in range(2**n):
                 program = self.instantiate(template, row_bits(combo, n))
                 assert self.run_eval(program) == table[combo], (table, combo)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.eval.generator import eval_setters
+    from esolangs.languages.eval.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("Eval", bit * (1 << n), **options)
+                assert template.count("$") == n
+                assert eval_setters(template, n) == (("0", "`"),) * n
+                for bits in ([0] * n, [1] * n):
+                    program = esolangs.instantiate("Eval", template, bits)
+                    io = ScriptedIO("7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

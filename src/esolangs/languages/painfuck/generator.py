@@ -16,6 +16,7 @@ shorter kept.  An affine table sums its bits and prints the sum mod 2
 Size:
     Banks shrink dense tables (majority 1,257 -> 704 chars at n=8, 4,406 ->
     1,342 at n=10); n=10 parity: 132 chars, n=10 random 1847: 10,156 chars.
+    Constants: sum(d[k]*(k+1)) + 2 + 2b chars, d the base-seven digits of n.
 """
 
 from esolangs.generation.helpers import (
@@ -70,11 +71,25 @@ def _reach(start: int, target: int) -> str:
 
 def painfuck(truth_table: str) -> str:
     """Return a Painfuck program for an MSB-first ``2**n`` truth table."""
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return _constant(n, int(truth_table[0]))
     tree = in_input_order(truth_table, _painfuck_ordered)
     form = affine_form(truth_table, _validate_truth_table(truth_table))
     if form is None or not any(form[1]):
         return tree
     return min(tree, _parity_sum(*form), key=len)
+
+
+def _constant(n: int, bit: int) -> str:
+    """Read n numbers into one cell via finite base-seven repetition, then print."""
+    reads = []
+    power = 0
+    while n:
+        n, digit = divmod(n, 7)
+        reads.append(("c" * power + "i") * digit)
+        power += 1
+    return _encode("".join(reversed(reads)) + "z" + "ps" * bit + "o")
 
 
 def _parity_sum(bias: int, coefficients: list[int]) -> str:
