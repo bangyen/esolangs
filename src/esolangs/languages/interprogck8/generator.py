@@ -2,25 +2,25 @@
 
 ``DownAccLines`` skips ``1 + acc`` lines.  The program is cut into windows of
 126 lines: 40 for code, then a zone of blank lines ending in a rung that every
-flight in the air shares.
+flight in the air shares. Parity uses 52 code lines (138 total) at n=3..31.
 
 - **Read.**  ``{values/=u/=X/=X}`` with ``X`` 49 pips leaves Q (81) on a ``1``
   and T (84) on a ``0``.  ``IFT`` calls the slot ``<NnNn>`` on a 0, which
   zeroes the accumulator so the rung falls through onto the near child.  A 1
   keeps 81, or ``IFQ`` calls a body that rewrites it, and the rung lands on
   the far child: the slot is refilled after any other body.
-- **Cluster.**  A subtree of at most 40 lines is laid whole, the far child
+- **Cluster.**  A subtree of at most the code band is laid whole, the far child
   as many lines past the rung as the near subtree is long.  A read over two
   leaves is two lines: the compare leaves Q or T and the rung's hop of 82 or
   85 lands the leaf's value on the tail's entry.
 - **Flight.**  A larger subtree's read sets the accumulator to a column below
   80, the shallowest read at 80 and each read below it lower, so its rung
   lands in the zone and each window's closing rung hops it to the same column
-  again, a walk of ``125 - column`` filler lines a window.  Flights share
+  again, a walk of ``period - 1 - column`` filler lines a window.  Flights share
   that rung and differ by column; the stop, one ``NnNn`` one past the
   flight's column in a later window, is reached by no other flight, since a
   deeper read has a lower column and finishes first.  A column is the highest
-  whose body is no longer than ``_FREE + n - 3 - depth``'s.
+  whose body is no longer than ``free + n - 3 - depth``'s.
 - **Tail.**  The last window takes the printers at columns 82 and 85, above
   every flight's, and prints ``0`` or ``1``.
 
@@ -29,10 +29,10 @@ input, still consumes its digit: its child is laid straight after it. Whole
 constants use n reads and a fixed arithmetic tail, without windows.
 
 Size:
-    O(T) at every arity: a window is 126 lines and the cursor walk is a
+    O(T) at every arity: a window is at most 138 lines and the cursor walk is a
     recursion over (height, entry offset), so the worst table takes about
     193.1 T characters at n = 10 (tests/formulas.py, exact at n = 3..12; 24,874
-    at n = 7).  n=10 random 1847: 160,984 chars, n=10 parity: 189,578 chars,
+    at n = 7).  n=10 random 1847: 160,984 chars, n=10 parity: 143,940 chars,
     n=10 and: 8,160 chars. Constants use 2n+28+4bit chars and n+7+bit commands;
     n=8 zero: 44 chars.
 
@@ -46,7 +46,7 @@ Decisions:
 """
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.helpers import _parity_bias, _validate_truth_table, subtree_ids
 from esolangs.languages.interprogck8.proof_formulas import workspace
 from esolangs.registry._language import Language
 from esolangs.runtime.source_hints import with_hint
@@ -69,7 +69,10 @@ _FREE = 40
 _ZONE = 86
 _PERIOD = _FREE + _ZONE
 _MAX_INPUTS = 40
+#: Smallest band holding three parity levels; floor52+n-3 must stay <=80.
+_PARITY_FREE = 52
 _CEILING = 80
+_PARITY_MAX = _CEILING - _PARITY_FREE + 3
 
 
 def _read(bit: int) -> str:
@@ -94,10 +97,10 @@ def _block(target: int) -> list[str]:
     return [_read(1), "IFT", "<", *body, ">", "IFQ", *_SLOT, _RUNG]
 
 
-def _columns(n: int) -> list[int]:
+def _columns(n: int, free: int = _FREE) -> list[int]:
     """Flight column by depth: the highest, strictly falling, whose body is no longer.
 
-    The old column ``_FREE + n - 3 - depth`` is the floor.  A flight walks the
+    The column ``free + n - 3 - depth`` is the floor.  A flight walks the
     ``_PERIOD - 1 - column`` filler lines after its landing every window, so a
     high column is cheap; 80 is the ceiling, a stop at 81 under the Q walker's
     landing at 82.
@@ -105,7 +108,7 @@ def _columns(n: int) -> list[int]:
     columns, above = [], _CEILING + 1
     for depth in range(n):
         column = above - 1
-        cost = len(_block(_FREE + n - 3 - depth))
+        cost = len(_block(free + n - 3 - depth))
         while len(_block(column)) > cost:
             column -= 1
         columns.append(column)
@@ -116,10 +119,12 @@ def _columns(n: int) -> list[int]:
 class _Plan:
     """The windows of one program: placed lines, the cursor and the last cluster."""
 
-    def __init__(self, table: str, n: int) -> None:
+    def __init__(self, table: str, n: int, free: int = _FREE) -> None:
         self.n = n
+        self.free = free
+        self.period = free + _ZONE
         self.ids = subtree_ids(table)
-        self.columns = _columns(n)
+        self.columns = _columns(n, free)
         self.ops: dict[int, str] = dict(enumerate(_SLOT, 1))
         self.cursor = len(_SLOT) + 1
         self.window = 0
@@ -130,7 +135,7 @@ class _Plan:
         return self.ids[depth + 1][2 * block], self.ids[depth + 1][2 * block + 1]
 
     def size(self, depth: int, block: int) -> int:
-        """Lines of the cluster at ``block``, or ``_FREE + 1`` if it is longer."""
+        """Lines of the cluster at ``block``, or ``self.free + 1`` if it is longer."""
         key = (depth, block)
         if key not in self.sizes:
             low, high = self.halves(depth, block)
@@ -140,9 +145,9 @@ class _Plan:
                 total = 1 + self.size(depth + 1, 2 * block)
             else:
                 near = self.size(depth + 1, 2 * block)
-                far = self.size(depth + 1, 2 * block + 1) if near <= _FREE else near
+                far = self.size(depth + 1, 2 * block + 1) if near <= self.free else near
                 total = len(_block(near)) + near + far
-            self.sizes[key] = min(total, _FREE + 1)
+            self.sizes[key] = min(total, self.free + 1)
         return self.sizes[key]
 
     def cluster(self, depth: int, block: int) -> list[str]:
@@ -160,13 +165,12 @@ class _Plan:
     def place(self, lines: list[str]) -> int:
         """Lay ``lines`` in the first window with room; returns the last line.
 
-        A window's code ends at ``_FREE``.  A flight's rung needs only
-        ``_PERIOD - 2 - column >= 44`` of it to land in the zone, so no reach
-        ever binds below ``_FREE``.
+        Even column80 leaves ``period - 2 - column >= free + 4``
+        before the closing rung, so every placed flight reaches its zone.
         """
-        line, room = self.cursor, _FREE - len(lines) + 1
-        while not 1 <= line % _PERIOD <= room:
-            line = (line // _PERIOD + 1) * _PERIOD + 1
+        line, room = self.cursor, self.free - len(lines) + 1
+        while not 1 <= line % self.period <= room:
+            line = (line // self.period + 1) * self.period + 1
         self.ops.update(enumerate(lines, line))
         self.cursor = line + len(lines)
         return self.cursor - 1
@@ -174,9 +178,9 @@ class _Plan:
     def lay(self, depth: int, block: int) -> None:
         """Lay the subtree at ``block`` from the cursor, flights above clusters."""
         low, high = self.halves(depth, block)
-        if self.size(depth, block) <= _FREE:
+        if self.size(depth, block) <= self.free:
             end = self.place(self.cluster(depth, block))
-            self.window = end // _PERIOD
+            self.window = end // self.period
         elif low == high:
             self.place([_read(1), "NnNn"])
             self.lay(depth + 1, 2 * block)
@@ -184,8 +188,8 @@ class _Plan:
             column = self.columns[depth]
             rung = self.place(_block(column))
             self.lay(depth + 1, 2 * block)
-            first = max(self.cursor, (rung // _PERIOD + 1) * _PERIOD)
-            stop = first + (column + 1 - first) % _PERIOD
+            first = max(self.cursor, (rung // self.period + 1) * self.period)
+            stop = first + (column + 1 - first) % self.period
             self.ops[stop] = "NnNn"
             self.cursor = stop + 1
             self.lay(depth + 1, 2 * block + 1)
@@ -194,10 +198,10 @@ class _Plan:
         """Close the windows with their rungs and the printers' tail."""
         last = self.window + 1
         for window in range(last + 1):
-            self.ops.setdefault(window * _PERIOD, _RUNG)
+            self.ops.setdefault(window * self.period, _RUNG)
         tail = ["@nd", "@nd", "x", *_arith(-35), "div"]  # 81 -> 48, 84 -> 49
-        end = last * _PERIOD + 82 + len(tail)
-        self.ops.update(enumerate(tail, last * _PERIOD + 82))
+        end = last * self.period + 82 + len(tail)
+        self.ops.update(enumerate(tail, last * self.period + 82))
         return "\n".join(self.ops.get(i, "x") for i in range(end))
 
 
@@ -221,7 +225,15 @@ def interprogck8(truth_table: str) -> str:
         return "\n".join(
             ["u"] * n + ["nNnN", "@dd", "@dd"] + ["@nd"] * (3 + bit) + ["div"]
         )
-    plan = _Plan(truth_table, n)
+    # Two levels fit40; the next parity cluster needs52. Below three
+    # inputs it only adds24chars. Above31 the floor exceeds column80.
+    # [ablations.trick_prototype_20261102_wider_parity]
+    free = (
+        _PARITY_FREE
+        if 3 <= n <= _PARITY_MAX and _parity_bias(truth_table) is not None
+        else _FREE
+    )
+    plan = _Plan(truth_table, n, free)
     plan.lay(0, 0)
     return plan.text()
 

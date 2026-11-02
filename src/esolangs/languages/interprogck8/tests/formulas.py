@@ -580,15 +580,73 @@ def _bound(n: int) -> int:
     return best
 
 
+@cache
+def _parity_steps(n: int) -> int:
+    """Exact parity paths in138-line windows, normalized like ``_flown``."""
+    period, free = 138, 52
+    flight_columns = columns(n, free)
+
+    def seat(offset: int, size: int) -> tuple[int, int, int, int]:
+        if 1 <= offset <= free - size + 1:
+            return offset, offset + size, 0, 0
+        return 1, 1 + size, 1, period + 1 - offset
+
+    @cache
+    def cluster(height: int) -> tuple[int, int]:
+        if height == 1:
+            return 2, 1
+        size, value = cluster(height - 1)
+        lead = _lead(size)
+        return lead + 2 * size, max(
+            _NEAR - lead + value,
+            _FAR + _body(size) - lead - size + value,
+        )
+
+    @cache
+    def layout(height: int, offset: int) -> tuple[int, tuple[int, int]]:
+        if height <= 3:
+            size, value = cluster(height)
+            line, _, opened, walked = seat(offset, size)
+            return opened, tuple(
+                walked - line + value - (period - acc) * opened for acc, _ in _WALKERS
+            )
+        column = flight_columns[n - height]
+        lead = len(block_of(column))
+        line, there, opened, walked = seat(offset, lead)
+        rung = period * opened + line + lead - 1
+        more, near = layout(height - 1, there)
+        # Flight stops are above52: the last cluster finishes before them.
+        windows = opened + max(more, 1)
+        extra, far = layout(height - 1, column + 2)
+        flight = period * (opened + 1) - (rung + 1 + column) + 1
+        flight += (windows - opened - 1) * (period - column) + 1
+        values = tuple(
+            max(
+                walked + _NEAR - (period - acc) * opened + near[w],
+                walked
+                + _FAR
+                + _body(column)
+                + flight
+                - (period - acc) * windows
+                + far[w],
+            )
+            for w, (acc, _) in enumerate(_WALKERS)
+        )
+        return windows + extra, values
+
+    opened, values = layout(n, len(SLOT) + 1)
+    return max(
+        _START + values[w] + (period - acc) * (opened + 1) + tail
+        for w, (acc, tail) in enumerate(_WALKERS)
+    )
+
+
 def _steps(n: int, _: str) -> int:
-    """The relaxed recursion's worst, a proved upper bound.
+    """The generic bound or the exact named parity path, whichever is larger.
 
-    Reached over all rows to n = ``_EXACT``, and at 11 and 12 by one named row.
-
-    The shipped ``_worst`` keeps ``_SEEN`` distinct tables a state and is a
-    witnessed lower bound; the two agree to 12.
+    Witnesses attain it through12; at three inputs parity now wins.
     """
-    return _bound(n)
+    return max(_bound(n), _parity_steps(n) if 3 <= n <= 31 else 0)
 
 
 def steps_witness(n: int) -> str:

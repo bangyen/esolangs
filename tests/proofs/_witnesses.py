@@ -983,6 +983,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Interprogck8": lambda n: (
         (
             "01100000" * (1 << n - 3),
+            "1" + "".join(str(row.bit_count() % 2) for row in range(1, 1 << n)),
             *_diagram_witness("interprogck8", n, 10),
             *_diagram_witness("interprogck8", n, 8, "steps_witness"),
         )

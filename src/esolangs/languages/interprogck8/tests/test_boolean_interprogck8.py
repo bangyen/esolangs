@@ -1,6 +1,7 @@
 """Tests for the Interprogck8 Boolean generator."""
 
 import random
+from itertools import pairwise
 
 import pytest
 
@@ -65,20 +66,16 @@ def test_three_input_program_keeps_its_measured_length() -> None:
         assert _answer(program, 3, row) == table[row], row
 
 
-def test_parity_costs_the_same_per_entry_at_every_arity() -> None:
-    """Windows are 126 lines whatever ``n``: a rung every 126 lines, and a flat size.
-
-    Flat within 1%: parity spans 184.8-185.9 characters an entry at n = 8..12
-    (185.4-185.9 before the overshoot spelling was retired).
-    """
+def test_parity_windows_keep_measured_lengths() -> None:
+    """Parity packs three levels into52-line bands, with138-line periods."""
     sizes = {}
     for n in (8, 10, 12):
-        parity = "".join(str(bin(i).count("1") % 2) for i in range(1 << n))
+        parity = "".join(str(i.bit_count() % 2) for i in range(1 << n))
         program = str(esolangs.generate("Interprogck8", parity))
         lines = program.split("\n")
-        assert all(lines[k] == "DownAccLines" for k in range(0, len(lines) - 82, 126))
-        sizes[n] = len(program) / (1 << n)
-    assert max(sizes.values()) / min(sizes.values()) < 1.01, sizes
+        assert all(lines[k] == "DownAccLines" for k in range(0, len(lines) - 82, 138))
+        sizes[n] = len(program)
+    assert sizes == {8: 35675, 10: 143940, 12: 578536}
 
 
 def test_arith_adds_its_delta_mod_256() -> None:
@@ -125,6 +122,14 @@ def test_flight_columns_keep_the_stop_in_the_cursors_window() -> None:
     """
     for n in range(4, generator._MAX_INPUTS + 1):  # noqa: SLF001
         assert min(generator._columns(n)[: n - 2]) >= 40, n  # noqa: SLF001
+    for n in range(4, 32):
+        columns = generator._columns(n, 52)  # noqa: SLF001
+        assert min(columns[: n - 3]) > 52
+        assert all(0 <= c <= 80 for c in columns)
+        assert all(a > b for a, b in pairwise(columns))
+    # At n=32 the floor81 needs a zero-length body, unavailable below81.
+    cost = len(generator._block(81))  # noqa: SLF001
+    assert all(len(generator._block(c)) > cost for c in range(81))  # noqa: SLF001
 
 
 @pytest.mark.parametrize("n", [3, 5, 7])
@@ -184,5 +189,5 @@ def test_three_input_corpus_size() -> None:
             len(esolangs.generate("Interprogck8", format(value, "08b")))
             for value in range(256)
         )
-        == 340172
+        == 339776
     )
