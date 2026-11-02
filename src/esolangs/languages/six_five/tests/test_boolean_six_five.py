@@ -81,6 +81,7 @@ class TestSixFive:
     )
     def test_constant_subtrees_fold(self, table: str, n: int) -> None:
         """A constant subtree emits one leaf instead of a full branch set."""
+        _check_constants()
         mixed = {
             1: "10",
             2: "1010",
@@ -292,8 +293,8 @@ class TestSixFive:
         # 209 once a tree jumps to the subtrees it repeats; 196 once the
         # winner's raw-copy re-emission retired (candidate #11), down
         # from 219: its and/or-shaped wins now tie the stream build; 198
-        # once the copy node retired.
-        assert improved == 198  # the rest tie, keeping the old emission
+        # once the copy node retired; 200 after native constants lose one move.
+        assert improved == 200  # the rest tie, keeping the old emission
 
     def test_the_guarded_walk_has_linear_source(self) -> None:
         for n in range(1, 13):
@@ -424,3 +425,29 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
 def test_internal_route_budget_is_not_a_generator_restriction() -> None:
     assert esolangs.describe("6-5")["generator_restrictions"] is None
     assert esolangs.describe("6-5")["generator_max_inputs"] is None
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.six_five.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("6-5", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")

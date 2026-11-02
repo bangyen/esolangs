@@ -9,6 +9,7 @@ inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
 Size:
     O(T) worst case, small for structured tables; n=10 parity: 207 chars,
     n=10 and: 145 chars, n=10 random 1847: 3,236 chars.
+    Constants: n + 10/11 chars and commands.
 
 Decisions:
     The positional walk spends ``n`` labels plus its home loop's.
@@ -92,6 +93,11 @@ def six_five(truth_table: str) -> str:
 
     Node and leaf shapes: ``_NodeEmitter.emit``, :func:`_six_five_leaf`.
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return (
+            "B" * n + "1" + ("66666666" if truth_table[0] == "0" else "666655555") + "A"
+        )
     # Identity and reverse: random n=7 10.8% (200 tables), parity/and/or 12-14%;
     # n >= 8 random exceeds the label budget either way, so 0%.
     best = _six_five_chosen(truth_table, _six_five_orders(truth_table))

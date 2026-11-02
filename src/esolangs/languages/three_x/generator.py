@@ -11,6 +11,7 @@ sets a flag in the tree and is written once after it, guarded by that flag.
 Size:
     O(T) for dense tables, O(n) for parity and and; n=10 parity: 2,351 chars,
     n=10 and: 472 chars, n=10 random 1847: 9,050 chars.
+    Constants: n + 3 chars and n + 1 commands.
 
 Decisions:
     Shares are chosen by ``_gain`` from counts and lengths, no trial
@@ -131,6 +132,9 @@ def three_x(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first).  The tree splits in input order.
     """
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return "?" * n + f"[{truth_table[0]}]"
     return in_input_order(truth_table, _three_x_ordered)
 
 

@@ -33,6 +33,7 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
+    _check_constants()
     assert len(PAIR[0]) == len(PAIR[1]) == 4
     for n in range(1, 8):
         template = smallfuck("01" * (1 << (n - 1)))
@@ -51,7 +52,7 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     # XOR takes the chain; the tree it would build still ends this way.
     tree = in_input_order("0110", _smallfuck_ordered)
     assert tree.endswith("[*<*>]<<<]>[*>>[*<*>]<<]")
-    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20237
+    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 20234
 
     table = multiple_tables()[0]
     template = esolangs.generate("Smallfuck", table)
@@ -357,3 +358,21 @@ def test_pinned_template_sizes(table: str, size: int) -> None:
     assert len(template) == size
     for row in range(0, len(table), max(1, len(table) // 16)):
         assert run_filled(run, template, [PAIR] * n, row, n) == table[row]
+
+
+def _check_constants() -> None:
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("Smallfuck", bit * (1 << n), **options)
+                for bits in ([0] * n, [1] * n):
+                    program = esolangs.instantiate("Smallfuck", template, bits)
+                    assert "[" not in program
+                    assert "]" not in program
+                    io = ScriptedIO("7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

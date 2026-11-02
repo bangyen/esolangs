@@ -72,7 +72,7 @@ class TestThreeX:
         """A table no reorder helps emits exactly what it emitted before."""
         from esolangs.languages.three_x.generator import _three_x_ordered
 
-        for table in ("0" * 8, "1" * 8):
+        for table in ("01101001", "00000001"):
             assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
 
     def test_reads_stay_in_stream_order(self) -> None:
@@ -121,6 +121,7 @@ class TestThreeX:
 
     def test_constant_table_has_no_override_blocks(self) -> None:
         """When every row equals the default, no ( ... ) guards are emitted."""
+        _check_constants()
         assert "(" not in boolean.three_x("0" * 4)
         assert "(" not in boolean.three_x("1" * 4)
 
@@ -230,3 +231,31 @@ def test_three_x_keys_fit_their_bound() -> None:
 )
 def test_block_sharing_sizes(table: str, size: int) -> None:
     assert len(esolangs.generate("three_x", table)) == size
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.three_x.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("3x", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs("3x", [int(b) for b in row]) + " 7"
+                    )
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_num() == 7

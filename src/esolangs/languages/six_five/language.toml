@@ -96,3 +96,10 @@ arity = 8
 seed = "random.Random(1847+n)"
 tables = "all tables n=1..3; 20 random plus and/or/parity/majority/threshold-third per n=4..12"
 verdict = "near miss, not shipped: race the shipped build against a positional walk storing -1 for zero and 0 for one, then adding 49 before print; the home sentinel remains 5. Negative-one stores use 59, matching the existing 62 one's two characters, and adding 49 costs one more character than adding 48. Random n=7 unchanged at 7,145 chars; n=8 17,952 -> 17,815 (0.763%), n=12 0.433%. and/or/parity/majority/threshold-third unchanged through n=12. Positive control: 40 corpus programs change. Exhaustive n=3 source/commands unchanged at 13,835 chars / 49,380 commands. 5,110 baseline/candidate output checks correct, exhaustive n<=3 and boundary rows of random/named tables through n=8 plus named through n=12; 2,555 complemented controls rejected. Neither shipping bar passes. Prototype stays in ignored notes; generator, bounds and pins unchanged"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 5.1
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants need one right-two move to a fresh cell, without the following left move; reads still overwrite the input cell n times. Chars and commands n+10/11: n=7 18/19->17/18 (5.4%), n=8 19/20->18/19 (5.1%), n=12 23/24->22/23. n=8 written workspace unchanged at 24 bits. n=3 corpus chars 13835->13833. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged; global resource caps unchanged. Owned raw IO checks preserve all input reads and following record; Smallfuck retains fixed-width slots, executes straight-line setters and dumps only after the program."

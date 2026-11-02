@@ -14,6 +14,7 @@ An affine table folds its counted input cells down a chain into cell 2
 Size:
     O(T) for dense tables, linear in n for parity and ``and``; n=10 random
     1847: 11,076 chars, n=10 parity: 170 chars, n=10 and: 213 chars.
+    Constants: zero 4n chars; one min(7n - 1, 4n + 5) chars.
 
 Decisions:
     Splits stay in input order: a greedy order saves 1.1% at n=8, under the
@@ -144,12 +145,17 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
         if negate or complement
     ]
     natural = min(natural, *twins, key=len)
+    if n >= 3 and truth_table == "1" * len(truth_table):
+        # Cell 2 is outside the input walk: set it before walking away.
+        natural = ">>*<<" + TEMPLATE_CHAR * len(PAIR[0]) * n
     if (form := affine_form(truth_table, n)) is not None and any(form[1]):
         natural = min(natural, _xor_chain(n, *form), key=len)
     if width is None or width <= 0:
         return natural
     if width < len(PAIR[0]):
-        natural = (TEMPLATE_CHAR + ">>>") * n + natural[len(PAIR[0]) * n :]
+        prefix = ">>*<<" if natural.startswith(">>*<<") else ""
+        body = natural.removeprefix(prefix)
+        natural = prefix + (TEMPLATE_CHAR + ">>>") * n + body[len(PAIR[0]) * n :]
     marked = mark_runs(natural, TEMPLATE_CHAR, smallfuck_setters(natural, n))
     return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)
 
@@ -171,7 +177,8 @@ def _xor_chain(n: int, bias: int, coefficients: list[int]) -> str:
 
 def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Keep the pointer walk outside narrow one-character input slots."""
-    pair = ("x", "*") if template.replace("\n", "").startswith("$>>>") else PAIR
+    clean = template.replace("\n", "").removeprefix(">>*<<")
+    pair = ("x", "*") if clean.startswith("$>>>") else PAIR
     return (pair,) * n
 
 
