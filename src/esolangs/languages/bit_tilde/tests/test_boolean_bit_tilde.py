@@ -108,8 +108,13 @@ def _check_split_inputs() -> None:
                 assert io.reads == n
                 assert io.past_end == 0
                 assert io.input_char() == ord("Q")
-    # A balanced e0 lane and every diff set attain all three resource maxima.
-    for n, expected_steps, expected_bits in ((4, 271, 92), (5, 365, 117)):
+    # Retain source witnesses 6/8 when the ledger's default span moves to 4/6.
+    for n, expected_steps, expected_bits in (
+        (4, 271, 92),
+        (5, 365, 117),
+        (6, 535, 166),
+        (8, 1483, 458),
+    ):
         quarter = 1 << (n - 2)
         e0 = [1] * (quarter - 1) + [0, 1] + [0] * (quarter - 1)
         table = "".join(f"{bit}{1 - bit}" for bit in e0)

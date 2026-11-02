@@ -1028,6 +1028,8 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "1" + _parity(n)[1:],
         "1" * (2 ** (n - 1) + 1) + "0" * (2 ** (n - 1) - 1),
         "1" * (2 ** (n - 1) - 1) + "0" * 2 ** (n - 1) + "1",
+        # Bypass the parity-only radix: the generic lookup still attains n=5.
+        "1" + _parity(n)[1:],
     ),
     # Every pair differs and half the pairs start with a one: all the planted
     # cells the minority rule leaves, in a table that is not affine.
