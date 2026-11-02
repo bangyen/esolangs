@@ -18,6 +18,7 @@ def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
 
 def test_the_walk_is_branch_free() -> None:
     """One guard and one counter loop an input, no other: the table is not a tree."""
+    _check_folded()
     program = tools.egl("01101001")
     assert program.count("(") == 6
     assert program.count("(->") == 3
@@ -91,3 +92,37 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_folded() -> None:
+    import random
+
+    from esolangs.languages.egl.generator import _wrap
+    from esolangs.languages.egl.interpreter import _Machine
+    from esolangs.languages.egl.proof_formulas import execution, workspace
+    from esolangs.languages.egl.tests.ablations import ablate
+    from scripts.benchmark import WrittenState
+
+    for n in (4, 7):
+        rng = random.Random(n)
+        table = "".join(rng.choice("01") for _ in range(1 << n))
+        program = tools.egl(table)
+        assert program == ablate(table, "default")
+        assert len(program) < len(ablate(table, "folded_rows"))
+        for text in (program, _wrap(program, 1)):
+            for row in (0, (1 << n) - 1):
+                io = ScriptedIO(f"{row:0{n}b}7")
+                machine = _Machine(text, io)
+                written = WrittenState(machine.snapshot())
+                steps = 0
+                while not machine.halted:
+                    assert not io.getvalue()
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    steps += 1
+                assert io.getvalue() == table[row]
+                assert io.reads == n
+                assert not io.past_end
+                assert steps <= execution(n, text)
+                assert written.bits <= workspace(n, text)
+                assert io.input_char() == ord("7")

@@ -7,10 +7,11 @@ admitted = 2026-09-13T09:46:59-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "row 1 is painted with the table and each essential input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell"
-scaling = "linear: worst 3T + 25n + digits(T) + 8 characters: painted row"
-execution = "linear: worst 3T + 85n + 5 commands: paint at most T-1 ones; weights sum to T-1"
-workspace = "linear: worst 3T + 2n + 10 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T"
+qualification = "a boustrophedon table has three rows per block; binary weights walk horizontally or down whole blocks; symmetric tables retain the count reader"
+scaling = "linear: at most 3T+25n+digits(T)+8 characters: original row ceiling"
+execution = "linear: at most E commands: painting, counters, guards and wrapping no-ops"
+workspace = "linear: at most wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) bits: grid, loop and cursors"
+definitions = ["w = declared width", "h = declared height", "B = body characters, including wrapping", "b(x) = max(1,bl(x))", "E = 3T+85n+5; with any newline, 2(3T+85n+5)+1"]
 
 [generator_sizes]
 "00000001" = { commands = 270, commands_by_row = { "0" = 261, "1" = 264, "2" = 264, "3" = 267, "4" = 264, "5" = 267, "6" = 267, "7" = 270 }, source_units = 94 }
@@ -19,7 +20,7 @@ workspace = "linear: worst 3T + 2n + 10 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d
 "0110" = { commands = 183, commands_by_row = { "0" = 177, "1" = 180, "2" = 180, "3" = 183 }, source_units = 67 }
 "01101001" = { commands = 271, commands_by_row = { "0" = 262, "1" = 265, "2" = 265, "3" = 268, "4" = 265, "5" = 268, "6" = 268, "7" = 271 }, source_units = 95 }
 "0110100110010110" = { commands = 358, commands_by_row = { "0" = 346, "1" = 349, "2" = 349, "3" = 352, "4" = 349, "5" = 352, "6" = 352, "7" = 355, "8" = 349, "9" = 352, "10" = 352, "11" = 355, "12" = 352, "13" = 355, "14" = 355, "15" = 358 }, source_units = 122 }
-"1101001101101101" = { commands = 388, commands_by_row = { "0" = 365, "1" = 368, "2" = 369, "3" = 372, "4" = 371, "5" = 374, "6" = 375, "7" = 378, "8" = 375, "9" = 378, "10" = 379, "11" = 382, "12" = 381, "13" = 384, "14" = 385, "15" = 388 }, source_units = 153 }
+"1101001101101101" = { commands = 384, commands_by_row = { "0" = 366, "1" = 369, "2" = 370, "3" = 373, "4" = 372, "5" = 375, "6" = 376, "7" = 379, "8" = 371, "9" = 374, "10" = 375, "11" = 378, "12" = 377, "13" = 380, "14" = 381, "15" = 384 }, source_units = 148 }
 "11111110" = { commands = 272, commands_by_row = { "0" = 263, "1" = 266, "2" = 266, "3" = 269, "4" = 266, "5" = 269, "6" = 269, "7" = 272 }, source_units = 96 }
 
 [ablations.symmetric_count]
@@ -63,6 +64,7 @@ tables = 564
 verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also tried widths square - 1, square + 1 and floor - 1. None ever won: the plain fold at max(floor, balance_width) gives byte-identical balanced output on 564 tables (60 random a arity to n=8, 6 above, plus parity, and, or, majority, at-least-2) at n=1..12, so balanced area is unchanged"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -72,3 +74,25 @@ saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: scratch reads then a move to the fresh output cell. Chars n+6+b, commands n+2+b: n=8 14/15 chars, 10/11 commands, 20 written bits. The executed single-cell alternative clears the final ASCII byte with (-): n=7 grows 13/14->15/16 chars, n=8 grows 14/15->16/17, commands 10/11->108/109 and workspace 20->24 bits. It is larger and slower. Native controls pass; no global optimum claimed. n=3 corpus chars 25106 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."
+
+
+[ablations.trick_prototype_20261102_folded_rows]
+arity = 8
+saving = 22.308324527415756
+seed = "random.Random(n).choice"
+tables = 200
+verdict = "kept: split the binary-weight lookup into three-row blocks, paint alternate table rows in reverse traversal order, return from the last odd block with _^, and move high weights down whole three-row blocks. Low weights still move right. Choose W=2^min(m,(m+3)//2), R=2^m/W analytically by minimizing W+5R; no search or whole-old program race. The population-count reader remains one row because its unit steps require carries across a split; R=1 gives identical old bytes. Generic7/8 totals101370->84970 (16.1784%) and170340->132340 (22.3083%), no sampled growth. Sustained10% gate: full-essential source becomes T+P+W+5R+25n+digits(W)+digits(3R)+2 against2T+P+25n+digits(T)+9, P the popcount. With mean P=T/2 and W,R=O(sqrt(T)), savings rise toward40%; there is no finite expected peak to search for. Twenty native-checked9/10 tables save30268->21988 (27.3556%) and56527->38787 (31.3832%). Simple half-width splitting saves15.3892%/19.4904%; the selected width is one closed rule, not an extra candidate. Native true3 corpus25106chars/526304steps unchanged.78624 selected native runs cover all200 judged tables/all rows, named functions and20 random4..6 boundary rows; each alternative has1920 native runs, plus13000 small-corpus runs across all five variants. Wrong-stride control prints0 instead of1. Dimensions keep3T cells; changed row coordinates require a new ceiling, not the old one-dimensional formula. Native7/8 workspace peaks433/822->433/823bits. The new grid+counter+one-loop-frame+coordinates+two-cursor formula also bounds width1/balanced programs; newline execution no-ops are bounded separately. Native medians over five tables/all rows, three repeats: n7 .982183->.940422s (4.3% faster), n8 4.301344->3.994214s (7.1% faster). Generation medians over twenty tables, eleven repeats, n8/10/12: .001191/.004136/.015692 -> .001304/.004458/.016672s (+9.5/7.8/6.2%)."
+
+[ablations.trick_prototype_20261102_paired_cells]
+arity = 8
+saving = 19.261477045908183
+seed = "random.Random(n).choice"
+tables = 200
+verdict = "size-qualified but unselected: paint lo+2hi in a five-row half-width grid, retain the final essential input as selector, and use three nested, at-most-once decrements to write parity/quotient into two fresh cells. Ignored inputs after the selector read scratch with vx^; bare x would overwrite it (projection0011 is a native counterexample). Generic7/8 save13.6017%/19.2615%, sustained, but the chosen folded rows save16.1784%/22.3083% without a decoder. Native9/10 totals30268->23162 and56527->41765 also favor folded rows. The standalone construction replaces ordinary rows, keeping only the existing count-reader family; no whole-old min hides its small-table cost. True3 corpus25106->30061 chars,526304->551152 steps. Native workspace7/8 peaks446/808bits; packed values and three nested frames need their own linear ceiling, not the selected rule's one-frame proof. Both are linear in T. Every small table/row executes, plus1920 random/named boundary rows; deleting a decoder increment prints-1 instead of0. No packing rule ships, and its savings are not bundled with folding."
+
+[ablations.trick_prototype_20261102_complement_paint]
+arity = 8
+saving = 0.26006809909592254
+seed = "random.Random(n).choice"
+tables = 200
+verdict = "rejected: race a complemented painted row against the original, with a fresh row3 cell initialized to1 and the selected bit subtracted into it. Horizontal-only reflection returns the four-row grid to the read origin. Generic7/8 totals101370->101151 (0.2160%) and170340->169897 (0.2601%), below10%; signed named parity, thresholds and projections gain0%. The eleven-character overhead exceeds typical imbalance; this is a limited saving tending to zero, not a sustained one. True3 corpus and steps unchanged.1920 random/named native rows plus all small tables/rows pass; omitting the fresh1 prints0 instead of1 on table1011111111111111,row0. Native7/8 workspace561/1079bits versus baseline433/822: a fourth grid row is a real resource cost. No complement race ships."

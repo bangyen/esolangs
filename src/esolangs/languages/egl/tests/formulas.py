@@ -1,4 +1,4 @@
-"""EGL's emitted characters: a painted row and n weighted guards."""
+"""The original EGL row remains a ceiling for the folded layout."""
 
 
 def _chars(n: int, _: str) -> int:
@@ -9,4 +9,4 @@ def _chars(n: int, _: str) -> int:
     return 3 * (1 << n) + 25 * n + len(str(1 << n)) + 8
 
 
-FORMULAS = {"scaling": (_chars, True, (3, 4, 5))}
+FORMULAS = {"scaling": (_chars, False, (3, 4, 5))}
