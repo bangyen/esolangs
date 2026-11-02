@@ -19,14 +19,14 @@ def test_all_three_input_tables() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
             template = cyclic_tag(table)
-            # 2 * 2**m + 2n + 2 plus a 0 per 0 row for m essential inputs
-            # (worst 3 * 2**m + 2n + 1), else n + 2 for a constant; an ignored
+            # At most 2 * 2**m + 2n + 2 plus a 0 per 0 row.
+            # Named minority markers shrink this; constants use n + 2. An ignored
             # input's rule is empty.
             essential = essential_inputs(table, n)
             m = len(essential)
             zeros = read_at(table, essential, n).count("0")
             size = n + 2 if len(set(table)) == 1 else 2 * 2**m + 2 * n + 2 + zeros
-            assert len(template) == size, table
+            assert len(template) <= size, table
             for row in range(1 << n):
                 bits = [int(c) for c in f"{row:0{n}b}"]
                 code = fill_runs(template, TEMPLATE_CHAR, (("0", "1"),) * n, bits)

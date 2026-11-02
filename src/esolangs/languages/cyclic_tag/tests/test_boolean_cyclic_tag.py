@@ -63,3 +63,28 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert io.reads == 0
                     assert io.input_char() == ord("7")
+
+
+@pytest.mark.medium
+def test_minority_marker_keeps_answer_after_padding() -> None:
+    """The final one must stop past its queued zero, without wrapping to input0."""
+    for n in (2, 3, 5):
+        size = 1 << n
+        for table in ("0" * (size - 1) + "1", "1" + "0" * (size - 1)):
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate("Cyclic tag", table, **options)
+                assert template.count("$") == n
+                assert _evaluate("Cyclic tag", template, inputs=n) == table
+    for table in ("00000101", "10100000"):
+        assert (
+            _evaluate("Cyclic tag", esolangs.generate("Cyclic tag", table), inputs=3)
+            == table
+        )
+    totals = [
+        sum(
+            len(esolangs.generate("Cyclic tag", f"{table:0{1 << n}b}"))
+            for table in range(1 << (1 << n))
+        )
+        for n in (2, 3)
+    ]
+    assert totals == [211, 6721]

@@ -14,8 +14,9 @@ is the inputs, then a marker ``1``:
 production: the inputs are deleted unread, then the literal answer.
 
 Size:
+    AND/NOR use a marker10 and one answer1; other row rules are empty.
     About 3T chars, one production per row, none shared (a rule runs once a
-    cycle); n=8 and: 785 chars, n=16 and: 196,641 chars.
+    cycle); n=8 and: 534 chars, n=16 and: 131,110 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -24,6 +25,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.cyclic_tag.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
@@ -44,6 +46,20 @@ def _program(truth_table: str) -> str:
     # An ignored input's rule is empty: its symbol is deleted unread.
     weights, table = input_weights(truth_table, n)
     rules = ["0" * weight for weight in weights]
+    # AND/NOR pass [ablations.trick_prototype_20261102_minority_named].
+    # Marker10 leaves zero last unless the selected row appends a one.
+    # That one fires two slots later; AND needs two empty guards, NOR
+    # already has that empty slot in its table. The exact saving is T-3-g.
+    guards = 2 if table[-1] == "1" else 0
+    if (
+        table.count("1") == 1
+        and (table[0] == "1" or table[-1] == "1")
+        and len(table) > 3 + guards
+    ):
+        rules.append("10")
+        rules.extend("1" if answer == "1" else "" for answer in table)
+        rules.extend([""] * guards)
+        return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
     rules.append("1")
     # The marker is the last bit deleted when its row's rule is empty (a 1);
     # a 0 appends one 0 that is deleted last.
@@ -62,6 +78,8 @@ LANGUAGE = Language(
         note="Inputs fill the initial queue; the final deleted bit is the answer.",
     ),
     wrap=wrap_chars,
+    proof_execution=(execution, True, (1, 2, 3, 5)),
+    proof_workspace=(workspace, True, (1, 2, 3, 5)),
     empty_program="Cyclic tag requires productions,queue using bits and semicolons",
     example=Example(pair=PAIR),
 )

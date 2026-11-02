@@ -6,13 +6,14 @@ backlinks = 91
 
 [proof_status]
 labels = ["parameterized lookup"]
-qualification = "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it"
+qualification = "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it; AND/NOR use a two-bit marker and a single one continuation"
 scaling = "linear: worst 3T + 2n + 1 characters, weighted padding"
-execution = "linear: worst T + n + 2 steps: n input rules, 1 per row, 3 closers"
-workspace = "linear: worst 8T + 9 + bl(T+n) bits: a queue of up to T + 1 bits"
+execution = "linear: worst E steps: indexed marker and at most one named continuation"
+workspace = "linear: worst W bits: queue, production pointer and output latch"
+definitions = ["E = T+n+2 below n=3, otherwise T+n+3", "W = 8T+9+bl(T+n) at n=1, otherwise 8T+17+bl(T+n)"]
 
 [generator_sizes]
-"00000001" = { commands = 12, commands_by_row = { "0" = 6, "1" = 7, "2" = 8, "3" = 9, "4" = 10, "5" = 11, "6" = 12, "7" = 12 }, source_units = 31 }
+"00000001" = { commands = 14, commands_by_row = { "0" = 6, "1" = 7, "2" = 8, "3" = 9, "4" = 10, "5" = 11, "6" = 12, "7" = 14 }, source_units = 28 }
 "00001100" = { commands = 9, commands_by_row = { "0" = 6, "1" = 6, "2" = 7, "3" = 7, "4" = 7, "5" = 7, "6" = 9, "7" = 9 }, source_units = 19 }
 "00110110" = { commands = 13, commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 10, "5" = 10, "6" = 11, "7" = 13 }, source_units = 28 }
 "0110" = { commands = 8, commands_by_row = { "0" = 5, "1" = 5, "2" = 6, "3" = 8 }, source_units = 16 }
@@ -48,6 +49,7 @@ tables = 200
 verdict = "kept: one production a row and one zero a unit of weight, where the old build spent two of each. A row's production is empty for a 1 (the marker is then the last bit deleted) and `0` for a 0 (it appends the 0 that is deleted last), so no empty rule follows the answer. Total characters on 200 seeded random tables fall 46.2% at n=5, 47.9% at n=6, 48.7% at n=7, 49.2% at n=8; at n=8 parity 49.3%, and 39.5%, or 59.1%, majority 46.6%, threshold-3 56.3%; balance=True at n=8 (20 tables) 48.8%. Every row of those 200 tables at n=5..8, the named functions at n=7..8 and 30 tables at each n<=4 executed through the interpreter; a one-bit wrong table fails. Steps 2T+n+1 become T+n+2"
 
 [audits]
+trick_prototype = 2026-11-02
 plain_rewrite = 2026-10-29
 
 [ablations.constant_table_audit_20261101]
@@ -56,3 +58,18 @@ saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: already canonical read-then-literal paths. One empty production deletes n embedded inputs then the literal answer; the post-halt step prints the last deletion. Chars and commands n+2 including dump: n=7 9, n=8 10 with 81 written bits, n=12 14. Removing the answer bit prints the final input: opposite-valued witnesses fail for both answers. Owned coverage verifies every queue deletion precedes rendering. n=3 corpus chars 6732 unchanged. These controls reject the stripped candidates, not every possible construction. 1120 native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores and eight benchmark size/command pins unchanged. Global resource caps unchanged. Extend existing raw IO/template cases to verify exact reads, following records and no EOF probe without adding cases."
+
+[ablations.trick_prototype_20261102_minority_named]
+arity = 8
+saving = 31.9745
+verdict = "kept only AND and NOR over essential inputs. Marker10 leaves zero last unless the row appends1, which fires two slots later. AND needs two trailing empty rules; NOR already has an empty row there. Exact saved chars T-3-g, g=2 for AND and0 for NOR, so retain the old marker where this loses (AND below3 essential inputs, NOR below2). n=7/8 AND399->276 /785->534 (30.83%/31.97%); NOR399->274 /785->532 (31.33%/32.23%). Emitted source through n=16 and contrasting boundary rows execute. Saving (T-3-g)/(3T+2n+1) increases strictly to1/3 from below: no finite peak. Generic minority with min(old,new) saves only0.61%/0.68% on20 seeded tables (77+n), so no generic histogram race ships. All tables/rows through3 and20 seeded plus both named functions per n=4..8 give26064 paired old/live runs;16 changed templates,370 byte-identical controls. n=3 chars6732->6721; n=2 212->211. A wrong-answer constant and the missing second AND guard both fail the allones control. Global source maximum unchanged (an interior single one attains it). Worst execution grows one command from n=3; queue workspace grows8 bits from n=2, both exactly checked with native snapshots."
+
+[ablations.trick_prototype_20261102_pair_packed_rows]
+arity = 3
+saving = 0.0
+verdict = "not retained: the supplied marker-position invariant fails before any pair encoding is chosen. With selector input0 appending1 and remaining weights halved, the re-appended marker reaches n+1+k+x0, not n+1+k. Actual two-input heads for rows00/01/10/11 are3/4/4/5 instead of3/4/3/4. Trace all rows at n=2/3 using the actual interpreter with a complete probe program; baseline XOR and complement controls execute every row correctly. The claimed fixed production n+1 overlaps the first row-pair slot as well. No complete pair code or repaired phase control was supplied. This rejects this sketch and invariant, not all pair-packed encodings; no speculative size saving or universal lower bound."
+
+[ablations.trick_prototype_20261102_cascade_padding]
+arity = 3
+saving = 0.0
+verdict = "rejected tested two-stage expander: replace highest weight4 by11 and put00 in its two reachable expansion productions. On table00000001,row111 the literal mutant11;00;0;1;00;00;0;0;0;0;0;,1111 prints0 instead of1: expansion zeros queued behind the marker are deleted after its answer. All baseline rows of AND and parity execute correctly; their mutant failures retain full queue/head traces. The proposed repair has no complete phase or answer-preservation rule. This is a concrete failing construction, not a universal cascade impossibility claim."

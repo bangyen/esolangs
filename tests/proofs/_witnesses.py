@@ -1031,6 +1031,8 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Collatz Multiverse": lambda n: (
         (_collatz_worst(n), _collatz_chars_worst(n)) if n >= 3 else ()
     ),
+    # A single interior one retains the full positional source maximum.
+    "Cyclic tag": lambda n: ("01" + "0" * ((1 << n) - 2),) if n >= 2 else (),
     # Implication attains the two-input source maximum; an isolated row1
     # keeps the full generic halting path after named tester presets.
     "Crement": lambda n: (
