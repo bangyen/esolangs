@@ -4,31 +4,28 @@ Movesum has no conditional, but the halt rule is one: ``move A B`` leaves
 the array unchanged iff cell A equals cell B, and the run ends at the first
 two such commands in a row.  Each input is read by ``V := 2V + x`` through
 ``sum`` over cells 1-4, starting from V = 44, so V ends as 44T + v for the
-row v.  The program then walks the rows in order: a rung is a print of the
-row's answer, ``sum`` (the counter, 44T + r) and ``move 0 1``, then
-``move 1 6`` and ``move 5 6``.  Cell 6 holds V after every rung that did not
-halt (and 44T before the first), so ``move 1 6`` is a no-op iff V equals the
-counter and ``move 5 6`` then is too: at r = v the run halts right after
-printing table[v], the last number out.  Any other rung changes cell 6
-twice, so the walk goes on.
+row v. Each rung sums the next counter, copies it to cell 1, prints the
+answer, then copies V into cell 0. The print is one no-op; the copy is a
+second exactly when counter = V, halting at table[v]. A mismatch clobbers
+cell 0, but the next sum recomputes it from addends 1-4. That sum may be
+one no-op; copying its increasing counter to cell 1 always resets the pair.
 
 Size:
-    O(T): 5 commands a row plus 6 an input; n=4 parity: 922 chars.
+    O(T): 4 commands a row plus 6 an input; n=4 parity: 772 chars.
     Constants use 2n + 3 commands; n=8: 179 chars.
 
 Decisions:
     The offset 44 keeps every first-line value off 42, which the page
     replaces with an input.  Filler ticks between commands were not needed:
     every table to n=3 and random ones to n=8 ran without them.  Printing
-    before the test, not after, drops the scratch load ``move 7 6`` that
-    forced cell 6 off the counter: 6 -> 5 commands a rung
-    ([ablations.print_before_test]).
+    before the comparison lets the sum slot double as its test cell:
+    cell 1 preserves the counter while cell 0 is overwritten with V.
 """
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry._language import Example, Language, Shape
 
-#: Cells: 0 sum, 1/2/3/4 addends (4 stays 0), 5 V, 6 test cell (holds V between rungs),
+#: Cells: 0 sum/test, 1/2/3/4 addends (4 stays 0), 5 V,
 #: 8 one, 9 counter seed, 10 the input.
 _OFFSET = 44
 
@@ -44,13 +41,14 @@ def movesum(truth_table: str) -> str:
             + "move 2 -1\nmove 0 0\n"
         )
     seed = _OFFSET * len(truth_table) - 1
-    lines = [f"1={seed} 2=1 5={_OFFSET} 6={seed + 1} 8=1 9={seed}"]
+    lines = [f"1={seed} 2=1 5={_OFFSET} 8=1 9={seed}"]
     for _ in range(n):
         lines += ["move -1 10", "move 5 1", "move 5 3", "move 10 2", "sum", "move 0 5"]
     lines += ["move 9 1", "move 8 2", "move 4 3"]
     for bit in truth_table:
+        lines += ["sum", "move 0 1"]
         lines.append("move 2 -1" if bit == "1" else "move 4 -1")
-        lines += ["sum", "move 0 1", "move 1 6", "move 5 6"]
+        lines.append("move 5 0")
     return "\n".join(lines) + "\n"
 
 

@@ -8,7 +8,7 @@ block falls into the other: ``2 1 Z`` jumps on ``'0'``, ``2 3 O`` on ``'1'``.
 register 1 or 3 (``1 3 -2`` / ``3 1 -2``) and halts (``0 0 -1``).
 
 Size:
-    O(T) lines: one block per distinct subtable; n=4 parity: 137 chars.
+    O(T) lines: one block per distinct subtable; n=4 parity: 130 chars.
     Constants: 8n+6 chars through n=7, 7n+13 thereafter; n+1/n+2 commands.
 
 Decisions:
@@ -93,6 +93,9 @@ def iebel(truth_table: str) -> str:
                 else:
                     lines.extend([("2 1 {}", zero), (_GOTO, one)])
             cur = nxt
+    # A final leaf can halt by falling off the program; no jump targets its halt.
+    if lines[-1] == "0 0 -1":
+        lines.pop()
     return "\n".join(
         line if isinstance(line, str) else line[0].format(at[line[1]]) for line in lines
     )

@@ -66,7 +66,8 @@ def monotonic_boolfuck(truth_table: str) -> str:
             f">[>{tree(depth + 1, zero, 0)}>]"
         )
 
-    return "1>" + tree(0, 0, 0)
+    # Opposite adjacent moves touch no cell on the infinite zero tape.
+    return ("1>" + tree(0, 0, 0)).replace("><", "")
 
 
 LANGUAGE = Language(

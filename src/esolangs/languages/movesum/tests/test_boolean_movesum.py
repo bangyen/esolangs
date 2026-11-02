@@ -26,6 +26,8 @@ def test_every_table_to_three_inputs_runs_every_row() -> None:
             for row in range(1 << n):
                 assert answer(program, row, n) == table[row], (table, row)
 
+    assert sum(len(movesum(f"{v:08b}")) for v in range(256)) == 118024
+
 
 def test_random_tables_to_eight_inputs_run_every_row() -> None:
     rng = random.Random(5)
@@ -40,9 +42,16 @@ def test_the_run_halts_on_the_row_it_names() -> None:
     """Output is the prefix of answers up to the row: the walk stops there."""
     table = "01101001"
     program = movesum(table)
-    io = ScriptedIO("1\n0\n1\n")
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value: object) -> None:
+            assert self.reads == 3
+            super()._write(value)
+
+    io = ReadFirstIO("1\n0\n1\n9\n")
     run(program, io)
     assert io.getvalue() == " ".join(table[:6])
+    assert io.input_token() == "9"
 
 
 def test_first_line_never_holds_42() -> None:

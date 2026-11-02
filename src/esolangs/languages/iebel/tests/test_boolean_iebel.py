@@ -61,4 +61,4 @@ def _check_constants() -> None:
                     peak = max(peak, written.bits)
                     assert written.bits == 266 + commands.bit_length() + n.bit_length()
                     assert io.input_char() == ord("Q")
-    assert sum(len(esolangs.generate("IEBEL", f"{v:08b}")) for v in range(256)) == 28216
+    assert sum(len(esolangs.generate("IEBEL", f"{v:08b}")) for v in range(256)) == 26774
