@@ -86,6 +86,7 @@ def test_a_full_tree_is_21_characters_a_node_and_3_a_leaf() -> None:
 
 def test_a_constant_subtree_still_reads_its_inputs() -> None:
     """The fold drops branches, never reads: a trailing read sees the next byte."""
+    _check_constants()
     program = boolean.sstack("0" * 8 + "01" * 4)
     assert program.count(";d;") == 5  # 3 folded, 2 at nodes whose halves agree
     stdin = esolangs.encode_inputs("SStack", [0, 1, 1, 0]) + "B"
@@ -410,3 +411,29 @@ def test_check_runs_the_formula_case_bounds_measures() -> None:
     nodes = new_language.quick_tests("SStack")
     assert nodes[-1].endswith("formulas_hold[SStack-1]")
     assert new_language.bounds("SStack", range(1, 2))[0][:4] == (1, 9, 23, 19)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.sstack.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("SStack", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")

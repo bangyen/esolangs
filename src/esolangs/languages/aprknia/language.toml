@@ -44,3 +44,10 @@ seed = "random.Random(6100+n)"
 tables = "2 random plus parity/majority/and/or per n=3,5,7,8"
 baseline = "874f000d7^"
 verdict = "measured with the interpreter/helpers at 567f2cb18. At n=8: characters 60711 -> 28627, sampled commands 6305 -> 2810, largest sampled written-state peak 44 -> 286 bits. Sum of seven-repeat cold generation medians: 806250 -> 724375 ns. All rows at n=3; rows 0,floor(T/3),T-1 otherwise. 204 correct executions, 24 wrong-table controls. Peaks and timings describe this corpus. Retained stack garbage buys the smaller, faster program. Current resource bounds pass where their stated domains apply"
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 7.4
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants reuse 2,0,1,1 beneath the final input byte instead of building another selector. Zero uses !!!~,; one uses !!~!~,. Nested leaves unchanged. Chars and commands 4n+5/6: n=7 36/37->33/34 (8.2%), n=8 40/41->37/38 (7.4%), n=12 56/57->53/54. n=8 written workspace 104/108->98/98 bits; native bound 11n+bl(4n+5+b)+bl(n). n=3 corpus chars 44743->44737. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged, global resource caps unchanged. Owned read-first checks preserve exact input count and following byte."

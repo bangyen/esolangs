@@ -13,7 +13,7 @@ only its own block: no leaf of the linear chain is reached twice.
 Size:
     Up to 2**(n-1) leaves in a linear chain; n=10 and: 703 chars (was 1,175),
     n=10 random 1847: 5,241 chars (was 8,711), n=10 parity: 4,773 chars (was
-    10,359).
+    10,359). Constants: 2n + 24/25 chars; 2n + 99/100 commands.
 
 Decisions:
     A negated twin takes a table when shorter: ``and`` at n=8 543 -> 297.
@@ -38,7 +38,7 @@ __all__ = ["HOME_ROW_PAIR", "home_row"]
 
 
 HOME_ROW_PAIR = ("s", "j")
-_CONSTANT_SETUP = "aaaaaalsffaaaaaaaaffflf"
+_CONSTANT_SETUP = "aaaaaalsfaaaaaaaaffffl"
 # Cell 0 is the index, cell 2 the gates' scratch.  Flags: cell 1 = 49 - x,
 # cell 3 = 48 + x, cell 5 = 48, cell 15 = 49.  A mismatch lands one move past
 # its flag, so cells 2, 4, 10 and 20 stay zero.

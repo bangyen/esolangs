@@ -68,3 +68,10 @@ verdict = "kept: spelling, not a trick (plain-rewrite audit 2026-10-29). The las
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 2.4
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding and minimal spelling, exempt. Keep the six-by-eight constant loop one cell nearer its scratch: cell 1 holds 48/49, cell 0 remains the input scratch. One final setup move disappears; fixed s/j setters and every slot remain. Chars 2n+24/25 and worst commands 2n+99/100: n=7 39/40->38/39 (2.5%), n=8 41/42->40/41 (2.4%), n=12 49/50->48/49. n=8 max commands 116/117->115/116, written workspace unchanged at 40 bits. n=3 corpus chars 32778->32776. Owned execution coverage checks all n slots are visited on zero scratch before output; no port reads, following byte untouched. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged, global resource caps unchanged. Owned read-first checks preserve exact input count and following byte."

@@ -62,3 +62,10 @@ verdict = "kept: 0.0% race marginal on random tables at every arity n=4..12 (bot
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-21
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 15.4
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants retain only their output literal after n reads onto d; nested subtrees keep the two-literal prologue. Chars 3n+9 and commands n+2: n=7 36->30 (16.7%), n=8 39->33 (15.4%), n=12 51->45. n=8 commands 11->10, written workspace 68->62 bits; native bound 6n+6+bl(n+2)+bl(n). n=3 corpus chars 26760->26748. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged, global resource caps unchanged. Owned read-first checks preserve exact input count and following byte."

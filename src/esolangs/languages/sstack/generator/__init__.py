@@ -14,6 +14,7 @@ input byte, ``;a;:a:~a~``, not two arms.
 Size:
     21 characters a node: O(T) size and build; n=10 random 1847: 13,658
     chars, n=12 random 1847: 53,351 chars, n=16 parity: 16,617 chars.
+    Root constants: 3n + 9 chars and n + 2 commands.
 
 Decisions:
     Popping before descent is the one-shot loop skeleton every form
@@ -48,6 +49,9 @@ _LEAF = {"0": ":c:", "1": ":b:"}
 
 def sstack(truth_table: str) -> str:
     """Build an SStack program printing ``truth_table[row]`` for the inputs."""
+    n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return ";d;" * n + f'"{48 + int(truth_table[0])}/b":b:'
     plain, _ = _sstack_tree(truth_table)
     shared = repeated_block(truth_table)
     if shared is None:

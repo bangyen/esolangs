@@ -8,7 +8,8 @@ Nothing is ever dropped: loops test only the top, every piece pushes the
 values it uses, and the garbage below is never read.
 
 Size:
-    O(T) in the tree's nodes; n=4 parity: 586 chars
+    O(T) in the tree's nodes; n=4 parity: 586 chars.
+    Root constants: 4n + 5/6 chars and commands.
 
 Decisions:
     Leaves print with selector 2, not 1: the integer 0 or 1 costs at most
@@ -40,6 +41,9 @@ def aprknia(truth_table: str) -> str:
     """Build an Aprknia program printing ``truth_table[row]`` for the inputs."""
     _validate_truth_table(truth_table)
     n = len(truth_table).bit_length() - 1
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        # The final read leaves 2, 0, 1, 1 below its byte: reuse the selector.
+        return _SKIP * n + ("!!!~," if truth_table[0] == "0" else "!!~!~,")
     constant = constant_span_test(truth_table)
 
     @cache
