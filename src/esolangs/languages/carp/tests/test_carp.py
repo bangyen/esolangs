@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.carp.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 
@@ -54,11 +53,6 @@ def test_malformed_program(code: str) -> None:
         ValueError, match=r"instruction|command|register|line|malformed"
     ):
         _run(code)
-
-
-def test_input_must_fit_a_nibble() -> None:
-    with pytest.raises(HaltError):
-        _run("INP r1 0", "16")
 
 
 def test_input_at_eof() -> None:

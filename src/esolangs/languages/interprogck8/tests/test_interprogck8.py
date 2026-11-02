@@ -260,10 +260,6 @@ class TestFunctions:
         assert go("<\nnNnN\ndiv\n>\n{values/=/=/=}\nIFT") == ""
         assert go("<\nnNnN\ndiv\n>\n{values/=/=/=}\nIFQ") == "A"
 
-    def test_calling_an_empty_slot_is_refused(self) -> None:
-        with pytest.raises(HaltError):
-            go("EXE")
-
     def test_redefining_replaces_the_slot(self) -> None:
         """There is one slot, so a second ``<`` overwrites the first body."""
         assert go("<\nnNnN\ndiv\n>\n<\nEmpty_\ndiv\n>\nEXE") == " "

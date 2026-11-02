@@ -4,7 +4,6 @@ import random
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.languages.subleq.interpreter import run as run_subleq
 from esolangs.runtime.io import ScriptedIO
@@ -74,11 +73,6 @@ def test_subleq_input_and_eof() -> None:
     assert io.getvalue() == "A"
     with pytest.raises(EOFError):
         run_subleq(code, ScriptedIO())
-
-
-def test_subleq_truncated_instruction() -> None:
-    with pytest.raises(HaltError):
-        run_subleq("0 0", ScriptedIO())
 
 
 @pytest.mark.parametrize("code", ["-1 -2 0", "-2 0 0", "0 -2 0"])

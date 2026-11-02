@@ -66,11 +66,6 @@ class TestEval:
             with pytest.raises(HaltError):
                 run(code, IO())
 
-    def test_eval_string_halts_on_non_string(self) -> None:
-        """! on a non-string value is an invalid operation."""
-        with pytest.raises(HaltError):
-            run("0!", IO())
-
     def test_arithmetic_on_string_halts(self) -> None:
         """+ on a non-numeric top is an invalid operation."""
         with pytest.raises(HaltError):

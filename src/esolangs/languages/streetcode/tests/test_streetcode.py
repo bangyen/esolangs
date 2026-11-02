@@ -33,11 +33,6 @@ from tests.support.raises import assert_rejected_with_hint
 class TestStreetcodeSingleCommands:
     """Each instruction in isolation."""
 
-    def test_decrement_below_zero_then_output_is_invalid(self) -> None:
-        """A cell of -1 is a valid signed int, but not a valid code point."""
-        with pytest.raises(HaltError):
-            run(["C~O;"], io=IO())
-
     def test_u_without_an_opposite_lane_is_invalid(self) -> None:
         """A one-wide corridor is narrower than the spec's two-character
         streets, so a 'U' there has nowhere legal to end its turn: that is

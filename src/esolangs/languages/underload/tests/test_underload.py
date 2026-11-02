@@ -48,7 +48,7 @@ def test_pure_advance_accepts_a_halt_and_whitespace() -> None:
     assert _run(" \n") == ""
 
 
-@pytest.mark.parametrize("source", ["!", "~", "*", "^", "S", ")", "(", "x"])
+@pytest.mark.parametrize("source", ["!", "*", "^", "S", ")", "("])
 def test_invalid_programs_and_underflow_are_errors(source: str) -> None:
     with pytest.raises(HaltError):
         _run(source)

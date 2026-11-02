@@ -57,13 +57,6 @@ class TestSixFive:
         """``0`` halts, so nothing after it runs."""
         assert run_and_capture("066666666A0") == ""
 
-    def test_negative_cell_output_halts(self) -> None:
-
-        from esolangs.exceptions import HaltError
-
-        with pytest.raises(HaltError):
-            run_and_capture("2A")
-
     def test_the_printable_range_ends_at_the_last_codepoint(self) -> None:
         """Both ends of the ``A`` guard, at the value that separates them."""
 

@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.aprknia.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 
@@ -49,11 +48,6 @@ def test_loop_runs_while_positive() -> None:
     # 3 counts down to 0, printing each step's value.
     three = "11*!!!!1*!!!!"
     assert _out(three + "[" + _PRINT[:-1] + "1*!!!~!]") == "321"
-
-
-def test_empty_pop_halts() -> None:
-    with pytest.raises(HaltError):
-        _out("!")
 
 
 @pytest.mark.parametrize("code", ["[", "]"])

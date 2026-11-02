@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.balik.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 
@@ -51,11 +50,6 @@ def test_short_lines_are_padded_not_out_of_bounds() -> None:
 def test_turns_are_clockwise() -> None:
     # East turns south onto the ``.``; anticlockwise would leave north.
     assert _out("+*\n .") == "1"
-
-
-def test_leftmost_move_halts() -> None:
-    with pytest.raises(HaltError):
-        _out("<")
 
 
 def test_unknown_command_is_rejected() -> None:

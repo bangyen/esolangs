@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.nor_machine.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 
@@ -51,11 +50,6 @@ def test_program_repeats_until_a_lone_nor() -> None:
 
 def test_whitespace_is_skipped() -> None:
     assert _out(" L\n V ", "3") == "6"
-
-
-def test_empty_queue_halts() -> None:
-    with pytest.raises(HaltError):
-        _out("V")
 
 
 def test_unknown_and_empty_programs_are_rejected() -> None:

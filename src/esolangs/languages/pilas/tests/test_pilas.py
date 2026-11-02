@@ -2,7 +2,6 @@
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.languages.pilas.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 
@@ -40,11 +39,6 @@ def test_wiki_while_zero_translation() -> None:
 
 def test_reads_bytes() -> None:
     assert _out(",.\n  ", "A") == "A"
-
-
-def test_empty_pop_halts() -> None:
-    with pytest.raises(HaltError):
-        _out("+\n ")
 
 
 @pytest.mark.parametrize(

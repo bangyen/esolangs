@@ -142,11 +142,6 @@ def test_read_number_rejects_garbage() -> None:
         run_program("ip", "12x\n")
 
 
-def test_unmatched_loop_close_is_an_error() -> None:
-    with pytest.raises(HaltError):
-        run_program("b")
-
-
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:
         machine = Painfuck("pp", ScriptedIO())

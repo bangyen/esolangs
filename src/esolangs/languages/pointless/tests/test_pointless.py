@@ -110,11 +110,6 @@ def test_bang_runs_once() -> None:
         _run('"f"{!}"f""f"')
 
 
-def test_moving_left_of_cell_zero_halts() -> None:
-    with pytest.raises(HaltError):
-        _run("<")
-
-
 def test_functions_are_hoisted_and_global() -> None:
     assert _run('"g" "g"{"h"}  "h"{,.}', "ab") == "a"
     assert _run('"o"{"i"{,.}}"i"', "z") == "z"

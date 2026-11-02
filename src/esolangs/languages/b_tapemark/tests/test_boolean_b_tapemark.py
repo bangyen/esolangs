@@ -22,20 +22,20 @@ def execute(program: str, bits: str, swap_marker: str = "new") -> tuple[str, int
     return io.getvalue(), io.reads
 
 
-@pytest.mark.parametrize("swap_marker", ["new", "old"])
-def test_each_dialect_answers_its_own_programs(swap_marker: str) -> None:
+def test_each_dialect_answers_its_own_programs() -> None:
     """A dialect's generated programs run under that dialect's semantics."""
-    settings = esolangs.DialectSettings(swap_marker=swap_marker)
     tables = [table for n in (1, 2, 3) for table in witnesses(n)]
     tables += ["01101001", "0110100110010110"]
-    for table in tables:
-        n = len(table).bit_length() - 1
-        program = str(esolangs.generate("B-tapemark", table, settings=settings))
-        for row, expected in enumerate(table):
-            assert execute(program, format(row, f"0{n}b"), swap_marker) == (
-                expected,
-                n,
-            )
+    for swap_marker in ("new", "old"):
+        settings = esolangs.DialectSettings(swap_marker=swap_marker)
+        for table in tables:
+            n = len(table).bit_length() - 1
+            program = str(esolangs.generate("B-tapemark", table, settings=settings))
+            for row, expected in enumerate(table):
+                assert execute(program, format(row, f"0{n}b"), swap_marker) == (
+                    expected,
+                    n,
+                )
 
 
 def test_a_default_program_is_not_claimed_under_the_old_dialect() -> None:
