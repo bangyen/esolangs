@@ -15,6 +15,12 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Indexed execution and literal scanning have different costs.
   Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
   and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
+- SwitchCase: Buffered inputs feed shared residual cases. With `m` essential
+  inputs, depth `d` has at most `min(2**d, 2**(2**(m-d)))` residuals;
+  their sum is `O(2**m/m)`. Case addresses cost `O(m + log n)` characters,
+  so dispatch and the `O(n log n)` reader total `O(T)` text and construction.
+  Every read precedes dispatch; at most `n` branches give `6n+8` steps.
+  Controls: `src/esolangs/languages/switchcase/tests/`.
 - Malbolge: <a id="malbolge-bound"></a> positional addressing reaches
   sixteen inputs at every arity (seventeen only for a table that ignores
   an input, built as the sixteen build over its projection, or one

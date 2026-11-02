@@ -229,7 +229,7 @@ def _befunge_worst(n: int) -> str:
 
 # language-owners: ["SwitchCase"]
 def _switchcase_worst(n: int) -> str:
-    """The top half's rows are ones but the last: most arms, longest indexes."""
+    """Top-half ones except the last: a full-depth path reaches answer one."""
     t = 1 << n
     return "".join("1" if t // 2 <= r < t - 1 else "0" for r in range(t))
 
