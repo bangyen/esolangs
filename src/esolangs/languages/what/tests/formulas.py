@@ -1,6 +1,6 @@
 """What!?'s emitted characters and commands past 15 inputs.
 
-Through 15 inputs one block: 7(T-1) + digits of 1..T-1 + 7n + 12 characters.
+Through 15 inputs one block: 7(T-1) + digits of 1..T-1 + 7n + 1 characters.
 Past, B = 2^(n-15) blocks of 2^15 rows, h = n - 15 high bits in each label.
 """
 
@@ -16,14 +16,14 @@ def _characters(n: int, _: str) -> int:
     rows = 1 << k
     block = 7 * (rows - 1) + sum(len(str(r)) for r in range(1, rows))
     if h == 0:
-        return block + 7 * n + 12
+        return block + 7 * n + 1
     return (1 << h) * (block + 13 + 10 + h) + 164 + 3 * h
 
 
 def _commands(n: int, _: str) -> int:
     """Alternating answers, row 0: every test true, 5 a row; other blocks 1."""
     if n <= 15:
-        return 5 * (1 << n) + 6 * n + 6
+        return 5 * (1 << n) + 6 * n - 5
     return (1 << n) + (1 << 17) + n + (1 << (n - 15)) + 143
 
 

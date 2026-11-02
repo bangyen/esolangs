@@ -18,10 +18,22 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
     program = esolangs.generate("ABCDirection", table)
+    from esolangs.languages.abcdirection.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value):
+            assert self.reads == n
+            super()._write(value)
+
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("ABCDirection", bits)
-        got = esolangs.run("ABCDirection", program, stdin=stdin, timeout=5)
+        io = ReadFirstIO(stdin + "Q")
+        run(program, io)
+        got = io.getvalue()
+        assert io.past_end == 0
+        assert io.input_char() == ord("Q")
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("ABCDirection", got) == table[row], (table, row)
 
@@ -40,7 +52,7 @@ def test_balance_is_near_the_swept_optimum() -> None:
     rng = random.Random(3)
     tables = [
         "".join(rng.choice("01") for _ in range(1 << n))
-        for n in range(2, 7)
+        for n in range(2, 9)
         for _ in range(8)
     ]
     got = swept = 0
@@ -58,16 +70,16 @@ def test_balance_of_the_constant_zero_n3_is_exact() -> None:
 
 
 def test_balance_of_xor_n2_is_exact() -> None:
-    """The tight width charges reads and band cells, not the write: 40x16."""
+    """The tight width charges reads and band cells, not the write: 37x16."""
     program = str(esolangs.generate("ABCDirection", "0110", balance=True))
-    assert balance_score(program) == (40, 655, 40)
+    assert balance_score(program) == (37, 607, 37)
 
 
 def test_balance_of_a_four_input_table_is_exact() -> None:
     """The width model prices each print unit at five columns; pricing
     one at six widens the helix a full lap: (side, length, width)."""
     program = str(esolangs.generate("ABCDirection", "1010010010000110", balance=True))
-    assert balance_score(program) == (49, 1049, 49)
+    assert balance_score(program) == (45, 919, 45)
 
 
 def test_balance_of_parity_n8_cuts_the_long_runs() -> None:
@@ -75,14 +87,14 @@ def test_balance_of_parity_n8_cuts_the_long_runs() -> None:
     gadget held the side at 140: (side, length, width)."""
     table = "".join(str(bin(row).count("1") & 1) for row in range(256))
     program = str(esolangs.generate("ABCDirection", table, balance=True))
-    assert balance_score(program) == (86, 3566, 86)
+    assert balance_score(program) == (84, 3059, 84)
 
 
 def test_balance_of_not_n1_is_exact() -> None:
     """The tight width's slack is four columns, for the lap's landing
-    and drop; a fifth widens even the one-input helix: (35, 575, 35)."""
+    and drop; a fifth widens even the one-input helix: (34, 559, 34)."""
     program = str(esolangs.generate("ABCDirection", "01", balance=True))
-    assert balance_score(program) == (35, 575, 35)
+    assert balance_score(program) == (34, 559, 34)
 
 
 @pytest.mark.parametrize("n", [1, 3, 7, 8, 12])
@@ -115,5 +127,5 @@ def test_three_input_corpus_size() -> None:
             len(esolangs.generate("ABCDirection", format(value, "08b")))
             for value in range(256)
         )
-        == 159084
+        == 133684
     )

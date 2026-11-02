@@ -8,13 +8,17 @@ Past 15 inputs, blocks of ``2^15`` rows reload ``W`` behind a sentinel
 65535 and a guard on the high bits, which ``???`` put in ``W``'s string.
 
 Size:
-    Through 15 inputs, 7n + 12 chars plus 7 and the row's digits per change
+    Through 15 inputs, 7n + 1 chars plus 7 and the row's digits per change
     point; constants use 3n+2 chars, n+2 commands and
     256+bl(n+2)+bl(2n-1) written bits at most.
-    5T + 6n + 6 steps at most; n=10 parity: 6,846 chars (was 9,289),
-    n=10 random 1847: 5,287 chars (was 7,405).
+    5T + 6n - 5 steps at most through n=15; n=10 parity: 6,835 chars,
+    n=10 random 1847: 5,276 chars.
 
 Decisions:
+    Through 15 inputs the Horner index already neighbours the answer slot:
+    omitting its copy saves eleven commands per nonconstant run
+    ([ablations.trick_prototype_20261102_drop_index_copy]).
+    High blocks still need guarded reloads.
     Counting ``W`` down a ``-`` a row cost 12 and the gap a change point,
     never under the literal: ``and`` was 335 chars at n=8, ``nor`` 81.
 """
@@ -35,6 +39,12 @@ def what(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return "?? " * (n - 1) + f"??{truth_table[0]}!!"
+    if n <= _LOW_INPUTS:
+        parts = ["??" + ".2*.??+" * (n - 1) + f".{48 + int(truth_table[-1])},"]
+        for row in range(len(truth_table) - 1, 0, -1):
+            if truth_table[row] != truth_table[row - 1]:
+                parts.append(f"[{row}>.{48 + int(truth_table[row - 1])},]")
+        return "".join(parts) + ".!"
     low = min(n, _LOW_INPUTS)
     high = n - low
     block = 1 << low

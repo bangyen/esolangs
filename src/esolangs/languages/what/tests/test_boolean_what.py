@@ -15,6 +15,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
+        _check_copyless()
     n = len(table).bit_length() - 1
     program = esolangs.generate("What!?", table)
     for row in range(len(table)):
@@ -81,3 +82,30 @@ def _check_constants() -> None:
                         peak = max(peak, written.bits)
                 if not options:
                     assert peak == 256 + (n + 2).bit_length() + (2 * n - 1).bit_length()
+
+
+def _check_copyless() -> None:
+    from esolangs.languages.what.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    total = 0
+    for value in range(256):
+        table = f"{value:08b}"
+        program = esolangs.generate("What!?", table)
+        total += len(program)
+        for row in range(8):
+            stdin = esolangs.encode_inputs("What!?", list(map(int, f"{row:03b}")))
+
+            class ReadFirstIO(ScriptedIO):
+                def _write(self, value):
+                    assert self.reads == 3
+                    super()._write(value)
+
+            io = ReadFirstIO(stdin + "\n7\n")
+            machine = _Machine(program, io)
+            while not machine.halted:
+                machine.step()
+            assert io.getvalue() == table[row]
+            assert io.past_end == 0
+            assert io.input_num() == 7
+    assert total == 12778

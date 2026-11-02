@@ -34,15 +34,16 @@ landing.  Teeth alternate ``rise`` and plain to stay in five rows without
 wrapping.  A run over ``2 * sqrt(T)`` is cut into equal gadgets, each
 dequeuing its own copy of the input, enqueued once a gadget: uncut, the first
 gadget (``T / 2 + 8``) set the floor width and balanced area grew as ``T**2 /
-4``.  The width is the narrowest the widest atom allows or where ``width == 2
-* height`` (``_tight_width``), whichever is squarer; the flat layout stays a
-candidate.  ``n = 2``: 99x5 flat, 40x16 balanced.
+4``. Two named widths are the widest-atom floor and the analytic square
+width, raised to fit one read lap and two band atoms. The flat layout stays
+a candidate. ``n = 2``: 83x5 flat, 37x16 balanced.
 
 Size:
-    O(T) cells, 7.69 a row at ``n = 12``; n=6 random 1847: 1,299 chars,
-    n=10 random 1847: 8,599 chars (1,075 cells at ``n = 6``).  Balanced:
-    O(T) area, 23.5 cells a row at ``n = 12`` (was 1,036).
-    Constants read two bits per tooth; n=8 zero: 559 chars.
+    O(T) cells; n=6 random 1847: 1,079 chars,
+    n=10 random 1847: 8,199 chars (1,075 cells at ``n = 6``).  Balanced:
+    O(T) area.
+    Discarded reads pair when no enqueued bit is lost.
+    Constants stay paired; n=8 zero: 559 chars.
 
 Decisions:
     Constant subtrees are not folded nor repeated ones shared: every row
@@ -228,22 +229,25 @@ def _print(grid: _Grid, w: _Walker) -> None:
 def _teeth(copies: dict[int, int], n: int) -> list[tuple[int, int]]:
     """Each tooth's read count and enqueues; constants pair reads without enqueues.
 
-    An essential input's value bit enqueues as it lands; an ignored input
-    is read like any other bit and never enqueued.  Packing two reads a
-    tooth (an essential value bit closing its tooth early) was removed in
-    2026-10: priced by area on random tables it fell steadily with n
-    ([ablations.tooth_packing]) -- the read block is O(n) columns
-    against an O(2**n) table (retirement candidate #14).
-    Constants retain two-read teeth: their read block is the scaling term
-    ([ablations.constant_table_audit_20261101]).
+    An enqueued bit must be the tooth's last read: pair only when its
+    first read is discarded. This gives 4n+1 teeth for nonconstant tables.
+    Retired by area, now admitted by the execution gate
+    ([ablations.trick_prototype_20261102_pair_discarded_reads]).
     """
     if not copies:
         # Constants enqueue nothing, so two reads fit each five-row tooth.
         return [(2, 0)] * (_BITS * n // 2)
-    return [
-        (1, copies.get(index // _BITS, 0) if index % _BITS == 0 else 0)
+    flags = [
+        copies.get(index // _BITS, 0) if index % _BITS == 0 else 0
         for index in range(_BITS * n)
     ]
+    result = []
+    index = 0
+    while index < len(flags):
+        count = 2 if flags[index] == 0 and index + 1 < len(flags) else 1
+        result.append((count, flags[index + count - 1]))
+        index += count
+    return result
 
 
 def _layout(table: str, n: int) -> str:
@@ -465,7 +469,11 @@ def _tight_width(table: str, n: int) -> int:
     work = 5 * sum(2 + len(_enqueues(enqueue)) for _, enqueue in teeth) + 4 * sum(sizes)
     slack = max(sizes) // 2 + 4  # the lap's landing and drop columns
     b = 12 - slack  # (w - slack) = 2 * (work / (w - slack) + 6)
-    return (b + isqrt(b * b + 8 * work)) // 2 + slack + 1
+    estimate = (b + isqrt(b * b + 8 * work)) // 2 + slack + 1
+    # Avoid packing cliffs: one read lap needs width72 at n=7 parity;
+    # two 40-cell band atoms need width84 at n=8 (59 -> 36 rows).
+    reader = sum(2 + len(_enqueues(enqueue)) for _, enqueue in teeth) + 4
+    return max(estimate, reader, 2 * max(sizes) + 4)
 
 
 def _balance(table: str, default: str) -> str:
