@@ -7,21 +7,20 @@ admitted = 2026-10-20T08:45:53-04:00
 
 [proof_status]
 labels = ["parameterized tree"]
-qualification = "the inputs are atoms in n frames, and an equation per edge of the reduced diagram rewrites the head node"
-scaling = "linear: worst F characters, n = 3..20; at most beyond"
+qualification = "n input frames consume once each; heads are named atoms or bounded literal pairs selected by native pattern equations"
+scaling = "linear: at most F+28 characters past n = 2: named-diagram ceiling plus selectors"
 execution = "poly n: worst n rewrites: one frame an input"
-workspace = "poly n: worst 16n + 8z bits, z the decimal digits of D + 1: the frames and the node atom"
-definitions = ["D = Σ_{k<n} min(2^k, 2^(2^(n-k)) - 2), the most nonconstant nodes"]
+workspace = "poly n: at most 32n+1 bits: frames 16n, head 16n, post-halt flag 1"
 
 [generator_sizes]
-"00000001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 89 }
-"00001100" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 69 }
-"00110110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 129 }
-"0110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2 }, source_units = 83 }
-"01101001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 129 }
-"0110100110010110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 175 }
-"1101001101101101" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 195 }
-"11111110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 89 }
+"00000001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 69 }
+"00001100" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 65 }
+"00110110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 77 }
+"0110" = { commands = 2, commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2 }, source_units = 63 }
+"01101001" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 101 }
+"0110100110010110" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 139 }
+"1101001101101101" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 123 }
+"11111110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3, "4" = 3, "5" = 3, "6" = 3, "7" = 3 }, source_units = 69 }
 
 [ablations]
 audited = "2026-10-29"
@@ -41,6 +40,7 @@ tables = 20
 verdict = "kept: canonical, exempt (a node ignoring its input is the ignored-input drop); one equation over a variable where a node's halves agree, against one per bit: 2.6-3.0% on random chars at n=3..7 (60 tables), 2.4% n=8, 1.7% n=9, 1.4% n=10 (20 tables); 0.00% on parity/majority/and/or/threshold and complements n=3..10; never larger. Plain-rewrite audit 2026-10-29: no other bespoke trick; n<=3 exhaustive and n<=7 priced tables executed on both builds, control fails"
 
 [audits]
+trick_prototype = 2026-11-02
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
@@ -51,3 +51,23 @@ saving = 47.5
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical constant folding. Put every input atom in the head list, then x->s[]=b discards it in one rewrite; n=1 needs only the bare atom. Fixed one-character setters still fill every slot. L=2n+15 chars for n>=2, 15 at n=1; one rewrite plus the post-halt dump, W<=8n+9 written bits, attained by the opposite input at n=1. Owned checks parse every filled input atom, verify one rewrite consumes the complete head/frame, and forbid output before the halt dump. n=7 53 -> 29 chars; n=8 59 -> 31 chars, 9 -> 2 steps, 129 -> 73 written bits; n=12 83 -> 39 chars. n=3 corpus 27424 -> 27408 chars. The contract note now permits atoms anywhere in the template; the registered workspace bound recognizes the constant route. Each language passed 5656 paired old/new row executions; 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve, with 72 old balanced row executions per language as controls; all 24 benchmark size/command pins across the batch stay unchanged. No new collected cases."
+
+[ablations.trick_prototype_20261102_bounded_literals]
+arity = 20
+saving = 72.6403216951
+verdict = "kept as a workspace-bounded repair of inline subdiagrams. Native (l h)->s[0]=l and its1-arm select a literal pair; named atoms retain equations and the drain stays last. Each literal holds at most2n bytes of atom names, equal to the n input frames16n-bit payload. Frames cost16n, any mutable head at most16n and the dump flag1: workspace <=32n+1, still linear in n. Root constants retain their earlier exact route. One bottom-up price pass compares repetitions of the child literal against its named equations/reference cost; callers are still named when priced, so original use counts are exact at that step. No full-program race or old-size fallback. Each local choice saves source before the fixed28-character selectors, proving size <=old named-diagram F+28;21 tested tables grow at most12 chars. D=O(T/n) distinct nodes each materialize O(n) text, so generation and source stay O(T), with no search.200 seeded Random(1000*n+k).choice tables n7 chars207286->83047 (59.9360%),n8 355047->130808 (63.1576%). Because the curve rises at8, extend through20: highest measured74.6667% at18, then74.0366%/72.6403% at19/20, both above the stricter declining20% bar;20 tables per extension arity,200 at7..12.325680 old/live native runs cover every small table/row,200 random+named ALL rows7/8,20 random/named4..6 all rows and9..12 boundary rows, plus the proposed200-table Random(184700+n) stream at7/8 on ALL rows.3580 fresh-parser controls match reused immutable indices; every head satisfies16n bits, input frames consume fully, output occurs only after halt, stdin remains unread and7 survives. Rewrites unchanged: n3 totals6112->6112; source27408->20552. Full-state workspace peaks after dump at7:129->225 bits, at8:145->257 bits. The complete new32n+1 bound includes the flag omitted by the earlier nonconstant pre-dump bound. Eleven-build median generation time20tables n7/8/9:0.97/1.74/3.19ms ->1.52/2.55/4.64ms. Preparsed native batches with common per-row setup take0.0385/0.0878/0.1895s ->0.0612/0.1394/0.3030s (three-run medians): ~1.6x slower execution, not an execution-gate admission.396 independent ablation comparisons agree; disabling restores old bytes,4240 small native ablation runs and216 default/width1/balanced runs pass. Swapped selectors and drain shadowing fire wrong-answer controls. Size anchors, proof bounds, exact pins and example ship together."
+
+[ablations.trick_prototype_20261102_unbounded_literals]
+arity = 8
+saving = 67.4386771329
+verdict = "rejected raw unrestricted head materialization, despite65.8023%/67.4387% source savings on200 seeded7/8 tables. Private upper nodes have one reference and unequal children, so the unrestricted price rule inlines all of them; a maximal diagram yields Omega(T/n) live head atoms. A native n12 row uses12049 written bits including dump, versus385 under the repaired linear bound. The raw old/hybrid size race does not constrain workspace.2520 native pilot runs compute their bits, but2424 exceed the old registered pre-dump cap; n2 AND already used56 bits against40. A same-old-cap repair limits literal atom bytes to the original widest-name bytes and passes2520 native pilot runs, but200-table savings13.0636%/9.2689% at7/8 miss the declining20% bar. Later23.5841%/22.2287% at9/10 fall to19.5778%/13.7115% at11/12, so no favorable cutoff is admitted. The shipped frame-payload bound is a different explicit linear certificate, not a relaxation to whole-diagram space."
+
+[ablations.trick_prototype_20261102_dense_short_node_names]
+arity = 8
+saving = 5.7507879239
+verdict = "rejected at the frozen normal7/8 verdict arities.200 tables:35 safe single-character atoms give8.1578%/5.5114%; the full36-character alphabet gives8.4473%/5.6759%; weighting all identifier occurrences, including1/2 left-hand mentions, gives the fixed-diagram optimum8.5727%/5.7508%, still below10%. Safe/raw-name variants each pass2520 native pilot runs; another75264 native named-function runs cover baseline and five variants on all7/8 rows, including the optimal names. Largest named saving8.20% at8, below10%. A real hyphenated atom -A executes unwrapped but the old wrapper splits it; the interpreter-word regex repairs wrapping and executes correctly. The shipped generator keeps decimal names, so no lexer change is needed. Exploratory10..12 gains do not move the frozen7/8 admission window."
+
+[ablations.trick_prototype_20261102_identity_leaf_equation]
+arity = 8
+saving = 1.2243449459
+verdict = "rejected: N->s[x]=x is valid when children are0/1 and preserves all frame consumption.2520 native pilot runs pass every small row and sampled random4..8 rows; source never grows and workspace stays within the old cap.200 generic verdict tables save1.8718%/1.2243% at7/8, declining far below20%. All named thresholds/parities/projections and complements execute every7/8 row in the75264-run controls; best projection13.6986%/12.6582% is also declining below20%. No independent identity-equation rule is stacked onto the literal construction."

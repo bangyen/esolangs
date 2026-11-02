@@ -1,4 +1,4 @@
-"""Stisp's emitted characters: equations per level, ids by digit count."""
+"""The named-diagram ceiling also bounds the literal hybrid plus selectors."""
 
 from __future__ import annotations
 
@@ -121,7 +121,7 @@ def _chars(n: int, _: str) -> int:
 
 
 def witness(n: int) -> str:
-    """The table reaching :func:`_chars` for n = 3..20.
+    """The named-diagram table priced by :func:`_chars` for n = 3..20.
 
     Every subtable of the capped level, then pairs of the highest ids: the
     extra references land on the widest names.  Past n = 8 the top ids hold
@@ -131,4 +131,9 @@ def witness(n: int) -> str:
     return worst_diagram(n, lambda node, _: len(str(node)), 1, cover_const=False)
 
 
-FORMULAS = {"scaling": (_chars, frozenset(range(3, 21)), tuple(range(3, 21)))}
+def _hybrid_chars(n: int, program: str) -> int:
+    """Each local inline choice saves text; the selectors add 28 characters."""
+    return _chars(n, program) + 28
+
+
+FORMULAS = {"scaling": (_hybrid_chars, False, tuple(range(3, 21)))}

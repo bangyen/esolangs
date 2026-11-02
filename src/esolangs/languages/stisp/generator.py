@@ -1,18 +1,21 @@
 """Stisp Boolean program generator: a decision diagram walked by frames.
 
-The head is the current node, an atom named by its subtable id; each input
-is one frame ``->s[b]`` below it, first input on top.  A node has an
-equation per bit, ``N->s[0]=L;`` and ``N->s[1]=H;``, and the frame's rewrite
-replaces the node with the child; a node whose halves agree has one
-equation over a variable.  The leaves are the atoms ``0`` and ``1``, and the
-last equation, ``c->s[x]=c;``, drains the frames under a leaf, so the result
-is the answer.  For AND:
+The head is a node atom or a pair of child expressions. Each input is one
+frame ``->s[b]``; native list-pattern equations select a pair's child,
+while named nodes use one or two equations. Leaves ``0`` and ``1`` drain
+remaining frames. For AND:
 
-    3->s[0]=0;3->s[1]=2;2->s[0]=0;2->s[1]=1;c->s[x]=c;3->s[$]->s[$]
+    (l h)->s[0]=l;(l h)->s[1]=h;c->s[x]=c;(0 (0 1))->s[$]->s[$]
+
+A bottom-up cost rule inlines cheap private nodes and names shared ones.
+Each literal head carries at most 2n atom bytes, matching the input frames'
+16n-bit payload. Written workspace is at most 32n+1 bits including the dump.
+There are O(T/n) distinct nodes, so their O(n)-character representations
+also build in O(T) time.
 
 Size:
     O(T) text: one or two equations a node of the reduced diagram;
-    n=4 parity: 175 chars, n=10 random 1847: 5,884 chars.
+    n=4 parity: 139 chars, n=10 random 1847: 1,964 chars.
     Constants match the input list once: 2n+15 chars (15 at n=1), one rewrite
     plus the halt dump, and at most 8n+9 written bits.
 
@@ -20,6 +23,8 @@ Decisions:
     Ids repeat only within a level (:func:`subtree_ids`), so equal subtables
     share a node.
 """
+
+from collections import Counter
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -35,6 +40,8 @@ from esolangs.registry._language import Example, Language
 PAIR = ("0", "1")
 #: The drain: under a leaf every remaining frame rewrites to the leaf.
 _DRAIN = "c->s[x]=c;"
+#: Native list-head selectors precede the variable-head drain.
+_CONS = "(l h)->s[0]=l;(l h)->s[1]=h;"
 #: A newline is whitespace, legal anywhere but inside an identifier or ``->``.
 _TOKEN = r"->|[A-Za-z0-9_]+|[\s\S]"
 
@@ -46,20 +53,47 @@ def stisp(truth_table: str) -> str:
         head = TEMPLATE_CHAR if n == 1 else "(" + " ".join(TEMPLATE_CHAR * n) + ")"
         return f"x->s[]={truth_table[0]};{head}->s[]"
     ids = subtree_ids(truth_table)
-    equations: list[str] = []
+    nodes: dict[int, tuple[int, int]] = {}
     for level in range(n):
-        seen = set()
         for k, node in enumerate(ids[level]):
-            if node < 2 or node in seen:
-                continue
-            seen.add(node)
-            lo, hi = ids[level + 1][2 * k], ids[level + 1][2 * k + 1]
-            if lo == hi:
-                equations.append(f"{node}->s[x]={lo};")
-            else:
-                equations.append(f"{node}->s[0]={lo};{node}->s[1]={hi};")
+            if node >= 2 and node not in nodes:
+                nodes[node] = ids[level + 1][2 * k], ids[level + 1][2 * k + 1]
+    uses = Counter({ids[0][0]: 1})
+    for lo, hi in nodes.values():
+        uses[lo] += 1
+        if lo != hi:
+            uses[hi] += 1
+    heads = {0: "0", 1: "1"}
+    payload = {0: 1, 1: 1}
+    definitions: dict[int, str] = {}
+    named: set[int] = set()
+    # Callers are still named when a node is priced, so its original use
+    # count is exactly the number of replacements at this bottom-up step.
+    for node, (lo, hi) in reversed(list(nodes.items())):
+        low, high = heads[lo], heads[hi]
+        name = str(node)
+        equation = (
+            f"{name}->s[x]={low};"
+            if lo == hi
+            else f"{name}->s[0]={low};{name}->s[1]={high};"
+        )
+        definitions[node] = equation
+        literal = f"({low} {high})"
+        size = payload[lo] + payload[hi]
+        # Give the head at most the input frames' 16n bits. With D=O(T/n)
+        # distinct nodes, each O(n)-character spelling also builds in O(T).
+        # [ablations.trick_prototype_20261102_bounded_literals]
+        if size <= 2 * n and uses[node] * len(literal) < len(equation) + uses[
+            node
+        ] * len(name):
+            heads[node], payload[node] = literal, size
+        else:
+            heads[node], payload[node] = name, len(name)
+            named.add(node)
+    prefix = _CONS if len(named) != len(nodes) else ""
+    equations = "".join(definitions[node] for node in nodes if node in named)
     frames = f"->s[{TEMPLATE_CHAR}]" * n
-    return "".join(equations) + _DRAIN + f"{ids[0][0]}{frames}"
+    return prefix + equations + _DRAIN + heads[ids[0][0]] + frames
 
 
 LANGUAGE = Language(
@@ -75,5 +109,5 @@ LANGUAGE = Language(
     wrap=TokenWrapper(_TOKEN),
     empty_program="a Stisp program needs a stack expression",
     example=Example(pair=PAIR),
-    proof_workspace=(workspace, True, (3, 4, 5, 6, 7)),
+    proof_workspace=(workspace, False, (3, 4, 5, 6, 7)),
 )

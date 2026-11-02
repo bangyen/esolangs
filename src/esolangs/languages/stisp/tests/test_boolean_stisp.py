@@ -3,6 +3,10 @@
 import pytest
 
 import esolangs
+from esolangs.languages.stisp.interpreter import _Machine
+from esolangs.languages.stisp.proof_formulas import workspace
+from esolangs.runtime.io import ScriptedIO
+from scripts.benchmark import WrittenState
 
 #: Every one- and two-input table; a diagram's folding bugs show here first.
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
@@ -19,17 +23,33 @@ def test_every_row_results_in_its_answer(table: str) -> None:
         program = esolangs.instantiate("Stisp", template, bits)
         got = esolangs.run("Stisp", program, timeout=5)
         assert esolangs.read_answer("Stisp", got) == table[row], (table, row)
+        io = ScriptedIO("7")
+        machine = _Machine(program, io)
+        written = WrittenState(machine.snapshot())
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            written.sample(machine.snapshot())
+            steps += 1
+            assert io.getvalue() == ""
+        assert steps == (1 if len(set(table)) == 1 else n)
+        machine.step()
+        written.sample(machine.snapshot())
+        assert written.bits <= workspace(n, program)
+        assert io.getvalue() == table[row]
+        assert io.reads == 0
+        assert io.input_char() == ord("7")
 
 
 def test_the_and_template_is_the_documented_one() -> None:
     assert esolangs.generate("Stisp", "0001") == (
-        "3->s[0]=0;3->s[1]=2;2->s[0]=0;2->s[1]=1;c->s[x]=c;3->s[$]->s[$]"
+        "(l h)->s[0]=l;(l h)->s[1]=h;c->s[x]=c;(0 (0 1))->s[$]->s[$]"
     )
 
 
-def test_an_ignored_input_is_one_equation_over_a_variable() -> None:
+def test_an_ignored_input_still_selects_one_of_two_identical_children() -> None:
     assert esolangs.generate("Stisp", "0101") == (
-        "3->s[x]=2;2->s[0]=0;2->s[1]=1;c->s[x]=c;3->s[$]->s[$]"
+        "(l h)->s[0]=l;(l h)->s[1]=h;c->s[x]=c;((0 1) (0 1))->s[$]->s[$]"
     )
 
 
@@ -38,6 +58,7 @@ def _check_constants() -> None:
     from esolangs.runtime.io import ScriptedIO
     from scripts.benchmark import WrittenState
 
+    assert sum(len(esolangs.generate("Stisp", f"{i:08b}")) for i in range(256)) == 20552
     for n in range(1, 13):
         for bit in "01":
             for options in ({}, {"width": 1}, {"balance": True}):
