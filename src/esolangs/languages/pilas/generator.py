@@ -4,13 +4,15 @@ Line two idles in ``0{0}``, a loop that never exits, so only line one's
 pointer can end the run.  Each node reads a byte, subtracts 48 to get the
 bit ``b`` and runs ``:{Z+2+1}1-:{O+1+1}1-``: the first ``{`` enters only
 on ``b = 0`` and leaves a 2 behind, the second only on the one arm.  Every
-subtree pushes exactly one 0, so ``+`` folds it into the flag below and
+nested subtree pushes exactly one 0, so ``+`` folds it into the flag below and
 each node, like each leaf, leaves one 0 for its parent.  A span whose
 halves are opposite constants reads the rest, then prints its first input's
 byte, or 97 minus it.
 
 Size:
-    O(T) in the tree's nodes; n=4 parity: 266 chars
+    O(T) in the tree's nodes; n=4 parity: 266 chars.
+    Root constants retain k bytes: 3n+13-2k+2b chars, 4n-2k+15+4b steps;
+    6k+14+bl(3n+10)+bl(n) written bits at most, within 3n+24.
 
 Decisions:
     Residues fold with ``+``, not ``~``: a moved value would land on line
@@ -37,6 +39,14 @@ def pilas(truth_table: str) -> str:
     """Build a Pilas program printing ``truth_table[row]`` for the inputs."""
     _validate_truth_table(truth_table)
     n = len(truth_table).bit_length() - 1
+    if len(set(truth_table)) == 1:
+        # ASCII 0/1 is nonzero, so {} discards a byte. Retention costs six bits.
+        # Reserve 14 plus pointer/input widths within the unchanged 3n+24 bound.
+        keep = min(
+            n, max(0, (3 * n + 10 - (3 * n + 10).bit_length() - n.bit_length()) // 6)
+        )
+        bump = "1+" if truth_table[0] == "1" else ""
+        return "," * keep + ",{}" * (n - keep) + _ZERO_BYTE + bump + ".\n0{0}"
     constant = constant_span_test(truth_table)
 
     @cache

@@ -110,8 +110,8 @@ def test_packed_programs_execute_seeded_random_tables() -> None:
 
 
 def test_a_width_that_exactly_fits_the_header_returns_the_plain_program() -> None:
-    # The header is exactly 13 cells: at width 13 the plain form fits.
-    assert fish("0000", 13) == "0i~i~1g68*-n;\n0"
+    # The native constant is exactly seven cells; equality keeps the row.
+    assert fish("0000", 7) == "i~i~0n;"
 
 
 def test_fold_columns_fill_all_but_two_of_the_width() -> None:
@@ -134,11 +134,9 @@ def test_the_fold_height_reserve_counts_three_literal_cells() -> None:
     )
 
 
-def test_a_one_row_fold_of_a_constant_table() -> None:
-    assert fish("00", 1) == (
-        ">0v\nvi<\n>~v\nv:<\n>1v\nv%<\n>$v\nv:<\n>1v\nv%<\n>-v\nv1<\n"
-        ">,v\nv5<\n>5v\nv*<\n>+v\nvg<\n>6v\nv8<\n>*v\nv-<\n>nv\nv;<\n\n0"
-    )
+def test_a_constant_uses_one_column_when_narrow() -> None:
+    _check_constants()
+    assert fish("00", 1) == "v\ni\n~\n0\nn\n;"
 
 
 def test_the_column_literal_caps_at_225_then_doubles() -> None:
@@ -177,3 +175,59 @@ def test_balance_folds_the_packed_row(n: int, side: int) -> None:
     assert _evaluate("Fish", balanced, inputs=n) == table
     wrong = table[:-1] + str(1 - int(table[-1]))
     assert _evaluate("Fish", balanced, inputs=n) != wrong
+
+
+def _check_constants() -> None:
+    from esolangs.languages.fish.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Fish", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 2 * n + 3
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Fish", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "7")
+                    machine = _Machine(program.splitlines(), io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 2000
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
+                    if not options:
+                        assert steps == 2 * n + 3
+                        assert (
+                            written.bits
+                            <= 7 + (2 * n + 3).bit_length() + n.bit_length()
+                        )
+
+            table = bit * (1 << n)
+            default = fish(table)
+            assert fish(table, len(default)) == default
+            balanced = balance_fish(table, default)
+            oracle = min(
+                (fish(table, width) for width in range(1, len(default) + 1)),
+                key=balance_score,
+            )
+            assert balance_score(balanced) == balance_score(oracle)
+            for width in range(1, len(default) + 1):
+                source = fish(table, width)
+                assert max(map(len, source.splitlines())) <= width

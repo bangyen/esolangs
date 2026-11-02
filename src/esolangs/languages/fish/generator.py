@@ -16,6 +16,8 @@ entries a cell ([ablations.packed_row]).
 Size:
     O(T), independent of the table at default width: about T/6 cells past
     n=3; n=16 parity: 71 chars, n=10 random 1847: 312 chars.
+    Constants use 2n+3 cells/commands in one row, with
+    7+bl(2n+3)+bl(n) written bits; narrow requests snake or use one column.
 
 Decisions:
     A table has no subtrees to fold or share.  ``balance=True`` also folds the
@@ -40,6 +42,8 @@ from esolangs.registry._language import Language, Shape
 def fish(truth_table: str, width: int | None = None) -> str:
     """Return a Fish lookup grid; lookup folds need three columns; parity uses one."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        return _constant(n, truth_table[0], width)
     # A one-column parity program fits any width; at n=10 it is 24 cells
     # against the lookup's 2,050 (default) and 3,435 (width 3).
     bias = _parity_bias(truth_table)
@@ -65,6 +69,21 @@ def fish(truth_table: str, width: int | None = None) -> str:
         return header + "\n" + truth_table
     columns = 1 << (min(max(1, width - 2), len(truth_table)).bit_length() - 1)
     return _folded(reads, truth_table, columns)
+
+
+def _constant(inputs: int, bit: str, width: int | None) -> str:
+    """Read/drop each byte, print the digit, and halt; fold only when needed."""
+    code = "i~" * inputs + bit + "n;"
+    if width is None or len(code) <= width:
+        return code
+    if width < 3:
+        return "\n".join("v" + code)
+    payload = width - 2
+    rows = []
+    for row, offset in enumerate(range(0, len(code), payload)):
+        part = code[offset : offset + payload].ljust(payload)
+        rows.append(">" + part + "v" if row % 2 == 0 else "v" + part[::-1] + "<")
+    return "\n".join(rows)
 
 
 #: Table entries a packed cell carries, and the code of its all-ones word:
@@ -218,6 +237,14 @@ def balance_fish(truth_table: str, default: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     candidates = [default]
+    if len(set(truth_table)) == 1:
+        # W = 2*ceil(L/(W-2)); the crossing is 1+sqrt(1+2L).
+        side = 1 + isqrt(1 + 2 * (2 * n + 3))
+        candidates.append(fish(truth_table, 1))
+        candidates.extend(
+            fish(truth_table, max(3, width)) for width in range(side - 1, side + 4)
+        )
+        return min(candidates, key=balance_score)
     weights, table = input_weights(truth_table, n)
     reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
     root = (2 * len(_packed(reads, table))) ** 0.5

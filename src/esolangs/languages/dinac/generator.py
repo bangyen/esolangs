@@ -13,7 +13,8 @@ No branch nests, so a line costs a constant number of characters.
 Size:
     Linear in T: at most 40T + 18n + 120 characters; names are indexed by
     height, so the T/2**h references to height h cost O(1) on average
-    (sum of T * len(h) / 2**h); n=4 parity: 767 chars
+    (sum of T * len(h) / 2**h); n=4 parity: 767 chars.
+    Constants use 5n+15 chars, n+3 steps and 56+bl(n+2)+bl(n) written bits.
 
 Decisions:
     A nested IF/ELSE tree costs 4 spaces of indent per level on every leaf,

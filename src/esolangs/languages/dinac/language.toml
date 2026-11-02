@@ -38,3 +38,10 @@ verdict = "kept: named functions move. The scan marks the rarer answer's rows an
 [audits]
 blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "retained: the existing constant path declares one character variable, reads every input and prints a literal. L=5n+15 chars, E=n+3 steps, W=56+bl(n+2)+bl(n) written bits. A typed byte-counter loop executes correctly in 1120 candidate runs, plus explicit read-first/following-record controls at n=7/8. It costs 52 chars: 50 -> 52 at n=7, 55 -> 52 at n=8 (only 5.5%); n=8 steps 11 -> 37 and written bits 64 -> 116. It misses the fixed two-arity size gate and command alternative; no later-arity exception. No claim of a general lower bound. Current n=12 constants stay 75 chars; n=3 corpus stays 104426 chars. Each language passed 5656 paired old/new row executions; all 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language cover every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned checks enforce all reads before output, no EOF probe and a preserved following record. No new collected cases."

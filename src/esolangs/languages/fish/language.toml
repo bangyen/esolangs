@@ -66,3 +66,10 @@ verdict = "retired 2026-10-28 (plain-rewrite audit): balance also tried the unpa
 
 [audits]
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 62.0
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical read-first fixed output. Each i~ reads and drops one byte; push 0/1, print numerically and halt. Default A=E=2n+3 cells/commands, W=7+bl(2n+3)+bl(n) written bits. A fitting width keeps the exact row; narrow widths use one vertical column below three, otherwise a serpentine fold. Balanced widths follow W(W-2)=2L, and the neighboring candidates match the complete supported-width oracle through n=12. n=7 46 -> 17 cells (63.0%); n=8 50 -> 19 cells (62.0%), 25 -> 19 commands, 23 -> 16 written bits; n=12 66 -> 27 cells. n=3 corpus 17206 -> 17164 cells (10684 -> 10668 chars). Each language passed 5656 paired old/new row executions; all 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language cover every row through n=8. All 24 balanced scores per language match or improve; all 24 benchmark size/command pins across the batch remain unchanged. Owned checks enforce all reads before output, no EOF probe and a preserved following record. No new collected cases."
