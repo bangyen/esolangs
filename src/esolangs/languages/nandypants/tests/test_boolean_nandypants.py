@@ -13,6 +13,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
+        _check_forward()
     n = len(table).bit_length() - 1
     program = esolangs.generate("Nandypants", table)
     for row in range(len(table)):
@@ -65,5 +66,32 @@ def _check_constants() -> None:
                     assert io.input_char() == ord("Q")
     assert (
         sum(len(esolangs.generate("Nandypants", f"{v:08b}")) for v in range(256))
-        == 26434
+        == 25214
     )
+
+
+def _check_forward() -> None:
+    from esolangs.languages.nandypants.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    jumped = False
+    for table in ("1101001101101101", "00110110", "00011110"):
+        n = len(table).bit_length() - 1
+        program = esolangs.generate("Nandypants", table)
+        for row in range(len(table)):
+            io = ScriptedIO(f"{row:0{n}b}" + "7")
+            machine = _Machine(program, io)
+            steps = 0
+            while not machine.halted:
+                before = machine.ip
+                if machine.program.tokens[before] == "\\":
+                    assert io.reads == n
+                    assert machine.state.remaining == 0
+                machine.step()
+                assert machine.ip > before
+                jumped |= machine.ip != before + 1
+                steps += 1
+                assert steps <= 12 * n + 18
+            assert io.getvalue() == table[row]
+            assert io.input_char() == ord("7")
+    assert jumped

@@ -8,7 +8,7 @@ other seven are discarded at the head of the next block.  ``/ L0`` jumps to
 ``L0`` when the bit is 0 (an odd label jumps forward to its last occurrence,
 which is the child's head); ``v L1`` makes ``b = 0`` and jumps for the 1 edge.
 A child that follows its parent in the layout takes the fall-through and needs
-no label.  Blocks are laid out by depth, so every jump is forward.  A constant
+no label. Blocks follow topological chains, so every jump is forward. A constant
 subtable is one block that reads its remaining inputs and prints the answer
 byte, with b moved to a second cell holding 1 so ``^`` toggles a between bits.
 Constants at depth > 0 share one ladder per answer: a block reads 8 per level
@@ -21,6 +21,8 @@ Size:
 Decisions:
     A space separates adjacent labels, since any digit run is one number.
 """
+
+from heapq import heapify, heappop, heappush
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.languages.nandypants.proof_formulas import workspace
@@ -36,6 +38,58 @@ _END = "1"  # label every printer jumps to; its last occurrence ends the program
 def _odd_labels(count: int) -> list[str]:
     """The first ``count`` odd numbers after 1, fewest digits first."""
     return [str(2 * i + 3) for i in range(count)]
+
+
+def _chain_order(
+    order: list[tuple[int, int]],
+    kids: dict[tuple[int, int], tuple[int, int] | None],
+) -> list[tuple[int, int]]:
+    """Follow a ready child, preferring the one arm; otherwise use breadth rank.
+
+    A shared child waits for every parent. Heap work is O(N log N) for
+    N=O(T/log T) diagram nodes, hence O(T), like building their ids.
+    """
+    internal = [key for key in order if kids[key] is not None]
+    rank = {key: i for i, key in enumerate(internal)}
+    children = {}
+    remaining = dict.fromkeys(internal, 0)
+    for key in internal:
+        pair = kids[key]
+        assert pair is not None
+        children[key] = tuple(
+            dict.fromkeys(
+                (key[0] + 1, child) for child in pair if (key[0] + 1, child) in rank
+            )
+        )
+        for child in children[key]:
+            remaining[child] += 1
+    ready = [rank[key] for key in internal if remaining[key] == 0]
+    heapify(ready)
+    placed: set[tuple[int, int]] = set()
+    chain: list[tuple[int, int]] = []
+    preferred: tuple[int, int] | None = None
+    while len(chain) < len(internal):
+        if preferred is not None:
+            key = preferred
+        else:
+            while internal[ready[0]] in placed:
+                heappop(ready)
+            key = internal[heappop(ready)]
+        placed.add(key)
+        chain.append(key)
+        for child in children[key]:
+            remaining[child] -= 1
+            if remaining[child] == 0:
+                heappush(ready, rank[child])
+        preferred = next(
+            (
+                child
+                for child in reversed(children[key])
+                if remaining[child] == 0 and child not in placed
+            ),
+            None,
+        )
+    return chain + [key for key in order if kids[key] is None]
 
 
 def nandypants(truth_table: str) -> str:
@@ -72,6 +126,9 @@ def nandypants(truth_table: str) -> str:
     for c in sorted(dict.fromkeys(firsts), key=firsts.count):
         ladders += sorted(k for k in constants if str(k[1]) == c)
     order = [k for k in order if kids[k] is not None] + ladders
+
+    # [ablations.trick_prototype_20261102_chain_cover_layout]
+    order = _chain_order(order, kids)
 
     # Plan each node's tests against the block that follows it.
     plan: dict[tuple[int, int], list[tuple[str, tuple[int, int]]]] = {}
