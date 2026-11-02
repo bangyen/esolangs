@@ -1074,9 +1074,12 @@ lower bound; three stay out under the scaling rule:
   - Both readings were implemented as a registered dialect with a
     dialect-parameterized generator (222-row corpus correct under each
     reading's own semantics, the alt dialect's programs no larger than the
-    default's) and withdrawn the same day: no consumer needs the second
-    reading executable; the verified implementation is kept unlanded on its
-    local branch.
+    default's), withdrawn the same day it was built, and landed
+    2026-11-01 at Bangyen's direction to match NQ's registered-dialect
+    pattern: the fence above stands as the record of why the second
+    reading exists, and the port re-applied the parameterization over
+    the area-strip generator (default-dialect output byte-identical,
+    914 size measurements unchanged).
 - Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis.
 - Deadfish (315) is interpreter-only because it has no input vocabulary.
 - Quassaunt (3): the `%%Multithread` extension the wiki lists apart from
