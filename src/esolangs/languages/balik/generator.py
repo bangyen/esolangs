@@ -10,7 +10,8 @@ stack children vertically, and side by side at every other level, so the
 area is linear.
 
 Size:
-    Theta(T) area, about 84.5T; n=4 parity: 949 chars
+    Theta(T) area, about 84.5T; n=4 parity: 949 chars.
+    Constants: n + 2/3 cells and commands.
 
 Decisions:
     A constant subtable is one leaf that walks to the answer cell, so a
@@ -101,6 +102,8 @@ def _box(
 def balik(truth_table: str) -> str:
     """Build a Balik program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table.count(truth_table[0]) == len(truth_table):
+        return "," * n + ">" + "+" * int(truth_table[0]) + "."
     essential = essential_inputs(truth_table, n)
     k = len(essential)
     # Essential input j goes to cell j; ignored ones to cell k + 1, past

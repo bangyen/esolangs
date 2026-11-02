@@ -73,6 +73,8 @@ def test_bitwise_cyclic_tag_walks_forward_in_a_fixed_number_of_steps() -> None:
 @pytest.mark.parametrize("n", [1, 3, 8])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
+    if n == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << n)
     template = esolangs.generate("Bitwise Cyclic Tag", table)
     assert template == "0," + "$" * n + bit
@@ -90,3 +92,31 @@ def test_constant_deletes_inputs_and_literal_answer(n, bit) -> None:
         assert (machine.read, machine.answer, machine.program) == (n + 1, bit, "0")
         machine.step()
         assert io.getvalue() == bit
+
+
+def _check_constants() -> None:
+    from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                template = esolangs.generate(
+                    "Bitwise Cyclic Tag", bit * (1 << n), **options
+                )
+                assert template.count("$") == n
+                for bits in ([0] * n, [1] * n):
+                    program = esolangs.instantiate("Bitwise Cyclic Tag", template, bits)
+                    io = ScriptedIO("7")
+                    machine = _Machine(program, io)
+                    assert machine.data == [str(b) for b in bits] + [bit]
+                    for count in range(n + 1):
+                        assert machine.read == count
+                        machine.step()
+                        assert not io.getvalue()
+                    assert machine.halted
+                    assert machine.read == n + 1
+                    machine.step()
+                    assert io.getvalue() == bit
+                    assert io.reads == 0
+                    assert io.input_char() == ord("7")

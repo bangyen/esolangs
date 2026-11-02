@@ -46,3 +46,10 @@ verdict = "kept: side by side only at odd levels from 3 below the root is the le
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 8.7
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical root folding/minimal spelling, exempt. Read every input at cell zero, then move right once to the fresh output cell; omit the former leading right and closing left moves. Chars/cells and commands n+2+b: n=7 10/11->9/10 (9.5% combined), n=8 11/12->10/11 (8.7%), n=12 15/16->14/15. n=8 workspace unchanged at 12 written bits. n=3 corpus area 74501->74499, chars 68083->68081. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."

@@ -28,6 +28,8 @@ def test_constant_reads_into_spent_code_and_prints_a_literal_tail(n, bit) -> Non
     from esolangs.runtime._evaluate import _evaluate
     from esolangs.runtime.io import ScriptedIO
 
+    if n == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << n)
     program = esolangs.generate("Circlefuck", table)
     assert program == "," * n + "<.@" + bit
@@ -105,3 +107,29 @@ def test_run_warns_when_input_runs_out() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         esolangs.run("Circlefuck", program, stdin="")
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.circlefuck.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Circlefuck", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")

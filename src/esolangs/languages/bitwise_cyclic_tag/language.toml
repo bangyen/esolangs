@@ -49,3 +49,10 @@ verdict = "kept: a cell `1 a 0 b 1 0 0` holds two rows, so the lowest input appe
 
 [audits]
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: one cyclic zero deletes n input bits and the literal answer, then the post-halt step prints that last deletion. Chars n+3, commands n+2 including dump: n=8 11 chars, 10 commands, 84 written bits; n=7 10 chars, n=12 15. Deleting the answer literal makes the opposite-valued input witnesses print the final input rather than the requested constant, for both answers. Owned tests verify initial data contains all inputs followed by the answer, every deletion, and output only after all n+1 deletions. No global optimum claimed. n=3 corpus chars 14492 unchanged. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."

@@ -67,3 +67,10 @@ verdict = "kept under the named-function rule: a table depending only on how man
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-22
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: read n characters into spent code at cell zero, then wrap to the literal answer and halt. Chars n+4, commands n+3: n=8 12 chars, 11 commands, 86 written bits; n=7 11 chars, n=12 16. Removing @ leaves both answer candidates running after 64 measured steps with extra output 0.<,, or 1.<,,; keep the halt. This rejects that candidate, not a universal optimum. n=3 corpus chars 43488 unchanged. Executed 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw IO/template checks preserve exact input use, following records and no EOF probe."
