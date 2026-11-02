@@ -54,6 +54,7 @@ from esolangs.languages.slow_acv_mammalian._sums import (
 from esolangs.languages.slow_acv_mammalian.interpreter import (
     _ARRAYS,
     DEFAULT_MODULI,
+    LEAPFROG_RESUMES,
     MODULI,
     MammalianModuli,
 )
@@ -685,12 +686,21 @@ def slow_acv_mammalian(
     *,
     cell_modulus: int = DEFAULT_MODULI.cell_modulus,
     io_modulus: int = DEFAULT_MODULI.io_modulus,
+    leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
 ) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
     Cell modulus 256 is the weighted chain; 255 dispatches in :func:`_program_255`.
+    ``leapfrog_resume`` is accepted and validated as a dialect setting but
+    changes nothing built: the SPRINT guards before every jump target make
+    the emitted programs read the same under both resume readings.
     """
-    return _program(truth_table, cell_modulus=cell_modulus, io_modulus=io_modulus)
+    return _program(
+        truth_table,
+        cell_modulus=cell_modulus,
+        io_modulus=io_modulus,
+        leapfrog_resume=leapfrog_resume,
+    )
 
 
 def _program(
@@ -698,9 +708,10 @@ def _program(
     *,
     cell_modulus: int = DEFAULT_MODULI.cell_modulus,
     io_modulus: int = DEFAULT_MODULI.io_modulus,
+    leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
 ) -> str:
     """Build the dispatch, optionally retaining constant-input weights."""
-    moduli = MammalianModuli(cell_modulus, io_modulus)
+    moduli = MammalianModuli(cell_modulus, io_modulus, leapfrog_resume)
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return _constant_read(truth_table[0], n)
@@ -841,7 +852,11 @@ LANGUAGE = Language(
     category="tape_based",
     boolean=slow_acv_mammalian,
     dialect=MammalianModuli,
-    dialect_values={"cell_modulus": MODULI, "io_modulus": MODULI},
+    dialect_values={
+        "cell_modulus": MODULI,
+        "io_modulus": MODULI,
+        "leapfrog_resume": LEAPFROG_RESUMES,
+    },
     # Not a tree: a branch-free chain into a flat leaf table.
     shape=Shape.LOOKUP,
     contract=BooleanContract(

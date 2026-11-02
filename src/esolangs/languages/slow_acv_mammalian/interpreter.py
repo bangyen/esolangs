@@ -14,15 +14,19 @@ Errors:
     ProgramError: Unknown command word.
     InputExhaustedError: ACCEPT at EOF.
     ArgumentError: A ``cell_modulus`` or ``io_modulus`` setting other than
-        255 or 256.
+        255 or 256, or a ``leapfrog_resume`` setting other than ``after``
+        or ``at``.
 
 Decisions:
     * LEAPFROG "jump[s] to the (x - first value in array)th instruction"
-      counting from 1 and resumes after it, so a count of 0 or past the end
-      halts.  Generated programs run if it resumes at it instead, in every
-      dialect: each jump target is preceded by a SPRINT that the jump's
-      accumulator -- a token address, beyond every array's length --
-      makes a no-op.
+      counting from 1: the page does not say whether execution resumes at
+      that instruction or after it, so the two readings are a registered
+      dialect, ``leapfrog_resume`` -- ``after`` (the default; the shipped
+      behaviour before the dialect existed) or ``at``.  A count of 0 or
+      past the end halts under both.  Generated programs cannot tell the
+      readings apart, in every dialect: each jump target is preceded by
+      a SPRINT that the jump's accumulator -- a token address, beyond
+      every array's length -- makes a no-op.
     * SEED skips an empty array and CONSUME, FISSION and LEAPFROG ignore one.
     * A CONFLAGRATE pair with a zero divisor is left alone.
     * Cells default to modulus 256 ("any value from 0-255"), I/O to 255 (the
@@ -39,23 +43,30 @@ from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 MODULI = (255, 256)
 
+#: Where execution resumes after a LEAPFROG: after the target instruction
+#: (the default) or at it.
+LEAPFROG_RESUMES = ("after", "at")
+
 #: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
 _ARRAYS = 23
 
 
 @dataclass(frozen=True)
 class MammalianModuli:
-    """Separate cell arithmetic from EXCRETE and PRONOUNCE reductions."""
+    """The dialect settings: moduli, and where a LEAPFROG resumes."""
 
     cell_modulus: int = 256
     io_modulus: int = 255
+    leapfrog_resume: str = "after"
 
     def __post_init__(self) -> None:
-        """Reject unsupported cell and I/O moduli."""
+        """Reject unsupported cell and I/O moduli and resume readings."""
         if type(self.cell_modulus) is not int or self.cell_modulus not in MODULI:
             raise ValueError("Mammalian cell_modulus must be 255 or 256")
         if type(self.io_modulus) is not int or self.io_modulus not in MODULI:
             raise ValueError("Mammalian io_modulus must be 255 or 256")
+        if self.leapfrog_resume not in LEAPFROG_RESUMES:
+            raise ValueError("Mammalian leapfrog_resume must be after or at")
 
 
 DEFAULT_MODULI = MammalianModuli()
@@ -197,7 +208,9 @@ def _advance(
     ``byte``.  Two positional rules from the original are required: SPRINT's
     guard ``acc < len(curr)`` passes a negative accumulator, which then
     indexes from the far end; LEAPFROG jumps to ``acc - head - 1`` and then
-    takes the trailing advance, so the cursor ends at ``target + 1``.
+    takes the trailing advance, so the cursor ends at ``target + 1`` --
+    under ``leapfrog_resume="at"`` it lands one token earlier, so the
+    cursor ends at the target instruction itself.
     """
     arrays, ptr, acc, ind, halted = state
     curr = arrays[ptr]
@@ -218,7 +231,7 @@ def _advance(
         target = acc - curr[0] - 1
         if target < 0:
             return (arrays, ptr, acc, ind, True)
-        ind = target
+        ind = target if moduli.leapfrog_resume == "after" else target - 1
     elif n == 8 and byte is not None:
         head = (*arrays[0], (byte ^ acc) % moduli.cell_modulus)
         arrays = (head, *arrays[1:])
@@ -236,8 +249,9 @@ class _Machine:
         *,
         cell_modulus: int = DEFAULT_MODULI.cell_modulus,
         io_modulus: int = DEFAULT_MODULI.io_modulus,
+        leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
     ) -> None:
-        self.moduli = MammalianModuli(cell_modulus, io_modulus)
+        self.moduli = MammalianModuli(cell_modulus, io_modulus, leapfrog_resume)
         self.io = io
         self.tokens = _tokens(code)
         self.lst: _Arrays = tuple((0,) for _ in range(_ARRAYS))
@@ -309,9 +323,18 @@ def run(
     *,
     cell_modulus: int = DEFAULT_MODULI.cell_modulus,
     io_modulus: int = DEFAULT_MODULI.io_modulus,
+    leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
 ) -> None:
-    """Run with separate cell and EXCRETE/PRONOUNCE moduli."""
-    drive(_Machine(code, io, cell_modulus=cell_modulus, io_modulus=io_modulus))
+    """Run with separate cell and EXCRETE/PRONOUNCE moduli, and a resume reading."""
+    drive(
+        _Machine(
+            code,
+            io,
+            cell_modulus=cell_modulus,
+            io_modulus=io_modulus,
+            leapfrog_resume=leapfrog_resume,
+        )
+    )
 
 
 if __name__ == "__main__":

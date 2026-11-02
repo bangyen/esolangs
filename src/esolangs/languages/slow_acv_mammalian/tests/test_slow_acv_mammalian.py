@@ -296,6 +296,35 @@ def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
             entry("PRONOUNCE", ScriptedIO(), **settings)
 
 
+def test_unsupported_leapfrog_resume_is_rejected_before_execution() -> None:
+    from esolangs.languages.slow_acv_mammalian.interpreter import _Machine, run
+    from esolangs.runtime.io import ScriptedIO
+
+    for entry in (_Machine, run):
+        with pytest.raises(ValueError, match="leapfrog_resume must be after or at"):
+            entry("PRONOUNCE", ScriptedIO(), leapfrog_resume="during")
+
+
+def test_leapfrog_resume_readings_diverge_on_a_searched_witness() -> None:
+    from esolangs.languages.slow_acv_mammalian.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    # The LEAPFROG's count is acc - head = 1, naming the first SEED.
+    # "after" resumes at the DIGEST past it and the second pass prints 2;
+    # "at" re-runs the SEED and the second pass prints 4.  The next
+    # LEAPFROG's count is negative under both, so both runs halt.
+    program = "SEED DIGEST SEED DIGEST PRONOUNCE LEAPFROG"
+    outputs = {}
+    for resume in ("after", "at"):
+        io = ScriptedIO("")
+        run(program, io, leapfrog_resume=resume)
+        outputs[resume] = io.getvalue()
+    assert outputs == {"after": "\x03\x02", "at": "\x03\x04"}
+    io = ScriptedIO("")
+    run(program, io)
+    assert io.getvalue() == outputs["after"]
+
+
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint(

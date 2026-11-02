@@ -405,6 +405,9 @@ def test_explicit_default_moduli_preserve_generation() -> None:
     baseline = slow_acv_mammalian("01")
     slow_acv_mammalian("01", io_modulus=256)
     assert slow_acv_mammalian("01", cell_modulus=256, io_modulus=255) == baseline
+    # Generation is reading-agnostic: both resume readings build the same.
+    assert slow_acv_mammalian("01", leapfrog_resume="after") == baseline
+    assert slow_acv_mammalian("01", leapfrog_resume="at") == baseline
 
 
 @pytest.mark.parametrize(
@@ -412,6 +415,7 @@ def test_explicit_default_moduli_preserve_generation() -> None:
     [
         ({"cell_modulus": 254}, "cell_modulus must be 255 or 256"),
         ({"io_modulus": 254}, "io_modulus must be 255 or 256"),
+        ({"leapfrog_resume": "during"}, "leapfrog_resume must be after or at"),
     ],
 )
 def test_generator_rejects_unverified_moduli(settings, message: str) -> None:
@@ -438,6 +442,24 @@ def test_moduli_generate_every_small_table(
         run(source, io, cell_modulus=cell_modulus, io_modulus=io_modulus)
         assert io.getvalue() == expected
         assert io.reads == n
+
+
+@pytest.mark.parametrize("table", witnesses(3)[:1])
+def test_generated_programs_agree_under_both_leapfrog_readings(table: str) -> None:
+    from esolangs.languages.slow_acv_mammalian.generator import slow_acv_mammalian
+    from esolangs.languages.slow_acv_mammalian.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    # The SPRINT guards make generated programs reading-agnostic: every
+    # row answers the same under "after" and under "at".
+    source = slow_acv_mammalian(table)
+    n = len(table).bit_length() - 1
+    for row, expected in enumerate(table):
+        for resume in ("after", "at"):
+            io = ScriptedIO(f"{row:0{n}b}")
+            run(source, io, leapfrog_resume=resume)
+            assert io.getvalue() == expected
+            assert io.reads == n
 
 
 @pytest.mark.medium
