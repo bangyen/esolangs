@@ -71,25 +71,6 @@ def test_coverage_gate_requires_success_and_both_artifacts() -> None:
     assert "test -f .coverage.shard-1" in commands
     assert "coverage report --fail-under=98" in commands
 
-
-def test_failure_log_uploads_are_unconditional_and_unique() -> None:
-    for name in ("ci.yml", "weekly.yml", "release.yml"):
-        jobs = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())["jobs"]
-        for job in jobs.values():
-            uploads = [
-                step
-                for step in job["steps"]
-                if "actions/upload-artifact@" in step.get("uses", "")
-            ]
-            names = [step["with"]["name"] for step in uploads]
-            assert len(names) == len(set(names))
-            for upload in uploads:
-                if "notes/benchmarks" in upload["with"]["path"]:
-                    assert upload["if"] == "always()"
-                    assert "notes/verification" in upload["with"]["path"]
-
-
-def test_weekly_full_suite_keeps_all_versions_and_bands() -> None:
     jobs = yaml.safe_load((ROOT / ".github/workflows/weekly.yml").read_text())["jobs"]
     versions = jobs["slow"]["strategy"]["matrix"]["python-version"]
     assert sorted([*versions, "3.14"]) == ["3.12", "3.13", "3.14", "3.15"]
@@ -110,3 +91,20 @@ def test_weekly_full_suite_keeps_all_versions_and_bands() -> None:
     commands = "\n".join(step.get("run", "") for step in gate["steps"])
     for shard in scan["strategy"]["matrix"]["shard"]:
         assert f"test -f .coverage.deadcode-{shard}" in commands
+
+
+def test_failure_log_uploads_are_unconditional_and_unique() -> None:
+    for name in ("ci.yml", "weekly.yml", "release.yml"):
+        jobs = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())["jobs"]
+        for job in jobs.values():
+            uploads = [
+                step
+                for step in job["steps"]
+                if "actions/upload-artifact@" in step.get("uses", "")
+            ]
+            names = [step["with"]["name"] for step in uploads]
+            assert len(names) == len(set(names))
+            for upload in uploads:
+                if "notes/benchmarks" in upload["with"]["path"]:
+                    assert upload["if"] == "always()"
+                    assert "notes/verification" in upload["with"]["path"]
