@@ -7,23 +7,23 @@ admitted = 2026-10-27T11:08:19+00:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "—"
+qualification = "opposite bottom leaves print the final bit or its complement; other branches keep the tree construction"
 scaling = "linear: at most 39T characters: one 30-command node per branch"
-execution = "poly n: worst 26n + 9 commands"
+execution = "poly n: worst 26n - 3 commands"
 workspace = "poly n: at most 32n + bl(L) + bl(n) + 13 bits: the stack keeps each level's read results"
 
 [catalogue]
 sharing_exempt = "no names or jumps but loops: code runs once per place it is written"
 
 [generator_sizes]
-"00000001" = { commands = 87, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 59, "5" = 59, "6" = 81, "7" = 87 }, source_units = 135 }
+"00000001" = { commands = 69, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 59, "5" = 59, "6" = 69, "7" = 69 }, source_units = 105 }
 "00001100" = { commands = 64, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 60, "5" = 60, "6" = 64, "7" = 64 }, source_units = 101 }
-"00110110" = { commands = 86, commands_by_row = { "0" = 54, "1" = 54, "2" = 60, "3" = 60, "4" = 76, "5" = 82, "6" = 82, "7" = 86 }, source_units = 209 }
-"0110" = { commands = 60, commands_by_row = { "0" = 50, "1" = 56, "2" = 56, "3" = 60 }, source_units = 124 }
-"01101001" = { commands = 87, commands_by_row = { "0" = 71, "1" = 77, "2" = 77, "3" = 81, "4" = 77, "5" = 81, "6" = 81, "7" = 87 }, source_units = 278 }
-"0110100110010110" = { commands = 112, commands_by_row = { "0" = 92, "1" = 98, "2" = 98, "3" = 102, "4" = 98, "5" = 102, "6" = 102, "7" = 108, "8" = 98, "9" = 102, "10" = 102, "11" = 108, "12" = 102, "13" = 108, "14" = 108, "15" = 112 }, source_units = 586 }
-"1101001101101101" = { commands = 113, commands_by_row = { "0" = 76, "1" = 76, "2" = 97, "3" = 103, "4" = 80, "5" = 80, "6" = 86, "7" = 86, "8" = 97, "9" = 103, "10" = 103, "11" = 107, "12" = 86, "13" = 86, "14" = 107, "15" = 113 }, source_units = 449 }
-"11111110" = { commands = 86, commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 60, "5" = 60, "6" = 82, "7" = 86 }, source_units = 137 }
+"00110110" = { commands = 75, commands_by_row = { "0" = 54, "1" = 54, "2" = 60, "3" = 60, "4" = 64, "5" = 64, "6" = 75, "7" = 75 }, source_units = 155 }
+"0110" = { commands = 49, commands_by_row = { "0" = 38, "1" = 38, "2" = 49, "3" = 49 }, source_units = 70 }
+"01101001" = { commands = 69, commands_by_row = { "0" = 59, "1" = 59, "2" = 70, "3" = 70, "4" = 70, "5" = 70, "6" = 69, "7" = 69 }, source_units = 170 }
+"0110100110010110" = { commands = 101, commands_by_row = { "0" = 80, "1" = 80, "2" = 91, "3" = 91, "4" = 91, "5" = 91, "6" = 90, "7" = 90, "8" = 91, "9" = 91, "10" = 90, "11" = 90, "12" = 90, "13" = 90, "14" = 101, "15" = 101 }, source_units = 370 }
+"1101001101101101" = { commands = 95, commands_by_row = { "0" = 76, "1" = 76, "2" = 85, "3" = 85, "4" = 80, "5" = 80, "6" = 86, "7" = 86, "8" = 85, "9" = 85, "10" = 96, "11" = 96, "12" = 86, "13" = 86, "14" = 95, "15" = 95 }, source_units = 335 }
+"11111110" = { commands = 75, commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 60, "5" = 60, "6" = 75, "7" = 75 }, source_units = 113 }
 
 [ablations]
 audited = "2026-10-30"
@@ -34,6 +34,7 @@ arity = 8
 verdict = "kept: nothing is dropped and each piece pushes what it uses (loops test only the top), so a read is 9 commands not 25 (byte mod 2 off a 2 under the selector), a read-and-ignore 4, -1 8 not 15, a zero leaf 8 not 17; 53.2% on 100 seeded random tables at n=7 and n=8 (seed 7), 48.3% parity, 68.8% and, 67.1% or, 55.4% majority, 56.6% threshold-3 at n=8; the cost is a stack that grows linearly (workspace 2n + 31 -> 32n + bl(L) + bl(n) + 13 bits); every row of every table at n<=3, a stride of n=4 and the named functions and random tables to n=8 run and print their table"
 
 [audits]
+trick_prototype = 2026-11-01
 docstring_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 blind_reimplementation = 2026-10-27
@@ -51,3 +52,8 @@ saving = 7.4
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants reuse 2,0,1,1 beneath the final input byte instead of building another selector. Zero uses !!!~,; one uses !!~!~,. Nested leaves unchanged. Chars and commands 4n+5/6: n=7 36/37->33/34 (8.2%), n=8 40/41->37/38 (7.4%), n=12 56/57->53/54. n=8 written workspace 104/108->98/98 bits; native bound 11n+bl(4n+5+b)+bl(n). n=3 corpus chars 44743->44737. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute in default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins unchanged, global resource caps unchanged. Owned read-first checks preserve exact input count and following byte."
+
+[ablations.trick_prototype_20261101_final_bit_leaf]
+arity = 8
+saving = 22.358354
+verdict = "kept: only opposite bottom leaves print the final input bit (17 chars) or its complement (23); the attachment's wider constant-half shortcut prints before ignored inputs and is rejected by a read-first positive control. On 100 random tables per n=7,8, one Random(7) stream, characters 323900->250592 (22.63%) and 647087->502409 (22.36%); no table grows. All rows, 76800 paired old/new executions. All tables/rows n<=3 pass; n=3 total 44737->33019 chars. Named functions, complements, ignored suffixes and random controls n=4..8 execute with wrong-table controls. n=4 parity 586->370 chars. Source <=39T and workspace <=32n+bl(L)+bl(n)+13 stay valid. Execution worst tightens 26n+9->26n-3: the inverted bottom pair takes 23 commands, each enclosing one arm adds at most 26; all-ones except the final zero reaches it. Root constants unchanged. Owned regressions enforce reads before output and preserve the following byte."

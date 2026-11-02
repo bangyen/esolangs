@@ -40,6 +40,7 @@ tables = "30 random at n<=8, 20 at n=9..10; parity, majority, and, or, thr3 with
 verdict = "replaced by a rule, 2026-10-30: the race (min of the plain tree and the complement's, counting down and closing with += 49) saved 0.72% on 200 random tables at n=8, 0.46% at n=10, but 26-29% on OR and NAND at n=10 (410 -> 303, 411 -> 293). Per the bar's named-function clause the race goes and a rule for that family stays: build the complement when ones outnumber zeros. The rule keeps every named gain (OR, NAND, thr2 662 -> 563, thr3 853 -> 779) except !majority at n=9 (859 vs 852), and saves 0.48% at n=8, 0.36% at n=10 on random; it builds one tree instead of two"
 
 [audits]
+trick_prototype = 2026-11-01
 blind_reimplementation = 2026-10-29
 plain_rewrite = 2026-10-29
 
@@ -49,3 +50,8 @@ saving = 18.2
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole-constant folding. Reuse read cell a and leave answer b untouched until its literal add and write. Two cells suffice; an unbounded range needs neither wrap mode nor overflow handling. Exactly 8n+48 chars, n+2 commands, and 12+bl(n+2)+bl(n) written bits. n=8 137 -> 112 chars; n=12 178 -> 144. The n=3 corpus is 39357 -> 39327 chars; rendered area stays 81207. Each language passed 5656 paired before/after row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced constant scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions verify exact resources, every read before output and an unread sentinel."
+
+[ablations.trick_prototype_20261101_arithmetic_arms]
+arity = 8
+saving = 18.246665
+verdict = "rejected: straight-line bit arithmetic for leaf/flag arms, with revised sharing costs and one reserved compiler cell, passes 76800 paired all-row executions on 100 random tables per n=7,8 (one Random(7) stream), without table growth. Characters 101364->85378 (15.77%) and 169209->138334 (18.25%); n=3 total 39327->36597. A larger-arity probe disproves sustained savings: ten tables per n=9..14 give 19.14,19.22,20.48,20.90,21.05,21.10%; three per n=15..18 give 24.04,18.87,10.95,7.96%. Each larger table ran old/new rows 0,1,floor(T/3),T-1; Random(184900) streams for each sweep. The fixed n=7,8 corpus misses the 20% declining gate. No arbitrary arity cap or candidate fallback; shipped generator, bounds and pins unchanged."

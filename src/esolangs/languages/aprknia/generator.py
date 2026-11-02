@@ -8,12 +8,14 @@ Nothing is ever dropped: loops test only the top, every piece pushes the
 values it uses, and the garbage below is never read.
 
 Size:
-    O(T) in the tree's nodes; n=4 parity: 586 chars.
+    O(T) in the tree's nodes; n=4 parity: 370 chars.
     Root constants: 4n + 5/6 chars and commands.
 
 Decisions:
     Leaves print with selector 2, not 1: the integer 0 or 1 costs at most
     the 9-command build, against building 48 or 49 from ones for a byte.
+    Opposite bottom leaves print the final bit directly, inverting for 10.
+    Only the final read may print: ignored suffix inputs must come first.
     Constant spans and ignored inputs read with ``11*,``: the 0 that
     ``11*`` leaves on top is the selector, so no parity is needed.
 """
@@ -51,6 +53,10 @@ def aprknia(truth_table: str) -> str:
         if constant(lo, hi):
             left = (hi - lo).bit_length() - 1
             return _SKIP * left + _LEAF[truth_table[lo]]
+        if hi - lo == 2:
+            # This is the final read: printing here cannot precede ignored inputs.
+            invert = "1~*!!!" if truth_table[lo] == "1" else ""
+            return _READ + invert + "11*!!!!,"
         mid = (lo + hi) // 2
         zero, one = build(lo, mid), build(mid, hi)
         if zero == one:

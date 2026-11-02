@@ -15,6 +15,10 @@ def test_every_row_prints_its_answer(table: str) -> None:
         _check_constants()
     n = len(table).bit_length() - 1
     program = esolangs.generate("Chicken", table)
+    # Missing characters are false; arithmetic coercion would produce NaN.
+    for prefix in ("", "0", "1"):
+        row = int(prefix.ljust(n, "0"), 2)
+        assert esolangs.run("Chicken", program, stdin=prefix, timeout=5) == table[row]
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Chicken", bits)
