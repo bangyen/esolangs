@@ -63,12 +63,14 @@ class TestEvalBoolean:
         from esolangs.generation.helpers import permute_truth_table
         from esolangs.languages import generators
         from esolangs.languages.eval.generator import _eval_ordered
+        from esolangs.languages.eval.tests.ablations import ablate
 
         # Staging pushes X0 first, so the free arrangement's split order is
         # the reversal -- the no-ops build is not the identity permutation.
         free = tuple(reversed(range(3)))
         for value in range(256):
             table = format(value, "08b")
+            assert generators.eval(table) == ablate(table, "default")
             dispatched = len(generators.eval(table))
             staged = len(_eval_ordered(permute_truth_table(table, free), ""))
             assert dispatched == staged - (3 if len(set(table)) == 1 else 0), table
@@ -199,24 +201,26 @@ class TestEvalBoolean:
         table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
         template = generators.eval(table)
         # The template is the exact shape of every program it fills to.
-        assert len(template) == len(self.instantiate(template, [0] * n)) == 192
+        assert len(template) == len(self.instantiate(template, [0] * n)) == 167
         for combo in range(2**n):
             bits = row_bits(combo, n)
             got = self.run_eval(self.instantiate(template, bits))
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_two_stack_build_computes_its_table(self) -> None:
-        """From n=4 the staged inputs are three wide and every row still answers."""
+        """The new cutoff keeps one-stack n4/5 and two-stack n6/7 correct."""
         from esolangs.languages import generators
 
         for table in (
             "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**5)),
             "0" * 31 + "1",
             "0110100110010110",
+            "".join(str(i.bit_count() % 2) for i in range(64)),
+            "0" * 127 + "1",
         ):
             n = len(table).bit_length() - 1
             template = generators.eval(table)
-            assert template.count(TEMPLATE_CHAR) == 3 * n
+            assert template.count(TEMPLATE_CHAR) == (3 if n >= 6 else 2) * n
             for combo in range(2**n):
                 program = self.instantiate(template, row_bits(combo, n))
                 assert self.run_eval(program) == table[combo], (table, combo)

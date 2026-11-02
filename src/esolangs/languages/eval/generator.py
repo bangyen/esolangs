@@ -1,20 +1,19 @@
 """Eval Boolean program generator: a literal table halved once per input.
 
-The table's bits are pushed on one stack and each input halves it (a zero
-discards the top half; a one reverses, discards, reverses back).  The halves
-are `;` runs totalling T/2 + T/4 + ... < T, shared by both branches by
-duplicating the input.
+The table is stored in Gray order. A zero discards the top half; a one
+reverses then discards it, leaving that half reversed. Carried reversals
+complement the lower index bits, which the Gray layout compensates. Each
+halving consumes its input copy without a restoring reversal.
 
-From n = 4, when enough inputs are essential, the top input selects a stack
-instead of a half: the lower half goes on one stack and the upper on the
-other, every input is staged on both, and a conditional `~` leaves the chosen
-half exposed.  The first halving's T/2 discards become n-1 copy discards.  A
-one on the second stack costs `0+` (`^` extends a run), since `` ` `` pushes
-0 there.
+When enough inputs are essential (from n=6), the top input selects a stack:
+the lower half goes on one stack and the upper on the other. Each half has
+its own Gray layout. Every input is staged on both stacks, and a conditional
+``~`` exposes the chosen half. A one on the second stack costs ``0+``;
+``^`` extends a run, since backtick pushes zero there.
 
 Size:
-    About 1.75T chars from n=4 (2T below), no subtrees to fold or share;
-    n=10 random 1847: 1,814 chars, n=16 and: 98,540 chars.
+    About 1.75T chars from n=6 (2T below), no subtrees to fold or share;
+    n=10 random 1847: 1,754 chars, n=16 and: 98,450 chars.
     Constants: n + 2 chars, n + 3 commands including frame completion.
 """
 
@@ -58,9 +57,9 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
         return TEMPLATE_CHAR * n + ("0" if truth_table[0] == "0" else "`") + "."
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))
     used = essential_inputs(table, n)
-    # Never longer than the one-stack build: it saves 2**(k-2) - runs - 2n + 5
-    # >= 0 when 2**k >= 8n - 20 (k essential inputs, top one among them).
-    if n >= 4 and 0 in used and 2 ** len(used) >= 8 * n - 20:
+    # With carried orientation, the two-stack saving is R/2-runs-2n-1.
+    # At most R/4 one-runs makes R>=8n+4 sufficient, without a program race.
+    if 0 in used and 2 ** len(used) >= 8 * n + 4:
         return _eval_dual(table, used, n)
     return _eval_ordered(table, "")
 
@@ -68,7 +67,7 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
 def eval_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the per-input pair: three wide in the two-stack build."""
     # Only the two-stack build holds ``~;~?~``; the one-stack drains are
-    # followed by ``~^=~?*`` or ``.``.
+    # followed by ``~=~?*`` or ``.``.
     clean = template.replace("\n", "")
     if (
         len(clean) == n + 2
@@ -80,11 +79,17 @@ def eval_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return ((DUAL_PAIR if dual else PAIR),) * n
 
 
+def _gray_order(table: str) -> str:
+    """Compensate prefix-XOR orientation by storing table[Gray(i)] at i."""
+    # [ablations.trick_prototype_20261102_orientation_carry]
+    return "".join(table[i ^ (i >> 1)] for i in range(len(table)))
+
+
 def _eval_dual(table: str, used: list[int], n: int) -> str:
     """Emit the two-stack lookup: the top input picks the stack holding its half."""
     reduced = read_at(table, used, n)
     half = len(reduced) // 2
-    lower, upper = reduced[:half], reduced[half:]
+    lower, upper = _gray_order(reduced[:half]), _gray_order(reduced[half:])
     out = ["".join("`" if bit == "1" else "0" for bit in lower), "~"]
     previous = "0"
     for bit in upper:
@@ -98,7 +103,7 @@ def _eval_dual(table: str, used: list[int], n: int) -> str:
             out.append("~;~")
             continue
         remaining //= 2
-        out.extend(("~^=~?*", ";" * remaining, "~=~?*"))
+        out.extend(("~=~?*", ";" * remaining))
     out.append(".")
     return "".join(out)
 
@@ -109,7 +114,7 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
     used = essential_inputs(truth_table, n)
     reduced = read_at(truth_table, used, n)
     bits = _EVAL_INPUT * n
-    values = "".join("`" if bit == "1" else "0" for bit in reduced)
+    values = "".join("`" if bit == "1" else "0" for bit in _gray_order(reduced))
     out = [bits, ops, values]
     remaining = len(reduced)
     used_set = set(used)
@@ -124,7 +129,7 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
                 out.append("~;~")
             continue
         remaining //= 2
-        out.extend(("~^=~?*", ";" * remaining, "~=~?*"))
+        out.extend(("~=~?*", ";" * remaining))
     out.append(".")
     return "".join(out)
 

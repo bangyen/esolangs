@@ -8,19 +8,20 @@ admitted = 2020-07-10T17:59:42-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "fixed reversed stack order selects the indexed row"
-scaling = "linear: worst 7T/4 + 15n - 5 characters past n = 3"
-execution = "linear: worst 7T/4 + 15n - 4 commands past n = 3: one per program character, then the final frame pop"
-workspace = "linear: worst 8L + T + 2n + 1 + bl(L) bits past n = 3: frame text and both stacks"
+scaling = "linear: worst S characters past n=3: Gray-indexed table halves"
+execution = "linear: worst L+1 commands past n=3: unwrapped L<=S; all-one setters skip nothing"
+workspace = "linear: at most 8L+T+2n+1+bl(L) bits past n=3: frame and stack ceiling"
+definitions = ["S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped)"]
 
 [generator_sizes]
-"00000001" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
-"00001100" = { commands = 40, commands_by_row = { "0" = 36, "1" = 36, "2" = 38, "3" = 38, "4" = 38, "5" = 38, "6" = 40, "7" = 40 }, source_units = 39 }
-"00110110" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
-"0110" = { commands = 35, commands_by_row = { "0" = 31, "1" = 33, "2" = 33, "3" = 35 }, source_units = 34 }
-"01101001" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
-"0110100110010110" = { commands = 83, commands_by_row = { "0" = 76, "1" = 77, "2" = 78, "3" = 79, "4" = 78, "5" = 79, "6" = 80, "7" = 81, "8" = 78, "9" = 79, "10" = 80, "11" = 81, "12" = 80, "13" = 81, "14" = 82, "15" = 83 }, source_units = 82 }
-"1101001101101101" = { commands = 83, commands_by_row = { "0" = 76, "1" = 77, "2" = 78, "3" = 79, "4" = 78, "5" = 79, "6" = 80, "7" = 81, "8" = 78, "9" = 79, "10" = 80, "11" = 81, "12" = 80, "13" = 81, "14" = 82, "15" = 83 }, source_units = 82 }
-"11111110" = { commands = 56, commands_by_row = { "0" = 50, "1" = 52, "2" = 52, "3" = 54, "4" = 52, "5" = 54, "6" = 54, "7" = 56 }, source_units = 55 }
+"00000001" = { commands = 38, commands_by_row = { "0" = 35, "1" = 36, "2" = 36, "3" = 37, "4" = 36, "5" = 37, "6" = 37, "7" = 38 }, source_units = 37 }
+"00001100" = { commands = 28, commands_by_row = { "0" = 26, "1" = 26, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 28, "7" = 28 }, source_units = 27 }
+"00110110" = { commands = 38, commands_by_row = { "0" = 35, "1" = 36, "2" = 36, "3" = 37, "4" = 36, "5" = 37, "6" = 37, "7" = 38 }, source_units = 37 }
+"0110" = { commands = 23, commands_by_row = { "0" = 21, "1" = 22, "2" = 22, "3" = 23 }, source_units = 22 }
+"01101001" = { commands = 38, commands_by_row = { "0" = 35, "1" = 36, "2" = 36, "3" = 37, "4" = 36, "5" = 37, "6" = 37, "7" = 38 }, source_units = 37 }
+"0110100110010110" = { commands = 61, commands_by_row = { "0" = 57, "1" = 58, "2" = 58, "3" = 59, "4" = 58, "5" = 59, "6" = 59, "7" = 60, "8" = 58, "9" = 59, "10" = 59, "11" = 60, "12" = 59, "13" = 60, "14" = 60, "15" = 61 }, source_units = 60 }
+"1101001101101101" = { commands = 61, commands_by_row = { "0" = 57, "1" = 58, "2" = 58, "3" = 59, "4" = 58, "5" = 59, "6" = 59, "7" = 60, "8" = 58, "9" = 59, "10" = 59, "11" = 60, "12" = 59, "13" = 60, "14" = 60, "15" = 61 }, source_units = 60 }
+"11111110" = { commands = 38, commands_by_row = { "0" = 35, "1" = 36, "2" = 36, "3" = 37, "4" = 36, "5" = 37, "6" = 37, "7" = 38 }, source_units = 37 }
 
 [catalogue]
 sharing_exempt = "one literal table halved by position"
@@ -45,9 +46,10 @@ verdict = "kept: a constant's ignored inputs are not drained — no halving step
 [ablations.two_stack_split]
 saving = 13.8
 arity = 8
-verdict = "kept as a rule, not a race: from n=4, with the top input essential and 2^k >= 8n-20 essential inputs (never longer than the one-stack build), the lower half of the table goes on one stack and the upper on the other, each input is staged on both (`0^=`), and `~;~?~` pops the top input's copies and leaves the chosen half exposed; n-1 copy discards replace the first halving's T/2. A one costs `0+` on the second stack (`` ` `` pushes 0 there), `^` extends a run. Measured against the one-stack build over Random(9000+1000n+s), 200 tables: random 3.2% / 11.2% / 13.8% at n=4 / 7 / 8 (20 tables at n=9..10: 15.6% / 16.9%); n=8 parity 12.0%, majority 15.8%, and / or 18.8%, thr3 18.0% (n=7: 9.5 / 13.0 / 15.6 / 14.4). Every row of the 300 random tables at n=4..6 and 100 at n=7..8 run, plus the named ones and 240 ignored-input tables at n=4..7 (88,880 rows); a wrong-table program fails the check. Never longer than the one-stack build over all 65,536 tables at n=4 and 1,500 ignored-input tables at n=4..8. Reordering the staged inputs to move the cheapest top input in (a race) was not built"
+verdict = "kept after orientation-carry repricing: R>=8n+4 now makes it never longer than the carried one-stack build; current generic7/8 marginal saving10.7754%/13.8609% on200 tables, above10%. Historical restoring-build evidence follows. Kept as a rule, not a race: from n=4, with the top input essential and 2^k >= 8n-20 essential inputs (never longer than the one-stack build), the lower half of the table goes on one stack and the upper on the other, each input is staged on both (`0^=`), and `~;~?~` pops the top input's copies and leaves the chosen half exposed; n-1 copy discards replace the first halving's T/2. A one costs `0+` on the second stack (`` ` `` pushes 0 there), `^` extends a run. Measured against the one-stack build over Random(9000+1000n+s), 200 tables: random 3.2% / 11.2% / 13.8% at n=4 / 7 / 8 (20 tables at n=9..10: 15.6% / 16.9%); n=8 parity 12.0%, majority 15.8%, and / or 18.8%, thr3 18.0% (n=7: 9.5 / 13.0 / 15.6 / 14.4). Every row of the 300 random tables at n=4..6 and 100 at n=7..8 run, plus the named ones and 240 ignored-input tables at n=4..7 (88,880 rows); a wrong-table program fails the check. Never longer than the one-stack build over all 65,536 tables at n=4 and 1,500 ignored-input tables at n=4..8. Reordering the staged inputs to move the cheapest top input in (a race) was not built"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -57,3 +59,25 @@ saving = 44.4
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical constant folding and minimal spelling, exempt. Root constants stage every input on the active stack with the uniform one-character pair 0/backtick, then push and print the answer. Other templates retain their two/three-character pairs. Chars n+2, commands n+3 including frame completion: n=7 16->9 (43.8%), n=8 18->10 (44.4%), n=12 26->14. n=8 commands 19->11, written workspace 158->93 bits. n=3 corpus chars 13338->13332. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned IO/template checks verify input use before output and preserve the following record."
+
+
+[ablations.trick_prototype_20261102_discard_runs]
+arity = 8
+saving = 8.657682752390272
+seed = "Random(9000+1000n+s).choice"
+tables = 200
+verdict = "rejected: raw quoted-pop repetition consumes its saved program string in the first nested call, then ! receives an integer and raises HaltError. Direct32-pop control and a full n7 lookup both fail. A valid repair parks the literal on the other stack and evaluates ~;...;~; ^! repeats preserve the parked copy, the last ! consumes it, and a final ~ returns to the table. Native direct runs1..256 from both active stacks preserve the other stack's sentinel. Even the scratch exact arithmetic minimum over block size/repetition count saves only3.5664%/8.6577% at7/8 (61686->59486,106264->97064), failing the fixed10% window. It is an optimistic pricing oracle, not a production search. Later9/10 savings14.2387%/18.7885% cannot move the window. No table grows in the judged corpus or exhaustive4 check. N3 unchanged13332chars/102944commands; nested eval does not improve execution.4040 valid native lookup rows, plus512 direct pop controls; literals wrap intact. No discard compression ships."
+
+[ablations.trick_prototype_20261102_orientation_carry]
+arity = 8
+saving = 7.914251298652408
+seed = "Random(9000+1000n+s).choice"
+tables = 200
+verdict = "kept by the execution gate: exhaustive three-input commands102944->71264 (30.7740%), with no table slower or larger; source13332->9012. This exceeds both the5% no-regression execution gate and25% command-reduction alternative. Generic7/8 source61686->54427 (11.7677%) and106264->97854 (7.9143%) declines below20%, so it is not admitted by size. Each halving moves its input once with ~=~?*, drops the restoring reversal, and stores table[Gray(i)] at physical i. Carried orientation makes the physical index the prefix XOR of essential inputs; Gray(i)=i^(i>>1) inverts it. One-stack tables get one Gray layout, dual tables one per half; ignored inputs retain their drains. There are no new eval frames, literal programs, setters or old-program min fallback. The dual saving against carried one-stack is R/2-one_runs-2n-1; since one_runs<=R/4, the guard becomes R>=8n+4, not the old8n-20. Keeping the old guard would emit65chars for parity at4 when the carried one-stack needs60. Source worst is2T+7n through5,7T/4+9n+1 from6, reached by full parity. Execution is at most one step per character plus frame completion, and all-one setters reach L+1. Workspace retains the original ceiling but honestly drops exactness for the new one-stack regimes.83280 final native rows include all200 judged tables/all rows and every small table/row, plus4..6 random all rows. Independent ablation reconstructs old/new bytes on736 tables. Undoing only Gray order gives1 instead of0 on table0001,row1. Exhaustive65536 four-input source checks grow no table. Native medians over twenty tables/all rows, three repeats: n7 .693824->.620137s (10.6% faster), n8 2.738011->2.548575s (6.9% faster). Generation medians over twenty tables, eleven repeats, n8/10/12: .001114/.004141/.015901 -> .001412/.005437/.021441s (+26.7/31.3/34.8%). The extra Gray pass remains O(T)."
+
+[ablations.trick_prototype_20261102_upper_half_role]
+arity = 8
+saving = 0.3961830911691666
+seed = "Random(9000+1000n+s).choice"
+tables = 200
+verdict = "rejected both variants. Swapping halves permits the four-character mirrored selector ;~?~, one shorter than ~;~?~. Always swapping grows47/74 of200 tables at7/8; choosing old/swapped by emitted length saves only0.6241%/0.3962%, declining far below20%. The prototype recognizes the new selector; existing eval_setters alone would wrongly return two-wide pairs. Complementing the upper half can be repaired with ?~~backtick before output: XOR the selected bit with the active stack index. It adds four characters; complemented one-run and zero-run counts differ by at most one, so it always grows by at least three characters when active. All200 judged tables grow; choosing old/complemented changes none. N3 corpus/commands unchanged. Each of the always/choice role variants and complemented/choice variants has4040 correct native rows. No swapped selector, marker detection, upper complement or extra candidate ships; these gains are not bundled with orientation carry."

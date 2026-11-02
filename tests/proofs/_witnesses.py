@@ -478,7 +478,7 @@ def _low_one(n: int) -> str:
 
 
 def _eval_alternating_upper(n: int) -> str:
-    """Parity below, ``1010..`` above in stack order; every input essential."""
+    """Parity below, ``1010..`` above before Gray carrying; every input essential."""
     half = 1 << n - 1
     stacked = _parity(n - 1) + "10" * (half // 2)
     return permute_truth_table(stacked, tuple(reversed(range(n))))
