@@ -24,6 +24,7 @@ they are recorded.
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import signal
 import sys
@@ -91,6 +92,23 @@ class Runner:
         self.terminating = facts.contract.answer_mode == "termination"
         self._module: object | None = None
         self._module_tried = False
+        self._warm()
+
+    def _warm(self) -> None:
+        """Run one trivial program untimed, before any timed row.
+
+        A language's first ``esolangs.run`` in a fresh process pays
+        its lazy load -- measured 20-60 ms against 0.2-0.4 ms steady
+        for FALSE (2026-11-02).  The miner's screen tier bounds a row
+        at 50 ms, so an unwarmed runner charges that load to the
+        first candidate it scores: weekly CI failed
+        ``test_score_false_shipped_and_wrong`` with timeouts=1 in
+        three consecutive runs while the shipped program's rows take
+        under a millisecond.  Any outcome here is fine -- only the
+        loading matters -- so every exception is swallowed.
+        """
+        with contextlib.suppress(Exception):
+            esolangs.run(self.name, "", timeout=1.0)
 
     def answer_row(
         self,

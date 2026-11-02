@@ -115,6 +115,13 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
             if esolangs.describe(name)["boolean_generator"]
             for table in control_tables(name)
         ]
+        # A layout switch's parity table can coincide with one of the
+        # language's control tables (Streetcode's switch at 4 inputs is
+        # the standard parity control); the control pass above already
+        # executed every row of it, so measuring it again here would
+        # only duplicate the (language, table) record this sweep
+        # promises to emit once -- the timings snapshot rejects those.
+        measured = {(record["language"], record["truth_table"]) for record in records}
         records.extend(
             measure(
                 name,
@@ -126,6 +133,7 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
             )
             for name in BOUNDARIES
             for table in boundary_tables(name)
+            if (name, table) not in measured
         )
     for record in records:
         failed = next(
