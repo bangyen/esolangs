@@ -35,17 +35,58 @@ class TestParameterizedBack:
 
         return _fill_back(tpl, bits)
 
-    def test_program_length_is_the_same_for_every_input(self) -> None:
-        """Both bits cost one command, so the size reveals nothing."""
-        from esolangs.languages import generators
-        from tests.generators.fills import fill
+    @pytest.mark.medium
+    def test_constant_embedding_keeps_its_resource_bounds(self) -> None:
+        from esolangs import generate, instantiate, read_answer
+        from esolangs.debugger import make_vm
+        from esolangs.languages.back.proof_formulas import execution, workspace
+        from scripts.benchmark import WrittenState
+        from tests.proofs.deep.execution import run_to_answer
 
-        _fill_back = fill("Back")
+        for n in (1, 2, 3, 6, 9, 12):
+            for bit in "01":
+                for width in (None, 1):
+                    template = generate("Back", bit * (1 << n), width=width)
+                    sizes = set()
+                    for row in range(1 << n) if n <= 3 else (0, (1 << n) - 1):
+                        source = instantiate("Back", template, row_bits(row, n))
+                        sizes.add(len(source))
+                        machine = make_vm("Back", source)
+                        written = WrittenState(machine.snapshot())
+                        steps = run_to_answer(
+                            machine, cap=execution(n, template), sample=written.sample
+                        )
+                        assert steps is not None
+                        machine.step()  # Back dumps on the post-halt step.
+                        written.sample(machine.snapshot())
+                        assert read_answer("Back", machine.output) == bit
+                        assert written.bits <= workspace(n, template)
+                        if width is None:
+                            if row == 0:
+                                assert steps + 1 == execution(n, template)
+                            assert written.bits == workspace(n, template)
+                    assert len(sizes) == 1
 
-        for n in (1, 2, 3):
-            template = generators.back(format(0, f"0{2**n}b"))
-            sizes = {len(_fill_back(template, row_bits(c, n))) for c in range(2**n)}
-            assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
+        table = "0" * 63 + "1"
+        template = generate("Back", table)
+        assert template.startswith("-")  # a nonconstant loader, not a flat constant
+        commands = bits = 0
+        for row, expected in enumerate(table):
+            source = instantiate("Back", template, row_bits(row, 6))
+            machine = make_vm("Back", source)
+            written = WrittenState(machine.snapshot())
+            steps = run_to_answer(
+                machine, cap=execution(6, template), sample=written.sample
+            )
+            assert steps is not None
+            machine.step()
+            written.sample(machine.snapshot())
+            assert read_answer("Back", machine.output) == expected
+            commands = max(commands, steps)
+            bits = max(bits, written.bits)
+        assert (commands, bits) == (69, 22)
+        assert commands <= execution(6, template)
+        assert bits <= workspace(6, template)
 
     def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:
         """A one-edge onto an equal zero side draws no rows, and still answers."""
