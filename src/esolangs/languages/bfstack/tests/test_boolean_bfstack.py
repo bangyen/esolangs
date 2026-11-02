@@ -57,6 +57,20 @@ class TestBfstack:
             bits = [str((row >> i) & 1) for i in range(8, -1, -1)]
             assert run_bfstack(program, bits) == table[row], row
 
+        rng = random.Random(9)
+        dense = "".join(rng.choice("01") for _ in range(512))
+        # Nine essential inputs exceed one byte block; the tenth is ignored.
+        # Both halves still need branching, reaching the recursive discard.
+        table = dense * 2
+        program = boolean.bfstack(table)
+        assert program.startswith(",<")
+        for row in range(1024):
+            bits = list(f"{row:010b}")
+            stdin = esolangs.encode_inputs("BFStack", list(map(int, bits))) + "7"
+            assert (
+                esolangs.run("BFStack", program + ",.", stdin=stdin) == table[row] + "7"
+            )
+
     @pytest.mark.medium
     def test_the_last_eight_input_row_does_not_wrap_to_zero(self) -> None:
         """Index 256 previously skipped the decoder's outer loop."""

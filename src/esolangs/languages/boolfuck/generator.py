@@ -408,9 +408,6 @@ def _boolfuck_tree(truth_table: str) -> str:
     """Emit the flip-only decision tree over the stored bits."""
     n = _validate_truth_table(truth_table)
     weights, projected = input_weights(truth_table, n)
-    if not any(weights):
-        # A constant table keeps every input: its leaf needs a tree to hang on.
-        weights, projected = [1] * n, truth_table
     essential = sum(map(bool, weights))
     # Cell 1 carries the answer's constant bits: every flag is 0 again there.
     out = _Emitter(result=2 * essential, carrier=1)

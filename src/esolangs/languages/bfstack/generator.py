@@ -156,8 +156,6 @@ def _bfstack_plain(truth_table: str) -> str:
     byte-indexed decoder runs.
     """
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _constant_leaf(n, truth_table[0])
     if _fits(truth_table, n):
         return _bfstack_small(truth_table, n)
     constant = constant_span_test(truth_table)

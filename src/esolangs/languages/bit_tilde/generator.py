@@ -108,7 +108,7 @@ def _lookup(truth_table: str, n: int) -> str:
 
 
 def _stride_lookup(used: list[int], table: str, n: int) -> str:
-    """Build the planted lookup, two cells an entry, including a constant."""
+    """Build the planted lookup, two cells per entry."""
     width = len(used)
     # Above the planted region (max 27, lowest entry 32) and even, so that the
     # reads stay in the lane whose jumps land in the zero one.
@@ -141,10 +141,8 @@ def _stride_lookup(used: list[int], table: str, n: int) -> str:
 
 
 def _block_lookup(used: list[int], table: str, n: int) -> str:
-    """Build the block lookup, including a one-entry constant table."""
+    """Build the block lookup for a nonconstant table."""
     width = len(used)
-    if not width:
-        table += table
     pairs = [
         (int(table[i]), int(table[i]) ^ int(table[i + 1]))
         for i in range(0, len(table), 2)
@@ -180,8 +178,6 @@ def _block_lookup(used: list[int], table: str, n: int) -> str:
             weight = 3 << (width - 2 - depth[i])
             prog.append("<" * 7 + ")>>~>~>>>>{" + "<" * weight + "}")
 
-    if not width:
-        prog.append("<{~>~<}>")  # a constant: copy ``e0`` into the sentinel
     prog.append("{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK)
     prog.append("<" * 17 + "(")
     return "".join(prog)
