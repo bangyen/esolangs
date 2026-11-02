@@ -1,12 +1,8 @@
-"""Taglate Boolean program generator: fixed queue slots halved by strided reduces.
-
-Rows are fixed queue slots the strided reduces walk, two characters for a 0 or
-a 1, so a constant half or repeat has nothing to fold or share.
+"""Taglate Boolean generator: select a printable nibble, divide, then take parity.
 
 Size:
-    O(T) slots, independent of the table's values; n=10 random 1847: 14,930
-    chars, n=10 parity: 14,930 chars, n=9 random 1847: 7,669 chars.  A table
-    ignoring inputs is built over its essential inputs only.
+    O(T) characters; n=10 random 1847: 4,454 chars, n=10 parity: 4,454
+    chars, n=9 random 1847: 2,673 chars. Ignored inputs use a smaller table.
 """
 
 from itertools import pairwise
@@ -27,20 +23,6 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
 
-def _reorder_tt(tt: str, n: int) -> str:
-    """Reorder truth table entries into the slot order the reduces expect.
-
-    Each entry sits in a value slot ``[0, s_i, 0, s_j, ...]``; an even
-    reduce must be able to drop an entire contiguous run of slots without
-    splitting a pair.  Sorting the input index ``i`` by ``(-(i >> 1),
-    i & 1)`` puts the 1-group of the current input first, then the 0-group,
-    with the two sub-cases of the next input adjacent inside each group.
-    That key is the pairs in reverse, each pair in place, written out
-    directly: O(2**n), no sort.
-    """
-    return "".join(tt[i : i + 2] for i in range(2**n - 2, -1, -2))
-
-
 def _half_select(pairs: int, ahead: int, n: int) -> str:
     """Branch on the front input, skip the kept half, drop the rejected one."""
     return (
@@ -59,39 +41,14 @@ def _even_reduce(pairs: int, retired: int, cells: int) -> str:
     """Reduce block: select half the value slots, keep every input cell.
 
     The queue holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then
-    two 48s, then the ``cells`` input cells, ``retired`` of them already
-    used.  The rotation brings the next input to the front; ``gy ... gz``
+    two nonzero sentinels, then ``cells`` data cells; ``retired`` precede
+    the next input.  The rotation brings the next input to the front; ``gy ... gz``
     branches on it so the ``e^pairs`` strides past the half of the value
     slots the input rejects; ``e^ahead`` skips the untouched half and
     ``f^pairs`` drops it.  The stride lands on a 0 slot only if ``ahead``
     is even.
     """
     return "e" * (2 * pairs + 2 + retired) + _half_select(pairs, cells - retired, cells)
-
-
-# Final select: the committed n==2 pattern.  Given the 8-cell
-# queue [0, v0, 0, v1, 48, 48, prev, curr] (v0/v1 the two candidate values,
-# prev/curr the two remaining inputs), it rotates curr and prev to the front,
-# drops the candidate the inputs reject, adds the surviving value to one of
-# the two 48s (48 + bit), and prints it with ``i``.
-_SEL1_N2: str = (
-    "e" * 7
-    + "gy"
-    + "e" * 3
-    + "gz"
-    + "e" * 3
-    + "gy"
-    + "e" * 3
-    + "gz"
-    + "ff"
-    + "gy"
-    + "e" * 4
-    + "gz"
-    + "e"
-    + "a"
-    + "e" * 4
-    + "i"
-)
 
 
 def _with_discards(reduced: str, used: list[int], n: int) -> str:
@@ -128,38 +85,40 @@ def _affine(truth_table: str) -> str:
 
 
 def _full_layout(truth_table: str, n: int) -> str:
-    """Program for a table that uses every input, ``n >= 2``.
-
-    The seed holds ``2n`` literal ``'0'`` constants ahead of the zero run.
-    Each read is followed by ``ee``, which parks two constants behind the
-    input, and a ``be`` turns ``[x, c, c']`` into ``[x - 48, c']``: every
-    input travels with a ghost cell, so the group ahead of the value slots
-    is ``2(n - level)`` cells at every level and every level is an even
-    reduce.  ``bb``/``bd`` interleave the reordered table into value slots
-    ``[0, s0, 0, s1, ...]`` behind the inputs.  The tail reshapes the queue
-    into the 8-cell layout ``_SEL1_N2`` selects on.
-    """
-    seed = "0" * (2 * n + 2 ** (n + 2) + 2)
-    ordered = _reorder_tt(truth_table, n)
-    selectors = "".join("bd" if c == "1" else "bb" for c in ordered)
-    prefix = "hee" * n + selectors + "ee" + "be" * n
-
-    select_parts = [
-        _even_reduce(2 ** (n - level), 2 * level, 2 * n) for level in range(n - 1)
+    """Select a printable four-bit leaf, then divide by its two input factors."""
+    leaves = 1 << (n - 2)
+    packed = [
+        sum(int(bit) << offset for offset, bit in enumerate(truth_table[i : i + 4]))
+        for i in range(0, len(truth_table), 4)
     ]
-    select_parts.append("e" * 6 + "f" * (2 * n - 4) + "efef")
-    select_parts.append(_SEL1_N2)
-
-    result: str = seed + "\n" + prefix + "".join(select_parts)
-    return result
+    # Powers of two never land on another input in a six-cell group.
+    # A two-cell group fails at 00000001, row 6: the stride hits the next 1.
+    ghosts = "0" + "\0" * 5
+    seed = ghosts * (n - 1) + "0\1\1" + "\0" + "0\0"
+    seed += "".join("\0" + chr(32 + value) for value in reversed(packed))
+    seed += " 0\1\3"
+    # The first n-2 bits keep the trailing/leading half for 0/1, hence
+    # reversed leaves; within each nibble the last two bits index low-first.
+    prefix = "heeeeee" * n + "e" * (2 * leaves + 4) + "beeeee" * n
+    reductions = "".join(
+        _even_reduce(leaves >> level, 2 + 6 * level, 6 * n + 2)
+        for level in range(n - 2)
+    )
+    # Keep [x,32,1,3,A,B,1,1,0,48]; discard retired bits and ghosts.
+    prune = "feefee" + "f" * (6 * n - 12) + "efffff" + "eeeeef"
+    # x-=32; D_A=1+3A; x/=D_A; D_B=1+B; x/=D_B.
+    divide = "b" + "ec" + "e" * 6 + "a" + "e" * 5 + "dc" + "e" * 4 + "aeedee"
+    # [q,0,48]: decrement q, toggle the accumulator, rotate 48. q<=15.
+    parity = "gyjjegzfai"
+    return seed + "\n" + prefix + reductions + prune + divide + parity
 
 
 def _taglate_raw(truth_table: str) -> str:
     """Build a Taglate program computing the given truth table.
 
     A table that ignores some inputs is emitted as the smaller table over
-    the inputs it uses, with the ignored ones read and discarded: a constant
-    table goes from 451 characters (n=4) to 7, ``11110000`` from 278 to 16.
+    the inputs it uses, with the ignored ones read and discarded. Constants
+    use one seed character, n reads and a print.
     """
     n = _validate_truth_table(truth_table)
 
@@ -254,8 +213,8 @@ def balance_taglate(_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Taglate",
     "taglate",
-    proof_execution=(execution, True, (3, 4, 5)),
-    proof_workspace=(workspace, True, (3, 4, 5)),
+    proof_execution=(execution, False, (3, 4, 5)),
+    proof_workspace=(workspace, False, (3, 4, 5)),
     category="queue_based",
     boolean=taglate,
     split=True,

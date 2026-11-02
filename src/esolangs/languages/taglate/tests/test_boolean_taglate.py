@@ -17,8 +17,8 @@ def run_taglate(program: str, inputs: list[str]) -> str:
 def test_execution_bound_is_one_form() -> None:
     from esolangs.languages.taglate.proof_formulas import execution
 
-    assert execution(4, "") == 282
-    assert execution(5, "") == 489
+    assert execution(4, "") == 339
+    assert execution(5, "") == 498
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])
@@ -58,6 +58,7 @@ class TestTaglate:
     @pytest.mark.medium
     def test_all_three_input_tables(self) -> None:
         """Every three-input truth table produces the right result."""
+        _check_packed_leaves()
         failures = 0
         for tt in witnesses(3):
             program = boolean.taglate(tt)
@@ -77,7 +78,7 @@ class TestTaglate:
         """A table that ignores inputs is emitted as the smaller table."""
         full = len(boolean.taglate("10010110"))  # depends on all three
         for table in ("11110000", "11001100", "10101010", "00000000"):
-            assert len(boolean.taglate(table)) < full // 8, table
+            assert 8 * len(boolean.taglate(table)) < full, table
 
     def test_gapped_dependencies_reduce_without_reordering_inputs(self) -> None:
         """Every n=3 function of inputs 0 and 2 uses the small program."""
@@ -106,7 +107,7 @@ class TestTaglate:
         """A dependency set of three in n=5 is built over three inputs."""
         table = "".join(bit * 4 for bit in "01101001")
         program = boolean.taglate(table)
-        assert len(program) == 225
+        assert len(program) == 197
         for combo in range(32):
             bits = [str((combo >> shift) & 1) for shift in (4, 3, 2, 1, 0)]
             assert run_taglate(program, bits) == table[combo], bits
@@ -215,3 +216,44 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_char() == ord("7")
+
+
+def _check_packed_leaves() -> None:
+    from esolangs.languages.taglate.generator import _taglate_raw
+    from esolangs.languages.taglate.interpreter import _Machine, run
+    from esolangs.languages.taglate.proof_formulas import execution, workspace
+    from esolangs.languages.taglate.tests.ablations import ablate
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    totals = [0, 0]
+    for value in range(256):
+        table = f"{value:08b}"
+        program = _taglate_raw(table)
+        assert ablate(table, "default") == program
+        baseline = ablate(table, "packed_leaves")
+        totals[0] += len(baseline)
+        totals[1] += len(program)
+        for row in range(8):
+            io = ScriptedIO(f"{row:03b}7")
+            machine = _Machine(program.splitlines(), io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                assert io.getvalue() == ""
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+            assert io.getvalue() == table[row]
+            assert io.reads == 3
+            assert io.past_end == 0
+            assert steps <= execution(3, program)
+            assert written.bits <= workspace(3, program)
+    assert totals == [53146, 46242]
+    # Reversing a leaf's low-first bit order must fail this asymmetric table.
+    program = _taglate_raw("0001")
+    seed, commands = program.split("\n")
+    mutant = seed.replace("(", "!") + "\n" + commands
+    io = ScriptedIO("00")
+    run(mutant.splitlines(), io)
+    assert io.getvalue() != "0"

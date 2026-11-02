@@ -11,19 +11,19 @@ admitted = 2026-08-07T14:43:11-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-scaling = "linear: worst 14T+4n²+17n+24 characters past n = 2: fixed slots"
-execution = "linear: worst 10T+4n^2+11n+14 past n = 2"
-workspace = "linear: worst 24T+18n+12+bl(n)+bl(L-4T-6n-5) bits past n = 2"
+scaling = "linear: worst 3T+12n²+17n+12 characters past n = 2: nibble leaves"
+execution = "linear: at most 5T/2+12n²+11n+63 past n = 2"
+workspace = "linear: at most 3T+42n+24+bl(n)+bl(L) bits past n = 2"
 
 [generator_sizes]
-"00000001" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
-"00001100" = { commands = 93, commands_by_row = { "0" = 78, "1" = 78, "2" = 81, "3" = 81, "4" = 90, "5" = 90, "6" = 93, "7" = 93 }, source_units = 131 }
-"00110110" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
-"0110" = { commands = 92, commands_by_row = { "0" = 77, "1" = 80, "2" = 89, "3" = 92 }, source_units = 130 }
-"01101001" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
-"0110100110010110" = { commands = 282, commands_by_row = { "0" = 215, "1" = 218, "2" = 231, "3" = 234, "4" = 235, "5" = 238, "6" = 251, "7" = 254, "8" = 243, "9" = 246, "10" = 259, "11" = 262, "12" = 263, "13" = 266, "14" = 279, "15" = 282 }, source_units = 380 }
-"1101001101101101" = { commands = 282, commands_by_row = { "0" = 215, "1" = 218, "2" = 231, "3" = 234, "4" = 235, "5" = 238, "6" = 251, "7" = 254, "8" = 243, "9" = 246, "10" = 259, "11" = 262, "12" = 263, "13" = 266, "14" = 279, "15" = 282 }, source_units = 380 }
-"11111110" = { commands = 163, commands_by_row = { "0" = 128, "1" = 131, "2" = 142, "3" = 145, "4" = 146, "5" = 149, "6" = 160, "7" = 163 }, source_units = 223 }
+"00000001" = { commands = 162, commands_by_row = { "0" = 132, "1" = 132, "2" = 132, "3" = 132, "4" = 190, "5" = 174, "6" = 166, "7" = 162 }, source_units = 195 }
+"00001100" = { commands = 82, commands_by_row = { "0" = 98, "1" = 98, "2" = 90, "3" = 90, "4" = 86, "5" = 86, "6" = 82, "7" = 82 }, source_units = 107 }
+"00110110" = { commands = 158, commands_by_row = { "0" = 180, "1" = 156, "2" = 144, "3" = 136, "4" = 182, "5" = 170, "6" = 162, "7" = 158 }, source_units = 195 }
+"0110" = { commands = 81, commands_by_row = { "0" = 105, "1" = 93, "2" = 85, "3" = 81 }, source_units = 106 }
+"01101001" = { commands = 162, commands_by_row = { "0" = 156, "1" = 144, "2" = 136, "3" = 132, "4" = 194, "5" = 174, "6" = 166, "7" = 162 }, source_units = 195 }
+"0110100110010110" = { commands = 269, commands_by_row = { "0" = 227, "1" = 215, "2" = 207, "3" = 203, "4" = 271, "5" = 251, "6" = 243, "7" = 239, "8" = 273, "9" = 253, "10" = 245, "11" = 241, "12" = 293, "13" = 281, "14" = 273, "15" = 269 }, source_units = 320 }
+"1101001101101101" = { commands = 273, commands_by_row = { "0" = 247, "1" = 223, "2" = 211, "3" = 207, "4" = 283, "5" = 259, "6" = 247, "7" = 239, "8" = 261, "9" = 249, "10" = 241, "11" = 237, "12" = 313, "13" = 289, "14" = 277, "15" = 273 }, source_units = 320 }
+"11111110" = { commands = 158, commands_by_row = { "0" = 192, "1" = 160, "2" = 144, "3" = 136, "4" = 186, "5" = 170, "6" = 162, "7" = 158 }, source_units = 195 }
 
 [catalogue]
 sharing_exempt = "indexed table reduction, with no subtable branch"
@@ -49,7 +49,7 @@ saving = 27.3
 arity = 8
 seed = "random.Random(1847 + n)"
 tables = "5 random per n=7..8, 3 for balance; parity, and, or, majority and threshold (size does not depend on the table)"
-verdict = "kept: each input travels with a ghost cell, so the group ahead of the value slots is even at every level and every reduce is the cheap even one (the odd reduce's full-queue j/swap passes, 14P against 4P, are gone, and with them the odd-n spare cell, the j fold and its rotation); the read converts 48-bit to 0/1 with one b per input. Against the odd/even build it saves 27.0% / 27.3% / 28.7% / 29.0% at n=7 / 8 / 9 / 10 (2,918 to 2,131; 5,499 to 4,000; 10,760 to 7,669; 21,025 to 14,930), identical on parity, and, or, majority and threshold; balance area 1.4% / 1.0% at n=7 / 8 (the bootstrapped seed dominates it). The 2n ghost constants cost the smallest arities: n=2 grows 121 to 130, 10 of 16 tables, 30 of 256 at n=3 and 60 of 65,536 at n=4 (at most +13). Exhaustive n <= 4 (65,536 tables at n=4) ran on every row, 0 bad; random and projected tables at n=5..9 ran on every row, 0 bad; a wrong table fails"
+verdict = "superseded 2026-11-02 by packed leaves with six-cell input groups; historical measurements follow. Previously kept: each input travels with a ghost cell, so the group ahead of the value slots is even at every level and every reduce is the cheap even one (the odd reduce's full-queue j/swap passes, 14P against 4P, are gone, and with them the odd-n spare cell, the j fold and its rotation); the read converts 48-bit to 0/1 with one b per input. Against the odd/even build it saves 27.0% / 27.3% / 28.7% / 29.0% at n=7 / 8 / 9 / 10 (2,918 to 2,131; 5,499 to 4,000; 10,760 to 7,669; 21,025 to 14,930), identical on parity, and, or, majority and threshold; balance area 1.4% / 1.0% at n=7 / 8 (the bootstrapped seed dominates it). The 2n ghost constants cost the smallest arities: n=2 grows 121 to 130, 10 of 16 tables, 30 of 256 at n=3 and 60 of 65,536 at n=4 (at most +13). Exhaustive n <= 4 (65,536 tables at n=4) ran on every row, 0 bad; random and projected tables at n=5..9 ran on every row, 0 bad; a wrong table fails"
 
 [ablations.crossing_bracket]
 saving = 0.98
@@ -66,6 +66,7 @@ workload = "run"
 verdict = "kept"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
@@ -75,3 +76,18 @@ saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: already canonical read-then-literal paths. A one-character seed is the answer, h reads every input behind it and i prints the seed. Chars n+3 and commands n+1: n=7 10 chars, n=8 11 chars/9 commands/62 written bits, n=12 15 chars. Removing the seed prints the first input instead: opposite-valued witnesses fail for both answers. Native read-first controls pass. n=3 corpus chars 53146 unchanged. These controls reject the stripped candidates, not every possible construction. 1120 native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores and eight benchmark size/command pins unchanged. Global resource caps unchanged. Extend existing raw IO/template cases to verify exact reads, following records and no EOF probe without adding cases."
+
+[ablations.trick_prototype_20261102_packed_leaves]
+arity = 16
+saving = 78.23696377108129
+verdict = "kept: four low-first truth bits per printable 32+v cell; select reversed leaf slots with the first n-2 inputs, then divide by 1+3A and 1+B and take parity in at most15 native iterations. Six-cell input groups keep every power-of-two stride off other input cells; two-cell repair fails n3 table00000001 row6. No search, frozen programs, old-source race or cutoff. Full source3T+12n\u00b2+17n+12 vsold14T+4n\u00b2+17n+24; generation/source O(T). Commands <=5T/2+12n\u00b2+11n+63 and written workspace <=3T+42n+24+bl(n)+bl(L); both remain linear in T.20 seeded Random(1000*n+k).choice tables plus parity/and/or/threshold run all rows through8 and boundary rows9/10:28768 old/new native runs including bootstraps;4840 more verify full snapshots, exact reads, following7 and print-after-input. Native peaks7/8:376/619 written bits.396 independent default/disabled byte comparisons pass. N3 source53146->46242; commands278864->302304 (+8.406%). Generic source7:2131->1103 (48.2403%),8:4000->1684 (57.9%). Measure rising savings through16:78.2370%; fresh native boundary rows9..16. The exact saving fraction increases for n>=3 to11/14=78.5714%, so there is no later finite peak or declining tail. Three-run median native all-row20-table batches n7/8/9:2.13884/11.9428/81.4734s ->0.314570/0.890285/2.43186s. Eleven-build generation medians20tables0.392/0.653/1.308ms ->0.571/1.079/2.002ms (1.5-1.7x slower).42 width1/balanced native controls pass; parity balanced areas7:40755->1210,8:79600->1800 text cells. Swapped leaf bit order fires wrong-answer controls. Raw eight-bit literal seeds can contain structural LF; printable nibble packing is the working repair."
+
+[ablations.trick_prototype_20261102_literal_value_slots]
+arity = 8
+saving = 12.8
+verdict = "superseded by packed leaves, not stacked. Direct NUL/SOH slots need a2T+2 queue rotation missing from the proposal.5240 paired native runs and2184 complete prefix-state comparisons pass, including native bootstrap programs. Generic7/8 source saves12.0131%/12.8%; bootstrap text14.1628%/14.9832%. N3 source53146->49258. Control-character seed slots work; the required rotation reduces the claimed28% source saving. A wrong literal fires a native wrong-answer control."
+
+[ablations.trick_prototype_20261102_inputs_ahead_layout]
+arity = 8
+saving = 0.0
+verdict = "rejected raw layout: native n3 table00000001 row1 prints1 instead of0 after the first level loses the input-first arrangement. Direct cyclic-conjugation repair restores that arrangement after each level and executes508 rows across2..8 correctly, but adds exactly2n+6 source characters; return rotations cancel the proposed saving. These tests reject the supplied proposal and this repair, not every possible input-first construction."
