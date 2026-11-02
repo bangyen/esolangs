@@ -8,7 +8,7 @@ nested constant subtable reads its bits with bare ``B``, then prints ``iic+`` (0
 ``ici*`` (1); a last-level node prints ``b`` or ``1 - b`` (``b > 0``), and a
 node of two constants reads both bits, drops the last and prints that.
 Two-input tails use products, zero-on-true comparisons, or (-1) to the
-input sum. Full parity uses that sum directly; integer powers stay exact.
+input sum. Projected parity uses that sum directly; integer powers stay exact.
 
 Size:
     O(T), at most 4n + 4 steps; n=10 and: 136 chars, n=10 random 1847: 3,294 chars.

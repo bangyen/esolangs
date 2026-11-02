@@ -973,9 +973,14 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     # The last input ignored: n - 1 essential inputs can outrun all n.
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
     "1 + i": lambda n: (
-        *((_morse("1000", "0010", n), _one_i_swapped(n)) if n >= 2 else ()),
-        *_diagram_witness("one_i", n, 9, bottom=2),
-        *_diagram_witness("one_i", n, 9, "workspace_witness", bottom=2),
+        (
+            _morse("1000", "0010", n),
+            _one_i_swapped(n),
+            *_diagram_witness("one_i", n, top=27, bottom=2),
+            *_diagram_witness("one_i", n, top=27, name="workspace_witness", bottom=2),
+        )
+        if n >= 2
+        else ()
     ),
     "ArrowQueue": lambda n: (_low_one(n),),
     # The two-stack build's worst: a run of ones per pair in the upper half.

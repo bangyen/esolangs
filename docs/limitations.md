@@ -791,8 +791,6 @@ exact range (2026-10-23, counted from the ledger):
     at 19, XX multiplicity at 20), no rule found; at 21 the exhibited
     family's 98,929 pair slots cannot hold 131,072 places.  Reopens with a
     rule or a successor family.
-  - 1 + i workspace past n = 27: the n = 28 witness, ~1.7G characters, is
-    OOM-killed while generating here.
   - INTERCAL execution past n = 27 — n = 26 now executes end to end
     (sampled rows 0, 2^25 and 2^26 − 1 each produce the table's bit,
     and the priced snapshot equals the workspace bound at 12,091,691
