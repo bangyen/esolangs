@@ -51,10 +51,20 @@ def compare(
     current: dict[str, Any], history: list[dict[str, Any]]
 ) -> tuple[str, list[dict[str, Any]]]:
     """Return a Markdown report and history containing only the matching cohort."""
+    # A restored history can hold entries this snapshot shape predates or
+    # entries written by a differently shaped run (the 2026-11-02 weekly
+    # restored a list entry and crashed here).  History is advisory --
+    # timing changes never fail the gate -- so drop malformed entries
+    # instead of crashing on them.
     matching = [
         run
         for run in history
-        if all(run[key] == current[key] for key in ("environment", "controls"))
+        if isinstance(run, dict)
+        and all(
+            isinstance(run.get(key), dict)
+            for key in ("environment", "controls", "timings")
+        )
+        and all(run[key] == current[key] for key in ("environment", "controls"))
     ]
     lines = ["### Generator timing comparison", ""]
     if not matching:
@@ -103,6 +113,8 @@ def main() -> None:
         if args.history.exists()
         else []
     )
+    if not isinstance(history, list):
+        history = []
     report, updated = compare(current, history)
     args.report.write_text(report, encoding="utf-8")
     args.history.write_text(json.dumps(updated, indent=2) + "\n", encoding="utf-8")

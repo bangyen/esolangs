@@ -712,7 +712,11 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: INTERCAL at n = 14 and 15 measured 9.0 s and 10.8 s on CI (weekly
 #: runs of 2026-11-02) -- over the 3 s fast band, with the formulas
 #: themselves holding in both runs; n = 16 stayed inside the band.
+#: Circuit Diagram at n = 11 measured 7.6 s and 8.9 s on CI in two
+#: consecutive weekly runs (2026-11-02), again with the formula holding;
+#: a repeat overrun at that margin is the band, not a flake.
 _WITNESS_BAND = {
+    ("Circuit Diagram", 11): "medium",
     ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
     ("Back", 16): "medium",

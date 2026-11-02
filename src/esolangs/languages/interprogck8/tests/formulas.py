@@ -8,9 +8,6 @@ from esolangs.languages.interprogck8.generator import (
     _FREE as FREE,
 )
 from esolangs.languages.interprogck8.generator import (
-    _PERIOD as PERIOD,
-)
-from esolangs.languages.interprogck8.generator import (
     _RUNG as RUNG,
 )
 from esolangs.languages.interprogck8.generator import (
@@ -18,6 +15,9 @@ from esolangs.languages.interprogck8.generator import (
 )
 from esolangs.languages.interprogck8.generator import (
     _VALUE as VALUE,
+)
+from esolangs.languages.interprogck8.generator import (
+    _ZONE as ZONE,
 )
 from esolangs.languages.interprogck8.generator import (
     _arith as arith,
@@ -34,6 +34,9 @@ from esolangs.languages.interprogck8.generator import (
 
 #: Best options kept per layout state (distinct tables); 2 is as good as 13 to n = 12.
 _KEEP = 3
+#: The standard window period: ``_FREE`` code lines plus the flight zone.
+#: Test-only oracle geometry; the generator computes its period per plan.
+PERIOD = FREE + ZONE
 #: A window costs its 126 lines (2 characters each) and its closing rung's 11 extra.
 _WINDOW = 2 * PERIOD + len(RUNG) - 1
 

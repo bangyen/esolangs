@@ -138,7 +138,7 @@ def test_a_subtree_advances_at_most_two_to_the_h_minus_one_windows(n: int) -> No
 
     The recursion behind the scaling bound 226T + 224 (window count <= T/2).
     """
-    period = generator._PERIOD  # noqa: SLF001
+    period = generator._FREE + generator._ZONE  # noqa: SLF001
     seen: list[tuple[int, int]] = []
 
     class Plan(generator._Plan):  # noqa: SLF001

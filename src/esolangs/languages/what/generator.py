@@ -54,11 +54,10 @@ def what(truth_table: str) -> str:
     for start in range(0, len(truth_table), block):
         rows = truth_table[start : start + block]
         answer = 48 + int(rows[-1])
-        if high:
-            label = f"{start >> low:0{high}b}"
-            parts.append(f'65535["{label}":{_LOAD}.{answer},]')
-        else:
-            parts.append(f"{_LOAD}.{answer},")
+        # The loop runs only past the n <= _LOW_INPUTS return above, so
+        # high >= 1 always and every block carries its label.
+        label = f"{start >> low:0{high}b}"
+        parts.append(f'65535["{label}":{_LOAD}.{answer},]')
         # Last change point first: each row keeps its nearest write above.
         for row in range(len(rows) - 1, 0, -1):
             if rows[row] != rows[row - 1]:

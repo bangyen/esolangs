@@ -39,3 +39,19 @@
 "streetcode/generator.py" = [
     "arm: for i, segment in enumerate(segments): -> return canvas, origin",
 ]
+
+# In _preset_template a node's children equal its level default in both
+# slots or in neither: a single-slot match forces the node to be the
+# default itself (threshold needs coincide; parity children are swaps).
+"crement/generator.py" = [
+    "arm: if one != o0: -> if zero != z0:",
+    "arm: if zero != z0: -> body.append(f\"+J {cell} 1\")",
+]
+
+# backs < 2 iff the subtree id is < 2 (descending induction; rank values
+# are >= 3), so for a node >= 2 low == high < 2 never holds: skip gives
+# low = zb >= 2, and literal/one/branch give low != high or backs >= 2.
+"retrograde/generator.py" = [
+    "arm: if low == high and low < 2: -> backs[depth][k] = low",
+    "line: backs[depth][k] = low",
+]

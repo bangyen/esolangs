@@ -67,7 +67,6 @@ _SLOT = ["<", "NnNn", ">"]
 #: column is under the Q walker's landing at 82.
 _FREE = 40
 _ZONE = 86
-_PERIOD = _FREE + _ZONE
 _MAX_INPUTS = 40
 #: Smallest band holding three parity levels; floor52+n-3 must stay <=80.
 _PARITY_FREE = 52
@@ -101,7 +100,7 @@ def _columns(n: int, free: int = _FREE) -> list[int]:
     """Flight column by depth: the highest, strictly falling, whose body is no longer.
 
     The column ``free + n - 3 - depth`` is the floor.  A flight walks the
-    ``_PERIOD - 1 - column`` filler lines after its landing every window, so a
+    ``free + _ZONE - 1 - column`` filler lines after its landing every window, so a
     high column is cheap; 80 is the ceiling, a stop at 81 under the Q walker's
     landing at 82.
     """
