@@ -47,7 +47,7 @@ from esolangs.generation.helpers import (
     short_name,
 )
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.fargo.proof_formulas import execution
+from esolangs.languages.fargo.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
@@ -468,4 +468,5 @@ LANGUAGE = Language(
     # most-significant-first are its binary digits, so the 0,1 row of a
     # two-input table is the single line "1".
     proof_execution=(execution, False, (3, 7)),
+    proof_workspace=(workspace, False, (6,)),
 )

@@ -80,14 +80,30 @@ class TestBfstack:
             bits = [str((row >> i) & 1) for i in range(7, -1, -1)]
             assert run_bfstack(program, bits) == table[row], row
 
-    def test_encode_decode_structure(self) -> None:
-        """The program encodes the inputs, tests the zero rows, and prints."""
+    def test_generated_structure_and_written_payload(self) -> None:
+        """Program shape and the payload used by workspace proofs."""
         program = boolean.bfstack("1101")  # asymmetric: the weighted encoder
         assert program.startswith(">>+,")  # result cell, accumulator, first input
         assert program.count(",") == 2  # one read per input
         assert program.endswith("+" * 48 + ".")  # print 48 + result
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.bfstack(table)) <= set("+,-.<>[]"), table
+
+        from esolangs.languages.bfstack.generator import LANGUAGE
+        from esolangs.languages.bfstack.interpreter import _Machine
+        from esolangs.runtime.io import ScriptedIO
+
+        io = ScriptedIO("A")
+        machine = _Machine(",.", io)
+        machine.step()
+        machine.step()
+        assert machine.halted
+        assert io.getvalue() == "A"
+        state = machine.snapshot()
+        assert state[-1] > 0
+        assert LANGUAGE.payload is not None
+        assert LANGUAGE.payload(state) == (*state[:3], 0)
+        assert LANGUAGE.payload((*state[:-1], 100)) == LANGUAGE.payload(state)
 
 
 @pytest.mark.medium

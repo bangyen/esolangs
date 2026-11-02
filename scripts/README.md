@@ -20,6 +20,11 @@ checks, which `just test` runs for you.
 | `stale-figures` | `stale_figures.py` | rank measured figures by churn since |
 | `refresh-ci-timings` | `ci/shard.py` | merge CI timing artifacts |
 
+`python scripts/ci/generator_timings.py generator-timings.json --history
+.generator-timing-history.json --report generator-timing-report.md` compares
+successful sweeps within one environment and corpus. Weekly CI publishes the
+report; two successive increases of at least 20% are marked persistent.
+
 CI-only: `ci/release.py` (normalize and smoke a release, print its notes),
 `ci/shard.py` (test sharding).
 

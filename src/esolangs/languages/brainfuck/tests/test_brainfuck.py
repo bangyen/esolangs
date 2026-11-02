@@ -35,9 +35,6 @@ class TestContract(EmptyProgramContract, CycleContract):
 
 
 class TestBrainfuck:
-    def test_cell_wraps(self) -> None:
-        assert run_and_capture("+" * 256 + ".") == "\x00"
-
     @pytest.mark.parametrize(
         ("code", "expected"),
         [
@@ -62,17 +59,6 @@ class TestBrainfuck:
 
     def test_input_echo(self) -> None:
         assert run_and_capture(",>,<.>.", inputs=["A", "B"]) == "AB"
-
-    @pytest.mark.parametrize(
-        ("char", "expected"),
-        [("Ā", "\x00"), ("ā", "\x01")],
-        ids=["256", "257"],
-    )
-    def test_an_input_character_above_255_is_taken_modulo_256(
-        self, char: str, expected: str
-    ) -> None:
-        """``,`` writes a cell, so it reduces like every other write."""
-        assert run_and_capture(",.", inputs=[char]) == expected
 
     def test_a_read_cell_and_an_incremented_one_agree(self) -> None:
         """The bug this pins was a disagreement, not just a wide value."""

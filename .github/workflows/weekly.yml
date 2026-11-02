@@ -133,11 +133,18 @@ jobs:
         uv run python checks/check_generator_sizes.py
         --repeat 5 --timings generator-timings.json
 
+    - name: Compare generator timing history
+      run: |
+        uv run python scripts/ci/generator_timings.py generator-timings.json --history .generator-timing-history.json --report generator-timing-report.md
+        cat generator-timing-report.md >> "$GITHUB_STEP_SUMMARY"
+
     - name: Upload the timings
       uses: actions/upload-artifact@v7
       with:
         name: generator-timings
-        path: generator-timings.json
+        path: |
+          generator-timings.json
+          generator-timing-report.md
         retention-days: 90
 
     - name: Retain worker and verification logs

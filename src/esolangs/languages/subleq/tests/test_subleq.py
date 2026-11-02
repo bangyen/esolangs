@@ -75,6 +75,20 @@ def test_subleq_input_and_eof() -> None:
     with pytest.raises(EOFError):
         run_subleq(code, ScriptedIO())
 
+    from esolangs.languages.subleq.generator import LANGUAGE
+
+    io = ScriptedIO("A")
+    machine = _Machine("-1 9 3 9 -1 6 10 10 -1 0 0", io)
+    for _ in range(3):
+        machine.step()
+    assert machine.halted
+    assert io.getvalue() == "A"
+    state = machine.snapshot()
+    assert state[-1] > 0
+    assert LANGUAGE.payload is not None
+    assert LANGUAGE.payload(state) == (state[0], (), machine.ip, 0)
+    assert LANGUAGE.payload((*state[:-1], 100)) == LANGUAGE.payload(state)
+
 
 def test_subleq_truncated_instruction() -> None:
     with pytest.raises(HaltError):

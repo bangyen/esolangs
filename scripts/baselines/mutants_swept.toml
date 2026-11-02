@@ -3,6 +3,14 @@
 # equivalent.  ``rank`` counts a package unswept again once its generator code,
 # docstrings aside, differs from that commit's.  87463869c is the first commit
 # that records the older sweeps; each ran at or before it.
+# Bounded refresh 2026-11-02 at f35aa4023 plus the Fargo workspace fix:
+# six seeded probes each, not a replacement for the full-sweep revisions below.
+# ArrowQueue: five killed after an n=10 area regression; the slice-end survivor
+# inserts only blank suffix cells before later strips overwrite them, then
+# rstrip removes the excess. 1,037 folded layouts byte-identical at n=1..3,
+# heights 10,11,14,20; XOR and asymmetric controls executed.
+# Fargo: six killed after correcting the false literal's workspace bound
+# (18 written bits, not the old expression bound's -20 at n=6).
 [swept]
 a_painter_ant = "87463869c"
 abcdirection = "2d4927804"

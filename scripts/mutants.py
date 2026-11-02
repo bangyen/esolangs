@@ -12,8 +12,9 @@ harness's deadline tests, which no generator mutant can kill, and the
 xdist worker count comes from ``MUTANTS_WORKERS`` (default 4).
 
 Mutants edit source in place, so a sweep refuses to run outside a git
-worktree.  Caps: a run gets three times its baseline (60 s at least), the
-sweep a global budget, and a language three consecutive timeouts.  Records
+worktree.  Caps: a baseline gets 60 s; a mutant gets three times its baseline
+(60 s at least), always clipped to the remaining global budget. A language
+stops after three consecutive timeouts.  Records
 append to ``--out`` as JSON lines; add swept packages to
 ``mutants_swept.toml`` once triaged.  A failure that is only a
 duration-band flip (see ``_duration_flips``) never counts: a baseline
@@ -268,10 +269,26 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
     )
     with out.open("a", encoding="utf-8") as sink:
         for package in packages:
-            print(f"{package}: baseline test run (15 min cap)", flush=True)
+            remaining = budget - (time.monotonic() - began)
+            if remaining <= 0:
+                print("global budget spent before baseline")
+                return 0
+            print(
+                f"{package}: baseline test run ({min(60, remaining):g} s cap)",
+                flush=True,
+            )
             start = time.monotonic()
-            status, output = _run(_pytest(package, stop=False), 900)
+            status, output = _run(_pytest(package, stop=False), min(60, remaining))
             baseline = time.monotonic() - start
+            out.with_name(f"{out.stem}-{package}-baseline.log").write_text(
+                output, encoding="utf-8"
+            )
+            print(
+                f"{package}: baseline {baseline:.2f} s; {per_language} mutants "
+                f"priced at most {per_language * max(60, 3 * baseline):.1f} s "
+                "before global cap",
+                flush=True,
+            )
             flips = _duration_flips(output) if status == "killed" else None
             if status != "survived" and flips is None:
                 print(
@@ -286,7 +303,8 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 )
             timeout, streak = max(60.0, 3 * baseline), 0
             for mutant in candidates(package, per_language):
-                if time.monotonic() - began > budget:
+                remaining = budget - (time.monotonic() - began)
+                if remaining <= 0:
                     print("global budget spent")
                     return 0
                 if streak == 3:
@@ -297,7 +315,9 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 try:
                     path.write_text(_replaced(original, mutant), encoding="utf-8")
                     _clear_bytecode()
-                    status, output = _run(_pytest(package, stop=True), timeout)
+                    status, output = _run(
+                        _pytest(package, stop=True), min(timeout, remaining)
+                    )
                 finally:
                     path.write_text(original, encoding="utf-8")
                 flips = _duration_flips(output) if status == "killed" else None
