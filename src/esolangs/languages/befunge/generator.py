@@ -1,11 +1,11 @@
 """Befunge Boolean program generator: the grid is the lookup table.
 
-Reads one ``0``/``1`` integer token per input, folds them into a row index
-with Horner's rule, and ``g`` fetches the answer from a table the instruction
-pointer never walks: one cell per entry through seven inputs, six per cell from eight.
+Reads integer bits in order. Two essential inputs form the divisor while
+later inputs Horner-index a printable nibble; larger tables use six-bit cells.
+The instruction pointer never enters the data.
 
 Size:
-    O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 65
+    O(T) cells, O(n) executed commands, no branch or loop; n=4 parity: 31
     chars, n=10 random 1847: 335 chars, n=13 random 1847: 1,545 chars.
     Constants use 2n+3 cells/commands in one row, with
     2+bl(2n+2)+bl(2n-1) written bits. Narrow requests fold within 80x25.
@@ -137,6 +137,12 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         # The smallest projections take the natural layout (see the
         # cap's note); an explicit width keeps the wide build.
         return _natural_befunge(truth_table)
+    # Literal y=1 addresses only one 80-cell row, four truth bits per cell.
+    if 4 <= len(table) <= 4 * 80:
+        nibble = _one_row_nibbles(table, weights)
+        needed = max(map(len, nibble.split("\n")))
+        if width is None or width >= needed:
+            return nibble
     reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
     if len(table) > 1 << 10:
         return _packed_befunge(table, reads, width)
@@ -148,14 +154,46 @@ def befunge(truth_table: str, width: int | None = None) -> str:
             header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
             return "\n".join(header)
     plain = _plain_befunge(table, reads, width)
-    # Race the six-bit packed grid: its header costs more cells but the data
-    # takes a sixth of the rows, so it wins from n=8 (-40% area, -50% at n=9;
-    # tied at n=7, where the plain build stays) and never grows a table
-    # ([ablations.six_bit_packing]).
+    # Outside one-row feasibility, retain the six-bit/plain area race
+    # ([ablations.six_bit_packing]); historical default savings were 40%/50%
+    # at n=8/9. Eight essential inputs now take the nibble construction.
     packed = _packed_befunge(table, reads, width)
     if _wins(packed, plain):
         return packed
     return plain
+
+
+def _one_row_nibbles(table: str, weights: list[int]) -> str:
+    """Read two divisor bits, then index one printable-nibble data row."""
+    parts: list[str] = []
+    rank = 0
+    for weight in weights:
+        if not weight:
+            parts.append("&$")
+            continue
+        if rank == 0:
+            parts.append("&1+")
+        elif rank == 1:
+            parts.append("&3*1+*")
+        else:
+            parts.append("&" if rank == 2 else "2*&+")
+        rank += 1
+    if rank == 2:
+        parts.append("0")
+    header = "".join(parts) + "1g48*-\\/2%" + _END
+    count = len(table) // 4
+    # Exponent b0+2b1 reverses the high two table bits, not the later index.
+    data = "".join(
+        chr(
+            32
+            + int(table[i])
+            + 2 * int(table[2 * count + i])
+            + 4 * int(table[count + i])
+            + 8 * int(table[3 * count + i])
+        )
+        for i in range(count)
+    )
+    return header + "\n" + data
 
 
 def _constant(inputs: int, bit: str, width: int | None) -> str:
@@ -328,7 +366,7 @@ LANGUAGE = Language(
     "Befunge",
     "befunge",
     category="grid_based",
-    layout_switch=(7, 8),
+    layout_switch=(2, 7, 8, 9),
     random=True,
     generator_max_inputs=MAX_INPUTS,
     boolean=befunge,

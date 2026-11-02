@@ -1,4 +1,4 @@
-"""Befunge's emitted cells: 80 columns by r rows, a header row then the table."""
+"""Befunge default area across its one-row and general lookup regimes."""
 
 
 def _ceil(a: int, b: int) -> int:
@@ -6,15 +6,11 @@ def _ceil(a: int, b: int) -> int:
 
 
 def _cells(n: int, _: str) -> int:
-    """N = 80r: r = 1 + ceil(T/80) rows to n = 7, then packed from n = 8.
-
-    Below n = 7 the widest row is the header (5n + 28) or the 64-cell table.
-    From n = 8 the six-bit packed grid is smaller (it ties at n = 7).
-    """
-    if n == 1:
-        return 50  # the natural layout, 25 columns by two rows
+    """Worst natural projection/nibble row to eight, then an 80-column packed grid."""
     if n <= 7:
-        return (1 + _ceil(1 << n, 80)) * max(5 * n + 28, min(1 << n, 80))
+        return 2 * max(2 * n + 23, 4 * n + 10)
+    if n == 8:
+        return 128
     return 80 * (_ceil(5 * n + 64, 78) + _ceil(_ceil(1 << n, 6), 80))
 
 

@@ -222,11 +222,8 @@ def _codesick_chars_worst(n: int) -> str:
 
 # language-owners: ["Befunge"]
 def _befunge_worst(n: int) -> str:
-    """Parity of the top k inputs; k = 10 at n = 11, 12.
-
-    There an ignored input beats packing.
-    """
-    k = 10 if n in (11, 12) else n
+    """Projection to six, top-ten parity at eleven/twelve, full parity elsewhere."""
+    k = 1 if n <= 6 else 10 if n in (11, 12) else n
     return "".join(str((i >> (n - k)).bit_count() & 1) for i in range(1 << n))
 
 

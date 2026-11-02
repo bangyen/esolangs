@@ -46,27 +46,28 @@ def test_befunge_keeps_a_header_that_already_fits() -> None:
     _check_constants()
     table = "01101001"
     wide = befunge(table, 80)
-    # The natural build: one header row over the 4-wide table, unfolded.
-    assert len(wide.splitlines()) == 3
+    # The direct nibble lookup keeps its header over one data row.
+    assert len(wide.splitlines()) == 2
     assert befunge(table, 5) != wide
 
 
-def test_befunge_default_lays_the_table_at_the_grid_width() -> None:
-    # Candidate 20: the default path no longer tries the sqrt width.  From
-    # n=8 the packed grid wins the area race: two header rows, 43 data cells.
+@pytest.mark.medium
+def test_befunge_default_uses_a_single_nibble_data_row() -> None:
+    _check_one_row_nibbles()
+    # Eight inputs use sixty-four four-bit cells below a straight header.
     rows = befunge(_seeded(8)).splitlines()
-    assert len(rows) == 3
-    assert max(map(len, rows)) == 80
+    assert len(rows) == 2
+    assert max(map(len, rows)) == 64
 
 
-def test_the_packed_grid_wins_only_when_it_is_smaller() -> None:
-    # n=7 ties (240 cells each), so the plain build stays; n=9 packs.
-    assert befunge(_seeded(7)).count("\n") == 2
+def test_native_data_row_limit_switches_to_six_bit_packing() -> None:
+    # One-row nibbles through eight essential inputs; n=9 needs general packing.
+    assert befunge(_seeded(7)).count("\n") == 1
     assert not befunge(_seeded(7)).splitlines()[0].endswith("v")
     assert befunge(_seeded(9)).splitlines()[0].endswith("v")
 
 
-@pytest.mark.parametrize("width", [None, 1, 80, 1000])
+@pytest.mark.parametrize("width", [None, 1])
 def test_befunge_refuses_a_table_larger_than_the_torus(width: int | None) -> None:
     with pytest.raises(ValueError, match="at most thirteen inputs"):
         befunge("01" * 8192, width)
@@ -285,3 +286,47 @@ def _check_constants() -> None:
                 rows = befunge(bit * (1 << n), width).splitlines()
                 assert len(rows) <= 25
                 assert max(map(len, rows)) <= 80
+
+
+def _check_one_row_nibbles() -> None:
+    from esolangs.languages.befunge.interpreter import _Machine
+    from esolangs.languages.befunge.proof_formulas import execution, workspace
+    from esolangs.languages.befunge.tests.ablations import ablate
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    totals = [0, 0, 0]
+    for value in range(256):
+        table = f"{value:08b}"
+        program = befunge(table)
+        assert ablate(table, "default") == program
+        baseline = ablate(table, "one_row_nibbles")
+        totals[0] += len(baseline.splitlines()) * max(map(len, baseline.splitlines()))
+        totals[1] += len(program.splitlines()) * max(map(len, program.splitlines()))
+        for row in range(8):
+            io = ScriptedIO(" ".join(f"{row:03b}") + " 7")
+            machine = _Machine(program.splitlines(), io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                if io.getvalue():
+                    assert io.reads == 3
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+            assert io.getvalue().strip() == table[row]
+            assert io.reads == 3
+            assert io.past_end == 0
+            assert io.input_num() == 7
+            assert steps <= execution(3, program)
+            assert written.bits <= workspace(3, program)
+            totals[2] += steps
+    assert totals == [21514, 11398, 45664]
+    # A reversed selector exponent fails this asymmetric two-input function.
+    program = befunge("0010")
+    header, _data = program.split("\n")
+    io = ScriptedIO("1 0")
+    machine = _Machine([header, "$"], io)
+    while not machine.halted:
+        machine.step()
+    assert io.getvalue().strip() != "1"

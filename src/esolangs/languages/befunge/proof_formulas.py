@@ -1,26 +1,22 @@
-"""Executed command bounds."""
+"""Default command and written-state bounds."""
 
 
 def execution(n: int, _: str) -> int:
-    r"""A one-row header: ``0``, ``&\2*+`` an input, 27 index commands.
-
-    An ignored input reads as ``&$``, so ``k`` essential inputs run
-    ``28 + 2n + 3k``; the worst table has every input essential.
-    """
-    if n <= 7:
-        return 5 * n + 28
+    """Natural projections or one-row nibbles through eight, then six-bit decode."""
+    # k>=3: factor9 + index(4k-11) + tail12 + ignored2(n-k).
+    # k=2 needs a zero index; a natural projection costs 2n+23.
+    if n <= 8:
+        return max(2 * n + 23, 4 * n + 10)
     return 5 * n + 67
 
 
 def workspace(n: int, _: str) -> int:
-    """Peak written bits: the cursor, the stack, the done flag, the input cursor.
-
-    Plain grid (n <= 7): only the column moves, to the header's end 5n + 27,
-    and the stack peaks at [i, i, 8, 9, 1].  Packed (n >= 8): the folded
-    header also writes row, dx, dy and column 79, and the stack peaks at
-    [2^u, q, q, 8, 9, 1], q = i // 6, u = i % 6 = 5.
-    """
-    bl = int.bit_length
-    cursor = 11 if n > 7 else bl(5 * n + 28)
-    stack = 2 * n + (11 if n > 7 else 9)
-    return cursor + stack + 1 + bl(2 * n - 1)
+    """Immutable grid; nibble stack17, packed stack2n+11, plus written cursors."""
+    if n == 1:
+        return 14 + (2 * n + 23).bit_length() + (2 * n - 1).bit_length()
+    if n <= 8:
+        # Two essential bits need a zero index; otherwise the first index
+        # input is bare. The 48* subtraction peaks at [f,cell,4,8].
+        cursor = max(2 * n + 18, 4 * n + 10).bit_length()
+        return 18 + cursor + (2 * n - 1).bit_length()
+    return 2 * n + 23 + (2 * n - 1).bit_length()
