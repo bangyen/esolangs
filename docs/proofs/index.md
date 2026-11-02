@@ -291,7 +291,7 @@ These generators keep no unconstrained tree route and have no subtree to fold:
   Pushes only cells the essential inputs address.
   `essential_inputs` halves degenerate tables; the fold discriminator in
   `test_schemes.py` records this exception.
-- Whitespace: Pushes the table as one literal and halves it once per index step.
+- Whitespace: Pushes the table as one literal and divides it by `2**index`.
   `essential_inputs` halves degenerate tables; the fold discriminator in
   `test_schemes.py` records this exception.
 
@@ -550,7 +550,8 @@ ceiling below.
 The remaining `cap` rows do have a uniform lift argument.
 
 - Unary's complemented-byte tree is finite at every arity. Removing the
-  raw, work and gzip screens and their nine-input consequence permits every encoding.
+  raw, work and gzip screens and this construction’s nine-input guard
+  permits every encoding.
 
 ### Retired resource ceilings
 

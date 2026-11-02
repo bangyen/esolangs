@@ -292,7 +292,7 @@ generators have one.
 - Befunge: thirteen inputs. A six-bit ASCII lookup fills the 80x25 grid,
   and the finite source space excludes some sixteen-input tables
   ([exceptions and walls](proofs/index.md#exceptions-and-walls)).
-- Unary: nine inputs, under its character and gzip budgets; see
+- Unary: at most nine inputs in the current unrolled generator; see
   [Unary](#unary).
 - Malbolge:
   Malbolge's source-embedded generator covers sixteen inputs with one
@@ -1314,9 +1314,12 @@ one reading. These are those choices.
   constants, projections and conjunctions use direct guards. Encoding m
   commands needs between 8**m and 2*8**m - 1 zeros. Cap raw export at 32 Mi
   characters, expanded generation work at 256 Mi characters, and gzip files
-  at 256 KiB. Nine inputs is an absolute ceiling; most nontrivial tables
-  hit the work cap earlier. Removing the resource screens leaves
-  a finite encoding for every table.
+  at 256 KiB. This unrolled construction accepts at most nine inputs; most
+  nontrivial tables hit the work cap earlier. Removing the resource screens
+  leaves a finite encoding for every table. The language permits counted reads:
+  seven-command `-[>,<-]` encodes 3,082,847 zeros and consumes exactly 255
+  inputs using an independent byte counter; all-zero, all-255 and alternating
+  streams halt after 1,277 commands and preserve the following byte.
 
   The eight-command AND guard `,>,[<[]]` emits 27,452,351 zeros. All four
   rows execute: three halt, 11 cycles, and each consumes two inputs. The
