@@ -9,7 +9,8 @@ into a scratch variable.
 
 Size:
     Theta(T) text for the literal plus 5 lines an essential input;
-    n=4 parity: 320 chars, n=10 parity: 1,025 chars
+    n=4 parity: 320 chars, n=10 parity: 1,025 chars.
+    Constants use 6n+6 chars, n+1 commands and 1+bl(n+1)+bl(2n-1) written bits.
 """
 
 from esolangs.generation.helpers import (
@@ -29,9 +30,9 @@ def creativescript_v2(truth_table: str) -> str:
     table = read_at(truth_table, essential, n)
     name = {k: f"x{k}" for k in essential}
     reads = [f"in! {name.get(k, 'z')}" for k in range(n)]
+    if not essential:
+        return "\n".join([*reads, f"say! {table}"])
     literal = f"set! N {format_integer(int(table[::-1], 2))}"
-    if not essential:  # a constant table: the literal is the answer
-        return "\n".join([literal, *reads, "out! N"])
     lines = [literal, "set! one 1", "set! two 2", "set! q 2", *reads]
     for count, k in enumerate(reversed(essential)):
         # t = 1 + x(Q - 1): 1 for a zero bit, Q for a one.

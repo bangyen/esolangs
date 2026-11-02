@@ -16,12 +16,12 @@ def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
     cells = [-1 if direct else -2, 0, 0] * inputs
     literal = 3 * inputs + 2
     output = (literal, -1) if direct else (-3, literal)
-    if direct or literal < 10:
+    if literal < 10:
         cells.extend((*output, _ASCII_ZERO + int(bit)))
     else:
-        # A positive read never branches: its third cell can hold the answer.
+        # Input never branches (direct), or its result stays positive (S*bleq).
         cells[2] = _ASCII_ZERO + int(bit)
-        cells.extend((-3, 2, 0))
+        cells.extend((2, -1, 0) if direct else (-3, 2, 0))
     return " ".join(map(str, cells))
 
 

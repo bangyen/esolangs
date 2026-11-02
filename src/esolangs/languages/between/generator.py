@@ -12,7 +12,8 @@ node and a leaf are each placed once however many branches reach them.
 Size:
     O(T) lines, one per diagram node plus a goto when both children were
     placed before, each line's address O(log T) digits;
-    n=4 parity: 193 chars, n=10 random 1847: 4,333 chars
+    n=4 parity: 193 chars, n=10 random 1847: 4,333 chars.
+    Constants use 6n+11 chars, n+2 commands and 16+bl(n+2)+bl(2n) written bits.
 
 Decisions:
     The input is compared as the string ``'0'``/``'1'``; converting it with
@@ -94,6 +95,8 @@ def _layout(root: int, nodes: dict[int, tuple[int, int, int]]) -> list[tuple[int
 def between(truth_table: str) -> str:
     """Build a Between program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        return "\n".join(["'a'v.", *["[a]i."] * n, f"|{truth_table[0]}|p."])
     ids = subtree_ids(truth_table)
     root, nodes = _diagram(ids)
     order = _layout(root, nodes)
