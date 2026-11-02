@@ -36,11 +36,6 @@
     "arm: for index in count(): -> <exit>",
 ]
 
-# Unresolved narrow-layout fallback: needs a width witness.
-"crement/generator.py" = [
-    "arm: if grid_width(narrowed) > width: -> return narrowed",
-    "line: return narrowed",
-]
 
 # Routing failure guards: require collision witnesses before classifying unreachable.
 "dig/generator/_layout.py" = [
