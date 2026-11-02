@@ -36,8 +36,14 @@ def _bound_weight(term: _Term) -> int:
 
 
 def _workspace(n: int, program: str) -> int:
-    """16(P + nS) + D bl(D) + 9 + bl(n), D = 3n + 9 frames."""
+    """Tight constant task/frame peaks; otherwise 16(P+nS)+D bl(D)+9+bl(n)."""
     bl = int.bit_length
+    if program.replace("\n", "") in ("`@`d" * n + ".0", "`@`d" * n + ".1"):
+        # Task: 16n+8; character/done/input: 9+bl(n). At continuation
+        # depth d>=2: 16n+16-8d+sum(bl(i), i=1..d). Its increments
+        # bl(d)-8 increase, so the maximum is at depth 2 or n+1.
+        depths = sum(bl(i) for i in range(1, n + 2))
+        return 16 * n + 17 + max(16 * n + 3, 8 * n + 8 + depths) + bl(n)
     term = _parse(program)
     frames = 3 * n + 9
     return (

@@ -18,6 +18,7 @@ from tests.support.generator_support import verify_generated
 def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     """Share-taking nodes cut both totals and lengthen no table."""
 
+    _check_constants(range(5, 13))
     three = [format(value, "08b") for value in range(256)]
     assert boolean.unlambda("01101001") == (
         "``@`d`k``s``?0i`d`@`d`k``s``?1ii``?0i`d`@`d`k`|``si`kv"
@@ -25,7 +26,7 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
         "`d`@`d`k``s``?0i``s.1e.0"
     )
     for tables, before, after in (
-        (three, 41074, 28115),
+        (three, 41074, 28091),
         (five_input_sample(), 144722, 91017),
     ):
         plain = [len(unlambda_plain(table)) for table in tables]
@@ -43,6 +44,7 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
 
 def test_folding_shortens_a_constant_table() -> None:
     """A table whose rows agree collapses below one that folds nothing."""
+    _check_constants(range(1, 5))
     assert len(unlambda("00000000")) < len(unlambda("01101001"))
 
 
@@ -64,3 +66,45 @@ def unlambda_plain(truth_table: str) -> str:
         between="v`d",
         close="v",
     )
+
+
+def _check_constants(arities: range) -> None:
+    import esolangs
+    from esolangs.languages.unlambda.interpreter import _Machine
+    from esolangs.languages.unlambda.tests.formulas import _workspace
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in arities:
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Unlambda", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == 4 * n + 2
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Unlambda", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "7")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 1000
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
+                    if not options:
+                        assert steps == 14 * n + 2
+                        assert written.bits == _workspace(n, program)

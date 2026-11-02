@@ -11,6 +11,8 @@ any does, and a bound node's subtree sees only its own share.
 
 Size:
     ~4x per two inputs, ``and`` ~n**2; n=10 random 1847: 15,159 chars.
+    Root constants use 4n+2 chars and 14n+2 machine steps; nested leaves
+    retain their absorbing value. Workspace includes cached continuation depths.
 
 Decisions:
     Inline halves read twice a level (arguments evaluate first); ``?1``
@@ -119,7 +121,8 @@ def unlambda(truth_table: str) -> str:
 
     root = diagram.ids[0][0]
     if root < 2:
-        return _leaf(n, 0, str(root))
+        # Each read forces the next promise; the final flag applies the printer.
+        return _READ * n + f".{root}"
     # The root is applied to a share either way: ``v`` when nothing is bound.
     return min(("`" + node(root, None) + "v", *bound(root)), key=len)
 

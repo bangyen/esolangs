@@ -166,6 +166,6 @@ don't edit by hand.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
 - **sonata** -- Sonata's input is its initial string and its output the final one, = and the answer
-- **stisp** -- Stisp has no input or output: each input is the atom 0 or 1 in its frame, and the result, printed at halt, is the answer atom
+- **stisp** -- Stisp has no input or output: each input is the atom 0 or 1 in the template, and the result printed at halt is the answer atom
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **unary** -- Bytes 0/255 encode inputs; halt means 0, a fixed cycle means 1.

@@ -44,3 +44,10 @@ verdict = "kept: canonical, exempt (a node ignoring its input is the ignored-inp
 docstring_reimplementation = 2026-10-30
 blind_reimplementation = 2026-10-27
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 47.5
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: canonical constant folding. Put every input atom in the head list, then x->s[]=b discards it in one rewrite; n=1 needs only the bare atom. Fixed one-character setters still fill every slot. L=2n+15 chars for n>=2, 15 at n=1; one rewrite plus the post-halt dump, W<=8n+9 written bits, attained by the opposite input at n=1. Owned checks parse every filled input atom, verify one rewrite consumes the complete head/frame, and forbid output before the halt dump. n=7 53 -> 29 chars; n=8 59 -> 31 chars, 9 -> 2 steps, 129 -> 73 written bits; n=12 83 -> 39 chars. n=3 corpus 27424 -> 27408 chars. The contract note now permits atoms anywhere in the template; the registered workspace bound recognizes the constant route. Each language passed 5656 paired old/new row executions; 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve, with 72 old balanced row executions per language as controls; all 24 benchmark size/command pins across the batch stay unchanged. No new collected cases."

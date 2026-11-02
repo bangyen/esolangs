@@ -18,7 +18,8 @@ table ([ablations.pair_packing]).
 Size:
     ``T + 187`` characters below seven inputs, ``T/2 + 223`` from seven; n=4
     random 1847: 203 chars, n=10 random 1847: 735 chars, n=10 and: 585 chars
-    (constant half folded and packed).
+    (constant half folded and packed). Constants use n+35 chars, 2n+1 rewrites
+    and 8(n+2)+bl(2n) written bits; narrow queues expand before reading.
 
 Decisions:
     A named repeated block, expanded before lookup, saved 0% on random tables
@@ -133,6 +134,27 @@ def _width_limit(width: int | None) -> int | None:
     return width if width and width > 0 else None
 
 
+def _constant(inputs: int, bit: str, width: int | None) -> str:
+    """Read a queue, restoring its marker after each input, then print."""
+    rules = ["SR::=:::", "0::=R", "1::=R", f"LR::=~{bit}"]
+    state = "L" + "S" * inputs + "R"
+    if width is not None and len(state) > max(8, width):
+        alphabet = "".join(c for c in ascii_letters if c not in "LSR")
+        digits = _marker_digits(inputs, len(alphabet))
+        payload = max(1, max(8, width) - 2 * digits - 3)
+        for index, offset in enumerate(range(0, inputs, payload)):
+            name = _chunk_marker(index, digits, alphabet)
+            following = (
+                _chunk_marker(index + 1, digits, alphabet)
+                if offset + payload < inputs
+                else "R"
+            )
+            rules.append(f"{name}::=" + "S" * min(payload, inputs - offset) + following)
+        # R appears only after the unique expansion marker has finished.
+        state = "L" + _chunk_marker(0, digits, alphabet)
+    return "\n".join([*rules, "::=", state])
+
+
 def thue(truth_table: str, width: int | None = None) -> str:
     """Return a Thue program computing ``truth_table``.
 
@@ -143,6 +165,12 @@ def thue(truth_table: str, width: int | None = None) -> str:
     and queued layouts compete on every path, nearest the width first.
     """
     n = _validate_truth_table(truth_table)
+    limit = _width_limit(width)
+    constant = None
+    if len(set(truth_table)) == 1:
+        constant = _constant(n, truth_table[0], limit)
+        if limit is None or n > 3 or grid_width(constant) <= limit:
+            return constant
     tables = _tables(truth_table)
     layouts = [_thue_layout(*layout, width) for layout in tables]
     layouts.extend(
@@ -150,7 +178,8 @@ def thue(truth_table: str, width: int | None = None) -> str:
         for layout in tables
         if (shared := _shared_layout(*layout, n)) is not None
     )
-    limit = _width_limit(width)
+    if constant is not None:
+        layouts.append(constant)
 
     def overshoot(layout: str) -> int:
         return 0 if limit is None else max(0, grid_width(layout) - limit)

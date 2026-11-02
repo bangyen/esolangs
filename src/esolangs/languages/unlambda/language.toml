@@ -53,3 +53,10 @@ verdict = "kept 2026-10-30 (named-function clause, as Nandypants read_ladder): a
 
 [audits]
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 39.3
+seed = 0
+tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
+verdict = "kept: root-only constant promise chain. Each @ forces the next delayed read; the last read flag applies the literal printer, and outer success flags finish as identities. Nested leaves retain their old absorbing value. L=4n+2 chars; E=14n+2 machine steps. Written bits are 16n+17+max(16n+3,8n+8+sum(bl(i),i=1..n+1))+bl(n): task peak 16n+8, continuation peak at depth 2 or n+1, character/done/input 9+bl(n). The depth term matters at n=512: 7170 executed steps, 16440 bits, component peaks 8200/8221/8/1/10; a small-arity linear extrapolation would miss 26 bits. That diagnostic raised only the Python snapshot-counter recursion limit, not language semantics. Native formulas also execute at 22 arities through n=128 without truth-table allocation. n=7 50 -> 30 chars; n=8 56 -> 34 (39.3%), 145 -> 114 steps, 494 -> 280 written bits; n=12 80 -> 50 chars. Both evaluation arities exceed the declining gate. n=3 corpus 28115 -> 28091 chars. Owned checks preserve following input, output after every read, and the full continuation-depth bound. Each language passed 5656 paired old/new row executions; 270 nonconstant defaults through n=3 stay byte-identical. Both constants n=1..12 execute default, width=1 and balanced. Separate 1120-run native probes per language include every row through n=8. All 24 balanced scores per language match or improve, with 72 old balanced row executions per language as controls; all 24 benchmark size/command pins across the batch stay unchanged. No new collected cases."

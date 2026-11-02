@@ -13,6 +13,8 @@ is the answer.  For AND:
 Size:
     O(T) text: one or two equations a node of the reduced diagram;
     n=4 parity: 175 chars, n=10 random 1847: 5,884 chars.
+    Constants match the input list once: 2n+15 chars (15 at n=1), one rewrite
+    plus the halt dump, and at most 8n+9 written bits.
 
 Decisions:
     Ids repeat only within a level (:func:`subtree_ids`), so equal subtables
@@ -40,6 +42,9 @@ _TOKEN = r"->|[A-Za-z0-9_]+|[\s\S]"
 def stisp(truth_table: str) -> str:
     """Build a Stisp template whose result is ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        head = TEMPLATE_CHAR if n == 1 else "(" + " ".join(TEMPLATE_CHAR * n) + ")"
+        return f"x->s[]={truth_table[0]};{head}->s[]"
     ids = subtree_ids(truth_table)
     equations: list[str] = []
     for level in range(n):
@@ -65,7 +70,7 @@ LANGUAGE = Language(
     contract=BooleanContract(
         answer_mode="dump",
         note="Stisp has no input or output: each input is the atom 0 or 1 "
-        "in its frame, and the result, printed at halt, is the answer atom",
+        "in the template, and the result printed at halt is the answer atom",
     ),
     wrap=TokenWrapper(_TOKEN),
     empty_program="a Stisp program needs a stack expression",

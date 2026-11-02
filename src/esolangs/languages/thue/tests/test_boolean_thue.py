@@ -20,6 +20,7 @@ from tests.support.witness_tables import witnesses
 def test_short_tree_interns_constant_residuals() -> None:
     from esolangs.languages.thue.generator import _thue_short_tree
 
+    _check_constants()
     program = _thue_short_tree("0" * 8)
     assert len(program.splitlines()) == 13
     for row in range(8):
@@ -120,7 +121,7 @@ def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
     sizes = [len(boolean.thue("01" * (2 ** (n - 1)))) for n in (1, 2, 3, 4)]
     assert sizes == [2**n + 187 for n in (1, 2, 3, 4)]
     total = sum(len(boolean.thue(f"{value:08b}")) for value in range(256))
-    assert total == 49632
+    assert total == 49606
 
 
 @pytest.mark.parametrize("table", _TABLES)
@@ -329,7 +330,7 @@ def test_balanced_fold_tables_keep_their_square(
 
 @pytest.mark.parametrize(
     ("table", "width", "size"),
-    [("00", 11, 49), ("00", 9, 49), ("00111011", 10, 211)],
+    [("00", 11, 36), ("00", 9, 36), ("00111011", 10, 211)],
 )
 def test_width_requests_keep_their_exact_size(
     table: str, width: int, size: int
@@ -391,3 +392,63 @@ def test_packed_layouts_expand_before_reading_and_stay_deterministic() -> None:
                     machine.step()
                 assert (io.getvalue(), io.reads) == (table[row], n)
     assert kinds == {False, True, "fold", "shared"}
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.thue.interpreter import _Machine, _matches
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value):
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Thue", bit * (1 << n), **options)
+                if not options:
+                    assert len(program) == n + 35
+                for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
+                    stdin = esolangs.encode_inputs(
+                        "Thue", list(map(int, f"{row:0{n}b}"))
+                    )
+                    io = ReadFirstIO(stdin + "7\n")
+                    machine = _Machine(program, io)
+                    written = WrittenState(machine.snapshot())
+                    steps = 0
+                    while not machine.halted:
+                        assert len(_matches(machine.state, machine.rules)) == 1
+                        machine.step()
+                        written.sample(machine.snapshot())
+                        steps += 1
+                        assert steps < 1000
+                    assert io.getvalue() == bit
+                    assert io.past_end == 0
+                    assert io.input_str() == "7"
+                    if not options:
+                        assert steps == 2 * n + 1
+                        assert written.bits == 8 * (n + 2) + (2 * n).bit_length()
+
+    # Two-character expansion names must not overlap a queue/control marker.
+    from esolangs.languages.thue.generator import _constant
+
+    n = 50
+    program = _constant(n, "0", 1)
+    assert max(map(len, program.splitlines())) == 8
+    io = ScriptedIO("1\n" * n + "7\n")
+    machine = _Machine(program, io)
+    steps = 0
+    while not machine.halted:
+        assert len(_matches(machine.state, machine.rules)) == 1
+        machine.step()
+        steps += 1
+        assert steps < 200
+    assert io.getvalue() == "0"
+    assert io.reads == n
+    assert io.input_str() == "7"
