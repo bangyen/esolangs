@@ -13,6 +13,7 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
+        _check_arithmetic_tails()
     n = len(table).bit_length() - 1
     program = esolangs.generate("1 + i", table)
     for row in range(len(table)):
@@ -49,3 +50,62 @@ def _check_constants() -> None:
                     assert io.reads == n
                     assert io.past_end == 0
                     assert io.input_num() == 7
+
+
+def _check_arithmetic_tails() -> None:
+    from fractions import Fraction
+
+    from esolangs.languages.one_i.interpreter import _Fn, _Machine
+    from esolangs.languages.one_i.proof_formulas import execution, workspace
+    from esolangs.languages.one_i.tests.formulas import workspace_witness
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    class ReadFirstIO(ScriptedIO):
+        expected: int
+
+        def _write(self, value: object) -> None:
+            assert self.reads == self.expected
+            super()._write(value)
+
+    tables = [f"{v:04b}" for v in range(16)]
+    tables += [
+        "".join(str(row.bit_count() % 2) for row in range(1 << n)) for n in (3, 7, 8)
+    ]
+    tables += [
+        "".join(str((row & mask).bit_count() % 2) for row in range(1 << n))
+        for n, mask in ((6, 32), (8, 129))
+    ]
+    tables += [
+        "".join(
+            str(int(bool(row & a) and (bool(row & b) != invert)))
+            for row in range(1 << n)
+        )
+        for n, a, b, invert in ((4, 8, 2, False), (5, 16, 2, True))
+    ]
+    tables += [workspace_witness(n) for n in range(2, 10)]
+    for table in tables:
+        n = len(table).bit_length() - 1
+        program = esolangs.generate("1 + i", table)
+        for row in (0, (1 << n) // 3, 1 << (n - 1), (1 << n) - 1):
+            io = ReadFirstIO(
+                esolangs.encode_inputs("1 + i", list(map(int, f"{row:0{n}b}"))) + "7\n"
+            )
+            io.expected = n
+            machine = _Machine(program, io)
+            written = WrittenState(machine.snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.snapshot())
+                steps += 1
+                for value in machine.values:
+                    assert isinstance(value, _Fn) or (
+                        isinstance(value, tuple)
+                        and all(isinstance(part, Fraction) for part in value)
+                    )
+            assert io.getvalue() == table[row]
+            assert io.past_end == 0
+            assert io.input_num() == 7
+            assert steps <= execution(n, program)
+            assert written.bits <= workspace(n, program)

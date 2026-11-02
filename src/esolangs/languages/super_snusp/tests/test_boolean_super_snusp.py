@@ -142,16 +142,17 @@ class TestSuperSNUSP:
         )
 
         _check_constants()
+        _check_stacked_operands()
         for table, form in _TWO_INPUT_SHORT.items():
             assert super_snusp(table) == '"' + form
 
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("1010", 44),  # one dependency at two inputs
+            ("1010", 31),  # one dependency at two inputs
             ("1111", 6),  # constant at two
             ("00000000", 7),  # constant at three
-            ("00000011", 63),  # depends on the last two of three
+            ("00000011", 39),  # depends on the last two of three
         ],
     )
     def test_the_lookup_length_is_pinned(self, table: str, length: int) -> None:
@@ -210,7 +211,7 @@ class TestSuperSNUSPSweepPins:
 
     @pytest.mark.parametrize(
         ("table", "shape"),
-        [("1100", (56, 5, 11)), ("1111", (11, 2, 5))],
+        [("1100", (43, 5, 8)), ("1111", (11, 2, 5))],
     )
     def test_balanced_shapes_are_pinned(self, table: str, shape: tuple) -> None:
         program = str(esolangs.generate("Super SNUSP", table, balance=True))
@@ -219,6 +220,60 @@ class TestSuperSNUSPSweepPins:
             program.count("\n") + 1,
             max(map(len, program.split("\n"))),
         ) == shape
+
+
+def _check_stacked_operands() -> None:
+    from esolangs.languages.super_snusp.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    class ReadFirstIO(ScriptedIO):
+        def __init__(self, bits: str) -> None:
+            super().__init__(bits + "Q")
+            self.expected = len(bits)
+
+        def _write(self, value: object) -> None:
+            assert self.reads == self.expected
+            super()._write(value)
+
+    tables = ["00110110", "01111111", "00000011"]
+    tables.extend(
+        "".join(str(row.bit_count() % 2) for row in range(1 << n)) for n in (5, 6)
+    )
+    for table in tables:
+        n = len(table).bit_length() - 1
+        flat = str(esolangs.generate("Super SNUSP", table))
+        encoding = 49 if flat.startswith('"49{') else 48
+        for options in ({}, {"width": 1}, {"width": 17}, {"balance": True}):
+            program = str(esolangs.generate("Super SNUSP", table, **options))
+            for row in (0, (1 << n) // 3, (1 << n) - 1):
+                io = ReadFirstIO(f"{row:0{n}b}")
+                machine = _Machine(program.splitlines(), io)
+                written = WrittenState(machine.snapshot())
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    written.sample(machine.snapshot())
+                    steps += 1
+                assert io.getvalue() == table[row]
+                assert io.past_end == 0
+                assert io.input_char() == ord("Q")
+                assert machine.stack == [encoding]
+                if not options:
+                    assert steps == len(flat)
+                    if n >= 5:
+                        bound = (
+                            (1 << n)
+                            + 2 * n
+                            + 14
+                            + len(flat).bit_length()
+                            + n.bit_length()
+                        )
+                        assert written.bits <= bound
+    assert (
+        sum(len(str(esolangs.generate("Super SNUSP", f"{v:08b}"))) for v in range(256))
+        == 11236
+    )
 
 
 def _check_constants() -> None:

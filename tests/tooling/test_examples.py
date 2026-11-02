@@ -83,7 +83,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
         # PNG compression differs across platforms; the pixels are the program.
         assert Raster.from_png(path.read_bytes()) == program, stale
     else:
-        expected = (program.rstrip("\n") + "\n").encode("utf-8")
+        expected = (program + "\n").encode("utf-8")
         assert path.read_bytes() == expected, stale
 
 
@@ -142,7 +142,7 @@ def test_halt_convention_examples_halt(name: str) -> None:
     program = (
         CompressedText(path.read_bytes())
         if path.suffix == ".gz"
-        else path.read_text(encoding="utf-8").rstrip("\n")
+        else path.read_text(encoding="utf-8").removesuffix("\n")
     )
     assert _halts(name, program, list(BOOLEAN_GENERATED[name].inputs)), (
         f"{name}.txt holds the looping branch; the committed "
@@ -207,7 +207,7 @@ def test_boolean_example(name: str) -> None:
         if path.suffix == ".png"
         else CompressedText(path.read_bytes())
         if path.suffix == ".gz"
-        else path.read_text(encoding="utf-8").rstrip("\n")
+        else path.read_text(encoding="utf-8").removesuffix("\n")
     )
     if isinstance(program, Raster):
         got = esolangs.run(name, program, stdin=stdin)

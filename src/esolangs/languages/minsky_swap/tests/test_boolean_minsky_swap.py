@@ -92,6 +92,7 @@ class TestParameterizedMinskySwap:
                         )
 
     def test_rmsn_growth_remains_linear(self) -> None:
+        _check_pair_source_cap()
         from esolangs.languages import generators
 
         sizes = [
@@ -123,6 +124,7 @@ class TestParameterizedMinskySwap:
         """
         import esolangs
 
+        _check_pair_leaves()
         for table in ("1010", "0011", "0101", "01010000", "00001111"):
             n = len(table).bit_length() - 1
             template = esolangs.generate("Minsky Swap", table)
@@ -173,5 +175,69 @@ def _check_constant_templates() -> None:
                 assert len(sizes) == 1
     assert (
         sum(len(esolangs.generate("Minsky Swap", f"{v:08b}")) for v in range(256))
-        == 19597
+        == 21396
     )
+
+
+def _check_pair_leaves() -> None:
+    """Pair leaves and ignored tails preserve their held bit in both notations."""
+    import esolangs
+    from esolangs.languages.minsky_swap.generator import minsky_swap_setters
+    from esolangs.languages.minsky_swap.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    # All pair patterns, then the same function with a physical ignored tail.
+    for table in ("00011011", "0000001100111111", "0000000011111111"):
+        n = len(table).bit_length() - 1
+        for width in (None, 1, 10):
+            template = esolangs.generate("Minsky Swap", table, width=width)
+            assert len(set(minsky_swap_setters(str(template), n))) == 1
+            for row in range(1 << n):
+                bits = list(map(int, f"{row:0{n}b}"))
+                code = esolangs.instantiate("Minsky Swap", str(template), bits)
+                io = ScriptedIO("sentinel\n")
+                machine = _Machine(code, io)
+                while not machine.halted:
+                    machine.step()
+                assert io.getvalue() == ""
+                machine.step()
+                assert io.reads == 0
+                if table == "00011011" and row == 1:
+                    assert io.getvalue() == "2 0"
+                assert esolangs.read_answer("Minsky Swap", io.getvalue()) == table[row]
+
+
+def _check_pair_source_cap() -> None:
+    """A single non-10 pair retains every input and maximizes target digits."""
+    from esolangs.languages.minsky_swap.generator import minsky_swap
+    from esolangs.languages.minsky_swap.tests.formulas import _full_chars
+
+    for n in range(2, 9):
+        table = "10" * ((1 << (n - 1)) - 1) + "11"
+        assert len(minsky_swap(table)) == _full_chars(n, "")
+
+    from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+    from esolangs.languages.minsky_swap.generator import minsky_swap_setters
+    from esolangs.languages.minsky_swap.interpreter import _Machine
+    from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
+    from esolangs.languages.minsky_swap.tests.formulas import _chars
+    from esolangs.runtime.io import ScriptedIO
+    from scripts.benchmark import WrittenState
+
+    for n in range(1, 9):
+        table = "0" * (1 << (n - 1)) + "1" * (1 << (n - 1))
+        template = minsky_swap(table)
+        assert len(template) <= _chars(n, "")
+        code = fill_runs(
+            template, TEMPLATE_CHAR, minsky_swap_setters(template, n), [1] * n
+        )
+        machine = _Machine(code, ScriptedIO(""))
+        written = WrittenState(machine.snapshot())
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            written.sample(machine.snapshot())
+            steps += 1
+        assert steps == 16 * n - 3
+        assert steps <= execution(n, template)
+        assert written.bits <= workspace(n, template)

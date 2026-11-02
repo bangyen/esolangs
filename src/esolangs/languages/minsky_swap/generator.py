@@ -1,20 +1,20 @@
 """Minsky Swap Boolean program generator: weighted stages, then a ``~`` cascade.
 
-Each input is a run (``++`` or ``**``) then a stage ``~ ~ * +...+ *`` adding
-``2**(n-1-i)`` to ``reg[1]``; a ``*`` then points at ``reg[1]`` and ``2**n``
-``~``s route the index to one of two shared leaves.  A row is one ``~``, so
-no span shrinks; a symmetric table adds 1 an input and routes its n + 1
-counts instead ([ablations.symmetric_count]).  A ``width`` the program exceeds
+Each input is a uniform ``++``/``**`` run. Weighted stages index the higher
+essential bits; the last essential input stays at 0/2 in the other register.
+A ``~`` cascade routes row pairs to four fixed leaves. Symmetric tables keep
+their popcount reader ([ablations.symmetric_count]); a narrow ``width``
 switches to RMSN, one command per line.
 
 Size:
-    O(T): one ``~`` per row; n=8 random 1847: 1,151 chars, n=10 random 1847:
-    4,265 chars, n=12 random 1847: 16,593 chars. Constants: n=8: 27/30
+    O(T): one ``~`` per row pair; n=8 random 1847: 684 chars, n=10 random 1847:
+    2,343 chars, n=12 random 1847: 8,913 chars. Constants: n=8: 27/30
     chars, two/five commands including the dump.
 
 Decisions:
-    Every leaf target is the digit 2 or 3: a leaf per row was Theta(T log T)
-    of addresses.  A zero tail stays: trimming it failed 60/134.
+    Pair leaves target 2, 4, 9 or 13, independent of T. Trailing ignored
+    slots preserve the held bit without changing setter order.
+    A zero leaf may leave scratch at 2; the answer is still the second register.
 """
 
 from collections.abc import Callable
@@ -29,6 +29,7 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language, Shape
 
@@ -60,7 +61,10 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     else:
         # Symmetric tables count inputs into n+1 rows instead of a binary index.
         symmetric = symmetric_weights(truth_table, n)
-        tokens, resolved = _cascade(*(symmetric or input_weights(truth_table, n)))
+        if symmetric:
+            tokens, resolved = _cascade(*symmetric)
+        else:
+            tokens, resolved = _pair_cascade(*input_weights(truth_table, n))
     program = _render(tokens, resolved)
     if width is None or grid_width(program) <= width:
         return program
@@ -122,6 +126,43 @@ def _cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
 
     end = pos + 1
     return tokens, [end if t is None else t for t in targets]
+
+
+def _pair_cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
+    """Hold the last essential input; trailing ignored runs preserve its bit."""
+    held = max(i for i, weight in enumerate(weights) if weight)
+    weights = [weight // 2 for weight in weights]
+    pairs = [table[i : i + 2] for i in range(0, len(table), 2)]
+    # Entry pointer is on the zero index register. Mixed leaves test the
+    # held 0/2; the one leaf's three decrements drain either before halting.
+    # Target 13 is two digits; see [ablations.low_bit_leaf_split].
+    tokens = list("~~*+*~~~*~*~*~~~")
+    targets: list[int | None] = [17, None, None, None, None, None, 4, 3, None, None]
+    pos = 16
+    run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
+    for weight in weights[:held]:
+        skip = pos + len(run) + (4 + weight if weight else 2) + 1
+        tokens += [run, "~", "~"]
+        if weight:
+            tokens += ["*", "+" * weight, "*"]
+        targets += [skip, skip]
+        pos = skip - 1
+    tokens.append(run)
+    pos += len(run)
+    for _ in weights[held + 1 :]:
+        # Rescale held 0/2 to 0/4, read the ignored bit, then erase its
+        # contribution; neither the index register nor the pointer changes.
+        run_start, plus_start, end = pos + 7, pos + 15, pos + 17
+        tokens += ["~~++++", run, "~~~~~~++"]
+        targets += [run_start, run_start, end, end, end, end, plus_start, plus_start]
+        pos += 16
+    tokens.append("*")
+    pos += 1
+    tokens += ["~"] * len(pairs)
+    leaves = {"00": 2, "11": 4, "01": 9, "10": 13}
+    targets += [leaves[pair] for pair in pairs]
+    end = pos + len(pairs) + 1
+    return tokens, [end if target is None else target for target in targets]
 
 
 def _rmsn_small(truth_table: str, n: int) -> str:
@@ -196,4 +237,6 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
     example=Example(setters=minsky_swap_setters, expected="1 0"),
+    proof_execution=(execution, True, (3, 5)),
+    proof_workspace=(workspace, False, (3, 6)),
 )

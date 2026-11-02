@@ -7,19 +7,19 @@ admitted = 2020-07-25T21:13:52-04:00
 
 [proof_status]
 labels = ["parameterized lookup"]
-qualification = "every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`)"
-scaling = "linear: worst N characters: cascade routes to two shared leaves, one-digit targets"
-execution = "linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down"
-workspace = "poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor"
+qualification = "uniform ++/** runs; weighted stages index higher essential inputs while the last essential input stays in scratch through bounded ignored-tail macros, and a cascade routes row pairs to four fixed leaves; symmetric tables count set inputs"
+scaling = "linear: at most N characters: four fixed leaf targets"
+execution = "linear: worst max(T+6n+5,16n-3) commands: unary index or ignored-tail macros; dump follows"
+workspace = "poly n: at most n+3+bl(max(T+6n+12,16n+4)) bits: registers, pointer, cursor"
 
 [generator_sizes]
 "00000001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
-"00001100" = { commands = 26, commands_by_row = { "0" = 13, "1" = 14, "2" = 18, "3" = 19, "4" = 22, "5" = 23, "6" = 25, "7" = 26 }, source_units = 63 }
-"00110110" = { commands = 36, commands_by_row = { "0" = 13, "1" = 18, "2" = 22, "3" = 27, "4" = 24, "5" = 31, "6" = 33, "7" = 36 }, source_units = 81 }
+"00001100" = { commands = 33, commands_by_row = { "0" = 13, "1" = 15, "2" = 24, "3" = 25, "4" = 23, "5" = 25, "6" = 32, "7" = 33 }, source_units = 107 }
+"00110110" = { commands = 27, commands_by_row = { "0" = 12, "1" = 12, "2" = 19, "3" = 21, "4" = 20, "5" = 26, "6" = 29, "7" = 27 }, source_units = 87 }
 "0110" = { commands = 20, commands_by_row = { "0" = 10, "1" = 17, "2" = 17, "3" = 20 }, source_units = 49 }
 "01101001" = { commands = 30, commands_by_row = { "0" = 13, "1" = 20, "2" = 20, "3" = 23, "4" = 20, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
 "0110100110010110" = { commands = 36, commands_by_row = { "0" = 16, "1" = 23, "2" = 23, "3" = 26, "4" = 23, "5" = 26, "6" = 26, "7" = 33, "8" = 23, "9" = 26, "10" = 26, "11" = 33, "12" = 26, "13" = 33, "14" = 33, "15" = 36 }, source_units = 81 }
-"1101001101101101" = { commands = 60, commands_by_row = { "0" = 18, "1" = 23, "2" = 23, "3" = 30, "4" = 27, "5" = 32, "6" = 36, "7" = 41, "8" = 35, "9" = 42, "10" = 44, "11" = 47, "12" = 48, "13" = 53, "14" = 53, "15" = 60 }, source_units = 125 }
+"1101001101101101" = { commands = 45, commands_by_row = { "0" = 17, "1" = 19, "2" = 21, "3" = 27, "4" = 22, "5" = 22, "6" = 29, "7" = 31, "8" = 27, "9" = 33, "10" = 36, "11" = 34, "12" = 35, "13" = 37, "14" = 39, "15" = 45 }, source_units = 115 }
 "11111110" = { commands = 28, commands_by_row = { "0" = 15, "1" = 20, "2" = 20, "3" = 25, "4" = 20, "5" = 25, "6" = 25, "7" = 28 }, source_units = 65 }
 
 [catalogue]
@@ -65,3 +65,24 @@ saving = 70.6
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical whole constants. A zero-register decrement jumps past all slots; constant one first sets register one and restores the pointer. Every embedded PAIR slot remains, separated by an unreachable swap so runs stay distinct. Compact length 3n+1+3b+digits(3n+1+3b), command count 2+3b including the post-halt dump, written bits bl(3n+3b)+3b. RMSN expansion preserves all targets; its swap-leading one path selects the existing uniform short setter pair. n=8 zero/one 97/97 -> 27/30 chars; n=12 137/137 -> 39/42. n=3 corpus 19664 -> 19597 chars, area 20016 -> 19950. Saved plain-string templates and all equal-width fills execute. Each language passed 5656 paired old/new row executions; all 270 nonconstant programs through n=3 stay byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts. All 24 balanced scores per language improve or match; all eight benchmark size/command pins remain unchanged. Owned regressions check resources, uniform embedded setters or all reads before output, and stream sentinels. No new collected cases."
+
+[ablations.low_bit_leaf_split]
+saving = 39.809
+arity = 8
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "200 random per n=7,8; 20 per n=4..6,9..12,14; exhaustive n<=3; symmetric reader unchanged"
+verdict = "kept 2026-11-02 under source gate: hold the last essential input at 0/2, halve higher essential weights and route pairs to four fixed leaves. Targets 2/4/9/13 include a two-digit target, contrary to the raw estimate. Each trailing ignored input uses a fixed 16-command macro that preserves held 0/2 and the index, without an old-build race or cutoff. Random n=7/8 chars 124600→80567 (35.339%) / 230200→138559 (39.809%); extended n=9/10/11/12/14 savings 42.837/44.634/45.526/46.094/46.664%, approaching the 46.875% random limit from below (no finite expected peak). n=3 chars 19597→21396 (+9.180%, 222 tables grow); n=1/2 +44.304%/+26.361%, explicitly falsifying raw no-growth expectation. Governing source gate permits these regressions. Native controls: every table/row n<=3, four asymmetric rows per other table, plus all 25600/51200 random rows at n=7/8; all correct, zero stdin reads, wrong-answer mutant rejected. Execution is not the admission route: 117 of 2048 n=3 rows slow by at most 23 commands; sampled n=7/8 likewise have 60/61 slower rows out of 800 each, maximum +2 (row zero on a 10 pair). n=3 native commands before dump 49680→42260; n=7/8 all-row commands 4185560→2527190 / 15155070→8563270. Source remains O(T), all leaf addresses independent of T, uniform setters and symmetric path unchanged. Raw dump may now be 2 0 instead of 0 0 on a 00 pair with held input one; the second register is still zero. The committed minsky-swap.txt RMSN example and its 1 0 dump stay unchanged. Exact worst native commands max(T+6n+5,16n-3); post-halt dump is additional. Workspace at most n+3+bl(max(T+6n+12,16n+4)). The global source ceiling includes O(n) variable-address jumps and constant-address cascade leaves. Native tail controls exhaust all small tables in compact and RMSN and lifted ignored tails through n=8; both canonical folding catalogue probes pass. Macro controls preserve arbitrary index values in 16 cases; a wrong target mutant fails."
+
+[ablations.two_low_bits_leaf_split]
+saving = 30.745
+arity = 8
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "200 random per n=7,8; 20 per n=4..6; exhaustive n<=3"
+verdict = "rejected 2026-11-02: raw concatenated setters collide on 01 and 10 (native final state pointer 0, registers 2/0). Raw 00011011 returns wrong answers at rows 3 and 6. Repair the first held run with two decrements and four increments, giving distinct 0/2/4/6 with the same uniform setter pair; each observed four-bit pattern gets an eight-command decoder with seven target entries. Repaired n=7/8 chars 124600→115319 (7.449%) / 230200→159425 (30.745%): n=7 misses 10%, so cannot qualify by shortening the corpus window. Repaired n=2/3 source grows 10.315%/17.768%. Native repaired controls passed all 2112 rows n=2/3 and four asymmetric rows per larger table; no production change."
+
+[ablations.generic_k_split_forced_threshold]
+saving = 39.809
+arity = 8
+seed = "random.Random(1000*n), sequential choice('01')"
+tables = "same k=1/k=2 corpora as the two sibling records"
+verdict = "rejected 2026-11-02 as proposed: retaining k=0 only to hide small source losses is a whole-old fallback without a class break. The repaired k=2 candidate fails its own n=7 gate and is larger than k=1 at both n=7/8; a generic argmin adds no admitted large-arity construction. Limiting k to 2 is asserted rather than forced by semantics: the constant number of leaf patterns does not change the O(T) class for any fixed k. Keep only the qualifying k=1 rule, uniformly over its nonsymmetric path, with disclosed low-arity growth. Native repaired sibling controls and raw collision mutants are recorded above."

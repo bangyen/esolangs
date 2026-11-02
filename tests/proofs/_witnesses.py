@@ -955,6 +955,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
         "10" if n == 1 else "10" * (2 ** (n - 1) - 1) + "11",
         "10111011" if n == 3 else "0" * (1 << n),
     ),
+    "Minsky Swap": lambda n: _diagram_witness("minsky_swap", n, bottom=1),
     "Rubic": lambda n: ("1000",) if n == 2 else _diagram_witness("rubic", n),
     "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
     "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
@@ -971,7 +972,11 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     ),
     # The last input ignored: n - 1 essential inputs can outrun all n.
     "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
-    "1 + i": lambda n: (_morse("1000", "0010", n), _one_i_swapped(n)) if n >= 2 else (),
+    "1 + i": lambda n: (
+        *((_morse("1000", "0010", n), _one_i_swapped(n)) if n >= 2 else ()),
+        *_diagram_witness("one_i", n, 9, bottom=2),
+        *_diagram_witness("one_i", n, 9, "workspace_witness", bottom=2),
+    ),
     "ArrowQueue": lambda n: (_low_one(n),),
     # The two-stack build's worst: a run of ones per pair in the upper half.
     "Eval": lambda n: (_eval_alternating_upper(n),) if n >= 4 else (),
@@ -1020,6 +1025,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     # Half the rows set, so table and complement tie: T/2 + 1 ones under a
     # clear top bit (n even), or T/2 ones under a "10" top digit (n odd).
     "Blindfolded Arithmetic": lambda n: (
+        "1" + _parity(n)[1:],
         "1" * (2 ** (n - 1) + 1) + "0" * (2 ** (n - 1) - 1),
         "1" * (2 ** (n - 1) - 1) + "0" * 2 ** (n - 1) + "1",
     ),
@@ -1086,6 +1092,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Kiss": lambda n: (_parity(n - 1) * 2,) if n >= 2 else (),
     # 1 xor parity, the last input ignored at even n: the longest loop sums.
     "Painfuck": lambda n: (
+        *(("11101001",) if n == 3 else ()),
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
@@ -1133,10 +1140,10 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
 
 
 def _diagram_witness(
-    stem: str, n: int, top: int = 8, name: str = "witness"
+    stem: str, n: int, top: int = 8, name: str = "witness", *, bottom: int = 3
 ) -> tuple[str, ...]:
-    """The language's dearest-diagram table (its formulas.py), for n = 3..top."""
-    if not 3 <= n <= top:
+    """The language's named table from formulas.py within its supported arities."""
+    if not bottom <= n <= top:
         return ()
     owner = importlib.import_module(f"esolangs.languages.{stem}.tests.formulas")
     return (getattr(owner, name)(n),)

@@ -30,6 +30,7 @@ def test_the_input_is_the_row_number() -> None:
     assert esolangs.describe("Blindfolded Arithmetic")["input_shape"] == "row_number"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [0, 0]) == "1\n"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [1, 0]) == "3\n"
+    _check_alternating_rounds()
     from esolangs.vm import make_vm
     from scripts.benchmark import WrittenState
 
@@ -57,3 +58,32 @@ def test_the_input_is_the_row_number() -> None:
 def test_a_row_number_outside_one_to_t_is_refused(stdin: str) -> None:
     with pytest.raises(esolangs.ArgumentError, match=r"out of range.*\(1\.\.4\)"):
         _check_stdin("Blindfolded Arithmetic", stdin, "0110")
+
+
+def _check_alternating_rounds() -> None:
+    from esolangs.languages.blindfolded_arithmetic.generator import _lookup
+    from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
+    from esolangs.runtime.io import ScriptedIO
+
+    # Both counter parities, ignored positions and complemented/mirrored answers.
+    for table in (
+        "0110",
+        "01101001",
+        "01011010",
+        "00000001",
+        "11111110",
+        "0110100110010110",
+        "1001011001101001",
+    ):
+        program = esolangs.generate("Blindfolded Arithmetic", table)
+        for row, bit in enumerate(table):
+            io = ScriptedIO(f"{row + 1} 99")
+            machine = _Machine(program, io)
+            for _ in range(program.count(";") + 1):
+                machine.step()
+            assert machine.halted
+            assert machine.state[1] == len(machine.program) - 1
+            assert io.getvalue() == bit
+            assert io.reads == 1
+            assert io.input_num() == 99
+    assert _lookup(3, [0, 2]).count("c=a+a") == 1

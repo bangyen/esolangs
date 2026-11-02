@@ -8,20 +8,22 @@ bf_derivative = true
 
 [proof_status]
 labels = ["tree"]
-qualification = "decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell"
+qualification = "native numeric reads feed a flag-dispatched tree; known-zero children omit their dead flag, and one result cell is printed"
 scaling = "linear: at most 31T/2+3n-21 characters past n = 3: to n = 15"
-execution = "poly n: worst 4n^2 + 9n + 5 - 6⌊n/2⌋ commands past n = 2: parity sum's loops; trees ≤ 22n"
+execution = "poly n: at most 65 commands at n=3, then max(P,B,22n): affine, admitted banks or inline"
 workspace = "poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n"
 
+definitions = ["P = 4n^2+9n+5-6⌊n/2⌋: affine loops", "B = ⌊(3n^2+3)/4⌋+20n+4: shared-form admission"]
+
 [generator_sizes]
-"00000001" = { commands = 56, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 40, "5" = 40, "6" = 48, "7" = 56 }, source_units = 57 }
-"00001100" = { commands = 44, commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 48, "5" = 48, "6" = 44, "7" = 44 }, source_units = 54 }
-"00110110" = { commands = 60, commands_by_row = { "0" = 36, "1" = 36, "2" = 48, "3" = 48, "4" = 44, "5" = 52, "6" = 53, "7" = 60 }, source_units = 98 }
+"00000001" = { commands = 36, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 21, "5" = 21, "6" = 28, "7" = 36 }, source_units = 33 }
+"00001100" = { commands = 37, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 41, "5" = 41, "6" = 37, "7" = 37 }, source_units = 45 }
+"00110110" = { commands = 60, commands_by_row = { "0" = 27, "1" = 27, "2" = 38, "3" = 38, "4" = 44, "5" = 52, "6" = 53, "7" = 60 }, source_units = 86 }
 "0110" = { commands = 30, commands_by_row = { "0" = 14, "1" = 14, "2" = 22, "3" = 30 }, source_units = 28 }
 "01101001" = { commands = 52, commands_by_row = { "0" = 20, "1" = 20, "2" = 28, "3" = 36, "4" = 36, "5" = 44, "6" = 52, "7" = 52 }, source_units = 41 }
 "0110100110010110" = { commands = 90, commands_by_row = { "0" = 26, "1" = 26, "2" = 34, "3" = 42, "4" = 42, "5" = 50, "6" = 58, "7" = 58, "8" = 50, "9" = 58, "10" = 66, "11" = 66, "12" = 74, "13" = 74, "14" = 82, "15" = 90 }, source_units = 54 }
-"1101001101101101" = { commands = 87, commands_by_row = { "0" = 59, "1" = 59, "2" = 71, "3" = 79, "4" = 70, "5" = 70, "6" = 67, "7" = 67, "8" = 71, "9" = 79, "10" = 71, "11" = 78, "12" = 67, "13" = 67, "14" = 79, "15" = 87 }, source_units = 208 }
-"11111110" = { commands = 60, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 45, "5" = 45, "6" = 53, "7" = 60 }, source_units = 61 }
+"1101001101101101" = { commands = 77, commands_by_row = { "0" = 50, "1" = 50, "2" = 61, "3" = 69, "4" = 70, "5" = 70, "6" = 67, "7" = 67, "8" = 71, "9" = 79, "10" = 71, "11" = 78, "12" = 58, "13" = 58, "14" = 69, "15" = 77 }, source_units = 184 }
+"11111110" = { commands = 40, commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 26, "5" = 26, "6" = 33, "7" = 40 }, source_units = 37 }
 
 [ablations]
 audited = "2026-10-19"
@@ -34,7 +36,7 @@ verdict = "kept: canonical, exempt. Repeated residuals share through level flags
 [ablations.complement_tree]
 saving = 38.6
 arity = 10
-verdict = "kept: the tree is also built for the complement, with the result preset to 1 (`rpsll`) and cleared at each leaf, and the shorter kept, so OR costs what NOR does. Plain-rewrite audit 2026-10-28 (20 random tables at n=7 / 8, 3 at n=10, Random(1000n+s)): random 3.91% / 2.35% / 0.60% (balanced 4.52% / 2.21% / 0.46%), under the bar and declining; or 24.6% / 27.5% / 32.2% and nand 33.3% / 35.3% / 38.6% at n=7 / 8 / 10 (balanced or 19.0% / 25.4% / 28.4%, nand 33.1% / 31.8% / 34.8%), share rising; popcount>=2 5.1% / 8.2% / 12.7%; parity, majority, and, nor, popcount>=3/4 0.0%. Kept for the or/nand family"
+verdict = "kept: the tree is also built for the complement, with the result preset to 1 (`rpsll`) and cleared at each leaf, and the shorter kept, so OR costs what NOR does. Plain-rewrite audit 2026-10-28 (20 random tables at n=7 / 8, 3 at n=10, Random(1000n+s)): random 3.91% / 2.35% / 0.60% (balanced 4.52% / 2.21% / 0.46%), under the bar and declining; or 24.6% / 27.5% / 32.2% and nand 33.3% / 35.3% / 38.6% at n=7 / 8 / 10 (balanced or 19.0% / 25.4% / 28.4%, nand 33.1% / 31.8% / 34.8%), share rising; popcount>=2 5.1% / 8.2% / 12.7%; parity, majority, and, nor, popcount>=3/4 0.0%. Kept for NAND; OR uses the zero-guard chain from 2026-11-02"
 
 [ablations.bank_plans]
 saving = 4.3
@@ -73,9 +75,10 @@ saving = 2.26
 arity = 8
 seed = "random.Random(i * 1000 + n), i < 20 at n=7..8, i < 3 at n=9..12"
 tables = 20
-verdict = "rejected 2026-10-31: decode, replace each llll/rrrr by lt/rt (t repeats the preceding move three times), then re-encode. Saves two chars per four moves, at most half the eligible movement text. Random totals 24,853->24,223 / 48,225->47,133 at n=7/8 (2.535/2.264%); 2.201/2.032/1.950/1.757% at n=9..12, declining. Named and/or 4.0-6.1%, parity 0%; majority peaks 8.50% at n=11, falls to 7.99% at n=12; threshold <=n//3 peaks 8.27% at n=8, 7.24% at n=12. No family meets 10%. Executed both programs for every table/row n=1..3 (n=3 total 20,234->19,882), four seeded tables per n=4..6 on every row, four rows per larger random/named table: 5,792 row executions pass output and input-read count checks; workspace stays within ledger. Positive control psllllo -> pslto executes identically; psltpso prints the wrong answer. Pre-existing execution-ledger witness, not a regression: table 01111101 row 111 takes baseline 65 commands (99 chars), compressed 63 (97 chars), versus stated 4n^2+9n+5-6floor(n/2)=62 at n=3. Reproduce by generating that table, applying the decoded replacement, and stepping each program on input 1/1/1. Prototype only; bounds unchanged."
+verdict = "rejected 2026-10-31: decode, replace each llll/rrrr by lt/rt (t repeats the preceding move three times), then re-encode. Saves two chars per four moves, at most half the eligible movement text. Random totals 24,853->24,223 / 48,225->47,133 at n=7/8 (2.535/2.264%); 2.201/2.032/1.950/1.757% at n=9..12, declining. Named and/or 4.0-6.1%, parity 0%; majority peaks 8.50% at n=11, falls to 7.99% at n=12; threshold <=n//3 peaks 8.27% at n=8, 7.24% at n=12. No family meets 10%. Executed both programs for every table/row n=1..3 (n=3 total 20,234->19,882), four seeded tables per n=4..6 on every row, four rows per larger random/named table: 5,792 row executions pass output and input-read count checks; workspace stays within ledger. Positive control psllllo -> pslto executes identically; psltpso prints the wrong answer. Historical pre-2026-11-02 execution-ledger witness: table 01111101 row 111 takes baseline 65 commands (99 chars), compressed 63 (97 chars), versus stated 4n^2+9n+5-6floor(n/2)=62 at n=3. Reproduce by generating that table, applying the decoded replacement, and stepping each program on input 1/1/1. Prototype only; the 2026-11-02 audit repairs the current bound (canonical witness11101001,row111 takes65)."
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
 
@@ -85,3 +88,42 @@ saving = 66.7
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: root constant folding plus finite read batching. Read into one cell, clear, optionally add one and print. Base-seven digits d[k] of n emit (c repeated k then i) repeated d[k], so exactly n inputs are read without a loop or search. Chars sum(d[k]*(k+1))+2+2b, commands sum(d[k])+2+2b under native finite repetition. n=7 15/17->4/6 (68.8%), n=8 17/19->5/7 (66.7%), n=12 25/27->9/11. Against the unbatched native root alone, batching saves 50.0% at n=7 (20->10 chars across both answers) and 45.5% at n=8 (22->12): it independently meets the 20% declining gate at the fixed range. n=8 commands 17/19->4/6, workspace 35/36->12/13 bits. Direct read-count and following-record controls pass at 13 fixed arities through n=512, including both sides of powers of seven. n=3 corpus chars 20234->20230. Executed 1120 candidate runs and 5656 paired old/new row runs; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command records and global resource caps unchanged. Owned IO/template checks verify input use before output and preserve the following record."
+
+[ablations.constant_zero_guard_20261102]
+arity = 8
+saving = 48.8
+seed = "Random(1000n+s).choices, s=0..19"
+tables = "20 generic per fixed n7/8; all tables/rows n1..3; named and private bank/ignored/permuted controls"
+n3_source_units = 18192
+n3_commands = 80422
+verdict = "kept 2026-11-02: canonical constant-zero/dead-flag elimination. Enable existing fold_zero for inline bodies too; banks already used it. If zero child is constant0, result stays at its initial value and no zero-side operation exists. Guard the one child directly on its bit: input0 skips unchanged, input1 is cleared before the child, and the omitted flag stays0. A skipped descendant may retain its input but no later enclosing/sibling loop reads it; pending-bank tests use distinct flags, and new inline bodies have no bank continuations. Both flip polarities preserve the result preset. n3 chars20230->18192, commands87532->80422; fixed generic totals24659/48380 unchanged (winning banks already prune). AND chars149->77 /172->88, NAND153->81 /176->92. 12968 native private rows include90 bank forms and35660 consumed-bit/flag-zero exit checks, reverse permutations and ignored inputs; following-record/read-first controls pass. Liveness witnesses001/101 retain the skipped last1, with later reads only at0/6 or0/2/6. Source/build remain O(T), source bound unchanged, native workspace bound unchanged."
+
+[ablations.bottom_level_copy_leaves_trick]
+arity = 8
+saving = -2.3
+seed = "same fixed generic corpus"
+tables = "20 per n7/8; exhaustive small and named controls"
+verdict = "rejected 2026-11-02: current binary_leaf already uses one loop without a flag, so the proposal overestimates its baseline. Clean q-copy zeros both input and flag: chars24659->25246 (+2.38%) /48380->49515 (+2.35%) against canonical pruning, without the forbidden old-whole-program min. Even terminal-liveness cleanup elision gives24822/48672 (growth0.66/0.60%); clear the last flag whenever a bank can test it. Named savings stay below10%; parity retains its sum path. Both copy polarities execute and strictly cleaned bit/flag cells end0. n3 clean copy18749chars/84464commands versus canonical18192/80422; no execution admission. No copy hook, shared-helper edit or weaker production invariant ships."
+
+[ablations.zero_guarded_single_branch_trick]
+arity = 8
+saving = 40.9
+seed = "same fixed generic corpus, plus OR/NOR"
+tables = "20 generic per n7/8; full small; full OR/NOR rows through8 and samples through16"
+n3_source_units = 18147
+n3_commands = 80232
+verdict = "kept only full-input OR/NOR2026-11-02. The literal marker/h sketch without a two-way guard prints1 for both inputs, while vph itself correctly negates a bit. Repair: when the one child is constant0, invert the bit then use a single guarded zero child. sk is the shorter fixed spelling of vph, both two native commands; no per-node/source search. Generic vph chars24659->23202 /48380->45723 (5.91/5.49%); sk22841/45087 (7.37/6.81%), declining below20. Generic n3 E80422->74384 (-7.51%) has slower rows (00000010,row6:33->38), so execution admission fails. Named OR158->95 /181->108 (39.87/40.33%); NOR153->91 /176->104 (40.52/40.91%), independently against canonical pruning. Even vph passes these families. Full table recognition is one unique first bit; no ignored-input or constructed firing class is added. Read all inputs first, preset the result for OR, then sk/as guards require all inputs0; clear each tested bit before descending. Source13n+4(OR)/13n(NOR), Emax14n+4/14n from n2; unary io/isko use2/4 chars and steps. Old canonical OR/NOR source is23n-3/23n-8 from n3; opposite polarities are quadratic, no repeated nonconstant residual exists. Thus savings increase to10/23=43.48%; native1100 family rows through16 verify both outputs and exact counts. No old-program min, arbitrary cap, frozen code or shared-helper hook. Public n3 chars18147/commands80232, all8 pins and current Size anchors/example refreshed."
+
+[ablations.xor_tail_two_levels_trick]
+arity = 8
+saving = 4.5
+seed = "same fixed generic corpus"
+tables = "20 per n7/8 plus named XOR/XNOR tail controls"
+verdict = "rejected 2026-11-02: add the missing r after asrpsllb (it ends on the first bit), then square sum-1 for XNOR, invert again for XOR and q-copy/clean the result. Canonical chars24659->23770 (3.61%) /48380->46186 (4.53%), below10%; safe terminal-liveness forms23712/46047 (3.84/4.82%) also fail. Exact2 named gains9.04/9.08%, or9.60/9.65% with cleanup elision, remain below10 at the fixed window; no shifted judging range. Parity is unchanged. n3 canonical18192chars/80422commands ->17228/80030 (0.49% E), liveness17106/79502 (1.14% E), below execution admission. Both arithmetic polarities fire natively; no searched leaf table, old-source fallback or arithmetic tail ships."
+
+[ablations.execution_bound_20261102]
+arity = 3
+saving = 0.0
+seed = 0
+tables = "every three-input table/row; original and canonical/native public programs"
+verdict = "corrected 2026-11-02: inherited62 at n3 was false. Original01111101,row111 takes65, reduced to55 by canonical pruning; current11101001,row111 still takes65 (92chars). Exhaustive public n3 maximum65 is the new finite exact bound. Inline and direct chains stay below22n; admitted banks use B=(3n^2+3)//4+20n+4 for the WHOLE program, affine sum uses P=4n^2+9n+5-6floor(n/2). For n>=4 use max(P,B,22n); from5 P dominates. Old exact E scopes3/6 retained (65/185), source4/6 and workspace1/2/3/6 unchanged. Shared witness maintenance: retain the old affine witness and append11101001 only at n3. No proof scope narrowed or numerical claim weakened to hide the old defect."

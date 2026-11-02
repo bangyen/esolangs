@@ -6,7 +6,9 @@ program (49% of its characters at ``n == 4``, 70% at ``n == 2``) vanishes.
 ``r`` moves two right, the cell layout's stride.  Bit ``k`` sits in cell
 ``2k``, its flag in ``2k + 1``: a node sets the flag, tests the bit and clears
 the flag inside, then tests the flag for the zero side, so exactly one side
-fires and both cells end zero.  The answer accumulates in cell ``2n``, printed
+fires and both cells end zero. A known-zero child needs no flag; OR/NOR
+negate each tested bit and use a single guarded chain. The tree answer is
+in cell ``2n``, printed
 once.  Repeated residuals share through level flags or banks, admitted under a
 command bound; inline text stays a candidate; the tree is also built for the
 complement, with the result preset to 1 and cleared at each leaf, and the
@@ -14,8 +16,10 @@ shorter kept.  An affine table sums its bits and prints the sum mod 2
 ([ablations.parity_sum]).
 
 Size:
-    Banks shrink dense tables (majority 1,257 -> 704 chars at n=8, 4,406 ->
-    1,342 at n=10); n=10 parity: 132 chars, n=10 random 1847: 10,156 chars.
+    Banks shrink popcount>=n//2 from inline 2,131 -> 698 chars at n=8,
+    7,713 -> 1,367 at n=10; n=10 parity: 132 chars, random 1847: 10,156 chars.
+    OR/NOR use 13n+4 / 13n chars from n=2 (unary: 2 / 4), without flags
+    ([ablations.zero_guarded_single_branch_trick]).
     Constants: sum(d[k]*(k+1)) + 2 + 2b chars, d the base-seven digits of n.
 """
 
@@ -72,13 +76,29 @@ def _reach(start: int, target: int) -> str:
 def painfuck(truth_table: str) -> str:
     """Return a Painfuck program for an MSB-first ``2**n`` truth table."""
     n = _validate_truth_table(truth_table)
-    if truth_table.count(truth_table[0]) == len(truth_table):
-        return _constant(n, int(truth_table[0]))
+    first = truth_table[0]
+    count = truth_table.count(first)
+    if count == len(truth_table):
+        return _constant(n, int(first))
+    if count == 1:
+        return _zero_chain(n, disjunction=first == "0")
     tree = in_input_order(truth_table, _painfuck_ordered)
     form = affine_form(truth_table, _validate_truth_table(truth_table))
     if form is None or not any(form[1]):
         return tree
     return min(tree, _parity_sum(*form), key=len)
+
+
+def _zero_chain(n: int, *, disjunction: bool) -> str:
+    """Return OR/NOR using inverted-bit guards, without level flags."""
+    if n == 1:
+        return _encode("io" if disjunction else "isko")
+    header = "ir" * (n - 1) + "i" + ("rpsll" if disjunction else "")
+    # sk negates a bit; a/s consumes the selected zero input. Any skipped
+    # descendant inputs are dead after the enclosing guards return.
+    body = "l" * (2 * n - 2) + "skasr" * (n - 1) + "skas"
+    leaf = "rs" if disjunction else "rps"
+    return _encode(header + body + leaf + "llb" * n + "r" * n + "o")
 
 
 def _constant(n: int, bit: int) -> str:
@@ -167,6 +187,7 @@ def _painfuck_shared(
         shared_blocks=blocks,
         flag_levels=flags,
         binary_leaves=True,
+        fold_zero=True,
         dialect=FlagDialect(
             _reach,
             "ps",

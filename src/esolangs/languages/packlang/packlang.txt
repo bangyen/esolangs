@@ -12,3 +12,4 @@ Package : IO {
   INCR t(3);charPut(48^t(i));0;
   }
 } truthTable;
+

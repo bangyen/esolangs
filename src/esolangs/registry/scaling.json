@@ -19,7 +19,7 @@
   "bitdeque": "linear: at most B characters: the shared tree's token bound",
   "bitwise_cyclic_tag": "linear: worst 13T/2+2n+3 characters: seven per two-row cell, reads six a unit",
   "bleh": "linear: at most F+13-6n characters for n>=3: shortened read sites",
-  "blindfolded_arithmetic": "linear: worst 3T + 6\u2308T/3\u2309 + 60n + 59 characters: six an instruction",
+  "blindfolded_arithmetic": "linear: worst 3T + 6\u2308T/3\u2309 + 48n + 53 characters: six an instruction",
   "boolfuck": "linear: worst C characters at n = 3, then at most C",
   "brainfuck": "linear: at most 35T/2 + 55n + 25 characters: the plain tree",
   "brainif": "linear: at most W characters: widest layered DAG, before the fall-through layout",
@@ -64,7 +64,7 @@
   "line": "linear: worst F pixels past n = 5: the full tree's box",
   "lol_waht_i_cant_edit_talk_pages": "linear: at most 105T characters: one while-equal loop per branch",
   "malbolge": "measured: worst 13340 characters to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole",
-  "minsky_swap": "linear: worst N characters: cascade routes to two shared leaves, one-digit targets",
+  "minsky_swap": "linear: at most N characters: four fixed leaf targets",
   "modulous": "linear: worst N characters: T-character literal, one read block an input",
   "monotonic_boolfuck": "linear: worst 53T/2 - 21 characters past n = 1",
   "movesum": "linear: 4T + 6n + 4 commands, 32 characters a row",
@@ -72,7 +72,7 @@
   "nor_machine": "linear: 6T + 8r + O(n^2) characters for r runs of 1s",
   "nq": "linear: at most 10T - 6 characters",
   "object_disoriented": "linear: worst D characters to n = 8, at most min(24T+56, S)",
-  "one_i": "linear: worst 25T/4 - 6 characters past n = 1: six a node",
+  "one_i": "linear: worst 9T/2 - 6 characters past n = 1: six a node",
   "packlang": "linear: at most N characters: one write per differing row",
   "painfuck": "linear: at most 31T/2+3n-21 characters past n = 3: to n = 15",
   "parenthesys": "linear: worst T/8 + 54 + G characters past n = 3",
@@ -101,7 +101,7 @@
   "streetcode": "linear: worst S cells from n = 2: tree, then the flat street",
   "subleq": "linear: worst min(P, H) characters at n = 9..14, at most elsewhere",
   "suffolk": "linear: worst F characters, n >= 4",
-  "super_snusp": "linear: worst \u230830103(T-1)/100000\u2309 + 19n + 21 cells: one row",
+  "super_snusp": "linear: worst D+8n+19 cells: one row",
   "switchcase": "linear: at most N characters: O(T/log T) shared residuals, O(log T) address digits",
   "taglate": "linear: worst 3T+12n\u00b2+17n+12 characters past n = 2: nibble leaves",
   "thisthat": "linear: at most N cells past n = 2: H-tree `O(sqrt(T))` sides",
@@ -112,5 +112,5 @@
   "unlambda": "linear: at most 169T/8 - 21 characters past n = 3: 315-character halves",
   "unsquare": "linear: worst T + T/2^d + 16\u00b72^d + 10(n-d) + 10 characters",
   "what": "linear: worst S characters: a change point costs 7 and its row's digits",
-  "whitespace": "linear: worst T + 24n + 65 characters: one literal"
+  "whitespace": "linear: at most T+4n+70 characters: one literal and shared step"
 }

@@ -7,21 +7,21 @@ admitted = 2026-10-15T13:25:54-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "a node pushes its two children as function literals, reads its bit with `B` and `?` invokes one; constant subtables read their remaining bits unbranched"
-scaling = "linear: worst 25T/4 - 6 characters past n = 1: six a node"
-execution = "poly n: worst 4n + 3 steps: four a level, seven to print 1 - b"
-workspace = "poly n: worst W bits, n = 2..27: frame, stack and input position"
-definitions = ["W = 2n^2 + 36n - 23 + bl(2n-1); 104 at n = 3"]
+qualification = "a node pushes its two child functions and B? invokes one; essential-input projection interleaves ignored B$ reads; two-bit tails derive arithmetic, parity uses an exact sum/power, and constants drain remaining inputs"
+scaling = "linear: worst 9T/2 - 6 characters past n = 1: six a node"
+execution = "poly n: worst E steps: four a branch level, twelve in an arithmetic tail"
+workspace = "poly n: worst W bits past n = 1: default frame, stack and input position"
+definitions = ["E = 7 at n=1, 4n+4 from n=2", "W = 24/64/112 at n=2/3/4; 2n^2+34n-61+bl(2n-1) from n=5"]
 
 [generator_sizes]
-"00000001" = { commands = 10, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 10, "7" = 10 }, source_units = 27 }
-"00001100" = { commands = 13, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 22 }
-"00110110" = { commands = 15, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 10, "5" = 10, "6" = 15, "7" = 15 }, source_units = 25 }
-"0110" = { commands = 11, commands_by_row = { "0" = 6, "1" = 6, "2" = 11, "3" = 11 }, source_units = 15 }
-"01101001" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 10, "7" = 10 }, source_units = 36 }
-"0110100110010110" = { commands = 19, commands_by_row = { "0" = 14, "1" = 14, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 14, "7" = 14, "8" = 19, "9" = 19, "10" = 14, "11" = 14, "12" = 14, "13" = 14, "14" = 19, "15" = 19 }, source_units = 78 }
-"1101001101101101" = { commands = 14, commands_by_row = { "0" = 18, "1" = 18, "2" = 14, "3" = 14, "4" = 12, "5" = 12, "6" = 12, "7" = 12, "8" = 14, "9" = 14, "10" = 19, "11" = 19, "12" = 18, "13" = 18, "14" = 14, "15" = 14 }, source_units = 65 }
-"11111110" = { commands = 15, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 14, "5" = 14, "6" = 15, "7" = 15 }, source_units = 32 }
+"00000001" = { commands = 8, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 17 }
+"00001100" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10 }, source_units = 10 }
+"00110110" = { commands = 16, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 22 }
+"0110" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12 }, source_units = 12 }
+"01101001" = { commands = 14, commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 14, "5" = 14, "6" = 14, "7" = 14 }, source_units = 14 }
+"0110100110010110" = { commands = 16, commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16, "8" = 16, "9" = 16, "10" = 16, "11" = 16, "12" = 16, "13" = 16, "14" = 16, "15" = 16 }, source_units = 16 }
+"1101001101101101" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12, "8" = 20, "9" = 20, "10" = 20, "11" = 20, "12" = 12, "13" = 12, "14" = 12, "15" = 12 }, source_units = 42 }
+"11111110" = { commands = 12, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 21 }
 
 [catalogue]
 sharing_exempt = "a deeper function literal needs a whole-stack roll to reuse"
@@ -73,6 +73,7 @@ verdict = "kept: canonical, exempt. A depth n-2 node of two different constants 
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+trick_prototype = 2026-11-02
 
 [ablations.constant_table_audit_20261101]
 arity = 8
@@ -80,3 +81,31 @@ saving = 7.7
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "kept: canonical root folding/minimal spelling, exempt. For one constants duplicate the final real read and compare it with itself: > returns one on a false comparison. Zero retains iic+. Chars and commands n+5/3: n=7 12/12->12/10 (8.3% combined), n=8 13/13->13/11 (7.7%; one alone 15.4%), n=12 17/17->17/15. n=8 one workspace 51->46 bits; zero unchanged. The logarithmic zero shortcut :>l yields a complex snapshot the workspace referee cannot measure; rejected without weakening the referee. Existing global workspace formula is declared only for n=2..27; do not apply it to the unchanged n=1 zero. n=3 corpus chars 7732->7730. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."
+
+[ablations.direct_two_input_20261102]
+seed = 20261030
+arity = 8
+saving = 27.78
+tables = "200 fixed generic tables each n=7,8 (per-arity Random(20261030).choice); exhaustive all tables/rows n<=3; ten samples each n=4..6"
+verdict = "kept by source: derive rare-point product/comparison or parity from four truth bits, no frozen16-expression table or old-source min. Chars114684/230677 ->82434/166603 (28.12/27.78%); 20-table extension throughn14 approaches27.49%, expected limiting saving27.424749% from exact uniform-tree recurrence. n3 chars7730->5188, commands24672->23264;448 rows slower, so not execution admission. Source worst9T/2-6 fromn2; E rises4n+3->4n+4 fromn2, unchanged7 atn1. Numeric values stay Gaussian Fractions; comparisons return0 on true, (-1)^integer stays exact. W becomes24/64/112 atn2/3/4 and2n^2+34n-61+bl(2n-1) from5; retained old scopes and arities, with a two-bit drained-constant witness rather than only arithmetic leaves. A token-list emitter joins once, retaining O(T) build instead of recursively copying whole children."
+
+[ablations.parity_reader_20261102]
+seed = 20261030
+arity = 8
+saving = 97.91
+tables = "full parity and its negation n=1..16; fixed judging n=7,8 after direct-two-input baseline"
+verdict = "raw three-input-library search rejected as supplied: no enumeration or searched256-case library. Kept only a named parity alternative: sum all inputs, raise -1 to that exact integer, compare x with2x. At7/8 direct-reader source570/1146 ->22/24 (96.14/97.91%), E32/36 ->22/24, W44/48. Extension n10/12/16 source4602/18426/294906 ->28/32/40 proves saving tends100%; pattern recognition doubles/complements a string in O(T). n1 arithmetic genuinely loses10 vs2/7 chars, so existing leaf stays; n2 is identical12 chars. All reads precede print. Non-parity OR/XOR trees still attain global source bounds, and constant-tail variants attain W; append these witnesses without dropping old corpus. Canonical ignored-input extension uses essential_inputs/read_at, B$ drains, and direct single-input projections; final n3 source4945 and commands23080;496 rows slower by atmost6 commands, zero growing tables. All3282 projected-parity/projection native rows pass, including every essential subset throughn8. Balanced generic old/direct areas116264/232855 ->83785/168513; named parity578/1152 ->24/24."
+
+[ablations.compare_constants_20261102]
+seed = 20261030
+arity = 8
+saving = 1.84
+tables = "same fixed200 generic tables each n=7,8; exhaustive small and sampled4..6"
+verdict = "rejected marginally after direct keeper: standalone source6.09/6.02% and n3 commands24672->23280 (5.64%), but direct-reader marginal source82434/166603 ->80917/163539 (1.84/1.84%) and E23264->22768 (2.13%), below both gates; after parity/projection canonical extension final E23080->22704 (1.63%) after canonical projection. Root-one :> is already canonical; nested constants and old last-leaf negation remain. Fraction/operator/read-first and wrong-comparator/wrong-parity/early-print controls execute; no standalone admission is reused to pad joint savings."
+
+[ablations.canonical_projection_20261102]
+seed = 20261030
+arity = 8
+saving = 0.0
+tables = "canonical dense7 table lifted into8 inputs at positions0/3/7;468 generic ignored-input native/W rows and3282 parity/projection rows"
+verdict = "kept canonical, exempt: arithmetic tails otherwise lose their two-essential-bit opportunity when the final physical input is ignored (cost226 against real430, violating half). Project the whole tree and interleave B$ drains before/between/after essential reads; local constants still drain all remaining physical inputs with bareB. Lift costs now2/16/57 against430. No input reordering, early print or old-source fallback; all400 generic judge programs byte-identical, so source admission is unpadded. Source overhead<=2h*2^m remains O(T), and each executed path pays atmost2h commands. Exact all-essential S/E/W witnesses still attain the global bounds."

@@ -7,20 +7,20 @@ admitted = 2026-10-16T16:30:03-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table read at its essential inputs is one integer built by Horner's rule in base 8, and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer"
-scaling = "linear: worst 3T + 6⌈T/3⌉ + 60n + 59 characters: six an instruction"
-execution = "linear: worst ⌊T/2⌋ + ⌈T/3⌉ + 10n + 10 commands: half the rows set, run once"
-workspace = "linear: worst 2T + 6 + bl(⌊T/2⌋+⌈T/3⌉+10n+7) bits past n = 2: b and its even copy"
+qualification = "the table read at its essential inputs is one integer built by Horner in base8 (parity: base16), and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer"
+scaling = "linear: worst 3T + 6⌈T/3⌉ + 48n + 53 characters: six an instruction"
+execution = "linear: worst ⌊T/2⌋ + ⌈T/3⌉ + 8n + 9 commands: half the rows set, run once"
+workspace = "linear: worst 2T + 6 + bl(⌊T/2⌋+⌈T/3⌉+8n+6) bits past n = 2: b and its even copy"
 
 [generator_sizes]
-"00000001" = { commands = 42, commands_by_row = { "0" = 42, "1" = 42, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 42, "7" = 42 }, source_units = 251 }
-"00001100" = { commands = 34, commands_by_row = { "0" = 34, "1" = 34, "2" = 34, "3" = 34, "4" = 34, "5" = 34, "6" = 34, "7" = 34 }, source_units = 203 }
-"00110110" = { commands = 45, commands_by_row = { "0" = 45, "1" = 45, "2" = 45, "3" = 45, "4" = 45, "5" = 45, "6" = 45, "7" = 45 }, source_units = 269 }
-"0110" = { commands = 33, commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33 }, source_units = 197 }
-"01101001" = { commands = 47, commands_by_row = { "0" = 47, "1" = 47, "2" = 47, "3" = 47, "4" = 47, "5" = 47, "6" = 47, "7" = 47 }, source_units = 281 }
-"0110100110010110" = { commands = 63, commands_by_row = { "0" = 63, "1" = 63, "2" = 63, "3" = 63, "4" = 63, "5" = 63, "6" = 63, "7" = 63, "8" = 63, "9" = 63, "10" = 63, "11" = 63, "12" = 63, "13" = 63, "14" = 63, "15" = 63 }, source_units = 377 }
-"1101001101101101" = { commands = 62, commands_by_row = { "0" = 62, "1" = 62, "2" = 62, "3" = 62, "4" = 62, "5" = 62, "6" = 62, "7" = 62, "8" = 62, "9" = 62, "10" = 62, "11" = 62, "12" = 62, "13" = 62, "14" = 62, "15" = 62 }, source_units = 371 }
-"11111110" = { commands = 43, commands_by_row = { "0" = 43, "1" = 43, "2" = 43, "3" = 43, "4" = 43, "5" = 43, "6" = 43, "7" = 43 }, source_units = 257 }
+"00000001" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37 }, source_units = 221 }
+"00001100" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 167 }
+"00110110" = { commands = 39, commands_by_row = { "0" = 39, "1" = 39, "2" = 39, "3" = 39, "4" = 39, "5" = 39, "6" = 39, "7" = 39 }, source_units = 233 }
+"0110" = { commands = 28, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28 }, source_units = 167 }
+"01101001" = { commands = 40, commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40 }, source_units = 239 }
+"0110100110010110" = { commands = 54, commands_by_row = { "0" = 54, "1" = 54, "2" = 54, "3" = 54, "4" = 54, "5" = 54, "6" = 54, "7" = 54, "8" = 54, "9" = 54, "10" = 54, "11" = 54, "12" = 54, "13" = 54, "14" = 54, "15" = 54 }, source_units = 323 }
+"1101001101101101" = { commands = 53, commands_by_row = { "0" = 53, "1" = 53, "2" = 53, "3" = 53, "4" = 53, "5" = 53, "6" = 53, "7" = 53, "8" = 53, "9" = 53, "10" = 53, "11" = 53, "12" = 53, "13" = 53, "14" = 53, "15" = 53 }, source_units = 317 }
+"11111110" = { commands = 38, commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 38, "5" = 38, "6" = 38, "7" = 38 }, source_units = 227 }
 
 [catalogue]
 folding_constant_local = "read_at"  # one projected table bit, no lookup round
@@ -36,7 +36,7 @@ verdict = "kept: canonical, exempt. The table integer is built from the table re
 [ablations.register_reuse]
 saving = 0.6
 arity = 12
-verdict = "removed (retirement candidate 34): the divisor 2 is rebuilt into c at every lookup round; the two flag that kept it across rounds until an essential input's divisor computation overwrote it is gone. The audit measured rebuilding at +1.58% at n=10 and +0.57% at n=12 on tables ignoring the three low inputs, +0.65 / +0.21% on two-low-ignored and scattered-ignored tables, 0.00% on random tables: one fixed 6-char instruction per firing, declining everywhere. See RETIREMENT-CANDIDATES entry 34"
+verdict = "historical removal (retirement candidate 34, before 2026-11-02): the divisor 2 was rebuilt into c at every lookup round; the two flag that kept it across rounds until an essential input's divisor computation overwrote it is gone. The audit measured rebuilding at +1.58% at n=10 and +0.57% at n=12 on tables ignoring the three low inputs, +0.65 / +0.21% on two-low-ignored and scattered-ignored tables, 0.00% on random tables: one fixed 6-char instruction per firing, declining everywhere. See RETIREMENT-CANDIDATES entry 34"
 
 [ablations.complement_table]
 saving = 97.6
@@ -54,6 +54,7 @@ arity = 10
 verdict = "kept: each octal digit of the table integer is added as v or as v - 8 carrying one up (terms +-1, +-2, +-4, +-8, at most two a digit, the registers already hold them), a two-state pass choosing the fewer terms; the unsigned build is the carry-free path, so no table grows. Random 9.3% / 12.3% / 14.9% / 17.1% at n=7 / 8 / 9 / 10 (200 / 200 / 40 / 40 seeded; share rising with n), majority 20.9% / 18.6% / 32.1% / 27.6%, thresholds 0.3-1.4%, parity, and, or 0.00% (parity digits are already two-term). Measured 2026-10-30 chars, every program executed (n<=3 exhaustive, 300 random at n=4, 8-40 random + named at n=5..8, named rows sampled at n=9..10)"
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
 
@@ -63,3 +64,33 @@ saving = 85.1
 seed = 0
 tables = "both constants n=1..12; exhaustive all tables/rows n=1..3; six witnesses/all rows n=4..6"
 verdict = "kept: canonical fixed-output spelling. i=i-i or i=i/i sets zero or one from the positive input, then i=i/a divides by the untouched zero register to halt and print. Exactly 11 chars and two commands; written workspace at most n+8 bits. n=8 zero/one 71/77 -> 11/11 chars, 12/13 -> 2 commands, 24 -> 16 written bits. Same sizes at n=7 and n=12; n=3 corpus 66110 -> 65984 chars. Input is consumed before execution. Each language passed 5656 paired old/new row executions; 270 nonconstant programs through n=3 remain byte-identical. Both constants n=1..12 execute in default, width=1 and balanced layouts; a separate 1120-run probe includes every row through n=8. All 24 balanced scores improve or match; all eight benchmark size/command pins remain unchanged."
+
+[ablations.digit_register_search_trick]
+arity = 8
+saving = 7.3
+seed = 7000
+tables = "200 Random(1000n+i).choices tables per n=7/8; exhaustive n<=3; five samples n=4..6"
+verdict = "rejected generically 2026-11-02: diagnostic radices8/16/32 with digit registers1,3,8 /1,3,6 /1,4,11 give chars197716->188098 (4.86%) /312520->289558 (7.35%), below10%. No old-program fallback was used: all three explicit setups and shortest-term diagnostics execute, but275 sampled tables grow; n3 chars65984->69734 and commands88320->93320. A searched family axis and frozen shortest-term table do not ship. The parity-only direct radix16 repair is judged separately against the admitted alternating baseline."
+
+[ablations.msb_shift_first_trick]
+arity = 8
+saving = 1.5
+seed = 7000
+tables = "same fixed200 generic corpus per n=7/8 and native small/sample corpus"
+verdict = "rejected 2026-11-02: declining chars197716->194116 (1.82%) /312520->307720 (1.54%), below20%; n3 chars65984->68708 and commands88320->91952, so execution admission fails too. All physical bits must be reduced, including leading ignored inputs (0101,row2 catches skipping them); an ignored bit costs three modulo instructions plus a halve. No old-program min fallback. Peak memory is not claimed within the old bound: input still holds the shift when the tail copies the table."
+
+[ablations.alternating_counter_rounds_trick]
+arity = 8
+saving = 6.4
+seed = 7000
+tables = "same fixed200 generic corpus per n=7/8; all tables/rows n=1..3"
+n3_source_units = 56108
+n3_commands = 75152
+verdict = "kept 2026-11-02 by execution admission: n3 source65984->56108 (-14.97%), commands88320->75152 (-14.91%), no larger table or slower row. Generic size197716->180118 (8.90%) /312520->292498 (6.40%) is declining and independently fails20%. Keep c=2, e=Q-1; quotient/counter alternate i/d, bit=X-2floor(X/2), divisor1+bit*e (mirror:e-bit*e+1), and e*(e+2)=Q^2-1. Ignored rounds divide the current counter once; only essential rounds swap registers. Every divisor is positive until the final deliberate zero divide; i still receives the low table bit and consumes one positive row-number input. A retained final divisor Q implies b was divided by Q; otherwise the retained value is1, so the even-copy overlap stays within2T+6 register bits. No extra clear is needed. If leading inputs are ignored, their remaining counter fits the full-table versus projected-table slack. Generic table construction remains byte-identical: two signed-carry states now use backpointers instead of quadratic prefix copying, restoring O(T) construction. The unsigned table path bounds its code by floor(T/2)+ceil(T/3)+3 instructions (a flipped minority saves its extra correction); unmirrored lookup costs at most8n+6, yielding the new E/source caps. Its instruction-pointer bound has the same bit width at E and E-3 for n>=3 (finite n3..9; thereafter the bound lies strictly between T/2 and T). Old source/E arities1/2/3/5 and W3/5 retained with tighter caps; the derived nonparity witness 1+parity[1:] retains n5 exact maxima after the named parity repair. 10784 raw-variant native rows plus40416 forced mirror/flip and named rows and3200 judge rows passed; IO consumes exactly one token, leaves a second unread, halts at the last instruction, and prints the exact bit. Wrong bit subtraction and wrong Q-1 squaring controls fail. Some individual memory peaks grow (AND3:21->28 bits), within unchanged leading2T workspace bound; no memory-reduction claim."
+
+[ablations.parity_radix16_trick]
+arity = 8
+saving = 17.5
+seed = 0
+tables = "full-input parity and negation, n=3..10,12,14,16; compared with alternating-counter baseline"
+verdict = "kept 2026-11-02: no-search repair of raw digit-register proposal, parity and negation only. Existing O(T) parity recognizer selects from n=4, the genuine crossover: n3 grows239->245 chars, n4 parity ties323 and negation329->323. Each four-bit group is0110 or1001, hence reversed hex6 or9; fixed registers1,3,6,16 emit +6 or +(6+3), no signed-term or family search. Exactly5T/8+8n+12 commands and15T/4+48n+71 chars. Independent parity savings1031->887 (13.97%) /1715->1415 (17.49%) at fixed n7/8; n9/10/12/14/16 3047->2423 /5651->4391 /21107->16007 /82643->62183 /328499->246599, tending to25%. Negation has the same new sizes (alternating baseline can be six chars longer). Limit proof: Thue-Morse consists of16-bit parity blocks or complements. For all eight triples (48bits,16 octal digits), all four entry/exit signed-carry costs are24 terms, and unsigned cost is24; leftover boundary is O(1). Thus old signed octal cost5T/6+O(1), new5T/8+O(1), lookup O(n): limiting source saving25%. Executable finite recurrence and1048 native public rows through n16 check both polarities, exact emitted counts and the genuine low-arity loss. Same O(T) source/build and global bounds; all old proof arities retained. No race against old whole programs, arbitrary upper cap or searched/frozen parity code. All eight pins, Size anchors and balanced example updated and executed."

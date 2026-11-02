@@ -1,17 +1,20 @@
-"""Snapshot-bit bounds."""
+"""Exact worst command and written-snapshot bounds for arithmetic tails."""
+
+
+def execution(n: int, _: str) -> int:
+    """Four commands per branch level, then a twelve-command arithmetic tail."""
+    return 7 if n == 1 else 4 * n + 4
 
 
 def workspace(n: int, _: str) -> int:
-    """Snapshot bits of the worst row: frame + stack + input position.
+    """Two retained functions per level, a 17-bit constant tail, and one frame.
 
-    The stack holds two ``("fn", offset)`` literals (16 bits and the offset) per
-    branching level, 2(n-1) in all, then 13 bits of numbers in the last leaf's
-    ``Biic+>p``; the frame holds that leaf's offset and a 3-bit command number.
-    Offsets come from the left siblings at maximal length 25 * 2^k / 4 - 6: the
-    root's first is 0 (1 bit), its second and the next first take n+2 bits, the
-    remaining 2n-5 and the leaf's frame take n+3 (offsets pass 2^(n+2) from
-    depth 2); at n = 3 the last offset stays at n+2 bits, so 104.
+    A maximal mixed OR/XOR tree has length 9T/2-6. Its rightmost offsets
+    need n+2 bits through the third branch, n+3 after that. The root's zero
+    offset costs one bit; each function's tag costs sixteen. The terminal
+    constant frame needs three command bits; its stack is two bits larger
+    than the four-command-bit arithmetic tail. Small offset boundaries are explicit.
     """
-    if n == 3:
-        return 104
-    return 2 * n * n + 36 * n - 23 + (2 * n - 1).bit_length()
+    if n <= 4:
+        return {2: 24, 3: 64, 4: 112}[n]
+    return 2 * n * n + 34 * n - 61 + (2 * n - 1).bit_length()

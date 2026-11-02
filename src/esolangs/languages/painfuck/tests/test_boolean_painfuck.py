@@ -15,6 +15,7 @@ class TestPainfuck:
         from esolangs.languages.painfuck.interpreter import _translate
 
         _check_constants()
+        _check_zero_fold_and_chain()
         program = boolean.painfuck("0110")
         translated = _translate(program)
         assert "a" in translated  # [ loops
@@ -159,3 +160,38 @@ def _check_constants() -> None:
             assert io.getvalue() == str(bit)
             assert io.reads == n
             assert io.input_num() == 7
+
+
+def _check_zero_fold_and_chain() -> None:
+    from esolangs.languages.painfuck.generator import _painfuck_shared, painfuck
+    from esolangs.languages.painfuck.interpreter import _Machine, _translate
+    from esolangs.languages.painfuck.tests.formulas import _execution
+    from esolangs.runtime.io import ScriptedIO
+
+    program, _ = _painfuck_shared("00000001", (0, 1, 2), ())
+    # The empty zero child has no flag protocol; only the result adds one.
+    assert _translate(program).count("a") == 3
+    assert _translate(program).count("ps") == 1
+    for n in range(1, 9):
+        for table in ("0" + "1" * ((1 << n) - 1), "1" + "0" * ((1 << n) - 1)):
+            program = painfuck(table)
+            for row in (0, 1, (1 << n) - 1):
+                io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n7\n")
+                machine = _Machine(program, io)
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    steps += 1
+                assert io.getvalue() == table[row]
+                assert steps <= _execution(n, program)
+                assert io.reads == n
+                assert io.input_num() == 7
+    table = "11101001"  # The65-step maximum remains after canonical pruning.
+    program = painfuck(table)
+    machine = _Machine(program, ScriptedIO("1\n1\n1\n"))
+    steps = 0
+    while not machine.halted:
+        machine.step()
+        steps += 1
+    assert machine.io.getvalue() == "1"
+    assert steps == _execution(3, program) == 65

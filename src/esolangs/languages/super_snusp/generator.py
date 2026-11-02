@@ -6,9 +6,9 @@ the row and takes the low bit.  The random ``=`` opcode is never used.  At
 n=2 four nonconstant tables use a fixed short form.
 
 Size:
-    The table's decimal digits, at most ceil(0.30103(T-1)), plus 19n + 21
+    The table's decimal digits, at most ceil(0.30103(T-1)), plus 8n + 19
     chars; constants use n + 4 cells (read each byte, then overwrite with 48/49).
-    n=2 parity: 16 chars, n=16 and: 20,054 chars, n=16 parity: 20,053 chars.
+    n=2 parity: 16 chars, n=16 and: 19,876 chars, n=16 parity: 19,875 chars.
 
 Decisions:
     A packed integer has no subtrees to fold or share.  A bounded ANF
@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.super_snusp.proof_formulas import commands
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 
@@ -90,9 +91,10 @@ def _emit_lookup(truth_table: str, chunk_digits: int = 0) -> str:
     )
     out = ['"']
     for weight in weights:
-        # acc *= 2; read and normalize the next ASCII bit; acc += bit.
-        out.extend((">2{<*$", ">,>48{<-$", "{<+$") if weight else (">,<",))
-    # Keep 2 on the value stack, then write the reversed table as one decimal
+        # [ablations.stacked_two_horner]: persistent 2 doubles the row and
+        # reduces each ASCII bit modulo 2; the temporary bit is then popped.
+        out.extend(("*>,%{<+$",) if weight else (">,<",))
+    # Write the reversed table as one decimal
     # literal in cell 1: a digit run is ``cell * 10 + digit`` and its first
     # digit replaces the cell.  The reversed source order makes
     # truth_table[row] bit ``row`` of the integer.
@@ -101,15 +103,18 @@ def _emit_lookup(truth_table: str, chunk_digits: int = 0) -> str:
     # either way, so use whichever integer has fewer digits.
     plain, other = _decimal(value), _decimal((1 << len(truth_table)) - 1 - value)
     flip = len(other) < len(plain)
+    # [ablations.stacked_ascii_zero]: encoding sits beneath the persistent 2.
+    # The nondigit pushes separate literals; final 0 resets the accumulator.
+    out[0] = f'"{49 if flip else 48}{{2{{0'
     literal = (1 << len(truth_table)) - 1 - value if flip else value
     if chunk_digits and len(other if flip else plain) > chunk_digits:
         # The largest bit count whose chunk, 2**bits - 1, fits the digits.
         bits = (10**chunk_digits).bit_length() - 1
-        out.append(f">>2{{{_chunked(literal, bits)}")
+        out.append(f">>{_chunked(literal, bits)}")
     else:
-        out.append(f">>2{{<{other if flip else plain}")
+        out.append(f">><{other if flip else plain}")
     # Shift by the row saved in cell 0, reduce modulo 2, encode as ASCII.
-    out.append("<{>]$%$>49{<^$." if flip else "<{>]$%$>48{<+$.")
+    out.append("<{>]$%$^." if flip else "<{>]$%$+.")
     return "".join(out)
 
 
@@ -270,4 +275,5 @@ LANGUAGE = Language(
     no_wrap="a row is a grid row; a break moves code, it does not reflow",
     empty_program="Super SNUSP program cannot be empty",
     grid=True,
+    proof_execution=(commands, True, (1, 2, 3, 5, 6)),
 )
