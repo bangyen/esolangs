@@ -146,6 +146,15 @@ def pytest_terminal_summary(terminalreporter: Any) -> None:
     counts: dict[str, int] = {}
     reasons: dict[str, int] = {}
     for outcome, reports in terminalreporter.stats.items():
+        if outcome not in {
+            "passed",
+            "failed",
+            "error",
+            "skipped",
+            "xfailed",
+            "xpassed",
+        }:
+            continue
         for report in reports:
             if not report.nodeid.startswith("tests/generators/"):
                 continue

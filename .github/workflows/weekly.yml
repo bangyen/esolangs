@@ -139,6 +139,7 @@ jobs:
         cat generator-timing-report.md >> "$GITHUB_STEP_SUMMARY"
 
     - name: Upload the timings
+      if: ${{ always() && !cancelled() }}
       uses: actions/upload-artifact@v7
       with:
         name: generator-timings

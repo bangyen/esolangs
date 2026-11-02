@@ -16,6 +16,7 @@ def _contract_summary_counts_outcomes_and_reasons():
     lines = []
     reporter = SimpleNamespace(
         stats={
+            "": [SimpleNamespace(nodeid="tests/generators/test_contract.py::setup")],
             "passed": [SimpleNamespace(nodeid="tests/generators/test_contract.py::ok")],
             "skipped": [
                 SimpleNamespace(
