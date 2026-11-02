@@ -66,23 +66,47 @@ def test_large_pool_floor_rejects_before_atom_routing(monkeypatch) -> None:
         "esolangs.languages.circuit_diagram.generator.hpool"
     )
 
-    def unexpected(*_args, **_kwargs):
-        pytest.fail("area floor must reject before routing atoms")
+    table = dense(9)
+    model = _large_pool_layout(table)
+    assert model is not None
+    _execute(table, model.render(), (0, 1, 511))
+    calls = []
 
-    monkeypatch.setattr(module, "_pool_layout", unexpected)
-    assert _large_pool_layout(dense(9), ceiling=1) is None
+    def routed(*_args, **_kwargs):
+        calls.append(True)
+        return model
+
+    monkeypatch.setattr(module, "_pool_layout", routed)
+    assert _large_pool_layout(table, ceiling=1) is None
+    # The retained n=9 leaf-AND floor is 1,142,625 cells. Probe its boundary,
+    # not just a tiny ceiling: a weakened margin used to pass the latter.
+    assert _large_pool_layout(table, ceiling=1_142_624) is None
+    assert not calls
     with pytest.raises(ValueError, match="distinct original ports"):
-        _large_pool_layout(dense(9), input_order=[0] * 9, ceiling=1)
+        _large_pool_layout(table, input_order=[0] * 9, ceiling=1)
+    assert _large_pool_layout(table, ceiling=1_142_625) is None
+    assert calls  # positive control: equal floor admits routing before final rejection
 
 
 @pytest.mark.medium
-def test_direct_atom_exact_area_ceiling() -> None:
+def test_direct_atom_exact_area_ceiling(monkeypatch) -> None:
     table = dense(8)
     model = _large_pool_layout(table)
     assert model is not None
     height, width = model.bounds()
     assert _large_pool_layout(table, ceiling=height * width) is not None
     assert _large_pool_layout(table, ceiling=height * width - 1) is None
+    _execute(table, model.render(), (0, len(table) - 1))
+    from esolangs.languages.circuit_diagram.generator.hpool import _PoolBuild
+
+    build = _PoolBuild(dense(9), 7, list(range(9)), 9, {})
+    side = build.geometry.leaf_height - 8 * build.k - 48
+    monkeypatch.setattr(model, "bounds", lambda: (side, side))
+    build._check_fits(model)  # noqa: SLF001 - equality fits the reserved rectangle
+    for h, w in ((side + 1, side), (side, side + 1)):
+        monkeypatch.setattr(model, "bounds", lambda h=h, w=w: (h, w))
+        with pytest.raises(AssertionError, match="exceeded its rectangle"):
+            build._check_fits(model)  # noqa: SLF001
 
 
 @pytest.mark.medium

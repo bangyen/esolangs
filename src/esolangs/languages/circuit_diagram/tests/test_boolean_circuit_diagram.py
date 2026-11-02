@@ -201,7 +201,9 @@ class TestCircuitDiagramLayoutGuards:
     def test_h_layout_reserves_linear_area(self) -> None:
         """Two input levels quarter recursively without overlapping leaves."""
         from esolangs.languages.circuit_diagram.generator.hlayout import (
+            _LATTICE,
             _h_blocks,
+            _h_minterm_sites,
             _h_sites,
             _h_size,
         )
@@ -216,10 +218,26 @@ class TestCircuitDiagramLayoutGuards:
             ]
             assert len(leaves) == 2**leaf_depth
             assert len({(block.x, block.y) for block in leaves}) == len(leaves)
+            assert all(
+                x % _LATTICE == 0 and y % _LATTICE == 0
+                for x, y in _h_minterm_sites(n).values()
+            )
             sites = _h_sites(n)
             assert len(sites) == 2**n - 1
             assert len(set(sites.values())) == len(sites)
             assert _h_size(n) ** 2 <= 10_000 * 2**n
+
+        from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_layout
+        from esolangs.languages.circuit_diagram.tests import (
+            test_boolean_circuit_diagram_pool as pool,
+        )
+        from tests.support.witness_tables import dense
+
+        for n in (3, 5, 7):
+            table = dense(n)
+            pool._execute(  # noqa: SLF001
+                table, _h_term_layout(table).render(), (0, 1, len(table) - 1)
+            )
 
     def test_h_depth_buckets_bound_literal_anchor_visits(self) -> None:
         from esolangs.languages.circuit_diagram.generator.hlayout import _h_term_plan
@@ -530,10 +548,27 @@ class TestCircuitDiagram:
 
     def test_a_route_may_cross_a_hold_but_not_corner_beside_it(self) -> None:
         """A held cell keeps corners out of its neighbourhood, not wires."""
+        from esolangs.languages.circuit_diagram.generator.hlayout import (
+            _h_reserve_terms,
+            _h_term_layout,
+            _h_term_plan,
+        )
         from esolangs.languages.circuit_diagram.generator.layout import (
             _HOLD,
             _RoutingLayout,
         )
+        from tests.support.witness_tables import dense
+
+        table = dense(3)
+        held = _RoutingLayout()
+        _h_reserve_terms(held, _h_term_plan(table))
+        model = _h_term_layout(table)
+        joins = [(x, y) for (x, y), glyph in model.glyphs.items() if glyph == "o"]
+        assert joins
+        # Both left-side inputs of every future result OR must be protected.
+        for x, y in joins:
+            assert held._reserved[x - 1, y - 1] == _HOLD  # noqa: SLF001
+            assert held._reserved[x - 1, y + 1] == _HOLD  # noqa: SLF001
 
         layout = _RoutingLayout()
         layout.reserve((1, 10), _HOLD)  # beside the ``down`` corner

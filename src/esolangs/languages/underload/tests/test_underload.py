@@ -17,6 +17,9 @@ def test_push_output_and_nested_elements() -> None:
 
 
 def test_stack_commands() -> None:
+    from esolangs.languages.underload.tests.oracle_checks import check_raw_underload
+
+    check_raw_underload()
     assert _run("(a)(b)~SS") == "ab"
     assert _run("(a):SS") == "aa"
     assert _run("(a)(b)*S") == "ab"

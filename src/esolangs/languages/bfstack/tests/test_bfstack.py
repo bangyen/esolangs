@@ -64,6 +64,9 @@ class TestBFStack:
 
     def test_operations_on_empty_or_unbalanced_programs_raise(self) -> None:
         """`.` and `<` underflow; `]`, `+` and `-` need a value or a partner."""
+        from esolangs.languages.bfstack.tests.oracle_checks import check_raw_bfstack
+
+        check_raw_bfstack()
         for code in (".", ">]", "<", "+", "-"):
             with pytest.raises(HaltError):
                 run_and_capture(code)

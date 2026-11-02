@@ -11,6 +11,15 @@
 # heights 10,11,14,20; XOR and asymmetric controls executed.
 # Fargo: six killed after correcting the false literal's workspace bound
 # (18 written bits, not the old expression bound's -20 at n=6).
+# Circuit Diagram refresh at 33344e896: all 30 seeded probes triaged.
+# 25 killed, eight by new boundary/geometry/gate-budget witnesses. Equivalents:
+# - _stash_carry spacing: public callers use left_returns=True; two native
+#   right-return layouts retain the same gate graph when spacing grows.
+# - suffix input junction and forest export gap: extra collinear wire only;
+#   changed drawings, identical gate graphs and native results; probes fired.
+# - result serial start: fresh-signal alpha rename; 8 identical layouts, 48 rows.
+# - scaling_rungs: test-only workload; all 632 emitted programs identical,
+#   positive control differs on 468. No unresolved survivor or timeout.
 [swept]
 a_painter_ant = "87463869c"
 abcdirection = "2d4927804"
@@ -33,7 +42,7 @@ brainfuck = "87463869c"
 brainif = "c572ae505"
 caballo = "edf39e799"
 circlefuck = "31d48a59e"
-circuit_diagram = "19112ada7"
+circuit_diagram = "33344e896"
 clockwise = "542fc78fd"
 codesick = "e26b301ad"
 collatz_multiverse = "5268a29c5"

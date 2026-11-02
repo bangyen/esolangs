@@ -66,6 +66,16 @@ def test_h_cell_routes_reject_foreign_obstacles(shape, obstacle) -> None:
 
 
 def test_h_cell_sealing_preserves_gaps_and_legitimate_crossings() -> None:
+    boundary = _HCellLayout(32)
+    boundary.junction(0, 8, 2)
+    with pytest.raises(AssertionError, match="collides"):
+        boundary.route((1, 8), (16, 16), 1, "down")
+    boundary.route((1, 8), (16, 16), 2, "down")
+    crossing = _HCellLayout(32)
+    crossing.run_horizontal(4, 12, 8, 1)
+    with pytest.raises(AssertionError, match="H junction collision"):
+        crossing.junction(8, 8, 2)
+    crossing.junction(8, 8, 1)
     layout = _HCellLayout(32)
     layout.run_horizontal(18, 24, 8, 1)
     layout.run_horizontal(2, 6, 8, 1)

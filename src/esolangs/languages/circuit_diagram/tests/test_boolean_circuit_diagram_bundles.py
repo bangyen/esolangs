@@ -46,6 +46,10 @@ def test_bundle_boundary_and_constant_one_root_execute(classes) -> None:
 
 
 def test_bundle_rejects_constants_small_prefixes_and_zero_budget() -> None:
+    from esolangs.languages.circuit_diagram.generator.banks import _pool_budget
+
+    assert _pool_budget(0) is None
+    assert _pool_budget(1) == 1
     assert bundled_class_bank_candidate("0" * 512) is None
     assert bundled_class_bank_candidate("1" * 512) is None
     assert bundled_class_bank_candidate(dense(8)) is None
@@ -99,6 +103,8 @@ def test_small_ceiling_rejects_before_copying_banks(monkeypatch) -> None:
 
 
 def test_gate_budget_rejects_before_copying_banks(monkeypatch) -> None:
+    with monkeypatch.context() as patch:
+        _check_outer_gate_budget(patch)
     module = importlib.import_module(
         "esolangs.languages.circuit_diagram.generator.bundled_banks"
     )
@@ -189,3 +195,35 @@ def _check_outer_bank_area_floor_rejects_before_final_assembly(monkeypatch) -> N
     assert bundled_class_bank_candidate(table, outer - 1) is None
     assert floors[-1] == (0, outer)
     _execute(table, model.render(), (0, 2047))
+
+
+def _check_outer_gate_budget(monkeypatch) -> None:
+    module = importlib.import_module(
+        "esolangs.languages.circuit_diagram.generator.bundled_banks"
+    )
+    count = module._gate_count  # noqa: SLF001
+    values = []
+
+    def measured(model):
+        value = count(model)
+        values.append(value)
+        return value
+
+    monkeypatch.setattr(module, "_gate_count", measured)
+    table = dense(11)
+    model = bundled_class_bank_candidate(table)
+    assert model is not None
+    _execute(table, model.render(), (0, len(table) - 1))
+    # Include every outer carry OR when testing the T+n gate ceiling.
+    extra = len(table) + 11 - count(model) + 1
+    assert extra > 0
+    last = len(values) - 1
+    calls = []
+
+    def over_budget(model):
+        calls.append(True)
+        return count(model) + (extra if len(calls) - 1 == last else 0)
+
+    monkeypatch.setattr(module, "_gate_count", over_budget)
+    assert bundled_class_bank_candidate(table) is None
+    assert len(calls) == len(values)
