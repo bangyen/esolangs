@@ -20,9 +20,25 @@ def load_script() -> Any:
 class TestShardIds:
     """Round-robin covers everything exactly once."""
 
-    def test_four_shards_partition(self) -> None:
+    @pytest.mark.medium
+    def test_four_shards_partition(self, tmp_path, monkeypatch) -> None:
         shard = load_script()
-        ids = [f"tests/t.py::test_{i}" for i in range(10)]
+        (tmp_path / "test_collection.py").write_text(
+            "import warnings\n"
+            "import pytest\n"
+            'warnings.warn("Test: test_collection.py::test_phantom", '
+            "DeprecationWarning)\n"
+            '@pytest.mark.parametrize("value", range(10))\n'
+            "def test_real(value): pass\n"
+        )
+        monkeypatch.setattr(shard, "ROOT", tmp_path)
+        monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
+        ids = shard.collect_ids("")
+        assert ids == [f"test_collection.py::test_real[{i}]" for i in range(10)]
+        assert shard.collect_ids("missing") == []
+        (tmp_path / "test_broken.py").write_text('raise ValueError("bad collection")')
+        with pytest.raises(RuntimeError, match="bad collection"):
+            shard.collect_ids("")
         parts = [shard.shard_ids(ids, i, 4) for i in range(4)]
         assert sorted(n for part in parts for n in part) == ids
         assert len({n for part in parts for n in part}) == len(ids)

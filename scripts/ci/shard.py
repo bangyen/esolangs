@@ -16,6 +16,7 @@ import os
 import platform
 import statistics
 import subprocess
+import tempfile
 from collections import defaultdict
 from datetime import date
 from typing import Protocol
@@ -32,30 +33,39 @@ def collect_ids(marker: str) -> list[str]:
 
     ``-o addopts=`` neutralizes the repo's own ``--verbose``, which would
     otherwise switch collection output from one-node-per-line to a tree.
+    IDs come from the collection hook, so diagnostics cannot become tests.
     Exit 5 (nothing collected) is an empty band, not a failure.
     """
-    proc = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "--collect-only",
-            "-q",
-            "-o",
-            "addopts=",
-            "-m",
-            marker,
-        ],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if proc.returncode == 5:
-        return []
-    if proc.returncode != 0:
-        raise RuntimeError(f"collection for -m {marker} failed:\n{proc.stderr}")
-    return sorted({line.strip() for line in proc.stdout.splitlines() if "::" in line})
+    with tempfile.TemporaryDirectory(prefix="pytest-collection-") as directory:
+        destination = Path(directory) / "ids.json"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "--collect-only",
+                "-q",
+                "-o",
+                "addopts=",
+                "-p",
+                "scripts.ci.shard",
+                "--collection-output",
+                str(destination),
+                "-m",
+                marker,
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 5:
+            return []
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"collection for -m {marker} failed:\n{proc.stdout}\n{proc.stderr}"
+            )
+        return sorted(set(json.loads(destination.read_text(encoding="utf-8"))))
 
 
 def _timing_map(raw: object) -> object:
@@ -445,9 +455,17 @@ class Recorder:
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Register the recording destination."""
+    parser.addoption("--collection-output", type=Path)
     parser.addoption("--duration-output", type=Path)
     parser.addoption("--duration-order", action="store_true")
     parser.addoption("--duration-input", type=Path)
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Write selected node IDs independently of terminal diagnostics."""
+    destination = session.config.getoption("collection_output")
+    if destination is not None:
+        write_text(destination, json.dumps([item.nodeid for item in session.items]))
 
 
 def pytest_configure(config: pytest.Config) -> None:
