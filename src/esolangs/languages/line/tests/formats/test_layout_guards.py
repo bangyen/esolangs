@@ -66,6 +66,29 @@ def test_empty_graph_is_refused() -> None:
     with pytest.raises(ValueError, match="empty path"):
         render.render(None)
 
+    from esolangs.languages.line.generator import _project_loader
+    from esolangs.languages.line.generator.forward import (
+        _Dag,
+        _Layout,
+        _Router,
+        _StemCursor,
+    )
+
+    with pytest.raises(ValueError, match="no decision body"):
+        _project_loader(1, [0], layout.Node("i"))
+    cursor = _StemCursor(0, 0, (1, 0))
+    with pytest.raises(ValueError, match="runs backward"):
+        cursor.advance((1, 0), -1)
+    assert (cursor.y, cursor.x) == (0, 0)
+    cursor.advance((1, 0), 1)
+    assert (cursor.y, cursor.x) == (1, 0)
+    dag = _Dag(1, {}, {0: None}, [[], [0]])
+    plan = _Layout({}, {(1, 0): (0, 0)}, {}, {})
+    router = _Router(dag, plan, [], {})
+    with pytest.raises(ValueError, match="terminal residual is not constant"):
+        router.build((1, 0))
+    assert router.graph == {}
+
 
 def test_canvas_clips_outside_strokes_and_polygon_fills() -> None:
     canvas = render.Canvas(3, 3)
@@ -73,3 +96,8 @@ def test_canvas_clips_outside_strokes_and_polygon_fills() -> None:
     assert [canvas.pixels[i][i] for i in range(3)] == [0, 0, 0]
     canvas.polygon([(-5, 0), (-4, 0), (-4, 2)])
     assert [canvas.pixels[i][i] for i in range(3)] == [0, 0, 0]
+
+    for factor in (0, -1):
+        with pytest.raises(ValueError, match="scale factor must be at least 1"):
+            canvas.upscale(factor)
+    assert canvas.upscale(1) is canvas

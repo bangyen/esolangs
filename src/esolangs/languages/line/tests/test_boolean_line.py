@@ -312,6 +312,12 @@ def test_shorter_stems_balance_keeps_the_area_ceiling(table: str) -> None:
     assert len(image.rows[0]) * len(image.rows) <= old.width * old.height
     assert _evaluate("Line", image.to_png(), inputs=3) == table
 
+    if table == "00010111":
+        witness = "00011100"
+        image = esolangs.generate("Line", witness, balance=True)
+        assert len(image.rows) * len(image.rows[0]) == 248087
+        assert _evaluate("Line", image.to_png(), inputs=3) == witness
+
 
 @pytest.mark.medium
 def test_tighter_lattice_balance_keeps_the_area_ceiling() -> None:

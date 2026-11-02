@@ -123,6 +123,9 @@ def test_shipped_outputs_complete() -> None:
         s = nxt
     assert all(x == _DIGIT for x in s)
 
+    # Valid trit zero passes the first check; the rotated trit zero fails next.
+    assert digits._fold((1,) + (0,) * 9, ((1, 2),) * 3, 0) is None  # noqa: SLF001
+
 
 def test_trit_1_must_follow_s1(monkeypatch: pytest.MonkeyPatch) -> None:
     """Positive control for ``_d_choice``: trit 1 fixed at ``(1, 2)`` breaks group 2."""

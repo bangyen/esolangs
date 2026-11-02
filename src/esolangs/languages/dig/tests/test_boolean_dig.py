@@ -227,6 +227,48 @@ class TestDig:
         # and the stride the rule names still builds
         assert boolean.dig("0110100110010110", 1)
 
+        from esolangs.languages.dig.generator._layout import (
+            _AlternatingTree,
+            _dig_layout,
+            _LeafKey,
+            _Point,
+        )
+
+        sample = "0110100110010110"
+        point = _Point(0, 0)
+        key = _LeafKey(sample, 1, 0)
+        tree = _AlternatingTree(sample, 4, sharing=True)
+        tree.entries = {point: key}
+        tree.owners = {key: point}
+        lane = _Point(0, -1)
+        tree.cells[lane] = "#"
+        assert not tree.bridge_entries()
+        assert tree.cells == {lane: "#"}
+        tree.cells.clear()
+        assert tree._route_entry(point, key, {})  # noqa: SLF001 - unblocked routing control
+
+        source = _dig_layout(sample, 4)
+        assert source is not None
+        for row, expected in enumerate(sample):
+            assert run_dig(source, list(f"{row:04b}")) == expected
+
+        with monkeypatch.context() as patch:
+            patch.setattr(_AlternatingTree, "plan_sharing", lambda _self: True)
+            patch.setattr(_AlternatingTree, "bridge_entries", lambda _self: False)
+            assert _dig_layout(sample, 4, sharing=True) is None
+
+        def blocked(*_args):
+            raise AssertionError("blocked corridor")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(_AlternatingTree, "plan_sharing", lambda _self: True)
+            patch.setattr(
+                "esolangs.languages.dig.generator._layout._dig_alt_clear", blocked
+            )
+            assert _dig_layout(sample, 4, sharing=True) is None
+            with pytest.raises(AssertionError, match="blocked corridor"):
+                _dig_layout(sample, 4)
+
     def test_ignored_leading_inputs_choose_a_compact_reader(self) -> None:
         """A discard column competes with an integrated reader by grid area."""
         inner = "0110"

@@ -137,10 +137,8 @@ class _SnakeRun:
 
     The path enters column 0 at ``(x, y)`` heading down and reads the
     columns in turn, ``step`` apart (negative runs west).  A column has
-    ``slots`` node rows two apart.  With ``pad`` the unused slots are
-    rails (the path then ends at the bottom of the last column when
-    ``cols`` is odd, which the caller needs); without it the path stops
-    after its last node and its trailing rail is removed.
+    ``slots`` node rows two apart. Unused read slots are rails. Answer
+    strips fill every slot; the caller removes their trailing rail.
     """
 
     x: int
@@ -148,7 +146,6 @@ class _SnakeRun:
     cols: int
     step: int
     slots: int
-    pad: bool
 
 
 def _snake(
@@ -167,8 +164,6 @@ def _snake(
         down = col % 2 == 0
         for slot in range(slots):
             index = col * slots + slot
-            if index >= count and not run.pad:
-                break
             row = y + 2 * (slot if down else slots - 1 - slot)
             node = nodes[index] if index < count else None
             if node is None:
@@ -177,8 +172,6 @@ def _snake(
                 _paint(cells, cx - len(node) // 2, row, node)
             cells[(cx, row + 1)] = cells[(cx, row - 1)] = "│"
     for col in range(run.cols - 1):
-        if not run.pad and (col + 1) * slots >= count:
-            break
         cx = x + step * col
         down = col % 2 == 0
         row = y + 2 * slots - 1 if down else y - 1
@@ -281,9 +274,7 @@ class _TreePainter:
         if slots:
             middle = _snake(
                 cells,
-                _SnakeRun(
-                    entry, self.top[depth], self.fold, step, slots=slots, pad=True
-                ),
+                _SnakeRun(entry, self.top[depth], self.fold, step, slots=slots),
                 path,
             )
         _paint(cells, middle - 1, self.leaf_top, _set(self.truth_table[lo]))
@@ -305,7 +296,6 @@ class _TreePainter:
                 self.fold,
                 step,
                 slots=self.lanes[depth],
-                pad=True,
             ),
             ["/ /"] * self.costs[depth],
         )
@@ -354,7 +344,7 @@ class _TreePainter:
             slots = -(-len(_ANSWER) // self.answer_cols)
             _snake(
                 cells,
-                _SnakeRun(base, bus + 2, self.answer_cols, 6, slots=slots, pad=False),
+                _SnakeRun(base, bus + 2, self.answer_cols, 6, slots=slots),
                 _ANSWER,
             )
             last = len(_ANSWER) - 1

@@ -327,13 +327,29 @@ def test_balance_of_parity_n8_is_banded() -> None:
 
 
 @pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])
-def test_balanced_tree_folds_and_still_computes(table: str) -> None:
+def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None:
     """Snaking chains beats the tall tree's side by a third and keeps the table."""
     import esolangs
     from esolangs.generation.wrap import balance_score
+    from esolangs.languages.flowchart.generator import _ANSWER, _snake
     from esolangs.runtime._evaluate import _evaluate
 
+    shapes = set()
+    padded_reads = []
+
+    def checked_snake(cells, run, nodes):
+        capacity = run.cols * run.slots
+        if nodes is _ANSWER:
+            assert len(nodes) == capacity
+            shapes.add((run.cols, run.slots))
+        elif len(nodes) < capacity:
+            padded_reads.append(capacity - len(nodes))
+        return _snake(cells, run, nodes)
+
+    monkeypatch.setattr("esolangs.languages.flowchart.generator._snake", checked_snake)
     program = esolangs.generate("Flowchart", table, balance=True)
+    assert shapes == {(2, 6), (3, 4), (4, 3), (6, 2)}
+    assert padded_reads
     tall = _flowchart_render(_flowchart_cells(table))
     assert balance_score(program)[0] * 3 <= balance_score(tall)[0] * 2
     assert _evaluate("Flowchart", program, inputs=len(table).bit_length() - 1) == table

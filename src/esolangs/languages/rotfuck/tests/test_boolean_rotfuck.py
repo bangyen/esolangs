@@ -160,6 +160,15 @@ class TestRotfuck:
         for table in ("01", "0110", "11110000", "01101001"):
             assert set(boolean.rotfuck(table)) <= set("+-><,.[]"), table
 
+        from esolangs.languages.rotfuck.generator import _Builder, _UnplaceableError
+
+        builder = _Builder()
+        assert _is_net_zero(list(builder._pad(2)))  # noqa: SLF001 - neutral-pad control
+        builder._seeks = list(range(8))  # noqa: SLF001 - contradictory seek constraints
+        with pytest.raises(_UnplaceableError, match="no neutral pad"):
+            builder._pad(2)  # noqa: SLF001 - rejected padding must not emit source
+        assert builder.src == []
+
     def test_backward_is_the_default_direction(self) -> None:
         assert boolean.rotfuck("01", rotation="backward") == boolean.rotfuck("01")
 

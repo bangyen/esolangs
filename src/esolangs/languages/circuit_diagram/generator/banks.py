@@ -130,10 +130,6 @@ class _SignalOwner:
         """Bind ``junction`` to ``signal`` before the copy pass sees it."""
         self._mapping[junction] = signal
 
-    def lookup(self, junction: int) -> int:
-        """Return the signal already bound to ``junction``."""
-        return self._mapping[junction]
-
     def __call__(self, junction: int) -> int:
         """Return ``junction``'s signal, allocating a fresh one on first use."""
         if junction not in self._mapping:
