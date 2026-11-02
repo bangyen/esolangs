@@ -90,3 +90,10 @@ verdict = "rejected: a negated formula leaf uses x;~ (3 chars) instead of 1x;- (
 
 [audits]
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: already canonical read-then-literal paths. Bare ^ reads retain each ASCII bit, then a numeric literal and dot print the answer. Chars and commands n+2: n=7 9, n=8 10 with 61 written bits, n=12 14. Removing the literal prints ASCII codes 49 or 48 on the opposite-valued witnesses, not the requested digit. Native read-first controls pass. n=3 corpus chars 7995 unchanged. These controls reject the stripped candidates, not every possible construction. 1120 native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores and eight benchmark size/command pins unchanged. Global resource caps unchanged. Extend existing raw IO/template cases to verify exact reads, following records and no EOF probe without adding cases."

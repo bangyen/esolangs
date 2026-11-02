@@ -71,6 +71,7 @@ def test_false_single_character_floor_executes_every_small_table() -> None:
 
 def test_folding_shortens_a_constant_table() -> None:
     """A table whose rows agree collapses below one that folds nothing."""
+    _check_constants()
     assert len(false("00000000")) < len(false("01101001"))
 
 
@@ -94,3 +95,29 @@ def false_plain(truth_table: str, n: int) -> str:
         close="]?",
         one_first=True,
     )
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.false.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("FALSE", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")

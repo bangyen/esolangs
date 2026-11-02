@@ -147,7 +147,7 @@ headers, Qrain.
 <!-- TRICK-PROTOTYPES:END -->
 
 - **Constant-table audit:** size census 111/111 at n=1..8,10,12; n=0 is
-  outside every generator's contract. Optimization reviews 105/111: Movesum,
+  outside every generator's contract. Optimization reviews 108/111: Movesum,
   Parenthesys, Unary, Malbolge, Quassaunt, LaserFuck, Interprogck8,
   ABCDirection, BrainIf, Collatz Multiverse, Streetcode, Hot, Ascenic,
   Circuit Diagram, Pointless, Qoibl, Back, NOR machine, Packlang, Container,
@@ -157,8 +157,8 @@ headers, Qrain.
   Minsky Swap, Boolfuck, thisthat, CARP, IEBEL, Nandypants,
   FRACTRAN, Chicken, Monotonic Boolfuck, ROTfuck, Whitespace, Blindfolded Arithmetic, Underload, What!?, BFStack, Piet, Befunge, S*bleq, Subleq, Between, CreativeScript v2, Forþ, Dimensional, Stisp, Thue, Unlambda, Fish, Pilas, Super SNUSP, Unsquare, Codesick, Home Row, Aprknia, SStack, Grapheme, Algebraic Programming Language, CV(N)(C), Smallfuck, 3x, 6-5, B-tapemark, Freestajlo, Eval, ///, Painfuck, 1 + i and Balik improved;
   Line, Shakespeare,
-  Flowchart, lol waht i cant edit talk pages, HQ9+ with headers, BASICER, Alight, Clockwise, Kiss, Fackward, DINAC, A Painter Ant, Dig, EGL, Circlefuck and Bitwise Cyclic Tag retain
+  Flowchart, lol waht i cant edit talk pages, HQ9+ with headers, BASICER, Alight, Clockwise, Kiss, Fackward, DINAC, A Painter Ant, Dig, EGL, Circlefuck, Bitwise Cyclic Tag, Taglate, Cyclic tag and FALSE retain
   their read-first constant paths.
   Malbolge also drains its final ignored byte before output on seventeen-input
-  projections. Next: Taglate, Cyclic tag, FALSE. Keep this counter
+  projections. Next: ArrowQueue, Caballo, Fargo. Keep this counter
   separate from trick prototypes.

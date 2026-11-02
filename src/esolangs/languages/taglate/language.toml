@@ -68,3 +68,10 @@ verdict = "kept"
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: already canonical read-then-literal paths. A one-character seed is the answer, h reads every input behind it and i prints the seed. Chars n+3 and commands n+1: n=7 10 chars, n=8 11 chars/9 commands/62 written bits, n=12 15 chars. Removing the seed prints the first input instead: opposite-valued witnesses fail for both answers. Native read-first controls pass. n=3 corpus chars 53146 unchanged. These controls reject the stripped candidates, not every possible construction. 1120 native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores and eight benchmark size/command pins unchanged. Global resource caps unchanged. Extend existing raw IO/template cases to verify exact reads, following records and no EOF probe without adding cases."

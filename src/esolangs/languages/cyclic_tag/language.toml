@@ -49,3 +49,10 @@ verdict = "kept: one production a row and one zero a unit of weight, where the o
 
 [audits]
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: already canonical read-then-literal paths. One empty production deletes n embedded inputs then the literal answer; the post-halt step prints the last deletion. Chars and commands n+2 including dump: n=7 9, n=8 10 with 81 written bits, n=12 14. Removing the answer bit prints the final input: opposite-valued witnesses fail for both answers. Owned coverage verifies every queue deletion precedes rendering. n=3 corpus chars 6732 unchanged. These controls reject the stripped candidates, not every possible construction. 1120 native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores and eight benchmark size/command pins unchanged. Global resource caps unchanged. Extend existing raw IO/template cases to verify exact reads, following records and no EOF probe without adding cases."

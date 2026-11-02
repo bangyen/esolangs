@@ -27,6 +27,8 @@ def test_constant_reads_every_input_before_printing(n: int, bit: str) -> None:
     from esolangs.languages.taglate.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
+    if n == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << n)
     programs = [esolangs.generate("Taglate", table, width=w) for w in (None, 1, 20)]
     programs.append(esolangs.generate("Taglate", table, balance=True))
@@ -187,3 +189,29 @@ def test_public_narrow_generator_route() -> None:
 
 def test_taglate_needs_a_seed_and_commands_below_it() -> None:
     assert _taglate("seed-only", 40) == "seed-only"
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.taglate.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Taglate", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program.splitlines(), io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
