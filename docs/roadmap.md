@@ -64,10 +64,19 @@ check or weakening a contract.
 
 ## Engineering
 
-Dead-code leads, unmeasured against the
-[10% size bar](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
-A removal must leave the generated corpus byte-identical (tiled, constant and
-ignored-input tables included).
+Next experiments; budgets are wall time, not permission for an unpriced search.
+
+| Work | Next experiment | Success criterion | Budget |
+| --- | --- | --- | --- |
+| Independent semantics | Extend bounded raw-program oracles beyond Brainfuck, Boolfuck, Smallfuck and Subleq | Match output, state, input cursor, halt and errors; include positive controls | 60 s per language check |
+| Mutation audits | Rank stale generators; price each baseline before sweeping | Triage every survivor before updating its swept revision | 60 s baseline; 240 s per initial batch |
+| Unreached code | Find public-table witnesses for unresolved fallbacks in `scripts/baselines/deadcode_known.toml` | Executed witness, invariant, or byte-identical removal; retain unresolved entries | 60 s per scoped scan; price whole-tree coverage separately |
+| Timing regressions | Inspect weekly environment-matched timing report | Reproduce persistent increases locally before changing code | Existing weekly sweep; no extra generation runs |
+| Trick prototypes | Aprknia, then Basicfuck and Chicken | Executed control and CONTRIBUTING's size/command gate | Price each prototype before running |
+
+A removal must leave the generated corpus byte-identical, including tiled,
+constant and ignored-input tables. The completed constant-table audit is in
+history at `f35aa4023`.
 
 - **Malbolge navigation, inexpressibility for an algebraic
   signature:** the closed-form question is closed under the
@@ -145,21 +154,3 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
 headers, Qrain.
 
 <!-- TRICK-PROTOTYPES:END -->
-
-- **Constant-table audit:** size census 111/111 at n=1..8,10,12; n=0 is
-  outside every generator's contract. Optimization reviews 114/114 registered generators: Movesum,
-  Parenthesys, Unary, Malbolge, Quassaunt, LaserFuck, Interprogck8,
-  ABCDirection, BrainIf, Collatz Multiverse, Streetcode, Hot, Ascenic,
-  Circuit Diagram, Pointless, Qoibl, Back, NOR machine, Packlang, Container,
-  Bleh, SendStuff, Modulous, Bitdeque, Forbin, SLOW ACV MAMMALIAN, Inject,
-  INTERCAL, RAM0, bit~, Decleq, Basicfuck, SwitchCase, Rubic, Crement,
-  AddSubJump, Object disoriented, Sonata, Suffolk, Smu, Qrain, brainfuck,
-  Minsky Swap, Boolfuck, thisthat, CARP, IEBEL, Nandypants,
-  FRACTRAN, Chicken, Monotonic Boolfuck, ROTfuck, Whitespace, Blindfolded Arithmetic, Underload, What!?, BFStack, Piet, Befunge, S*bleq, Subleq, Between, CreativeScript v2, Forþ, Dimensional, Stisp, Thue, Unlambda, Fish, Pilas, Super SNUSP, Unsquare, Codesick, Home Row, Aprknia, SStack, Grapheme, Algebraic Programming Language, CV(N)(C), Smallfuck, 3x, 6-5, B-tapemark, Freestajlo, Eval, ///, Painfuck, 1 + i, Balik, ArrowQueue, Fargo, NQ and REFRACTRAN improved;
-  Line, Shakespeare,
-  Flowchart, lol waht i cant edit talk pages, HQ9+ with headers, BASICER, Alight, Clockwise, Kiss, Fackward, DINAC, A Painter Ant, Dig, EGL, Circlefuck, Bitwise Cyclic Tag, Taglate, Cyclic tag, FALSE, Caballo and Retrograde retain
-  their read-first constant paths.
-  Malbolge also drains its final ignored byte before output on seventeen-input
-  projections. Original census and the later NQ, REFRACTRAN and Retrograde admissions
-  are complete. Keep this counter
-  separate from trick prototypes.

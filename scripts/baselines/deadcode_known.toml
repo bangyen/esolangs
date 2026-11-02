@@ -1,43 +1,48 @@
-# Unreached generator code, triaged: see scripts/deadcode.py.
+# Unreached generator code: review classifications below; unresolved is not dead.
+# Executed payload witnesses removed BFStack/Subleq entries on 2026-11-02.
 
-"bfstack/generator.py" = [
-    "line: data, control, pc, _cursor = state",
-    "line: return data, control, pc, 0",
-]
 
+# Invariant guard: pending gates require a nonconstant cofactor.
 "boolfuck/generator.py" = [
     "arm: if kind is None: -> raise ValueError(\"constant cofactor reached a pending gate\")",
     "line: raise ValueError(\"constant cofactor reached a pending gate\")",
 ]
 
+# Unresolved size candidate: needs a public-table witness before removal.
 "brainfuck/generator.py" = [
     "arm: if len(candidate) < len(plain): -> return plain",
 ]
 
+# Unresolved marker collision: needs a weight/level witness.
 "brainif/generator.py" = [
     "arm: if any((i - j) % (2 * weights[i]) == weights[i] for j in self.levels): -> break",
     "line: break",
 ]
 
+# Unresolved equal mux arms: distinguish direct callers from folded DAGs.
 "circuit_diagram/generator/__init__.py" = [
     "arm: if zero == one: -> return zero",
     "line: return zero",
 ]
 
+# Unresolved bank misses and lookup consumer: retain until witnessed or removed.
 "circuit_diagram/generator/banks.py" = [
     "line: return None",
     "line: return self._mapping[junction]",
 ]
 
+# Impossible iterator exit: itertools.count is unbounded; consumers stop it.
 "container/generator.py" = [
     "arm: for index in count(): -> <exit>",
 ]
 
+# Unresolved narrow-layout fallback: needs a width witness.
 "crement/generator.py" = [
     "arm: if grid_width(narrowed) > width: -> return narrowed",
     "line: return narrowed",
 ]
 
+# Routing failure guards: require collision witnesses before classifying unreachable.
 "dig/generator/_layout.py" = [
     "arm: if key in self.owners and not self._route_entry(point, key, lanes): -> return False",
     "arm: if lane in self.cells: -> return False",
@@ -53,11 +58,13 @@
     "line: return None #2",
 ]
 
+# Alphabet-cap arm needs input index 26; retain split dispatch exhaustiveness.
 "false/generator.py" = [
     "arm: case _Split(zero, one): -> <exit>",
     "arm: if not ess or ess[-1] < len(ascii_lowercase): -> if width is None:",
 ]
 
+# Unresolved partial unpadded strips: needs layout witnesses.
 "flowchart/generator.py" = [
     "arm: if index >= count and not run.pad: -> break",
     "arm: if not run.pad and (col + 1) * slots >= count: -> break",
@@ -65,10 +72,12 @@
     "line: break #2",
 ]
 
+# Impossible iterator exit: itertools.count is unbounded; consumers stop it.
 "forbin/generator.py" = [
     "arm: for candidate in count(): -> <exit>",
 ]
 
+# Area fallback remains unresolved; missing decision body is an invariant guard.
 "line/generator/__init__.py" = [
     "arm: if chosen.score.area > preceding.score.area: -> chosen = preceding",
     "arm: if node.next is None: -> raise ValueError(\"projected Line tree has no decision body\")",
@@ -76,6 +85,7 @@
     "line: raise ValueError(\"projected Line tree has no decision body\")",
 ]
 
+# Invariant guards: forward distances are nonnegative and terminal residuals constant.
 "line/generator/forward.py" = [
     "arm: if steps < 0: -> raise ValueError(\"forward route runs backward\")",
     "arm: if value is None: -> raise ValueError(\"streaming terminal residual is not constant\")",
@@ -83,54 +93,60 @@
     "line: raise ValueError(\"streaming terminal residual is not constant\")",
 ]
 
+# Invalid scale guard: retain until a direct invalid-factor test covers it.
 "line/generator/render.py" = [
     "arm: if factor < 1: -> raise ValueError(f\"scale factor must be at least 1, got {factor}\")",
     "line: raise ValueError(f\"scale factor must be at least 1, got {factor}\")",
 ]
 
+# Digit compatibility rejection: needs a rejected-group witness, not deletion.
 "malbolge/generator/digits.py" = [
     "arm: if r[0] != 2 or any(x == _DIGIT and u[k] != 1 for k, x in enumerate(r) if k): -> return None",
     "line: return None",
 ]
 
+# Unbounded name enumeration; reserved main requires four-character names.
 "object_disoriented/generator.py" = [
     "arm: for chars in product(_NAME_CHARS, repeat=size): -> for size in count(1):",
     "arm: for size in count(1): -> <exit>",
     "arm: if (name := \"\".join(chars)) != \"main\": -> for chars in product(_NAME_CHARS, repeat=size):",
 ]
 
+# Unresolved width-limit skip: needs a long-token witness.
 "quassaunt/generator.py" = [
     "arm: if limit < longest: -> for limit in _LIMITS:",
 ]
 
+# Neutral-padding failure guard: needs an incompatible seek witness.
 "rotfuck/generator.py" = [
     "arm: if piece is None: -> raise _UnplaceableError(\"no neutral pad is hidden from every open seek\")",
     "line: raise _UnplaceableError(\"no neutral pad is hidden from every open seek\")",
 ]
 
+# Unresolved multi-bank admission: needs a shared-bank witness.
 "sstack/generator/__init__.py" = [
     "arm: if result is not None: -> for blocks in dict.fromkeys(banks):",
 ]
 
+# Invariant guard: emitted size must equal the independently priced plan.
 "sstack/generator/_binary.py" = [
     "arm: if len(program) != plan.metric.chars: -> raise ValueError(\"emitted SStack bank disagrees with its size price\")",
     "line: raise ValueError(\"emitted SStack bank disagrees with its size price\")",
 ]
 
+# Unresolved empty-segment path: establish caller nonemptiness before removal.
 "streetcode/generator.py" = [
     "arm: for i, segment in enumerate(segments): -> ymin = min(row for row, _ in canvas)",
 ]
 
-"subleq/generator.py" = [
-    "line: data, pc, _cursor = state",
-    "line: return data, (), pc, 0",
-]
 
+# Unresolved narrow shared/plain race: needs a width/table witness.
 "thisthat/generator.py" = [
     "arm: if grid_width(narrow_shared) <= max(width, grid_width(narrow_plain)) and ( -> return narrow_plain",
     "line: return narrow_plain",
 ]
 
+# Unresolved token-equivalent narrow template: needs a width/table witness.
 "underload/generator.py" = [
     "arm: if _underload_layout_tokens(template) == _underload_layout_tokens(narrow): -> return True",
     "line: return True",

@@ -17,6 +17,51 @@ class Observation:
     halted: bool
 
 
+def brainfuck(code: str, stdin: str, cap: int) -> Observation:
+    """Interpret raw commands with a separately parsed bracket stack."""
+    pairs = {}
+    pending = []
+    for at, command in enumerate(code):
+        if command == "[":
+            pending.append(at)
+        elif command == "]":
+            if not pending:
+                raise ValueError("unmatched close")
+            start = pending.pop()
+            pairs[start], pairs[at] = at, start
+    if pending:
+        raise ValueError("unmatched open")
+    tape = [0]
+    pc = ptr = consumed = 0
+    output = []
+    for _ in range(cap):
+        if pc == len(code):
+            break
+        command = code[pc]
+        if command in "+-":
+            tape[ptr] = (tape[ptr] + (1 if command == "+" else -1)) % 256
+        elif command == ">":
+            ptr += 1
+            if ptr == len(tape):
+                tape.append(0)
+        elif command == "<":
+            if ptr:
+                ptr -= 1
+            else:
+                tape.insert(0, 0)
+        elif command == ",":
+            if consumed == len(stdin):
+                raise EOFError
+            tape[ptr] = ord(stdin[consumed]) % 256
+            consumed += 1
+        elif command == ".":
+            output.append(chr(tape[ptr]))
+        elif (command == "[" and not tape[ptr]) or (command == "]" and tape[ptr]):
+            pc = pairs[pc]
+        pc += 1
+    return Observation("".join(output), tuple(tape), pc, consumed, pc == len(code))
+
+
 def boolfuck(code: str, stdin: str, cap: int) -> Observation:
     pairs = {}
     opens = []

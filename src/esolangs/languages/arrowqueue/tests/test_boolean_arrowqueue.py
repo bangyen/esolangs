@@ -161,6 +161,12 @@ def _check_constants() -> None:
         for bit in "01":
             table = bit * (1 << n)
             default = esolangs.generate("ArrowQueue", table)
+            if n == 10 and bit == "1":
+                # The second width candidate saves two cells; fills execute below.
+                assert (
+                    len(default.splitlines()) * max(map(len, default.splitlines()))
+                    == 18
+                )
             span = max(map(len, default.splitlines()))
             assert esolangs.generate("ArrowQueue", table, width=span) == default
             for options in (
