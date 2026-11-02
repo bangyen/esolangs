@@ -117,3 +117,10 @@ arity = 8
 seed = "random.Random(1847+n)"
 tables = "20 random plus parity/majority/and/or per n=7,8; representative n=3 executions"
 verdict = "Screened four- and five-input flat leaves against the shipped six-input leaves: neither saves area on 20 seeded random tables or parity/majority/and/or at n=7 or n=8. Both change 48 screened programs and pass 70 sampled output checks apiece. No size candidate; unshared leaf variants only, not a lower bound on other layouts."
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: counted windows already read ignored inputs and print a literal. At n=8 both constants use 16 cells, 16 commands and 22 written bits; at n=7 area 15, n=12 area 20. Removing the explicit final @ executes correctly on all 512 n=8 rows and saves one cell, but relies on the interpreter-only off-grid halt documented in interpreter.py rather than the explicit halt. Keep @; no claim of universal optimality. n=3 corpus area 54912 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."

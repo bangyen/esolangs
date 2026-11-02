@@ -73,3 +73,10 @@ verdict = "kept: canonical, exempt. A depth n-2 node of two different constants 
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-28
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 7.7
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "kept: canonical root folding/minimal spelling, exempt. For one constants duplicate the final real read and compare it with itself: > returns one on a false comparison. Zero retains iic+. Chars and commands n+5/3: n=7 12/12->12/10 (8.3% combined), n=8 13/13->13/11 (7.7%; one alone 15.4%), n=12 17/17->17/15. n=8 one workspace 51->46 bits; zero unchanged. The logarithmic zero shortcut :>l yields a complex snapshot the workspace referee cannot measure; rejected without weakening the referee. Existing global workspace formula is declared only for n=2..27; do not apply it to the unchanged n=1 zero. n=3 corpus chars 7732->7730. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."

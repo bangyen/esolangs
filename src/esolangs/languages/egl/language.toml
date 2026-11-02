@@ -65,3 +65,10 @@ verdict = "retired 2026-10-29 (plain-rewrite audit): the balance hook also tried
 [audits]
 blind_reimplementation = 2026-10-30
 plain_rewrite = 2026-10-29
+
+[ablations.constant_table_audit_20261101]
+arity = 8
+saving = 0.0
+seed = 0
+tables = "both constants, n=1..12"
+verdict = "retained: scratch reads then a move to the fresh output cell. Chars n+6+b, commands n+2+b: n=8 14/15 chars, 10/11 commands, 20 written bits. The executed single-cell alternative clears the final ASCII byte with (-): n=7 grows 13/14->15/16 chars, n=8 grows 14/15->16/17, commands 10/11->108/109 and workspace 20->24 bits. It is larger and slower. Native controls pass; no global optimum claimed. n=3 corpus chars 25106 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Owned raw read-first tests preserve exact read counts and following input records, with no EOF probe."

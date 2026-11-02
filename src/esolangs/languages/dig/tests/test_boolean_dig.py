@@ -650,6 +650,8 @@ def test_constant_columns_use_grid_area_and_read_every_input(
     from esolangs.languages.dig.interpreter import _Machine
     from esolangs.runtime.io import ScriptedIO
 
+    if n == 1 and value == "0":
+        _check_constants()
     table = value * (1 << n)
     program = boolean.dig(table)
     rows = program.splitlines()
@@ -875,3 +877,31 @@ def test_shared_leaves_around_constant_spans_keep_the_execution_bound() -> None:
         assert (io.getvalue(), io.reads) == (expected, 8)
         worst = max(worst, steps)
     assert worst <= 220
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.dig.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("Dig", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(
+                        esolangs.encode_inputs("Dig", [int(b) for b in row]) + "7\n"
+                    )
+                    run(program.splitlines(), io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_num() == 7

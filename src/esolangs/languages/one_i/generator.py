@@ -10,6 +10,7 @@ node of two constants reads both bits, drops the last and prints that.
 
 Size:
     O(T), at most 4n + 3 steps; n=10 and: 146 chars, n=10 random 1847: 4,596 chars.
+    Root constants: n + 5/3 chars and commands for zero/one.
 
 Decisions:
     Other repeats are not shared: a deeper function needs a whole-stack roll.
@@ -31,6 +32,9 @@ _CONSTANT = ("iic+", "ici*")
 def one_i(truth_table: str) -> str:
     """Build a 1 + i program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
+    if truth_table == "1" * len(truth_table):
+        # A duplicated real value makes `>` false, whose specified value is one.
+        return "B" * n + ":>p"
     ids = subtree_ids(truth_table)
 
     def node(depth: int, k: int) -> str:

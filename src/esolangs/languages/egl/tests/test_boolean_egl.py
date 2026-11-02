@@ -28,6 +28,8 @@ def test_the_walk_is_branch_free() -> None:
 def test_constant_reads_into_scratch_and_prints_a_literal(n: int, bit: str) -> None:
     from esolangs.languages.egl.generator import _balance
 
+    if n == 1 and bit == "0":
+        _check_constants()
     table = bit * (1 << n)
     default = tools.egl(table)
     programs = [tools.egl(table, width) for width in (None, 1, 20)]
@@ -63,3 +65,29 @@ def test_wrapped_programs_still_compute_the_table() -> None:
 def test_an_ignored_input_is_read_and_dropped() -> None:
     """A bare ``x``."""
     assert_an_ignored_input_costs("EGL", 6, 1)
+
+
+def _check_constants() -> None:
+    import esolangs
+    from esolangs.languages.egl.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
+    for n in range(1, 13):
+
+        class ReadFirstIO(ScriptedIO):
+            expected = n
+
+            def _write(self, value: object) -> None:
+                assert self.reads == self.expected
+                super()._write(value)
+
+        for bit in "01":
+            for options in ({}, {"width": 1}, {"balance": True}):
+                program = esolangs.generate("EGL", bit * (1 << n), **options)
+                for row in ("0" * n, "1" * n):
+                    io = ReadFirstIO(row + "7")
+                    run(program, io)
+                    assert io.getvalue() == bit
+                    assert io.reads == n
+                    assert io.past_end == 0
+                    assert io.input_char() == ord("7")
