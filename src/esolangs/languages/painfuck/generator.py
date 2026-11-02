@@ -17,7 +17,7 @@ shorter kept.  An affine table sums its bits and prints the sum mod 2
 
 Size:
     Banks shrink popcount>=n//2 from inline 2,131 -> 698 chars at n=8,
-    7,713 -> 1,367 at n=10; n=10 parity: 132 chars, random 1847: 10,156 chars.
+    7,713 -> 1,367 at n=10; n=10 parity: 132 chars, n=10 random 1847: 10,156 chars.
     OR/NOR use 13n+4 / 13n chars from n=2 (unary: 2 / 4), without flags
     ([ablations.zero_guarded_single_branch_trick]).
     Constants: sum(d[k]*(k+1)) + 2 + 2b chars, d the base-seven digits of n.

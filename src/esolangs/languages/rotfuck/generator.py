@@ -320,11 +320,9 @@ def _strip(table: str) -> str:
 def _unbias(weight: int, *, raw: bool) -> str:
     """The run correcting ``weight`` ASCII biases, or ``""`` when ``raw`` is off.
 
-        Raw characters sum to ``48 * weight`` extra, mod 256: ``2**width - 1`` for a
-        Horner digit, the input count for a plain sum.  One shortest ``+``/``-``
-        run per digit replaces the 48 ``-`` after every read
-        ([ablations.raw_digits]). Full symmetric tables multiply bias and output
-    constants on zero carriers ([ablations.constant_runs_by_multiplication]).
+    Raw characters sum to ``48 * weight`` extra, mod 256: ``2**width - 1`` for a
+    Horner digit, the input count for a plain sum. One shortest ``+``/``-``
+    run per digit replaces the 48 ``-`` after every read ([ablations.raw_digits]).
     """
     if not raw:
         return ""

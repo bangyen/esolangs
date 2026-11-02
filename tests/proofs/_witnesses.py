@@ -1096,6 +1096,7 @@ _WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
     "Painfuck": lambda n: (
         *(("11101001",) if n == 3 else ()),
         "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
+        *(("11101001",) if n == 3 else ()),
     ),
     "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
     "Bleh": lambda n: _diagram_witness("bleh", n, 23),

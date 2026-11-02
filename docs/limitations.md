@@ -743,7 +743,7 @@ exact range (2026-10-23, counted from the ledger):
   execution, Object Disoriented scaling, Piet all three,
   Smallfuck execution, Streetcode workspace; scaling for Algebraic Programming
   Language (144 against 182 at n = 4, exhaustive; the reduced
-  diagram's 10T + 4n + 6 holds to n = 14), Packlang, Painfuck (232 against 239 at n = 4), 6-5 (105 against 166 at
+  diagram's 10T + 4n + 6 holds to n = 14), Packlang, Painfuck (historical before 2026-11-02: 232 against 239 at n = 4), 6-5 (105 against 166 at
   n = 4, the shorter of two layouts to n = 5),
   SStack (24T - 9 exact to n = 4), Underload (exact at n = 4, 5) and
   Unlambda (to n = 2), and Brainfuck (13-29% loose, n = 5..8), For Thorn,
@@ -763,7 +763,7 @@ exact range (2026-10-23, counted from the ledger):
   positions, which cross powers of two by layout. AddSubJump, Caballo,
   Crement, Pointless, S-BLEQ (1.002x: cell bits plus 6n, packed
   route sampled to n = 10) and Underload workspace;
-  Painfuck workspace (slack 1
+  Painfuck workspace (historical before 2026-11-02: slack 1
   at n = 3..6, never 0); Decleq scaling (historical before 2026-11-02 jump threading: 8, 10, 14 short at n = 2..4,
   exhaustive); Bitdeque scaling (GOTO digits by layout; 358 against
   400 at n = 4, exhaustive); 3x workspace (exact key bits; 1.3-1.5x at n = 3..6, 1.8x at n = 9);
