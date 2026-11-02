@@ -6,10 +6,11 @@ backlinks = 54
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2"
+qualification = "parity sums retained inputs modulo two; otherwise the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2"
 scaling = "linear: at most 16T + 7n^2 + 180n + 300 characters"
-execution = "linear: worst 2n + 6 + ⌈(T-1)/64⌉ commands"
-workspace = "linear: at most 2T + 13 bits"
+execution = "linear: worst E commands: n reads, at most n multiplies, K packing assignments"
+workspace = "linear: at most 2T + bl(2n+ceil(T/64)+6) + bl(2n-1) + 4 bits"
+definitions = ["K = ceil(T/64), E = 6 for n=1, otherwise 2n+K+6"]
 
 [catalogue]
 folding_constant = "a constant table reads its inputs and prints its bit"
@@ -21,13 +22,14 @@ folds_without_tree = true
 "00000001" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 855 }
 "00001100" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 672 }
 "00110110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 893 }
-"0110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11 }, source_units = 668 }
-"01101001" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 912 }
-"0110100110010110" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1232 }
+"0110" = { commands = 8, commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8 }, source_units = 378 }
+"01101001" = { commands = 10, commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10 }, source_units = 451 }
+"0110100110010110" = { commands = 12, commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12, "8" = 12, "9" = 12, "10" = 12, "11" = 12, "12" = 12, "13" = 12, "14" = 12, "15" = 12 }, source_units = 524 }
 "1101001101101101" = { commands = 15, commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 1219 }
 "11111110" = { commands = 13, commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 13, "5" = 13, "6" = 13, "7" = 13 }, source_units = 886 }
 
 [audits]
+trick_prototype = 2026-11-01
 plain_rewrite = 2026-10-29
 
 [ablations]
@@ -53,3 +55,18 @@ saving = 0.0
 seed = "both constant values; witnesses(n) for n=4..6"
 tables = "every table and row n=1..3; six witnesses per n=4..6; constants n=1..12"
 verdict = "retained: the existing whole-constant path already reads all n inputs into Juliet before assigning and printing joy/nothing. At n=8 zero/one remain 387/383 chars and n+3 commands; n=12 503/499. No new construction accepted. All 276 programs through n=3 remain byte-identical; corpus 219320 chars. All eight benchmark pins remain unchanged. Each language passed 5656 paired before/after row executions. Both constants n=1..12 execute in default, width=1 and balanced layouts; sentinel regressions require all input before output."
+
+[ablations.trick_prototype_20261101_parity_sum]
+arity = 8
+saving = 86.2395
+verdict = "kept only for parity and its complement, after canonical ignored-input folding. Match the reduced table to the named Thue-Morse rule, sum retained inputs in Romeo, then take modulo two; no residual or permutation search. Each original input is still read, and output follows the last read. Pure parity n=7 chars3658->743 (79.69%), n=8 5930->816 (86.24%); complements774/847 chars (78.84%/85.72%). All rows through n=4 and endpoint/interior witnesses through n=10 execute. Parity text is 73n+232, plus31 for complement; execution n+m+4 for m retained inputs, 2n+4 when all matter. n=4 parity1232->524. Ordinary random-table construction is unchanged. All tables/rows n<=3 and 16 named/random tables per n=4..6 pass 7824 paired runs plus324 wrong-table controls; n=3 total219320->215909. Owned read-first/sentinel checks include nonconstants. Auditing bigger packed programs exposed old bounds: ten-input nonparity control needs42 steps and2063 written bits, exceeding2n+7 and2T+13. Correct global worst execution is6 at n=1 (all nonconstants are parity), otherwise2n+ceil(T/64)+6. A packing sentence covers64 NAF digits. Values need at most2T+1 bits, stage three, plus program/input cursors: workspace <=2T+bl(2n+ceil(T/64)+6)+bl(2n-1)+4. Native formulas and an exact large-packing regression cover these counters."
+
+[ablations.trick_prototype_20261101_merged_chunks]
+arity = 8
+saving = 0.7006
+verdict = "rejected: increasing packing chunks64->128 executes four rows of50 Random(184700+n) tables per n=7,8, saving only0.55%/0.70% (164118->163218,256908->255108). All50 programs per arity change, so the probe fires. A dense signed-form eight-input control also parses and executes. Through n=3 the chunk boundary never fires, so the three-input execution gate gains nothing. No chunk-size or interpreter-limit change ships."
+
+[ablations.trick_prototype_20261101_input_order_and_residual_search]
+arity = 8
+saving = 0.0
+verdict = "rejected by construction: exact/greedy permutation search and residual selection over2^(m+1) affine masks violate the no-search/four named order rules. Neither search was launched. The separate parity rule has a closed-form detector and only that named function family; it introduces no searched residual or frozen table. No claim that all other Shakespeare constructions are impossible."

@@ -14,12 +14,25 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_native_constants()
+    from esolangs.languages.object_disoriented.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
+
     n = len(table).bit_length() - 1
+
+    class ReadFirstIO(ScriptedIO):
+        def _write(self, value: object) -> None:
+            assert self.reads == n
+            super()._write(value)
+
     program = esolangs.generate("Object disoriented", table)
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Object disoriented", bits)
-        got = esolangs.run("Object disoriented", program, stdin=stdin, timeout=5)
+        io = ReadFirstIO(stdin + "Q")
+        run(program, io)
+        got = io.getvalue()
+        assert io.past_end == 0
+        assert io.input_token() == "Q"
         # The answer as the contract reads it, not the raw output.
         assert esolangs.read_answer("Object disoriented", got) == table[row], (
             table,
@@ -74,3 +87,10 @@ def _check_native_constants() -> None:
     )
     before = sum(base**size for size in (1, 2, 3)) + rank - 1
     assert list(islice(_names(), before, before + 2)) == ["maim", "maio"]
+
+    assert (
+        sum(
+            len(esolangs.generate("Object disoriented", f"{v:08b}")) for v in range(256)
+        )
+        == 48562
+    )

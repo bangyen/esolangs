@@ -266,18 +266,24 @@ def _laserfuck_worst(n: int) -> tuple[str, ...]:
 
 # language-owners: ["Object disoriented"]
 def _od_worst(n: int) -> str:
-    """Most distinct subtables per level, the slots left at the knee on constants.
+    """Realize the proof's width profile, pairing spare slots with constants.
 
-    Level d holds min(2^d, 2^(2^(n-d)) - 2) distinct nodes: a full tree down
-    to the knee, whose nodes pair the next level's functions (the first two
-    pairs of constants where four slots are spare, else one constant each
-    when two are), then every function.
+    Cheaper nodes change the extremal widths: reconstruct the profile from
+    the independent count proof instead of retaining a stale maximal-width
+    fixture. This is verification, never a table used by the generator.
     """
+    from esolangs.languages.object_disoriented.tests.formulas import _profile
+
+    widths = (
+        _profile(n)[1]
+        if n <= 8
+        else tuple(min(2**d, 2 ** (2 ** (n - d)) - 2) for d in range(n))
+    )
     nodes: list[dict[int, tuple[int, int]]] = [{}] * n
     below: list[int] = []
     fresh = 2
     for d in range(n - 1, -1, -1):
-        width = min(2**d, 2 ** (2 ** (n - d)) - 2)
+        width = widths[d]
         if d == n - 1:
             pairs = [(0, 1), (1, 0)]
         elif width == 2 ** (2 ** (n - d)) - 2:
@@ -285,19 +291,26 @@ def _od_worst(n: int) -> str:
             pairs = [(a, b) for a in both for b in both if not a == b < 2]
         elif len(below) == 2 * width:
             pairs = list(zip(below[::2], below[1::2], strict=True))
-        elif 2 * width - len(below) == 2:
-            line = [0, below[0], below[1], 1, *below[2:]]
+        elif 2 * width - len(below) == 1:
+            line = [1, *below]
             pairs = list(zip(line[::2], line[1::2], strict=True))
         else:
-            size = len(below)
-            pairs = [(0, 1), (1, 0)]
-            pairs += [
-                (below[j], below[(j + t) % size])
-                for t in range(1, size)
-                for j in range(size)
-            ]
-            pairs += [p for x in below for c in (0, 1) for p in ((c, x), (x, c))]
-            pairs = pairs[:width]
+            spare = 2 * width - len(below)
+            pairs = [(0, 1)]
+            if spare >= 4 and (
+                width - 2 >= len(below) or 2 * (width - 2) == len(below)
+            ):
+                pairs.append((1, 0))
+            count = width - len(pairs)
+            if 2 * count == len(below):
+                pairs += list(zip(below[::2], below[1::2], strict=True))
+            else:
+                size = len(below)
+                pairs += [
+                    (below[j], below[(j + t) % size])
+                    for t in range(size)
+                    for j in range(size)
+                ][:count]
         below = list(range(fresh, fresh + width))
         fresh += width
         nodes[d] = dict(zip(below, pairs, strict=True))

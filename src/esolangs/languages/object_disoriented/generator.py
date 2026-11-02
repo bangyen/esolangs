@@ -3,24 +3,25 @@
 ``main`` first prints ``0011000``, the answer byte's fixed bits; output is
 buffered until the 8th, so nothing is printed before the inputs are read.
 An input byte is ``0011000x``, MSB first: a node drops seven bits and keeps
-the eighth in ``t`` (``iiiiiiicit``).  ``f t X`` runs ``X`` only on a 1, and
-``N`` (``fpz cbs``) acts as a 1 until a 1 bit calls it and ``s`` becomes
-``z``, so ``clN.afta`` leaves the negation in ``a`` and ``fan X0`` runs
-``X0`` only on a 0.  Each branch is an object ``n ... rz zz``, so its ``t``
+the eighth in ``t``. Class ``B`` reads that bit, writes its negation through
+the caller's ``a`` place, and returns the bit; each node calls ``cflB.at``.
+``f t X`` runs ``X`` only on a 1. ``N`` (``fpz cbs``) is 1 until the 1 bit
+calls it and its ``s`` becomes ``z``, so ``fa X0`` runs only on a 0.
+Each branch is an object ``n ... rz zz``, so its ``t``
 and ``a`` are its own.  A constant subtable drops the rest and prints the
 last bit (``lI.``, the input's own 1, or ``z``).  A branch written as an
 object twice or more is a class ``dS. ... rzzz``, written once and used as
 ``lS.``.
 
 Size:
-    T-1 nodes at most: size and build time O(T); n=8 parity: 640 chars,
-    n=10 majority: 1,417 chars, n=10 and: 789 chars.
+    T-1 nodes at most: size and build time O(T); n=8 parity: 439 chars,
+    n=10 majority: 999 chars, n=10 and: 671 chars.
     Constants: 8n+28 chars, 16n+28 commands, 48+2bl(n) written bits.
 
 Decisions:
-    Shared branches, against the plain tree (8 seeded tables each): dense
-    -51.6..-55.6% at n=8 across six draws, -68.1% at n=10; parity 9,748 ->
-    640 chars at n=8.
+    Reader B replaces an 18-character read/negation prefix with a seven-char
+    call. B is reserved from shared names. A final space keeps compact
+    class code from being mistaken for a path by the API.
 """
 
 from collections.abc import Callable, Iterator
@@ -33,10 +34,10 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 
 #: ``I`` is the bit 1; ``N`` is 1 until a 1 bit calls it.
-_HEADER = "dI.fpzrzzz dN.fpzcbsrzzz dmain.ozozolI.olI.ozozoz "
+_HEADER = "dI.fpzrzzzdN.fpzcbsrzzzdB.iiiiiiicitclN.pftprtzzdmain.ozozolI.olI.ozozoz"
 
-#: Class names for shared branches; ``I``, ``N`` and ``main`` are taken.
-_NAME_CHARS = "".join(c for c in ascii_letters + digits if c not in "IN")
+#: Class names for shared branches; ``I``, ``N``, ``B`` and ``main`` are taken.
+_NAME_CHARS = "".join(c for c in ascii_letters + digits if c not in "INB")
 
 
 def _names() -> Iterator[str]:
@@ -73,12 +74,7 @@ def _body(
     """One node's code; ``obj(depth, k)`` writes a branch object."""
     if ids[depth][k] < 2:
         return "i" * 8 * (n - depth) + ("olI." if ids[depth][k] else "oz")
-    return (
-        " iiiiiiicitclN.afta ft"
-        + obj(depth + 1, 2 * k + 1)
-        + " fa"
-        + obj(depth + 1, 2 * k)
-    )
+    return "cflB.atft" + obj(depth + 1, 2 * k + 1) + "fa" + obj(depth + 1, 2 * k)
 
 
 def _program(ids: list[list[int]], n: int, names: dict[tuple[int, int], str]) -> str:
@@ -96,12 +92,10 @@ def _program(ids: list[list[int]], n: int, names: dict[tuple[int, int], str]) ->
         return "n" + _body(ids, n, depth, k, obj) + "rzzz"
 
     out.append(_body(ids, n, 0, 0, obj))
-    out.append(" rzzz")
+    out.append("rzzz")
     for (depth, node), name in names.items():
-        out.append(
-            f" d{name}." + _body(ids, n, depth, first[depth][node], obj) + "rzzz"
-        )
-    return "".join(out)
+        out.append(f"d{name}." + _body(ids, n, depth, first[depth][node], obj) + "rzzz")
+    return "".join(out) + " "
 
 
 def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
@@ -109,7 +103,7 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
 
     Top-down, so a use counts once per text the parent's body is written in;
     a branch's own length is taken unshared (an estimate).  ``m`` uses of a
-    ``c``-character body save ``m (c + 5) - (c + |name| + 7) - m (|name| + 2)``.
+    ``c``-character body save ``m (c + 5) - (c + |name| + 6) - m (|name| + 2)``.
     """
     plain = [dict[int, int]() for _ in ids]
     for depth in range(n, -1, -1):
@@ -120,7 +114,7 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
                 plain[depth][node] = 8 * (n - depth) + (4 if node else 2)
                 continue
             zero, one = ids[depth + 1][2 * k], ids[depth + 1][2 * k + 1]
-            plain[depth][node] = 35 + plain[depth + 1][one] + plain[depth + 1][zero]
+            plain[depth][node] = 21 + plain[depth + 1][one] + plain[depth + 1][zero]
     names: dict[tuple[int, int], str] = {}
     fresh = _names()
     candidate = next(fresh)
@@ -137,7 +131,7 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
             c = plain[depth][node]
             name = None
             size = len(candidate)
-            if as_obj >= 2 and as_obj * (c + 5) > c + size + 7 + as_obj * (size + 2):
+            if as_obj >= 2 and as_obj * (c + 5) > c + size + 6 + as_obj * (size + 2):
                 name = names[depth, node] = candidate
                 candidate = next(fresh)
             texts = inline + (1 if name else as_obj)

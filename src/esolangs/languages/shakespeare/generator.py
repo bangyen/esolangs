@@ -14,11 +14,13 @@ line of single-spaced words, so the squarest layout is a plain re-wrap.
 
 Size:
     at most ``16 * T`` characters for ``T = 2**m`` rows of the essential inputs
-    plus ``O(m**2)`` for the readers, so linear in T; n=4 parity: 1,232 chars
+    plus ``O(m**2)`` for the readers, so linear in T; n=4 parity: 524 chars
 
 Decisions:
-    * A stack of ``Remember`` sentences, one per row, was not built: reading
-      it pops once per row, Theta(T) steps against 2n + 6 + ⌈(T-1)/64⌉ here.
+    * A stack of ``Remember`` sentences would pop once per row. Packing
+      instead assigns once per 64 signed digits and multiplies per kept input.
+    * Parity and its complement need no literal: sum the retained inputs
+      modulo two. Ignored inputs are still read before the print.
 """
 
 from __future__ import annotations
@@ -117,6 +119,20 @@ def _program(table: str, n: int, essential: list[int], *, invert: bool) -> str:
     return " ".join(parts)
 
 
+def _parity(n: int, essential: list[int], *, invert: bool) -> str:
+    """Sum the retained input bits, then print the sum modulo two."""
+    parts = [_HEAD, "[Enter Romeo and Juliet]", "Juliet: You are nothing."]
+    for position in range(n):
+        parts.append(_READ)
+        if position in essential:
+            parts.append("Juliet: You are the sum of yourself and me.")
+    bit = f"the remainder of the quotient between yourself and {_TWO}"
+    if invert:
+        bit = f"the difference between joy and {bit}"
+    parts += [f"Juliet: You are {bit}.", "Open your heart."]
+    return " ".join(parts)
+
+
 def shakespeare(truth_table: str) -> str:
     """Build a Shakespeare program printing ``truth_table[row]`` for the inputs.
 
@@ -132,6 +148,13 @@ def shakespeare(truth_table: str) -> str:
             "Open your heart."
         )
     table = read_at(truth_table, essential, n)
+    parity = "0"
+    for _ in essential:
+        parity += parity.translate(str.maketrans("01", "10"))
+    invert = table[0] == "1"
+    expected = parity.translate(str.maketrans("01", "10")) if invert else parity
+    if table == expected:
+        return _parity(n, essential, invert=invert)
     # A rule, not a race: see [ablations.polarity].
     return _program(table, n, essential, invert=2 * table.count("1") > len(table))
 

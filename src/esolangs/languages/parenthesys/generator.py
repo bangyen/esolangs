@@ -1,20 +1,17 @@
 """Parenthesys Boolean program generator: the table as a lookup string.
 
-The row is one nested Horner expression: ``$`` reads the first input and
-each later one wraps it as ``[+|[*|E|2]|$]``, whose arguments evaluate in
-order, so the reads stay in input order.  Below n=5, ``ind`` prints
-character ``row + 1`` of ``x`` and the table: the ``x`` keeps an all-digit
-table a string, whatever a number's text would become.
-
-From n=5 each character packs eight rows as ``U+4E00 + v``: the first three
-inputs pick the bit, the rest the character.  The bit is the
-``(2**s * ord) % 256 > 127`` test, which reads bit ``7 - s`` of the code
-(the offset is a multiple of 256, so it drops out); its ``2**s`` goes first
-so the reads stay in order.
+Below n=4, nested Horner reads index character ``row + 1`` of ``x`` and
+the table; ``x`` keeps an all-digit table a string.
+From n=4, a character packs eight rows as ``U+4E00 + v``. The first three
+inputs select its bit, the rest its column, preserving input order.
+Three decimal digits abc modulo 8 give 4a+2b+c; two give 2a+b. Read groups
+of at most three this way, combining full groups in radix 8. The final
+``(2**s * ord) % 256 > 127`` selects bit ``7 - s`` of the character.
 
 Size:
-    n<5: 12n + 5 + T chars, 6n + 2 steps; n>=5: 12n + 23 + T/8 chars,
-    6n + 8 steps; n=10 parity: 271 chars, n=10 random 1847: 271 chars.
+    n<4: 12n + 5 + T chars, 6n + 2 steps. From n=4: T/8 + 54 + G chars
+    and 25 + H steps; G/H are the grouped column's characters/ops.
+    n=10 parity: 223 chars, n=10 random 1847: 223 chars.
     Constants read each input then print the bit: n + 3 chars.
 """
 
@@ -34,20 +31,29 @@ def _horner(reads: int) -> str:
     return row
 
 
+def _grouped(reads: int) -> str:
+    """Read up to three digits modulo 8, then append groups in radix 8."""
+    first = (reads - 1) % 3 + 1
+    row = "$" if first == 1 else "[%|" + "$" * first + "|8]"
+    for _ in range(first, reads, 3):
+        row = f"[+|[*|{row}|8]|[%|$$$|8]]"
+    return row
+
+
 def parenthesys(truth_table: str) -> str:
     """Build a Parenthesys program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         return "$" * n + f"({truth_table[0]})"
-    if n < 5:
+    if n < 4:
         return f"([ind|[+|{_horner(n)}|1]|x{truth_table}])"
     columns = len(truth_table) >> _BITS
     table = "".join(
         chr(_OFFSET + int("".join(truth_table[s * columns + c] for s in range(8)), 2))
         for c in range(columns)
     )
-    column = f"[ord|[ind|{_horner(n - _BITS)}|{table}]|0]"
-    return f"([gt|[%|[*|[^|2|{_horner(_BITS)}]|{column}]|256]|127])"
+    column = f"[ord|[ind|{_grouped(n - _BITS)}|{table}]|0]"
+    return f"([gt|[%|[*|[^|2|{_grouped(_BITS)}]|{column}]|256]|127])"
 
 
 LANGUAGE = Language(

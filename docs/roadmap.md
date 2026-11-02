@@ -145,14 +145,14 @@ Suffolk, Super SNUSP, SwitchCase, Taglate, thisthat, Unsquare, What!?.
   Round 1 covered 111/111. Restart by increasing count of kept ablation
   rules, alphabetically within ties. The zero-trick queue is BASICER,
   CARP, CreativeScript v2, HQ9+ with headers, Qrain; all five are complete.
-  HQ9+ now folds constants. Next: Object disoriented, Parenthesys, Shakespeare. Record
+  HQ9+ now folds constants. Next: What!?, ABCDirection, Alight. Record
   completion as `[audits] trick_prototype = <date>`; retain earlier evidence.
 
 <!-- TRICK-PROTOTYPES:START -->
 
-17 of the 114 generators: Aprknia, BASICER, Basicfuck, Caballo, CARP,
+20 of the 114 generators: Aprknia, BASICER, Basicfuck, Caballo, CARP,
 Chicken, CreativeScript v2, DINAC, Fackward, Grapheme, HQ9+ with headers,
 IEBEL, Kiss, lol waht i cant edit talk pages, Monotonic Boolfuck, Movesum,
-Qrain.
+Object disoriented, Parenthesys, Qrain, Shakespeare.
 
 <!-- TRICK-PROTOTYPES:END -->
