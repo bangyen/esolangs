@@ -194,10 +194,14 @@ def test_linear_lookup_drops_ignored_inputs() -> None:
         assert run_brainif(program, list(format(row, "06b"))) == table[row]
 
 
+@pytest.mark.medium
 def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
     """Ignored inputs 1-7 put levels 0 and 8 on one marker cell: only level 0 loops."""
     from esolangs import generate
+    from esolangs.generation.helpers import input_weights
     from esolangs.languages.brainif.generator import _Strip
+    from esolangs.languages.brainif.interpreter import run
+    from esolangs.runtime.io import ScriptedIO
 
     n, kept = 12, [0, 8, 9, 10, 11]
     small = "01101001100101101001011001101001"
@@ -206,10 +210,22 @@ def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
         for r in range(1 << n)
     )
     weights = [16 if i == 0 else 1 << (11 - i) if i in kept else 0 for i in range(n)]
-    assert _Strip("0" * 64, weights).levels == [0]
+    assert input_weights(table, n) == (weights, small)
+    assert _Strip(small + "0" * n, weights).levels == [0]
+    # Contiguous inputs keep both loops; the ignored-input gap causes the collision.
+    assert _Strip(small + "0" * 5, [16, 8, 4, 2, 1]).levels == [0, 1]
     program = generate("BrainIf", table, width=1)
-    for row in (0, 1, 777, 2048, 4095):
-        assert run_brainif(program, list(format(row, f"0{n}b"))) == table[row]
+    for essential in range(32):
+        for ignored in "01":
+            bits = [ignored] * n
+            for i, bit in zip(kept, f"{essential:05b}", strict=True):
+                bits[i] = bit
+            stdin = "".join(bits)
+            io = ScriptedIO(stdin + "Q")
+            run(program.splitlines(), io)
+            assert io.getvalue() == table[int(stdin, 2)]
+            assert io.reads == n
+            assert io.input_char() == ord("Q")
 
 
 @pytest.mark.medium

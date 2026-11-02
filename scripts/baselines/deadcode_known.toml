@@ -13,11 +13,6 @@
     "arm: if len(candidate) < len(plain): -> return plain",
 ]
 
-# Unresolved marker collision: needs a weight/level witness.
-"brainif/generator.py" = [
-    "arm: if any((i - j) % (2 * weights[i]) == weights[i] for j in self.levels): -> break",
-    "line: break",
-]
 
 # Unresolved equal mux arms: distinguish direct callers from folded DAGs.
 "circuit_diagram/generator/__init__.py" = [
