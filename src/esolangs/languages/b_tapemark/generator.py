@@ -10,7 +10,8 @@ round-trip landing (see :meth:`_Builder._stage_old`); the copy phase, the
 climb and the tail are shared, and on the measured corpus its programs are
 no larger than the default dialect's.
 
-Size (default dialect):
+Size:
+    Figures are measured on the default dialect (swap_marker='new').
     O(T) source and construction in every layout; the narrow XOR2 needs
     nine columns. Constants: 2n + 2 cells in one row. The default is the least
     by area of the wide strip and the
