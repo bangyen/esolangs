@@ -88,6 +88,13 @@ ignored-input tables included).
   non-product or non-uniform relations, unpriced, or a term
   exhibiting the contrary.  See
   [limitations](limitations.md#searches).
+- **Wiki candidate screening:** continue the 2026-11-01 API screen: 2,537
+  language pages outside `Implemented` and `Unimplemented`, 2,248 after the
+  interpreter-link filter. Refresh categories and specs for the next batch.
+  Missing links do not establish first-implementation eligibility: check
+  public implementations, fixed core semantics and an executed loop-less
+  O(T) Boolean construction under [curation](limitations.md#curation).
+  Record candidates and rejection reasons.
 - **Blind reimplementation of first implementations:** a clean-room
   interpreter written from the wiki page alone, diffed over the generated
   corpus.  With no outside interpreter, this is the only independent
