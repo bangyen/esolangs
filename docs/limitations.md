@@ -791,9 +791,6 @@ exact range (2026-10-23, counted from the ledger):
     at 19, XX multiplicity at 20), no rule found; at 21 the exhibited
     family's 98,929 pair slots cannot hold 131,072 places.  Reopens with a
     rule or a successor family.
-  - Codesick scaling past n = 132: the spare ids fit the fixed 20-digit
-    pair supply through 132 (ratio 0.5962) and outgrow it at 133.  Reopens
-    with a width-class rule.
   - 1 + i workspace past n = 27: the n = 28 witness, ~1.7G characters, is
     OOM-killed while generating here.
   - INTERCAL execution past n = 27 — n = 26 now executes end to end

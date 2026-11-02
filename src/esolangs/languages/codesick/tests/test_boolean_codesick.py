@@ -12,8 +12,11 @@ TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(2**2**n)]
 @pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
+    from esolangs.languages.codesick.tests.ablations import ablate
+
     n = len(table).bit_length() - 1
     program = esolangs.generate("Codesick", table)
+    assert program == ablate(table, "default")
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("Codesick", bits)
@@ -24,7 +27,10 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_equal_subtables_share_one_node() -> None:
     # Parity: one node per (level, parity), not one per row prefix.
-    assert codesick("0110100110010110").count(" codesick in #") == 7
+    from esolangs.languages.codesick.interpreter import _load
+
+    instructions, _ = _load(codesick("0110100110010110"))
+    assert sum(p[2] == ("in",) and p[3] != "" for p in instructions) == 7
 
 
 @pytest.mark.parametrize("table", ["01", "0011", "00001111", "0110"])
