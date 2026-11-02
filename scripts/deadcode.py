@@ -59,7 +59,12 @@ def _collect(data: Path, packages: list[str]) -> None:
             "name a language to scan one, --data FILE to keep the run",
             flush=True,
         )
-    subprocess.run(cmd, cwd=ROOT, env=env, check=True)
+    try:
+        subprocess.run(cmd, cwd=ROOT, env=env, check=True)
+    except subprocess.CalledProcessError:
+        # A later --data run must not accept this incomplete collection.
+        data.unlink(missing_ok=True)
+        raise
 
 
 def _report(data: Path, packages: list[str]) -> dict[str, dict[str, Any]]:
