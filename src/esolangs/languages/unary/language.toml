@@ -8,7 +8,7 @@ bf_derivative = true
 [proof_status]
 labels = ["tree", "cap"]
 qualification = "complemented-byte decision tree; constants decrement the final byte before a fixed loop; projections and conjunction guards avoid flags"
-scaling = "lower bound: worst source length at least 2**T - 1; zero-count encoding"
+scaling = "lower bound: worst source length at least 2**T - 1 to n = 4"
 execution = "unmeasured: worst max(n, min(n + 4, 8)) commands past n = 2: at most nine commands, the last ] never run"
 workspace = "poly n: worst W bits past n = 1: the programs of at most nine commands"
 definitions = ["W = max t + bl(n) + bl(n+k): (k,t) = (0,8) (2,8) (3,8) (4,10) (5,17), n+k ≤ 9"]
