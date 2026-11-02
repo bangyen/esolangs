@@ -28,6 +28,6 @@ def test_language_contract() -> None:
             vm.step()
             steps += 1
         assert vm.halted
-        assert steps == 12 * n
+        assert steps == 12 * n - 2
         assert vm.ptr == n
         assert vm.output == "1"

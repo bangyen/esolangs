@@ -4,9 +4,9 @@ admitted = 2026-11-01T17:12:11-05:00
 
 [proof_status]
 labels = ["parameterized tree"]
-qualification = "native paired turns choose one child while restoring the condition bit, pointer and forward direction; ordered input setters precede the tree and the final current cell carries the answer"
+qualification = "a single turn chooses one emitted child in either direction when its two functions match the siblings; backward ids are interned bottom-up; input bits and entry direction are restored, ordered setters precede the tree and the final cell carries the answer"
 scaling = "linear: at most 14T + 4n - 13 characters"
-execution = "poly n: worst 12n commands: native decisions and one final dump"
+execution = "poly n: worst 12n - 2 commands: native decisions and one final dump"
 workspace = "poly n: at most n + bl(L) + bl(n+1) + 16 bits: packed tape halves, pointers and direction"
 
 [catalogue]
@@ -52,16 +52,17 @@ tables = 276
 verdict = "Every row executes for all four builds over all 276 tables at n=1..3 and five tables each at n=4..6. Large builds execute row (1000*n+k) mod 2**n at n=7/8/10/12, with constant k equal to its bit. n3 totals sum source chars once per table and commands over all eight rows, including the adapter dump. The missing leading conditional-toggle control gives the wrong answer."
 
 [generator_sizes]
-"00000001" = { commands = 36, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 25, "5" = 25, "6" = 33, "7" = 36 }, source_units = 44 }
-"00001100" = { commands = 25, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 30, "5" = 30, "6" = 25, "7" = 25 }, source_units = 35 }
-"00110110" = { commands = 33, commands_by_row = { "0" = 25, "1" = 25, "2" = 30, "3" = 30, "4" = 33, "5" = 36, "6" = 36, "7" = 33 }, source_units = 74 }
-"0110" = { commands = 21, commands_by_row = { "0" = 21, "1" = 24, "2" = 24, "3" = 21 }, source_units = 43 }
-"01101001" = { commands = 36, commands_by_row = { "0" = 33, "1" = 36, "2" = 36, "3" = 33, "4" = 36, "5" = 33, "6" = 33, "7" = 36 }, source_units = 97 }
-"0110100110010110" = { commands = 45, commands_by_row = { "0" = 45, "1" = 48, "2" = 48, "3" = 45, "4" = 48, "5" = 45, "6" = 45, "7" = 48, "8" = 48, "9" = 45, "10" = 45, "11" = 48, "12" = 45, "13" = 48, "14" = 48, "15" = 45 }, source_units = 201 }
-"1101001101101101" = { commands = 48, commands_by_row = { "0" = 42, "1" = 42, "2" = 45, "3" = 48, "4" = 37, "5" = 37, "6" = 42, "7" = 42, "8" = 45, "9" = 48, "10" = 48, "11" = 45, "12" = 42, "13" = 42, "14" = 45, "15" = 48 }, source_units = 160 }
-"11111110" = { commands = 33, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 30, "5" = 30, "6" = 36, "7" = 33 }, source_units = 56 }
+"00000001" = { commands = 34, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 25, "5" = 25, "6" = 34, "7" = 34 }, source_units = 39 }
+"00001100" = { commands = 28, commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 30 }
+"00110110" = { commands = 32, commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 32, "5" = 32, "6" = 32, "7" = 32 }, source_units = 45 }
+"0110" = { commands = 20, commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20 }, source_units = 19 }
+"01101001" = { commands = 30, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 30, "5" = 30, "6" = 30, "7" = 30 }, source_units = 29 }
+"0110100110010110" = { commands = 40, commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 39 }
+"1101001101101101" = { commands = 46, commands_by_row = { "0" = 42, "1" = 42, "2" = 46, "3" = 46, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 44, "9" = 44, "10" = 44, "11" = 44, "12" = 42, "13" = 42, "14" = 46, "15" = 46 }, source_units = 121 }
+"11111110" = { commands = 34, commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 30, "5" = 30, "6" = 34, "7" = 34 }, source_units = 51 }
 
 [audits]
+trick_prototype = 2026-11-02
 blind_reimplementation = 2026-11-01
 
 [interpreter_ablations.blind_reimplementation]
@@ -80,3 +81,18 @@ saving = 0.0
 seed = 0
 tables = "both constants, n=1..12"
 verdict = "retained: each ordered setter visits its own bit cell and advances to a fresh answer cell; one adds one toggle. Chars 2n+b, commands 2n+b+1 including dump: n=8 16/17 chars, 17/18 commands, 18/19 written bits; n=7 14/15 chars, n=12 24/25. Removing the final move makes all-one input witnesses print one for requested zero and zero for requested one. This rejects that candidate, not a universal optimum. Independent set-tape reference verifies preserved inputs, forward direction and final pointer n; native controls execute with no port reads. n=3 corpus chars 16081 unchanged. 1120 candidate/native row runs and 5656 paired old/new executions per language; 270 nonconstant n<=3 sources identical. Both constants execute default, width=1 and balanced layouts through n=12; all 24 balanced scores match or improve. All eight benchmark size/command pins and global resource caps unchanged. Extend existing collected cases only."
+
+[ablations.trick_prototype_20261102_bidirectional_sibling]
+arity = 8
+saving = 21.6232053912
+verdict = "kept as one direction-pair construction, including literal half-toggle base cases. Intern each emitted block backward function from child ids. A single *{A}* selects F(A) on1 and B(A) on0; use one child when its backward id matches the other sibling. The backward map is an involution: constants are fixed, literals swap, ignored inputs lift the map, matched pairs swap and unmatched pairs apply it to both children. Hence B(one)=zero iff B(zero)=one; always choose the one child, with no source-reflection machinery. Otherwise retain the three-brace conditional. No program search, cost race or frozen table: O(T) ids/plans, one bottom-up pass and explicit chunk tasks. Each replacement removes5 chars plus the omitted child; the14T+4n-13 source cap remains valid. For m remaining inputs, a literal costs2m+5, a generic parent adds at most8 and a paired parent at most6, so block cost is at most8m-1 in either entry direction. Setters, root positioning and dump cost4n+1; the initial inverse move pair removes2, giving exact12n-2; AND/all-ones witnesses reach it through8, and the all-small maxima are10,22,34. Workspace n+bl(L)+bl(n+1)+16 is unchanged. On200 seeded Random(1000*n+k).choice tables, n7 source214319->167788 (21.7111%),n8 423212->331700 (21.6232%); both clear even the declining20% bar with the required near-bar200 tables. Additional200 per9..12 save21.742..21.885%. Full live verification runs200784 old/new native executions: all small tables/rows,20 seeded plus7 named per4..6,200 plus7 named with ALL rows at7/8,20 plus7 named per9..12 with all parity rows and boundary/random samples. 6984 fresh-parser controls match reused brace skeletons, which uniform one-character setters leave unchanged. All final pointers/directions/input bits, untouched stdin/sentinel and sampled WrittenState bounds pass; no source grows. n3 chars16081->12399,commands58768->57672. 19905 row pairs slow, so this is source admission, not a universal runtime win. Twenty-table11-build median generation times n7/8/9:3.59/6.67/13.22ms ->4.94/9.55/19.01ms; still linear. After removing the redundant source-reflection branch, all879 full-live-corpus templates remain byte-identical. All276 small truth functions have an involutive backward map; the structural cases above prove it at larger arities. 33600 isolated block executions cover forward/backward entry, both initial answer bits and all suffix rows through3; computed F/B ids agree. The raw global-reflection assertion is false:0010 has B=0001, not0100; explicit B ids fix it. Independent ablation default matches live and disabling this rule matches the frozen old emitter;10600 small ablation runs and216 default/width1/balanced adapter runs pass. Swapping the leaf half-toggle fires the wrong-answer control."
+
+[ablations.trick_prototype_20261102_direction_literal]
+arity = 8
+saving = 14.6120620398
+verdict = "superseded by the uniform direction-pair construction, not stacked as another admitted rule. The standalone *{>m/<m}* (or backslash) preserves bits, pointer and entry direction and saves5 chars per opposite-constant pair. Over200 seeded tables it saves14.5647%/14.6121% at7/8;20-table pilot9040 old/new native runs pass all small rows and random4..8 samples/all rows through6, with no source growth. n3 chars16081->13591,commands58768->58408. The broader rule saves21.71%/21.62% against the SAME old baseline; its ~8.2% marginal saving is not separately admitted."
+
+[ablations.trick_prototype_20261102_answer_side_literal_order]
+arity = 8
+saving = 0.0
+verdict = "rejected raw n-way last-variable search: more than four candidates and O(nT) cofactor work violate the construction gate. Executed bounded repair uses identity, last-two swap, last-three rotation and last-three reversal; each has constant displacement and O(T) cofactor permutation. Against the literal-only identity build, minimum-of-four saves0.00% at BOTH7/8 on20 seeded tables (18391->18391 /36186->36186). The probe is live:108 tested tables improve. All9928 native executions across the four orders compute their table, preserve input bits/pointer/direction and leave stdin/sentinel untouched; all-small WrittenState bounds hold. No unrestricted n-way search or additional reorder rule ships."

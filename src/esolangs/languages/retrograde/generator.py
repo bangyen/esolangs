@@ -2,13 +2,14 @@
 
 Input setters visit cells 0..n-1 once; zero is a forward-inert half-toggle
 and one a toggle. The tree preserves these bits, toggles answer cell n for
-one, then ends there. Each conditional restores its input bit, pointer and
-forward direction. Branch source is emitted into chunks, never recursively
-concatenated. Shared rank preprocessing uses expected constant-time lookups
-on O(log T)-bit words; construction and source are O(T).
+one, then ends there. A single turn can select the forward/backward
+functions of one child; constant half-toggles seed input literals. Each
+conditional restores its input bit, pointer and entry direction. Source
+is emitted into chunks. Rank preprocessing uses expected constant-time
+lookups on O(log T)-bit words; construction and source are O(T).
 
 Size:
-    At most 14T+4n-13 characters; n=10 random 1847: 8,601 chars.
+    At most 14T+4n-13 characters; n=10 random 1847: 6,794 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -40,37 +41,83 @@ def retrograde(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
     prefix = (TEMPLATE_CHAR + ">") * n
-    # Canonical constant spans: [ablations.constant_fold].
     if ids[0][0] < 2:
         return prefix + ("*" if ids[0][0] else "")
+    backs = [level.copy() for level in ids]
+    kinds = [[""] * len(level) for level in ids]
+    fresh = max(map(max, ids)) + 1
+    # Intern the backward functions of chosen blocks from child ids.
+    # For example, 0010 runs backward as 0001 (see the ablation record).
+    # The map is an involution, so testing the one child covers both orientations.
+    for depth in reversed(range(n)):
+        rank = {
+            tuple(ids[depth + 1][2 * k : 2 * k + 2]): sub
+            for k, sub in enumerate(ids[depth])
+            if sub >= 2
+        }
+        for k, node in enumerate(ids[depth]):
+            if node < 2:
+                continue
+            z, o = ids[depth + 1][2 * k : 2 * k + 2]
+            zb, ob = backs[depth + 1][2 * k : 2 * k + 2]
+            if z == o:
+                kind = "skip"
+                low = high = zb
+            elif z < 2 and o < 2:
+                kind = "literal"
+                low, high = o, z
+            elif ob == z:
+                kind = "one"
+                low, high = o, z
+            else:
+                kind = "branch"
+                low, high = zb, ob
+            kinds[depth][k] = kind
+            if low == high and low < 2:
+                backs[depth][k] = low
+            else:
+                key = low, high
+                if key not in rank:
+                    rank[key] = fresh
+                    fresh += 1
+                backs[depth][k] = rank[key]
+    # [ablations.trick_prototype_20261102_bidirectional_sibling]
     chunks = [prefix, "<" * n]
-
-    def body(depth: int, k: int) -> None:
-        if ids[depth][k] == 0:
-            return
-        chunks.append(">")
-        tree(depth, k)
-        chunks.append("<")
-
-    def tree(depth: int, k: int) -> None:
+    stack: list[str | tuple[int, int]] = [(0, 0)]
+    while stack:
+        task = stack.pop()
+        if isinstance(task, str):
+            chunks.append(task)
+            continue
+        depth, k = task
         node = ids[depth][k]
-        # Fold the whole constant suffix: [ablations.constant_fold].
+        kind = kinds[depth][k]
+        z, o = 2 * k, 2 * k + 1
+        parts: list[str | tuple[int, int]]
         if node < 2:
-            # body() drops zero nodes; a constant here is always one.
-            chunks.extend((">" * (n - depth), "*", "<" * (n - depth)))
-            return
-        zero, one = 2 * k, 2 * k + 1
-        # Equal sibling functions ignore this input: [ablations.ignored_input].
-        if ids[depth + 1][zero] == ids[depth + 1][one]:
-            body(depth + 1, zero)
-            return
-        chunks.append("*{{*")
-        body(depth + 1, one)
-        chunks.append("}{*")
-        body(depth + 1, zero)
-        chunks.append("}}")
-
-    tree(0, 0)
+            # Branch tasks omit zero children; skip/one tasks cannot select one.
+            parts = [">" * (n - depth), "*", "<" * (n - depth)]
+        elif kind == "skip":
+            parts = [">", (depth + 1, z), "<"]
+        elif kind == "literal":
+            parts = [
+                "*{",
+                ">" * (n - depth),
+                "/" if ids[depth + 1][o] else "\\",
+                "<" * (n - depth),
+                "}*",
+            ]
+        elif kind == "one":
+            parts = ["*{", ">", (depth + 1, o), "<", "}*"]
+        else:
+            parts = ["*{{*"]
+            if ids[depth + 1][o]:
+                parts += [">", (depth + 1, o), "<"]
+            parts += ["}{*"]
+            if ids[depth + 1][z]:
+                parts += [">", (depth + 1, z), "<"]
+            parts += ["}}"]
+        stack.extend(reversed(parts))
     chunks.append(">" * n)
     return _moves("".join(chunks))
 

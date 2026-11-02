@@ -43,10 +43,14 @@ def _reference(code: str) -> tuple[int, int, set[int]]:
 
 def check_boolean_tables() -> None:
     _check_constants()
+    n3_source = 0
     for n in (1, 2, 3):
         for value in range(2 ** (1 << n)):
             table = format(value, f"0{1 << n}b")
             assert evaluate_generated("Retrograde", table) == table
+            if n == 3:
+                n3_source += len(esolangs.generate("Retrograde", table))
+    assert n3_source == 12399
     for n in (4, 5, 6):
         rng = Random(1000 * n)
         table = "".join(rng.choice("01") for _ in range(1 << n))
@@ -61,8 +65,8 @@ def check_boolean_tables() -> None:
     source = esolangs.instantiate(
         "Retrograde", esolangs.generate("Retrograde", "01"), (0,)
     )
-    at = source.index("*{{*")
-    broken = source[:at] + source[at + 1 :]
+    at = source.index("/")
+    broken = source[:at] + "\\" + source[at + 1 :]
     assert esolangs.run("Retrograde", broken, max_steps=1000) != "0"
 
 
